@@ -58,10 +58,6 @@ type WeekGroup = {
   ageEnd: number;
 };
 
-function draftKey(farmId: string, houseFlockId: string) {
-  return `mortality-house-draft:${farmId}:${houseFlockId}`;
-}
-
 function parseLocalDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
@@ -163,7 +159,6 @@ export function MortalityEntryForm({
   const [rows, setRows] = useState<DayRow[]>([]);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [summary, setSummary] = useState<{
     totalMortality: number;
     totalCulls: number;
@@ -172,7 +167,6 @@ export function MortalityEntryForm({
     status: string;
     dailyPct: number;
     sevenDayPct: number;
-    isDraft: boolean;
   } | null>(null);
 
   // Keep house selection valid when farm changes
@@ -193,24 +187,6 @@ export function MortalityEntryForm({
       return;
     }
 
-    const key = draftKey(farmId, house.houseFlockId);
-    try {
-      const raw = sessionStorage.getItem(key);
-      if (raw) {
-        const parsed = JSON.parse(raw) as { rows?: DayRow[] };
-        if (Array.isArray(parsed.rows) && parsed.rows.length > 0) {
-          setRows(parsed.rows);
-          const currentWeek = flockWeekFromAge(parsed.rows[parsed.rows.length - 1]?.age ?? 0);
-          setExpandedWeeks(new Set([currentWeek]));
-          setDraftNotice("Restored local draft for this house.");
-          return;
-        }
-      }
-    } catch {
-      // ignore corrupt drafts
-    }
-
-    setDraftNotice(null);
     const built = buildRows(flock.placementDate, house);
     setRows(built);
     const currentWeek = flockWeekFromAge(built[built.length - 1]?.age ?? 0);
@@ -233,13 +209,6 @@ export function MortalityEntryForm({
     setSummary(null);
   }
 
-  function saveDraftLocal() {
-    if (!house) return;
-    const key = draftKey(farmId, house.houseFlockId);
-    sessionStorage.setItem(key, JSON.stringify({ rows }));
-    setDraftNotice("Draft saved on this device.");
-  }
-
   function buildHouseWarning() {
     if (!house || rows.length === 0) return null;
     const last = rows[rows.length - 1]!;
@@ -260,7 +229,7 @@ export function MortalityEntryForm({
     return { status, dailyPct, sevenDayPct };
   }
 
-  function submit(isDraft: boolean) {
+  function submit() {
     if (!flock || !house) {
       setError("Select a farm and house with an active flock");
       return;
@@ -272,7 +241,7 @@ export function MortalityEntryForm({
         houseFlockId: house.houseFlockId,
         mortalityCause: "UNKNOWN",
         comments: null,
-        isDraft,
+        isDraft: false,
         entries: rows.map((r) => ({
           mortalityDate: r.mortalityDate,
           dailyMortalityCount: Number(r.dailyMortalityCount || 0),
@@ -296,17 +265,7 @@ export function MortalityEntryForm({
         status: warning?.status ?? "Normal",
         dailyPct: warning?.dailyPct ?? 0,
         sevenDayPct: warning?.sevenDayPct ?? 0,
-        isDraft,
       });
-
-      const key = draftKey(farmId, house.houseFlockId);
-      if (isDraft) {
-        sessionStorage.setItem(key, JSON.stringify({ rows }));
-        setDraftNotice("Draft saved to server and this device.");
-      } else {
-        sessionStorage.removeItem(key);
-        setDraftNotice(null);
-      }
       router.refresh();
     });
   }
@@ -397,7 +356,6 @@ export function MortalityEntryForm({
         ) : (
           <p className="mt-3 text-sm text-amber-800">This farm has no active flock or houses.</p>
         )}
-        {draftNotice ? <p className="mt-2 text-sm text-emerald-800">{draftNotice}</p> : null}
       </Card>
 
       {house && rows.length > 0 ? (
@@ -500,31 +458,16 @@ export function MortalityEntryForm({
 
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
 
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" disabled={pending || !house} onClick={() => submit(false)}>
+      <div>
+        <Button type="button" disabled={pending || !house} onClick={submit}>
           {pending ? "Saving…" : "Save mortality"}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={pending || !house}
-          onClick={() => {
-            saveDraftLocal();
-            submit(true);
-          }}
-        >
-          Save draft
-        </Button>
-        <Button type="button" variant="ghost" disabled={!house} onClick={saveDraftLocal}>
-          Save on device only
         </Button>
       </div>
 
       {summary ? (
         <Card className="border-emerald-200 bg-emerald-50/40">
           <h3 className="font-bold text-stone-900">
-            {summary.isDraft ? "Draft saved" : "Saved"} — {summary.daysSaved} day
-            {summary.daysSaved === 1 ? "" : "s"}
+            Saved — {summary.daysSaved} day{summary.daysSaved === 1 ? "" : "s"}
           </h3>
           <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
             <div>
