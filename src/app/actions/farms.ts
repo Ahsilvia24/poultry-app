@@ -212,3 +212,31 @@ export async function completeFlockAction(flockId: string) {
   });
   revalidatePath(`/farms/${flock.farmId}`);
 }
+
+export async function updateFlockScheduleAction(flockId: string, formData: FormData) {
+  const user = await requireUser();
+  const flock = await prisma.flock.findFirst({
+    where: { id: flockId, farm: { userId: user.id!, deletedAt: null } },
+  });
+  if (!flock) throw new Error("Flock not found");
+
+  const placementDate = String(formData.get("placementDate") ?? "");
+  const projectedCatchDate = emptyToNull(formData.get("projectedCatchDate"));
+  const targetMarketAgeRaw = emptyToNull(formData.get("targetMarketAge"));
+  const targetMarketAge = targetMarketAgeRaw ? Number(targetMarketAgeRaw) : null;
+
+  if (!placementDate) throw new Error("Placement date is required");
+
+  await prisma.flock.update({
+    where: { id: flockId },
+    data: {
+      placementDate: new Date(placementDate),
+      projectedCatchDate: projectedCatchDate ? new Date(projectedCatchDate) : null,
+      targetMarketAge:
+        targetMarketAge != null && Number.isFinite(targetMarketAge) ? targetMarketAge : null,
+    },
+  });
+
+  revalidatePath(`/farms/${flock.farmId}`);
+  revalidatePath("/");
+}

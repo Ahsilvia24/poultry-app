@@ -134,7 +134,7 @@ export default async function SettingsPage() {
                   name="defaultMarketAgeDays"
                   type="number"
                   min={1}
-                  defaultValue={s?.defaultMarketAgeDays ?? 42}
+                  defaultValue={s?.defaultMarketAgeDays ?? 52}
                   required
                 />
               </div>

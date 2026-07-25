@@ -17,7 +17,7 @@ import {
   formatNumber,
   formatPct,
 } from "@/lib/utils";
-import { createFlockAction, createHouseAction, updateFarmAction } from "@/app/actions/farms";
+import { createFlockAction, createHouseAction, updateFarmAction, updateFlockScheduleAction } from "@/app/actions/farms";
 import {
   ArchiveFarmButton,
   CompleteFlockButton,
@@ -25,6 +25,7 @@ import {
   FarmVisitForm,
   LitterEventForm,
 } from "@/components/FarmOpsForms";
+import { FlockScheduleFields } from "@/components/FlockScheduleFields";
 import { Button, Card, Input, Label, PageHeader, Select, StatTile, StatusBadge, Textarea } from "@/components/ui";
 
 type Params = Promise<{ id: string }>;
@@ -135,6 +136,12 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
   async function submitFarmUpdate(formData: FormData) {
     "use server";
     await updateFarmAction(farmId, formData);
+  }
+
+  async function submitFlockSchedule(formData: FormData) {
+    "use server";
+    if (!activeFlock) return;
+    await updateFlockScheduleAction(activeFlock.id, formData);
   }
 
   const subtitleParts = [farm.growerName || null, farm.farmNumber ? `Farm #${farm.farmNumber}` : null].filter(
@@ -251,7 +258,30 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             {activeFlock.projectedCatchDate
               ? ` · Projected catch ${format(activeFlock.projectedCatchDate, "MMM d, yyyy")}`
               : ""}
+            {activeFlock.targetMarketAge != null ? ` · Market age ${activeFlock.targetMarketAge} days` : ""}
           </p>
+          <Card className="mt-4">
+            <h3 className="font-bold">Edit placement / market age / catch</h3>
+            <form action={submitFlockSchedule} className="mt-4 grid gap-3 sm:grid-cols-2">
+              <FlockScheduleFields
+                initialPlacement={format(activeFlock.placementDate, "yyyy-MM-dd")}
+                initialMarketAge={
+                  activeFlock.targetMarketAge ??
+                  (activeFlock.projectedCatchDate
+                    ? differenceInCalendarDays(activeFlock.projectedCatchDate, activeFlock.placementDate)
+                    : 52)
+                }
+                initialCatchDate={
+                  activeFlock.projectedCatchDate
+                    ? format(activeFlock.projectedCatchDate, "yyyy-MM-dd")
+                    : undefined
+                }
+              />
+              <div className="sm:col-span-2">
+                <Button type="submit">Save schedule</Button>
+              </div>
+            </form>
+          </Card>
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Birds placed" value={formatNumber(flockPlaced)} />
             <StatTile label="Today" value={flockToday} />
@@ -396,20 +426,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
                   <Label htmlFor="flockName">Flock name</Label>
                   <Input id="flockName" name="flockName" />
                 </div>
-                <div>
-                  <Label htmlFor="placementDate">Placement date</Label>
-                  <Input
-                    id="placementDate"
-                    name="placementDate"
-                    type="date"
-                    required
-                    defaultValue={format(today, "yyyy-MM-dd")}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="projectedCatchDate">Projected catch</Label>
-                  <Input id="projectedCatchDate" name="projectedCatchDate" type="date" />
-                </div>
+                <FlockScheduleFields initialPlacement={format(today, "yyyy-MM-dd")} />
                 <div>
                   <Label htmlFor="birdType">Bird type</Label>
                   <Input id="birdType" name="birdType" />
@@ -422,10 +439,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
                     <option value="FEMALE">Female</option>
                     <option value="UNKNOWN">Unknown</option>
                   </Select>
-                </div>
-                <div>
-                  <Label htmlFor="targetMarketAge">Target market age</Label>
-                  <Input id="targetMarketAge" name="targetMarketAge" type="number" min={1} />
                 </div>
                 <div>
                   <Label htmlFor="processingPlant">Processing plant</Label>

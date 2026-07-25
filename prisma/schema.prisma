@@ -130,7 +130,7 @@ model UserSettings {
   alertRisingThreeDays       Boolean         @default(true)
   missingMortalityAlertTime  String          @default("14:00")
   preferredUnits             MeasurementUnit @default(IMPERIAL)
-  defaultMarketAgeDays       Int             @default(42)
+  defaultMarketAgeDays       Int             @default(52)
   notifyEmail                Boolean         @default(false)
   notifyInApp                Boolean         @default(true)
   ageBandThresholdsJson      String?
