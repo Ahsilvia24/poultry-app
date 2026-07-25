@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { DeleteFarmButton } from "@/components/FarmOpsForms";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { cn, formatNumber } from "@/lib/utils";
 
@@ -75,8 +76,8 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
           {farms.map((farm) => {
             const active = farm.flocks[0];
             return (
-              <Link key={farm.id} href={`/farms/${farm.id}`}>
-                <Card className="transition hover:border-emerald-400">
+              <Card key={farm.id} className="relative transition hover:border-emerald-400">
+                <Link href={`/farms/${farm.id}`} className="block pb-2 pr-12">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-lg font-bold text-stone-900">{farm.farmName}</p>
@@ -120,8 +121,11 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                       <p className="font-semibold">{farm.isActive ? "Active" : "Inactive"}</p>
                     </div>
                   </div>
-                </Card>
-              </Link>
+                </Link>
+                <div className="absolute bottom-3 right-3">
+                  <DeleteFarmButton farmId={farm.id} appearance="icon" />
+                </div>
+              </Card>
             );
           })}
         </div>
