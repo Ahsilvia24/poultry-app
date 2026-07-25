@@ -8,6 +8,7 @@ import {
   isRisingThreeDays,
   resolveMortalityStatus,
   summarizeForDate,
+  weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
 import { cfmPerSquareFoot } from "@/lib/ventilation/calculations";
 import {
@@ -76,14 +77,18 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
   let flockPlaced = 0;
   let flockToday = 0;
-  let flockSeven = 0;
   let flockCum = 0;
+  const flockWeeklyTotals = new Map<number, number>();
 
   const houseCards = farm.houses.map((house) => {
     const hf = activeFlock?.houseFlocks.find((h) => h.houseId === house.id) ?? null;
     const metrics = hf
       ? summarizeForDate(hf.placedBirdCount, hf.mortalities, today)
       : null;
+    const weeklyMortality =
+      hf && activeFlock
+        ? weeklyMortalityByPlacement(activeFlock.placementDate, hf.mortalities, today)
+        : [];
     const rising = hf ? isRisingThreeDays(hf.mortalities, today) : false;
     const status = metrics
       ? resolveMortalityStatus(
@@ -98,19 +103,26 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     if (hf && metrics) {
       flockPlaced += hf.placedBirdCount;
       flockToday += metrics.today;
-      flockSeven += metrics.sevenDay;
       flockCum += metrics.cumulative;
+    }
+    for (const w of weeklyMortality) {
+      flockWeeklyTotals.set(w.week, (flockWeeklyTotals.get(w.week) ?? 0) + w.total);
     }
 
     return {
       house,
       hf,
       metrics,
+      weeklyMortality,
       status,
       feedLbs,
       cfmSqft,
     };
   });
+
+  const flockWeeklyMortality = Array.from(flockWeeklyTotals.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([week, total]) => ({ week, total }));
 
   const allFeedDeliveries = [
     ...(activeFlock?.feedDeliveries ?? []),
@@ -222,15 +234,29 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               </div>
             </form>
           </Card>
-          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-3">
             <StatTile label="Birds placed" value={formatNumber(flockPlaced)} />
             <StatTile label="Today" value={flockToday} />
-            <StatTile label="7-day" value={flockSeven} />
             <StatTile
               label="Cumulative"
               value={`${flockCum} (${formatPct(flockPlaced > 0 ? (flockCum / flockPlaced) * 100 : 0)})`}
             />
           </div>
+          {flockWeeklyMortality.length > 0 ? (
+            <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                Weekly mortality
+              </p>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                {flockWeeklyMortality.map((w) => (
+                  <div key={w.week}>
+                    <span className="text-stone-500">Week {w.week}</span>{" "}
+                    <span className="font-semibold text-stone-900">{w.total}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {flockLevelFeed > 0 ? (
             <p className="mt-2 text-sm text-stone-600">
               Flock-level feed (not allocated to a house): {formatNumber(flockLevelFeed)} lbs
@@ -249,7 +275,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
       <h2 className="mt-8 text-xl font-bold">Houses</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
-        {houseCards.map(({ house, hf, metrics, status, feedLbs, cfmSqft }) => (
+        {houseCards.map(({ house, hf, metrics, weeklyMortality, status, feedLbs, cfmSqft }) => (
           <Card key={house.id}>
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -275,10 +301,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
                 <p className="font-semibold">{metrics?.today ?? "—"}</p>
               </div>
               <div>
-                <p className="text-stone-500">7-day</p>
-                <p className="font-semibold">{metrics?.sevenDay ?? "—"}</p>
-              </div>
-              <div>
                 <p className="text-stone-500">Cumulative</p>
                 <p className="font-semibold">
                   {metrics
@@ -295,6 +317,21 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
                 <p className="font-semibold">{formatNumber(feedLbs)} lbs</p>
               </div>
             </div>
+            {weeklyMortality.length > 0 ? (
+              <div className="mt-3 border-t border-stone-100 pt-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                  Weekly mortality
+                </p>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                  {weeklyMortality.map((w) => (
+                    <div key={w.week}>
+                      <span className="text-stone-500">Week {w.week}</span>{" "}
+                      <span className="font-semibold text-stone-900">{w.total}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </Card>
         ))}
         {farm.houses.length === 0 ? (
