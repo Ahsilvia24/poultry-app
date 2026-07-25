@@ -13,6 +13,9 @@ export const MORTALITY_CAUSE_LABELS: Record<string, string> = {
   SMOTHERING: "Smothering",
   PREDATOR: "Predator",
   CULL: "Cull",
+  YOLK_INFECTION: "Yolk infection",
+  BACTERIA: "Bacteria",
+  ESCHERICHIA_COLI: "Escherichia coli",
   OTHER: "Other",
 };
 

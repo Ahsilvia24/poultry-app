@@ -26,6 +26,9 @@ const CAUSES = [
   "SMOTHERING",
   "PREDATOR",
   "CULL",
+  "YOLK_INFECTION",
+  "BACTERIA",
+  "ESCHERICHIA_COLI",
   "OTHER",
 ];
 
