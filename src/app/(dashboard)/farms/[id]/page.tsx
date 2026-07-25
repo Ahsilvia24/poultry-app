@@ -150,6 +150,15 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
   return (
     <div>
+      <Link
+        href="/farms"
+        className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
+      >
+        <span aria-hidden="true" className="text-xl leading-none">
+          ←
+        </span>
+        Farms
+      </Link>
       <PageHeader
         title={farm.farmName}
         subtitle={subtitleParts.length ? subtitleParts.join(" · ") : "Farm details"}
@@ -163,9 +172,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             </Link>
             {activeFlock ? <CompleteFlockButton flockId={activeFlock.id} /> : null}
             <DeleteFarmButton farmId={farm.id} />
-            <Link href="/farms">
-              <Button variant="ghost">All farms</Button>
-            </Link>
           </>
         }
       />
