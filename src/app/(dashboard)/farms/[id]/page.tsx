@@ -85,6 +85,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
   let flockPlaced = 0;
   let flockCum = 0;
   let flockProjectedHead = 0;
+  let flockProjectedMortality = 0;
   const flockWeeklyTotals = new Map<number, number>();
 
   const houseCards = farm.houses.map((house) => {
@@ -96,13 +97,11 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       hf && activeFlock
         ? weeklyMortalityByPlacement(activeFlock.placementDate, hf.mortalities, today)
         : [];
+    const avgDaily =
+      hf != null ? averageDailyMortalityLast7Days(hf.mortalities, today) : 0;
     const projectedHeadCount =
       metrics && daysUntilCatch != null && hf
-        ? projectedHeadCountAtCatch(
-            metrics.remaining,
-            averageDailyMortalityLast7Days(hf.mortalities, today),
-            daysUntilCatch,
-          )
+        ? projectedHeadCountAtCatch(metrics.remaining, avgDaily, daysUntilCatch)
         : null;
     const rising = hf ? isRisingThreeDays(hf.mortalities, today) : false;
     const status = metrics
@@ -119,6 +118,9 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     }
     if (projectedHeadCount != null) {
       flockProjectedHead += projectedHeadCount;
+    }
+    if (hf && daysUntilCatch != null) {
+      flockProjectedMortality += avgDaily * daysUntilCatch;
     }
     for (const w of weeklyMortality) {
       flockWeeklyTotals.set(w.week, (flockWeeklyTotals.get(w.week) ?? 0) + w.total);
@@ -138,6 +140,11 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
   const flockWeeklyMortality = Array.from(flockWeeklyTotals.entries())
     .sort((a, b) => a[0] - b[0])
     .map(([week, total]) => ({ week, total }));
+
+  const projectedMortalityCount = Math.max(
+    0,
+    Math.round(flockCum + flockProjectedMortality),
+  );
 
   const allFeedDeliveries = [
     ...(activeFlock?.feedDeliveries ?? []),
@@ -251,10 +258,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             />
             <StatTile
               label="Projected Mortality"
-              value={`${Math.max(0, flockPlaced - flockProjectedHead)} (${formatPct(
-                flockPlaced > 0
-                  ? (Math.max(0, flockPlaced - flockProjectedHead) / flockPlaced) * 100
-                  : 0,
+              value={`${formatNumber(projectedMortalityCount)} (${formatPct(
+                flockPlaced > 0 ? (projectedMortalityCount / flockPlaced) * 100 : 0,
               )})`}
             />
           </div>
