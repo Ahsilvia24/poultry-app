@@ -11,6 +11,7 @@ import {
 } from "@/lib/visits/schedule";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { FollowUpsDueList, type FollowUpDueItem } from "@/components/FollowUpsDueList";
+import { ConsumptionRateCalculator } from "@/components/ConsumptionRateCalculator";
 
 const VISIBLE_AFTER_COMPLETE_MS = 12 * 60 * 60 * 1000;
 
@@ -170,6 +171,10 @@ export default async function LfoPage() {
           <p className="text-sm font-semibold text-stone-500">Upcoming (14 days)</p>
           <FollowUpsDueList items={upcoming} showDate />
         </Card>
+      </div>
+
+      <div className="mt-8">
+        <ConsumptionRateCalculator />
       </div>
     </div>
   );

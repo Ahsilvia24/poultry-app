@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Button, Input, Label, Textarea } from "@/components/ui";
+import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
@@ -18,12 +18,49 @@ export type LfoHouseRow = {
   headCount: number;
 };
 
+/** Half-hour slots: top (:00) and bottom (:30) of each hour. */
+const FEED_UP_TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+  const minutes = i * 30;
+  const hour24 = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  const value = `${String(hour24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  const ampm = hour24 < 12 ? "AM" : "PM";
+  const label = `${hour12}:${String(minute).padStart(2, "0")} ${ampm}`;
+  return { value, label };
+});
+
 function formatLbs(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
 function formatHours(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
+function splitFeedUp(feedUpAt: string) {
+  if (!feedUpAt) return { date: "", time: "" };
+  const [date = "", timePart = ""] = feedUpAt.split("T");
+  const raw = timePart.slice(0, 5);
+  if (!raw) return { date, time: "" };
+  const [hStr, mStr] = raw.split(":");
+  const h = Number(hStr);
+  const m = Number(mStr);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return { date, time: "" };
+  // Snap to nearest :00 or :30
+  const total = h * 60 + m;
+  const snapped = Math.round(total / 30) * 30;
+  const sh = Math.floor((snapped % (24 * 60)) / 60);
+  const sm = snapped % 60;
+  return {
+    date,
+    time: `${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}`,
+  };
+}
+
+function joinFeedUp(date: string, time: string) {
+  if (!date || !time) return "";
+  return `${date}T${time}`;
 }
 
 export function LfoInventoryForm({
@@ -48,14 +85,18 @@ export function LfoInventoryForm({
   const [pending, startTransition] = useTransition();
   const [consumptionRate, setConsumptionRate] = useState(String(initialRate));
   const [rows, setRows] = useState(
-    initialHouses.map((h) => ({
-      houseId: h.houseId,
-      houseNumber: h.houseNumber,
-      headCount: h.headCount,
-      binAPounds: String(h.binAPounds),
-      binBPounds: String(h.binBPounds),
-      feedUpAt: h.feedUpAt ?? "",
-    })),
+    initialHouses.map((h) => {
+      const parts = splitFeedUp(h.feedUpAt ?? "");
+      return {
+        houseId: h.houseId,
+        houseNumber: h.houseNumber,
+        headCount: h.headCount,
+        binAPounds: String(h.binAPounds),
+        binBPounds: String(h.binBPounds),
+        feedUpDate: parts.date,
+        feedUpTime: parts.time,
+      };
+    }),
   );
 
   const calc = useMemo(() => {
@@ -69,7 +110,7 @@ export function LfoInventoryForm({
         headCount: r.headCount,
         binAPounds: Number(r.binAPounds) || 0,
         binBPounds: Number(r.binBPounds) || 0,
-        feedUpAt: r.feedUpAt || null,
+        feedUpAt: joinFeedUp(r.feedUpDate, r.feedUpTime) || null,
       })),
     });
   }, [consumptionRate, orderDate, rows]);
@@ -132,12 +173,14 @@ export function LfoInventoryForm({
         <div className="space-y-4">
           {rows.map((house) => {
             const result = calc.houses.find((h) => h.houseId === house.houseId);
+            const feedUpAt = joinFeedUp(house.feedUpDate, house.feedUpTime);
             return (
               <div
                 key={house.houseId}
                 className="space-y-3 border-b border-stone-100 pb-4 last:border-0 last:pb-0"
               >
                 <input type="hidden" name="houseId" value={house.houseId} />
+                <input type="hidden" name="feedUpAt" value={feedUpAt} />
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-sm font-semibold text-stone-800">
                     House {house.houseNumber}
@@ -146,7 +189,7 @@ export function LfoInventoryForm({
                     Head count {house.headCount.toLocaleString()}
                   </p>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor={`binA-${house.houseId}`}>Bin A (lbs)</Label>
                     <Input
@@ -175,16 +218,33 @@ export function LfoInventoryForm({
                       className="mt-1"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor={`feedUp-${house.houseId}`}>Feed up</Label>
+                    <Label htmlFor={`feedUpDate-${house.houseId}`}>Feed up date</Label>
                     <Input
-                      id={`feedUp-${house.houseId}`}
-                      name="feedUpAt"
-                      type="datetime-local"
-                      value={house.feedUpAt}
-                      onChange={(e) => updateRow(house.houseId, { feedUpAt: e.target.value })}
+                      id={`feedUpDate-${house.houseId}`}
+                      type="date"
+                      value={house.feedUpDate}
+                      onChange={(e) => updateRow(house.houseId, { feedUpDate: e.target.value })}
                       className="mt-1"
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor={`feedUpTime-${house.houseId}`}>Feed up time</Label>
+                    <Select
+                      id={`feedUpTime-${house.houseId}`}
+                      value={house.feedUpTime}
+                      onChange={(e) => updateRow(house.houseId, { feedUpTime: e.target.value })}
+                      className="mt-1"
+                    >
+                      <option value="">Select time</option>
+                      {FEED_UP_TIME_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </Select>
                   </div>
                 </div>
                 {result ? (
