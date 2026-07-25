@@ -30,6 +30,7 @@ import {
   LitterEventForm,
 } from "@/components/FarmOpsForms";
 import { FlockScheduleFields } from "@/components/FlockScheduleFields";
+import { FlockScheduleEditor } from "@/components/FlockScheduleEditor";
 import { FarmInfoEditor } from "@/components/FarmInfoEditor";
 import { FarmQuickLinks } from "@/components/FarmQuickLinks";
 import { Button, Card, Input, Label, Select, StatTile, StatusBadge, Textarea } from "@/components/ui";
@@ -210,43 +211,36 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         }
       />
 
-      <div className="mt-2">
-        <FarmQuickLinks farmId={farm.id} />
-      </div>
-
       {activeFlock ? (
         <div className="mt-6">
           <h2 className="text-xl font-bold">Active flock — {activeFlock.flockNumber}</h2>
-          <p className="mt-1 text-sm text-stone-600">
-            Placed {format(activeFlock.placementDate, "MMM d, yyyy")} · Age{" "}
-            {differenceInCalendarDays(today, activeFlock.placementDate)} days
-            {activeFlock.projectedCatchDate
-              ? ` · Projected catch ${format(activeFlock.projectedCatchDate, "MMM d, yyyy")}`
-              : ""}
-            {activeFlock.targetMarketAge != null ? ` · Market age ${activeFlock.targetMarketAge} days` : ""}
-          </p>
-          <Card className="mt-4">
-            <h3 className="font-bold">Edit placement / market age / catch</h3>
-            <form action={submitFlockSchedule} className="mt-4 grid gap-3 sm:grid-cols-2">
-              <FlockScheduleFields
-                initialPlacement={format(activeFlock.placementDate, "yyyy-MM-dd")}
-                initialMarketAge={
-                  activeFlock.targetMarketAge ??
-                  (activeFlock.projectedCatchDate
-                    ? differenceInCalendarDays(activeFlock.projectedCatchDate, activeFlock.placementDate)
-                    : 52)
-                }
-                initialCatchDate={
-                  activeFlock.projectedCatchDate
-                    ? format(activeFlock.projectedCatchDate, "yyyy-MM-dd")
-                    : undefined
-                }
-              />
-              <div className="sm:col-span-2">
-                <Button type="submit">Save schedule</Button>
-              </div>
-            </form>
-          </Card>
+          <FlockScheduleEditor
+            summary={[
+              `Placed ${format(activeFlock.placementDate, "MMM d, yyyy")}`,
+              `Age ${differenceInCalendarDays(today, activeFlock.placementDate)} days`,
+              activeFlock.projectedCatchDate
+                ? `Projected catch ${format(activeFlock.projectedCatchDate, "MMM d, yyyy")}`
+                : null,
+              activeFlock.targetMarketAge != null
+                ? `Market age ${activeFlock.targetMarketAge} days`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+            initialPlacement={format(activeFlock.placementDate, "yyyy-MM-dd")}
+            initialMarketAge={
+              activeFlock.targetMarketAge ??
+              (activeFlock.projectedCatchDate
+                ? differenceInCalendarDays(activeFlock.projectedCatchDate, activeFlock.placementDate)
+                : 52)
+            }
+            initialCatchDate={
+              activeFlock.projectedCatchDate
+                ? format(activeFlock.projectedCatchDate, "yyyy-MM-dd")
+                : undefined
+            }
+            action={submitFlockSchedule}
+          />
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-3">
             <StatTile label="Birds placed" value={formatNumber(flockPlaced)} />
             <StatTile label="Today" value={flockToday} />
@@ -275,6 +269,9 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               Flock-level feed (not allocated to a house): {formatNumber(flockLevelFeed)} lbs
             </p>
           ) : null}
+          <div className="mt-4">
+            <FarmQuickLinks farmId={farm.id} />
+          </div>
         </div>
       ) : (
         <Card className="mt-6">
@@ -285,6 +282,12 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           </p>
         </Card>
       )}
+
+      {!activeFlock ? (
+        <div className="mt-4">
+          <FarmQuickLinks farmId={farm.id} />
+        </div>
+      ) : null}
 
       <h2 className="mt-8 text-xl font-bold">Houses</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
