@@ -1,0 +1,239 @@
+import { redirect } from "next/navigation";
+import { format, parseISO, subDays } from "date-fns";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { calcPercentage } from "@/lib/mortality/calculations";
+import { MORTALITY_CAUSE_LABELS } from "@/lib/utils";
+import {
+  MortalityCharts,
+  type CauseRow,
+  type CumulativePoint,
+  type FarmRow,
+  type HouseBarPoint,
+} from "@/components/MortalityCharts";
+import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+
+type SearchParams = Promise<{
+  farmId?: string;
+  flockId?: string;
+  from?: string;
+  to?: string;
+  cause?: string;
+}>;
+
+export default async function ReportsPage({ searchParams }: { searchParams: SearchParams }) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  const params = await searchParams;
+  const today = new Date();
+  const from = params.from ?? format(subDays(today, 42), "yyyy-MM-dd");
+  const to = params.to ?? format(today, "yyyy-MM-dd");
+  const fromDate = parseISO(from);
+  const toDate = parseISO(to);
+
+  const farms = await prisma.farm.findMany({
+    where: { userId: session.user.id, deletedAt: null },
+    orderBy: { farmName: "asc" },
+    include: {
+      flocks: {
+        where: { deletedAt: null },
+        orderBy: { placementDate: "desc" },
+        select: { id: true, flockNumber: true, farmId: true },
+      },
+    },
+  });
+
+  const selectedFarmId = params.farmId || "";
+  const selectedFlockId = params.flockId || "";
+  const selectedCause = params.cause || "";
+
+  const flockOptions = farms
+    .filter((f) => !selectedFarmId || f.id === selectedFarmId)
+    .flatMap((f) => f.flocks.map((fl) => ({ ...fl, farmName: f.farmName })));
+
+  const mortalities = await prisma.dailyMortality.findMany({
+    where: {
+      isDraft: false,
+      mortalityDate: { gte: fromDate, lte: toDate },
+      ...(selectedCause ? { mortalityCause: selectedCause as never } : {}),
+      houseFlock: {
+        flock: {
+          ...(selectedFlockId ? { id: selectedFlockId } : {}),
+          farm: {
+            userId: session.user.id,
+            deletedAt: null,
+            ...(selectedFarmId ? { id: selectedFarmId } : {}),
+          },
+        },
+      },
+    },
+    include: {
+      houseFlock: {
+        include: {
+          house: true,
+          flock: { include: { farm: true } },
+        },
+      },
+    },
+    orderBy: [{ birdAgeInDays: "asc" }, { mortalityDate: "asc" }],
+  });
+
+  const byAgeMap = new Map<number, number>();
+  for (const m of mortalities) {
+    byAgeMap.set(m.birdAgeInDays, (byAgeMap.get(m.birdAgeInDays) ?? 0) + m.totalDailyLoss);
+  }
+  const ages = [...byAgeMap.keys()].sort((a, b) => a - b);
+  let running = 0;
+  const cumulativeByAge: CumulativePoint[] = ages.map((age) => {
+    running += byAgeMap.get(age) ?? 0;
+    return { birdAgeInDays: age, cumulative: running };
+  });
+
+  const houseMap = new Map<string, HouseBarPoint>();
+  for (const m of mortalities) {
+    const key = `${m.houseFlock.flock.farm.farmName} H${m.houseFlock.house.houseNumber}`;
+    const row = houseMap.get(key) ?? {
+      houseLabel: key,
+      mortality: 0,
+      culls: 0,
+      total: 0,
+    };
+    row.mortality += m.dailyMortalityCount;
+    row.culls += m.cullCount;
+    row.total += m.totalDailyLoss;
+    houseMap.set(key, row);
+  }
+  const byHouse = [...houseMap.values()].sort((a, b) => b.total - a.total);
+
+  const causeMap = new Map<string, number>();
+  let causeTotal = 0;
+  for (const m of mortalities) {
+    causeMap.set(m.mortalityCause, (causeMap.get(m.mortalityCause) ?? 0) + m.totalDailyLoss);
+    causeTotal += m.totalDailyLoss;
+  }
+  const byCause: CauseRow[] = [...causeMap.entries()]
+    .map(([cause, count]) => ({
+      cause,
+      count,
+      pct: calcPercentage(count, causeTotal || 1),
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  const farmIdsInData = [...new Set(mortalities.map((m) => m.houseFlock.flock.farmId))];
+  const placementByFarm = new Map<string, number>();
+  if (farmIdsInData.length > 0) {
+    const houseFlocks = await prisma.houseFlock.findMany({
+      where: {
+        flock: {
+          farmId: { in: farmIdsInData },
+          ...(selectedFlockId ? { id: selectedFlockId } : {}),
+          farm: { userId: session.user.id },
+        },
+      },
+      include: { flock: { include: { farm: true } } },
+    });
+    for (const hf of houseFlocks) {
+      const name = hf.flock.farm.farmName;
+      placementByFarm.set(name, (placementByFarm.get(name) ?? 0) + hf.placedBirdCount);
+    }
+  }
+
+  const farmAgg = new Map<string, FarmRow>();
+  for (const m of mortalities) {
+    const name = m.houseFlock.flock.farm.farmName;
+    const row = farmAgg.get(name) ?? {
+      farmName: name,
+      placed: placementByFarm.get(name) ?? 0,
+      mortality: 0,
+      culls: 0,
+      total: 0,
+      pct: 0,
+    };
+    row.mortality += m.dailyMortalityCount;
+    row.culls += m.cullCount;
+    row.total += m.totalDailyLoss;
+    farmAgg.set(name, row);
+  }
+  const byFarm: FarmRow[] = [...farmAgg.values()]
+    .map((f) => ({
+      ...f,
+      placed: f.placed || placementByFarm.get(f.farmName) || 0,
+      pct: calcPercentage(f.total, f.placed || placementByFarm.get(f.farmName) || 1),
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  const filterLabel = [
+    selectedFarmId
+      ? `Farm: ${farms.find((f) => f.id === selectedFarmId)?.farmName ?? selectedFarmId}`
+      : "All farms",
+    selectedFlockId
+      ? `Flock: ${flockOptions.find((f) => f.id === selectedFlockId)?.flockNumber ?? selectedFlockId}`
+      : "All flocks",
+    `${from} to ${to}`,
+    selectedCause ? `Cause: ${MORTALITY_CAUSE_LABELS[selectedCause] ?? selectedCause}` : "All causes",
+  ].join(" · ");
+
+  return (
+    <div>
+      <PageHeader title="Reports" subtitle="Mortality trends, houses, causes, and farms" />
+
+      <Card className="mb-6">
+        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div>
+            <Label htmlFor="farmId">Farm</Label>
+            <Select id="farmId" name="farmId" defaultValue={selectedFarmId}>
+              <option value="">All farms</option>
+              {farms.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.farmName}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="flockId">Flock</Label>
+            <Select id="flockId" name="flockId" defaultValue={selectedFlockId}>
+              <option value="">All flocks</option>
+              {flockOptions.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.farmName} — {f.flockNumber}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="from">From</Label>
+            <Input id="from" name="from" type="date" defaultValue={from} />
+          </div>
+          <div>
+            <Label htmlFor="to">To</Label>
+            <Input id="to" name="to" type="date" defaultValue={to} />
+          </div>
+          <div>
+            <Label htmlFor="cause">Cause</Label>
+            <Select id="cause" name="cause" defaultValue={selectedCause}>
+              <option value="">All causes</option>
+              {Object.entries(MORTALITY_CAUSE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="sm:col-span-2 lg:col-span-5">
+            <Button type="submit">Apply filters</Button>
+          </div>
+        </form>
+      </Card>
+
+      <MortalityCharts
+        cumulativeByAge={cumulativeByAge}
+        byHouse={byHouse}
+        byCause={byCause}
+        byFarm={byFarm}
+        filterLabel={filterLabel}
+      />
+    </div>
+  );
+}

@@ -1,0 +1,129 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { Button, Card, PageHeader } from "@/components/ui";
+import { cn, formatNumber } from "@/lib/utils";
+
+type SearchParams = Promise<{ status?: string }>;
+
+export default async function FarmsPage({ searchParams }: { searchParams: SearchParams }) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  const params = await searchParams;
+  const status = params.status === "inactive" || params.status === "all" ? params.status : "active";
+
+  const farms = await prisma.farm.findMany({
+    where: {
+      userId: session.user.id,
+      deletedAt: null,
+      ...(status === "active" ? { isActive: true } : status === "inactive" ? { isActive: false } : {}),
+    },
+    include: {
+      houses: { where: { deletedAt: null } },
+      flocks: {
+        where: { flockStatus: "ACTIVE", deletedAt: null },
+        take: 1,
+      },
+    },
+    orderBy: { farmName: "asc" },
+  });
+
+  const filters = [
+    { key: "active", label: "Active" },
+    { key: "inactive", label: "Inactive" },
+    { key: "all", label: "All" },
+  ] as const;
+
+  return (
+    <div>
+      <PageHeader
+        title="Farms"
+        subtitle="Manage grower farms and houses"
+        actions={
+          <Link href="/farms/new">
+            <Button>New farm</Button>
+          </Link>
+        }
+      />
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        {filters.map((f) => (
+          <Link
+            key={f.key}
+            href={f.key === "active" ? "/farms" : `/farms?status=${f.key}`}
+            className={cn(
+              "rounded-lg px-4 py-2 text-sm font-semibold",
+              status === f.key ? "bg-emerald-700 text-white" : "bg-stone-200 text-stone-800",
+            )}
+          >
+            {f.label}
+          </Link>
+        ))}
+      </div>
+
+      {farms.length === 0 ? (
+        <Card>
+          <p className="text-stone-600">No farms found for this filter.</p>
+          <Link href="/farms/new" className="mt-3 inline-block">
+            <Button>Add your first farm</Button>
+          </Link>
+        </Card>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {farms.map((farm) => {
+            const active = farm.flocks[0];
+            return (
+              <Link key={farm.id} href={`/farms/${farm.id}`}>
+                <Card className="transition hover:border-emerald-400">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-lg font-bold text-stone-900">{farm.farmName}</p>
+                      <p className="text-sm text-stone-600">{farm.growerName}</p>
+                      {farm.farmNumber ? (
+                        <p className="mt-1 text-xs text-stone-500">Farm #{farm.farmNumber}</p>
+                      ) : null}
+                    </div>
+                    <span
+                      className={cn(
+                        "inline-flex rounded-md px-2.5 py-1 text-sm font-bold",
+                        farm.isActive
+                          ? "bg-emerald-100 text-emerald-900"
+                          : "bg-stone-100 text-stone-700",
+                      )}
+                    >
+                      {farm.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-stone-500">Houses</p>
+                      <p className="font-semibold">{farm.houses.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-stone-500">Active flock</p>
+                      <p className="font-semibold">
+                        {active ? active.flockNumber : "None"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-stone-500">Birds placed</p>
+                      <p className="font-semibold">
+                        {active ? formatNumber(active.initialBirdCount) : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-stone-500">Status</p>
+                      <p className="font-semibold">{farm.isActive ? "Active" : "Inactive"}</p>
+                    </div>
+                  </div>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

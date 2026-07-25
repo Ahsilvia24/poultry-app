@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: poultry-app-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: poultry
+      POSTGRES_PASSWORD: poultry
+      POSTGRES_DB: poultry_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - poultry_pg_data:/var/lib/postgresql/data
+
+volumes:
+  poultry_pg_data:

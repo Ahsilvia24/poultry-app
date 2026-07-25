@@ -1,0 +1,87 @@
+import { redirect } from "next/navigation";
+import { format } from "date-fns";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { getUserThresholds } from "@/lib/dashboard";
+import { PageHeader } from "@/components/ui";
+import {
+  MortalityEntryForm,
+  type MortalityFarmPayload,
+} from "@/components/MortalityEntryForm";
+
+type SearchParams = Promise<{ farmId?: string }>;
+
+export default async function MortalityPage({ searchParams }: { searchParams: SearchParams }) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  const params = await searchParams;
+  const thresholds = await getUserThresholds(session.user.id);
+
+  const farmsRaw = await prisma.farm.findMany({
+    where: { userId: session.user.id, deletedAt: null, isActive: true },
+    orderBy: { farmName: "asc" },
+    include: {
+      flocks: {
+        where: { flockStatus: "ACTIVE", deletedAt: null },
+        take: 1,
+        include: {
+          houseFlocks: {
+            include: {
+              house: true,
+              mortalities: {
+                orderBy: { mortalityDate: "asc" },
+              },
+            },
+            orderBy: { house: { houseNumber: "asc" } },
+          },
+        },
+      },
+    },
+  });
+
+  const farms: MortalityFarmPayload[] = farmsRaw.map((farm) => {
+    const active = farm.flocks[0] ?? null;
+    return {
+      id: farm.id,
+      farmName: farm.farmName,
+      activeFlock: active
+        ? {
+            id: active.id,
+            flockNumber: active.flockNumber,
+            houses: active.houseFlocks.map((hf) => ({
+              houseFlockId: hf.id,
+              houseNumber: hf.house.houseNumber,
+              placedBirdCount: hf.placedBirdCount,
+              existingEntries: hf.mortalities.map((m) => ({
+                mortalityDate: format(m.mortalityDate, "yyyy-MM-dd"),
+                dailyMortalityCount: m.dailyMortalityCount,
+                cullCount: m.cullCount,
+                mortalityCause: m.mortalityCause,
+                comments: m.comments,
+                isDraft: m.isDraft,
+              })),
+            })),
+          }
+        : null,
+    };
+  });
+
+  return (
+    <div>
+      <PageHeader
+        title="Mortality entry"
+        subtitle="Record daily mortality and culls by house"
+      />
+      {farms.length === 0 ? (
+        <p className="text-stone-600">Add an active farm with a flock to enter mortality.</p>
+      ) : (
+        <MortalityEntryForm
+          farms={farms}
+          initialFarmId={params.farmId}
+          thresholds={thresholds}
+        />
+      )}
+    </div>
+  );
+}
