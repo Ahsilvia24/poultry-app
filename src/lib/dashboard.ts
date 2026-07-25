@@ -4,6 +4,7 @@ import {
   isRisingThreeDays,
   resolveMortalityStatus,
   summarizeForDate,
+  weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
 import type { FarmCardSummary, ThresholdSettings } from "@/types";
@@ -97,12 +98,12 @@ export async function getDashboardData(userId: string) {
 
     let placed = 0;
     let todayMort = 0;
-    let seven = 0;
     let cum = 0;
     let dailyPct = 0;
     let sevenPct = 0;
     let rising = false;
     let hasTodayEntry = false;
+    const weeklyTotals = new Map<number, number>();
 
     if (active) {
       if (active.projectedCatchDate) {
@@ -130,13 +131,19 @@ export async function getDashboardData(userId: string) {
         placed += hf.placedBirdCount;
         const metrics = summarizeForDate(hf.placedBirdCount, hf.mortalities, today);
         todayMort += metrics.today;
-        seven += metrics.sevenDay;
         cum += metrics.cumulative;
         dailyPct = Math.max(dailyPct, metrics.dailyPct);
         sevenPct = Math.max(sevenPct, metrics.sevenDayPct);
         if (isRisingThreeDays(hf.mortalities, today)) rising = true;
         if (hf.mortalities.some((m) => format(m.mortalityDate, "yyyy-MM-dd") === todayKey)) {
           hasTodayEntry = true;
+        }
+        for (const week of weeklyMortalityByPlacement(
+          active.placementDate,
+          hf.mortalities,
+          today,
+        )) {
+          weeklyTotals.set(week.week, (weeklyTotals.get(week.week) ?? 0) + week.total);
         }
       }
       if (!hasTodayEntry && active.houseFlocks.length > 0) missingMortalityFarms += 1;
@@ -158,7 +165,9 @@ export async function getDashboardData(userId: string) {
         : null,
       totalBirdsPlaced: placed,
       todayMortality: todayMort,
-      sevenDayMortality: seven,
+      weeklyMortality: Array.from(weeklyTotals.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([week, total]) => ({ week, total })),
       cumulativeMortality: cum,
       cumulativeMortalityPct: placed > 0 ? (cum / placed) * 100 : 0,
       openIssues: farm.issues.length,

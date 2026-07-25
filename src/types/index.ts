@@ -43,7 +43,7 @@ export type FarmCardSummary = {
   flockAgeDays: number | null;
   totalBirdsPlaced: number;
   todayMortality: number;
-  sevenDayMortality: number;
+  weeklyMortality: Array<{ week: number; total: number }>;
   cumulativeMortality: number;
   cumulativeMortalityPct: number;
   openIssues: number;

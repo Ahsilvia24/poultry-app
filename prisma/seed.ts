@@ -330,9 +330,9 @@ async function main() {
   await seedHistoricalFlock(farm2.id, f2Ids, "F-201", 150, 40);
   await seedHistoricalFlock(farm2.id, f2Ids, "F-202", 90, 42);
 
-  // 14+ days of mortality on active flocks
+  // Active flocks — Pine Ridge aged to week 8 for weekly mortality preview
   await createActiveFlock(user.id, farm1.id, f1Ids, "F-103", 16);
-  await createActiveFlock(user.id, farm2.id, f2Ids, "F-203", 14);
+  await createActiveFlock(user.id, farm2.id, f2Ids, "F-203", 55);
 
   await prisma.litterEvent.createMany({
     data: [

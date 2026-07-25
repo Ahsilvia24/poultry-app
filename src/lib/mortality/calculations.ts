@@ -20,6 +20,49 @@ export function birdAgeFromPlacement(placementDate: Date, onDate: Date): number 
   return Math.max(0, differenceInCalendarDays(onDate, placementDate));
 }
 
+/** Flock week from bird age: days 0–7 → week 1, 8–14 → week 2, 15–21 → week 3, etc. */
+export function flockWeekFromAge(birdAgeInDays: number): number {
+  const age = Math.max(0, birdAgeInDays);
+  if (age <= 7) return 1;
+  return Math.floor((age - 8) / 7) + 2;
+}
+
+/**
+ * Sum total daily loss by flock week (placement-based), through the current week.
+ * Weeks with no entries are included as 0 once that week has started.
+ */
+export function weeklyMortalityByPlacement(
+  placementDate: Date,
+  records: MortalityRecordLike[],
+  asOfDate: Date = new Date(),
+): Array<{ week: number; total: number }> {
+  const ageToday = birdAgeFromPlacement(placementDate, asOfDate);
+  const currentWeek = flockWeekFromAge(ageToday);
+  const totals = new Map<number, number>();
+
+  for (let w = 1; w <= currentWeek; w++) {
+    totals.set(w, 0);
+  }
+
+  for (const record of records) {
+    const dateKey = toDateKey(record.mortalityDate);
+    if (dateKey > format(asOfDate, "yyyy-MM-dd")) continue;
+    const age =
+      typeof record.birdAgeInDays === "number"
+        ? record.birdAgeInDays
+        : birdAgeFromPlacement(placementDate, parseISO(dateKey));
+    const week = flockWeekFromAge(age);
+    if (week < 1 || week > currentWeek) continue;
+    const loss =
+      record.totalDailyLoss ?? calcTotalDailyLoss(record.dailyMortalityCount, record.cullCount);
+    totals.set(week, (totals.get(week) ?? 0) + loss);
+  }
+
+  return Array.from(totals.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([week, total]) => ({ week, total }));
+}
+
 function toDateKey(value: Date | string): string {
   if (typeof value === "string") {
     return value.slice(0, 10);

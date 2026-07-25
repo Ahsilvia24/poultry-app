@@ -76,10 +76,6 @@ export default async function DashboardPage() {
                   <p className="font-semibold">{farm.todayMortality}</p>
                 </div>
                 <div>
-                  <p className="text-stone-500">7-day</p>
-                  <p className="font-semibold">{farm.sevenDayMortality}</p>
-                </div>
-                <div>
                   <p className="text-stone-500">Cumulative</p>
                   <p className="font-semibold">
                     {farm.cumulativeMortality} ({formatPct(farm.cumulativeMortalityPct)})
@@ -90,6 +86,21 @@ export default async function DashboardPage() {
                   <p className="font-semibold">{farm.openIssues}</p>
                 </div>
               </div>
+              {farm.weeklyMortality.length > 0 ? (
+                <div className="mt-3 border-t border-stone-100 pt-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                    Weekly mortality
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                    {farm.weeklyMortality.map((w) => (
+                      <div key={w.week}>
+                        <span className="text-stone-500">Week {w.week}</span>{" "}
+                        <span className="font-semibold text-stone-900">{w.total}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
                 <span>Last visit: {farm.lastVisitDate ?? "—"}</span>
                 {farm.missingTodayMortality ? (
