@@ -29,17 +29,9 @@ export default async function DashboardPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Active farms" value={data.stats.activeFarms} />
-        <StatTile label="Active houses" value={data.stats.activeHouses} />
-        <StatTile label="Birds placed" value={formatNumber(data.stats.totalBirdsPlaced)} />
         <StatTile label="Mortality today" value={data.stats.mortalityEnteredToday} />
-        <StatTile label="Missing today" value={data.stats.farmsMissingToday} />
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Open issues" value={data.stats.openIssues} />
-        <StatTile label="High-priority issues" value={data.stats.highPriorityIssues} />
         <StatTile label="Upcoming catches" value={data.upcomingCatches.length} />
         <StatTile label="Follow-ups due" value={data.followUps.length} />
       </div>
