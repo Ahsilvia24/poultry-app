@@ -17,7 +17,7 @@ import {
   formatNumber,
   formatPct,
 } from "@/lib/utils";
-import { createFlockAction, createHouseAction, updateFarmAction, updateFlockScheduleAction } from "@/app/actions/farms";
+import { createFlockAction, createHouseAction, updateFlockScheduleAction } from "@/app/actions/farms";
 import {
   CompleteFlockButton,
   DeleteFarmButton,
@@ -26,7 +26,8 @@ import {
   LitterEventForm,
 } from "@/components/FarmOpsForms";
 import { FlockScheduleFields } from "@/components/FlockScheduleFields";
-import { Button, Card, Input, Label, PageHeader, Select, StatTile, StatusBadge, Textarea } from "@/components/ui";
+import { FarmInfoEditor } from "@/components/FarmInfoEditor";
+import { Button, Card, Input, Label, Select, StatTile, StatusBadge, Textarea } from "@/components/ui";
 
 type Params = Promise<{ id: string }>;
 
@@ -133,11 +134,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     await createFlockAction(farmId, formData);
   }
 
-  async function submitFarmUpdate(formData: FormData) {
-    "use server";
-    await updateFarmAction(farmId, formData);
-  }
-
   async function submitFlockSchedule(formData: FormData) {
     "use server";
     if (!activeFlock) return;
@@ -147,6 +143,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
   const subtitleParts = [farm.growerName || null, farm.farmNumber ? `Farm #${farm.farmNumber}` : null].filter(
     Boolean,
   );
+  const subtitle = subtitleParts.length > 0 ? subtitleParts.join(" · ") : "Farm details";
 
   return (
     <div>
@@ -159,9 +156,20 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         </span>
         Farms
       </Link>
-      <PageHeader
-        title={farm.farmName}
-        subtitle={subtitleParts.length ? subtitleParts.join(" · ") : "Farm details"}
+      <FarmInfoEditor
+        farm={{
+          id: farm.id,
+          farmName: farm.farmName,
+          growerName: farm.growerName,
+          farmNumber: farm.farmNumber,
+          phoneNumber: farm.phoneNumber,
+          address: farm.address,
+          city: farm.city,
+          state: farm.state,
+          zipCode: farm.zipCode,
+          notes: farm.notes,
+        }}
+        subtitle={subtitle}
         actions={
           <>
             <Link href={`/mortality?farmId=${farm.id}`}>
@@ -177,59 +185,9 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <h2 className="font-bold text-stone-900">Edit farm info</h2>
-          <form action={submitFarmUpdate} className="mt-4 space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Label htmlFor="farmName">Farm name *</Label>
-                <Input id="farmName" name="farmName" required defaultValue={farm.farmName} />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="growerName">Grower name</Label>
-                <Input id="growerName" name="growerName" defaultValue={farm.growerName} />
-              </div>
-              <div>
-                <Label htmlFor="farmNumber">Farm number</Label>
-                <Input id="farmNumber" name="farmNumber" defaultValue={farm.farmNumber ?? ""} />
-              </div>
-              <div>
-                <Label htmlFor="phoneNumber">Phone</Label>
-                <Input
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  type="tel"
-                  defaultValue={farm.phoneNumber ?? ""}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="address">Address</Label>
-                <Input id="address" name="address" defaultValue={farm.address ?? ""} />
-              </div>
-              <div>
-                <Label htmlFor="city">City</Label>
-                <Input id="city" name="city" defaultValue={farm.city ?? ""} />
-              </div>
-              <div>
-                <Label htmlFor="state">State</Label>
-                <Input id="state" name="state" defaultValue={farm.state ?? ""} />
-              </div>
-              <div>
-                <Label htmlFor="zipCode">ZIP</Label>
-                <Input id="zipCode" name="zipCode" defaultValue={farm.zipCode ?? ""} />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea id="notes" name="notes" rows={3} defaultValue={farm.notes ?? ""} />
-              </div>
-            </div>
-            <Button type="submit">Save farm changes</Button>
-          </form>
-        </Card>
-
-        <Card>
+        <Card className="lg:col-span-3">
           <h2 className="font-bold text-stone-900">Quick links</h2>
-          <div className="mt-3 flex flex-col gap-2">
+          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
             <Link href={`/mortality?farmId=${farm.id}`} className="font-semibold text-emerald-800 underline">
               Mortality entry
             </Link>
