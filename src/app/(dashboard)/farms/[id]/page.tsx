@@ -242,7 +242,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           <p className="font-semibold text-stone-800">No active flock</p>
           <p className="mt-1 text-sm text-stone-600">
             Use <a href="#add-flock" className="font-semibold text-emerald-800 underline">Add flock</a>{" "}
-            below to start tracking mortality.
+            to start tracking mortality.
           </p>
         </Card>
       )}
