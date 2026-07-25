@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
-  const isPublic = isAuthPage || pathname.startsWith("/api/auth");
+  const isPublic =
+    isAuthPage ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/mobile");
 
   if (!isLoggedIn && !isPublic) {
+    // API routes should return 401, not redirect HTML
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const url = new URL("/login", req.nextUrl.origin);
     url.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(url);
