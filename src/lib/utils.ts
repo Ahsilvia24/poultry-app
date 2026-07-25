@@ -35,6 +35,8 @@ export const FEED_TYPE_OPTIONS = ["Pre-started", "Starter", "Grower", "Finisher"
 
 export const FEED_MILL_OPTIONS = ["Heavener", "Fort Smith"] as const;
 
+export const PROCESSING_PLANT_OPTIONS = ["Heavener", "Stigler"] as const;
+
 export const VISIT_TYPE_LABELS: Record<string, string> = {
   ROUTINE_SERVICE: "Routine service visit",
   PLACEMENT: "Placement",

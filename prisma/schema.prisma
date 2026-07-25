@@ -166,6 +166,7 @@ model Farm {
   visits       FarmVisit[]
   issues       FarmIssue[]
   followUpCompletions FollowUpCompletion[]
+  lastFeedOrders LastFeedOrder[]
 
   @@index([userId])
   @@index([farmName])
@@ -198,6 +199,7 @@ model House {
   houseFlocks  HouseFlock[]
   litterEvents LitterEvent[]
   issues       FarmIssue[]
+  lfoInventories LastFeedOrderHouseInventory[]
 
   @@unique([farmId, houseNumber])
   @@index([farmId])
@@ -247,6 +249,7 @@ model Flock {
   visits         FarmVisit[]
   issues         FarmIssue[]
   followUpCompletions FollowUpCompletion[]
+  lastFeedOrders LastFeedOrder[]
 
   @@index([farmId])
   @@index([flockStatus])
@@ -258,6 +261,7 @@ model HouseFlock {
   flockId                 String
   houseId                 String
   placedBirdCount         Int
+  processingPlant         String?
   finalBirdCount          Int?
   finalAverageWeight      Float?
   totalFeedDelivered      Float?
@@ -324,6 +328,41 @@ model FeedDelivery {
   @@index([flockId])
   @@index([houseFlockId])
   @@index([deliveryDate])
+}
+
+model LastFeedOrder {
+  id        String   @id @default(cuid())
+  farmId    String
+  flockId   String
+  orderDate DateTime @db.Date
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm             Farm                          @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  flock            Flock                         @relation(fields: [flockId], references: [id], onDelete: Cascade)
+  houseInventories LastFeedOrderHouseInventory[]
+
+  @@index([farmId])
+  @@index([flockId])
+  @@index([orderDate])
+}
+
+model LastFeedOrderHouseInventory {
+  id              String @id @default(cuid())
+  lastFeedOrderId String
+  houseId         String
+  binAPounds      Float  @default(0)
+  binBPounds      Float  @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  lastFeedOrder LastFeedOrder @relation(fields: [lastFeedOrderId], references: [id], onDelete: Cascade)
+  house         House         @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  @@unique([lastFeedOrderId, houseId])
+  @@index([lastFeedOrderId])
+  @@index([houseId])
 }
 
 model FlockPerformance {

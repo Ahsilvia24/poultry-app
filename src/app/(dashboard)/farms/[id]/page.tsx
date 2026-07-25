@@ -164,7 +164,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
   async function submitFlock(formData: FormData) {
     "use server";
-    await createFlockAction(farmId, formData);
+    const result = await createFlockAction(farmId, formData);
+    return result;
   }
 
   async function submitFlockSchedule(formData: FormData) {

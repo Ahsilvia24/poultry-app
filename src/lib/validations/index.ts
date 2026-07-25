@@ -60,6 +60,7 @@ export const flockSchema = z
         z.object({
           houseId: z.string(),
           placedBirdCount: z.coerce.number().int().positive(),
+          processingPlant: z.string().optional().nullable(),
         }),
       )
       .optional(),
@@ -250,4 +251,18 @@ export const flockSettlementSchema = z.object({
   goodPoundsSold: z.coerce.number().min(0).optional().nullable(),
   /** Farm place/rank on settlement (1, 2, 3…). */
   settlementNo: z.coerce.number().int().min(1).optional().nullable(),
+});
+
+export const lastFeedOrderHouseInventorySchema = z.object({
+  houseId: z.string().min(1),
+  binAPounds: z.coerce.number().min(0, "Bin A cannot be negative"),
+  binBPounds: z.coerce.number().min(0, "Bin B cannot be negative"),
+});
+
+export const lastFeedOrderSchema = z.object({
+  orderDate: z.string().min(1, "Order date is required"),
+  notes: z.string().optional().nullable(),
+  houseInventories: z
+    .array(lastFeedOrderHouseInventorySchema)
+    .min(1, "Add inventory for at least one house"),
 });

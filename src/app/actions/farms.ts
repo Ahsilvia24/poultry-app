@@ -209,9 +209,11 @@ export async function createFlockAction(farmId: string, formData: FormData) {
 
   const houseIds = formData.getAll("houseId") as string[];
   const placedCounts = formData.getAll("placedBirdCount") as string[];
+  const processingPlants = formData.getAll("houseProcessingPlant") as string[];
   const housePlacements = houseIds.map((houseId, i) => ({
     houseId,
     placedBirdCount: Number(placedCounts[i]),
+    processingPlant: processingPlants[i]?.trim() ? processingPlants[i]!.trim() : null,
   }));
 
   const parsed = flockSchema.safeParse({
@@ -220,7 +222,7 @@ export async function createFlockAction(farmId: string, formData: FormData) {
     placementDate: formData.get("placementDate"),
     projectedCatchDate: emptyToNull(formData.get("projectedCatchDate")),
     actualCatchDate: emptyToNull(formData.get("actualCatchDate")),
-    processingPlant: emptyToNull(formData.get("processingPlant")),
+    processingPlant: null,
     birdType: emptyToNull(formData.get("birdType")),
     sex: formData.get("sex") || "STRAIGHT_RUN",
     initialBirdCount: formData.get("initialBirdCount"),
@@ -246,33 +248,38 @@ export async function createFlockAction(farmId: string, formData: FormData) {
     parsed.data.housePlacements?.reduce((s, h) => s + h.placedBirdCount, 0) ??
     parsed.data.initialBirdCount;
 
-  await prisma.flock.create({
-    data: {
-      farmId,
-      flockNumber: parsed.data.flockNumber,
-      flockName: parsed.data.flockName,
-      placementDate: new Date(parsed.data.placementDate),
-      projectedCatchDate: parsed.data.projectedCatchDate
-        ? new Date(parsed.data.projectedCatchDate)
-        : null,
-      actualCatchDate: parsed.data.actualCatchDate ? new Date(parsed.data.actualCatchDate) : null,
-      processingPlant: parsed.data.processingPlant,
-      birdType: parsed.data.birdType,
-      sex: parsed.data.sex,
-      initialBirdCount: totalPlaced,
-      flockStatus: parsed.data.flockStatus,
-      targetMarketAge: parsed.data.targetMarketAge,
-      targetMarketWeight: parsed.data.targetMarketWeight,
-      litterConditionAtPlacement: parsed.data.litterConditionAtPlacement,
-      notes: parsed.data.notes,
-      houseFlocks: {
-        create: (parsed.data.housePlacements ?? []).map((hp) => ({
-          houseId: hp.houseId,
-          placedBirdCount: hp.placedBirdCount,
-        })),
+  try {
+    await prisma.flock.create({
+      data: {
+        farmId,
+        flockNumber: parsed.data.flockNumber,
+        flockName: parsed.data.flockName,
+        placementDate: new Date(parsed.data.placementDate),
+        projectedCatchDate: parsed.data.projectedCatchDate
+          ? new Date(parsed.data.projectedCatchDate)
+          : null,
+        actualCatchDate: parsed.data.actualCatchDate ? new Date(parsed.data.actualCatchDate) : null,
+        processingPlant: parsed.data.processingPlant,
+        birdType: parsed.data.birdType,
+        sex: parsed.data.sex,
+        initialBirdCount: totalPlaced,
+        flockStatus: parsed.data.flockStatus,
+        targetMarketAge: parsed.data.targetMarketAge,
+        targetMarketWeight: parsed.data.targetMarketWeight,
+        litterConditionAtPlacement: parsed.data.litterConditionAtPlacement,
+        notes: parsed.data.notes,
+        houseFlocks: {
+          create: (parsed.data.housePlacements ?? []).map((hp) => ({
+            houseId: hp.houseId,
+            placedBirdCount: hp.placedBirdCount,
+            processingPlant: hp.processingPlant,
+          })),
+        },
       },
-    },
-  });
+    });
+  } catch {
+    return { error: "Could not create flock. Try again." };
+  }
 
   revalidatePath(`/farms/${farmId}`);
   redirect(`/farms/${farmId}`);
