@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { createLastFeedOrderAction } from "@/app/actions/lfo";
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
 import { Card, PageHeader } from "@/components/ui";
+import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
+import { getFlockHouseHeadCounts } from "@/lib/lfo/head-counts";
 
 type Params = Promise<{ farmId: string }>;
 
@@ -26,7 +28,7 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
         where: { flockStatus: "ACTIVE", deletedAt: null },
         orderBy: { placementDate: "desc" },
         take: 1,
-        select: { flockNumber: true },
+        select: { id: true, flockNumber: true },
       },
     },
   });
@@ -35,6 +37,9 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
   if (farm.flocks.length === 0 || farm.houses.length === 0) {
     redirect("/lfo/new");
   }
+
+  const flock = farm.flocks[0]!;
+  const headCounts = await getFlockHouseHeadCounts(flock.id);
 
   async function submit(formData: FormData) {
     "use server";
@@ -56,19 +61,22 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
       </Link>
       <PageHeader
         title={farm.farmName}
-        subtitle={`Flock ${farm.flocks[0]!.flockNumber} — enter A/B bin inventory (lbs)`}
+        subtitle={`Flock ${flock.flockNumber} — inventory, feed up, and consumption`}
       />
 
       <Card>
         <LfoInventoryForm
           action={submit}
           orderDate={today}
+          consumptionRate={DEFAULT_LFO_CONSUMPTION_RATE}
           submitLabel="Save LFO"
           houses={farm.houses.map((h) => ({
             houseId: h.id,
             houseNumber: h.houseNumber,
             binAPounds: 0,
             binBPounds: 0,
+            feedUpAt: null,
+            headCount: headCounts.get(h.id) ?? 0,
           }))}
         />
       </Card>

@@ -257,10 +257,15 @@ export const lastFeedOrderHouseInventorySchema = z.object({
   houseId: z.string().min(1),
   binAPounds: z.coerce.number().min(0, "Bin A cannot be negative"),
   binBPounds: z.coerce.number().min(0, "Bin B cannot be negative"),
+  feedUpAt: z.string().optional().nullable(),
 });
 
 export const lastFeedOrderSchema = z.object({
   orderDate: z.string().min(1, "Order date is required"),
+  consumptionRate: z.coerce
+    .number()
+    .positive("Consumption rate must be greater than zero")
+    .default(0.45),
   notes: z.string().optional().nullable(),
   houseInventories: z
     .array(lastFeedOrderHouseInventorySchema)

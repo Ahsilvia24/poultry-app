@@ -9,9 +9,14 @@ import {
 } from "@/app/actions/lfo";
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
 import { Card, PageHeader } from "@/components/ui";
-import { calculateLastFeedOrder } from "@/lib/lfo/calculate";
+import { getFlockHouseHeadCounts } from "@/lib/lfo/head-counts";
 
 type Params = Promise<{ id: string }>;
+
+function toDatetimeLocalValue(d: Date | null | undefined): string | null {
+  if (!d) return null;
+  return format(d, "yyyy-MM-dd'T'HH:mm");
+}
 
 export default async function EditLfoPage({ params }: { params: Params }) {
   const session = await auth();
@@ -23,17 +28,20 @@ export default async function EditLfoPage({ params }: { params: Params }) {
     where: { id, farm: { userId: session.user.id, deletedAt: null } },
     include: {
       farm: { select: { id: true, farmName: true } },
-      flock: { select: { flockNumber: true } },
+      flock: { select: { id: true, flockNumber: true } },
       houseInventories: true,
     },
   });
 
   if (!lfo) notFound();
 
-  const houses = await prisma.house.findMany({
-    where: { farmId: lfo.farm.id, deletedAt: null },
-    orderBy: { houseNumber: "asc" },
-  });
+  const [houses, headCounts] = await Promise.all([
+    prisma.house.findMany({
+      where: { farmId: lfo.farm.id, deletedAt: null },
+      orderBy: { houseNumber: "asc" },
+    }),
+    getFlockHouseHeadCounts(lfo.flock.id),
+  ]);
 
   const invByHouse = new Map(
     lfo.houseInventories.map((h) => [h.houseId, h] as const),
@@ -46,12 +54,9 @@ export default async function EditLfoPage({ params }: { params: Params }) {
       houseNumber: h.houseNumber,
       binAPounds: inv?.binAPounds ?? 0,
       binBPounds: inv?.binBPounds ?? 0,
+      feedUpAt: toDatetimeLocalValue(inv?.feedUpAt),
+      headCount: headCounts.get(h.id) ?? 0,
     };
-  });
-
-  const calc = calculateLastFeedOrder({
-    orderDate: format(lfo.orderDate, "yyyy-MM-dd"),
-    houses: houseRows,
   });
 
   async function submit(formData: FormData) {
@@ -84,18 +89,13 @@ export default async function EditLfoPage({ params }: { params: Params }) {
         <LfoInventoryForm
           action={submit}
           orderDate={format(lfo.orderDate, "yyyy-MM-dd")}
+          consumptionRate={lfo.consumptionRate}
           notes={lfo.notes}
           submitLabel="Save changes"
           deleteAction={remove}
           houses={houseRows}
         />
       </Card>
-
-      {!calc.ready ? (
-        <p className="mt-4 text-sm text-stone-500">
-          Feed order calculation will appear here once the formula is set.
-        </p>
-      ) : null}
     </div>
   );
 }

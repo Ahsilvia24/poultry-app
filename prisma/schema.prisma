@@ -331,13 +331,15 @@ model FeedDelivery {
 }
 
 model LastFeedOrder {
-  id        String   @id @default(cuid())
-  farmId    String
-  flockId   String
-  orderDate DateTime @db.Date
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(cuid())
+  farmId           String
+  flockId          String
+  orderDate        DateTime @db.Date
+  /** Lbs feed per bird per day (used for hourly consumption). */
+  consumptionRate  Float    @default(0.45)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   farm             Farm                          @relation(fields: [farmId], references: [id], onDelete: Cascade)
   flock            Flock                         @relation(fields: [flockId], references: [id], onDelete: Cascade)
@@ -349,13 +351,15 @@ model LastFeedOrder {
 }
 
 model LastFeedOrderHouseInventory {
-  id              String @id @default(cuid())
+  id              String    @id @default(cuid())
   lastFeedOrderId String
   houseId         String
-  binAPounds      Float  @default(0)
-  binBPounds      Float  @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  binAPounds      Float     @default(0)
+  binBPounds      Float     @default(0)
+  /** When feeders come back up; feed off is 6 hours before this. */
+  feedUpAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   lastFeedOrder LastFeedOrder @relation(fields: [lastFeedOrderId], references: [id], onDelete: Cascade)
   house         House         @relation(fields: [houseId], references: [id], onDelete: Cascade)

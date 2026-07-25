@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
 import { lastFeedOrderSchema } from "@/lib/validations";
 
 function emptyToNull(value: FormDataEntryValue | null) {
@@ -16,11 +17,19 @@ function parseHouseInventories(formData: FormData) {
   const houseIds = formData.getAll("houseId") as string[];
   const binAValues = formData.getAll("binAPounds") as string[];
   const binBValues = formData.getAll("binBPounds") as string[];
+  const feedUpValues = formData.getAll("feedUpAt") as string[];
   return houseIds.map((houseId, i) => ({
     houseId,
     binAPounds: binAValues[i] === "" || binAValues[i] == null ? 0 : Number(binAValues[i]),
     binBPounds: binBValues[i] === "" || binBValues[i] == null ? 0 : Number(binBValues[i]),
+    feedUpAt: emptyToNull(feedUpValues[i] ?? null),
   }));
+}
+
+function parseFeedUpDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 async function assertLfoAccess(lfoId: string, userId: string) {
@@ -38,6 +47,7 @@ export async function createLastFeedOrderAction(farmId: string, formData: FormDa
 
   const parsed = lastFeedOrderSchema.safeParse({
     orderDate: formData.get("orderDate"),
+    consumptionRate: formData.get("consumptionRate") || DEFAULT_LFO_CONSUMPTION_RATE,
     notes: emptyToNull(formData.get("notes")),
     houseInventories: parseHouseInventories(formData),
   });
@@ -72,12 +82,14 @@ export async function createLastFeedOrderAction(farmId: string, formData: FormDa
         farmId,
         flockId: activeFlock.id,
         orderDate: new Date(parsed.data.orderDate),
+        consumptionRate: parsed.data.consumptionRate,
         notes: parsed.data.notes,
         houseInventories: {
           create: parsed.data.houseInventories.map((h) => ({
             houseId: h.houseId,
             binAPounds: h.binAPounds,
             binBPounds: h.binBPounds,
+            feedUpAt: parseFeedUpDate(h.feedUpAt),
           })),
         },
       },
@@ -98,6 +110,7 @@ export async function updateLastFeedOrderAction(lfoId: string, formData: FormDat
 
   const parsed = lastFeedOrderSchema.safeParse({
     orderDate: formData.get("orderDate"),
+    consumptionRate: formData.get("consumptionRate") || DEFAULT_LFO_CONSUMPTION_RATE,
     notes: emptyToNull(formData.get("notes")),
     houseInventories: parseHouseInventories(formData),
   });
@@ -123,6 +136,7 @@ export async function updateLastFeedOrderAction(lfoId: string, formData: FormDat
         where: { id: lfoId },
         data: {
           orderDate: new Date(parsed.data.orderDate),
+          consumptionRate: parsed.data.consumptionRate,
           notes: parsed.data.notes,
         },
       });
@@ -140,10 +154,12 @@ export async function updateLastFeedOrderAction(lfoId: string, formData: FormDat
             houseId: inv.houseId,
             binAPounds: inv.binAPounds,
             binBPounds: inv.binBPounds,
+            feedUpAt: parseFeedUpDate(inv.feedUpAt),
           },
           update: {
             binAPounds: inv.binAPounds,
             binBPounds: inv.binBPounds,
+            feedUpAt: parseFeedUpDate(inv.feedUpAt),
           },
         });
       }
