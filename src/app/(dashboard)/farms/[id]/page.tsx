@@ -372,7 +372,15 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               </div>
               <div>
                 <Label htmlFor="squareFootage">Square footage</Label>
-                <Input id="squareFootage" name="squareFootage" type="number" min={1} step="any" required />
+                <Input
+                  id="squareFootage"
+                  name="squareFootage"
+                  type="number"
+                  min={1}
+                  step="any"
+                  required
+                  defaultValue={29700}
+                />
               </div>
               <div>
                 <Label htmlFor="totalFanCFM">Total fan CFM</Label>
