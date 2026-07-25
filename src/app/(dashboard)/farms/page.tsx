@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DeleteFarmButton } from "@/components/FarmOpsForms";
 import { Button, Card, PageHeader } from "@/components/ui";
+import { summarizeForDate } from "@/lib/mortality/calculations";
 import { cn, formatNumber } from "@/lib/utils";
 
 type SearchParams = Promise<{ status?: string }>;
@@ -15,6 +16,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
 
   const params = await searchParams;
   const status = params.status === "inactive" || params.status === "all" ? params.status : "active";
+  const today = new Date();
 
   const farms = await prisma.farm.findMany({
     where: {
@@ -23,10 +25,26 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
       ...(status === "active" ? { isActive: true } : status === "inactive" ? { isActive: false } : {}),
     },
     include: {
-      houses: { where: { deletedAt: null } },
+      houses: { where: { deletedAt: null }, select: { id: true } },
       flocks: {
         where: { flockStatus: "ACTIVE", deletedAt: null },
         take: 1,
+        include: {
+          houseFlocks: {
+            include: {
+              mortalities: {
+                where: { isDraft: false },
+                select: {
+                  mortalityDate: true,
+                  birdAgeInDays: true,
+                  dailyMortalityCount: true,
+                  cullCount: true,
+                  totalDailyLoss: true,
+                },
+              },
+            },
+          },
+        },
       },
     },
     orderBy: { farmName: "asc" },
@@ -76,6 +94,16 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
         <div className="grid gap-3 md:grid-cols-2">
           {farms.map((farm) => {
             const active = farm.flocks[0];
+            const houseCount = farm.houses.length;
+            const currentHeadCount = active
+              ? active.houseFlocks.length > 0
+                ? active.houseFlocks.reduce((sum, hf) => {
+                    const metrics = summarizeForDate(hf.placedBirdCount, hf.mortalities, today);
+                    return sum + metrics.remaining;
+                  }, 0)
+                : active.initialBirdCount
+              : null;
+
             return (
               <Card key={farm.id} className="relative transition hover:border-emerald-400">
                 <Link href={`/farms/${farm.id}`} className="block pb-2 pr-12">
@@ -83,10 +111,14 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                     <div>
                       <p className="text-lg font-bold text-stone-900">
                         {farm.farmName}
+                        <span className="font-semibold text-stone-500">
+                          {" "}
+                          ({houseCount})
+                        </span>
                         {active ? (
                           <span className="font-semibold text-stone-500">
                             {" "}
-                            · {differenceInCalendarDays(new Date(), active.placementDate)}d
+                            · {differenceInCalendarDays(today, active.placementDate)}d
                           </span>
                         ) : null}
                       </p>
@@ -110,8 +142,10 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <p className="text-stone-500">Houses</p>
-                      <p className="font-semibold">{farm.houses.length}</p>
+                      <p className="text-stone-500">Birds placed</p>
+                      <p className="font-semibold">
+                        {active ? formatNumber(active.initialBirdCount) : "—"}
+                      </p>
                     </div>
                     <div>
                       <p className="text-stone-500">Placement date</p>
@@ -122,9 +156,9 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                       </p>
                     </div>
                     <div>
-                      <p className="text-stone-500">Birds placed</p>
+                      <p className="text-stone-500">Current Head Count</p>
                       <p className="font-semibold">
-                        {active ? formatNumber(active.initialBirdCount) : "—"}
+                        {currentHeadCount != null ? formatNumber(currentHeadCount) : "—"}
                       </p>
                     </div>
                     <div>
