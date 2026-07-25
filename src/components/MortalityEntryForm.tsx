@@ -9,6 +9,7 @@ import {
   birdAgeFromPlacement,
   calcPercentage,
   calcTotalDailyLoss,
+  flockWeekFromAge,
   resolveMortalityStatus,
 } from "@/lib/mortality/calculations";
 import { formatNumber, formatPct } from "@/lib/utils";
@@ -45,6 +46,16 @@ type DayRow = {
   mortalityDate: string;
   dailyMortalityCount: string;
   cullCount: string;
+};
+
+type WeekGroup = {
+  week: number;
+  rows: DayRow[];
+  culls: number;
+  mortality: number;
+  loss: number;
+  ageStart: number;
+  ageEnd: number;
 };
 
 function draftKey(farmId: string, houseFlockId: string) {
@@ -84,6 +95,36 @@ function buildRows(
   return rows;
 }
 
+function groupRowsByWeek(rows: DayRow[]): WeekGroup[] {
+  const byWeek = new Map<number, DayRow[]>();
+  for (const row of rows) {
+    const week = flockWeekFromAge(row.age);
+    const list = byWeek.get(week) ?? [];
+    list.push(row);
+    byWeek.set(week, list);
+  }
+
+  return Array.from(byWeek.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([week, weekRows]) => {
+      let culls = 0;
+      let mortality = 0;
+      for (const r of weekRows) {
+        culls += Number(r.cullCount || 0);
+        mortality += Number(r.dailyMortalityCount || 0);
+      }
+      return {
+        week,
+        rows: weekRows,
+        culls,
+        mortality,
+        loss: culls + mortality,
+        ageStart: weekRows[0]!.age,
+        ageEnd: weekRows[weekRows.length - 1]!.age,
+      };
+    });
+}
+
 export function MortalityEntryForm({
   farms,
   initialFarmId,
@@ -120,6 +161,7 @@ export function MortalityEntryForm({
   );
 
   const [rows, setRows] = useState<DayRow[]>([]);
+  const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [summary, setSummary] = useState<{
@@ -158,6 +200,8 @@ export function MortalityEntryForm({
         const parsed = JSON.parse(raw) as { rows?: DayRow[] };
         if (Array.isArray(parsed.rows) && parsed.rows.length > 0) {
           setRows(parsed.rows);
+          const currentWeek = flockWeekFromAge(parsed.rows[parsed.rows.length - 1]?.age ?? 0);
+          setExpandedWeeks(new Set([currentWeek]));
           setDraftNotice("Restored local draft for this house.");
           return;
         }
@@ -167,8 +211,22 @@ export function MortalityEntryForm({
     }
 
     setDraftNotice(null);
-    setRows(buildRows(flock.placementDate, house));
+    const built = buildRows(flock.placementDate, house);
+    setRows(built);
+    const currentWeek = flockWeekFromAge(built[built.length - 1]?.age ?? 0);
+    setExpandedWeeks(new Set([currentWeek]));
   }, [farmId, flock?.id, flock?.placementDate, house?.houseFlockId]);
+
+  const weekGroups = useMemo(() => groupRowsByWeek(rows), [rows]);
+
+  function toggleWeek(week: number) {
+    setExpandedWeeks((prev) => {
+      const next = new Set(prev);
+      if (next.has(week)) next.delete(week);
+      else next.add(week);
+      return next;
+    });
+  }
 
   function updateRow(age: number, patch: Partial<Pick<DayRow, "dailyMortalityCount" | "cullCount">>) {
     setRows((prev) => prev.map((r) => (r.age === age ? { ...r, ...patch } : r)));
@@ -343,62 +401,101 @@ export function MortalityEntryForm({
       </Card>
 
       {house && rows.length > 0 ? (
-        <Card>
-          <div className="-mx-4 overflow-x-auto sm:mx-0">
-            <table className="min-w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-stone-200 bg-stone-50 text-left">
-                  <th className="sticky left-0 z-10 bg-stone-50 px-3 py-2 font-semibold text-stone-600">
-                    Age
-                  </th>
-                  <th className="px-3 py-2 font-semibold text-stone-600">Culls</th>
-                  <th className="px-3 py-2 font-semibold text-stone-600">Mortality</th>
-                  <th className="px-3 py-2 font-semibold text-stone-600">Loss</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const loss = calcTotalDailyLoss(
-                    Number(row.dailyMortalityCount || 0),
-                    Number(row.cullCount || 0),
-                  );
-                  return (
-                    <tr key={row.mortalityDate} className="border-b border-stone-100">
-                      <td className="sticky left-0 z-10 bg-white px-3 py-2 font-semibold text-stone-900">
-                        {row.age}
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <Input
-                          aria-label={`Culls day ${row.age}`}
-                          type="number"
-                          min={0}
-                          inputMode="numeric"
-                          className="min-h-11 px-3"
-                          value={row.cullCount}
-                          onChange={(e) => updateRow(row.age, { cullCount: e.target.value })}
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <Input
-                          aria-label={`Mortality day ${row.age}`}
-                          type="number"
-                          min={0}
-                          inputMode="numeric"
-                          className="min-h-11 px-3"
-                          value={row.dailyMortalityCount}
-                          onChange={(e) =>
-                            updateRow(row.age, { dailyMortalityCount: e.target.value })
-                          }
-                        />
-                      </td>
-                      <td className="px-3 py-2 font-semibold text-stone-800">{loss}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <div className="space-y-2">
+          {weekGroups.map((group) => {
+            const open = expandedWeeks.has(group.week);
+            return (
+              <Card key={group.week} className="!p-0 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleWeek(group.week)}
+                  className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left hover:bg-stone-50"
+                  aria-expanded={open}
+                >
+                  <span className="w-5 shrink-0 text-stone-500" aria-hidden="true">
+                    {open ? "▾" : "▸"}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="font-bold text-stone-900">Week {group.week}</span>
+                    <span className="ml-2 text-sm text-stone-500">
+                      Ages {group.ageStart}–{group.ageEnd}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-sm text-stone-600">
+                    Culls <span className="font-semibold text-stone-900">{group.culls}</span>
+                    <span className="mx-1.5 text-stone-300">·</span>
+                    Mort <span className="font-semibold text-stone-900">{group.mortality}</span>
+                    <span className="mx-1.5 text-stone-300">·</span>
+                    Total <span className="font-semibold text-stone-900">{group.loss}</span>
+                  </span>
+                </button>
+
+                {open ? (
+                  <div className="border-t border-stone-100">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border-collapse text-sm">
+                        <thead>
+                          <tr className="border-b border-stone-200 bg-stone-50 text-left">
+                            <th className="sticky left-0 z-10 bg-stone-50 px-3 py-2 font-semibold text-stone-600">
+                              Age
+                            </th>
+                            <th className="px-3 py-2 font-semibold text-stone-600">Culls</th>
+                            <th className="px-3 py-2 font-semibold text-stone-600">Mortality</th>
+                            <th className="px-3 py-2 font-semibold text-stone-600">Loss</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.rows.map((row) => {
+                            const loss = calcTotalDailyLoss(
+                              Number(row.dailyMortalityCount || 0),
+                              Number(row.cullCount || 0),
+                            );
+                            return (
+                              <tr key={row.mortalityDate} className="border-b border-stone-100">
+                                <td className="sticky left-0 z-10 bg-white px-3 py-2 font-semibold text-stone-900">
+                                  {row.age}
+                                </td>
+                                <td className="px-2 py-1.5">
+                                  <Input
+                                    aria-label={`Culls day ${row.age}`}
+                                    type="number"
+                                    min={0}
+                                    inputMode="numeric"
+                                    className="min-h-11 px-3"
+                                    value={row.cullCount}
+                                    onChange={(e) =>
+                                      updateRow(row.age, { cullCount: e.target.value })
+                                    }
+                                  />
+                                </td>
+                                <td className="px-2 py-1.5">
+                                  <Input
+                                    aria-label={`Mortality day ${row.age}`}
+                                    type="number"
+                                    min={0}
+                                    inputMode="numeric"
+                                    className="min-h-11 px-3"
+                                    value={row.dailyMortalityCount}
+                                    onChange={(e) =>
+                                      updateRow(row.age, {
+                                        dailyMortalityCount: e.target.value,
+                                      })
+                                    }
+                                  />
+                                </td>
+                                <td className="px-3 py-2 font-semibold text-stone-800">{loss}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : null}
+              </Card>
+            );
+          })}
+        </div>
       ) : null}
 
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
