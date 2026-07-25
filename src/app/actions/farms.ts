@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { farmSchema, flockSchema, houseSchema } from "@/lib/validations";
+import { farmSchema, createFarmSchema, flockSchema, houseSchema } from "@/lib/validations";
 
 function emptyToNull(value: FormDataEntryValue | null) {
   const s = String(value ?? "").trim();
@@ -13,23 +13,43 @@ function emptyToNull(value: FormDataEntryValue | null) {
 
 export async function createFarmAction(formData: FormData) {
   const user = await requireUser();
-  const parsed = farmSchema.safeParse({
+  const parsed = createFarmSchema.safeParse({
     farmName: formData.get("farmName"),
     growerName: emptyToNull(formData.get("growerName")),
     phoneNumber: emptyToNull(formData.get("phoneNumber")),
     notes: emptyToNull(formData.get("notes")),
+    numberOfHouses: formData.get("numberOfHouses") || 0,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid farm" };
 
-  const farm = await prisma.farm.create({
-    data: {
-      userId: user.id!,
-      farmName: parsed.data.farmName,
-      growerName: parsed.data.growerName?.trim() || "",
-      phoneNumber: parsed.data.phoneNumber,
-      notes: parsed.data.notes,
-    },
+  const houseCount = parsed.data.numberOfHouses;
+  const defaultSquareFootage = 29700;
+
+  const farm = await prisma.$transaction(async (tx) => {
+    const created = await tx.farm.create({
+      data: {
+        userId: user.id!,
+        farmName: parsed.data.farmName,
+        growerName: parsed.data.growerName?.trim() || "",
+        phoneNumber: parsed.data.phoneNumber,
+        notes: parsed.data.notes,
+        numberOfHouses: houseCount,
+      },
+    });
+
+    if (houseCount > 0) {
+      await tx.house.createMany({
+        data: Array.from({ length: houseCount }, (_, i) => ({
+          farmId: created.id,
+          houseNumber: i + 1,
+          squareFootage: defaultSquareFootage,
+        })),
+      });
+    }
+
+    return created;
   });
+
   revalidatePath("/farms");
   redirect(`/farms/${farm.id}`);
 }
@@ -273,6 +293,43 @@ export async function completeFlockAction(flockId: string) {
     },
   });
   revalidatePath(`/farms/${flock.farmId}`);
+  revalidatePath(`/history/${flock.farmId}`);
+}
+
+export async function reactivateFlockAction(flockId: string) {
+  const user = await requireUser();
+  const flock = await prisma.flock.findFirst({
+    where: { id: flockId, farm: { userId: user.id!, deletedAt: null } },
+  });
+  if (!flock) return { error: "Flock not found" };
+  if (flock.flockStatus === "ACTIVE") return { error: "Flock is already active" };
+
+  const otherActive = await prisma.flock.findFirst({
+    where: {
+      farmId: flock.farmId,
+      flockStatus: "ACTIVE",
+      deletedAt: null,
+      id: { not: flockId },
+    },
+  });
+  if (otherActive) {
+    return {
+      error: `Farm already has an active flock (${otherActive.flockNumber}). Complete that one first.`,
+    };
+  }
+
+  await prisma.flock.update({
+    where: { id: flockId },
+    data: {
+      flockStatus: "ACTIVE",
+      // Clear auto-set catch date from completion so projections resume normally
+      actualCatchDate: null,
+    },
+  });
+  revalidatePath(`/farms/${flock.farmId}`);
+  revalidatePath(`/history/${flock.farmId}`);
+  revalidatePath("/");
+  return { success: true };
 }
 
 export async function updateFlockScheduleAction(flockId: string, formData: FormData) {

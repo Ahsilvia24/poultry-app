@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { createFeedDeliveryAction } from "@/app/actions/ops";
-import { Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
+import {
+  createFeedDeliveryAction,
+  updateFeedDeliveryAction,
+} from "@/app/actions/ops";
+import { FEED_MILL_OPTIONS, FEED_TYPE_OPTIONS } from "@/lib/utils";
+import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 
 export type FeedFarmOption = {
   id: string;
@@ -19,155 +22,237 @@ export type FeedFarmOption = {
   }>;
 };
 
+export type FeedDeliveryFormValues = {
+  deliveryDate: string;
+  poundsDelivered: number;
+  flockId?: string | null;
+  houseFlockId?: string | null;
+  feedType?: string | null;
+  feedMill?: string | null;
+  ticketNumber?: string | null;
+  notes?: string | null;
+};
+
 export function FeedDeliveryForm({
   farms,
   lockedFarmId,
+  recordId,
+  initial,
+  onSuccess,
 }: {
   farms: FeedFarmOption[];
   /** When set, farm is fixed (e.g. recording from a farm page). */
   lockedFarmId?: string;
+  recordId?: string;
+  initial?: FeedDeliveryFormValues;
+  onSuccess?: () => void;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const initialFarmId = lockedFarmId ?? farms[0]?.id ?? "";
   const [farmId, setFarmId] = useState(initialFarmId);
-  const initialFlock =
-    farms.find((f) => f.id === initialFarmId)?.flocks.find((fl) => fl.status === "ACTIVE") ??
-    farms.find((f) => f.id === initialFarmId)?.flocks[0];
-  const [flockId, setFlockId] = useState(initialFlock?.id ?? "");
-  const [houseFlockId, setHouseFlockId] = useState("");
+
+  const resolvedInitialFlockId = (() => {
+    if (initial?.flockId) return initial.flockId;
+    if (initial?.houseFlockId) {
+      for (const f of farms) {
+        for (const fl of f.flocks) {
+          if (fl.houses.some((h) => h.houseFlockId === initial.houseFlockId)) {
+            return fl.id;
+          }
+        }
+      }
+    }
+    return (
+      farms.find((f) => f.id === initialFarmId)?.flocks.find((fl) => fl.status === "ACTIVE")?.id ??
+      farms.find((f) => f.id === initialFarmId)?.flocks[0]?.id ??
+      ""
+    );
+  })();
+
+  const [flockId, setFlockId] = useState(resolvedInitialFlockId);
+  const [houseFlockId, setHouseFlockId] = useState(
+    initial?.houseFlockId ??
+      (() => {
+        const farm = farms.find((f) => f.id === initialFarmId);
+        const flock =
+          farm?.flocks.find((fl) => fl.id === resolvedInitialFlockId) ??
+          farm?.flocks.find((fl) => fl.status === "ACTIVE") ??
+          farm?.flocks[0];
+        return flock?.houses[0]?.houseFlockId ?? "";
+      })(),
+  );
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   const farm = useMemo(() => farms.find((f) => f.id === farmId) ?? null, [farms, farmId]);
   const flocks = farm?.flocks ?? [];
   const flock = flocks.find((f) => f.id === flockId) ?? flocks[0] ?? null;
+  const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
 
   function onFarmChange(id: string) {
     setFarmId(id);
     const next = farms.find((f) => f.id === id);
-    const nextFlock = next?.flocks[0];
+    const nextFlock = next?.flocks.find((fl) => fl.status === "ACTIVE") ?? next?.flocks[0];
     setFlockId(nextFlock?.id ?? "");
-    setHouseFlockId("");
+    setHouseFlockId(nextFlock?.houses[0]?.houseFlockId ?? "");
   }
 
   function onFlockChange(id: string) {
     setFlockId(id);
-    setHouseFlockId("");
+    const nextFlock = flocks.find((f) => f.id === id);
+    setHouseFlockId(nextFlock?.houses[0]?.houseFlockId ?? "");
   }
 
   function onSubmit(formData: FormData) {
     setError(null);
-    setSuccess(false);
+    if (!houseFlockId) {
+      setError("Select a house");
+      return;
+    }
     if (flockId) formData.set("flockId", flockId);
-    if (houseFlockId) formData.set("houseFlockId", houseFlockId);
-    else formData.delete("houseFlockId");
+    formData.set("houseFlockId", houseFlockId);
 
     startTransition(async () => {
-      const result = await createFeedDeliveryAction(formData);
+      const result = recordId
+        ? await updateFeedDeliveryAction(recordId, formData)
+        : await createFeedDeliveryAction(formData);
       if (result?.error) {
         setError(result.error);
         return;
       }
-      setSuccess(true);
-      router.refresh();
+      onSuccess?.();
     });
   }
 
+  const feedTypeDefault =
+    initial?.feedType &&
+    (FEED_TYPE_OPTIONS as readonly string[]).includes(initial.feedType)
+      ? initial.feedType
+      : FEED_TYPE_OPTIONS[0];
+  const feedMillDefault =
+    initial?.feedMill &&
+    (FEED_MILL_OPTIONS as readonly string[]).includes(initial.feedMill)
+      ? initial.feedMill
+      : FEED_MILL_OPTIONS[0];
+
   return (
-    <Card>
-      <h2 className="font-bold">Record feed delivery</h2>
-      <form action={onSubmit} className="mt-4 space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {lockedFarmId ? (
-            <input type="hidden" name="farmId" value={lockedFarmId} />
-          ) : (
-            <div>
-              <Label htmlFor="farmSelect">Farm</Label>
-              <Select id="farmSelect" value={farmId} onChange={(e) => onFarmChange(e.target.value)}>
-                {farms.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.farmName}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          )}
+    <form action={onSubmit} className="mt-4 space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        {lockedFarmId ? (
+          <input type="hidden" name="farmId" value={lockedFarmId} />
+        ) : (
           <div>
-            <Label htmlFor="flockSelect">Flock</Label>
+            <Label htmlFor={fid("farmSelect")}>Farm</Label>
             <Select
-              id="flockSelect"
-              value={flock?.id ?? ""}
-              onChange={(e) => onFlockChange(e.target.value)}
-              required
+              id={fid("farmSelect")}
+              value={farmId}
+              onChange={(e) => onFarmChange(e.target.value)}
             >
-              {flocks.length === 0 ? <option value="">No flocks</option> : null}
-              {flocks.map((f) => (
+              {farms.map((f) => (
                 <option key={f.id} value={f.id}>
-                  {f.flockNumber} ({f.status})
+                  {f.farmName}
                 </option>
               ))}
             </Select>
           </div>
-          <div>
-            <Label htmlFor="houseSelect">House allocation (optional)</Label>
-            <Select
-              id="houseSelect"
-              value={houseFlockId}
-              onChange={(e) => setHouseFlockId(e.target.value)}
-            >
-              <option value="">Flock-level (not allocated)</option>
-              {(flock?.houses ?? []).map((h) => (
-                <option key={h.houseFlockId} value={h.houseFlockId}>
-                  House {h.houseNumber}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="deliveryDate">Delivery date</Label>
-            <Input
-              id="deliveryDate"
-              name="deliveryDate"
-              type="date"
-              required
-              defaultValue={new Date().toISOString().slice(0, 10)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="poundsDelivered">Pounds delivered</Label>
-            <Input
-              id="poundsDelivered"
-              name="poundsDelivered"
-              type="number"
-              min={0}
-              step="any"
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="feedType">Feed type</Label>
-            <Input id="feedType" name="feedType" />
-          </div>
-          <div>
-            <Label htmlFor="feedMill">Feed mill</Label>
-            <Input id="feedMill" name="feedMill" />
-          </div>
-          <div>
-            <Label htmlFor="ticketNumber">Ticket number</Label>
-            <Input id="ticketNumber" name="ticketNumber" />
-          </div>
-          <div className="sm:col-span-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea id="notes" name="notes" rows={2} />
-          </div>
+        )}
+        <div>
+          <Label htmlFor={fid("flockSelect")}>Flock</Label>
+          <Select
+            id={fid("flockSelect")}
+            value={flock?.id ?? ""}
+            onChange={(e) => onFlockChange(e.target.value)}
+            required
+          >
+            {flocks.length === 0 ? <option value="">No flocks</option> : null}
+            {flocks.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.flockNumber} ({f.status})
+              </option>
+            ))}
+          </Select>
         </div>
-        {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
-        {success ? <p className="text-sm font-medium text-emerald-800">Delivery saved.</p> : null}
-        <Button type="submit" disabled={pending || !flock}>
-          {pending ? "Saving…" : "Save delivery"}
-        </Button>
-      </form>
-    </Card>
+        <div>
+          <Label htmlFor={fid("houseSelect")}>House</Label>
+          <Select
+            id={fid("houseSelect")}
+            value={houseFlockId}
+            onChange={(e) => setHouseFlockId(e.target.value)}
+            required
+          >
+            {(flock?.houses ?? []).length === 0 ? (
+              <option value="">No houses</option>
+            ) : null}
+            {(flock?.houses ?? []).map((h) => (
+              <option key={h.houseFlockId} value={h.houseFlockId}>
+                House {h.houseNumber}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor={fid("deliveryDate")}>Delivery date</Label>
+          <Input
+            id={fid("deliveryDate")}
+            name="deliveryDate"
+            type="date"
+            required
+            defaultValue={initial?.deliveryDate ?? new Date().toISOString().slice(0, 10)}
+          />
+        </div>
+        <div>
+          <Label htmlFor={fid("poundsDelivered")}>Pounds delivered</Label>
+          <Input
+            id={fid("poundsDelivered")}
+            name="poundsDelivered"
+            type="number"
+            min={0}
+            step="any"
+            required
+            defaultValue={initial?.poundsDelivered ?? undefined}
+          />
+        </div>
+        <div>
+          <Label htmlFor={fid("feedType")}>Feed type</Label>
+          <Select id={fid("feedType")} name="feedType" defaultValue={feedTypeDefault} required>
+            {FEED_TYPE_OPTIONS.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor={fid("feedMill")}>Feed mill</Label>
+          <Select id={fid("feedMill")} name="feedMill" defaultValue={feedMillDefault} required>
+            {FEED_MILL_OPTIONS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor={fid("ticketNumber")}>Ticket number</Label>
+          <Input
+            id={fid("ticketNumber")}
+            name="ticketNumber"
+            defaultValue={initial?.ticketNumber ?? undefined}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <Label htmlFor={fid("notes")}>Notes</Label>
+          <Textarea
+            id={fid("notes")}
+            name="notes"
+            rows={2}
+            defaultValue={initial?.notes ?? undefined}
+          />
+        </div>
+      </div>
+      {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+      <Button type="submit" disabled={pending || !flock || !houseFlockId}>
+        {pending ? "Saving…" : recordId ? "Save changes" : "Save delivery"}
+      </Button>
+    </form>
   );
 }

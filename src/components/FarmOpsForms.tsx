@@ -5,8 +5,11 @@ import {
   createIssueAction,
   createLitterEventAction,
   createVisitAction,
+  updateIssueAction,
+  updateLitterEventAction,
+  updateVisitAction,
 } from "@/app/actions/ops";
-import { deactivateFarmAction, deleteFarmAction, completeFlockAction } from "@/app/actions/farms";
+import { deactivateFarmAction, deleteFarmAction, completeFlockAction, reactivateFlockAction } from "@/app/actions/farms";
 import {
   ISSUE_CATEGORY_LABELS,
   LITTER_EVENT_LABELS,
@@ -14,20 +17,44 @@ import {
 } from "@/lib/utils";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 
+export type VisitFormValues = {
+  visitDate: string;
+  visitType: string;
+  birdAgeInDays?: number | null;
+  generalBirdCondition?: string | null;
+  temperature?: number | null;
+  humidity?: number | null;
+  notes?: string | null;
+  followUpRequired?: boolean;
+  followUpDate?: string | null;
+};
+
 export function FarmVisitForm({
   farmId,
   flockId,
+  onSuccess,
+  recordId,
+  initial,
 }: {
   farmId: string;
   flockId?: string | null;
+  onSuccess?: () => void;
+  recordId?: string;
+  initial?: VisitFormValues;
 }) {
   const [pending, start] = useTransition();
+  const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
   return (
     <form
       className="mt-4 space-y-3"
       action={(fd) => {
         start(async () => {
-          await createVisitAction(fd);
+          const result = recordId
+            ? await updateVisitAction(recordId, fd)
+            : await createVisitAction(fd);
+          if (!result || !("error" in result) || !result.error) {
+            onSuccess?.();
+          }
         });
       }}
     >
@@ -35,18 +62,22 @@ export function FarmVisitForm({
       {flockId ? <input type="hidden" name="flockId" value={flockId} /> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <Label htmlFor="visitDate">Visit date</Label>
+          <Label htmlFor={fid("visitDate")}>Visit date</Label>
           <Input
-            id="visitDate"
+            id={fid("visitDate")}
             name="visitDate"
             type="date"
             required
-            defaultValue={new Date().toISOString().slice(0, 10)}
+            defaultValue={initial?.visitDate ?? new Date().toISOString().slice(0, 10)}
           />
         </div>
         <div>
-          <Label htmlFor="visitType">Visit type</Label>
-          <Select id="visitType" name="visitType" defaultValue="ROUTINE_SERVICE">
+          <Label htmlFor={fid("visitType")}>Visit type</Label>
+          <Select
+            id={fid("visitType")}
+            name="visitType"
+            defaultValue={initial?.visitType ?? "ROUTINE_SERVICE"}
+          >
             {Object.entries(VISIT_TYPE_LABELS).map(([k, v]) => (
               <option key={k} value={k}>
                 {v}
@@ -55,57 +86,117 @@ export function FarmVisitForm({
           </Select>
         </div>
         <div>
-          <Label htmlFor="birdAgeInDays">Bird age (days)</Label>
-          <Input id="birdAgeInDays" name="birdAgeInDays" type="number" min={0} />
+          <Label htmlFor={fid("birdAgeInDays")}>Bird age (days)</Label>
+          <Input
+            id={fid("birdAgeInDays")}
+            name="birdAgeInDays"
+            type="number"
+            min={0}
+            defaultValue={initial?.birdAgeInDays ?? undefined}
+          />
         </div>
         <div>
-          <Label htmlFor="generalBirdCondition">Bird condition</Label>
-          <Input id="generalBirdCondition" name="generalBirdCondition" />
+          <Label htmlFor={fid("generalBirdCondition")}>Bird condition</Label>
+          <Input
+            id={fid("generalBirdCondition")}
+            name="generalBirdCondition"
+            defaultValue={initial?.generalBirdCondition ?? undefined}
+          />
         </div>
         <div>
-          <Label htmlFor="temperature">Temperature</Label>
-          <Input id="temperature" name="temperature" type="number" step="any" />
+          <Label htmlFor={fid("temperature")}>Temperature</Label>
+          <Input
+            id={fid("temperature")}
+            name="temperature"
+            type="number"
+            step="any"
+            defaultValue={initial?.temperature ?? undefined}
+          />
         </div>
         <div>
-          <Label htmlFor="humidity">Humidity</Label>
-          <Input id="humidity" name="humidity" type="number" step="any" />
+          <Label htmlFor={fid("humidity")}>Humidity</Label>
+          <Input
+            id={fid("humidity")}
+            name="humidity"
+            type="number"
+            step="any"
+            defaultValue={initial?.humidity ?? undefined}
+          />
         </div>
       </div>
       <div>
-        <Label htmlFor="visitNotes">Notes</Label>
-        <Textarea id="visitNotes" name="notes" rows={2} />
+        <Label htmlFor={fid("visitNotes")}>Notes</Label>
+        <Textarea
+          id={fid("visitNotes")}
+          name="notes"
+          rows={2}
+          defaultValue={initial?.notes ?? undefined}
+        />
       </div>
       <label className="flex items-center gap-2 text-sm font-semibold">
-        <input type="checkbox" name="followUpRequired" className="h-5 w-5" />
+        <input
+          type="checkbox"
+          name="followUpRequired"
+          className="h-5 w-5"
+          defaultChecked={initial?.followUpRequired ?? false}
+        />
         Follow-up required
       </label>
       <div>
-        <Label htmlFor="followUpDate">Follow-up date</Label>
-        <Input id="followUpDate" name="followUpDate" type="date" />
+        <Label htmlFor={fid("followUpDate")}>Follow-up date</Label>
+        <Input
+          id={fid("followUpDate")}
+          name="followUpDate"
+          type="date"
+          defaultValue={initial?.followUpDate ?? undefined}
+        />
       </div>
       <Button type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Save visit"}
+        {pending ? "Saving…" : recordId ? "Save changes" : "Save visit"}
       </Button>
     </form>
   );
 }
 
+export type IssueFormValues = {
+  dateReported: string;
+  houseId?: string | null;
+  category: string;
+  priority: string;
+  status: string;
+  assignedTo?: string | null;
+  description: string;
+  correctiveAction?: string | null;
+};
+
 export function FarmIssueForm({
   farmId,
   houses,
   flockId,
+  onSuccess,
+  recordId,
+  initial,
 }: {
   farmId: string;
   houses: { id: string; houseNumber: number }[];
   flockId?: string | null;
+  onSuccess?: () => void;
+  recordId?: string;
+  initial?: IssueFormValues;
 }) {
   const [pending, start] = useTransition();
+  const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
   return (
     <form
       className="mt-4 space-y-3"
       action={(fd) => {
         start(async () => {
-          await createIssueAction(fd);
+          const result = recordId
+            ? await updateIssueAction(recordId, fd)
+            : await createIssueAction(fd);
+          if (!result || !("error" in result) || !result.error) {
+            onSuccess?.();
+          }
         });
       }}
     >
@@ -113,18 +204,18 @@ export function FarmIssueForm({
       {flockId ? <input type="hidden" name="flockId" value={flockId} /> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <Label htmlFor="dateReported">Date reported</Label>
+          <Label htmlFor={fid("dateReported")}>Date reported</Label>
           <Input
-            id="dateReported"
+            id={fid("dateReported")}
             name="dateReported"
             type="date"
             required
-            defaultValue={new Date().toISOString().slice(0, 10)}
+            defaultValue={initial?.dateReported ?? new Date().toISOString().slice(0, 10)}
           />
         </div>
         <div>
-          <Label htmlFor="houseId">House (optional)</Label>
-          <Select id="houseId" name="houseId" defaultValue="">
+          <Label htmlFor={fid("houseId")}>House (optional)</Label>
+          <Select id={fid("houseId")} name="houseId" defaultValue={initial?.houseId ?? ""}>
             <option value="">Entire farm</option>
             {houses.map((h) => (
               <option key={h.id} value={h.id}>
@@ -134,8 +225,8 @@ export function FarmIssueForm({
           </Select>
         </div>
         <div>
-          <Label htmlFor="category">Category</Label>
-          <Select id="category" name="category" defaultValue="OTHER">
+          <Label htmlFor={fid("category")}>Category</Label>
+          <Select id={fid("category")} name="category" defaultValue={initial?.category ?? "OTHER"}>
             {Object.entries(ISSUE_CATEGORY_LABELS).map(([k, v]) => (
               <option key={k} value={k}>
                 {v}
@@ -144,8 +235,8 @@ export function FarmIssueForm({
           </Select>
         </div>
         <div>
-          <Label htmlFor="priority">Priority</Label>
-          <Select id="priority" name="priority" defaultValue="MEDIUM">
+          <Label htmlFor={fid("priority")}>Priority</Label>
+          <Select id={fid("priority")} name="priority" defaultValue={initial?.priority ?? "MEDIUM"}>
             <option value="LOW">Low</option>
             <option value="MEDIUM">Medium</option>
             <option value="HIGH">High</option>
@@ -153,8 +244,8 @@ export function FarmIssueForm({
           </Select>
         </div>
         <div>
-          <Label htmlFor="status">Status</Label>
-          <Select id="status" name="status" defaultValue="OPEN">
+          <Label htmlFor={fid("status")}>Status</Label>
+          <Select id={fid("status")} name="status" defaultValue={initial?.status ?? "OPEN"}>
             <option value="OPEN">Open</option>
             <option value="MONITORING">Monitoring</option>
             <option value="SCHEDULED">Scheduled</option>
@@ -162,57 +253,98 @@ export function FarmIssueForm({
           </Select>
         </div>
         <div>
-          <Label htmlFor="assignedTo">Assigned to</Label>
-          <Input id="assignedTo" name="assignedTo" />
+          <Label htmlFor={fid("assignedTo")}>Assigned to</Label>
+          <Input
+            id={fid("assignedTo")}
+            name="assignedTo"
+            defaultValue={initial?.assignedTo ?? undefined}
+          />
         </div>
       </div>
       <div>
-        <Label htmlFor="description">Description</Label>
-        <Textarea id="description" name="description" required rows={2} />
+        <Label htmlFor={fid("description")}>Description</Label>
+        <Textarea
+          id={fid("description")}
+          name="description"
+          required
+          rows={2}
+          defaultValue={initial?.description}
+        />
       </div>
       <div>
-        <Label htmlFor="correctiveAction">Corrective action</Label>
-        <Textarea id="correctiveAction" name="correctiveAction" rows={2} />
+        <Label htmlFor={fid("correctiveAction")}>Corrective action</Label>
+        <Textarea
+          id={fid("correctiveAction")}
+          name="correctiveAction"
+          rows={2}
+          defaultValue={initial?.correctiveAction ?? undefined}
+        />
       </div>
       <Button type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Save issue"}
+        {pending ? "Saving…" : recordId ? "Save changes" : "Save issue"}
       </Button>
     </form>
   );
 }
 
+export type LitterFormValues = {
+  eventDate: string;
+  eventType: string;
+  houseId?: string | null;
+  contractor?: string | null;
+  litterDepth?: number | null;
+  cost?: number | null;
+  notes?: string | null;
+};
+
 export function LitterEventForm({
   farmId,
   houses,
+  onSuccess,
+  recordId,
+  initial,
 }: {
   farmId: string;
   houses: { id: string; houseNumber: number }[];
+  onSuccess?: () => void;
+  recordId?: string;
+  initial?: LitterFormValues;
 }) {
   const [pending, start] = useTransition();
+  const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
   return (
     <form
       className="mt-4 space-y-3"
       action={(fd) => {
         start(async () => {
-          await createLitterEventAction(fd);
+          const result = recordId
+            ? await updateLitterEventAction(recordId, fd)
+            : await createLitterEventAction(fd);
+          if (!result || !("error" in result) || !result.error) {
+            onSuccess?.();
+          }
         });
       }}
     >
       <input type="hidden" name="farmId" value={farmId} />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <Label htmlFor="eventDate">Event date</Label>
+          <Label htmlFor={fid("eventDate")}>Event date</Label>
           <Input
-            id="eventDate"
+            id={fid("eventDate")}
             name="eventDate"
             type="date"
             required
-            defaultValue={new Date().toISOString().slice(0, 10)}
+            defaultValue={initial?.eventDate ?? new Date().toISOString().slice(0, 10)}
           />
         </div>
         <div>
-          <Label htmlFor="eventType">Event type</Label>
-          <Select id="eventType" name="eventType" defaultValue="FULL_LITTER_CLEANOUT">
+          <Label htmlFor={fid("eventType")}>Event type</Label>
+          <Select
+            id={fid("eventType")}
+            name="eventType"
+            defaultValue={initial?.eventType ?? "FULL_LITTER_CLEANOUT"}
+          >
             {Object.entries(LITTER_EVENT_LABELS).map(([k, v]) => (
               <option key={k} value={k}>
                 {v}
@@ -221,8 +353,12 @@ export function LitterEventForm({
           </Select>
         </div>
         <div>
-          <Label htmlFor="litterHouseId">House (optional)</Label>
-          <Select id="litterHouseId" name="houseId" defaultValue="">
+          <Label htmlFor={fid("litterHouseId")}>House (optional)</Label>
+          <Select
+            id={fid("litterHouseId")}
+            name="houseId"
+            defaultValue={initial?.houseId ?? ""}
+          >
             <option value="">Entire farm</option>
             {houses.map((h) => (
               <option key={h.id} value={h.id}>
@@ -232,24 +368,46 @@ export function LitterEventForm({
           </Select>
         </div>
         <div>
-          <Label htmlFor="contractor">Contractor</Label>
-          <Input id="contractor" name="contractor" />
+          <Label htmlFor={fid("contractor")}>Contractor</Label>
+          <Input
+            id={fid("contractor")}
+            name="contractor"
+            defaultValue={initial?.contractor ?? undefined}
+          />
         </div>
         <div>
-          <Label htmlFor="litterDepth">Litter depth</Label>
-          <Input id="litterDepth" name="litterDepth" type="number" step="any" />
+          <Label htmlFor={fid("litterDepth")}>Litter depth</Label>
+          <Input
+            id={fid("litterDepth")}
+            name="litterDepth"
+            type="number"
+            step="any"
+            defaultValue={initial?.litterDepth ?? undefined}
+          />
         </div>
         <div>
-          <Label htmlFor="cost">Cost</Label>
-          <Input id="cost" name="cost" type="number" step="any" min={0} />
+          <Label htmlFor={fid("cost")}>Cost</Label>
+          <Input
+            id={fid("cost")}
+            name="cost"
+            type="number"
+            step="any"
+            min={0}
+            defaultValue={initial?.cost ?? undefined}
+          />
         </div>
       </div>
       <div>
-        <Label htmlFor="litterNotes">Notes</Label>
-        <Textarea id="litterNotes" name="notes" rows={2} />
+        <Label htmlFor={fid("litterNotes")}>Notes</Label>
+        <Textarea
+          id={fid("litterNotes")}
+          name="notes"
+          rows={2}
+          defaultValue={initial?.notes ?? undefined}
+        />
       </div>
       <Button type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Save litter event"}
+        {pending ? "Saving…" : recordId ? "Save changes" : "Save litter event"}
       </Button>
     </form>
   );
@@ -389,5 +547,38 @@ export function CompleteFlockButton({ flockId }: { flockId: string }) {
     >
       Complete flock
     </Button>
+  );
+}
+
+export function ReactivateFlockButton({
+  flockId,
+  flockNumber,
+}: {
+  flockId: string;
+  flockNumber?: string;
+}) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="inline-flex flex-col items-start gap-1">
+      <Button
+        type="button"
+        variant="secondary"
+        disabled={pending}
+        onClick={() => {
+          const label = flockNumber ? `flock ${flockNumber}` : "this flock";
+          if (!confirm(`Make ${label} active again?`)) return;
+          setError(null);
+          start(async () => {
+            const result = await reactivateFlockAction(flockId);
+            if (result?.error) setError(result.error);
+          });
+        }}
+      >
+        {pending ? "Working…" : "Make active"}
+      </Button>
+      {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+    </div>
   );
 }

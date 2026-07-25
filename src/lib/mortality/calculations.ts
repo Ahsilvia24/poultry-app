@@ -203,15 +203,23 @@ export function averageDailyMortalityLast7Days(
 }
 
 /**
- * Projected head at catch: remaining − (avg last-7-day daily loss × days until catch).
+ * Projected head at catch: remaining − (avg last-7-day daily loss × days until catch)
+ * − fixed catch-crew / transit loss per house.
  */
+export const CATCH_CREW_AND_TRANSIT_LOSS_PER_HOUSE = 150;
+
 export function projectedHeadCountAtCatch(
   remaining: number,
   avgDailyMortality: number,
   daysUntilCatch: number,
 ): number {
   const days = Math.max(0, daysUntilCatch);
-  return Math.max(0, Math.round(remaining - avgDailyMortality * days));
+  return Math.max(
+    0,
+    Math.round(
+      remaining - avgDailyMortality * days - CATCH_CREW_AND_TRANSIT_LOSS_PER_HOUSE,
+    ),
+  );
 }
 
 export function resolveMortalityStatus(

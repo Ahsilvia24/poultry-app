@@ -13,6 +13,14 @@ export const farmSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
+export const createFarmSchema = farmSchema.extend({
+  numberOfHouses: z.coerce
+    .number()
+    .int()
+    .min(0, "Number of houses cannot be negative")
+    .max(40, "Enter at most 40 houses"),
+});
+
 export const houseSchema = z.object({
   houseNumber: z.coerce.number().int().positive(),
   squareFootage: z.coerce.number().positive("Square footage must be greater than zero"),
@@ -115,7 +123,7 @@ export const mortalityHouseSeriesSchema = z.object({
 
 export const feedDeliverySchema = z.object({
   flockId: z.string().optional().nullable(),
-  houseFlockId: z.string().optional().nullable(),
+  houseFlockId: z.string().min(1, "Select a house"),
   deliveryDate: z.string().min(1),
   feedType: z.string().optional().nullable(),
   feedMill: z.string().optional().nullable(),
@@ -133,6 +141,7 @@ export const litterEventSchema = z.object({
     "PARTIAL_LITTER_CLEANOUT",
     "DE_CAKING",
     "WINDROWING",
+    "TILL",
     "LITTER_TREATMENT",
     "TOP_DRESSING",
     "COMPOST_REMOVAL",
@@ -228,4 +237,17 @@ export const performanceSchema = z.object({
   condemnationPercentage: z.coerce.number().optional().nullable(),
   settlementDate: z.string().optional().nullable(),
   settlementNotes: z.string().optional().nullable(),
+});
+
+export const flockSettlementSchema = z.object({
+  flockId: z.string().min(1, "Select a farm with a flock"),
+  marketAge: z.coerce.number().int().positive().optional().nullable(),
+  breed: z.string().optional().nullable(),
+  weight: z.coerce.number().positive().optional().nullable(),
+  growthRate: z.coerce.number().positive().optional().nullable(),
+  feedConversion: z.coerce.number().positive().optional().nullable(),
+  adjustedFeedConversion: z.coerce.number().positive().optional().nullable(),
+  goodPoundsSold: z.coerce.number().min(0).optional().nullable(),
+  /** Farm place/rank on settlement (1, 2, 3…). */
+  settlementNo: z.coerce.number().int().min(1).optional().nullable(),
 });

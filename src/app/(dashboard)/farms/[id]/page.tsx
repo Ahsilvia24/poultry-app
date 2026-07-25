@@ -14,15 +14,14 @@ import {
 } from "@/lib/mortality/calculations";
 import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
 import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
-import { cfmPerSquareFoot } from "@/lib/ventilation/calculations";
 import {
   formatNumber,
   formatPct,
 } from "@/lib/utils";
 import { createFlockAction, updateFlockScheduleAction } from "@/app/actions/farms";
-import { CompleteFlockButton } from "@/components/FarmOpsForms";
+import { CompleteFlockButton, ReactivateFlockButton } from "@/components/FarmOpsForms";
 import { FlockScheduleEditor } from "@/components/FlockScheduleEditor";
-import { HouseCardActions } from "@/components/HouseCardActions";
+import { HouseCard } from "@/components/HouseCard";
 import { AddFlockSection } from "@/components/AddFlockSection";
 import { AddHouseForm } from "@/components/AddHouseForm";
 import { FarmInfoEditor } from "@/components/FarmInfoEditor";
@@ -32,7 +31,8 @@ import { FarmIssuesSection } from "@/components/FarmIssuesSection";
 import { FarmLitterSection } from "@/components/FarmLitterSection";
 import { FarmVisitsSection } from "@/components/FarmVisitsSection";
 import { WeightProjectionTile } from "@/components/WeightProjectionTile";
-import { Button, Card, StatTile, StatusBadge } from "@/components/ui";
+import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
+import { Button, Card, StatTile } from "@/components/ui";
 
 type Params = Promise<{ id: string }>;
 
@@ -73,10 +73,10 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
   const farmId = farm.id;
   const thresholds = await getUserThresholds(session.user.id);
   const activeFlock = farm.flocks.find((f) => f.flockStatus === "ACTIVE") ?? null;
-  const flockLevelFeed =
-    activeFlock?.feedDeliveries
-      .filter((d) => !d.houseFlockId)
-      .reduce((s, d) => s + d.poundsDelivered, 0) ?? 0;
+  const latestCompletedFlock =
+    activeFlock == null
+      ? (farm.flocks.find((f) => f.flockStatus === "COMPLETED") ?? null)
+      : null;
 
   const catchDate = activeFlock ? resolveCatchDate(activeFlock) : null;
   const daysUntilCatch =
@@ -103,6 +103,10 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       metrics && daysUntilCatch != null && hf
         ? projectedHeadCountAtCatch(metrics.remaining, avgDaily, daysUntilCatch)
         : null;
+    const projectedMortality =
+      metrics && daysUntilCatch != null && hf
+        ? Math.max(0, Math.round(metrics.cumulative + avgDaily * daysUntilCatch))
+        : null;
     const rising = hf ? isRisingThreeDays(hf.mortalities, today) : false;
     const status = metrics
       ? resolveMortalityStatus(
@@ -110,7 +114,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           thresholds,
         )
       : "Normal";
-    const cfmSqft = cfmPerSquareFoot(house.totalFanCFM, house.squareFootage);
 
     if (hf && metrics) {
       flockPlaced += hf.placedBirdCount;
@@ -132,8 +135,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       metrics,
       weeklyMortality,
       projectedHeadCount,
+      projectedMortality,
       status,
-      cfmSqft,
     };
   });
 
@@ -249,6 +252,16 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
                 flockPlaced > 0 ? (projectedMortalityCount / flockPlaced) * 100 : 0,
               )})`}
             />
+          </div>
+          {flockWeeklyMortality.length > 0 ? (
+            <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                Weekly mortality
+              </p>
+              <WeeklyMortalityList weeks={flockWeeklyMortality} />
+            </div>
+          ) : null}
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <WeightProjectionTile
               flockId={activeFlock.id}
               catchDateKey={format(resolveCatchDate(activeFlock), "yyyy-MM-dd")}
@@ -271,26 +284,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               }))}
             />
           </div>
-          {flockWeeklyMortality.length > 0 ? (
-            <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-                Weekly mortality
-              </p>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                {flockWeeklyMortality.map((w) => (
-                  <div key={w.week}>
-                    <span className="text-stone-500">Week {w.week}</span>{" "}
-                    <span className="font-semibold text-stone-900">{w.total}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          {flockLevelFeed > 0 ? (
-            <p className="mt-2 text-sm text-stone-600">
-              Flock-level feed (not allocated to a house): {formatNumber(flockLevelFeed)} lbs
-            </p>
-          ) : null}
           <div className="mt-4">
             <FarmQuickLinks farmId={farm.id} />
           </div>
@@ -299,9 +292,33 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         <Card className="mt-6">
           <p className="font-semibold text-stone-800">No active flock</p>
           <p className="mt-1 text-sm text-stone-600">
-            Use <a href="#add-flock" className="font-semibold text-emerald-800 underline">Add flock</a>{" "}
-            to start tracking mortality.
+            {latestCompletedFlock ? (
+              <>
+                Flock {latestCompletedFlock.flockNumber} was completed. You can make it active again,
+                or{" "}
+                <a href="#add-flock" className="font-semibold text-emerald-800 underline">
+                  add a new flock
+                </a>
+                .
+              </>
+            ) : (
+              <>
+                Use{" "}
+                <a href="#add-flock" className="font-semibold text-emerald-800 underline">
+                  Add flock
+                </a>{" "}
+                to start tracking mortality.
+              </>
+            )}
           </p>
+          {latestCompletedFlock ? (
+            <div className="mt-3">
+              <ReactivateFlockButton
+                flockId={latestCompletedFlock.id}
+                flockNumber={latestCompletedFlock.flockNumber}
+              />
+            </div>
+          ) : null}
         </Card>
       )}
 
@@ -314,83 +331,30 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       <h2 className="mt-8 text-xl font-bold">Houses</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         {houseCards.map(
-          ({ house, hf, metrics, weeklyMortality, projectedHeadCount, status, cfmSqft }) => (
-          <Card key={house.id}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-lg font-bold">House {house.houseNumber}</p>
-                <p className="text-sm text-stone-600">
-                  {formatNumber(house.squareFootage)} sq ft
-                  {house.totalFanCFM != null ? ` · ${formatNumber(house.totalFanCFM)} CFM` : ""}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-start gap-2">
-                {hf ? <StatusBadge status={status} /> : null}
-                <HouseCardActions
-                  farmId={farm.id}
-                  house={{
-                    id: house.id,
-                    houseNumber: house.houseNumber,
-                    squareFootage: house.squareFootage,
-                    houseLength: house.houseLength,
-                    houseWidth: house.houseWidth,
-                    totalFanCFM: house.totalFanCFM,
-                    numberOfFans: house.numberOfFans,
-                    feederType: house.feederType,
-                    drinkerType: house.drinkerType,
-                    notes: house.notes,
-                  }}
-                />
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-              <div>
-                <p className="text-stone-500">CFM / sq ft</p>
-                <p className="font-semibold">{cfmSqft != null ? cfmSqft.toFixed(2) : "—"}</p>
-              </div>
-              <div>
-                <p className="text-stone-500">Birds placed</p>
-                <p className="font-semibold">{hf ? formatNumber(hf.placedBirdCount) : "—"}</p>
-              </div>
-              <div>
-                <p className="text-stone-500">Today</p>
-                <p className="font-semibold">{metrics?.today ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-stone-500">Cumulative Mortality</p>
-                <p className="font-semibold">
-                  {metrics
-                    ? `${metrics.cumulative} (${formatPct(metrics.cumulativePct)})`
-                    : "—"}
-                </p>
-              </div>
-              <div>
-                <p className="text-stone-500">Remaining</p>
-                <p className="font-semibold">{metrics ? formatNumber(metrics.remaining) : "—"}</p>
-              </div>
-              <div>
-                <p className="text-stone-500">Projected Head Count</p>
-                <p className="font-semibold">
-                  {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
-                </p>
-              </div>
-            </div>
-            {weeklyMortality.length > 0 ? (
-              <div className="mt-3 border-t border-stone-100 pt-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-                  Weekly mortality
-                </p>
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                  {weeklyMortality.map((w) => (
-                    <div key={w.week}>
-                      <span className="text-stone-500">Week {w.week}</span>{" "}
-                      <span className="font-semibold text-stone-900">{w.total}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </Card>
+          ({ house, hf, metrics, weeklyMortality, projectedHeadCount, projectedMortality, status }) => (
+          <HouseCard
+            key={house.id}
+            farmId={farm.id}
+            house={{
+              id: house.id,
+              houseNumber: house.houseNumber,
+              squareFootage: house.squareFootage,
+              houseLength: house.houseLength,
+              houseWidth: house.houseWidth,
+              totalFanCFM: house.totalFanCFM,
+              numberOfFans: house.numberOfFans,
+              feederType: house.feederType,
+              drinkerType: house.drinkerType,
+              notes: house.notes,
+            }}
+            hasFlock={Boolean(hf)}
+            status={status}
+            birdsPlaced={hf?.placedBirdCount ?? null}
+            metrics={metrics}
+            projectedHeadCount={projectedHeadCount}
+            projectedMortality={projectedMortality}
+            weeklyMortality={weeklyMortality}
+          />
         ),
         )}
         {farm.houses.length === 0 ? (
@@ -417,7 +381,12 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             id: v.id,
             visitDate: dateKeyFromDb(v.visitDate),
             visitType: v.visitType,
+            birdAgeInDays: v.birdAgeInDays,
+            generalBirdCondition: v.generalBirdCondition,
+            temperature: v.temperature,
+            humidity: v.humidity,
             followUpRequired: v.followUpRequired,
+            followUpDate: v.followUpDate ? dateKeyFromDb(v.followUpDate) : null,
             notes: v.notes,
           }))}
         />
@@ -429,10 +398,13 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           issues={farm.issues.map((issue) => ({
             id: issue.id,
             dateReported: dateKeyFromDb(issue.dateReported),
+            houseId: issue.houseId,
             priority: issue.priority,
             status: issue.status,
             category: issue.category,
+            assignedTo: issue.assignedTo,
             description: issue.description,
+            correctiveAction: issue.correctiveAction,
           }))}
         />
 
@@ -443,7 +415,11 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             id: e.id,
             eventDate: dateKeyFromDb(e.eventDate),
             eventType: e.eventType,
+            houseId: e.houseId,
             houseNumber: e.house?.houseNumber ?? null,
+            contractor: e.contractor,
+            litterDepth: e.litterDepth,
+            cost: e.cost,
             notes: e.notes,
           }))}
         />
@@ -469,8 +445,13 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             id: d.id,
             deliveryDate: dateKeyFromDb(d.deliveryDate),
             poundsDelivered: d.poundsDelivered,
+            flockId: d.flockId,
+            houseFlockId: d.houseFlockId,
             houseNumber: "houseNumber" in d ? (d.houseNumber as number | null) : null,
             feedType: d.feedType,
+            feedMill: d.feedMill,
+            ticketNumber: d.ticketNumber,
+            notes: d.notes,
           }))}
         />
       </div>

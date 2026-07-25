@@ -5,6 +5,7 @@ import { getDashboardData } from "@/lib/dashboard";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Card, PageHeader, StatTile, StatusBadge, Button } from "@/components/ui";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
+import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
@@ -126,14 +127,7 @@ export default async function DashboardPage() {
                   <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
                     Weekly mortality
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                    {farm.weeklyMortality.map((w) => (
-                      <div key={w.week}>
-                        <span className="text-stone-500">Week {w.week}</span>{" "}
-                        <span className="font-semibold text-stone-900">{w.total}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <WeeklyMortalityList weeks={farm.weeklyMortality} />
                 </div>
               ) : null}
               <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">

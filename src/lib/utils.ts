@@ -24,11 +24,16 @@ export const LITTER_EVENT_LABELS: Record<string, string> = {
   PARTIAL_LITTER_CLEANOUT: "Partial litter cleanout",
   DE_CAKING: "De-caking",
   WINDROWING: "Windrowing",
+  TILL: "Till",
   LITTER_TREATMENT: "Litter treatment",
   TOP_DRESSING: "Top dressing",
   COMPOST_REMOVAL: "Compost removal",
   OTHER: "Other",
 };
+
+export const FEED_TYPE_OPTIONS = ["Pre-started", "Starter", "Grower", "Finisher"] as const;
+
+export const FEED_MILL_OPTIONS = ["Heavener", "Fort Smith"] as const;
 
 export const VISIT_TYPE_LABELS: Record<string, string> = {
   ROUTINE_SERVICE: "Routine service visit",

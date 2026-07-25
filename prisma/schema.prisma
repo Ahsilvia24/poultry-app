@@ -53,6 +53,7 @@ enum LitterEventType {
   PARTIAL_LITTER_CLEANOUT
   DE_CAKING
   WINDROWING
+  TILL
   LITTER_TREATMENT
   TOP_DRESSING
   COMPOST_REMOVAL
@@ -222,6 +223,18 @@ model Flock {
   weightSampleDate          DateTime?   @db.Date
   /** Daily gain used for catch projections (lb/day). */
   growthRateLbsPerDay       Float?
+  /** Settlement sheet: market age (days). */
+  settlementMarketAgeInDays Int?
+  /** Settlement sheet: average weight (lb). */
+  settlementWeightLbs       Float?
+  /** Settlement sheet: feed conversion. */
+  settlementFeedConversion  Float?
+  /** Settlement sheet: adjusted feed conversion. */
+  settlementAdjustedFeedConversion Float?
+  /** Settlement sheet: good pounds sold. */
+  settlementGoodPoundsSold  Float?
+  /** Settlement sheet: place/rank (1, 2, 3…). */
+  settlementNo              Int?
   litterConditionAtPlacement String?
   notes                     String?
   deletedAt                 DateTime?

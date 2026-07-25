@@ -2,18 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { FarmIssueForm } from "@/components/FarmOpsForms";
+import { deleteIssueAction } from "@/app/actions/ops";
+import { DeleteRecordButton, EditRecordButton } from "@/components/DeleteRecordButton";
+import { FarmIssueForm, type IssueFormValues } from "@/components/FarmOpsForms";
 import { Card } from "@/components/ui";
 import { ISSUE_CATEGORY_LABELS } from "@/lib/utils";
 
-type IssueRow = {
+type IssueRow = IssueFormValues & {
   id: string;
-  dateReported: string;
-  priority: string;
-  status: string;
-  category: string;
-  description: string;
 };
+
+function issuesHashActive() {
+  return typeof window !== "undefined" && window.location.hash === "#issues";
+}
 
 export function FarmIssuesSection({
   farmId,
@@ -26,59 +27,140 @@ export function FarmIssuesSection({
   houses: Array<{ id: string; houseNumber: number }>;
   issues: IssueRow[];
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
-    function syncFromHash() {
-      if (window.location.hash === "#issues") setOpen(true);
+    if (issuesHashActive()) setOpen(true);
+
+    function onHashChange() {
+      if (issuesHashActive()) {
+        setOpen(true);
+        setFormOpen(false);
+        setEditingId(null);
+      }
     }
-    syncFromHash();
-    window.addEventListener("hashchange", syncFromHash);
-    return () => window.removeEventListener("hashchange", syncFromHash);
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+
+  function closeSection() {
+    setOpen(false);
+    setFormOpen(false);
+    setEditingId(null);
+    if (issuesHashActive()) {
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  }
+
+  function afterIssueSaved() {
+    setFormOpen(false);
+    setEditingId(null);
+    setOpen(true);
+    if (!issuesHashActive()) {
+      history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}#issues`,
+      );
+    }
+  }
+
+  if (!open) return <div id="issues" className="scroll-mt-24" />;
 
   return (
     <div id="issues" className="scroll-mt-24">
-      {open ? (
-        <Card>
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-bold">Recent issues</h3>
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                if (window.location.hash === "#issues") {
-                  history.replaceState(null, "", window.location.pathname + window.location.search);
-                }
-              }}
-              className="text-sm font-semibold text-stone-500 hover:text-stone-800"
-            >
-              Close
-            </button>
-          </div>
-          <ul className="mt-3 space-y-2 text-sm">
-            {issues.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-            {issues.map((issue) => (
-              <li key={issue.id} className="border-b border-stone-100 pb-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold">
-                    {format(new Date(issue.dateReported + "T12:00:00"), "MMM d, yyyy")}
-                  </span>
-                  <span className="rounded bg-stone-100 px-2 py-0.5 text-xs font-bold">
-                    {issue.priority}
-                  </span>
-                  <span className="text-xs text-stone-500">{issue.status}</span>
+      <Card>
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-bold">Recent issues</h3>
+          <button
+            type="button"
+            onClick={closeSection}
+            className="text-sm font-semibold text-stone-500 hover:text-stone-800"
+          >
+            Close
+          </button>
+        </div>
+        <ul className="mt-3 space-y-2 text-sm">
+          {issues.length === 0 ? <li className="text-stone-500">None yet</li> : null}
+          {issues.map((issue) => (
+            <li key={issue.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">
+                      {format(new Date(issue.dateReported + "T12:00:00"), "MMM d, yyyy")}
+                    </span>
+                    <span className="rounded bg-stone-100 px-2 py-0.5 text-xs font-bold">
+                      {issue.priority}
+                    </span>
+                    <span className="text-xs text-stone-500">{issue.status}</span>
+                  </div>
+                  <p>
+                    {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}: {issue.description}
+                  </p>
                 </div>
-                <p>
-                  {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}: {issue.description}
-                </p>
-              </li>
-            ))}
-          </ul>
-          <h4 className="mt-6 font-bold">Report issue</h4>
-          <FarmIssueForm farmId={farmId} flockId={flockId} houses={houses} />
-        </Card>
-      ) : null}
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <EditRecordButton
+                    label="Edit issue"
+                    active={editingId === issue.id}
+                    onClick={() => {
+                      setFormOpen(false);
+                      setEditingId((id) => (id === issue.id ? null : issue.id));
+                    }}
+                  />
+                  <DeleteRecordButton
+                    label="Delete issue"
+                    onDelete={() => deleteIssueAction(farmId, issue.id)}
+                  />
+                </div>
+              </div>
+              {editingId === issue.id ? (
+                <FarmIssueForm
+                  farmId={farmId}
+                  flockId={flockId}
+                  houses={houses}
+                  recordId={issue.id}
+                  initial={issue}
+                  onSuccess={afterIssueSaved}
+                />
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      {!formOpen ? (
+        <button
+          type="button"
+          onClick={() => {
+            setEditingId(null);
+            setFormOpen(true);
+          }}
+          className="mt-3 text-sm text-emerald-800 hover:underline"
+        >
+          Report issue
+        </button>
+      ) : (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setFormOpen(false)}
+            className="text-sm text-emerald-800 hover:underline"
+          >
+            Report issue
+          </button>
+          <Card className="mt-3">
+            <FarmIssueForm
+              farmId={farmId}
+              flockId={flockId}
+              houses={houses}
+              onSuccess={afterIssueSaved}
+            />
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

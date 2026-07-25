@@ -12,7 +12,7 @@ export default function NewFarmPage() {
     <div>
       <PageHeader
         title="New farm"
-        subtitle="Only a farm name is required — add other details anytime"
+        subtitle="Farm name and house count get you started — add other details anytime"
         actions={
           <Link href="/farms">
             <Button variant="secondary">Cancel</Button>
@@ -26,6 +26,21 @@ export default function NewFarmPage() {
             <div className="sm:col-span-2">
               <Label htmlFor="farmName">Farm name *</Label>
               <Input id="farmName" name="farmName" required />
+            </div>
+            <div>
+              <Label htmlFor="numberOfHouses">Number of houses</Label>
+              <Input
+                id="numberOfHouses"
+                name="numberOfHouses"
+                type="number"
+                min={0}
+                max={40}
+                inputMode="numeric"
+                defaultValue={4}
+              />
+              <p className="mt-1 text-xs text-stone-500">
+                Creates houses 1–N with default 29,700 sq ft (editable later)
+              </p>
             </div>
             <div className="sm:col-span-2">
               <Label htmlFor="growerName">Grower name</Label>

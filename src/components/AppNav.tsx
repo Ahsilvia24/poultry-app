@@ -10,6 +10,7 @@ const nav = [
   { href: "/farms", label: "Farms" },
   { href: "/mortality", label: "Mortality" },
   { href: "/lfo", label: "LFO" },
+  { href: "/settlement", label: "Settlement" },
   { href: "/reports", label: "Reports" },
   { href: "/search", label: "Search" },
   { href: "/settings", label: "Settings" },

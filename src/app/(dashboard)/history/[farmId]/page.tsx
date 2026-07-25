@@ -9,7 +9,8 @@ import {
 } from "@/lib/mortality/calculations";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Button, Card, PageHeader } from "@/components/ui";
-import { PerformanceForm } from "@/components/PerformanceForm";
+import { ReactivateFlockButton } from "@/components/FarmOpsForms";
+import { SettlementForm } from "@/components/SettlementForm";
 
 type Params = Promise<{ farmId: string }>;
 
@@ -142,10 +143,18 @@ export default async function FarmHistoryPage({ params }: { params: Params }) {
 
       {current ? (
         <Card className="mb-6">
-          <h2 className="text-lg font-bold">
-            {current.flock.flockStatus === "ACTIVE" ? "Current flock" : "Latest flock"} —{" "}
-            {current.flock.flockNumber}
-          </h2>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <h2 className="text-lg font-bold">
+              {current.flock.flockStatus === "ACTIVE" ? "Current flock" : "Latest flock"} —{" "}
+              {current.flock.flockNumber}
+            </h2>
+            {current.flock.flockStatus !== "ACTIVE" ? (
+              <ReactivateFlockButton
+                flockId={current.flock.id}
+                flockNumber={current.flock.flockNumber}
+              />
+            ) : null}
+          </div>
           <FlockMetrics row={current} />
         </Card>
       ) : (
@@ -163,10 +172,18 @@ export default async function FarmHistoryPage({ params }: { params: Params }) {
         <div className="mt-3 space-y-4">
           {previousThree.map((row) => (
             <Card key={row.flock.id}>
-              <h3 className="font-bold">
-                Flock {row.flock.flockNumber}
-                {row.flock.flockName ? ` — ${row.flock.flockName}` : ""}
-              </h3>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <h3 className="font-bold">
+                  Flock {row.flock.flockNumber}
+                  {row.flock.flockName ? ` — ${row.flock.flockName}` : ""}
+                </h3>
+                {row.flock.flockStatus !== "ACTIVE" ? (
+                  <ReactivateFlockButton
+                    flockId={row.flock.id}
+                    flockNumber={row.flock.flockNumber}
+                  />
+                ) : null}
+              </div>
               <FlockMetrics row={row} />
             </Card>
           ))}
@@ -278,20 +295,36 @@ export default async function FarmHistoryPage({ params }: { params: Params }) {
         </table>
       </div>
 
-      <Card className="mt-8">
-        <h2 className="font-bold text-stone-900">Enter settlement / FCR</h2>
+      <div className="mt-8">
+        <h2 className="font-bold text-stone-900">Settlement</h2>
         <p className="mt-1 text-sm text-stone-600">
-          Manually enter feed conversion and performance from the final settlement sheet.
+          Enter settlement sheet info for this farm&apos;s flocks.
         </p>
-        <PerformanceForm
-          houseFlocks={farm.flocks.flatMap((f) =>
-            f.houseFlocks.map((hf) => ({
-              id: hf.id,
-              label: `${f.flockNumber} · House ${hf.house.houseNumber}`,
-            })),
-          )}
-        />
-      </Card>
+        <div className="mt-3">
+          <SettlementForm
+            lockedFarmId={farm.id}
+            farms={[
+              {
+                id: farm.id,
+                farmName: farm.farmName,
+                flocks: farm.flocks.map((fl) => ({
+                  id: fl.id,
+                  flockNumber: fl.flockNumber,
+                  status: fl.flockStatus,
+                  birdType: fl.birdType,
+                  growthRateLbsPerDay: fl.growthRateLbsPerDay,
+                  settlementMarketAgeInDays: fl.settlementMarketAgeInDays,
+                  settlementWeightLbs: fl.settlementWeightLbs,
+                  settlementFeedConversion: fl.settlementFeedConversion,
+                  settlementAdjustedFeedConversion: fl.settlementAdjustedFeedConversion,
+                  settlementGoodPoundsSold: fl.settlementGoodPoundsSold,
+                  settlementNo: fl.settlementNo,
+                })),
+              },
+            ]}
+          />
+        </div>
+      </div>
     </div>
   );
 }
