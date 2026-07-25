@@ -83,8 +83,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     catchDate != null ? Math.max(0, differenceInCalendarDays(catchDate, today)) : null;
 
   let flockPlaced = 0;
-  let flockToday = 0;
   let flockCum = 0;
+  let flockProjectedHead = 0;
   const flockWeeklyTotals = new Map<number, number>();
 
   const houseCards = farm.houses.map((house) => {
@@ -115,8 +115,10 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
     if (hf && metrics) {
       flockPlaced += hf.placedBirdCount;
-      flockToday += metrics.today;
       flockCum += metrics.cumulative;
+    }
+    if (projectedHeadCount != null) {
+      flockProjectedHead += projectedHeadCount;
     }
     for (const w of weeklyMortality) {
       flockWeeklyTotals.set(w.week, (flockWeeklyTotals.get(w.week) ?? 0) + w.total);
@@ -240,12 +242,20 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             }
             action={submitFlockSchedule}
           />
-          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-3">
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Birds placed" value={formatNumber(flockPlaced)} />
-            <StatTile label="Today" value={flockToday} />
+            <StatTile label="Proj. Head Count" value={formatNumber(flockProjectedHead)} />
             <StatTile
-              label="Cumulative"
+              label="Cumulative Mortality"
               value={`${flockCum} (${formatPct(flockPlaced > 0 ? (flockCum / flockPlaced) * 100 : 0)})`}
+            />
+            <StatTile
+              label="Projected Mortality"
+              value={`${Math.max(0, flockPlaced - flockProjectedHead)} (${formatPct(
+                flockPlaced > 0
+                  ? (Math.max(0, flockPlaced - flockProjectedHead) / flockPlaced) * 100
+                  : 0,
+              )})`}
             />
           </div>
           {flockWeeklyMortality.length > 0 ? (
