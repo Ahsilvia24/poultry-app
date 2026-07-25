@@ -19,8 +19,8 @@ import {
 } from "@/lib/utils";
 import { createFlockAction, createHouseAction, updateFarmAction, updateFlockScheduleAction } from "@/app/actions/farms";
 import {
-  ArchiveFarmButton,
   CompleteFlockButton,
+  DeleteFarmButton,
   FarmIssueForm,
   FarmVisitForm,
   LitterEventForm,
@@ -162,7 +162,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               <Button variant="secondary">History</Button>
             </Link>
             {activeFlock ? <CompleteFlockButton flockId={activeFlock.id} /> : null}
-            <ArchiveFarmButton farmId={farm.id} />
+            <DeleteFarmButton farmId={farm.id} />
             <Link href="/farms">
               <Button variant="ghost">All farms</Button>
             </Link>

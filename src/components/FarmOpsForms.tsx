@@ -1,12 +1,12 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   createIssueAction,
   createLitterEventAction,
   createVisitAction,
 } from "@/app/actions/ops";
-import { archiveFarmAction, completeFlockAction } from "@/app/actions/farms";
+import { deactivateFarmAction, deleteFarmAction, completeFlockAction } from "@/app/actions/farms";
 import {
   ISSUE_CATEGORY_LABELS,
   LITTER_EVENT_LABELS,
@@ -255,28 +255,72 @@ export function LitterEventForm({
   );
 }
 
-export function ArchiveFarmButton({ farmId }: { farmId: string }) {
+export function DeleteFarmButton({ farmId }: { farmId: string }) {
   const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
+
   return (
-    <Button
-      type="button"
-      variant="danger"
-      disabled={pending}
-      onClick={() => {
-        if (
-          confirm(
-            "Archive this farm? It will be hidden from active lists but historical data is kept.",
-          )
-        ) {
-          start(async () => {
-            await archiveFarmAction(farmId);
-          });
-        }
-      }}
-    >
-      Archive farm
-    </Button>
+    <>
+      <Button type="button" variant="danger" disabled={pending} onClick={() => setOpen(true)}>
+        Delete farm
+      </Button>
+      {open ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-farm-title"
+            className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
+          >
+            <h3 id="delete-farm-title" className="text-lg font-bold text-stone-900">
+              Delete this farm?
+            </h3>
+            <p className="mt-2 text-sm text-stone-600">
+              Are you sure you want to delete this farm? Historical records are kept, but the farm
+              will be removed from your active lists.
+            </p>
+            <p className="mt-2 text-sm text-stone-600">
+              If you may need it again, make the farm inactive instead of deleting it.
+            </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button
+                type="button"
+                variant="danger"
+                disabled={pending}
+                onClick={() => {
+                  start(async () => {
+                    await deactivateFarmAction(farmId);
+                  });
+                }}
+              >
+                {pending ? "Working…" : "Make inactive"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={pending}
+                onClick={() => {
+                  start(async () => {
+                    await deleteFarmAction(farmId);
+                  });
+                }}
+              >
+                Yes, delete farm
+              </Button>
+              <Button type="button" variant="ghost" disabled={pending} onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
+}
+
+/** @deprecated Use DeleteFarmButton */
+export function ArchiveFarmButton({ farmId }: { farmId: string }) {
+  return <DeleteFarmButton farmId={farmId} />;
 }
 
 export function CompleteFlockButton({ flockId }: { flockId: string }) {

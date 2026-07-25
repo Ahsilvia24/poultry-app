@@ -79,7 +79,20 @@ export async function updateFarmAction(farmId: string, formData: FormData) {
   revalidatePath("/");
 }
 
-export async function archiveFarmAction(farmId: string) {
+export async function deactivateFarmAction(farmId: string) {
+  const user = await requireUser();
+  await assertFarmAccess(farmId, user.id!);
+  await prisma.farm.update({
+    where: { id: farmId },
+    data: { isActive: false, deletedAt: null },
+  });
+  revalidatePath("/farms");
+  revalidatePath(`/farms/${farmId}`);
+  revalidatePath("/");
+  redirect("/farms?status=inactive");
+}
+
+export async function deleteFarmAction(farmId: string) {
   const user = await requireUser();
   await assertFarmAccess(farmId, user.id!);
   await prisma.farm.update({
@@ -87,7 +100,13 @@ export async function archiveFarmAction(farmId: string) {
     data: { isActive: false, deletedAt: new Date() },
   });
   revalidatePath("/farms");
+  revalidatePath("/");
   redirect("/farms");
+}
+
+/** @deprecated Use deleteFarmAction */
+export async function archiveFarmAction(farmId: string) {
+  return deleteFarmAction(farmId);
 }
 
 export async function createHouseAction(farmId: string, formData: FormData) {
