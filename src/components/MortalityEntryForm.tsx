@@ -420,9 +420,13 @@ export function MortalityEntryForm({
                                     min={0}
                                     inputMode="numeric"
                                     className="min-h-11 px-3"
-                                    value={row.cullCount}
+                                    placeholder="0"
+                                    value={row.cullCount === "0" ? "" : row.cullCount}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) =>
-                                      updateRow(row.age, { cullCount: e.target.value })
+                                      updateRow(row.age, {
+                                        cullCount: e.target.value === "" ? "0" : e.target.value,
+                                      })
                                     }
                                   />
                                 </td>
@@ -433,10 +437,13 @@ export function MortalityEntryForm({
                                     min={0}
                                     inputMode="numeric"
                                     className="min-h-11 px-3"
-                                    value={row.dailyMortalityCount}
+                                    placeholder="0"
+                                    value={row.dailyMortalityCount === "0" ? "" : row.dailyMortalityCount}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) =>
                                       updateRow(row.age, {
-                                        dailyMortalityCount: e.target.value,
+                                        dailyMortalityCount:
+                                          e.target.value === "" ? "0" : e.target.value,
                                       })
                                     }
                                   />
