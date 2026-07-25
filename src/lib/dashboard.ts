@@ -1,4 +1,4 @@
-import { format, subDays, addDays } from "date-fns";
+import { format, subDays, addDays, startOfDay } from "date-fns";
 import {
   DEFAULT_THRESHOLDS,
   isRisingThreeDays,
@@ -8,6 +8,11 @@ import {
 import { prisma } from "@/lib/prisma";
 import type { FarmCardSummary, ThresholdSettings } from "@/types";
 import { differenceInCalendarDays } from "date-fns";
+import {
+  buildFlockVisitSchedule,
+  filterDueScheduledVisits,
+  resolveCatchDate,
+} from "@/lib/visits/schedule";
 
 export async function getUserThresholds(userId: string): Promise<ThresholdSettings> {
   const settings = await prisma.userSettings.findUnique({ where: { userId } });
@@ -60,7 +65,29 @@ export async function getDashboardData(userId: string) {
   let openIssues = 0;
   let highPriorityIssues = 0;
   const upcomingCatches: Array<{ farmName: string; date: string; flockNumber: string }> = [];
-  const followUps: Array<{ farmName: string; date: string }> = [];
+  const followUps: Array<{
+    farmId: string;
+    farmName: string;
+    date: string;
+    label: string;
+    flockNumber: string;
+  }> = [];
+  const horizon = addDays(startOfDay(today), 7);
+
+  const farmVisitDates = await prisma.farmVisit.findMany({
+    where: { farm: { userId, deletedAt: null, isActive: true } },
+    select: { farmId: true, flockId: true, visitDate: true },
+  });
+  const completedByFarm = new Map<string, Set<string>>();
+  for (const v of farmVisitDates) {
+    const key = format(v.visitDate, "yyyy-MM-dd");
+    let set = completedByFarm.get(v.farmId);
+    if (!set) {
+      set = new Set();
+      completedByFarm.set(v.farmId, set);
+    }
+    set.add(key);
+  }
 
   for (const farm of farms) {
     const active = farm.flocks.find((f) => f.flockStatus === "ACTIVE");
@@ -85,6 +112,20 @@ export async function getDashboardData(userId: string) {
           flockNumber: active.flockNumber,
         });
       }
+
+      const catchDate = resolveCatchDate(active);
+      const schedule = buildFlockVisitSchedule(active.placementDate, catchDate);
+      const completed = completedByFarm.get(farm.id) ?? new Set();
+      for (const due of filterDueScheduledVisits(schedule, today, horizon, completed)) {
+        followUps.push({
+          farmId: farm.id,
+          farmName: farm.farmName,
+          date: due.dateKey,
+          label: due.label,
+          flockNumber: active.flockNumber,
+        });
+      }
+
       for (const hf of active.houseFlocks) {
         placed += hf.placedBirdCount;
         const metrics = summarizeForDate(hf.placedBirdCount, hf.mortalities, today);
@@ -127,24 +168,7 @@ export async function getDashboardData(userId: string) {
     });
   }
 
-  const visitsDue = await prisma.farmVisit.findMany({
-    where: {
-      farm: { userId, deletedAt: null },
-      followUpRequired: true,
-      followUpDate: { lte: addDays(today, 7) },
-    },
-    include: { farm: true },
-    orderBy: { followUpDate: "asc" },
-    take: 10,
-  });
-  for (const v of visitsDue) {
-    if (v.followUpDate) {
-      followUps.push({
-        farmName: v.farm.farmName,
-        date: format(v.followUpDate, "yyyy-MM-dd"),
-      });
-    }
-  }
+  followUps.sort((a, b) => a.date.localeCompare(b.date) || a.farmName.localeCompare(b.farmName));
 
   const recentCleanouts = await prisma.litterEvent.findMany({
     where: {
@@ -173,7 +197,7 @@ export async function getDashboardData(userId: string) {
     upcomingCatches: upcomingCatches
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 8),
-    followUps,
+    followUps: followUps.slice(0, 20),
     recentCleanouts: recentCleanouts.map((c) => ({
       farmName: c.farm.farmName,
       date: format(c.eventDate, "yyyy-MM-dd"),

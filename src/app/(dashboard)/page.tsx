@@ -115,11 +115,17 @@ export default async function DashboardPage() {
         </Card>
         <Card>
           <h3 className="font-bold">Follow-up visits due</h3>
+          <p className="mt-1 text-xs text-stone-500">
+            Pre-brood, placement, day 3, day 7, then weekly through catch
+          </p>
           <ul className="mt-3 space-y-2 text-sm">
             {data.followUps.length === 0 ? <li className="text-stone-500">None</li> : null}
             {data.followUps.map((f) => (
-              <li key={`${f.farmName}-${f.date}`}>
-                <span className="font-semibold">{f.farmName}</span> — {f.date}
+              <li key={`${f.farmId}-${f.date}-${f.label}`}>
+                <Link href={`/farms/${f.farmId}`} className="font-semibold hover:underline">
+                  {f.farmName}
+                </Link>{" "}
+                — {f.label} ({f.date})
               </li>
             ))}
           </ul>
