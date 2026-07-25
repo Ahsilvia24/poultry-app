@@ -17,7 +17,7 @@ import {
   formatNumber,
   formatPct,
 } from "@/lib/utils";
-import { createFlockAction, createHouseAction } from "@/app/actions/farms";
+import { createFlockAction, createHouseAction, updateFarmAction } from "@/app/actions/farms";
 import {
   ArchiveFarmButton,
   CompleteFlockButton,
@@ -132,11 +132,20 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     await createFlockAction(farmId, formData);
   }
 
+  async function submitFarmUpdate(formData: FormData) {
+    "use server";
+    await updateFarmAction(farmId, formData);
+  }
+
+  const subtitleParts = [farm.growerName || null, farm.farmNumber ? `Farm #${farm.farmNumber}` : null].filter(
+    Boolean,
+  );
+
   return (
     <div>
       <PageHeader
         title={farm.farmName}
-        subtitle={`${farm.growerName}${farm.farmNumber ? ` · Farm #${farm.farmNumber}` : ""}`}
+        subtitle={subtitleParts.length ? subtitleParts.join(" · ") : "Farm details"}
         actions={
           <>
             <Link href={`/mortality?farmId=${farm.id}`}>
@@ -156,27 +165,53 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <h2 className="font-bold text-stone-900">Farm info</h2>
-          <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-stone-500">Grower</dt>
-              <dd className="font-semibold">{farm.growerName}</dd>
+          <h2 className="font-bold text-stone-900">Edit farm info</h2>
+          <form action={submitFarmUpdate} className="mt-4 space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Label htmlFor="farmName">Farm name *</Label>
+                <Input id="farmName" name="farmName" required defaultValue={farm.farmName} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="growerName">Grower name</Label>
+                <Input id="growerName" name="growerName" defaultValue={farm.growerName} />
+              </div>
+              <div>
+                <Label htmlFor="farmNumber">Farm number</Label>
+                <Input id="farmNumber" name="farmNumber" defaultValue={farm.farmNumber ?? ""} />
+              </div>
+              <div>
+                <Label htmlFor="phoneNumber">Phone</Label>
+                <Input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="tel"
+                  defaultValue={farm.phoneNumber ?? ""}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="address">Address</Label>
+                <Input id="address" name="address" defaultValue={farm.address ?? ""} />
+              </div>
+              <div>
+                <Label htmlFor="city">City</Label>
+                <Input id="city" name="city" defaultValue={farm.city ?? ""} />
+              </div>
+              <div>
+                <Label htmlFor="state">State</Label>
+                <Input id="state" name="state" defaultValue={farm.state ?? ""} />
+              </div>
+              <div>
+                <Label htmlFor="zipCode">ZIP</Label>
+                <Input id="zipCode" name="zipCode" defaultValue={farm.zipCode ?? ""} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea id="notes" name="notes" rows={3} defaultValue={farm.notes ?? ""} />
+              </div>
             </div>
-            <div>
-              <dt className="text-stone-500">Phone</dt>
-              <dd className="font-semibold">{farm.phoneNumber ?? "—"}</dd>
-            </div>
-            <div className="sm:col-span-2">
-              <dt className="text-stone-500">Address</dt>
-              <dd className="font-semibold">
-                {[farm.address, farm.city, farm.state, farm.zipCode].filter(Boolean).join(", ") || "—"}
-              </dd>
-            </div>
-            <div className="sm:col-span-2">
-              <dt className="text-stone-500">Notes</dt>
-              <dd className="font-semibold whitespace-pre-wrap">{farm.notes ?? "—"}</dd>
-            </div>
-          </dl>
+            <Button type="submit">Save farm changes</Button>
+          </form>
         </Card>
 
         <Card>

@@ -12,7 +12,7 @@ export default function NewFarmPage() {
     <div>
       <PageHeader
         title="New farm"
-        subtitle="Add a grower farm to your route"
+        subtitle="Only a farm name is required — add other details anytime"
         actions={
           <Link href="/farms">
             <Button variant="secondary">Cancel</Button>
@@ -24,12 +24,12 @@ export default function NewFarmPage() {
         <form action={submitCreateFarm} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <Label htmlFor="farmName">Farm name</Label>
+              <Label htmlFor="farmName">Farm name *</Label>
               <Input id="farmName" name="farmName" required />
             </div>
             <div className="sm:col-span-2">
               <Label htmlFor="growerName">Grower name</Label>
-              <Input id="growerName" name="growerName" required />
+              <Input id="growerName" name="growerName" />
             </div>
             <div>
               <Label htmlFor="farmNumber">Farm number</Label>

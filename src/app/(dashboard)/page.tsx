@@ -56,7 +56,9 @@ export default async function DashboardPage() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-lg font-bold text-stone-900">{farm.farmName}</p>
-                  <p className="text-sm text-stone-600">{farm.growerName}</p>
+                  {farm.growerName ? (
+                    <p className="text-sm text-stone-600">{farm.growerName}</p>
+                  ) : null}
                 </div>
                 <StatusBadge status={farm.status} />
               </div>

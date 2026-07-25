@@ -7,15 +7,15 @@ export const registerSchema = z.object({
 });
 
 export const farmSchema = z.object({
-  farmName: z.string().min(1),
-  growerName: z.string().min(1),
-  farmNumber: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zipCode: z.string().optional(),
-  phoneNumber: z.string().optional(),
-  notes: z.string().optional(),
+  farmName: z.string().min(1, "Farm name is required"),
+  growerName: z.string().optional().nullable(),
+  farmNumber: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  state: z.string().optional().nullable(),
+  zipCode: z.string().optional().nullable(),
+  phoneNumber: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
 });
 
 export const houseSchema = z.object({

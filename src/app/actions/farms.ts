@@ -15,19 +15,30 @@ export async function createFarmAction(formData: FormData) {
   const user = await requireUser();
   const parsed = farmSchema.safeParse({
     farmName: formData.get("farmName"),
-    growerName: formData.get("growerName"),
-    farmNumber: emptyToNull(formData.get("farmNumber")) ?? undefined,
-    address: emptyToNull(formData.get("address")) ?? undefined,
-    city: emptyToNull(formData.get("city")) ?? undefined,
-    state: emptyToNull(formData.get("state")) ?? undefined,
-    zipCode: emptyToNull(formData.get("zipCode")) ?? undefined,
-    phoneNumber: emptyToNull(formData.get("phoneNumber")) ?? undefined,
-    notes: emptyToNull(formData.get("notes")) ?? undefined,
+    growerName: emptyToNull(formData.get("growerName")),
+    farmNumber: emptyToNull(formData.get("farmNumber")),
+    address: emptyToNull(formData.get("address")),
+    city: emptyToNull(formData.get("city")),
+    state: emptyToNull(formData.get("state")),
+    zipCode: emptyToNull(formData.get("zipCode")),
+    phoneNumber: emptyToNull(formData.get("phoneNumber")),
+    notes: emptyToNull(formData.get("notes")),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid farm" };
 
   const farm = await prisma.farm.create({
-    data: { ...parsed.data, userId: user.id! },
+    data: {
+      userId: user.id!,
+      farmName: parsed.data.farmName,
+      growerName: parsed.data.growerName?.trim() || "",
+      farmNumber: parsed.data.farmNumber,
+      address: parsed.data.address,
+      city: parsed.data.city,
+      state: parsed.data.state,
+      zipCode: parsed.data.zipCode,
+      phoneNumber: parsed.data.phoneNumber,
+      notes: parsed.data.notes,
+    },
   });
   revalidatePath("/farms");
   redirect(`/farms/${farm.id}`);
@@ -38,20 +49,34 @@ export async function updateFarmAction(farmId: string, formData: FormData) {
   await assertFarmAccess(farmId, user.id!);
   const parsed = farmSchema.safeParse({
     farmName: formData.get("farmName"),
-    growerName: formData.get("growerName"),
-    farmNumber: emptyToNull(formData.get("farmNumber")) ?? undefined,
-    address: emptyToNull(formData.get("address")) ?? undefined,
-    city: emptyToNull(formData.get("city")) ?? undefined,
-    state: emptyToNull(formData.get("state")) ?? undefined,
-    zipCode: emptyToNull(formData.get("zipCode")) ?? undefined,
-    phoneNumber: emptyToNull(formData.get("phoneNumber")) ?? undefined,
-    notes: emptyToNull(formData.get("notes")) ?? undefined,
+    growerName: emptyToNull(formData.get("growerName")),
+    farmNumber: emptyToNull(formData.get("farmNumber")),
+    address: emptyToNull(formData.get("address")),
+    city: emptyToNull(formData.get("city")),
+    state: emptyToNull(formData.get("state")),
+    zipCode: emptyToNull(formData.get("zipCode")),
+    phoneNumber: emptyToNull(formData.get("phoneNumber")),
+    notes: emptyToNull(formData.get("notes")),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid farm" };
 
-  await prisma.farm.update({ where: { id: farmId }, data: parsed.data });
+  await prisma.farm.update({
+    where: { id: farmId },
+    data: {
+      farmName: parsed.data.farmName,
+      growerName: parsed.data.growerName?.trim() || "",
+      farmNumber: parsed.data.farmNumber,
+      address: parsed.data.address,
+      city: parsed.data.city,
+      state: parsed.data.state,
+      zipCode: parsed.data.zipCode,
+      phoneNumber: parsed.data.phoneNumber,
+      notes: parsed.data.notes,
+    },
+  });
   revalidatePath(`/farms/${farmId}`);
   revalidatePath("/farms");
+  revalidatePath("/");
 }
 
 export async function archiveFarmAction(farmId: string) {

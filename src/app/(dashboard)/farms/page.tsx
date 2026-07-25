@@ -80,7 +80,9 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-lg font-bold text-stone-900">{farm.farmName}</p>
-                      <p className="text-sm text-stone-600">{farm.growerName}</p>
+                      {farm.growerName ? (
+                        <p className="text-sm text-stone-600">{farm.growerName}</p>
+                      ) : null}
                       {farm.farmNumber ? (
                         <p className="mt-1 text-xs text-stone-500">Farm #{farm.farmNumber}</p>
                       ) : null}
