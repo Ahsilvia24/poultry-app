@@ -181,8 +181,6 @@ export async function saveMortalityHouseSeriesAction(raw: unknown) {
         dailyMortalityCount: entry.dailyMortalityCount,
         cullCount: entry.cullCount,
         totalDailyLoss: loss,
-        mortalityCause: parsed.data.mortalityCause,
-        comments: parsed.data.comments,
         isDraft: parsed.data.isDraft ?? false,
         enteredByUserId: user.id!,
       },

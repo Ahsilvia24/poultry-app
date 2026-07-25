@@ -11,9 +11,9 @@ import {
   calcTotalDailyLoss,
   resolveMortalityStatus,
 } from "@/lib/mortality/calculations";
-import { MORTALITY_CAUSE_LABELS, formatNumber, formatPct } from "@/lib/utils";
+import { formatNumber, formatPct } from "@/lib/utils";
 import type { ThresholdSettings } from "@/types";
-import { Button, Card, Input, Label, Select, StatusBadge, Textarea } from "@/components/ui";
+import { Button, Card, Input, Label, Select, StatusBadge } from "@/components/ui";
 
 export type MortalityHousePayload = {
   houseFlockId: string;
@@ -46,8 +46,6 @@ type DayRow = {
   dailyMortalityCount: string;
   cullCount: string;
 };
-
-const CAUSES = Object.keys(MORTALITY_CAUSE_LABELS);
 
 function draftKey(farmId: string, houseFlockId: string) {
   return `mortality-house-draft:${farmId}:${houseFlockId}`;
@@ -122,8 +120,6 @@ export function MortalityEntryForm({
   );
 
   const [rows, setRows] = useState<DayRow[]>([]);
-  const [mortalityCause, setMortalityCause] = useState("UNKNOWN");
-  const [comments, setComments] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [summary, setSummary] = useState<{
@@ -159,15 +155,9 @@ export function MortalityEntryForm({
     try {
       const raw = sessionStorage.getItem(key);
       if (raw) {
-        const parsed = JSON.parse(raw) as {
-          rows?: DayRow[];
-          mortalityCause?: string;
-          comments?: string;
-        };
+        const parsed = JSON.parse(raw) as { rows?: DayRow[] };
         if (Array.isArray(parsed.rows) && parsed.rows.length > 0) {
           setRows(parsed.rows);
-          setMortalityCause(parsed.mortalityCause ?? "UNKNOWN");
-          setComments(parsed.comments ?? "");
           setDraftNotice("Restored local draft for this house.");
           return;
         }
@@ -177,11 +167,7 @@ export function MortalityEntryForm({
     }
 
     setDraftNotice(null);
-    const built = buildRows(flock.placementDate, house);
-    setRows(built);
-    const latestWithCause = [...house.existingEntries].reverse().find((e) => e.mortalityCause);
-    setMortalityCause(latestWithCause?.mortalityCause ?? "UNKNOWN");
-    setComments(latestWithCause?.comments ?? "");
+    setRows(buildRows(flock.placementDate, house));
   }, [farmId, flock?.id, flock?.placementDate, house?.houseFlockId]);
 
   function updateRow(age: number, patch: Partial<Pick<DayRow, "dailyMortalityCount" | "cullCount">>) {
@@ -192,10 +178,7 @@ export function MortalityEntryForm({
   function saveDraftLocal() {
     if (!house) return;
     const key = draftKey(farmId, house.houseFlockId);
-    sessionStorage.setItem(
-      key,
-      JSON.stringify({ rows, mortalityCause, comments }),
-    );
+    sessionStorage.setItem(key, JSON.stringify({ rows }));
     setDraftNotice("Draft saved on this device.");
   }
 
@@ -229,8 +212,8 @@ export function MortalityEntryForm({
       const result = await saveMortalityHouseSeriesAction({
         flockId: flock.id,
         houseFlockId: house.houseFlockId,
-        mortalityCause,
-        comments: comments || null,
+        mortalityCause: "UNKNOWN",
+        comments: null,
         isDraft,
         entries: rows.map((r) => ({
           mortalityDate: r.mortalityDate,
@@ -260,10 +243,7 @@ export function MortalityEntryForm({
 
       const key = draftKey(farmId, house.houseFlockId);
       if (isDraft) {
-        sessionStorage.setItem(
-          key,
-          JSON.stringify({ rows, mortalityCause, comments }),
-        );
+        sessionStorage.setItem(key, JSON.stringify({ rows }));
         setDraftNotice("Draft saved to server and this device.");
       } else {
         sessionStorage.removeItem(key);
@@ -363,39 +343,7 @@ export function MortalityEntryForm({
       </Card>
 
       {house && rows.length > 0 ? (
-        <Card className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="mortalityCause">Primary cause</Label>
-              <Select
-                id="mortalityCause"
-                value={mortalityCause}
-                onChange={(e) => {
-                  setMortalityCause(e.target.value);
-                  setSummary(null);
-                }}
-              >
-                {CAUSES.map((c) => (
-                  <option key={c} value={c}>
-                    {MORTALITY_CAUSE_LABELS[c]}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="comments">Comments</Label>
-              <Textarea
-                id="comments"
-                rows={2}
-                value={comments}
-                onChange={(e) => {
-                  setComments(e.target.value);
-                  setSummary(null);
-                }}
-              />
-            </div>
-          </div>
-
+        <Card>
           <div className="-mx-4 overflow-x-auto sm:mx-0">
             <table className="min-w-full border-collapse text-sm">
               <thead>
@@ -403,8 +351,8 @@ export function MortalityEntryForm({
                   <th className="sticky left-0 z-10 bg-stone-50 px-3 py-2 font-semibold text-stone-600">
                     Age
                   </th>
-                  <th className="px-3 py-2 font-semibold text-stone-600">Mortality</th>
                   <th className="px-3 py-2 font-semibold text-stone-600">Culls</th>
+                  <th className="px-3 py-2 font-semibold text-stone-600">Mortality</th>
                   <th className="px-3 py-2 font-semibold text-stone-600">Loss</th>
                 </tr>
               </thead>
@@ -421,6 +369,17 @@ export function MortalityEntryForm({
                       </td>
                       <td className="px-2 py-1.5">
                         <Input
+                          aria-label={`Culls day ${row.age}`}
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          className="min-h-11 px-3"
+                          value={row.cullCount}
+                          onChange={(e) => updateRow(row.age, { cullCount: e.target.value })}
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <Input
                           aria-label={`Mortality day ${row.age}`}
                           type="number"
                           min={0}
@@ -430,17 +389,6 @@ export function MortalityEntryForm({
                           onChange={(e) =>
                             updateRow(row.age, { dailyMortalityCount: e.target.value })
                           }
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <Input
-                          aria-label={`Culls day ${row.age}`}
-                          type="number"
-                          min={0}
-                          inputMode="numeric"
-                          className="min-h-11 px-3"
-                          value={row.cullCount}
-                          onChange={(e) => updateRow(row.age, { cullCount: e.target.value })}
                         />
                       </td>
                       <td className="px-3 py-2 font-semibold text-stone-800">{loss}</td>
