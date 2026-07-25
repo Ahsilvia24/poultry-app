@@ -181,6 +181,39 @@ export function summarizeForDate(
   };
 }
 
+/**
+ * Average daily loss over the last 7 calendar days ending on `asOfDate`
+ * (missing days count as 0).
+ */
+export function averageDailyMortalityLast7Days(
+  records: MortalityRecordLike[],
+  asOfDate: Date = new Date(),
+): number {
+  const byDate = new Map(
+    records.map((r) => [
+      toDateKey(r.mortalityDate),
+      r.totalDailyLoss ?? calcTotalDailyLoss(r.dailyMortalityCount, r.cullCount),
+    ]),
+  );
+  let total = 0;
+  for (let i = 0; i < 7; i++) {
+    total += byDate.get(format(subDays(asOfDate, i), "yyyy-MM-dd")) ?? 0;
+  }
+  return total / 7;
+}
+
+/**
+ * Projected head at catch: remaining − (avg last-7-day daily loss × days until catch).
+ */
+export function projectedHeadCountAtCatch(
+  remaining: number,
+  avgDailyMortality: number,
+  daysUntilCatch: number,
+): number {
+  const days = Math.max(0, daysUntilCatch);
+  return Math.max(0, Math.round(remaining - avgDailyMortality * days));
+}
+
 export function resolveMortalityStatus(
   metrics: { dailyPct: number; sevenDayPct: number; risingThreeDays?: boolean },
   thresholds: ThresholdSettings,

@@ -5,11 +5,14 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUserThresholds } from "@/lib/dashboard";
 import {
+  averageDailyMortalityLast7Days,
   isRisingThreeDays,
+  projectedHeadCountAtCatch,
   resolveMortalityStatus,
   summarizeForDate,
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
+import { resolveCatchDate } from "@/lib/visits/schedule";
 import { cfmPerSquareFoot } from "@/lib/ventilation/calculations";
 import {
   ISSUE_CATEGORY_LABELS,
@@ -75,6 +78,10 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       .filter((d) => !d.houseFlockId)
       .reduce((s, d) => s + d.poundsDelivered, 0) ?? 0;
 
+  const catchDate = activeFlock ? resolveCatchDate(activeFlock) : null;
+  const daysUntilCatch =
+    catchDate != null ? Math.max(0, differenceInCalendarDays(catchDate, today)) : null;
+
   let flockPlaced = 0;
   let flockToday = 0;
   let flockCum = 0;
@@ -89,6 +96,14 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       hf && activeFlock
         ? weeklyMortalityByPlacement(activeFlock.placementDate, hf.mortalities, today)
         : [];
+    const projectedHeadCount =
+      metrics && daysUntilCatch != null && hf
+        ? projectedHeadCountAtCatch(
+            metrics.remaining,
+            averageDailyMortalityLast7Days(hf.mortalities, today),
+            daysUntilCatch,
+          )
+        : null;
     const rising = hf ? isRisingThreeDays(hf.mortalities, today) : false;
     const status = metrics
       ? resolveMortalityStatus(
@@ -96,8 +111,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           thresholds,
         )
       : "Normal";
-    const feedLbs =
-      hf?.feedDeliveries.reduce((s, d) => s + d.poundsDelivered, 0) ?? 0;
     const cfmSqft = cfmPerSquareFoot(house.totalFanCFM, house.squareFootage);
 
     if (hf && metrics) {
@@ -114,8 +127,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       hf,
       metrics,
       weeklyMortality,
+      projectedHeadCount,
       status,
-      feedLbs,
       cfmSqft,
     };
   });
@@ -275,7 +288,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
       <h2 className="mt-8 text-xl font-bold">Houses</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
-        {houseCards.map(({ house, hf, metrics, weeklyMortality, status, feedLbs, cfmSqft }) => (
+        {houseCards.map(
+          ({ house, hf, metrics, weeklyMortality, projectedHeadCount, status, cfmSqft }) => (
           <Card key={house.id}>
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -312,9 +326,11 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
                 <p className="text-stone-500">Remaining</p>
                 <p className="font-semibold">{metrics ? formatNumber(metrics.remaining) : "—"}</p>
               </div>
-              <div className="sm:col-span-2">
-                <p className="text-stone-500">Feed delivered (house)</p>
-                <p className="font-semibold">{formatNumber(feedLbs)} lbs</p>
+              <div>
+                <p className="text-stone-500">PHC</p>
+                <p className="font-semibold">
+                  {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
+                </p>
               </div>
             </div>
             {weeklyMortality.length > 0 ? (
@@ -333,7 +349,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               </div>
             ) : null}
           </Card>
-        ))}
+        ),
+        )}
         {farm.houses.length === 0 ? (
           <Card>
             <p className="text-stone-600">No houses yet. Add one below.</p>
