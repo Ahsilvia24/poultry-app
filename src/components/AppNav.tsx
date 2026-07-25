@@ -9,7 +9,7 @@ const nav = [
   { href: "/", label: "Dashboard" },
   { href: "/farms", label: "Farms" },
   { href: "/mortality", label: "Mortality" },
-  { href: "/feed", label: "Feed" },
+  { href: "/lfo", label: "LFO" },
   { href: "/reports", label: "Reports" },
   { href: "/search", label: "Search" },
   { href: "/settings", label: "Settings" },

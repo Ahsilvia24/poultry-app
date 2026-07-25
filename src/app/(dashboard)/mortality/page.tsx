@@ -50,6 +50,10 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
             id: active.id,
             flockNumber: active.flockNumber,
             placementDate: format(active.placementDate, "yyyy-MM-dd"),
+            projectedCatchDate: active.projectedCatchDate
+              ? format(active.projectedCatchDate, "yyyy-MM-dd")
+              : null,
+            targetMarketAge: active.targetMarketAge,
             houses: active.houseFlocks.map((hf) => ({
               houseFlockId: hf.id,
               houseNumber: hf.house.houseNumber,

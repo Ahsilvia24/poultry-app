@@ -164,6 +164,7 @@ model Farm {
   litterEvents LitterEvent[]
   visits       FarmVisit[]
   issues       FarmIssue[]
+  followUpCompletions FollowUpCompletion[]
 
   @@index([userId])
   @@index([farmName])
@@ -216,6 +217,11 @@ model Flock {
   flockStatus               FlockStatus @default(ACTIVE)
   targetMarketAge           Int?
   targetMarketWeight        Float?
+  /** Avg bird weight (lb) from last sample / weigh. */
+  weightSampleLbs           Float?
+  weightSampleDate          DateTime?   @db.Date
+  /** Daily gain used for catch projections (lb/day). */
+  growthRateLbsPerDay       Float?
   litterConditionAtPlacement String?
   notes                     String?
   deletedAt                 DateTime?
@@ -227,6 +233,7 @@ model Flock {
   feedDeliveries FeedDelivery[]
   visits         FarmVisit[]
   issues         FarmIssue[]
+  followUpCompletions FollowUpCompletion[]
 
   @@index([farmId])
   @@index([flockStatus])
@@ -372,6 +379,26 @@ model FarmVisit {
 
   @@index([farmId])
   @@index([visitDate])
+}
+
+model FollowUpCompletion {
+  id            String   @id @default(cuid())
+  farmId        String
+  flockId       String?
+  scheduledDate DateTime @db.Date
+  label         String
+  completedAt   DateTime @default(now())
+  completedByUserId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  farm  Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  flock Flock? @relation(fields: [flockId], references: [id], onDelete: SetNull)
+
+  @@unique([farmId, scheduledDate, label])
+  @@index([farmId])
+  @@index([flockId])
+  @@index([scheduledDate])
 }
 
 model FarmIssue {

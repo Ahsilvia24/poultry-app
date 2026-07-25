@@ -16,11 +16,6 @@ export async function createFarmAction(formData: FormData) {
   const parsed = farmSchema.safeParse({
     farmName: formData.get("farmName"),
     growerName: emptyToNull(formData.get("growerName")),
-    farmNumber: emptyToNull(formData.get("farmNumber")),
-    address: emptyToNull(formData.get("address")),
-    city: emptyToNull(formData.get("city")),
-    state: emptyToNull(formData.get("state")),
-    zipCode: emptyToNull(formData.get("zipCode")),
     phoneNumber: emptyToNull(formData.get("phoneNumber")),
     notes: emptyToNull(formData.get("notes")),
   });
@@ -31,11 +26,6 @@ export async function createFarmAction(formData: FormData) {
       userId: user.id!,
       farmName: parsed.data.farmName,
       growerName: parsed.data.growerName?.trim() || "",
-      farmNumber: parsed.data.farmNumber,
-      address: parsed.data.address,
-      city: parsed.data.city,
-      state: parsed.data.state,
-      zipCode: parsed.data.zipCode,
       phoneNumber: parsed.data.phoneNumber,
       notes: parsed.data.notes,
     },
@@ -50,11 +40,6 @@ export async function updateFarmAction(farmId: string, formData: FormData) {
   const parsed = farmSchema.safeParse({
     farmName: formData.get("farmName"),
     growerName: emptyToNull(formData.get("growerName")),
-    farmNumber: emptyToNull(formData.get("farmNumber")),
-    address: emptyToNull(formData.get("address")),
-    city: emptyToNull(formData.get("city")),
-    state: emptyToNull(formData.get("state")),
-    zipCode: emptyToNull(formData.get("zipCode")),
     phoneNumber: emptyToNull(formData.get("phoneNumber")),
     notes: emptyToNull(formData.get("notes")),
   });
@@ -65,11 +50,11 @@ export async function updateFarmAction(farmId: string, formData: FormData) {
     data: {
       farmName: parsed.data.farmName,
       growerName: parsed.data.growerName?.trim() || "",
-      farmNumber: parsed.data.farmNumber,
-      address: parsed.data.address,
-      city: parsed.data.city,
-      state: parsed.data.state,
-      zipCode: parsed.data.zipCode,
+      farmNumber: null,
+      address: null,
+      city: null,
+      state: null,
+      zipCode: null,
       phoneNumber: parsed.data.phoneNumber,
       notes: parsed.data.notes,
     },
@@ -109,10 +94,8 @@ export async function archiveFarmAction(farmId: string) {
   return deleteFarmAction(farmId);
 }
 
-export async function createHouseAction(farmId: string, formData: FormData) {
-  const user = await requireUser();
-  await assertFarmAccess(farmId, user.id!);
-  const parsed = houseSchema.safeParse({
+function parseHouseForm(formData: FormData) {
+  return houseSchema.safeParse({
     houseNumber: formData.get("houseNumber"),
     squareFootage: formData.get("squareFootage"),
     houseLength: emptyToNull(formData.get("houseLength")),
@@ -129,6 +112,12 @@ export async function createHouseAction(farmId: string, formData: FormData) {
     fanCycleOffSeconds: emptyToNull(formData.get("fanCycleOffSeconds")),
     notes: emptyToNull(formData.get("notes")),
   });
+}
+
+export async function createHouseAction(farmId: string, formData: FormData) {
+  const user = await requireUser();
+  await assertFarmAccess(farmId, user.id!);
+  const parsed = parseHouseForm(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid house" };
 
   await prisma.$transaction(async (tx) => {
@@ -138,6 +127,60 @@ export async function createHouseAction(farmId: string, formData: FormData) {
   });
 
   revalidatePath(`/farms/${farmId}`);
+}
+
+export async function updateHouseAction(farmId: string, houseId: string, formData: FormData) {
+  const user = await requireUser();
+  await assertFarmAccess(farmId, user.id!);
+  const parsed = parseHouseForm(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid house" };
+
+  const house = await prisma.house.findFirst({
+    where: { id: houseId, farmId, deletedAt: null },
+  });
+  if (!house) return { error: "House not found" };
+
+  const conflict = await prisma.house.findFirst({
+    where: {
+      farmId,
+      houseNumber: parsed.data.houseNumber,
+      deletedAt: null,
+      NOT: { id: houseId },
+    },
+  });
+  if (conflict) return { error: `House ${parsed.data.houseNumber} already exists on this farm` };
+
+  await prisma.house.update({
+    where: { id: houseId },
+    data: parsed.data,
+  });
+
+  revalidatePath(`/farms/${farmId}`);
+  return { success: true };
+}
+
+export async function deleteHouseAction(farmId: string, houseId: string) {
+  const user = await requireUser();
+  await assertFarmAccess(farmId, user.id!);
+
+  const house = await prisma.house.findFirst({
+    where: { id: houseId, farmId, deletedAt: null },
+  });
+  if (!house) return { error: "House not found" };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.house.update({
+      where: { id: houseId },
+      data: { deletedAt: new Date() },
+    });
+    const count = await tx.house.count({ where: { farmId, deletedAt: null } });
+    await tx.farm.update({ where: { id: farmId }, data: { numberOfHouses: count } });
+  });
+
+  revalidatePath(`/farms/${farmId}`);
+  revalidatePath("/farms");
+  revalidatePath("/");
+  return { success: true };
 }
 
 export async function createFlockAction(farmId: string, formData: FormData) {
@@ -258,4 +301,36 @@ export async function updateFlockScheduleAction(flockId: string, formData: FormD
 
   revalidatePath(`/farms/${flock.farmId}`);
   revalidatePath("/");
+}
+
+export async function updateFlockWeightProjectionAction(flockId: string, formData: FormData) {
+  const user = await requireUser();
+  const flock = await prisma.flock.findFirst({
+    where: { id: flockId, farm: { userId: user.id!, deletedAt: null } },
+  });
+  if (!flock) return { error: "Flock not found" };
+
+  const growthRateRaw = emptyToNull(formData.get("growthRateLbsPerDay"));
+  const growthRateLbsPerDay = growthRateRaw != null ? Number(growthRateRaw) : null;
+
+  if (
+    growthRateLbsPerDay == null ||
+    !Number.isFinite(growthRateLbsPerDay) ||
+    growthRateLbsPerDay < 0
+  ) {
+    return { error: "Enter a valid growth rate (lb/day)" };
+  }
+
+  try {
+    await prisma.flock.update({
+      where: { id: flockId },
+      data: { growthRateLbsPerDay },
+    });
+  } catch (e) {
+    console.error(e);
+    return { error: "Could not save growth rate. Try refreshing the page." };
+  }
+
+  revalidatePath(`/farms/${flock.farmId}`);
+  return { success: true };
 }

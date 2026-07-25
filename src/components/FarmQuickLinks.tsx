@@ -8,8 +8,8 @@ export function FarmQuickLinks({ farmId }: { farmId: string }) {
   const links: Array<{ href: string; label: string; external?: boolean }> = [
     { href: "#visits", label: "Visits" },
     { href: "#issues", label: "Issues" },
-    { href: "#weight-projections", label: "Weight projections" },
     { href: "#litter", label: "Litter events" },
+    { href: "#feed", label: "Feed" },
     { href: `/history/${farmId}`, label: "Flock history", external: true },
     { href: `/reports?farmId=${farmId}`, label: "Reports", external: true },
     { href: "#add-flock", label: "Add flock" },

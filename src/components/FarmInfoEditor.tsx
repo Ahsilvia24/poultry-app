@@ -8,12 +8,7 @@ type FarmInfo = {
   id: string;
   farmName: string;
   growerName: string;
-  farmNumber: string | null;
   phoneNumber: string | null;
-  address: string | null;
-  city: string | null;
-  state: string | null;
-  zipCode: string | null;
   notes: string | null;
 };
 
@@ -66,6 +61,9 @@ export function FarmInfoEditor({
               <GearIcon className="h-4 w-4" />
             </button>
           </div>
+          {farm.phoneNumber ? (
+            <p className="mt-1 text-xs text-stone-500">{farm.phoneNumber}</p>
+          ) : null}
         </div>
         {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </div>
@@ -85,13 +83,9 @@ export function FarmInfoEditor({
                 <Label htmlFor="farmName">Farm name *</Label>
                 <Input id="farmName" name="farmName" required defaultValue={farm.farmName} />
               </div>
-              <div className="sm:col-span-2">
+              <div>
                 <Label htmlFor="growerName">Grower name</Label>
                 <Input id="growerName" name="growerName" defaultValue={farm.growerName} />
-              </div>
-              <div>
-                <Label htmlFor="farmNumber">Farm number</Label>
-                <Input id="farmNumber" name="farmNumber" defaultValue={farm.farmNumber ?? ""} />
               </div>
               <div>
                 <Label htmlFor="phoneNumber">Phone</Label>
@@ -101,22 +95,6 @@ export function FarmInfoEditor({
                   type="tel"
                   defaultValue={farm.phoneNumber ?? ""}
                 />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="address">Address</Label>
-                <Input id="address" name="address" defaultValue={farm.address ?? ""} />
-              </div>
-              <div>
-                <Label htmlFor="city">City</Label>
-                <Input id="city" name="city" defaultValue={farm.city ?? ""} />
-              </div>
-              <div>
-                <Label htmlFor="state">State</Label>
-                <Input id="state" name="state" defaultValue={farm.state ?? ""} />
-              </div>
-              <div>
-                <Label htmlFor="zipCode">ZIP</Label>
-                <Input id="zipCode" name="zipCode" defaultValue={farm.zipCode ?? ""} />
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="notes">Notes</Label>

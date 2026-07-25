@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { format, parseISO } from "date-fns";
 import { auth } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard";
-import { MORTALITY_DISCLAIMER } from "@/lib/mortality/calculations";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Card, PageHeader, StatTile, StatusBadge, Button } from "@/components/ui";
+import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
@@ -29,16 +30,44 @@ export default async function DashboardPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Active farms" value={data.stats.activeFarms} />
-        <StatTile label="Mortality today" value={data.stats.mortalityEnteredToday} />
-        <StatTile label="Upcoming catches" value={data.upcomingCatches.length} />
-        <StatTile label="Follow-ups due" value={data.followUps.length} />
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatTile label="Active farms" value={data.stats.activeFarms} />
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Card>
+            <p className="text-sm font-semibold text-stone-500">Today&apos;s schedule</p>
+            <FollowUpsDueList items={data.todaysSchedule} />
+          </Card>
+          <Card>
+            <p className="text-sm font-semibold text-stone-500">Upcoming</p>
+            <FollowUpsDueList items={data.upcomingSchedule} showDate />
+          </Card>
+        </div>
+        <Card>
+          <p className="text-sm font-semibold text-stone-500">Upcoming catches</p>
+          <ul className="mt-2 space-y-1.5 text-sm">
+            {data.upcomingCatches.length === 0 ? (
+              <li className="text-stone-500">None</li>
+            ) : (
+              data.upcomingCatches.map((c) => (
+                <li
+                  key={`${c.farmName}-${c.date}`}
+                  className="flex items-baseline justify-between gap-3"
+                >
+                    <span className="font-semibold text-stone-900">
+                      {c.farmName}
+                      <span className="font-normal text-stone-500"> · {c.flockAgeDays}d</span>
+                    </span>
+                  <span className="shrink-0 text-stone-600">
+                    {format(parseISO(c.date), "EEEE, MMM d, yyyy")}
+                  </span>
+                </li>
+              ))
+            )}
+          </ul>
+        </Card>
       </div>
-
-      <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-        {MORTALITY_DISCLAIMER}
-      </p>
 
       <h2 className="mt-8 text-xl font-bold">Active farms</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -47,9 +76,17 @@ export default async function DashboardPage() {
             <Card className="transition hover:border-emerald-400">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-lg font-bold text-stone-900">{farm.farmName}</p>
+                  <p className="text-lg font-bold text-stone-900">
+                    {farm.farmName}
+                    {farm.flockAgeDays != null ? (
+                      <span className="font-semibold text-stone-500"> · {farm.flockAgeDays}d</span>
+                    ) : null}
+                  </p>
                   {farm.growerName ? (
                     <p className="text-sm text-stone-600">{farm.growerName}</p>
+                  ) : null}
+                  {farm.phoneNumber ? (
+                    <p className="mt-0.5 text-xs text-stone-500">{farm.phoneNumber}</p>
                   ) : null}
                 </div>
                 <StatusBadge status={farm.status} />
@@ -64,11 +101,17 @@ export default async function DashboardPage() {
                   <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
                 </div>
                 <div>
-                  <p className="text-stone-500">Today</p>
+                  <p className="text-stone-500">Today&apos;s Mortality</p>
                   <p className="font-semibold">{farm.todayMortality}</p>
                 </div>
                 <div>
-                  <p className="text-stone-500">Cumulative</p>
+                  <p className="text-stone-500">Projected Head Count</p>
+                  <p className="font-semibold">
+                    {farm.projectedHeadCount != null ? formatNumber(farm.projectedHeadCount) : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-stone-500">Cumulative Mortality</p>
                   <p className="font-semibold">
                     {farm.cumulativeMortality} ({formatPct(farm.cumulativeMortalityPct)})
                   </p>
@@ -104,35 +147,7 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div className="mt-8 grid gap-4 lg:grid-cols-3">
-        <Card>
-          <h3 className="font-bold">Upcoming projected catches</h3>
-          <ul className="mt-3 space-y-2 text-sm">
-            {data.upcomingCatches.length === 0 ? <li className="text-stone-500">None</li> : null}
-            {data.upcomingCatches.map((c) => (
-              <li key={`${c.farmName}-${c.flockNumber}`}>
-                <span className="font-semibold">{c.farmName}</span> — {c.flockNumber} on {c.date}
-              </li>
-            ))}
-          </ul>
-        </Card>
-        <Card>
-          <h3 className="font-bold">Follow-up visits due</h3>
-          <p className="mt-1 text-xs text-stone-500">
-            Pre-brood, placement, day 3, day 7, then weekly through catch
-          </p>
-          <ul className="mt-3 space-y-2 text-sm">
-            {data.followUps.length === 0 ? <li className="text-stone-500">None</li> : null}
-            {data.followUps.map((f) => (
-              <li key={`${f.farmId}-${f.date}-${f.label}`}>
-                <Link href={`/farms/${f.farmId}`} className="font-semibold hover:underline">
-                  {f.farmName}
-                </Link>{" "}
-                — {f.label} ({f.date})
-              </li>
-            ))}
-          </ul>
-        </Card>
+      <div className="mt-8">
         <Card>
           <h3 className="font-bold">Recent litter cleanouts</h3>
           <ul className="mt-3 space-y-2 text-sm">

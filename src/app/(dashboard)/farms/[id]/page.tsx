@@ -12,27 +12,27 @@ import {
   summarizeForDate,
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
-import { resolveCatchDate } from "@/lib/visits/schedule";
+import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
+import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
 import { cfmPerSquareFoot } from "@/lib/ventilation/calculations";
 import {
-  ISSUE_CATEGORY_LABELS,
-  LITTER_EVENT_LABELS,
-  VISIT_TYPE_LABELS,
   formatNumber,
   formatPct,
 } from "@/lib/utils";
-import { createFlockAction, createHouseAction, updateFlockScheduleAction } from "@/app/actions/farms";
-import {
-  CompleteFlockButton,
-  FarmIssueForm,
-  FarmVisitForm,
-  LitterEventForm,
-} from "@/components/FarmOpsForms";
-import { FlockScheduleFields } from "@/components/FlockScheduleFields";
+import { createFlockAction, updateFlockScheduleAction } from "@/app/actions/farms";
+import { CompleteFlockButton } from "@/components/FarmOpsForms";
 import { FlockScheduleEditor } from "@/components/FlockScheduleEditor";
+import { HouseCardActions } from "@/components/HouseCardActions";
+import { AddFlockSection } from "@/components/AddFlockSection";
+import { AddHouseForm } from "@/components/AddHouseForm";
 import { FarmInfoEditor } from "@/components/FarmInfoEditor";
 import { FarmQuickLinks } from "@/components/FarmQuickLinks";
-import { Button, Card, Input, Label, Select, StatTile, StatusBadge, Textarea } from "@/components/ui";
+import { FarmFeedSection } from "@/components/FarmFeedSection";
+import { FarmIssuesSection } from "@/components/FarmIssuesSection";
+import { FarmLitterSection } from "@/components/FarmLitterSection";
+import { FarmVisitsSection } from "@/components/FarmVisitsSection";
+import { WeightProjectionTile } from "@/components/WeightProjectionTile";
+import { Button, Card, StatTile, StatusBadge } from "@/components/ui";
 
 type Params = Promise<{ id: string }>;
 
@@ -159,11 +159,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     .sort((a, b) => b.deliveryDate.getTime() - a.deliveryDate.getTime())
     .slice(0, 8);
 
-  async function submitHouse(formData: FormData) {
-    "use server";
-    await createHouseAction(farmId, formData);
-  }
-
   async function submitFlock(formData: FormData) {
     "use server";
     await createFlockAction(farmId, formData);
@@ -175,10 +170,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     await updateFlockScheduleAction(activeFlock.id, formData);
   }
 
-  const subtitleParts = [farm.growerName || null, farm.farmNumber ? `Farm #${farm.farmNumber}` : null].filter(
-    Boolean,
-  );
-  const subtitle = subtitleParts.length > 0 ? subtitleParts.join(" · ") : "Farm details";
+  const subtitle = farm.growerName || "Farm details";
 
   return (
     <div>
@@ -196,12 +188,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           id: farm.id,
           farmName: farm.farmName,
           growerName: farm.growerName,
-          farmNumber: farm.farmNumber,
           phoneNumber: farm.phoneNumber,
-          address: farm.address,
-          city: farm.city,
-          state: farm.state,
-          zipCode: farm.zipCode,
           notes: farm.notes,
         }}
         subtitle={subtitle}
@@ -227,7 +214,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             summary={[
               `Placed ${format(activeFlock.placementDate, "MMM d, yyyy")}`,
               activeFlock.projectedCatchDate
-                ? `Proj. Catch ${format(activeFlock.projectedCatchDate, "MMM d, yyyy")}`
+                ? `Catch ${format(activeFlock.projectedCatchDate, "MMM d, yyyy")}`
                 : null,
               activeFlock.targetMarketAge != null
                 ? `${activeFlock.targetMarketAge} days`
@@ -251,7 +238,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           />
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Birds placed" value={formatNumber(flockPlaced)} />
-            <StatTile label="Proj. Head Count" value={formatNumber(flockProjectedHead)} />
+            <StatTile label="Projected Head Count" value={formatNumber(flockProjectedHead)} />
             <StatTile
               label="Cumulative Mortality"
               value={`${flockCum} (${formatPct(flockPlaced > 0 ? (flockCum / flockPlaced) * 100 : 0)})`}
@@ -261,6 +248,27 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               value={`${formatNumber(projectedMortalityCount)} (${formatPct(
                 flockPlaced > 0 ? (projectedMortalityCount / flockPlaced) * 100 : 0,
               )})`}
+            />
+            <WeightProjectionTile
+              flockId={activeFlock.id}
+              catchDateKey={format(resolveCatchDate(activeFlock), "yyyy-MM-dd")}
+              growthRateLbsPerDay={resolveGrowthRate(activeFlock.growthRateLbsPerDay)}
+              projections={catchWeightProjections({
+                placementDate: activeFlock.placementDate,
+                catchDate: resolveCatchDate(activeFlock),
+                growthRateLbsPerDay: resolveGrowthRate(activeFlock.growthRateLbsPerDay),
+              }).map((p) => ({
+                offsetDays: p.offsetDays,
+                dateKey: format(p.date, "yyyy-MM-dd"),
+                label:
+                  p.offsetDays === 0
+                    ? "Catch day"
+                    : p.offsetDays === 1
+                      ? "Catch +1"
+                      : "Catch +2",
+                ageDays: p.ageDays,
+                weightLbs: p.weightLbs,
+              }))}
             />
           </div>
           {flockWeeklyMortality.length > 0 ? (
@@ -309,14 +317,31 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           ({ house, hf, metrics, weeklyMortality, projectedHeadCount, status, cfmSqft }) => (
           <Card key={house.id}>
             <div className="flex items-start justify-between gap-2">
-              <div>
+              <div className="min-w-0">
                 <p className="text-lg font-bold">House {house.houseNumber}</p>
                 <p className="text-sm text-stone-600">
                   {formatNumber(house.squareFootage)} sq ft
                   {house.totalFanCFM != null ? ` · ${formatNumber(house.totalFanCFM)} CFM` : ""}
                 </p>
               </div>
-              {hf ? <StatusBadge status={status} /> : null}
+              <div className="flex shrink-0 items-start gap-2">
+                {hf ? <StatusBadge status={status} /> : null}
+                <HouseCardActions
+                  farmId={farm.id}
+                  house={{
+                    id: house.id,
+                    houseNumber: house.houseNumber,
+                    squareFootage: house.squareFootage,
+                    houseLength: house.houseLength,
+                    houseWidth: house.houseWidth,
+                    totalFanCFM: house.totalFanCFM,
+                    numberOfFans: house.numberOfFans,
+                    feederType: house.feederType,
+                    drinkerType: house.drinkerType,
+                    notes: house.notes,
+                  }}
+                />
+              </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
               <div>
@@ -332,7 +357,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
                 <p className="font-semibold">{metrics?.today ?? "—"}</p>
               </div>
               <div>
-                <p className="text-stone-500">Cumulative</p>
+                <p className="text-stone-500">Cumulative Mortality</p>
                 <p className="font-semibold">
                   {metrics
                     ? `${metrics.cumulative} (${formatPct(metrics.cumulativePct)})`
@@ -344,7 +369,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
                 <p className="font-semibold">{metrics ? formatNumber(metrics.remaining) : "—"}</p>
               </div>
               <div>
-                <p className="text-stone-500">PHC</p>
+                <p className="text-stone-500">Projected Head Count</p>
                 <p className="font-semibold">
                   {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
                 </p>
@@ -375,268 +400,79 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         ) : null}
       </div>
 
-      <div className="mt-8">
-        <Card>
-          <h3 className="font-bold">Add house</h3>
-          <form action={submitHouse} className="mt-4 space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="houseNumber">House number</Label>
-                <Input id="houseNumber" name="houseNumber" type="number" min={1} required />
-              </div>
-              <div>
-                <Label htmlFor="squareFootage">Square footage</Label>
-                <Input
-                  id="squareFootage"
-                  name="squareFootage"
-                  type="number"
-                  min={1}
-                  step="any"
-                  required
-                  defaultValue={29700}
-                />
-              </div>
-              <div>
-                <Label htmlFor="totalFanCFM">Total fan CFM</Label>
-                <Input id="totalFanCFM" name="totalFanCFM" type="number" min={0} step="any" />
-              </div>
-              <div>
-                <Label htmlFor="numberOfFans">Number of fans</Label>
-                <Input id="numberOfFans" name="numberOfFans" type="number" min={0} />
-              </div>
-              <div>
-                <Label htmlFor="houseLength">Length (ft)</Label>
-                <Input id="houseLength" name="houseLength" type="number" step="any" />
-              </div>
-              <div>
-                <Label htmlFor="houseWidth">Width (ft)</Label>
-                <Input id="houseWidth" name="houseWidth" type="number" step="any" />
-              </div>
-              <div>
-                <Label htmlFor="feederType">Feeder type</Label>
-                <Input id="feederType" name="feederType" />
-              </div>
-              <div>
-                <Label htmlFor="drinkerType">Drinker type</Label>
-                <Input id="drinkerType" name="drinkerType" />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="houseNotes">Notes</Label>
-              <Textarea id="houseNotes" name="notes" rows={2} />
-            </div>
-            <Button type="submit">Add house</Button>
-          </form>
-        </Card>
-      </div>
+      <AddHouseForm farmId={farm.id} />
 
-      <div id="add-flock" className="mt-8 scroll-mt-24">
-        <Card>
-          <h3 className="font-bold">Add flock</h3>
-          {activeFlock ? (
-            <p className="mt-2 text-sm text-amber-800">
-              An active flock already exists. Complete it before placing a new one.
-            </p>
-          ) : farm.houses.length === 0 ? (
-            <p className="mt-2 text-sm text-stone-600">Add houses before creating a flock.</p>
-          ) : (
-            <form action={submitFlock} className="mt-4 space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="flockNumber">Flock number</Label>
-                  <Input id="flockNumber" name="flockNumber" required />
-                </div>
-                <div>
-                  <Label htmlFor="flockName">Flock name</Label>
-                  <Input id="flockName" name="flockName" />
-                </div>
-                <FlockScheduleFields initialPlacement={format(today, "yyyy-MM-dd")} />
-                <div>
-                  <Label htmlFor="birdType">Bird type</Label>
-                  <Input id="birdType" name="birdType" />
-                </div>
-                <div>
-                  <Label htmlFor="sex">Sex</Label>
-                  <Select id="sex" name="sex" defaultValue="STRAIGHT_RUN">
-                    <option value="STRAIGHT_RUN">Straight run</option>
-                    <option value="MALE">Male</option>
-                    <option value="FEMALE">Female</option>
-                    <option value="UNKNOWN">Unknown</option>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="processingPlant">Processing plant</Label>
-                  <Input id="processingPlant" name="processingPlant" />
-                </div>
-              </div>
-              <input type="hidden" name="flockStatus" value="ACTIVE" />
-              <input
-                type="hidden"
-                name="initialBirdCount"
-                value={String(Math.max(1, farm.houses.length))}
-              />
-              <div>
-                <p className="mb-2 text-sm font-semibold text-stone-700">Birds placed per house</p>
-                <div className="space-y-2">
-                  {farm.houses.map((house) => (
-                    <div key={house.id} className="flex items-center gap-3">
-                      <input type="hidden" name="houseId" value={house.id} />
-                      <Label htmlFor={`placed-${house.id}`}>House {house.houseNumber}</Label>
-                      <Input
-                        id={`placed-${house.id}`}
-                        name="placedBirdCount"
-                        type="number"
-                        min={1}
-                        required
-                        className="max-w-[10rem]"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="flockNotes">Notes</Label>
-                <Textarea id="flockNotes" name="notes" rows={2} />
-              </div>
-              <Button type="submit">Create flock</Button>
-            </form>
-          )}
-        </Card>
-      </div>
+      <AddFlockSection
+        action={submitFlock}
+        hasActiveFlock={Boolean(activeFlock)}
+        houses={farm.houses.map((h) => ({ id: h.id, houseNumber: h.houseNumber }))}
+        initialPlacement={format(today, "yyyy-MM-dd")}
+      />
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <div id="visits" className="scroll-mt-24">
-        <Card>
-          <h3 className="font-bold">Recent visits</h3>
-          <ul className="mt-3 space-y-2 text-sm">
-            {farm.visits.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-            {farm.visits.map((v) => (
-              <li key={v.id} className="border-b border-stone-100 pb-2">
-                <span className="font-semibold">{format(v.visitDate, "MMM d, yyyy")}</span>
-                {" — "}
-                {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
-                {v.followUpRequired ? (
-                  <span className="ml-2 text-amber-700">Follow-up due</span>
-                ) : null}
-                {v.notes ? <p className="text-stone-600">{v.notes}</p> : null}
-              </li>
-            ))}
-          </ul>
-          <h4 className="mt-6 font-bold">Log visit</h4>
-          <FarmVisitForm farmId={farm.id} flockId={activeFlock?.id} />
-        </Card>
-        </div>
+        <FarmVisitsSection
+          farmId={farm.id}
+          flockId={activeFlock?.id}
+          visits={farm.visits.map((v) => ({
+            id: v.id,
+            visitDate: dateKeyFromDb(v.visitDate),
+            visitType: v.visitType,
+            followUpRequired: v.followUpRequired,
+            notes: v.notes,
+          }))}
+        />
 
-        <div id="issues" className="scroll-mt-24">
-        <Card>
-          <h3 className="font-bold">Recent issues</h3>
-          <ul className="mt-3 space-y-2 text-sm">
-            {farm.issues.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-            {farm.issues.map((issue) => (
-              <li key={issue.id} className="border-b border-stone-100 pb-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold">{format(issue.dateReported, "MMM d, yyyy")}</span>
-                  <span className="rounded bg-stone-100 px-2 py-0.5 text-xs font-bold">
-                    {issue.priority}
-                  </span>
-                  <span className="text-xs text-stone-500">{issue.status}</span>
-                </div>
-                <p>
-                  {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}: {issue.description}
-                </p>
-              </li>
-            ))}
-          </ul>
-          <h4 className="mt-6 font-bold">Report issue</h4>
-          <FarmIssueForm
-            farmId={farm.id}
-            flockId={activeFlock?.id}
-            houses={farm.houses.map((h) => ({ id: h.id, houseNumber: h.houseNumber }))}
-          />
-        </Card>
-        </div>
+        <FarmIssuesSection
+          farmId={farm.id}
+          flockId={activeFlock?.id}
+          houses={farm.houses.map((h) => ({ id: h.id, houseNumber: h.houseNumber }))}
+          issues={farm.issues.map((issue) => ({
+            id: issue.id,
+            dateReported: dateKeyFromDb(issue.dateReported),
+            priority: issue.priority,
+            status: issue.status,
+            category: issue.category,
+            description: issue.description,
+          }))}
+        />
 
-        <div id="weight-projections" className="scroll-mt-24">
-          <Card>
-            <h3 className="font-bold">Weight projections</h3>
-            {activeFlock ? (
-              <div className="mt-3 space-y-2 text-sm">
-                <p>
-                  <span className="text-stone-500">Target market age:</span>{" "}
-                  <span className="font-semibold">
-                    {activeFlock.targetMarketAge ?? 52} days
-                  </span>
-                </p>
-                <p>
-                  <span className="text-stone-500">Target market weight:</span>{" "}
-                  <span className="font-semibold">
-                    {activeFlock.targetMarketWeight != null
-                      ? `${activeFlock.targetMarketWeight} lb`
-                      : "Not set"}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-stone-500">Current age:</span>{" "}
-                  <span className="font-semibold">
-                    {differenceInCalendarDays(today, activeFlock.placementDate)} days
-                  </span>
-                </p>
-                <p className="text-stone-600">
-                  Detailed weekly weight projection curves can be added here later. For now this
-                  shows the flock&apos;s target market age and weight.
-                </p>
-              </div>
-            ) : (
-              <p className="mt-2 text-sm text-stone-600">
-                Add an active flock to see weight projection targets.
-              </p>
-            )}
-          </Card>
-        </div>
+        <FarmLitterSection
+          farmId={farm.id}
+          houses={farm.houses.map((h) => ({ id: h.id, houseNumber: h.houseNumber }))}
+          events={farm.litterEvents.map((e) => ({
+            id: e.id,
+            eventDate: dateKeyFromDb(e.eventDate),
+            eventType: e.eventType,
+            houseNumber: e.house?.houseNumber ?? null,
+            notes: e.notes,
+          }))}
+        />
 
-        <div id="litter" className="scroll-mt-24">
-        <Card>
-          <h3 className="font-bold">Litter events</h3>
-          <ul className="mt-3 space-y-2 text-sm">
-            {farm.litterEvents.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-            {farm.litterEvents.map((e) => (
-              <li key={e.id} className="border-b border-stone-100 pb-2">
-                <span className="font-semibold">{format(e.eventDate, "MMM d, yyyy")}</span>
-                {" — "}
-                {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
-                {e.house ? ` · House ${e.house.houseNumber}` : ""}
-                {e.notes ? <p className="text-stone-600">{e.notes}</p> : null}
-              </li>
-            ))}
-          </ul>
-          <h4 className="mt-6 font-bold">Record litter event</h4>
-          <LitterEventForm
-            farmId={farm.id}
-            houses={farm.houses.map((h) => ({ id: h.id, houseNumber: h.houseNumber }))}
-          />
-        </Card>
-        </div>
-
-        <Card>
-          <h3 className="font-bold">Feed deliveries</h3>
-          <ul className="mt-3 space-y-2 text-sm">
-            {allFeedDeliveries.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-            {allFeedDeliveries.map((d) => (
-              <li key={d.id} className="border-b border-stone-100 pb-2">
-                <span className="font-semibold">{format(d.deliveryDate, "MMM d, yyyy")}</span>
-                {" — "}
-                {formatNumber(d.poundsDelivered)} lbs
-                {"houseNumber" in d && d.houseNumber != null
-                  ? ` · House ${d.houseNumber}`
-                  : " · Flock-level"}
-                {d.feedType ? ` · ${d.feedType}` : ""}
-              </li>
-            ))}
-          </ul>
-          <Link href="/feed" className="mt-3 inline-block text-sm font-semibold text-emerald-800 underline">
-            Record feed delivery
-          </Link>
-        </Card>
+        <FarmFeedSection
+          farmId={farm.id}
+          farms={[
+            {
+              id: farm.id,
+              farmName: farm.farmName,
+              flocks: farm.flocks.map((flock) => ({
+                id: flock.id,
+                flockNumber: flock.flockNumber,
+                status: flock.flockStatus,
+                houses: flock.houseFlocks.map((hf) => ({
+                  houseFlockId: hf.id,
+                  houseNumber: hf.house.houseNumber,
+                })),
+              })),
+            },
+          ]}
+          deliveries={allFeedDeliveries.map((d) => ({
+            id: d.id,
+            deliveryDate: dateKeyFromDb(d.deliveryDate),
+            poundsDelivered: d.poundsDelivered,
+            houseNumber: "houseNumber" in d ? (d.houseNumber as number | null) : null,
+            feedType: d.feedType,
+          }))}
+        />
       </div>
     </div>
   );

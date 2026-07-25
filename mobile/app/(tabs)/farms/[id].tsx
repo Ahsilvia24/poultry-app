@@ -10,9 +10,6 @@ type FarmDetail = {
     farmName: string;
     growerName: string;
     phoneNumber: string | null;
-    address: string | null;
-    city: string | null;
-    state: string | null;
     notes: string | null;
   };
   activeFlock: { id: string; flockNumber: string; placementDate: string } | null;
@@ -85,12 +82,9 @@ export default function FarmDetailScreen() {
       refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
     >
       <Text style={styles.subtitle}>{farm.growerName}</Text>
-      <Text style={styles.muted}>
-        {[farm.address, farm.city, farm.state].filter(Boolean).join(", ") || "No address"}
-      </Text>
       {farm.phoneNumber ? (
         <Pressable onPress={() => Linking.openURL(`tel:${farm.phoneNumber}`)}>
-          <Text style={{ color: colors.accent, fontWeight: "700", marginTop: 8 }}>{farm.phoneNumber}</Text>
+          <Text style={{ color: colors.accent, fontWeight: "700", marginTop: 4 }}>{farm.phoneNumber}</Text>
         </Pressable>
       ) : null}
 

@@ -10,7 +10,7 @@ import {
   IssueStatus,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { addDays, subDays } from "date-fns";
+import { addDays, format, getDay, nextDay, startOfDay, subDays } from "date-fns";
 
 const prisma = new PrismaClient();
 
@@ -27,192 +27,129 @@ function lossForDay(day: number, houseIndex: number): { mort: number; cull: numb
     "HEAT_STRESS",
     "CULL",
   ];
-  return { mort, cull, cause: causes[day % causes.length] };
+  return { mort, cull, cause: causes[day % causes.length]! };
 }
 
-async function seedHistoricalFlock(
-  farmId: string,
-  houseIds: string[],
-  flockNumber: string,
-  placementOffsetDays: number,
-  durationDays: number,
-) {
-  const placementDate = subDays(new Date(), placementOffsetDays);
-  const catchDate = addDays(placementDate, durationDays);
-  const perHouse = 22000;
-  const flock = await prisma.flock.create({
-    data: {
-      farmId,
-      flockNumber,
-      flockName: `Flock ${flockNumber}`,
-      placementDate,
-      projectedCatchDate: catchDate,
-      actualCatchDate: catchDate,
-      processingPlant: "Central Processing",
-      birdType: "Ross 708",
-      sex: FlockSex.STRAIGHT_RUN,
-      initialBirdCount: perHouse * houseIds.length,
-      flockStatus: FlockStatus.COMPLETED,
-      targetMarketAge: 42,
-      targetMarketWeight: 6.2,
-      litterConditionAtPlacement: "Good",
-      houseFlocks: {
-        create: houseIds.map((houseId) => ({
-          houseId,
-          placedBirdCount: perHouse,
-        })),
-      },
-    },
-    include: { houseFlocks: true },
-  });
-
-  for (let hi = 0; hi < flock.houseFlocks.length; hi++) {
-    const hf = flock.houseFlocks[hi];
-    let cum = 0;
-    for (let d = 0; d < durationDays; d += 3) {
-      const { mort, cull, cause } = lossForDay(d, hi);
-      const loss = mort + cull;
-      cum += loss;
-      await prisma.dailyMortality.create({
+async function createHouses(farmId: string, count: number, baseYear = 2015) {
+  const houses = [];
+  for (let i = 1; i <= count; i++) {
+    houses.push(
+      await prisma.house.create({
         data: {
-          houseFlockId: hf.id,
-          mortalityDate: addDays(placementDate, d),
-          birdAgeInDays: d,
-          dailyMortalityCount: mort,
-          cullCount: cull,
-          totalDailyLoss: loss,
-          mortalityCause: cause,
+          farmId,
+          houseNumber: i,
+          squareFootage: 24000 + i * 200,
+          houseLength: 480,
+          houseWidth: 50,
+          totalFanCFM: 170000,
+          numberOfFans: 11,
+          coolingPadSquareFootage: 1100,
+          feederType: "Pan",
+          drinkerType: "Nipple",
+          controllerType: i % 2 === 0 ? "Rotem" : "Chore-Tronics",
+          yearBuilt: baseYear + (i % 6),
+          minVentilationCFM: 11000,
         },
-      });
-    }
-    const mortPct = (cum / perHouse) * 100;
-    await prisma.houseFlock.update({
-      where: { id: hf.id },
-      data: {
-        finalBirdCount: perHouse - cum,
-        finalAverageWeight: 6.1 + (hi % 5) * 0.05,
-        totalFeedDelivered: 185000,
-        feedConversion: 1.62,
-        totalMortality: cum,
-        mortalityPercentage: mortPct,
-        livabilityPercentage: 100 - mortPct,
-        condemnationPercentage: 0.4,
-      },
-    });
-    await prisma.flockPerformance.create({
-      data: {
-        houseFlockId: hf.id,
-        marketAgeInDays: durationDays,
-        averageLiveWeight: 6.15,
-        totalLiveWeight: (perHouse - cum) * 6.15,
-        feedConversion: 1.62,
-        adjustedFeedConversion: 1.58,
-        livabilityPercentage: 100 - mortPct,
-        mortalityPercentage: mortPct,
-        condemnationPercentage: 0.4,
-        settlementDate: catchDate,
-        settlementNotes: "Settlement entered from company sheet",
-      },
-    });
-    await prisma.feedDelivery.create({
-      data: {
-        houseFlockId: hf.id,
-        flockId: flock.id,
-        deliveryDate: addDays(placementDate, 10),
-        feedType: "Grower",
-        feedMill: "Valley Feed",
-        ticketNumber: `T-${flockNumber}-${hi + 1}`,
-        poundsDelivered: 48000,
-        tonsDelivered: 24,
-      },
-    });
+      }),
+    );
   }
-
-  return flock;
+  return houses;
 }
 
-async function createActiveFlock(
-  userId: string,
-  farmId: string,
-  houseIds: string[],
-  flockNumber: string,
-  placedDaysAgo: number,
-) {
-  const placementDate = subDays(new Date(), placedDaysAgo);
-  const perHouse = 23000;
+async function createActiveFlock(input: {
+  userId: string;
+  farmId: string;
+  houseIds: string[];
+  flockNumber: string;
+  placementDate: Date;
+  projectedCatchDate: Date;
+  birdType?: string;
+}) {
+  const placementDate = startOfDay(input.placementDate);
+  const projectedCatchDate = startOfDay(input.projectedCatchDate);
+  const today = startOfDay(new Date());
+  const ageToday = Math.max(0, Math.min(
+    Math.floor((today.getTime() - placementDate.getTime()) / 86400000),
+    Math.floor((projectedCatchDate.getTime() - placementDate.getTime()) / 86400000),
+  ));
+  const perHouse = 22000 + (input.houseIds.length % 3) * 500;
+  const marketAge = Math.round(
+    (projectedCatchDate.getTime() - placementDate.getTime()) / 86400000,
+  );
+
   const flock = await prisma.flock.create({
     data: {
-      farmId,
-      flockNumber,
-      flockName: `Active ${flockNumber}`,
+      farmId: input.farmId,
+      flockNumber: input.flockNumber,
+      flockName: `Active ${input.flockNumber}`,
       placementDate,
-      projectedCatchDate: addDays(placementDate, 42),
+      projectedCatchDate,
       processingPlant: "Central Processing",
-      birdType: "Cobb 500",
+      birdType: input.birdType ?? "Ross 708",
       sex: FlockSex.STRAIGHT_RUN,
-      initialBirdCount: perHouse * houseIds.length,
+      initialBirdCount: perHouse * input.houseIds.length,
       flockStatus: FlockStatus.ACTIVE,
-      targetMarketAge: 42,
+      targetMarketAge: marketAge,
       targetMarketWeight: 6.4,
       litterConditionAtPlacement: "Fresh cake removed",
       houseFlocks: {
-        create: houseIds.map((houseId) => ({ houseId, placedBirdCount: perHouse })),
+        create: input.houseIds.map((houseId) => ({ houseId, placedBirdCount: perHouse })),
       },
     },
     include: { houseFlocks: true },
   });
 
-  for (let hi = 0; hi < flock.houseFlocks.length; hi++) {
-    const hf = flock.houseFlocks[hi];
-    for (let d = 0; d <= placedDaysAgo; d++) {
-      const dayLoss = lossForDay(d, hi);
-      await prisma.dailyMortality.create({
-        data: {
-          houseFlockId: hf.id,
-          mortalityDate: addDays(placementDate, d),
-          birdAgeInDays: d,
-          dailyMortalityCount: dayLoss.mort,
-          cullCount: dayLoss.cull,
-          totalDailyLoss: dayLoss.mort + dayLoss.cull,
-          mortalityCause: dayLoss.cause,
-          enteredByUserId: userId,
-        },
-      });
+  // Only seed mortality for ages that have already started
+  if (ageToday >= 0 && placementDate <= today) {
+    for (let hi = 0; hi < flock.houseFlocks.length; hi++) {
+      const hf = flock.houseFlocks[hi]!;
+      for (let d = 0; d <= ageToday; d++) {
+        const dayLoss = lossForDay(d, hi);
+        await prisma.dailyMortality.create({
+          data: {
+            houseFlockId: hf.id,
+            mortalityDate: addDays(placementDate, d),
+            birdAgeInDays: d,
+            dailyMortalityCount: dayLoss.mort,
+            cullCount: dayLoss.cull,
+            totalDailyLoss: dayLoss.mort + dayLoss.cull,
+            mortalityCause: dayLoss.cause,
+            enteredByUserId: input.userId,
+          },
+        });
+      }
+      if (ageToday >= 5) {
+        await prisma.feedDelivery.create({
+          data: {
+            flockId: flock.id,
+            houseFlockId: hf.id,
+            deliveryDate: addDays(placementDate, Math.min(5, ageToday)),
+            feedType: "Starter",
+            feedMill: "Valley Feed",
+            ticketNumber: `ACTIVE-${input.flockNumber}-${hi + 1}`,
+            poundsDelivered: 24000,
+            tonsDelivered: 12,
+          },
+        });
+      }
     }
-    await prisma.feedDelivery.create({
-      data: {
-        flockId: flock.id,
-        houseFlockId: hf.id,
-        deliveryDate: addDays(placementDate, 5),
-        feedType: "Starter",
-        feedMill: "Valley Feed",
-        ticketNumber: `ACTIVE-${flockNumber}-${hi + 1}`,
-        poundsDelivered: 24000,
-        tonsDelivered: 12,
-      },
-    });
   }
 
-  await prisma.feedDelivery.create({
-    data: {
-      flockId: flock.id,
-      deliveryDate: addDays(placementDate, 12),
-      feedType: "Grower",
-      feedMill: "Valley Feed",
-      ticketNumber: `FARM-${flockNumber}`,
-      poundsDelivered: 80000,
-      tonsDelivered: 40,
-      notes: "Farm-level delivery",
-    },
-  });
-
   return flock;
+}
+
+/** Next weekday from today (0=Sun … 6=Sat). If today is that day, use next week. */
+function upcomingWeekday(from: Date, weekday: number) {
+  const d = startOfDay(from);
+  if (getDay(d) === weekday) return addDays(d, 7);
+  return startOfDay(nextDay(d, weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6));
 }
 
 async function main() {
   await prisma.dailyMortality.deleteMany();
   await prisma.flockPerformance.deleteMany();
   await prisma.feedDelivery.deleteMany();
+  await prisma.followUpCompletion.deleteMany();
   await prisma.houseFlock.deleteMany();
   await prisma.farmIssue.deleteMany();
   await prisma.farmVisit.deleteMany();
@@ -240,212 +177,172 @@ async function main() {
     },
   });
 
-  const farm1 = await prisma.farm.create({
-    data: {
-      userId: user.id,
-      farmName: "Cedar Creek Broilers",
+  const today = startOfDay(new Date());
+
+  // Catch dates chosen so Weight Projection / LFO land in the next week
+  const catchMon = upcomingWeekday(today, 1); // Mon → WP Tue before, LFO Fri before
+  const catchThu = upcomingWeekday(today, 4); // Thu → WP Fri before, LFO Mon before
+  const catchWed = upcomingWeekday(today, 3);
+
+  type Demo = {
+    farmName: string;
+    growerName: string;
+    phoneNumber: string;
+    houses: number;
+    flockNumber: string;
+    placementDate: Date;
+    projectedCatchDate: Date;
+    note: string;
+  };
+
+  const demos: Demo[] = [
+    {
+      farmName: "Oak Hollow",
+      growerName: "Dan Reeves",
+      phoneNumber: "410-555-0110",
+      houses: 2,
+      flockNumber: "OH-410",
+      placementDate: addDays(today, 2),
+      projectedCatchDate: addDays(addDays(today, 2), 42),
+      note: "Prebrood today / Placement in 2 days",
+    },
+    {
+      farmName: "Willow Bend",
+      growerName: "Pat Nguyen",
+      phoneNumber: "410-555-0111",
+      houses: 3,
+      flockNumber: "WB-220",
+      placementDate: today,
+      projectedCatchDate: addDays(today, 42),
+      note: "Placement today",
+    },
+    {
+      farmName: "Cedar Creek",
       growerName: "John Miller",
-      farmNumber: "CC-101",
-      address: "1200 Farm Road",
-      city: "Salisbury",
-      state: "MD",
-      zipCode: "21801",
-      phoneNumber: "410-555-0101",
-      numberOfHouses: 4,
-      notes: "Four 50x500 houses. Good grower.",
+      phoneNumber: "410-555-0112",
+      houses: 4,
+      flockNumber: "CC-103",
+      placementDate: subDays(today, 3),
+      projectedCatchDate: addDays(subDays(today, 3), 42),
+      note: "3 Day due",
     },
-  });
-
-  const farm2 = await prisma.farm.create({
-    data: {
-      userId: user.id,
-      farmName: "Pine Ridge Poultry",
+    {
+      farmName: "Pine Ridge",
       growerName: "Maria Santos",
-      farmNumber: "PR-220",
-      address: "88 Ridge Lane",
-      city: "Georgetown",
-      state: "DE",
-      zipCode: "19947",
-      phoneNumber: "302-555-0199",
-      numberOfHouses: 8,
-      notes: "Eight-house complex. Newer controllers.",
+      phoneNumber: "410-555-0113",
+      houses: 4,
+      flockNumber: "PR-204",
+      placementDate: subDays(today, 7),
+      projectedCatchDate: addDays(subDays(today, 7), 42),
+      note: "7 Day due",
     },
-  });
+    {
+      farmName: "Maple Grove",
+      growerName: "Chris Bailey",
+      phoneNumber: "410-555-0114",
+      houses: 3,
+      flockNumber: "MG-315",
+      placementDate: subDays(today, 14),
+      projectedCatchDate: addDays(subDays(today, 14), 42),
+      note: "14 Day due",
+    },
+    {
+      farmName: "Bay View",
+      growerName: "Elena Cruz",
+      phoneNumber: "410-555-0115",
+      houses: 2,
+      flockNumber: "BV-118",
+      placementDate: subDays(today, 21),
+      projectedCatchDate: addDays(subDays(today, 21), 42),
+      note: "21 Day due",
+    },
+    {
+      farmName: "Sunrise Farms",
+      growerName: "Tom Harper",
+      phoneNumber: "410-555-0116",
+      houses: 3,
+      flockNumber: "SF-507",
+      placementDate: subDays(catchMon, 42),
+      projectedCatchDate: catchMon,
+      note: `Catch Mon ${format(catchMon, "MMM d")} — 28 overdue, 35 Day + Weight Projection + LFO`,
+    },
+    {
+      farmName: "River Bend",
+      growerName: "Sam Ortiz",
+      phoneNumber: "410-555-0117",
+      houses: 2,
+      flockNumber: "RB-808",
+      placementDate: subDays(today, 42),
+      projectedCatchDate: catchThu,
+      note: `42 Day due; Catch Thu ${format(catchThu, "MMM d")} — Weight Projection + LFO`,
+    },
+  ];
 
-  const farm1Houses = [];
-  for (let i = 1; i <= 4; i++) {
-    farm1Houses.push(
-      await prisma.house.create({
+  void catchWed;
+
+  for (const demo of demos) {
+    const farm = await prisma.farm.create({
+      data: {
+        userId: user.id,
+        farmName: demo.farmName,
+        growerName: demo.growerName,
+        phoneNumber: demo.phoneNumber,
+        numberOfHouses: demo.houses,
+        notes: demo.note,
+      },
+    });
+    const houses = await createHouses(farm.id, demo.houses, 2014 + demos.indexOf(demo));
+    await createActiveFlock({
+      userId: user.id,
+      farmId: farm.id,
+      houseIds: houses.map((h) => h.id),
+      flockNumber: demo.flockNumber,
+      placementDate: demo.placementDate,
+      projectedCatchDate: demo.projectedCatchDate,
+    });
+
+    if (demos.indexOf(demo) === 2) {
+      await prisma.farmIssue.create({
         data: {
-          farmId: farm1.id,
-          houseNumber: i,
-          squareFootage: 25000,
-          houseLength: 500,
-          houseWidth: 50,
-          totalFanCFM: 180000,
-          numberOfFans: 12,
-          coolingPadSquareFootage: 1200,
-          feederType: "Pan",
-          drinkerType: "Nipple",
-          controllerType: "Chore-Tronics",
-          yearBuilt: 2012 + i,
-          minVentilationCFM: 12000,
-          fanCycleOnSeconds: 30,
-          fanCycleOffSeconds: 90,
+          farmId: farm.id,
+          houseId: houses[1]?.id,
+          dateReported: subDays(today, 2),
+          category: IssueCategory.WATER,
+          priority: IssuePriority.HIGH,
+          description: "Low pressure on drinker line B",
+          assignedTo: "Grower",
+          status: IssueStatus.OPEN,
         },
-      }),
-    );
+      });
+      await prisma.farmVisit.create({
+        data: {
+          farmId: farm.id,
+          visitDate: subDays(today, 1),
+          birdAgeInDays: 2,
+          visitType: VisitType.ROUTINE_SERVICE,
+          generalBirdCondition: "Good",
+          notes: "Walked houses after placement",
+        },
+      });
+      await prisma.litterEvent.create({
+        data: {
+          farmId: farm.id,
+          eventDate: subDays(demo.placementDate, 5),
+          eventType: LitterEventType.DE_CAKING,
+          litterDepth: 3,
+          contractor: "Grower",
+        },
+      });
+    }
   }
 
-  const farm2Houses = [];
-  for (let i = 1; i <= 8; i++) {
-    farm2Houses.push(
-      await prisma.house.create({
-        data: {
-          farmId: farm2.id,
-          houseNumber: i,
-          squareFootage: 24000,
-          houseLength: 480,
-          houseWidth: 50,
-          totalFanCFM: 170000,
-          numberOfFans: 11,
-          coolingPadSquareFootage: 1100,
-          feederType: "Pan",
-          drinkerType: "Nipple",
-          controllerType: "Rotem",
-          yearBuilt: 2018,
-          minVentilationCFM: 11000,
-        },
-      }),
-    );
-  }
-
-  const f1Ids = farm1Houses.map((h) => h.id);
-  const f2Ids = farm2Houses.map((h) => h.id);
-
-  await seedHistoricalFlock(farm1.id, f1Ids, "F-100", 200, 42);
-  await seedHistoricalFlock(farm1.id, f1Ids, "F-101", 140, 41);
-  await seedHistoricalFlock(farm1.id, f1Ids, "F-102", 80, 43);
-  await seedHistoricalFlock(farm2.id, f2Ids, "F-200", 210, 42);
-  await seedHistoricalFlock(farm2.id, f2Ids, "F-201", 150, 40);
-  await seedHistoricalFlock(farm2.id, f2Ids, "F-202", 90, 42);
-
-  // Active flocks — Pine Ridge aged to week 8 for weekly mortality preview
-  await createActiveFlock(user.id, farm1.id, f1Ids, "F-103", 16);
-  await createActiveFlock(user.id, farm2.id, f2Ids, "F-203", 55);
-
-  await prisma.litterEvent.createMany({
-    data: [
-      {
-        farmId: farm1.id,
-        eventDate: subDays(new Date(), 85),
-        eventType: LitterEventType.FULL_LITTER_CLEANOUT,
-        litterDepth: 0,
-        contractor: "Coastal Litter Co",
-        cost: 4800,
-        notes: "Full cleanout before F-102",
-      },
-      {
-        farmId: farm1.id,
-        houseId: farm1Houses[0].id,
-        eventDate: subDays(new Date(), 20),
-        eventType: LitterEventType.DE_CAKING,
-        litterDepth: 3,
-        contractor: "Grower",
-        cost: 0,
-      },
-      {
-        farmId: farm2.id,
-        eventDate: subDays(new Date(), 95),
-        eventType: LitterEventType.FULL_LITTER_CLEANOUT,
-        contractor: "Delmarva Litter",
-        cost: 9200,
-      },
-      {
-        farmId: farm2.id,
-        eventDate: subDays(new Date(), 30),
-        eventType: LitterEventType.WINDROWING,
-        notes: "Windrowed after rain event",
-      },
-    ],
-  });
-
-  await prisma.farmVisit.createMany({
-    data: [
-      {
-        farmId: farm1.id,
-        visitDate: subDays(new Date(), 2),
-        birdAgeInDays: 14,
-        visitType: VisitType.ROUTINE_SERVICE,
-        generalBirdCondition: "Good",
-        activityLevel: "Active",
-        litterCondition: "Acceptable",
-        temperature: 78,
-        humidity: 55,
-        notes: "Checked drinkers in houses 2 and 3",
-        followUpRequired: true,
-        followUpDate: addDays(new Date(), 3),
-      },
-      {
-        farmId: farm2.id,
-        visitDate: subDays(new Date(), 1),
-        birdAgeInDays: 13,
-        visitType: VisitType.SEVEN_DAY,
-        generalBirdCondition: "Fair",
-        activityLevel: "Moderate",
-        notes: "Slight early mortality spike house 5",
-        followUpRequired: true,
-        followUpDate: addDays(new Date(), 1),
-      },
-    ],
-  });
-
-  await prisma.farmIssue.createMany({
-    data: [
-      {
-        farmId: farm1.id,
-        houseId: farm1Houses[1].id,
-        dateReported: subDays(new Date(), 5),
-        category: IssueCategory.WATER,
-        priority: IssuePriority.HIGH,
-        description: "Low pressure on drinker line B",
-        correctiveAction: "Flush and check regulator",
-        assignedTo: "Grower",
-        status: IssueStatus.OPEN,
-      },
-      {
-        farmId: farm1.id,
-        dateReported: subDays(new Date(), 40),
-        category: IssueCategory.VENTILATION,
-        priority: IssuePriority.MEDIUM,
-        description: "Tunnel fan belt worn",
-        status: IssueStatus.RESOLVED,
-        resolvedDate: subDays(new Date(), 35),
-        correctiveAction: "Belt replaced",
-      },
-      {
-        farmId: farm2.id,
-        houseId: farm2Houses[4].id,
-        dateReported: subDays(new Date(), 1),
-        category: IssueCategory.BIRD_HEALTH,
-        priority: IssuePriority.CRITICAL,
-        description: "Elevated mortality overnight — investigate",
-        assignedTo: "Alex Technician",
-        status: IssueStatus.MONITORING,
-      },
-      {
-        farmId: farm2.id,
-        dateReported: subDays(new Date(), 10),
-        category: IssueCategory.CONTROLLER,
-        priority: IssuePriority.LOW,
-        description: "Alarm history full — needs clear",
-        status: IssueStatus.SCHEDULED,
-      },
-    ],
-  });
-
-  console.log("Seed complete.");
+  console.log("Seed complete — 8 demo farms with staggered follow-ups.");
   console.log("Login: tech@poultry.local / password123");
+  for (const d of demos) {
+    console.log(
+      `- ${d.farmName}: place ${format(d.placementDate, "EEE MMM d")} → catch ${format(d.projectedCatchDate, "EEE MMM d")} (${d.note})`,
+    );
+  }
 }
 
 main()

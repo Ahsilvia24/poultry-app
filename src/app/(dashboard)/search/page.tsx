@@ -28,7 +28,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
             OR: [
               { farmName: { contains: q, mode: "insensitive" } },
               { growerName: { contains: q, mode: "insensitive" } },
-              { farmNumber: { contains: q, mode: "insensitive" } },
+              { phoneNumber: { contains: q, mode: "insensitive" } },
             ],
           },
           take: 20,
@@ -103,10 +103,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               <Link key={farm.id} href={`/farms/${farm.id}`} className="block">
                 <Card className="transition hover:border-emerald-400">
                   <p className="font-bold">{farm.farmName}</p>
-                  <p className="text-sm text-stone-600">
-                    {farm.growerName}
-                    {farm.farmNumber ? ` · #${farm.farmNumber}` : ""}
-                  </p>
+                  <p className="text-sm text-stone-600">{farm.growerName}</p>
+                  {farm.phoneNumber ? (
+                    <p className="mt-1 text-xs text-stone-500">{farm.phoneNumber}</p>
+                  ) : null}
                 </Card>
               </Link>
             ))}

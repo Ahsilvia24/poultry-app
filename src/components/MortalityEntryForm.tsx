@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format } from "date-fns";
 import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
 import {
-  MORTALITY_DISCLAIMER,
   birdAgeFromPlacement,
   calcPercentage,
   calcTotalDailyLoss,
@@ -14,7 +13,7 @@ import {
 } from "@/lib/mortality/calculations";
 import { formatNumber, formatPct } from "@/lib/utils";
 import type { ThresholdSettings } from "@/types";
-import { Button, Card, Input, Label, Select, StatusBadge } from "@/components/ui";
+import { Card, Input, Label, Select, StatusBadge } from "@/components/ui";
 
 export type MortalityHousePayload = {
   houseFlockId: string;
@@ -37,6 +36,8 @@ export type MortalityFarmPayload = {
     id: string;
     flockNumber: string;
     placementDate: string;
+    projectedCatchDate: string | null;
+    targetMarketAge: number | null;
     houses: MortalityHousePayload[];
   } | null;
 };
@@ -58,6 +59,16 @@ type WeekGroup = {
   ageEnd: number;
 };
 
+const SAVE_DEBOUNCE_MS = 500;
+
+function formatDayLabel(mortalityDate: string) {
+  const [y, m, d] = mortalityDate.split("-").map(Number);
+  const date = new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
+  // Su M Tu W Th F Sa — one or two letters
+  const weekday = ["Su", "M", "Tu", "W", "Th", "F", "Sa"][date.getDay()] ?? "";
+  return `${weekday} ${format(date, "M")}·${format(date, "d")}`;
+}
+
 function parseLocalDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
@@ -71,10 +82,15 @@ function todayDate() {
 
 function buildRows(
   placementDate: string,
+  catchDate: string,
   house: MortalityHousePayload,
 ): DayRow[] {
   const placement = parseLocalDate(placementDate);
-  const maxAge = birdAgeFromPlacement(placement, todayDate());
+  const catchEnd = parseLocalDate(catchDate);
+  const maxAge = Math.max(
+    birdAgeFromPlacement(placement, todayDate()),
+    birdAgeFromPlacement(placement, catchEnd),
+  );
   const byDate = new Map(house.existingEntries.map((e) => [e.mortalityDate, e]));
 
   const rows: DayRow[] = [];
@@ -89,6 +105,20 @@ function buildRows(
     });
   }
   return rows;
+}
+
+function resolveCatchDateKey(flock: {
+  placementDate: string;
+  projectedCatchDate: string | null;
+  targetMarketAge: number | null;
+}): string {
+  if (flock.projectedCatchDate) return flock.projectedCatchDate;
+  const placement = parseLocalDate(flock.placementDate);
+  const age =
+    flock.targetMarketAge != null && flock.targetMarketAge > 0
+      ? flock.targetMarketAge
+      : 52;
+  return format(addDays(placement, age), "yyyy-MM-dd");
 }
 
 function groupRowsByWeek(rows: DayRow[]): WeekGroup[] {
@@ -121,6 +151,30 @@ function groupRowsByWeek(rows: DayRow[]): WeekGroup[] {
     });
 }
 
+function buildHouseWarning(
+  house: MortalityHousePayload,
+  rows: DayRow[],
+  thresholds: ThresholdSettings,
+) {
+  if (rows.length === 0) return null;
+  const last = rows[rows.length - 1]!;
+  const loss = calcTotalDailyLoss(
+    Number(last.dailyMortalityCount || 0),
+    Number(last.cullCount || 0),
+  );
+  const dailyPct = calcPercentage(loss, house.placedBirdCount);
+  const priorSeven = rows
+    .slice(-7)
+    .reduce(
+      (s, r) =>
+        s + calcTotalDailyLoss(Number(r.dailyMortalityCount || 0), Number(r.cullCount || 0)),
+      0,
+    );
+  const sevenDayPct = calcPercentage(priorSeven, house.placedBirdCount);
+  const status = resolveMortalityStatus({ dailyPct, sevenDayPct }, thresholds);
+  return { status, dailyPct, sevenDayPct };
+}
+
 export function MortalityEntryForm({
   farms,
   initialFarmId,
@@ -133,7 +187,6 @@ export function MortalityEntryForm({
   thresholds: ThresholdSettings;
 }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
   const [farmId, setFarmId] = useState(
     initialFarmId && farms.some((f) => f.id === initialFarmId)
       ? initialFarmId
@@ -159,15 +212,93 @@ export function MortalityEntryForm({
   const [rows, setRows] = useState<DayRow[]>([]);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [summary, setSummary] = useState<{
     totalMortality: number;
     totalCulls: number;
     totalLoss: number;
-    daysSaved: number;
     status: string;
     dailyPct: number;
     sevenDayPct: number;
   } | null>(null);
+
+  const rowsRef = useRef(rows);
+  const flockRef = useRef(flock);
+  const houseRef = useRef(house);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveGenRef = useRef(0);
+  const dirtyRef = useRef(false);
+  rowsRef.current = rows;
+  flockRef.current = flock;
+  houseRef.current = house;
+
+  function cancelScheduledSave() {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+  }
+
+  async function performSave() {
+    const currentFlock = flockRef.current;
+    const currentHouse = houseRef.current;
+    const currentRows = rowsRef.current;
+    if (!currentFlock || !currentHouse || currentRows.length === 0) return;
+
+    const gen = ++saveGenRef.current;
+    dirtyRef.current = false;
+    setSaveStatus("saving");
+    setError(null);
+
+    const result = await saveMortalityHouseSeriesAction({
+      flockId: currentFlock.id,
+      houseFlockId: currentHouse.houseFlockId,
+      mortalityCause: "UNKNOWN",
+      comments: null,
+      isDraft: false,
+      entries: currentRows.map((r) => ({
+        mortalityDate: r.mortalityDate,
+        dailyMortalityCount: Number(r.dailyMortalityCount || 0),
+        cullCount: Number(r.cullCount || 0),
+      })),
+    });
+
+    if (gen !== saveGenRef.current) return;
+
+    if (result?.error) {
+      setError(result.error);
+      setSaveStatus("idle");
+      return;
+    }
+
+    const totalMortality = currentRows.reduce((s, r) => s + Number(r.dailyMortalityCount || 0), 0);
+    const totalCulls = currentRows.reduce((s, r) => s + Number(r.cullCount || 0), 0);
+    const warning = buildHouseWarning(currentHouse, currentRows, thresholds);
+    setSummary({
+      totalMortality,
+      totalCulls,
+      totalLoss: totalMortality + totalCulls,
+      status: warning?.status ?? "Normal",
+      dailyPct: warning?.dailyPct ?? 0,
+      sevenDayPct: warning?.sevenDayPct ?? 0,
+    });
+    setSaveStatus("saved");
+  }
+
+  function scheduleSave() {
+    dirtyRef.current = true;
+    cancelScheduledSave();
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      void performSave();
+    }, SAVE_DEBOUNCE_MS);
+  }
+
+  function flushSave() {
+    if (!dirtyRef.current && !saveTimerRef.current) return;
+    cancelScheduledSave();
+    void performSave();
+  }
 
   // Keep house selection valid when farm changes
   useEffect(() => {
@@ -182,16 +313,40 @@ export function MortalityEntryForm({
   }, [farmId, flock?.id, houses, houseFlockId]);
 
   useEffect(() => {
+    cancelScheduledSave();
+    saveGenRef.current += 1;
+    dirtyRef.current = false;
+    setSaveStatus("idle");
+    setError(null);
+    setSummary(null);
+
     if (!flock || !house) {
       setRows([]);
       return;
     }
 
-    const built = buildRows(flock.placementDate, house);
+    const catchDate = resolveCatchDateKey(flock);
+    const built = buildRows(flock.placementDate, catchDate, house);
     setRows(built);
-    const currentWeek = flockWeekFromAge(built[built.length - 1]?.age ?? 0);
+    const totalMortality = built.reduce((s, r) => s + Number(r.dailyMortalityCount || 0), 0);
+    const totalCulls = built.reduce((s, r) => s + Number(r.cullCount || 0), 0);
+    const warning = buildHouseWarning(house, built, thresholds);
+    setSummary({
+      totalMortality,
+      totalCulls,
+      totalLoss: totalMortality + totalCulls,
+      status: warning?.status ?? "Normal",
+      dailyPct: warning?.dailyPct ?? 0,
+      sevenDayPct: warning?.sevenDayPct ?? 0,
+    });
+    const currentWeek = flockWeekFromAge(
+      birdAgeFromPlacement(parseLocalDate(flock.placementDate), todayDate()),
+    );
     setExpandedWeeks(new Set([currentWeek]));
-  }, [farmId, flock?.id, flock?.placementDate, house?.houseFlockId]);
+  }, [farmId, flock?.id, flock?.placementDate, flock?.projectedCatchDate, flock?.targetMarketAge, house?.houseFlockId]);
+  useEffect(() => {
+    return () => cancelScheduledSave();
+  }, []);
 
   const weekGroups = useMemo(() => groupRowsByWeek(rows), [rows]);
 
@@ -205,73 +360,22 @@ export function MortalityEntryForm({
   }
 
   function updateRow(age: number, patch: Partial<Pick<DayRow, "dailyMortalityCount" | "cullCount">>) {
-    setRows((prev) => prev.map((r) => (r.age === age ? { ...r, ...patch } : r)));
-    setSummary(null);
-  }
-
-  function buildHouseWarning() {
-    if (!house || rows.length === 0) return null;
-    const last = rows[rows.length - 1]!;
-    const loss = calcTotalDailyLoss(
-      Number(last.dailyMortalityCount || 0),
-      Number(last.cullCount || 0),
-    );
-    const dailyPct = calcPercentage(loss, house.placedBirdCount);
-    const priorSeven = rows
-      .slice(-7)
-      .reduce(
-        (s, r) =>
-          s + calcTotalDailyLoss(Number(r.dailyMortalityCount || 0), Number(r.cullCount || 0)),
-        0,
-      );
-    const sevenDayPct = calcPercentage(priorSeven, house.placedBirdCount);
-    const status = resolveMortalityStatus({ dailyPct, sevenDayPct }, thresholds);
-    return { status, dailyPct, sevenDayPct };
-  }
-
-  function submit() {
-    if (!flock || !house) {
-      setError("Select a farm and house with an active flock");
-      return;
-    }
-    setError(null);
-    startTransition(async () => {
-      const result = await saveMortalityHouseSeriesAction({
-        flockId: flock.id,
-        houseFlockId: house.houseFlockId,
-        mortalityCause: "UNKNOWN",
-        comments: null,
-        isDraft: false,
-        entries: rows.map((r) => ({
-          mortalityDate: r.mortalityDate,
-          dailyMortalityCount: Number(r.dailyMortalityCount || 0),
-          cullCount: Number(r.cullCount || 0),
-        })),
-      });
-
-      if (result?.error) {
-        setError(result.error);
-        return;
-      }
-
-      const totalMortality = rows.reduce((s, r) => s + Number(r.dailyMortalityCount || 0), 0);
-      const totalCulls = rows.reduce((s, r) => s + Number(r.cullCount || 0), 0);
-      const warning = buildHouseWarning();
-      setSummary({
-        totalMortality,
-        totalCulls,
-        totalLoss: totalMortality + totalCulls,
-        daysSaved: result?.count ?? rows.length,
-        status: warning?.status ?? "Normal",
-        dailyPct: warning?.dailyPct ?? 0,
-        sevenDayPct: warning?.sevenDayPct ?? 0,
-      });
-      router.refresh();
+    setRows((prev) => {
+      const next = prev.map((r) => (r.age === age ? { ...r, ...patch } : r));
+      rowsRef.current = next;
+      return next;
     });
+    setSaveStatus("idle");
+    scheduleSave();
   }
 
   function changeFarm(nextFarmId: string) {
+    cancelScheduledSave();
+    saveGenRef.current += 1;
+    dirtyRef.current = false;
     setFarmId(nextFarmId);
+    setSaveStatus("idle");
+    setError(null);
     setSummary(null);
     const nextFarm = farms.find((f) => f.id === nextFarmId);
     const firstHouse = nextFarm?.activeFlock?.houses[0]?.houseFlockId ?? "";
@@ -283,7 +387,12 @@ export function MortalityEntryForm({
   }
 
   function changeHouse(nextHouseId: string) {
+    cancelScheduledSave();
+    saveGenRef.current += 1;
+    dirtyRef.current = false;
     setHouseFlockId(nextHouseId);
+    setSaveStatus("idle");
+    setError(null);
     setSummary(null);
     router.replace(`/mortality?farmId=${farmId}&houseFlockId=${nextHouseId}`);
   }
@@ -291,44 +400,23 @@ export function MortalityEntryForm({
   return (
     <div className="space-y-4">
       <Card>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="farmId">Farm</Label>
-            <Select
-              id="farmId"
-              value={farmId}
-              onChange={(e) => changeFarm(e.target.value)}
-            >
-              {farms.map((f) => (
-                <option key={f.id} value={f.id} disabled={!f.activeFlock}>
-                  {f.farmName}
-                  {!f.activeFlock ? " (no active flock)" : ""}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="houseFlockId">House</Label>
-            <Select
-              id="houseFlockId"
-              value={houseFlockId}
-              disabled={houses.length === 0}
-              onChange={(e) => changeHouse(e.target.value)}
-            >
-              {houses.length === 0 ? (
-                <option value="">No houses</option>
-              ) : (
-                houses.map((h) => (
-                  <option key={h.houseFlockId} value={h.houseFlockId}>
-                    House {h.houseNumber}
-                  </option>
-                ))
-              )}
-            </Select>
-          </div>
+        <div>
+          <Label htmlFor="farmId">Farm</Label>
+          <Select
+            id="farmId"
+            value={farmId}
+            onChange={(e) => changeFarm(e.target.value)}
+          >
+            {farms.map((f) => (
+              <option key={f.id} value={f.id} disabled={!f.activeFlock}>
+                {f.farmName}
+                {!f.activeFlock ? " (no active flock)" : ""}
+              </option>
+            ))}
+          </Select>
         </div>
 
-        {houses.length > 1 ? (
+        {houses.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {houses.map((h) => (
               <button
@@ -348,11 +436,20 @@ export function MortalityEntryForm({
         ) : null}
 
         {flock && house ? (
-          <p className="mt-3 text-sm text-stone-600">
-            Flock <span className="font-semibold">{flock.flockNumber}</span> · House{" "}
-            <span className="font-semibold">{house.houseNumber}</span> · Placed{" "}
-            {formatNumber(house.placedBirdCount)} · Ages 0–{rows.length > 0 ? rows[rows.length - 1]!.age : 0}
-          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-600">
+            <p>
+              House <span className="font-semibold">{house.houseNumber}</span> · Placed{" "}
+              {formatNumber(house.placedBirdCount)} ·{" "}
+              <span className="font-semibold text-stone-900">
+                {birdAgeFromPlacement(parseLocalDate(flock.placementDate), todayDate())}d
+              </span>
+            </p>
+            {saveStatus === "saving" ? (
+              <span className="text-stone-500">Saving…</span>
+            ) : saveStatus === "saved" ? (
+              <span className="font-medium text-emerald-800">Saved</span>
+            ) : null}
+          </div>
         ) : (
           <p className="mt-3 text-sm text-amber-800">This farm has no active flock or houses.</p>
         )}
@@ -397,6 +494,7 @@ export function MortalityEntryForm({
                             <th className="sticky left-0 z-10 bg-stone-50 px-3 py-2 font-semibold text-stone-600">
                               Age
                             </th>
+                            <th className="px-3 py-2 font-semibold text-stone-600">Date</th>
                             <th className="px-3 py-2 font-semibold text-stone-600">Culls</th>
                             <th className="px-3 py-2 font-semibold text-stone-600">Mortality</th>
                             <th className="px-3 py-2 font-semibold text-stone-600">Loss</th>
@@ -413,39 +511,47 @@ export function MortalityEntryForm({
                                 <td className="sticky left-0 z-10 bg-white px-3 py-2 font-semibold text-stone-900">
                                   {row.age}
                                 </td>
+                                <td className="whitespace-nowrap px-3 py-2 text-stone-600">
+                                  {formatDayLabel(row.mortalityDate)}
+                                </td>
                                 <td className="px-2 py-1.5">
                                   <Input
                                     aria-label={`Culls day ${row.age}`}
-                                    type="number"
-                                    min={0}
+                                    type="text"
                                     inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    autoComplete="off"
                                     className="min-h-11 px-3"
                                     placeholder="0"
                                     value={row.cullCount === "0" ? "" : row.cullCount}
                                     onFocus={(e) => e.target.select()}
-                                    onChange={(e) =>
+                                    onBlur={() => flushSave()}
+                                    onChange={(e) => {
+                                      const digits = e.target.value.replace(/\D/g, "");
                                       updateRow(row.age, {
-                                        cullCount: e.target.value === "" ? "0" : e.target.value,
-                                      })
-                                    }
+                                        cullCount: digits === "" ? "0" : digits,
+                                      });
+                                    }}
                                   />
                                 </td>
                                 <td className="px-2 py-1.5">
                                   <Input
                                     aria-label={`Mortality day ${row.age}`}
-                                    type="number"
-                                    min={0}
+                                    type="text"
                                     inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    autoComplete="off"
                                     className="min-h-11 px-3"
                                     placeholder="0"
                                     value={row.dailyMortalityCount === "0" ? "" : row.dailyMortalityCount}
                                     onFocus={(e) => e.target.select()}
-                                    onChange={(e) =>
+                                    onBlur={() => flushSave()}
+                                    onChange={(e) => {
+                                      const digits = e.target.value.replace(/\D/g, "");
                                       updateRow(row.age, {
-                                        dailyMortalityCount:
-                                          e.target.value === "" ? "0" : e.target.value,
-                                      })
-                                    }
+                                        dailyMortalityCount: digits === "" ? "0" : digits,
+                                      });
+                                    }}
                                   />
                                 </td>
                                 <td className="px-3 py-2 font-semibold text-stone-800">{loss}</td>
@@ -465,25 +571,17 @@ export function MortalityEntryForm({
 
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
 
-      <div>
-        <Button type="button" disabled={pending || !house} onClick={submit}>
-          {pending ? "Saving…" : "Save mortality"}
-        </Button>
-      </div>
-
       {summary ? (
         <Card className="border-emerald-200 bg-emerald-50/40">
-          <h3 className="font-bold text-stone-900">
-            Saved — {summary.daysSaved} day{summary.daysSaved === 1 ? "" : "s"}
-          </h3>
+          <h3 className="font-bold text-stone-900">Saved</h3>
           <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
-            <div>
-              <p className="text-stone-500">Mortality</p>
-              <p className="text-xl font-bold">{summary.totalMortality}</p>
-            </div>
             <div>
               <p className="text-stone-500">Culls</p>
               <p className="text-xl font-bold">{summary.totalCulls}</p>
+            </div>
+            <div>
+              <p className="text-stone-500">Mortality</p>
+              <p className="text-xl font-bold">{summary.totalMortality}</p>
             </div>
             <div>
               <p className="text-stone-500">Total loss</p>
@@ -501,9 +599,6 @@ export function MortalityEntryForm({
           ) : (
             <p className="mt-3 text-sm text-stone-600">No threshold warnings for latest day.</p>
           )}
-          <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-            {MORTALITY_DISCLAIMER}
-          </p>
         </Card>
       ) : null}
     </div>

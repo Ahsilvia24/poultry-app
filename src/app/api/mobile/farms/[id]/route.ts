@@ -77,12 +77,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       id: farm.id,
       farmName: farm.farmName,
       growerName: farm.growerName,
-      farmNumber: farm.farmNumber,
       phoneNumber: farm.phoneNumber,
-      address: farm.address,
-      city: farm.city,
-      state: farm.state,
-      zipCode: farm.zipCode,
       notes: farm.notes,
     },
     activeFlock: active

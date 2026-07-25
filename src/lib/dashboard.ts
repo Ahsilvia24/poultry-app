@@ -1,7 +1,9 @@
 import { format, subDays, addDays, startOfDay } from "date-fns";
 import {
   DEFAULT_THRESHOLDS,
+  averageDailyMortalityLast7Days,
   isRisingThreeDays,
+  projectedHeadCountAtCatch,
   resolveMortalityStatus,
   summarizeForDate,
   weeklyMortalityByPlacement,
@@ -11,8 +13,11 @@ import type { FarmCardSummary, ThresholdSettings } from "@/types";
 import { differenceInCalendarDays } from "date-fns";
 import {
   buildFlockVisitSchedule,
-  filterDueScheduledVisits,
+  completionKey,
+  dateKeyFromDb,
   resolveCatchDate,
+  splitScheduleForDashboard,
+  todayScheduleRankFromLabel,
 } from "@/lib/visits/schedule";
 
 export async function getUserThresholds(userId: string): Promise<ThresholdSettings> {
@@ -65,29 +70,40 @@ export async function getDashboardData(userId: string) {
   let missingMortalityFarms = 0;
   let openIssues = 0;
   let highPriorityIssues = 0;
-  const upcomingCatches: Array<{ farmName: string; date: string; flockNumber: string }> = [];
-  const followUps: Array<{
+  const upcomingCatches: Array<{
+    farmName: string;
+    date: string;
+    flockNumber: string;
+    flockAgeDays: number;
+  }> = [];
+  type FollowUpRow = {
     farmId: string;
+    flockId: string;
     farmName: string;
     date: string;
     label: string;
     flockNumber: string;
-  }> = [];
-  const horizon = addDays(startOfDay(today), 7);
+    completed: boolean;
+    flockAgeDays: number;
+  };
+  const UPCOMING_OUTLOOK_DAYS = 7;
+  const todaysSchedule: FollowUpRow[] = [];
+  const upcomingSchedule: FollowUpRow[] = [];
+  const horizon = addDays(startOfDay(today), UPCOMING_OUTLOOK_DAYS);
 
-  const farmVisitDates = await prisma.farmVisit.findMany({
+  const completions = await prisma.followUpCompletion.findMany({
     where: { farm: { userId, deletedAt: null, isActive: true } },
-    select: { farmId: true, flockId: true, visitDate: true },
+    select: { farmId: true, scheduledDate: true, label: true, completedAt: true },
   });
-  const completedByFarm = new Map<string, Set<string>>();
-  for (const v of farmVisitDates) {
-    const key = format(v.visitDate, "yyyy-MM-dd");
-    let set = completedByFarm.get(v.farmId);
-    if (!set) {
-      set = new Set();
-      completedByFarm.set(v.farmId, set);
+  const completedByFarm = new Map<string, Map<string, { completedAt: Date }>>();
+  for (const c of completions) {
+    const key = completionKey(dateKeyFromDb(c.scheduledDate), c.label);
+    let map = completedByFarm.get(c.farmId);
+    if (!map) {
+      map = new Map();
+      completedByFarm.set(c.farmId, map);
     }
-    set.add(key);
+    map.set(key, { completedAt: c.completedAt });
   }
 
   for (const farm of farms) {
@@ -99,6 +115,7 @@ export async function getDashboardData(userId: string) {
     let placed = 0;
     let todayMort = 0;
     let cum = 0;
+    let projectedHead = 0;
     let dailyPct = 0;
     let sevenPct = 0;
     let rising = false;
@@ -111,21 +128,32 @@ export async function getDashboardData(userId: string) {
           farmName: farm.farmName,
           date: format(active.projectedCatchDate, "yyyy-MM-dd"),
           flockNumber: active.flockNumber,
+          flockAgeDays: differenceInCalendarDays(today, active.placementDate),
         });
       }
 
       const catchDate = resolveCatchDate(active);
+      const daysUntilCatch = Math.max(0, differenceInCalendarDays(catchDate, today));
       const schedule = buildFlockVisitSchedule(active.placementDate, catchDate);
-      const completed = completedByFarm.get(farm.id) ?? new Set();
-      for (const due of filterDueScheduledVisits(schedule, today, horizon, completed)) {
-        followUps.push({
-          farmId: farm.id,
-          farmName: farm.farmName,
-          date: due.dateKey,
-          label: due.label,
-          flockNumber: active.flockNumber,
-        });
-      }
+      const farmCompletions = completedByFarm.get(farm.id) ?? new Map();
+      const { today: dueToday, upcoming } = splitScheduleForDashboard(
+        schedule,
+        today,
+        horizon,
+        farmCompletions,
+      );
+      const toRow = (due: (typeof dueToday)[number]): FollowUpRow => ({
+        farmId: farm.id,
+        flockId: active.id,
+        farmName: farm.farmName,
+        date: due.dateKey,
+        label: due.label,
+        flockNumber: active.flockNumber,
+        completed: due.completed,
+        flockAgeDays: differenceInCalendarDays(today, active.placementDate),
+      });
+      for (const due of dueToday) todaysSchedule.push(toRow(due));
+      for (const due of upcoming) upcomingSchedule.push(toRow(due));
 
       for (const hf of active.houseFlocks) {
         placed += hf.placedBirdCount;
@@ -138,6 +166,8 @@ export async function getDashboardData(userId: string) {
         if (hf.mortalities.some((m) => format(m.mortalityDate, "yyyy-MM-dd") === todayKey)) {
           hasTodayEntry = true;
         }
+        const avgDaily = averageDailyMortalityLast7Days(hf.mortalities, today);
+        projectedHead += projectedHeadCountAtCatch(metrics.remaining, avgDaily, daysUntilCatch);
         for (const week of weeklyMortalityByPlacement(
           active.placementDate,
           hf.mortalities,
@@ -160,11 +190,13 @@ export async function getDashboardData(userId: string) {
       id: farm.id,
       farmName: farm.farmName,
       growerName: farm.growerName,
+      phoneNumber: farm.phoneNumber,
       flockAgeDays: active
         ? differenceInCalendarDays(today, active.placementDate)
         : null,
       totalBirdsPlaced: placed,
       todayMortality: todayMort,
+      projectedHeadCount: active ? projectedHead : null,
       weeklyMortality: Array.from(weeklyTotals.entries())
         .sort((a, b) => a[0] - b[0])
         .map(([week, total]) => ({ week, total })),
@@ -177,7 +209,17 @@ export async function getDashboardData(userId: string) {
     });
   }
 
-  followUps.sort((a, b) => a.date.localeCompare(b.date) || a.farmName.localeCompare(b.farmName));
+  todaysSchedule.sort(
+    (a, b) =>
+      todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
+      a.farmName.localeCompare(b.farmName),
+  );
+  upcomingSchedule.sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
+      a.farmName.localeCompare(b.farmName),
+  );
 
   const recentCleanouts = await prisma.litterEvent.findMany({
     where: {
@@ -206,7 +248,8 @@ export async function getDashboardData(userId: string) {
     upcomingCatches: upcomingCatches
       .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 8),
-    followUps: followUps.slice(0, 20),
+    todaysSchedule: todaysSchedule.slice(0, 30),
+    upcomingSchedule: upcomingSchedule.slice(0, 40),
     recentCleanouts: recentCleanouts.map((c) => ({
       farmName: c.farm.farmName,
       date: format(c.eventDate, "yyyy-MM-dd"),

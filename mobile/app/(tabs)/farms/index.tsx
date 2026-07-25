@@ -9,7 +9,7 @@ type FarmList = {
     id: string;
     farmName: string;
     growerName: string;
-    farmNumber: string | null;
+    phoneNumber: string | null;
     numberOfHouses: number;
     activeFlock: { flockNumber: string } | null;
   }>;
@@ -56,10 +56,10 @@ export default function FarmsScreen() {
       {data?.farms.map((farm) => (
         <Pressable key={farm.id} style={styles.card} onPress={() => router.push(`/(tabs)/farms/${farm.id}`)}>
           <Text style={{ fontSize: 18, fontWeight: "800" }}>{farm.farmName}</Text>
-          <Text style={styles.muted}>
-            {farm.growerName}
-            {farm.farmNumber ? ` · #${farm.farmNumber}` : ""}
-          </Text>
+          <Text style={styles.muted}>{farm.growerName}</Text>
+          {farm.phoneNumber ? (
+            <Text style={[styles.muted, { fontSize: 12, marginTop: 2 }]}>{farm.phoneNumber}</Text>
+          ) : null}
           <Text style={{ marginTop: 8 }}>
             {farm.numberOfHouses} houses
             {farm.activeFlock ? ` · Active flock ${farm.activeFlock.flockNumber}` : " · No active flock"}

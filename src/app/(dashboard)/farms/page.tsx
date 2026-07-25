@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { differenceInCalendarDays, format } from "date-fns";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -80,12 +81,20 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                 <Link href={`/farms/${farm.id}`} className="block pb-2 pr-12">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-lg font-bold text-stone-900">{farm.farmName}</p>
+                      <p className="text-lg font-bold text-stone-900">
+                        {farm.farmName}
+                        {active ? (
+                          <span className="font-semibold text-stone-500">
+                            {" "}
+                            · {differenceInCalendarDays(new Date(), active.placementDate)}d
+                          </span>
+                        ) : null}
+                      </p>
                       {farm.growerName ? (
                         <p className="text-sm text-stone-600">{farm.growerName}</p>
                       ) : null}
-                      {farm.farmNumber ? (
-                        <p className="mt-1 text-xs text-stone-500">Farm #{farm.farmNumber}</p>
+                      {farm.phoneNumber ? (
+                        <p className="mt-1 text-xs text-stone-500">{farm.phoneNumber}</p>
                       ) : null}
                     </div>
                     <span
@@ -105,9 +114,11 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                       <p className="font-semibold">{farm.houses.length}</p>
                     </div>
                     <div>
-                      <p className="text-stone-500">Active flock</p>
+                      <p className="text-stone-500">Placement date</p>
                       <p className="font-semibold">
-                        {active ? active.flockNumber : "None"}
+                        {active
+                          ? format(active.placementDate, "EEE, MMM d, yyyy")
+                          : "—"}
                       </p>
                     </div>
                     <div>
@@ -117,8 +128,12 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                       </p>
                     </div>
                     <div>
-                      <p className="text-stone-500">Status</p>
-                      <p className="font-semibold">{farm.isActive ? "Active" : "Inactive"}</p>
+                      <p className="text-stone-500">Catch date</p>
+                      <p className="font-semibold">
+                        {active?.projectedCatchDate
+                          ? format(active.projectedCatchDate, "EEE, MMM d, yyyy")
+                          : "—"}
+                      </p>
                     </div>
                   </div>
                 </Link>

@@ -33,10 +33,7 @@ export async function GET(req: NextRequest) {
       id: f.id,
       farmName: f.farmName,
       growerName: f.growerName,
-      farmNumber: f.farmNumber,
       phoneNumber: f.phoneNumber,
-      city: f.city,
-      state: f.state,
       numberOfHouses: f.houses.length,
       activeFlock: f.flocks[0]
         ? {

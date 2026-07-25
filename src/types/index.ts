@@ -40,9 +40,11 @@ export type FarmCardSummary = {
   id: string;
   farmName: string;
   growerName: string;
+  phoneNumber: string | null;
   flockAgeDays: number | null;
   totalBirdsPlaced: number;
   todayMortality: number;
+  projectedHeadCount: number | null;
   weeklyMortality: Array<{ week: number; total: number }>;
   cumulativeMortality: number;
   cumulativeMortalityPct: number;

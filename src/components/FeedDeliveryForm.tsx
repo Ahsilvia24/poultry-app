@@ -19,11 +19,22 @@ export type FeedFarmOption = {
   }>;
 };
 
-export function FeedDeliveryForm({ farms }: { farms: FeedFarmOption[] }) {
+export function FeedDeliveryForm({
+  farms,
+  lockedFarmId,
+}: {
+  farms: FeedFarmOption[];
+  /** When set, farm is fixed (e.g. recording from a farm page). */
+  lockedFarmId?: string;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
-  const [flockId, setFlockId] = useState(farms[0]?.flocks[0]?.id ?? "");
+  const initialFarmId = lockedFarmId ?? farms[0]?.id ?? "";
+  const [farmId, setFarmId] = useState(initialFarmId);
+  const initialFlock =
+    farms.find((f) => f.id === initialFarmId)?.flocks.find((fl) => fl.status === "ACTIVE") ??
+    farms.find((f) => f.id === initialFarmId)?.flocks[0];
+  const [flockId, setFlockId] = useState(initialFlock?.id ?? "");
   const [houseFlockId, setHouseFlockId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -68,16 +79,20 @@ export function FeedDeliveryForm({ farms }: { farms: FeedFarmOption[] }) {
       <h2 className="font-bold">Record feed delivery</h2>
       <form action={onSubmit} className="mt-4 space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="farmSelect">Farm</Label>
-            <Select id="farmSelect" value={farmId} onChange={(e) => onFarmChange(e.target.value)}>
-              {farms.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.farmName}
-                </option>
-              ))}
-            </Select>
-          </div>
+          {lockedFarmId ? (
+            <input type="hidden" name="farmId" value={lockedFarmId} />
+          ) : (
+            <div>
+              <Label htmlFor="farmSelect">Farm</Label>
+              <Select id="farmSelect" value={farmId} onChange={(e) => onFarmChange(e.target.value)}>
+                {farms.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.farmName}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
           <div>
             <Label htmlFor="flockSelect">Flock</Label>
             <Select

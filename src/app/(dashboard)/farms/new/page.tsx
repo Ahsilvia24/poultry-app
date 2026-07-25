@@ -31,29 +31,9 @@ export default function NewFarmPage() {
               <Label htmlFor="growerName">Grower name</Label>
               <Input id="growerName" name="growerName" />
             </div>
-            <div>
-              <Label htmlFor="farmNumber">Farm number</Label>
-              <Input id="farmNumber" name="farmNumber" />
-            </div>
-            <div>
+            <div className="sm:col-span-2">
               <Label htmlFor="phoneNumber">Phone</Label>
               <Input id="phoneNumber" name="phoneNumber" type="tel" />
-            </div>
-            <div className="sm:col-span-2">
-              <Label htmlFor="address">Address</Label>
-              <Input id="address" name="address" />
-            </div>
-            <div>
-              <Label htmlFor="city">City</Label>
-              <Input id="city" name="city" />
-            </div>
-            <div>
-              <Label htmlFor="state">State</Label>
-              <Input id="state" name="state" />
-            </div>
-            <div>
-              <Label htmlFor="zipCode">ZIP</Label>
-              <Input id="zipCode" name="zipCode" />
             </div>
             <div className="sm:col-span-2">
               <Label htmlFor="notes">Notes</Label>
