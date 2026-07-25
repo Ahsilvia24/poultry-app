@@ -103,6 +103,21 @@ export const mortalityBatchSchema = z.object({
   entries: z.array(mortalityHouseEntrySchema).min(1),
 });
 
+export const mortalityHouseSeriesEntrySchema = z.object({
+  mortalityDate: z.string().min(1),
+  dailyMortalityCount: z.coerce.number().int().min(0, "Mortality cannot be negative"),
+  cullCount: z.coerce.number().int().min(0, "Culls cannot be negative"),
+});
+
+export const mortalityHouseSeriesSchema = z.object({
+  flockId: z.string(),
+  houseFlockId: z.string(),
+  mortalityCause: mortalityHouseEntrySchema.shape.mortalityCause,
+  comments: z.string().optional().nullable(),
+  isDraft: z.boolean().optional(),
+  entries: z.array(mortalityHouseSeriesEntrySchema).min(1),
+});
+
 export const feedDeliverySchema = z.object({
   flockId: z.string().optional().nullable(),
   houseFlockId: z.string().optional().nullable(),

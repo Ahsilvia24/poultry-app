@@ -9,7 +9,7 @@ import {
   type MortalityFarmPayload,
 } from "@/components/MortalityEntryForm";
 
-type SearchParams = Promise<{ farmId?: string }>;
+type SearchParams = Promise<{ farmId?: string; houseFlockId?: string }>;
 
 export default async function MortalityPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await auth();
@@ -49,6 +49,7 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
         ? {
             id: active.id,
             flockNumber: active.flockNumber,
+            placementDate: format(active.placementDate, "yyyy-MM-dd"),
             houses: active.houseFlocks.map((hf) => ({
               houseFlockId: hf.id,
               houseNumber: hf.house.houseNumber,
@@ -71,7 +72,7 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
     <div>
       <PageHeader
         title="Mortality entry"
-        subtitle="Record daily mortality and culls by house"
+        subtitle="Enter mortality by house and bird age"
       />
       {farms.length === 0 ? (
         <p className="text-stone-600">Add an active farm with a flock to enter mortality.</p>
@@ -79,6 +80,7 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
         <MortalityEntryForm
           farms={farms}
           initialFarmId={params.farmId}
+          initialHouseFlockId={params.houseFlockId}
           thresholds={thresholds}
         />
       )}

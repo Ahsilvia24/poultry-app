@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveMortalityBatchAction } from "@/app/actions/mortality";
+import { addDays, format } from "date-fns";
+import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
 import {
   MORTALITY_DISCLAIMER,
+  birdAgeFromPlacement,
   calcPercentage,
   calcTotalDailyLoss,
   resolveMortalityStatus,
@@ -33,74 +35,66 @@ export type MortalityFarmPayload = {
   activeFlock: {
     id: string;
     flockNumber: string;
+    placementDate: string;
     houses: MortalityHousePayload[];
   } | null;
 };
 
-type HouseFormRow = {
-  houseFlockId: string;
+type DayRow = {
+  age: number;
+  mortalityDate: string;
   dailyMortalityCount: string;
   cullCount: string;
-  mortalityCause: string;
-  comments: string;
 };
 
 const CAUSES = Object.keys(MORTALITY_CAUSE_LABELS);
 
-function draftKey(farmId: string, flockId: string, date: string) {
-  return `mortality-draft:${farmId}:${flockId}:${date}`;
+function draftKey(farmId: string, houseFlockId: string) {
+  return `mortality-house-draft:${farmId}:${houseFlockId}`;
 }
 
-function todayISO() {
+function parseLocalDate(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
+}
+
+function todayDate() {
   const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  d.setHours(12, 0, 0, 0);
+  return d;
 }
 
-function emptyRows(houses: MortalityHousePayload[]): HouseFormRow[] {
-  return houses.map((h) => ({
-    houseFlockId: h.houseFlockId,
-    dailyMortalityCount: "0",
-    cullCount: "0",
-    mortalityCause: "UNKNOWN",
-    comments: "",
-  }));
-}
+function buildRows(
+  placementDate: string,
+  house: MortalityHousePayload,
+): DayRow[] {
+  const placement = parseLocalDate(placementDate);
+  const maxAge = birdAgeFromPlacement(placement, todayDate());
+  const byDate = new Map(house.existingEntries.map((e) => [e.mortalityDate, e]));
 
-function rowsFromEntries(
-  houses: MortalityHousePayload[],
-  date: string,
-): HouseFormRow[] {
-  return houses.map((h) => {
-    const existing = h.existingEntries.find((e) => e.mortalityDate === date);
-    if (!existing) {
-      return {
-        houseFlockId: h.houseFlockId,
-        dailyMortalityCount: "0",
-        cullCount: "0",
-        mortalityCause: "UNKNOWN",
-        comments: "",
-      };
-    }
-    return {
-      houseFlockId: h.houseFlockId,
-      dailyMortalityCount: String(existing.dailyMortalityCount),
-      cullCount: String(existing.cullCount),
-      mortalityCause: existing.mortalityCause,
-      comments: existing.comments ?? "",
-    };
-  });
+  const rows: DayRow[] = [];
+  for (let age = 0; age <= maxAge; age++) {
+    const mortalityDate = format(addDays(placement, age), "yyyy-MM-dd");
+    const existing = byDate.get(mortalityDate);
+    rows.push({
+      age,
+      mortalityDate,
+      dailyMortalityCount: existing ? String(existing.dailyMortalityCount) : "0",
+      cullCount: existing ? String(existing.cullCount) : "0",
+    });
+  }
+  return rows;
 }
 
 export function MortalityEntryForm({
   farms,
   initialFarmId,
+  initialHouseFlockId,
   thresholds,
 }: {
   farms: MortalityFarmPayload[];
   initialFarmId?: string;
+  initialHouseFlockId?: string;
   thresholds: ThresholdSettings;
 }) {
   const router = useRouter();
@@ -110,38 +104,71 @@ export function MortalityEntryForm({
       ? initialFarmId
       : farms.find((f) => f.activeFlock)?.id ?? farms[0]?.id ?? "",
   );
-  const [mortalityDate, setMortalityDate] = useState(todayISO);
-  const [rows, setRows] = useState<HouseFormRow[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<{
-    totalMortality: number;
-    totalCulls: number;
-    totalLoss: number;
-    birdAgeInDays: number;
-    warnings: Array<{ houseNumber: number; status: string; dailyPct: number; sevenDayPct: number }>;
-    isDraft: boolean;
-  } | null>(null);
-  const [draftNotice, setDraftNotice] = useState<string | null>(null);
 
   const farm = useMemo(() => farms.find((f) => f.id === farmId) ?? null, [farms, farmId]);
   const flock = farm?.activeFlock ?? null;
   const houses = flock?.houses ?? [];
-  const housesKey = houses.map((h) => h.houseFlockId).join(",");
 
+  const [houseFlockId, setHouseFlockId] = useState(() => {
+    if (initialHouseFlockId && houses.some((h) => h.houseFlockId === initialHouseFlockId)) {
+      return initialHouseFlockId;
+    }
+    return houses[0]?.houseFlockId ?? "";
+  });
+
+  const house = useMemo(
+    () => houses.find((h) => h.houseFlockId === houseFlockId) ?? null,
+    [houses, houseFlockId],
+  );
+
+  const [rows, setRows] = useState<DayRow[]>([]);
+  const [mortalityCause, setMortalityCause] = useState("UNKNOWN");
+  const [comments, setComments] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  const [summary, setSummary] = useState<{
+    totalMortality: number;
+    totalCulls: number;
+    totalLoss: number;
+    daysSaved: number;
+    status: string;
+    dailyPct: number;
+    sevenDayPct: number;
+    isDraft: boolean;
+  } | null>(null);
+
+  // Keep house selection valid when farm changes
   useEffect(() => {
     if (!flock || houses.length === 0) {
+      setHouseFlockId("");
+      setRows([]);
+      return;
+    }
+    if (!houses.some((h) => h.houseFlockId === houseFlockId)) {
+      setHouseFlockId(houses[0]!.houseFlockId);
+    }
+  }, [farmId, flock?.id, houses, houseFlockId]);
+
+  useEffect(() => {
+    if (!flock || !house) {
       setRows([]);
       return;
     }
 
-    const key = draftKey(farmId, flock.id, mortalityDate);
+    const key = draftKey(farmId, house.houseFlockId);
     try {
       const raw = sessionStorage.getItem(key);
       if (raw) {
-        const parsed = JSON.parse(raw) as HouseFormRow[];
-        if (Array.isArray(parsed) && parsed.length === houses.length) {
-          setRows(parsed);
-          setDraftNotice("Restored local draft for this date.");
+        const parsed = JSON.parse(raw) as {
+          rows?: DayRow[];
+          mortalityCause?: string;
+          comments?: string;
+        };
+        if (Array.isArray(parsed.rows) && parsed.rows.length > 0) {
+          setRows(parsed.rows);
+          setMortalityCause(parsed.mortalityCause ?? "UNKNOWN");
+          setComments(parsed.comments ?? "");
+          setDraftNotice("Restored local draft for this house.");
           return;
         }
       }
@@ -150,61 +177,65 @@ export function MortalityEntryForm({
     }
 
     setDraftNotice(null);
-    const fromDb = rowsFromEntries(houses, mortalityDate);
-    const hasExisting = houses.some((h) =>
-      h.existingEntries.some((e) => e.mortalityDate === mortalityDate),
-    );
-    setRows(hasExisting ? fromDb : emptyRows(houses));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when farm/flock/date/house set changes
-  }, [farmId, flock?.id, mortalityDate, housesKey]);
+    const built = buildRows(flock.placementDate, house);
+    setRows(built);
+    const latestWithCause = [...house.existingEntries].reverse().find((e) => e.mortalityCause);
+    setMortalityCause(latestWithCause?.mortalityCause ?? "UNKNOWN");
+    setComments(latestWithCause?.comments ?? "");
+  }, [farmId, flock?.id, flock?.placementDate, house?.houseFlockId]);
 
-  function updateRow(index: number, patch: Partial<HouseFormRow>) {
-    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  function updateRow(age: number, patch: Partial<Pick<DayRow, "dailyMortalityCount" | "cullCount">>) {
+    setRows((prev) => prev.map((r) => (r.age === age ? { ...r, ...patch } : r)));
     setSummary(null);
   }
 
   function saveDraftLocal() {
-    if (!flock) return;
-    const key = draftKey(farmId, flock.id, mortalityDate);
-    sessionStorage.setItem(key, JSON.stringify(rows));
+    if (!house) return;
+    const key = draftKey(farmId, house.houseFlockId);
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({ rows, mortalityCause, comments }),
+    );
     setDraftNotice("Draft saved on this device.");
   }
 
-  function buildWarnings() {
-    return houses.map((h, i) => {
-      const row = rows[i];
-      const loss = calcTotalDailyLoss(
-        Number(row?.dailyMortalityCount || 0),
-        Number(row?.cullCount || 0),
+  function buildHouseWarning() {
+    if (!house || rows.length === 0) return null;
+    const last = rows[rows.length - 1]!;
+    const loss = calcTotalDailyLoss(
+      Number(last.dailyMortalityCount || 0),
+      Number(last.cullCount || 0),
+    );
+    const dailyPct = calcPercentage(loss, house.placedBirdCount);
+    const priorSeven = rows
+      .slice(-7)
+      .reduce(
+        (s, r) =>
+          s + calcTotalDailyLoss(Number(r.dailyMortalityCount || 0), Number(r.cullCount || 0)),
+        0,
       );
-      const dailyPct = calcPercentage(loss, h.placedBirdCount);
-      const priorSeven = h.existingEntries
-        .filter((e) => e.mortalityDate !== mortalityDate && e.mortalityDate <= mortalityDate)
-        .slice(-6)
-        .reduce((s, e) => s + calcTotalDailyLoss(e.dailyMortalityCount, e.cullCount), 0);
-      const sevenDayPct = calcPercentage(priorSeven + loss, h.placedBirdCount);
-      const status = resolveMortalityStatus({ dailyPct, sevenDayPct }, thresholds);
-      return { houseNumber: h.houseNumber, status, dailyPct, sevenDayPct };
-    });
+    const sevenDayPct = calcPercentage(priorSeven, house.placedBirdCount);
+    const status = resolveMortalityStatus({ dailyPct, sevenDayPct }, thresholds);
+    return { status, dailyPct, sevenDayPct };
   }
 
   function submit(isDraft: boolean) {
-    if (!flock) {
-      setError("Select a farm with an active flock");
+    if (!flock || !house) {
+      setError("Select a farm and house with an active flock");
       return;
     }
     setError(null);
     startTransition(async () => {
-      const result = await saveMortalityBatchAction({
+      const result = await saveMortalityHouseSeriesAction({
         flockId: flock.id,
-        mortalityDate,
+        houseFlockId: house.houseFlockId,
+        mortalityCause,
+        comments: comments || null,
+        isDraft,
         entries: rows.map((r) => ({
-          houseFlockId: r.houseFlockId,
+          mortalityDate: r.mortalityDate,
           dailyMortalityCount: Number(r.dailyMortalityCount || 0),
           cullCount: Number(r.cullCount || 0),
-          mortalityCause: r.mortalityCause,
-          comments: r.comments || null,
-          isDraft,
         })),
       });
 
@@ -215,18 +246,24 @@ export function MortalityEntryForm({
 
       const totalMortality = rows.reduce((s, r) => s + Number(r.dailyMortalityCount || 0), 0);
       const totalCulls = rows.reduce((s, r) => s + Number(r.cullCount || 0), 0);
+      const warning = buildHouseWarning();
       setSummary({
         totalMortality,
         totalCulls,
         totalLoss: totalMortality + totalCulls,
-        birdAgeInDays: result?.birdAgeInDays ?? 0,
-        warnings: buildWarnings().filter((w) => w.status !== "Normal"),
+        daysSaved: result?.count ?? rows.length,
+        status: warning?.status ?? "Normal",
+        dailyPct: warning?.dailyPct ?? 0,
+        sevenDayPct: warning?.sevenDayPct ?? 0,
         isDraft,
       });
 
-      const key = draftKey(farmId, flock.id, mortalityDate);
+      const key = draftKey(farmId, house.houseFlockId);
       if (isDraft) {
-        sessionStorage.setItem(key, JSON.stringify(rows));
+        sessionStorage.setItem(
+          key,
+          JSON.stringify({ rows, mortalityCause, comments }),
+        );
         setDraftNotice("Draft saved to server and this device.");
       } else {
         sessionStorage.removeItem(key);
@@ -234,6 +271,24 @@ export function MortalityEntryForm({
       }
       router.refresh();
     });
+  }
+
+  function changeFarm(nextFarmId: string) {
+    setFarmId(nextFarmId);
+    setSummary(null);
+    const nextFarm = farms.find((f) => f.id === nextFarmId);
+    const firstHouse = nextFarm?.activeFlock?.houses[0]?.houseFlockId ?? "";
+    setHouseFlockId(firstHouse);
+    const qs = firstHouse
+      ? `/mortality?farmId=${nextFarmId}&houseFlockId=${firstHouse}`
+      : `/mortality?farmId=${nextFarmId}`;
+    router.replace(qs);
+  }
+
+  function changeHouse(nextHouseId: string) {
+    setHouseFlockId(nextHouseId);
+    setSummary(null);
+    router.replace(`/mortality?farmId=${farmId}&houseFlockId=${nextHouseId}`);
   }
 
   return (
@@ -245,11 +300,7 @@ export function MortalityEntryForm({
             <Select
               id="farmId"
               value={farmId}
-              onChange={(e) => {
-                setFarmId(e.target.value);
-                setSummary(null);
-                router.replace(`/mortality?farmId=${e.target.value}`);
-              }}
+              onChange={(e) => changeFarm(e.target.value)}
             >
               {farms.map((f) => (
                 <option key={f.id} value={f.id} disabled={!f.activeFlock}>
@@ -260,105 +311,158 @@ export function MortalityEntryForm({
             </Select>
           </div>
           <div>
-            <Label htmlFor="mortalityDate">Date</Label>
-            <Input
-              id="mortalityDate"
-              type="date"
-              value={mortalityDate}
-              onChange={(e) => {
-                setMortalityDate(e.target.value);
-                setSummary(null);
-              }}
-            />
+            <Label htmlFor="houseFlockId">House</Label>
+            <Select
+              id="houseFlockId"
+              value={houseFlockId}
+              disabled={houses.length === 0}
+              onChange={(e) => changeHouse(e.target.value)}
+            >
+              {houses.length === 0 ? (
+                <option value="">No houses</option>
+              ) : (
+                houses.map((h) => (
+                  <option key={h.houseFlockId} value={h.houseFlockId}>
+                    House {h.houseNumber}
+                  </option>
+                ))
+              )}
+            </Select>
           </div>
         </div>
-        {flock ? (
+
+        {houses.length > 1 ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {houses.map((h) => (
+              <button
+                key={h.houseFlockId}
+                type="button"
+                onClick={() => changeHouse(h.houseFlockId)}
+                className={`min-h-11 rounded-lg px-4 text-sm font-semibold ${
+                  h.houseFlockId === houseFlockId
+                    ? "bg-emerald-700 text-white"
+                    : "bg-stone-100 text-stone-800 hover:bg-stone-200"
+                }`}
+              >
+                House {h.houseNumber}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {flock && house ? (
           <p className="mt-3 text-sm text-stone-600">
-            Active flock <span className="font-semibold">{flock.flockNumber}</span> ·{" "}
-            {houses.length} house{houses.length === 1 ? "" : "s"}
+            Flock <span className="font-semibold">{flock.flockNumber}</span> · House{" "}
+            <span className="font-semibold">{house.houseNumber}</span> · Placed{" "}
+            {formatNumber(house.placedBirdCount)} · Ages 0–{rows.length > 0 ? rows[rows.length - 1]!.age : 0}
           </p>
         ) : (
-          <p className="mt-3 text-sm text-amber-800">This farm has no active flock.</p>
+          <p className="mt-3 text-sm text-amber-800">This farm has no active flock or houses.</p>
         )}
         {draftNotice ? <p className="mt-2 text-sm text-emerald-800">{draftNotice}</p> : null}
       </Card>
 
-      {houses.length > 0 ? (
-        <div className="space-y-3">
-          {houses.map((house, index) => {
-            const row = rows[index];
-            if (!row) return null;
-            return (
-              <Card key={house.houseFlockId}>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h3 className="text-lg font-bold">House {house.houseNumber}</h3>
-                  <p className="text-sm text-stone-600">
-                    Placed {formatNumber(house.placedBirdCount)}
-                  </p>
-                </div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <div>
-                    <Label htmlFor={`mort-${house.houseFlockId}`}>Mortality</Label>
-                    <Input
-                      id={`mort-${house.houseFlockId}`}
-                      type="number"
-                      min={0}
-                      inputMode="numeric"
-                      value={row.dailyMortalityCount}
-                      onChange={(e) => updateRow(index, { dailyMortalityCount: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`cull-${house.houseFlockId}`}>Culls</Label>
-                    <Input
-                      id={`cull-${house.houseFlockId}`}
-                      type="number"
-                      min={0}
-                      inputMode="numeric"
-                      value={row.cullCount}
-                      onChange={(e) => updateRow(index, { cullCount: e.target.value })}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Label htmlFor={`cause-${house.houseFlockId}`}>Primary cause</Label>
-                    <Select
-                      id={`cause-${house.houseFlockId}`}
-                      value={row.mortalityCause}
-                      onChange={(e) => updateRow(index, { mortalityCause: e.target.value })}
-                    >
-                      {CAUSES.map((c) => (
-                        <option key={c} value={c}>
-                          {MORTALITY_CAUSE_LABELS[c]}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div className="sm:col-span-2 lg:col-span-4">
-                    <Label htmlFor={`comments-${house.houseFlockId}`}>Comments</Label>
-                    <Textarea
-                      id={`comments-${house.houseFlockId}`}
-                      rows={2}
-                      value={row.comments}
-                      onChange={(e) => updateRow(index, { comments: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+      {house && rows.length > 0 ? (
+        <Card className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="mortalityCause">Primary cause</Label>
+              <Select
+                id="mortalityCause"
+                value={mortalityCause}
+                onChange={(e) => {
+                  setMortalityCause(e.target.value);
+                  setSummary(null);
+                }}
+              >
+                {CAUSES.map((c) => (
+                  <option key={c} value={c}>
+                    {MORTALITY_CAUSE_LABELS[c]}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="comments">Comments</Label>
+              <Textarea
+                id="comments"
+                rows={2}
+                value={comments}
+                onChange={(e) => {
+                  setComments(e.target.value);
+                  setSummary(null);
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="-mx-4 overflow-x-auto sm:mx-0">
+            <table className="min-w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-stone-200 bg-stone-50 text-left">
+                  <th className="sticky left-0 z-10 bg-stone-50 px-3 py-2 font-semibold text-stone-600">
+                    Age
+                  </th>
+                  <th className="px-3 py-2 font-semibold text-stone-600">Mortality</th>
+                  <th className="px-3 py-2 font-semibold text-stone-600">Culls</th>
+                  <th className="px-3 py-2 font-semibold text-stone-600">Loss</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => {
+                  const loss = calcTotalDailyLoss(
+                    Number(row.dailyMortalityCount || 0),
+                    Number(row.cullCount || 0),
+                  );
+                  return (
+                    <tr key={row.mortalityDate} className="border-b border-stone-100">
+                      <td className="sticky left-0 z-10 bg-white px-3 py-2 font-semibold text-stone-900">
+                        {row.age}
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <Input
+                          aria-label={`Mortality day ${row.age}`}
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          className="min-h-11 px-3"
+                          value={row.dailyMortalityCount}
+                          onChange={(e) =>
+                            updateRow(row.age, { dailyMortalityCount: e.target.value })
+                          }
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <Input
+                          aria-label={`Culls day ${row.age}`}
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          className="min-h-11 px-3"
+                          value={row.cullCount}
+                          onChange={(e) => updateRow(row.age, { cullCount: e.target.value })}
+                        />
+                      </td>
+                      <td className="px-3 py-2 font-semibold text-stone-800">{loss}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       ) : null}
 
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
 
       <div className="flex flex-wrap gap-2">
-        <Button type="button" disabled={pending || !flock} onClick={() => submit(false)}>
+        <Button type="button" disabled={pending || !house} onClick={() => submit(false)}>
           {pending ? "Saving…" : "Save mortality"}
         </Button>
         <Button
           type="button"
           variant="secondary"
-          disabled={pending || !flock}
+          disabled={pending || !house}
           onClick={() => {
             saveDraftLocal();
             submit(true);
@@ -366,7 +470,7 @@ export function MortalityEntryForm({
         >
           Save draft
         </Button>
-        <Button type="button" variant="ghost" disabled={!flock} onClick={saveDraftLocal}>
+        <Button type="button" variant="ghost" disabled={!house} onClick={saveDraftLocal}>
           Save on device only
         </Button>
       </div>
@@ -374,7 +478,8 @@ export function MortalityEntryForm({
       {summary ? (
         <Card className="border-emerald-200 bg-emerald-50/40">
           <h3 className="font-bold text-stone-900">
-            {summary.isDraft ? "Draft saved" : "Saved"} — day {summary.birdAgeInDays}
+            {summary.isDraft ? "Draft saved" : "Saved"} — {summary.daysSaved} day
+            {summary.daysSaved === 1 ? "" : "s"}
           </h3>
           <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
             <div>
@@ -390,21 +495,16 @@ export function MortalityEntryForm({
               <p className="text-xl font-bold">{summary.totalLoss}</p>
             </div>
           </div>
-          {summary.warnings.length > 0 ? (
-            <div className="mt-4 space-y-2">
-              <p className="font-semibold text-amber-900">Threshold warnings</p>
-              {summary.warnings.map((w) => (
-                <div key={w.houseNumber} className="flex flex-wrap items-center gap-2 text-sm">
-                  <span>House {w.houseNumber}</span>
-                  <StatusBadge status={w.status} />
-                  <span>
-                    Daily {formatPct(w.dailyPct)} · 7-day {formatPct(w.sevenDayPct)}
-                  </span>
-                </div>
-              ))}
+          {summary.status !== "Normal" ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-semibold text-amber-900">Threshold warning</span>
+              <StatusBadge status={summary.status} />
+              <span>
+                Latest day {formatPct(summary.dailyPct)} · 7-day {formatPct(summary.sevenDayPct)}
+              </span>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-stone-600">No threshold warnings for this entry.</p>
+            <p className="mt-3 text-sm text-stone-600">No threshold warnings for latest day.</p>
           )}
           <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
             {MORTALITY_DISCLAIMER}

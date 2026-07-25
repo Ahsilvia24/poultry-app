@@ -8,7 +8,7 @@ import {
   getLatestSummary,
 } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
-import { mortalityBatchSchema } from "@/lib/validations";
+import { mortalityBatchSchema, mortalityHouseSeriesSchema } from "@/lib/validations";
 
 export async function saveMortalityBatchAction(raw: unknown) {
   const user = await requireUser();
@@ -93,4 +93,107 @@ export async function saveMortalityBatchAction(raw: unknown) {
   revalidatePath(`/farms/${flock.farmId}`);
 
   return { success: true, count: results.length, birdAgeInDays: birdAge };
+}
+
+export async function saveMortalityHouseSeriesAction(raw: unknown) {
+  const user = await requireUser();
+  const parsed = mortalityHouseSeriesSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid mortality series" };
+  }
+
+  const flock = await prisma.flock.findFirst({
+    where: {
+      id: parsed.data.flockId,
+      farm: { userId: user.id!, deletedAt: null },
+    },
+    include: {
+      houseFlocks: {
+        include: { mortalities: true },
+      },
+    },
+  });
+  if (!flock) return { error: "Flock not found or access denied" };
+
+  const hf = flock.houseFlocks.find((h) => h.id === parsed.data.houseFlockId);
+  if (!hf) return { error: "Invalid house flock" };
+
+  const entries = [...parsed.data.entries].sort((a, b) =>
+    a.mortalityDate.localeCompare(b.mortalityDate),
+  );
+
+  const existingByDate = new Map(
+    hf.mortalities.map((m) => [m.mortalityDate.toISOString().slice(0, 10), m]),
+  );
+  const submittedDates = new Set(entries.map((e) => e.mortalityDate));
+  const allDates = [
+    ...new Set([
+      ...hf.mortalities.map((m) => m.mortalityDate.toISOString().slice(0, 10)),
+      ...entries.map((e) => e.mortalityDate),
+    ]),
+  ].sort();
+
+  let remaining = hf.placedBirdCount;
+  for (const dateKey of allDates) {
+    if (submittedDates.has(dateKey)) {
+      const entry = entries.find((e) => e.mortalityDate === dateKey)!;
+      const loss = calcTotalDailyLoss(entry.dailyMortalityCount, entry.cullCount);
+      if (loss > remaining) {
+        return {
+          error: `Day ${dateKey}: loss (${loss}) exceeds remaining birds (${remaining}).`,
+        };
+      }
+      remaining -= loss;
+    } else {
+      const existing = existingByDate.get(dateKey);
+      if (existing && !existing.isDraft) {
+        remaining -= existing.totalDailyLoss;
+      }
+    }
+  }
+
+  const results = [];
+  for (const entry of entries) {
+    const mortalityDate = new Date(entry.mortalityDate);
+    const birdAge = birdAgeFromPlacement(flock.placementDate, mortalityDate);
+    const loss = calcTotalDailyLoss(entry.dailyMortalityCount, entry.cullCount);
+    const row = await prisma.dailyMortality.upsert({
+      where: {
+        houseFlockId_mortalityDate: {
+          houseFlockId: hf.id,
+          mortalityDate,
+        },
+      },
+      create: {
+        houseFlockId: hf.id,
+        mortalityDate,
+        birdAgeInDays: birdAge,
+        dailyMortalityCount: entry.dailyMortalityCount,
+        cullCount: entry.cullCount,
+        totalDailyLoss: loss,
+        mortalityCause: parsed.data.mortalityCause,
+        comments: parsed.data.comments,
+        isDraft: parsed.data.isDraft ?? false,
+        enteredByUserId: user.id!,
+      },
+      update: {
+        birdAgeInDays: birdAge,
+        dailyMortalityCount: entry.dailyMortalityCount,
+        cullCount: entry.cullCount,
+        totalDailyLoss: loss,
+        mortalityCause: parsed.data.mortalityCause,
+        comments: parsed.data.comments,
+        isDraft: parsed.data.isDraft ?? false,
+        enteredByUserId: user.id!,
+      },
+    });
+    results.push(row);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/mortality");
+  revalidatePath(`/farms/${flock.farmId}`);
+
+  const maxAge = results.reduce((m, r) => Math.max(m, r.birdAgeInDays), 0);
+  return { success: true, count: results.length, birdAgeInDays: maxAge };
 }
