@@ -211,16 +211,17 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
       {activeFlock ? (
         <div className="mt-6">
-          <h2 className="text-xl font-bold">Active flock — {activeFlock.flockNumber}</h2>
+          <h2 className="text-xl font-bold">
+            Active flock — {differenceInCalendarDays(today, activeFlock.placementDate)} days
+          </h2>
           <FlockScheduleEditor
             summary={[
               `Placed ${format(activeFlock.placementDate, "MMM d, yyyy")}`,
-              `Age ${differenceInCalendarDays(today, activeFlock.placementDate)} days`,
               activeFlock.projectedCatchDate
-                ? `Projected catch ${format(activeFlock.projectedCatchDate, "MMM d, yyyy")}`
+                ? `Proj. Catch ${format(activeFlock.projectedCatchDate, "MMM d, yyyy")}`
                 : null,
               activeFlock.targetMarketAge != null
-                ? `Market age ${activeFlock.targetMarketAge} days`
+                ? `${activeFlock.targetMarketAge} days`
                 : null,
             ]
               .filter(Boolean)
