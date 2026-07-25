@@ -27,6 +27,7 @@ import {
 } from "@/components/FarmOpsForms";
 import { FlockScheduleFields } from "@/components/FlockScheduleFields";
 import { FarmInfoEditor } from "@/components/FarmInfoEditor";
+import { FarmQuickLinks } from "@/components/FarmQuickLinks";
 import { Button, Card, Input, Label, Select, StatTile, StatusBadge, Textarea } from "@/components/ui";
 
 type Params = Promise<{ id: string }>;
@@ -184,33 +185,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-3">
-          <h2 className="font-bold text-stone-900">Quick links</h2>
-          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-            <Link href={`/mortality?farmId=${farm.id}`} className="font-semibold text-emerald-800 underline">
-              Mortality entry
-            </Link>
-            <Link href="/feed" className="font-semibold text-emerald-800 underline">
-              Feed deliveries
-            </Link>
-            <a href="#visits" className="font-semibold text-emerald-800 underline">
-              Visits
-            </a>
-            <a href="#issues" className="font-semibold text-emerald-800 underline">
-              Issues
-            </a>
-            <a href="#litter" className="font-semibold text-emerald-800 underline">
-              Litter events
-            </a>
-            <Link href={`/history/${farm.id}`} className="font-semibold text-emerald-800 underline">
-              Flock history
-            </Link>
-            <Link href={`/reports?farmId=${farm.id}`} className="font-semibold text-emerald-800 underline">
-              Reports
-            </Link>
-          </div>
-        </Card>
+      <div className="mt-2">
+        <FarmQuickLinks farmId={farm.id} />
       </div>
 
       {activeFlock ? (
@@ -264,7 +240,10 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       ) : (
         <Card className="mt-6">
           <p className="font-semibold text-stone-800">No active flock</p>
-          <p className="mt-1 text-sm text-stone-600">Create a flock below to start tracking mortality.</p>
+          <p className="mt-1 text-sm text-stone-600">
+            Use <a href="#add-flock" className="font-semibold text-emerald-800 underline">Add flock</a>{" "}
+            below to start tracking mortality.
+          </p>
         </Card>
       )}
 
@@ -325,7 +304,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         ) : null}
       </div>
 
-      <div className="mt-8 grid gap-4 lg:grid-cols-2">
+      <div className="mt-8">
         <Card>
           <h3 className="font-bold">Add house</h3>
           <form action={submitHouse} className="mt-4 space-y-3">
@@ -378,7 +357,9 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             <Button type="submit">Add house</Button>
           </form>
         </Card>
+      </div>
 
+      <div id="add-flock" className="mt-8 scroll-mt-24">
         <Card>
           <h3 className="font-bold">Add flock</h3>
           {activeFlock ? (
@@ -453,78 +434,116 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       </div>
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <div id="visits">
+        <div id="visits" className="scroll-mt-24">
+        <Card>
+          <h3 className="font-bold">Recent visits</h3>
+          <ul className="mt-3 space-y-2 text-sm">
+            {farm.visits.length === 0 ? <li className="text-stone-500">None yet</li> : null}
+            {farm.visits.map((v) => (
+              <li key={v.id} className="border-b border-stone-100 pb-2">
+                <span className="font-semibold">{format(v.visitDate, "MMM d, yyyy")}</span>
+                {" — "}
+                {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
+                {v.followUpRequired ? (
+                  <span className="ml-2 text-amber-700">Follow-up due</span>
+                ) : null}
+                {v.notes ? <p className="text-stone-600">{v.notes}</p> : null}
+              </li>
+            ))}
+          </ul>
+          <h4 className="mt-6 font-bold">Log visit</h4>
+          <FarmVisitForm farmId={farm.id} flockId={activeFlock?.id} />
+        </Card>
+        </div>
+
+        <div id="issues" className="scroll-mt-24">
+        <Card>
+          <h3 className="font-bold">Recent issues</h3>
+          <ul className="mt-3 space-y-2 text-sm">
+            {farm.issues.length === 0 ? <li className="text-stone-500">None yet</li> : null}
+            {farm.issues.map((issue) => (
+              <li key={issue.id} className="border-b border-stone-100 pb-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{format(issue.dateReported, "MMM d, yyyy")}</span>
+                  <span className="rounded bg-stone-100 px-2 py-0.5 text-xs font-bold">
+                    {issue.priority}
+                  </span>
+                  <span className="text-xs text-stone-500">{issue.status}</span>
+                </div>
+                <p>
+                  {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}: {issue.description}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <h4 className="mt-6 font-bold">Report issue</h4>
+          <FarmIssueForm
+            farmId={farm.id}
+            flockId={activeFlock?.id}
+            houses={farm.houses.map((h) => ({ id: h.id, houseNumber: h.houseNumber }))}
+          />
+        </Card>
+        </div>
+
+        <div id="weight-projections" className="scroll-mt-24">
           <Card>
-            <h3 className="font-bold">Recent visits</h3>
-            <ul className="mt-3 space-y-2 text-sm">
-              {farm.visits.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-              {farm.visits.map((v) => (
-                <li key={v.id} className="border-b border-stone-100 pb-2">
-                  <span className="font-semibold">{format(v.visitDate, "MMM d, yyyy")}</span>
-                  {" — "}
-                  {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
-                  {v.followUpRequired ? (
-                    <span className="ml-2 text-amber-700">Follow-up due</span>
-                  ) : null}
-                  {v.notes ? <p className="text-stone-600">{v.notes}</p> : null}
-                </li>
-              ))}
-            </ul>
-            <h4 className="mt-6 font-bold">Log visit</h4>
-            <FarmVisitForm farmId={farm.id} flockId={activeFlock?.id} />
+            <h3 className="font-bold">Weight projections</h3>
+            {activeFlock ? (
+              <div className="mt-3 space-y-2 text-sm">
+                <p>
+                  <span className="text-stone-500">Target market age:</span>{" "}
+                  <span className="font-semibold">
+                    {activeFlock.targetMarketAge ?? 52} days
+                  </span>
+                </p>
+                <p>
+                  <span className="text-stone-500">Target market weight:</span>{" "}
+                  <span className="font-semibold">
+                    {activeFlock.targetMarketWeight != null
+                      ? `${activeFlock.targetMarketWeight} lb`
+                      : "Not set"}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-stone-500">Current age:</span>{" "}
+                  <span className="font-semibold">
+                    {differenceInCalendarDays(today, activeFlock.placementDate)} days
+                  </span>
+                </p>
+                <p className="text-stone-600">
+                  Detailed weekly weight projection curves can be added here later. For now this
+                  shows the flock&apos;s target market age and weight.
+                </p>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-stone-600">
+                Add an active flock to see weight projection targets.
+              </p>
+            )}
           </Card>
         </div>
 
-        <div id="issues">
-          <Card>
-            <h3 className="font-bold">Recent issues</h3>
-            <ul className="mt-3 space-y-2 text-sm">
-              {farm.issues.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-              {farm.issues.map((issue) => (
-                <li key={issue.id} className="border-b border-stone-100 pb-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">{format(issue.dateReported, "MMM d, yyyy")}</span>
-                    <span className="rounded bg-stone-100 px-2 py-0.5 text-xs font-bold">
-                      {issue.priority}
-                    </span>
-                    <span className="text-xs text-stone-500">{issue.status}</span>
-                  </div>
-                  <p>
-                    {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}: {issue.description}
-                  </p>
-                </li>
-              ))}
-            </ul>
-            <h4 className="mt-6 font-bold">Report issue</h4>
-            <FarmIssueForm
-              farmId={farm.id}
-              flockId={activeFlock?.id}
-              houses={farm.houses.map((h) => ({ id: h.id, houseNumber: h.houseNumber }))}
-            />
-          </Card>
-        </div>
-
-        <div id="litter">
-          <Card>
-            <h3 className="font-bold">Litter events</h3>
-            <ul className="mt-3 space-y-2 text-sm">
-              {farm.litterEvents.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-              {farm.litterEvents.map((e) => (
-                <li key={e.id} className="border-b border-stone-100 pb-2">
-                  <span className="font-semibold">{format(e.eventDate, "MMM d, yyyy")}</span>
-                  {" — "}
-                  {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
-                  {e.house ? ` · House ${e.house.houseNumber}` : ""}
-                  {e.notes ? <p className="text-stone-600">{e.notes}</p> : null}
-                </li>
-              ))}
-            </ul>
-            <h4 className="mt-6 font-bold">Record litter event</h4>
-            <LitterEventForm
-              farmId={farm.id}
-              houses={farm.houses.map((h) => ({ id: h.id, houseNumber: h.houseNumber }))}
-            />
-          </Card>
+        <div id="litter" className="scroll-mt-24">
+        <Card>
+          <h3 className="font-bold">Litter events</h3>
+          <ul className="mt-3 space-y-2 text-sm">
+            {farm.litterEvents.length === 0 ? <li className="text-stone-500">None yet</li> : null}
+            {farm.litterEvents.map((e) => (
+              <li key={e.id} className="border-b border-stone-100 pb-2">
+                <span className="font-semibold">{format(e.eventDate, "MMM d, yyyy")}</span>
+                {" — "}
+                {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
+                {e.house ? ` · House ${e.house.houseNumber}` : ""}
+                {e.notes ? <p className="text-stone-600">{e.notes}</p> : null}
+              </li>
+            ))}
+          </ul>
+          <h4 className="mt-6 font-bold">Record litter event</h4>
+          <LitterEventForm
+            farmId={farm.id}
+            houses={farm.houses.map((h) => ({ id: h.id, houseNumber: h.houseNumber }))}
+          />
+        </Card>
         </div>
 
         <Card>
