@@ -65,18 +65,8 @@ export default function LfoScreen() {
         <BrandBar />
         <PageHeader
           title="LFO"
-          subtitle="Last feed order inventory and consumption"
+          subtitle="Last feed order inventory and consumption rate"
         />
-
-        <Card>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Due schedule</Text>
-          <Text style={{ marginTop: 8, color: colors.text }}>
-            Mon–Wed kill → Friday before
-          </Text>
-          <Text style={{ marginTop: 4, color: colors.text }}>
-            Thu–Fri kill → Monday before
-          </Text>
-        </Card>
 
         <Text style={styles.label}>New LFO — farm</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
