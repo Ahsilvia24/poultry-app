@@ -147,20 +147,6 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </div>
-
-      <div className="mt-8">
-        <Card>
-          <h3 className="font-bold">Recent litter cleanouts</h3>
-          <ul className="mt-3 space-y-2 text-sm">
-            {data.recentCleanouts.length === 0 ? <li className="text-stone-500">None</li> : null}
-            {data.recentCleanouts.map((c) => (
-              <li key={`${c.farmName}-${c.date}`}>
-                <span className="font-semibold">{c.farmName}</span> — {c.date}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      </div>
     </div>
   );
 }
