@@ -10,6 +10,11 @@ import {
   formatMinVentCycle,
 } from "../lib/mortality";
 import { recommendedMinVent } from "../lib/tools";
+import {
+  buildFlockVisitSchedule,
+  splitScheduleForDashboard,
+  type ScheduledVisit,
+} from "../lib/schedule";
 
 type MortRow = {
   mortality_date: string;
@@ -154,6 +159,15 @@ export function getDashboard() {
   let mortalityEnteredToday = 0;
   let farmsMissingToday = 0;
   const farmCards = [];
+  type ScheduleRow = {
+    farmId: string;
+    farmName: string;
+    flockAgeDays: number | null;
+    date: string;
+    label: string;
+  };
+  const todaysSchedule: ScheduleRow[] = [];
+  const upcomingSchedule: ScheduleRow[] = [];
 
   for (const farm of farms) {
     const flock = db.getFirstSync<{
@@ -182,6 +196,7 @@ export function getDashboard() {
         missingTodayMortality: false,
         weeklyMortality: [] as Array<{ week: number; total: number }>,
         projectedCatchDate: null,
+        lastVisitDate: null as string | null,
       });
       continue;
     }
@@ -246,6 +261,25 @@ export function getDashboard() {
         ? Math.max(0, Math.round(farmRemaining - avgDaily * daysUntilCatch - 150 * hfs.length))
         : null;
 
+    const catchDate =
+      flock.projected_catch_date ?? addDaysKey(flock.placement_date, 52);
+    const schedule = buildFlockVisitSchedule(flock.placement_date, catchDate);
+    const { today: dueToday, upcoming } = splitScheduleForDashboard(schedule, today, 7);
+    const toRow = (v: ScheduledVisit): ScheduleRow => ({
+      farmId: farm.id,
+      farmName: farm.farmName,
+      flockAgeDays,
+      date: v.dateKey,
+      label: v.label,
+    });
+    for (const v of dueToday) todaysSchedule.push(toRow(v));
+    for (const v of upcoming) upcomingSchedule.push(toRow(v));
+
+    const lastVisit = db.getFirstSync<{ visit_date: string }>(
+      "SELECT visit_date FROM farm_visits WHERE farm_id = ? ORDER BY visit_date DESC LIMIT 1",
+      [farm.id],
+    );
+
     farmCards.push({
       id: farm.id,
       farmName: farm.farmName,
@@ -265,6 +299,7 @@ export function getDashboard() {
         .sort((a, b) => a[0] - b[0])
         .map(([week, total]) => ({ week, total })),
       projectedCatchDate: flock.projected_catch_date,
+      lastVisitDate: lastVisit?.visit_date ?? null,
     });
   }
 
@@ -277,7 +312,7 @@ export function getDashboard() {
       flockAgeDays: f.flockAgeDays,
     }))
     .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 6);
+    .slice(0, 8);
 
   return {
     stats: {
@@ -291,6 +326,8 @@ export function getDashboard() {
     },
     farmCards,
     upcomingCatches,
+    todaysSchedule,
+    upcomingSchedule,
   };
 }
 

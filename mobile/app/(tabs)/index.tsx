@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { getDashboard } from "../../src/repos/data";
 import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
+import { formatShortScheduleDate } from "../../src/lib/schedule";
 import {
   BrandBar,
   Card,
@@ -39,7 +40,7 @@ function formatCatchDate(dateKey: string) {
 }
 
 export default function DashboardScreen() {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +49,7 @@ export default function DashboardScreen() {
   const load = useCallback(async () => {
     try {
       setError(null);
+      setLoading(true);
       setData(getDashboard());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
@@ -98,18 +100,14 @@ export default function DashboardScreen() {
                 style={{ flex: 1 }}
               />
               <PrimaryButton
-                label="Reports"
+                label="Add farm"
                 secondary
-                onPress={() => router.push("/(tabs)/reports")}
+                onPress={() => router.push("/(tabs)/farms")}
                 style={{ flex: 1 }}
               />
             </View>
           }
         />
-
-        {user?.name ? (
-          <Text style={[styles.muted, { marginTop: -8, marginBottom: 12 }]}>{user.name}</Text>
-        ) : null}
 
         {error ? <Text style={{ color: colors.danger, marginBottom: 12 }}>{error}</Text> : null}
 
@@ -117,10 +115,81 @@ export default function DashboardScreen() {
           <>
             <View style={styles.row}>
               <StatTile label="Active farms" value={data.stats.activeFarms} />
-              <StatTile label="Active houses" value={data.stats.activeHouses} />
-              <StatTile label="Today's mortality" value={data.stats.mortalityEnteredToday} />
-              <StatTile label="Missing today" value={data.stats.farmsMissingToday} />
             </View>
+
+            <Card>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
+                Today&apos;s schedule
+              </Text>
+              {data.todaysSchedule.length === 0 ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>Nothing due today</Text>
+              ) : (
+                data.todaysSchedule.map((item) => (
+                  <Pressable
+                    key={`${item.farmId}-${item.date}-${item.label}`}
+                    onPress={() => router.push(`/(tabs)/farms/${item.farmId}`)}
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                      marginTop: 10,
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700", color: colors.text, flex: 1 }}>
+                      {item.farmName}
+                      {item.flockAgeDays != null ? (
+                        <Text style={{ fontWeight: "400", color: colors.muted }}>
+                          {" "}
+                          · {item.flockAgeDays}d
+                        </Text>
+                      ) : null}
+                    </Text>
+                    <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "700" }}>
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                ))
+              )}
+            </Card>
+
+            <Card>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
+                Upcoming
+              </Text>
+              {data.upcomingSchedule.length === 0 ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 7 days</Text>
+              ) : (
+                data.upcomingSchedule.slice(0, 12).map((item) => (
+                  <Pressable
+                    key={`${item.farmId}-${item.date}-${item.label}`}
+                    onPress={() => router.push(`/(tabs)/farms/${item.farmId}`)}
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 8,
+                      marginTop: 10,
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700", color: colors.text, flex: 1 }}>
+                      {item.farmName}
+                      {item.flockAgeDays != null ? (
+                        <Text style={{ fontWeight: "400", color: colors.muted }}>
+                          {" "}
+                          · {item.flockAgeDays}d
+                        </Text>
+                      ) : null}
+                    </Text>
+                    <Text style={{ color: colors.muted, fontSize: 12, textAlign: "right" }}>
+                      {item.label}
+                      {"\n"}
+                      {formatShortScheduleDate(item.date)}
+                    </Text>
+                  </Pressable>
+                ))
+              )}
+            </Card>
 
             <Card>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
@@ -186,7 +255,10 @@ export default function DashboardScreen() {
                   </View>
 
                   <View style={[styles.row, { marginTop: 14 }]}>
-                    <Metric label="Flock age" value={farm.flockAgeDays != null ? `${farm.flockAgeDays} days` : "—"} />
+                    <Metric
+                      label="Flock age"
+                      value={farm.flockAgeDays != null ? `${farm.flockAgeDays} days` : "—"}
+                    />
                     <Metric label="Birds placed" value={formatNumber(farm.birdsPlaced)} />
                     <Metric label="Today's Mortality" value={String(farm.todayMortality)} />
                     <Metric
@@ -202,7 +274,14 @@ export default function DashboardScreen() {
                   </View>
 
                   {farm.weeklyMortality.length > 0 ? (
-                    <View style={{ borderTopWidth: 1, borderTopColor: "#f5f5f4", paddingTop: 10, marginTop: 4 }}>
+                    <View
+                      style={{
+                        borderTopWidth: 1,
+                        borderTopColor: "#f5f5f4",
+                        paddingTop: 10,
+                        marginTop: 4,
+                      }}
+                    >
                       <Text
                         style={{
                           fontSize: 11,
@@ -215,26 +294,37 @@ export default function DashboardScreen() {
                       >
                         Weekly mortality
                       </Text>
-                      <Text style={{ color: colors.text, fontSize: 14 }}>
-                        {farm.weeklyMortality.map((w) => `W${w.week} ${w.total}`).join("  ·  ")}
-                      </Text>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+                        {farm.weeklyMortality.map((w) => (
+                          <Text key={w.week} style={{ color: colors.text, fontSize: 15 }}>
+                            Week {w.week}{" "}
+                            <Text style={{ fontWeight: "800" }}>{w.total}</Text>
+                          </Text>
+                        ))}
+                      </View>
                     </View>
                   ) : null}
 
-                  {farm.missingTodayMortality ? (
-                    <Text style={{ color: colors.warn, fontWeight: "800", marginTop: 10, fontSize: 13 }}>
-                      Missing today&apos;s mortality
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      gap: 12,
+                      marginTop: 10,
+                    }}
+                  >
+                    <Text style={[styles.muted, { fontSize: 12 }]}>
+                      Last visit: {farm.lastVisitDate ?? "—"}
                     </Text>
-                  ) : null}
+                    {farm.missingTodayMortality ? (
+                      <Text style={{ color: colors.warn, fontWeight: "800", fontSize: 12 }}>
+                        Missing today&apos;s mortality
+                      </Text>
+                    ) : null}
+                  </View>
                 </Card>
               </Pressable>
             ))}
-
-            <Pressable onPress={() => router.push("/(tabs)/more")} style={{ marginTop: 8, marginBottom: 12 }}>
-              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>
-                More · Settlement, Search, Settings →
-              </Text>
-            </Pressable>
           </>
         ) : null}
       </ScrollView>
