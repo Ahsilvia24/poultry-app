@@ -1,37 +1,105 @@
 import { Tabs } from "expo-router";
-import { Text } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../src/theme";
 
-function TabIcon({ label, focused }: { label: string; focused: boolean }) {
+const TAB_ITEMS = [
+  { name: "index", label: "Dashboard", href: "/" },
+  { name: "farms", label: "Farms" },
+  { name: "mortality", label: "Mortality" },
+  { name: "lfo", label: "LFO" },
+  { name: "tools", label: "Tools" },
+] as const;
+
+function WebStyleTabBar({ state, descriptors, navigation }: any) {
+  const insets = useSafeAreaInsets();
+  const visibleRoutes = state.routes.filter((route: { name: string }) =>
+    TAB_ITEMS.some((t) => t.name === route.name),
+  );
+
   return (
-    <Text style={{ fontSize: 10, fontWeight: focused ? "800" : "600", color: focused ? colors.accent : colors.muted }}>
-      {label}
-    </Text>
+    <View
+      style={{
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+        backgroundColor: "#fff",
+        paddingTop: 8,
+        paddingBottom: Math.max(insets.bottom, 8),
+        paddingHorizontal: 4,
+      }}
+    >
+      <View style={{ flexDirection: "row", gap: 4 }}>
+        {visibleRoutes.map((route: { key: string; name: string }) => {
+          const index = state.routes.findIndex((r: { key: string }) => r.key === route.key);
+          const focused = state.index === index;
+          const item = TAB_ITEMS.find((t) => t.name === route.name);
+          const label = item?.label ?? descriptors[route.key]?.options?.title ?? route.name;
+
+          return (
+            <Pressable
+              key={route.key}
+              accessibilityRole="button"
+              accessibilityState={focused ? { selected: true } : {}}
+              onPress={() => {
+                const event = navigation.emit({
+                  type: "tabPress",
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+                if (!focused && !event.defaultPrevented) {
+                  navigation.navigate(route.name);
+                }
+              }}
+              style={{
+                flex: 1,
+                borderRadius: 10,
+                paddingVertical: 12,
+                paddingHorizontal: 2,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: focused ? colors.accentDark : "transparent",
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={{
+                  fontSize: 11,
+                  fontWeight: "800",
+                  color: focused ? "#fff" : "#44403c",
+                  textAlign: "center",
+                }}
+              >
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
 export default function TabsLayout() {
   return (
     <Tabs
+      tabBar={(props) => <WebStyleTabBar {...props} />}
       screenOptions={{
-        headerStyle: { backgroundColor: colors.bg },
-        headerTitleStyle: { fontWeight: "800", color: colors.text },
-        tabBarStyle: {
-          backgroundColor: "#fff",
-          borderTopColor: colors.border,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 8,
+        headerStyle: { backgroundColor: colors.headerBg },
+        headerShadowVisible: false,
+        headerTitleStyle: {
+          fontWeight: "800",
+          color: colors.text,
+          fontSize: 17,
         },
-        tabBarActiveTintColor: colors.accent,
+        headerTintColor: colors.accentDark,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Dashboard",
-          tabBarIcon: ({ focused }) => <TabIcon label="Home" focused={focused} />,
-          tabBarLabel: "Home",
+          headerShown: false,
         }}
       />
       <Tabs.Screen
@@ -39,32 +107,27 @@ export default function TabsLayout() {
         options={{
           title: "Farms",
           headerShown: false,
-          tabBarIcon: ({ focused }) => <TabIcon label="Farms" focused={focused} />,
-          tabBarLabel: "Farms",
         }}
       />
       <Tabs.Screen
         name="mortality"
         options={{
           title: "Mortality",
-          tabBarIcon: ({ focused }) => <TabIcon label="Mort" focused={focused} />,
-          tabBarLabel: "Mort",
+          headerShown: false,
         }}
       />
       <Tabs.Screen
         name="lfo"
         options={{
           title: "LFO",
-          tabBarIcon: ({ focused }) => <TabIcon label="LFO" focused={focused} />,
-          tabBarLabel: "LFO",
+          headerShown: false,
         }}
       />
       <Tabs.Screen
         name="tools"
         options={{
           title: "Tools",
-          tabBarIcon: ({ focused }) => <TabIcon label="Tools" focused={focused} />,
-          tabBarLabel: "Tools",
+          headerShown: false,
         }}
       />
       <Tabs.Screen
@@ -72,6 +135,15 @@ export default function TabsLayout() {
         options={{
           title: "Reports",
           href: null,
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
+        name="more"
+        options={{
+          title: "More",
+          href: null,
+          headerShown: false,
         }}
       />
     </Tabs>

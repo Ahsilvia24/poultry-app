@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   getMortalityForm,
   getHouseMortalitySeries,
@@ -17,13 +18,20 @@ import {
 import { birdAgeFromPlacement, flockWeekFromAge, calcTotalDailyLoss } from "../../src/lib/mortality";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import { colors, styles } from "../../src/theme";
+import {
+  BrandBar,
+  Card,
+  Chip,
+  PageHeader,
+  PrimaryButton,
+} from "../../src/components/ui";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function formatDayLabel(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   const date = new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
-  return `${WEEKDAYS[date.getDay()]} ${m}·${d}`;
+  return `${WEEKDAYS[date.getDay()]} ${m}/${d}`;
 }
 
 type DayRow = {
@@ -72,8 +80,14 @@ export default function MortalityScreen() {
       const next: Record<string, { dailyMortalityCount: string; cullCount: string }> = {};
       for (const h of farm?.activeFlock?.houses ?? []) {
         next[h.houseFlockId] = {
-          dailyMortalityCount: String(h.existing?.dailyMortalityCount ?? 0),
-          cullCount: String(h.existing?.cullCount ?? 0),
+          dailyMortalityCount:
+            h.existing?.dailyMortalityCount != null && h.existing.dailyMortalityCount !== 0
+              ? String(h.existing.dailyMortalityCount)
+              : "",
+          cullCount:
+            h.existing?.cullCount != null && h.existing.cullCount !== 0
+              ? String(h.existing.cullCount)
+              : "",
         };
       }
       setTodayEntries(next);
@@ -104,8 +118,11 @@ export default function MortalityScreen() {
         next.push({
           age,
           mortalityDate,
-          cullCount: existing ? String(existing.cull_count) : "0",
-          dailyMortalityCount: existing ? String(existing.daily_mortality_count) : "0",
+          cullCount: existing && existing.cull_count !== 0 ? String(existing.cull_count) : "",
+          dailyMortalityCount:
+            existing && existing.daily_mortality_count !== 0
+              ? String(existing.daily_mortality_count)
+              : "",
         });
       }
       setRows(next);
@@ -155,6 +172,16 @@ export default function MortalityScreen() {
       });
   }, [rows]);
 
+  const gridTotals = useMemo(() => {
+    let culls = 0;
+    let mortality = 0;
+    for (const r of rows) {
+      culls += Number(r.cullCount || 0);
+      mortality += Number(r.dailyMortalityCount || 0);
+    }
+    return { culls, mortality, loss: culls + mortality };
+  }, [rows]);
+
   async function saveGrid() {
     if (!houseFlockId) return;
     setSaving(true);
@@ -168,7 +195,7 @@ export default function MortalityScreen() {
           cullCount: Number(r.cullCount || 0),
         })),
       });
-      setSavedMsg("Saved on this phone");
+      setSavedMsg("Saved");
       loadGrid();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
@@ -187,8 +214,8 @@ export default function MortalityScreen() {
         mortalityDate: date,
         entries: selectedFarm.activeFlock.houses.map((h) => ({
           houseFlockId: h.houseFlockId,
-          dailyMortalityCount: Number(todayEntries[h.houseFlockId]?.dailyMortalityCount ?? 0),
-          cullCount: Number(todayEntries[h.houseFlockId]?.cullCount ?? 0),
+          dailyMortalityCount: Number(todayEntries[h.houseFlockId]?.dailyMortalityCount || 0),
+          cullCount: Number(todayEntries[h.houseFlockId]?.cullCount || 0),
           mortalityCause: "UNKNOWN",
         })),
       });
@@ -210,229 +237,276 @@ export default function MortalityScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.subtitle}>Offline mortality entry</Text>
+    <SafeAreaView style={styles.screen} edges={["top"]}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <BrandBar />
+        <PageHeader
+          title="Mortality entry"
+          subtitle="Enter mortality by house and bird age"
+        />
 
-      <View style={[styles.row, { marginBottom: 12 }]}>
-        <Pressable
-          style={[styles.button, mode === "grid" ? null : styles.buttonSecondary, { flex: 1 }]}
-          onPress={() => setMode("grid")}
-        >
-          <Text style={mode === "grid" ? styles.buttonText : styles.buttonSecondaryText}>Age grid</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.button, mode === "today" ? null : styles.buttonSecondary, { flex: 1 }]}
-          onPress={() => setMode("today")}
-        >
-          <Text style={mode === "today" ? styles.buttonText : styles.buttonSecondaryText}>By date</Text>
-        </Pressable>
-      </View>
-
-      <Text style={styles.label}>Farm</Text>
-      <View style={[styles.row, { marginBottom: 12 }]}>
-        {payload?.farms.map((f) => (
-          <Pressable
-            key={f.id}
-            onPress={() => setFarmId(f.id)}
-            style={[
-              styles.button,
-              styles.buttonSecondary,
-              { paddingHorizontal: 12, minHeight: 44 },
-              farmId === f.id ? { backgroundColor: colors.accent } : null,
-            ]}
-          >
-            <Text
-              style={[
-                styles.buttonSecondaryText,
-                farmId === f.id ? { color: "#fff" } : null,
-                { fontSize: 14 },
-              ]}
-            >
-              {f.farmName}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {error ? <Text style={{ color: colors.danger, marginBottom: 8 }}>{error}</Text> : null}
-      {savedMsg ? <Text style={{ color: colors.accentDark, marginBottom: 8, fontWeight: "700" }}>{savedMsg}</Text> : null}
-
-      {!selectedFarm?.activeFlock ? (
-        <View style={styles.card}>
-          <Text>No active flock on this farm.</Text>
+        <View style={[styles.row, { marginBottom: 12 }]}>
+          <Chip label="Age grid" active={mode === "grid"} onPress={() => setMode("grid")} />
+          <Chip label="By date" active={mode === "today"} onPress={() => setMode("today")} />
         </View>
-      ) : mode === "grid" ? (
-        <>
-          <Text style={styles.label}>House</Text>
-          <View style={[styles.row, { marginBottom: 12 }]}>
-            {houses.map((h) => (
-              <Pressable
-                key={h.houseFlockId}
-                onPress={() => setHouseFlockId(h.houseFlockId)}
-                style={[
-                  styles.button,
-                  styles.buttonSecondary,
-                  { minHeight: 44, paddingHorizontal: 14 },
-                  houseFlockId === h.houseFlockId ? { backgroundColor: colors.accent } : null,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.buttonSecondaryText,
-                    houseFlockId === h.houseFlockId ? { color: "#fff" } : null,
-                  ]}
-                >
-                  H{h.houseNumber}
-                </Text>
-              </Pressable>
+
+        <Text style={styles.label}>Farm</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+          <View style={{ flexDirection: "row" }}>
+            {payload?.farms.map((f) => (
+              <Chip
+                key={f.id}
+                label={f.farmName}
+                active={farmId === f.id}
+                onPress={() => setFarmId(f.id)}
+              />
             ))}
           </View>
+        </ScrollView>
 
-          {weekGroups.map((group) => {
-            const open = expandedWeeks.has(group.week);
-            return (
-              <View key={group.week} style={styles.card}>
-                <Pressable
-                  onPress={() =>
-                    setExpandedWeeks((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(group.week)) next.delete(group.week);
-                      else next.add(group.week);
-                      return next;
-                    })
-                  }
-                >
-                  <Text style={{ fontWeight: "800" }}>
-                    {open ? "▾" : "▸"} Week {group.week} · Ages {group.ageStart}–{group.ageEnd}
-                  </Text>
-                  <Text style={styles.muted}>
-                    Culls {group.culls} · Mort {group.mortality} · Total {group.loss}
-                  </Text>
-                </Pressable>
-                {open
-                  ? group.rows.map((row) => {
-                      const loss = calcTotalDailyLoss(
-                        Number(row.dailyMortalityCount || 0),
-                        Number(row.cullCount || 0),
-                      );
-                      return (
-                        <View
-                          key={row.mortalityDate}
-                          style={{
-                            marginTop: 10,
-                            paddingTop: 10,
-                            borderTopWidth: 1,
-                            borderTopColor: colors.border,
-                          }}
-                        >
-                          <Text style={{ fontWeight: "700" }}>
-                            Age {row.age} · {formatDayLabel(row.mortalityDate)} · Loss {loss}
-                          </Text>
-                          <View style={styles.row}>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.label}>Culls</Text>
-                              <TextInput
-                                style={styles.input}
-                                keyboardType="number-pad"
-                                value={row.cullCount === "0" ? "" : row.cullCount}
-                                placeholder="0"
-                                onChangeText={(v) => {
-                                  const digits = v.replace(/\D/g, "");
-                                  setRows((prev) =>
-                                    prev.map((r) =>
-                                      r.age === row.age
-                                        ? { ...r, cullCount: digits === "" ? "0" : digits }
-                                        : r,
-                                    ),
-                                  );
-                                }}
-                              />
+        {error ? <Text style={{ color: colors.danger, marginBottom: 8 }}>{error}</Text> : null}
+        {savedMsg ? (
+          <Text style={{ color: colors.accentDark, marginBottom: 8, fontWeight: "700" }}>
+            {savedMsg}
+          </Text>
+        ) : null}
+
+        {!selectedFarm?.activeFlock ? (
+          <Card>
+            <Text>Add an active farm with a flock to enter mortality.</Text>
+          </Card>
+        ) : mode === "grid" ? (
+          <>
+            <Text style={styles.label}>House</Text>
+            <View style={[styles.row, { marginBottom: 8 }]}>
+              {houses.map((h) => (
+                <Chip
+                  key={h.houseFlockId}
+                  label={`House ${h.houseNumber}`}
+                  active={houseFlockId === h.houseFlockId}
+                  onPress={() => setHouseFlockId(h.houseFlockId)}
+                />
+              ))}
+            </View>
+
+            <Card style={{ marginBottom: 12 }}>
+              <Text style={{ fontWeight: "700", color: colors.muted, fontSize: 13 }}>
+                House totals
+              </Text>
+              <Text style={{ marginTop: 6, fontWeight: "800", fontSize: 16 }}>
+                Culls {gridTotals.culls} · Mort {gridTotals.mortality} · Loss {gridTotals.loss}
+              </Text>
+            </Card>
+
+            {weekGroups.map((group) => {
+              const open = expandedWeeks.has(group.week);
+              return (
+                <Card key={group.week} style={{ padding: 0, overflow: "hidden" }}>
+                  <Pressable
+                    onPress={() =>
+                      setExpandedWeeks((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(group.week)) next.delete(group.week);
+                        else next.add(group.week);
+                        return next;
+                      })
+                    }
+                    style={{ padding: 14 }}
+                  >
+                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                      <Text style={{ fontWeight: "800" }}>
+                        {open ? "▾" : "▸"} Week {group.week}
+                      </Text>
+                      <Text style={styles.muted}>
+                        Ages {group.ageStart}–{group.ageEnd}
+                      </Text>
+                    </View>
+                    <Text style={[styles.muted, { marginTop: 4 }]}>
+                      Culls {group.culls} · Mort {group.mortality} · Total {group.loss}
+                    </Text>
+                  </Pressable>
+
+                  {open ? (
+                    <View>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          paddingHorizontal: 10,
+                          paddingVertical: 8,
+                          backgroundColor: "#f5f5f4",
+                          borderTopWidth: 1,
+                          borderTopColor: colors.border,
+                        }}
+                      >
+                        <Text style={[headerCell, { flex: 1.1 }]}>Age / Date</Text>
+                        <Text style={[headerCell, { width: 64, textAlign: "center" }]}>Culls</Text>
+                        <Text style={[headerCell, { width: 64, textAlign: "center" }]}>Mort</Text>
+                        <Text style={[headerCell, { width: 44, textAlign: "right" }]}>Loss</Text>
+                      </View>
+                      {group.rows.map((row) => {
+                        const loss = calcTotalDailyLoss(
+                          Number(row.dailyMortalityCount || 0),
+                          Number(row.cullCount || 0),
+                        );
+                        return (
+                          <View
+                            key={row.mortalityDate}
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              borderTopWidth: 1,
+                              borderTopColor: "#f5f5f4",
+                            }}
+                          >
+                            <View style={{ flex: 1.1 }}>
+                              <Text style={{ fontWeight: "700", fontSize: 14 }}>Age {row.age}</Text>
+                              <Text style={{ color: colors.muted, fontSize: 12 }}>
+                                {formatDayLabel(row.mortalityDate)}
+                              </Text>
                             </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.label}>Mortality</Text>
-                              <TextInput
-                                style={styles.input}
-                                keyboardType="number-pad"
-                                value={row.dailyMortalityCount === "0" ? "" : row.dailyMortalityCount}
-                                placeholder="0"
-                                onChangeText={(v) => {
-                                  const digits = v.replace(/\D/g, "");
-                                  setRows((prev) =>
-                                    prev.map((r) =>
-                                      r.age === row.age
-                                        ? {
-                                            ...r,
-                                            dailyMortalityCount: digits === "" ? "0" : digits,
-                                          }
-                                        : r,
-                                    ),
-                                  );
-                                }}
-                              />
-                            </View>
+                            <TextInput
+                              style={gridInput}
+                              keyboardType="number-pad"
+                              value={row.cullCount}
+                              placeholder="0"
+                              placeholderTextColor="#a8a29e"
+                              onChangeText={(v) => {
+                                const digits = v.replace(/\D/g, "");
+                                setRows((prev) =>
+                                  prev.map((r) =>
+                                    r.age === row.age ? { ...r, cullCount: digits } : r,
+                                  ),
+                                );
+                              }}
+                            />
+                            <TextInput
+                              style={gridInput}
+                              keyboardType="number-pad"
+                              value={row.dailyMortalityCount}
+                              placeholder="0"
+                              placeholderTextColor="#a8a29e"
+                              onChangeText={(v) => {
+                                const digits = v.replace(/\D/g, "");
+                                setRows((prev) =>
+                                  prev.map((r) =>
+                                    r.age === row.age
+                                      ? { ...r, dailyMortalityCount: digits }
+                                      : r,
+                                  ),
+                                );
+                              }}
+                            />
+                            <Text
+                              style={{
+                                width: 44,
+                                textAlign: "right",
+                                fontWeight: "700",
+                                fontSize: 14,
+                              }}
+                            >
+                              {loss}
+                            </Text>
                           </View>
-                        </View>
-                      );
-                    })
-                  : null}
-              </View>
-            );
-          })}
+                        );
+                      })}
+                    </View>
+                  ) : null}
+                </Card>
+              );
+            })}
 
-          <Pressable style={styles.button} onPress={saveGrid} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Save house grid</Text>}
-          </Pressable>
-        </>
-      ) : (
-        <>
-          <Text style={styles.label}>Date (YYYY-MM-DD)</Text>
-          <TextInput style={styles.input} value={date} onChangeText={setDate} autoCapitalize="none" />
-          {houses.map((h) => {
-            const e = todayEntries[h.houseFlockId];
-            return (
-              <View key={h.houseFlockId} style={styles.card}>
-                <Text style={{ fontSize: 18, fontWeight: "800" }}>House {h.houseNumber}</Text>
-                <Text style={styles.muted}>
-                  Placed {h.placedBirdCount.toLocaleString()} · Rem {h.remaining} · Cum {h.cumulative}
-                </Text>
-                <View style={[styles.row, { marginTop: 10 }]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.label}>Mortality</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="number-pad"
-                      value={e?.dailyMortalityCount ?? "0"}
-                      onChangeText={(v) =>
-                        setTodayEntries((prev) => ({
-                          ...prev,
-                          [h.houseFlockId]: { ...prev[h.houseFlockId]!, dailyMortalityCount: v },
-                        }))
-                      }
-                    />
+            <PrimaryButton
+              label={saving ? "Saving…" : "Save mortality"}
+              onPress={saveGrid}
+            />
+          </>
+        ) : (
+          <>
+            <Text style={styles.label}>Date (YYYY-MM-DD)</Text>
+            <TextInput style={styles.input} value={date} onChangeText={setDate} autoCapitalize="none" />
+            {houses.map((h) => {
+              const e = todayEntries[h.houseFlockId];
+              return (
+                <Card key={h.houseFlockId}>
+                  <Text style={{ fontSize: 18, fontWeight: "800" }}>House {h.houseNumber}</Text>
+                  <Text style={styles.muted}>
+                    Placed {h.placedBirdCount.toLocaleString()} · Rem {h.remaining} · Cum {h.cumulative}
+                  </Text>
+                  <View style={[styles.row, { marginTop: 10 }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.label}>Culls</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="number-pad"
+                        value={e?.cullCount ?? ""}
+                        placeholder="0"
+                        onChangeText={(v) =>
+                          setTodayEntries((prev) => ({
+                            ...prev,
+                            [h.houseFlockId]: {
+                              dailyMortalityCount: prev[h.houseFlockId]?.dailyMortalityCount ?? "",
+                              cullCount: v.replace(/\D/g, ""),
+                            },
+                          }))
+                        }
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.label}>Mortality</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="number-pad"
+                        value={e?.dailyMortalityCount ?? ""}
+                        placeholder="0"
+                        onChangeText={(v) =>
+                          setTodayEntries((prev) => ({
+                            ...prev,
+                            [h.houseFlockId]: {
+                              cullCount: prev[h.houseFlockId]?.cullCount ?? "",
+                              dailyMortalityCount: v.replace(/\D/g, ""),
+                            },
+                          }))
+                        }
+                      />
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.label}>Culls</Text>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType="number-pad"
-                      value={e?.cullCount ?? "0"}
-                      onChangeText={(v) =>
-                        setTodayEntries((prev) => ({
-                          ...prev,
-                          [h.houseFlockId]: { ...prev[h.houseFlockId]!, cullCount: v },
-                        }))
-                      }
-                    />
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-          <Pressable style={styles.button} onPress={saveToday} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Save all houses</Text>}
-          </Pressable>
-        </>
-      )}
-    </ScrollView>
+                </Card>
+              );
+            })}
+            <PrimaryButton
+              label={saving ? "Saving…" : "Save mortality"}
+              onPress={saveToday}
+            />
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const headerCell = {
+  fontSize: 11,
+  fontWeight: "800" as const,
+  color: colors.muted,
+  textTransform: "uppercase" as const,
+};
+
+const gridInput = {
+  width: 64,
+  minHeight: 40,
+  marginHorizontal: 4,
+  borderWidth: 1,
+  borderColor: "#d6d3d1",
+  borderRadius: 8,
+  paddingHorizontal: 8,
+  textAlign: "center" as const,
+  fontSize: 16,
+  backgroundColor: "#fff",
+  color: colors.text,
+};

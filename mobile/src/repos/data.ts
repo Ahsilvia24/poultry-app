@@ -83,28 +83,62 @@ function summarizeHouse(
   };
 }
 
-export function listFarms() {
+export function listFarms(status: "active" | "inactive" | "all" = "active") {
   const db = getDb();
+  const today = todayKey();
   const farms = db.getAllSync<{
     id: string;
     farm_name: string;
     grower_name: string;
     phone_number: string | null;
     number_of_houses: number;
-  }>("SELECT * FROM farms WHERE is_active = 1 ORDER BY farm_name ASC");
+    is_active: number;
+  }>(
+    status === "all"
+      ? "SELECT * FROM farms ORDER BY farm_name ASC"
+      : status === "inactive"
+        ? "SELECT * FROM farms WHERE is_active = 0 ORDER BY farm_name ASC"
+        : "SELECT * FROM farms WHERE is_active = 1 ORDER BY farm_name ASC",
+  );
 
   return {
     farms: farms.map((f) => {
-      const flock = db.getFirstSync<{ flock_number: string }>(
-        "SELECT flock_number FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
+      const flock = db.getFirstSync<{
+        flock_number: string;
+        placement_date: string;
+        projected_catch_date: string | null;
+      }>(
+        "SELECT flock_number, placement_date, projected_catch_date FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
         [f.id],
       );
+      let birdsPlaced = 0;
+      let remaining = 0;
+      if (flock) {
+        const hfs = db.getAllSync<{ id: string; placed_bird_count: number }>(
+          "SELECT id, placed_bird_count FROM house_flocks WHERE flock_id = (SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1)",
+          [f.id],
+        );
+        for (const hf of hfs) {
+          birdsPlaced += hf.placed_bird_count;
+          const records = db.getAllSync<MortRow>(
+            `SELECT mortality_date, bird_age_in_days, daily_mortality_count, cull_count, total_daily_loss
+             FROM daily_mortality WHERE house_flock_id = ? AND is_draft = 0`,
+            [hf.id],
+          );
+          remaining += summarizeHouse(hf.placed_bird_count, records, today).remaining;
+        }
+      }
       return {
         id: f.id,
         farmName: f.farm_name,
         growerName: f.grower_name,
         phoneNumber: f.phone_number,
         numberOfHouses: f.number_of_houses,
+        isActive: f.is_active === 1,
+        birdsPlaced,
+        currentHeadCount: remaining,
+        placementDate: flock?.placement_date ?? null,
+        projectedCatchDate: flock?.projected_catch_date ?? null,
         activeFlock: flock ? { flockNumber: flock.flock_number } : null,
       };
     }),
@@ -135,7 +169,10 @@ export function getDashboard() {
         id: farm.id,
         farmName: farm.farmName,
         growerName: farm.growerName,
+        phoneNumber: farm.phoneNumber,
         flockAgeDays: null,
+        birdsPlaced: 0,
+        projectedHeadCount: null,
         todayMortality: 0,
         sevenDayMortality: 0,
         cumulativeMortality: 0,
@@ -143,6 +180,8 @@ export function getDashboard() {
         openIssues: 0,
         status: "Normal",
         missingTodayMortality: false,
+        weeklyMortality: [] as Array<{ week: number; total: number }>,
+        projectedCatchDate: null,
       });
       continue;
     }
@@ -157,8 +196,10 @@ export function getDashboard() {
     let farmSeven = 0;
     let farmCum = 0;
     let farmPlaced = 0;
+    let farmRemaining = 0;
     let missing = false;
     let worst = "Normal";
+    const weekTotals = new Map<number, number>();
 
     for (const hf of hfs) {
       farmPlaced += hf.placed_bird_count;
@@ -172,6 +213,10 @@ export function getDashboard() {
       farmToday += s.today;
       farmSeven += s.sevenDay;
       farmCum += s.cumulative;
+      farmRemaining += s.remaining;
+      for (const w of s.weekly) {
+        weekTotals.set(w.week, (weekTotals.get(w.week) ?? 0) + w.total);
+      }
       if (s.today > 0) mortalityEnteredToday += 1;
       if (s.today === 0) missing = true;
       if (s.status === "Critical") worst = "Critical";
@@ -181,11 +226,34 @@ export function getDashboard() {
 
     if (missing) farmsMissingToday += 1;
 
+    const flockAgeDays = birdAgeFromPlacement(flock.placement_date, today);
+    let daysUntilCatch: number | null = null;
+    if (flock.projected_catch_date) {
+      const [ty, tm, td] = today.split("-").map(Number);
+      const [cy, cm, cd] = flock.projected_catch_date.split("-").map(Number);
+      daysUntilCatch = Math.max(
+        0,
+        Math.round(
+          (Date.UTC(cy!, (cm ?? 1) - 1, cd ?? 1) -
+            Date.UTC(ty!, (tm ?? 1) - 1, td ?? 1)) /
+            86400000,
+        ),
+      );
+    }
+    const avgDaily = farmSeven / 7;
+    const projectedHeadCount =
+      daysUntilCatch != null
+        ? Math.max(0, Math.round(farmRemaining - avgDaily * daysUntilCatch - 150 * hfs.length))
+        : null;
+
     farmCards.push({
       id: farm.id,
       farmName: farm.farmName,
       growerName: farm.growerName,
-      flockAgeDays: birdAgeFromPlacement(flock.placement_date, today),
+      phoneNumber: farm.phoneNumber,
+      flockAgeDays,
+      birdsPlaced: farmPlaced,
+      projectedHeadCount,
       todayMortality: farmToday,
       sevenDayMortality: farmSeven,
       cumulativeMortality: farmCum,
@@ -193,8 +261,23 @@ export function getDashboard() {
       openIssues: 0,
       status: worst,
       missingTodayMortality: missing,
+      weeklyMortality: Array.from(weekTotals.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([week, total]) => ({ week, total })),
+      projectedCatchDate: flock.projected_catch_date,
     });
   }
+
+  const upcomingCatches = farmCards
+    .filter((f) => f.projectedCatchDate)
+    .map((f) => ({
+      farmId: f.id,
+      farmName: f.farmName,
+      date: f.projectedCatchDate!,
+      flockAgeDays: f.flockAgeDays,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 6);
 
   return {
     stats: {
@@ -207,6 +290,7 @@ export function getDashboard() {
       highPriorityIssues: 0,
     },
     farmCards,
+    upcomingCatches,
   };
 }
 
