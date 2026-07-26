@@ -326,7 +326,10 @@ export default function DashboardScreen() {
                     }}
                   >
                     <Text style={[styles.muted, { fontSize: 12 }]}>
-                      Last visit: {farm.lastVisitDate ?? "—"}
+                      Last visit:{" "}
+                      {farm.lastVisitDate
+                        ? formatShortScheduleDate(farm.lastVisitDate)
+                        : "—"}
                     </Text>
                     {farm.missingTodayMortality ? (
                       <Text style={{ color: colors.warn, fontWeight: "800", fontSize: 12 }}>

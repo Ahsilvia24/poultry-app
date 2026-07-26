@@ -1,6 +1,14 @@
 import { getDb, getMeta, setMeta } from "./database";
-import { newId, todayKey, addDaysKey } from "../lib/ids";
+import { newId, todayKey, addDaysKey, daysBetween } from "../lib/ids";
 import { calcTotalDailyLoss } from "../lib/mortality";
+import { buildFlockVisitSchedule } from "../lib/schedule";
+
+/** Most recent scheduled visit on or before today (for demo last-visit dates). */
+function lastPastVisitDate(placement: string, catchDate: string, today: string): string {
+  const schedule = buildFlockVisitSchedule(placement, catchDate);
+  const past = schedule.filter((v) => v.dateKey <= today);
+  return past[past.length - 1]?.dateKey ?? placement;
+}
 
 function lossForDay(day: number, houseIndex: number) {
   const base = houseIndex % 3 === 0 ? 3 : houseIndex % 3 === 1 ? 2 : 1;
@@ -103,8 +111,63 @@ const DEMOS: DemoFarm[] = [
   },
 ];
 
+function ensureDemoVisits() {
+  if (getMeta("visits_v2") === "1") return;
+  const db = getDb();
+  const today = todayKey();
+  const farms = db.getAllSync<{
+    id: string;
+    placement_date: string;
+    projected_catch_date: string | null;
+    flock_id: string;
+  }>(
+    `SELECT f.id, fl.id AS flock_id, fl.placement_date, fl.projected_catch_date
+     FROM farms f
+     JOIN flocks fl ON fl.farm_id = f.id AND fl.flock_status = 'ACTIVE'`,
+  );
+
+  for (const farm of farms) {
+    const existing = db.getFirstSync<{ c: number }>(
+      "SELECT COUNT(*) AS c FROM farm_visits WHERE farm_id = ?",
+      [farm.id],
+    );
+    const catchDate = farm.projected_catch_date ?? addDaysKey(farm.placement_date, 52);
+    const visitDate = lastPastVisitDate(farm.placement_date, catchDate, today);
+    const age = Math.max(0, daysBetween(farm.placement_date, visitDate));
+
+    if ((existing?.c ?? 0) === 0) {
+      db.runSync(
+        `INSERT INTO farm_visits
+          (id, farm_id, flock_id, visit_date, visit_type, bird_age_in_days, general_bird_condition, notes, follow_up_required)
+         VALUES (?, ?, ?, ?, 'ROUTINE_SERVICE', ?, 'Healthy', ?, 0)`,
+        [
+          newId("visit"),
+          farm.id,
+          farm.flock_id,
+          visitDate,
+          age,
+          "Offline demo visit",
+        ],
+      );
+    } else {
+      // Older seeds used "today" for every farm — rewrite to a realistic past service day
+      db.runSync(
+        `UPDATE farm_visits
+         SET visit_date = ?, bird_age_in_days = ?
+         WHERE farm_id = ? AND visit_date = ?`,
+        [visitDate, age, farm.id, today],
+      );
+    }
+  }
+
+  setMeta("visits_v2", "1");
+}
+
 export function seedIfNeeded() {
-  if (getMeta("seeded") === "1") return;
+  if (getMeta("seeded") === "1") {
+    ensureDemoVisits();
+    return;
+  }
 
   const db = getDb();
   const userId = newId("user");
@@ -179,7 +242,9 @@ export function seedIfNeeded() {
       }
     });
 
-    // Sample visit
+    // Sample visit on the most recent past service day
+    const visitDate = lastPastVisitDate(placement, catchDate, today);
+    const visitAge = Math.max(0, daysBetween(placement, visitDate));
     db.runSync(
       `INSERT INTO farm_visits
         (id, farm_id, flock_id, visit_date, visit_type, bird_age_in_days, general_bird_condition, notes, follow_up_required)
@@ -188,13 +253,14 @@ export function seedIfNeeded() {
         newId("visit"),
         farmId,
         flockId,
-        today,
-        demo.ageDays,
+        visitDate,
+        visitAge,
         `Offline demo visit for ${demo.farmName}`,
       ],
     );
   }
 
   setMeta("seeded", "1");
+  setMeta("visits_v2", "1");
   setMeta("userId", userId);
 }
