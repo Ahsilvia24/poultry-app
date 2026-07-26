@@ -24,9 +24,6 @@ export function AppNav({ userName }: { userName?: string | null }) {
     <>
       <header className="sticky top-0 z-40 border-b border-stone-200 bg-[#f7f4ef]/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
-          <Link href="/" className="text-lg font-extrabold tracking-tight text-emerald-900">
-            PoultryTech
-          </Link>
           <nav className="hidden items-center gap-1 md:flex">
             {nav.map((item) => (
               <Link
@@ -43,7 +40,7 @@ export function AppNav({ userName }: { userName?: string | null }) {
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 md:ml-auto">
             <span className="hidden text-sm text-stone-600 sm:inline">{userName}</span>
             <form action={signOutAction}>
               <button type="submit" className="text-sm font-semibold text-stone-700 underline">

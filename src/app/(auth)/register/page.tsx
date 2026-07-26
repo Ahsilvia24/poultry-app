@@ -17,8 +17,7 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-        <p className="brand text-3xl font-bold text-emerald-900">PoultryTech</p>
-        <h1 className="mt-2 text-xl font-semibold">Create account</h1>
+        <h1 className="text-xl font-semibold">Create account</h1>
         <form action={onSubmit} className="mt-6 space-y-4">
           <div>
             <Label htmlFor="name">Name</Label>
