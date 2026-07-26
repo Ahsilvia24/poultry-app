@@ -1,8 +1,9 @@
-import { StyleSheet } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 
 export const colors = {
   bg: "#f3efe6",
-  card: "#fffdf8",
+  bgTop: "#efe8da",
+  card: "#ffffff",
   text: "#1c1917",
   muted: "#78716c",
   accent: "#047857",
@@ -10,7 +11,11 @@ export const colors = {
   border: "#e7e5e4",
   danger: "#b91c1c",
   warn: "#b45309",
+  headerBg: "#f7f4ef",
 };
+
+const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
+const sans = Platform.select({ ios: "System", android: "sans-serif", default: "System" });
 
 export const styles = StyleSheet.create({
   screen: {
@@ -21,12 +26,29 @@ export const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
+  brand: {
+    fontFamily: serif,
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#064e3b",
+    letterSpacing: -0.3,
+  },
   title: {
+    fontFamily: serif,
     fontSize: 28,
     fontWeight: "800",
     color: colors.text,
   },
+  sectionTitle: {
+    fontFamily: serif,
+    fontSize: 20,
+    fontWeight: "700",
+    color: colors.text,
+    marginTop: 20,
+    marginBottom: 10,
+  },
   subtitle: {
+    fontFamily: sans,
     fontSize: 15,
     color: colors.muted,
     marginTop: 4,
@@ -38,6 +60,11 @@ export const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: 16,
     marginBottom: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
   label: {
     fontSize: 14,
@@ -48,7 +75,7 @@ export const styles = StyleSheet.create({
   input: {
     minHeight: 52,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "#d6d3d1",
     borderRadius: 12,
     paddingHorizontal: 14,
     fontSize: 17,
@@ -58,7 +85,7 @@ export const styles = StyleSheet.create({
   },
   button: {
     minHeight: 52,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentDark,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
@@ -74,6 +101,8 @@ export const styles = StyleSheet.create({
   },
   buttonSecondaryText: {
     color: colors.text,
+    fontSize: 17,
+    fontWeight: "700",
   },
   row: {
     flexDirection: "row",

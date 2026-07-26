@@ -8,8 +8,10 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../src/auth";
 import { colors, styles } from "../src/theme";
+import { Card } from "../src/components/ui";
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
@@ -31,49 +33,51 @@ export default function LoginScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.screen, { justifyContent: "center" }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <View style={[styles.content, { maxWidth: 480, width: "100%", alignSelf: "center" }]}>
-        <Text style={[styles.title, { color: colors.accentDark }]}>PoultryTech</Text>
-        <Text style={styles.subtitle}>Offline farm management · works without internet</Text>
+    <SafeAreaView style={styles.screen}>
+      <KeyboardAvoidingView
+        style={[styles.screen, { justifyContent: "center" }]}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={[styles.content, { maxWidth: 480, width: "100%", alignSelf: "center" }]}>
+          <Text style={styles.brand}>PoultryTech</Text>
+          <Text style={[styles.title, { fontSize: 26, marginTop: 8 }]}>Sign in</Text>
+          <Text style={styles.subtitle}>Service technician farm management</Text>
 
-        <View style={[styles.card, { marginTop: 24 }]}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoCorrect={false}
-            value={email}
-            onChangeText={setEmail}
-          />
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-          {error ? (
-            <Text style={{ color: colors.danger, marginBottom: 12, fontWeight: "600" }}>{error}</Text>
-          ) : null}
-          <Pressable style={styles.button} onPress={onSubmit} disabled={busy}>
-            {busy ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Sign in</Text>
-            )}
-          </Pressable>
+          <Card style={{ marginTop: 24 }}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoCorrect={false}
+              value={email}
+              onChangeText={setEmail}
+            />
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
+            {error ? (
+              <Text style={{ color: colors.danger, marginBottom: 12, fontWeight: "600" }}>
+                {error}
+              </Text>
+            ) : null}
+            <Pressable style={styles.button} onPress={onSubmit} disabled={busy}>
+              {busy ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Sign in</Text>
+              )}
+            </Pressable>
+          </Card>
+          <Text style={[styles.muted, { marginTop: 12 }]}>
+            Demo: tech@poultry.local / password123
+          </Text>
         </View>
-        <Text style={[styles.muted, { marginTop: 12 }]}>
-          Demo: tech@poultry.local / password123
-        </Text>
-        <Text style={[styles.muted, { marginTop: 4 }]}>
-          All data is stored on this phone.
-        </Text>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
