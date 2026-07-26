@@ -3,9 +3,10 @@ import { format, parseISO } from "date-fns";
 import { auth } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard";
 import { formatNumber, formatPct } from "@/lib/utils";
-import { Card, PageHeader, StatusBadge, Button } from "@/components/ui";
+import { Card, StatusBadge, Button } from "@/components/ui";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
+import { signOutAction } from "@/app/actions/auth";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
@@ -16,15 +17,27 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Dashboard"
-        subtitle="Active farms, mortality, and follow-ups"
-        actions={
+      <div className="mb-6">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
+            Dashboard
+          </h1>
+          <form action={signOutAction}>
+            <button
+              type="submit"
+              className="text-sm font-semibold text-stone-700 underline"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
+        <p className="mt-1 text-stone-600">Active farms, mortality, and follow-ups</p>
+        <div className="mt-3">
           <Link href="/mortality">
             <Button>Enter mortality</Button>
           </Link>
-        }
-      />
+        </div>
+      </div>
 
       <div className="space-y-3">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

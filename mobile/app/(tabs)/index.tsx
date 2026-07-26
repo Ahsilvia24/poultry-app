@@ -16,7 +16,6 @@ import { formatShortScheduleDate } from "../../src/lib/schedule";
 import {
   Card,
   Metric,
-  PageHeader,
   PrimaryButton,
   SectionTitle,
   StatusBadge,
@@ -78,22 +77,36 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       >
-        <Pressable onPress={signOut} style={{ alignSelf: "flex-end", marginBottom: 8 }}>
-          <Text style={{ color: colors.text, fontWeight: "700", textDecorationLine: "underline" }}>
-            Sign out
-          </Text>
-        </Pressable>
-
-        <PageHeader
-          title="Dashboard"
-          subtitle="Active farms, mortality, and follow-ups"
-          actions={
+        <View style={{ marginBottom: 16 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <Text style={[styles.title, { flex: 1 }]}>Dashboard</Text>
+            <Pressable onPress={signOut} hitSlop={8}>
+              <Text
+                style={{
+                  color: colors.text,
+                  fontWeight: "700",
+                  textDecorationLine: "underline",
+                }}
+              >
+                Sign out
+              </Text>
+            </Pressable>
+          </View>
+          <Text style={styles.subtitle}>Active farms, mortality, and follow-ups</Text>
+          <View style={{ marginTop: 12 }}>
             <PrimaryButton
               label="Enter mortality"
               onPress={() => router.push("/(tabs)/mortality")}
             />
-          }
-        />
+          </View>
+        </View>
 
         {error ? <Text style={{ color: colors.danger, marginBottom: 12 }}>{error}</Text> : null}
 

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { signOutAction } from "@/app/actions/auth";
 
 const nav = [
   { href: "/", label: "Dashboard" },
@@ -17,13 +16,13 @@ const nav = [
   { href: "/settings", label: "Settings" },
 ];
 
-export function AppNav({ userName }: { userName?: string | null }) {
+export function AppNav() {
   const pathname = usePathname();
 
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-stone-200 bg-[#f7f4ef]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
+        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
           <nav className="hidden items-center gap-1 md:flex">
             {nav.map((item) => (
               <Link
@@ -40,14 +39,6 @@ export function AppNav({ userName }: { userName?: string | null }) {
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-3 md:ml-auto">
-            <span className="hidden text-sm text-stone-600 sm:inline">{userName}</span>
-            <form action={signOutAction}>
-              <button type="submit" className="text-sm font-semibold text-stone-700 underline">
-                Sign out
-              </button>
-            </form>
-          </div>
         </div>
       </header>
 
