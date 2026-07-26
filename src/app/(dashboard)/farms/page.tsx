@@ -8,6 +8,24 @@ import { Button, Card, PageHeader } from "@/components/ui";
 import { summarizeForDate } from "@/lib/mortality/calculations";
 import { cn, formatNumber } from "@/lib/utils";
 
+function PencilIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
 type SearchParams = Promise<{ status?: string }>;
 
 export default async function FarmsPage({ searchParams }: { searchParams: SearchParams }) {
@@ -103,33 +121,33 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
               : null;
 
             return (
-              <Card key={farm.id} className="relative transition hover:border-emerald-400">
-                <Link href={`/farms/${farm.id}`} className="block pb-2 pr-12">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-lg font-bold text-stone-900">
-                        {farm.farmName}
+              <Card key={farm.id} className="transition hover:border-emerald-400">
+                <div className="flex items-start justify-between gap-2">
+                  <Link href={`/farms/${farm.id}`} className="min-w-0 flex-1">
+                    <p className="text-lg font-bold text-stone-900">
+                      {farm.farmName}
+                      <span className="font-semibold text-stone-500">
+                        {" "}
+                        ({houseCount})
+                      </span>
+                      {active ? (
                         <span className="font-semibold text-stone-500">
                           {" "}
-                          ({houseCount})
+                          · {differenceInCalendarDays(today, active.placementDate)}d
                         </span>
-                        {active ? (
-                          <span className="font-semibold text-stone-500">
-                            {" "}
-                            · {differenceInCalendarDays(today, active.placementDate)}d
-                          </span>
-                        ) : null}
-                      </p>
-                      {farm.growerName ? (
-                        <p className="text-sm text-stone-600">{farm.growerName}</p>
                       ) : null}
-                      {farm.phoneNumber ? (
-                        <p className="mt-1 text-xs text-stone-500">{farm.phoneNumber}</p>
-                      ) : null}
-                    </div>
+                    </p>
+                    {farm.growerName ? (
+                      <p className="text-sm text-stone-600">{farm.growerName}</p>
+                    ) : null}
+                    {farm.phoneNumber ? (
+                      <p className="mt-1 text-xs text-stone-500">{farm.phoneNumber}</p>
+                    ) : null}
+                  </Link>
+                  <div className="flex shrink-0 items-center gap-0.5">
                     <span
                       className={cn(
-                        "inline-flex rounded-md px-2.5 py-1 text-sm font-bold",
+                        "mr-1 inline-flex rounded-md px-2.5 py-1 text-sm font-bold",
                         farm.isActive
                           ? "bg-emerald-100 text-emerald-900"
                           : "bg-stone-100 text-stone-700",
@@ -137,8 +155,19 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                     >
                       {farm.isActive ? "Active" : "Inactive"}
                     </span>
+                    <Link
+                      href={`/farms/${farm.id}`}
+                      aria-label={`Edit ${farm.farmName}`}
+                      title="Edit"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-200 hover:text-stone-900"
+                    >
+                      <PencilIcon className="h-5 w-5" />
+                    </Link>
+                    <DeleteFarmButton farmId={farm.id} appearance="icon" />
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                </div>
+                <Link href={`/farms/${farm.id}`} className="mt-4 block">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
                       <p className="text-stone-500">Birds placed</p>
                       <p className="font-semibold">
@@ -169,9 +198,6 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                     </div>
                   </div>
                 </Link>
-                <div className="absolute bottom-3 right-3">
-                  <DeleteFarmButton farmId={farm.id} appearance="icon" />
-                </div>
               </Card>
             );
           })}

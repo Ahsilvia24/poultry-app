@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -9,7 +10,8 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { listFarms } from "../../../src/repos/data";
+import { Ionicons } from "@expo/vector-icons";
+import { deleteFarm, listFarms } from "../../../src/repos/data";
 import { formatLongScheduleDate } from "../../../src/lib/schedule";
 import { colors, styles } from "../../../src/theme";
 import {
@@ -46,6 +48,24 @@ export default function FarmsScreen() {
       load();
     }, [load]),
   );
+
+  function confirmDelete(farmId: string, farmName: string) {
+    Alert.alert(
+      "Delete farm?",
+      `Remove ${farmName} from your active lists? You can still find it under Inactive.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            deleteFarm(farmId);
+            load();
+          },
+        },
+      ],
+    );
+  }
 
   if (loading && !data) {
     return (
@@ -95,10 +115,12 @@ export default function FarmsScreen() {
               : ` (${houseCount})`;
 
           return (
-          <Pressable key={farm.id} onPress={() => router.push(`/(tabs)/farms/${farm.id}`)}>
-            <Card>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-                <View style={{ flex: 1 }}>
+            <Card key={farm.id}>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                <Pressable
+                  style={{ flex: 1, minWidth: 0 }}
+                  onPress={() => router.push(`/(tabs)/farms/${farm.id}`)}
+                >
                   <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
                     {farm.farmName}
                     <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
@@ -109,7 +131,7 @@ export default function FarmsScreen() {
                       {farm.phoneNumber}
                     </Text>
                   ) : null}
-                </View>
+                </Pressable>
                 <Text
                   style={[
                     styles.badge,
@@ -120,36 +142,65 @@ export default function FarmsScreen() {
                 >
                   {farm.isActive ? "Active" : "Inactive"}
                 </Text>
+                <Pressable
+                  accessibilityLabel={`Edit ${farm.farmName}`}
+                  onPress={() => router.push(`/(tabs)/farms/${farm.id}`)}
+                  hitSlop={8}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="pencil-outline" size={20} color={colors.muted} />
+                </Pressable>
+                <Pressable
+                  accessibilityLabel={`Delete ${farm.farmName}`}
+                  onPress={() => confirmDelete(farm.id, farm.farmName)}
+                  hitSlop={8}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.muted} />
+                </Pressable>
               </View>
 
-              <View style={[styles.row, { marginTop: 12 }]}>
-                <Metric
-                  label="Birds placed"
-                  value={farm.activeFlock ? formatNumber(farm.birdsPlaced) : "—"}
-                />
-                <Metric
-                  label="Placement date"
-                  value={
-                    farm.placementDate ? formatLongScheduleDate(farm.placementDate) : "—"
-                  }
-                />
-                <Metric
-                  label="Current Head Count"
-                  value={
-                    farm.activeFlock ? formatNumber(farm.currentHeadCount) : "—"
-                  }
-                />
-                <Metric
-                  label="Catch date"
-                  value={
-                    farm.projectedCatchDate
-                      ? formatLongScheduleDate(farm.projectedCatchDate)
-                      : "—"
-                  }
-                />
-              </View>
+              <Pressable onPress={() => router.push(`/(tabs)/farms/${farm.id}`)}>
+                <View style={[styles.row, { marginTop: 12 }]}>
+                  <Metric
+                    label="Birds placed"
+                    value={farm.activeFlock ? formatNumber(farm.birdsPlaced) : "—"}
+                  />
+                  <Metric
+                    label="Placement date"
+                    value={
+                      farm.placementDate ? formatLongScheduleDate(farm.placementDate) : "—"
+                    }
+                  />
+                  <Metric
+                    label="Current Head Count"
+                    value={
+                      farm.activeFlock ? formatNumber(farm.currentHeadCount) : "—"
+                    }
+                  />
+                  <Metric
+                    label="Catch date"
+                    value={
+                      farm.projectedCatchDate
+                        ? formatLongScheduleDate(farm.projectedCatchDate)
+                        : "—"
+                    }
+                  />
+                </View>
+              </Pressable>
             </Card>
-          </Pressable>
           );
         })}
       </ScrollView>

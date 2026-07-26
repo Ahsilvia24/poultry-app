@@ -993,6 +993,13 @@ export function createFarm(input: {
   return { id };
 }
 
+/** Soft-delete: hide from active lists (matches web deleteFarmAction). */
+export function deleteFarm(farmId: string) {
+  const db = getDb();
+  db.runSync("UPDATE farms SET is_active = 0 WHERE id = ?", [farmId]);
+  return { success: true };
+}
+
 export function createVisit(input: {
   farmId: string;
   flockId?: string | null;
