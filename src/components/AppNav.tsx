@@ -10,6 +10,7 @@ const nav = [
   { href: "/farms", label: "Farms" },
   { href: "/mortality", label: "Mortality" },
   { href: "/lfo", label: "LFO" },
+  { href: "/tools", label: "Tools" },
   { href: "/settlement", label: "Settlement" },
   { href: "/reports", label: "Reports" },
   { href: "/search", label: "Search" },
@@ -32,7 +33,7 @@ export function AppNav({ userName }: { userName?: string | null }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "rounded-lg px-3 py-2 text-sm font-semibold",
+                  "rounded-lg px-3 py-2 text-base font-semibold",
                   pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
                     ? "bg-emerald-700 text-white"
                     : "text-stone-700 hover:bg-stone-200",
@@ -54,13 +55,13 @@ export function AppNav({ userName }: { userName?: string | null }) {
       </header>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white md:hidden">
-        <div className="grid grid-cols-4 gap-1 px-2 py-2">
-          {nav.slice(0, 4).map((item) => (
+        <div className="grid grid-cols-5 gap-1 px-1 py-2">
+          {nav.slice(0, 5).map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "rounded-lg px-2 py-3 text-center text-xs font-bold",
+                "rounded-lg px-1 py-3 text-center text-xs font-bold leading-tight sm:text-sm",
                 pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
                   ? "bg-emerald-700 text-white"
                   : "text-stone-700",

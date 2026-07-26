@@ -106,9 +106,12 @@ export default async function DashboardPage() {
                   <p className="font-semibold">{farm.todayMortality}</p>
                 </div>
                 <div>
-                  <p className="text-stone-500">Projected Head Count</p>
+                  <p className="text-stone-500">Proj. Head Count</p>
                   <p className="font-semibold">
                     {farm.projectedHeadCount != null ? formatNumber(farm.projectedHeadCount) : "—"}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-stone-400">
+                    Assumes 150 for catch crew / house
                   </p>
                 </div>
                 <div>

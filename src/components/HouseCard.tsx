@@ -122,10 +122,11 @@ export function HouseCard({
             </p>
           </div>
           <div>
-            <p className="text-stone-500">Projected Head Count</p>
+            <p className="text-stone-500">Proj. Head Count</p>
             <p className="font-semibold">
               {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
             </p>
+            <p className="mt-0.5 text-[11px] text-stone-400">Assumes 150 for catch crew</p>
           </div>
         </div>
       ) : null}

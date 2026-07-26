@@ -242,7 +242,11 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           />
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Birds placed" value={formatNumber(flockPlaced)} />
-            <StatTile label="Projected Head Count" value={formatNumber(flockProjectedHead)} />
+            <StatTile
+              label="Proj. Head Count"
+              value={formatNumber(flockProjectedHead)}
+              hint="Assumes 150 for catch crew per house"
+            />
             <StatTile
               label="Cumulative Mortality"
               value={`${flockCum} (${formatPct(flockPlaced > 0 ? (flockCum / flockPlaced) * 100 : 0)})`}
