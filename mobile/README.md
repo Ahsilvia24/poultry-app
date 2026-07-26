@@ -52,13 +52,26 @@ eas build --platform android --profile preview
 
 When the build finishes, open the link on your phone and install the APK.
 
-### 3. iPhone (TestFlight / ad hoc)
+### 3. iPhone (TestFlight)
 
-Requires an [Apple Developer](https://developer.apple.com) account (~$99/yr):
+Requires an [Apple Developer](https://developer.apple.com) account (~$99/yr).
+
+**From Expo dashboard (phone-friendly):** open the project → **Workflows** → run **iOS TestFlight**  
+(`.eas/workflows/ios-testflight.yml`). If you see “no workflows found”, make sure GitHub is connected and the project directory is set to `mobile`.
+
+**From a computer / SSH:**
 
 ```bash
-eas build --platform ios --profile preview
-eas submit --platform ios   # or install via internal distribution link
+cd poultry-app/mobile
+eas workflow:run .eas/workflows/ios-testflight.yml
+# or classic CLI:
+eas build --platform ios --profile production --auto-submit
+```
+
+First time only, configure Apple credentials:
+
+```bash
+eas credentials --platform ios
 ```
 
 ### 4. Development client (for active coding)

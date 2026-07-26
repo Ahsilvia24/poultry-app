@@ -1,0 +1,21 @@
+name: iOS TestFlight
+
+jobs:
+  build_ios:
+    name: Build iOS
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  submit_ios:
+    name: Submit to TestFlight
+    needs: [build_ios]
+    type: testflight
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
+      changelog: |
+        UI parity with web mobile layout:
+        - Fixed duplicate bottom tab labels
+        - Dashboard / Farms / Mortality / LFO / Tools restyle
+        - PoultryTech brand header and metric cards
