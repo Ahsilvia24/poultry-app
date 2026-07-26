@@ -3,7 +3,7 @@ import { format, parseISO } from "date-fns";
 import { auth } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard";
 import { formatNumber, formatPct } from "@/lib/utils";
-import { Card, PageHeader, StatTile, StatusBadge, Button } from "@/components/ui";
+import { Card, PageHeader, StatusBadge, Button } from "@/components/ui";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import { redirect } from "next/navigation";
