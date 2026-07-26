@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 export function LfoCreateBar({
@@ -45,16 +44,16 @@ export function LfoCreateBar({
           );
         })}
       </div>
-      <Button
+      <button
         type="button"
-        className="w-full min-h-10 rounded-xl px-4 text-[15px]"
+        className="flex h-10 w-full items-center justify-center rounded-xl bg-emerald-800 px-4 text-[15px] font-bold text-white hover:bg-emerald-900"
         onClick={() => {
           if (!selected) return;
           router.push(`/lfo/new/${selected.id}`);
         }}
       >
         Create LFO
-      </Button>
+      </button>
     </div>
   );
 }
