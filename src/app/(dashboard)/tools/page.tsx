@@ -3,13 +3,8 @@ import { auth } from "@/lib/auth";
 import { MaxCoolingChart } from "@/components/MaxCoolingChart";
 import { TempCurveChart } from "@/components/TempCurveChart";
 import { ToolsQuickLinks } from "@/components/ToolsQuickLinks";
-import { Card, PageHeader } from "@/components/ui";
-
-const placeholderSections = [
-  { id: "lights", title: "Lights" },
-  { id: "ventilation", title: "Ventilation" },
-  { id: "phone-numbers", title: "Phone Numbers" },
-] as const;
+import { ToolsSectionPanel } from "@/components/ToolsSectionPanel";
+import { PageHeader } from "@/components/ui";
 
 export default async function ToolsPage() {
   const session = await auth();
@@ -24,45 +19,29 @@ export default async function ToolsPage() {
       </div>
 
       <div className="space-y-4">
-        <div id="temp-curve" className="scroll-mt-24">
-          <Card>
-            <h2 className="text-base font-bold text-stone-900">Temp Curve</h2>
-            <p className="mt-1 text-sm text-stone-500">
-              Target house temperature (°F) by bird age — summer vs winter
-            </p>
-            <div className="mt-4">
-              <TempCurveChart />
-            </div>
-          </Card>
-        </div>
+        <ToolsSectionPanel
+          hashId="temp-curve"
+          title="Temp Curve"
+          subtitle="Target house temperature (°F) by bird age — summer vs winter"
+        >
+          <TempCurveChart />
+        </ToolsSectionPanel>
 
-        <div id="cool-cells" className="scroll-mt-24">
-          <Card>
-            <h2 className="text-base font-bold text-stone-900">Cool Cells</h2>
-            <p className="mt-1 text-sm text-stone-500">Coming soon.</p>
-          </Card>
-        </div>
+        <ToolsSectionPanel hashId="cool-cells" title="Cool Cells" subtitle="Coming soon." />
 
-        <div id="max-cooling" className="scroll-mt-24">
-          <Card>
-            <h2 className="text-base font-bold text-stone-900">Max Cooling</h2>
-            <p className="mt-1 text-sm text-stone-500">
-              By relative humidity and outside temperature (°F)
-            </p>
-            <div className="mt-4">
-              <MaxCoolingChart />
-            </div>
-          </Card>
-        </div>
+        <ToolsSectionPanel
+          hashId="max-cooling"
+          title="Max Cooling"
+          subtitle="By relative humidity and outside temperature (°F)"
+        >
+          <MaxCoolingChart />
+        </ToolsSectionPanel>
 
-        {placeholderSections.map((section) => (
-          <div key={section.id} id={section.id} className="scroll-mt-24">
-            <Card>
-              <h2 className="text-base font-bold text-stone-900">{section.title}</h2>
-              <p className="mt-1 text-sm text-stone-500">Coming soon.</p>
-            </Card>
-          </div>
-        ))}
+        <ToolsSectionPanel hashId="lights" title="Lights" subtitle="Coming soon." />
+
+        <ToolsSectionPanel hashId="ventilation" title="Ventilation" subtitle="Coming soon." />
+
+        <ToolsSectionPanel hashId="phone-numbers" title="Phone Numbers" subtitle="Coming soon." />
       </div>
     </div>
   );
