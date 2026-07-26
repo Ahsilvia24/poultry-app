@@ -77,7 +77,7 @@ export default function FarmsScreen() {
             />
           ))}
           <Chip
-            label="Add farm"
+            label="Add Farm"
             onPress={() => router.push("/(tabs)/farms/new")}
           />
         </View>

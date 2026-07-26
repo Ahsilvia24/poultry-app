@@ -77,7 +77,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
           href="/farms/new"
           className="rounded-lg bg-stone-200 px-4 py-2 text-sm font-semibold text-stone-800"
         >
-          Add farm
+          Add Farm
         </Link>
       </div>
 

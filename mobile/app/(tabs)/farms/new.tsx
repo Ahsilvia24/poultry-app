@@ -60,7 +60,7 @@ export default function NewFarmScreen() {
             }
           />
           <PageHeader
-            title="Add farm"
+            title="Add Farm"
             subtitle="Farm name and house count get you started — add other details anytime"
           />
 
