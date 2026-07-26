@@ -18,13 +18,13 @@ export function WeeklyMortalityList({ weeks }: { weeks: WeekTotal[] }) {
   const rows = groupByFourWeekRows(weeks);
 
   return (
-    <div className="mt-2 space-y-1.5 text-lg">
+    <div className="mt-2 space-y-2">
       {rows.map((row) => (
-        <div key={row[0]!.week} className="flex flex-wrap gap-x-5 gap-y-1">
+        <div key={row[0]!.week} className="grid grid-cols-4 gap-x-3 gap-y-1">
           {row.map((w) => (
-            <div key={w.week}>
-              <span className="text-stone-500">Week {w.week}</span>{" "}
-              <span className="font-semibold text-stone-900">{w.total}</span>
+            <div key={w.week} className="min-w-0 text-base leading-snug text-stone-500">
+              Week {w.week}{" "}
+              <span className="text-lg font-extrabold text-stone-900">{w.total}</span>
             </div>
           ))}
         </div>

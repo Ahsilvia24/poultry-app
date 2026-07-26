@@ -22,6 +22,7 @@ import {
   PrimaryButton,
   SectionTitle,
   StatusBadge,
+  WeeklyMortalityList,
   formatNumber,
   formatPct,
 } from "../../../src/components/ui";
@@ -174,12 +175,18 @@ export default function FarmDetailScreen() {
             </View>
             {h.weeklyMortality.length > 0 ? (
               <View style={{ borderTopWidth: 1, borderTopColor: "#f5f5f4", paddingTop: 10, marginTop: 4 }}>
-                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase" }}>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: "700",
+                    color: colors.muted,
+                    textTransform: "uppercase",
+                    marginBottom: 8,
+                  }}
+                >
                   Weekly mortality
                 </Text>
-                <Text style={{ marginTop: 6, color: colors.text }}>
-                  {h.weeklyMortality.map((w) => `W${w.week} ${w.total}`).join("  ·  ")}
-                </Text>
+                <WeeklyMortalityList weeks={h.weeklyMortality} />
               </View>
             ) : (
               <Text style={[styles.muted, { marginTop: 8 }]}>No weekly mortality yet.</Text>

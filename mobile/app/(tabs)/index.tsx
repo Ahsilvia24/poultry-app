@@ -21,6 +21,7 @@ import {
   PrimaryButton,
   SectionTitle,
   StatusBadge,
+  WeeklyMortalityList,
   formatNumber,
   formatPct,
 } from "../../src/components/ui";
@@ -296,19 +297,12 @@ export default function DashboardScreen() {
                           color: colors.muted,
                           textTransform: "uppercase",
                           letterSpacing: 0.4,
-                          marginBottom: 6,
+                          marginBottom: 8,
                         }}
                       >
                         Weekly mortality
                       </Text>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
-                        {farm.weeklyMortality.map((w) => (
-                          <Text key={w.week} style={{ color: colors.text, fontSize: 15 }}>
-                            Week {w.week}{" "}
-                            <Text style={{ fontWeight: "800" }}>{w.total}</Text>
-                          </Text>
-                        ))}
-                      </View>
+                      <WeeklyMortalityList weeks={farm.weeklyMortality} />
                     </View>
                   ) : null}
 
