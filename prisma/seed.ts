@@ -250,7 +250,7 @@ async function main() {
       farmName: "Bay View",
       growerName: "Elena Cruz",
       phoneNumber: "410-555-0115",
-      houses: 2,
+      houses: 12,
       flockNumber: "BV-118",
       placementDate: subDays(today, 21),
       projectedCatchDate: addDays(subDays(today, 21), 42),
