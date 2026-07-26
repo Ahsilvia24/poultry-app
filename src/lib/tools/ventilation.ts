@@ -14,3 +14,18 @@ export const CFM_PER_BIRD: CfmPerBirdRow[] = [
   { week: 7, cfmPerBird: 0.8 },
   { week: 8, cfmPerBird: 0.9 },
 ];
+
+export type CfmByFanSizeRow = {
+  fanSizeInches: number;
+  cfmPerFan: number;
+};
+
+/** Approximate CFM capacity by fan diameter. */
+export const CFM_BY_FAN_SIZE: CfmByFanSizeRow[] = [
+  { fanSizeInches: 36, cfmPerFan: 10000 },
+  { fanSizeInches: 48, cfmPerFan: 20000 },
+  { fanSizeInches: 50, cfmPerFan: 21000 },
+  { fanSizeInches: 52, cfmPerFan: 22000 },
+  { fanSizeInches: 54, cfmPerFan: 25000 },
+  { fanSizeInches: 57, cfmPerFan: 28000 },
+];

@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { CFM_PER_BIRD } from "@/lib/tools/ventilation";
+import { CFM_BY_FAN_SIZE, CFM_PER_BIRD } from "@/lib/tools/ventilation";
 
 const linkClass = "text-left text-sm font-semibold text-emerald-800 hover:underline";
 
-function formatCfm(n: number) {
+function formatCfmPerBird(n: number) {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatCfm(n: number) {
+  return n.toLocaleString();
 }
 
 export function VentilationLinks() {
@@ -56,7 +60,7 @@ export function VentilationLinks() {
                   <tr key={row.week} className="border-t border-stone-100">
                     <td className="px-3 py-1.5 font-semibold text-stone-900">{row.week}</td>
                     <td className="px-3 py-1.5 font-medium tabular-nums text-stone-800">
-                      {formatCfm(row.cfmPerBird)}
+                      {formatCfmPerBird(row.cfmPerBird)}
                     </td>
                   </tr>
                 ))}
@@ -78,7 +82,28 @@ export function VentilationLinks() {
               Close
             </button>
           </div>
-          <p className="mt-1 text-sm text-stone-500">Coming soon.</p>
+          <div className="mt-3 overflow-hidden rounded-lg border border-stone-200">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-stone-100 text-stone-700">
+                <tr>
+                  <th className="px-3 py-2 font-semibold">Fan size (in)</th>
+                  <th className="px-3 py-2 text-right font-semibold">CFM / Fan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CFM_BY_FAN_SIZE.map((row) => (
+                  <tr key={row.fanSizeInches} className="border-t border-stone-100">
+                    <td className="px-3 py-1.5 text-center font-semibold tabular-nums text-stone-900">
+                      {row.fanSizeInches}
+                    </td>
+                    <td className="px-3 py-1.5 text-right font-medium tabular-nums text-stone-800">
+                      {formatCfm(row.cfmPerFan)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
     </div>
