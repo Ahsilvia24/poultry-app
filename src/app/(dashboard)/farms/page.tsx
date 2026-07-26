@@ -124,19 +124,24 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
               <Card key={farm.id} className="transition hover:border-emerald-400">
                 <div className="flex items-start justify-between gap-2">
                   <Link href={`/farms/${farm.id}`} className="min-w-0 flex-1">
-                    <p className="text-lg font-bold text-stone-900">
-                      {farm.farmName}
-                      <span className="font-semibold text-stone-500">
-                        {" "}
-                        ({houseCount})
-                      </span>
-                      {active ? (
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <p className="text-lg font-bold text-stone-900">
+                        {farm.farmName}
                         <span className="font-semibold text-stone-500">
                           {" "}
-                          · {differenceInCalendarDays(today, active.placementDate)}d
+                          ({houseCount})
                         </span>
+                        {active ? (
+                          <span className="font-semibold text-stone-500">
+                            {" "}
+                            · {differenceInCalendarDays(today, active.placementDate)}d
+                          </span>
+                        ) : null}
+                      </p>
+                      {farm.phoneNumber ? (
+                        <p className="text-sm font-semibold text-stone-500">{farm.phoneNumber}</p>
                       ) : null}
-                    </p>
+                    </div>
                     {farm.growerName ? (
                       <p className="text-sm text-stone-600">{farm.growerName}</p>
                     ) : null}
