@@ -944,6 +944,13 @@ export function updateLfoInventory(
   return { success: true };
 }
 
+export function deleteLfo(id: string) {
+  const db = getDb();
+  db.runSync("DELETE FROM lfo_house_inventory WHERE lfo_id = ?", [id]);
+  db.runSync("DELETE FROM last_feed_orders WHERE id = ?", [id]);
+  return { success: true };
+}
+
 export function createFarm(input: {
   farmName: string;
   growerName?: string;
