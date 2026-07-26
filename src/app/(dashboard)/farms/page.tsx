@@ -58,15 +58,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
 
   return (
     <div>
-      <PageHeader
-        title="Farms"
-        subtitle="Manage grower farms and houses"
-        actions={
-          <Link href="/farms/new">
-            <Button>Add farm</Button>
-          </Link>
-        }
-      />
+      <PageHeader title="Farms" subtitle="Manage grower farms and houses" />
 
       <div className="mb-4 flex flex-wrap gap-2">
         {filters.map((f) => (
@@ -81,6 +73,12 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
             {f.label}
           </Link>
         ))}
+        <Link
+          href="/farms/new"
+          className="rounded-lg bg-stone-200 px-4 py-2 text-sm font-semibold text-stone-800"
+        >
+          Add farm
+        </Link>
       </div>
 
       {farms.length === 0 ? (
