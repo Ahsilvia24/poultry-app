@@ -751,13 +751,14 @@ export function saveHouseMortalitySeries(input: {
       "SELECT id FROM daily_mortality WHERE house_flock_id = ? AND mortality_date = ?",
       [input.houseFlockId, e.mortalityDate],
     );
+    // Allow 0/0 — entering zero counts as a confirmed day entry
     if (existing) {
       db.runSync(
         `UPDATE daily_mortality SET daily_mortality_count = ?, cull_count = ?, total_daily_loss = ?,
           bird_age_in_days = ?, is_draft = 0 WHERE id = ?`,
         [e.dailyMortalityCount, e.cullCount, loss, age, existing.id],
       );
-    } else if (e.dailyMortalityCount > 0 || e.cullCount > 0) {
+    } else {
       db.runSync(
         `INSERT INTO daily_mortality
           (id, house_flock_id, mortality_date, bird_age_in_days, daily_mortality_count, cull_count, total_daily_loss, mortality_cause, is_draft)

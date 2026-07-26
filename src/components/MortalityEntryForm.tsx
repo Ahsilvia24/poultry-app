@@ -68,13 +68,9 @@ function todayKeyLocal() {
   return format(todayDate(), "yyyy-MM-dd");
 }
 
+/** Past/today with no confirmed entry yet — Loss cell shows ! instead of a number. */
 function needsEntry(row: DayRow) {
-  if (row.mortalityDate > todayKeyLocal()) return false;
-  // Only when this day has no entered numbers (not beside rows that already have values)
-  const culls = Number(row.cullCount || 0);
-  const mort = Number(row.dailyMortalityCount || 0);
-  if (culls > 0 || mort > 0) return false;
-  return !row.hasEntry;
+  return row.mortalityDate <= todayKeyLocal() && !row.hasEntry;
 }
 
 type WeekGroup = {
@@ -608,8 +604,8 @@ export function MortalityEntryForm({
                                     enterKeyHint="next"
                                     autoComplete="off"
                                     className="min-h-11 px-3"
-                                    placeholder="0"
-                                    value={row.cullCount === "0" ? "" : row.cullCount}
+                                    placeholder=""
+                                    value={row.hasEntry ? row.cullCount : ""}
                                     onFocus={(e) => e.target.select()}
                                     onBlur={() => flushSave()}
                                     onKeyDown={(e) => onColumnEnter(e, "culls", row.age)}
@@ -631,8 +627,8 @@ export function MortalityEntryForm({
                                     enterKeyHint="next"
                                     autoComplete="off"
                                     className="min-h-11 px-3"
-                                    placeholder="0"
-                                    value={row.dailyMortalityCount === "0" ? "" : row.dailyMortalityCount}
+                                    placeholder=""
+                                    value={row.hasEntry ? row.dailyMortalityCount : ""}
                                     onFocus={(e) => e.target.select()}
                                     onBlur={() => flushSave()}
                                     onKeyDown={(e) => onColumnEnter(e, "mortality", row.age)}
@@ -645,7 +641,11 @@ export function MortalityEntryForm({
                                   />
                                 </td>
                                 <td className="px-3 py-2 text-right font-semibold text-stone-800">
-                                  {needsEntry(row) ? <NeedsEntryIcon /> : loss}
+                                  {needsEntry(row) ? (
+                                    <NeedsEntryIcon />
+                                  ) : row.hasEntry ? (
+                                    loss
+                                  ) : null}
                                 </td>
                               </tr>
                             );

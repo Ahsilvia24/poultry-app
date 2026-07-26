@@ -62,13 +62,9 @@ function NeedsEntryIcon() {
   );
 }
 
+/** Past/today with no confirmed entry yet — Loss cell shows ! instead of a number. */
 function needsEntry(row: DayRow, today: string) {
-  if (row.mortalityDate > today) return false;
-  // Only when this day has no entered numbers (not beside rows that already have values)
-  const culls = Number(row.cullCount || 0);
-  const mort = Number(row.dailyMortalityCount || 0);
-  if (culls > 0 || mort > 0) return false;
-  return !row.hasEntry;
+  return row.mortalityDate <= today && !row.hasEntry;
 }
 
 type FieldKind = "culls" | "mort";
@@ -215,11 +211,9 @@ export default function MortalityScreen() {
         next.push({
           age,
           mortalityDate,
-          cullCount: existing && existing.cull_count !== 0 ? String(existing.cull_count) : "",
-          dailyMortalityCount:
-            existing && existing.daily_mortality_count !== 0
-              ? String(existing.daily_mortality_count)
-              : "",
+          // Keep boxes blank until entered; show "0" only after a confirmed entry
+          cullCount: existing ? String(existing.cull_count) : "",
+          dailyMortalityCount: existing ? String(existing.daily_mortality_count) : "",
           hasEntry: Boolean(existing),
         });
       }
@@ -301,13 +295,16 @@ export default function MortalityScreen() {
     setSaveStatus("saving");
     setError(null);
     try {
+      // Only persist days the tech has entered (0 is valid and must be saved)
       saveHouseMortalitySeries({
         houseFlockId: id,
-        entries: snapshot.map((r) => ({
-          mortalityDate: r.mortalityDate,
-          dailyMortalityCount: Number(r.dailyMortalityCount || 0),
-          cullCount: Number(r.cullCount || 0),
-        })),
+        entries: snapshot
+          .filter((r) => r.hasEntry)
+          .map((r) => ({
+            mortalityDate: r.mortalityDate,
+            dailyMortalityCount: Number(r.dailyMortalityCount || 0),
+            cullCount: Number(r.cullCount || 0),
+          })),
       });
       if (gen === saveGenRef.current) setSaveStatus("saved");
     } catch (e) {
@@ -579,9 +576,8 @@ export default function MortalityScreen() {
                                 showSoftInputOnFocus={false}
                                 caretHidden={false}
                                 keyboardType="number-pad"
-                                value={row.cullCount}
-                                placeholder="0"
-                                placeholderTextColor="#a8a29e"
+                                value={row.hasEntry ? row.cullCount : ""}
+                                placeholder=""
                                 selection={cullActive ? selection : undefined}
                                 onSelectionChange={(e) => {
                                   if (cullActive) setSelection(e.nativeEvent.selection);
@@ -598,9 +594,8 @@ export default function MortalityScreen() {
                                 showSoftInputOnFocus={false}
                                 caretHidden={false}
                                 keyboardType="number-pad"
-                                value={row.dailyMortalityCount}
-                                placeholder="0"
-                                placeholderTextColor="#a8a29e"
+                                value={row.hasEntry ? row.dailyMortalityCount : ""}
+                                placeholder=""
                                 selection={mortActive ? selection : undefined}
                                 onSelectionChange={(e) => {
                                   if (mortActive) setSelection(e.nativeEvent.selection);
@@ -610,30 +605,29 @@ export default function MortalityScreen() {
                                 }
                                 onChangeText={(v) => setFieldValue("mort", row.age, v)}
                               />
-                              {showNeedsEntry ? (
-                                <View
-                                  style={{
-                                    width: 68,
-                                    alignItems: "flex-end",
-                                    justifyContent: "center",
-                                    paddingRight: 2,
-                                  }}
-                                >
+                              <View
+                                style={{
+                                  width: 68,
+                                  alignItems: "flex-end",
+                                  justifyContent: "center",
+                                  paddingRight: 2,
+                                }}
+                              >
+                                {showNeedsEntry ? (
                                   <NeedsEntryIcon />
-                                </View>
-                              ) : (
-                                <Text
-                                  style={{
-                                    width: 68,
-                                    textAlign: "right",
-                                    fontWeight: "700",
-                                    fontSize: 14,
-                                    paddingRight: 6,
-                                  }}
-                                >
-                                  {loss}
-                                </Text>
-                              )}
+                                ) : row.hasEntry ? (
+                                  <Text
+                                    style={{
+                                      fontWeight: "700",
+                                      fontSize: 14,
+                                      paddingRight: 4,
+                                      color: colors.text,
+                                    }}
+                                  >
+                                    {loss}
+                                  </Text>
+                                ) : null}
+                              </View>
                             </View>
                           );
                         })}
