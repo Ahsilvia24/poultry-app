@@ -19,7 +19,9 @@ Native iOS/Android app. **All farm data lives in SQLite on the phone** — no Ma
 
 Demo farms (including **Bay View × 12 houses**) seed automatically on first launch.
 
-## Develop on a simulator / device (dev client)
+## Develop on a simulator / device (Expo Go)
+
+This project targets **Expo SDK 54**, which matches the current App Store **Expo Go**.
 
 ```bash
 cd poultry-app/mobile
@@ -27,7 +29,9 @@ npm install --legacy-peer-deps
 npx expo start
 ```
 
-> **Note:** Expo Go may not include every native SQLite build path. For a real offline install, use an EAS build below.
+Scan the QR code with Expo Go on your phone (same Wi‑Fi), or press `i` for the iOS simulator.
+
+> For a real offline installable app (own icon, no Expo Go), use an EAS build below after Apple Developer approval.
 
 ## Installable build (download to your phone)
 
