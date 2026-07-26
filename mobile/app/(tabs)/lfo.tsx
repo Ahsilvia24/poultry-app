@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -338,9 +338,6 @@ export default function LfoScreen() {
           )}
         </Card>
 
-        <Pressable style={{ marginTop: 16 }} onPress={() => router.push("/(tabs)/reports")}>
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>Open reports →</Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
