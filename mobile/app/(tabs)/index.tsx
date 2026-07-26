@@ -16,8 +16,13 @@ import { formatShortScheduleDate } from "../../src/lib/schedule";
 import {
   BrandBar,
   Card,
+  Metric,
   PageHeader,
   PrimaryButton,
+  SectionTitle,
+  StatusBadge,
+  formatNumber,
+  formatPct,
 } from "../../src/components/ui";
 
 type Dashboard = ReturnType<typeof getDashboard>;
@@ -85,7 +90,7 @@ export default function DashboardScreen() {
 
         <PageHeader
           title="Dashboard"
-          subtitle="Schedule, mortality, and follow-ups"
+          subtitle="Active farms, mortality, and follow-ups"
           actions={
             <View style={{ flexDirection: "row", gap: 10 }}>
               <PrimaryButton
@@ -217,6 +222,119 @@ export default function DashboardScreen() {
                 ))
               )}
             </Card>
+
+            <SectionTitle>Active farms</SectionTitle>
+            {data.farmCards.map((farm) => (
+              <Pressable
+                key={farm.id}
+                onPress={() => router.push(`/(tabs)/farms/${farm.id}`)}
+              >
+                <Card>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                        {farm.farmName}
+                        <Text style={{ fontWeight: "600", color: colors.muted }}>
+                          {" "}
+                          ({farm.houseCount})
+                        </Text>
+                        {farm.flockAgeDays != null ? (
+                          <Text style={{ fontWeight: "600", color: colors.muted }}>
+                            {" "}
+                            · {farm.flockAgeDays}d
+                          </Text>
+                        ) : null}
+                      </Text>
+                      <Text style={styles.muted}>{farm.growerName}</Text>
+                      {farm.phoneNumber ? (
+                        <Text style={[styles.muted, { fontSize: 12, marginTop: 2 }]}>
+                          {farm.phoneNumber}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <StatusBadge status={farm.status} />
+                  </View>
+
+                  <View style={[styles.row, { marginTop: 14 }]}>
+                    <Metric label="Today's Mortality" value={String(farm.todayMortality)} />
+                    <Metric
+                      label="Cumulative Mortality"
+                      value={`${farm.cumulativeMortality} (${formatPct(farm.cumulativeMortalityPct)})`}
+                    />
+                    <Metric label="Birds placed" value={formatNumber(farm.birdsPlaced)} />
+                    <Metric
+                      label="Projected Mortality"
+                      value={
+                        farm.projectedMortality != null && farm.birdsPlaced > 0
+                          ? `${formatNumber(farm.projectedMortality)} (${formatPct(
+                              (farm.projectedMortality / farm.birdsPlaced) * 100,
+                            )})`
+                          : formatNumber(farm.projectedMortality)
+                      }
+                    />
+                    <Metric
+                      label="Proj. Head Count"
+                      value={formatNumber(farm.projectedHeadCount)}
+                      hint="150 per house @ catch"
+                    />
+                    <Metric label="Open issues" value={String(farm.openIssues)} />
+                  </View>
+
+                  {farm.weeklyMortality.length > 0 ? (
+                    <View
+                      style={{
+                        borderTopWidth: 1,
+                        borderTopColor: "#f5f5f4",
+                        paddingTop: 10,
+                        marginTop: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "700",
+                          color: colors.muted,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.4,
+                          marginBottom: 6,
+                        }}
+                      >
+                        Weekly mortality
+                      </Text>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+                        {farm.weeklyMortality.map((w) => (
+                          <Text key={w.week} style={{ color: colors.text, fontSize: 15 }}>
+                            Week {w.week}{" "}
+                            <Text style={{ fontWeight: "800" }}>{w.total}</Text>
+                          </Text>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      gap: 12,
+                      marginTop: 10,
+                    }}
+                  >
+                    <Text style={[styles.muted, { fontSize: 12 }]}>
+                      Last visit:{" "}
+                      {farm.lastVisitDate
+                        ? formatShortScheduleDate(farm.lastVisitDate)
+                        : "—"}
+                    </Text>
+                    {farm.missingTodayMortality ? (
+                      <Text style={{ color: colors.warn, fontWeight: "800", fontSize: 12 }}>
+                        Missing today&apos;s mortality
+                      </Text>
+                    ) : null}
+                  </View>
+                </Card>
+              </Pressable>
+            ))}
           </>
         ) : null}
       </ScrollView>
