@@ -121,6 +121,10 @@ export default function FarmsScreen() {
                   style={{ flex: 1, minWidth: 0 }}
                   onPress={() => router.push(`/(tabs)/farms/${farm.id}`)}
                 >
+                  <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                    {farm.farmName}
+                    <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
+                  </Text>
                   <View
                     style={{
                       flexDirection: "row",
@@ -129,17 +133,15 @@ export default function FarmsScreen() {
                       gap: 8,
                     }}
                   >
-                    <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                      {farm.farmName}
-                      <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
-                    </Text>
+                    {farm.growerName ? (
+                      <Text style={styles.muted}>{farm.growerName}</Text>
+                    ) : null}
                     {farm.phoneNumber ? (
                       <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>
                         {farm.phoneNumber}
                       </Text>
                     ) : null}
                   </View>
-                  <Text style={styles.muted}>{farm.growerName}</Text>
                 </Pressable>
                 <Text
                   style={[
