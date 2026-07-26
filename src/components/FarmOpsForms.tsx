@@ -10,6 +10,7 @@ import {
   updateVisitAction,
 } from "@/app/actions/ops";
 import { deactivateFarmAction, deleteFarmAction, completeFlockAction, reactivateFlockAction } from "@/app/actions/farms";
+import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import {
   ISSUE_CATEGORY_LABELS,
   LITTER_EVENT_LABELS,
@@ -22,28 +23,42 @@ export type VisitFormValues = {
   visitType: string;
   birdAgeInDays?: number | null;
   generalBirdCondition?: string | null;
-  temperature?: number | null;
-  humidity?: number | null;
   notes?: string | null;
   followUpRequired?: boolean;
   followUpDate?: string | null;
 };
 
+function parseVisitDateKey(dateKey: string) {
+  return new Date(`${dateKey}T12:00:00`);
+}
+
 export function FarmVisitForm({
   farmId,
   flockId,
+  placementDate,
   onSuccess,
   recordId,
   initial,
 }: {
   farmId: string;
   flockId?: string | null;
+  /** Active flock placement date (`yyyy-MM-dd`) for auto bird age. */
+  placementDate?: string | null;
   onSuccess?: () => void;
   recordId?: string;
   initial?: VisitFormValues;
 }) {
   const [pending, start] = useTransition();
+  const [visitDate, setVisitDate] = useState(
+    initial?.visitDate ?? new Date().toISOString().slice(0, 10),
+  );
   const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
+
+  const birdAgeInDays =
+    placementDate != null && visitDate
+      ? birdAgeFromPlacement(parseVisitDateKey(placementDate), parseVisitDateKey(visitDate))
+      : null;
+
   return (
     <form
       className="mt-4 space-y-3"
@@ -68,7 +83,8 @@ export function FarmVisitForm({
             name="visitDate"
             type="date"
             required
-            defaultValue={initial?.visitDate ?? new Date().toISOString().slice(0, 10)}
+            value={visitDate}
+            onChange={(e) => setVisitDate(e.target.value)}
           />
         </div>
         <div>
@@ -89,10 +105,10 @@ export function FarmVisitForm({
           <Label htmlFor={fid("birdAgeInDays")}>Bird age (days)</Label>
           <Input
             id={fid("birdAgeInDays")}
-            name="birdAgeInDays"
-            type="number"
-            min={0}
-            defaultValue={initial?.birdAgeInDays ?? undefined}
+            type="text"
+            readOnly
+            value={birdAgeInDays != null ? String(birdAgeInDays) : "—"}
+            className="bg-stone-50 text-stone-700"
           />
         </div>
         <div>
@@ -100,27 +116,7 @@ export function FarmVisitForm({
           <Input
             id={fid("generalBirdCondition")}
             name="generalBirdCondition"
-            defaultValue={initial?.generalBirdCondition ?? undefined}
-          />
-        </div>
-        <div>
-          <Label htmlFor={fid("temperature")}>Temperature</Label>
-          <Input
-            id={fid("temperature")}
-            name="temperature"
-            type="number"
-            step="any"
-            defaultValue={initial?.temperature ?? undefined}
-          />
-        </div>
-        <div>
-          <Label htmlFor={fid("humidity")}>Humidity</Label>
-          <Input
-            id={fid("humidity")}
-            name="humidity"
-            type="number"
-            step="any"
-            defaultValue={initial?.humidity ?? undefined}
+            defaultValue={initial?.generalBirdCondition ?? "Healthy"}
           />
         </div>
       </div>

@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { poundsToTons } from "@/lib/feed/calculations";
+import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
+import { parseDateKey } from "@/lib/visits/schedule";
 import {
   farmIssueSchema,
   farmVisitSchema,
@@ -17,6 +19,19 @@ import {
 function emptyToNull(value: FormDataEntryValue | null) {
   const s = String(value ?? "").trim();
   return s === "" ? null : s;
+}
+
+async function resolveVisitBirdAge(
+  flockId: string | null | undefined,
+  visitDateStr: string,
+): Promise<number | null> {
+  if (!flockId) return null;
+  const flock = await prisma.flock.findFirst({
+    where: { id: flockId, deletedAt: null },
+    select: { placementDate: true },
+  });
+  if (!flock) return null;
+  return birdAgeFromPlacement(flock.placementDate, parseDateKey(visitDateStr));
 }
 
 export async function createFeedDeliveryAction(formData: FormData) {
@@ -329,21 +344,26 @@ export async function createVisitAction(formData: FormData) {
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid visit" };
   await assertFarmAccess(parsed.data.farmId, user.id!);
 
+  const birdAgeInDays = await resolveVisitBirdAge(
+    parsed.data.flockId,
+    parsed.data.visitDate,
+  );
+
   await prisma.farmVisit.create({
     data: {
       farmId: parsed.data.farmId,
       flockId: parsed.data.flockId,
       visitDate: new Date(parsed.data.visitDate),
-      birdAgeInDays: parsed.data.birdAgeInDays,
+      birdAgeInDays,
       visitType: parsed.data.visitType,
-      generalBirdCondition: parsed.data.generalBirdCondition,
+      generalBirdCondition: parsed.data.generalBirdCondition ?? "Healthy",
       activityLevel: parsed.data.activityLevel,
       uniformity: parsed.data.uniformity,
       litterCondition: parsed.data.litterCondition,
       waterConsumption: parsed.data.waterConsumption,
       feedInventory: parsed.data.feedInventory,
-      temperature: parsed.data.temperature,
-      humidity: parsed.data.humidity,
+      temperature: null,
+      humidity: null,
       staticPressure: parsed.data.staticPressure,
       notes: parsed.data.notes,
       followUpRequired: parsed.data.followUpRequired ?? false,
@@ -434,21 +454,24 @@ export async function updateVisitAction(visitId: string, formData: FormData) {
   });
   if (!existing) return { error: "Visit not found" };
 
+  const flockId = parsed.data.flockId ?? existing.flockId;
+  const birdAgeInDays = await resolveVisitBirdAge(flockId, parsed.data.visitDate);
+
   await prisma.farmVisit.update({
     where: { id: visitId },
     data: {
       flockId: parsed.data.flockId,
       visitDate: new Date(parsed.data.visitDate),
-      birdAgeInDays: parsed.data.birdAgeInDays,
+      birdAgeInDays,
       visitType: parsed.data.visitType,
-      generalBirdCondition: parsed.data.generalBirdCondition,
+      generalBirdCondition: parsed.data.generalBirdCondition ?? "Healthy",
       activityLevel: parsed.data.activityLevel,
       uniformity: parsed.data.uniformity,
       litterCondition: parsed.data.litterCondition,
       waterConsumption: parsed.data.waterConsumption,
       feedInventory: parsed.data.feedInventory,
-      temperature: parsed.data.temperature,
-      humidity: parsed.data.humidity,
+      temperature: null,
+      humidity: null,
       staticPressure: parsed.data.staticPressure,
       notes: parsed.data.notes,
       followUpRequired: parsed.data.followUpRequired ?? false,

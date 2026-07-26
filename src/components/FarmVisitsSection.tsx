@@ -19,10 +19,12 @@ function visitsHashActive() {
 export function FarmVisitsSection({
   farmId,
   flockId,
+  placementDate,
   visits,
 }: {
   farmId: string;
   flockId?: string;
+  placementDate?: string | null;
   visits: VisitRow[];
 }) {
   const [open, setOpen] = useState(true);
@@ -115,6 +117,7 @@ export function FarmVisitsSection({
                 <FarmVisitForm
                   farmId={farmId}
                   flockId={flockId}
+                  placementDate={placementDate}
                   recordId={v.id}
                   initial={v}
                   onSuccess={afterVisitSaved}
@@ -149,6 +152,7 @@ export function FarmVisitsSection({
             <FarmVisitForm
               farmId={farmId}
               flockId={flockId}
+              placementDate={placementDate}
               onSuccess={afterVisitSaved}
             />
           </Card>

@@ -413,14 +413,15 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         <FarmVisitsSection
           farmId={farm.id}
           flockId={activeFlock?.id}
+          placementDate={
+            activeFlock ? format(activeFlock.placementDate, "yyyy-MM-dd") : null
+          }
           visits={farm.visits.map((v) => ({
             id: v.id,
             visitDate: dateKeyFromDb(v.visitDate),
             visitType: v.visitType,
             birdAgeInDays: v.birdAgeInDays,
             generalBirdCondition: v.generalBirdCondition,
-            temperature: v.temperature,
-            humidity: v.humidity,
             followUpRequired: v.followUpRequired,
             followUpDate: v.followUpDate ? dateKeyFromDb(v.followUpDate) : null,
             notes: v.notes,
