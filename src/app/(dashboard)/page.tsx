@@ -2,10 +2,8 @@ import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { auth } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard";
-import { formatNumber, formatPct } from "@/lib/utils";
-import { Card, PageHeader, StatusBadge, Button } from "@/components/ui";
+import { Card, PageHeader, Button } from "@/components/ui";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
-import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
@@ -18,7 +16,7 @@ export default async function DashboardPage() {
     <div>
       <PageHeader
         title="Dashboard"
-        subtitle="Active farms, mortality, and follow-ups"
+        subtitle="Schedule, mortality, and follow-ups"
         actions={
           <>
             <Link href="/mortality">
@@ -65,87 +63,6 @@ export default async function DashboardPage() {
             )}
           </ul>
         </Card>
-      </div>
-
-      <h2 className="mt-8 text-xl font-bold">Active farms</h2>
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
-        {data.farmCards.map((farm) => (
-          <Link key={farm.id} href={`/farms/${farm.id}`}>
-            <Card className="transition hover:border-emerald-400">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-lg font-bold text-stone-900">
-                    {farm.farmName}
-                    <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
-                    {farm.flockAgeDays != null ? (
-                      <span className="font-semibold text-stone-500"> · {farm.flockAgeDays}d</span>
-                    ) : null}
-                  </p>
-                  {farm.growerName ? (
-                    <p className="text-sm text-stone-600">{farm.growerName}</p>
-                  ) : null}
-                  {farm.phoneNumber ? (
-                    <p className="mt-0.5 text-xs text-stone-500">{farm.phoneNumber}</p>
-                  ) : null}
-                </div>
-                <StatusBadge status={farm.status} />
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-                <div>
-                  <p className="text-stone-500">Today&apos;s Mortality</p>
-                  <p className="font-semibold">{farm.todayMortality}</p>
-                </div>
-                <div>
-                  <p className="text-stone-500">Cumulative Mortality</p>
-                  <p className="font-semibold">
-                    {farm.cumulativeMortality} ({formatPct(farm.cumulativeMortalityPct)})
-                  </p>
-                </div>
-                <div>
-                  <p className="text-stone-500">Birds placed</p>
-                  <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
-                </div>
-                <div>
-                  <p className="text-stone-500">Projected Mortality</p>
-                  <p className="font-semibold">
-                    {farm.projectedMortality != null
-                      ? `${formatNumber(farm.projectedMortality)} (${formatPct(
-                          farm.totalBirdsPlaced > 0
-                            ? (farm.projectedMortality / farm.totalBirdsPlaced) * 100
-                            : 0,
-                        )})`
-                      : "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-stone-500">Proj. Head Count</p>
-                  <p className="font-semibold">
-                    {farm.projectedHeadCount != null ? formatNumber(farm.projectedHeadCount) : "—"}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-stone-400">150 per house @ catch</p>
-                </div>
-                <div>
-                  <p className="text-stone-500">Open issues</p>
-                  <p className="font-semibold">{farm.openIssues}</p>
-                </div>
-              </div>
-              {farm.weeklyMortality.length > 0 ? (
-                <div className="mt-3 border-t border-stone-100 pt-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-                    Weekly mortality
-                  </p>
-                  <WeeklyMortalityList weeks={farm.weeklyMortality} />
-                </div>
-              ) : null}
-              <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
-                <span>Last visit: {farm.lastVisitDate ?? "—"}</span>
-                {farm.missingTodayMortality ? (
-                  <span className="font-bold text-amber-700">Missing today&apos;s mortality</span>
-                ) : null}
-              </div>
-            </Card>
-          </Link>
-        ))}
       </div>
 
       <div className="mt-8">
