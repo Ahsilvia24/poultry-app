@@ -20,7 +20,6 @@ import {
   PageHeader,
   PrimaryButton,
   SectionTitle,
-  StatTile,
   StatusBadge,
   formatNumber,
   formatPct,
@@ -113,10 +112,6 @@ export default function DashboardScreen() {
 
         {data ? (
           <>
-            <View style={styles.row}>
-              <StatTile label="Active farms" value={data.stats.activeFarms} />
-            </View>
-
             <Card>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
                 Today&apos;s schedule

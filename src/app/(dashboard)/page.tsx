@@ -32,9 +32,6 @@ export default async function DashboardPage() {
       />
 
       <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatTile label="Active farms" value={data.stats.activeFarms} />
-        </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <Card>
             <p className="text-sm font-semibold text-stone-500">Today&apos;s schedule</p>
