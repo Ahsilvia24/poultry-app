@@ -47,6 +47,7 @@ export function LfoCreateBar({
       </div>
       <Button
         type="button"
+        className="w-full min-h-10 rounded-xl px-4 text-[15px]"
         onClick={() => {
           if (!selected) return;
           router.push(`/lfo/new/${selected.id}`);
