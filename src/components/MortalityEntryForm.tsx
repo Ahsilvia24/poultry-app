@@ -73,6 +73,46 @@ function needsEntry(row: DayRow) {
   return row.mortalityDate <= todayKeyLocal() && !row.hasEntry;
 }
 
+function digitsOnly(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function isDigitKey(key: string) {
+  return key.length === 1 && key >= "0" && key <= "9";
+}
+
+function onMortNumberKeyDown(
+  e: KeyboardEvent<HTMLInputElement>,
+  field: "culls" | "mortality",
+  age: number,
+  onEnter: (
+    e: KeyboardEvent<HTMLInputElement>,
+    field: "culls" | "mortality",
+    age: number,
+  ) => void,
+) {
+  const allow =
+    isDigitKey(e.key) ||
+    e.key === "Backspace" ||
+    e.key === "Delete" ||
+    e.key === "Tab" ||
+    e.key === "Enter" ||
+    e.key === "Escape" ||
+    e.key === "ArrowLeft" ||
+    e.key === "ArrowRight" ||
+    e.key === "ArrowUp" ||
+    e.key === "ArrowDown" ||
+    e.key === "Home" ||
+    e.key === "End" ||
+    ((e.metaKey || e.ctrlKey) &&
+      (e.key === "a" || e.key === "c" || e.key === "v" || e.key === "x"));
+  if (!allow) {
+    e.preventDefault();
+    return;
+  }
+  onEnter(e, field, age);
+}
+
 type WeekGroup = {
   week: number;
   rows: DayRow[];
@@ -609,14 +649,27 @@ export function MortalityEntryForm({
                                     pattern="[0-9]*"
                                     enterKeyHint="next"
                                     autoComplete="off"
+                                    autoCorrect="off"
+                                    spellCheck={false}
                                     className="min-h-11 px-3"
                                     placeholder=""
                                     value={row.hasEntry ? row.cullCount : ""}
                                     onFocus={(e) => e.target.select()}
                                     onBlur={() => flushSave()}
-                                    onKeyDown={(e) => onColumnEnter(e, "culls", row.age)}
+                                    onKeyDown={(e) =>
+                                      onMortNumberKeyDown(e, "culls", row.age, onColumnEnter)
+                                    }
+                                    onPaste={(e) => {
+                                      e.preventDefault();
+                                      const digits = digitsOnly(
+                                        e.clipboardData.getData("text") || "",
+                                      );
+                                      updateRow(row.age, {
+                                        cullCount: digits === "" ? "0" : digits,
+                                      });
+                                    }}
                                     onChange={(e) => {
-                                      const digits = e.target.value.replace(/\D/g, "");
+                                      const digits = digitsOnly(e.target.value);
                                       updateRow(row.age, {
                                         cullCount: digits === "" ? "0" : digits,
                                       });
@@ -632,14 +685,27 @@ export function MortalityEntryForm({
                                     pattern="[0-9]*"
                                     enterKeyHint="next"
                                     autoComplete="off"
+                                    autoCorrect="off"
+                                    spellCheck={false}
                                     className="min-h-11 px-3"
                                     placeholder=""
                                     value={row.hasEntry ? row.dailyMortalityCount : ""}
                                     onFocus={(e) => e.target.select()}
                                     onBlur={() => flushSave()}
-                                    onKeyDown={(e) => onColumnEnter(e, "mortality", row.age)}
+                                    onKeyDown={(e) =>
+                                      onMortNumberKeyDown(e, "mortality", row.age, onColumnEnter)
+                                    }
+                                    onPaste={(e) => {
+                                      e.preventDefault();
+                                      const digits = digitsOnly(
+                                        e.clipboardData.getData("text") || "",
+                                      );
+                                      updateRow(row.age, {
+                                        dailyMortalityCount: digits === "" ? "0" : digits,
+                                      });
+                                    }}
                                     onChange={(e) => {
-                                      const digits = e.target.value.replace(/\D/g, "");
+                                      const digits = digitsOnly(e.target.value);
                                       updateRow(row.age, {
                                         dailyMortalityCount: digits === "" ? "0" : digits,
                                       });

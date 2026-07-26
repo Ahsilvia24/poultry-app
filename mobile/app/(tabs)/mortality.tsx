@@ -325,7 +325,8 @@ export default function MortalityScreen() {
   }
 
   function setFieldValue(kind: FieldKind, age: number, value: string) {
-    const digits = value.replace(/\D/g, "");
+    // Integers only — strip everything that isn't 0-9
+    const digits = value.replace(/[^0-9]/g, "");
     setRows((prev) => {
       const next = prev.map((r) =>
         r.age === age
@@ -372,10 +373,11 @@ export default function MortalityScreen() {
 
   function onDigit(d: string) {
     if (!activeField) return;
+    if (!/^[0-9]$/.test(d)) return;
     const current = getFieldValue(activeField.kind, activeField.age);
     const start = selection?.start ?? current.length;
     const end = selection?.end ?? current.length;
-    const next = `${current.slice(0, start)}${d}${current.slice(end)}`.replace(/\D/g, "");
+    const next = `${current.slice(0, start)}${d}${current.slice(end)}`.replace(/[^0-9]/g, "");
     setFieldValue(activeField.kind, activeField.age, next);
     const caret = Math.min(start + 1, next.length);
     setSelection({ start: caret, end: caret });
