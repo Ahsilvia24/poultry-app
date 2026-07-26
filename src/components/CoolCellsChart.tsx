@@ -5,7 +5,8 @@ import {
   type CoolCellStage,
 } from "@/lib/tools/cool-cells";
 
-function formatDiff(n: number) {
+function formatDiff(n: number | null | undefined) {
+  if (n == null || Number.isNaN(n)) return "—";
   return n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 

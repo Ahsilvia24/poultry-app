@@ -38,10 +38,10 @@ function formatRaw(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
-export function VentilationLinks({ farms }: { farms: VentilationFarmPayload[] }) {
+export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayload[] }) {
   const [open, setOpen] = useState<"cfm-bird" | "cfm-fan" | null>(null);
   const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
-  const [houseId, setHouseId] = useState(farms[0]?.houses[0]?.id ?? "");
+  const [houseId, setHouseId] = useState(farms[0]?.houses?.[0]?.id ?? "");
 
   const farm = useMemo(
     () => farms.find((f) => f.id === farmId) ?? null,
