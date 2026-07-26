@@ -164,8 +164,9 @@ function buildRows(
     rows.push({
       age,
       mortalityDate,
-      dailyMortalityCount: existing ? String(existing.dailyMortalityCount) : "0",
-      cullCount: existing ? String(existing.cullCount) : "0",
+      // Blank until entered — don't seed "0" or clearing one cell leaves a phantom zero
+      dailyMortalityCount: existing ? String(existing.dailyMortalityCount) : "",
+      cullCount: existing ? String(existing.cullCount) : "",
       hasEntry: Boolean(existing),
     });
   }
@@ -316,7 +317,8 @@ export function MortalityEntryForm({
     setError(null);
 
     const entered = currentRows.filter((r) => r.hasEntry);
-    if (entered.length === 0) {
+    const clearDates = currentRows.filter((r) => !r.hasEntry).map((r) => r.mortalityDate);
+    if (entered.length === 0 && clearDates.length === 0) {
       setSaveStatus("idle");
       return;
     }
@@ -332,6 +334,7 @@ export function MortalityEntryForm({
         dailyMortalityCount: Number(r.dailyMortalityCount || 0),
         cullCount: Number(r.cullCount || 0),
       })),
+      clearDates,
     });
 
     if (gen !== saveGenRef.current) return;
@@ -432,9 +435,25 @@ export function MortalityEntryForm({
 
   function updateRow(age: number, patch: Partial<Pick<DayRow, "dailyMortalityCount" | "cullCount">>) {
     setRows((prev) => {
-      const next = prev.map((r) =>
-        r.age === age ? { ...r, ...patch, hasEntry: true } : r,
-      );
+      const next = prev.map((r) => {
+        if (r.age !== age) return r;
+        const cullCount = patch.cullCount !== undefined ? patch.cullCount : r.cullCount;
+        const dailyMortalityCount =
+          patch.dailyMortalityCount !== undefined
+            ? patch.dailyMortalityCount
+            : r.dailyMortalityCount;
+        // Cleared both boxes, or wiped one and only a leftover 0 remains → unentered (blank + !)
+        const cleared =
+          (cullCount === "" && dailyMortalityCount === "") ||
+          (cullCount === "" && dailyMortalityCount === "0") ||
+          (dailyMortalityCount === "" && cullCount === "0");
+        return {
+          ...r,
+          cullCount: cleared ? "" : cullCount,
+          dailyMortalityCount: cleared ? "" : dailyMortalityCount,
+          hasEntry: !cleared,
+        };
+      });
       rowsRef.current = next;
       return next;
     });
@@ -664,14 +683,11 @@ export function MortalityEntryForm({
                                       const digits = digitsOnly(
                                         e.clipboardData.getData("text") || "",
                                       );
-                                      updateRow(row.age, {
-                                        cullCount: digits === "" ? "0" : digits,
-                                      });
+                                      updateRow(row.age, { cullCount: digits });
                                     }}
                                     onChange={(e) => {
-                                      const digits = digitsOnly(e.target.value);
                                       updateRow(row.age, {
-                                        cullCount: digits === "" ? "0" : digits,
+                                        cullCount: digitsOnly(e.target.value),
                                       });
                                     }}
                                   />
@@ -700,14 +716,11 @@ export function MortalityEntryForm({
                                       const digits = digitsOnly(
                                         e.clipboardData.getData("text") || "",
                                       );
-                                      updateRow(row.age, {
-                                        dailyMortalityCount: digits === "" ? "0" : digits,
-                                      });
+                                      updateRow(row.age, { dailyMortalityCount: digits });
                                     }}
                                     onChange={(e) => {
-                                      const digits = digitsOnly(e.target.value);
                                       updateRow(row.age, {
-                                        dailyMortalityCount: digits === "" ? "0" : digits,
+                                        dailyMortalityCount: digitsOnly(e.target.value),
                                       });
                                     }}
                                   />

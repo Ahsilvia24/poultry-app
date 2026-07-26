@@ -295,7 +295,7 @@ export default function MortalityScreen() {
     setSaveStatus("saving");
     setError(null);
     try {
-      // Only persist days the tech has entered (0 is valid and must be saved)
+      // Persist entered days (0 is valid); remove days the tech cleared
       saveHouseMortalitySeries({
         houseFlockId: id,
         entries: snapshot
@@ -305,6 +305,7 @@ export default function MortalityScreen() {
             dailyMortalityCount: Number(r.dailyMortalityCount || 0),
             cullCount: Number(r.cullCount || 0),
           })),
+        clearDates: snapshot.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
       });
       if (gen === saveGenRef.current) setSaveStatus("saved");
     } catch (e) {
@@ -328,17 +329,23 @@ export default function MortalityScreen() {
     // Integers only — strip everything that isn't 0-9
     const digits = value.replace(/[^0-9]/g, "");
     setRows((prev) => {
-      const next = prev.map((r) =>
-        r.age === age
-          ? {
-              ...r,
-              hasEntry: true,
-              ...(kind === "culls"
-                ? { cullCount: digits }
-                : { dailyMortalityCount: digits }),
-            }
-          : r,
-      );
+      const next = prev.map((r) => {
+        if (r.age !== age) return r;
+        const cullCount = kind === "culls" ? digits : r.cullCount;
+        const dailyMortalityCount = kind === "mort" ? digits : r.dailyMortalityCount;
+        // Cleared both boxes, or wiped one and only a leftover 0 remains → unentered (blank + !)
+        // Leftover 0 is common after save (empty other field was stored as 0).
+        const cleared =
+          (cullCount === "" && dailyMortalityCount === "") ||
+          (cullCount === "" && dailyMortalityCount === "0") ||
+          (dailyMortalityCount === "" && cullCount === "0");
+        return {
+          ...r,
+          cullCount: cleared ? "" : cullCount,
+          dailyMortalityCount: cleared ? "" : dailyMortalityCount,
+          hasEntry: !cleared,
+        };
+      });
       rowsRef.current = next;
       return next;
     });

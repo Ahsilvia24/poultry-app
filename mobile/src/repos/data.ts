@@ -732,6 +732,7 @@ export function saveHouseMortalitySeries(input: {
     dailyMortalityCount: number;
     cullCount: number;
   }>;
+  clearDates?: string[];
 }) {
   const db = getDb();
   const hf = db.getFirstSync<{ flock_id: string }>(
@@ -743,6 +744,13 @@ export function saveHouseMortalitySeries(input: {
     "SELECT placement_date FROM flocks WHERE id = ?",
     [hf.flock_id],
   )!;
+
+  for (const date of input.clearDates ?? []) {
+    db.runSync(
+      "DELETE FROM daily_mortality WHERE house_flock_id = ? AND mortality_date = ?",
+      [input.houseFlockId, date],
+    );
+  }
 
   for (const e of input.entries) {
     const loss = calcTotalDailyLoss(e.dailyMortalityCount, e.cullCount);

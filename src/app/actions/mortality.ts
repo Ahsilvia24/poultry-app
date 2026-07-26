@@ -121,14 +121,28 @@ export async function saveMortalityHouseSeriesAction(raw: unknown) {
   const entries = [...parsed.data.entries].sort((a, b) =>
     a.mortalityDate.localeCompare(b.mortalityDate),
   );
+  const clearDates = new Set(parsed.data.clearDates ?? []);
+
+  if (clearDates.size > 0) {
+    await prisma.dailyMortality.deleteMany({
+      where: {
+        houseFlockId: hf.id,
+        mortalityDate: {
+          in: [...clearDates].map((d) => new Date(d)),
+        },
+      },
+    });
+  }
 
   const existingByDate = new Map(
-    hf.mortalities.map((m) => [m.mortalityDate.toISOString().slice(0, 10), m]),
+    hf.mortalities
+      .map((m) => [m.mortalityDate.toISOString().slice(0, 10), m] as const)
+      .filter(([dateKey]) => !clearDates.has(dateKey)),
   );
   const submittedDates = new Set(entries.map((e) => e.mortalityDate));
   const allDates = [
     ...new Set([
-      ...hf.mortalities.map((m) => m.mortalityDate.toISOString().slice(0, 10)),
+      ...existingByDate.keys(),
       ...entries.map((e) => e.mortalityDate),
     ]),
   ].sort();

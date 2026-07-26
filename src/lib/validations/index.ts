@@ -113,14 +113,20 @@ export const mortalityHouseSeriesEntrySchema = z.object({
   cullCount: z.coerce.number().int().min(0, "Culls cannot be negative"),
 });
 
-export const mortalityHouseSeriesSchema = z.object({
-  flockId: z.string(),
-  houseFlockId: z.string(),
-  mortalityCause: mortalityHouseEntrySchema.shape.mortalityCause,
-  comments: z.string().optional().nullable(),
-  isDraft: z.boolean().optional(),
-  entries: z.array(mortalityHouseSeriesEntrySchema).min(1),
-});
+export const mortalityHouseSeriesSchema = z
+  .object({
+    flockId: z.string(),
+    houseFlockId: z.string(),
+    mortalityCause: mortalityHouseEntrySchema.shape.mortalityCause,
+    comments: z.string().optional().nullable(),
+    isDraft: z.boolean().optional(),
+    entries: z.array(mortalityHouseSeriesEntrySchema).default([]),
+    /** Dates the tech cleared — remove confirmed entries so the day shows as missing again. */
+    clearDates: z.array(z.string()).optional().default([]),
+  })
+  .refine((d) => d.entries.length > 0 || (d.clearDates?.length ?? 0) > 0, {
+    message: "Nothing to save",
+  });
 
 export const feedDeliverySchema = z.object({
   flockId: z.string().optional().nullable(),
