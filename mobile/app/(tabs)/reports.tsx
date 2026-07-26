@@ -6,7 +6,6 @@ import { getReports, listFarms } from "../../src/repos/data";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import { colors, styles } from "../../src/theme";
 import {
-  BrandBar,
   Card,
   Chip,
   PageHeader,
@@ -38,13 +37,9 @@ export default function ReportsScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <BrandBar
-          right={
-            <Pressable onPress={() => router.back()}>
-              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-            </Pressable>
-          }
-        />
+        <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
+          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
+        </Pressable>
         <PageHeader
           title="Reports"
           subtitle="House × date mortality matrix"

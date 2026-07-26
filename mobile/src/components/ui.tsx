@@ -1,29 +1,6 @@
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { colors, styles } from "../theme";
 
-export function BrandBar({
-  right,
-}: {
-  right?: React.ReactNode;
-}) {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingBottom: 12,
-        marginBottom: 4,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-      }}
-    >
-      <Text style={styles.brand}>PoultryTech</Text>
-      {right}
-    </View>
-  );
-}
-
 export function PageHeader({
   title,
   subtitle,

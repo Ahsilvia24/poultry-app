@@ -39,8 +39,7 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={[styles.content, { maxWidth: 480, width: "100%", alignSelf: "center" }]}>
-          <Text style={styles.brand}>PoultryTech</Text>
-          <Text style={[styles.title, { fontSize: 26, marginTop: 8 }]}>Sign in</Text>
+          <Text style={[styles.title, { fontSize: 26 }]}>Sign in</Text>
           <Text style={styles.subtitle}>Service technician farm management</Text>
 
           <Card style={{ marginTop: 24 }}>

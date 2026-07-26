@@ -13,7 +13,6 @@ import { listFarms } from "../../../src/repos/data";
 import { formatLongScheduleDate } from "../../../src/lib/schedule";
 import { colors, styles } from "../../../src/theme";
 import {
-  BrandBar,
   Card,
   Chip,
   Metric,
@@ -63,7 +62,6 @@ export default function FarmsScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       >
-        <BrandBar />
         <PageHeader title="Farms" subtitle="Manage grower farms and houses" />
 
         <View style={[styles.row, { marginBottom: 8 }]}>

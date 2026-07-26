@@ -19,7 +19,6 @@ import { birdAgeFromPlacement, flockWeekFromAge, calcTotalDailyLoss } from "../.
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import { colors, styles } from "../../src/theme";
 import {
-  BrandBar,
   Card,
   Chip,
   PageHeader,
@@ -439,7 +438,6 @@ export default function MortalityScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: activeField ? 8 : 40 }]}
           keyboardShouldPersistTaps="handled"
         >
-          <BrandBar />
           <PageHeader
             title="Mortality entry"
             subtitle="Enter mortality by house and bird age"

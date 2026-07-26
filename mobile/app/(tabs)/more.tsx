@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
-import { BrandBar, Card, PageHeader, SectionTitle } from "../../src/components/ui";
+import { Card, PageHeader, SectionTitle } from "../../src/components/ui";
 
 const LINKS = [
   {
@@ -35,13 +35,9 @@ export default function MoreScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <BrandBar
-          right={
-            <Pressable onPress={() => router.back()}>
-              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-            </Pressable>
-          }
-        />
+        <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
+          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
+        </Pressable>
         <PageHeader title="More" subtitle="Reports and account" />
 
         <SectionTitle>Navigate</SectionTitle>

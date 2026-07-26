@@ -14,7 +14,6 @@ import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
 import { formatShortScheduleDate } from "../../src/lib/schedule";
 import {
-  BrandBar,
   Card,
   Metric,
   PageHeader,
@@ -79,15 +78,11 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       >
-        <BrandBar
-          right={
-            <Pressable onPress={signOut}>
-              <Text style={{ color: colors.text, fontWeight: "700", textDecorationLine: "underline" }}>
-                Sign out
-              </Text>
-            </Pressable>
-          }
-        />
+        <Pressable onPress={signOut} style={{ alignSelf: "flex-end", marginBottom: 8 }}>
+          <Text style={{ color: colors.text, fontWeight: "700", textDecorationLine: "underline" }}>
+            Sign out
+          </Text>
+        </Pressable>
 
         <PageHeader
           title="Dashboard"

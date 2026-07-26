@@ -13,7 +13,6 @@ import { createLfo, getLfo, listFarms, listLfos, updateLfoInventory } from "../.
 import { todayKey } from "../../src/lib/ids";
 import { colors, styles } from "../../src/theme";
 import {
-  BrandBar,
   Card,
   Chip,
   PageHeader,
@@ -62,7 +61,6 @@ export default function LfoScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         keyboardShouldPersistTaps="handled"
       >
-        <BrandBar />
         <PageHeader
           title="LFO"
           subtitle="Last feed order inventory and consumption rate"

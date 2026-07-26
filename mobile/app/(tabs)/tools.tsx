@@ -16,7 +16,6 @@ import {
 import { formatMinVentCycle } from "../../src/lib/mortality";
 import { colors, styles } from "../../src/theme";
 import {
-  BrandBar,
   Card,
   Chip,
   PageHeader,
@@ -65,7 +64,6 @@ export default function ToolsScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <BrandBar />
         <PageHeader title="Tools" subtitle="Temp, cooling, lights, and ventilation" />
 
         <View style={[styles.row, { marginBottom: 8 }]}>

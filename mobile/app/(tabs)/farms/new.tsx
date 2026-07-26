@@ -13,7 +13,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { createFarm } from "../../../src/repos/data";
 import { colors, styles } from "../../../src/theme";
-import { BrandBar, Card, PageHeader, PrimaryButton } from "../../../src/components/ui";
+import { Card, PageHeader, PrimaryButton } from "../../../src/components/ui";
 
 export default function NewFarmScreen() {
   const router = useRouter();
@@ -50,15 +50,11 @@ export default function NewFarmScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-          <BrandBar
-            right={
-              <Pressable onPress={() => router.back()}>
-                <Text style={{ color: colors.text, fontWeight: "700", textDecorationLine: "underline" }}>
-                  Cancel
-                </Text>
-              </Pressable>
-            }
-          />
+          <Pressable onPress={() => router.back()} style={{ alignSelf: "flex-end", marginBottom: 8 }}>
+            <Text style={{ color: colors.text, fontWeight: "700", textDecorationLine: "underline" }}>
+              Cancel
+            </Text>
+          </Pressable>
           <PageHeader
             title="Add Farm"
             subtitle="Farm name and house count get you started — add other details anytime"

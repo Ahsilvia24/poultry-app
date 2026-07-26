@@ -15,7 +15,6 @@ import { createVisit, getFarmDetail } from "../../../src/repos/data";
 import { todayKey } from "../../../src/lib/ids";
 import { colors, styles } from "../../../src/theme";
 import {
-  BrandBar,
   Card,
   Metric,
   PageHeader,
@@ -94,13 +93,9 @@ export default function FarmDetailScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         keyboardShouldPersistTaps="handled"
       >
-        <BrandBar
-          right={
-            <Pressable onPress={() => router.back()}>
-              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
-            </Pressable>
-          }
-        />
+        <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
+          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
+        </Pressable>
 
         <PageHeader
           title={farm.farmName}
