@@ -23,11 +23,11 @@ import {
   Card,
   Chip,
   PageHeader,
-  PrimaryButton,
   formatNumber,
 } from "../../src/components/ui";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const SAVE_DEBOUNCE_MS = 500;
 
 function formatDayLabel(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
@@ -124,14 +124,17 @@ export default function MortalityScreen() {
   const [rows, setRows] = useState<DayRow[]>([]);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
   const [selection, setSelection] = useState<{ start: number; end: number } | undefined>();
   const inputRefs = useRef(new Map<string, TextInputType>());
   const rowsRef = useRef(rows);
+  const houseFlockIdRef = useRef(houseFlockId);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveGenRef = useRef(0);
   rowsRef.current = rows;
+  houseFlockIdRef.current = houseFlockId;
 
   const selectedFarm = useMemo(
     () => payload?.farms.find((f) => f.id === farmId) ?? payload?.farms[0] ?? null,
@@ -207,7 +210,19 @@ export default function MortalityScreen() {
   useEffect(() => {
     loadGrid();
     setActiveField(null);
+    setSaveStatus("idle");
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    saveGenRef.current += 1;
   }, [loadGrid]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
 
   const weekGroups = useMemo(() => {
     const map = new Map<number, DayRow[]>();
@@ -244,17 +259,58 @@ export default function MortalityScreen() {
     return kind === "culls" ? row.cullCount : row.dailyMortalityCount;
   }
 
+  function flushSave() {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const id = houseFlockIdRef.current;
+    if (!id) return;
+    const gen = ++saveGenRef.current;
+    const snapshot = rowsRef.current;
+    setSaveStatus("saving");
+    setError(null);
+    try {
+      saveHouseMortalitySeries({
+        houseFlockId: id,
+        entries: snapshot.map((r) => ({
+          mortalityDate: r.mortalityDate,
+          dailyMortalityCount: Number(r.dailyMortalityCount || 0),
+          cullCount: Number(r.cullCount || 0),
+        })),
+      });
+      if (gen === saveGenRef.current) setSaveStatus("saved");
+    } catch (e) {
+      if (gen === saveGenRef.current) {
+        setSaveStatus("idle");
+        setError(e instanceof Error ? e.message : "Save failed");
+      }
+    }
+  }
+
+  function scheduleSave() {
+    setSaveStatus("idle");
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      flushSave();
+    }, SAVE_DEBOUNCE_MS);
+  }
+
   function setFieldValue(kind: FieldKind, age: number, value: string) {
     const digits = value.replace(/\D/g, "");
-    setRows((prev) =>
-      prev.map((r) =>
+    setRows((prev) => {
+      const next = prev.map((r) =>
         r.age === age
           ? kind === "culls"
             ? { ...r, cullCount: digits }
             : { ...r, dailyMortalityCount: digits }
           : r,
-      ),
-    );
+      );
+      rowsRef.current = next;
+      return next;
+    });
+    scheduleSave();
   }
 
   function focusField(kind: FieldKind, age: number) {
@@ -274,7 +330,6 @@ export default function MortalityScreen() {
 
   function onFieldFocus(kind: FieldKind, age: number, value: string) {
     setActiveField({ kind, age });
-    setSavedMsg(null);
     if (value && Number(value) !== 0) {
       const len = value.length;
       // Place caret at the far right for existing non-zero values
@@ -317,6 +372,7 @@ export default function MortalityScreen() {
 
   function onEnter() {
     if (!activeField) return;
+    flushSave();
     const { kind, age } = activeField;
     const nextAge = age + 1;
     if (rowsRef.current.some((r) => r.age === nextAge)) {
@@ -324,29 +380,6 @@ export default function MortalityScreen() {
     } else {
       setActiveField(null);
       inputRefs.current.get(fieldKey(kind, age))?.blur();
-    }
-  }
-
-  async function saveGrid() {
-    if (!houseFlockId) return;
-    setSaving(true);
-    setError(null);
-    try {
-      saveHouseMortalitySeries({
-        houseFlockId,
-        entries: rows.map((r) => ({
-          mortalityDate: r.mortalityDate,
-          dailyMortalityCount: Number(r.dailyMortalityCount || 0),
-          cullCount: Number(r.cullCount || 0),
-        })),
-      });
-      setSavedMsg("Saved");
-      setActiveField(null);
-      loadGrid();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -380,7 +413,7 @@ export default function MortalityScreen() {
                 active={farmId === f.id}
                 onPress={() => {
                   setFarmId(f.id);
-                  setSavedMsg(null);
+                  setSaveStatus("idle");
                   setActiveField(null);
                 }}
               />
@@ -396,7 +429,7 @@ export default function MortalityScreen() {
                   active={houseFlockId === h.houseFlockId}
                   onPress={() => {
                     setHouseFlockId(h.houseFlockId);
-                    setSavedMsg(null);
+                    setSaveStatus("idle");
                     setActiveField(null);
                   }}
                 />
@@ -413,11 +446,10 @@ export default function MortalityScreen() {
               <Text style={{ fontWeight: "700", color: colors.text }}>
                 {flockAgeDays != null ? `${flockAgeDays}d` : "—"}
               </Text>
-              {savedMsg ? (
-                <Text style={{ fontWeight: "700", color: colors.accentDark }}>
-                  {"  "}
-                  {savedMsg}
-                </Text>
+              {saveStatus === "saving" ? (
+                <Text style={{ color: colors.muted }}>{"  "}Saving…</Text>
+              ) : saveStatus === "saved" ? (
+                <Text style={{ fontWeight: "700", color: colors.accentDark }}>{"  "}Saved</Text>
               ) : null}
             </Text>
           ) : null}
@@ -560,11 +592,6 @@ export default function MortalityScreen() {
                   </Card>
                 );
               })}
-
-              <PrimaryButton
-                label={saving ? "Saving…" : "Save mortality"}
-                onPress={saveGrid}
-              />
             </>
           )}
         </ScrollView>
