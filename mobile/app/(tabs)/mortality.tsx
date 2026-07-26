@@ -220,9 +220,7 @@ export default function MortalityScreen() {
             existing && existing.daily_mortality_count !== 0
               ? String(existing.daily_mortality_count)
               : "",
-          hasEntry:
-            Boolean(existing) ||
-            Boolean(existing && (existing.cull_count > 0 || existing.daily_mortality_count > 0)),
+          hasEntry: Boolean(existing),
         });
       }
       setRows(next);
