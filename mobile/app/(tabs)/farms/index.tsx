@@ -18,7 +18,6 @@ import {
   Chip,
   Metric,
   PageHeader,
-  SectionTitle,
   formatNumber,
 } from "../../../src/components/ui";
 
@@ -155,26 +154,7 @@ export default function FarmsScreen() {
           </Pressable>
           );
         })}
-
-        <SectionTitle>Quick links</SectionTitle>
-        <PrimaryLinks router={router} />
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function PrimaryLinks({ router }: { router: ReturnType<typeof useRouter> }) {
-  return (
-    <Card>
-      <Pressable onPress={() => router.push("/(tabs)/mortality")} style={{ paddingVertical: 8 }}>
-        <Text style={{ fontWeight: "700", color: colors.accentDark }}>Enter mortality</Text>
-      </Pressable>
-      <Pressable onPress={() => router.push("/(tabs)/lfo")} style={{ paddingVertical: 8 }}>
-        <Text style={{ fontWeight: "700", color: colors.accentDark }}>LFO calculator</Text>
-      </Pressable>
-      <Pressable onPress={() => router.push("/(tabs)/reports")} style={{ paddingVertical: 8 }}>
-        <Text style={{ fontWeight: "700", color: colors.accentDark }}>Reports</Text>
-      </Pressable>
-    </Card>
   );
 }
