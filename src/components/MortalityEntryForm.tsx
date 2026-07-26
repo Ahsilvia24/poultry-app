@@ -13,7 +13,8 @@ import {
 } from "@/lib/mortality/calculations";
 import { formatNumber, formatPct } from "@/lib/utils";
 import type { ThresholdSettings } from "@/types";
-import { Card, Input, Label, Select, StatusBadge } from "@/components/ui";
+import { Card, Input, StatusBadge } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 export type MortalityHousePayload = {
   houseFlockId: string;
@@ -437,44 +438,57 @@ export function MortalityEntryForm({
 
   return (
     <div className="space-y-4">
-      <Card>
-        <div>
-          <Label htmlFor="farmId">Farm</Label>
-          <Select
-            id="farmId"
-            value={farmId}
-            onChange={(e) => changeFarm(e.target.value)}
-          >
-            {farms.map((f) => (
-              <option key={f.id} value={f.id} disabled={!f.activeFlock}>
-                {f.farmName}
-                {!f.activeFlock ? " (no active flock)" : ""}
-              </option>
-            ))}
-          </Select>
+      <div className="space-y-2">
+        <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
+          <div className="flex w-max flex-nowrap gap-2">
+            {farms.map((f) => {
+              const active = f.id === farmId;
+              const disabled = !f.activeFlock;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => changeFarm(f.id)}
+                  className={cn(
+                    "shrink-0 rounded-lg px-4 py-2.5 text-sm font-semibold whitespace-nowrap",
+                    active
+                      ? "bg-emerald-700 text-white"
+                      : "bg-stone-200 text-stone-800 hover:bg-stone-300",
+                    disabled && "cursor-not-allowed opacity-50 hover:bg-stone-200",
+                  )}
+                >
+                  {f.farmName}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {houses.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {houses.map((h) => (
-              <button
-                key={h.houseFlockId}
-                type="button"
-                onClick={() => changeHouse(h.houseFlockId)}
-                className={`min-h-11 rounded-lg px-4 text-sm font-semibold ${
-                  h.houseFlockId === houseFlockId
-                    ? "bg-emerald-700 text-white"
-                    : "bg-stone-100 text-stone-800 hover:bg-stone-200"
-                }`}
-              >
-                House {h.houseNumber}
-              </button>
-            ))}
+          <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
+            <div className="flex w-max flex-nowrap gap-2">
+              {houses.map((h) => (
+                <button
+                  key={h.houseFlockId}
+                  type="button"
+                  onClick={() => changeHouse(h.houseFlockId)}
+                  className={cn(
+                    "shrink-0 rounded-lg px-4 py-2.5 text-sm font-semibold whitespace-nowrap",
+                    h.houseFlockId === houseFlockId
+                      ? "bg-emerald-700 text-white"
+                      : "bg-stone-200 text-stone-800 hover:bg-stone-300",
+                  )}
+                >
+                  House {h.houseNumber}
+                </button>
+              ))}
+            </div>
           </div>
         ) : null}
 
         {flock && house ? (
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-600">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-600">
             <p>
               House <span className="font-semibold">{house.houseNumber}</span> · Placed{" "}
               {formatNumber(house.placedBirdCount)} ·{" "}
@@ -489,9 +503,9 @@ export function MortalityEntryForm({
             ) : null}
           </div>
         ) : (
-          <p className="mt-3 text-sm text-amber-800">This farm has no active flock or houses.</p>
+          <p className="text-sm text-amber-800">This farm has no active flock or houses.</p>
         )}
-      </Card>
+      </div>
 
       {house && rows.length > 0 ? (
         <div className="space-y-2">
