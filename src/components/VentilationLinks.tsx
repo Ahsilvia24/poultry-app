@@ -8,7 +8,7 @@ import {
   formatMinVentCycle,
   recommendedMinVent,
 } from "@/lib/tools/ventilation";
-import { Label, Select } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 export type VentilationFarmPayload = {
   id: string;
@@ -101,37 +101,52 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
       ) : (
         <div className="space-y-3">
           <div>
-            <Label htmlFor="vent-farm">Farm</Label>
-            <Select
-              id="vent-farm"
-              value={farmId}
-              onChange={(e) => changeFarm(e.target.value)}
-            >
-              {farms.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.farmName}
-                  {f.flockWeek == null ? " (no active flock)" : ""}
-                </option>
-              ))}
-            </Select>
+            <p className="mb-2 text-sm font-semibold text-stone-700">Farm</p>
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+              {farms.map((f) => {
+                const active = f.id === farmId;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => changeFarm(f.id)}
+                    className={cn(
+                      "shrink-0 rounded-[10px] px-3.5 py-2.5 text-sm font-bold",
+                      active
+                        ? "bg-emerald-800 text-white"
+                        : "bg-stone-200 text-stone-800",
+                    )}
+                  >
+                    {f.farmName}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {houses.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {houses.map((h) => (
-                <button
-                  key={h.id}
-                  type="button"
-                  onClick={() => setHouseId(h.id)}
-                  className={`min-h-11 rounded-lg px-4 text-sm font-semibold ${
-                    h.id === (house?.id ?? "")
-                      ? "bg-emerald-700 text-white"
-                      : "bg-stone-100 text-stone-800 hover:bg-stone-200"
-                  }`}
-                >
-                  House {h.houseNumber}
-                </button>
-              ))}
+            <div>
+              <p className="mb-2 text-sm font-semibold text-stone-700">House</p>
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                {houses.map((h) => {
+                  const active = h.id === (house?.id ?? "");
+                  return (
+                    <button
+                      key={h.id}
+                      type="button"
+                      onClick={() => setHouseId(h.id)}
+                      className={cn(
+                        "shrink-0 rounded-[10px] px-3.5 py-2.5 text-sm font-bold",
+                        active
+                          ? "bg-emerald-800 text-white"
+                          : "bg-stone-200 text-stone-800",
+                      )}
+                    >
+                      House {h.houseNumber}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <p className="text-sm text-stone-600">This farm has no houses.</p>

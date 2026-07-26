@@ -261,7 +261,7 @@ export default function ToolsScreen() {
               <Text style={{ color: colors.text }}>OFF = {MIN_VENT_CYCLE_SECONDS} − ON</Text>
 
               <Text style={[styles.label, { marginTop: 14 }]}>Farm</Text>
-              <View style={styles.row}>
+              <ChipScroller>
                 {farms.map((f) => (
                   <Chip
                     key={f.id}
@@ -273,18 +273,19 @@ export default function ToolsScreen() {
                     }}
                   />
                 ))}
-              </View>
+              </ChipScroller>
 
-              <View style={[styles.row, { marginTop: 4 }]}>
+              <Text style={styles.label}>House</Text>
+              <ChipScroller>
                 {houses.map((h) => (
                   <Chip
                     key={h.id}
-                    label={`H${h.houseNumber}`}
+                    label={`House ${h.houseNumber}`}
                     active={(selectedHouse?.id ?? "") === h.id}
                     onPress={() => setHouseId(h.id)}
                   />
                 ))}
-              </View>
+              </ChipScroller>
 
               {selectedHouse ? (
                 <View style={{ marginTop: 12 }}>
@@ -350,6 +351,23 @@ export default function ToolsScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function ChipScroller({ children }: { children: React.ReactNode }) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ marginBottom: 10 }}
+      contentContainerStyle={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingRight: 8,
+      }}
+    >
+      {children}
+    </ScrollView>
   );
 }
 
