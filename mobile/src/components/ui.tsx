@@ -109,6 +109,7 @@ export function Chip({
           paddingHorizontal: 14,
           paddingVertical: 10,
           marginRight: 8,
+          marginBottom: 8,
           flexShrink: 0,
           backgroundColor: active ? colors.accentDark : "#e7e5e4",
         },
