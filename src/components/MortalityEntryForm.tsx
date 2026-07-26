@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format } from "date-fns";
 import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
@@ -64,8 +64,8 @@ const SAVE_DEBOUNCE_MS = 500;
 function formatDayLabel(mortalityDate: string) {
   const [y, m, d] = mortalityDate.split("-").map(Number);
   const date = new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
-  // Su M Tu W Th F Sa — one or two letters
-  const weekday = ["Su", "M", "Tu", "W", "Th", "F", "Sa"][date.getDay()] ?? "";
+  // Sun Mon Tue Wed Thu Fri Sat
+  const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()] ?? "";
   return `${weekday} ${format(date, "M")}·${format(date, "d")}`;
 }
 
@@ -369,6 +369,44 @@ export function MortalityEntryForm({
     scheduleSave();
   }
 
+  function focusNextInColumn(field: "culls" | "mortality", age: number) {
+    const nextAge = age + 1;
+    if (!rowsRef.current.some((r) => r.age === nextAge)) return;
+
+    const week = flockWeekFromAge(nextAge);
+    setExpandedWeeks((prev) => {
+      if (prev.has(week)) return prev;
+      const next = new Set(prev);
+      next.add(week);
+      return next;
+    });
+
+    const focus = () => {
+      const el = document.querySelector<HTMLInputElement>(
+        `[data-mort-nav="${field}-${nextAge}"]`,
+      );
+      if (!el) return false;
+      el.focus();
+      el.select();
+      return true;
+    };
+
+    requestAnimationFrame(() => {
+      if (!focus()) window.setTimeout(focus, 50);
+    });
+  }
+
+  function onColumnEnter(
+    e: KeyboardEvent<HTMLInputElement>,
+    field: "culls" | "mortality",
+    age: number,
+  ) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    flushSave();
+    focusNextInColumn(field, age);
+  }
+
   function changeFarm(nextFarmId: string) {
     cancelScheduledSave();
     saveGenRef.current += 1;
@@ -517,15 +555,18 @@ export function MortalityEntryForm({
                                 <td className="px-2 py-1.5">
                                   <Input
                                     aria-label={`Culls day ${row.age}`}
+                                    data-mort-nav={`culls-${row.age}`}
                                     type="text"
                                     inputMode="numeric"
                                     pattern="[0-9]*"
+                                    enterKeyHint="next"
                                     autoComplete="off"
                                     className="min-h-11 px-3"
                                     placeholder="0"
                                     value={row.cullCount === "0" ? "" : row.cullCount}
                                     onFocus={(e) => e.target.select()}
                                     onBlur={() => flushSave()}
+                                    onKeyDown={(e) => onColumnEnter(e, "culls", row.age)}
                                     onChange={(e) => {
                                       const digits = e.target.value.replace(/\D/g, "");
                                       updateRow(row.age, {
@@ -537,15 +578,18 @@ export function MortalityEntryForm({
                                 <td className="px-2 py-1.5">
                                   <Input
                                     aria-label={`Mortality day ${row.age}`}
+                                    data-mort-nav={`mortality-${row.age}`}
                                     type="text"
                                     inputMode="numeric"
                                     pattern="[0-9]*"
+                                    enterKeyHint="next"
                                     autoComplete="off"
                                     className="min-h-11 px-3"
                                     placeholder="0"
                                     value={row.dailyMortalityCount === "0" ? "" : row.dailyMortalityCount}
                                     onFocus={(e) => e.target.select()}
                                     onBlur={() => flushSave()}
+                                    onKeyDown={(e) => onColumnEnter(e, "mortality", row.age)}
                                     onChange={(e) => {
                                       const digits = e.target.value.replace(/\D/g, "");
                                       updateRow(row.age, {
