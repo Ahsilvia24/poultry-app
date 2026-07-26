@@ -56,6 +56,12 @@ export function HouseCard({
         <div className="min-w-0">
           <p className="text-lg font-bold">
             House {house.houseNumber}
+            {metrics ? (
+              <span className="font-semibold text-stone-600">
+                {" "}
+                · Mort. {formatNumber(metrics.cumulative)}
+              </span>
+            ) : null}
             {projectedHeadCount != null ? (
               <span className="font-semibold text-stone-600">
                 {" "}
