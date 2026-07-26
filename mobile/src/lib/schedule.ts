@@ -128,4 +128,15 @@ export function formatShortScheduleDate(dateKey: string) {
   });
 }
 
+/** Matches web `EEE, MMM d, yyyy` — e.g. Sun, Aug 16, 2026 */
+export function formatLongScheduleDate(dateKey: string) {
+  const d = parseDateKey(dateKey);
+  return d.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export { todayKey };

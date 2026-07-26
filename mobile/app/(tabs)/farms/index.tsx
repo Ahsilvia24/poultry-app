@@ -10,6 +10,7 @@ import {
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { listFarms } from "../../../src/repos/data";
+import { formatLongScheduleDate } from "../../../src/lib/schedule";
 import { colors, styles } from "../../../src/theme";
 import {
   BrandBar,
@@ -98,8 +99,14 @@ export default function FarmsScreen() {
                     {farm.farmName}
                     <Text style={{ fontWeight: "600", color: colors.muted }}>
                       {" "}
-                      · {farm.numberOfHouses} houses
+                      ({farm.numberOfHouses})
                     </Text>
+                    {farm.flockAgeDays != null ? (
+                      <Text style={{ fontWeight: "600", color: colors.muted }}>
+                        {" "}
+                        · {farm.flockAgeDays}d
+                      </Text>
+                    ) : null}
                   </Text>
                   <Text style={styles.muted}>{farm.growerName}</Text>
                   {farm.phoneNumber ? (
@@ -122,17 +129,28 @@ export default function FarmsScreen() {
 
               <View style={[styles.row, { marginTop: 12 }]}>
                 <Metric
-                  label="Active flock"
-                  value={farm.activeFlock?.flockNumber ?? "None"}
+                  label="Birds placed"
+                  value={farm.activeFlock ? formatNumber(farm.birdsPlaced) : "—"}
                 />
-                <Metric label="Birds placed" value={formatNumber(farm.birdsPlaced || null)} />
                 <Metric
-                  label="Current head count"
-                  value={formatNumber(farm.currentHeadCount || null)}
+                  label="Placement date"
+                  value={
+                    farm.placementDate ? formatLongScheduleDate(farm.placementDate) : "—"
+                  }
+                />
+                <Metric
+                  label="Current Head Count"
+                  value={
+                    farm.activeFlock ? formatNumber(farm.currentHeadCount) : "—"
+                  }
                 />
                 <Metric
                   label="Catch date"
-                  value={farm.projectedCatchDate ?? "—"}
+                  value={
+                    farm.projectedCatchDate
+                      ? formatLongScheduleDate(farm.projectedCatchDate)
+                      : "—"
+                  }
                 />
               </View>
             </Card>

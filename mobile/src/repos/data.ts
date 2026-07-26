@@ -144,6 +144,7 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
         currentHeadCount: remaining,
         placementDate: flock?.placement_date ?? null,
         projectedCatchDate: flock?.projected_catch_date ?? null,
+        flockAgeDays: flock ? birdAgeFromPlacement(flock.placement_date, today) : null,
         activeFlock: flock ? { flockNumber: flock.flock_number } : null,
       };
     }),
