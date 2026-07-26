@@ -126,11 +126,6 @@ export default function FarmsScreen() {
                     <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
                   </Text>
                   <Text style={styles.muted}>{farm.growerName}</Text>
-                  {farm.phoneNumber ? (
-                    <Text style={[styles.muted, { fontSize: 12, marginTop: 2 }]}>
-                      {farm.phoneNumber}
-                    </Text>
-                  ) : null}
                 </Pressable>
                 <Text
                   style={[

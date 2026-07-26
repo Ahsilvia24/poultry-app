@@ -140,9 +140,6 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                     {farm.growerName ? (
                       <p className="text-sm text-stone-600">{farm.growerName}</p>
                     ) : null}
-                    {farm.phoneNumber ? (
-                      <p className="mt-1 text-xs text-stone-500">{farm.phoneNumber}</p>
-                    ) : null}
                   </Link>
                   <div className="flex shrink-0 items-center gap-0.5">
                     <span
