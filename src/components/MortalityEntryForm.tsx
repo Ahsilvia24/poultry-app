@@ -69,7 +69,12 @@ function todayKeyLocal() {
 }
 
 function needsEntry(row: DayRow) {
-  return row.mortalityDate <= todayKeyLocal() && !row.hasEntry;
+  if (row.mortalityDate > todayKeyLocal()) return false;
+  // Only when this day has no entered numbers (not beside rows that already have values)
+  const culls = Number(row.cullCount || 0);
+  const mort = Number(row.dailyMortalityCount || 0);
+  if (culls > 0 || mort > 0) return false;
+  return !row.hasEntry;
 }
 
 type WeekGroup = {
@@ -574,8 +579,9 @@ export function MortalityEntryForm({
                             <th className="px-3 py-2 font-semibold text-stone-600">Date</th>
                             <th className="px-3 py-2 font-semibold text-stone-600">Culls</th>
                             <th className="px-3 py-2 font-semibold text-stone-600">Mortality</th>
-                            <th className="px-3 py-2 font-semibold text-stone-600">Loss</th>
-                            <th className="w-10 px-2 py-2" aria-hidden="true" />
+                            <th className="px-3 py-2 text-right font-semibold text-stone-600">
+                              Loss
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -638,9 +644,8 @@ export function MortalityEntryForm({
                                     }}
                                   />
                                 </td>
-                                <td className="px-3 py-2 font-semibold text-stone-800">{loss}</td>
-                                <td className="px-2 py-2 text-center">
-                                  {needsEntry(row) ? <NeedsEntryIcon /> : null}
+                                <td className="px-3 py-2 text-right font-semibold text-stone-800">
+                                  {needsEntry(row) ? <NeedsEntryIcon /> : loss}
                                 </td>
                               </tr>
                             );

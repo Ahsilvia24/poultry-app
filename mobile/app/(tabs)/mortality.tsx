@@ -63,7 +63,12 @@ function NeedsEntryIcon() {
 }
 
 function needsEntry(row: DayRow, today: string) {
-  return row.mortalityDate <= today && !row.hasEntry;
+  if (row.mortalityDate > today) return false;
+  // Only when this day has no entered numbers (not beside rows that already have values)
+  const culls = Number(row.cullCount || 0);
+  const mort = Number(row.dailyMortalityCount || 0);
+  if (culls > 0 || mort > 0) return false;
+  return !row.hasEntry;
 }
 
 type FieldKind = "culls" | "mort";
@@ -215,7 +220,9 @@ export default function MortalityScreen() {
             existing && existing.daily_mortality_count !== 0
               ? String(existing.daily_mortality_count)
               : "",
-          hasEntry: Boolean(existing),
+          hasEntry:
+            Boolean(existing) ||
+            Boolean(existing && (existing.cull_count > 0 || existing.daily_mortality_count > 0)),
         });
       }
       setRows(next);
@@ -535,8 +542,7 @@ export default function MortalityScreen() {
                           <Text style={[headerCell, { flex: 1.1 }]}>Age / Date</Text>
                           <Text style={[headerCell, { width: 64, textAlign: "center" }]}>Culls</Text>
                           <Text style={[headerCell, { width: 64, textAlign: "center" }]}>Mort</Text>
-                          <Text style={[headerCell, { width: 40, textAlign: "right" }]}>Loss</Text>
-                          <View style={{ width: 28, marginLeft: 4 }} />
+                          <Text style={[headerCell, { width: 68, textAlign: "right" }]}>Loss</Text>
                         </View>
                         {group.rows.map((row) => {
                           const loss = calcTotalDailyLoss(
@@ -606,26 +612,30 @@ export default function MortalityScreen() {
                                 }
                                 onChangeText={(v) => setFieldValue("mort", row.age, v)}
                               />
-                              <Text
-                                style={{
-                                  width: 40,
-                                  textAlign: "right",
-                                  fontWeight: "700",
-                                  fontSize: 14,
-                                }}
-                              >
-                                {loss}
-                              </Text>
-                              <View
-                                style={{
-                                  width: 28,
-                                  marginLeft: 4,
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                }}
-                              >
-                                {showNeedsEntry ? <NeedsEntryIcon /> : null}
-                              </View>
+                              {showNeedsEntry ? (
+                                <View
+                                  style={{
+                                    width: 68,
+                                    alignItems: "flex-end",
+                                    justifyContent: "center",
+                                    paddingRight: 2,
+                                  }}
+                                >
+                                  <NeedsEntryIcon />
+                                </View>
+                              ) : (
+                                <Text
+                                  style={{
+                                    width: 68,
+                                    textAlign: "right",
+                                    fontWeight: "700",
+                                    fontSize: 14,
+                                    paddingRight: 6,
+                                  }}
+                                >
+                                  {loss}
+                                </Text>
+                              )}
                             </View>
                           );
                         })}

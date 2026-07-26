@@ -59,7 +59,8 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
               houseNumber: hf.house.houseNumber,
               placedBirdCount: hf.placedBirdCount,
               existingEntries: hf.mortalities.map((m) => ({
-                mortalityDate: format(m.mortalityDate, "yyyy-MM-dd"),
+                // Use UTC calendar date so keys match form day keys (avoid TZ off-by-one)
+                mortalityDate: m.mortalityDate.toISOString().slice(0, 10),
                 dailyMortalityCount: m.dailyMortalityCount,
                 cullCount: m.cullCount,
                 mortalityCause: m.mortalityCause,
