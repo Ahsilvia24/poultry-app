@@ -6,12 +6,18 @@ import { prisma } from "@/lib/prisma";
 import { getUserThresholds } from "@/lib/dashboard";
 import {
   averageDailyMortalityLast7Days,
+  birdAgeFromPlacement,
+  flockWeekFromAge,
   isRisingThreeDays,
   projectedHeadCountAtCatch,
   resolveMortalityStatus,
   summarizeForDate,
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
+import {
+  formatMinVentCycle,
+  recommendedMinVent,
+} from "@/lib/tools/ventilation";
 import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
 import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
 import {
@@ -81,6 +87,9 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
   const catchDate = activeFlock ? resolveCatchDate(activeFlock) : null;
   const daysUntilCatch =
     catchDate != null ? Math.max(0, differenceInCalendarDays(catchDate, today)) : null;
+  const flockWeek = activeFlock
+    ? flockWeekFromAge(birdAgeFromPlacement(activeFlock.placementDate, today))
+    : null;
 
   let flockPlaced = 0;
   let flockCum = 0;
@@ -115,6 +124,15 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         )
       : "Normal";
 
+    const minVent =
+      hf && flockWeek != null && house.totalFanCFM != null && house.totalFanCFM > 0
+        ? recommendedMinVent({
+            birdsPlaced: hf.placedBirdCount,
+            flockWeek,
+            totalFanCFM: house.totalFanCFM,
+          })
+        : null;
+
     if (hf && metrics) {
       flockPlaced += hf.placedBirdCount;
       flockCum += metrics.cumulative;
@@ -137,6 +155,9 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       projectedHeadCount,
       projectedMortality,
       status,
+      recommendedMinVentLabel: minVent
+        ? formatMinVentCycle(minVent.onSeconds, minVent.offSeconds)
+        : null,
     };
   });
 
@@ -336,7 +357,16 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       <h2 className="mt-8 text-xl font-bold">Houses</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         {houseCards.map(
-          ({ house, hf, metrics, weeklyMortality, projectedHeadCount, projectedMortality, status }) => (
+          ({
+            house,
+            hf,
+            metrics,
+            weeklyMortality,
+            projectedHeadCount,
+            projectedMortality,
+            status,
+            recommendedMinVentLabel,
+          }) => (
           <HouseCard
             key={house.id}
             farmId={farm.id}
@@ -359,6 +389,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             projectedHeadCount={projectedHeadCount}
             projectedMortality={projectedMortality}
             weeklyMortality={weeklyMortality}
+            recommendedMinVent={recommendedMinVentLabel}
           />
         ),
         )}

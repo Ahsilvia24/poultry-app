@@ -35,6 +35,7 @@ export function HouseCard({
   projectedHeadCount,
   projectedMortality,
   weeklyMortality,
+  recommendedMinVent,
 }: {
   farmId: string;
   house: HouseData;
@@ -45,6 +46,7 @@ export function HouseCard({
   projectedHeadCount: number | null;
   projectedMortality: number | null;
   weeklyMortality: Array<{ week: number; total: number }>;
+  recommendedMinVent: string | null;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -127,6 +129,10 @@ export function HouseCard({
               {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
             </p>
             <p className="mt-0.5 text-[11px] text-stone-400">Assumes 150 for catch crew</p>
+          </div>
+          <div>
+            <p className="text-stone-500">Recommended Min Vent</p>
+            <p className="font-semibold tabular-nums">{recommendedMinVent ?? "—"}</p>
           </div>
         </div>
       ) : null}
