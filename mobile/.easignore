@@ -1,0 +1,12 @@
+../node_modules
+../../node_modules
+.env
+.env.*
+# Keep EAS focused on the Expo app (repo is a monorepo with Next.js at root)
+../src
+../prisma
+../public
+../package.json
+../package-lock.json
+../next.config.ts
+../tsconfig.json
