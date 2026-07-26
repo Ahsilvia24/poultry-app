@@ -45,15 +45,11 @@ function TrashIcon({ className }: { className?: string }) {
 export function SavedLfoRow({
   id,
   farmName,
-  flockNumber,
   dateLabel,
-  totalLbsLabel,
 }: {
   id: string;
   farmName: string;
-  flockNumber: string;
   dateLabel: string;
-  totalLbsLabel: string;
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -68,11 +64,8 @@ export function SavedLfoRow({
     <li className="flex items-center gap-2 px-4 py-3 hover:bg-stone-50">
       <Link href={`/lfo/${id}`} className="min-w-0 flex-1">
         <p className="font-semibold text-stone-900">{farmName}</p>
-        <p className="text-sm text-stone-600">
-          Flock {flockNumber} · {dateLabel}
-        </p>
+        <p className="text-sm text-stone-600">{dateLabel}</p>
       </Link>
-      <p className="shrink-0 text-sm font-semibold text-stone-700">{totalLbsLabel}</p>
       <div className="flex shrink-0 items-center gap-0.5">
         <Link
           href={`/lfo/${id}`}

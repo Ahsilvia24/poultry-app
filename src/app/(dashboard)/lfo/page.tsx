@@ -6,10 +6,6 @@ import { ConsumptionRateCalculator } from "@/components/ConsumptionRateCalculato
 import { LfoCreateBar } from "@/components/LfoCreateBar";
 import { SavedLfoRow } from "@/components/SavedLfoRow";
 
-function formatLbs(n: number) {
-  return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
-}
-
 /** Date-only → "7-26-2026" (no leading zeros). */
 function formatLfoDate(d: Date) {
   return `${d.getUTCMonth() + 1}-${d.getUTCDate()}-${d.getUTCFullYear()}`;
@@ -35,8 +31,6 @@ export default async function LfoPage() {
       where: { farm: { userId: session.user.id, deletedAt: null } },
       include: {
         farm: { select: { farmName: true } },
-        flock: { select: { flockNumber: true } },
-        houseInventories: { select: { binAPounds: true, binBPounds: true } },
       },
       orderBy: [{ orderDate: "desc" }, { createdAt: "desc" }],
     }),
@@ -61,22 +55,14 @@ export default async function LfoPage() {
         </Card>
       ) : (
         <ul className="mb-8 divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
-          {savedLfos.map((lfo) => {
-            const totalLbs = lfo.houseInventories.reduce(
-              (sum, h) => sum + h.binAPounds + h.binBPounds,
-              0,
-            );
-            return (
-              <SavedLfoRow
-                key={lfo.id}
-                id={lfo.id}
-                farmName={lfo.farm.farmName}
-                flockNumber={lfo.flock.flockNumber}
-                dateLabel={formatLfoDate(lfo.orderDate)}
-                totalLbsLabel={`${formatLbs(totalLbs)} lbs`}
-              />
-            );
-          })}
+          {savedLfos.map((lfo) => (
+            <SavedLfoRow
+              key={lfo.id}
+              id={lfo.id}
+              farmName={lfo.farm.farmName}
+              dateLabel={formatLfoDate(lfo.orderDate)}
+            />
+          ))}
         </ul>
       )}
 
