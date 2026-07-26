@@ -17,6 +17,7 @@
       "bundleIdentifier": "com.poultrytech.app",
       "buildNumber": "40",
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true,
           "NSAllowsArbitraryLoads": true
