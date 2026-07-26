@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { CoolCellsChart } from "@/components/CoolCellsChart";
+import { LightsChart } from "@/components/LightsChart";
 import { MaxCoolingChart } from "@/components/MaxCoolingChart";
 import { TempCurveChart } from "@/components/TempCurveChart";
 import { ToolsQuickLinks } from "@/components/ToolsQuickLinks";
 import { ToolsSectionPanel } from "@/components/ToolsSectionPanel";
+import { VentilationLinks } from "@/components/VentilationLinks";
 import { PageHeader } from "@/components/ui";
 
 export default async function ToolsPage() {
@@ -40,9 +42,13 @@ export default async function ToolsPage() {
           <MaxCoolingChart />
         </ToolsSectionPanel>
 
-        <ToolsSectionPanel hashId="lights" title="Lights" subtitle="Coming soon." />
+        <ToolsSectionPanel hashId="lights" title="Lights">
+          <LightsChart />
+        </ToolsSectionPanel>
 
-        <ToolsSectionPanel hashId="ventilation" title="Ventilation" subtitle="Coming soon." />
+        <ToolsSectionPanel hashId="ventilation" title="Ventilation">
+          <VentilationLinks />
+        </ToolsSectionPanel>
 
         <ToolsSectionPanel hashId="phone-numbers" title="Phone Numbers" subtitle="Coming soon." />
       </div>
