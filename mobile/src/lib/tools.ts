@@ -113,21 +113,88 @@ export const CHORE_TIME_COOL_PAD_SETTINGS = [
   { label: "Temp check every (repetitions)", value: "1" },
   { label: "Time to wet dry pad (sec)", value: "90" },
   { label: "Actual water on allowed (sec)", value: "90" },
+] as const;
+
+export type TempCurveRow = {
+  day: number;
+  summerF: number;
+  winterF: number;
+};
+
+export const TEMP_CURVE: TempCurveRow[] = [
+  { day: 1, summerF: 90, winterF: 90 },
+  { day: 3, summerF: 88, winterF: 88 },
+  { day: 7, summerF: 86, winterF: 86 },
+  { day: 14, summerF: 81, winterF: 84 },
+  { day: 21, summerF: 77, winterF: 80 },
+  { day: 28, summerF: 73, winterF: 75 },
+  { day: 35, summerF: 70, winterF: 70 },
+  { day: 42, summerF: 64, winterF: 66 },
+  { day: 49, summerF: 62, winterF: 62 },
+  { day: 56, summerF: 60, winterF: 60 },
 ];
 
-export const TEMP_CURVE = [
-  { day: 0, summer: 90, winter: 92 },
-  { day: 7, summer: 86, winter: 88 },
-  { day: 14, summer: 82, winter: 84 },
-  { day: 21, summer: 78, winter: 80 },
-  { day: 28, summer: 74, winter: 76 },
-  { day: 35, summer: 70, winter: 72 },
-  { day: 42, summer: 68, winter: 70 },
+export type LightingProgramRow = {
+  ageLabel: string;
+  hoursLight: number;
+  hoursDark: number;
+  centerLights: "on" | "off";
+  intensity: string;
+};
+
+export const BIG_BIRD_LIGHTING_PROGRAM: LightingProgramRow[] = [
+  { ageLabel: "1–7", hoursLight: 24, hoursDark: 0, centerLights: "on", intensity: "Full" },
+  { ageLabel: "8–21", hoursLight: 20, hoursDark: 4, centerLights: "off", intensity: "Full" },
+  { ageLabel: "22", hoursLight: 18, hoursDark: 6, centerLights: "off", intensity: "1 fc" },
+  { ageLabel: "23", hoursLight: 18, hoursDark: 6, centerLights: "off", intensity: ".75 fc" },
+  { ageLabel: "24", hoursLight: 18, hoursDark: 6, centerLights: "off", intensity: ".50 fc" },
+  { ageLabel: "28", hoursLight: 18, hoursDark: 6, centerLights: "off", intensity: ".25 fc" },
+  { ageLabel: "42", hoursLight: 20, hoursDark: 4, centerLights: "off", intensity: ".25 fc" },
+  {
+    ageLabel: "Day before kill",
+    hoursLight: 24,
+    hoursDark: 0,
+    centerLights: "off",
+    intensity: "Full",
+  },
 ];
 
-export const LIGHTS_PROGRAM = [
-  { day: "1–7", hoursLight: 23, hoursDark: 1 },
-  { day: "8–14", hoursLight: 20, hoursDark: 4 },
-  { day: "15–21", hoursLight: 18, hoursDark: 6 },
-  { day: "22–sell", hoursLight: 18, hoursDark: 6 },
+/** @deprecated Use BIG_BIRD_LIGHTING_PROGRAM */
+export const LIGHTS_PROGRAM = BIG_BIRD_LIGHTING_PROGRAM.map((r) => ({
+  day: r.ageLabel,
+  hoursLight: r.hoursLight,
+  hoursDark: r.hoursDark,
+}));
+
+export const MAX_COOLING_OUTSIDE_TEMPS_F = [80, 85, 90, 95, 100, 105, 110] as const;
+
+export const MAX_COOLING_APPARENT_TEMPS: ReadonlyArray<{
+  humidityPct: number;
+  tempsF: readonly number[];
+}> = [
+  { humidityPct: 100, tempsF: [80, 85, 90, 95, 100, 105, 110] },
+  { humidityPct: 95, tempsF: [79, 84, 89, 94, 99, 104, 109] },
+  { humidityPct: 90, tempsF: [78, 83, 88, 93, 98, 103, 108] },
+  { humidityPct: 85, tempsF: [77, 82, 87, 92, 97, 102, 106] },
+  { humidityPct: 80, tempsF: [76, 81, 86, 91, 95, 100, 105] },
+  { humidityPct: 75, tempsF: [75, 80, 85, 89, 94, 99, 104] },
+  { humidityPct: 70, tempsF: [74, 79, 84, 88, 93, 98, 102] },
+  { humidityPct: 65, tempsF: [73, 78, 82, 87, 92, 96, 101] },
+  { humidityPct: 60, tempsF: [72, 77, 81, 86, 90, 95, 99] },
+  { humidityPct: 55, tempsF: [71, 75, 80, 84, 89, 93, 98] },
+  { humidityPct: 50, tempsF: [70, 74, 79, 83, 87, 92, 96] },
+  { humidityPct: 45, tempsF: [69, 73, 77, 81, 86, 90, 94] },
+  { humidityPct: 40, tempsF: [67, 72, 76, 80, 84, 88, 92] },
+  { humidityPct: 35, tempsF: [66, 70, 74, 78, 82, 86, 91] },
+  { humidityPct: 30, tempsF: [65, 69, 73, 77, 81, 84, 88] },
+  { humidityPct: 25, tempsF: [64, 67, 71, 75, 79, 82, 86] },
+  { humidityPct: 20, tempsF: [62, 66, 69, 73, 77, 80, 84] },
 ];
+
+export type MaxCoolingZone = "normal" | "caution" | "danger";
+
+export function maxCoolingZone(tempF: number): MaxCoolingZone {
+  if (tempF >= 90) return "danger";
+  if (tempF >= 86) return "caution";
+  return "normal";
+}

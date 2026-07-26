@@ -9,19 +9,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { listFarms, getFarmDetail } from "../../src/repos/data";
 import {
-  BIG_BIRD_COOL_CELLS,
   CFM_BY_FAN_SIZE,
   CFM_PER_BIRD,
-  CHORE_TIME_COOL_PAD_SETTINGS,
-  LIGHTS_PROGRAM,
   MIN_VENT_CYCLE_SECONDS,
-  MIST_AND_COOL_CELLS,
-  TEMP_CURVE,
   recommendedMinVent,
 } from "../../src/lib/tools";
 import { formatMinVentCycle } from "../../src/lib/mortality";
 import { colors, styles } from "../../src/theme";
 import { Card, Chip, PageHeader } from "../../src/components/ui";
+import {
+  CoolCellsChart,
+  LightsChart,
+  MaxCoolingChart,
+  TempCurveChart,
+} from "../../src/components/toolsCharts";
 
 type SectionKey = "temp" | "cool" | "max" | "lights" | "vent" | "phone";
 
@@ -45,6 +46,7 @@ export default function ToolsScreen() {
     vent: true,
     phone: true,
   });
+  const [cfmOpen, setCfmOpen] = useState<"bird" | "fan" | null>(null);
 
   const farms = useMemo(() => listFarms().farms, []);
   const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
@@ -143,124 +145,88 @@ export default function ToolsScreen() {
           </View>
         </Card>
 
-        <View
-          onLayout={(e) => onSectionLayout("temp", e)}
-          collapsable={false}
-        >
+        <View onLayout={(e) => onSectionLayout("temp", e)} collapsable={false}>
           {open.temp ? (
             <SectionPanel
               title="Temp Curve"
               subtitle="Target house temperature (°F) by bird age — summer vs winter"
               onClose={() => setOpen((p) => ({ ...p, temp: false }))}
             >
-              <TableHeader cols={["Day", "Summer", "Winter"]} widths={[60, 80, 80]} />
-              {TEMP_CURVE.map((r) => (
-                <TableRow
-                  key={r.day}
-                  cols={[String(r.day), String(r.summer), String(r.winter)]}
-                  widths={[60, 80, 80]}
-                />
-              ))}
+              <TempCurveChart />
             </SectionPanel>
           ) : (
             <SectionAnchor />
           )}
         </View>
 
-        <View
-          onLayout={(e) => onSectionLayout("cool", e)}
-          collapsable={false}
-        >
+        <View onLayout={(e) => onSectionLayout("cool", e)} collapsable={false}>
           {open.cool ? (
-            <SectionPanel title="Cool Cells" onClose={() => setOpen((p) => ({ ...p, cool: false }))}>
-              <SectionTitleInCard>Big Bird cool cells</SectionTitleInCard>
-              {BIG_BIRD_COOL_CELLS.map((r, i) => (
-                <Text key={i} style={{ marginBottom: 4, color: colors.text }}>
-                  Day {r.day} · diff {r.diff} · {r.onSec}/{r.offSec}
-                  {r.onTemp != null ? ` · on ${r.onTemp}` : ""}
-                </Text>
-              ))}
-              <SectionTitleInCard style={{ marginTop: 14 }}>Tunnel / mist</SectionTitleInCard>
-              {MIST_AND_COOL_CELLS.slice(0, 8).map((r, i) => (
-                <Text key={i} style={{ marginBottom: 4, color: colors.text }}>
-                  Day {r.day} · tunnel {r.diff} · {r.onSec}/{r.offSec}
-                </Text>
-              ))}
-              <SectionTitleInCard style={{ marginTop: 14 }}>Chore Time</SectionTitleInCard>
-              {CHORE_TIME_COOL_PAD_SETTINGS.map((r) => (
-                <Text key={r.label} style={{ marginBottom: 4, color: colors.text }}>
-                  {r.label}: {r.value}
-                </Text>
-              ))}
+            <SectionPanel
+              title="Cool Cells"
+              onClose={() => setOpen((p) => ({ ...p, cool: false }))}
+            >
+              <CoolCellsChart />
             </SectionPanel>
           ) : (
             <SectionAnchor />
           )}
         </View>
 
-        <View
-          onLayout={(e) => onSectionLayout("max", e)}
-          collapsable={false}
-        >
+        <View onLayout={(e) => onSectionLayout("max", e)} collapsable={false}>
           {open.max ? (
             <SectionPanel
               title="Max Cooling"
               subtitle="By relative humidity and outside temperature (°F)"
               onClose={() => setOpen((p) => ({ ...p, max: false }))}
             >
-              <Text style={{ color: colors.text, lineHeight: 22 }}>
-                Use cool-cell and tunnel settings from Cool Cells. Target house temperature from the
-                Temp Curve for the current bird age. Increase cooling stages as outside humidity and
-                bird heat load rise.
-              </Text>
+              <MaxCoolingChart />
             </SectionPanel>
           ) : (
             <SectionAnchor />
           )}
         </View>
 
-        <View
-          onLayout={(e) => onSectionLayout("lights", e)}
-          collapsable={false}
-        >
+        <View onLayout={(e) => onSectionLayout("lights", e)} collapsable={false}>
           {open.lights ? (
             <SectionPanel
               title="Lights"
               onClose={() => setOpen((p) => ({ ...p, lights: false }))}
             >
-              <TableHeader cols={["Days", "Light", "Dark"]} widths={[80, 70, 70]} />
-              {LIGHTS_PROGRAM.map((r) => (
-                <TableRow
-                  key={r.day}
-                  cols={[String(r.day), `${r.hoursLight}h`, `${r.hoursDark}h`]}
-                  widths={[80, 70, 70]}
-                />
-              ))}
-              <Text style={[styles.muted, { marginTop: 10 }]}>
-                * Brood lights ON days 1–7 only.
-              </Text>
+              <LightsChart />
             </SectionPanel>
           ) : (
             <SectionAnchor />
           )}
         </View>
 
-        <View
-          onLayout={(e) => onSectionLayout("vent", e)}
-          collapsable={false}
-        >
+        <View onLayout={(e) => onSectionLayout("vent", e)} collapsable={false}>
           {open.vent ? (
             <SectionPanel
               title="Ventilation"
               onClose={() => setOpen((p) => ({ ...p, vent: false }))}
             >
-              <SectionTitleInCard>Recommended min vent</SectionTitleInCard>
-              <Text style={{ marginTop: 4, color: colors.text }}>
-                ON = (HP × CFM/Bird ÷ Total CFM) × {MIN_VENT_CYCLE_SECONDS}
-              </Text>
-              <Text style={{ color: colors.text }}>OFF = {MIN_VENT_CYCLE_SECONDS} − ON</Text>
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 10,
+                  backgroundColor: "#fafaf9",
+                  padding: 12,
+                  marginBottom: 14,
+                }}
+              >
+                <Text style={{ fontWeight: "700", color: colors.text }}>
+                  Recommended Min Vent math
+                </Text>
+                <Text style={{ marginTop: 8, color: colors.text, fontSize: 14 }}>
+                  ON = (HP × CFM/Bird ÷ Total CFM) × {MIN_VENT_CYCLE_SECONDS}
+                </Text>
+                <Text style={{ marginTop: 4, color: colors.text, fontSize: 14 }}>
+                  OFF = {MIN_VENT_CYCLE_SECONDS} − ON
+                </Text>
+              </View>
 
-              <Text style={[styles.label, { marginTop: 14 }]}>Farm</Text>
+              <Text style={styles.label}>Farm</Text>
               <ChipScroller>
                 {farms.map((f) => (
                   <Chip
@@ -288,57 +254,190 @@ export default function ToolsScreen() {
               </ChipScroller>
 
               {selectedHouse ? (
-                <View style={{ marginTop: 12 }}>
-                  <Text style={{ fontWeight: "700" }}>
-                    House {selectedHouse.houseNumber}
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 10,
+                    backgroundColor: "#fff",
+                    padding: 12,
+                    marginBottom: 12,
+                  }}
+                >
+                  <Text style={{ fontWeight: "700", fontSize: 15 }}>
+                    House {selectedHouse.houseNumber} — worked example
+                  </Text>
+                  <Text style={[styles.muted, { marginTop: 4 }]}>
                     {detail?.activeFlock?.flockWeek != null
-                      ? ` · Week ${detail.activeFlock.flockWeek}`
-                      : ""}
+                      ? `Flock week ${detail.activeFlock.flockWeek}`
+                      : "No active flock — week / HP unavailable."}
                   </Text>
-                  <Text style={styles.muted}>
-                    HP {selectedHouse.placedBirdCount?.toLocaleString() ?? "—"} · Total CFM{" "}
-                    {selectedHouse.totalFanCFM?.toLocaleString() ?? "—"}
-                  </Text>
+                  <View style={[styles.row, { marginTop: 12 }]}>
+                    <MetricTile
+                      label="HP"
+                      value={selectedHouse.placedBirdCount?.toLocaleString() ?? "—"}
+                    />
+                    <MetricTile
+                      label="CFM / Bird"
+                      value={
+                        breakdown
+                          ? breakdown.cfmPerBird.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })
+                          : "—"
+                      }
+                    />
+                    <MetricTile
+                      label="Total CFM"
+                      value={selectedHouse.totalFanCFM?.toLocaleString() ?? "—"}
+                    />
+                    <MetricTile
+                      label="Result"
+                      value={
+                        breakdown
+                          ? formatMinVentCycle(breakdown.onSeconds, breakdown.offSeconds)
+                          : "—"
+                      }
+                    />
+                  </View>
                   {breakdown ? (
-                    <>
-                      <Text style={{ marginTop: 8 }}>
-                        Required CFM {breakdown.requiredCfm.toFixed(1)} · raw ON{" "}
+                    <View
+                      style={{
+                        marginTop: 10,
+                        paddingTop: 10,
+                        borderTopWidth: 1,
+                        borderTopColor: "#f5f5f4",
+                        gap: 4,
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}>
+                        {selectedHouse.placedBirdCount!.toLocaleString()} ×{" "}
+                        {breakdown.cfmPerBird.toFixed(2)} ={" "}
+                        {breakdown.requiredCfm.toFixed(1)} required CFM
+                      </Text>
+                      <Text style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}>
+                        {breakdown.requiredCfm.toFixed(1)} ÷{" "}
+                        {selectedHouse.totalFanCFM!.toLocaleString()} × {MIN_VENT_CYCLE_SECONDS} ={" "}
                         {breakdown.onRaw.toFixed(2)}
                       </Text>
-                      <Text style={{ fontWeight: "800", marginTop: 4, fontSize: 16 }}>
-                        {formatMinVentCycle(breakdown.onSeconds, breakdown.offSeconds)}
+                      <Text style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}>
+                        Round → {breakdown.onSeconds} ON / {breakdown.offSeconds} OFF
                       </Text>
-                    </>
+                    </View>
                   ) : (
-                    <Text style={{ color: colors.warn, marginTop: 8 }}>
-                      Need birds placed, flock week, and total fan CFM.
+                    <Text style={{ color: colors.warn, marginTop: 10 }}>
+                      Need birds placed, flock week, and Total fan CFM on this house to calculate.
                     </Text>
                   )}
                 </View>
               ) : null}
 
-              <SectionTitleInCard style={{ marginTop: 16 }}>CFM / Bird</SectionTitleInCard>
-              {CFM_PER_BIRD.map((r) => (
-                <Text key={r.week} style={{ marginBottom: 2 }}>
-                  {r.week} ({r.dayStart}-{r.dayEnd} days): {r.cfmPerBird.toFixed(2)}
+              <Pressable onPress={() => setCfmOpen((v) => (v === "bird" ? null : "bird"))}>
+                <Text style={{ color: colors.accentDark, fontWeight: "700", marginBottom: 8 }}>
+                  CFM / Bird
                 </Text>
-              ))}
-              <SectionTitleInCard style={{ marginTop: 12 }}>CFM / Fan size</SectionTitleInCard>
-              {CFM_BY_FAN_SIZE.map((r) => (
-                <Text key={r.fanSizeInches} style={{ marginBottom: 2 }}>
-                  {r.fanSizeInches}&quot;: {r.cfmPerFan.toLocaleString()}
+              </Pressable>
+              {cfmOpen === "bird" ? (
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    marginBottom: 12,
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      padding: 12,
+                      backgroundColor: "#fafaf9",
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700" }}>CFM / Bird</Text>
+                    <Pressable onPress={() => setCfmOpen(null)}>
+                      <Text style={{ fontWeight: "700", color: colors.muted }}>Close</Text>
+                    </Pressable>
+                  </View>
+                  {CFM_PER_BIRD.map((r) => (
+                    <View
+                      key={r.week}
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderTopWidth: 1,
+                        borderTopColor: "#f5f5f4",
+                      }}
+                    >
+                      <Text style={{ fontWeight: "700" }}>
+                        {r.week} ({r.dayStart}-{r.dayEnd} days)
+                      </Text>
+                      <Text style={{ fontWeight: "600" }}>{r.cfmPerBird.toFixed(2)}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
+              <Pressable onPress={() => setCfmOpen((v) => (v === "fan" ? null : "fan"))}>
+                <Text style={{ color: colors.accentDark, fontWeight: "700", marginBottom: 8 }}>
+                  CFM / Fan size
                 </Text>
-              ))}
+              </Pressable>
+              {cfmOpen === "fan" ? (
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      padding: 12,
+                      backgroundColor: "#fafaf9",
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700" }}>CFM / Fan size</Text>
+                    <Pressable onPress={() => setCfmOpen(null)}>
+                      <Text style={{ fontWeight: "700", color: colors.muted }}>Close</Text>
+                    </Pressable>
+                  </View>
+                  {CFM_BY_FAN_SIZE.map((r) => (
+                    <View
+                      key={r.fanSizeInches}
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderTopWidth: 1,
+                        borderTopColor: "#f5f5f4",
+                      }}
+                    >
+                      <Text style={{ fontWeight: "700" }}>{r.fanSizeInches}&quot;</Text>
+                      <Text style={{ fontWeight: "600" }}>
+                        {r.cfmPerFan.toLocaleString()}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
             </SectionPanel>
           ) : (
             <SectionAnchor />
           )}
         </View>
 
-        <View
-          onLayout={(e) => onSectionLayout("phone", e)}
-          collapsable={false}
-        >
+        <View onLayout={(e) => onSectionLayout("phone", e)} collapsable={false}>
           {open.phone ? (
             <SectionPanel
               title="Phone Numbers"
@@ -351,6 +450,19 @@ export default function ToolsScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function MetricTile({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={{ width: "47%", marginBottom: 8 }}>
+      <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase" }}>
+        {label}
+      </Text>
+      <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, marginTop: 2 }}>
+        {value}
+      </Text>
+    </View>
   );
 }
 
@@ -408,65 +520,5 @@ function SectionPanel({
       </View>
       {children ? <View style={{ marginTop: 12 }}>{children}</View> : null}
     </Card>
-  );
-}
-
-function SectionTitleInCard({
-  children,
-  style,
-}: {
-  children: React.ReactNode;
-  style?: object;
-}) {
-  return (
-    <Text
-      style={[
-        { fontWeight: "800", fontSize: 16, color: colors.accentDark, marginBottom: 8 },
-        style,
-      ]}
-    >
-      {children}
-    </Text>
-  );
-}
-
-function TableHeader({ cols, widths }: { cols: string[]; widths: number[] }) {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-        paddingBottom: 6,
-        marginBottom: 4,
-      }}
-    >
-      {cols.map((c, i) => (
-        <Text
-          key={c}
-          style={{
-            width: widths[i],
-            fontSize: 12,
-            fontWeight: "800",
-            color: colors.muted,
-            textTransform: "uppercase",
-          }}
-        >
-          {c}
-        </Text>
-      ))}
-    </View>
-  );
-}
-
-function TableRow({ cols, widths }: { cols: string[]; widths: number[] }) {
-  return (
-    <View style={{ flexDirection: "row", paddingVertical: 5 }}>
-      {cols.map((c, i) => (
-        <Text key={`${c}-${i}`} style={{ width: widths[i], fontSize: 15, color: colors.text }}>
-          {c}
-        </Text>
-      ))}
-    </View>
   );
 }
