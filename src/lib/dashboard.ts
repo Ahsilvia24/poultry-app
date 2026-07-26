@@ -86,7 +86,7 @@ export async function getDashboardData(userId: string) {
     completed: boolean;
     flockAgeDays: number;
   };
-  const UPCOMING_OUTLOOK_DAYS = 7;
+  const UPCOMING_OUTLOOK_DAYS = 14;
   const todaysSchedule: FollowUpRow[] = [];
   const upcomingSchedule: FollowUpRow[] = [];
   const horizon = addDays(startOfDay(today), UPCOMING_OUTLOOK_DAYS);
@@ -116,6 +116,7 @@ export async function getDashboardData(userId: string) {
     let todayMort = 0;
     let cum = 0;
     let projectedHead = 0;
+    let projectedMortExtra = 0;
     let dailyPct = 0;
     let sevenPct = 0;
     let rising = false;
@@ -168,6 +169,7 @@ export async function getDashboardData(userId: string) {
         }
         const avgDaily = averageDailyMortalityLast7Days(hf.mortalities, today);
         projectedHead += projectedHeadCountAtCatch(metrics.remaining, avgDaily, daysUntilCatch);
+        projectedMortExtra += avgDaily * daysUntilCatch;
         for (const week of weeklyMortalityByPlacement(
           active.placementDate,
           hf.mortalities,
@@ -191,12 +193,14 @@ export async function getDashboardData(userId: string) {
       farmName: farm.farmName,
       growerName: farm.growerName,
       phoneNumber: farm.phoneNumber,
+      houseCount: farm.houses?.length ?? active?.houseFlocks.length ?? 0,
       flockAgeDays: active
         ? differenceInCalendarDays(today, active.placementDate)
         : null,
       totalBirdsPlaced: placed,
       todayMortality: todayMort,
       projectedHeadCount: active ? projectedHead : null,
+      projectedMortality: active ? Math.max(0, Math.round(cum + projectedMortExtra)) : null,
       weeklyMortality: Array.from(weeklyTotals.entries())
         .sort((a, b) => a[0] - b[0])
         .map(([week, total]) => ({ week, total })),

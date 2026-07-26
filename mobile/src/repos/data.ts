@@ -184,9 +184,11 @@ export function getDashboard() {
         farmName: farm.farmName,
         growerName: farm.growerName,
         phoneNumber: farm.phoneNumber,
+        houseCount: farm.numberOfHouses,
         flockAgeDays: null,
         birdsPlaced: 0,
         projectedHeadCount: null,
+        projectedMortality: null,
         todayMortality: 0,
         sevenDayMortality: 0,
         cumulativeMortality: 0,
@@ -260,11 +262,16 @@ export function getDashboard() {
       daysUntilCatch != null
         ? Math.max(0, Math.round(farmRemaining - avgDaily * daysUntilCatch - 150 * hfs.length))
         : null;
+    const projectedMortality =
+      daysUntilCatch != null
+        ? Math.max(0, Math.round(farmCum + avgDaily * daysUntilCatch))
+        : null;
 
     const catchDate =
       flock.projected_catch_date ?? addDaysKey(flock.placement_date, 52);
+    // 14-day outlook so the Upcoming tile stays populated like the web app
     const schedule = buildFlockVisitSchedule(flock.placement_date, catchDate);
-    const { today: dueToday, upcoming } = splitScheduleForDashboard(schedule, today, 7);
+    const { today: dueToday, upcoming } = splitScheduleForDashboard(schedule, today, 14);
     const toRow = (v: ScheduledVisit): ScheduleRow => ({
       farmId: farm.id,
       farmName: farm.farmName,
@@ -285,9 +292,11 @@ export function getDashboard() {
       farmName: farm.farmName,
       growerName: farm.growerName,
       phoneNumber: farm.phoneNumber,
+      houseCount: hfs.length || farm.numberOfHouses,
       flockAgeDays,
       birdsPlaced: farmPlaced,
       projectedHeadCount,
+      projectedMortality,
       todayMortality: farmToday,
       sevenDayMortality: farmSeven,
       cumulativeMortality: farmCum,
@@ -302,6 +311,16 @@ export function getDashboard() {
       lastVisitDate: lastVisit?.visit_date ?? null,
     });
   }
+
+  todaysSchedule.sort(
+    (a, b) => a.farmName.localeCompare(b.farmName) || a.label.localeCompare(b.label),
+  );
+  upcomingSchedule.sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      a.farmName.localeCompare(b.farmName) ||
+      a.label.localeCompare(b.label),
+  );
 
   const upcomingCatches = farmCards
     .filter((f) => f.projectedCatchDate)

@@ -79,6 +79,7 @@ export default async function DashboardPage() {
                 <div>
                   <p className="text-lg font-bold text-stone-900">
                     {farm.farmName}
+                    <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
                     {farm.flockAgeDays != null ? (
                       <span className="font-semibold text-stone-500"> · {farm.flockAgeDays}d</span>
                     ) : null}
@@ -94,31 +95,37 @@ export default async function DashboardPage() {
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
                 <div>
-                  <p className="text-stone-500">Flock age</p>
-                  <p className="font-semibold">{farm.flockAgeDays ?? "—"} days</p>
-                </div>
-                <div>
-                  <p className="text-stone-500">Birds placed</p>
-                  <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
-                </div>
-                <div>
                   <p className="text-stone-500">Today&apos;s Mortality</p>
                   <p className="font-semibold">{farm.todayMortality}</p>
-                </div>
-                <div>
-                  <p className="text-stone-500">Proj. Head Count</p>
-                  <p className="font-semibold">
-                    {farm.projectedHeadCount != null ? formatNumber(farm.projectedHeadCount) : "—"}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-stone-400">
-                    Assumes 150 for catch crew / house
-                  </p>
                 </div>
                 <div>
                   <p className="text-stone-500">Cumulative Mortality</p>
                   <p className="font-semibold">
                     {farm.cumulativeMortality} ({formatPct(farm.cumulativeMortalityPct)})
                   </p>
+                </div>
+                <div>
+                  <p className="text-stone-500">Birds placed</p>
+                  <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
+                </div>
+                <div>
+                  <p className="text-stone-500">Projected Mortality</p>
+                  <p className="font-semibold">
+                    {farm.projectedMortality != null
+                      ? `${formatNumber(farm.projectedMortality)} (${formatPct(
+                          farm.totalBirdsPlaced > 0
+                            ? (farm.projectedMortality / farm.totalBirdsPlaced) * 100
+                            : 0,
+                        )})`
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-stone-500">Proj. Head Count</p>
+                  <p className="font-semibold">
+                    {farm.projectedHeadCount != null ? formatNumber(farm.projectedHeadCount) : "—"}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-stone-400">150 per house @ catch</p>
                 </div>
                 <div>
                   <p className="text-stone-500">Open issues</p>

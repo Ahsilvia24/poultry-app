@@ -158,9 +158,9 @@ export default function DashboardScreen() {
                 Upcoming
               </Text>
               {data.upcomingSchedule.length === 0 ? (
-                <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 7 days</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 14 days</Text>
               ) : (
-                data.upcomingSchedule.slice(0, 12).map((item) => (
+                data.upcomingSchedule.slice(0, 20).map((item) => (
                   <Pressable
                     key={`${item.farmId}-${item.date}-${item.label}`}
                     onPress={() => router.push(`/(tabs)/farms/${item.farmId}`)}
@@ -180,10 +180,12 @@ export default function DashboardScreen() {
                           · {item.flockAgeDays}d
                         </Text>
                       ) : null}
+                      <Text style={{ fontWeight: "400", color: colors.muted }}>
+                        {"  "}
+                        {item.label}
+                      </Text>
                     </Text>
-                    <Text style={{ color: colors.muted, fontSize: 12, textAlign: "right" }}>
-                      {item.label}
-                      {"\n"}
+                    <Text style={{ color: colors.muted, fontSize: 13 }}>
                       {formatShortScheduleDate(item.date)}
                     </Text>
                   </Pressable>
@@ -237,6 +239,10 @@ export default function DashboardScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
                         {farm.farmName}
+                        <Text style={{ fontWeight: "600", color: colors.muted }}>
+                          {" "}
+                          ({farm.houseCount})
+                        </Text>
                         {farm.flockAgeDays != null ? (
                           <Text style={{ fontWeight: "600", color: colors.muted }}>
                             {" "}
@@ -255,20 +261,26 @@ export default function DashboardScreen() {
                   </View>
 
                   <View style={[styles.row, { marginTop: 14 }]}>
-                    <Metric
-                      label="Flock age"
-                      value={farm.flockAgeDays != null ? `${farm.flockAgeDays} days` : "—"}
-                    />
-                    <Metric label="Birds placed" value={formatNumber(farm.birdsPlaced)} />
                     <Metric label="Today's Mortality" value={String(farm.todayMortality)} />
-                    <Metric
-                      label="Proj. Head Count"
-                      value={formatNumber(farm.projectedHeadCount)}
-                      hint="Assumes 150 for catch crew / house"
-                    />
                     <Metric
                       label="Cumulative Mortality"
                       value={`${farm.cumulativeMortality} (${formatPct(farm.cumulativeMortalityPct)})`}
+                    />
+                    <Metric label="Birds placed" value={formatNumber(farm.birdsPlaced)} />
+                    <Metric
+                      label="Projected Mortality"
+                      value={
+                        farm.projectedMortality != null && farm.birdsPlaced > 0
+                          ? `${formatNumber(farm.projectedMortality)} (${formatPct(
+                              (farm.projectedMortality / farm.birdsPlaced) * 100,
+                            )})`
+                          : formatNumber(farm.projectedMortality)
+                      }
+                    />
+                    <Metric
+                      label="Proj. Head Count"
+                      value={formatNumber(farm.projectedHeadCount)}
+                      hint="150 per house @ catch"
                     />
                     <Metric label="Open issues" value={String(farm.openIssues)} />
                   </View>
