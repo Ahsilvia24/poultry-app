@@ -13,7 +13,6 @@ import {
   getMortalityForm,
   getHouseMortalitySeries,
   saveHouseMortalitySeries,
-  saveMortality,
 } from "../../src/repos/data";
 import { birdAgeFromPlacement, flockWeekFromAge, calcTotalDailyLoss } from "../../src/lib/mortality";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
@@ -41,10 +40,21 @@ type DayRow = {
   dailyMortalityCount: string;
 };
 
+function ChipScroller({ children }: { children: React.ReactNode }) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ marginBottom: 10 }}
+      contentContainerStyle={{ flexDirection: "row", alignItems: "center", paddingRight: 8 }}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
 export default function MortalityScreen() {
   const { farmId: farmIdParam } = useLocalSearchParams<{ farmId?: string }>();
-  const [mode, setMode] = useState<"today" | "grid">("grid");
-  const [date, setDate] = useState(todayKey());
   const [farmId, setFarmId] = useState(farmIdParam ?? "");
   const [houseFlockId, setHouseFlockId] = useState("");
   const [payload, setPayload] = useState<ReturnType<typeof getMortalityForm> | null>(null);
@@ -54,9 +64,6 @@ export default function MortalityScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
-  const [todayEntries, setTodayEntries] = useState<
-    Record<string, { dailyMortalityCount: string; cullCount: string }>
-  >({});
 
   const selectedFarm = useMemo(
     () => payload?.farms.find((f) => f.id === farmId) ?? payload?.farms[0] ?? null,
@@ -69,7 +76,7 @@ export default function MortalityScreen() {
     setLoading(true);
     setError(null);
     try {
-      const data = getMortalityForm(date, undefined);
+      const data = getMortalityForm(todayKey(), undefined);
       setPayload(data);
       const farm = data.farms.find((f) => f.id === (farmId || farmIdParam)) ?? data.farms[0];
       if (farm) setFarmId(farm.id);
@@ -77,26 +84,12 @@ export default function MortalityScreen() {
       setHouseFlockId((prev) =>
         farm?.activeFlock?.houses.some((h) => h.houseFlockId === prev) ? prev : firstHouse,
       );
-      const next: Record<string, { dailyMortalityCount: string; cullCount: string }> = {};
-      for (const h of farm?.activeFlock?.houses ?? []) {
-        next[h.houseFlockId] = {
-          dailyMortalityCount:
-            h.existing?.dailyMortalityCount != null && h.existing.dailyMortalityCount !== 0
-              ? String(h.existing.dailyMortalityCount)
-              : "",
-          cullCount:
-            h.existing?.cullCount != null && h.existing.cullCount !== 0
-              ? String(h.existing.cullCount)
-              : "",
-        };
-      }
-      setTodayEntries(next);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [date, farmId, farmIdParam]);
+  }, [farmId, farmIdParam]);
 
   const loadGrid = useCallback(() => {
     if (!houseFlockId) {
@@ -140,8 +133,8 @@ export default function MortalityScreen() {
   }, [loadFarms]);
 
   useEffect(() => {
-    if (mode === "grid") loadGrid();
-  }, [mode, loadGrid]);
+    loadGrid();
+  }, [loadGrid]);
 
   const weekGroups = useMemo(() => {
     const map = new Map<number, DayRow[]>();
@@ -204,30 +197,6 @@ export default function MortalityScreen() {
     }
   }
 
-  async function saveToday() {
-    if (!selectedFarm?.activeFlock) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const res = saveMortality({
-        flockId: selectedFarm.activeFlock.id,
-        mortalityDate: date,
-        entries: selectedFarm.activeFlock.houses.map((h) => ({
-          houseFlockId: h.houseFlockId,
-          dailyMortalityCount: Number(todayEntries[h.houseFlockId]?.dailyMortalityCount || 0),
-          cullCount: Number(todayEntries[h.houseFlockId]?.cullCount || 0),
-          mortalityCause: "UNKNOWN",
-        })),
-      });
-      setSavedMsg(`Saved · age ${res.birdAgeInDays}d · farm total ${res.farmTotal}`);
-      loadFarms();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   if (loading && !payload) {
     return (
       <View style={[styles.screen, { alignItems: "center", justifyContent: "center" }]}>
@@ -249,24 +218,35 @@ export default function MortalityScreen() {
           subtitle="Enter mortality by house and bird age"
         />
 
-        <View style={[styles.row, { marginBottom: 12 }]}>
-          <Chip label="Age grid" active={mode === "grid"} onPress={() => setMode("grid")} />
-          <Chip label="By date" active={mode === "today"} onPress={() => setMode("today")} />
-        </View>
+        <ChipScroller>
+          {payload?.farms.map((f) => (
+            <Chip
+              key={f.id}
+              label={f.farmName}
+              active={farmId === f.id}
+              onPress={() => {
+                setFarmId(f.id);
+                setSavedMsg(null);
+              }}
+            />
+          ))}
+        </ChipScroller>
 
-        <Text style={styles.label}>Farm</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-          <View style={{ flexDirection: "row" }}>
-            {payload?.farms.map((f) => (
+        {selectedFarm?.activeFlock ? (
+          <ChipScroller>
+            {houses.map((h) => (
               <Chip
-                key={f.id}
-                label={f.farmName}
-                active={farmId === f.id}
-                onPress={() => setFarmId(f.id)}
+                key={h.houseFlockId}
+                label={`House ${h.houseNumber}`}
+                active={houseFlockId === h.houseFlockId}
+                onPress={() => {
+                  setHouseFlockId(h.houseFlockId);
+                  setSavedMsg(null);
+                }}
               />
             ))}
-          </View>
-        </ScrollView>
+          </ChipScroller>
+        ) : null}
 
         {error ? <Text style={{ color: colors.danger, marginBottom: 8 }}>{error}</Text> : null}
         {savedMsg ? (
@@ -279,20 +259,8 @@ export default function MortalityScreen() {
           <Card>
             <Text>Add an active farm with a flock to enter mortality.</Text>
           </Card>
-        ) : mode === "grid" ? (
+        ) : (
           <>
-            <Text style={styles.label}>House</Text>
-            <View style={[styles.row, { marginBottom: 8 }]}>
-              {houses.map((h) => (
-                <Chip
-                  key={h.houseFlockId}
-                  label={`House ${h.houseNumber}`}
-                  active={houseFlockId === h.houseFlockId}
-                  onPress={() => setHouseFlockId(h.houseFlockId)}
-                />
-              ))}
-            </View>
-
             <Card style={{ marginBottom: 12 }}>
               <Text style={{ fontWeight: "700", color: colors.muted, fontSize: 13 }}>
                 House totals
@@ -424,64 +392,6 @@ export default function MortalityScreen() {
             <PrimaryButton
               label={saving ? "Saving…" : "Save mortality"}
               onPress={saveGrid}
-            />
-          </>
-        ) : (
-          <>
-            <Text style={styles.label}>Date (YYYY-MM-DD)</Text>
-            <TextInput style={styles.input} value={date} onChangeText={setDate} autoCapitalize="none" />
-            {houses.map((h) => {
-              const e = todayEntries[h.houseFlockId];
-              return (
-                <Card key={h.houseFlockId}>
-                  <Text style={{ fontSize: 18, fontWeight: "800" }}>House {h.houseNumber}</Text>
-                  <Text style={styles.muted}>
-                    Placed {h.placedBirdCount.toLocaleString()} · Rem {h.remaining} · Cum {h.cumulative}
-                  </Text>
-                  <View style={[styles.row, { marginTop: 10 }]}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.label}>Culls</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="number-pad"
-                        value={e?.cullCount ?? ""}
-                        placeholder="0"
-                        onChangeText={(v) =>
-                          setTodayEntries((prev) => ({
-                            ...prev,
-                            [h.houseFlockId]: {
-                              dailyMortalityCount: prev[h.houseFlockId]?.dailyMortalityCount ?? "",
-                              cullCount: v.replace(/\D/g, ""),
-                            },
-                          }))
-                        }
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.label}>Mortality</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="number-pad"
-                        value={e?.dailyMortalityCount ?? ""}
-                        placeholder="0"
-                        onChangeText={(v) =>
-                          setTodayEntries((prev) => ({
-                            ...prev,
-                            [h.houseFlockId]: {
-                              cullCount: prev[h.houseFlockId]?.cullCount ?? "",
-                              dailyMortalityCount: v.replace(/\D/g, ""),
-                            },
-                          }))
-                        }
-                      />
-                    </View>
-                  </View>
-                </Card>
-              );
-            })}
-            <PrimaryButton
-              label={saving ? "Saving…" : "Save mortality"}
-              onPress={saveToday}
             />
           </>
         )}

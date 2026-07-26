@@ -109,12 +109,13 @@ export function Chip({
           paddingHorizontal: 14,
           paddingVertical: 10,
           marginRight: 8,
-          marginBottom: 8,
+          flexShrink: 0,
           backgroundColor: active ? colors.accentDark : "#e7e5e4",
         },
       ]}
     >
       <Text
+        numberOfLines={1}
         style={{
           fontSize: 14,
           fontWeight: "700",
