@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { CoolCellsChart } from "@/components/CoolCellsChart";
 import { MaxCoolingChart } from "@/components/MaxCoolingChart";
 import { TempCurveChart } from "@/components/TempCurveChart";
 import { ToolsQuickLinks } from "@/components/ToolsQuickLinks";
@@ -27,7 +28,9 @@ export default async function ToolsPage() {
           <TempCurveChart />
         </ToolsSectionPanel>
 
-        <ToolsSectionPanel hashId="cool-cells" title="Cool Cells" subtitle="Coming soon." />
+        <ToolsSectionPanel hashId="cool-cells" title="Cool Cells">
+          <CoolCellsChart />
+        </ToolsSectionPanel>
 
         <ToolsSectionPanel
           hashId="max-cooling"
