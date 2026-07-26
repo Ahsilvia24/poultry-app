@@ -125,23 +125,11 @@ export default function FarmsScreen() {
                     {farm.farmName}
                     <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
                   </Text>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      alignItems: "baseline",
-                      gap: 8,
-                    }}
-                  >
-                    {farm.growerName ? (
-                      <Text style={styles.muted}>{farm.growerName}</Text>
-                    ) : null}
-                    {farm.phoneNumber ? (
-                      <Text style={{ fontSize: 14, fontWeight: "600", color: colors.muted }}>
-                        {farm.phoneNumber}
-                      </Text>
-                    ) : null}
-                  </View>
+                  {farm.growerName || farm.phoneNumber ? (
+                    <Text style={styles.muted}>
+                      {[farm.growerName, farm.phoneNumber].filter(Boolean).join("  ")}
+                    </Text>
+                  ) : null}
                 </Pressable>
                 <Text
                   style={[
