@@ -1,7 +1,4 @@
-name: iOS TestFlight
-
-# Uses type: submit (works on Expo free plan).
-# type: testflight with build_id requires a paid Expo plan.
+name: Build and submit iOS
 
 jobs:
   build_ios:

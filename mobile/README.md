@@ -56,22 +56,25 @@ When the build finishes, open the link on your phone and install the APK.
 
 Requires an [Apple Developer](https://developer.apple.com) account (~$99/yr).
 
-**From Expo dashboard (phone-friendly):** open the project → **Workflows** → run **iOS TestFlight**  
-(`.eas/workflows/ios-testflight.yml`). If you see “no workflows found”, make sure GitHub is connected and the project directory is set to `mobile`.
+**From Expo dashboard (phone-friendly) — free plan:**
 
-> Free Expo plan: the workflow uses `submit` (not the paid `testflight` job). After it finishes, the build still appears in TestFlight once App Store Connect finishes processing.
+1. Open **Workflows**
+2. Run **Build iOS only** (do **not** retry an old failed “iOS TestFlight” run — that still has the paid `testflight` job)
+3. When the build finishes, open the build → **Submit** to App Store Connect
+4. Install from TestFlight after processing
 
-**Or build only, then submit from the build page:**
+Optional one-shot workflow: **Build and submit iOS** (uses free-plan `submit`, not paid `testflight`).
 
-1. Run **Build iOS only**
-2. Open the finished build on expo.dev → **Submit** / distribute to App Store Connect
+If you see “no workflows found”, set the Expo GitHub project directory to `mobile`.
 
 **From a computer / SSH:**
 
 ```bash
 cd poultry-app/mobile
-eas workflow:run .eas/workflows/ios-testflight.yml
-# or classic CLI:
+eas workflow:run .eas/workflows/build-ios.yml
+# after build completes:
+eas submit --platform ios --latest
+# or one-shot:
 eas build --platform ios --profile production --auto-submit
 ```
 
