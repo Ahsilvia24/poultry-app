@@ -90,23 +90,21 @@ export default function FarmsScreen() {
           </Card>
         ) : null}
 
-        {data?.farms.map((farm) => (
+        {data?.farms.map((farm) => {
+          const houseCount = farm.houseCount ?? farm.numberOfHouses;
+          const titleMeta =
+            farm.flockAgeDays != null
+              ? ` (${houseCount}) · ${farm.flockAgeDays}d`
+              : ` (${houseCount})`;
+
+          return (
           <Pressable key={farm.id} onPress={() => router.push(`/(tabs)/farms/${farm.id}`)}>
             <Card>
               <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
                     {farm.farmName}
-                    <Text style={{ fontWeight: "600", color: colors.muted }}>
-                      {" "}
-                      ({farm.numberOfHouses})
-                    </Text>
-                    {farm.flockAgeDays != null ? (
-                      <Text style={{ fontWeight: "600", color: colors.muted }}>
-                        {" "}
-                        · {farm.flockAgeDays}d
-                      </Text>
-                    ) : null}
+                    <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
                   </Text>
                   <Text style={styles.muted}>{farm.growerName}</Text>
                   {farm.phoneNumber ? (
@@ -155,7 +153,8 @@ export default function FarmsScreen() {
               </View>
             </Card>
           </Pressable>
-        ))}
+          );
+        })}
 
         <SectionTitle>Quick links</SectionTitle>
         <PrimaryLinks router={router} />

@@ -116,6 +116,11 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
         "SELECT flock_number, placement_date, projected_catch_date FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
         [f.id],
       );
+      const houseCountRow = db.getFirstSync<{ c: number }>(
+        "SELECT COUNT(*) as c FROM houses WHERE farm_id = ?",
+        [f.id],
+      );
+      const houseCount = houseCountRow?.c ?? f.number_of_houses;
       let birdsPlaced = 0;
       let remaining = 0;
       if (flock) {
@@ -138,7 +143,8 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
         farmName: f.farm_name,
         growerName: f.grower_name,
         phoneNumber: f.phone_number,
-        numberOfHouses: f.number_of_houses,
+        numberOfHouses: houseCount,
+        houseCount,
         isActive: f.is_active === 1,
         birdsPlaced,
         currentHeadCount: remaining,
