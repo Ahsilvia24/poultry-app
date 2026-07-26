@@ -100,27 +100,11 @@ export function HouseCard({
       </button>
 
       {detailsOpen ? (
-        <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+        <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
           <div>
-            <p className="text-stone-500">Birds placed</p>
+            <p className="text-stone-500">Placed</p>
             <p className="font-semibold">
               {birdsPlaced != null ? formatNumber(birdsPlaced) : "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-stone-500">Cumulative Mortality</p>
-            <p className="font-semibold">
-              {metrics ? `${metrics.cumulative} (${formatPct(metrics.cumulativePct)})` : "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-stone-500">Projected Mortality</p>
-            <p className="font-semibold">
-              {projectedMortality != null && birdsPlaced != null && birdsPlaced > 0
-                ? `${formatNumber(projectedMortality)} (${formatPct((projectedMortality / birdsPlaced) * 100)})`
-                : projectedMortality != null
-                  ? formatNumber(projectedMortality)
-                  : "—"}
             </p>
           </div>
           <div>
@@ -130,11 +114,29 @@ export function HouseCard({
             </p>
           </div>
           <div>
-            <p className="text-stone-500">Proj. Head Count</p>
+            <p className="text-stone-500">PHC</p>
             <p className="font-semibold">
               {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
             </p>
             <p className="mt-0.5 text-[11px] text-stone-400">Assumes 150 for catch crew</p>
+          </div>
+          <div>
+            <p className="text-stone-500">Mort.</p>
+            <p className="font-semibold">
+              {metrics
+                ? `${formatNumber(metrics.cumulative)} (${formatPct(metrics.cumulativePct)})`
+                : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-stone-500">Projected mortality</p>
+            <p className="font-semibold">
+              {projectedMortality != null && birdsPlaced != null && birdsPlaced > 0
+                ? `${formatNumber(projectedMortality)} (${formatPct((projectedMortality / birdsPlaced) * 100)})`
+                : projectedMortality != null
+                  ? formatNumber(projectedMortality)
+                  : "—"}
+            </p>
           </div>
           <div>
             <p className="text-stone-500">Recommended Min Vent</p>

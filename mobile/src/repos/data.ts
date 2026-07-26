@@ -439,6 +439,10 @@ export function getFarmDetail(farmId: string) {
       daysUntilCatch != null
         ? Math.max(0, Math.round(summary.remaining - avgDaily * daysUntilCatch - 150))
         : null;
+    const projectedMortality =
+      daysUntilCatch != null
+        ? Math.max(0, Math.round(summary.cumulative + avgDaily * daysUntilCatch))
+        : null;
 
     const minVent =
       hf && flockWeek != null && h.total_fan_cfm != null && h.total_fan_cfm > 0
@@ -466,6 +470,7 @@ export function getFarmDetail(farmId: string) {
       cumulativeMortalityPct: summary.cumulativePct,
       remainingBirdCount: summary.remaining,
       projectedHeadCount,
+      projectedMortality,
       weeklyMortality: summary.weekly,
       recommendedMinVent: minVent
         ? formatMinVentCycle(minVent.onSeconds, minVent.offSeconds)

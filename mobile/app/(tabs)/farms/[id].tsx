@@ -17,7 +17,6 @@ import { colors, styles } from "../../../src/theme";
 import {
   Card,
   Metric,
-  PageHeader,
   PrimaryButton,
   SectionTitle,
   StatusBadge,
@@ -97,33 +96,44 @@ export default function FarmDetailScreen() {
           <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
         </Pressable>
 
-        <PageHeader
-          title={farm.farmName}
-          subtitle={farm.growerName}
-          actions={
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <PrimaryButton
-                label="Enter mortality"
-                onPress={() =>
-                  router.push({ pathname: "/(tabs)/mortality", params: { farmId: farm.id } })
-                }
-                style={{ flex: 1 }}
-              />
-              <PrimaryButton
-                label="LFO"
-                secondary
-                onPress={() => router.push("/(tabs)/lfo")}
-                style={{ flex: 1 }}
-              />
-            </View>
-          }
-        />
-
-        {farm.phoneNumber ? (
-          <Pressable onPress={() => Linking.openURL(`tel:${farm.phoneNumber}`)} style={{ marginTop: -8, marginBottom: 12 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>{farm.phoneNumber}</Text>
-          </Pressable>
-        ) : null}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={styles.title}>{farm.farmName}</Text>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 8,
+              marginTop: 4,
+            }}
+          >
+            {farm.growerName ? (
+              <Text style={styles.subtitle}>{farm.growerName}</Text>
+            ) : null}
+            {farm.phoneNumber ? (
+              <Pressable onPress={() => Linking.openURL(`tel:${farm.phoneNumber}`)}>
+                <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 15 }}>
+                  {farm.phoneNumber}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+            <PrimaryButton
+              label="Enter mortality"
+              onPress={() =>
+                router.push({ pathname: "/(tabs)/mortality", params: { farmId: farm.id } })
+              }
+              style={{ flex: 1 }}
+            />
+            <PrimaryButton
+              label="LFO"
+              secondary
+              onPress={() => router.push("/(tabs)/lfo")}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </View>
 
         {data.activeFlock ? (
           <Card>
@@ -158,15 +168,33 @@ export default function FarmDetailScreen() {
               <StatusBadge status={h.status} />
             </View>
             <View style={[styles.row, { marginTop: 12 }]}>
-              <Metric label="Mort." value={formatNumber(h.cumulativeMortality)} />
-              <Metric
-                label="Cum %"
-                value={formatPct(h.cumulativeMortalityPct)}
-              />
-              <Metric label="PHC" value={formatNumber(h.projectedHeadCount)} />
-              <Metric label="Remaining" value={formatNumber(h.remainingBirdCount)} />
-              <Metric label="Min vent" value={h.recommendedMinVent ?? "—"} />
               <Metric label="Placed" value={formatNumber(h.placedBirdCount)} />
+              <Metric label="Remaining" value={formatNumber(h.remainingBirdCount)} />
+              <Metric label="PHC" value={formatNumber(h.projectedHeadCount)} />
+              <Metric
+                label="Mort."
+                value={
+                  h.placedBirdCount != null
+                    ? `${formatNumber(h.cumulativeMortality)} (${formatPct(h.cumulativeMortalityPct)})`
+                    : formatNumber(h.cumulativeMortality)
+                }
+              />
+              <Metric
+                label="Projected mortality"
+                value={
+                  h.projectedMortality != null &&
+                  h.placedBirdCount != null &&
+                  h.placedBirdCount > 0
+                    ? `${formatNumber(h.projectedMortality)} (${formatPct(
+                        (h.projectedMortality / h.placedBirdCount) * 100,
+                      )})`
+                    : formatNumber(h.projectedMortality)
+                }
+              />
+              <Metric
+                label="Recommended Min Vent"
+                value={h.recommendedMinVent ?? "—"}
+              />
             </View>
             {h.weeklyMortality.length > 0 ? (
               <View style={{ borderTopWidth: 1, borderTopColor: "#f5f5f4", paddingTop: 10, marginTop: 4 }}>

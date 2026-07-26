@@ -48,8 +48,16 @@ export function FarmInfoEditor({
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
             {farm.farmName}
           </h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
             <p className="text-stone-600">{subtitle}</p>
+            {farm.phoneNumber ? (
+              <a
+                href={`tel:${farm.phoneNumber}`}
+                className="text-sm font-semibold text-emerald-800 hover:underline"
+              >
+                {farm.phoneNumber}
+              </a>
+            ) : null}
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
@@ -61,9 +69,6 @@ export function FarmInfoEditor({
               <GearIcon className="h-4 w-4" />
             </button>
           </div>
-          {farm.phoneNumber ? (
-            <p className="mt-1 text-xs text-stone-500">{farm.phoneNumber}</p>
-          ) : null}
         </div>
         {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </div>
