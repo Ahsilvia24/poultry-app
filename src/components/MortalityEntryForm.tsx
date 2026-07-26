@@ -275,13 +275,19 @@ export function MortalityEntryForm({
     setSaveStatus("saving");
     setError(null);
 
+    const entered = currentRows.filter((r) => r.hasEntry);
+    if (entered.length === 0) {
+      setSaveStatus("idle");
+      return;
+    }
+
     const result = await saveMortalityHouseSeriesAction({
       flockId: currentFlock.id,
       houseFlockId: currentHouse.houseFlockId,
       mortalityCause: "UNKNOWN",
       comments: null,
       isDraft: false,
-      entries: currentRows.map((r) => ({
+      entries: entered.map((r) => ({
         mortalityDate: r.mortalityDate,
         dailyMortalityCount: Number(r.dailyMortalityCount || 0),
         cullCount: Number(r.cullCount || 0),
