@@ -63,7 +63,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
         subtitle="Manage grower farms and houses"
         actions={
           <Link href="/farms/new">
-            <Button>New farm</Button>
+            <Button>Add farm</Button>
           </Link>
         }
       />

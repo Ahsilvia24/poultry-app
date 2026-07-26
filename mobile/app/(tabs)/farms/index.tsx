@@ -17,6 +17,7 @@ import {
   Chip,
   Metric,
   PageHeader,
+  PrimaryButton,
   SectionTitle,
   formatNumber,
 } from "../../../src/components/ui";
@@ -64,7 +65,16 @@ export default function FarmsScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       >
         <BrandBar />
-        <PageHeader title="Farms" subtitle="Manage grower farms and houses" />
+        <PageHeader
+          title="Farms"
+          subtitle="Manage grower farms and houses"
+          actions={
+            <PrimaryButton
+              label="Add farm"
+              onPress={() => router.push("/(tabs)/farms/new")}
+            />
+          }
+        />
 
         <View style={[styles.row, { marginBottom: 8 }]}>
           {(["active", "inactive", "all"] as const).map((key) => (

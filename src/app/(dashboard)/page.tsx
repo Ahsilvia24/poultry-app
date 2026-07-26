@@ -20,14 +20,9 @@ export default async function DashboardPage() {
         title="Dashboard"
         subtitle="Active farms, mortality, and follow-ups"
         actions={
-          <>
-            <Link href="/mortality">
-              <Button>Enter mortality</Button>
-            </Link>
-            <Link href="/farms/new">
-              <Button variant="secondary">Add farm</Button>
-            </Link>
-          </>
+          <Link href="/mortality">
+            <Button>Enter mortality</Button>
+          </Link>
         }
       />
 

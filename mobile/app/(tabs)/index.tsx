@@ -93,19 +93,10 @@ export default function DashboardScreen() {
           title="Dashboard"
           subtitle="Active farms, mortality, and follow-ups"
           actions={
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <PrimaryButton
-                label="Enter mortality"
-                onPress={() => router.push("/(tabs)/mortality")}
-                style={{ flex: 1 }}
-              />
-              <PrimaryButton
-                label="Add farm"
-                secondary
-                onPress={() => router.push("/(tabs)/farms")}
-                style={{ flex: 1 }}
-              />
-            </View>
+            <PrimaryButton
+              label="Enter mortality"
+              onPress={() => router.push("/(tabs)/mortality")}
+            />
           }
         />
 

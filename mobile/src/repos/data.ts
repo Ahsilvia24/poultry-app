@@ -928,6 +928,43 @@ export function updateLfoInventory(
   return { success: true };
 }
 
+export function createFarm(input: {
+  farmName: string;
+  growerName?: string;
+  phoneNumber?: string | null;
+  notes?: string | null;
+  numberOfHouses?: number;
+}) {
+  const db = getDb();
+  const farmName = input.farmName.trim();
+  if (!farmName) throw new Error("Farm name is required");
+
+  const houseCount = Math.max(
+    0,
+    Math.min(40, Math.floor(Number(input.numberOfHouses ?? 0) || 0)),
+  );
+  const id = newId("farm");
+  const growerName = (input.growerName ?? "").trim();
+  const phoneNumber = input.phoneNumber?.trim() || null;
+  const notes = input.notes?.trim() || null;
+
+  db.runSync(
+    `INSERT INTO farms (id, farm_name, grower_name, phone_number, notes, number_of_houses, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, 1)`,
+    [id, farmName, growerName, phoneNumber, notes, houseCount],
+  );
+
+  for (let n = 1; n <= houseCount; n++) {
+    db.runSync(
+      `INSERT INTO houses (id, farm_id, house_number, square_footage, total_fan_cfm, number_of_fans)
+       VALUES (?, ?, ?, 29700, NULL, NULL)`,
+      [newId("house"), id, n],
+    );
+  }
+
+  return { id };
+}
+
 export function createVisit(input: {
   farmId: string;
   flockId?: string | null;
