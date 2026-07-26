@@ -59,7 +59,6 @@ function ChipScroller({ children }: { children: React.ReactNode }) {
 }
 
 export default function LfoScreen() {
-  const router = useRouter();
   const [lfos, setLfos] = useState(listLfos());
   const [farms] = useState(listFarms().farms);
   const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
