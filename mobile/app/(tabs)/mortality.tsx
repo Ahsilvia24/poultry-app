@@ -40,7 +40,31 @@ type DayRow = {
   mortalityDate: string;
   cullCount: string;
   dailyMortalityCount: string;
+  /** True once a saved record exists or the tech edits this day. */
+  hasEntry: boolean;
 };
+
+function NeedsEntryIcon() {
+  return (
+    <View
+      accessibilityLabel="Mortality needs entry"
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: "#facc15",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Text style={{ fontWeight: "900", fontSize: 13, color: "#713f12", lineHeight: 16 }}>!</Text>
+    </View>
+  );
+}
+
+function needsEntry(row: DayRow, today: string) {
+  return row.mortalityDate <= today && !row.hasEntry;
+}
 
 type FieldKind = "culls" | "mort";
 
@@ -191,6 +215,7 @@ export default function MortalityScreen() {
             existing && existing.daily_mortality_count !== 0
               ? String(existing.daily_mortality_count)
               : "",
+          hasEntry: Boolean(existing),
         });
       }
       setRows(next);
@@ -302,9 +327,13 @@ export default function MortalityScreen() {
     setRows((prev) => {
       const next = prev.map((r) =>
         r.age === age
-          ? kind === "culls"
-            ? { ...r, cullCount: digits }
-            : { ...r, dailyMortalityCount: digits }
+          ? {
+              ...r,
+              hasEntry: true,
+              ...(kind === "culls"
+                ? { cullCount: digits }
+                : { dailyMortalityCount: digits }),
+            }
           : r,
       );
       rowsRef.current = next;
@@ -500,12 +529,14 @@ export default function MortalityScreen() {
                             backgroundColor: "#f5f5f4",
                             borderTopWidth: 1,
                             borderTopColor: colors.border,
+                            alignItems: "center",
                           }}
                         >
                           <Text style={[headerCell, { flex: 1.1 }]}>Age / Date</Text>
                           <Text style={[headerCell, { width: 64, textAlign: "center" }]}>Culls</Text>
                           <Text style={[headerCell, { width: 64, textAlign: "center" }]}>Mort</Text>
-                          <Text style={[headerCell, { width: 44, textAlign: "right" }]}>Loss</Text>
+                          <Text style={[headerCell, { width: 40, textAlign: "right" }]}>Loss</Text>
+                          <View style={{ width: 28, marginLeft: 4 }} />
                         </View>
                         {group.rows.map((row) => {
                           const loss = calcTotalDailyLoss(
@@ -516,6 +547,7 @@ export default function MortalityScreen() {
                             activeField?.kind === "culls" && activeField.age === row.age;
                           const mortActive =
                             activeField?.kind === "mort" && activeField.age === row.age;
+                          const showNeedsEntry = needsEntry(row, todayKey());
                           return (
                             <View
                               key={row.mortalityDate}
@@ -576,7 +608,7 @@ export default function MortalityScreen() {
                               />
                               <Text
                                 style={{
-                                  width: 44,
+                                  width: 40,
                                   textAlign: "right",
                                   fontWeight: "700",
                                   fontSize: 14,
@@ -584,6 +616,16 @@ export default function MortalityScreen() {
                               >
                                 {loss}
                               </Text>
+                              <View
+                                style={{
+                                  width: 28,
+                                  marginLeft: 4,
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                {showNeedsEntry ? <NeedsEntryIcon /> : null}
+                              </View>
                             </View>
                           );
                         })}

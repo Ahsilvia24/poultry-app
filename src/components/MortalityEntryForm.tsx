@@ -48,7 +48,29 @@ type DayRow = {
   mortalityDate: string;
   dailyMortalityCount: string;
   cullCount: string;
+  /** True once a saved record exists or the tech edits this day. */
+  hasEntry: boolean;
 };
+
+function NeedsEntryIcon() {
+  return (
+    <span
+      className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-400 text-sm font-black leading-none text-yellow-950"
+      title="Mortality needs entry"
+      aria-label="Mortality needs entry"
+    >
+      !
+    </span>
+  );
+}
+
+function todayKeyLocal() {
+  return format(todayDate(), "yyyy-MM-dd");
+}
+
+function needsEntry(row: DayRow) {
+  return row.mortalityDate <= todayKeyLocal() && !row.hasEntry;
+}
 
 type WeekGroup = {
   week: number;
@@ -103,6 +125,7 @@ function buildRows(
       mortalityDate,
       dailyMortalityCount: existing ? String(existing.dailyMortalityCount) : "0",
       cullCount: existing ? String(existing.cullCount) : "0",
+      hasEntry: Boolean(existing),
     });
   }
   return rows;
@@ -362,7 +385,9 @@ export function MortalityEntryForm({
 
   function updateRow(age: number, patch: Partial<Pick<DayRow, "dailyMortalityCount" | "cullCount">>) {
     setRows((prev) => {
-      const next = prev.map((r) => (r.age === age ? { ...r, ...patch } : r));
+      const next = prev.map((r) =>
+        r.age === age ? { ...r, ...patch, hasEntry: true } : r,
+      );
       rowsRef.current = next;
       return next;
     });
@@ -550,6 +575,7 @@ export function MortalityEntryForm({
                             <th className="px-3 py-2 font-semibold text-stone-600">Culls</th>
                             <th className="px-3 py-2 font-semibold text-stone-600">Mortality</th>
                             <th className="px-3 py-2 font-semibold text-stone-600">Loss</th>
+                            <th className="w-10 px-2 py-2" aria-hidden="true" />
                           </tr>
                         </thead>
                         <tbody>
@@ -613,6 +639,9 @@ export function MortalityEntryForm({
                                   />
                                 </td>
                                 <td className="px-3 py-2 font-semibold text-stone-800">{loss}</td>
+                                <td className="px-2 py-2 text-center">
+                                  {needsEntry(row) ? <NeedsEntryIcon /> : null}
+                                </td>
                               </tr>
                             );
                           })}
