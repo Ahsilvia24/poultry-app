@@ -98,9 +98,9 @@ export default function DashboardScreen() {
                 style={{ flex: 1 }}
               />
               <PrimaryButton
-                label="Reports"
+                label="Add farm"
                 secondary
-                onPress={() => router.push("/(tabs)/reports")}
+                onPress={() => router.push("/(tabs)/farms")}
                 style={{ flex: 1 }}
               />
             </View>
