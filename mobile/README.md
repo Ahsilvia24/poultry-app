@@ -59,6 +59,13 @@ Requires an [Apple Developer](https://developer.apple.com) account (~$99/yr).
 **From Expo dashboard (phone-friendly):** open the project → **Workflows** → run **iOS TestFlight**  
 (`.eas/workflows/ios-testflight.yml`). If you see “no workflows found”, make sure GitHub is connected and the project directory is set to `mobile`.
 
+> Free Expo plan: the workflow uses `submit` (not the paid `testflight` job). After it finishes, the build still appears in TestFlight once App Store Connect finishes processing.
+
+**Or build only, then submit from the build page:**
+
+1. Run **Build iOS only**
+2. Open the finished build on expo.dev → **Submit** / distribute to App Store Connect
+
 **From a computer / SSH:**
 
 ```bash

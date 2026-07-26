@@ -1,5 +1,8 @@
 name: iOS TestFlight
 
+# Uses type: submit (works on Expo free plan).
+# type: testflight with build_id requires a paid Expo plan.
+
 jobs:
   build_ios:
     name: Build iOS
@@ -9,13 +12,9 @@ jobs:
       profile: production
 
   submit_ios:
-    name: Submit to TestFlight
+    name: Submit to App Store Connect
     needs: [build_ios]
-    type: testflight
+    type: submit
     params:
       build_id: ${{ needs.build_ios.outputs.build_id }}
-      changelog: |
-        UI parity with web mobile layout:
-        - Fixed duplicate bottom tab labels
-        - Dashboard / Farms / Mortality / LFO / Tools restyle
-        - PoultryTech brand header and metric cards
+      profile: production
