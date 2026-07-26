@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, Input, Label } from "@/components/ui";
 
 /** Gallons of water → lbs (approx). */
 const LBS_PER_GALLON = 8.34;
 /** Water:feed weight ratio used to back into feed. */
 const WATER_TO_FEED_RATIO = 1.9;
+const STORAGE_KEY = "poultry.lfo.consumptionRateCalculator";
 
 function parsePositive(value: string): number | null {
   if (value.trim() === "") return null;
@@ -19,9 +20,44 @@ function formatNum(n: number, digits = 2) {
   return n.toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
+function readStored(): { dailyWaterGallons: string; headCount: string } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { dailyWaterGallons: "", headCount: "" };
+    const parsed = JSON.parse(raw) as { dailyWaterGallons?: unknown; headCount?: unknown };
+    return {
+      dailyWaterGallons:
+        typeof parsed.dailyWaterGallons === "string" ? parsed.dailyWaterGallons : "",
+      headCount: typeof parsed.headCount === "string" ? parsed.headCount : "",
+    };
+  } catch {
+    return { dailyWaterGallons: "", headCount: "" };
+  }
+}
+
 export function ConsumptionRateCalculator() {
   const [dailyWaterGallons, setDailyWaterGallons] = useState("");
   const [headCount, setHeadCount] = useState("");
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const stored = readStored();
+    setDailyWaterGallons(stored.dailyWaterGallons);
+    setHeadCount(stored.headCount);
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ dailyWaterGallons, headCount }),
+      );
+    } catch {
+      // ignore quota / private mode failures
+    }
+  }, [dailyWaterGallons, headCount, ready]);
 
   const result = useMemo(() => {
     const water = parsePositive(dailyWaterGallons);
