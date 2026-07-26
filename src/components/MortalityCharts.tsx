@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Bar,
   BarChart,
@@ -19,6 +20,10 @@ import { Button, Card } from "@/components/ui";
 
 export type CumulativePoint = { birdAgeInDays: number; cumulative: number; label?: string };
 export type HouseBarPoint = { houseLabel: string; mortality: number; culls: number; total: number };
+export type HouseByDateMatrix = {
+  dates: string[];
+  rows: Array<{ houseLabel: string; byDate: Record<string, number> }>;
+};
 export type CauseRow = { cause: string; count: number; pct: number };
 export type FarmRow = {
   farmName: string;
@@ -29,20 +34,59 @@ export type FarmRow = {
   pct: number;
 };
 
+function formatDateHeader(dateKey: string) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  if (!y || !m || !d) return dateKey;
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 export function MortalityCharts({
   cumulativeByAge,
   byHouse,
+  byHouseByDate,
   byCause,
   byFarm,
   filterLabel,
 }: {
   cumulativeByAge: CumulativePoint[];
   byHouse: HouseBarPoint[];
+  byHouseByDate: HouseByDateMatrix;
   byCause: CauseRow[];
   byFarm: FarmRow[];
   filterLabel: string;
 }) {
+  const [copiedHouseByDate, setCopiedHouseByDate] = useState(false);
+
+  function houseByDateTsv() {
+    const header = ["House", ...byHouseByDate.dates.map(formatDateHeader), "Total"];
+    const lines = byHouseByDate.rows.map((row) => {
+      const values = byHouseByDate.dates.map((d) => row.byDate[d] ?? 0);
+      const total = values.reduce((sum, n) => sum + n, 0);
+      return [row.houseLabel, ...values, total].join("\t");
+    });
+    return [header.join("\t"), ...lines].join("\n");
+  }
+
+  async function copyHouseByDate() {
+    if (byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(houseByDateTsv());
+      setCopiedHouseByDate(true);
+      window.setTimeout(() => setCopiedHouseByDate(false), 2000);
+    } catch {
+      setCopiedHouseByDate(false);
+    }
+  }
+
   function exportCsv() {
+    const houseDateHeaders = ["House", ...byHouseByDate.dates, "Total"];
+    const houseDateRows = byHouseByDate.rows.map((row) => {
+      const values = byHouseByDate.dates.map((d) => row.byDate[d] ?? 0);
+      const total = values.reduce((sum, n) => sum + n, 0);
+      return [row.houseLabel, ...values, total];
+    });
+
     const csv = [
       toCsv(
         ["Bird age (days)", "Cumulative mortality"],
@@ -53,6 +97,8 @@ export function MortalityCharts({
         ["House", "Mortality", "Culls", "Total"],
         byHouse.map((h) => [h.houseLabel, h.mortality, h.culls, h.total]),
       ),
+      "",
+      toCsv(houseDateHeaders, houseDateRows),
       "",
       toCsv(
         ["Cause", "Count", "Pct"],
@@ -82,6 +128,15 @@ export function MortalityCharts({
           title: "By house",
           headers: ["House", "Mortality", "Culls", "Total"],
           rows: byHouse.map((h) => [h.houseLabel, h.mortality, h.culls, h.total]),
+        },
+        {
+          title: "By house and date",
+          headers: ["House", ...byHouseByDate.dates.map(formatDateHeader), "Total"],
+          rows: byHouseByDate.rows.map((row) => {
+            const values = byHouseByDate.dates.map((d) => row.byDate[d] ?? 0);
+            const total = values.reduce((sum, n) => sum + n, 0);
+            return [row.houseLabel, ...values, total];
+          }),
         },
         {
           title: "By cause",
@@ -128,7 +183,10 @@ export function MortalityCharts({
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={cumulativeByAge}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                <XAxis dataKey="birdAgeInDays" label={{ value: "Bird age (days)", position: "insideBottom", offset: -2 }} />
+                <XAxis
+                  dataKey="birdAgeInDays"
+                  label={{ value: "Bird age (days)", position: "insideBottom", offset: -2 }}
+                />
                 <YAxis />
                 <Tooltip />
                 <Legend />
@@ -142,6 +200,78 @@ export function MortalityCharts({
                 />
               </LineChart>
             </ResponsiveContainer>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="font-bold">Mortality by house and date</h3>
+            <p className="mt-1 text-sm text-stone-500">
+              Total daily loss (mortality + culls) for the selected date range.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={copyHouseByDate}
+            disabled={byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0}
+          >
+            {copiedHouseByDate ? "Copied" : "Copy to clipboard"}
+          </Button>
+        </div>
+        <div className="mt-3 overflow-x-auto">
+          {byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0 ? (
+            <p className="text-sm text-stone-500">No data for current filters.</p>
+          ) : (
+            <table className="min-w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-stone-200 text-stone-500">
+                  <th className="sticky left-0 z-10 bg-white py-2 pr-3 font-semibold">House</th>
+                  {byHouseByDate.dates.map((d) => (
+                    <th
+                      key={d}
+                      className="whitespace-nowrap px-2 py-2 text-center font-semibold tabular-nums"
+                    >
+                      {formatDateHeader(d)}
+                    </th>
+                  ))}
+                  <th className="whitespace-nowrap px-2 py-2 text-right font-semibold">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byHouseByDate.rows.map((row) => {
+                  const total = byHouseByDate.dates.reduce(
+                    (sum, d) => sum + (row.byDate[d] ?? 0),
+                    0,
+                  );
+                  return (
+                    <tr key={row.houseLabel} className="border-t border-stone-100">
+                      <td className="sticky left-0 z-10 bg-white py-2 pr-3 font-semibold text-stone-900">
+                        {row.houseLabel}
+                      </td>
+                      {byHouseByDate.dates.map((d) => {
+                        const n = row.byDate[d] ?? 0;
+                        return (
+                          <td
+                            key={d}
+                            className={`px-2 py-2 text-center tabular-nums ${
+                              n > 0 ? "font-semibold text-stone-900" : "text-stone-300"
+                            }`}
+                          >
+                            {n}
+                          </td>
+                        );
+                      })}
+                      <td className="px-2 py-2 text-right font-semibold tabular-nums text-stone-900">
+                        {formatNumber(total)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
       </Card>

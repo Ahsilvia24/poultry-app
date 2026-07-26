@@ -354,7 +354,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         </div>
       ) : null}
 
-      <h2 className="mt-8 text-xl font-bold">Houses</h2>
+      <h2 className="mt-8 text-xl font-bold">{farm.farmName}</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         {houseCards.map(
           ({

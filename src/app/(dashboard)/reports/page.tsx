@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
-import { format, parseISO, subDays } from "date-fns";
+import { eachDayOfInterval, format, parseISO, subDays } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calcPercentage } from "@/lib/mortality/calculations";
+import { dateKeyFromDb } from "@/lib/visits/schedule";
 import { MORTALITY_CAUSE_LABELS } from "@/lib/utils";
 import {
   MortalityCharts,
@@ -10,6 +11,7 @@ import {
   type CumulativePoint,
   type FarmRow,
   type HouseBarPoint,
+  type HouseByDateMatrix,
 } from "@/components/MortalityCharts";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 
@@ -39,18 +41,37 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       flocks: {
         where: { deletedAt: null },
         orderBy: { placementDate: "desc" },
-        select: { id: true, flockNumber: true, farmId: true },
+        select: { id: true, flockNumber: true, farmId: true, flockStatus: true },
       },
     },
   });
 
   const selectedFarmId = params.farmId || "";
-  const selectedFlockId = params.flockId || "";
   const selectedCause = params.cause || "";
 
   const flockOptions = farms
     .filter((f) => !selectedFarmId || f.id === selectedFarmId)
-    .flatMap((f) => f.flocks.map((fl) => ({ ...fl, farmName: f.farmName })));
+    .flatMap((f) =>
+      f.flocks.map((fl) => ({
+        ...fl,
+        farmName: f.farmName,
+      })),
+    );
+  const activeFlocks = flockOptions.filter((f) => f.flockStatus === "ACTIVE");
+  const oldFlocks = flockOptions.filter((f) => f.flockStatus !== "ACTIVE");
+  const defaultActiveFlockId = activeFlocks[0]?.id ?? "";
+
+  // First visit (no flockId param) → active flock. Explicit "all" → every flock.
+  const flockParam = params.flockId;
+  const selectedFlockId =
+    flockParam === undefined
+      ? defaultActiveFlockId
+      : flockParam === "" || flockParam === "all"
+        ? ""
+        : flockParam;
+
+  const selectedFlockSelectValue =
+    selectedFlockId === "" ? "all" : selectedFlockId;
 
   const mortalities = await prisma.dailyMortality.findMany({
     where: {
@@ -105,6 +126,72 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
     houseMap.set(key, row);
   }
   const byHouse = [...houseMap.values()].sort((a, b) => b.total - a.total);
+
+  const dateKeys =
+    fromDate <= toDate
+      ? eachDayOfInterval({ start: fromDate, end: toDate }).map((d) => dateKeyFromDb(d))
+      : [];
+  const houseDateMap = new Map<
+    string,
+    { houseLabel: string; sortKey: string; byDate: Record<string, number> }
+  >();
+  for (const m of mortalities) {
+    const farmName = m.houseFlock.flock.farm.farmName;
+    const houseNumber = m.houseFlock.house.houseNumber;
+    const houseLabel = selectedFarmId
+      ? `House ${houseNumber}`
+      : `${farmName} H${houseNumber}`;
+    const sortKey = `${farmName}\0${String(houseNumber).padStart(4, "0")}`;
+    const row = houseDateMap.get(sortKey) ?? {
+      houseLabel,
+      sortKey,
+      byDate: Object.fromEntries(dateKeys.map((d) => [d, 0])),
+    };
+    const dateKey = dateKeyFromDb(m.mortalityDate);
+    row.byDate[dateKey] = (row.byDate[dateKey] ?? 0) + m.totalDailyLoss;
+    houseDateMap.set(sortKey, row);
+  }
+  // Include houses with placement but zero loss in range when a farm/flock is selected
+  if (selectedFarmId || selectedFlockId) {
+    const housesInScope = await prisma.house.findMany({
+      where: {
+        deletedAt: null,
+        farm: {
+          userId: session.user.id,
+          deletedAt: null,
+          ...(selectedFarmId ? { id: selectedFarmId } : {}),
+        },
+        ...(selectedFlockId
+          ? {
+              houseFlocks: {
+                some: { flockId: selectedFlockId },
+              },
+            }
+          : {}),
+      },
+      include: { farm: { select: { farmName: true } } },
+      orderBy: [{ farm: { farmName: "asc" } }, { houseNumber: "asc" }],
+    });
+    for (const h of housesInScope) {
+      const houseLabel = selectedFarmId
+        ? `House ${h.houseNumber}`
+        : `${h.farm.farmName} H${h.houseNumber}`;
+      const sortKey = `${h.farm.farmName}\0${String(h.houseNumber).padStart(4, "0")}`;
+      if (!houseDateMap.has(sortKey)) {
+        houseDateMap.set(sortKey, {
+          houseLabel,
+          sortKey,
+          byDate: Object.fromEntries(dateKeys.map((d) => [d, 0])),
+        });
+      }
+    }
+  }
+  const byHouseByDate: HouseByDateMatrix = {
+    dates: dateKeys,
+    rows: [...houseDateMap.values()]
+      .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+      .map(({ houseLabel, byDate }) => ({ houseLabel, byDate })),
+  };
 
   const causeMap = new Map<string, number>();
   let causeTotal = 0;
@@ -193,13 +280,18 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           </div>
           <div>
             <Label htmlFor="flockId">Flock</Label>
-            <Select id="flockId" name="flockId" defaultValue={selectedFlockId}>
-              <option value="">All flocks</option>
-              {flockOptions.map((f) => (
+            <Select id="flockId" name="flockId" defaultValue={selectedFlockSelectValue}>
+              {activeFlocks.map((f) => (
                 <option key={f.id} value={f.id}>
-                  {f.farmName} — {f.flockNumber}
+                  {selectedFarmId ? f.flockNumber : `${f.farmName} — ${f.flockNumber}`} (active)
                 </option>
               ))}
+              {oldFlocks.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {selectedFarmId ? f.flockNumber : `${f.farmName} — ${f.flockNumber}`}
+                </option>
+              ))}
+              <option value="all">All flocks</option>
             </Select>
           </div>
           <div>
@@ -230,6 +322,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       <MortalityCharts
         cumulativeByAge={cumulativeByAge}
         byHouse={byHouse}
+        byHouseByDate={byHouseByDate}
         byCause={byCause}
         byFarm={byFarm}
         filterLabel={filterLabel}
