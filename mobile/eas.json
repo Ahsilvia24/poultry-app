@@ -25,10 +25,7 @@
     },
     "production": {
       "distribution": "store",
-      "autoIncrement": true,
-      "ios": {
-        "image": "latest"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
