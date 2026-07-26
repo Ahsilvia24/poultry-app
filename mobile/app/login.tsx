@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { useAuth } from "../src/auth";
 import { colors, styles } from "../src/theme";
-import { API_BASE_URL } from "../src/config";
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
@@ -38,7 +37,7 @@ export default function LoginScreen() {
     >
       <View style={[styles.content, { maxWidth: 480, width: "100%", alignSelf: "center" }]}>
         <Text style={[styles.title, { color: colors.accentDark }]}>PoultryTech</Text>
-        <Text style={styles.subtitle}>Service technician farm management</Text>
+        <Text style={styles.subtitle}>Offline farm management · works without internet</Text>
 
         <View style={[styles.card, { marginTop: 24 }]}>
           <Text style={styles.label}>Email</Text>
@@ -69,7 +68,10 @@ export default function LoginScreen() {
           </Pressable>
         </View>
         <Text style={[styles.muted, { marginTop: 12 }]}>
-          API: {API_BASE_URL}
+          Demo: tech@poultry.local / password123
+        </Text>
+        <Text style={[styles.muted, { marginTop: 4 }]}>
+          All data is stored on this phone.
         </Text>
       </View>
     </KeyboardAvoidingView>

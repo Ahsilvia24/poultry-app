@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api, clearToken, getToken, saveToken } from "./api";
+import * as SecureStore from "expo-secure-store";
+import { initOfflineDb } from "./db";
+import { getDb } from "./db/database";
 
 type User = { id: string; name: string; email: string };
 
@@ -10,6 +12,7 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
 };
 
+const SESSION_KEY = "poultrytech_offline_session";
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -19,15 +22,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const token = await getToken();
-        if (!token) {
+        await initOfflineDb();
+        const session = await SecureStore.getItemAsync(SESSION_KEY);
+        if (!session) {
           setUser(null);
           return;
         }
-        const me = await api<{ user: User }>("/api/mobile/me");
-        setUser(me.user);
+        const parsed = JSON.parse(session) as User;
+        const row = getDb().getFirstSync<{ id: string; name: string; email: string }>(
+          "SELECT id, name, email FROM users WHERE id = ?",
+          [parsed.id],
+        );
+        setUser(row ? { id: row.id, name: row.name, email: row.email } : null);
       } catch {
-        await clearToken();
         setUser(null);
       } finally {
         setLoading(false);
@@ -36,17 +43,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const result = await api<{ token: string; user: User }>("/api/mobile/login", {
-      method: "POST",
-      auth: false,
-      body: JSON.stringify({ email, password }),
-    });
-    await saveToken(result.token);
-    setUser(result.user);
+    await initOfflineDb();
+    const row = getDb().getFirstSync<{ id: string; name: string; email: string; password: string }>(
+      "SELECT * FROM users WHERE email = ?",
+      [email.trim().toLowerCase()],
+    );
+    if (!row || row.password !== password) {
+      // also allow exact email match as seeded
+      const row2 = getDb().getFirstSync<{ id: string; name: string; email: string; password: string }>(
+        "SELECT * FROM users WHERE email = ?",
+        [email.trim()],
+      );
+      if (!row2 || row2.password !== password) {
+        throw new Error("Invalid email or password");
+      }
+      const next = { id: row2.id, name: row2.name, email: row2.email };
+      await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(next));
+      setUser(next);
+      return;
+    }
+    const next = { id: row.id, name: row.name, email: row.email };
+    await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(next));
+    setUser(next);
   }, []);
 
   const signOut = useCallback(async () => {
-    await clearToken();
+    await SecureStore.deleteItemAsync(SESSION_KEY);
     setUser(null);
   }, []);
 

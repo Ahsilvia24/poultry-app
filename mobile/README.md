@@ -1,54 +1,90 @@
-# PoultryTech Mobile (Expo)
+# PoultryTech Mobile (Offline-first)
 
-Native iOS/Android app for farm visits. Uses Expo Go for on-device testing.
+Native iOS/Android app. **All farm data lives in SQLite on the phone** — no Mac server or internet required after install.
 
-## Prerequisites
+## What’s included (v1)
 
-1. Backend running on your Mac (port 3000, reachable on LAN)
-2. [Expo Go](https://expo.dev/go) installed on your phone
-3. Phone and Mac on the **same Wi‑Fi**
-
-## Configure API URL
-
-Edit [`src/config.ts`](src/config.ts) and set your Mac’s LAN IP:
-
-```ts
-export const API_BASE_URL = "http://192.168.0.79:3000";
-```
-
-Find your IP: System Settings → Network, or `ipconfig getifaddr en0`.
-
-## Run
-
-Terminal 1 — API (from `poultry-app/`):
-
-```bash
-npm run dev -- --hostname 0.0.0.0 --port 3000
-```
-
-Terminal 2 — Expo (from `poultry-app/mobile/`):
-
-```bash
-npm start
-```
-
-Scan the QR code with:
-- **iPhone:** Camera app → opens Expo Go
-- **Android:** Expo Go → Scan QR code
+- Local login (demo account)
+- Dashboard, Farms, house cards (Mort. / PHC / weekly / min vent)
+- Mortality age grid + by-date entry
+- LFO create / inventory
+- Tools (temp curve, cool cells, lights, ventilation math)
+- Reports (house × date matrix)
+- Routine visit logging on farm detail
 
 ## Demo login
 
 - Email: `tech@poultry.local`
 - Password: `password123`
 
-## App Store / Play Store builds (later)
+Demo farms (including **Bay View × 12 houses**) seed automatically on first launch.
 
-True store installs need an Expo EAS build and developer accounts:
+## Develop on a simulator / device (dev client)
 
 ```bash
-npx eas-cli login
-npx eas build --platform ios
-npx eas build --platform android
+cd poultry-app/mobile
+npm install --legacy-peer-deps
+npx expo start
 ```
 
-Until then, **Expo Go** is the download-and-run path for testing.
+> **Note:** Expo Go may not include every native SQLite build path. For a real offline install, use an EAS build below.
+
+## Installable build (download to your phone)
+
+### 1. Expo account
+
+```bash
+npm install -g eas-cli
+cd poultry-app/mobile
+eas login
+eas init   # links this app to your Expo account and writes projectId into app.json
+```
+
+### 2. Android APK (easiest sideload)
+
+```bash
+eas build --platform android --profile preview
+```
+
+When the build finishes, open the link on your phone and install the APK.
+
+### 3. iPhone (TestFlight / ad hoc)
+
+Requires an [Apple Developer](https://developer.apple.com) account (~$99/yr):
+
+```bash
+eas build --platform ios --profile preview
+eas submit --platform ios   # or install via internal distribution link
+```
+
+### 4. Development client (for active coding)
+
+```bash
+eas build --platform android --profile development
+# or
+eas build --platform ios --profile development
+```
+
+Then `npx expo start --dev-client` and open the installed PoultryTech app.
+
+## Offline behavior
+
+- First launch creates the local DB and seeds demo data.
+- Saves (mortality, LFO, visits) write only to the phone.
+- UI shows **“Saved on this phone”** / **Offline**.
+- Cloud sync with the Next.js web app is **not** in v1 (planned later).
+
+## Project layout
+
+| Path | Role |
+|------|------|
+| `src/db/` | SQLite open + schema + seed |
+| `src/repos/data.ts` | Offline repositories |
+| `src/lib/` | Mortality math + tools charts |
+| `app/(tabs)/` | Screens |
+
+## Troubleshooting
+
+- **Blank / crash on launch:** Rebuild with EAS so `expo-sqlite` is in the native binary.
+- **Want a clean demo again:** uninstall the app (wipes SQLite) and reinstall.
+- **Peer dependency warnings:** use `npm install --legacy-peer-deps`.

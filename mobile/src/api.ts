@@ -1,42 +1,13 @@
-import * as SecureStore from "expo-secure-store";
-import { API_BASE_URL } from "./config";
-
-const TOKEN_KEY = "poultrytech_token";
-
-export async function saveToken(token: string) {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
-}
-
+/**
+ * Offline-first: network API helpers are unused.
+ * Kept as a thin facade so older imports compile during migration.
+ */
+export async function saveToken(_token: string) {}
 export async function getToken() {
-  return SecureStore.getItemAsync(TOKEN_KEY);
+  return null;
 }
+export async function clearToken() {}
 
-export async function clearToken() {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
-}
-
-export async function api<T>(
-  path: string,
-  options: RequestInit & { auth?: boolean } = {},
-): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
-
-  if (options.auth !== false) {
-    const token = await getToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error || `Request failed (${res.status})`);
-  }
-  return data as T;
+export async function api<T>(_path: string, _options?: RequestInit & { auth?: boolean }): Promise<T> {
+  throw new Error("Network API disabled — this build is offline-first.");
 }

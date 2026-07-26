@@ -1,30 +1,19 @@
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { api } from "../../../src/api";
+import { listFarms } from "../../../src/repos/data";
 import { colors, styles } from "../../../src/theme";
-
-type FarmList = {
-  farms: Array<{
-    id: string;
-    farmName: string;
-    growerName: string;
-    phoneNumber: string | null;
-    numberOfHouses: number;
-    activeFlock: { flockNumber: string } | null;
-  }>;
-};
 
 export default function FarmsScreen() {
   const router = useRouter();
-  const [data, setData] = useState<FarmList | null>(null);
+  const [data, setData] = useState<ReturnType<typeof listFarms> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       setError(null);
-      setData(await api<FarmList>("/api/mobile/farms"));
+      setData(listFarms());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {

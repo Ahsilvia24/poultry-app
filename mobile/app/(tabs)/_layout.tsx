@@ -4,7 +4,7 @@ import { colors } from "../../src/theme";
 
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
   return (
-    <Text style={{ fontSize: 11, fontWeight: focused ? "800" : "600", color: focused ? colors.accent : colors.muted }}>
+    <Text style={{ fontSize: 10, fontWeight: focused ? "800" : "600", color: focused ? colors.accent : colors.muted }}>
       {label}
     </Text>
   );
@@ -48,7 +48,30 @@ export default function TabsLayout() {
         options={{
           title: "Mortality",
           tabBarIcon: ({ focused }) => <TabIcon label="Mort" focused={focused} />,
-          tabBarLabel: "Mortality",
+          tabBarLabel: "Mort",
+        }}
+      />
+      <Tabs.Screen
+        name="lfo"
+        options={{
+          title: "LFO",
+          tabBarIcon: ({ focused }) => <TabIcon label="LFO" focused={focused} />,
+          tabBarLabel: "LFO",
+        }}
+      />
+      <Tabs.Screen
+        name="tools"
+        options={{
+          title: "Tools",
+          tabBarIcon: ({ focused }) => <TabIcon label="Tools" focused={focused} />,
+          tabBarLabel: "Tools",
+        }}
+      />
+      <Tabs.Screen
+        name="reports"
+        options={{
+          title: "Reports",
+          href: null,
         }}
       />
     </Tabs>

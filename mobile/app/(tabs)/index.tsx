@@ -1,34 +1,11 @@
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { api } from "../../src/api";
+import { getDashboard } from "../../src/repos/data";
 import { useAuth } from "../../src/auth";
 import { colors, statusColor, styles } from "../../src/theme";
 
-type Dashboard = {
-  stats: {
-    activeFarms: number;
-    activeHouses: number;
-    totalBirdsPlaced: number;
-    mortalityEnteredToday: number;
-    farmsMissingToday: number;
-    openIssues: number;
-    highPriorityIssues: number;
-  };
-  farmCards: Array<{
-    id: string;
-    farmName: string;
-    growerName: string;
-    flockAgeDays: number | null;
-    todayMortality: number;
-    sevenDayMortality: number;
-    cumulativeMortality: number;
-    cumulativeMortalityPct: number;
-    openIssues: number;
-    status: string;
-    missingTodayMortality: boolean;
-  }>;
-};
+type Dashboard = ReturnType<typeof getDashboard>;
 
 export default function DashboardScreen() {
   const { user, signOut } = useAuth();
@@ -40,8 +17,7 @@ export default function DashboardScreen() {
   const load = useCallback(async () => {
     try {
       setError(null);
-      const result = await api<Dashboard>("/api/mobile/dashboard");
-      setData(result);
+      setData(getDashboard());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -72,12 +48,14 @@ export default function DashboardScreen() {
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
         <View>
           <Text style={styles.title}>Dashboard</Text>
-          <Text style={styles.subtitle}>{user?.name}</Text>
+          <Text style={styles.subtitle}>{user?.name} · Offline</Text>
         </View>
         <Pressable onPress={signOut}>
           <Text style={{ color: colors.accent, fontWeight: "700" }}>Sign out</Text>
         </Pressable>
       </View>
+
+      <Text style={[styles.muted, { marginTop: 8 }]}>Saved on this phone — works with no internet.</Text>
 
       {error ? <Text style={{ color: colors.danger, marginTop: 12 }}>{error}</Text> : null}
 
@@ -88,16 +66,22 @@ export default function DashboardScreen() {
             <Stat label="Houses" value={data.stats.activeHouses} />
             <Stat label="Today mort" value={data.stats.mortalityEnteredToday} />
             <Stat label="Missing" value={data.stats.farmsMissingToday} />
-            <Stat label="Issues" value={data.stats.openIssues} />
-            <Stat label="High pri" value={data.stats.highPriorityIssues} />
           </View>
 
-          <Pressable
-            style={[styles.button, { marginVertical: 16 }]}
-            onPress={() => router.push("/(tabs)/mortality")}
-          >
-            <Text style={styles.buttonText}>Enter mortality</Text>
-          </Pressable>
+          <View style={{ flexDirection: "row", gap: 10, marginVertical: 16 }}>
+            <Pressable
+              style={[styles.button, { flex: 1 }]}
+              onPress={() => router.push("/(tabs)/mortality")}
+            >
+              <Text style={styles.buttonText}>Enter mortality</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.buttonSecondary, { flex: 1 }]}
+              onPress={() => router.push("/(tabs)/reports")}
+            >
+              <Text style={styles.buttonSecondaryText}>Reports</Text>
+            </Pressable>
+          </View>
 
           <Text style={[styles.title, { fontSize: 20, marginBottom: 8 }]}>Active farms</Text>
           {data.farmCards.map((farm) => {
@@ -140,7 +124,7 @@ export default function DashboardScreen() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <View style={[styles.card, { width: "30%", flexGrow: 1, marginBottom: 8, padding: 12 }]}>
+    <View style={[styles.card, { width: "45%", flexGrow: 1, marginBottom: 8, padding: 12 }]}>
       <Text style={styles.muted}>{label}</Text>
       <Text style={{ fontSize: 22, fontWeight: "800", color: colors.text }}>{value}</Text>
     </View>
