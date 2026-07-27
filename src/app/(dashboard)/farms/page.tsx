@@ -8,7 +8,7 @@ import { Button, Card, PageHeader } from "@/components/ui";
 import { summarizeForDate } from "@/lib/mortality/calculations";
 import { cn, formatNumber } from "@/lib/utils";
 
-function PencilIcon({ className }: { className?: string }) {
+function SettingsIcon({ className }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -20,8 +20,8 @@ function PencilIcon({ className }: { className?: string }) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
     </svg>
   );
 }
@@ -182,14 +182,6 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                     >
                       {farm.isActive ? "Active" : "Inactive"}
                     </span>
-                    <Link
-                      href={`/farms/${farm.id}`}
-                      aria-label={`Edit ${farm.farmName}`}
-                      title="Edit"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-200 hover:text-stone-900"
-                    >
-                      <PencilIcon className="h-5 w-5" />
-                    </Link>
                   </div>
                 </div>
                 <Link href={`/farms/${farm.id}`} className="mt-4 block">
@@ -237,13 +229,21 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                   </div>
                 </Link>
                 <div className="mt-1 flex items-center justify-end gap-1">
+                  {!farm.isActive ? (
+                    <ReactivateFarmButton farmId={farm.id} appearance="text" />
+                  ) : null}
+                  <Link
+                    href={`/farms/${farm.id}`}
+                    aria-label={`Edit ${farm.farmName} settings`}
+                    title="Settings"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-200 hover:text-stone-900"
+                  >
+                    <SettingsIcon className="h-5 w-5" />
+                  </Link>
                   {farm.isActive ? (
                     <DeactivateFarmButton farmId={farm.id} appearance="icon" />
                   ) : (
-                    <>
-                      <ReactivateFarmButton farmId={farm.id} appearance="text" />
-                      <DeleteFarmButton farmId={farm.id} appearance="icon" />
-                    </>
+                    <DeleteFarmButton farmId={farm.id} appearance="icon" />
                   )}
                 </div>
               </Card>
