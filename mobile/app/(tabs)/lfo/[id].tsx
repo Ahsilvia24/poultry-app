@@ -7,7 +7,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { deleteLfo, getLfo, updateLfo } from "../../../src/repos/data";
@@ -17,18 +17,13 @@ import {
 } from "../../../src/lib/lfo/calculate";
 import { colors, styles } from "../../../src/theme";
 import { Card, PageHeader, PrimaryButton } from "../../../src/components/ui";
-
-/** Half-hour slots: top (:00) and bottom (:30) of each hour. */
-const FEED_UP_TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const minutes = i * 30;
-  const hour24 = Math.floor(minutes / 60);
-  const minute = minutes % 60;
-  const value = `${String(hour24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-  const ampm = hour24 < 12 ? "AM" : "PM";
-  const label = `${hour12}:${String(minute).padStart(2, "0")} ${ampm}`;
-  return { value, label };
-});
+import { DatePickerField } from "../../../src/components/DatePickerField";
+import { TimeScrollPickerField } from "../../../src/components/TimeScrollPicker";
+import {
+  NumberKeypad,
+  appendKeypadDigit,
+  backspaceKeypadValue,
+} from "../../../src/components/NumberKeypad";
 
 function formatLbs(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -83,6 +78,11 @@ type HouseDraft = {
   feedUpTime: string;
 };
 
+type ActiveField =
+  | { kind: "rate" }
+  | { kind: "binA"; houseId: string }
+  | { kind: "binB"; houseId: string };
+
 function loadDraft(id: string) {
   const lfo = getLfo(id);
   return {
@@ -108,8 +108,48 @@ function loadDraft(id: string) {
   };
 }
 
+function FieldButton({
+  label,
+  value,
+  active,
+  onPress,
+  style,
+}: {
+  label: string;
+  value: string;
+  active: boolean;
+  onPress: () => void;
+  style?: object;
+}) {
+  return (
+    <View style={style}>
+      <Text style={styles.label}>{label}</Text>
+      <Pressable
+        onPress={onPress}
+        style={[
+          styles.input,
+          active
+            ? { borderColor: colors.accentDark, borderWidth: 2 }
+            : null,
+        ]}
+      >
+        <Text
+          style={{
+            fontSize: 18,
+            fontWeight: "700",
+            color: value ? colors.text : colors.muted,
+          }}
+        >
+          {value || "0"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function EditLfoScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -121,6 +161,8 @@ export default function EditLfoScreen() {
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [houses, setHouses] = useState<HouseDraft[]>([]);
   const [ready, setReady] = useState(false);
+  const [activeField, setActiveField] = useState<ActiveField | null>(null);
+  const [replaceOnType, setReplaceOnType] = useState(false);
 
   const reload = useCallback(() => {
     if (!id) {
@@ -147,6 +189,17 @@ export default function EditLfoScreen() {
     reload();
   }, [reload]);
 
+  useEffect(() => {
+    // LFO edit is nested under the LFO stack — hide the root tab bar
+    const tabs = navigation.getParent();
+    tabs?.setOptions({
+      tabBarStyle: activeField ? { display: "none" } : undefined,
+    });
+    return () => {
+      tabs?.setOptions({ tabBarStyle: undefined });
+    };
+  }, [activeField, navigation]);
+
   const calc = useMemo(() => {
     const rate = Number(consumptionRate);
     return calculateLastFeedOrder({
@@ -167,17 +220,47 @@ export default function EditLfoScreen() {
     setHouses((prev) => prev.map((h) => (h.houseId === houseId ? { ...h, ...patch } : h)));
   }
 
-  function cycleTime(houseId: string, current: string, dir: 1 | -1) {
-    if (!current) {
-      updateHouse(houseId, { feedUpTime: dir === 1 ? "06:00" : "18:00" });
+  function getActiveValue() {
+    if (!activeField) return "";
+    if (activeField.kind === "rate") return consumptionRate;
+    const house = houses.find((h) => h.houseId === activeField.houseId);
+    if (!house) return "";
+    return activeField.kind === "binA" ? house.binAPounds : house.binBPounds;
+  }
+
+  function setActiveValue(next: string) {
+    if (!activeField) return;
+    if (activeField.kind === "rate") {
+      setConsumptionRate(next);
       return;
     }
-    const idx = FEED_UP_TIME_OPTIONS.findIndex((o) => o.value === current);
-    const next =
-      idx < 0
-        ? 0
-        : (idx + dir + FEED_UP_TIME_OPTIONS.length) % FEED_UP_TIME_OPTIONS.length;
-    updateHouse(houseId, { feedUpTime: FEED_UP_TIME_OPTIONS[next]!.value });
+    if (activeField.kind === "binA") {
+      updateHouse(activeField.houseId, { binAPounds: next });
+      return;
+    }
+    updateHouse(activeField.houseId, { binBPounds: next });
+  }
+
+  function focusField(field: ActiveField) {
+    setActiveField(field);
+    setReplaceOnType(true);
+  }
+
+  function onDigit(d: string) {
+    const current = getActiveValue();
+    const base = replaceOnType && d !== "." ? "" : current;
+    setReplaceOnType(false);
+    setActiveValue(appendKeypadDigit(base, d, true));
+  }
+
+  function onBackspace() {
+    setReplaceOnType(false);
+    setActiveValue(backspaceKeypadValue(getActiveValue()));
+  }
+
+  function onEnter() {
+    setActiveField(null);
+    setReplaceOnType(false);
   }
 
   function save() {
@@ -198,6 +281,7 @@ export default function EditLfoScreen() {
       });
       setMsg("Saved");
       setError(null);
+      setActiveField(null);
       reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save LFO");
@@ -221,266 +305,225 @@ export default function EditLfoScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Pressable
-          onPress={() => router.back()}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 6,
-            marginBottom: 8,
-            alignSelf: "flex-start",
-            paddingVertical: 6,
-            paddingRight: 8,
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Back to LFOs"
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          style={styles.screen}
+          contentContainerStyle={[styles.content, { paddingBottom: activeField ? 8 : 40 }]}
+          keyboardShouldPersistTaps="handled"
         >
-          <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
-          <Text style={{ fontWeight: "800", color: colors.accentDark, fontSize: 16 }}>LFOs</Text>
-        </Pressable>
+          <Pressable
+            onPress={() => router.back()}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 8,
+              alignSelf: "flex-start",
+              paddingVertical: 6,
+              paddingRight: 8,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to LFOs"
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
+            <Text style={{ fontWeight: "800", color: colors.accentDark, fontSize: 16 }}>LFOs</Text>
+          </Pressable>
 
-        <PageHeader
-          title={farmName || "LFO"}
-          subtitle="Edit last feed order"
-        />
+          <PageHeader title={farmName || "LFO"} subtitle="Edit last feed order" />
 
-        {error ? (
-          <Card>
-            <Text style={{ color: colors.danger, fontWeight: "700" }}>{error}</Text>
-            <PrimaryButton label="Back to LFOs" onPress={() => router.replace("/(tabs)/lfo")} />
-          </Card>
-        ) : null}
-
-        {msg ? (
-          <Text style={{ color: colors.accentDark, marginBottom: 8, fontWeight: "700" }}>{msg}</Text>
-        ) : null}
-
-        {ready ? (
-          <>
+          {error ? (
             <Card>
-              <Text style={styles.label}>Order date (YYYY-MM-DD)</Text>
-              <TextInput
-                style={styles.input}
-                value={orderDate}
-                onChangeText={setOrderDate}
-                autoCapitalize="none"
-                placeholder="2026-07-26"
-              />
-              <Text style={[styles.label, { marginTop: 12 }]}>
-                Consumption rate (lbs/bird/day)
-              </Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="decimal-pad"
-                value={consumptionRate}
-                onChangeText={setConsumptionRate}
-              />
+              <Text style={{ color: colors.danger, fontWeight: "700" }}>{error}</Text>
+              <PrimaryButton label="Back to LFOs" onPress={() => router.replace("/(tabs)/lfo")} />
             </Card>
+          ) : null}
 
-            <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>
-            {houses.length === 0 ? (
+          {msg ? (
+            <Text style={{ color: colors.accentDark, marginBottom: 8, fontWeight: "700" }}>
+              {msg}
+            </Text>
+          ) : null}
+
+          {ready ? (
+            <>
               <Card>
-                <Text style={styles.muted}>
-                  No houses on this farm. Add houses, then create a new LFO.
-                </Text>
-              </Card>
-            ) : null}
-
-            {houses.map((house) => {
-              const result = calc.houses.find((h) => h.houseId === house.houseId);
-              const timeLabel =
-                FEED_UP_TIME_OPTIONS.find((o) => o.value === house.feedUpTime)?.label ??
-                (house.feedUpTime ? house.feedUpTime : "Select time");
-              return (
-                <Card key={house.houseId}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      marginBottom: 8,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "800" }}>House {house.houseNumber}</Text>
-                    <Text style={styles.muted}>
-                      Head count {house.headCount.toLocaleString()}
-                    </Text>
-                  </View>
-                  <View style={styles.row}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.label}>Bin A (lbs)</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="decimal-pad"
-                        value={house.binAPounds}
-                        onChangeText={(v) => updateHouse(house.houseId, { binAPounds: v })}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.label}>Bin B (lbs)</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="decimal-pad"
-                        value={house.binBPounds}
-                        onChangeText={(v) => updateHouse(house.houseId, { binBPounds: v })}
-                      />
-                    </View>
-                  </View>
-                  <Text style={[styles.label, { marginTop: 4 }]}>Feed up date (YYYY-MM-DD)</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={house.feedUpDate}
-                    onChangeText={(v) => updateHouse(house.houseId, { feedUpDate: v })}
-                    autoCapitalize="none"
-                    placeholder="2026-07-26"
+                <DatePickerField
+                  label="Order date"
+                  value={orderDate}
+                  onChange={setOrderDate}
+                />
+                <View style={{ marginTop: 12 }}>
+                  <FieldButton
+                    label="Consumption rate (lbs/bird/day)"
+                    value={consumptionRate}
+                    active={activeField?.kind === "rate"}
+                    onPress={() => focusField({ kind: "rate" })}
                   />
-                  <Text style={[styles.label, { marginTop: 4 }]}>Feed up time</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <Pressable
-                      onPress={() => cycleTime(house.houseId, house.feedUpTime, -1)}
+                </View>
+              </Card>
+
+              <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>
+              {houses.length === 0 ? (
+                <Card>
+                  <Text style={styles.muted}>
+                    No houses on this farm. Add houses, then create a new LFO.
+                  </Text>
+                </Card>
+              ) : null}
+
+              {houses.map((house) => {
+                const result = calc.houses.find((h) => h.houseId === house.houseId);
+                return (
+                  <Card key={house.houseId}>
+                    <View
                       style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 10,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "#fff",
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: 8,
                       }}
                     >
-                      <Ionicons name="chevron-back" size={20} color={colors.text} />
-                    </Pressable>
-                    <Pressable
-                      onPress={() => cycleTime(house.houseId, house.feedUpTime, 1)}
-                      style={{
-                        flex: 1,
-                        minHeight: 44,
-                        borderRadius: 10,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "#fff",
-                        paddingHorizontal: 8,
-                      }}
-                    >
-                      <Text style={{ fontWeight: "700", color: colors.text }}>{timeLabel}</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => cycleTime(house.houseId, house.feedUpTime, 1)}
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 10,
-                        borderWidth: 1,
-                        borderColor: colors.border,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "#fff",
-                      }}
-                    >
-                      <Ionicons name="chevron-forward" size={20} color={colors.text} />
-                    </Pressable>
+                      <Text style={{ fontWeight: "800" }}>House {house.houseNumber}</Text>
+                      <Text style={styles.muted}>
+                        Head count {house.headCount.toLocaleString()}
+                      </Text>
+                    </View>
+                    <View style={styles.row}>
+                      <FieldButton
+                        label="Bin A (lbs)"
+                        value={house.binAPounds}
+                        active={
+                          activeField?.kind === "binA" && activeField.houseId === house.houseId
+                        }
+                        onPress={() => focusField({ kind: "binA", houseId: house.houseId })}
+                        style={{ flex: 1 }}
+                      />
+                      <FieldButton
+                        label="Bin B (lbs)"
+                        value={house.binBPounds}
+                        active={
+                          activeField?.kind === "binB" && activeField.houseId === house.houseId
+                        }
+                        onPress={() => focusField({ kind: "binB", houseId: house.houseId })}
+                        style={{ flex: 1 }}
+                      />
+                    </View>
+                    <View style={{ marginTop: 4 }}>
+                      <DatePickerField
+                        label="Feed up date"
+                        value={house.feedUpDate}
+                        onChange={(date) => updateHouse(house.houseId, { feedUpDate: date })}
+                      />
+                    </View>
+                    <TimeScrollPickerField
+                      label="Feed up time"
+                      value={house.feedUpTime}
+                      onChange={(time) => updateHouse(house.houseId, { feedUpTime: time })}
+                    />
                     {house.feedUpTime ? (
                       <Pressable
                         onPress={() => updateHouse(house.houseId, { feedUpTime: "" })}
+                        style={{ alignSelf: "flex-start", marginTop: 6 }}
                         hitSlop={8}
                       >
-                        <Text style={{ color: colors.muted, fontWeight: "700" }}>Clear</Text>
+                        <Text style={{ color: colors.muted, fontWeight: "700" }}>Clear time</Text>
                       </Pressable>
                     ) : null}
-                  </View>
 
-                  {result ? (
-                    <View style={{ marginTop: 12, gap: 4 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                        <Text style={styles.muted}>Feed off (−6h)</Text>
-                        <Text style={{ fontWeight: "600" }}>
-                          {formatFeedStamp(result.feedOffAt)}
-                        </Text>
-                      </View>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                        <Text style={styles.muted}>Hours until feed off</Text>
-                        <Text style={{ fontWeight: "600" }}>
-                          {result.hoursUntilFeedOff == null
-                            ? "—"
-                            : formatHours(result.hoursUntilFeedOff)}
-                        </Text>
-                      </View>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                        <Text style={styles.muted}>Hourly consumption</Text>
-                        <Text style={{ fontWeight: "600" }}>
-                          {formatLbs(result.hourlyConsumptionLbs)} lbs/hr
-                        </Text>
-                      </View>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                        <Text style={styles.muted}>
-                          {result.orderLbs != null && result.orderLbs > 0
-                            ? "LFO (order)"
-                            : result.reclaimLbs != null && result.reclaimLbs > 0
-                              ? "Reclaim"
-                              : "LFO / reclaim"}
-                        </Text>
-                        <Text style={{ fontWeight: "800" }}>
-                          {result.balanceLbs == null
-                            ? "—"
-                            : result.orderLbs != null && result.orderLbs > 0
-                              ? `Order ${formatLbs(result.orderLbs)} lbs`
+                    {result ? (
+                      <View style={{ marginTop: 12, gap: 4 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                          <Text style={styles.muted}>Feed off (−6h)</Text>
+                          <Text style={{ fontWeight: "600" }}>
+                            {formatFeedStamp(result.feedOffAt)}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                          <Text style={styles.muted}>Hours until feed off</Text>
+                          <Text style={{ fontWeight: "600" }}>
+                            {result.hoursUntilFeedOff == null
+                              ? "—"
+                              : formatHours(result.hoursUntilFeedOff)}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                          <Text style={styles.muted}>Hourly consumption</Text>
+                          <Text style={{ fontWeight: "600" }}>
+                            {formatLbs(result.hourlyConsumptionLbs)} lbs/hr
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                          <Text style={styles.muted}>
+                            {result.orderLbs != null && result.orderLbs > 0
+                              ? "LFO (order)"
                               : result.reclaimLbs != null && result.reclaimLbs > 0
-                                ? `Reclaim ${formatLbs(result.reclaimLbs)} lbs`
-                                : "Even"}
-                        </Text>
+                                ? "Reclaim"
+                                : "LFO / reclaim"}
+                          </Text>
+                          <Text style={{ fontWeight: "800" }}>
+                            {result.balanceLbs == null
+                              ? "—"
+                              : result.orderLbs != null && result.orderLbs > 0
+                                ? `Order ${formatLbs(result.orderLbs)} lbs`
+                                : result.reclaimLbs != null && result.reclaimLbs > 0
+                                  ? `Reclaim ${formatLbs(result.reclaimLbs)} lbs`
+                                  : "Even"}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                  ) : null}
+                    ) : null}
+                  </Card>
+                );
+              })}
+
+              {calc.houses.some((h) => h.feedUpAt) ? (
+                <Card>
+                  <Text style={styles.muted}>
+                    Farm LFO (order):{" "}
+                    <Text style={{ fontWeight: "800", color: colors.text }}>
+                      {formatLbs(calc.totalOrderLbs)} lbs
+                    </Text>
+                  </Text>
+                  <Text style={[styles.muted, { marginTop: 4 }]}>
+                    Farm reclaim:{" "}
+                    <Text style={{ fontWeight: "800", color: colors.text }}>
+                      {formatLbs(calc.totalReclaimLbs)} lbs
+                    </Text>
+                  </Text>
                 </Card>
-              );
-            })}
+              ) : null}
 
-            {calc.houses.some((h) => h.feedUpAt) ? (
               <Card>
-                <Text style={styles.muted}>
-                  Farm LFO (order):{" "}
-                  <Text style={{ fontWeight: "800", color: colors.text }}>
-                    {formatLbs(calc.totalOrderLbs)} lbs
-                  </Text>
-                </Text>
-                <Text style={[styles.muted, { marginTop: 4 }]}>
-                  Farm reclaim:{" "}
-                  <Text style={{ fontWeight: "800", color: colors.text }}>
-                    {formatLbs(calc.totalReclaimLbs)} lbs
-                  </Text>
-                </Text>
+                <Text style={styles.label}>Notes</Text>
+                <TextInput
+                  style={[styles.input, { minHeight: 72, textAlignVertical: "top" }]}
+                  multiline
+                  value={notes}
+                  onChangeText={setNotes}
+                />
               </Card>
-            ) : null}
 
-            <Card>
-              <Text style={styles.label}>Notes</Text>
-              <TextInput
-                style={[styles.input, { minHeight: 72, textAlignVertical: "top" }]}
-                multiline
-                value={notes}
-                onChangeText={setNotes}
-              />
-            </Card>
+              <PrimaryButton label="Save changes" onPress={save} />
+              <Pressable
+                onPress={confirmDelete}
+                style={{ alignItems: "center", paddingVertical: 16 }}
+                accessibilityRole="button"
+                accessibilityLabel="Delete LFO"
+              >
+                <Text style={{ color: colors.danger, fontWeight: "800" }}>Delete LFO</Text>
+              </Pressable>
+            </>
+          ) : null}
+        </ScrollView>
 
-            <PrimaryButton label="Save changes" onPress={save} />
-            <Pressable
-              onPress={confirmDelete}
-              style={{ alignItems: "center", paddingVertical: 16 }}
-              accessibilityRole="button"
-              accessibilityLabel="Delete LFO"
-            >
-              <Text style={{ color: colors.danger, fontWeight: "800" }}>Delete LFO</Text>
-            </Pressable>
-          </>
+        {activeField ? (
+          <NumberKeypad
+            allowDecimal
+            onDigit={onDigit}
+            onBackspace={onBackspace}
+            onEnter={onEnter}
+          />
         ) : null}
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }

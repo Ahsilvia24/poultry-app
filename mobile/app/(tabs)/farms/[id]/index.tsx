@@ -157,6 +157,7 @@ export default function FarmDetailScreen() {
     setError(null);
     setLoading(true);
     setEditingFarm(null);
+    setExpandedHouses(new Set());
   }, [farmId]);
 
   const load = useCallback(() => {
