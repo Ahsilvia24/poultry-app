@@ -23,6 +23,7 @@ import { todayKey } from "../lib/ids";
 import { LITTER_EVENT_LABELS, LITTER_EVENT_OPTIONS } from "../lib/opsLabels";
 import { colors, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
+import { DatePickerField } from "./DatePickerField";
 import { OptionPicker, SelectField } from "./OptionPicker";
 
 export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?: string }) {
@@ -120,8 +121,7 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
             subtitle={detail?.farm.farmName ?? "Farm"}
           />
           <Card>
-            <Text style={styles.label}>Event date (YYYY-MM-DD)</Text>
-            <TextInput style={styles.input} value={eventDate} onChangeText={setEventDate} />
+            <DatePickerField label="Event date" value={eventDate} onChange={setEventDate} />
             <SelectField
               label="Event type"
               valueLabel={LITTER_EVENT_LABELS[eventType] ?? eventType}

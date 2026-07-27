@@ -26,6 +26,7 @@ import { todayKey } from "../lib/ids";
 import { VISIT_TYPE_LABELS, VISIT_TYPE_OPTIONS } from "../lib/visits";
 import { colors, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
+import { DatePickerField } from "./DatePickerField";
 
 type Props = {
   farmId: string;
@@ -150,14 +151,10 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
           />
 
           <Card>
-            <Text style={styles.label}>Visit date (YYYY-MM-DD)</Text>
-            <TextInput
-              style={styles.input}
+            <DatePickerField
+              label="Visit date"
               value={visitDate}
-              onChangeText={setVisitDate}
-              autoCapitalize="none"
-              placeholder="2026-07-26"
-              placeholderTextColor={colors.muted}
+              onChange={setVisitDate}
             />
 
             <Text style={[styles.label, { marginTop: 8 }]}>Visit type</Text>
@@ -241,17 +238,13 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
             </Pressable>
 
             {followUpRequired ? (
-              <>
-                <Text style={styles.label}>Follow-up date (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
+              <View style={{ marginTop: 4 }}>
+                <DatePickerField
+                  label="Follow-up date"
                   value={followUpDate}
-                  onChangeText={setFollowUpDate}
-                  autoCapitalize="none"
-                  placeholder="2026-07-30"
-                  placeholderTextColor={colors.muted}
+                  onChange={setFollowUpDate}
                 />
-              </>
+              </View>
             ) : null}
 
             {error ? (

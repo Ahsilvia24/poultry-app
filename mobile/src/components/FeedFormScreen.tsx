@@ -23,6 +23,7 @@ import { todayKey } from "../lib/ids";
 import { FEED_MILL_OPTIONS, FEED_TYPE_OPTIONS } from "../lib/opsLabels";
 import { colors, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
+import { DatePickerField } from "./DatePickerField";
 import { OptionPicker, SelectField } from "./OptionPicker";
 
 export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliveryId?: string }) {
@@ -118,8 +119,11 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
             subtitle={detail?.farm.farmName ?? "Farm"}
           />
           <Card>
-            <Text style={styles.label}>Delivery date (YYYY-MM-DD)</Text>
-            <TextInput style={styles.input} value={deliveryDate} onChangeText={setDeliveryDate} />
+            <DatePickerField
+              label="Delivery date"
+              value={deliveryDate}
+              onChange={setDeliveryDate}
+            />
             <SelectField
               label="Flock"
               valueLabel={

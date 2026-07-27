@@ -28,6 +28,7 @@ import {
 } from "../lib/opsLabels";
 import { colors, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
+import { DatePickerField } from "./DatePickerField";
 import { OptionPicker, SelectField } from "./OptionPicker";
 
 export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?: string }) {
@@ -121,8 +122,11 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
             subtitle={detail?.farm.farmName ?? "Farm"}
           />
           <Card>
-            <Text style={styles.label}>Date reported (YYYY-MM-DD)</Text>
-            <TextInput style={styles.input} value={dateReported} onChangeText={setDateReported} />
+            <DatePickerField
+              label="Date reported"
+              value={dateReported}
+              onChange={setDateReported}
+            />
             <SelectField label="House" valueLabel={houseLabel} onPress={() => setPicker("house")} />
             <SelectField
               label="Category"

@@ -7,15 +7,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
 import { todayKey } from "../lib/ids";
 
-/** "2026-07-26" → "Wed, Jul 26, 2026" */
+/** "2026-07-26" → "July 26, 2026" */
 export function formatDisplayDate(dateKey: string) {
   if (!dateKey) return "Select date";
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
   const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
   return dt.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
+    month: "long",
     day: "numeric",
     year: "numeric",
   });
@@ -60,6 +59,8 @@ export function DatePickerField({
     if (selected) setDraft(selected);
   }
 
+  const draftKey = toDateKey(draft);
+
   return (
     <View>
       <Text style={styles.label}>{label}</Text>
@@ -95,7 +96,7 @@ export function DatePickerField({
         />
       ) : null}
 
-      {Platform.OS === "ios" && open ? (
+      {Platform.OS !== "android" && open ? (
         <Modal transparent animationType="slide" visible onRequestClose={() => setOpen(false)}>
           <Pressable
             style={{
@@ -118,28 +119,38 @@ export function DatePickerField({
                 style={{
                   flexDirection: "row",
                   justifyContent: "space-between",
+                  alignItems: "center",
                   paddingHorizontal: 16,
                   paddingVertical: 12,
                   borderBottomWidth: 1,
                   borderBottomColor: colors.border,
                 }}
               >
-                <Pressable onPress={() => setOpen(false)}>
+                <Pressable onPress={() => setOpen(false)} hitSlop={8}>
                   <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => {
-                    onChange(toDateKey(draft));
+                    onChange(draftKey);
                     setOpen(false);
                   }}
+                  hitSlop={8}
                 >
                   <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
                 </Pressable>
               </View>
+              <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+                <Text style={{ fontSize: 13, color: colors.muted, fontWeight: "600" }}>
+                  Selected
+                </Text>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, marginTop: 2 }}>
+                  {formatDisplayDate(draftKey)}
+                </Text>
+              </View>
               <DateTimePicker
                 value={draft}
                 mode="date"
-                display="inline"
+                display={Platform.OS === "ios" ? "inline" : "default"}
                 onChange={onPickerChange}
                 style={{ alignSelf: "center" }}
               />
