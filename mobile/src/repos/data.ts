@@ -390,12 +390,12 @@ export function getDashboard() {
         10,
         farmCompletions,
       );
-      const ageDays = birdAgeFromPlacement(fl.placement_date, today);
       const toRow = (v: ScheduledVisit & { completed: boolean }): ScheduleRow => ({
         farmId: farm.id,
         flockId: fl.id,
         farmName: farm.farmName,
-        flockAgeDays: ageDays,
+        // Event age vs placement (Prebrood = -2) — not flock age as of today.
+        flockAgeDays: v.birdAgeDays,
         date: v.dateKey,
         label: v.label,
         completed: v.completed,

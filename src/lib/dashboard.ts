@@ -107,7 +107,11 @@ export async function getDashboardData(userId: string) {
   }
 
   for (const farm of farms) {
-    const active = farm.flocks.find((f) => f.flockStatus === "ACTIVE");
+    const activeFlocks = farm.flocks
+      .filter((f) => f.flockStatus === "ACTIVE")
+      .slice()
+      .sort((a, b) => a.placementDate.getTime() - b.placementDate.getTime());
+    const active = activeFlocks[0] ?? null;
     openIssues += farm.issues.length;
     highPriorityIssues += farm.issues.filter((i) => i.priority === "HIGH" || i.priority === "CRITICAL")
       .length;
@@ -121,22 +125,23 @@ export async function getDashboardData(userId: string) {
     let sevenPct = 0;
     let rising = false;
     let hasTodayEntry = false;
+    let activeHouseCount = 0;
     const weeklyTotals = new Map<number, number>();
+    const farmCompletions = completedByFarm.get(farm.id) ?? new Map();
 
-    if (active) {
-      if (active.projectedCatchDate) {
+    for (const flock of activeFlocks) {
+      if (flock.projectedCatchDate) {
         upcomingCatches.push({
           farmName: farm.farmName,
-          date: format(active.projectedCatchDate, "yyyy-MM-dd"),
-          flockNumber: active.flockNumber,
-          flockAgeDays: differenceInCalendarDays(today, active.placementDate),
+          date: format(flock.projectedCatchDate, "yyyy-MM-dd"),
+          flockNumber: flock.flockNumber,
+          flockAgeDays: differenceInCalendarDays(today, flock.placementDate),
         });
       }
 
-      const catchDate = resolveCatchDate(active);
+      const catchDate = resolveCatchDate(flock);
       const daysUntilCatch = Math.max(0, differenceInCalendarDays(catchDate, today));
-      const schedule = buildFlockVisitSchedule(active.placementDate, catchDate);
-      const farmCompletions = completedByFarm.get(farm.id) ?? new Map();
+      const schedule = buildFlockVisitSchedule(flock.placementDate, catchDate);
       const { today: dueToday, upcoming } = splitScheduleForDashboard(
         schedule,
         today,
@@ -145,18 +150,20 @@ export async function getDashboardData(userId: string) {
       );
       const toRow = (due: (typeof dueToday)[number]): FollowUpRow => ({
         farmId: farm.id,
-        flockId: active.id,
+        flockId: flock.id,
         farmName: farm.farmName,
         date: due.dateKey,
         label: due.label,
-        flockNumber: active.flockNumber,
+        flockNumber: flock.flockNumber,
         completed: due.completed,
-        flockAgeDays: differenceInCalendarDays(today, active.placementDate),
+        // Event age vs placement (Prebrood = -2), not flock age as of today.
+        flockAgeDays: due.birdAgeDays,
       });
       for (const due of dueToday) todaysSchedule.push(toRow(due));
       for (const due of upcoming) upcomingSchedule.push(toRow(due));
 
-      for (const hf of active.houseFlocks) {
+      for (const hf of flock.houseFlocks) {
+        activeHouseCount += 1;
         placed += hf.placedBirdCount;
         const metrics = summarizeForDate(hf.placedBirdCount, hf.mortalities, today);
         todayMort += metrics.today;
@@ -171,14 +178,17 @@ export async function getDashboardData(userId: string) {
         projectedHead += projectedHeadCountAtCatch(metrics.remaining, avgDaily, daysUntilCatch);
         projectedMortExtra += avgDaily * daysUntilCatch;
         for (const week of weeklyMortalityByPlacement(
-          active.placementDate,
+          flock.placementDate,
           hf.mortalities,
           today,
         )) {
           weeklyTotals.set(week.week, (weeklyTotals.get(week.week) ?? 0) + week.total);
         }
       }
-      if (!hasTodayEntry && active.houseFlocks.length > 0) missingMortalityFarms += 1;
+    }
+
+    if (activeFlocks.length > 0) {
+      if (!hasTodayEntry && activeHouseCount > 0) missingMortalityFarms += 1;
       totalBirds += placed;
       todayMortalityTotal += todayMort;
     }
@@ -193,7 +203,7 @@ export async function getDashboardData(userId: string) {
       farmName: farm.farmName,
       growerName: farm.growerName,
       phoneNumber: farm.phoneNumber,
-      houseCount: farm.houses?.length ?? active?.houseFlocks.length ?? 0,
+      houseCount: farm.houses?.length ?? activeHouseCount,
       flockAgeDays: active
         ? differenceInCalendarDays(today, active.placementDate)
         : null,

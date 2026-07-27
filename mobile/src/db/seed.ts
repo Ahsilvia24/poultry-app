@@ -250,10 +250,112 @@ function ensureMultiFlockDemoFarm() {
   setMeta("multi_flock_demo_v1", "1");
 }
 
+/**
+ * Existing farms may have one ACTIVE flock with staggered house placement dates.
+ * Split those into one ACTIVE flock per place day so schedules/ages stay correct.
+ * Mortality stays on house_flock rows; farm detail still consolidates all active flocks in one tile.
+ */
+function ensureSplitStaggeredActiveFlocks() {
+  if (getMeta("split_staggered_active_flocks_v1") === "1") return;
+  const db = getDb();
+
+  const activeFlocks = db.getAllSync<{
+    id: string;
+    farm_id: string;
+    flock_number: string;
+    placement_date: string;
+    projected_catch_date: string | null;
+  }>(
+    `SELECT id, farm_id, flock_number, placement_date, projected_catch_date
+     FROM flocks WHERE flock_status = 'ACTIVE'`,
+  );
+
+  for (const flock of activeFlocks) {
+    const hfs = db.getAllSync<{
+      id: string;
+      placement_date: string | null;
+      catch_date: string | null;
+    }>(
+      `SELECT id, placement_date, catch_date FROM house_flocks WHERE flock_id = ?`,
+      [flock.id],
+    );
+    if (hfs.length === 0) continue;
+
+    const groups = new Map<string, typeof hfs>();
+    for (const hf of hfs) {
+      const place = hf.placement_date?.trim() || flock.placement_date;
+      const list = groups.get(place) ?? [];
+      list.push(hf);
+      groups.set(place, list);
+    }
+    if (groups.size <= 1) {
+      // Still sync flock-level dates from the single house group when present.
+      const onlyPlace = Array.from(groups.keys())[0];
+      if (onlyPlace && onlyPlace !== flock.placement_date) {
+        const group = groups.get(onlyPlace)!;
+        const catchDate =
+          group.find((h) => h.catch_date?.trim())?.catch_date?.trim() ||
+          addDaysKey(onlyPlace, 52);
+        db.runSync(
+          `UPDATE flocks SET placement_date = ?, projected_catch_date = ? WHERE id = ?`,
+          [onlyPlace, catchDate, flock.id],
+        );
+      }
+      continue;
+    }
+
+    const places = Array.from(groups.keys()).sort();
+    // Keep earliest place day on the original flock / flock number.
+    const keepPlace = places[0]!;
+    let suffix = 2;
+
+    for (const place of places) {
+      const group = groups.get(place)!;
+      const catchDate =
+        group.find((h) => h.catch_date?.trim())?.catch_date?.trim() ||
+        addDaysKey(place, 52);
+
+      if (place === keepPlace) {
+        db.runSync(
+          `UPDATE flocks SET placement_date = ?, projected_catch_date = ? WHERE id = ?`,
+          [place, catchDate, flock.id],
+        );
+        for (const hf of group) {
+          db.runSync(
+            `UPDATE house_flocks SET placement_date = ?, catch_date = ? WHERE id = ?`,
+            [place, hf.catch_date?.trim() || catchDate, hf.id],
+          );
+        }
+        continue;
+      }
+
+      const newFlockId = newId("flock");
+      const newNumber = `${flock.flock_number}-${suffix}`;
+      suffix += 1;
+      db.runSync(
+        `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
+         VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
+        [newFlockId, flock.farm_id, newNumber, place, catchDate],
+      );
+      for (const hf of group) {
+        db.runSync(
+          `UPDATE house_flocks
+           SET flock_id = ?, placement_date = ?, catch_date = ?
+           WHERE id = ?`,
+          [newFlockId, place, hf.catch_date?.trim() || catchDate, hf.id],
+        );
+      }
+    }
+  }
+
+  setMeta("split_staggered_active_flocks_v1", "1");
+}
+
 export function seedIfNeeded() {
   if (getMeta("seeded") === "1") {
     ensureDemoVisits();
     ensureMultiFlockDemoFarm();
+    ensureSplitStaggeredActiveFlocks();
     return;
   }
 
@@ -352,4 +454,5 @@ export function seedIfNeeded() {
   setMeta("visits_v2", "1");
   setMeta("userId", userId);
   ensureMultiFlockDemoFarm();
+  ensureSplitStaggeredActiveFlocks();
 }
