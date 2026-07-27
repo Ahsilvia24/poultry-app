@@ -13,6 +13,18 @@ const TAB_ITEMS = [
 
 function WebStyleTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
+  const focusedRoute = state.routes[state.index];
+  const focusedOptions = descriptors[focusedRoute?.key]?.options ?? {};
+  const tabBarStyle = focusedOptions.tabBarStyle;
+  const styleList = Array.isArray(tabBarStyle)
+    ? tabBarStyle
+    : tabBarStyle
+      ? [tabBarStyle]
+      : [];
+  if (styleList.some((s: { display?: string } | undefined) => s?.display === "none")) {
+    return null;
+  }
+
   const visibleRoutes = state.routes.filter((route: { name: string }) =>
     TAB_ITEMS.some((t) => t.name === route.name),
   );

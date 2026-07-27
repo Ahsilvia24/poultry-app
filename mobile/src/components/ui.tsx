@@ -165,7 +165,7 @@ export function WeeklyMortalityList({ weeks }: { weeks: WeekTotal[] }) {
           {row.map((w) => (
             <View key={w.week} style={{ flex: 1, minWidth: 0 }}>
               <Text style={{ fontSize: 16, lineHeight: 22, color: colors.muted }}>
-                Week {w.week}{" "}
+                Wk {w.week}{" "}
                 <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
                   {w.total}
                 </Text>

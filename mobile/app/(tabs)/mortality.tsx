@@ -9,8 +9,8 @@ import {
   type TextInput as TextInputType,
   type ScrollView as ScrollViewType,
 } from "react-native";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   getMortalityForm,
   getHouseMortalitySeries,
@@ -100,6 +100,7 @@ function MortalityKeypad({
   onBackspace: () => void;
   onEnter: () => void;
 }) {
+  const insets = useSafeAreaInsets();
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
   return (
     <View
@@ -109,7 +110,8 @@ function MortalityKeypad({
         backgroundColor: "#e7e5e4",
         paddingHorizontal: 8,
         paddingTop: 8,
-        paddingBottom: 8,
+        // Tabs are hidden while the keypad is open — keep home-indicator padding here
+        paddingBottom: Math.max(insets.bottom, 8),
         gap: 8,
       }}
     >
@@ -147,6 +149,7 @@ function paramValue(value: string | string[] | undefined) {
 }
 
 export default function MortalityScreen() {
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{ farmId?: string | string[] }>();
   const farmIdParam = paramValue(params.farmId);
   const [farmId, setFarmId] = useState(farmIdParam);
@@ -167,6 +170,13 @@ export default function MortalityScreen() {
   const saveGenRef = useRef(0);
   rowsRef.current = rows;
   houseFlockIdRef.current = houseFlockId;
+
+  // Hide bottom tabs while the custom keypad is open
+  useEffect(() => {
+    navigation.setOptions({
+      tabBarStyle: activeField ? { display: "none" } : undefined,
+    });
+  }, [activeField, navigation]);
 
   function resetToTop() {
     setActiveField(null);
@@ -271,8 +281,9 @@ export default function MortalityScreen() {
         clearTimeout(t);
         setActiveField(null);
         setSelection(undefined);
+        navigation.setOptions({ tabBarStyle: undefined });
       };
-    }, [farmIdParam, loadFarms]),
+    }, [farmIdParam, loadFarms, navigation]),
   );
 
   useEffect(() => {
