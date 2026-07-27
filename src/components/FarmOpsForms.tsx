@@ -526,7 +526,13 @@ export function ArchiveFarmButton({ farmId }: { farmId: string }) {
   return <DeleteFarmButton farmId={farmId} />;
 }
 
-export function CompleteFlockButton({ flockId }: { flockId: string }) {
+export function CompleteFlockButton({
+  flockId,
+  label = "Complete flock",
+}: {
+  flockId: string;
+  label?: string;
+}) {
   const [pending, start] = useTransition();
   return (
     <Button
@@ -541,7 +547,7 @@ export function CompleteFlockButton({ flockId }: { flockId: string }) {
         }
       }}
     >
-      Complete flock
+      {label}
     </Button>
   );
 }

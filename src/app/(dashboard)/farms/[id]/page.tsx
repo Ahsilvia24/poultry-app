@@ -243,16 +243,19 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           .sort((a, b) => a.catchDateKey.localeCompare(b.catchDateKey))
       : [];
 
-  const placementCatchLines = activeFlocks.map((flock) =>
-    [
-      `Placed ${format(flock.placementDate, "MMM d, yyyy")}`,
-      flock.projectedCatchDate
-        ? `Catch ${format(flock.projectedCatchDate, "MMM d, yyyy")}`
-        : null,
-      flock.flockNumber ? `(${flock.flockNumber})` : null,
-    ]
-      .filter(Boolean)
-      .join(" · "),
+  const placementCatchLines = Array.from(
+    new Set(
+      activeFlocks.map((flock) =>
+        [
+          `Placed ${format(flock.placementDate, "MMM d, yyyy")}`,
+          flock.projectedCatchDate
+            ? `Catch ${format(flock.projectedCatchDate, "MMM d, yyyy")}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      ),
+    ),
   );
   const flockAgeLabel =
     flockAgesDays.length > 0 ? flockAgesDays.map((a) => `(${a}d)`).join(" ") : null;
@@ -307,7 +310,15 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           ) : null}
           <div className="mt-2 flex flex-wrap gap-2">
             {activeFlocks.map((flock) => (
-              <CompleteFlockButton key={flock.id} flockId={flock.id} />
+              <CompleteFlockButton
+                key={flock.id}
+                flockId={flock.id}
+                label={
+                  activeFlocks.length > 1
+                    ? `Complete ${flock.flockNumber}`
+                    : "Complete flock"
+                }
+              />
             ))}
           </div>
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -332,7 +343,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             <div className="mt-2 space-y-0.5">
               {placementCatchLines.map((line) => (
                 <p key={line} className="text-sm text-stone-600">
-                  {line.replace(/\s·\s*\([^)]*\)$/, "")}
+                  {line}
                 </p>
               ))}
             </div>
