@@ -526,6 +526,23 @@ export function getFarmDetail(farmId: string) {
     };
   });
 
+  const latestCompleted =
+    flock == null
+      ? db.getFirstSync<{
+          id: string;
+          flock_number: string;
+          placement_date: string;
+          projected_catch_date: string | null;
+          actual_catch_date: string | null;
+        }>(
+          `SELECT id, flock_number, placement_date, projected_catch_date, actual_catch_date
+           FROM flocks
+           WHERE farm_id = ? AND flock_status = 'COMPLETED'
+           ORDER BY placement_date DESC LIMIT 1`,
+          [farmId],
+        )
+      : null;
+
   return {
     farm: {
       id: farm.id,
@@ -543,6 +560,15 @@ export function getFarmDetail(farmId: string) {
           resolvedCatchDate,
           flockAgeDays,
           flockWeek,
+        }
+      : null,
+    latestCompletedFlock: latestCompleted
+      ? {
+          id: latestCompleted.id,
+          flockNumber: latestCompleted.flock_number,
+          placementDate: latestCompleted.placement_date,
+          projectedCatchDate: latestCompleted.projected_catch_date,
+          actualCatchDate: latestCompleted.actual_catch_date,
         }
       : null,
     houses,
@@ -1340,6 +1366,148 @@ export function createFlock(input: {
     );
   }
   return { id, projectedCatchDate };
+}
+
+export function completeFlock(flockId: string) {
+  const db = getDb();
+  const flock = db.getFirstSync<{
+    id: string;
+    farm_id: string;
+    flock_status: string;
+    actual_catch_date: string | null;
+  }>("SELECT id, farm_id, flock_status, actual_catch_date FROM flocks WHERE id = ?", [flockId]);
+  if (!flock) throw new Error("Flock not found");
+  if (flock.flock_status !== "ACTIVE") throw new Error("Only an active flock can be completed");
+
+  db.runSync(
+    `UPDATE flocks
+     SET flock_status = 'COMPLETED',
+         actual_catch_date = COALESCE(actual_catch_date, ?)
+     WHERE id = ?`,
+    [todayKey(), flockId],
+  );
+  return { success: true as const, farmId: flock.farm_id };
+}
+
+export function reactivateFlock(flockId: string) {
+  const db = getDb();
+  const flock = db.getFirstSync<{
+    id: string;
+    farm_id: string;
+    flock_status: string;
+    flock_number: string;
+  }>("SELECT id, farm_id, flock_status, flock_number FROM flocks WHERE id = ?", [flockId]);
+  if (!flock) throw new Error("Flock not found");
+  if (flock.flock_status === "ACTIVE") throw new Error("Flock is already active");
+
+  const otherActive = db.getFirstSync<{ id: string; flock_number: string }>(
+    `SELECT id, flock_number FROM flocks
+     WHERE farm_id = ? AND flock_status = 'ACTIVE' AND id != ? LIMIT 1`,
+    [flock.farm_id, flockId],
+  );
+  if (otherActive) {
+    throw new Error(
+      `Farm already has an active flock (${otherActive.flock_number}). Complete that one first.`,
+    );
+  }
+
+  db.runSync(
+    `UPDATE flocks SET flock_status = 'ACTIVE', actual_catch_date = NULL WHERE id = ?`,
+    [flockId],
+  );
+  return { success: true as const, farmId: flock.farm_id };
+}
+
+/** Past/current flock summary for the farm History screen. */
+export function getFarmHistory(farmId: string) {
+  const db = getDb();
+  const farm = db.getFirstSync<{ id: string; farm_name: string }>(
+    "SELECT id, farm_name FROM farms WHERE id = ?",
+    [farmId],
+  );
+  if (!farm) throw new Error("Farm not found");
+
+  const flocks = db.getAllSync<{
+    id: string;
+    flock_number: string;
+    placement_date: string;
+    projected_catch_date: string | null;
+    actual_catch_date: string | null;
+    flock_status: string;
+  }>(
+    `SELECT id, flock_number, placement_date, projected_catch_date, actual_catch_date, flock_status
+     FROM flocks WHERE farm_id = ?
+     ORDER BY placement_date DESC`,
+    [farmId],
+  );
+
+  const rows = flocks.map((flock) => {
+    const hfs = db.getAllSync<{
+      id: string;
+      placed_bird_count: number;
+      house_number: number;
+    }>(
+      `SELECT hf.id, hf.placed_bird_count, h.house_number
+       FROM house_flocks hf
+       JOIN houses h ON h.id = hf.house_id
+       WHERE hf.flock_id = ? AND h.deleted_at IS NULL
+       ORDER BY h.house_number ASC`,
+      [flock.id],
+    );
+
+    let placed = 0;
+    let totalLoss = 0;
+    const houseMortPcts: Array<{ houseNumber: number; mortPct: number }> = [];
+    for (const hf of hfs) {
+      placed += hf.placed_bird_count;
+      const records = db.getAllSync<MortRow>(
+        `SELECT mortality_date, bird_age_in_days, daily_mortality_count, cull_count, total_daily_loss
+         FROM daily_mortality WHERE house_flock_id = ? AND is_draft = 0 ORDER BY mortality_date ASC`,
+        [hf.id],
+      );
+      const summary = summarizeHouse(hf.placed_bird_count, records, todayKey());
+      totalLoss += summary.cumulative;
+      houseMortPcts.push({
+        houseNumber: hf.house_number,
+        mortPct: summary.cumulativePct,
+      });
+    }
+
+    const catchDate =
+      flock.actual_catch_date ?? flock.projected_catch_date ?? null;
+    const marketAge =
+      catchDate != null
+        ? birdAgeFromPlacement(flock.placement_date, catchDate)
+        : null;
+    const mortPct = calcPercentage(totalLoss, placed);
+    const livability = placed > 0 ? 100 - mortPct : null;
+
+    return {
+      id: flock.id,
+      flockNumber: flock.flock_number,
+      flockStatus: flock.flock_status,
+      placementDate: flock.placement_date,
+      catchDate,
+      marketAge,
+      birdsPlaced: placed,
+      cumulativeMortality: totalLoss,
+      mortPct,
+      livability,
+      houseMortPcts,
+    };
+  });
+
+  const current = rows.find((r) => r.flockStatus === "ACTIVE") ?? rows[0] ?? null;
+  const previous = rows
+    .filter((r) => r.id !== current?.id && r.flockStatus !== "ACTIVE")
+    .slice(0, 3);
+
+  return {
+    farm: { id: farm.id, farmName: farm.farm_name },
+    current,
+    previous,
+    all: rows,
+  };
 }
 
 export function updateHouse(

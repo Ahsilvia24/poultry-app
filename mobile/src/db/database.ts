@@ -54,6 +54,7 @@ export function migrateDb() {
       flock_number TEXT NOT NULL,
       placement_date TEXT NOT NULL,
       projected_catch_date TEXT,
+      actual_catch_date TEXT,
       flock_status TEXT NOT NULL DEFAULT 'ACTIVE',
       FOREIGN KEY (farm_id) REFERENCES farms(id)
     );
@@ -139,6 +140,12 @@ export function migrateDb() {
   const houseCols = database.getAllSync<{ name: string }>("PRAGMA table_info(houses)");
   if (!houseCols.some((c) => c.name === "deleted_at")) {
     database.execSync("ALTER TABLE houses ADD COLUMN deleted_at TEXT");
+  }
+
+  // Existing installs may lack actual_catch_date on flocks
+  const flockCols = database.getAllSync<{ name: string }>("PRAGMA table_info(flocks)");
+  if (!flockCols.some((c) => c.name === "actual_catch_date")) {
+    database.execSync("ALTER TABLE flocks ADD COLUMN actual_catch_date TEXT");
   }
 }
 

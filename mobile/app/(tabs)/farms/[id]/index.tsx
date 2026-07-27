@@ -15,9 +15,11 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  completeFlock,
   deleteHouse,
   deleteVisit,
   getFarmDetail,
+  reactivateFlock,
   updateFarm,
   updateHouse,
 } from "../../../../src/repos/data";
@@ -328,7 +330,7 @@ export default function FarmDetailScreen() {
               <Ionicons name="settings-outline" size={20} color={colors.muted} />
             </Pressable>
           </View>
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
             <PrimaryButton
               label="Enter mortality"
               onPress={() =>
@@ -337,13 +339,54 @@ export default function FarmDetailScreen() {
                   params: { farmId: farm.id },
                 })
               }
-              style={{ flex: 1 }}
+              style={{ flexGrow: 1, minWidth: "45%" }}
             />
+            <PrimaryButton
+              label="History"
+              secondary
+              onPress={() =>
+                router.push({
+                  pathname: "/(tabs)/farms/[id]/history",
+                  params: { id: farm.id },
+                })
+              }
+              style={{ flexGrow: 1, minWidth: "45%" }}
+            />
+            {data.activeFlock ? (
+              <PrimaryButton
+                label="Complete flock"
+                secondary
+                onPress={() => {
+                  Alert.alert(
+                    "Complete flock?",
+                    "Mark this flock as completed? You can reactivate it later from History.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Complete",
+                        onPress: () => {
+                          try {
+                            completeFlock(data.activeFlock!.id);
+                            load();
+                          } catch (e) {
+                            Alert.alert(
+                              "Error",
+                              e instanceof Error ? e.message : "Could not complete flock",
+                            );
+                          }
+                        },
+                      },
+                    ],
+                  );
+                }}
+                style={{ flexGrow: 1, minWidth: "45%" }}
+              />
+            ) : null}
             <PrimaryButton
               label="LFO"
               secondary
               onPress={() => router.push("/(tabs)/lfo")}
-              style={{ flex: 1 }}
+              style={{ flexGrow: 1, minWidth: "45%" }}
             />
           </View>
         </View>
@@ -385,17 +428,50 @@ export default function FarmDetailScreen() {
           <Card>
             <Text style={{ fontWeight: "800" }}>No active flock</Text>
             <Text style={[styles.muted, { marginTop: 4, marginBottom: 12 }]}>
-              Add a flock to track mortality for this farm.
+              {data.latestCompletedFlock
+                ? `Flock ${data.latestCompletedFlock.flockNumber} was completed. Make it active again, or add a new flock.`
+                : "Add a flock to track mortality for this farm."}
             </Text>
-            <PrimaryButton
-              label="Add flock"
-              onPress={() =>
-                router.push({
-                  pathname: "/(tabs)/farms/[id]/add-flock",
-                  params: { id: farm.id },
-                })
-              }
-            />
+            <View style={{ gap: 10 }}>
+              {data.latestCompletedFlock ? (
+                <PrimaryButton
+                  label={`Make flock ${data.latestCompletedFlock.flockNumber} active`}
+                  secondary
+                  onPress={() => {
+                    Alert.alert(
+                      "Make flock active?",
+                      `Make flock ${data.latestCompletedFlock!.flockNumber} active again?`,
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Make active",
+                          onPress: () => {
+                            try {
+                              reactivateFlock(data.latestCompletedFlock!.id);
+                              load();
+                            } catch (e) {
+                              Alert.alert(
+                                "Error",
+                                e instanceof Error ? e.message : "Could not reactivate flock",
+                              );
+                            }
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                />
+              ) : null}
+              <PrimaryButton
+                label="Add flock"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/add-flock",
+                    params: { id: farm.id },
+                  })
+                }
+              />
+            </View>
           </Card>
         )}
 
