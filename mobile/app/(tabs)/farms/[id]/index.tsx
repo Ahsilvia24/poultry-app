@@ -1568,6 +1568,7 @@ export default function FarmDetailScreen() {
                         <DatePickerField
                           label="Placement date"
                           value={editingHouse.placementDate}
+                          presentation="inline"
                           onChange={(date) =>
                             setEditingHouse((prev) => {
                               if (!prev) return prev;
@@ -1591,6 +1592,7 @@ export default function FarmDetailScreen() {
                         <DatePickerField
                           label="Catch date"
                           value={editingHouse.catchDate}
+                          presentation="inline"
                           onChange={(date) =>
                             setEditingHouse((prev) =>
                               prev ? { ...prev, catchDate: date } : prev,

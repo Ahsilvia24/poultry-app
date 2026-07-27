@@ -43,21 +43,30 @@ function toDateKey(d: Date) {
   return `${safe.getFullYear()}-${String(safe.getMonth() + 1).padStart(2, "0")}-${String(safe.getDate()).padStart(2, "0")}`;
 }
 
+/**
+ * Calendar date field.
+ * Use `presentation="inline"` when nested inside another Modal (iOS nested
+ * modals often fail to appear).
+ */
 export function DatePickerField({
   label,
   value,
   onChange,
+  presentation = "modal",
 }: {
   label: string;
   value: string;
   onChange: (dateKey: string) => void;
+  /** `inline` expands under the field — required inside parent Modals. */
+  presentation?: "modal" | "inline";
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseDateKey(value));
+  const useInline = presentation === "inline" || Platform.OS === "android";
 
   function openPicker() {
     setDraft(parseDateKey(value || todayKey()));
-    setOpen(true);
+    setOpen((v) => !v);
   }
 
   function onPickerChange(event: DateTimePickerEvent, selected?: Date) {
@@ -66,7 +75,12 @@ export function DatePickerField({
       if (event.type === "set" && selected) onChange(toDateKey(selected));
       return;
     }
-    if (selected) setDraft(selected);
+    if (selected) {
+      setDraft(selected);
+      if (useInline) {
+        onChange(toDateKey(selected));
+      }
+    }
   }
 
   const draftKey = toDateKey(draft);
@@ -77,6 +91,8 @@ export function DatePickerField({
       <Text style={styles.label}>{label}</Text>
       <Pressable
         onPress={openPicker}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}, ${formatDisplayDate(value)}. Opens calendar`}
         style={[
           styles.input,
           {
@@ -107,8 +123,54 @@ export function DatePickerField({
         />
       ) : null}
 
-      {Platform.OS !== "android" && open ? (
-        <Modal transparent animationType="slide" visible onRequestClose={() => setOpen(false)}>
+      {Platform.OS !== "android" && open && useInline ? (
+        <View
+          style={{
+            marginTop: 8,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 12,
+            backgroundColor: "#fff",
+            overflow: "hidden",
+            paddingBottom: 8,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          >
+            <Text style={{ fontWeight: "700", color: colors.text }}>
+              {formatDisplayDate(draftKey)}
+            </Text>
+            <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+              <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
+            </Pressable>
+          </View>
+          <DateTimePicker
+            value={pickerValue}
+            mode="date"
+            display={Platform.OS === "ios" ? "inline" : "default"}
+            onChange={onPickerChange}
+            style={{ alignSelf: "center" }}
+          />
+        </View>
+      ) : null}
+
+      {Platform.OS !== "android" && open && !useInline ? (
+        <Modal
+          transparent
+          animationType="slide"
+          visible
+          presentationStyle="overFullScreen"
+          onRequestClose={() => setOpen(false)}
+        >
           <Pressable
             style={{
               flex: 1,
