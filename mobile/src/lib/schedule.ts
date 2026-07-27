@@ -1,8 +1,6 @@
 import { addDaysKey, daysBetween, parseDateKey, todayKey } from "./ids";
 
 const SERVICE_DAY_AGES = [3, 7, 14, 21, 28, 35, 42] as const;
-/** Completed items stay visible briefly, then drop permanently for that date/label. */
-const COMPLETION_VISIBLE_MS = 12 * 60 * 60 * 1000;
 
 export type ScheduledVisit = {
   dateKey: string;
@@ -100,23 +98,30 @@ function todayScheduleRank(v: Pick<ScheduledVisit, "kind" | "birdAgeDays">): num
   }
 }
 
-function stillVisibleAfterComplete(info: CompletionInfo | undefined, now: Date): boolean {
-  if (!info) return false;
-  return now.getTime() - info.completedAt.getTime() < COMPLETION_VISIBLE_MS;
+/** Rank from display label when kind isn't on the row. */
+export function todayScheduleRankFromLabel(label: string): number {
+  if (label === "Placement") return 0;
+  if (label === "LFO") return 1;
+  if (label === "Weight Proj." || label === "Weight Projection") return 2;
+  if (label === "Prebrood") return 3;
+  const day = /^(\d+) Day$/.exec(label);
+  if (day) return 100 + Number(day[1]);
+  return 999;
 }
 
 /**
  * Split schedule into today vs upcoming.
- * Completed items stay visible for 12 hours after checkmark, then drop off.
- * Completing an upcoming item early keeps it from reappearing on Today later
- * (same date/label completion key).
+ * Today's list resets at local midnight (00:00 / 0001 start of the new day).
+ * Completed today-items stay checked for the rest of that calendar day, then drop.
+ * Completing an upcoming item early hides it from Upcoming and keeps it from
+ * reappearing on Today later (same date/label completion key).
  */
 export function splitScheduleForDashboard(
   schedule: ScheduledVisit[],
   today: string,
   horizonDays = 7,
   completions: Map<string, CompletionInfo> = new Map(),
-  now: Date = new Date(),
+  _now: Date = new Date(),
 ): { today: DueScheduledVisit[]; upcoming: DueScheduledVisit[] } {
   const endKey = addDaysKey(today, horizonDays);
   const todayItems: DueScheduledVisit[] = [];
@@ -128,7 +133,8 @@ export function splitScheduleForDashboard(
 
     const key = completionKey(v.dateKey, v.label);
     const info = completions.get(key);
-    if (info && !stillVisibleAfterComplete(info, now)) continue;
+    // Completed upcoming: stay off the list (and won't repopulate on their day).
+    if (info && v.dateKey !== today) continue;
 
     const item: DueScheduledVisit = { ...v, completed: Boolean(info) };
     if (v.dateKey === today) todayItems.push(item);

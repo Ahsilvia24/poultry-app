@@ -18,6 +18,7 @@ import {
   buildFlockVisitSchedule,
   completionKey,
   splitScheduleForDashboard,
+  todayScheduleRankFromLabel,
   type CompletionInfo,
   type ScheduledVisit,
 } from "../lib/schedule";
@@ -442,13 +443,15 @@ export function getDashboard() {
   }
 
   todaysSchedule.sort(
-    (a, b) => a.farmName.localeCompare(b.farmName) || a.label.localeCompare(b.label),
+    (a, b) =>
+      todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
+      a.farmName.localeCompare(b.farmName),
   );
   upcomingSchedule.sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
-      a.farmName.localeCompare(b.farmName) ||
-      a.label.localeCompare(b.label),
+      todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
+      a.farmName.localeCompare(b.farmName),
   );
 
   const upcomingCatches = farmCards

@@ -148,30 +148,22 @@ export function buildFlockVisitSchedule(
 
 export type DueScheduledVisit = ScheduledVisit & { completed: boolean };
 
-const COMPLETION_VISIBLE_MS = 12 * 60 * 60 * 1000;
-
 export type CompletionInfo = { completedAt: Date };
-
-function stillVisibleAfterComplete(
-  info: CompletionInfo | undefined,
-  now: Date,
-): boolean {
-  if (!info) return false;
-  return now.getTime() - info.completedAt.getTime() < COMPLETION_VISIBLE_MS;
-}
 
 /**
  * Split schedule into today vs upcoming.
- * - Today: events due today only
+ * - Today: events due today only; list resets at local midnight (00:00 / 0001).
  * - Upcoming: after today through horizon
- * Completed items stay visible for 12 hours after checkmark, then drop off.
+ * Completed today-items stay checked for the rest of that calendar day, then drop.
+ * Completing an upcoming item early hides it from Upcoming and keeps it from
+ * reappearing on Today later (same date/label completion key).
  */
 export function splitScheduleForDashboard(
   schedule: ScheduledVisit[],
   today: Date,
   horizon: Date,
   completions: Map<string, CompletionInfo>,
-  now: Date = new Date(),
+  _now: Date = new Date(),
 ): { today: DueScheduledVisit[]; upcoming: DueScheduledVisit[] } {
   const todayKey = format(startOfDay(today), "yyyy-MM-dd");
   const endKey = format(startOfDay(horizon), "yyyy-MM-dd");
@@ -185,7 +177,8 @@ export function splitScheduleForDashboard(
 
     const key = completionKey(v.dateKey, v.label);
     const info = completions.get(key);
-    if (info && !stillVisibleAfterComplete(info, now)) continue;
+    // Completed upcoming: stay off the list (and won't repopulate on their day).
+    if (info && v.dateKey !== todayKey) continue;
 
     const item: DueScheduledVisit = { ...v, completed: Boolean(info) };
     if (v.dateKey === todayKey) {
