@@ -1068,7 +1068,7 @@ export default function FarmDetailScreen() {
                     {h.cumulativeMortality != null ? (
                       <Text style={{ fontWeight: "600", color: colors.muted }}>
                         {" "}
-                        · Mort. {formatNumber(h.cumulativeMortality)}
+                        · M {formatNumber(h.cumulativeMortality)}
                       </Text>
                     ) : null}
                     {h.projectedHeadCount != null ? (
@@ -1168,7 +1168,7 @@ export default function FarmDetailScreen() {
                     hint="Assumes 150 for catch crew"
                   />
                   <Metric
-                    label="Mort."
+                    label="M"
                     value={
                       h.placedBirdCount != null
                         ? `${formatNumber(h.cumulativeMortality)} (${formatPct(h.cumulativeMortalityPct)})`

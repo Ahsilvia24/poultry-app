@@ -65,7 +65,7 @@ export function HouseCard({
             {metrics ? (
               <span className="font-semibold text-stone-600">
                 {" "}
-                · Mort. {formatNumber(metrics.cumulative)}
+                · M {formatNumber(metrics.cumulative)}
               </span>
             ) : null}
             {projectedHeadCount != null ? (
@@ -130,7 +130,7 @@ export function HouseCard({
             <p className="mt-0.5 text-[11px] text-stone-400">Assumes 150 for catch crew</p>
           </div>
           <div>
-            <p className="text-stone-500">Mort.</p>
+            <p className="text-stone-500">M</p>
             <p className="font-semibold">
               {metrics
                 ? `${formatNumber(metrics.cumulative)} (${formatPct(metrics.cumulativePct)})`
