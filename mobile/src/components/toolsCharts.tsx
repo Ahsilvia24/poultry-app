@@ -418,13 +418,15 @@ export function LightsChart() {
   return (
     <View style={{ gap: 8 }}>
       <Text style={{ fontSize: 12, color: colors.muted }}>Big Bird lighting program</Text>
-      <TableShell minWidth={420}>
+      <TableShell minWidth={448}>
         <View style={{ flexDirection: "row" }}>
           <HeaderCell width={88}>Age (days)</HeaderCell>
           <HeaderCell width={72}>Hours light</HeaderCell>
           <HeaderCell width={72}>Hours dark</HeaderCell>
           <HeaderCell width={80}>Center lights</HeaderCell>
-          <HeaderCell width={72}>Intensity</HeaderCell>
+          <HeaderCell width={96} numberOfLines={1}>
+            Intensity
+          </HeaderCell>
         </View>
         {BIG_BIRD_LIGHTING_PROGRAM.map((row) => (
           <Row key={row.ageLabel}>
@@ -434,7 +436,7 @@ export function LightsChart() {
             <Cell width={72}>{String(row.hoursLight)}</Cell>
             <Cell width={72}>{String(row.hoursDark)}</Cell>
             <Cell width={80}>{row.centerLights}</Cell>
-            <Cell width={72} bold>
+            <Cell width={96} bold>
               {row.intensity}
             </Cell>
           </Row>
