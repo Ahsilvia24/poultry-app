@@ -26,6 +26,7 @@ import {
   getFarmDetail,
   reactivateFlock,
   updateFarm,
+  updateFlockGrowthRate,
   updateHouse,
 } from "../../../../src/repos/data";
 import { VISIT_TYPE_LABELS } from "../../../../src/lib/visits";
@@ -33,6 +34,10 @@ import {
   ISSUE_CATEGORY_LABELS,
   LITTER_EVENT_LABELS,
 } from "../../../../src/lib/opsLabels";
+import {
+  catchWeightProjections,
+  resolveGrowthRate,
+} from "../../../../src/lib/weight/projections";
 import { colors, styles } from "../../../../src/theme";
 import {
   Card,
@@ -44,6 +49,7 @@ import {
   formatNumber,
   formatPct,
 } from "../../../../src/components/ui";
+import { WeightProjectionTile } from "../../../../src/components/WeightProjectionTile";
 
 function formatShortDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
@@ -239,6 +245,17 @@ export default function FarmDetailScreen() {
   );
   const catchLabel =
     data.activeFlock?.projectedCatchDate ?? data.activeFlock?.resolvedCatchDate ?? null;
+  const growthRate = data.activeFlock
+    ? resolveGrowthRate(data.activeFlock.growthRateLbsPerDay)
+    : null;
+  const weightProjections =
+    data.activeFlock && catchLabel && growthRate != null
+      ? catchWeightProjections({
+          placementDate: data.activeFlock.placementDate,
+          catchDate: catchLabel,
+          growthRateLbsPerDay: growthRate,
+        })
+      : [];
 
   function openHouseEditor(h: HouseRow) {
     setHouseEditError(null);
@@ -499,6 +516,17 @@ export default function FarmDetailScreen() {
               Placed {data.activeFlock.placementDate}
               {catchLabel ? ` · Catch ${catchLabel}` : ""}
             </Text>
+            {growthRate != null && weightProjections.length > 0 ? (
+              <WeightProjectionTile
+                catchDateKey={catchLabel}
+                growthRateLbsPerDay={growthRate}
+                projections={weightProjections}
+                onSaveGrowthRate={(rate) => {
+                  updateFlockGrowthRate(data.activeFlock!.id, rate);
+                  load();
+                }}
+              />
+            ) : null}
           </Card>
         ) : (
           <Card>

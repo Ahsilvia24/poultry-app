@@ -412,6 +412,7 @@ export function getFarmDetail(farmId: string) {
     flock_number: string;
     placement_date: string;
     projected_catch_date: string | null;
+    growth_rate_lbs_per_day: number | null;
   }>(
     "SELECT * FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
     [farmId],
@@ -558,6 +559,7 @@ export function getFarmDetail(farmId: string) {
           placementDate: flock.placement_date,
           projectedCatchDate: flock.projected_catch_date,
           resolvedCatchDate,
+          growthRateLbsPerDay: flock.growth_rate_lbs_per_day,
           flockAgeDays,
           flockWeek,
         }
@@ -1532,6 +1534,24 @@ export function reactivateFlock(flockId: string) {
     `UPDATE flocks SET flock_status = 'ACTIVE', actual_catch_date = NULL WHERE id = ?`,
     [flockId],
   );
+  return { success: true as const, farmId: flock.farm_id };
+}
+
+export function updateFlockGrowthRate(flockId: string, growthRateLbsPerDay: number) {
+  const db = getDb();
+  if (!Number.isFinite(growthRateLbsPerDay) || growthRateLbsPerDay < 0) {
+    throw new Error("Growth rate must be 0 or greater");
+  }
+  const flock = db.getFirstSync<{ id: string; farm_id: string }>(
+    "SELECT id, farm_id FROM flocks WHERE id = ?",
+    [flockId],
+  );
+  if (!flock) throw new Error("Flock not found");
+
+  db.runSync(`UPDATE flocks SET growth_rate_lbs_per_day = ? WHERE id = ?`, [
+    growthRateLbsPerDay,
+    flockId,
+  ]);
   return { success: true as const, farmId: flock.farm_id };
 }
 
