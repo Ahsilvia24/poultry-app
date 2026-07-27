@@ -5,6 +5,11 @@ import { Card, PageHeader } from "@/components/ui";
 import { ConsumptionRateCalculator } from "@/components/ConsumptionRateCalculator";
 import { LfoCreateBar } from "@/components/LfoCreateBar";
 import { SavedLfoRow } from "@/components/SavedLfoRow";
+import {
+  calculateLastFeedOrder,
+  formatHouseLfoSummary,
+} from "@/lib/lfo/calculate";
+import { getFlockHouseHeadCounts } from "@/lib/lfo/head-counts";
 
 /** Date-only → "7-26-2026" (no leading zeros). */
 function formatLfoDate(d: Date) {
@@ -31,10 +36,43 @@ export default async function LfoPage() {
       where: { farm: { userId: session.user.id, deletedAt: null } },
       include: {
         farm: { select: { farmName: true } },
+        houseInventories: {
+          include: { house: { select: { houseNumber: true } } },
+        },
       },
       orderBy: [{ orderDate: "desc" }, { createdAt: "desc" }],
     }),
   ]);
+
+  const headCountByFlock = new Map<string, Map<string, number>>();
+  await Promise.all(
+    [...new Set(savedLfos.map((l) => l.flockId))].map(async (flockId) => {
+      headCountByFlock.set(flockId, await getFlockHouseHeadCounts(flockId));
+    }),
+  );
+
+  const savedWithSummary = savedLfos.map((lfo) => {
+    const heads = headCountByFlock.get(lfo.flockId) ?? new Map();
+    const orderDateKey = lfo.orderDate.toISOString().slice(0, 10);
+    const calc = calculateLastFeedOrder({
+      orderDate: orderDateKey,
+      consumptionRate: lfo.consumptionRate,
+      houses: lfo.houseInventories.map((inv) => ({
+        houseId: inv.houseId,
+        houseNumber: inv.house.houseNumber,
+        binAPounds: inv.binAPounds,
+        binBPounds: inv.binBPounds,
+        feedUpAt: inv.feedUpAt,
+        headCount: heads.get(inv.houseId) ?? 0,
+      })),
+    });
+    return {
+      id: lfo.id,
+      farmName: lfo.farm.farmName,
+      dateLabel: formatLfoDate(lfo.orderDate),
+      houseSummary: formatHouseLfoSummary(calc.houses),
+    };
+  });
 
   return (
     <div>
@@ -47,7 +85,7 @@ export default async function LfoPage() {
 
       <h2 className="mb-3 text-lg font-bold text-stone-900">Saved LFOs</h2>
 
-      {savedLfos.length === 0 ? (
+      {savedWithSummary.length === 0 ? (
         <Card className="mb-8">
           <p className="text-sm text-stone-600">
             No saved LFOs yet. Select a farm and create an LFO to enter A/B bin inventory.
@@ -55,12 +93,13 @@ export default async function LfoPage() {
         </Card>
       ) : (
         <ul className="mb-8 divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
-          {savedLfos.map((lfo) => (
+          {savedWithSummary.map((lfo) => (
             <SavedLfoRow
               key={lfo.id}
               id={lfo.id}
-              farmName={lfo.farm.farmName}
-              dateLabel={formatLfoDate(lfo.orderDate)}
+              farmName={lfo.farmName}
+              dateLabel={lfo.dateLabel}
+              houseSummary={lfo.houseSummary}
             />
           ))}
         </ul>

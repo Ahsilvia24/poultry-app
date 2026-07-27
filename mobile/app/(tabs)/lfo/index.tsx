@@ -315,6 +315,14 @@ export default function LfoListScreen() {
                   <Text style={[styles.muted, { marginTop: 2 }]}>
                     {formatLfoDate(l.orderDate)}
                   </Text>
+                  {l.houseSummary ? (
+                    <Text
+                      style={{ marginTop: 4, fontWeight: "700", color: colors.text, fontSize: 13 }}
+                      numberOfLines={3}
+                    >
+                      {l.houseSummary}
+                    </Text>
+                  ) : null}
                 </Pressable>
                 <Pressable
                   accessibilityLabel={`Edit LFO for ${l.farmName}`}

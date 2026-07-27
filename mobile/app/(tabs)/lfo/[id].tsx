@@ -17,6 +17,7 @@ import { deleteLfo, getLfo, updateLfo } from "../../../src/repos/data";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
+  formatHouseLfoSummary,
 } from "../../../src/lib/lfo/calculate";
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { colors, styles } from "../../../src/theme";
@@ -92,7 +93,6 @@ function loadDraft(id: string) {
   return {
     farmName: lfo.farmName,
     orderDate: lfo.orderDate.slice(0, 10),
-    notes: lfo.notes ?? "",
     consumptionRate: String(lfo.consumptionRate ?? DEFAULT_LFO_CONSUMPTION_RATE),
     houses: lfo.houses.map(
       (h): HouseDraft => {
@@ -168,7 +168,6 @@ export default function EditLfoScreen() {
   const [msg, setMsg] = useState<string | null>(null);
   const [farmName, setFarmName] = useState("");
   const [orderDate, setOrderDate] = useState("");
-  const [notes, setNotes] = useState("");
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [houses, setHouses] = useState<HouseDraft[]>([]);
   const [ready, setReady] = useState(false);
@@ -188,7 +187,6 @@ export default function EditLfoScreen() {
       const draft = loadDraft(id);
       setFarmName(draft.farmName);
       setOrderDate(draft.orderDate);
-      setNotes(draft.notes);
       setConsumptionRate(draft.consumptionRate);
       setHouses(draft.houses);
       setError(null);
@@ -240,6 +238,8 @@ export default function EditLfoScreen() {
       })),
     });
   }, [consumptionRate, orderDate, houses]);
+
+  const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
   function updateHouse(houseId: string, patch: Partial<HouseDraft>) {
     setHouses((prev) => prev.map((h) => (h.houseId === houseId ? { ...h, ...patch } : h)));
@@ -307,7 +307,7 @@ export default function EditLfoScreen() {
       updateLfo({
         id,
         orderDate: orderDate.trim() || orderDate,
-        notes: notes.trim() ? notes.trim() : null,
+        notes: null,
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         houses: houses.map((h) => ({
           id: h.id,
@@ -520,19 +520,10 @@ export default function EditLfoScreen() {
                 );
               })}
 
-              {calc.houses.some((h) => h.feedUpAt) ? (
+              {houseSummary ? (
                 <Card>
-                  <Text style={styles.muted}>
-                    Farm LFO (order):{" "}
-                    <Text style={{ fontWeight: "800", color: colors.text }}>
-                      {formatLbs(calc.totalOrderLbs)} lbs
-                    </Text>
-                  </Text>
-                  <Text style={[styles.muted, { marginTop: 4 }]}>
-                    Farm reclaim:{" "}
-                    <Text style={{ fontWeight: "800", color: colors.text }}>
-                      {formatLbs(calc.totalReclaimLbs)} lbs
-                    </Text>
+                  <Text style={{ fontWeight: "800", color: colors.text, fontSize: 15 }}>
+                    {houseSummary}
                   </Text>
                 </Card>
               ) : null}

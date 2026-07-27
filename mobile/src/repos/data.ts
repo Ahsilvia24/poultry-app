@@ -11,6 +11,10 @@ import {
 } from "../lib/mortality";
 import { recommendedMinVent } from "../lib/tools";
 import {
+  calculateLastFeedOrder,
+  formatHouseLfoSummary,
+} from "../lib/lfo/calculate";
+import {
   buildFlockVisitSchedule,
   completionKey,
   splitScheduleForDashboard,
@@ -1036,25 +1040,47 @@ export function getReports(from: string, to: string, farmId?: string) {
 
 export function listLfos() {
   const db = getDb();
-  return db
-    .getAllSync<{
-      id: string;
-      farm_id: string;
-      order_date: string;
-      notes: string | null;
-      farm_name: string;
-    }>(
-      `SELECT l.*, f.farm_name FROM last_feed_orders l
-       JOIN farms f ON f.id = l.farm_id
-       ORDER BY l.order_date DESC`,
-    )
-    .map((r) => ({
+  const rows = db.getAllSync<{
+    id: string;
+    farm_id: string;
+    order_date: string;
+    notes: string | null;
+    farm_name: string;
+  }>(
+    `SELECT l.*, f.farm_name FROM last_feed_orders l
+     JOIN farms f ON f.id = l.farm_id
+     ORDER BY l.order_date DESC`,
+  );
+
+  return rows.map((r) => {
+    let houseSummary = "";
+    try {
+      const detail = getLfo(r.id);
+      const calc = calculateLastFeedOrder({
+        orderDate: detail.orderDate.slice(0, 10),
+        consumptionRate: detail.consumptionRate,
+        houses: detail.houses.map((h) => ({
+          houseId: h.houseId,
+          houseNumber: h.houseNumber,
+          binAPounds: h.binAPounds,
+          binBPounds: h.binBPounds,
+          feedUpAt: h.feedUpAt,
+          headCount: h.headCount,
+        })),
+      });
+      houseSummary = formatHouseLfoSummary(calc.houses);
+    } catch {
+      houseSummary = "";
+    }
+    return {
       id: r.id,
       farmId: r.farm_id,
       farmName: r.farm_name,
       orderDate: r.order_date,
       notes: r.notes,
-    }));
+      houseSummary,
+    };
+  });
 }
 
 export function createLfo(farmId: string, orderDate: string, notes?: string) {

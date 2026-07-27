@@ -3,10 +3,11 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Button, Input, Label, Select, Textarea } from "@/components/ui";
+import { Button, Input, Label, Select } from "@/components/ui";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
+  formatHouseLfoSummary,
 } from "@/lib/lfo/calculate";
 
 export type LfoHouseRow = {
@@ -68,7 +69,6 @@ export function LfoInventoryForm({
   houses: initialHouses,
   orderDate,
   consumptionRate: initialRate = DEFAULT_LFO_CONSUMPTION_RATE,
-  notes,
   submitLabel,
   deleteAction,
 }: {
@@ -76,7 +76,6 @@ export function LfoInventoryForm({
   houses: LfoHouseRow[];
   orderDate: string;
   consumptionRate?: number;
-  notes?: string | null;
   submitLabel: string;
   deleteAction?: () => Promise<void>;
 }) {
@@ -114,6 +113,8 @@ export function LfoInventoryForm({
       })),
     });
   }, [consumptionRate, orderDate, rows]);
+
+  const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
   function updateRow(
     houseId: string,
@@ -305,23 +306,11 @@ export function LfoInventoryForm({
         </div>
       </div>
 
-      {calc.houses.some((h) => h.feedUpAt) ? (
-        <div className="space-y-1 rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-700">
-          <p>
-            Farm LFO (order):{" "}
-            <span className="font-semibold">{formatLbs(calc.totalOrderLbs)} lbs</span>
-          </p>
-          <p>
-            Farm reclaim:{" "}
-            <span className="font-semibold">{formatLbs(calc.totalReclaimLbs)} lbs</span>
-          </p>
+      {houseSummary ? (
+        <div className="rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-700">
+          <p className="font-semibold text-stone-900">{houseSummary}</p>
         </div>
       ) : null}
-
-      <div>
-        <Label htmlFor="lfoNotes">Notes</Label>
-        <Textarea id="lfoNotes" name="notes" rows={2} defaultValue={notes ?? ""} />
-      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={pending}>
