@@ -165,18 +165,28 @@ export function WeeklyMortalityList({ weeks }: { weeks: WeekTotal[] }) {
   const rows = groupByFourWeekRows(weeks);
 
   return (
-    <View style={{ marginTop: 2, gap: 8 }}>
+    <View style={{ marginTop: 2, gap: 6 }}>
       {rows.map((row, rowIndex) => (
         <View
           key={rowIndex}
-          style={{ flexDirection: "row", flexWrap: "nowrap", gap: 6 }}
+          style={{ flexDirection: "row", flexWrap: "nowrap", gap: 4 }}
         >
           {row.map((w, colIndex) =>
             w ? (
               <View key={w.week} style={{ flex: 1, minWidth: 0 }}>
-                <Text style={{ fontSize: 16, lineHeight: 22, color: colors.muted }}>
-                  Wk {w.week}{" "}
-                  <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.72}
+                  style={{
+                    fontSize: 13,
+                    lineHeight: 18,
+                    color: colors.muted,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  Wk{w.week}{" "}
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text }}>
                     {w.total}
                   </Text>
                 </Text>
