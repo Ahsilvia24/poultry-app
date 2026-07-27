@@ -121,10 +121,10 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
     is_active: number;
   }>(
     status === "all"
-      ? "SELECT * FROM farms ORDER BY farm_name ASC"
+      ? "SELECT * FROM farms WHERE deleted_at IS NULL ORDER BY farm_name ASC"
       : status === "inactive"
-        ? "SELECT * FROM farms WHERE is_active = 0 ORDER BY farm_name ASC"
-        : "SELECT * FROM farms WHERE is_active = 1 ORDER BY farm_name ASC",
+        ? "SELECT * FROM farms WHERE is_active = 0 AND deleted_at IS NULL ORDER BY farm_name ASC"
+        : "SELECT * FROM farms WHERE is_active = 1 AND deleted_at IS NULL ORDER BY farm_name ASC",
   );
 
   return {
@@ -1498,11 +1498,44 @@ export function updateFarm(
   return { success: true as const };
 }
 
-/** Soft-delete: hide from active lists (matches web deleteFarmAction). */
+/** Soft-deactivate: hide from Active, keep under Inactive. */
+export function deactivateFarm(farmId: string) {
+  const db = getDb();
+  db.runSync(
+    "UPDATE farms SET is_active = 0, deleted_at = NULL WHERE id = ? AND deleted_at IS NULL",
+    [farmId],
+  );
+  return { success: true as const };
+}
+
+/** Make an inactive farm active again. */
+export function reactivateFarm(farmId: string) {
+  const db = getDb();
+  const farm = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM farms WHERE id = ? AND deleted_at IS NULL",
+    [farmId],
+  );
+  if (!farm) throw new Error("Farm not found");
+  db.runSync("UPDATE farms SET is_active = 1, deleted_at = NULL WHERE id = ?", [farmId]);
+  return { success: true as const };
+}
+
+/**
+ * Permanently remove farm from all lists (soft-delete).
+ * Matches web deleteFarmAction — historical rows remain in SQLite.
+ */
 export function deleteFarm(farmId: string) {
   const db = getDb();
-  db.runSync("UPDATE farms SET is_active = 0 WHERE id = ?", [farmId]);
+  db.runSync(
+    "UPDATE farms SET is_active = 0, deleted_at = ? WHERE id = ?",
+    [new Date().toISOString(), farmId],
+  );
   return { success: true };
+}
+
+/** @deprecated Use deactivateFarm */
+export function archiveFarm(farmId: string) {
+  return deactivateFarm(farmId);
 }
 
 type VisitInput = {

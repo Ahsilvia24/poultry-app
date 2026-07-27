@@ -34,7 +34,8 @@ export function migrateDb() {
       phone_number TEXT,
       notes TEXT,
       number_of_houses INTEGER NOT NULL DEFAULT 0,
-      is_active INTEGER NOT NULL DEFAULT 1
+      is_active INTEGER NOT NULL DEFAULT 1,
+      deleted_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS houses (
@@ -188,6 +189,12 @@ export function migrateDb() {
   const houseCols = database.getAllSync<{ name: string }>("PRAGMA table_info(houses)");
   if (!houseCols.some((c) => c.name === "deleted_at")) {
     database.execSync("ALTER TABLE houses ADD COLUMN deleted_at TEXT");
+  }
+
+  // Soft-delete farms (permanent remove from all lists)
+  const farmCols = database.getAllSync<{ name: string }>("PRAGMA table_info(farms)");
+  if (!farmCols.some((c) => c.name === "deleted_at")) {
+    database.execSync("ALTER TABLE farms ADD COLUMN deleted_at TEXT");
   }
 
   // Existing installs may lack newer flock columns

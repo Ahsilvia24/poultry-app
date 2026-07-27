@@ -11,7 +11,12 @@ import {
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { deleteFarm, listFarms } from "../../../src/repos/data";
+import {
+  deactivateFarm,
+  deleteFarm,
+  listFarms,
+  reactivateFarm,
+} from "../../../src/repos/data";
 import { formatLongScheduleDate } from "../../../src/lib/schedule";
 import { colors, styles } from "../../../src/theme";
 import {
@@ -49,14 +54,45 @@ export default function FarmsScreen() {
     }, [load]),
   );
 
-  function confirmDelete(farmId: string, farmName: string) {
+  function confirmMakeInactive(farmId: string, farmName: string) {
     Alert.alert(
-      "Delete farm?",
-      `Remove ${farmName} from your active lists? You can still find it under Inactive.`,
+      "Make farm inactive?",
+      `${farmName} will move to Inactive. You can make it active again later.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete",
+          text: "Make inactive",
+          onPress: () => {
+            deactivateFarm(farmId);
+            load();
+          },
+        },
+      ],
+    );
+  }
+
+  function confirmReactivate(farmId: string, farmName: string) {
+    Alert.alert("Make farm active?", `Move ${farmName} back to Active?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Make active",
+        onPress: () => {
+          reactivateFarm(farmId);
+          setStatus("active");
+          load();
+        },
+      },
+    ]);
+  }
+
+  function confirmPermanentDelete(farmId: string, farmName: string) {
+    Alert.alert(
+      "Delete farm permanently?",
+      `${farmName} will be removed from all farm lists and cannot be restored from Inactive.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete permanently",
           style: "destructive",
           onPress: () => {
             deleteFarm(farmId);
@@ -93,10 +129,7 @@ export default function FarmsScreen() {
               onPress={() => setStatus(key)}
             />
           ))}
-          <Chip
-            label="Add Farm"
-            onPress={() => router.push("/(tabs)/farms/new")}
-          />
+          <Chip label="Add Farm" onPress={() => router.push("/(tabs)/farms/new")} />
         </View>
 
         {error ? <Text style={{ color: colors.danger }}>{error}</Text> : null}
@@ -109,12 +142,11 @@ export default function FarmsScreen() {
 
         {data?.farms.map((farm) => {
           const houseCount = farm.houseCount ?? farm.numberOfHouses;
-          const ages =
-            farm.flockAgesDays?.length
-              ? farm.flockAgesDays
-              : farm.flockAgeDays != null
-                ? [farm.flockAgeDays]
-                : [];
+          const ages = farm.flockAgesDays?.length
+            ? farm.flockAgesDays
+            : farm.flockAgeDays != null
+              ? [farm.flockAgeDays]
+              : [];
           const ageLabel = ages.length > 0 ? ages.map((a) => `${a}d`).join(" · ") : null;
           const titleMeta = ageLabel
             ? ` (${houseCount}) · ${ageLabel}`
@@ -205,9 +237,7 @@ export default function FarmsScreen() {
                   />
                   <Metric
                     label="Current Head Count"
-                    value={
-                      farm.activeFlock ? formatNumber(farm.currentHeadCount) : "—"
-                    }
+                    value={farm.activeFlock ? formatNumber(farm.currentHeadCount) : "—"}
                   />
                   <Metric
                     label="Catch date"
@@ -229,23 +259,58 @@ export default function FarmsScreen() {
                 style={{
                   flexDirection: "row",
                   justifyContent: "flex-end",
+                  alignItems: "center",
+                  gap: 4,
                   marginTop: 4,
                 }}
               >
-                <Pressable
-                  accessibilityLabel={`Delete ${farm.farmName}`}
-                  onPress={() => confirmDelete(farm.id, farm.farmName)}
-                  hitSlop={8}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={20} color={colors.muted} />
-                </Pressable>
+                {farm.isActive ? (
+                  <Pressable
+                    accessibilityLabel={`Make ${farm.farmName} inactive`}
+                    onPress={() => confirmMakeInactive(farm.id, farm.farmName)}
+                    hitSlop={8}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons name="pause-circle-outline" size={22} color={colors.muted} />
+                  </Pressable>
+                ) : (
+                  <>
+                    <Pressable
+                      accessibilityLabel={`Make ${farm.farmName} active`}
+                      onPress={() => confirmReactivate(farm.id, farm.farmName)}
+                      hitSlop={8}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 8,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 13 }}>
+                        Make active
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityLabel={`Delete ${farm.farmName} permanently`}
+                      onPress={() => confirmPermanentDelete(farm.id, farm.farmName)}
+                      hitSlop={8}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color={colors.muted} />
+                    </Pressable>
+                  </>
+                )}
               </View>
             </Card>
           );

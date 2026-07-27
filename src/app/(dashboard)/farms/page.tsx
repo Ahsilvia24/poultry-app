@@ -3,7 +3,7 @@ import { addDays, differenceInCalendarDays, format } from "date-fns";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { DeleteFarmButton } from "@/components/FarmOpsForms";
+import { DeleteFarmButton, DeactivateFarmButton, ReactivateFarmButton } from "@/components/FarmOpsForms";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { summarizeForDate } from "@/lib/mortality/calculations";
 import { cn, formatNumber } from "@/lib/utils";
@@ -236,8 +236,15 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                     </div>
                   </div>
                 </Link>
-                <div className="mt-1 flex justify-end">
-                  <DeleteFarmButton farmId={farm.id} appearance="icon" />
+                <div className="mt-1 flex items-center justify-end gap-1">
+                  {farm.isActive ? (
+                    <DeactivateFarmButton farmId={farm.id} appearance="icon" />
+                  ) : (
+                    <>
+                      <ReactivateFarmButton farmId={farm.id} appearance="text" />
+                      <DeleteFarmButton farmId={farm.id} appearance="icon" />
+                    </>
+                  )}
                 </div>
               </Card>
             );

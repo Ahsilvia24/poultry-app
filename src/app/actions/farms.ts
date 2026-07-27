@@ -97,6 +97,19 @@ export async function deactivateFarmAction(farmId: string) {
   redirect("/farms?status=inactive");
 }
 
+export async function reactivateFarmAction(farmId: string) {
+  const user = await requireUser();
+  await assertFarmAccess(farmId, user.id!);
+  await prisma.farm.update({
+    where: { id: farmId },
+    data: { isActive: true, deletedAt: null },
+  });
+  revalidatePath("/farms");
+  revalidatePath(`/farms/${farmId}`);
+  revalidatePath("/");
+  redirect("/farms");
+}
+
 export async function deleteFarmAction(farmId: string) {
   const user = await requireUser();
   await assertFarmAccess(farmId, user.id!);

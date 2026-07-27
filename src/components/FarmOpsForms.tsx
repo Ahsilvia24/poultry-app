@@ -9,7 +9,14 @@ import {
   updateLitterEventAction,
   updateVisitAction,
 } from "@/app/actions/ops";
-import { deactivateFarmAction, deleteFarmAction, completeFlockAction, reactivateFlockAction, deleteFlockAction } from "@/app/actions/farms";
+import {
+  deactivateFarmAction,
+  deleteFarmAction,
+  reactivateFarmAction,
+  completeFlockAction,
+  reactivateFlockAction,
+  deleteFlockAction,
+} from "@/app/actions/farms";
 import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import {
   ISSUE_CATEGORY_LABELS,
@@ -409,6 +416,130 @@ export function LitterEventForm({
   );
 }
 
+export function DeactivateFarmButton({
+  farmId,
+  appearance = "button",
+}: {
+  farmId: string;
+  appearance?: "button" | "icon";
+}) {
+  const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      {appearance === "icon" ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(true);
+          }}
+          aria-label="Make farm inactive"
+          title="Make inactive"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-200 hover:text-stone-800 disabled:opacity-50"
+        >
+          <PauseIcon className="h-5 w-5" />
+        </button>
+      ) : (
+        <Button type="button" variant="secondary" disabled={pending} onClick={() => setOpen(true)}>
+          Make inactive
+        </Button>
+      )}
+      {open ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="deactivate-farm-title"
+            className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
+          >
+            <h3 id="deactivate-farm-title" className="text-lg font-bold text-stone-900">
+              Make this farm inactive?
+            </h3>
+            <p className="mt-2 text-sm text-stone-600">
+              It will move to Inactive. You can make it active again later. Historical records stay
+              intact.
+            </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button
+                type="button"
+                disabled={pending}
+                onClick={() => {
+                  start(async () => {
+                    await deactivateFarmAction(farmId);
+                  });
+                }}
+              >
+                {pending ? "Working…" : "Make inactive"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={pending}
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+export function ReactivateFarmButton({
+  farmId,
+  appearance = "button",
+}: {
+  farmId: string;
+  appearance?: "button" | "text";
+}) {
+  const [pending, start] = useTransition();
+
+  if (appearance === "text") {
+    return (
+      <button
+        type="button"
+        disabled={pending}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          start(async () => {
+            await reactivateFarmAction(farmId);
+          });
+        }}
+        className="px-2 py-2 text-sm font-semibold text-emerald-800 hover:underline disabled:opacity-50"
+      >
+        {pending ? "Working…" : "Make active"}
+      </button>
+    );
+  }
+
+  return (
+    <Button
+      type="button"
+      disabled={pending}
+      onClick={() => {
+        start(async () => {
+          await reactivateFarmAction(farmId);
+        });
+      }}
+    >
+      {pending ? "Working…" : "Make active"}
+    </Button>
+  );
+}
+
 export function DeleteFarmButton({
   farmId,
   appearance = "button",
@@ -430,8 +561,8 @@ export function DeleteFarmButton({
             e.stopPropagation();
             setOpen(true);
           }}
-          aria-label="Delete farm"
-          title="Delete farm"
+          aria-label="Delete farm permanently"
+          title="Delete permanently"
           className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-stone-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
         >
           <TrashIcon className="h-5 w-5" />
@@ -456,14 +587,10 @@ export function DeleteFarmButton({
             className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
           >
             <h3 id="delete-farm-title" className="text-lg font-bold text-stone-900">
-              Delete this farm?
+              Delete this farm permanently?
             </h3>
             <p className="mt-2 text-sm text-stone-600">
-              Are you sure you want to delete this farm? Historical records are kept, but the farm
-              will be removed from your active lists.
-            </p>
-            <p className="mt-2 text-sm text-stone-600">
-              If you may need it again, make the farm inactive instead of deleting it.
+              It will disappear from Active and Inactive lists. This cannot be undone from the app.
             </p>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
@@ -472,25 +599,18 @@ export function DeleteFarmButton({
                 disabled={pending}
                 onClick={() => {
                   start(async () => {
-                    await deactivateFarmAction(farmId);
-                  });
-                }}
-              >
-                {pending ? "Working…" : "Make inactive"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={pending}
-                onClick={() => {
-                  start(async () => {
                     await deleteFarmAction(farmId);
                   });
                 }}
               >
-                Yes, delete farm
+                {pending ? "Working…" : "Delete permanently"}
               </Button>
-              <Button type="button" variant="ghost" disabled={pending} onClick={() => setOpen(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={pending}
+                onClick={() => setOpen(false)}
+              >
                 Cancel
               </Button>
             </div>
@@ -498,6 +618,25 @@ export function DeleteFarmButton({
         </div>
       ) : null}
     </>
+  );
+}
+
+function PauseIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="10" y1="15" x2="10" y2="9" />
+      <line x1="14" y1="15" x2="14" y2="9" />
+    </svg>
   );
 }
 
@@ -521,9 +660,9 @@ function TrashIcon({ className }: { className?: string }) {
   );
 }
 
-/** @deprecated Use DeleteFarmButton */
+/** @deprecated Use DeactivateFarmButton / DeleteFarmButton */
 export function ArchiveFarmButton({ farmId }: { farmId: string }) {
-  return <DeleteFarmButton farmId={farmId} />;
+  return <DeactivateFarmButton farmId={farmId} />;
 }
 
 export function CompleteFlockButton({

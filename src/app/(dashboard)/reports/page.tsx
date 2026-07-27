@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { eachDayOfInterval, format, parseISO, subDays } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -13,6 +14,7 @@ import {
   type HouseBarPoint,
   type HouseByDateMatrix,
 } from "@/components/MortalityCharts";
+import { ReportsTypeTabs, type ReportTypeKey } from "@/components/ReportsTypeTabs";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 
 type SearchParams = Promise<{
@@ -21,18 +23,49 @@ type SearchParams = Promise<{
   from?: string;
   to?: string;
   cause?: string;
+  type?: string;
 }>;
+
+function resolveReportType(raw: string | undefined): ReportTypeKey {
+  if (raw === "placement" || raw === "feed" || raw === "performance") return raw;
+  return "mortality";
+}
 
 export default async function ReportsPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
   const params = await searchParams;
+  const reportType = resolveReportType(params.type);
   const today = new Date();
   const from = params.from ?? format(subDays(today, 42), "yyyy-MM-dd");
   const to = params.to ?? format(today, "yyyy-MM-dd");
   const fromDate = parseISO(from);
   const toDate = parseISO(to);
+
+  if (reportType !== "mortality") {
+    const title =
+      reportType === "placement"
+        ? "Placement"
+        : reportType === "feed"
+          ? "Feed"
+          : "Performance";
+    return (
+      <div>
+        <PageHeader title="Reports" subtitle="Choose a report type, then run filters" />
+        <Suspense fallback={<div className="mb-4 h-10" />}>
+          <ReportsTypeTabs active={reportType} />
+        </Suspense>
+        <Card>
+          <p className="text-lg font-bold text-stone-900">{title} report</p>
+          <p className="mt-2 text-sm text-stone-600">
+            Placeholder — this report type is coming soon. Use the Mortality tab for house × date
+            results today.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   const farms = await prisma.farm.findMany({
     where: { userId: session.user.id, deletedAt: null },
@@ -61,7 +94,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
   const oldFlocks = flockOptions.filter((f) => f.flockStatus !== "ACTIVE");
   const defaultActiveFlockId = activeFlocks[0]?.id ?? "";
 
-  // First visit (no flockId param) → active flock. Explicit "all" → every flock.
   const flockParam = params.flockId;
   const selectedFlockId =
     flockParam === undefined
@@ -70,8 +102,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
         ? ""
         : flockParam;
 
-  const selectedFlockSelectValue =
-    selectedFlockId === "" ? "all" : selectedFlockId;
+  const selectedFlockSelectValue = selectedFlockId === "" ? "all" : selectedFlockId;
 
   const mortalities = await prisma.dailyMortality.findMany({
     where: {
@@ -151,7 +182,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
     row.byDate[dateKey] = (row.byDate[dateKey] ?? 0) + m.totalDailyLoss;
     houseDateMap.set(sortKey, row);
   }
-  // Include houses with placement but zero loss in range when a farm/flock is selected
   if (selectedFarmId || selectedFlockId) {
     const housesInScope = await prisma.house.findMany({
       where: {
@@ -257,16 +287,21 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
     selectedFlockId
       ? `Flock: ${flockOptions.find((f) => f.id === selectedFlockId)?.flockNumber ?? selectedFlockId}`
       : "All flocks",
-    `${from} to ${to}`,
+    `${format(fromDate, "MMMM d, yyyy")} to ${format(toDate, "MMMM d, yyyy")}`,
     selectedCause ? `Cause: ${MORTALITY_CAUSE_LABELS[selectedCause] ?? selectedCause}` : "All causes",
   ].join(" · ");
 
   return (
     <div>
-      <PageHeader title="Reports" subtitle="Mortality trends, houses, causes, and farms" />
+      <PageHeader title="Reports" subtitle="Choose a report type, then run filters" />
+
+      <Suspense fallback={<div className="mb-4 h-10" />}>
+        <ReportsTypeTabs active="mortality" />
+      </Suspense>
 
       <Card className="mb-6">
         <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <input type="hidden" name="type" value="mortality" />
           <div>
             <Label htmlFor="farmId">Farm</Label>
             <Select id="farmId" name="farmId" defaultValue={selectedFarmId}>
@@ -297,10 +332,12 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           <div>
             <Label htmlFor="from">From</Label>
             <Input id="from" name="from" type="date" defaultValue={from} />
+            <p className="mt-1 text-xs text-stone-500">{format(fromDate, "MMMM d, yyyy")}</p>
           </div>
           <div>
             <Label htmlFor="to">To</Label>
             <Input id="to" name="to" type="date" defaultValue={to} />
+            <p className="mt-1 text-xs text-stone-500">{format(toDate, "MMMM d, yyyy")}</p>
           </div>
           <div>
             <Label htmlFor="cause">Cause</Label>
