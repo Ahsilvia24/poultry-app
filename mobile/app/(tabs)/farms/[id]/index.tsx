@@ -15,13 +15,13 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  createVisit,
   deleteHouse,
+  deleteVisit,
   getFarmDetail,
   updateHouse,
-} from "../../../src/repos/data";
-import { todayKey } from "../../../src/lib/ids";
-import { colors, styles } from "../../../src/theme";
+} from "../../../../src/repos/data";
+import { VISIT_TYPE_LABELS } from "../../../../src/lib/visits";
+import { colors, styles } from "../../../../src/theme";
 import {
   Card,
   Metric,
@@ -31,7 +31,7 @@ import {
   WeeklyMortalityList,
   formatNumber,
   formatPct,
-} from "../../../src/components/ui";
+} from "../../../../src/components/ui";
 
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -56,8 +56,6 @@ export default function FarmDetailScreen() {
   const [data, setData] = useState<FarmDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [visitNotes, setVisitNotes] = useState("");
-  const [visitMsg, setVisitMsg] = useState<string | null>(null);
   const [editingHouse, setEditingHouse] = useState<HouseEditDraft | null>(null);
   const [houseEditError, setHouseEditError] = useState<string | null>(null);
   const [houseSaving, setHouseSaving] = useState(false);
@@ -65,8 +63,6 @@ export default function FarmDetailScreen() {
   // Drop previous farm immediately when the route id changes
   useEffect(() => {
     setData(null);
-    setVisitNotes("");
-    setVisitMsg(null);
     setError(null);
     setLoading(true);
   }, [farmId]);
@@ -166,6 +162,24 @@ export default function FarmDetailScreen() {
         },
       ],
     );
+  }
+
+  function confirmDeleteVisit(visitId: string, visitDate: string) {
+    Alert.alert("Delete visit?", `${visitDate} will be removed.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          try {
+            deleteVisit(farm.id, visitId);
+            load();
+          } catch (e) {
+            Alert.alert("Error", e instanceof Error ? e.message : "Could not delete visit");
+          }
+        },
+      },
+    ]);
   }
 
   function saveHouseEdit() {
@@ -292,9 +306,18 @@ export default function FarmDetailScreen() {
         ) : (
           <Card>
             <Text style={{ fontWeight: "800" }}>No active flock</Text>
-            <Text style={[styles.muted, { marginTop: 4 }]}>
-              Add or reactivate a flock to track mortality for this farm.
+            <Text style={[styles.muted, { marginTop: 4, marginBottom: 12 }]}>
+              Add a flock to track mortality for this farm.
             </Text>
+            <PrimaryButton
+              label="Add flock"
+              onPress={() =>
+                router.push({
+                  pathname: "/(tabs)/farms/[id]/add-flock",
+                  params: { id: farm.id },
+                })
+              }
+            />
           </Card>
         )}
 
@@ -403,48 +426,76 @@ export default function FarmDetailScreen() {
           </Card>
         ))}
 
-        <SectionTitle>Log visit</SectionTitle>
-        <Card>
-          <Text style={styles.label}>Notes</Text>
-          <TextInput
-            style={[styles.input, { minHeight: 64 }]}
-            multiline
-            value={visitNotes}
-            onChangeText={setVisitNotes}
-            placeholder="Optional notes"
-          />
-          <PrimaryButton
-            label="Save routine visit"
-            onPress={() => {
-              const res = createVisit({
-                farmId: farm.id,
-                flockId: data.activeFlock?.id,
-                visitDate: todayKey(),
-                notes: visitNotes || null,
-              });
-              setVisitNotes("");
-              setVisitMsg(`Saved · bird age ${res.birdAgeInDays ?? "—"}d · Healthy`);
-              load();
-            }}
-          />
-          {visitMsg ? <Text style={[styles.muted, { marginTop: 8 }]}>{visitMsg}</Text> : null}
-        </Card>
+        <SectionTitle>Visits</SectionTitle>
+        <PrimaryButton
+          label="Log visit"
+          onPress={() =>
+            router.push({
+              pathname: "/(tabs)/farms/[id]/log-visit",
+              params: { id: farm.id },
+            })
+          }
+        />
 
-        {data.visits.length > 0 ? (
-          <>
-            <SectionTitle>Recent visits</SectionTitle>
-            {data.visits.map((v) => (
-              <Card key={v.id}>
-                <Text style={{ fontWeight: "700" }}>
-                  {v.visitDate} · {v.visitType}
-                  {v.birdAgeInDays != null ? ` · ${v.birdAgeInDays}d` : ""}
-                </Text>
-                <Text style={styles.muted}>{v.generalBirdCondition ?? "—"}</Text>
-                {v.notes ? <Text style={{ marginTop: 4 }}>{v.notes}</Text> : null}
-              </Card>
-            ))}
-          </>
-        ) : null}
+        <SectionTitle>Recent visits</SectionTitle>
+        {data.visits.length === 0 ? (
+          <Card>
+            <Text style={styles.muted}>No visits logged for this farm yet.</Text>
+          </Card>
+        ) : (
+          data.visits.map((v) => (
+            <Card key={v.id}>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontWeight: "700" }}>
+                    {v.visitDate} · {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
+                    {v.birdAgeInDays != null ? ` · ${v.birdAgeInDays}d` : ""}
+                  </Text>
+                  <Text style={styles.muted}>{v.generalBirdCondition ?? "—"}</Text>
+                  {v.followUpRequired ? (
+                    <Text style={{ color: "#b45309", marginTop: 2, fontWeight: "600" }}>
+                      Follow-up{v.followUpDate ? ` · ${v.followUpDate}` : ""}
+                    </Text>
+                  ) : null}
+                  {v.notes ? <Text style={{ marginTop: 4 }}>{v.notes}</Text> : null}
+                </View>
+                <Pressable
+                  accessibilityLabel="Edit visit"
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/visits/[visitId]",
+                      params: { id: farm.id, visitId: v.id },
+                    })
+                  }
+                  hitSlop={8}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="pencil-outline" size={20} color={colors.muted} />
+                </Pressable>
+                <Pressable
+                  accessibilityLabel="Delete visit"
+                  onPress={() => confirmDeleteVisit(v.id, v.visitDate)}
+                  hitSlop={8}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.muted} />
+                </Pressable>
+              </View>
+            </Card>
+          ))
+        )}
       </ScrollView>
 
       <Modal

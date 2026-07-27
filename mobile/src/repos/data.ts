@@ -554,8 +554,10 @@ export function getFarmDetail(farmId: string) {
       bird_age_in_days: number | null;
       general_bird_condition: string | null;
       notes: string | null;
+      follow_up_required: number;
+      follow_up_date: string | null;
     }>(
-      "SELECT * FROM farm_visits WHERE farm_id = ? ORDER BY visit_date DESC LIMIT 8",
+      "SELECT * FROM farm_visits WHERE farm_id = ? ORDER BY visit_date DESC, id DESC LIMIT 12",
       [farmId],
     ).map((v) => ({
       id: v.id,
@@ -564,6 +566,8 @@ export function getFarmDetail(farmId: string) {
       birdAgeInDays: v.bird_age_in_days,
       generalBirdCondition: v.general_bird_condition,
       notes: v.notes,
+      followUpRequired: v.follow_up_required === 1,
+      followUpDate: v.follow_up_date,
     })),
   };
 }
@@ -1121,46 +1125,190 @@ export function deleteFarm(farmId: string) {
   return { success: true };
 }
 
-export function createVisit(input: {
+type VisitInput = {
   farmId: string;
   flockId?: string | null;
   visitDate: string;
   visitType?: string;
-  generalBirdCondition?: string;
+  generalBirdCondition?: string | null;
   notes?: string | null;
-}) {
+  followUpRequired?: boolean;
+  followUpDate?: string | null;
+};
+
+function resolveVisitFlockAge(farmId: string, flockId: string | null | undefined, visitDate: string) {
   const db = getDb();
-  let age: number | null = null;
-  const flockId =
-    input.flockId ??
+  const resolvedFlockId =
+    flockId ??
     db.getFirstSync<{ id: string }>(
       "SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
-      [input.farmId],
-    )?.id;
-  if (flockId) {
+      [farmId],
+    )?.id ??
+    null;
+  let age: number | null = null;
+  if (resolvedFlockId) {
     const flock = db.getFirstSync<{ placement_date: string }>(
       "SELECT placement_date FROM flocks WHERE id = ?",
-      [flockId],
+      [resolvedFlockId],
     );
-    if (flock) age = birdAgeFromPlacement(flock.placement_date, input.visitDate);
+    if (flock) age = birdAgeFromPlacement(flock.placement_date, visitDate);
   }
+  return { flockId: resolvedFlockId, age };
+}
+
+export function createVisit(input: VisitInput) {
+  const db = getDb();
+  if (!input.visitDate?.trim()) throw new Error("Visit date is required");
+  const { flockId, age } = resolveVisitFlockAge(input.farmId, input.flockId, input.visitDate);
   const id = newId("visit");
+  const followUp = Boolean(input.followUpRequired);
   db.runSync(
     `INSERT INTO farm_visits
-      (id, farm_id, flock_id, visit_date, visit_type, bird_age_in_days, general_bird_condition, notes, follow_up_required)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+      (id, farm_id, flock_id, visit_date, visit_type, bird_age_in_days, general_bird_condition, notes, follow_up_required, follow_up_date)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       input.farmId,
-      flockId ?? null,
+      flockId,
       input.visitDate,
       input.visitType ?? "ROUTINE_SERVICE",
       age,
-      input.generalBirdCondition ?? "Healthy",
-      input.notes ?? null,
+      input.generalBirdCondition?.trim() || "Healthy",
+      input.notes?.trim() ? input.notes.trim() : null,
+      followUp ? 1 : 0,
+      followUp && input.followUpDate ? input.followUpDate : null,
     ],
   );
   return { id, birdAgeInDays: age };
+}
+
+export function getVisit(farmId: string, visitId: string) {
+  const db = getDb();
+  const v = db.getFirstSync<{
+    id: string;
+    farm_id: string;
+    flock_id: string | null;
+    visit_date: string;
+    visit_type: string;
+    bird_age_in_days: number | null;
+    general_bird_condition: string | null;
+    notes: string | null;
+    follow_up_required: number;
+    follow_up_date: string | null;
+  }>("SELECT * FROM farm_visits WHERE id = ? AND farm_id = ?", [visitId, farmId]);
+  if (!v) throw new Error("Visit not found");
+  return {
+    id: v.id,
+    farmId: v.farm_id,
+    flockId: v.flock_id,
+    visitDate: v.visit_date,
+    visitType: v.visit_type,
+    birdAgeInDays: v.bird_age_in_days,
+    generalBirdCondition: v.general_bird_condition,
+    notes: v.notes,
+    followUpRequired: v.follow_up_required === 1,
+    followUpDate: v.follow_up_date,
+  };
+}
+
+export function updateVisit(visitId: string, input: VisitInput) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string; farm_id: string }>(
+    "SELECT id, farm_id FROM farm_visits WHERE id = ? AND farm_id = ?",
+    [visitId, input.farmId],
+  );
+  if (!existing) throw new Error("Visit not found");
+  if (!input.visitDate?.trim()) throw new Error("Visit date is required");
+
+  const { flockId, age } = resolveVisitFlockAge(input.farmId, input.flockId, input.visitDate);
+  const followUp = Boolean(input.followUpRequired);
+  db.runSync(
+    `UPDATE farm_visits SET
+       flock_id = ?, visit_date = ?, visit_type = ?, bird_age_in_days = ?,
+       general_bird_condition = ?, notes = ?, follow_up_required = ?, follow_up_date = ?
+     WHERE id = ? AND farm_id = ?`,
+    [
+      flockId,
+      input.visitDate,
+      input.visitType ?? "ROUTINE_SERVICE",
+      age,
+      input.generalBirdCondition?.trim() || "Healthy",
+      input.notes?.trim() ? input.notes.trim() : null,
+      followUp ? 1 : 0,
+      followUp && input.followUpDate ? input.followUpDate : null,
+      visitId,
+      input.farmId,
+    ],
+  );
+  return { success: true as const, birdAgeInDays: age };
+}
+
+export function deleteVisit(farmId: string, visitId: string) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM farm_visits WHERE id = ? AND farm_id = ?",
+    [visitId, farmId],
+  );
+  if (!existing) throw new Error("Visit not found");
+  db.runSync("DELETE FROM farm_visits WHERE id = ? AND farm_id = ?", [visitId, farmId]);
+  return { success: true as const };
+}
+
+/** Create an active flock + house placements for a farm. */
+export function createFlock(input: {
+  farmId: string;
+  flockNumber: string;
+  placementDate: string;
+  targetMarketAge?: number;
+  projectedCatchDate?: string | null;
+  housePlacements: Array<{ houseId: string; placedBirdCount: number }>;
+}) {
+  const db = getDb();
+  const flockNumber = input.flockNumber.trim();
+  if (!flockNumber) throw new Error("Flock number is required");
+  if (!input.placementDate?.trim()) throw new Error("Placement date is required");
+  if (!input.housePlacements.length) throw new Error("Add houses before creating a flock");
+
+  const active = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
+    [input.farmId],
+  );
+  if (active) {
+    throw new Error("Only one active flock is allowed per farm. Complete the current flock first.");
+  }
+
+  const marketAge =
+    input.targetMarketAge != null && Number.isFinite(input.targetMarketAge) && input.targetMarketAge > 0
+      ? Math.floor(input.targetMarketAge)
+      : 52;
+  const projectedCatchDate =
+    input.projectedCatchDate?.trim() || addDaysKey(input.placementDate, marketAge);
+
+  for (const hp of input.housePlacements) {
+    const house = db.getFirstSync<{ id: string }>(
+      "SELECT id FROM houses WHERE id = ? AND farm_id = ? AND deleted_at IS NULL",
+      [hp.houseId, input.farmId],
+    );
+    if (!house) throw new Error("House not found on this farm");
+    if (!Number.isFinite(hp.placedBirdCount) || hp.placedBirdCount < 1) {
+      throw new Error("Placed bird count must be at least 1 for each house");
+    }
+  }
+
+  const id = newId("flock");
+  db.runSync(
+    `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
+     VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
+    [id, input.farmId, flockNumber, input.placementDate, projectedCatchDate],
+  );
+  for (const hp of input.housePlacements) {
+    db.runSync(
+      `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count)
+       VALUES (?, ?, ?, ?)`,
+      [newId("hf"), id, hp.houseId, Math.floor(hp.placedBirdCount)],
+    );
+  }
+  return { id, projectedCatchDate };
 }
 
 export function updateHouse(
