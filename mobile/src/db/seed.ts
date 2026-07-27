@@ -163,9 +163,97 @@ function ensureDemoVisits() {
   setMeta("visits_v2", "1");
 }
 
+/** Demo farm with 3 concurrent flocks / place / catch dates (idempotent). */
+function ensureMultiFlockDemoFarm() {
+  if (getMeta("multi_flock_demo_v1") === "1") return;
+  const db = getDb();
+  const today = todayKey();
+  const existing = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM farms WHERE farm_name = ? AND is_active = 1 LIMIT 1",
+    ["Triple Place Demo"],
+  );
+  if (existing) {
+    setMeta("multi_flock_demo_v1", "1");
+    return;
+  }
+
+  const farmId = newId("farm");
+  db.runSync(
+    `INSERT INTO farms (id, farm_name, grower_name, phone_number, notes, number_of_houses, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, 1)`,
+    [
+      farmId,
+      "Triple Place Demo",
+      "Alex Silvia",
+      "410-555-0199",
+      "Demo farm with 3 active flocks / place / catch dates",
+      6,
+    ],
+  );
+
+  const houseIds: string[] = [];
+  for (let n = 1; n <= 6; n++) {
+    const houseId = newId("house");
+    houseIds.push(houseId);
+    db.runSync(
+      `INSERT INTO houses (id, farm_id, house_number, square_footage, total_fan_cfm, number_of_fans)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [houseId, farmId, n, 24000 + n * 200, 170000, 11],
+    );
+  }
+
+  const flocks = [
+    { flockNumber: "26-01", ageDays: 28, marketAge: 52, houseIndexes: [0, 1] },
+    { flockNumber: "26-02", ageDays: 14, marketAge: 52, houseIndexes: [2, 3] },
+    { flockNumber: "26-03", ageDays: 3, marketAge: 52, houseIndexes: [4, 5] },
+  ];
+
+  for (const spec of flocks) {
+    const placement = addDaysKey(today, -spec.ageDays);
+    const catchDate = addDaysKey(placement, spec.marketAge);
+    const flockId = newId("flock");
+    db.runSync(
+      `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
+       VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
+      [flockId, farmId, spec.flockNumber, placement, catchDate],
+    );
+    for (const hi of spec.houseIndexes) {
+      const houseId = houseIds[hi]!;
+      const hfId = newId("hf");
+      db.runSync(
+        `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [hfId, flockId, houseId, 29700, placement, catchDate],
+      );
+      for (let d = 0; d <= spec.ageDays; d += Math.max(1, Math.floor(spec.ageDays / 5) || 1)) {
+        const dayLoss = lossForDay(d, hi);
+        const loss = calcTotalDailyLoss(dayLoss.mort, dayLoss.cull);
+        db.runSync(
+          `INSERT INTO daily_mortality
+            (id, house_flock_id, mortality_date, bird_age_in_days, daily_mortality_count, cull_count, total_daily_loss, mortality_cause, is_draft)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+          [
+            newId("mort"),
+            hfId,
+            addDaysKey(placement, d),
+            d,
+            dayLoss.mort,
+            dayLoss.cull,
+            loss,
+            dayLoss.cause,
+          ],
+        );
+      }
+    }
+  }
+
+  setMeta("multi_flock_demo_v1", "1");
+}
+
 export function seedIfNeeded() {
   if (getMeta("seeded") === "1") {
     ensureDemoVisits();
+    ensureMultiFlockDemoFarm();
     return;
   }
 
@@ -263,4 +351,5 @@ export function seedIfNeeded() {
   setMeta("seeded", "1");
   setMeta("visits_v2", "1");
   setMeta("userId", userId);
+  ensureMultiFlockDemoFarm();
 }
