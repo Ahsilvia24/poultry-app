@@ -132,6 +132,7 @@ export default function FarmDetailScreen() {
   const [editingHouse, setEditingHouse] = useState<HouseEditDraft | null>(null);
   const [houseEditError, setHouseEditError] = useState<string | null>(null);
   const [houseSaving, setHouseSaving] = useState(false);
+  const [expandedHouses, setExpandedHouses] = useState<Set<string>>(new Set());
   const [editingFarm, setEditingFarm] = useState<FarmEditDraft | null>(null);
   const [farmEditError, setFarmEditError] = useState<string | null>(null);
   const [farmSaving, setFarmSaving] = useState(false);
@@ -600,109 +601,142 @@ export default function FarmDetailScreen() {
         </Card>
 
         <SectionTitle>{farm.farmName}</SectionTitle>
-        {data.houses.map((h) => (
-          <Card key={`${farm.id}-${h.id}`}>
-            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={{ fontSize: 17, fontWeight: "800" }}>
-                  House {h.houseNumber}
-                  {h.cumulativeMortality != null ? (
-                    <Text style={{ fontWeight: "600", color: colors.muted }}>
-                      {" "}
-                      · Mort. {formatNumber(h.cumulativeMortality)}
-                    </Text>
-                  ) : null}
-                  {h.projectedHeadCount != null ? (
-                    <Text style={{ fontWeight: "600", color: colors.muted }}>
-                      {" "}
-                      · PHC {formatNumber(h.projectedHeadCount)}
-                    </Text>
-                  ) : null}
-                </Text>
-              </View>
-              <StatusBadge status={h.status} />
-              <Pressable
-                accessibilityLabel={`Edit house ${h.houseNumber}`}
-                onPress={() => openHouseEditor(h)}
-                hitSlop={8}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Ionicons name="pencil-outline" size={20} color={colors.muted} />
-              </Pressable>
-              <Pressable
-                accessibilityLabel={`Delete house ${h.houseNumber}`}
-                onPress={() => confirmDeleteHouse(h)}
-                hitSlop={8}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Ionicons name="trash-outline" size={20} color={colors.muted} />
-              </Pressable>
-            </View>
-            <View style={[styles.row, { marginTop: 12 }]}>
-              <Metric label="Placed" value={formatNumber(h.placedBirdCount)} />
-              <Metric label="Remaining" value={formatNumber(h.remainingBirdCount)} />
-              <Metric label="PHC" value={formatNumber(h.projectedHeadCount)} />
-              <Metric
-                label="Mort."
-                value={
-                  h.placedBirdCount != null
-                    ? `${formatNumber(h.cumulativeMortality)} (${formatPct(h.cumulativeMortalityPct)})`
-                    : formatNumber(h.cumulativeMortality)
-                }
-              />
-              <Metric
-                label="Projected mortality"
-                value={
-                  h.projectedMortality != null &&
-                  h.placedBirdCount != null &&
-                  h.placedBirdCount > 0
-                    ? `${formatNumber(h.projectedMortality)} (${formatPct(
-                        (h.projectedMortality / h.placedBirdCount) * 100,
-                      )})`
-                    : formatNumber(h.projectedMortality)
-                }
-              />
-              <Metric label="Recommended Min Vent" value={h.recommendedMinVent ?? "—"} />
-            </View>
-            {h.weeklyMortality.length > 0 ? (
-              <View
-                style={{
-                  borderTopWidth: 1,
-                  borderTopColor: "#f5f5f4",
-                  paddingTop: 10,
-                  marginTop: 4,
-                }}
-              >
-                <Text
+        {data.houses.map((h) => {
+          const detailsOpen = expandedHouses.has(h.id);
+          return (
+            <Card key={`${farm.id}-${h.id}`}>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontSize: 17, fontWeight: "800" }}>
+                    House {h.houseNumber}
+                    {h.cumulativeMortality != null ? (
+                      <Text style={{ fontWeight: "600", color: colors.muted }}>
+                        {" "}
+                        · Mort. {formatNumber(h.cumulativeMortality)}
+                      </Text>
+                    ) : null}
+                    {h.projectedHeadCount != null ? (
+                      <Text style={{ fontWeight: "600", color: colors.muted }}>
+                        {" "}
+                        · PHC {formatNumber(h.projectedHeadCount)}
+                      </Text>
+                    ) : null}
+                  </Text>
+                </View>
+                <StatusBadge status={h.status} />
+                <Pressable
+                  accessibilityLabel={`Edit house ${h.houseNumber}`}
+                  onPress={() => openHouseEditor(h)}
+                  hitSlop={8}
                   style={{
-                    fontSize: 11,
-                    fontWeight: "700",
-                    color: colors.muted,
-                    textTransform: "uppercase",
-                    marginBottom: 8,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  Weekly mortality
-                </Text>
-                <WeeklyMortalityList weeks={h.weeklyMortality} />
+                  <Ionicons name="pencil-outline" size={20} color={colors.muted} />
+                </Pressable>
+                <Pressable
+                  accessibilityLabel={`Delete house ${h.houseNumber}`}
+                  onPress={() => confirmDeleteHouse(h)}
+                  hitSlop={8}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.muted} />
+                </Pressable>
               </View>
-            ) : (
-              <Text style={[styles.muted, { marginTop: 8 }]}>No weekly mortality yet.</Text>
-            )}
-          </Card>
-        ))}
+
+              {h.weeklyMortality.length > 0 ? (
+                <View style={{ marginTop: 12 }}>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "700",
+                      color: colors.muted,
+                      textTransform: "uppercase",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Weekly mortality
+                  </Text>
+                  <WeeklyMortalityList weeks={h.weeklyMortality} />
+                </View>
+              ) : (
+                <Text style={[styles.muted, { marginTop: 12 }]}>No weekly mortality yet.</Text>
+              )}
+
+              <Pressable
+                onPress={() =>
+                  setExpandedHouses((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(h.id)) next.delete(h.id);
+                    else next.add(h.id);
+                    return next;
+                  })
+                }
+                accessibilityState={{ expanded: detailsOpen }}
+                style={{
+                  marginTop: 12,
+                  paddingTop: 12,
+                  borderTopWidth: 1,
+                  borderTopColor: "#f5f5f4",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  minHeight: 40,
+                }}
+              >
+                <Text style={{ color: colors.muted, fontWeight: "700", width: 14 }}>
+                  {detailsOpen ? "▾" : "▸"}
+                </Text>
+                <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
+                  {detailsOpen ? "Hide details" : "Show details"}
+                </Text>
+              </Pressable>
+
+              {detailsOpen ? (
+                <View style={[styles.row, { marginTop: 10 }]}>
+                  <Metric label="Placed" value={formatNumber(h.placedBirdCount)} />
+                  <Metric label="Remaining" value={formatNumber(h.remainingBirdCount)} />
+                  <Metric
+                    label="PHC"
+                    value={formatNumber(h.projectedHeadCount)}
+                    hint="Assumes 150 for catch crew"
+                  />
+                  <Metric
+                    label="Mort."
+                    value={
+                      h.placedBirdCount != null
+                        ? `${formatNumber(h.cumulativeMortality)} (${formatPct(h.cumulativeMortalityPct)})`
+                        : formatNumber(h.cumulativeMortality)
+                    }
+                  />
+                  <Metric
+                    label="Projected mortality"
+                    value={
+                      h.projectedMortality != null &&
+                      h.placedBirdCount != null &&
+                      h.placedBirdCount > 0
+                        ? `${formatNumber(h.projectedMortality)} (${formatPct(
+                            (h.projectedMortality / h.placedBirdCount) * 100,
+                          )})`
+                        : formatNumber(h.projectedMortality)
+                    }
+                  />
+                  <Metric label="Recommended Min Vent" value={h.recommendedMinVent ?? "—"} />
+                </View>
+              ) : null}
+            </Card>
+          );
+        })}
 
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
