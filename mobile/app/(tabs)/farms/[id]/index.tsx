@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,13 +10,18 @@ import {
   Text,
   TextInput,
   View,
+  type LayoutChangeEvent,
+  type ScrollView as ScrollViewType,
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
   completeFlock,
+  deleteFeedDelivery,
   deleteHouse,
+  deleteIssue,
+  deleteLitterEvent,
   deleteVisit,
   getFarmDetail,
   reactivateFlock,
@@ -24,6 +29,10 @@ import {
   updateHouse,
 } from "../../../../src/repos/data";
 import { VISIT_TYPE_LABELS } from "../../../../src/lib/visits";
+import {
+  ISSUE_CATEGORY_LABELS,
+  LITTER_EVENT_LABELS,
+} from "../../../../src/lib/opsLabels";
 import { colors, styles } from "../../../../src/theme";
 import {
   Card,
@@ -35,6 +44,56 @@ import {
   formatNumber,
   formatPct,
 } from "../../../../src/components/ui";
+
+function formatShortDate(dateKey: string) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function RecordLink({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={{ marginTop: 4, marginBottom: 16 }}>
+      <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function RowActions({
+  editLabel,
+  deleteLabel,
+  onEdit,
+  onDelete,
+}: {
+  editLabel: string;
+  deleteLabel: string;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <View style={{ flexDirection: "row", gap: 2 }}>
+      <Pressable
+        accessibilityLabel={editLabel}
+        onPress={onEdit}
+        hitSlop={8}
+        style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
+      >
+        <Ionicons name="pencil-outline" size={20} color={colors.muted} />
+      </Pressable>
+      <Pressable
+        accessibilityLabel={deleteLabel}
+        onPress={onDelete}
+        hitSlop={8}
+        style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
+      >
+        <Ionicons name="trash-outline" size={20} color={colors.muted} />
+      </Pressable>
+    </View>
+  );
+}
 
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -76,6 +135,20 @@ export default function FarmDetailScreen() {
   const [editingFarm, setEditingFarm] = useState<FarmEditDraft | null>(null);
   const [farmEditError, setFarmEditError] = useState<string | null>(null);
   const [farmSaving, setFarmSaving] = useState(false);
+  const scrollRef = useRef<ScrollViewType>(null);
+  const sectionY = useRef<Record<string, number>>({});
+
+  function scrollToSection(key: string) {
+    const y = sectionY.current[key];
+    if (y == null) return;
+    scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
+  }
+
+  function onSectionLayout(key: string) {
+    return (e: LayoutChangeEvent) => {
+      sectionY.current[key] = e.nativeEvent.layout.y;
+    };
+  }
 
   // Drop previous farm immediately when the route id changes
   useEffect(() => {
@@ -280,6 +353,7 @@ export default function FarmDetailScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <ScrollView
+        ref={scrollRef}
         style={styles.screen}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
@@ -475,6 +549,56 @@ export default function FarmDetailScreen() {
           </Card>
         )}
 
+        <Card>
+          <Text style={{ fontWeight: "800", fontSize: 14, marginBottom: 8 }}>Quick links</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {(
+              [
+                { key: "visits", label: "Visits", onPress: () => scrollToSection("visits") },
+                { key: "issues", label: "Issues", onPress: () => scrollToSection("issues") },
+                { key: "litter", label: "Litter", onPress: () => scrollToSection("litter") },
+                { key: "feed", label: "Feed", onPress: () => scrollToSection("feed") },
+                {
+                  key: "history",
+                  label: "History",
+                  onPress: () =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/history",
+                      params: { id: farm.id },
+                    }),
+                },
+                {
+                  key: "reports",
+                  label: "Reports",
+                  onPress: () =>
+                    router.push({
+                      pathname: "/(tabs)/reports",
+                      params: { farmId: farm.id },
+                    }),
+                },
+              ] as const
+            ).map((link) => (
+              <Pressable
+                key={link.key}
+                onPress={link.onPress}
+                style={{
+                  width: "47%",
+                  flexGrow: 1,
+                  minHeight: 44,
+                  borderRadius: 10,
+                  backgroundColor: colors.accentDark,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  paddingHorizontal: 8,
+                  paddingVertical: 10,
+                }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "800", fontSize: 14 }}>{link.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Card>
+
         <SectionTitle>{farm.farmName}</SectionTitle>
         {data.houses.map((h) => (
           <Card key={`${farm.id}-${h.id}`}>
@@ -580,76 +704,283 @@ export default function FarmDetailScreen() {
           </Card>
         ))}
 
-        <SectionTitle>Visits</SectionTitle>
-        <PrimaryButton
-          label="Log visit"
-          onPress={() =>
-            router.push({
-              pathname: "/(tabs)/farms/[id]/log-visit",
-              params: { id: farm.id },
-            })
-          }
-        />
-
-        <SectionTitle>Recent visits</SectionTitle>
-        {data.visits.length === 0 ? (
+        {/* ── Visits ── */}
+        <View onLayout={onSectionLayout("visits")}>
           <Card>
-            <Text style={styles.muted}>No visits logged for this farm yet.</Text>
-          </Card>
-        ) : (
-          data.visits.map((v) => (
-            <Card key={v.id}>
-              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ fontWeight: "700" }}>
-                    {v.visitDate} · {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
-                    {v.birdAgeInDays != null ? ` · ${v.birdAgeInDays}d` : ""}
-                  </Text>
-                  <Text style={styles.muted}>{v.generalBirdCondition ?? "—"}</Text>
-                  {v.followUpRequired ? (
-                    <Text style={{ color: "#b45309", marginTop: 2, fontWeight: "600" }}>
-                      Follow-up{v.followUpDate ? ` · ${v.followUpDate}` : ""}
+            <Text style={{ fontWeight: "800", fontSize: 16 }}>Recent visits</Text>
+            {data.visits.length === 0 ? (
+              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
+            ) : (
+              data.visits.map((v) => (
+                <View
+                  key={v.id}
+                  style={{
+                    marginTop: 10,
+                    paddingTop: 10,
+                    borderTopWidth: 1,
+                    borderTopColor: "#f5f5f4",
+                    flexDirection: "row",
+                    gap: 8,
+                  }}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={{ fontWeight: "700" }}>
+                      {formatShortDate(v.visitDate)} —{" "}
+                      {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
                     </Text>
-                  ) : null}
-                  {v.notes ? <Text style={{ marginTop: 4 }}>{v.notes}</Text> : null}
+                    {v.followUpRequired ? (
+                      <Text style={{ color: "#b45309", fontWeight: "600", marginTop: 2 }}>
+                        Follow-up due
+                      </Text>
+                    ) : null}
+                    {v.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text> : null}
+                  </View>
+                  <RowActions
+                    editLabel="Edit visit"
+                    deleteLabel="Delete visit"
+                    onEdit={() =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/visits/[visitId]",
+                        params: { id: farm.id, visitId: v.id },
+                      })
+                    }
+                    onDelete={() => confirmDeleteVisit(v.id, v.visitDate)}
+                  />
                 </View>
-                <Pressable
-                  accessibilityLabel="Edit visit"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(tabs)/farms/[id]/visits/[visitId]",
-                      params: { id: farm.id, visitId: v.id },
-                    })
-                  }
-                  hitSlop={8}
+              ))
+            )}
+          </Card>
+          <RecordLink
+            label="Log visit"
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/farms/[id]/log-visit",
+                params: { id: farm.id },
+              })
+            }
+          />
+        </View>
+
+        {/* ── Issues ── */}
+        <View onLayout={onSectionLayout("issues")}>
+          <Card>
+            <Text style={{ fontWeight: "800", fontSize: 16 }}>Recent issues</Text>
+            {data.issues.length === 0 ? (
+              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
+            ) : (
+              data.issues.map((issue) => (
+                <View
+                  key={issue.id}
                   style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    alignItems: "center",
-                    justifyContent: "center",
+                    marginTop: 10,
+                    paddingTop: 10,
+                    borderTopWidth: 1,
+                    borderTopColor: "#f5f5f4",
+                    flexDirection: "row",
+                    gap: 8,
                   }}
                 >
-                  <Ionicons name="pencil-outline" size={20} color={colors.muted} />
-                </Pressable>
-                <Pressable
-                  accessibilityLabel="Delete visit"
-                  onPress={() => confirmDeleteVisit(v.id, v.visitDate)}
-                  hitSlop={8}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={{ fontWeight: "700" }}>
+                      {formatShortDate(issue.dateReported)} · {issue.priority}
+                      <Text style={{ fontWeight: "600", color: colors.muted }}>
+                        {" "}
+                        · {issue.status}
+                      </Text>
+                    </Text>
+                    <Text style={{ marginTop: 2 }}>
+                      {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}:{" "}
+                      {issue.description}
+                    </Text>
+                  </View>
+                  <RowActions
+                    editLabel="Edit issue"
+                    deleteLabel="Delete issue"
+                    onEdit={() =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/issues/[issueId]",
+                        params: { id: farm.id, issueId: issue.id },
+                      })
+                    }
+                    onDelete={() =>
+                      Alert.alert("Delete issue?", "This cannot be undone.", [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Delete",
+                          style: "destructive",
+                          onPress: () => {
+                            try {
+                              deleteIssue(farm.id, issue.id);
+                              load();
+                            } catch (e) {
+                              Alert.alert(
+                                "Error",
+                                e instanceof Error ? e.message : "Could not delete",
+                              );
+                            }
+                          },
+                        },
+                      ])
+                    }
+                  />
+                </View>
+              ))
+            )}
+          </Card>
+          <RecordLink
+            label="Report issue"
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/farms/[id]/report-issue",
+                params: { id: farm.id },
+              })
+            }
+          />
+        </View>
+
+        {/* ── Litter ── */}
+        <View onLayout={onSectionLayout("litter")}>
+          <Card>
+            <Text style={{ fontWeight: "800", fontSize: 16 }}>Litter events</Text>
+            {data.litterEvents.length === 0 ? (
+              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
+            ) : (
+              data.litterEvents.map((e) => (
+                <View
+                  key={e.id}
                   style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    alignItems: "center",
-                    justifyContent: "center",
+                    marginTop: 10,
+                    paddingTop: 10,
+                    borderTopWidth: 1,
+                    borderTopColor: "#f5f5f4",
+                    flexDirection: "row",
+                    gap: 8,
                   }}
                 >
-                  <Ionicons name="trash-outline" size={20} color={colors.muted} />
-                </Pressable>
-              </View>
-            </Card>
-          ))
-        )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={{ fontWeight: "700" }}>
+                      {formatShortDate(e.eventDate)} —{" "}
+                      {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
+                      {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
+                    </Text>
+                    {e.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{e.notes}</Text> : null}
+                  </View>
+                  <RowActions
+                    editLabel="Edit litter event"
+                    deleteLabel="Delete litter event"
+                    onEdit={() =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/litter/[eventId]",
+                        params: { id: farm.id, eventId: e.id },
+                      })
+                    }
+                    onDelete={() =>
+                      Alert.alert("Delete litter event?", "This cannot be undone.", [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Delete",
+                          style: "destructive",
+                          onPress: () => {
+                            try {
+                              deleteLitterEvent(farm.id, e.id);
+                              load();
+                            } catch (err) {
+                              Alert.alert(
+                                "Error",
+                                err instanceof Error ? err.message : "Could not delete",
+                              );
+                            }
+                          },
+                        },
+                      ])
+                    }
+                  />
+                </View>
+              ))
+            )}
+          </Card>
+          <RecordLink
+            label="Record litter event"
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/farms/[id]/record-litter",
+                params: { id: farm.id },
+              })
+            }
+          />
+        </View>
+
+        {/* ── Feed ── */}
+        <View onLayout={onSectionLayout("feed")}>
+          <Card>
+            <Text style={{ fontWeight: "800", fontSize: 16 }}>Feed deliveries</Text>
+            {data.feedDeliveries.length === 0 ? (
+              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
+            ) : (
+              data.feedDeliveries.map((d) => (
+                <View
+                  key={d.id}
+                  style={{
+                    marginTop: 10,
+                    paddingTop: 10,
+                    borderTopWidth: 1,
+                    borderTopColor: "#f5f5f4",
+                    flexDirection: "row",
+                    gap: 8,
+                  }}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={{ fontWeight: "700" }}>
+                      {formatShortDate(d.deliveryDate)} — {formatNumber(d.poundsDelivered)} lbs
+                      {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
+                      {d.feedType ? ` · ${d.feedType}` : ""}
+                      {d.feedMill ? ` · ${d.feedMill}` : ""}
+                    </Text>
+                  </View>
+                  <RowActions
+                    editLabel="Edit feed delivery"
+                    deleteLabel="Delete feed delivery"
+                    onEdit={() =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/feed/[deliveryId]",
+                        params: { id: farm.id, deliveryId: d.id },
+                      })
+                    }
+                    onDelete={() =>
+                      Alert.alert("Delete feed delivery?", "This cannot be undone.", [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Delete",
+                          style: "destructive",
+                          onPress: () => {
+                            try {
+                              deleteFeedDelivery(d.id);
+                              load();
+                            } catch (err) {
+                              Alert.alert(
+                                "Error",
+                                err instanceof Error ? err.message : "Could not delete",
+                              );
+                            }
+                          },
+                        },
+                      ])
+                    }
+                  />
+                </View>
+              ))
+            )}
+          </Card>
+          <RecordLink
+            label="Record feed delivery"
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/farms/[id]/record-feed",
+                params: { id: farm.id },
+              })
+            }
+          />
+        </View>
       </ScrollView>
 
       <Modal

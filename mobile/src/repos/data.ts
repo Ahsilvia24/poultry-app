@@ -572,7 +572,6 @@ export function getFarmDetail(farmId: string) {
         }
       : null,
     houses,
-    openIssues: [] as Array<{ id: string; priority: string; description: string }>,
     visits: db.getAllSync<{
       id: string;
       visit_date: string;
@@ -595,6 +594,124 @@ export function getFarmDetail(farmId: string) {
       followUpRequired: v.follow_up_required === 1,
       followUpDate: v.follow_up_date,
     })),
+    issues: db.getAllSync<{
+      id: string;
+      date_reported: string;
+      house_id: string | null;
+      priority: string;
+      status: string;
+      category: string;
+      assigned_to: string | null;
+      description: string;
+      corrective_action: string | null;
+    }>(
+      "SELECT * FROM farm_issues WHERE farm_id = ? ORDER BY date_reported DESC, id DESC LIMIT 12",
+      [farmId],
+    ).map((issue) => ({
+      id: issue.id,
+      dateReported: issue.date_reported,
+      houseId: issue.house_id,
+      priority: issue.priority,
+      status: issue.status,
+      category: issue.category,
+      assignedTo: issue.assigned_to,
+      description: issue.description,
+      correctiveAction: issue.corrective_action,
+    })),
+    litterEvents: db.getAllSync<{
+      id: string;
+      event_date: string;
+      event_type: string;
+      house_id: string | null;
+      house_number: number | null;
+      contractor: string | null;
+      litter_depth: number | null;
+      cost: number | null;
+      notes: string | null;
+    }>(
+      `SELECT e.*, h.house_number
+       FROM litter_events e
+       LEFT JOIN houses h ON h.id = e.house_id
+       WHERE e.farm_id = ?
+       ORDER BY e.event_date DESC, e.id DESC LIMIT 12`,
+      [farmId],
+    ).map((e) => ({
+      id: e.id,
+      eventDate: e.event_date,
+      eventType: e.event_type,
+      houseId: e.house_id,
+      houseNumber: e.house_number,
+      contractor: e.contractor,
+      litterDepth: e.litter_depth,
+      cost: e.cost,
+      notes: e.notes,
+    })),
+    feedDeliveries: db.getAllSync<{
+      id: string;
+      delivery_date: string;
+      pounds_delivered: number;
+      flock_id: string | null;
+      house_flock_id: string | null;
+      house_number: number | null;
+      feed_type: string | null;
+      feed_mill: string | null;
+      ticket_number: string | null;
+      notes: string | null;
+    }>(
+      `SELECT d.*, h.house_number
+       FROM feed_deliveries d
+       LEFT JOIN house_flocks hf ON hf.id = d.house_flock_id
+       LEFT JOIN houses h ON h.id = hf.house_id
+       LEFT JOIN flocks f ON f.id = d.flock_id
+       WHERE f.farm_id = ? OR EXISTS (
+         SELECT 1 FROM house_flocks hf2
+         JOIN flocks f2 ON f2.id = hf2.flock_id
+         WHERE hf2.id = d.house_flock_id AND f2.farm_id = ?
+       )
+       ORDER BY d.delivery_date DESC, d.id DESC LIMIT 12`,
+      [farmId, farmId],
+    ).map((d) => ({
+      id: d.id,
+      deliveryDate: d.delivery_date,
+      poundsDelivered: d.pounds_delivered,
+      flockId: d.flock_id,
+      houseFlockId: d.house_flock_id,
+      houseNumber: d.house_number,
+      feedType: d.feed_type,
+      feedMill: d.feed_mill,
+      ticketNumber: d.ticket_number,
+      notes: d.notes,
+    })),
+    flocks: db.getAllSync<{
+      id: string;
+      flock_number: string;
+      flock_status: string;
+    }>(
+      `SELECT id, flock_number, flock_status FROM flocks
+       WHERE farm_id = ? ORDER BY placement_date DESC`,
+      [farmId],
+    ).map((fl) => {
+      const flHouses = db.getAllSync<{
+        house_flock_id: string;
+        house_number: number;
+      }>(
+        `SELECT hf.id as house_flock_id, h.house_number
+         FROM house_flocks hf
+         JOIN houses h ON h.id = hf.house_id
+         WHERE hf.flock_id = ? AND h.deleted_at IS NULL
+         ORDER BY h.house_number ASC`,
+        [fl.id],
+      );
+      return {
+        id: fl.id,
+        flockNumber: fl.flock_number,
+        status: fl.flock_status,
+        houses: flHouses.map((h) => ({
+          houseFlockId: h.house_flock_id,
+          houseNumber: h.house_number,
+        })),
+      };
+    }),
   };
 }
 
@@ -1618,5 +1735,331 @@ export function toggleFollowUpCompletion(input: {
       completedAt,
     ],
   );
+  return { success: true as const };
+}
+
+/* ─── Issues ───────────────────────────────────────────────────────────── */
+
+type IssueInput = {
+  farmId: string;
+  flockId?: string | null;
+  houseId?: string | null;
+  dateReported: string;
+  category?: string;
+  priority?: string;
+  status?: string;
+  assignedTo?: string | null;
+  description: string;
+  correctiveAction?: string | null;
+};
+
+export function createIssue(input: IssueInput) {
+  const db = getDb();
+  if (!input.dateReported?.trim()) throw new Error("Date reported is required");
+  const description = input.description.trim();
+  if (!description) throw new Error("Description is required");
+  const id = newId("issue");
+  db.runSync(
+    `INSERT INTO farm_issues
+      (id, farm_id, house_id, flock_id, date_reported, category, priority, description, corrective_action, assigned_to, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      input.farmId,
+      input.houseId || null,
+      input.flockId || null,
+      input.dateReported,
+      input.category ?? "OTHER",
+      input.priority ?? "MEDIUM",
+      description,
+      input.correctiveAction?.trim() || null,
+      input.assignedTo?.trim() || null,
+      input.status ?? "OPEN",
+    ],
+  );
+  return { id };
+}
+
+export function getIssue(farmId: string, issueId: string) {
+  const db = getDb();
+  const issue = db.getFirstSync<{
+    id: string;
+    farm_id: string;
+    house_id: string | null;
+    flock_id: string | null;
+    date_reported: string;
+    category: string;
+    priority: string;
+    description: string;
+    corrective_action: string | null;
+    assigned_to: string | null;
+    status: string;
+  }>("SELECT * FROM farm_issues WHERE id = ? AND farm_id = ?", [issueId, farmId]);
+  if (!issue) throw new Error("Issue not found");
+  return {
+    id: issue.id,
+    farmId: issue.farm_id,
+    houseId: issue.house_id,
+    flockId: issue.flock_id,
+    dateReported: issue.date_reported,
+    category: issue.category,
+    priority: issue.priority,
+    description: issue.description,
+    correctiveAction: issue.corrective_action,
+    assignedTo: issue.assigned_to,
+    status: issue.status,
+  };
+}
+
+export function updateIssue(issueId: string, input: IssueInput) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM farm_issues WHERE id = ? AND farm_id = ?",
+    [issueId, input.farmId],
+  );
+  if (!existing) throw new Error("Issue not found");
+  if (!input.dateReported?.trim()) throw new Error("Date reported is required");
+  const description = input.description.trim();
+  if (!description) throw new Error("Description is required");
+  db.runSync(
+    `UPDATE farm_issues SET
+       house_id = ?, flock_id = ?, date_reported = ?, category = ?, priority = ?,
+       description = ?, corrective_action = ?, assigned_to = ?, status = ?
+     WHERE id = ? AND farm_id = ?`,
+    [
+      input.houseId || null,
+      input.flockId || null,
+      input.dateReported,
+      input.category ?? "OTHER",
+      input.priority ?? "MEDIUM",
+      description,
+      input.correctiveAction?.trim() || null,
+      input.assignedTo?.trim() || null,
+      input.status ?? "OPEN",
+      issueId,
+      input.farmId,
+    ],
+  );
+  return { success: true as const };
+}
+
+export function deleteIssue(farmId: string, issueId: string) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM farm_issues WHERE id = ? AND farm_id = ?",
+    [issueId, farmId],
+  );
+  if (!existing) throw new Error("Issue not found");
+  db.runSync("DELETE FROM farm_issues WHERE id = ? AND farm_id = ?", [issueId, farmId]);
+  return { success: true as const };
+}
+
+/* ─── Litter events ────────────────────────────────────────────────────── */
+
+type LitterInput = {
+  farmId: string;
+  houseId?: string | null;
+  eventDate: string;
+  eventType?: string;
+  contractor?: string | null;
+  litterDepth?: number | null;
+  cost?: number | null;
+  notes?: string | null;
+};
+
+export function createLitterEvent(input: LitterInput) {
+  const db = getDb();
+  if (!input.eventDate?.trim()) throw new Error("Event date is required");
+  const id = newId("litter");
+  db.runSync(
+    `INSERT INTO litter_events
+      (id, farm_id, house_id, event_date, event_type, litter_depth, contractor, cost, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      input.farmId,
+      input.houseId || null,
+      input.eventDate,
+      input.eventType ?? "FULL_LITTER_CLEANOUT",
+      input.litterDepth ?? null,
+      input.contractor?.trim() || null,
+      input.cost ?? null,
+      input.notes?.trim() || null,
+    ],
+  );
+  return { id };
+}
+
+export function getLitterEvent(farmId: string, eventId: string) {
+  const db = getDb();
+  const e = db.getFirstSync<{
+    id: string;
+    farm_id: string;
+    house_id: string | null;
+    event_date: string;
+    event_type: string;
+    litter_depth: number | null;
+    contractor: string | null;
+    cost: number | null;
+    notes: string | null;
+  }>("SELECT * FROM litter_events WHERE id = ? AND farm_id = ?", [eventId, farmId]);
+  if (!e) throw new Error("Litter event not found");
+  return {
+    id: e.id,
+    farmId: e.farm_id,
+    houseId: e.house_id,
+    eventDate: e.event_date,
+    eventType: e.event_type,
+    litterDepth: e.litter_depth,
+    contractor: e.contractor,
+    cost: e.cost,
+    notes: e.notes,
+  };
+}
+
+export function updateLitterEvent(eventId: string, input: LitterInput) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM litter_events WHERE id = ? AND farm_id = ?",
+    [eventId, input.farmId],
+  );
+  if (!existing) throw new Error("Litter event not found");
+  if (!input.eventDate?.trim()) throw new Error("Event date is required");
+  db.runSync(
+    `UPDATE litter_events SET
+       house_id = ?, event_date = ?, event_type = ?, litter_depth = ?,
+       contractor = ?, cost = ?, notes = ?
+     WHERE id = ? AND farm_id = ?`,
+    [
+      input.houseId || null,
+      input.eventDate,
+      input.eventType ?? "FULL_LITTER_CLEANOUT",
+      input.litterDepth ?? null,
+      input.contractor?.trim() || null,
+      input.cost ?? null,
+      input.notes?.trim() || null,
+      eventId,
+      input.farmId,
+    ],
+  );
+  return { success: true as const };
+}
+
+export function deleteLitterEvent(farmId: string, eventId: string) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM litter_events WHERE id = ? AND farm_id = ?",
+    [eventId, farmId],
+  );
+  if (!existing) throw new Error("Litter event not found");
+  db.runSync("DELETE FROM litter_events WHERE id = ? AND farm_id = ?", [eventId, farmId]);
+  return { success: true as const };
+}
+
+/* ─── Feed deliveries ──────────────────────────────────────────────────── */
+
+type FeedInput = {
+  flockId?: string | null;
+  houseFlockId?: string | null;
+  deliveryDate: string;
+  poundsDelivered: number;
+  feedType?: string | null;
+  feedMill?: string | null;
+  ticketNumber?: string | null;
+  notes?: string | null;
+};
+
+export function createFeedDelivery(input: FeedInput) {
+  const db = getDb();
+  if (!input.deliveryDate?.trim()) throw new Error("Delivery date is required");
+  if (!Number.isFinite(input.poundsDelivered) || input.poundsDelivered <= 0) {
+    throw new Error("Pounds delivered must be greater than 0");
+  }
+  const id = newId("feed");
+  db.runSync(
+    `INSERT INTO feed_deliveries
+      (id, flock_id, house_flock_id, delivery_date, feed_type, feed_mill, ticket_number, pounds_delivered, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      input.flockId || null,
+      input.houseFlockId || null,
+      input.deliveryDate,
+      input.feedType?.trim() || null,
+      input.feedMill?.trim() || null,
+      input.ticketNumber?.trim() || null,
+      input.poundsDelivered,
+      input.notes?.trim() || null,
+    ],
+  );
+  return { id };
+}
+
+export function getFeedDelivery(deliveryId: string) {
+  const db = getDb();
+  const d = db.getFirstSync<{
+    id: string;
+    flock_id: string | null;
+    house_flock_id: string | null;
+    delivery_date: string;
+    feed_type: string | null;
+    feed_mill: string | null;
+    ticket_number: string | null;
+    pounds_delivered: number;
+    notes: string | null;
+  }>("SELECT * FROM feed_deliveries WHERE id = ?", [deliveryId]);
+  if (!d) throw new Error("Feed delivery not found");
+  return {
+    id: d.id,
+    flockId: d.flock_id,
+    houseFlockId: d.house_flock_id,
+    deliveryDate: d.delivery_date,
+    feedType: d.feed_type,
+    feedMill: d.feed_mill,
+    ticketNumber: d.ticket_number,
+    poundsDelivered: d.pounds_delivered,
+    notes: d.notes,
+  };
+}
+
+export function updateFeedDelivery(deliveryId: string, input: FeedInput) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM feed_deliveries WHERE id = ?",
+    [deliveryId],
+  );
+  if (!existing) throw new Error("Feed delivery not found");
+  if (!input.deliveryDate?.trim()) throw new Error("Delivery date is required");
+  if (!Number.isFinite(input.poundsDelivered) || input.poundsDelivered <= 0) {
+    throw new Error("Pounds delivered must be greater than 0");
+  }
+  db.runSync(
+    `UPDATE feed_deliveries SET
+       flock_id = ?, house_flock_id = ?, delivery_date = ?, feed_type = ?,
+       feed_mill = ?, ticket_number = ?, pounds_delivered = ?, notes = ?
+     WHERE id = ?`,
+    [
+      input.flockId || null,
+      input.houseFlockId || null,
+      input.deliveryDate,
+      input.feedType?.trim() || null,
+      input.feedMill?.trim() || null,
+      input.ticketNumber?.trim() || null,
+      input.poundsDelivered,
+      input.notes?.trim() || null,
+      deliveryId,
+    ],
+  );
+  return { success: true as const };
+}
+
+export function deleteFeedDelivery(deliveryId: string) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM feed_deliveries WHERE id = ?",
+    [deliveryId],
+  );
+  if (!existing) throw new Error("Feed delivery not found");
+  db.runSync("DELETE FROM feed_deliveries WHERE id = ?", [deliveryId]);
   return { success: true as const };
 }

@@ -129,11 +129,56 @@ export function migrateDb() {
       FOREIGN KEY (farm_id) REFERENCES farms(id)
     );
 
+    CREATE TABLE IF NOT EXISTS farm_issues (
+      id TEXT PRIMARY KEY NOT NULL,
+      farm_id TEXT NOT NULL,
+      house_id TEXT,
+      flock_id TEXT,
+      date_reported TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'OTHER',
+      priority TEXT NOT NULL DEFAULT 'MEDIUM',
+      description TEXT NOT NULL,
+      corrective_action TEXT,
+      assigned_to TEXT,
+      status TEXT NOT NULL DEFAULT 'OPEN',
+      FOREIGN KEY (farm_id) REFERENCES farms(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS litter_events (
+      id TEXT PRIMARY KEY NOT NULL,
+      farm_id TEXT NOT NULL,
+      house_id TEXT,
+      event_date TEXT NOT NULL,
+      event_type TEXT NOT NULL DEFAULT 'FULL_LITTER_CLEANOUT',
+      litter_depth REAL,
+      contractor TEXT,
+      cost REAL,
+      notes TEXT,
+      FOREIGN KEY (farm_id) REFERENCES farms(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS feed_deliveries (
+      id TEXT PRIMARY KEY NOT NULL,
+      flock_id TEXT,
+      house_flock_id TEXT,
+      delivery_date TEXT NOT NULL,
+      feed_type TEXT,
+      feed_mill TEXT,
+      ticket_number TEXT,
+      pounds_delivered REAL NOT NULL,
+      notes TEXT,
+      FOREIGN KEY (flock_id) REFERENCES flocks(id),
+      FOREIGN KEY (house_flock_id) REFERENCES house_flocks(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_houses_farm ON houses(farm_id);
     CREATE INDEX IF NOT EXISTS idx_flocks_farm ON flocks(farm_id);
     CREATE INDEX IF NOT EXISTS idx_hf_flock ON house_flocks(flock_id);
     CREATE INDEX IF NOT EXISTS idx_mort_hf_date ON daily_mortality(house_flock_id, mortality_date);
     CREATE INDEX IF NOT EXISTS idx_fuc_farm ON follow_up_completions(farm_id);
+    CREATE INDEX IF NOT EXISTS idx_issues_farm ON farm_issues(farm_id);
+    CREATE INDEX IF NOT EXISTS idx_litter_farm ON litter_events(farm_id);
+    CREATE INDEX IF NOT EXISTS idx_feed_flock ON feed_deliveries(flock_id);
   `);
 
   // Existing installs created houses without deleted_at — add if missing

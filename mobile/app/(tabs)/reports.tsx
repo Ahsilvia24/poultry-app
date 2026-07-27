@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { getReports, listFarms } from "../../src/repos/data";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import { colors, styles } from "../../src/theme";
@@ -18,13 +18,29 @@ function formatDateHeader(dateKey: string) {
   return dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function paramId(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
 export default function ReportsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ farmId?: string | string[] }>();
+  const farmIdParam = paramId(params.farmId);
   const farms = useMemo(() => listFarms().farms, []);
-  const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
+  const [farmId, setFarmId] = useState(farmIdParam || farms[0]?.id || "");
   const [from, setFrom] = useState(addDaysKey(todayKey(), -14));
   const [to, setTo] = useState(todayKey());
-  const [matrix, setMatrix] = useState(() => getReports(from, to, farmId || undefined));
+  const [matrix, setMatrix] = useState(() =>
+    getReports(from, to, (farmIdParam || farms[0]?.id) || undefined),
+  );
+
+  useEffect(() => {
+    if (farmIdParam) {
+      setFarmId(farmIdParam);
+      setMatrix(getReports(from, to, farmIdParam));
+    }
+  }, [farmIdParam, from, to]);
 
   function apply() {
     setMatrix(getReports(from, to, farmId || undefined));
