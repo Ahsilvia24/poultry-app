@@ -1931,6 +1931,66 @@ export function getFarmHistory(farmId: string) {
   };
 }
 
+export function createHouse(
+  farmId: string,
+  input: {
+    houseNumber: number;
+    squareFootage?: number;
+    totalFanCFM?: number | null;
+    numberOfFans?: number | null;
+  },
+) {
+  const db = getDb();
+  const farm = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM farms WHERE id = ?",
+    [farmId],
+  );
+  if (!farm) throw new Error("Farm not found");
+
+  const houseNumber = Math.floor(Number(input.houseNumber));
+  const squareFootage = Number(input.squareFootage ?? 29700);
+  if (!Number.isFinite(houseNumber) || houseNumber < 1) {
+    throw new Error("House number must be at least 1");
+  }
+  if (!Number.isFinite(squareFootage) || squareFootage <= 0) {
+    throw new Error("Square footage is required");
+  }
+
+  const conflict = db.getFirstSync<{ id: string }>(
+    `SELECT id FROM houses
+     WHERE farm_id = ? AND house_number = ? AND deleted_at IS NULL`,
+    [farmId, houseNumber],
+  );
+  if (conflict) throw new Error(`House ${houseNumber} already exists on this farm`);
+
+  const totalFanCFM =
+    input.totalFanCFM == null || !Number.isFinite(Number(input.totalFanCFM))
+      ? null
+      : Number(input.totalFanCFM);
+  const numberOfFans =
+    input.numberOfFans == null || !Number.isFinite(Number(input.numberOfFans))
+      ? null
+      : Math.floor(Number(input.numberOfFans));
+
+  const id = newId("house");
+  db.runSync(
+    `INSERT INTO houses (id, farm_id, house_number, square_footage, total_fan_cfm, number_of_fans)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [id, farmId, houseNumber, squareFootage, totalFanCFM, numberOfFans],
+  );
+
+  const count = db.getFirstSync<{ c: number }>(
+    "SELECT COUNT(*) as c FROM houses WHERE farm_id = ? AND deleted_at IS NULL",
+    [farmId],
+  );
+  db.runSync("UPDATE farms SET number_of_houses = ? WHERE id = ?", [
+    count?.c ?? 0,
+    farmId,
+  ]);
+
+  return { id };
+}
+
 export function updateHouse(
   farmId: string,
   houseId: string,

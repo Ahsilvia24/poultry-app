@@ -23,6 +23,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
   completeFlock,
+  createHouse,
   deleteFeedDelivery,
   deleteHouse,
   deleteIssue,
@@ -141,6 +142,13 @@ type HouseEditDraft = {
   catchDate: string;
 };
 
+type AddHouseDraft = {
+  houseNumber: string;
+  squareFootage: string;
+  totalFanCFM: string;
+  numberOfFans: string;
+};
+
 type HouseNumField =
   | "houseNumber"
   | "squareFootage"
@@ -206,6 +214,9 @@ export default function FarmDetailScreen() {
   const [editingHouse, setEditingHouse] = useState<HouseEditDraft | null>(null);
   const [houseEditError, setHouseEditError] = useState<string | null>(null);
   const [houseSaving, setHouseSaving] = useState(false);
+  const [addingHouse, setAddingHouse] = useState<AddHouseDraft | null>(null);
+  const [addHouseError, setAddHouseError] = useState<string | null>(null);
+  const [addHouseSaving, setAddHouseSaving] = useState(false);
   const [houseActiveField, setHouseActiveField] = useState<HouseNumField | null>(null);
   const [houseReplaceOnType, setHouseReplaceOnType] = useState(false);
   const houseScrollRef = useRef<ScrollViewType>(null);
@@ -500,6 +511,56 @@ export default function FarmDetailScreen() {
       })),
       { text: "Cancel", style: "cancel" as const },
     ]);
+  }
+
+  function openAddHouse() {
+    if (!data) return;
+    const nextNum =
+      data.houses.reduce((max, h) => Math.max(max, h.houseNumber), 0) + 1;
+    setAddHouseError(null);
+    setAddingHouse({
+      houseNumber: String(nextNum),
+      squareFootage: "29700",
+      totalFanCFM: "",
+      numberOfFans: "",
+    });
+  }
+
+  function closeAddHouse() {
+    if (addHouseSaving) return;
+    setAddingHouse(null);
+    setAddHouseError(null);
+  }
+
+  function saveAddHouse() {
+    if (!data || !addingHouse) return;
+    setAddHouseSaving(true);
+    setAddHouseError(null);
+    try {
+      const sq = Number(addingHouse.squareFootage);
+      const cfm =
+        addingHouse.totalFanCFM.trim() === "" ? null : Number(addingHouse.totalFanCFM);
+      const fans =
+        addingHouse.numberOfFans.trim() === ""
+          ? null
+          : Math.floor(Number(addingHouse.numberOfFans));
+      if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
+      if (fans != null && (!Number.isFinite(fans) || fans < 0)) {
+        throw new Error("Number of fans is invalid");
+      }
+      createHouse(data.farm.id, {
+        houseNumber: Number(addingHouse.houseNumber),
+        squareFootage: sq,
+        totalFanCFM: cfm,
+        numberOfFans: fans,
+      });
+      setAddingHouse(null);
+      load();
+    } catch (e) {
+      setAddHouseError(e instanceof Error ? e.message : "Could not add house");
+    } finally {
+      setAddHouseSaving(false);
+    }
   }
 
   function openHouseEditor(h: HouseRow) {
@@ -1133,6 +1194,15 @@ export default function FarmDetailScreen() {
           );
         })}
 
+        {data.houses.length === 0 ? (
+          <Text style={[styles.muted, { marginBottom: 4 }]}>No houses yet.</Text>
+        ) : null}
+        <Pressable onPress={openAddHouse} hitSlop={8} style={{ marginBottom: 8, paddingVertical: 4 }}>
+          <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
+            Add house
+          </Text>
+        </Pressable>
+
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
           <Card>
@@ -1664,6 +1734,101 @@ export default function FarmDetailScreen() {
                   style={{ flex: 1 }}
                 />
               </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal
+        visible={addingHouse != null}
+        animationType="slide"
+        transparent
+        onRequestClose={closeAddHouse}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        >
+          <Pressable
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              justifyContent: "flex-end",
+            }}
+            onPress={closeAddHouse}
+          >
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: "#fff",
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                padding: 20,
+                paddingBottom: Platform.OS === "ios" ? 28 : 20,
+              }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                Add house
+              </Text>
+              {addHouseError ? (
+                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                  {addHouseError}
+                </Text>
+              ) : null}
+              {addingHouse ? (
+                <View style={{ marginTop: 14, gap: 4 }}>
+                  <Text style={styles.label}>House number *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={addingHouse.houseNumber}
+                    onChangeText={(v) =>
+                      setAddingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
+                    }
+                    keyboardType="number-pad"
+                  />
+                  <Text style={[styles.label, { marginTop: 8 }]}>Square footage *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={addingHouse.squareFootage}
+                    onChangeText={(v) =>
+                      setAddingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
+                    }
+                    keyboardType="decimal-pad"
+                  />
+                  <Text style={[styles.label, { marginTop: 8 }]}>Total fan CFM</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={addingHouse.totalFanCFM}
+                    onChangeText={(v) =>
+                      setAddingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
+                    }
+                    keyboardType="decimal-pad"
+                  />
+                  <Text style={[styles.label, { marginTop: 8 }]}>Number of fans</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={addingHouse.numberOfFans}
+                    onChangeText={(v) =>
+                      setAddingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
+                    }
+                    keyboardType="number-pad"
+                  />
+                  <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                    <PrimaryButton
+                      label={addHouseSaving ? "Saving…" : "Save house"}
+                      onPress={saveAddHouse}
+                      style={{ flex: 1 }}
+                    />
+                    <PrimaryButton
+                      label="Cancel"
+                      secondary
+                      onPress={closeAddHouse}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                </View>
+              ) : null}
             </Pressable>
           </Pressable>
         </KeyboardAvoidingView>
