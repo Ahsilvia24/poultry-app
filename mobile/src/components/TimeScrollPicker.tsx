@@ -1,18 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  type ScrollView as ScrollViewType,
-} from "react-native";
+import { useState } from "react";
+import { Modal, Platform, Pressable, Text, View } from "react-native";
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
-
-const ITEM_HEIGHT = 44;
 
 /** Half-hour slots: top (:00) and bottom (:30) of each hour. */
 export const FEED_UP_TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
@@ -30,6 +22,24 @@ export function timeLabel(value: string) {
   return FEED_UP_TIME_OPTIONS.find((o) => o.value === value)?.label ?? (value || "Select time");
 }
 
+function parseTime(value: string): Date {
+  const raw = value && /^\d{2}:\d{2}$/.test(value) ? value : "06:00";
+  const [h, m] = raw.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h ?? 6, m ?? 0, 0, 0);
+  return d;
+}
+
+/** Snap to nearest :00 / :30 and return "HH:mm". */
+function toTimeKey(d: Date): string {
+  const total = d.getHours() * 60 + d.getMinutes();
+  const snapped = Math.round(total / 30) * 30;
+  const wrapped = ((snapped % (24 * 60)) + 24 * 60) % (24 * 60);
+  const h = Math.floor(wrapped / 60);
+  const m = wrapped % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 export function TimeScrollPickerField({
   label,
   value,
@@ -40,36 +50,29 @@ export function TimeScrollPickerField({
   onChange: (time: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(value || "06:00");
-  const scrollRef = useRef<ScrollViewType>(null);
+  const [draft, setDraft] = useState(() => parseTime(value || "06:00"));
 
-  useEffect(() => {
-    if (!open) return;
-    const idx = Math.max(
-      0,
-      FEED_UP_TIME_OPTIONS.findIndex((o) => o.value === (value || "06:00")),
-    );
-    setDraft(FEED_UP_TIME_OPTIONS[idx]!.value);
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ y: idx * ITEM_HEIGHT, animated: false });
-    });
-  }, [open, value]);
-
-  function onScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    const y = e.nativeEvent.contentOffset.y;
-    const idx = Math.min(
-      FEED_UP_TIME_OPTIONS.length - 1,
-      Math.max(0, Math.round(y / ITEM_HEIGHT)),
-    );
-    setDraft(FEED_UP_TIME_OPTIONS[idx]!.value);
-    scrollRef.current?.scrollTo({ y: idx * ITEM_HEIGHT, animated: true });
+  function openPicker() {
+    setDraft(parseTime(value || "06:00"));
+    setOpen(true);
   }
+
+  function onPickerChange(event: DateTimePickerEvent, selected?: Date) {
+    if (Platform.OS === "android") {
+      setOpen(false);
+      if (event.type === "set" && selected) onChange(toTimeKey(selected));
+      return;
+    }
+    if (selected) setDraft(selected);
+  }
+
+  const draftKey = toTimeKey(draft);
 
   return (
     <View>
       <Text style={[styles.label, { marginTop: 4 }]}>{label}</Text>
       <Pressable
-        onPress={() => setOpen(true)}
+        onPress={openPicker}
         style={[
           styles.input,
           {
@@ -91,111 +94,81 @@ export function TimeScrollPickerField({
         <Ionicons name="time-outline" size={20} color={colors.muted} />
       </Pressable>
 
-      <Modal transparent animationType="slide" visible={open} onRequestClose={() => setOpen(false)}>
-        <Pressable
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.4)",
-            justifyContent: "flex-end",
-          }}
-          onPress={() => setOpen(false)}
-        >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
+      {Platform.OS === "android" && open ? (
+        <DateTimePicker
+          value={draft}
+          mode="time"
+          display="spinner"
+          minuteInterval={30}
+          onChange={onPickerChange}
+        />
+      ) : null}
+
+      {Platform.OS !== "android" && open ? (
+        <Modal transparent animationType="slide" visible onRequestClose={() => setOpen(false)}>
+          <View
             style={{
-              backgroundColor: "#fff",
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              paddingBottom: 20,
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              justifyContent: "flex-end",
             }}
           >
+            <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)} />
             <View
               style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                borderBottomWidth: 1,
-                borderBottomColor: colors.border,
+                backgroundColor: "#fff",
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                paddingBottom: 24,
               }}
             >
-              <Pressable onPress={() => setOpen(false)}>
-                <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
-              </Pressable>
-              <Text style={{ fontWeight: "800", color: colors.text }}>Feed up time</Text>
-              <Pressable
-                onPress={() => {
-                  onChange(draft);
-                  setOpen(false);
-                }}
-              >
-                <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
-              </Pressable>
-            </View>
-
-            <View style={{ height: ITEM_HEIGHT * 5, marginTop: 8 }}>
-              {/* Selection highlight */}
               <View
-                pointerEvents="none"
                 style={{
-                  position: "absolute",
-                  top: ITEM_HEIGHT * 2,
-                  left: 16,
-                  right: 16,
-                  height: ITEM_HEIGHT,
-                  borderRadius: 10,
-                  backgroundColor: "#f5f5f4",
-                  zIndex: 0,
-                }}
-              />
-              <ScrollView
-                ref={scrollRef}
-                showsVerticalScrollIndicator={false}
-                snapToInterval={ITEM_HEIGHT}
-                decelerationRate="fast"
-                onMomentumScrollEnd={onScrollEnd}
-                onScrollEndDrag={onScrollEnd}
-                contentContainerStyle={{
-                  paddingVertical: ITEM_HEIGHT * 2,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.border,
                 }}
               >
-                {FEED_UP_TIME_OPTIONS.map((opt) => {
-                  const selected = opt.value === draft;
-                  return (
-                    <Pressable
-                      key={opt.value}
-                      onPress={() => {
-                        setDraft(opt.value);
-                        const idx = FEED_UP_TIME_OPTIONS.findIndex((o) => o.value === opt.value);
-                        scrollRef.current?.scrollTo({
-                          y: Math.max(0, idx) * ITEM_HEIGHT,
-                          animated: true,
-                        });
-                      }}
-                      style={{
-                        height: ITEM_HEIGHT,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: selected ? 20 : 16,
-                          fontWeight: selected ? "800" : "600",
-                          color: selected ? colors.text : colors.muted,
-                        }}
-                      >
-                        {opt.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+                <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+                  <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
+                </Pressable>
+                <Text style={{ fontWeight: "800", color: colors.text }}>Feed up time</Text>
+                <Pressable
+                  onPress={() => {
+                    onChange(draftKey);
+                    setOpen(false);
+                  }}
+                  hitSlop={8}
+                >
+                  <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
+                </Pressable>
+              </View>
+
+              <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+                <Text style={{ fontSize: 13, color: colors.muted, fontWeight: "600" }}>
+                  Selected
+                </Text>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, marginTop: 2 }}>
+                  {timeLabel(draftKey)}
+                </Text>
+              </View>
+
+              <DateTimePicker
+                value={draft}
+                mode="time"
+                display="spinner"
+                minuteInterval={30}
+                onChange={onPickerChange}
+                style={{ alignSelf: "center" }}
+              />
             </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+          </View>
+        </Modal>
+      ) : null}
     </View>
   );
 }
