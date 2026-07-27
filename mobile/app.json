@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.poultrytech.app",
-      "buildNumber": "48",
+      "buildNumber": "49",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {
@@ -40,6 +40,7 @@
       "expo-router",
       "expo-secure-store",
       "expo-sqlite",
+      "expo-clipboard",
       "@react-native-community/datetimepicker"
     ],
     "extra": {
