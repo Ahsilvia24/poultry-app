@@ -166,10 +166,12 @@ export default function MortalityScreen() {
   const scrollRef = useRef<ScrollViewType>(null);
   const rowsRef = useRef(rows);
   const houseFlockIdRef = useRef(houseFlockId);
+  const farmIdRef = useRef(farmId);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveGenRef = useRef(0);
   rowsRef.current = rows;
   houseFlockIdRef.current = houseFlockId;
+  farmIdRef.current = farmId;
 
   // Hide bottom tabs while the custom keypad is open
   useEffect(() => {
@@ -198,6 +200,12 @@ export default function MortalityScreen() {
     ? birdAgeFromPlacement(selectedFarm.activeFlock.placementDate, todayKey())
     : null;
 
+  const firstHouseId = useCallback(
+    (farm: NonNullable<ReturnType<typeof getMortalityForm>["farms"][number]> | null | undefined) =>
+      farm?.activeFlock?.houses[0]?.houseFlockId ?? "",
+    [],
+  );
+
   const loadFarms = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -205,27 +213,26 @@ export default function MortalityScreen() {
       const data = getMortalityForm(todayKey(), undefined);
       setPayload(data);
       // Prefer the farmId from navigation (farm detail → Enter mortality)
-      setFarmId((current) => {
-        const preferred = farmIdParam || current;
-        const farm = data.farms.find((f) => f.id === preferred) ?? data.farms[0];
-        const nextId = farm?.id ?? "";
-        const firstHouse = farm?.activeFlock?.houses[0]?.houseFlockId ?? "";
+      const preferred = farmIdParam || farmIdRef.current;
+      const farm = data.farms.find((f) => f.id === preferred) ?? data.farms[0] ?? null;
+      const nextId = farm?.id ?? "";
+      const house1 = firstHouseId(farm);
+      setFarmId(nextId);
+      // Arriving from a farm always starts on house 1; otherwise keep house if still valid
+      if (farmIdParam) {
+        setHouseFlockId(house1);
+      } else {
         setHouseFlockId((prev) => {
           const stillValid = farm?.activeFlock?.houses.some((h) => h.houseFlockId === prev);
-          // When arriving with an explicit farmId, reset house if it isn't on that farm
-          if (farmIdParam && farm?.id === farmIdParam) {
-            return stillValid ? prev : firstHouse;
-          }
-          return stillValid ? prev : firstHouse;
+          return stillValid ? prev : house1;
         });
-        return nextId;
-      });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [farmIdParam]);
+  }, [farmIdParam, firstHouseId]);
 
   const loadGrid = useCallback(() => {
     if (!houseFlockId) {
@@ -273,10 +280,8 @@ export default function MortalityScreen() {
       resetToTop();
       // Second pass after layout so restored focus / scroll can't stick
       const t = setTimeout(() => resetToTop(), 50);
-      if (farmIdParam) {
-        setFarmId(farmIdParam);
-        loadFarms();
-      }
+      // Reload so farmId param + house 1 are applied together (avoid blank house gap)
+      loadFarms();
       return () => {
         clearTimeout(t);
         setActiveField(null);
@@ -512,6 +517,8 @@ export default function MortalityScreen() {
                 active={farmId === f.id}
                 onPress={() => {
                   setFarmId(f.id);
+                  // Always start on house 1 when switching farms
+                  setHouseFlockId(firstHouseId(f));
                   setSaveStatus("idle");
                   setActiveField(null);
                 }}

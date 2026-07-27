@@ -597,7 +597,7 @@ export function getMortalityForm(date: string, farmId?: string) {
           `SELECT hf.id, hf.house_id, hf.placed_bird_count, h.house_number
            FROM house_flocks hf
            JOIN houses h ON h.id = hf.house_id
-           WHERE hf.flock_id = ?
+           WHERE hf.flock_id = ? AND h.deleted_at IS NULL
            ORDER BY h.house_number ASC`,
           [flock.id],
         );
