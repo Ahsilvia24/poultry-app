@@ -111,13 +111,16 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
           {farms.map((farm) => {
             const active = farm.flocks[0];
             const houseCount = farm.houses.length;
+            const birdsPlaced = active
+              ? active.houseFlocks.reduce((sum, hf) => sum + hf.placedBirdCount, 0)
+              : null;
             const currentHeadCount = active
               ? active.houseFlocks.length > 0
                 ? active.houseFlocks.reduce((sum, hf) => {
                     const metrics = summarizeForDate(hf.placedBirdCount, hf.mortalities, today);
                     return sum + metrics.remaining;
                   }, 0)
-                : active.initialBirdCount
+                : null
               : null;
 
             return (
@@ -170,7 +173,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                     <div>
                       <p className="text-stone-500">Birds placed</p>
                       <p className="font-semibold">
-                        {active ? formatNumber(active.initialBirdCount) : "—"}
+                        {birdsPlaced != null ? formatNumber(birdsPlaced) : "—"}
                       </p>
                     </div>
                     <div>

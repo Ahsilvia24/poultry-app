@@ -17,6 +17,7 @@ type HouseData = {
   feederType: string | null;
   drinkerType: string | null;
   notes: string | null;
+  placedBirdCount?: number | null;
 };
 
 type Metrics = {
@@ -72,7 +73,10 @@ export function HouseCard({
         </div>
         <div className="flex shrink-0 items-start gap-2">
           {hasFlock ? <StatusBadge status={status} /> : null}
-          <HouseCardActions farmId={farmId} house={house} />
+          <HouseCardActions
+            farmId={farmId}
+            house={{ ...house, placedBirdCount: birdsPlaced ?? house.placedBirdCount ?? null }}
+          />
         </div>
       </div>
 

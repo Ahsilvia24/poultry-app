@@ -16,6 +16,7 @@ export type HouseEditValues = {
   feederType: string | null;
   drinkerType: string | null;
   notes: string | null;
+  placedBirdCount: number | null;
 };
 
 function GearIcon({ className }: { className?: string }) {
@@ -171,6 +172,18 @@ export function HouseCardActions({
                         step="any"
                         required
                         defaultValue={house.squareFootage}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`edit-placedBirdCount-${house.id}`}>Birds placed</Label>
+                      <Input
+                        id={`edit-placedBirdCount-${house.id}`}
+                        name="placedBirdCount"
+                        type="number"
+                        min={1}
+                        step={1}
+                        defaultValue={house.placedBirdCount ?? ""}
+                        placeholder="Active flock only"
                       />
                     </div>
                     <div>

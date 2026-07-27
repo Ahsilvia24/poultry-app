@@ -175,7 +175,50 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
     data: parsed.data,
   });
 
+  const placedRaw = emptyToNull(formData.get("placedBirdCount"));
+  if (placedRaw != null) {
+    const placedBirdCount = Number(placedRaw);
+    if (!Number.isFinite(placedBirdCount) || placedBirdCount < 1) {
+      return { error: "Birds placed must be at least 1" };
+    }
+    const activeFlock = await prisma.flock.findFirst({
+      where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+      orderBy: { placementDate: "desc" },
+    });
+    if (!activeFlock) {
+      return { error: "Add an active flock before setting birds placed" };
+    }
+    const hf = await prisma.houseFlock.findFirst({
+      where: { flockId: activeFlock.id, houseId },
+    });
+    if (hf) {
+      await prisma.houseFlock.update({
+        where: { id: hf.id },
+        data: { placedBirdCount: Math.floor(placedBirdCount) },
+      });
+    } else {
+      await prisma.houseFlock.create({
+        data: {
+          flockId: activeFlock.id,
+          houseId,
+          placedBirdCount: Math.floor(placedBirdCount),
+        },
+      });
+    }
+    const sum = await prisma.houseFlock.aggregate({
+      where: { flockId: activeFlock.id },
+      _sum: { placedBirdCount: true },
+    });
+    await prisma.flock.update({
+      where: { id: activeFlock.id },
+      data: { initialBirdCount: sum._sum.placedBirdCount ?? Math.floor(placedBirdCount) },
+    });
+  }
+
   revalidatePath(`/farms/${farmId}`);
+  revalidatePath("/farms");
+  revalidatePath("/");
+  revalidatePath("/mortality");
   return { success: true };
 }
 

@@ -777,9 +777,10 @@ export function getMortalityForm(date: string, farmId?: string) {
           id: string;
           house_id: string;
           placed_bird_count: number;
+          placement_date: string | null;
           house_number: number;
         }>(
-          `SELECT hf.id, hf.house_id, hf.placed_bird_count, h.house_number
+          `SELECT hf.id, hf.house_id, hf.placed_bird_count, hf.placement_date, h.house_number
            FROM house_flocks hf
            JOIN houses h ON h.id = hf.house_id
            WHERE hf.flock_id = ? AND h.deleted_at IS NULL
@@ -815,6 +816,7 @@ export function getMortalityForm(date: string, farmId?: string) {
                 houseFlockId: hf.id,
                 houseNumber: hf.house_number,
                 placedBirdCount: hf.placed_bird_count,
+                placementDate: hf.placement_date?.trim() || flock.placement_date,
                 existing: existing
                   ? {
                       dailyMortalityCount: existing.daily_mortality_count,
@@ -853,12 +855,28 @@ export function saveMortality(input: {
     [input.flockId],
   );
   if (!flock) throw new Error("Flock not found");
-  const age = birdAgeFromPlacement(flock.placement_date, input.mortalityDate);
 
   const houseSummaries = [];
   let farmTotal = 0;
+  let lastAge = 0;
 
   for (const e of input.entries) {
+    const hf = db.getFirstSync<{
+      placed_bird_count: number;
+      placement_date: string | null;
+      house_number: number;
+    }>(
+      `SELECT hf.placed_bird_count, hf.placement_date, h.house_number
+       FROM house_flocks hf JOIN houses h ON h.id = hf.house_id
+       WHERE hf.id = ?`,
+      [e.houseFlockId],
+    );
+    if (!hf) continue;
+    const age = birdAgeFromPlacement(
+      hf.placement_date?.trim() || flock.placement_date,
+      input.mortalityDate,
+    );
+    lastAge = age;
     const loss = calcTotalDailyLoss(e.dailyMortalityCount, e.cullCount);
     farmTotal += loss;
     const existing = db.getFirstSync<{ id: string }>(
@@ -901,20 +919,14 @@ export function saveMortality(input: {
       );
     }
 
-    const hf = db.getFirstSync<{ placed_bird_count: number; house_number: number }>(
-      `SELECT hf.placed_bird_count, h.house_number
-       FROM house_flocks hf JOIN houses h ON h.id = hf.house_id
-       WHERE hf.id = ?`,
-      [e.houseFlockId],
-    );
     const records = db.getAllSync<MortRow>(
       `SELECT mortality_date, bird_age_in_days, daily_mortality_count, cull_count, total_daily_loss
        FROM daily_mortality WHERE house_flock_id = ? AND is_draft = 0 ORDER BY mortality_date ASC`,
       [e.houseFlockId],
     );
-    const s = summarizeHouse(hf!.placed_bird_count, records, input.mortalityDate);
+    const s = summarizeHouse(hf.placed_bird_count, records, input.mortalityDate);
     houseSummaries.push({
-      houseNumber: hf!.house_number,
+      houseNumber: hf.house_number,
       today: s.today,
       sevenDay: s.sevenDay,
       cumulative: s.cumulative,
@@ -927,7 +939,7 @@ export function saveMortality(input: {
     success: true,
     farmTotal,
     houseSummaries,
-    birdAgeInDays: age,
+    birdAgeInDays: lastAge,
     disclaimer: "Saved on this phone (offline).",
   };
 }
@@ -937,10 +949,11 @@ export function getHouseMortalitySeries(houseFlockId: string) {
   const hf = db.getFirstSync<{
     id: string;
     placed_bird_count: number;
+    placement_date: string | null;
     flock_id: string;
     house_number: number;
   }>(
-    `SELECT hf.id, hf.placed_bird_count, hf.flock_id, h.house_number
+    `SELECT hf.id, hf.placed_bird_count, hf.placement_date, hf.flock_id, h.house_number
      FROM house_flocks hf JOIN houses h ON h.id = hf.house_id WHERE hf.id = ?`,
     [houseFlockId],
   );
@@ -962,7 +975,7 @@ export function getHouseMortalitySeries(houseFlockId: string) {
   return {
     houseNumber: hf.house_number,
     placedBirdCount: hf.placed_bird_count,
-    placementDate: flock.placement_date,
+    placementDate: hf.placement_date?.trim() || flock.placement_date,
     projectedCatchDate: flock.projected_catch_date,
     records,
   };
@@ -978,8 +991,8 @@ export function saveHouseMortalitySeries(input: {
   clearDates?: string[];
 }) {
   const db = getDb();
-  const hf = db.getFirstSync<{ flock_id: string }>(
-    "SELECT flock_id FROM house_flocks WHERE id = ?",
+  const hf = db.getFirstSync<{ flock_id: string; placement_date: string | null }>(
+    "SELECT flock_id, placement_date FROM house_flocks WHERE id = ?",
     [input.houseFlockId],
   );
   if (!hf) throw new Error("House flock not found");
@@ -987,6 +1000,7 @@ export function saveHouseMortalitySeries(input: {
     "SELECT placement_date FROM flocks WHERE id = ?",
     [hf.flock_id],
   )!;
+  const placementDate = hf.placement_date?.trim() || flock.placement_date;
 
   for (const date of input.clearDates ?? []) {
     db.runSync(
@@ -997,7 +1011,7 @@ export function saveHouseMortalitySeries(input: {
 
   for (const e of input.entries) {
     const loss = calcTotalDailyLoss(e.dailyMortalityCount, e.cullCount);
-    const age = birdAgeFromPlacement(flock.placement_date, e.mortalityDate);
+    const age = birdAgeFromPlacement(placementDate, e.mortalityDate);
     const existing = db.getFirstSync<{ id: string }>(
       "SELECT id FROM daily_mortality WHERE house_flock_id = ? AND mortality_date = ?",
       [input.houseFlockId, e.mortalityDate],

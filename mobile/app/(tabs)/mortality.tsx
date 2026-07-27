@@ -196,9 +196,11 @@ export default function MortalityScreen() {
 
   const houses = selectedFarm?.activeFlock?.houses ?? [];
   const selectedHouse = houses.find((h) => h.houseFlockId === houseFlockId) ?? null;
-  const flockAgeDays = selectedFarm?.activeFlock
-    ? birdAgeFromPlacement(selectedFarm.activeFlock.placementDate, todayKey())
-    : null;
+  const flockAgeDays = selectedHouse?.placementDate
+    ? birdAgeFromPlacement(selectedHouse.placementDate, todayKey())
+    : selectedFarm?.activeFlock
+      ? birdAgeFromPlacement(selectedFarm.activeFlock.placementDate, todayKey())
+      : null;
 
   const firstHouseId = useCallback(
     (farm: NonNullable<ReturnType<typeof getMortalityForm>["farms"][number]> | null | undefined) =>
@@ -550,7 +552,9 @@ export default function MortalityScreen() {
               {formatNumber(selectedHouse.placedBirdCount)}
               {" · Day 0 "}
               <Text style={{ fontWeight: "700", color: colors.text }}>
-                {formatDayLabel(selectedFarm.activeFlock.placementDate)}
+                {formatDayLabel(
+                  selectedHouse.placementDate ?? selectedFarm.activeFlock.placementDate,
+                )}
               </Text>
               {" · "}
               <Text style={{ fontWeight: "700", color: colors.text }}>
