@@ -52,8 +52,8 @@ export function SavedLfoRow({
   id: string;
   farmName: string;
   dateLabel: string;
-  /** e.g. "H1-4000 lbs. H2-5000 Rec." */
-  houseSummary?: string | null;
+  /** e.g. ["H1-4000 lbs.", "H2-5000 Rec."] */
+  houseSummary?: string[] | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -71,8 +71,14 @@ export function SavedLfoRow({
       <Link href={`/lfo/${id}`} className="min-w-0 flex-1">
         <p className="font-semibold text-stone-900">{farmName}</p>
         <p className="text-sm text-stone-600">{dateLabel}</p>
-        {houseSummary ? (
-          <p className="mt-0.5 text-sm font-medium text-stone-800">{houseSummary}</p>
+        {houseSummary && houseSummary.length > 0 ? (
+          <div className="mt-0.5 space-y-0.5">
+            {houseSummary.map((line) => (
+              <p key={line} className="text-sm font-medium text-stone-800">
+                {line}
+              </p>
+            ))}
+          </div>
         ) : null}
       </Link>
       <div className="flex shrink-0 items-center gap-0.5">

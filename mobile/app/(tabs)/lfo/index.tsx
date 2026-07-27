@@ -294,68 +294,6 @@ export default function LfoListScreen() {
             </Text>
           ) : null}
 
-          <SectionTitle>Saved LFOs</SectionTitle>
-          {lfos.length === 0 ? (
-            <Card>
-              <Text style={styles.muted}>None yet — create one above.</Text>
-            </Card>
-          ) : null}
-          {lfos.map((l) => (
-            <Card key={l.id}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Pressable
-                  style={{ flex: 1, minWidth: 0 }}
-                  onPress={() => openLfo(l.id)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open LFO for ${l.farmName}`}
-                >
-                  <Text style={{ fontWeight: "800" }} numberOfLines={1}>
-                    {l.farmName}
-                  </Text>
-                  <Text style={[styles.muted, { marginTop: 2 }]}>
-                    {formatLfoDate(l.orderDate)}
-                  </Text>
-                  {l.houseSummary ? (
-                    <Text
-                      style={{ marginTop: 4, fontWeight: "700", color: colors.text, fontSize: 13 }}
-                      numberOfLines={3}
-                    >
-                      {l.houseSummary}
-                    </Text>
-                  ) : null}
-                </Pressable>
-                <Pressable
-                  accessibilityLabel={`Edit LFO for ${l.farmName}`}
-                  onPress={() => openLfo(l.id)}
-                  hitSlop={8}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="pencil-outline" size={20} color={colors.muted} />
-                </Pressable>
-                <Pressable
-                  accessibilityLabel={`Delete LFO for ${l.farmName}`}
-                  onPress={() => confirmDelete(l.id, l.farmName)}
-                  hitSlop={8}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={20} color={colors.muted} />
-                </Pressable>
-              </View>
-            </Card>
-          ))}
-
           <Card style={{ marginTop: 8 }}>
             <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>
               Consumption rate calculator
@@ -401,6 +339,72 @@ export default function LfoListScreen() {
               <Text style={styles.muted}>Enter water and head count to calculate.</Text>
             )}
           </Card>
+
+          <SectionTitle>Saved LFOs</SectionTitle>
+          {lfos.length === 0 ? (
+            <Card>
+              <Text style={styles.muted}>None yet — create one above.</Text>
+            </Card>
+          ) : null}
+          {lfos.map((l) => (
+            <Card key={l.id}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Pressable
+                  style={{ flex: 1, minWidth: 0 }}
+                  onPress={() => openLfo(l.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open LFO for ${l.farmName}`}
+                >
+                  <Text style={{ fontWeight: "800" }} numberOfLines={1}>
+                    {l.farmName}
+                  </Text>
+                  <Text style={[styles.muted, { marginTop: 2 }]}>
+                    {formatLfoDate(l.orderDate)}
+                  </Text>
+                  {l.houseSummary.length > 0 ? (
+                    <View style={{ marginTop: 4, gap: 2 }}>
+                      {l.houseSummary.map((line) => (
+                        <Text
+                          key={line}
+                          style={{ fontWeight: "700", color: colors.text, fontSize: 13 }}
+                        >
+                          {line}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
+                </Pressable>
+                <Pressable
+                  accessibilityLabel={`Edit LFO for ${l.farmName}`}
+                  onPress={() => openLfo(l.id)}
+                  hitSlop={8}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="pencil-outline" size={20} color={colors.muted} />
+                </Pressable>
+                <Pressable
+                  accessibilityLabel={`Delete LFO for ${l.farmName}`}
+                  onPress={() => confirmDelete(l.id, l.farmName)}
+                  hitSlop={8}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.muted} />
+                </Pressable>
+              </View>
+            </Card>
+          ))}
         </ScrollView>
 
         {activeField ? (

@@ -1123,7 +1123,7 @@ export function listLfos() {
   );
 
   return rows.map((r) => {
-    let houseSummary = "";
+    let houseSummary: string[] = [];
     try {
       const detail = getLfo(r.id);
       const calc = calculateLastFeedOrder({
@@ -1140,7 +1140,7 @@ export function listLfos() {
       });
       houseSummary = formatHouseLfoSummary(calc.houses);
     } catch {
-      houseSummary = "";
+      houseSummary = [];
     }
     return {
       id: r.id,

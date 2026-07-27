@@ -520,11 +520,18 @@ export default function EditLfoScreen() {
                 );
               })}
 
-              {houseSummary ? (
+              {houseSummary.length > 0 ? (
                 <Card>
-                  <Text style={{ fontWeight: "800", color: colors.text, fontSize: 15 }}>
-                    {houseSummary}
-                  </Text>
+                  <View style={{ gap: 4 }}>
+                    {houseSummary.map((line) => (
+                      <Text
+                        key={line}
+                        style={{ fontWeight: "800", color: colors.text, fontSize: 15 }}
+                      >
+                        {line}
+                      </Text>
+                    ))}
+                  </View>
                 </Card>
               ) : null}
 

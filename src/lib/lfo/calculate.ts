@@ -82,7 +82,7 @@ export function hourlyConsumptionLbs(headCount: number, consumptionRate: number)
  *   balance < 0 → order (LFO) = |balance|
  *   balance > 0 → reclaim = balance
  */
-/** Compact per-house summary: "H1-4000 lbs. H2-5000 Rec." */
+/** Per-house summary lines: "H1-4000 lbs.", "H2-5000 Rec." (one per house). */
 export function formatHouseLfoSummary(
   houses: Array<{
     houseNumber: number;
@@ -90,9 +90,10 @@ export function formatHouseLfoSummary(
     reclaimLbs: number | null;
     feedUpAt?: Date | string | null;
   }>,
-): string {
+): string[] {
   const parts: string[] = [];
-  for (const h of houses) {
+  const sorted = [...houses].sort((a, b) => a.houseNumber - b.houseNumber);
+  for (const h of sorted) {
     if (h.feedUpAt == null || h.feedUpAt === "") continue;
     const order = h.orderLbs ?? 0;
     const reclaim = h.reclaimLbs ?? 0;
@@ -102,7 +103,7 @@ export function formatHouseLfoSummary(
       parts.push(`H${h.houseNumber}-${Math.round(reclaim)} Rec.`);
     }
   }
-  return parts.join(" ");
+  return parts;
 }
 
 export function calculateLastFeedOrder(input: LfoCalculateInput): LfoCalculateResult {

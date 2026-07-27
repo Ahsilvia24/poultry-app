@@ -306,9 +306,15 @@ export function LfoInventoryForm({
         </div>
       </div>
 
-      {houseSummary ? (
+      {houseSummary.length > 0 ? (
         <div className="rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-700">
-          <p className="font-semibold text-stone-900">{houseSummary}</p>
+          <div className="space-y-0.5">
+            {houseSummary.map((line) => (
+              <p key={line} className="font-semibold text-stone-900">
+                {line}
+              </p>
+            ))}
+          </div>
         </div>
       ) : null}
 

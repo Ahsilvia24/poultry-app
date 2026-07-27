@@ -83,16 +83,20 @@ export default async function LfoPage() {
 
       <LfoCreateBar farms={farms} />
 
-      <h2 className="mb-3 text-lg font-bold text-stone-900">Saved LFOs</h2>
+      <div className="mt-6">
+        <ConsumptionRateCalculator />
+      </div>
+
+      <h2 className="mb-3 mt-8 text-lg font-bold text-stone-900">Saved LFOs</h2>
 
       {savedWithSummary.length === 0 ? (
-        <Card className="mb-8">
+        <Card>
           <p className="text-sm text-stone-600">
             No saved LFOs yet. Select a farm and create an LFO to enter A/B bin inventory.
           </p>
         </Card>
       ) : (
-        <ul className="mb-8 divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
+        <ul className="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
           {savedWithSummary.map((lfo) => (
             <SavedLfoRow
               key={lfo.id}
@@ -104,10 +108,6 @@ export default async function LfoPage() {
           ))}
         </ul>
       )}
-
-      <div className="mt-8">
-        <ConsumptionRateCalculator />
-      </div>
     </div>
   );
 }
