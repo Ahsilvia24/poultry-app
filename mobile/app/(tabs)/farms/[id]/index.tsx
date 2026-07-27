@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Linking,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -1508,74 +1510,84 @@ export default function FarmDetailScreen() {
           if (!flockNumberSaving) setEditingFlockNumber(null);
         }}
       >
-        <Pressable
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.4)",
-            justifyContent: "flex-end",
-          }}
-          onPress={() => {
-            if (!flockNumberSaving) setEditingFlockNumber(null);
-          }}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
         >
           <Pressable
-            onPress={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: "#fff",
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              padding: 20,
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              justifyContent: "flex-end",
+            }}
+            onPress={() => {
+              if (!flockNumberSaving) setEditingFlockNumber(null);
             }}
           >
-            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-              Edit flock ID
-            </Text>
-            {flockNumberError ? (
-              <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
-                {flockNumberError}
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: "#fff",
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                padding: 20,
+                paddingBottom: Platform.OS === "ios" ? 28 : 20,
+              }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                Edit flock ID
               </Text>
-            ) : null}
-            <Text style={[styles.label, { marginTop: 14 }]}>Flock number</Text>
-            <TextInput
-              style={styles.input}
-              value={flockNumberDraft}
-              onChangeText={setFlockNumberDraft}
-              autoCapitalize="characters"
-              placeholder="e.g. 26-07"
-              placeholderTextColor={colors.muted}
-            />
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
-              <PrimaryButton
-                label={flockNumberSaving ? "Saving…" : "Save"}
-                onPress={() => {
-                  if (!editingFlockNumber) return;
-                  setFlockNumberSaving(true);
-                  setFlockNumberError(null);
-                  try {
-                    updateFlockNumber(editingFlockNumber, flockNumberDraft);
-                    setEditingFlockNumber(null);
-                    load();
-                  } catch (e) {
-                    setFlockNumberError(
-                      e instanceof Error ? e.message : "Could not save flock number",
-                    );
-                  } finally {
-                    setFlockNumberSaving(false);
-                  }
-                }}
-                style={{ flex: 1 }}
+              {flockNumberError ? (
+                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                  {flockNumberError}
+                </Text>
+              ) : null}
+              <Text style={[styles.label, { marginTop: 14 }]}>Flock number</Text>
+              <TextInput
+                style={styles.input}
+                value={flockNumberDraft}
+                onChangeText={setFlockNumberDraft}
+                autoCapitalize="characters"
+                autoFocus
+                autoCorrect={false}
+                returnKeyType="done"
+                placeholder="e.g. 26-07"
+                placeholderTextColor={colors.muted}
               />
-              <PrimaryButton
-                label="Cancel"
-                secondary
-                onPress={() => {
-                  if (!flockNumberSaving) setEditingFlockNumber(null);
-                }}
-                style={{ flex: 1 }}
-              />
-            </View>
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                <PrimaryButton
+                  label={flockNumberSaving ? "Saving…" : "Save"}
+                  onPress={() => {
+                    if (!editingFlockNumber) return;
+                    setFlockNumberSaving(true);
+                    setFlockNumberError(null);
+                    try {
+                      updateFlockNumber(editingFlockNumber, flockNumberDraft);
+                      setEditingFlockNumber(null);
+                      load();
+                    } catch (e) {
+                      setFlockNumberError(
+                        e instanceof Error ? e.message : "Could not save flock number",
+                      );
+                    } finally {
+                      setFlockNumberSaving(false);
+                    }
+                  }}
+                  style={{ flex: 1 }}
+                />
+                <PrimaryButton
+                  label="Cancel"
+                  secondary
+                  onPress={() => {
+                    if (!flockNumberSaving) setEditingFlockNumber(null);
+                  }}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal
