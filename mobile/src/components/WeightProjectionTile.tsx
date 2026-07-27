@@ -4,13 +4,11 @@ import { DEFAULT_GROWTH_RATE_LBS_PER_DAY } from "../lib/weight/projections";
 import { colors, styles } from "../theme";
 import { PrimaryButton } from "./ui";
 
+/** Compact date for tight projection cells: "8/3" */
 function formatCatchShort(dateKey: string) {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+  const [, m, d] = dateKey.split("-").map(Number);
+  if (!m || !d) return dateKey;
+  return `${m}/${d}`;
 }
 
 type Projection = {
