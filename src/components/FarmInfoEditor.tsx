@@ -9,6 +9,7 @@ type FarmInfo = {
   farmName: string;
   growerName: string;
   phoneNumber: string | null;
+  email?: string | null;
   notes: string | null;
 };
 
@@ -99,6 +100,16 @@ export function FarmInfoEditor({
                   name="phoneNumber"
                   type="tel"
                   defaultValue={farm.phoneNumber ?? ""}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  defaultValue={farm.email ?? ""}
+                  autoComplete="email"
                 />
               </div>
               <div className="sm:col-span-2">

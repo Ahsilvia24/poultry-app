@@ -152,6 +152,7 @@ model Farm {
   state          String?
   zipCode        String?
   phoneNumber    String?
+  email          String?
   numberOfHouses Int       @default(0)
   notes          String?
   isActive       Boolean   @default(true)

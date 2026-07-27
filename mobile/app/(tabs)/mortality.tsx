@@ -18,6 +18,7 @@ import {
 } from "../../src/repos/data";
 import { birdAgeFromPlacement, flockWeekFromAge, calcTotalDailyLoss } from "../../src/lib/mortality";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
+import { getFarmNavContext } from "../../src/lib/farmNavContext";
 import { colors, styles } from "../../src/theme";
 import {
   Card,
@@ -150,10 +151,14 @@ function paramValue(value: string | string[] | undefined) {
 
 export default function MortalityScreen() {
   const navigation = useNavigation();
-  const params = useLocalSearchParams<{ farmId?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    farmId?: string | string[];
+    houseFlockId?: string | string[];
+  }>();
   const farmIdParam = paramValue(params.farmId);
+  const houseFlockIdParam = paramValue(params.houseFlockId);
   const [farmId, setFarmId] = useState(farmIdParam);
-  const [houseFlockId, setHouseFlockId] = useState("");
+  const [houseFlockId, setHouseFlockId] = useState(houseFlockIdParam);
   const [payload, setPayload] = useState<ReturnType<typeof getMortalityForm> | null>(null);
   const [rows, setRows] = useState<DayRow[]>([]);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
@@ -214,27 +219,36 @@ export default function MortalityScreen() {
     try {
       const data = getMortalityForm(todayKey(), undefined);
       setPayload(data);
-      // Prefer the farmId from navigation (farm detail → Enter mortality)
-      const preferred = farmIdParam || farmIdRef.current;
+      const ctx = getFarmNavContext();
+      // Prefer route params, then last-viewed farm from farm detail / house tile.
+      const preferred = farmIdParam || ctx.farmId || farmIdRef.current;
       const farm = data.farms.find((f) => f.id === preferred) ?? data.farms[0] ?? null;
       const nextId = farm?.id ?? "";
+      const houses = farm?.activeFlock?.houses ?? [];
       const house1 = firstHouseId(farm);
+      const isValid = (id: string) => houses.some((h) => h.houseFlockId === id);
+
       setFarmId(nextId);
-      // Arriving from a farm always starts on house 1; otherwise keep house if still valid
-      if (farmIdParam) {
+
+      if (houseFlockIdParam && isValid(houseFlockIdParam)) {
+        setHouseFlockId(houseFlockIdParam);
+      } else if (
+        ctx.houseFlockId &&
+        ctx.farmId === nextId &&
+        isValid(ctx.houseFlockId)
+      ) {
+        setHouseFlockId(ctx.houseFlockId);
+      } else if (farmIdParam || houseFlockIdParam) {
         setHouseFlockId(house1);
       } else {
-        setHouseFlockId((prev) => {
-          const stillValid = farm?.activeFlock?.houses.some((h) => h.houseFlockId === prev);
-          return stillValid ? prev : house1;
-        });
+        setHouseFlockId((prev) => (isValid(prev) ? prev : house1));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [farmIdParam, firstHouseId]);
+  }, [farmIdParam, houseFlockIdParam, firstHouseId]);
 
   const loadGrid = useCallback(() => {
     if (!houseFlockId) {
@@ -290,7 +304,7 @@ export default function MortalityScreen() {
         setSelection(undefined);
         navigation.setOptions({ tabBarStyle: undefined });
       };
-    }, [farmIdParam, loadFarms, navigation]),
+    }, [farmIdParam, houseFlockIdParam, loadFarms, navigation]),
   );
 
   useEffect(() => {

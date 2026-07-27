@@ -7,6 +7,7 @@ import { getUserThresholds } from "@/lib/dashboard";
 import {
   averageDailyMortalityLast7Days,
   birdAgeFromPlacement,
+  daysSincePlacement,
   flockWeekFromAge,
   isRisingThreeDays,
   projectedHeadCountAtCatch,
@@ -107,7 +108,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
   let flockProjectedMortality = 0;
   const flockWeeklyTotals = new Map<number, number>();
   const flockAgesDays = Array.from(
-    new Set(activeFlocks.map((f) => birdAgeFromPlacement(f.placementDate, today))),
+    new Set(activeFlocks.map((f) => daysSincePlacement(f.placementDate, today))),
   ).sort((a, b) => a - b);
 
   const houseCards = farm.houses.map((house) => {
@@ -280,6 +281,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           farmName: farm.farmName,
           growerName: farm.growerName,
           phoneNumber: farm.phoneNumber,
+          email: farm.email,
           notes: farm.notes,
         }}
         subtitle={subtitle}
@@ -451,6 +453,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             weeklyMortality={weeklyMortality}
             recommendedMinVent={recommendedMinVentLabel}
             flockLabel={flockNumber}
+            houseFlockId={hf?.id ?? null}
           />
         ),
         )}

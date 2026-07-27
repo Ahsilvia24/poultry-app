@@ -61,6 +61,7 @@ export async function updateFarmAction(farmId: string, formData: FormData) {
     farmName: formData.get("farmName"),
     growerName: emptyToNull(formData.get("growerName")),
     phoneNumber: emptyToNull(formData.get("phoneNumber")),
+    email: emptyToNull(formData.get("email")),
     notes: emptyToNull(formData.get("notes")),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid farm" };
@@ -76,6 +77,7 @@ export async function updateFarmAction(farmId: string, formData: FormData) {
       state: null,
       zipCode: null,
       phoneNumber: parsed.data.phoneNumber,
+      email: parsed.data.email || null,
       notes: parsed.data.notes,
     },
   });

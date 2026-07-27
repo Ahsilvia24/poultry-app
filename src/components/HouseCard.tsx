@@ -38,6 +38,7 @@ export function HouseCard({
   weeklyMortality,
   recommendedMinVent,
   flockLabel = null,
+  houseFlockId = null,
 }: {
   farmId: string;
   house: HouseData;
@@ -50,32 +51,34 @@ export function HouseCard({
   weeklyMortality: Array<{ week: number; total: number }>;
   recommendedMinVent: string | null;
   flockLabel?: string | null;
+  houseFlockId?: string | null;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   return (
     <Card>
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
+        <a
+          href={`/mortality?farmId=${farmId}${houseFlockId ? `&houseFlockId=${houseFlockId}` : ""}`}
+          className="min-w-0 text-inherit no-underline"
+          aria-label={`Open mortality for house ${house.houseNumber}`}
+        >
           <p className="text-lg font-bold">
             House {house.houseNumber}
             {flockLabel ? (
               <span className="font-semibold text-stone-600"> · {flockLabel}</span>
             ) : null}
-            {metrics ? (
-              <span className="font-semibold text-stone-600">
-                {" "}
-                · M {formatNumber(metrics.cumulative)}
-              </span>
-            ) : null}
-            {projectedHeadCount != null ? (
-              <span className="font-semibold text-stone-600">
-                {" "}
-                · PHC {formatNumber(projectedHeadCount)}
-              </span>
-            ) : null}
           </p>
-        </div>
+          {metrics || projectedHeadCount != null ? (
+            <p className="mt-0.5 text-sm font-semibold text-stone-600">
+              {metrics ? `M ${formatNumber(metrics.cumulative)}` : null}
+              {metrics && projectedHeadCount != null ? " · " : null}
+              {projectedHeadCount != null
+                ? `PHC ${formatNumber(projectedHeadCount)}`
+                : null}
+            </p>
+          ) : null}
+        </a>
         <div className="flex shrink-0 items-start gap-2">
           {hasFlock ? <StatusBadge status={status} /> : null}
           <HouseCardActions
@@ -86,14 +89,23 @@ export function HouseCard({
       </div>
 
       {weeklyMortality.length > 0 ? (
-        <div className="mt-3">
+        <a
+          href={`/mortality?farmId=${farmId}${houseFlockId ? `&houseFlockId=${houseFlockId}` : ""}`}
+          className="mt-3 block text-inherit no-underline"
+          aria-label={`Weekly mortality for house ${house.houseNumber}`}
+        >
           <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
             Weekly mortality
           </p>
           <WeeklyMortalityList weeks={weeklyMortality} />
-        </div>
+        </a>
       ) : (
-        <p className="mt-3 text-sm text-stone-500">No weekly mortality yet.</p>
+        <a
+          href={`/mortality?farmId=${farmId}${houseFlockId ? `&houseFlockId=${houseFlockId}` : ""}`}
+          className="mt-3 block text-sm text-stone-500 no-underline"
+        >
+          No weekly mortality yet.
+        </a>
       )}
 
       <button

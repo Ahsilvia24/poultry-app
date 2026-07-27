@@ -10,6 +10,10 @@ export const farmSchema = z.object({
   farmName: z.string().min(1, "Farm name is required"),
   growerName: z.string().optional().nullable(),
   phoneNumber: z.string().optional().nullable(),
+  email: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+    z.string().email("Enter a valid email").nullable().optional(),
+  ),
   notes: z.string().optional().nullable(),
 });
 

@@ -36,6 +36,7 @@ import {
   updateFlockNumber,
   updateHouse,
 } from "../../../../src/repos/data";
+import { setFarmNavContext } from "../../../../src/lib/farmNavContext";
 import { VISIT_TYPE_LABELS } from "../../../../src/lib/visits";
 import {
   ISSUE_CATEGORY_LABELS,
@@ -140,6 +141,8 @@ type HouseEditDraft = {
   placedBirdCount: string;
   placementDate: string;
   catchDate: string;
+  flockNumber: string;
+  applyToRemaining: boolean;
 };
 
 type AddHouseDraft = {
@@ -155,6 +158,14 @@ type HouseNumField =
   | "totalFanCFM"
   | "numberOfFans"
   | "placedBirdCount";
+
+type FarmEditDraft = {
+  farmName: string;
+  growerName: string;
+  phoneNumber: string;
+  email: string;
+  notes: string;
+};
 
 function HouseNumFieldButton({
   label,
@@ -192,13 +203,6 @@ function HouseNumFieldButton({
     </View>
   );
 }
-
-type FarmEditDraft = {
-  farmName: string;
-  growerName: string;
-  phoneNumber: string;
-  notes: string;
-};
 
 export default function FarmDetailScreen() {
   const params = useLocalSearchParams<{
@@ -276,7 +280,8 @@ export default function FarmDetailScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load]),
+      if (farmId) setFarmNavContext({ farmId, houseFlockId: null });
+    }, [load, farmId]),
   );
 
   function openFarmEditor(farm: FarmDetail["farm"]) {
@@ -285,6 +290,7 @@ export default function FarmDetailScreen() {
       farmName: farm.farmName,
       growerName: farm.growerName ?? "",
       phoneNumber: farm.phoneNumber ?? "",
+      email: farm.email ?? "",
       notes: farm.notes ?? "",
     });
   }
@@ -580,6 +586,8 @@ export default function FarmDetailScreen() {
       placedBirdCount: h.placedBirdCount != null ? String(h.placedBirdCount) : "",
       placementDate,
       catchDate,
+      flockNumber: h.flockNumber ?? "",
+      applyToRemaining: false,
     });
   }
 
@@ -711,6 +719,8 @@ export default function FarmDetailScreen() {
               placedBirdCount: placed,
               placementDate: editingHouse.placementDate.trim() || null,
               catchDate: editingHouse.catchDate.trim() || null,
+              flockNumber: editingHouse.flockNumber.trim() || null,
+              applyToRemainingHouses: editingHouse.applyToRemaining,
             }
           : null),
       });
@@ -741,6 +751,7 @@ export default function FarmDetailScreen() {
         farmName: editingFarm.farmName,
         growerName: editingFarm.growerName,
         phoneNumber: editingFarm.phoneNumber,
+        email: editingFarm.email,
         notes: editingFarm.notes,
       });
       setEditingFarm(null);
@@ -1053,10 +1064,22 @@ export default function FarmDetailScreen() {
         <SectionTitle>{farm.farmName}</SectionTitle>
         {data.houses.map((h) => {
           const detailsOpen = expandedHouses.has(h.id);
+          function openMortalityForHouse() {
+            if (!h.houseFlockId) return;
+            setFarmNavContext({ farmId: farm.id, houseFlockId: h.houseFlockId });
+            router.push({
+              pathname: "/(tabs)/mortality",
+              params: { farmId: farm.id, houseFlockId: h.houseFlockId },
+            });
+          }
           return (
             <Card key={`${farm.id}-${h.id}`}>
               <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                <View style={{ flex: 1, minWidth: 0 }}>
+                <Pressable
+                  style={{ flex: 1, minWidth: 0 }}
+                  onPress={openMortalityForHouse}
+                  accessibilityLabel={`Open mortality for house ${h.houseNumber}`}
+                >
                   <Text style={{ fontSize: 17, fontWeight: "800" }}>
                     House {h.houseNumber}
                     {h.flockNumber ? (
@@ -1065,20 +1088,28 @@ export default function FarmDetailScreen() {
                         · {h.flockNumber}
                       </Text>
                     ) : null}
-                    {h.cumulativeMortality != null ? (
-                      <Text style={{ fontWeight: "600", color: colors.muted }}>
-                        {" "}
-                        · M {formatNumber(h.cumulativeMortality)}
-                      </Text>
-                    ) : null}
-                    {h.projectedHeadCount != null ? (
-                      <Text style={{ fontWeight: "600", color: colors.muted }}>
-                        {" "}
-                        · PHC {formatNumber(h.projectedHeadCount)}
-                      </Text>
-                    ) : null}
                   </Text>
-                </View>
+                  {h.cumulativeMortality != null || h.projectedHeadCount != null ? (
+                    <Text
+                      style={{
+                        marginTop: 2,
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color: colors.muted,
+                      }}
+                    >
+                      {h.cumulativeMortality != null
+                        ? `M ${formatNumber(h.cumulativeMortality)}`
+                        : null}
+                      {h.cumulativeMortality != null && h.projectedHeadCount != null
+                        ? " · "
+                        : null}
+                      {h.projectedHeadCount != null
+                        ? `PHC ${formatNumber(h.projectedHeadCount)}`
+                        : null}
+                    </Text>
+                  ) : null}
+                </Pressable>
                 <StatusBadge status={h.status} />
                 <Pressable
                   accessibilityLabel={`Edit house ${h.houseNumber}`}
@@ -1111,7 +1142,11 @@ export default function FarmDetailScreen() {
               </View>
 
               {h.weeklyMortality.length > 0 ? (
-                <View style={{ marginTop: 12 }}>
+                <Pressable
+                  onPress={openMortalityForHouse}
+                  accessibilityLabel={`Weekly mortality for house ${h.houseNumber}`}
+                  style={{ marginTop: 12 }}
+                >
                   <Text
                     style={{
                       fontSize: 11,
@@ -1124,9 +1159,11 @@ export default function FarmDetailScreen() {
                     Weekly mortality
                   </Text>
                   <WeeklyMortalityList weeks={h.weeklyMortality} />
-                </View>
+                </Pressable>
               ) : (
-                <Text style={[styles.muted, { marginTop: 12 }]}>No weekly mortality yet.</Text>
+                <Pressable onPress={openMortalityForHouse} style={{ marginTop: 12 }}>
+                  <Text style={styles.muted}>No weekly mortality yet.</Text>
+                </Pressable>
               )}
 
               <Pressable
@@ -1600,6 +1637,67 @@ export default function FarmDetailScreen() {
                           }
                         />
                       </View>
+                      <Text style={[styles.label, { marginTop: 2 }]}>Flock ID</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={editingHouse.flockNumber}
+                        onChangeText={(v) =>
+                          setEditingHouse((prev) =>
+                            prev ? { ...prev, flockNumber: v } : prev,
+                          )
+                        }
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        placeholder="e.g. 26-07"
+                        placeholderTextColor={colors.muted}
+                      />
+                      <Pressable
+                        onPress={() =>
+                          setEditingHouse((prev) =>
+                            prev
+                              ? { ...prev, applyToRemaining: !prev.applyToRemaining }
+                              : prev,
+                          )
+                        }
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "flex-start",
+                          gap: 10,
+                          marginBottom: 12,
+                          paddingVertical: 4,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: 6,
+                            borderWidth: 2,
+                            borderColor: editingHouse.applyToRemaining
+                              ? colors.accentDark
+                              : colors.border,
+                            backgroundColor: editingHouse.applyToRemaining
+                              ? colors.accentDark
+                              : "#fff",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            marginTop: 1,
+                          }}
+                        >
+                          {editingHouse.applyToRemaining ? (
+                            <Ionicons name="checkmark" size={16} color="#fff" />
+                          ) : null}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
+                            Apply to all remaining houses
+                          </Text>
+                          <Text style={[styles.muted, { marginTop: 2 }]}>
+                            Birds placed, placement date, catch date, and flock for houses after
+                            this one. Earlier houses stay unchanged.
+                          </Text>
+                        </View>
+                      </Pressable>
                     </>
                   ) : null}
                   <HouseNumFieldButton
@@ -1842,89 +1940,123 @@ export default function FarmDetailScreen() {
         transparent
         onRequestClose={closeFarmEditor}
       >
-        <Pressable
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.4)",
-            justifyContent: "flex-end",
-          }}
-          onPress={closeFarmEditor}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
         >
           <Pressable
-            onPress={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: "#fff",
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              padding: 20,
-              maxHeight: "85%",
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              justifyContent: "flex-end",
             }}
+            onPress={closeFarmEditor}
           >
-            <ScrollView keyboardShouldPersistTaps="handled">
-              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                Edit farm info
-              </Text>
-              {farmEditError ? (
-                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
-                  {farmEditError}
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: "#fff",
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                padding: 20,
+                paddingBottom: Platform.OS === "ios" ? 28 : 20,
+                maxHeight: "90%",
+              }}
+            >
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+                contentContainerStyle={{ paddingBottom: 24 }}
+              >
+                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                  Edit farm info
                 </Text>
-              ) : null}
-              {editingFarm ? (
-                <View style={{ marginTop: 14, gap: 4 }}>
-                  <Text style={styles.label}>Farm name *</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={editingFarm.farmName}
-                    onChangeText={(v) =>
-                      setEditingFarm((prev) => (prev ? { ...prev, farmName: v } : prev))
-                    }
-                    autoCapitalize="words"
-                  />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Grower name</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={editingFarm.growerName}
-                    onChangeText={(v) =>
-                      setEditingFarm((prev) => (prev ? { ...prev, growerName: v } : prev))
-                    }
-                    autoCapitalize="words"
-                  />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Phone</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={editingFarm.phoneNumber}
-                    onChangeText={(v) =>
-                      setEditingFarm((prev) => (prev ? { ...prev, phoneNumber: v } : prev))
-                    }
-                    keyboardType="phone-pad"
-                  />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
-                  <TextInput
-                    style={[styles.input, { minHeight: 72, textAlignVertical: "top" }]}
-                    value={editingFarm.notes}
-                    onChangeText={(v) =>
-                      setEditingFarm((prev) => (prev ? { ...prev, notes: v } : prev))
-                    }
-                    multiline
-                  />
-                  <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
-                    <PrimaryButton
-                      label={farmSaving ? "Saving…" : "Save farm changes"}
-                      onPress={saveFarmEdit}
-                      style={{ flex: 1 }}
+                {farmEditError ? (
+                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                    {farmEditError}
+                  </Text>
+                ) : null}
+                {editingFarm ? (
+                  <View style={{ marginTop: 14, gap: 4 }}>
+                    <Text style={styles.label}>Farm name *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.farmName}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, farmName: v } : prev))
+                      }
+                      autoCapitalize="words"
                     />
-                    <PrimaryButton
-                      label="Cancel"
-                      secondary
-                      onPress={closeFarmEditor}
-                      style={{ flex: 1 }}
+                    <Text style={[styles.label, { marginTop: 8 }]}>Grower name</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.growerName}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, growerName: v } : prev))
+                      }
+                      autoCapitalize="words"
                     />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Phone</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.phoneNumber}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, phoneNumber: v } : prev))
+                      }
+                      keyboardType="phone-pad"
+                    />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Email</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.email}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, email: v } : prev))
+                      }
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        {
+                          minHeight: 110,
+                          paddingTop: 12,
+                          paddingBottom: 12,
+                          textAlignVertical: "top",
+                          color: colors.text,
+                        },
+                      ]}
+                      value={editingFarm.notes}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, notes: v } : prev))
+                      }
+                      multiline
+                      scrollEnabled
+                      placeholder="Notes"
+                      placeholderTextColor={colors.muted}
+                    />
+                    <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                      <PrimaryButton
+                        label={farmSaving ? "Saving…" : "Save farm changes"}
+                        onPress={saveFarmEdit}
+                        style={{ flex: 1 }}
+                      />
+                      <PrimaryButton
+                        label="Cancel"
+                        secondary
+                        onPress={closeFarmEditor}
+                        style={{ flex: 1 }}
+                      />
+                    </View>
                   </View>
-                </View>
-              ) : null}
-            </ScrollView>
+                ) : null}
+              </ScrollView>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../src/theme";
+import { getFarmNavContext } from "../../src/lib/farmNavContext";
 
 const TAB_ITEMS = [
   { name: "index", label: "Dashboard", href: "/" },
@@ -61,7 +62,23 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 if (event.defaultPrevented) return;
                 // Match web nav: tapping an active tab returns to that section's list/root
                 if (focused) {
+                  if (route.name === "mortality") {
+                    const ctx = getFarmNavContext();
+                    navigation.navigate(route.name, {
+                      farmId: ctx.farmId ?? undefined,
+                      houseFlockId: ctx.houseFlockId ?? undefined,
+                    });
+                    return;
+                  }
                   navigation.navigate(route.name, { screen: "index" });
+                  return;
+                }
+                if (route.name === "mortality") {
+                  const ctx = getFarmNavContext();
+                  navigation.navigate(route.name, {
+                    farmId: ctx.farmId ?? undefined,
+                    houseFlockId: ctx.houseFlockId ?? undefined,
+                  });
                   return;
                 }
                 navigation.navigate(route.name);

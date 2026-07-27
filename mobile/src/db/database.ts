@@ -32,6 +32,7 @@ export function migrateDb() {
       farm_name TEXT NOT NULL,
       grower_name TEXT NOT NULL,
       phone_number TEXT,
+      email TEXT,
       notes TEXT,
       number_of_houses INTEGER NOT NULL DEFAULT 0,
       is_active INTEGER NOT NULL DEFAULT 1,
@@ -195,6 +196,9 @@ export function migrateDb() {
   const farmCols = database.getAllSync<{ name: string }>("PRAGMA table_info(farms)");
   if (!farmCols.some((c) => c.name === "deleted_at")) {
     database.execSync("ALTER TABLE farms ADD COLUMN deleted_at TEXT");
+  }
+  if (!farmCols.some((c) => c.name === "email")) {
+    database.execSync("ALTER TABLE farms ADD COLUMN email TEXT");
   }
 
   // Existing installs may lack newer flock columns

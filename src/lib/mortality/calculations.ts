@@ -16,8 +16,14 @@ export function calcPercentage(count: number, placed: number): number {
   return (count / placed) * 100;
 }
 
+/** Calendar days from placement → onDate. Negative when onDate is before placement (pre-place). */
+export function daysSincePlacement(placementDate: Date, onDate: Date): number {
+  return differenceInCalendarDays(onDate, placementDate);
+}
+
+/** Bird age for mortality / week math — never negative (pre-place counts as day 0). */
 export function birdAgeFromPlacement(placementDate: Date, onDate: Date): number {
-  return Math.max(0, differenceInCalendarDays(onDate, placementDate));
+  return Math.max(0, daysSincePlacement(placementDate, onDate));
 }
 
 /** Flock week from bird age: days 0–7 → week 1, 8–14 → week 2, 15–21 → week 3, etc. */
@@ -44,13 +50,13 @@ export function weeklyMortalityByPlacement(
     totals.set(w, 0);
   }
 
+  const placementKey = format(placementDate, "yyyy-MM-dd");
   for (const record of records) {
     const dateKey = toDateKey(record.mortalityDate);
     if (dateKey > format(asOfDate, "yyyy-MM-dd")) continue;
-    const age =
-      typeof record.birdAgeInDays === "number"
-        ? record.birdAgeInDays
-        : birdAgeFromPlacement(placementDate, parseISO(dateKey));
+    // Drop orphan rows from before the current placement (stale after a place-date edit).
+    if (dateKey < placementKey) continue;
+    const age = birdAgeFromPlacement(placementDate, parseISO(dateKey));
     const week = flockWeekFromAge(age);
     if (week < 1 || week > currentWeek) continue;
     const loss =

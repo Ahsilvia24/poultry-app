@@ -7,12 +7,18 @@ export function calcPercentage(count: number, placed: number): number {
   return (count / placed) * 100;
 }
 
-export function birdAgeFromPlacement(placementDateKey: string, onDateKey: string): number {
+/** Calendar days from placement → onDate. Negative when onDate is before placement (pre-place). */
+export function daysSincePlacement(placementDateKey: string, onDateKey: string): number {
   const [py, pm, pd] = placementDateKey.split("-").map(Number);
   const [oy, om, od] = onDateKey.split("-").map(Number);
   const placement = Date.UTC(py!, (pm ?? 1) - 1, pd ?? 1);
   const on = Date.UTC(oy!, (om ?? 1) - 1, od ?? 1);
-  return Math.max(0, Math.round((on - placement) / 86400000));
+  return Math.round((on - placement) / 86400000);
+}
+
+/** Bird age for mortality / week math — never negative (pre-place counts as day 0). */
+export function birdAgeFromPlacement(placementDateKey: string, onDateKey: string): number {
+  return Math.max(0, daysSincePlacement(placementDateKey, onDateKey));
 }
 
 export function flockWeekFromAge(birdAgeInDays: number): number {
