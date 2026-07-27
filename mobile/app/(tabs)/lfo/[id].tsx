@@ -29,6 +29,7 @@ import {
   appendKeypadDigit,
   backspaceKeypadValue,
 } from "../../../src/components/NumberKeypad";
+import { LfoHouseSummaryBlock } from "../../../src/components/LfoHouseSummaryBlock";
 
 function formatLbs(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -522,15 +523,8 @@ export default function EditLfoScreen() {
 
               {houseSummary.length > 0 ? (
                 <Card>
-                  <View style={{ gap: 4 }}>
-                    {houseSummary.map((line) => (
-                      <Text
-                        key={line}
-                        style={{ fontWeight: "800", color: colors.text, fontSize: 15 }}
-                      >
-                        {line}
-                      </Text>
-                    ))}
+                  <View style={{ marginTop: -4 }}>
+                    <LfoHouseSummaryBlock lines={houseSummary} fontSize={15} />
                   </View>
                 </Card>
               ) : null}

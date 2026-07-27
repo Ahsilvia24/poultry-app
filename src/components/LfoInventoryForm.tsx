@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Button, Input, Label, Select } from "@/components/ui";
@@ -62,6 +62,29 @@ function splitFeedUp(feedUpAt: string) {
 function joinFeedUp(date: string, time: string) {
   if (!date || !time) return "";
   return `${date}T${time}`;
+}
+
+function CopySummaryButton({ lines }: { lines: string[] }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        await navigator.clipboard.writeText(lines.join("\n"));
+        setCopied(true);
+      }}
+      className="shrink-0 text-sm font-semibold text-emerald-800 hover:underline"
+    >
+      {copied ? "Copied" : "Copy"}
+    </button>
+  );
 }
 
 export function LfoInventoryForm({
@@ -307,14 +330,15 @@ export function LfoInventoryForm({
       </div>
 
       {houseSummary.length > 0 ? (
-        <div className="rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-700">
-          <div className="space-y-0.5">
+        <div className="flex items-start gap-2 rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-700">
+          <div className="min-w-0 flex-1 space-y-0.5">
             {houseSummary.map((line) => (
               <p key={line} className="font-semibold text-stone-900">
                 {line}
               </p>
             ))}
           </div>
+          <CopySummaryButton lines={houseSummary} />
         </div>
       ) : null}
 

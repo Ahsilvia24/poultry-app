@@ -25,6 +25,7 @@ import {
   PrimaryButton,
   SectionTitle,
 } from "../../../src/components/ui";
+import { CopyHouseSummaryButton } from "../../../src/components/LfoHouseSummaryBlock";
 import {
   NumberKeypad,
   appendKeypadDigit,
@@ -348,7 +349,7 @@ export default function LfoListScreen() {
           ) : null}
           {lfos.map((l) => (
             <Card key={l.id}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
                 <Pressable
                   style={{ flex: 1, minWidth: 0 }}
                   onPress={() => openLfo(l.id)}
@@ -374,6 +375,9 @@ export default function LfoListScreen() {
                     </View>
                   ) : null}
                 </Pressable>
+                {l.houseSummary.length > 0 ? (
+                  <CopyHouseSummaryButton lines={l.houseSummary} />
+                ) : null}
                 <Pressable
                   accessibilityLabel={`Edit LFO for ${l.farmName}`}
                   onPress={() => openLfo(l.id)}
