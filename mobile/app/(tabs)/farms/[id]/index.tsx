@@ -323,15 +323,20 @@ export default function FarmDetailScreen() {
   }
 
   const { farm } = data;
+  const activeFlocks = data.activeFlocks ?? [];
   const flockAge = data.activeFlock?.flockAgeDays ?? null;
-  const flockAges =
-    data.activeFlock?.flockAgesDays?.length
-      ? data.activeFlock.flockAgesDays
-      : flockAge != null
-        ? [flockAge]
-        : [];
+  const flockAges = (() => {
+    if (activeFlocks.length > 0) {
+      return Array.from(new Set(activeFlocks.map((f) => f.flockAgeDays))).sort(
+        (a, b) => a - b,
+      );
+    }
+    if (data.activeFlock?.flockAgesDays?.length) return data.activeFlock.flockAgesDays;
+    return flockAge != null ? [flockAge] : [];
+  })();
   const flockAgeLabel =
     flockAges.length > 0 ? flockAges.map((a) => `(${a}d)`).join(" ") : "—";
+  const flockIdLabel = activeFlocks.map((f) => f.flockNumber).filter(Boolean).join(" · ");
   const flockPlacementDates =
     data.activeFlock?.placementDates?.length
       ? data.activeFlock.placementDates
@@ -359,7 +364,6 @@ export default function FarmDetailScreen() {
     data.activeFlock?.projectedCatchDate ??
     data.activeFlock?.resolvedCatchDate ??
     null;
-  const activeFlocks = data.activeFlocks ?? [];
   const growthRate = (() => {
     const fromHouse = data.houses.find((h) => h.growthRateLbsPerDay != null)?.growthRateLbsPerDay;
     if (fromHouse != null) return resolveGrowthRate(fromHouse);
@@ -733,105 +737,95 @@ export default function FarmDetailScreen() {
 
         {activeFlocks.length > 0 ? (
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>
-              {activeFlocks.length > 1 ? "Active flocks" : "Active flock"} — {flockAgeLabel}
-              {data.activeFlock?.flockNumber ? ` · ${data.activeFlock.flockNumber}` : ""}
-            </Text>
-            {activeFlocks.length > 1 ? (
-              <View style={{ marginTop: 10, gap: 8 }}>
-                {activeFlocks.map((fl) => (
-                  <View
-                    key={fl.id}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 8,
-                    }}
-                  >
-                    <Pressable
-                      onPress={() => {
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontWeight: "800", fontSize: 16 }}>
+                  {activeFlocks.length > 1 ? "Active flocks" : "Active flock"} —{" "}
+                  {flockAgeLabel}
+                </Text>
+                {flockIdLabel ? (
+                  <Pressable
+                    onPress={() => {
+                      if (activeFlocks.length === 1) {
                         setFlockNumberError(null);
-                        setFlockNumberDraft(fl.flockNumber);
-                        setEditingFlockNumber(fl.id);
-                      }}
-                      style={{ flex: 1 }}
-                    >
-                      <Text style={{ fontWeight: "700" }}>
-                        {fl.flockNumber} · ({fl.flockAgeDays}d)
-                      </Text>
-                      <Text style={styles.muted}>
-                        Placed {formatUsDate(fl.placementDate)}
-                        {fl.projectedCatchDate || fl.resolvedCatchDate
-                          ? ` · Catch ${formatUsDate(
-                              fl.projectedCatchDate ?? fl.resolvedCatchDate!,
-                            )}`
-                          : ""}
-                        {` · ${fl.houseCount} house${fl.houseCount === 1 ? "" : "s"}`}
-                      </Text>
-                    </Pressable>
-                    <PrimaryButton
-                      label="Complete"
-                      secondary
-                      onPress={() => {
-                        Alert.alert(
-                          "Complete flock?",
-                          `Mark flock ${fl.flockNumber} as completed? You can reactivate it later from History.`,
-                          [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                              text: "Complete",
-                              onPress: () => {
-                                try {
-                                  completeFlock(fl.id);
-                                  load();
-                                } catch (e) {
-                                  Alert.alert(
-                                    "Error",
-                                    e instanceof Error ? e.message : "Could not complete flock",
-                                  );
-                                }
-                              },
+                        setFlockNumberDraft(activeFlocks[0]!.flockNumber);
+                        setEditingFlockNumber(activeFlocks[0]!.id);
+                        return;
+                      }
+                      Alert.alert(
+                        "Edit flock number",
+                        "Which flock number do you want to edit?",
+                        [
+                          ...activeFlocks.map((fl) => ({
+                            text: fl.flockNumber,
+                            onPress: () => {
+                              setFlockNumberError(null);
+                              setFlockNumberDraft(fl.flockNumber);
+                              setEditingFlockNumber(fl.id);
                             },
-                          ],
-                        );
-                      }}
-                      style={{ minWidth: 100 }}
-                    />
-                  </View>
-                ))}
+                          })),
+                          { text: "Cancel", style: "cancel" as const },
+                        ],
+                      );
+                    }}
+                    hitSlop={6}
+                  >
+                    <Text style={[styles.muted, { marginTop: 2, fontWeight: "400" }]}>
+                      {flockIdLabel}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
-            ) : (
-              <View
+              <Pressable
+                accessibilityLabel="Edit flock number"
+                onPress={() => {
+                  if (activeFlocks.length === 1) {
+                    setFlockNumberError(null);
+                    setFlockNumberDraft(activeFlocks[0]!.flockNumber);
+                    setEditingFlockNumber(activeFlocks[0]!.id);
+                    return;
+                  }
+                  Alert.alert(
+                    "Edit flock number",
+                    "Which flock number do you want to edit?",
+                    [
+                      ...activeFlocks.map((fl) => ({
+                        text: fl.flockNumber,
+                        onPress: () => {
+                          setFlockNumberError(null);
+                          setFlockNumberDraft(fl.flockNumber);
+                          setEditingFlockNumber(fl.id);
+                        },
+                      })),
+                      { text: "Cancel", style: "cancel" as const },
+                    ],
+                  );
+                }}
+                hitSlop={8}
                 style={{
-                  flexDirection: "row",
+                  width: 36,
+                  height: 36,
                   alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 8,
-                  marginTop: 8,
+                  justifyContent: "center",
                 }}
               >
-                <Pressable
-                  accessibilityLabel="Edit flock number"
-                  onPress={() => {
-                    setFlockNumberError(null);
-                    setFlockNumberDraft(activeFlocks[0]?.flockNumber ?? "");
-                    setEditingFlockNumber(activeFlocks[0]?.id ?? null);
-                  }}
-                  hitSlop={8}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="pencil-outline" size={20} color={colors.muted} />
-                </Pressable>
-                <PrimaryButton
-                  label="Complete flock"
-                  secondary
-                  onPress={() => {
+                <Ionicons name="pencil-outline" size={20} color={colors.muted} />
+              </Pressable>
+            </View>
+
+            <View style={{ marginTop: 8 }}>
+              <PrimaryButton
+                label={activeFlocks.length > 1 ? "Complete a flock" : "Complete flock"}
+                secondary
+                onPress={() => {
+                  if (activeFlocks.length === 1) {
                     Alert.alert(
                       "Complete flock?",
                       "Mark this flock as completed? You can reactivate it later from History.",
@@ -853,11 +847,47 @@ export default function FarmDetailScreen() {
                         },
                       ],
                     );
-                  }}
-                  style={{ flex: 1 }}
-                />
-              </View>
-            )}
+                    return;
+                  }
+                  Alert.alert(
+                    "Complete a flock",
+                    "Which flock do you want to complete?",
+                    [
+                      ...activeFlocks.map((fl) => ({
+                        text: `${fl.flockNumber} (${fl.flockAgeDays}d)`,
+                        onPress: () => {
+                          Alert.alert(
+                            "Complete flock?",
+                            `Mark flock ${fl.flockNumber} as completed? You can reactivate it later from History.`,
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Complete",
+                                onPress: () => {
+                                  try {
+                                    completeFlock(fl.id);
+                                    load();
+                                  } catch (e) {
+                                    Alert.alert(
+                                      "Error",
+                                      e instanceof Error
+                                        ? e.message
+                                        : "Could not complete flock",
+                                    );
+                                  }
+                                },
+                              },
+                            ],
+                          );
+                        },
+                      })),
+                      { text: "Cancel", style: "cancel" as const },
+                    ],
+                  );
+                }}
+              />
+            </View>
+
             <View style={[styles.row, { marginTop: 12 }]}>
               <Metric label="Birds placed" value={formatNumber(birdsPlaced)} />
               <Metric label="Proj. Head Count" value={formatNumber(phc || null)} />

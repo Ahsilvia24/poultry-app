@@ -255,7 +255,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       .join(" · "),
   );
   const flockAgeLabel =
-    flockAgesDays.length > 0 ? flockAgesDays.map((a) => `${a} days`).join(" · ") : null;
+    flockAgesDays.length > 0 ? flockAgesDays.map((a) => `(${a}d)`).join(" ") : null;
   const flockNumberLabel = activeFlocks.map((f) => f.flockNumber).filter(Boolean).join(" · ");
 
   return (
@@ -301,42 +301,15 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           <h2 className="text-xl font-bold">
             {activeFlocks.length > 1 ? "Active flocks" : "Active flock"}
             {flockAgeLabel ? ` — ${flockAgeLabel}` : ""}
-            {flockNumberLabel ? ` · ${flockNumberLabel}` : ""}
           </h2>
-          {activeFlocks.length > 1 ? (
-            <div className="mt-2 space-y-2">
-              {activeFlocks.map((flock) => (
-                <div
-                  key={flock.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2"
-                >
-                  <p className="text-sm text-stone-700">
-                    <span className="font-semibold">{flock.flockNumber}</span>
-                    {" · "}
-                    {differenceInCalendarDays(today, flock.placementDate)} days
-                    {" · "}
-                    Placed {format(flock.placementDate, "MMM d, yyyy")}
-                    {flock.projectedCatchDate
-                      ? ` · Catch ${format(flock.projectedCatchDate, "MMM d, yyyy")}`
-                      : ""}
-                    {" · "}
-                    {flock.houseFlocks.length} house
-                    {flock.houseFlocks.length === 1 ? "" : "s"}
-                  </p>
-                  <CompleteFlockButton flockId={flock.id} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              {placementCatchLines[0] ? (
-                <p className="mt-1 text-sm text-stone-600">{placementCatchLines[0]}</p>
-              ) : null}
-              <div className="mt-2">
-                <CompleteFlockButton flockId={activeFlock!.id} />
-              </div>
-            </>
-          )}
+          {flockNumberLabel ? (
+            <p className="mt-1 text-sm font-normal text-stone-500">{flockNumberLabel}</p>
+          ) : null}
+          <div className="mt-2 flex flex-wrap gap-2">
+            {activeFlocks.map((flock) => (
+              <CompleteFlockButton key={flock.id} flockId={flock.id} />
+            ))}
+          </div>
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Birds placed" value={formatNumber(flockPlaced)} />
             <StatTile
@@ -355,6 +328,15 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               )})`}
             />
           </div>
+          {placementCatchLines.length > 0 ? (
+            <div className="mt-2 space-y-0.5">
+              {placementCatchLines.map((line) => (
+                <p key={line} className="text-sm text-stone-600">
+                  {line.replace(/\s·\s*\([^)]*\)$/, "")}
+                </p>
+              ))}
+            </div>
+          ) : null}
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <WeightProjectionTile
               flockId={activeFlock!.id}
