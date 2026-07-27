@@ -139,6 +139,19 @@ export default function LfoListScreen() {
     };
   }, [activeField, navigation]);
 
+  // Re-scroll after keypad mounts (layout shift)
+  useEffect(() => {
+    if (!activeField) return;
+    const t = setTimeout(() => {
+      scrollFieldAboveKeypad(
+        scrollRef,
+        activeField === "water" ? waterRef : headRef,
+        scrollYRef,
+      );
+    }, 100);
+    return () => clearTimeout(t);
+  }, [activeField]);
+
   const calcResult = useMemo(() => {
     const water = Number(waterGal);
     const heads = Number(headCount);

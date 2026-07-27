@@ -214,6 +214,17 @@ export default function EditLfoScreen() {
     };
   }, [activeField, navigation]);
 
+  // Re-scroll after keypad mounts (layout shift)
+  useEffect(() => {
+    if (!activeField) return;
+    const key = fieldKey(activeField);
+    const t = setTimeout(() => {
+      const node = fieldRefs.current.get(key) ?? null;
+      scrollFieldAboveKeypad(scrollRef, { current: node }, scrollYRef);
+    }, 100);
+    return () => clearTimeout(t);
+  }, [activeField]);
+
   const calc = useMemo(() => {
     const rate = Number(consumptionRate);
     return calculateLastFeedOrder({

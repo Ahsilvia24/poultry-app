@@ -50,15 +50,18 @@ function HeaderCell({
   width,
   align = "left",
   style,
+  numberOfLines,
 }: {
   children: React.ReactNode;
   flex?: number;
   width?: number;
   align?: "left" | "center" | "right";
   style?: object;
+  numberOfLines?: number;
 }) {
   return (
     <Text
+      numberOfLines={numberOfLines}
       style={[
         {
           flex,
