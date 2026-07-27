@@ -220,7 +220,10 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         actions={
           <>
             <Link href={`/mortality?farmId=${farm.id}`}>
-              <Button>Enter mortality</Button>
+              <Button>Mortality</Button>
+            </Link>
+            <Link href={activeFlock ? `/lfo/new/${farm.id}` : "/lfo"}>
+              <Button variant="secondary">LFO</Button>
             </Link>
             <Link href={`/history/${farm.id}`}>
               <Button variant="secondary">History</Button>

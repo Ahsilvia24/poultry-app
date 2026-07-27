@@ -11,7 +11,7 @@ import {
   type ScrollView as ScrollViewType,
   type View as ViewType,
 } from "react-native";
-import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { createLfo, deleteLfo, listFarms, listLfos } from "../../../src/repos/data";
@@ -102,12 +102,22 @@ function CalcFieldButton({
   );
 }
 
+function paramId(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
 export default function LfoListScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const params = useLocalSearchParams<{ farmId?: string | string[] }>();
+  const routeFarmId = paramId(params.farmId);
   const [lfos, setLfos] = useState(listLfos());
   const [farms] = useState(listFarms().farms);
-  const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
+  const [farmId, setFarmId] = useState(() => {
+    if (routeFarmId && farms.some((f) => f.id === routeFarmId)) return routeFarmId;
+    return farms[0]?.id ?? "";
+  });
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [waterGal, setWaterGal] = useState(DEFAULT_WATER_GAL);
@@ -129,6 +139,12 @@ export default function LfoListScreen() {
       load();
     }, [load]),
   );
+
+  useEffect(() => {
+    if (routeFarmId && farms.some((f) => f.id === routeFarmId)) {
+      setFarmId(routeFarmId);
+    }
+  }, [routeFarmId, farms]);
 
   useEffect(() => {
     navigation.setOptions({

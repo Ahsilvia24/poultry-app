@@ -425,10 +425,21 @@ export default function FarmDetailScreen() {
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
             <PrimaryButton
-              label="Enter mortality"
+              label="Mortality"
               onPress={() =>
                 router.push({
                   pathname: "/(tabs)/mortality",
+                  params: { farmId: farm.id },
+                })
+              }
+              style={{ flexGrow: 1, minWidth: "45%" }}
+            />
+            <PrimaryButton
+              label="LFO"
+              secondary
+              onPress={() =>
+                router.push({
+                  pathname: "/(tabs)/lfo",
                   params: { farmId: farm.id },
                 })
               }
@@ -475,12 +486,6 @@ export default function FarmDetailScreen() {
                 style={{ flexGrow: 1, minWidth: "45%" }}
               />
             ) : null}
-            <PrimaryButton
-              label="LFO"
-              secondary
-              onPress={() => router.push("/(tabs)/lfo")}
-              style={{ flexGrow: 1, minWidth: "45%" }}
-            />
           </View>
         </View>
 
