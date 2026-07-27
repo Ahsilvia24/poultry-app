@@ -109,10 +109,16 @@ export default function FarmsScreen() {
 
         {data?.farms.map((farm) => {
           const houseCount = farm.houseCount ?? farm.numberOfHouses;
-          const titleMeta =
-            farm.flockAgeDays != null
-              ? ` (${houseCount}) · ${farm.flockAgeDays}d`
-              : ` (${houseCount})`;
+          const ages =
+            farm.flockAgesDays?.length
+              ? farm.flockAgesDays
+              : farm.flockAgeDays != null
+                ? [farm.flockAgeDays]
+                : [];
+          const ageLabel = ages.length > 0 ? ages.map((a) => `${a}d`).join(" · ") : null;
+          const titleMeta = ageLabel
+            ? ` (${houseCount}) · ${ageLabel}`
+            : ` (${houseCount})`;
 
           return (
             <Card key={farm.id}>
@@ -133,49 +139,45 @@ export default function FarmsScreen() {
                     </Text>
                   ) : null}
                 </Pressable>
-                <Text
-                  style={[
-                    styles.badge,
-                    farm.isActive
-                      ? { backgroundColor: "#d1fae5", color: "#065f46" }
-                      : { backgroundColor: "#e7e5e4", color: "#44403c" },
-                  ]}
-                >
-                  {farm.isActive ? "Active" : "Inactive"}
-                </Text>
-                <Pressable
-                  accessibilityLabel={`Edit ${farm.farmName} settings`}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(tabs)/farms/[id]",
-                      params: { id: farm.id, edit: "1" },
-                    })
-                  }
-                  hitSlop={8}
+                <View
                   style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
+                    flexDirection: "row",
                     alignItems: "center",
-                    justifyContent: "center",
+                    gap: 4,
+                    marginLeft: 8,
+                    flexShrink: 0,
                   }}
                 >
-                  <Ionicons name="settings-outline" size={20} color={colors.muted} />
-                </Pressable>
-                <Pressable
-                  accessibilityLabel={`Delete ${farm.farmName}`}
-                  onPress={() => confirmDelete(farm.id, farm.farmName)}
-                  hitSlop={8}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={20} color={colors.muted} />
-                </Pressable>
+                  <Text
+                    style={[
+                      styles.badge,
+                      farm.isActive
+                        ? { backgroundColor: "#d1fae5", color: "#065f46" }
+                        : { backgroundColor: "#e7e5e4", color: "#44403c" },
+                    ]}
+                  >
+                    {farm.isActive ? "Active" : "Inactive"}
+                  </Text>
+                  <Pressable
+                    accessibilityLabel={`Edit ${farm.farmName} settings`}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]",
+                        params: { id: farm.id, edit: "1" },
+                      })
+                    }
+                    hitSlop={8}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons name="settings-outline" size={20} color={colors.muted} />
+                  </Pressable>
+                </View>
               </View>
 
               <Pressable
@@ -210,6 +212,29 @@ export default function FarmsScreen() {
                   />
                 </View>
               </Pressable>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "flex-end",
+                  marginTop: 4,
+                }}
+              >
+                <Pressable
+                  accessibilityLabel={`Delete ${farm.farmName}`}
+                  onPress={() => confirmDelete(farm.id, farm.farmName)}
+                  hitSlop={8}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.muted} />
+                </Pressable>
+              </View>
             </Card>
           );
         })}

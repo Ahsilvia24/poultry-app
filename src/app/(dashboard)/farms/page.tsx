@@ -46,7 +46,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
       houses: { where: { deletedAt: null }, select: { id: true } },
       flocks: {
         where: { flockStatus: "ACTIVE", deletedAt: null },
-        take: 1,
+        orderBy: { placementDate: "asc" },
         include: {
           houseFlocks: {
             include: {
@@ -109,23 +109,42 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {farms.map((farm) => {
-            const active = farm.flocks[0];
+            const activeFlocks = farm.flocks;
+            const active = activeFlocks[0];
             const houseCount = farm.houses.length;
-            const birdsPlaced = active
-              ? active.houseFlocks.reduce((sum, hf) => sum + hf.placedBirdCount, 0)
-              : null;
-            const currentHeadCount = active
-              ? active.houseFlocks.length > 0
-                ? active.houseFlocks.reduce((sum, hf) => {
-                    const metrics = summarizeForDate(hf.placedBirdCount, hf.mortalities, today);
-                    return sum + metrics.remaining;
+            const birdsPlaced =
+              activeFlocks.length > 0
+                ? activeFlocks.reduce(
+                    (sum, fl) =>
+                      sum + fl.houseFlocks.reduce((s, hf) => s + hf.placedBirdCount, 0),
+                    0,
+                  )
+                : null;
+            const currentHeadCount =
+              activeFlocks.length > 0
+                ? activeFlocks.reduce((sum, fl) => {
+                    return (
+                      sum +
+                      fl.houseFlocks.reduce((s, hf) => {
+                        const metrics = summarizeForDate(hf.placedBirdCount, hf.mortalities, today);
+                        return s + metrics.remaining;
+                      }, 0)
+                    );
                   }, 0)
-                : null
-              : null;
+                : null;
+            const flockAges = Array.from(
+              new Set(
+                activeFlocks.map((fl) => differenceInCalendarDays(today, fl.placementDate)),
+              ),
+            ).sort((a, b) => a - b);
+            const earliestCatch = activeFlocks
+              .map((fl) => fl.projectedCatchDate)
+              .filter((d): d is Date => d != null)
+              .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
 
             return (
               <Card key={farm.id} className="transition hover:border-emerald-400">
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-3">
                   <Link href={`/farms/${farm.id}`} className="min-w-0 flex-1">
                     <p className="text-lg font-bold text-stone-900">
                       {farm.farmName}
@@ -133,10 +152,10 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                         {" "}
                         ({houseCount})
                       </span>
-                      {active ? (
+                      {flockAges.length > 0 ? (
                         <span className="font-semibold text-stone-500">
                           {" "}
-                          · {differenceInCalendarDays(today, active.placementDate)}d
+                          · {flockAges.map((a) => `${a}d`).join(" · ")}
                         </span>
                       ) : null}
                     </p>
@@ -146,10 +165,10 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                       </p>
                     ) : null}
                   </Link>
-                  <div className="flex shrink-0 items-center gap-0.5">
+                  <div className="ml-2 flex shrink-0 items-center gap-1">
                     <span
                       className={cn(
-                        "mr-1 inline-flex rounded-md px-2.5 py-1 text-sm font-bold",
+                        "inline-flex rounded-md px-2.5 py-1 text-sm font-bold",
                         farm.isActive
                           ? "bg-emerald-100 text-emerald-900"
                           : "bg-stone-100 text-stone-700",
@@ -165,7 +184,6 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                     >
                       <PencilIcon className="h-5 w-5" />
                     </Link>
-                    <DeleteFarmButton farmId={farm.id} appearance="icon" />
                   </div>
                 </div>
                 <Link href={`/farms/${farm.id}`} className="mt-4 block">
@@ -193,13 +211,16 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                     <div>
                       <p className="text-stone-500">Catch date</p>
                       <p className="font-semibold">
-                        {active?.projectedCatchDate
-                          ? format(active.projectedCatchDate, "EEE, MMM d, yyyy")
+                        {earliestCatch
+                          ? format(earliestCatch, "EEE, MMM d, yyyy")
                           : "—"}
                       </p>
                     </div>
                   </div>
                 </Link>
+                <div className="mt-1 flex justify-end">
+                  <DeleteFarmButton farmId={farm.id} appearance="icon" />
+                </div>
               </Card>
             );
           })}
