@@ -6,14 +6,11 @@ import { addDays, format } from "date-fns";
 import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
 import {
   birdAgeFromPlacement,
-  calcPercentage,
   calcTotalDailyLoss,
   flockWeekFromAge,
-  resolveMortalityStatus,
 } from "@/lib/mortality/calculations";
-import { formatNumber, formatPct } from "@/lib/utils";
-import type { ThresholdSettings } from "@/types";
-import { Card, Input, StatusBadge } from "@/components/ui";
+import { formatNumber } from "@/lib/utils";
+import { Card, Input } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 export type MortalityHousePayload = {
@@ -217,40 +214,14 @@ function groupRowsByWeek(rows: DayRow[]): WeekGroup[] {
     });
 }
 
-function buildHouseWarning(
-  house: MortalityHousePayload,
-  rows: DayRow[],
-  thresholds: ThresholdSettings,
-) {
-  if (rows.length === 0) return null;
-  const last = rows[rows.length - 1]!;
-  const loss = calcTotalDailyLoss(
-    Number(last.dailyMortalityCount || 0),
-    Number(last.cullCount || 0),
-  );
-  const dailyPct = calcPercentage(loss, house.placedBirdCount);
-  const priorSeven = rows
-    .slice(-7)
-    .reduce(
-      (s, r) =>
-        s + calcTotalDailyLoss(Number(r.dailyMortalityCount || 0), Number(r.cullCount || 0)),
-      0,
-    );
-  const sevenDayPct = calcPercentage(priorSeven, house.placedBirdCount);
-  const status = resolveMortalityStatus({ dailyPct, sevenDayPct }, thresholds);
-  return { status, dailyPct, sevenDayPct };
-}
-
 export function MortalityEntryForm({
   farms,
   initialFarmId,
   initialHouseFlockId,
-  thresholds,
 }: {
   farms: MortalityFarmPayload[];
   initialFarmId?: string;
   initialHouseFlockId?: string;
-  thresholds: ThresholdSettings;
 }) {
   const router = useRouter();
   const [farmId, setFarmId] = useState(
@@ -279,14 +250,6 @@ export function MortalityEntryForm({
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-  const [summary, setSummary] = useState<{
-    totalMortality: number;
-    totalCulls: number;
-    totalLoss: number;
-    status: string;
-    dailyPct: number;
-    sevenDayPct: number;
-  } | null>(null);
 
   const rowsRef = useRef(rows);
   const flockRef = useRef(flock);
@@ -345,17 +308,6 @@ export function MortalityEntryForm({
       return;
     }
 
-    const totalMortality = currentRows.reduce((s, r) => s + Number(r.dailyMortalityCount || 0), 0);
-    const totalCulls = currentRows.reduce((s, r) => s + Number(r.cullCount || 0), 0);
-    const warning = buildHouseWarning(currentHouse, currentRows, thresholds);
-    setSummary({
-      totalMortality,
-      totalCulls,
-      totalLoss: totalMortality + totalCulls,
-      status: warning?.status ?? "Normal",
-      dailyPct: warning?.dailyPct ?? 0,
-      sevenDayPct: warning?.sevenDayPct ?? 0,
-    });
     setSaveStatus("saved");
   }
 
@@ -392,7 +344,6 @@ export function MortalityEntryForm({
     dirtyRef.current = false;
     setSaveStatus("idle");
     setError(null);
-    setSummary(null);
 
     if (!flock || !house) {
       setRows([]);
@@ -402,17 +353,6 @@ export function MortalityEntryForm({
     const catchDate = resolveCatchDateKey(flock);
     const built = buildRows(flock.placementDate, catchDate, house);
     setRows(built);
-    const totalMortality = built.reduce((s, r) => s + Number(r.dailyMortalityCount || 0), 0);
-    const totalCulls = built.reduce((s, r) => s + Number(r.cullCount || 0), 0);
-    const warning = buildHouseWarning(house, built, thresholds);
-    setSummary({
-      totalMortality,
-      totalCulls,
-      totalLoss: totalMortality + totalCulls,
-      status: warning?.status ?? "Normal",
-      dailyPct: warning?.dailyPct ?? 0,
-      sevenDayPct: warning?.sevenDayPct ?? 0,
-    });
     const currentWeek = flockWeekFromAge(
       birdAgeFromPlacement(parseLocalDate(flock.placementDate), todayDate()),
     );
@@ -506,7 +446,6 @@ export function MortalityEntryForm({
     setFarmId(nextFarmId);
     setSaveStatus("idle");
     setError(null);
-    setSummary(null);
     const nextFarm = farms.find((f) => f.id === nextFarmId);
     const firstHouse = nextFarm?.activeFlock?.houses[0]?.houseFlockId ?? "";
     setHouseFlockId(firstHouse);
@@ -523,7 +462,6 @@ export function MortalityEntryForm({
     setHouseFlockId(nextHouseId);
     setSaveStatus("idle");
     setError(null);
-    setSummary(null);
     router.replace(`/mortality?farmId=${farmId}&houseFlockId=${nextHouseId}`);
   }
 
@@ -747,37 +685,6 @@ export function MortalityEntryForm({
       ) : null}
 
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
-
-      {summary ? (
-        <Card className="border-emerald-200 bg-emerald-50/40">
-          <h3 className="font-bold text-stone-900">Saved</h3>
-          <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
-            <div>
-              <p className="text-stone-500">Culls</p>
-              <p className="text-xl font-bold">{summary.totalCulls}</p>
-            </div>
-            <div>
-              <p className="text-stone-500">Mortality</p>
-              <p className="text-xl font-bold">{summary.totalMortality}</p>
-            </div>
-            <div>
-              <p className="text-stone-500">Total loss</p>
-              <p className="text-xl font-bold">{summary.totalLoss}</p>
-            </div>
-          </div>
-          {summary.status !== "Normal" ? (
-            <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-semibold text-amber-900">Threshold warning</span>
-              <StatusBadge status={summary.status} />
-              <span>
-                Latest day {formatPct(summary.dailyPct)} · 7-day {formatPct(summary.sevenDayPct)}
-              </span>
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-stone-600">No threshold warnings for latest day.</p>
-          )}
-        </Card>
-      ) : null}
     </div>
   );
 }

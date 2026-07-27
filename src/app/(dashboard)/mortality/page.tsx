@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getUserThresholds } from "@/lib/dashboard";
 import { PageHeader } from "@/components/ui";
 import {
   MortalityEntryForm,
@@ -16,7 +15,6 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
   if (!session?.user?.id) redirect("/login");
 
   const params = await searchParams;
-  const thresholds = await getUserThresholds(session.user.id);
 
   const farmsRaw = await prisma.farm.findMany({
     where: { userId: session.user.id, deletedAt: null, isActive: true },
@@ -86,7 +84,6 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
           farms={farms}
           initialFarmId={params.farmId}
           initialHouseFlockId={params.houseFlockId}
-          thresholds={thresholds}
         />
       )}
     </div>
