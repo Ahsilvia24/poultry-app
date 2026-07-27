@@ -119,7 +119,9 @@ export default function FarmsScreen() {
               <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
                 <Pressable
                   style={{ flex: 1, minWidth: 0 }}
-                  onPress={() => router.push(`/(tabs)/farms/${farm.id}`)}
+                  onPress={() =>
+                    router.push({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } })
+                  }
                 >
                   <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
                     {farm.farmName}
@@ -143,7 +145,9 @@ export default function FarmsScreen() {
                 </Text>
                 <Pressable
                   accessibilityLabel={`Edit ${farm.farmName}`}
-                  onPress={() => router.push(`/(tabs)/farms/${farm.id}`)}
+                  onPress={() =>
+                    router.push({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } })
+                  }
                   hitSlop={8}
                   style={{
                     width: 36,
@@ -171,7 +175,11 @@ export default function FarmsScreen() {
                 </Pressable>
               </View>
 
-              <Pressable onPress={() => router.push(`/(tabs)/farms/${farm.id}`)}>
+              <Pressable
+                onPress={() =>
+                  router.push({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } })
+                }
+              >
                 <View style={[styles.row, { marginTop: 12 }]}>
                   <Metric
                     label="Birds placed"

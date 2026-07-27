@@ -46,9 +46,13 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                   target: route.key,
                   canPreventDefault: true,
                 });
-                if (!focused && !event.defaultPrevented) {
-                  navigation.navigate(route.name);
+                if (event.defaultPrevented) return;
+                // Match web nav: tapping an active tab returns to that section's list/root
+                if (focused) {
+                  navigation.navigate(route.name, { screen: "index" });
+                  return;
                 }
+                navigation.navigate(route.name);
               }}
               style={{
                 flex: 1,

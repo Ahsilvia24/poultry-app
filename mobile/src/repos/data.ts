@@ -149,7 +149,9 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
         birdsPlaced,
         currentHeadCount: remaining,
         placementDate: flock?.placement_date ?? null,
-        projectedCatchDate: flock?.projected_catch_date ?? null,
+        projectedCatchDate:
+        flock?.projected_catch_date ??
+        (flock ? addDaysKey(flock.placement_date, 52) : null),
         flockAgeDays: flock ? birdAgeFromPlacement(flock.placement_date, today) : null,
         activeFlock: flock ? { flockNumber: flock.flock_number } : null,
       };
@@ -387,15 +389,21 @@ export function getFarmDetail(farmId: string) {
     number_of_fans: number | null;
   }>("SELECT * FROM houses WHERE farm_id = ? ORDER BY house_number ASC", [farmId]);
 
-  const flockWeek = flock
-    ? flockWeekFromAge(birdAgeFromPlacement(flock.placement_date, today))
+  const flockAgeDays = flock
+    ? birdAgeFromPlacement(flock.placement_date, today)
+    : null;
+  const flockWeek = flockAgeDays != null ? flockWeekFromAge(flockAgeDays) : null;
+
+  // Match web resolveCatchDate: projected catch, else placement + 52 days
+  const resolvedCatchDate = flock
+    ? (flock.projected_catch_date ?? addDaysKey(flock.placement_date, 52))
     : null;
 
   const daysUntilCatch =
-    flock?.projected_catch_date != null
+    resolvedCatchDate != null
       ? (() => {
           const [ty, tm, td] = today.split("-").map(Number);
-          const [cy, cm, cd] = flock.projected_catch_date!.split("-").map(Number);
+          const [cy, cm, cd] = resolvedCatchDate.split("-").map(Number);
           return Math.max(
             0,
             Math.round(
@@ -493,6 +501,8 @@ export function getFarmDetail(farmId: string) {
           flockNumber: flock.flock_number,
           placementDate: flock.placement_date,
           projectedCatchDate: flock.projected_catch_date,
+          resolvedCatchDate,
+          flockAgeDays,
           flockWeek,
         }
       : null,

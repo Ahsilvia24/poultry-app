@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -25,8 +25,14 @@ import {
   formatPct,
 } from "../../../src/components/ui";
 
+function paramId(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
 export default function FarmDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const farmId = paramId(params.id);
   const router = useRouter();
   const [data, setData] = useState<ReturnType<typeof getFarmDetail> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,16 +40,33 @@ export default function FarmDetailScreen() {
   const [visitNotes, setVisitNotes] = useState("");
   const [visitMsg, setVisitMsg] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  // Drop previous farm immediately when the route id changes
+  useEffect(() => {
+    setData(null);
+    setVisitNotes("");
+    setVisitMsg(null);
+    setError(null);
+    setLoading(true);
+  }, [farmId]);
+
+  const load = useCallback(() => {
+    if (!farmId) {
+      setError("Missing farm id");
+      setData(null);
+      setLoading(false);
+      return;
+    }
     try {
       setError(null);
-      setData(getFarmDetail(id!));
+      const next = getFarmDetail(farmId);
+      setData(next);
     } catch (e) {
+      setData(null);
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [farmId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -51,7 +74,10 @@ export default function FarmDetailScreen() {
     }, [load]),
   );
 
-  if (loading && !data) {
+  // Never render a previous farm under a new id
+  const ready = data != null && data.farm.id === farmId;
+
+  if (loading && !ready) {
     return (
       <View style={[styles.screen, { alignItems: "center", justifyContent: "center" }]}>
         <ActivityIndicator size="large" color={colors.accent} />
@@ -59,30 +85,33 @@ export default function FarmDetailScreen() {
     );
   }
 
-  if (!data) {
+  if (!ready) {
     return (
       <SafeAreaView style={styles.screen} edges={["top"]}>
         <View style={styles.content}>
-          <Text style={{ color: colors.danger }}>{error ?? "Not found"}</Text>
+          <Pressable
+            onPress={() => router.replace("/(tabs)/farms")}
+            style={{ marginBottom: 12 }}
+          >
+            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
+          </Pressable>
+          <Text style={{ color: colors.danger }}>{error ?? "Farm not found"}</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   const { farm } = data;
-  const flockAge =
-    data.activeFlock != null
-      ? (() => {
-          const [y, m, d] = data.activeFlock!.placementDate.split("-").map(Number);
-          const placed = Date.UTC(y!, (m ?? 1) - 1, d ?? 1);
-          const now = Date.now();
-          return Math.max(0, Math.floor((now - placed) / 86400000));
-        })()
-      : null;
-
+  const flockAge = data.activeFlock?.flockAgeDays ?? null;
   const birdsPlaced = data.houses.reduce((sum, h) => sum + (h.placedBirdCount ?? 0), 0);
   const cumMort = data.houses.reduce((sum, h) => sum + (h.cumulativeMortality ?? 0), 0);
   const phc = data.houses.reduce((sum, h) => sum + (h.projectedHeadCount ?? 0), 0);
+  const projectedMort = data.houses.reduce(
+    (sum, h) => sum + (h.projectedMortality ?? 0),
+    0,
+  );
+  const catchLabel =
+    data.activeFlock?.projectedCatchDate ?? data.activeFlock?.resolvedCatchDate ?? null;
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -92,7 +121,12 @@ export default function FarmDetailScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         keyboardShouldPersistTaps="handled"
       >
-        <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
+        <Pressable
+          onPress={() => router.replace("/(tabs)/farms")}
+          style={{ marginBottom: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Back to farms"
+        >
           <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
         </Pressable>
 
@@ -122,7 +156,10 @@ export default function FarmDetailScreen() {
             <PrimaryButton
               label="Enter mortality"
               onPress={() =>
-                router.push({ pathname: "/(tabs)/mortality", params: { farmId: farm.id } })
+                router.push({
+                  pathname: "/(tabs)/mortality",
+                  params: { farmId: farm.id },
+                })
               }
               style={{ flex: 1 }}
             />
@@ -138,33 +175,64 @@ export default function FarmDetailScreen() {
         {data.activeFlock ? (
           <Card>
             <Text style={{ fontWeight: "800", fontSize: 16 }}>
-              Active flock {data.activeFlock.flockNumber}
-              {data.activeFlock.flockWeek != null ? ` · Week ${data.activeFlock.flockWeek}` : ""}
+              Active flock — {flockAge != null ? `${flockAge} days` : "—"}
+              {data.activeFlock.flockNumber ? ` · ${data.activeFlock.flockNumber}` : ""}
             </Text>
             <View style={[styles.row, { marginTop: 12 }]}>
-              <Metric label="Flock age" value={flockAge != null ? `${flockAge} days` : "—"} />
               <Metric label="Birds placed" value={formatNumber(birdsPlaced)} />
-              <Metric label="Cum. mortality" value={`${cumMort}`} />
-              <Metric label="Proj. head count" value={formatNumber(phc || null)} />
+              <Metric label="Proj. Head Count" value={formatNumber(phc || null)} />
+              <Metric
+                label="Cumulative Mortality"
+                value={
+                  birdsPlaced > 0
+                    ? `${formatNumber(cumMort)} (${formatPct((cumMort / birdsPlaced) * 100)})`
+                    : formatNumber(cumMort)
+                }
+              />
+              <Metric
+                label="Projected Mortality"
+                value={
+                  birdsPlaced > 0 && projectedMort > 0
+                    ? `${formatNumber(projectedMort)} (${formatPct(
+                        (projectedMort / birdsPlaced) * 100,
+                      )})`
+                    : formatNumber(projectedMort || null)
+                }
+              />
             </View>
             <Text style={[styles.muted, { marginTop: 4 }]}>
               Placed {data.activeFlock.placementDate}
-              {data.activeFlock.projectedCatchDate
-                ? ` · Catch ${data.activeFlock.projectedCatchDate}`
-                : ""}
+              {catchLabel ? ` · Catch ${catchLabel}` : ""}
             </Text>
           </Card>
         ) : (
           <Card>
-            <Text>No active flock</Text>
+            <Text style={{ fontWeight: "800" }}>No active flock</Text>
+            <Text style={[styles.muted, { marginTop: 4 }]}>
+              Add or reactivate a flock to track mortality for this farm.
+            </Text>
           </Card>
         )}
 
-        <SectionTitle>Houses</SectionTitle>
+        <SectionTitle>{farm.farmName}</SectionTitle>
         {data.houses.map((h) => (
-          <Card key={h.id}>
+          <Card key={`${farm.id}-${h.id}`}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-              <Text style={{ fontSize: 17, fontWeight: "800" }}>House {h.houseNumber}</Text>
+              <Text style={{ fontSize: 17, fontWeight: "800" }}>
+                House {h.houseNumber}
+                {h.cumulativeMortality != null ? (
+                  <Text style={{ fontWeight: "600", color: colors.muted }}>
+                    {" "}
+                    · Mort. {formatNumber(h.cumulativeMortality)}
+                  </Text>
+                ) : null}
+                {h.projectedHeadCount != null ? (
+                  <Text style={{ fontWeight: "600", color: colors.muted }}>
+                    {" "}
+                    · PHC {formatNumber(h.projectedHeadCount)}
+                  </Text>
+                ) : null}
+              </Text>
               <StatusBadge status={h.status} />
             </View>
             <View style={[styles.row, { marginTop: 12 }]}>
@@ -191,13 +259,17 @@ export default function FarmDetailScreen() {
                     : formatNumber(h.projectedMortality)
                 }
               />
-              <Metric
-                label="Recommended Min Vent"
-                value={h.recommendedMinVent ?? "—"}
-              />
+              <Metric label="Recommended Min Vent" value={h.recommendedMinVent ?? "—"} />
             </View>
             {h.weeklyMortality.length > 0 ? (
-              <View style={{ borderTopWidth: 1, borderTopColor: "#f5f5f4", paddingTop: 10, marginTop: 4 }}>
+              <View
+                style={{
+                  borderTopWidth: 1,
+                  borderTopColor: "#f5f5f4",
+                  paddingTop: 10,
+                  marginTop: 4,
+                }}
+              >
                 <Text
                   style={{
                     fontSize: 11,

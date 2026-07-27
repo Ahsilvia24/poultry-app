@@ -8,7 +8,7 @@ import {
   View,
   type TextInput as TextInputType,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   getMortalityForm,
@@ -140,9 +140,15 @@ function MortalityKeypad({
   );
 }
 
+function paramValue(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
 export default function MortalityScreen() {
-  const { farmId: farmIdParam } = useLocalSearchParams<{ farmId?: string }>();
-  const [farmId, setFarmId] = useState(farmIdParam ?? "");
+  const params = useLocalSearchParams<{ farmId?: string | string[] }>();
+  const farmIdParam = paramValue(params.farmId);
+  const [farmId, setFarmId] = useState(farmIdParam);
   const [houseFlockId, setHouseFlockId] = useState("");
   const [payload, setPayload] = useState<ReturnType<typeof getMortalityForm> | null>(null);
   const [rows, setRows] = useState<DayRow[]>([]);
@@ -177,18 +183,28 @@ export default function MortalityScreen() {
     try {
       const data = getMortalityForm(todayKey(), undefined);
       setPayload(data);
-      const farm = data.farms.find((f) => f.id === (farmId || farmIdParam)) ?? data.farms[0];
-      if (farm) setFarmId(farm.id);
-      const firstHouse = farm?.activeFlock?.houses[0]?.houseFlockId ?? "";
-      setHouseFlockId((prev) =>
-        farm?.activeFlock?.houses.some((h) => h.houseFlockId === prev) ? prev : firstHouse,
-      );
+      // Prefer the farmId from navigation (farm detail → Enter mortality)
+      setFarmId((current) => {
+        const preferred = farmIdParam || current;
+        const farm = data.farms.find((f) => f.id === preferred) ?? data.farms[0];
+        const nextId = farm?.id ?? "";
+        const firstHouse = farm?.activeFlock?.houses[0]?.houseFlockId ?? "";
+        setHouseFlockId((prev) => {
+          const stillValid = farm?.activeFlock?.houses.some((h) => h.houseFlockId === prev);
+          // When arriving with an explicit farmId, reset house if it isn't on that farm
+          if (farmIdParam && farm?.id === farmIdParam) {
+            return stillValid ? prev : firstHouse;
+          }
+          return stillValid ? prev : firstHouse;
+        });
+        return nextId;
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [farmId, farmIdParam]);
+  }, [farmIdParam]);
 
   const loadGrid = useCallback(() => {
     if (!houseFlockId) {
@@ -229,6 +245,16 @@ export default function MortalityScreen() {
   useEffect(() => {
     loadFarms();
   }, [loadFarms]);
+
+  // Re-apply farm context when arriving from a farm detail link
+  useFocusEffect(
+    useCallback(() => {
+      if (farmIdParam) {
+        setFarmId(farmIdParam);
+        loadFarms();
+      }
+    }, [farmIdParam, loadFarms]),
+  );
 
   useEffect(() => {
     loadGrid();

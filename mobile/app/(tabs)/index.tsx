@@ -122,7 +122,7 @@ export default function DashboardScreen() {
                 data.todaysSchedule.map((item) => (
                   <Pressable
                     key={`${item.farmId}-${item.date}-${item.label}`}
-                    onPress={() => router.push(`/(tabs)/farms/${item.farmId}`)}
+                    onPress={() => router.push({ pathname: '/(tabs)/farms/[id]', params: { id: item.farmId } })}
                     style={{
                       flexDirection: "row",
                       justifyContent: "space-between",
@@ -158,7 +158,7 @@ export default function DashboardScreen() {
                 data.upcomingSchedule.slice(0, 20).map((item) => (
                   <Pressable
                     key={`${item.farmId}-${item.date}-${item.label}`}
-                    onPress={() => router.push(`/(tabs)/farms/${item.farmId}`)}
+                    onPress={() => router.push({ pathname: '/(tabs)/farms/[id]', params: { id: item.farmId } })}
                     style={{
                       flexDirection: "row",
                       justifyContent: "space-between",
@@ -198,7 +198,7 @@ export default function DashboardScreen() {
                 data.upcomingCatches.map((c) => (
                   <Pressable
                     key={`${c.farmId}-${c.date}`}
-                    onPress={() => router.push(`/(tabs)/farms/${c.farmId}`)}
+                    onPress={() => router.push({ pathname: '/(tabs)/farms/[id]', params: { id: c.farmId } })}
                     style={{
                       flexDirection: "row",
                       justifyContent: "space-between",
@@ -227,7 +227,7 @@ export default function DashboardScreen() {
             {data.farmCards.map((farm) => (
               <Pressable
                 key={farm.id}
-                onPress={() => router.push(`/(tabs)/farms/${farm.id}`)}
+                onPress={() => router.push({ pathname: '/(tabs)/farms/[id]', params: { id: farm.id } })}
               >
                 <Card>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>

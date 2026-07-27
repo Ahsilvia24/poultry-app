@@ -36,7 +36,7 @@ export default function NewFarmScreen() {
         notes,
         numberOfHouses: Number(numberOfHouses) || 0,
       });
-      router.replace(`/(tabs)/farms/${id}`);
+      router.replace({ pathname: '/(tabs)/farms/[id]', params: { id } });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create farm");
       setBusy(false);
