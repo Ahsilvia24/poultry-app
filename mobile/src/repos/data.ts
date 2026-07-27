@@ -356,7 +356,7 @@ export function getDashboard() {
       const { today: dueToday, upcoming } = splitScheduleForDashboard(
         schedule,
         today,
-        14,
+        10,
         farmCompletions,
       );
       const ageDays = birdAgeFromPlacement(fl.placement_date, today);

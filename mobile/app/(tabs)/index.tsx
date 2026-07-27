@@ -138,6 +138,7 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -281,32 +282,55 @@ export default function DashboardScreen() {
             </Card>
 
             <Card>
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
-                Upcoming
-              </Text>
-              {data.upcomingSchedule.length === 0 ? (
-                <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 14 days</Text>
-              ) : (
-                data.upcomingSchedule.slice(0, 20).map((item) => {
-                  const key = scheduleItemKey(item);
-                  return (
-                    <ScheduleCheckRow
-                      key={key}
-                      item={item}
-                      showDate
-                      checked={checked[key] ?? item.completed}
-                      busy={pendingKey === key}
-                      onToggle={() => toggleScheduleItem(item)}
-                      onOpenFarm={() =>
-                        router.push({
-                          pathname: "/(tabs)/farms/[id]",
-                          params: { id: item.farmId },
-                        })
-                      }
-                    />
-                  );
-                })
-              )}
+              <Pressable
+                onPress={() => setUpcomingOpen((v) => !v)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: upcomingOpen }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted, flex: 1 }}>
+                  Upcoming
+                  {!upcomingOpen ? (
+                    <Text style={{ fontWeight: "500", color: colors.muted }}>
+                      {" "}
+                      · {data.upcomingSchedule.length}
+                    </Text>
+                  ) : null}
+                </Text>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.accentDark }}>
+                  {upcomingOpen ? "Hide" : "Show"}
+                </Text>
+              </Pressable>
+              {upcomingOpen ? (
+                data.upcomingSchedule.length === 0 ? (
+                  <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 10 days</Text>
+                ) : (
+                  data.upcomingSchedule.slice(0, 20).map((item) => {
+                    const key = scheduleItemKey(item);
+                    return (
+                      <ScheduleCheckRow
+                        key={key}
+                        item={item}
+                        showDate
+                        checked={checked[key] ?? item.completed}
+                        busy={pendingKey === key}
+                        onToggle={() => toggleScheduleItem(item)}
+                        onOpenFarm={() =>
+                          router.push({
+                            pathname: "/(tabs)/farms/[id]",
+                            params: { id: item.farmId },
+                          })
+                        }
+                      />
+                    );
+                  })
+                )
+              ) : null}
             </Card>
 
             <Card>

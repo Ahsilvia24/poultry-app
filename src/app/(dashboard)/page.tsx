@@ -5,6 +5,7 @@ import { getDashboardData } from "@/lib/dashboard";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Card, StatusBadge, Button } from "@/components/ui";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
+import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import { signOutAction } from "@/app/actions/auth";
 import { redirect } from "next/navigation";
@@ -45,10 +46,17 @@ export default async function DashboardPage() {
             <p className="text-sm font-semibold text-stone-500">Today&apos;s schedule</p>
             <FollowUpsDueList items={data.todaysSchedule} />
           </Card>
-          <Card>
-            <p className="text-sm font-semibold text-stone-500">Upcoming</p>
-            <FollowUpsDueList items={data.upcomingSchedule} showDate />
-          </Card>
+          <CollapsibleCard
+            title="Upcoming"
+            defaultOpen={false}
+            count={data.upcomingSchedule.length}
+          >
+            {data.upcomingSchedule.length === 0 ? (
+              <p className="mt-2 text-sm text-stone-500">None in the next 10 days</p>
+            ) : (
+              <FollowUpsDueList items={data.upcomingSchedule} showDate />
+            )}
+          </CollapsibleCard>
         </div>
         <Card>
           <p className="text-sm font-semibold text-stone-500">Upcoming catches</p>
