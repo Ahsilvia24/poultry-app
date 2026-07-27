@@ -71,6 +71,9 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
     };
   });
 
+  // Stable calendar day for SSR + client first paint (avoids hydration age mismatch).
+  const asOfDateKey = new Date().toISOString().slice(0, 10);
+
   return (
     <div>
       <PageHeader
@@ -84,6 +87,7 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
           farms={farms}
           initialFarmId={params.farmId}
           initialHouseFlockId={params.houseFlockId}
+          asOfDateKey={asOfDateKey}
         />
       )}
     </div>

@@ -61,13 +61,9 @@ function NeedsEntryIcon() {
   );
 }
 
-function todayKeyLocal() {
-  return format(todayDate(), "yyyy-MM-dd");
-}
-
 /** Past/today with no confirmed entry yet — Loss cell shows ! instead of a number. */
-function needsEntry(row: DayRow) {
-  return row.mortalityDate <= todayKeyLocal() && !row.hasEntry;
+function needsEntry(row: DayRow, asOfDateKey: string) {
+  return row.mortalityDate <= asOfDateKey && !row.hasEntry;
 }
 
 function digitsOnly(value: string) {
@@ -135,21 +131,17 @@ function parseLocalDate(iso: string) {
   return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
 }
 
-function todayDate() {
-  const d = new Date();
-  d.setHours(12, 0, 0, 0);
-  return d;
-}
-
 function buildRows(
   placementDate: string,
   catchDate: string,
   house: MortalityHousePayload,
+  asOfDateKey: string,
 ): DayRow[] {
   const placement = parseLocalDate(placementDate);
   const catchEnd = parseLocalDate(catchDate);
+  const asOf = parseLocalDate(asOfDateKey);
   const maxAge = Math.max(
-    birdAgeFromPlacement(placement, todayDate()),
+    birdAgeFromPlacement(placement, asOf),
     birdAgeFromPlacement(placement, catchEnd),
   );
   const byDate = new Map(house.existingEntries.map((e) => [e.mortalityDate, e]));
@@ -218,10 +210,13 @@ export function MortalityEntryForm({
   farms,
   initialFarmId,
   initialHouseFlockId,
+  asOfDateKey,
 }: {
   farms: MortalityFarmPayload[];
   initialFarmId?: string;
   initialHouseFlockId?: string;
+  /** yyyy-MM-dd from the server so SSR and hydrate agree on bird age / needs-entry. */
+  asOfDateKey: string;
 }) {
   const router = useRouter();
   const [farmId, setFarmId] = useState(
@@ -351,13 +346,21 @@ export function MortalityEntryForm({
     }
 
     const catchDate = resolveCatchDateKey(flock);
-    const built = buildRows(flock.placementDate, catchDate, house);
+    const built = buildRows(flock.placementDate, catchDate, house, asOfDateKey);
     setRows(built);
     const currentWeek = flockWeekFromAge(
-      birdAgeFromPlacement(parseLocalDate(flock.placementDate), todayDate()),
+      birdAgeFromPlacement(parseLocalDate(flock.placementDate), parseLocalDate(asOfDateKey)),
     );
     setExpandedWeeks(new Set([currentWeek]));
-  }, [farmId, flock?.id, flock?.placementDate, flock?.projectedCatchDate, flock?.targetMarketAge, house?.houseFlockId]);
+  }, [
+    farmId,
+    flock?.id,
+    flock?.placementDate,
+    flock?.projectedCatchDate,
+    flock?.targetMarketAge,
+    house?.houseFlockId,
+    asOfDateKey,
+  ]);
   useEffect(() => {
     return () => cancelScheduledSave();
   }, []);
@@ -522,7 +525,11 @@ export function MortalityEntryForm({
               House <span className="font-semibold">{house.houseNumber}</span> · Placed{" "}
               {formatNumber(house.placedBirdCount)} ·{" "}
               <span className="font-semibold text-stone-900">
-                {birdAgeFromPlacement(parseLocalDate(flock.placementDate), todayDate())}d
+                {birdAgeFromPlacement(
+                  parseLocalDate(flock.placementDate),
+                  parseLocalDate(asOfDateKey),
+                )}
+                d
               </span>
             </p>
             {saveStatus === "saving" ? (
@@ -664,7 +671,7 @@ export function MortalityEntryForm({
                                   />
                                 </td>
                                 <td className="px-3 py-2 text-right font-semibold text-stone-800">
-                                  {needsEntry(row) ? (
+                                  {needsEntry(row, asOfDateKey) ? (
                                     <NeedsEntryIcon />
                                   ) : row.hasEntry ? (
                                     loss
