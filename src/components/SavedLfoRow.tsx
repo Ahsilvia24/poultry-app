@@ -132,41 +132,43 @@ export function SavedLfoRow({
   }
 
   return (
-    <li className="flex items-center gap-2 px-4 py-3 hover:bg-stone-50">
-      <Link href={`/lfo/${id}`} className="min-w-0 flex-1">
-        <p className="font-semibold text-stone-900">{farmName}</p>
-        <p className="text-sm text-stone-600">{dateLabel}</p>
-        {lines.length > 0 ? (
-          <div className="mt-0.5 space-y-0.5">
-            {lines.map((line) => (
-              <p key={line} className="text-sm font-medium text-stone-800">
-                {line}
-              </p>
-            ))}
-          </div>
-        ) : null}
-      </Link>
-      <div className="flex shrink-0 items-center gap-0.5">
-        {lines.length > 0 ? <CopyHouseSummaryButton lines={lines} /> : null}
-        <Link
-          href={`/lfo/${id}`}
-          aria-label={`Edit LFO for ${farmName}`}
-          title="Edit"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
-        >
-          <PencilIcon className="h-4 w-4" />
+    <li className="px-4 py-3 hover:bg-stone-50">
+      <div className="flex items-start gap-2">
+        <Link href={`/lfo/${id}`} className="min-w-0 flex-1">
+          <p className="font-semibold text-stone-900">{farmName}</p>
+          <p className="text-sm text-stone-600">{dateLabel}</p>
         </Link>
-        <button
-          type="button"
-          aria-label={`Delete LFO for ${farmName}`}
-          title="Delete"
-          disabled={pending}
-          onClick={onDelete}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
-        >
-          <TrashIcon className="h-4 w-4" />
-        </button>
+        <div className="flex shrink-0 items-center gap-0.5">
+          {lines.length > 0 ? <CopyHouseSummaryButton lines={lines} /> : null}
+          <Link
+            href={`/lfo/${id}`}
+            aria-label={`Edit LFO for ${farmName}`}
+            title="Edit"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
+          >
+            <PencilIcon className="h-4 w-4" />
+          </Link>
+          <button
+            type="button"
+            aria-label={`Delete LFO for ${farmName}`}
+            title="Delete"
+            disabled={pending}
+            onClick={onDelete}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </button>
+        </div>
       </div>
+      {lines.length > 0 ? (
+        <Link href={`/lfo/${id}`} className="mt-2 block space-y-0.5">
+          {lines.map((line) => (
+            <p key={line} className="text-sm font-medium text-stone-800">
+              {line}
+            </p>
+          ))}
+        </Link>
+      ) : null}
     </li>
   );
 }

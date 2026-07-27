@@ -362,18 +362,6 @@ export default function LfoListScreen() {
                   <Text style={[styles.muted, { marginTop: 2 }]}>
                     {formatLfoDate(l.orderDate)}
                   </Text>
-                  {l.houseSummary.length > 0 ? (
-                    <View style={{ marginTop: 4, gap: 2 }}>
-                      {l.houseSummary.map((line) => (
-                        <Text
-                          key={line}
-                          style={{ fontWeight: "700", color: colors.text, fontSize: 13 }}
-                        >
-                          {line}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
                 </Pressable>
                 {l.houseSummary.length > 0 ? (
                   <CopyHouseSummaryButton lines={l.houseSummary} />
@@ -407,6 +395,23 @@ export default function LfoListScreen() {
                   <Ionicons name="trash-outline" size={20} color={colors.muted} />
                 </Pressable>
               </View>
+              {l.houseSummary.length > 0 ? (
+                <Pressable
+                  onPress={() => openLfo(l.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`House summary for ${l.farmName}`}
+                  style={{ marginTop: 8, gap: 2, flexShrink: 0 }}
+                >
+                  {l.houseSummary.map((line) => (
+                    <Text
+                      key={line}
+                      style={{ fontWeight: "700", color: colors.text, fontSize: 13 }}
+                    >
+                      {line}
+                    </Text>
+                  ))}
+                </Pressable>
+              ) : null}
             </Card>
           ))}
         </ScrollView>

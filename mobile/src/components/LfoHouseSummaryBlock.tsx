@@ -41,7 +41,7 @@ export function CopyHouseSummaryButton({ lines }: { lines: string[] }) {
   );
 }
 
-/** Stacked H1/H2/… summary with copy-to-clipboard. */
+/** Stacked H1/H2/… summary with copy-to-clipboard. Shows every line (no truncation). */
 export function LfoHouseSummaryBlock({
   lines,
   fontSize = 13,
@@ -52,15 +52,20 @@ export function LfoHouseSummaryBlock({
   if (lines.length === 0) return null;
 
   return (
-    <View style={{ marginTop: 4, flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        {lines.map((line) => (
-          <Text key={line} style={{ fontWeight: "700", color: colors.text, fontSize }}>
-            {line}
-          </Text>
-        ))}
+    <View style={{ marginTop: 4, flexShrink: 0 }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 2, flexShrink: 0 }}>
+          {lines.map((line) => (
+            <Text
+              key={line}
+              style={{ fontWeight: "700", color: colors.text, fontSize }}
+            >
+              {line}
+            </Text>
+          ))}
+        </View>
+        <CopyHouseSummaryButton lines={lines} />
       </View>
-      <CopyHouseSummaryButton lines={lines} />
     </View>
   );
 }
