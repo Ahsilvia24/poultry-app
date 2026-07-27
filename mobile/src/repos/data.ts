@@ -12,7 +12,9 @@ import {
 import { recommendedMinVent } from "../lib/tools";
 import {
   buildFlockVisitSchedule,
+  completionKey,
   splitScheduleForDashboard,
+  type CompletionInfo,
   type ScheduledVisit,
 } from "../lib/schedule";
 
@@ -170,13 +172,35 @@ export function getDashboard() {
   const farmCards = [];
   type ScheduleRow = {
     farmId: string;
+    flockId: string;
     farmName: string;
     flockAgeDays: number | null;
     date: string;
     label: string;
+    completed: boolean;
   };
   const todaysSchedule: ScheduleRow[] = [];
   const upcomingSchedule: ScheduleRow[] = [];
+
+  const completionRows = db.getAllSync<{
+    farm_id: string;
+    scheduled_date: string;
+    label: string;
+    completed_at: string;
+  }>("SELECT farm_id, scheduled_date, label, completed_at FROM follow_up_completions");
+  const completedByFarm = new Map<string, Map<string, CompletionInfo>>();
+  for (const c of completionRows) {
+    const key = completionKey(c.scheduled_date, c.label);
+    let map = completedByFarm.get(c.farm_id);
+    if (!map) {
+      map = new Map();
+      completedByFarm.set(c.farm_id, map);
+    }
+    const completedAt = new Date(c.completed_at);
+    if (!Number.isNaN(completedAt.getTime())) {
+      map.set(key, { completedAt });
+    }
+  }
 
   for (const farm of farms) {
     const flock = db.getFirstSync<{
@@ -280,13 +304,21 @@ export function getDashboard() {
       flock.projected_catch_date ?? addDaysKey(flock.placement_date, 52);
     // 14-day outlook so the Upcoming tile stays populated like the web app
     const schedule = buildFlockVisitSchedule(flock.placement_date, catchDate);
-    const { today: dueToday, upcoming } = splitScheduleForDashboard(schedule, today, 14);
-    const toRow = (v: ScheduledVisit): ScheduleRow => ({
+    const farmCompletions = completedByFarm.get(farm.id) ?? new Map();
+    const { today: dueToday, upcoming } = splitScheduleForDashboard(
+      schedule,
+      today,
+      14,
+      farmCompletions,
+    );
+    const toRow = (v: ScheduledVisit & { completed: boolean }): ScheduleRow => ({
       farmId: farm.id,
+      flockId: flock.id,
       farmName: farm.farmName,
       flockAgeDays,
       date: v.dateKey,
       label: v.label,
+      completed: v.completed,
     });
     for (const v of dueToday) todaysSchedule.push(toRow(v));
     for (const v of upcoming) upcomingSchedule.push(toRow(v));
@@ -1122,4 +1154,43 @@ export function createVisit(input: {
     ],
   );
   return { id, birdAgeInDays: age };
+}
+
+/** Mark / unmark a schedule follow-up. Completions are keyed by farm + date + label. */
+export function toggleFollowUpCompletion(input: {
+  farmId: string;
+  flockId?: string | null;
+  scheduledDate: string;
+  label: string;
+  completed: boolean;
+}) {
+  const db = getDb();
+  if (!input.completed) {
+    db.runSync(
+      `DELETE FROM follow_up_completions
+       WHERE farm_id = ? AND scheduled_date = ? AND label = ?`,
+      [input.farmId, input.scheduledDate, input.label],
+    );
+    return { success: true as const };
+  }
+
+  const id = newId("fuc");
+  const completedAt = new Date().toISOString();
+  db.runSync(
+    `INSERT INTO follow_up_completions
+      (id, farm_id, flock_id, scheduled_date, label, completed_at)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(farm_id, scheduled_date, label) DO UPDATE SET
+       completed_at = excluded.completed_at,
+       flock_id = excluded.flock_id`,
+    [
+      id,
+      input.farmId,
+      input.flockId ?? null,
+      input.scheduledDate,
+      input.label,
+      completedAt,
+    ],
+  );
+  return { success: true as const };
 }

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getDashboard } from "../../src/repos/data";
+import { getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
 import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
 import { formatShortScheduleDate } from "../../src/lib/schedule";
@@ -25,6 +25,98 @@ import {
 } from "../../src/components/ui";
 
 type Dashboard = ReturnType<typeof getDashboard>;
+type ScheduleItem = Dashboard["todaysSchedule"][number];
+
+function scheduleItemKey(item: Pick<ScheduleItem, "farmId" | "date" | "label">) {
+  return `${item.farmId}-${item.date}-${item.label}`;
+}
+
+function ScheduleCheckRow({
+  item,
+  showDate,
+  checked,
+  busy,
+  onToggle,
+  onOpenFarm,
+}: {
+  item: ScheduleItem;
+  showDate?: boolean;
+  checked: boolean;
+  busy: boolean;
+  onToggle: () => void;
+  onOpenFarm: () => void;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        marginTop: 10,
+        opacity: checked ? 0.5 : 1,
+      }}
+    >
+      <Pressable
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked, disabled: busy }}
+        accessibilityLabel={
+          checked
+            ? `Unmark ${item.farmName} ${item.label} complete`
+            : `Mark ${item.farmName} ${item.label} complete`
+        }
+        onPress={onToggle}
+        disabled={busy}
+        hitSlop={8}
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 5,
+          borderWidth: checked ? 0 : 1.5,
+          borderColor: "#a8a29e",
+          backgroundColor: checked ? colors.accentDark : "#fff",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {checked ? (
+          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "900", lineHeight: 15 }}>✓</Text>
+        ) : null}
+      </Pressable>
+      <Pressable
+        onPress={onOpenFarm}
+        style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 }}
+      >
+        <Text
+          style={{
+            fontWeight: "700",
+            color: colors.text,
+            flex: 1,
+            textDecorationLine: checked ? "line-through" : "none",
+          }}
+          numberOfLines={2}
+        >
+          {item.farmName}
+          {item.flockAgeDays != null ? (
+            <Text style={{ fontWeight: "400", color: colors.muted }}> · {item.flockAgeDays}d</Text>
+          ) : null}
+          {showDate ? (
+            <Text style={{ fontWeight: "400", color: colors.muted }}>
+              {"  "}
+              {item.label}
+            </Text>
+          ) : null}
+        </Text>
+        {showDate ? (
+          <Text style={{ color: colors.muted, fontSize: 13 }}>
+            {formatShortScheduleDate(item.date)}
+          </Text>
+        ) : (
+          <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "700" }}>{item.label}</Text>
+        )}
+      </Pressable>
+    </View>
+  );
+}
 
 function formatCatchDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
@@ -43,6 +135,8 @@ export default function DashboardScreen() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -61,6 +155,51 @@ export default function DashboardScreen() {
       load();
     }, [load]),
   );
+
+  const serverChecked = useMemo(() => {
+    if (!data) return {} as Record<string, boolean>;
+    const next: Record<string, boolean> = {};
+    for (const item of [...data.todaysSchedule, ...data.upcomingSchedule]) {
+      next[scheduleItemKey(item)] = item.completed;
+    }
+    return next;
+  }, [data]);
+
+  const serverSignature = useMemo(
+    () =>
+      data
+        ? [...data.todaysSchedule, ...data.upcomingSchedule]
+            .map((i) => `${scheduleItemKey(i)}:${i.completed}`)
+            .join("|")
+        : "",
+    [data],
+  );
+
+  useEffect(() => {
+    setChecked(serverChecked);
+  }, [serverSignature, serverChecked]);
+
+  function toggleScheduleItem(item: ScheduleItem) {
+    const key = scheduleItemKey(item);
+    if (pendingKey === key) return;
+    const next = !(checked[key] ?? item.completed);
+    setChecked((prev) => ({ ...prev, [key]: next }));
+    setPendingKey(key);
+    try {
+      toggleFollowUpCompletion({
+        farmId: item.farmId,
+        flockId: item.flockId,
+        scheduledDate: item.date,
+        label: item.label,
+        completed: next,
+      });
+      setData(getDashboard());
+    } catch {
+      setChecked((prev) => ({ ...prev, [key]: !next }));
+    } finally {
+      setPendingKey(null);
+    }
+  }
 
   if (loading && !data) {
     return (
@@ -119,32 +258,24 @@ export default function DashboardScreen() {
               {data.todaysSchedule.length === 0 ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>Nothing due today</Text>
               ) : (
-                data.todaysSchedule.map((item) => (
-                  <Pressable
-                    key={`${item.farmId}-${item.date}-${item.label}`}
-                    onPress={() => router.push({ pathname: '/(tabs)/farms/[id]', params: { id: item.farmId } })}
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 8,
-                      marginTop: 10,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "700", color: colors.text, flex: 1 }}>
-                      {item.farmName}
-                      {item.flockAgeDays != null ? (
-                        <Text style={{ fontWeight: "400", color: colors.muted }}>
-                          {" "}
-                          · {item.flockAgeDays}d
-                        </Text>
-                      ) : null}
-                    </Text>
-                    <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "700" }}>
-                      {item.label}
-                    </Text>
-                  </Pressable>
-                ))
+                data.todaysSchedule.map((item) => {
+                  const key = scheduleItemKey(item);
+                  return (
+                    <ScheduleCheckRow
+                      key={key}
+                      item={item}
+                      checked={checked[key] ?? item.completed}
+                      busy={pendingKey === key}
+                      onToggle={() => toggleScheduleItem(item)}
+                      onOpenFarm={() =>
+                        router.push({
+                          pathname: "/(tabs)/farms/[id]",
+                          params: { id: item.farmId },
+                        })
+                      }
+                    />
+                  );
+                })
               )}
             </Card>
 
@@ -155,36 +286,25 @@ export default function DashboardScreen() {
               {data.upcomingSchedule.length === 0 ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 14 days</Text>
               ) : (
-                data.upcomingSchedule.slice(0, 20).map((item) => (
-                  <Pressable
-                    key={`${item.farmId}-${item.date}-${item.label}`}
-                    onPress={() => router.push({ pathname: '/(tabs)/farms/[id]', params: { id: item.farmId } })}
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 8,
-                      marginTop: 10,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "700", color: colors.text, flex: 1 }}>
-                      {item.farmName}
-                      {item.flockAgeDays != null ? (
-                        <Text style={{ fontWeight: "400", color: colors.muted }}>
-                          {" "}
-                          · {item.flockAgeDays}d
-                        </Text>
-                      ) : null}
-                      <Text style={{ fontWeight: "400", color: colors.muted }}>
-                        {"  "}
-                        {item.label}
-                      </Text>
-                    </Text>
-                    <Text style={{ color: colors.muted, fontSize: 13 }}>
-                      {formatShortScheduleDate(item.date)}
-                    </Text>
-                  </Pressable>
-                ))
+                data.upcomingSchedule.slice(0, 20).map((item) => {
+                  const key = scheduleItemKey(item);
+                  return (
+                    <ScheduleCheckRow
+                      key={key}
+                      item={item}
+                      showDate
+                      checked={checked[key] ?? item.completed}
+                      busy={pendingKey === key}
+                      onToggle={() => toggleScheduleItem(item)}
+                      onOpenFarm={() =>
+                        router.push({
+                          pathname: "/(tabs)/farms/[id]",
+                          params: { id: item.farmId },
+                        })
+                      }
+                    />
+                  );
+                })
               )}
             </Card>
 

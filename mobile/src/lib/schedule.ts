@@ -1,6 +1,8 @@
 import { addDaysKey, daysBetween, parseDateKey, todayKey } from "./ids";
 
 const SERVICE_DAY_AGES = [3, 7, 14, 21, 28, 35, 42] as const;
+/** Completed items stay visible briefly, then drop permanently for that date/label. */
+const COMPLETION_VISIBLE_MS = 12 * 60 * 60 * 1000;
 
 export type ScheduledVisit = {
   dateKey: string;
@@ -8,6 +10,14 @@ export type ScheduledVisit = {
   birdAgeDays: number;
   kind: "PREBROOD" | "PLACEMENT" | "SERVICE_DAY" | "WEIGHT_PROJECT" | "LFO";
 };
+
+export type DueScheduledVisit = ScheduledVisit & { completed: boolean };
+
+export type CompletionInfo = { completedAt: Date };
+
+export function completionKey(dateKey: string, label: string) {
+  return `${dateKey}::${label}`;
+}
 
 function weekdayOf(dateKey: string): number {
   return parseDateKey(dateKey).getDay(); // Sun=0 … Sat=6
@@ -90,20 +100,39 @@ function todayScheduleRank(v: Pick<ScheduledVisit, "kind" | "birdAgeDays">): num
   }
 }
 
+function stillVisibleAfterComplete(info: CompletionInfo | undefined, now: Date): boolean {
+  if (!info) return false;
+  return now.getTime() - info.completedAt.getTime() < COMPLETION_VISIBLE_MS;
+}
+
+/**
+ * Split schedule into today vs upcoming.
+ * Completed items stay visible for 12 hours after checkmark, then drop off.
+ * Completing an upcoming item early keeps it from reappearing on Today later
+ * (same date/label completion key).
+ */
 export function splitScheduleForDashboard(
   schedule: ScheduledVisit[],
   today: string,
   horizonDays = 7,
-): { today: ScheduledVisit[]; upcoming: ScheduledVisit[] } {
+  completions: Map<string, CompletionInfo> = new Map(),
+  now: Date = new Date(),
+): { today: DueScheduledVisit[]; upcoming: DueScheduledVisit[] } {
   const endKey = addDaysKey(today, horizonDays);
-  const todayItems: ScheduledVisit[] = [];
-  const upcomingItems: ScheduledVisit[] = [];
+  const todayItems: DueScheduledVisit[] = [];
+  const upcomingItems: DueScheduledVisit[] = [];
 
   for (const v of schedule) {
     if (v.dateKey < today) continue;
     if (v.dateKey > endKey) continue;
-    if (v.dateKey === today) todayItems.push(v);
-    else upcomingItems.push(v);
+
+    const key = completionKey(v.dateKey, v.label);
+    const info = completions.get(key);
+    if (info && !stillVisibleAfterComplete(info, now)) continue;
+
+    const item: DueScheduledVisit = { ...v, completed: Boolean(info) };
+    if (v.dateKey === today) todayItems.push(item);
+    else upcomingItems.push(item);
   }
 
   todayItems.sort(

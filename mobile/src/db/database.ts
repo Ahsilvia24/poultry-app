@@ -116,10 +116,22 @@ export function migrateDb() {
       FOREIGN KEY (house_id) REFERENCES houses(id)
     );
 
+    CREATE TABLE IF NOT EXISTS follow_up_completions (
+      id TEXT PRIMARY KEY NOT NULL,
+      farm_id TEXT NOT NULL,
+      flock_id TEXT,
+      scheduled_date TEXT NOT NULL,
+      label TEXT NOT NULL,
+      completed_at TEXT NOT NULL,
+      UNIQUE(farm_id, scheduled_date, label),
+      FOREIGN KEY (farm_id) REFERENCES farms(id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_houses_farm ON houses(farm_id);
     CREATE INDEX IF NOT EXISTS idx_flocks_farm ON flocks(farm_id);
     CREATE INDEX IF NOT EXISTS idx_hf_flock ON house_flocks(flock_id);
     CREATE INDEX IF NOT EXISTS idx_mort_hf_date ON daily_mortality(house_flock_id, mortality_date);
+    CREATE INDEX IF NOT EXISTS idx_fuc_farm ON follow_up_completions(farm_id);
   `);
 }
 
