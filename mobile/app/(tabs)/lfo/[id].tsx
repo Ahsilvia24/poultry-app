@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  type ScrollView as ScrollViewType,
+  type View as ViewType,
 } from "react-native";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,6 +18,7 @@ import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
 } from "../../../src/lib/lfo/calculate";
+import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { colors, styles } from "../../../src/theme";
 import { Card, PageHeader, PrimaryButton } from "../../../src/components/ui";
 import { DatePickerField } from "../../../src/components/DatePickerField";
@@ -114,15 +118,17 @@ function FieldButton({
   active,
   onPress,
   style,
+  fieldRef,
 }: {
   label: string;
   value: string;
   active: boolean;
   onPress: () => void;
   style?: object;
+  fieldRef?: (node: ViewType | null) => void;
 }) {
   return (
-    <View style={style}>
+    <View ref={fieldRef} collapsable={false} style={style}>
       <Text style={styles.label}>{label}</Text>
       <Pressable
         onPress={onPress}
@@ -147,6 +153,11 @@ function FieldButton({
   );
 }
 
+function fieldKey(field: ActiveField) {
+  if (field.kind === "rate") return "rate";
+  return `${field.kind}:${field.houseId}`;
+}
+
 export default function EditLfoScreen() {
   const router = useRouter();
   const navigation = useNavigation();
@@ -163,6 +174,9 @@ export default function EditLfoScreen() {
   const [ready, setReady] = useState(false);
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
+  const scrollRef = useRef<ScrollViewType>(null);
+  const scrollYRef = useRef(0);
+  const fieldRefs = useRef(new Map<string, ViewType>());
 
   const reload = useCallback(() => {
     if (!id) {
@@ -244,6 +258,18 @@ export default function EditLfoScreen() {
   function focusField(field: ActiveField) {
     setActiveField(field);
     setReplaceOnType(true);
+    const key = fieldKey(field);
+    setTimeout(() => {
+      const node = fieldRefs.current.get(key) ?? null;
+      scrollFieldAboveKeypad(scrollRef, { current: node }, scrollYRef);
+    }, 50);
+  }
+
+  function bindFieldRef(key: string) {
+    return (node: ViewType | null) => {
+      if (node) fieldRefs.current.set(key, node);
+      else fieldRefs.current.delete(key);
+    };
   }
 
   function onDigit(d: string) {
@@ -307,9 +333,14 @@ export default function EditLfoScreen() {
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={{ flex: 1 }}>
         <ScrollView
+          ref={scrollRef}
           style={styles.screen}
-          contentContainerStyle={[styles.content, { paddingBottom: activeField ? 8 : 40 }]}
+          contentContainerStyle={[styles.content, { paddingBottom: activeField ? 24 : 40 }]}
           keyboardShouldPersistTaps="handled"
+          onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+            scrollYRef.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={16}
         >
           <Pressable
             onPress={() => router.back()}
@@ -358,6 +389,7 @@ export default function EditLfoScreen() {
                     value={consumptionRate}
                     active={activeField?.kind === "rate"}
                     onPress={() => focusField({ kind: "rate" })}
+                    fieldRef={bindFieldRef("rate")}
                   />
                 </View>
               </Card>
@@ -396,6 +428,7 @@ export default function EditLfoScreen() {
                         }
                         onPress={() => focusField({ kind: "binA", houseId: house.houseId })}
                         style={{ flex: 1 }}
+                        fieldRef={bindFieldRef(`binA:${house.houseId}`)}
                       />
                       <FieldButton
                         label="Bin B (lbs)"
@@ -405,6 +438,7 @@ export default function EditLfoScreen() {
                         }
                         onPress={() => focusField({ kind: "binB", houseId: house.houseId })}
                         style={{ flex: 1 }}
+                        fieldRef={bindFieldRef(`binB:${house.houseId}`)}
                       />
                     </View>
                     <View style={{ marginTop: 4 }}>

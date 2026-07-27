@@ -1,18 +1,22 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
   RefreshControl,
   ScrollView,
   Text,
-  TextInput,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  type ScrollView as ScrollViewType,
+  type View as ViewType,
 } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { createLfo, deleteLfo, listFarms, listLfos } from "../../../src/repos/data";
 import { todayKey } from "../../../src/lib/ids";
+import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { colors, styles } from "../../../src/theme";
 import {
   Card,
@@ -21,11 +25,19 @@ import {
   PrimaryButton,
   SectionTitle,
 } from "../../../src/components/ui";
+import {
+  NumberKeypad,
+  appendKeypadDigit,
+  backspaceKeypadValue,
+} from "../../../src/components/NumberKeypad";
 
 /** Gallons of water → lbs (approx). Matches web calculator. */
 const LBS_PER_GALLON = 8.34;
 /** Water:feed weight ratio used to back into feed. */
 const WATER_TO_FEED_RATIO = 1.9;
+
+const DEFAULT_WATER_GAL = "2500";
+const DEFAULT_HEAD_COUNT = "24360";
 
 /** "2026-07-26" → "7-26-2026" (no leading zeros). */
 function formatLfoDate(dateKey: string) {
@@ -51,15 +63,62 @@ function ChipScroller({ children }: { children: React.ReactNode }) {
   );
 }
 
+type CalcField = "water" | "head";
+
+function CalcFieldButton({
+  label,
+  value,
+  active,
+  onPress,
+  fieldRef,
+}: {
+  label: string;
+  value: string;
+  active: boolean;
+  onPress: () => void;
+  fieldRef?: React.RefObject<ViewType | null>;
+}) {
+  return (
+    <View ref={fieldRef} collapsable={false} style={{ flex: 1 }}>
+      <Text style={styles.label}>{label}</Text>
+      <Pressable
+        onPress={onPress}
+        style={[
+          styles.input,
+          active ? { borderColor: colors.accentDark, borderWidth: 2 } : null,
+        ]}
+      >
+        <Text
+          style={{
+            fontSize: 18,
+            fontWeight: "700",
+            color: value ? colors.text : colors.muted,
+          }}
+        >
+          {value || "0"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function LfoListScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const [lfos, setLfos] = useState(listLfos());
   const [farms] = useState(listFarms().farms);
   const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [waterGal, setWaterGal] = useState("");
-  const [headCount, setHeadCount] = useState("");
+  const [waterGal, setWaterGal] = useState(DEFAULT_WATER_GAL);
+  const [headCount, setHeadCount] = useState(DEFAULT_HEAD_COUNT);
+  const [activeField, setActiveField] = useState<CalcField | null>(null);
+  const [replaceOnType, setReplaceOnType] = useState(false);
+
+  const scrollRef = useRef<ScrollViewType>(null);
+  const scrollYRef = useRef(0);
+  const waterRef = useRef<ViewType>(null);
+  const headRef = useRef<ViewType>(null);
 
   const load = useCallback(() => {
     setLfos(listLfos());
@@ -70,6 +129,15 @@ export default function LfoListScreen() {
       load();
     }, [load]),
   );
+
+  useEffect(() => {
+    navigation.setOptions({
+      tabBarStyle: activeField ? { display: "none" } : undefined,
+    });
+    return () => {
+      navigation.setOptions({ tabBarStyle: undefined });
+    };
+  }, [activeField, navigation]);
 
   const calcResult = useMemo(() => {
     const water = Number(waterGal);
@@ -85,6 +153,45 @@ export default function LfoListScreen() {
 
   function openLfo(id: string) {
     router.push(`/(tabs)/lfo/${id}`);
+  }
+
+  function focusField(field: CalcField) {
+    setActiveField(field);
+    setReplaceOnType(true);
+    setTimeout(() => {
+      scrollFieldAboveKeypad(
+        scrollRef,
+        field === "water" ? waterRef : headRef,
+        scrollYRef,
+      );
+    }, 50);
+  }
+
+  function getActiveValue() {
+    return activeField === "water" ? waterGal : headCount;
+  }
+
+  function setActiveValue(next: string) {
+    if (activeField === "water") setWaterGal(next);
+    else if (activeField === "head") setHeadCount(next);
+  }
+
+  function onDigit(d: string) {
+    const current = getActiveValue();
+    const allowDecimal = activeField === "water";
+    const base = replaceOnType && d !== "." ? "" : current;
+    setReplaceOnType(false);
+    setActiveValue(appendKeypadDigit(base, d, allowDecimal));
+  }
+
+  function onBackspace() {
+    setReplaceOnType(false);
+    setActiveValue(backspaceKeypadValue(getActiveValue()));
+  }
+
+  function onEnter() {
+    setActiveField(null);
+    setReplaceOnType(false);
   }
 
   function confirmDelete(id: string, farmName: string) {
@@ -104,158 +211,170 @@ export default function LfoListScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-        keyboardShouldPersistTaps="handled"
-      >
-        <PageHeader
-          title="LFO"
-          subtitle="Last feed order inventory and consumption rate"
-        />
-
-        <ChipScroller>
-          {farms.map((f) => (
-            <Chip
-              key={f.id}
-              label={f.farmName}
-              active={farmId === f.id}
-              onPress={() => setFarmId(f.id)}
-            />
-          ))}
-        </ChipScroller>
-        <PrimaryButton
-          label="Create LFO"
-          onPress={() => {
-            if (!farmId) {
-              setMsg("Select a farm first");
-              return;
-            }
-            setLoading(true);
-            try {
-              const { id } = createLfo(farmId, todayKey());
-              setLfos(listLfos());
-              setMsg("Created LFO");
-              openLfo(id);
-            } catch (e) {
-              setMsg(e instanceof Error ? e.message : "Could not create LFO");
-            } finally {
-              setLoading(false);
-            }
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.screen}
+          contentContainerStyle={[styles.content, { paddingBottom: activeField ? 24 : 40 }]}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+          keyboardShouldPersistTaps="handled"
+          onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+            scrollYRef.current = e.nativeEvent.contentOffset.y;
           }}
-        />
+          scrollEventThrottle={16}
+        >
+          <PageHeader
+            title="LFO"
+            subtitle="Last feed order inventory and consumption rate"
+          />
 
-        {msg ? (
-          <Text style={{ color: colors.accentDark, marginTop: 8, fontWeight: "700" }}>{msg}</Text>
-        ) : null}
+          <ChipScroller>
+            {farms.map((f) => (
+              <Chip
+                key={f.id}
+                label={f.farmName}
+                active={farmId === f.id}
+                onPress={() => setFarmId(f.id)}
+              />
+            ))}
+          </ChipScroller>
+          <PrimaryButton
+            label="Create LFO"
+            onPress={() => {
+              if (!farmId) {
+                setMsg("Select a farm first");
+                return;
+              }
+              setLoading(true);
+              try {
+                const { id } = createLfo(farmId, todayKey());
+                setLfos(listLfos());
+                setMsg("Created LFO");
+                openLfo(id);
+              } catch (e) {
+                setMsg(e instanceof Error ? e.message : "Could not create LFO");
+              } finally {
+                setLoading(false);
+              }
+            }}
+          />
 
-        <SectionTitle>Saved LFOs</SectionTitle>
-        {lfos.length === 0 ? (
-          <Card>
-            <Text style={styles.muted}>None yet — create one above.</Text>
-          </Card>
-        ) : null}
-        {lfos.map((l) => (
-          <Card key={l.id}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Pressable
-                style={{ flex: 1, minWidth: 0 }}
-                onPress={() => openLfo(l.id)}
-                accessibilityRole="button"
-                accessibilityLabel={`Open LFO for ${l.farmName}`}
-              >
-                <Text style={{ fontWeight: "800" }} numberOfLines={1}>
-                  {l.farmName}
-                </Text>
-                <Text style={[styles.muted, { marginTop: 2 }]}>
-                  {formatLfoDate(l.orderDate)}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityLabel={`Edit LFO for ${l.farmName}`}
-                onPress={() => openLfo(l.id)}
-                hitSlop={8}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Ionicons name="pencil-outline" size={20} color={colors.muted} />
-              </Pressable>
-              <Pressable
-                accessibilityLabel={`Delete LFO for ${l.farmName}`}
-                onPress={() => confirmDelete(l.id, l.farmName)}
-                hitSlop={8}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Ionicons name="trash-outline" size={20} color={colors.muted} />
-              </Pressable>
-            </View>
-          </Card>
-        ))}
+          {msg ? (
+            <Text style={{ color: colors.accentDark, marginTop: 8, fontWeight: "700" }}>
+              {msg}
+            </Text>
+          ) : null}
 
-        <Card style={{ marginTop: 8 }}>
-          <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>
-            Consumption rate calculator
-          </Text>
-          <Text style={[styles.muted, { marginTop: 4, marginBottom: 12 }]}>
-            Daily water (gal) × {LBS_PER_GALLON} = WC → WC ÷ {WATER_TO_FEED_RATIO} = FC → FC ÷ head
-            count
-          </Text>
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Daily water (gal)</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="decimal-pad"
+          <SectionTitle>Saved LFOs</SectionTitle>
+          {lfos.length === 0 ? (
+            <Card>
+              <Text style={styles.muted}>None yet — create one above.</Text>
+            </Card>
+          ) : null}
+          {lfos.map((l) => (
+            <Card key={l.id}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Pressable
+                  style={{ flex: 1, minWidth: 0 }}
+                  onPress={() => openLfo(l.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open LFO for ${l.farmName}`}
+                >
+                  <Text style={{ fontWeight: "800" }} numberOfLines={1}>
+                    {l.farmName}
+                  </Text>
+                  <Text style={[styles.muted, { marginTop: 2 }]}>
+                    {formatLfoDate(l.orderDate)}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityLabel={`Edit LFO for ${l.farmName}`}
+                  onPress={() => openLfo(l.id)}
+                  hitSlop={8}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="pencil-outline" size={20} color={colors.muted} />
+                </Pressable>
+                <Pressable
+                  accessibilityLabel={`Delete LFO for ${l.farmName}`}
+                  onPress={() => confirmDelete(l.id, l.farmName)}
+                  hitSlop={8}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.muted} />
+                </Pressable>
+              </View>
+            </Card>
+          ))}
+
+          <Card style={{ marginTop: 8 }}>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>
+              Consumption rate calculator
+            </Text>
+            <Text style={[styles.muted, { marginTop: 4, marginBottom: 12 }]}>
+              Daily water (gal) × {LBS_PER_GALLON} = WC → WC ÷ {WATER_TO_FEED_RATIO} = FC → FC ÷ head
+              count
+            </Text>
+            <View style={styles.row}>
+              <CalcFieldButton
+                label="Daily water (gal)"
                 value={waterGal}
-                onChangeText={setWaterGal}
-                placeholder=""
+                active={activeField === "water"}
+                onPress={() => focusField("water")}
+                fieldRef={waterRef}
               />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Current head count</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="number-pad"
+              <CalcFieldButton
+                label="Current head count"
                 value={headCount}
-                onChangeText={setHeadCount}
-                placeholder=""
+                active={activeField === "head"}
+                onPress={() => focusField("head")}
+                fieldRef={headRef}
               />
             </View>
-          </View>
-          {calcResult ? (
-            <View style={{ gap: 6 }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={styles.muted}>WC (water lbs)</Text>
-                <Text style={{ fontWeight: "600" }}>{formatNum(calcResult.wc, 1)} lbs</Text>
+            {calcResult ? (
+              <View style={{ gap: 6 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={styles.muted}>WC (water lbs)</Text>
+                  <Text style={{ fontWeight: "600" }}>{formatNum(calcResult.wc, 1)} lbs</Text>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={styles.muted}>FC (feed / day)</Text>
+                  <Text style={{ fontWeight: "600" }}>{formatNum(calcResult.fc, 1)} lbs</Text>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={styles.muted}>Consumption rate</Text>
+                  <Text style={{ fontWeight: "800" }}>
+                    {formatNum(calcResult.rate, 3)} lbs/bird/day
+                  </Text>
+                </View>
               </View>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={styles.muted}>FC (feed / day)</Text>
-                <Text style={{ fontWeight: "600" }}>{formatNum(calcResult.fc, 1)} lbs</Text>
-              </View>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={styles.muted}>Consumption rate</Text>
-                <Text style={{ fontWeight: "800" }}>
-                  {formatNum(calcResult.rate, 3)} lbs/bird/day
-                </Text>
-              </View>
-            </View>
-          ) : (
-            <Text style={styles.muted}>Enter water and head count to calculate.</Text>
-          )}
-        </Card>
-      </ScrollView>
+            ) : (
+              <Text style={styles.muted}>Enter water and head count to calculate.</Text>
+            )}
+          </Card>
+        </ScrollView>
+
+        {activeField ? (
+          <NumberKeypad
+            allowDecimal={activeField === "water"}
+            onDigit={onDigit}
+            onBackspace={onBackspace}
+            onEnter={onEnter}
+          />
+        ) : null}
+      </View>
     </SafeAreaView>
   );
 }
