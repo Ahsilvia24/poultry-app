@@ -6,11 +6,15 @@ import { updateFlockWeightProjectionAction } from "@/app/actions/farms";
 import { DEFAULT_GROWTH_RATE_LBS_PER_DAY } from "@/lib/weight/projections";
 import { Button, Input, Label } from "@/components/ui";
 
-/** Compact date for tight projection cells: "8/3" */
+const DAY_2 = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
+
+/** Compact date for tight projection cells: "Mo 8/3" */
 function formatCatchShort(dateKey: string) {
-  const [, m, d] = dateKey.split("-").map(Number);
-  if (!m || !d) return dateKey;
-  return `${m}/${d}`;
+  const [y, m, d] = dateKey.split("-").map(Number);
+  if (!y || !m || !d) return dateKey;
+  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+  const day = DAY_2[dt.getDay()] ?? "";
+  return `${day} ${m}/${d}`;
 }
 
 export type WeightProjectionGroup = {
