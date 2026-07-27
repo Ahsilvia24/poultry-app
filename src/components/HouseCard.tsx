@@ -37,6 +37,7 @@ export function HouseCard({
   projectedMortality,
   weeklyMortality,
   recommendedMinVent,
+  flockLabel = null,
 }: {
   farmId: string;
   house: HouseData;
@@ -48,6 +49,7 @@ export function HouseCard({
   projectedMortality: number | null;
   weeklyMortality: Array<{ week: number; total: number }>;
   recommendedMinVent: string | null;
+  flockLabel?: string | null;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -57,6 +59,9 @@ export function HouseCard({
         <div className="min-w-0">
           <p className="text-lg font-bold">
             House {house.houseNumber}
+            {flockLabel ? (
+              <span className="font-semibold text-stone-600"> · {flockLabel}</span>
+            ) : null}
             {metrics ? (
               <span className="font-semibold text-stone-600">
                 {" "}

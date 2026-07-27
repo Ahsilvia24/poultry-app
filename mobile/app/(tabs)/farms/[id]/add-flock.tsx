@@ -39,7 +39,12 @@ export default function AddFlockScreen() {
   }, [farmId]);
 
   const houses = detail?.houses ?? [];
-  const hasActiveFlock = Boolean(detail?.activeFlock);
+  const occupiedHouseIds = useMemo(
+    () => new Set(houses.filter((h) => h.placedBirdCount != null).map((h) => h.id)),
+    [houses],
+  );
+  const availableHouses = houses.filter((h) => !occupiedHouseIds.has(h.id));
+  const activeFlockCount = detail?.activeFlocks?.length ?? (detail?.activeFlock ? 1 : 0);
 
   const [flockNumber, setFlockNumber] = useState("");
   const [placementDate, setPlacementDate] = useState(todayKey());
@@ -49,7 +54,10 @@ export default function AddFlockScreen() {
   );
   const [placements, setPlacements] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
-    for (const h of houses) init[h.id] = String(DEFAULT_PLACED);
+    for (const h of houses) {
+      // Empty by default so unplaced houses can stay empty; available houses get a starter count.
+      init[h.id] = occupiedHouseIds.has(h.id) ? "" : String(DEFAULT_PLACED);
+    }
     return init;
   });
   const [error, setError] = useState<string | null>(null);
@@ -92,22 +100,23 @@ export default function AddFlockScreen() {
     setBusy(true);
     setError(null);
     try {
-      if (hasActiveFlock) {
-        throw new Error("Only one active flock is allowed. Complete the current flock first.");
-      }
       if (houses.length === 0) {
         throw new Error("Add houses before creating a flock");
       }
+      const housePlacements = availableHouses
+        .map((h) => ({
+          houseId: h.id,
+          placedBirdCount: Number(placements[h.id] ?? "0"),
+        }))
+        .filter((hp) => Number.isFinite(hp.placedBirdCount) && hp.placedBirdCount > 0);
+
       createFlock({
         farmId,
         flockNumber,
         placementDate: placementDate.trim(),
         targetMarketAge: Number(marketAge) || DEFAULT_MARKET_AGE,
         projectedCatchDate: catchDate.trim() || null,
-        housePlacements: houses.map((h) => ({
-          houseId: h.id,
-          placedBirdCount: Number(placements[h.id] ?? DEFAULT_PLACED),
-        })),
+        housePlacements,
       });
       router.replace({ pathname: "/(tabs)/farms/[id]", params: { id: farmId } });
     } catch (e) {
@@ -146,18 +155,20 @@ export default function AddFlockScreen() {
 
           <PageHeader title="Add flock" subtitle={detail.farm.farmName} />
 
-          {hasActiveFlock ? (
-            <Card>
-              <Text style={{ fontWeight: "700", color: colors.danger }}>
-                An active flock already exists. Complete it before placing a new one.
-              </Text>
-            </Card>
-          ) : houses.length === 0 ? (
+          {houses.length === 0 ? (
             <Card>
               <Text style={styles.muted}>Add houses before creating a flock.</Text>
             </Card>
           ) : (
             <Card>
+              {activeFlockCount > 0 ? (
+                <Text style={[styles.muted, { marginBottom: 12 }]}>
+                  This farm already has {activeFlockCount} active flock
+                  {activeFlockCount === 1 ? "" : "s"}. Place only the houses for this
+                  placement date — leave others empty.
+                </Text>
+              ) : null}
+
               <Text style={styles.label}>Flock number *</Text>
               <TextInput
                 style={styles.input}
@@ -200,19 +211,36 @@ export default function AddFlockScreen() {
               >
                 Birds placed per house
               </Text>
-              {houses.map((h) => (
-                <View key={h.id} style={{ marginBottom: 8 }}>
-                  <Text style={styles.label}>House {h.houseNumber}</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
-                    value={placements[h.id] ?? String(DEFAULT_PLACED)}
-                    onChangeText={(v) =>
-                      setPlacements((prev) => ({ ...prev, [h.id]: v }))
-                    }
-                  />
-                </View>
-              ))}
+              <Text style={[styles.muted, { marginBottom: 8 }]}>
+                Leave a house at 0 / blank to keep it empty for this flock.
+              </Text>
+              {houses.map((h) => {
+                const occupied = occupiedHouseIds.has(h.id);
+                return (
+                  <View key={h.id} style={{ marginBottom: 8 }}>
+                    <Text style={styles.label}>
+                      House {h.houseNumber}
+                      {occupied && h.flockNumber ? ` · on flock ${h.flockNumber}` : ""}
+                    </Text>
+                    {occupied ? (
+                      <Text style={[styles.muted, { marginTop: 4 }]}>
+                        Already placed — skip for this flock.
+                      </Text>
+                    ) : (
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="number-pad"
+                        value={placements[h.id] ?? ""}
+                        onChangeText={(v) =>
+                          setPlacements((prev) => ({ ...prev, [h.id]: v }))
+                        }
+                        placeholder="0 = empty"
+                        placeholderTextColor={colors.muted}
+                      />
+                    )}
+                  </View>
+                );
+              })}
 
               {error ? (
                 <Text style={{ color: colors.danger, marginBottom: 12, fontWeight: "600" }}>

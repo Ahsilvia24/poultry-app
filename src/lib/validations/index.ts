@@ -49,7 +49,7 @@ export const flockSchema = z
     processingPlant: z.string().optional().nullable(),
     birdType: z.string().optional().nullable(),
     sex: z.enum(["MALE", "FEMALE", "STRAIGHT_RUN", "UNKNOWN"]),
-    initialBirdCount: z.coerce.number().int().positive("Placement count must be greater than zero"),
+    initialBirdCount: z.coerce.number().int().min(0, "Placement count cannot be negative"),
     flockStatus: z.enum(["ACTIVE", "COMPLETED", "CANCELLED"]),
     targetMarketAge: z.coerce.number().int().optional().nullable(),
     targetMarketWeight: z.coerce.number().optional().nullable(),
@@ -59,7 +59,7 @@ export const flockSchema = z
       .array(
         z.object({
           houseId: z.string(),
-          placedBirdCount: z.coerce.number().int().positive(),
+          placedBirdCount: z.coerce.number().int().min(0),
           processingPlant: z.string().optional().nullable(),
         }),
       )

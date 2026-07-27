@@ -181,10 +181,22 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
     if (!Number.isFinite(placedBirdCount) || placedBirdCount < 1) {
       return { error: "Birds placed must be at least 1" };
     }
-    const activeFlock = await prisma.flock.findFirst({
-      where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+    // Prefer the active flock this house already belongs to.
+    let activeFlock = await prisma.flock.findFirst({
+      where: {
+        farmId,
+        flockStatus: "ACTIVE",
+        deletedAt: null,
+        houseFlocks: { some: { houseId } },
+      },
       orderBy: { placementDate: "desc" },
     });
+    if (!activeFlock) {
+      activeFlock = await prisma.flock.findFirst({
+        where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+        orderBy: { placementDate: "desc" },
+      });
+    }
     if (!activeFlock) {
       return { error: "Add an active flock before setting birds placed" };
     }
@@ -253,11 +265,16 @@ export async function createFlockAction(farmId: string, formData: FormData) {
   const houseIds = formData.getAll("houseId") as string[];
   const placedCounts = formData.getAll("placedBirdCount") as string[];
   const processingPlants = formData.getAll("houseProcessingPlant") as string[];
-  const housePlacements = houseIds.map((houseId, i) => ({
-    houseId,
-    placedBirdCount: Number(placedCounts[i]),
-    processingPlant: processingPlants[i]?.trim() ? processingPlants[i]!.trim() : null,
-  }));
+  // Empty houses are allowed — only keep placements with birds > 0.
+  const housePlacements = houseIds
+    .map((houseId, i) => ({
+      houseId,
+      placedBirdCount: Number(placedCounts[i]),
+      processingPlant: processingPlants[i]?.trim() ? processingPlants[i]!.trim() : null,
+    }))
+    .filter((hp) => Number.isFinite(hp.placedBirdCount) && hp.placedBirdCount > 0);
+
+  const totalPlaced = housePlacements.reduce((s, h) => s + h.placedBirdCount, 0);
 
   const parsed = flockSchema.safeParse({
     flockNumber: formData.get("flockNumber"),
@@ -268,7 +285,7 @@ export async function createFlockAction(farmId: string, formData: FormData) {
     processingPlant: null,
     birdType: emptyToNull(formData.get("birdType")),
     sex: formData.get("sex") || "STRAIGHT_RUN",
-    initialBirdCount: formData.get("initialBirdCount"),
+    initialBirdCount: totalPlaced > 0 ? totalPlaced : 0,
     flockStatus: formData.get("flockStatus") || "ACTIVE",
     targetMarketAge: emptyToNull(formData.get("targetMarketAge")),
     targetMarketWeight: emptyToNull(formData.get("targetMarketWeight")),
@@ -278,18 +295,20 @@ export async function createFlockAction(farmId: string, formData: FormData) {
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid flock" };
 
-  if (parsed.data.flockStatus === "ACTIVE") {
-    const existing = await prisma.flock.findFirst({
-      where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+  if (housePlacements.length > 0) {
+    const occupied = await prisma.houseFlock.findFirst({
+      where: {
+        houseId: { in: housePlacements.map((h) => h.houseId) },
+        flock: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+      },
+      include: { flock: { select: { flockNumber: true } }, house: { select: { houseNumber: true } } },
     });
-    if (existing) {
-      return { error: "Only one active flock is allowed per farm. Complete or cancel the current flock first." };
+    if (occupied) {
+      return {
+        error: `House ${occupied.house.houseNumber} is already on active flock ${occupied.flock.flockNumber}. Leave it empty or complete that flock first.`,
+      };
     }
   }
-
-  const totalPlaced =
-    parsed.data.housePlacements?.reduce((s, h) => s + h.placedBirdCount, 0) ??
-    parsed.data.initialBirdCount;
 
   try {
     await prisma.flock.create({
@@ -305,14 +324,14 @@ export async function createFlockAction(farmId: string, formData: FormData) {
         processingPlant: parsed.data.processingPlant,
         birdType: parsed.data.birdType,
         sex: parsed.data.sex,
-        initialBirdCount: totalPlaced,
+        initialBirdCount: totalPlaced > 0 ? totalPlaced : 1,
         flockStatus: parsed.data.flockStatus,
         targetMarketAge: parsed.data.targetMarketAge,
         targetMarketWeight: parsed.data.targetMarketWeight,
         litterConditionAtPlacement: parsed.data.litterConditionAtPlacement,
         notes: parsed.data.notes,
         houseFlocks: {
-          create: (parsed.data.housePlacements ?? []).map((hp) => ({
+          create: housePlacements.map((hp) => ({
             houseId: hp.houseId,
             placedBirdCount: hp.placedBirdCount,
             processingPlant: hp.processingPlant,
@@ -354,18 +373,34 @@ export async function reactivateFlockAction(flockId: string) {
   if (!flock) return { error: "Flock not found" };
   if (flock.flockStatus === "ACTIVE") return { error: "Flock is already active" };
 
-  const otherActive = await prisma.flock.findFirst({
-    where: {
-      farmId: flock.farmId,
-      flockStatus: "ACTIVE",
-      deletedAt: null,
-      id: { not: flockId },
-    },
-  });
-  if (otherActive) {
-    return {
-      error: `Farm already has an active flock (${otherActive.flockNumber}). Complete that one first.`,
-    };
+  const houseIds = (
+    await prisma.houseFlock.findMany({
+      where: { flockId },
+      select: { houseId: true },
+    })
+  ).map((h) => h.houseId);
+
+  if (houseIds.length > 0) {
+    const overlap = await prisma.houseFlock.findFirst({
+      where: {
+        houseId: { in: houseIds },
+        flock: {
+          farmId: flock.farmId,
+          flockStatus: "ACTIVE",
+          deletedAt: null,
+          id: { not: flockId },
+        },
+      },
+      include: {
+        house: { select: { houseNumber: true } },
+        flock: { select: { flockNumber: true } },
+      },
+    });
+    if (overlap) {
+      return {
+        error: `House ${overlap.house.houseNumber} is already on active flock ${overlap.flock.flockNumber}. Complete that flock first.`,
+      };
+    }
   }
 
   await prisma.flock.update({

@@ -77,33 +77,53 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
   const farmId = farm.id;
   const thresholds = await getUserThresholds(session.user.id);
-  const activeFlock = farm.flocks.find((f) => f.flockStatus === "ACTIVE") ?? null;
+  const activeFlocks = farm.flocks
+    .filter((f) => f.flockStatus === "ACTIVE")
+    .slice()
+    .sort((a, b) => a.placementDate.getTime() - b.placementDate.getTime());
+  const activeFlock = activeFlocks[0] ?? null;
   const latestCompletedFlock =
-    activeFlock == null
+    activeFlocks.length === 0
       ? (farm.flocks.find((f) => f.flockStatus === "COMPLETED") ?? null)
       : null;
 
-  const catchDate = activeFlock ? resolveCatchDate(activeFlock) : null;
-  const daysUntilCatch =
-    catchDate != null ? Math.max(0, differenceInCalendarDays(catchDate, today)) : null;
-  const flockWeek = activeFlock
-    ? flockWeekFromAge(birdAgeFromPlacement(activeFlock.placementDate, today))
-    : null;
+  const hfByHouseId = new Map<
+    string,
+    { flock: (typeof activeFlocks)[number]; hf: (typeof activeFlocks)[number]["houseFlocks"][number] }
+  >();
+  for (const flock of activeFlocks) {
+    for (const hf of flock.houseFlocks) {
+      if (!hfByHouseId.has(hf.houseId)) {
+        hfByHouseId.set(hf.houseId, { flock, hf });
+      }
+    }
+  }
 
   let flockPlaced = 0;
   let flockCum = 0;
   let flockProjectedHead = 0;
   let flockProjectedMortality = 0;
   const flockWeeklyTotals = new Map<number, number>();
+  const flockAgesDays = Array.from(
+    new Set(activeFlocks.map((f) => birdAgeFromPlacement(f.placementDate, today))),
+  ).sort((a, b) => a - b);
 
   const houseCards = farm.houses.map((house) => {
-    const hf = activeFlock?.houseFlocks.find((h) => h.houseId === house.id) ?? null;
+    const matched = hfByHouseId.get(house.id) ?? null;
+    const hf = matched?.hf ?? null;
+    const houseFlock = matched?.flock ?? null;
+    const catchDate = houseFlock ? resolveCatchDate(houseFlock) : null;
+    const daysUntilCatch =
+      catchDate != null ? Math.max(0, differenceInCalendarDays(catchDate, today)) : null;
+    const houseWeek = houseFlock
+      ? flockWeekFromAge(birdAgeFromPlacement(houseFlock.placementDate, today))
+      : null;
     const metrics = hf
       ? summarizeForDate(hf.placedBirdCount, hf.mortalities, today)
       : null;
     const weeklyMortality =
-      hf && activeFlock
-        ? weeklyMortalityByPlacement(activeFlock.placementDate, hf.mortalities, today)
+      hf && houseFlock
+        ? weeklyMortalityByPlacement(houseFlock.placementDate, hf.mortalities, today)
         : [];
     const avgDaily =
       hf != null ? averageDailyMortalityLast7Days(hf.mortalities, today) : 0;
@@ -124,10 +144,10 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       : "Normal";
 
     const minVent =
-      hf && flockWeek != null && house.totalFanCFM != null && house.totalFanCFM > 0
+      hf && houseWeek != null && house.totalFanCFM != null && house.totalFanCFM > 0
         ? recommendedMinVent({
             birdsPlaced: hf.placedBirdCount,
-            flockWeek,
+            flockWeek: houseWeek,
             totalFanCFM: house.totalFanCFM,
           })
         : null;
@@ -149,6 +169,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     return {
       house,
       hf,
+      flockNumber: houseFlock?.flockNumber ?? null,
       metrics,
       weeklyMortality,
       projectedHeadCount,
@@ -169,15 +190,16 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     Math.round(flockCum + flockProjectedMortality),
   );
 
-  const allFeedDeliveries = [
-    ...(activeFlock?.feedDeliveries ?? []),
-    ...(activeFlock?.houseFlocks.flatMap((hf) =>
-      hf.feedDeliveries.map((d) => ({
-        ...d,
-        houseNumber: hf.house.houseNumber,
-      })),
-    ) ?? []),
-  ]
+  const allFeedDeliveries = activeFlocks
+    .flatMap((flock) => [
+      ...flock.feedDeliveries,
+      ...flock.houseFlocks.flatMap((hf) =>
+        hf.feedDeliveries.map((d) => ({
+          ...d,
+          houseNumber: hf.house.houseNumber,
+        })),
+      ),
+    ])
     .filter((d, i, arr) => arr.findIndex((x) => x.id === d.id) === i)
     .sort((a, b) => b.deliveryDate.getTime() - a.deliveryDate.getTime())
     .slice(0, 8);
@@ -190,47 +212,51 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
   const subtitle = farm.growerName || "Farm details";
 
-  const catchDateKey = activeFlock
-    ? format(resolveCatchDate(activeFlock), "yyyy-MM-dd")
-    : null;
   const growthRate = activeFlock
     ? resolveGrowthRate(activeFlock.growthRateLbsPerDay)
     : null;
   const weightProjectionGroups =
-    activeFlock && catchDateKey && growthRate != null
-      ? [
-          {
-            catchDateKey,
-            projections: catchWeightProjections({
-              placementDate: activeFlock.placementDate,
-              catchDate: resolveCatchDate(activeFlock),
-              growthRateLbsPerDay: growthRate,
-            }).map((p) => ({
-              offsetDays: p.offsetDays,
-              dateKey: format(p.date, "yyyy-MM-dd"),
-              label:
-                p.offsetDays === 0
-                  ? "Catch day"
-                  : p.offsetDays === 1
-                    ? "Catch +1"
-                    : "Catch +2",
-              ageDays: p.ageDays,
-              weightLbs: p.weightLbs,
-            })),
-          },
-        ]
+    growthRate != null
+      ? activeFlocks
+          .map((flock) => {
+            const catchDate = resolveCatchDate(flock);
+            return {
+              catchDateKey: format(catchDate, "yyyy-MM-dd"),
+              projections: catchWeightProjections({
+                placementDate: flock.placementDate,
+                catchDate,
+                growthRateLbsPerDay: resolveGrowthRate(flock.growthRateLbsPerDay),
+              }).map((p) => ({
+                offsetDays: p.offsetDays,
+                dateKey: format(p.date, "yyyy-MM-dd"),
+                label:
+                  p.offsetDays === 0
+                    ? "Catch day"
+                    : p.offsetDays === 1
+                      ? "Catch +1"
+                      : "Catch +2",
+                ageDays: p.ageDays,
+                weightLbs: p.weightLbs,
+              })),
+            };
+          })
+          .sort((a, b) => a.catchDateKey.localeCompare(b.catchDateKey))
       : [];
 
-  const placementCatchSummary = activeFlock
-    ? [
-        `Placed ${format(activeFlock.placementDate, "MMM d, yyyy")}`,
-        activeFlock.projectedCatchDate
-          ? `Catch ${format(activeFlock.projectedCatchDate, "MMM d, yyyy")}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join(" · ")
-    : null;
+  const placementCatchLines = activeFlocks.map((flock) =>
+    [
+      `Placed ${format(flock.placementDate, "MMM d, yyyy")}`,
+      flock.projectedCatchDate
+        ? `Catch ${format(flock.projectedCatchDate, "MMM d, yyyy")}`
+        : null,
+      flock.flockNumber ? `(${flock.flockNumber})` : null,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  );
+  const flockAgeLabel =
+    flockAgesDays.length > 0 ? flockAgesDays.map((a) => `${a} days`).join(" · ") : null;
+  const flockNumberLabel = activeFlocks.map((f) => f.flockNumber).filter(Boolean).join(" · ");
 
   return (
     <div>
@@ -257,26 +283,60 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             <Link href={`/mortality?farmId=${farm.id}`}>
               <Button>Mortality</Button>
             </Link>
-            <Link href={activeFlock ? `/lfo/new/${farm.id}` : "/lfo"}>
+            <Link href={activeFlocks.length > 0 ? `/lfo/new/${farm.id}` : "/lfo"}>
               <Button variant="secondary">LFO</Button>
             </Link>
             <Link href={`/history/${farm.id}`}>
               <Button variant="secondary">History</Button>
             </Link>
-            {activeFlock ? <CompleteFlockButton flockId={activeFlock.id} /> : null}
+            <a href="#add-flock">
+              <Button variant="secondary">Add flock</Button>
+            </a>
           </>
         }
       />
 
-      {activeFlock ? (
+      {activeFlocks.length > 0 ? (
         <div className="mt-6">
           <h2 className="text-xl font-bold">
-            Active flock — {differenceInCalendarDays(today, activeFlock.placementDate)} days
-            {activeFlock.flockNumber ? ` · ${activeFlock.flockNumber}` : ""}
+            {activeFlocks.length > 1 ? "Active flocks" : "Active flock"}
+            {flockAgeLabel ? ` — ${flockAgeLabel}` : ""}
+            {flockNumberLabel ? ` · ${flockNumberLabel}` : ""}
           </h2>
-          {placementCatchSummary ? (
-            <p className="mt-1 text-sm text-stone-600">{placementCatchSummary}</p>
-          ) : null}
+          {activeFlocks.length > 1 ? (
+            <div className="mt-2 space-y-2">
+              {activeFlocks.map((flock) => (
+                <div
+                  key={flock.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2"
+                >
+                  <p className="text-sm text-stone-700">
+                    <span className="font-semibold">{flock.flockNumber}</span>
+                    {" · "}
+                    {differenceInCalendarDays(today, flock.placementDate)} days
+                    {" · "}
+                    Placed {format(flock.placementDate, "MMM d, yyyy")}
+                    {flock.projectedCatchDate
+                      ? ` · Catch ${format(flock.projectedCatchDate, "MMM d, yyyy")}`
+                      : ""}
+                    {" · "}
+                    {flock.houseFlocks.length} house
+                    {flock.houseFlocks.length === 1 ? "" : "s"}
+                  </p>
+                  <CompleteFlockButton flockId={flock.id} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              {placementCatchLines[0] ? (
+                <p className="mt-1 text-sm text-stone-600">{placementCatchLines[0]}</p>
+              ) : null}
+              <div className="mt-2">
+                <CompleteFlockButton flockId={activeFlock!.id} />
+              </div>
+            </>
+          )}
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Birds placed" value={formatNumber(flockPlaced)} />
             <StatTile
@@ -297,7 +357,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           </div>
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <WeightProjectionTile
-              flockId={activeFlock.id}
+              flockId={activeFlock!.id}
               growthRateLbsPerDay={growthRate ?? resolveGrowthRate(null)}
               groups={weightProjectionGroups}
             />
@@ -348,7 +408,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         </Card>
       )}
 
-      {!activeFlock ? (
+      {activeFlocks.length === 0 ? (
         <div className="mt-4">
           <FarmQuickLinks farmId={farm.id} />
         </div>
@@ -360,6 +420,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           ({
             house,
             hf,
+            flockNumber,
             metrics,
             weeklyMortality,
             projectedHeadCount,
@@ -390,6 +451,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             projectedMortality={projectedMortality}
             weeklyMortality={weeklyMortality}
             recommendedMinVent={recommendedMinVentLabel}
+            flockLabel={flockNumber}
           />
         ),
         )}
@@ -404,8 +466,13 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
       <AddFlockSection
         action={submitFlock}
-        hasActiveFlock={Boolean(activeFlock)}
-        houses={farm.houses.map((h) => ({ id: h.id, houseNumber: h.houseNumber }))}
+        hasActiveFlock={activeFlocks.length > 0}
+        activeFlockCount={activeFlocks.length}
+        houses={farm.houses.map((h) => ({
+          id: h.id,
+          houseNumber: h.houseNumber,
+          occupiedByFlock: hfByHouseId.get(h.id)?.flock.flockNumber ?? null,
+        }))}
         initialPlacement={format(today, "yyyy-MM-dd")}
       />
 
