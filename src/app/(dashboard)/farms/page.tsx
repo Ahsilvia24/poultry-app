@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { differenceInCalendarDays, format } from "date-fns";
+import { addDays, differenceInCalendarDays, format } from "date-fns";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -110,7 +110,6 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
         <div className="grid gap-3 md:grid-cols-2">
           {farms.map((farm) => {
             const activeFlocks = farm.flocks;
-            const active = activeFlocks[0];
             const houseCount = farm.houses.length;
             const birdsPlaced =
               activeFlocks.length > 0
@@ -140,13 +139,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
             const catchDates = Array.from(
               new Set(
                 activeFlocks.map((fl) =>
-                  format(
-                    fl.projectedCatchDate ??
-                      new Date(
-                        fl.placementDate.getTime() + 52 * 24 * 60 * 60 * 1000,
-                      ),
-                    "yyyy-MM-dd",
-                  ),
+                  format(fl.projectedCatchDate ?? addDays(fl.placementDate, 52), "yyyy-MM-dd"),
                 ),
               ),
             ).sort();

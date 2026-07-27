@@ -8,7 +8,8 @@ export default auth((req) => {
   const isPublic =
     isAuthPage ||
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/mobile");
+    pathname.startsWith("/api/mobile") ||
+    pathname.startsWith("/preview");
 
   if (!isLoggedIn && !isPublic) {
     // API routes should return 401, not redirect HTML
