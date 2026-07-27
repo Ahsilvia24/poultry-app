@@ -119,7 +119,7 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
         [f.id],
       );
       const houseCountRow = db.getFirstSync<{ c: number }>(
-        "SELECT COUNT(*) as c FROM houses WHERE farm_id = ?",
+        "SELECT COUNT(*) as c FROM houses WHERE farm_id = ? AND deleted_at IS NULL",
         [f.id],
       );
       const houseCount = houseCountRow?.c ?? f.number_of_houses;
@@ -423,7 +423,10 @@ export function getFarmDetail(farmId: string) {
     square_footage: number;
     total_fan_cfm: number | null;
     number_of_fans: number | null;
-  }>("SELECT * FROM houses WHERE farm_id = ? ORDER BY house_number ASC", [farmId]);
+  }>(
+    "SELECT * FROM houses WHERE farm_id = ? AND deleted_at IS NULL ORDER BY house_number ASC",
+    [farmId],
+  );
 
   const flockAgeDays = flock
     ? birdAgeFromPlacement(flock.placement_date, today)
@@ -917,7 +920,7 @@ export function createLfo(farmId: string, orderDate: string, notes?: string) {
     [id, farmId, flock?.id ?? null, orderDate, notes ?? null],
   );
   const houses = db.getAllSync<{ id: string }>(
-    "SELECT id FROM houses WHERE farm_id = ? ORDER BY house_number ASC",
+    "SELECT id FROM houses WHERE farm_id = ? AND deleted_at IS NULL ORDER BY house_number ASC",
     [farmId],
   );
   for (const h of houses) {
@@ -1158,6 +1161,78 @@ export function createVisit(input: {
     ],
   );
   return { id, birdAgeInDays: age };
+}
+
+export function updateHouse(
+  farmId: string,
+  houseId: string,
+  input: {
+    houseNumber: number;
+    squareFootage: number;
+    totalFanCFM: number | null;
+    numberOfFans: number | null;
+  },
+) {
+  const db = getDb();
+  const house = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM houses WHERE id = ? AND farm_id = ? AND deleted_at IS NULL",
+    [houseId, farmId],
+  );
+  if (!house) throw new Error("House not found");
+
+  const houseNumber = Math.floor(Number(input.houseNumber));
+  const squareFootage = Number(input.squareFootage);
+  if (!Number.isFinite(houseNumber) || houseNumber < 1) {
+    throw new Error("House number must be at least 1");
+  }
+  if (!Number.isFinite(squareFootage) || squareFootage <= 0) {
+    throw new Error("Square footage is required");
+  }
+
+  const conflict = db.getFirstSync<{ id: string }>(
+    `SELECT id FROM houses
+     WHERE farm_id = ? AND house_number = ? AND deleted_at IS NULL AND id != ?`,
+    [farmId, houseNumber, houseId],
+  );
+  if (conflict) throw new Error(`House ${houseNumber} already exists on this farm`);
+
+  db.runSync(
+    `UPDATE houses
+     SET house_number = ?, square_footage = ?, total_fan_cfm = ?, number_of_fans = ?
+     WHERE id = ? AND farm_id = ?`,
+    [
+      houseNumber,
+      squareFootage,
+      input.totalFanCFM,
+      input.numberOfFans,
+      houseId,
+      farmId,
+    ],
+  );
+  return { success: true as const };
+}
+
+export function deleteHouse(farmId: string, houseId: string) {
+  const db = getDb();
+  const house = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM houses WHERE id = ? AND farm_id = ? AND deleted_at IS NULL",
+    [houseId, farmId],
+  );
+  if (!house) throw new Error("House not found");
+
+  db.runSync(
+    "UPDATE houses SET deleted_at = ? WHERE id = ? AND farm_id = ?",
+    [new Date().toISOString(), houseId, farmId],
+  );
+  const count = db.getFirstSync<{ c: number }>(
+    "SELECT COUNT(*) as c FROM houses WHERE farm_id = ? AND deleted_at IS NULL",
+    [farmId],
+  );
+  db.runSync("UPDATE farms SET number_of_houses = ? WHERE id = ?", [
+    count?.c ?? 0,
+    farmId,
+  ]);
+  return { success: true as const };
 }
 
 /** Mark / unmark a schedule follow-up. Completions are keyed by farm + date + label. */

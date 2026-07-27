@@ -44,6 +44,7 @@ export function migrateDb() {
       square_footage REAL NOT NULL DEFAULT 29700,
       total_fan_cfm REAL,
       number_of_fans INTEGER,
+      deleted_at TEXT,
       FOREIGN KEY (farm_id) REFERENCES farms(id)
     );
 
@@ -133,6 +134,12 @@ export function migrateDb() {
     CREATE INDEX IF NOT EXISTS idx_mort_hf_date ON daily_mortality(house_flock_id, mortality_date);
     CREATE INDEX IF NOT EXISTS idx_fuc_farm ON follow_up_completions(farm_id);
   `);
+
+  // Existing installs created houses without deleted_at — add if missing
+  const houseCols = database.getAllSync<{ name: string }>("PRAGMA table_info(houses)");
+  if (!houseCols.some((c) => c.name === "deleted_at")) {
+    database.execSync("ALTER TABLE houses ADD COLUMN deleted_at TEXT");
+  }
 }
 
 export function getMeta(key: string): string | null {

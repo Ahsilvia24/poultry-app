@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Linking,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -11,7 +13,13 @@ import {
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { createVisit, getFarmDetail } from "../../../src/repos/data";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  createVisit,
+  deleteHouse,
+  getFarmDetail,
+  updateHouse,
+} from "../../../src/repos/data";
 import { todayKey } from "../../../src/lib/ids";
 import { colors, styles } from "../../../src/theme";
 import {
@@ -30,15 +38,29 @@ function paramId(value: string | string[] | undefined) {
   return value ?? "";
 }
 
+type FarmDetail = ReturnType<typeof getFarmDetail>;
+type HouseRow = FarmDetail["houses"][number];
+
+type HouseEditDraft = {
+  id: string;
+  houseNumber: string;
+  squareFootage: string;
+  totalFanCFM: string;
+  numberOfFans: string;
+};
+
 export default function FarmDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const farmId = paramId(params.id);
   const router = useRouter();
-  const [data, setData] = useState<ReturnType<typeof getFarmDetail> | null>(null);
+  const [data, setData] = useState<FarmDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visitNotes, setVisitNotes] = useState("");
   const [visitMsg, setVisitMsg] = useState<string | null>(null);
+  const [editingHouse, setEditingHouse] = useState<HouseEditDraft | null>(null);
+  const [houseEditError, setHouseEditError] = useState<string | null>(null);
+  const [houseSaving, setHouseSaving] = useState(false);
 
   // Drop previous farm immediately when the route id changes
   useEffect(() => {
@@ -112,6 +134,68 @@ export default function FarmDetailScreen() {
   );
   const catchLabel =
     data.activeFlock?.projectedCatchDate ?? data.activeFlock?.resolvedCatchDate ?? null;
+
+  function openHouseEditor(h: HouseRow) {
+    setHouseEditError(null);
+    setEditingHouse({
+      id: h.id,
+      houseNumber: String(h.houseNumber),
+      squareFootage: String(h.squareFootage ?? ""),
+      totalFanCFM: h.totalFanCFM != null ? String(h.totalFanCFM) : "",
+      numberOfFans: h.numberOfFans != null ? String(h.numberOfFans) : "",
+    });
+  }
+
+  function confirmDeleteHouse(h: HouseRow) {
+    Alert.alert(
+      `Delete house ${h.houseNumber}?`,
+      "This removes the house from the farm. It will no longer appear in your lists.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            try {
+              deleteHouse(farm.id, h.id);
+              load();
+            } catch (e) {
+              Alert.alert("Error", e instanceof Error ? e.message : "Could not delete house");
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  function saveHouseEdit() {
+    if (!editingHouse) return;
+    setHouseSaving(true);
+    setHouseEditError(null);
+    try {
+      const sq = Number(editingHouse.squareFootage);
+      const cfm =
+        editingHouse.totalFanCFM.trim() === "" ? null : Number(editingHouse.totalFanCFM);
+      const fans =
+        editingHouse.numberOfFans.trim() === ""
+          ? null
+          : Math.floor(Number(editingHouse.numberOfFans));
+      if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
+      if (fans != null && !Number.isFinite(fans)) throw new Error("Number of fans is invalid");
+      updateHouse(farm.id, editingHouse.id, {
+        houseNumber: Number(editingHouse.houseNumber),
+        squareFootage: sq,
+        totalFanCFM: cfm,
+        numberOfFans: fans,
+      });
+      setEditingHouse(null);
+      load();
+    } catch (e) {
+      setHouseEditError(e instanceof Error ? e.message : "Could not save house");
+    } finally {
+      setHouseSaving(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -217,23 +301,53 @@ export default function FarmDetailScreen() {
         <SectionTitle>{farm.farmName}</SectionTitle>
         {data.houses.map((h) => (
           <Card key={`${farm.id}-${h.id}`}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-              <Text style={{ fontSize: 17, fontWeight: "800" }}>
-                House {h.houseNumber}
-                {h.cumulativeMortality != null ? (
-                  <Text style={{ fontWeight: "600", color: colors.muted }}>
-                    {" "}
-                    · Mort. {formatNumber(h.cumulativeMortality)}
-                  </Text>
-                ) : null}
-                {h.projectedHeadCount != null ? (
-                  <Text style={{ fontWeight: "600", color: colors.muted }}>
-                    {" "}
-                    · PHC {formatNumber(h.projectedHeadCount)}
-                  </Text>
-                ) : null}
-              </Text>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontSize: 17, fontWeight: "800" }}>
+                  House {h.houseNumber}
+                  {h.cumulativeMortality != null ? (
+                    <Text style={{ fontWeight: "600", color: colors.muted }}>
+                      {" "}
+                      · Mort. {formatNumber(h.cumulativeMortality)}
+                    </Text>
+                  ) : null}
+                  {h.projectedHeadCount != null ? (
+                    <Text style={{ fontWeight: "600", color: colors.muted }}>
+                      {" "}
+                      · PHC {formatNumber(h.projectedHeadCount)}
+                    </Text>
+                  ) : null}
+                </Text>
+              </View>
               <StatusBadge status={h.status} />
+              <Pressable
+                accessibilityLabel={`Edit house ${h.houseNumber}`}
+                onPress={() => openHouseEditor(h)}
+                hitSlop={8}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="pencil-outline" size={20} color={colors.muted} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel={`Delete house ${h.houseNumber}`}
+                onPress={() => confirmDeleteHouse(h)}
+                hitSlop={8}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="trash-outline" size={20} color={colors.muted} />
+              </Pressable>
             </View>
             <View style={[styles.row, { marginTop: 12 }]}>
               <Metric label="Placed" value={formatNumber(h.placedBirdCount)} />
@@ -332,6 +446,103 @@ export default function FarmDetailScreen() {
           </>
         ) : null}
       </ScrollView>
+
+      <Modal
+        visible={editingHouse != null}
+        animationType="slide"
+        transparent
+        onRequestClose={() => {
+          if (!houseSaving) setEditingHouse(null);
+        }}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+          }}
+          onPress={() => {
+            if (!houseSaving) setEditingHouse(null);
+          }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              padding: 20,
+              maxHeight: "85%",
+            }}
+          >
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                Edit house {editingHouse?.houseNumber}
+              </Text>
+              {houseEditError ? (
+                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                  {houseEditError}
+                </Text>
+              ) : null}
+              {editingHouse ? (
+                <View style={{ marginTop: 14, gap: 4 }}>
+                  <Text style={styles.label}>House number</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="number-pad"
+                    value={editingHouse.houseNumber}
+                    onChangeText={(v) =>
+                      setEditingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
+                    }
+                  />
+                  <Text style={[styles.label, { marginTop: 8 }]}>Square footage</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="decimal-pad"
+                    value={editingHouse.squareFootage}
+                    onChangeText={(v) =>
+                      setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
+                    }
+                  />
+                  <Text style={[styles.label, { marginTop: 8 }]}>Total fan CFM</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="decimal-pad"
+                    value={editingHouse.totalFanCFM}
+                    onChangeText={(v) =>
+                      setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
+                    }
+                  />
+                  <Text style={[styles.label, { marginTop: 8 }]}>Number of fans</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="number-pad"
+                    value={editingHouse.numberOfFans}
+                    onChangeText={(v) =>
+                      setEditingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
+                    }
+                  />
+                  <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                    <PrimaryButton
+                      label={houseSaving ? "Saving…" : "Save"}
+                      onPress={saveHouseEdit}
+                      style={{ flex: 1 }}
+                    />
+                    <PrimaryButton
+                      label="Cancel"
+                      secondary
+                      onPress={() => {
+                        if (!houseSaving) setEditingHouse(null);
+                      }}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                </View>
+              ) : null}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
