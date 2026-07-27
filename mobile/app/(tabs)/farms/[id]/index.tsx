@@ -282,6 +282,17 @@ export default function FarmDetailScreen() {
     openFarmEditor(data.farm);
   }, [openEdit, data, farmId, editingFarm]);
 
+  // Keep the active field visible after the keypad mounts (layout shift)
+  // Must stay above any early returns (Rules of Hooks).
+  useEffect(() => {
+    if (!houseActiveField) return;
+    const t = setTimeout(() => {
+      const node = houseFieldRefs.current.get(houseActiveField) ?? null;
+      scrollFieldAboveKeypad(houseScrollRef, { current: node }, houseScrollYRef);
+    }, 100);
+    return () => clearTimeout(t);
+  }, [houseActiveField]);
+
   // Never render a previous farm under a new id
   const ready = data != null && data.farm.id === farmId;
 
@@ -487,16 +498,6 @@ export default function FarmDetailScreen() {
     setHouseActiveField(null);
     setHouseReplaceOnType(false);
   }
-
-  // Keep the active field visible after the keypad mounts (layout shift)
-  useEffect(() => {
-    if (!houseActiveField) return;
-    const t = setTimeout(() => {
-      const node = houseFieldRefs.current.get(houseActiveField) ?? null;
-      scrollFieldAboveKeypad(houseScrollRef, { current: node }, houseScrollYRef);
-    }, 100);
-    return () => clearTimeout(t);
-  }, [houseActiveField]);
 
   function confirmDeleteHouse(h: HouseRow) {
     Alert.alert(

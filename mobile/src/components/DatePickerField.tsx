@@ -26,11 +26,21 @@ function parseDateKey(dateKey: string): Date {
     return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
   }
   const [y, m, d] = dateKey.split("-").map(Number);
-  return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
+  const dt = new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
+  if (!Number.isFinite(dt.getTime())) {
+    const [ty, tm, td] = todayKey().split("-").map(Number);
+    return new Date(ty!, (tm ?? 1) - 1, td ?? 1, 12, 0, 0, 0);
+  }
+  return dt;
+}
+
+function safePickerDate(d: Date): Date {
+  return Number.isFinite(d.getTime()) ? d : parseDateKey(todayKey());
 }
 
 function toDateKey(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const safe = safePickerDate(d);
+  return `${safe.getFullYear()}-${String(safe.getMonth() + 1).padStart(2, "0")}-${String(safe.getDate()).padStart(2, "0")}`;
 }
 
 export function DatePickerField({
@@ -60,6 +70,7 @@ export function DatePickerField({
   }
 
   const draftKey = toDateKey(draft);
+  const pickerValue = safePickerDate(draft);
 
   return (
     <View>
@@ -89,7 +100,7 @@ export function DatePickerField({
 
       {Platform.OS === "android" && open ? (
         <DateTimePicker
-          value={draft}
+          value={pickerValue}
           mode="date"
           display="calendar"
           onChange={onPickerChange}
@@ -148,7 +159,7 @@ export function DatePickerField({
                 </Text>
               </View>
               <DateTimePicker
-                value={draft}
+                value={pickerValue}
                 mode="date"
                 display={Platform.OS === "ios" ? "inline" : "default"}
                 onChange={onPickerChange}

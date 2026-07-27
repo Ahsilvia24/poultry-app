@@ -27,7 +27,16 @@ function parseTime(value: string): Date {
   const [h, m] = raw.split(":").map(Number);
   const d = new Date();
   d.setHours(h ?? 6, m ?? 0, 0, 0);
+  if (!Number.isFinite(d.getTime())) {
+    const fallback = new Date();
+    fallback.setHours(6, 0, 0, 0);
+    return fallback;
+  }
   return d;
+}
+
+function safePickerDate(d: Date): Date {
+  return Number.isFinite(d.getTime()) ? d : parseTime("06:00");
 }
 
 /** Snap to nearest :00 / :30 and return "HH:mm". */
@@ -66,7 +75,8 @@ export function TimeScrollPickerField({
     if (selected) setDraft(selected);
   }
 
-  const draftKey = toTimeKey(draft);
+  const draftKey = toTimeKey(safePickerDate(draft));
+  const pickerValue = safePickerDate(draft);
 
   return (
     <View>
@@ -96,7 +106,7 @@ export function TimeScrollPickerField({
 
       {Platform.OS === "android" && open ? (
         <DateTimePicker
-          value={draft}
+          value={pickerValue}
           mode="time"
           display="spinner"
           minuteInterval={30}
@@ -158,7 +168,7 @@ export function TimeScrollPickerField({
               </View>
 
               <DateTimePicker
-                value={draft}
+                value={pickerValue}
                 mode="time"
                 display="spinner"
                 minuteInterval={30}

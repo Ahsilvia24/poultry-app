@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import * as Clipboard from "expo-clipboard";
+import { Alert, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme";
 
@@ -18,8 +17,13 @@ export function CopyHouseSummaryButton({ lines }: { lines: string[] }) {
   return (
     <Pressable
       onPress={async () => {
-        await Clipboard.setStringAsync(lines.join("\n"));
-        setCopied(true);
+        try {
+          const Clipboard = await import("expo-clipboard");
+          await Clipboard.setStringAsync(lines.join("\n"));
+          setCopied(true);
+        } catch {
+          Alert.alert("Copy failed", "Could not copy to clipboard on this device.");
+        }
       }}
       hitSlop={8}
       accessibilityRole="button"
