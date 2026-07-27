@@ -217,8 +217,8 @@ export function seedIfNeeded() {
     houseIds.forEach((houseId, hi) => {
       const hfId = newId("hf");
       db.runSync(
-        `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count) VALUES (?, ?, ?, ?)`,
-        [hfId, flockId, houseId, perHouse],
+        `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date) VALUES (?, ?, ?, ?, ?, ?)`,
+        [hfId, flockId, houseId, perHouse, placement, catchDate],
       );
 
       for (let d = 0; d <= demo.ageDays; d++) {
