@@ -1,11 +1,17 @@
 "use client";
 
-import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateFlockWeightProjectionAction } from "@/app/actions/farms";
 import { DEFAULT_GROWTH_RATE_LBS_PER_DAY } from "@/lib/weight/projections";
 import { Button, Input, Label } from "@/components/ui";
+
+/** Compact date for tight projection cells: "8/3" */
+function formatCatchShort(dateKey: string) {
+  const [, m, d] = dateKey.split("-").map(Number);
+  if (!m || !d) return dateKey;
+  return `${m}/${d}`;
+}
 
 export type WeightProjectionGroup = {
   catchDateKey: string;
@@ -68,7 +74,7 @@ export function WeightProjectionTile({
         <div key={group.catchDateKey} className="mt-3">
           {groups.length > 1 ? (
             <p className="mb-2 text-sm font-semibold text-stone-700">
-              Catch {format(new Date(group.catchDateKey + "T12:00:00"), "EEE, MMM d")}
+              Catch {formatCatchShort(group.catchDateKey)}
             </p>
           ) : null}
           <div className="grid grid-cols-3 gap-2 text-lg">
@@ -80,7 +86,7 @@ export function WeightProjectionTile({
                 <p className="text-sm text-stone-500">{p.label}</p>
                 <p className="font-bold text-stone-900">{p.weightLbs.toFixed(2)} lb</p>
                 <p className="text-sm text-stone-400">
-                  {p.ageDays}d · {format(new Date(p.dateKey + "T12:00:00"), "EEE, MMM d")}
+                  {p.ageDays}d · {formatCatchShort(p.dateKey)}
                 </p>
               </div>
             ))}
@@ -92,7 +98,7 @@ export function WeightProjectionTile({
         <div className="mt-3 space-y-0.5">
           {catchDatesSorted.map((dateKey) => (
             <p key={dateKey} className="text-sm text-stone-500">
-              Catch {format(new Date(dateKey + "T12:00:00"), "EEE, MMM d")}
+              Catch {formatCatchShort(dateKey)}
             </p>
           ))}
         </div>
