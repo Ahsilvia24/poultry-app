@@ -9,7 +9,7 @@ import {
   updateLitterEventAction,
   updateVisitAction,
 } from "@/app/actions/ops";
-import { deactivateFarmAction, deleteFarmAction, completeFlockAction, reactivateFlockAction } from "@/app/actions/farms";
+import { deactivateFarmAction, deleteFarmAction, completeFlockAction, reactivateFlockAction, deleteFlockAction } from "@/app/actions/farms";
 import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import {
   ISSUE_CATEGORY_LABELS,
@@ -573,6 +573,45 @@ export function ReactivateFlockButton({
         }}
       >
         {pending ? "Working…" : "Make active"}
+      </Button>
+      {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+    </div>
+  );
+}
+
+export function DeleteFlockButton({
+  flockId,
+  flockNumber,
+}: {
+  flockId: string;
+  flockNumber?: string;
+}) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="inline-flex flex-col items-start gap-1">
+      <Button
+        type="button"
+        variant="secondary"
+        disabled={pending}
+        onClick={() => {
+          const label = flockNumber ? `flock ${flockNumber}` : "this flock";
+          if (
+            !confirm(
+              `Delete ${label}? This removes it from history. This cannot be undone.`,
+            )
+          ) {
+            return;
+          }
+          setError(null);
+          start(async () => {
+            const result = await deleteFlockAction(flockId);
+            if (result?.error) setError(result.error);
+          });
+        }}
+      >
+        {pending ? "Deleting…" : "Delete"}
       </Button>
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
     </div>

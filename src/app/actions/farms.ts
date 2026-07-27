@@ -382,6 +382,26 @@ export async function reactivateFlockAction(flockId: string) {
   return { success: true };
 }
 
+export async function deleteFlockAction(flockId: string) {
+  const user = await requireUser();
+  const flock = await prisma.flock.findFirst({
+    where: { id: flockId, deletedAt: null, farm: { userId: user.id!, deletedAt: null } },
+  });
+  if (!flock) return { error: "Flock not found" };
+  if (flock.flockStatus === "ACTIVE") {
+    return { error: "Complete the active flock before deleting it" };
+  }
+
+  await prisma.flock.update({
+    where: { id: flockId },
+    data: { deletedAt: new Date() },
+  });
+  revalidatePath(`/farms/${flock.farmId}`);
+  revalidatePath(`/history/${flock.farmId}`);
+  revalidatePath("/");
+  return { success: true };
+}
+
 export async function updateFlockScheduleAction(flockId: string, formData: FormData) {
   const user = await requireUser();
   const flock = await prisma.flock.findFirst({

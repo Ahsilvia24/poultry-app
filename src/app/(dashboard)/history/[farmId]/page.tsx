@@ -9,7 +9,7 @@ import {
 } from "@/lib/mortality/calculations";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Button, Card, PageHeader } from "@/components/ui";
-import { ReactivateFlockButton } from "@/components/FarmOpsForms";
+import { DeleteFlockButton, ReactivateFlockButton } from "@/components/FarmOpsForms";
 import { SettlementForm } from "@/components/SettlementForm";
 
 type Params = Promise<{ farmId: string }>;
@@ -149,10 +149,16 @@ export default async function FarmHistoryPage({ params }: { params: Params }) {
               {current.flock.flockNumber}
             </h2>
             {current.flock.flockStatus !== "ACTIVE" ? (
-              <ReactivateFlockButton
-                flockId={current.flock.id}
-                flockNumber={current.flock.flockNumber}
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <ReactivateFlockButton
+                  flockId={current.flock.id}
+                  flockNumber={current.flock.flockNumber}
+                />
+                <DeleteFlockButton
+                  flockId={current.flock.id}
+                  flockNumber={current.flock.flockNumber}
+                />
+              </div>
             ) : null}
           </div>
           <FlockMetrics row={current} />
@@ -178,10 +184,16 @@ export default async function FarmHistoryPage({ params }: { params: Params }) {
                   {row.flock.flockName ? ` — ${row.flock.flockName}` : ""}
                 </h3>
                 {row.flock.flockStatus !== "ACTIVE" ? (
-                  <ReactivateFlockButton
-                    flockId={row.flock.id}
-                    flockNumber={row.flock.flockNumber}
-                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ReactivateFlockButton
+                      flockId={row.flock.id}
+                      flockNumber={row.flock.flockNumber}
+                    />
+                    <DeleteFlockButton
+                      flockId={row.flock.id}
+                      flockNumber={row.flock.flockNumber}
+                    />
+                  </div>
                 ) : null}
               </div>
               <FlockMetrics row={row} />

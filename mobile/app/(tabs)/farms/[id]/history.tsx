@@ -10,7 +10,9 @@ import {
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import {
+  deleteFlock,
   getFarmHistory,
   reactivateFlock,
 } from "../../../../src/repos/data";
@@ -38,11 +40,14 @@ function FlockHistoryCard({
   row,
   title,
   onReactivate,
+  onDelete,
 }: {
   row: HistoryRow;
   title: string;
   onReactivate: (row: HistoryRow) => void;
+  onDelete: (row: HistoryRow) => void;
 }) {
+  const canDelete = row.flockStatus !== "ACTIVE";
   return (
     <Card>
       <View
@@ -61,13 +66,31 @@ function FlockHistoryCard({
             {formatLongScheduleDate(row.placementDate)}
           </Text>
         </View>
-        {row.flockStatus !== "ACTIVE" ? (
-          <PrimaryButton
-            label="Make active"
-            secondary
-            onPress={() => onReactivate(row)}
-          />
-        ) : null}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          {canDelete ? (
+            <Pressable
+              accessibilityLabel={`Delete flock ${row.flockNumber}`}
+              onPress={() => onDelete(row)}
+              hitSlop={8}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 8,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="trash-outline" size={20} color={colors.muted} />
+            </Pressable>
+          ) : null}
+          {canDelete ? (
+            <PrimaryButton
+              label="Make active"
+              secondary
+              onPress={() => onReactivate(row)}
+            />
+          ) : null}
+        </View>
       </View>
       <View style={[styles.row, { marginTop: 12 }]}>
         <Metric label="Birds placed" value={formatNumber(row.birdsPlaced)} />
@@ -155,6 +178,28 @@ export default function FarmHistoryScreen() {
     );
   }
 
+  function onDelete(row: HistoryRow) {
+    Alert.alert(
+      `Delete flock ${row.flockNumber}?`,
+      "This permanently removes the flock and its mortality, feed, and LFO records. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            try {
+              deleteFlock(farmId, row.id);
+              load();
+            } catch (e) {
+              Alert.alert("Error", e instanceof Error ? e.message : "Could not delete flock");
+            }
+          },
+        },
+      ],
+    );
+  }
+
   if (loading && !data) {
     return (
       <View style={[styles.screen, { alignItems: "center", justifyContent: "center" }]}>
@@ -197,6 +242,7 @@ export default function FarmHistoryScreen() {
                 : `Latest flock — ${data.current.flockNumber}`
             }
             onReactivate={onReactivate}
+            onDelete={onDelete}
           />
         ) : (
           <Card>
@@ -212,6 +258,7 @@ export default function FarmHistoryScreen() {
               row={row}
               title={`Flock ${row.flockNumber}`}
               onReactivate={onReactivate}
+              onDelete={onDelete}
             />
           ))
         ) : (
@@ -225,20 +272,47 @@ export default function FarmHistoryScreen() {
             <SectionTitle>All flocks</SectionTitle>
             {data.all.map((row) => (
               <Card key={`all-${row.id}`}>
-                <Text style={{ fontWeight: "800" }}>
-                  {row.flockNumber}
-                  <Text style={{ fontWeight: "600", color: colors.muted }}>
-                    {" "}
-                    · {row.flockStatus === "ACTIVE" ? "Active" : "Completed"}
-                  </Text>
-                </Text>
-                <Text style={[styles.muted, { marginTop: 4 }]}>
-                  Placed {row.placementDate}
-                  {row.catchDate ? ` · Catch ${row.catchDate}` : ""}
-                  {row.marketAge != null ? ` · ${row.marketAge}d` : ""}
-                  {" · Mort "}
-                  {formatPct(row.mortPct)}
-                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: 8,
+                  }}
+                >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={{ fontWeight: "800" }}>
+                      {row.flockNumber}
+                      <Text style={{ fontWeight: "600", color: colors.muted }}>
+                        {" "}
+                        · {row.flockStatus === "ACTIVE" ? "Active" : "Completed"}
+                      </Text>
+                    </Text>
+                    <Text style={[styles.muted, { marginTop: 4 }]}>
+                      Placed {row.placementDate}
+                      {row.catchDate ? ` · Catch ${row.catchDate}` : ""}
+                      {row.marketAge != null ? ` · ${row.marketAge}d` : ""}
+                      {" · Mort "}
+                      {formatPct(row.mortPct)}
+                    </Text>
+                  </View>
+                  {row.flockStatus !== "ACTIVE" ? (
+                    <Pressable
+                      accessibilityLabel={`Delete flock ${row.flockNumber}`}
+                      onPress={() => onDelete(row)}
+                      hitSlop={8}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color={colors.muted} />
+                    </Pressable>
+                  ) : null}
+                </View>
               </Card>
             ))}
           </>

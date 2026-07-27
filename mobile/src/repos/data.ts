@@ -1642,6 +1642,50 @@ export function reactivateFlock(flockId: string) {
   return { success: true as const, farmId: flock.farm_id };
 }
 
+/** Permanently remove a completed/old flock and its related records. */
+export function deleteFlock(farmId: string, flockId: string) {
+  const db = getDb();
+  const flock = db.getFirstSync<{
+    id: string;
+    farm_id: string;
+    flock_status: string;
+    flock_number: string;
+  }>("SELECT id, farm_id, flock_status, flock_number FROM flocks WHERE id = ? AND farm_id = ?", [
+    flockId,
+    farmId,
+  ]);
+  if (!flock) throw new Error("Flock not found");
+  if (flock.flock_status === "ACTIVE") {
+    throw new Error("Complete the active flock before deleting it");
+  }
+
+  const houseFlocks = db.getAllSync<{ id: string }>(
+    "SELECT id FROM house_flocks WHERE flock_id = ?",
+    [flockId],
+  );
+  for (const hf of houseFlocks) {
+    db.runSync("DELETE FROM daily_mortality WHERE house_flock_id = ?", [hf.id]);
+    db.runSync("DELETE FROM feed_deliveries WHERE house_flock_id = ?", [hf.id]);
+  }
+  db.runSync("DELETE FROM feed_deliveries WHERE flock_id = ?", [flockId]);
+  db.runSync("DELETE FROM house_flocks WHERE flock_id = ?", [flockId]);
+
+  const lfos = db.getAllSync<{ id: string }>(
+    "SELECT id FROM last_feed_orders WHERE flock_id = ?",
+    [flockId],
+  );
+  for (const lfo of lfos) {
+    db.runSync("DELETE FROM lfo_house_inventory WHERE lfo_id = ?", [lfo.id]);
+  }
+  db.runSync("DELETE FROM last_feed_orders WHERE flock_id = ?", [flockId]);
+  db.runSync("DELETE FROM follow_up_completions WHERE flock_id = ?", [flockId]);
+  db.runSync("UPDATE farm_visits SET flock_id = NULL WHERE flock_id = ?", [flockId]);
+  db.runSync("UPDATE farm_issues SET flock_id = NULL WHERE flock_id = ?", [flockId]);
+  db.runSync("DELETE FROM flocks WHERE id = ?", [flockId]);
+
+  return { success: true as const, farmId: flock.farm_id, flockNumber: flock.flock_number };
+}
+
 export function updateFlockNumber(flockId: string, flockNumber: string) {
   const db = getDb();
   const next = flockNumber.trim();
