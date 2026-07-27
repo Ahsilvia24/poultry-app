@@ -452,7 +452,7 @@ export default function FarmDetailScreen() {
       if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
       if (fans != null && !Number.isFinite(fans)) throw new Error("Number of fans is invalid");
       if (
-        data.activeFlock &&
+        data?.activeFlock &&
         placedRaw !== "" &&
         (placed == null || !Number.isFinite(placed) || placed < 1)
       ) {
@@ -463,7 +463,7 @@ export default function FarmDetailScreen() {
         squareFootage: sq,
         totalFanCFM: cfm,
         numberOfFans: fans,
-        ...(data.activeFlock ? { placedBirdCount: placed } : null),
+        ...(data?.activeFlock ? { placedBirdCount: placed } : null),
       });
       closeHouseEditor();
       load();
