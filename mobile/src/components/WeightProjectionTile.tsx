@@ -21,14 +21,17 @@ type Projection = {
   weightLbs: number;
 };
 
+export type WeightProjectionGroup = {
+  catchDateKey: string;
+  projections: Projection[];
+};
+
 export function WeightProjectionTile({
-  catchDateKey,
-  projections,
+  groups,
   growthRateLbsPerDay,
   onSaveGrowthRate,
 }: {
-  catchDateKey: string | null;
-  projections: Projection[];
+  groups: WeightProjectionGroup[];
   growthRateLbsPerDay: number;
   onSaveGrowthRate: (rate: number) => void;
 }) {
@@ -36,6 +39,10 @@ export function WeightProjectionTile({
   const [draft, setDraft] = useState(String(growthRateLbsPerDay));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  if (groups.length === 0) return null;
+
+  const catchDatesSorted = groups.map((g) => g.catchDateKey);
 
   function startEdit() {
     setDraft(String(growthRateLbsPerDay || DEFAULT_GROWTH_RATE_LBS_PER_DAY));
@@ -84,7 +91,6 @@ export function WeightProjectionTile({
           </Text>
           <Text style={[styles.muted, { marginTop: 2, fontSize: 13 }]}>
             Age at kill × growth rate
-            {catchDateKey ? ` · catch ${formatCatchShort(catchDateKey)}` : ""}
           </Text>
         </View>
         <Text style={{ fontSize: 14, color: colors.text }}>
@@ -93,31 +99,59 @@ export function WeightProjectionTile({
         </Text>
       </View>
 
-      <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
-        {projections.map((p) => (
-          <View
-            key={p.offsetDays}
-            style={{
-              flex: 1,
-              backgroundColor: "#fafaf9",
-              borderRadius: 10,
-              paddingHorizontal: 10,
-              paddingVertical: 10,
-            }}
-          >
-            <Text style={{ fontSize: 12, color: colors.muted }}>{p.label}</Text>
-            <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text, marginTop: 2 }}>
-              {p.weightLbs.toFixed(2)} lb
+      {groups.map((group) => (
+        <View key={group.catchDateKey} style={{ marginTop: 12 }}>
+          {groups.length > 1 ? (
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "700",
+                color: colors.text,
+                marginBottom: 8,
+              }}
+            >
+              Catch {formatCatchShort(group.catchDateKey)}
             </Text>
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-              {p.ageDays}d · {formatCatchShort(p.dateKey)}
-            </Text>
+          ) : null}
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {group.projections.map((p) => (
+              <View
+                key={`${group.catchDateKey}-${p.offsetDays}`}
+                style={{
+                  flex: 1,
+                  backgroundColor: "#fafaf9",
+                  borderRadius: 10,
+                  paddingHorizontal: 10,
+                  paddingVertical: 10,
+                }}
+              >
+                <Text style={{ fontSize: 12, color: colors.muted }}>{p.label}</Text>
+                <Text
+                  style={{ fontSize: 16, fontWeight: "800", color: colors.text, marginTop: 2 }}
+                >
+                  {p.weightLbs.toFixed(2)} lb
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+                  {p.ageDays}d · {formatCatchShort(p.dateKey)}
+                </Text>
+              </View>
+            ))}
           </View>
-        ))}
-      </View>
+        </View>
+      ))}
+
+      {groups.length > 1 ? (
+        <View style={{ marginTop: 12, gap: 2 }}>
+          {catchDatesSorted.map((dateKey) => (
+            <Text key={dateKey} style={[styles.muted, { fontSize: 13 }]}>
+              Catch {formatCatchShort(dateKey)}
+            </Text>
+          ))}
+        </View>
+      ) : null}
 
       {!editing ? (
-        <Pressable onPress={startEdit} style={{ marginTop: 12 }}>
+        <Pressable onPress={startEdit} style={{ marginTop: groups.length > 1 ? 10 : 12 }}>
           <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 13 }}>
             Edit growth rate
           </Text>

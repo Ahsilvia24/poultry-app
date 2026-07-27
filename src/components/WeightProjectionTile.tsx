@@ -7,14 +7,8 @@ import { updateFlockWeightProjectionAction } from "@/app/actions/farms";
 import { DEFAULT_GROWTH_RATE_LBS_PER_DAY } from "@/lib/weight/projections";
 import { Button, Input, Label } from "@/components/ui";
 
-export function WeightProjectionTile({
-  flockId,
-  catchDateKey,
-  projections,
-  growthRateLbsPerDay,
-}: {
-  flockId: string;
-  catchDateKey: string | null;
+export type WeightProjectionGroup = {
+  catchDateKey: string;
   projections: Array<{
     offsetDays: number;
     dateKey: string;
@@ -22,12 +16,25 @@ export function WeightProjectionTile({
     ageDays: number;
     weightLbs: number;
   }>;
+};
+
+export function WeightProjectionTile({
+  flockId,
+  groups,
+  growthRateLbsPerDay,
+}: {
+  flockId: string;
+  groups: WeightProjectionGroup[];
   growthRateLbsPerDay: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+
+  if (groups.length === 0) return null;
+
+  const catchDatesSorted = groups.map((g) => g.catchDateKey);
 
   function onSave(formData: FormData) {
     setError(null);
@@ -47,12 +54,7 @@ export function WeightProjectionTile({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-base font-semibold text-stone-500">Weight projections</p>
-          <p className="mt-0.5 text-sm text-stone-400">
-            Age at kill × growth rate
-            {catchDateKey
-              ? ` · catch ${format(new Date(catchDateKey + "T12:00:00"), "EEE, MMM d")}`
-              : ""}
-          </p>
+          <p className="mt-0.5 text-sm text-stone-400">Age at kill × growth rate</p>
         </div>
         <p className="text-base text-stone-600">
           Using{" "}
@@ -62,23 +64,45 @@ export function WeightProjectionTile({
         </p>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 text-lg">
-        {projections.map((p) => (
-          <div key={p.offsetDays} className="rounded-lg bg-stone-50 px-3 py-2">
-            <p className="text-sm text-stone-500">{p.label}</p>
-            <p className="font-bold text-stone-900">{p.weightLbs.toFixed(2)} lb</p>
-            <p className="text-sm text-stone-400">
-              {p.ageDays}d · {format(new Date(p.dateKey + "T12:00:00"), "EEE, MMM d")}
+      {groups.map((group) => (
+        <div key={group.catchDateKey} className="mt-3">
+          {groups.length > 1 ? (
+            <p className="mb-2 text-sm font-semibold text-stone-700">
+              Catch {format(new Date(group.catchDateKey + "T12:00:00"), "EEE, MMM d")}
             </p>
+          ) : null}
+          <div className="grid grid-cols-3 gap-2 text-lg">
+            {group.projections.map((p) => (
+              <div
+                key={`${group.catchDateKey}-${p.offsetDays}`}
+                className="rounded-lg bg-stone-50 px-3 py-2"
+              >
+                <p className="text-sm text-stone-500">{p.label}</p>
+                <p className="font-bold text-stone-900">{p.weightLbs.toFixed(2)} lb</p>
+                <p className="text-sm text-stone-400">
+                  {p.ageDays}d · {format(new Date(p.dateKey + "T12:00:00"), "EEE, MMM d")}
+                </p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
+
+      {groups.length > 1 ? (
+        <div className="mt-3 space-y-0.5">
+          {catchDatesSorted.map((dateKey) => (
+            <p key={dateKey} className="text-sm text-stone-500">
+              Catch {format(new Date(dateKey + "T12:00:00"), "EEE, MMM d")}
+            </p>
+          ))}
+        </div>
+      ) : null}
 
       {!editing ? (
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="mt-3 text-sm font-semibold text-emerald-800 hover:underline"
+          className={`${groups.length > 1 ? "mt-2" : "mt-3"} text-sm font-semibold text-emerald-800 hover:underline`}
         >
           Edit growth rate
         </button>

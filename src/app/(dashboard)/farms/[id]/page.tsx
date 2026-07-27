@@ -24,9 +24,8 @@ import {
   formatNumber,
   formatPct,
 } from "@/lib/utils";
-import { createFlockAction, updateFlockScheduleAction } from "@/app/actions/farms";
+import { createFlockAction } from "@/app/actions/farms";
 import { CompleteFlockButton, ReactivateFlockButton } from "@/components/FarmOpsForms";
-import { FlockScheduleEditor } from "@/components/FlockScheduleEditor";
 import { HouseCard } from "@/components/HouseCard";
 import { AddFlockSection } from "@/components/AddFlockSection";
 import { AddHouseForm } from "@/components/AddHouseForm";
@@ -189,13 +188,49 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     return result;
   }
 
-  async function submitFlockSchedule(formData: FormData) {
-    "use server";
-    if (!activeFlock) return;
-    await updateFlockScheduleAction(activeFlock.id, formData);
-  }
-
   const subtitle = farm.growerName || "Farm details";
+
+  const catchDateKey = activeFlock
+    ? format(resolveCatchDate(activeFlock), "yyyy-MM-dd")
+    : null;
+  const growthRate = activeFlock
+    ? resolveGrowthRate(activeFlock.growthRateLbsPerDay)
+    : null;
+  const weightProjectionGroups =
+    activeFlock && catchDateKey && growthRate != null
+      ? [
+          {
+            catchDateKey,
+            projections: catchWeightProjections({
+              placementDate: activeFlock.placementDate,
+              catchDate: resolveCatchDate(activeFlock),
+              growthRateLbsPerDay: growthRate,
+            }).map((p) => ({
+              offsetDays: p.offsetDays,
+              dateKey: format(p.date, "yyyy-MM-dd"),
+              label:
+                p.offsetDays === 0
+                  ? "Catch day"
+                  : p.offsetDays === 1
+                    ? "Catch +1"
+                    : "Catch +2",
+              ageDays: p.ageDays,
+              weightLbs: p.weightLbs,
+            })),
+          },
+        ]
+      : [];
+
+  const placementCatchSummary = activeFlock
+    ? [
+        `Placed ${format(activeFlock.placementDate, "MMM d, yyyy")}`,
+        activeFlock.projectedCatchDate
+          ? `Catch ${format(activeFlock.projectedCatchDate, "MMM d, yyyy")}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
 
   return (
     <div>
@@ -237,33 +272,11 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         <div className="mt-6">
           <h2 className="text-xl font-bold">
             Active flock — {differenceInCalendarDays(today, activeFlock.placementDate)} days
+            {activeFlock.flockNumber ? ` · ${activeFlock.flockNumber}` : ""}
           </h2>
-          <FlockScheduleEditor
-            summary={[
-              `Placed ${format(activeFlock.placementDate, "MMM d, yyyy")}`,
-              activeFlock.projectedCatchDate
-                ? `Catch ${format(activeFlock.projectedCatchDate, "MMM d, yyyy")}`
-                : null,
-              activeFlock.targetMarketAge != null
-                ? `${activeFlock.targetMarketAge} days`
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-            initialPlacement={format(activeFlock.placementDate, "yyyy-MM-dd")}
-            initialMarketAge={
-              activeFlock.targetMarketAge ??
-              (activeFlock.projectedCatchDate
-                ? differenceInCalendarDays(activeFlock.projectedCatchDate, activeFlock.placementDate)
-                : 52)
-            }
-            initialCatchDate={
-              activeFlock.projectedCatchDate
-                ? format(activeFlock.projectedCatchDate, "yyyy-MM-dd")
-                : undefined
-            }
-            action={submitFlockSchedule}
-          />
+          {placementCatchSummary ? (
+            <p className="mt-1 text-sm text-stone-600">{placementCatchSummary}</p>
+          ) : null}
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Birds placed" value={formatNumber(flockPlaced)} />
             <StatTile
@@ -282,6 +295,13 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               )})`}
             />
           </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <WeightProjectionTile
+              flockId={activeFlock.id}
+              growthRateLbsPerDay={growthRate ?? resolveGrowthRate(null)}
+              groups={weightProjectionGroups}
+            />
+          </div>
           {flockWeeklyMortality.length > 0 ? (
             <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3">
               <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
@@ -290,29 +310,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               <WeeklyMortalityList weeks={flockWeeklyMortality} />
             </div>
           ) : null}
-          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <WeightProjectionTile
-              flockId={activeFlock.id}
-              catchDateKey={format(resolveCatchDate(activeFlock), "yyyy-MM-dd")}
-              growthRateLbsPerDay={resolveGrowthRate(activeFlock.growthRateLbsPerDay)}
-              projections={catchWeightProjections({
-                placementDate: activeFlock.placementDate,
-                catchDate: resolveCatchDate(activeFlock),
-                growthRateLbsPerDay: resolveGrowthRate(activeFlock.growthRateLbsPerDay),
-              }).map((p) => ({
-                offsetDays: p.offsetDays,
-                dateKey: format(p.date, "yyyy-MM-dd"),
-                label:
-                  p.offsetDays === 0
-                    ? "Catch day"
-                    : p.offsetDays === 1
-                      ? "Catch +1"
-                      : "Catch +2",
-                ageDays: p.ageDays,
-                weightLbs: p.weightLbs,
-              }))}
-            />
-          </div>
           <div className="mt-4">
             <FarmQuickLinks farmId={farm.id} />
           </div>

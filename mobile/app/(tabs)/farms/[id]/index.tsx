@@ -348,14 +348,47 @@ export default function FarmDetailScreen() {
   const growthRate = data.activeFlock
     ? resolveGrowthRate(data.activeFlock.growthRateLbsPerDay)
     : null;
-  const weightProjections =
-    data.activeFlock && catchLabel && growthRate != null
-      ? catchWeightProjections({
-          placementDate: data.activeFlock.placementDate,
-          catchDate: catchLabel,
+
+  /** Unique catch dates → Catch day / +1 / +2, soonest catch first. */
+  const weightProjectionGroups = (() => {
+    if (!data.activeFlock || growthRate == null) return [];
+    const flockPlacement = data.activeFlock.placementDate;
+    const byCatch = new Map<string, string>(); // catchDate -> placementDate
+    for (const h of data.houses) {
+      if (h.placedBirdCount == null) continue;
+      const catchDate = h.catchDate ?? catchLabel;
+      if (!catchDate) continue;
+      const placement = h.placementDate ?? flockPlacement;
+      const existing = byCatch.get(catchDate);
+      // Prefer earliest placement for a shared catch (older birds → higher weight).
+      if (!existing || placement < existing) byCatch.set(catchDate, placement);
+    }
+    if (byCatch.size === 0 && catchLabel) {
+      byCatch.set(catchLabel, flockPlacement);
+    }
+    return Array.from(byCatch.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([catchDate, placementDate]) => ({
+        catchDateKey: catchDate,
+        projections: catchWeightProjections({
+          placementDate,
+          catchDate,
           growthRateLbsPerDay: growthRate,
-        })
-      : [];
+        }),
+      }));
+  })();
+
+  const flockWeeklyMortality = (() => {
+    const totals = new Map<number, number>();
+    for (const h of data.houses) {
+      for (const w of h.weeklyMortality) {
+        totals.set(w.week, (totals.get(w.week) ?? 0) + w.total);
+      }
+    }
+    return Array.from(totals.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([week, total]) => ({ week, total }));
+  })();
 
   const placementCatchLines = (() => {
     const seen = new Set<string>();
@@ -373,7 +406,11 @@ export default function FarmDetailScreen() {
         catchDate: catchLabel,
       }));
     }
-    return lines;
+    return lines.sort((a, b) => {
+      const c = (a.catchDate ?? "").localeCompare(b.catchDate ?? "");
+      if (c !== 0) return c;
+      return a.placement.localeCompare(b.placement);
+    });
   })();
 
   function openHouseEditor(h: HouseRow) {
@@ -763,16 +800,38 @@ export default function FarmDetailScreen() {
                 </Text>
               ))}
             </View>
-            {growthRate != null && weightProjections.length > 0 ? (
+            {growthRate != null && weightProjectionGroups.length > 0 ? (
               <WeightProjectionTile
-                catchDateKey={catchLabel}
+                groups={weightProjectionGroups}
                 growthRateLbsPerDay={growthRate}
-                projections={weightProjections}
                 onSaveGrowthRate={(rate) => {
                   updateFlockGrowthRate(data.activeFlock!.id, rate);
                   load();
                 }}
               />
+            ) : null}
+            {flockWeeklyMortality.length > 0 ? (
+              <View
+                style={{
+                  marginTop: 14,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.border,
+                  paddingTop: 14,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: "700",
+                    color: colors.muted,
+                    textTransform: "uppercase",
+                    marginBottom: 8,
+                  }}
+                >
+                  Weekly mortality
+                </Text>
+                <WeeklyMortalityList weeks={flockWeeklyMortality} />
+              </View>
             ) : null}
           </Card>
         ) : (
