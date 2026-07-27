@@ -481,6 +481,27 @@ export default function FarmDetailScreen() {
     ]);
   }
 
+  function promptEditFlockNumber() {
+    if (activeFlocks.length === 0) return;
+    if (activeFlocks.length === 1) {
+      setFlockNumberError(null);
+      setFlockNumberDraft(activeFlocks[0]!.flockNumber);
+      setEditingFlockNumber(activeFlocks[0]!.id);
+      return;
+    }
+    Alert.alert("Edit flock ID", "Which flock ID do you want to edit?", [
+      ...activeFlocks.map((fl) => ({
+        text: `${fl.flockNumber} (${fl.flockAgeDays}d)`,
+        onPress: () => {
+          setFlockNumberError(null);
+          setFlockNumberDraft(fl.flockNumber);
+          setEditingFlockNumber(fl.id);
+        },
+      })),
+      { text: "Cancel", style: "cancel" as const },
+    ]);
+  }
+
   function openHouseEditor(h: HouseRow) {
     setHouseEditError(null);
     setHouseActiveField(null);
@@ -787,63 +808,14 @@ export default function FarmDetailScreen() {
                   {flockAgeLabel}
                 </Text>
                 {flockIdLabel ? (
-                  <Pressable
-                    onPress={() => {
-                      if (activeFlocks.length === 1) {
-                        setFlockNumberError(null);
-                        setFlockNumberDraft(activeFlocks[0]!.flockNumber);
-                        setEditingFlockNumber(activeFlocks[0]!.id);
-                        return;
-                      }
-                      Alert.alert(
-                        "Edit flock number",
-                        "Which flock number do you want to edit?",
-                        [
-                          ...activeFlocks.map((fl) => ({
-                            text: fl.flockNumber,
-                            onPress: () => {
-                              setFlockNumberError(null);
-                              setFlockNumberDraft(fl.flockNumber);
-                              setEditingFlockNumber(fl.id);
-                            },
-                          })),
-                          { text: "Cancel", style: "cancel" as const },
-                        ],
-                      );
-                    }}
-                    hitSlop={6}
-                  >
-                    <Text style={[styles.muted, { marginTop: 2, fontWeight: "400" }]}>
-                      {flockIdLabel}
-                    </Text>
-                  </Pressable>
+                  <Text style={[styles.muted, { marginTop: 2, fontWeight: "400" }]}>
+                    {flockIdLabel}
+                  </Text>
                 ) : null}
               </View>
               <Pressable
-                accessibilityLabel="Edit flock number"
-                onPress={() => {
-                  if (activeFlocks.length === 1) {
-                    setFlockNumberError(null);
-                    setFlockNumberDraft(activeFlocks[0]!.flockNumber);
-                    setEditingFlockNumber(activeFlocks[0]!.id);
-                    return;
-                  }
-                  Alert.alert(
-                    "Edit flock number",
-                    "Which flock number do you want to edit?",
-                    [
-                      ...activeFlocks.map((fl) => ({
-                        text: fl.flockNumber,
-                        onPress: () => {
-                          setFlockNumberError(null);
-                          setFlockNumberDraft(fl.flockNumber);
-                          setEditingFlockNumber(fl.id);
-                        },
-                      })),
-                      { text: "Cancel", style: "cancel" as const },
-                    ],
-                  );
-                }}
+                accessibilityLabel="Edit flock ID"
+                onPress={promptEditFlockNumber}
                 hitSlop={8}
                 style={{
                   width: 36,

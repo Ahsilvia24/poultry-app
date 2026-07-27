@@ -27,6 +27,7 @@ import {
 import { createFlockAction } from "@/app/actions/farms";
 import { ReactivateFlockButton } from "@/components/FarmOpsForms";
 import { CompleteFlockPicker } from "@/components/CompleteFlockPicker";
+import { EditFlockNumberButton } from "@/components/EditFlockNumberButton";
 import { HouseCard } from "@/components/HouseCard";
 import { AddFlockSection } from "@/components/AddFlockSection";
 import { AddHouseForm } from "@/components/AddHouseForm";
@@ -308,13 +309,24 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
       {activeFlocks.length > 0 ? (
         <div className="mt-6">
-          <h2 className="text-xl font-bold">
-            {activeFlocks.length > 1 ? "Active flocks" : "Active flock"}
-            {flockAgeLabel ? ` — ${flockAgeLabel}` : ""}
-          </h2>
-          {flockNumberLabel ? (
-            <p className="mt-1 text-sm font-normal text-stone-500">{flockNumberLabel}</p>
-          ) : null}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold">
+                {activeFlocks.length > 1 ? "Active flocks" : "Active flock"}
+                {flockAgeLabel ? ` — ${flockAgeLabel}` : ""}
+              </h2>
+              {flockNumberLabel ? (
+                <p className="mt-1 text-sm font-normal text-stone-500">{flockNumberLabel}</p>
+              ) : null}
+            </div>
+            <EditFlockNumberButton
+              flocks={activeFlocks.map((flock) => ({
+                id: flock.id,
+                flockNumber: flock.flockNumber,
+                ageDays: differenceInCalendarDays(today, flock.placementDate),
+              }))}
+            />
+          </div>
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Birds placed" value={formatNumber(flockPlaced)} />
             <StatTile
