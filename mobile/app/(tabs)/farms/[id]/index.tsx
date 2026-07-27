@@ -30,6 +30,7 @@ import {
   reactivateFlock,
   updateFarm,
   updateFlockGrowthRate,
+  updateFlockNumber,
   updateHouse,
 } from "../../../../src/repos/data";
 import { VISIT_TYPE_LABELS } from "../../../../src/lib/visits";
@@ -54,11 +55,19 @@ import {
   formatPct,
 } from "../../../../src/components/ui";
 import { WeightProjectionTile } from "../../../../src/components/WeightProjectionTile";
+import { DatePickerField } from "../../../../src/components/DatePickerField";
 import {
   NumberKeypad,
   appendKeypadDigit,
   backspaceKeypadValue,
 } from "../../../../src/components/NumberKeypad";
+
+/** "2026-07-25" → "07-25-2026" */
+function formatUsDate(dateKey: string) {
+  const [y, m, d] = dateKey.split("-");
+  if (!y || !m || !d) return dateKey;
+  return `${m}-${d}-${y}`;
+}
 
 function formatShortDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
@@ -125,6 +134,7 @@ type HouseEditDraft = {
   totalFanCFM: string;
   numberOfFans: string;
   placedBirdCount: string;
+  placementDate: string;
 };
 
 type HouseNumField =
@@ -201,6 +211,10 @@ export default function FarmDetailScreen() {
   const [editingFarm, setEditingFarm] = useState<FarmEditDraft | null>(null);
   const [farmEditError, setFarmEditError] = useState<string | null>(null);
   const [farmSaving, setFarmSaving] = useState(false);
+  const [editingFlockNumber, setEditingFlockNumber] = useState<string | null>(null);
+  const [flockNumberDraft, setFlockNumberDraft] = useState("");
+  const [flockNumberError, setFlockNumberError] = useState<string | null>(null);
+  const [flockNumberSaving, setFlockNumberSaving] = useState(false);
   const scrollRef = useRef<ScrollViewType>(null);
   const sectionY = useRef<Record<string, number>>({});
 
@@ -295,6 +309,20 @@ export default function FarmDetailScreen() {
 
   const { farm } = data;
   const flockAge = data.activeFlock?.flockAgeDays ?? null;
+  const flockAges =
+    data.activeFlock?.flockAgesDays?.length
+      ? data.activeFlock.flockAgesDays
+      : flockAge != null
+        ? [flockAge]
+        : [];
+  const flockAgeLabel =
+    flockAges.length > 0 ? flockAges.map((a) => `(${a}d)`).join(" ") : "—";
+  const flockPlacementDates =
+    data.activeFlock?.placementDates?.length
+      ? data.activeFlock.placementDates
+      : data.activeFlock?.placementDate
+        ? [data.activeFlock.placementDate]
+        : [];
   const birdsPlaced = data.houses.reduce((sum, h) => sum + (h.placedBirdCount ?? 0), 0);
   const cumMort = data.houses.reduce((sum, h) => sum + (h.cumulativeMortality ?? 0), 0);
   const phc = data.houses.reduce((sum, h) => sum + (h.projectedHeadCount ?? 0), 0);
@@ -327,6 +355,7 @@ export default function FarmDetailScreen() {
       totalFanCFM: h.totalFanCFM != null ? String(h.totalFanCFM) : "",
       numberOfFans: h.numberOfFans != null ? String(h.numberOfFans) : "",
       placedBirdCount: h.placedBirdCount != null ? String(h.placedBirdCount) : "",
+      placementDate: h.placementDate ?? data?.activeFlock?.placementDate ?? "",
     });
   }
 
@@ -463,7 +492,12 @@ export default function FarmDetailScreen() {
         squareFootage: sq,
         totalFanCFM: cfm,
         numberOfFans: fans,
-        ...(data?.activeFlock ? { placedBirdCount: placed } : null),
+        ...(data?.activeFlock
+          ? {
+              placedBirdCount: placed,
+              placementDate: editingHouse.placementDate.trim() || null,
+            }
+          : null),
       });
       closeHouseEditor();
       load();
@@ -628,10 +662,36 @@ export default function FarmDetailScreen() {
 
         {data.activeFlock ? (
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>
-              Active flock — {flockAge != null ? `${flockAge} days` : "—"}
-              {data.activeFlock.flockNumber ? ` · ${data.activeFlock.flockNumber}` : ""}
-            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <Text style={{ fontWeight: "800", fontSize: 16, flex: 1 }}>
+                Active flock — {flockAgeLabel}
+                {data.activeFlock.flockNumber ? ` · ${data.activeFlock.flockNumber}` : ""}
+              </Text>
+              <Pressable
+                accessibilityLabel="Edit flock number"
+                onPress={() => {
+                  setFlockNumberError(null);
+                  setFlockNumberDraft(data.activeFlock?.flockNumber ?? "");
+                  setEditingFlockNumber(data.activeFlock?.id ?? null);
+                }}
+                hitSlop={8}
+                style={{
+                  width: 36,
+                  height: 36,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="pencil-outline" size={20} color={colors.muted} />
+              </Pressable>
+            </View>
             <View style={[styles.row, { marginTop: 12 }]}>
               <Metric label="Birds placed" value={formatNumber(birdsPlaced)} />
               <Metric label="Proj. Head Count" value={formatNumber(phc || null)} />
@@ -654,10 +714,14 @@ export default function FarmDetailScreen() {
                 }
               />
             </View>
-            <Text style={[styles.muted, { marginTop: 4 }]}>
-              Placed {data.activeFlock.placementDate}
-              {catchLabel ? ` · Catch ${catchLabel}` : ""}
-            </Text>
+            <View style={{ marginTop: 4, gap: 2 }}>
+              {flockPlacementDates.map((placed) => (
+                <Text key={placed} style={styles.muted}>
+                  Placed {formatUsDate(placed)}
+                  {catchLabel ? ` · Catch ${formatUsDate(catchLabel)}` : ""}
+                </Text>
+              ))}
+            </View>
             {growthRate != null && weightProjections.length > 0 ? (
               <WeightProjectionTile
                 catchDateKey={catchLabel}
@@ -1239,13 +1303,26 @@ export default function FarmDetailScreen() {
                     fieldRef={bindHouseFieldRef("houseNumber")}
                   />
                   {data.activeFlock ? (
-                    <HouseNumFieldButton
-                      label="Birds placed"
-                      value={editingHouse.placedBirdCount}
-                      active={houseActiveField === "placedBirdCount"}
-                      onPress={() => focusHouseField("placedBirdCount")}
-                      fieldRef={bindHouseFieldRef("placedBirdCount")}
-                    />
+                    <>
+                      <HouseNumFieldButton
+                        label="Birds placed"
+                        value={editingHouse.placedBirdCount}
+                        active={houseActiveField === "placedBirdCount"}
+                        onPress={() => focusHouseField("placedBirdCount")}
+                        fieldRef={bindHouseFieldRef("placedBirdCount")}
+                      />
+                      <View style={{ marginBottom: 10 }}>
+                        <DatePickerField
+                          label="Placement date"
+                          value={editingHouse.placementDate}
+                          onChange={(date) =>
+                            setEditingHouse((prev) =>
+                              prev ? { ...prev, placementDate: date } : prev,
+                            )
+                          }
+                        />
+                      </View>
+                    </>
                   ) : null}
                   <HouseNumFieldButton
                     label="Square footage"
@@ -1296,6 +1373,84 @@ export default function FarmDetailScreen() {
             ) : null}
           </View>
         </View>
+      </Modal>
+
+      <Modal
+        visible={editingFlockNumber != null}
+        animationType="slide"
+        transparent
+        onRequestClose={() => {
+          if (!flockNumberSaving) setEditingFlockNumber(null);
+        }}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+          }}
+          onPress={() => {
+            if (!flockNumberSaving) setEditingFlockNumber(null);
+          }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              padding: 20,
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+              Edit flock ID
+            </Text>
+            {flockNumberError ? (
+              <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                {flockNumberError}
+              </Text>
+            ) : null}
+            <Text style={[styles.label, { marginTop: 14 }]}>Flock number</Text>
+            <TextInput
+              style={styles.input}
+              value={flockNumberDraft}
+              onChangeText={setFlockNumberDraft}
+              autoCapitalize="characters"
+              placeholder="e.g. 26-07"
+              placeholderTextColor={colors.muted}
+            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <PrimaryButton
+                label={flockNumberSaving ? "Saving…" : "Save"}
+                onPress={() => {
+                  if (!editingFlockNumber) return;
+                  setFlockNumberSaving(true);
+                  setFlockNumberError(null);
+                  try {
+                    updateFlockNumber(editingFlockNumber, flockNumberDraft);
+                    setEditingFlockNumber(null);
+                    load();
+                  } catch (e) {
+                    setFlockNumberError(
+                      e instanceof Error ? e.message : "Could not save flock number",
+                    );
+                  } finally {
+                    setFlockNumberSaving(false);
+                  }
+                }}
+                style={{ flex: 1 }}
+              />
+              <PrimaryButton
+                label="Cancel"
+                secondary
+                onPress={() => {
+                  if (!flockNumberSaving) setEditingFlockNumber(null);
+                }}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       <Modal

@@ -461,11 +461,23 @@ export function getFarmDetail(farmId: string) {
 
   const houses = housesRaw.map((h) => {
     const hf = flock
-      ? db.getFirstSync<{ id: string; placed_bird_count: number }>(
-          "SELECT id, placed_bird_count FROM house_flocks WHERE flock_id = ? AND house_id = ?",
+      ? db.getFirstSync<{
+          id: string;
+          placed_bird_count: number;
+          placement_date: string | null;
+        }>(
+          "SELECT id, placed_bird_count, placement_date FROM house_flocks WHERE flock_id = ? AND house_id = ?",
           [flock.id, h.id],
         )
       : null;
+
+    const housePlacementDate = hf
+      ? hf.placement_date?.trim() || flock?.placement_date || null
+      : null;
+    const houseAgeDays =
+      housePlacementDate != null
+        ? birdAgeFromPlacement(housePlacementDate, today)
+        : null;
 
     let summary = {
       today: 0,
@@ -496,11 +508,13 @@ export function getFarmDetail(farmId: string) {
         ? Math.max(0, Math.round(summary.cumulative + avgDaily * daysUntilCatch))
         : null;
 
+    const houseWeek =
+      houseAgeDays != null ? flockWeekFromAge(houseAgeDays) : flockWeek;
     const minVent =
-      hf && flockWeek != null && h.total_fan_cfm != null && h.total_fan_cfm > 0
+      hf && houseWeek != null && h.total_fan_cfm != null && h.total_fan_cfm > 0
         ? recommendedMinVent({
             birdsPlaced: hf.placed_bird_count,
-            flockWeek,
+            flockWeek: houseWeek,
             totalFanCFM: h.total_fan_cfm,
           })
         : null;
@@ -516,6 +530,8 @@ export function getFarmDetail(farmId: string) {
           ? h.total_fan_cfm / h.square_footage
           : null,
       placedBirdCount: hf?.placed_bird_count ?? null,
+      placementDate: housePlacementDate,
+      ageDays: houseAgeDays,
       todayMortality: summary.today,
       sevenDayMortality: summary.sevenDay,
       cumulativeMortality: summary.cumulative,
@@ -530,6 +546,24 @@ export function getFarmDetail(farmId: string) {
       status: summary.status,
     };
   });
+
+  const placementDates = Array.from(
+    new Set(
+      houses
+        .filter((h) => h.placedBirdCount != null)
+        .map((h) => h.placementDate)
+        .filter((d): d is string => Boolean(d)),
+    ),
+  ).sort();
+
+  const flockAgesDays = Array.from(
+    new Set(
+      houses
+        .filter((h) => h.placedBirdCount != null)
+        .map((h) => h.ageDays)
+        .filter((a): a is number => a != null),
+    ),
+  ).sort((a, b) => a - b);
 
   const latestCompleted =
     flock == null
@@ -565,6 +599,8 @@ export function getFarmDetail(farmId: string) {
           resolvedCatchDate,
           growthRateLbsPerDay: flock.growth_rate_lbs_per_day,
           flockAgeDays,
+          flockAgesDays,
+          placementDates,
           flockWeek,
         }
       : null,
@@ -1505,9 +1541,15 @@ export function createFlock(input: {
   );
   for (const hp of input.housePlacements) {
     db.runSync(
-      `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count)
-       VALUES (?, ?, ?, ?)`,
-      [newId("hf"), id, hp.houseId, Math.floor(hp.placedBirdCount)],
+      `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        newId("hf"),
+        id,
+        hp.houseId,
+        Math.floor(hp.placedBirdCount),
+        input.placementDate,
+      ],
     );
   }
   return { id, projectedCatchDate };
@@ -1560,6 +1602,19 @@ export function reactivateFlock(flockId: string) {
     `UPDATE flocks SET flock_status = 'ACTIVE', actual_catch_date = NULL WHERE id = ?`,
     [flockId],
   );
+  return { success: true as const, farmId: flock.farm_id };
+}
+
+export function updateFlockNumber(flockId: string, flockNumber: string) {
+  const db = getDb();
+  const next = flockNumber.trim();
+  if (!next) throw new Error("Flock number is required");
+  const flock = db.getFirstSync<{ id: string; farm_id: string }>(
+    "SELECT id, farm_id FROM flocks WHERE id = ?",
+    [flockId],
+  );
+  if (!flock) throw new Error("Flock not found");
+  db.runSync(`UPDATE flocks SET flock_number = ? WHERE id = ?`, [next, flockId]);
   return { success: true as const, farmId: flock.farm_id };
 }
 
@@ -1683,6 +1738,8 @@ export function updateHouse(
     numberOfFans: number | null;
     /** When set, updates (or creates) placed birds on the active flock house_flock. */
     placedBirdCount?: number | null;
+    /** Per-house placement date (yyyy-MM-dd) for staggered placements. */
+    placementDate?: string | null;
   },
 ) {
   const db = getDb();
@@ -1722,34 +1779,60 @@ export function updateHouse(
     ],
   );
 
-  if (input.placedBirdCount !== undefined) {
-    const placed =
-      input.placedBirdCount == null ? null : Math.floor(Number(input.placedBirdCount));
-    if (placed != null && (!Number.isFinite(placed) || placed < 1)) {
-      throw new Error("Birds placed must be at least 1");
-    }
-    if (placed != null) {
-      const flock = db.getFirstSync<{ id: string }>(
-        "SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
-        [farmId],
-      );
-      if (!flock) {
-        throw new Error("Add an active flock before setting birds placed");
+  const touchesFlockPlacement =
+    input.placedBirdCount !== undefined || input.placementDate !== undefined;
+  if (touchesFlockPlacement) {
+    const flock = db.getFirstSync<{ id: string; placement_date: string }>(
+      "SELECT id, placement_date FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
+      [farmId],
+    );
+    if (!flock) {
+      if (input.placedBirdCount != null || input.placementDate) {
+        throw new Error("Add an active flock before setting birds placed / placement date");
       }
-      const hf = db.getFirstSync<{ id: string }>(
-        "SELECT id FROM house_flocks WHERE flock_id = ? AND house_id = ?",
-        [flock.id, houseId],
-      );
+    } else {
+      const placed =
+        input.placedBirdCount === undefined
+          ? undefined
+          : input.placedBirdCount == null
+            ? null
+            : Math.floor(Number(input.placedBirdCount));
+      if (placed != null && (!Number.isFinite(placed) || placed < 1)) {
+        throw new Error("Birds placed must be at least 1");
+      }
+      const placementDate =
+        input.placementDate === undefined
+          ? undefined
+          : input.placementDate?.trim() || flock.placement_date;
+
+      const hf = db.getFirstSync<{
+        id: string;
+        placed_bird_count: number;
+        placement_date: string | null;
+      }>("SELECT id, placed_bird_count, placement_date FROM house_flocks WHERE flock_id = ? AND house_id = ?", [
+        flock.id,
+        houseId,
+      ]);
+
       if (hf) {
-        db.runSync(`UPDATE house_flocks SET placed_bird_count = ? WHERE id = ?`, [
-          placed,
-          hf.id,
-        ]);
-      } else {
+        const nextPlaced = placed !== undefined && placed != null ? placed : hf.placed_bird_count;
+        const nextPlacement =
+          placementDate !== undefined ? placementDate : (hf.placement_date ?? flock.placement_date);
         db.runSync(
-          `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count)
-           VALUES (?, ?, ?, ?)`,
-          [newId("hf"), flock.id, houseId, placed],
+          `UPDATE house_flocks SET placed_bird_count = ?, placement_date = ? WHERE id = ?`,
+          [nextPlaced, nextPlacement, hf.id],
+        );
+      } else if (placed != null) {
+        db.runSync(
+          `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date)
+           VALUES (?, ?, ?, ?, ?)`,
+          [
+            newId("hf"),
+            flock.id,
+            houseId,
+            placed,
+            placementDate ?? flock.placement_date,
+          ],
         );
       }
     }
