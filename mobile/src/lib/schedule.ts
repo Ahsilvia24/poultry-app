@@ -70,7 +70,7 @@ export function buildFlockVisitSchedule(
 
   const wp = weightProjectDate(catchDate);
   if (wp) {
-    push(wp, "Weight Projection", daysBetween(placementDate, wp), "WEIGHT_PROJECT");
+    push(wp, "Weight Proj.", daysBetween(placementDate, wp), "WEIGHT_PROJECT");
   }
 
   const lfo = lfoDate(catchDate);

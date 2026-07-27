@@ -253,7 +253,8 @@ export function getDashboard() {
   }>("SELECT farm_id, scheduled_date, label, completed_at FROM follow_up_completions");
   const completedByFarm = new Map<string, Map<string, CompletionInfo>>();
   for (const c of completionRows) {
-    const key = completionKey(c.scheduled_date, c.label);
+    const label = c.label === "Weight Projection" ? "Weight Proj." : c.label;
+    const key = completionKey(c.scheduled_date, label);
     let map = completedByFarm.get(c.farm_id);
     if (!map) {
       map = new Map();
@@ -2136,13 +2137,30 @@ export function toggleFollowUpCompletion(input: {
   completed: boolean;
 }) {
   const db = getDb();
+  const labels =
+    input.label === "Weight Proj." || input.label === "Weight Projection"
+      ? ["Weight Proj.", "Weight Projection"]
+      : [input.label];
+
   if (!input.completed) {
+    for (const label of labels) {
+      db.runSync(
+        `DELETE FROM follow_up_completions
+         WHERE farm_id = ? AND scheduled_date = ? AND label = ?`,
+        [input.farmId, input.scheduledDate, label],
+      );
+    }
+    return { success: true as const };
+  }
+
+  // Prefer the short dashboard label; drop any legacy Weight Projection row.
+  for (const label of labels) {
+    if (label === input.label) continue;
     db.runSync(
       `DELETE FROM follow_up_completions
        WHERE farm_id = ? AND scheduled_date = ? AND label = ?`,
-      [input.farmId, input.scheduledDate, input.label],
+      [input.farmId, input.scheduledDate, label],
     );
-    return { success: true as const };
   }
 
   const id = newId("fuc");

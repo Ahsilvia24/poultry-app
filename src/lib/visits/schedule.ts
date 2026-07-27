@@ -133,7 +133,7 @@ export function buildFlockVisitSchedule(
 
   const wp = weightProjectDate(catchEnd);
   if (wp) {
-    push(wp, "Weight Projection", differenceInCalendarDays(wp, placement), "WEIGHT_PROJECT");
+    push(wp, "Weight Proj.", differenceInCalendarDays(wp, placement), "WEIGHT_PROJECT");
   }
 
   const lfo = lfoDate(catchEnd);
@@ -237,7 +237,7 @@ function todayScheduleRank(v: Pick<ScheduledVisit, "kind" | "birdAgeDays" | "lab
 export function todayScheduleRankFromLabel(label: string): number {
   if (label === "Placement") return 0;
   if (label === "LFO") return 1;
-  if (label === "Weight Projection") return 2;
+  if (label === "Weight Proj." || label === "Weight Projection") return 2;
   if (label === "Prebrood") return 3;
   const day = /^(\d+) Day$/.exec(label);
   if (day) return 100 + Number(day[1]);

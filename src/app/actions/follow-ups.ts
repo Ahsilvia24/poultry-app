@@ -27,8 +27,20 @@ export async function toggleFollowUpCompletionAction(raw: unknown) {
   if (!farm) return { error: "Farm not found or access denied" };
 
   const scheduledDate = parseDateKey(parsed.data.scheduledDate);
+  const labels =
+    parsed.data.label === "Weight Proj." || parsed.data.label === "Weight Projection"
+      ? ["Weight Proj.", "Weight Projection"]
+      : [parsed.data.label];
 
   if (parsed.data.completed) {
+    // Prefer the short dashboard label; drop any legacy Weight Projection row.
+    await prisma.followUpCompletion.deleteMany({
+      where: {
+        farmId: parsed.data.farmId,
+        scheduledDate,
+        label: { in: labels.filter((l) => l !== parsed.data.label) },
+      },
+    });
     await prisma.followUpCompletion.upsert({
       where: {
         farmId_scheduledDate_label: {
@@ -55,7 +67,7 @@ export async function toggleFollowUpCompletionAction(raw: unknown) {
       where: {
         farmId: parsed.data.farmId,
         scheduledDate,
-        label: parsed.data.label,
+        label: { in: labels },
       },
     });
   }

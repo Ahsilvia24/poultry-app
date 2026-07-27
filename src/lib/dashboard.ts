@@ -97,7 +97,8 @@ export async function getDashboardData(userId: string) {
   });
   const completedByFarm = new Map<string, Map<string, { completedAt: Date }>>();
   for (const c of completions) {
-    const key = completionKey(dateKeyFromDb(c.scheduledDate), c.label);
+    const label = c.label === "Weight Projection" ? "Weight Proj." : c.label;
+    const key = completionKey(dateKeyFromDb(c.scheduledDate), label);
     let map = completedByFarm.get(c.farmId);
     if (!map) {
       map = new Map();
