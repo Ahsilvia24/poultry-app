@@ -67,6 +67,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
   async function remove() {
     "use server";
     await deleteLastFeedOrderAction(id);
+    redirect("/lfo");
   }
 
   return (

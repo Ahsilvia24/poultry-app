@@ -886,9 +886,11 @@ export function createLfo(farmId: string, orderDate: string, notes?: string) {
 
 export function getLfo(id: string) {
   const db = getDb();
+  const today = todayKey();
   const lfo = db.getFirstSync<{
     id: string;
     farm_id: string;
+    flock_id: string | null;
     order_date: string;
     notes: string | null;
   }>("SELECT * FROM last_feed_orders WHERE id = ?", [id]);
@@ -896,7 +898,9 @@ export function getLfo(id: string) {
   const farm = db.getFirstSync<{ farm_name: string }>(
     "SELECT farm_name FROM farms WHERE id = ?",
     [lfo.farm_id],
-  )!;
+  );
+  if (!farm) throw new Error("Farm not found for LFO");
+
   const inventory = db.getAllSync<{
     id: string;
     house_id: string;
@@ -911,21 +915,47 @@ export function getLfo(id: string) {
      ORDER BY h.house_number ASC`,
     [id],
   );
+
+  const consumptionRate = inventory[0]?.consumption_rate ?? 0.45;
+
   return {
     id: lfo.id,
     farmId: lfo.farm_id,
     farmName: farm.farm_name,
     orderDate: lfo.order_date,
     notes: lfo.notes,
-    houses: inventory.map((i) => ({
-      id: i.id,
-      houseId: i.house_id,
-      houseNumber: i.house_number,
-      binAPounds: i.bin_a_pounds,
-      binBPounds: i.bin_b_pounds,
-      feedUpAt: i.feed_up_at,
-      consumptionRate: i.consumption_rate,
-    })),
+    consumptionRate,
+    houses: inventory.map((i) => {
+      let headCount = 0;
+      const hf = db.getFirstSync<{ id: string; placed_bird_count: number }>(
+        lfo.flock_id
+          ? `SELECT id, placed_bird_count FROM house_flocks
+             WHERE flock_id = ? AND house_id = ? LIMIT 1`
+          : `SELECT hf.id, hf.placed_bird_count FROM house_flocks hf
+             JOIN flocks f ON f.id = hf.flock_id
+             WHERE f.farm_id = ? AND f.flock_status = 'ACTIVE' AND hf.house_id = ?
+             LIMIT 1`,
+        lfo.flock_id ? [lfo.flock_id, i.house_id] : [lfo.farm_id, i.house_id],
+      );
+      if (hf) {
+        const records = db.getAllSync<MortRow>(
+          `SELECT mortality_date, bird_age_in_days, daily_mortality_count, cull_count, total_daily_loss
+           FROM daily_mortality WHERE house_flock_id = ? ORDER BY mortality_date ASC`,
+          [hf.id],
+        );
+        headCount = summarizeHouse(hf.placed_bird_count, records, today).remaining;
+      }
+      return {
+        id: i.id,
+        houseId: i.house_id,
+        houseNumber: i.house_number,
+        binAPounds: i.bin_a_pounds,
+        binBPounds: i.bin_b_pounds,
+        feedUpAt: i.feed_up_at,
+        consumptionRate: i.consumption_rate,
+        headCount,
+      };
+    }),
   };
 }
 
@@ -944,6 +974,48 @@ export function updateLfoInventory(
       `UPDATE lfo_house_inventory SET bin_a_pounds = ?, bin_b_pounds = ?, feed_up_at = ?, consumption_rate = ?
        WHERE id = ?`,
       [r.binAPounds, r.binBPounds, r.feedUpAt, r.consumptionRate, r.id],
+    );
+  }
+  return { success: true };
+}
+
+/** Persist LFO header + all house inventory rows. */
+export function updateLfo(input: {
+  id: string;
+  orderDate: string;
+  notes: string | null;
+  consumptionRate: number;
+  houses: Array<{
+    id: string;
+    binAPounds: number;
+    binBPounds: number;
+    feedUpAt: string | null;
+  }>;
+}) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM last_feed_orders WHERE id = ?",
+    [input.id],
+  );
+  if (!existing) throw new Error("LFO not found");
+
+  db.runSync(`UPDATE last_feed_orders SET order_date = ?, notes = ? WHERE id = ?`, [
+    input.orderDate,
+    input.notes,
+    input.id,
+  ]);
+
+  const rate =
+    Number.isFinite(input.consumptionRate) && input.consumptionRate > 0
+      ? input.consumptionRate
+      : 0.45;
+
+  for (const h of input.houses) {
+    db.runSync(
+      `UPDATE lfo_house_inventory
+       SET bin_a_pounds = ?, bin_b_pounds = ?, feed_up_at = ?, consumption_rate = ?
+       WHERE id = ? AND lfo_id = ?`,
+      [h.binAPounds, h.binBPounds, h.feedUpAt, rate, h.id, input.id],
     );
   }
   return { success: true };

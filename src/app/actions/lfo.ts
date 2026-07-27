@@ -180,5 +180,6 @@ export async function deleteLastFeedOrderAction(lfoId: string) {
   await prisma.lastFeedOrder.delete({ where: { id: lfoId } });
 
   revalidatePath("/lfo");
-  redirect("/lfo");
+  revalidatePath(`/lfo/${lfoId}`);
+  return { ok: true as const };
 }

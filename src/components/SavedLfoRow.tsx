@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { deleteLastFeedOrderAction } from "@/app/actions/lfo";
 
@@ -51,12 +52,14 @@ export function SavedLfoRow({
   farmName: string;
   dateLabel: string;
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   function onDelete() {
     if (!window.confirm(`Delete LFO for ${farmName}?`)) return;
     startTransition(async () => {
       await deleteLastFeedOrderAction(id);
+      router.refresh();
     });
   }
 
