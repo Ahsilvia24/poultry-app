@@ -18,6 +18,7 @@ import {
   deleteHouse,
   deleteVisit,
   getFarmDetail,
+  updateFarm,
   updateHouse,
 } from "../../../../src/repos/data";
 import { VISIT_TYPE_LABELS } from "../../../../src/lib/visits";
@@ -49,9 +50,20 @@ type HouseEditDraft = {
   numberOfFans: string;
 };
 
+type FarmEditDraft = {
+  farmName: string;
+  growerName: string;
+  phoneNumber: string;
+  notes: string;
+};
+
 export default function FarmDetailScreen() {
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    edit?: string | string[];
+  }>();
   const farmId = paramId(params.id);
+  const openEdit = paramId(params.edit) === "1";
   const router = useRouter();
   const [data, setData] = useState<FarmDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,12 +71,16 @@ export default function FarmDetailScreen() {
   const [editingHouse, setEditingHouse] = useState<HouseEditDraft | null>(null);
   const [houseEditError, setHouseEditError] = useState<string | null>(null);
   const [houseSaving, setHouseSaving] = useState(false);
+  const [editingFarm, setEditingFarm] = useState<FarmEditDraft | null>(null);
+  const [farmEditError, setFarmEditError] = useState<string | null>(null);
+  const [farmSaving, setFarmSaving] = useState(false);
 
   // Drop previous farm immediately when the route id changes
   useEffect(() => {
     setData(null);
     setError(null);
     setLoading(true);
+    setEditingFarm(null);
   }, [farmId]);
 
   const load = useCallback(() => {
@@ -91,6 +107,22 @@ export default function FarmDetailScreen() {
       load();
     }, [load]),
   );
+
+  function openFarmEditor(farm: FarmDetail["farm"]) {
+    setFarmEditError(null);
+    setEditingFarm({
+      farmName: farm.farmName,
+      growerName: farm.growerName ?? "",
+      phoneNumber: farm.phoneNumber ?? "",
+      notes: farm.notes ?? "",
+    });
+  }
+
+  // Open settings editor when navigated with ?edit=1 (from farms list gear)
+  useEffect(() => {
+    if (!openEdit || !data || data.farm.id !== farmId || editingFarm) return;
+    openFarmEditor(data.farm);
+  }, [openEdit, data, farmId, editingFarm]);
 
   // Never render a previous farm under a new id
   const ready = data != null && data.farm.id === farmId;
@@ -211,6 +243,38 @@ export default function FarmDetailScreen() {
     }
   }
 
+  function closeFarmEditor() {
+    if (farmSaving) return;
+    setEditingFarm(null);
+    setFarmEditError(null);
+    if (openEdit) {
+      router.replace({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } });
+    }
+  }
+
+  function saveFarmEdit() {
+    if (!editingFarm) return;
+    setFarmSaving(true);
+    setFarmEditError(null);
+    try {
+      updateFarm(farm.id, {
+        farmName: editingFarm.farmName,
+        growerName: editingFarm.growerName,
+        phoneNumber: editingFarm.phoneNumber,
+        notes: editingFarm.notes,
+      });
+      setEditingFarm(null);
+      if (openEdit) {
+        router.replace({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } });
+      }
+      load();
+    } catch (e) {
+      setFarmEditError(e instanceof Error ? e.message : "Could not save farm");
+    } finally {
+      setFarmSaving(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <ScrollView
@@ -249,6 +313,20 @@ export default function FarmDetailScreen() {
                 </Text>
               </Pressable>
             ) : null}
+            <Pressable
+              accessibilityLabel="Edit farm info"
+              onPress={() => openFarmEditor(farm)}
+              hitSlop={8}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="settings-outline" size={20} color={colors.muted} />
+            </Pressable>
           </View>
           <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
             <PrimaryButton
@@ -585,6 +663,97 @@ export default function FarmDetailScreen() {
                       onPress={() => {
                         if (!houseSaving) setEditingHouse(null);
                       }}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                </View>
+              ) : null}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={editingFarm != null}
+        animationType="slide"
+        transparent
+        onRequestClose={closeFarmEditor}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+          }}
+          onPress={closeFarmEditor}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              padding: 20,
+              maxHeight: "85%",
+            }}
+          >
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                Edit farm info
+              </Text>
+              {farmEditError ? (
+                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                  {farmEditError}
+                </Text>
+              ) : null}
+              {editingFarm ? (
+                <View style={{ marginTop: 14, gap: 4 }}>
+                  <Text style={styles.label}>Farm name *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editingFarm.farmName}
+                    onChangeText={(v) =>
+                      setEditingFarm((prev) => (prev ? { ...prev, farmName: v } : prev))
+                    }
+                    autoCapitalize="words"
+                  />
+                  <Text style={[styles.label, { marginTop: 8 }]}>Grower name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editingFarm.growerName}
+                    onChangeText={(v) =>
+                      setEditingFarm((prev) => (prev ? { ...prev, growerName: v } : prev))
+                    }
+                    autoCapitalize="words"
+                  />
+                  <Text style={[styles.label, { marginTop: 8 }]}>Phone</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editingFarm.phoneNumber}
+                    onChangeText={(v) =>
+                      setEditingFarm((prev) => (prev ? { ...prev, phoneNumber: v } : prev))
+                    }
+                    keyboardType="phone-pad"
+                  />
+                  <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
+                  <TextInput
+                    style={[styles.input, { minHeight: 72, textAlignVertical: "top" }]}
+                    value={editingFarm.notes}
+                    onChangeText={(v) =>
+                      setEditingFarm((prev) => (prev ? { ...prev, notes: v } : prev))
+                    }
+                    multiline
+                  />
+                  <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                    <PrimaryButton
+                      label={farmSaving ? "Saving…" : "Save farm changes"}
+                      onPress={saveFarmEdit}
+                      style={{ flex: 1 }}
+                    />
+                    <PrimaryButton
+                      label="Cancel"
+                      secondary
+                      onPress={closeFarmEditor}
                       style={{ flex: 1 }}
                     />
                   </View>

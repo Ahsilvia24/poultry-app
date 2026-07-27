@@ -1118,6 +1118,37 @@ export function createFarm(input: {
   return { id };
 }
 
+export function updateFarm(
+  farmId: string,
+  input: {
+    farmName: string;
+    growerName?: string;
+    phoneNumber?: string | null;
+    notes?: string | null;
+  },
+) {
+  const db = getDb();
+  const farm = db.getFirstSync<{ id: string }>("SELECT id FROM farms WHERE id = ?", [farmId]);
+  if (!farm) throw new Error("Farm not found");
+
+  const farmName = input.farmName.trim();
+  if (!farmName) throw new Error("Farm name is required");
+
+  db.runSync(
+    `UPDATE farms
+     SET farm_name = ?, grower_name = ?, phone_number = ?, notes = ?
+     WHERE id = ?`,
+    [
+      farmName,
+      (input.growerName ?? "").trim(),
+      input.phoneNumber?.trim() || null,
+      input.notes?.trim() || null,
+      farmId,
+    ],
+  );
+  return { success: true as const };
+}
+
 /** Soft-delete: hide from active lists (matches web deleteFarmAction). */
 export function deleteFarm(farmId: string) {
   const db = getDb();

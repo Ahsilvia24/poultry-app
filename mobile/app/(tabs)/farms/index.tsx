@@ -144,9 +144,12 @@ export default function FarmsScreen() {
                   {farm.isActive ? "Active" : "Inactive"}
                 </Text>
                 <Pressable
-                  accessibilityLabel={`Edit ${farm.farmName}`}
+                  accessibilityLabel={`Edit ${farm.farmName} settings`}
                   onPress={() =>
-                    router.push({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } })
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]",
+                      params: { id: farm.id, edit: "1" },
+                    })
                   }
                   hitSlop={8}
                   style={{
@@ -157,7 +160,7 @@ export default function FarmsScreen() {
                     justifyContent: "center",
                   }}
                 >
-                  <Ionicons name="pencil-outline" size={20} color={colors.muted} />
+                  <Ionicons name="settings-outline" size={20} color={colors.muted} />
                 </Pressable>
                 <Pressable
                   accessibilityLabel={`Delete ${farm.farmName}`}
