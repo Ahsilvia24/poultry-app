@@ -1681,6 +1681,8 @@ export function updateHouse(
     squareFootage: number;
     totalFanCFM: number | null;
     numberOfFans: number | null;
+    /** When set, updates (or creates) placed birds on the active flock house_flock. */
+    placedBirdCount?: number | null;
   },
 ) {
   const db = getDb();
@@ -1719,6 +1721,40 @@ export function updateHouse(
       farmId,
     ],
   );
+
+  if (input.placedBirdCount !== undefined) {
+    const placed =
+      input.placedBirdCount == null ? null : Math.floor(Number(input.placedBirdCount));
+    if (placed != null && (!Number.isFinite(placed) || placed < 1)) {
+      throw new Error("Birds placed must be at least 1");
+    }
+    if (placed != null) {
+      const flock = db.getFirstSync<{ id: string }>(
+        "SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
+        [farmId],
+      );
+      if (!flock) {
+        throw new Error("Add an active flock before setting birds placed");
+      }
+      const hf = db.getFirstSync<{ id: string }>(
+        "SELECT id FROM house_flocks WHERE flock_id = ? AND house_id = ?",
+        [flock.id, houseId],
+      );
+      if (hf) {
+        db.runSync(`UPDATE house_flocks SET placed_bird_count = ? WHERE id = ?`, [
+          placed,
+          hf.id,
+        ]);
+      } else {
+        db.runSync(
+          `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count)
+           VALUES (?, ?, ?, ?)`,
+          [newId("hf"), flock.id, houseId, placed],
+        );
+      }
+    }
+  }
+
   return { success: true as const };
 }
 

@@ -11,7 +11,10 @@ import {
   TextInput,
   View,
   type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type ScrollView as ScrollViewType,
+  type View as ViewType,
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -38,6 +41,7 @@ import {
   catchWeightProjections,
   resolveGrowthRate,
 } from "../../../../src/lib/weight/projections";
+import { scrollFieldAboveKeypad } from "../../../../src/lib/scrollField";
 import { colors, styles } from "../../../../src/theme";
 import {
   Card,
@@ -50,6 +54,11 @@ import {
   formatPct,
 } from "../../../../src/components/ui";
 import { WeightProjectionTile } from "../../../../src/components/WeightProjectionTile";
+import {
+  NumberKeypad,
+  appendKeypadDigit,
+  backspaceKeypadValue,
+} from "../../../../src/components/NumberKeypad";
 
 function formatShortDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
@@ -115,7 +124,52 @@ type HouseEditDraft = {
   squareFootage: string;
   totalFanCFM: string;
   numberOfFans: string;
+  placedBirdCount: string;
 };
+
+type HouseNumField =
+  | "houseNumber"
+  | "squareFootage"
+  | "totalFanCFM"
+  | "numberOfFans"
+  | "placedBirdCount";
+
+function HouseNumFieldButton({
+  label,
+  value,
+  active,
+  onPress,
+  fieldRef,
+}: {
+  label: string;
+  value: string;
+  active: boolean;
+  onPress: () => void;
+  fieldRef?: (node: ViewType | null) => void;
+}) {
+  return (
+    <View ref={fieldRef} collapsable={false} style={{ marginBottom: 10 }}>
+      <Text style={styles.label}>{label}</Text>
+      <Pressable
+        onPress={onPress}
+        style={[
+          styles.input,
+          active ? { borderColor: colors.accentDark, borderWidth: 2 } : null,
+        ]}
+      >
+        <Text
+          style={{
+            fontSize: 18,
+            fontWeight: "700",
+            color: value ? colors.text : colors.muted,
+          }}
+        >
+          {value || "0"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
 
 type FarmEditDraft = {
   farmName: string;
@@ -138,6 +192,11 @@ export default function FarmDetailScreen() {
   const [editingHouse, setEditingHouse] = useState<HouseEditDraft | null>(null);
   const [houseEditError, setHouseEditError] = useState<string | null>(null);
   const [houseSaving, setHouseSaving] = useState(false);
+  const [houseActiveField, setHouseActiveField] = useState<HouseNumField | null>(null);
+  const [houseReplaceOnType, setHouseReplaceOnType] = useState(false);
+  const houseScrollRef = useRef<ScrollViewType>(null);
+  const houseScrollYRef = useRef(0);
+  const houseFieldRefs = useRef(new Map<HouseNumField, ViewType>());
   const [expandedHouses, setExpandedHouses] = useState<Set<string>>(new Set());
   const [editingFarm, setEditingFarm] = useState<FarmEditDraft | null>(null);
   const [farmEditError, setFarmEditError] = useState<string | null>(null);
@@ -259,14 +318,81 @@ export default function FarmDetailScreen() {
 
   function openHouseEditor(h: HouseRow) {
     setHouseEditError(null);
+    setHouseActiveField(null);
+    setHouseReplaceOnType(false);
     setEditingHouse({
       id: h.id,
       houseNumber: String(h.houseNumber),
       squareFootage: String(h.squareFootage ?? ""),
       totalFanCFM: h.totalFanCFM != null ? String(h.totalFanCFM) : "",
       numberOfFans: h.numberOfFans != null ? String(h.numberOfFans) : "",
+      placedBirdCount: h.placedBirdCount != null ? String(h.placedBirdCount) : "",
     });
   }
+
+  function closeHouseEditor() {
+    if (houseSaving) return;
+    setEditingHouse(null);
+    setHouseEditError(null);
+    setHouseActiveField(null);
+    setHouseReplaceOnType(false);
+  }
+
+  function focusHouseField(field: HouseNumField) {
+    setHouseActiveField(field);
+    setHouseReplaceOnType(true);
+    setTimeout(() => {
+      const node = houseFieldRefs.current.get(field) ?? null;
+      scrollFieldAboveKeypad(houseScrollRef, { current: node }, houseScrollYRef);
+    }, 50);
+  }
+
+  function bindHouseFieldRef(field: HouseNumField) {
+    return (node: ViewType | null) => {
+      if (node) houseFieldRefs.current.set(field, node);
+      else houseFieldRefs.current.delete(field);
+    };
+  }
+
+  function getHouseFieldValue(field: HouseNumField) {
+    if (!editingHouse) return "";
+    return editingHouse[field];
+  }
+
+  function setHouseFieldValue(field: HouseNumField, value: string) {
+    setEditingHouse((prev) => (prev ? { ...prev, [field]: value } : prev));
+  }
+
+  function onHouseDigit(d: string) {
+    if (!houseActiveField) return;
+    const allowDecimal =
+      houseActiveField === "squareFootage" || houseActiveField === "totalFanCFM";
+    const current = getHouseFieldValue(houseActiveField);
+    const base = houseReplaceOnType && d !== "." ? "" : current;
+    setHouseReplaceOnType(false);
+    setHouseFieldValue(houseActiveField, appendKeypadDigit(base, d, allowDecimal));
+  }
+
+  function onHouseBackspace() {
+    if (!houseActiveField) return;
+    setHouseReplaceOnType(false);
+    setHouseFieldValue(houseActiveField, backspaceKeypadValue(getHouseFieldValue(houseActiveField)));
+  }
+
+  function onHouseEnter() {
+    setHouseActiveField(null);
+    setHouseReplaceOnType(false);
+  }
+
+  // Keep the active field visible after the keypad mounts (layout shift)
+  useEffect(() => {
+    if (!houseActiveField) return;
+    const t = setTimeout(() => {
+      const node = houseFieldRefs.current.get(houseActiveField) ?? null;
+      scrollFieldAboveKeypad(houseScrollRef, { current: node }, houseScrollYRef);
+    }, 100);
+    return () => clearTimeout(t);
+  }, [houseActiveField]);
 
   function confirmDeleteHouse(h: HouseRow) {
     Alert.alert(
@@ -320,15 +446,26 @@ export default function FarmDetailScreen() {
         editingHouse.numberOfFans.trim() === ""
           ? null
           : Math.floor(Number(editingHouse.numberOfFans));
+      const placedRaw = editingHouse.placedBirdCount.trim();
+      const placed =
+        placedRaw === "" ? null : Math.floor(Number(placedRaw));
       if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
       if (fans != null && !Number.isFinite(fans)) throw new Error("Number of fans is invalid");
+      if (
+        data.activeFlock &&
+        placedRaw !== "" &&
+        (placed == null || !Number.isFinite(placed) || placed < 1)
+      ) {
+        throw new Error("Birds placed must be at least 1");
+      }
       updateHouse(farm.id, editingHouse.id, {
         houseNumber: Number(editingHouse.houseNumber),
         squareFootage: sq,
         totalFanCFM: cfm,
         numberOfFans: fans,
+        ...(data.activeFlock ? { placedBirdCount: placed } : null),
       });
-      setEditingHouse(null);
+      closeHouseEditor();
       load();
     } catch (e) {
       setHouseEditError(e instanceof Error ? e.message : "Could not save house");
@@ -1055,31 +1192,35 @@ export default function FarmDetailScreen() {
         visible={editingHouse != null}
         animationType="slide"
         transparent
-        onRequestClose={() => {
-          if (!houseSaving) setEditingHouse(null);
-        }}
+        onRequestClose={closeHouseEditor}
       >
-        <Pressable
+        <View
           style={{
             flex: 1,
             backgroundColor: "rgba(0,0,0,0.4)",
             justifyContent: "flex-end",
           }}
-          onPress={() => {
-            if (!houseSaving) setEditingHouse(null);
-          }}
         >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
+          <Pressable style={{ flex: 1 }} onPress={closeHouseEditor} />
+          <View
             style={{
               backgroundColor: "#fff",
               borderTopLeftRadius: 16,
               borderTopRightRadius: 16,
-              padding: 20,
-              maxHeight: "85%",
+              maxHeight: "92%",
+              overflow: "hidden",
             }}
           >
-            <ScrollView keyboardShouldPersistTaps="handled">
+            <ScrollView
+              ref={houseScrollRef}
+              keyboardShouldPersistTaps="handled"
+              style={{ maxHeight: houseActiveField ? 360 : undefined }}
+              contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
+              onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                houseScrollYRef.current = e.nativeEvent.contentOffset.y;
+              }}
+              scrollEventThrottle={16}
+            >
               <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
                 Edit house {editingHouse?.houseNumber}
               </Text>
@@ -1089,44 +1230,45 @@ export default function FarmDetailScreen() {
                 </Text>
               ) : null}
               {editingHouse ? (
-                <View style={{ marginTop: 14, gap: 4 }}>
-                  <Text style={styles.label}>House number</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
+                <View style={{ marginTop: 14 }}>
+                  <HouseNumFieldButton
+                    label="House number"
                     value={editingHouse.houseNumber}
-                    onChangeText={(v) =>
-                      setEditingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
-                    }
+                    active={houseActiveField === "houseNumber"}
+                    onPress={() => focusHouseField("houseNumber")}
+                    fieldRef={bindHouseFieldRef("houseNumber")}
                   />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Square footage</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="decimal-pad"
+                  {data.activeFlock ? (
+                    <HouseNumFieldButton
+                      label="Birds placed"
+                      value={editingHouse.placedBirdCount}
+                      active={houseActiveField === "placedBirdCount"}
+                      onPress={() => focusHouseField("placedBirdCount")}
+                      fieldRef={bindHouseFieldRef("placedBirdCount")}
+                    />
+                  ) : null}
+                  <HouseNumFieldButton
+                    label="Square footage"
                     value={editingHouse.squareFootage}
-                    onChangeText={(v) =>
-                      setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
-                    }
+                    active={houseActiveField === "squareFootage"}
+                    onPress={() => focusHouseField("squareFootage")}
+                    fieldRef={bindHouseFieldRef("squareFootage")}
                   />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Total fan CFM</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="decimal-pad"
+                  <HouseNumFieldButton
+                    label="Total fan CFM"
                     value={editingHouse.totalFanCFM}
-                    onChangeText={(v) =>
-                      setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
-                    }
+                    active={houseActiveField === "totalFanCFM"}
+                    onPress={() => focusHouseField("totalFanCFM")}
+                    fieldRef={bindHouseFieldRef("totalFanCFM")}
                   />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Number of fans</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="number-pad"
+                  <HouseNumFieldButton
+                    label="Number of fans"
                     value={editingHouse.numberOfFans}
-                    onChangeText={(v) =>
-                      setEditingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
-                    }
+                    active={houseActiveField === "numberOfFans"}
+                    onPress={() => focusHouseField("numberOfFans")}
+                    fieldRef={bindHouseFieldRef("numberOfFans")}
                   />
-                  <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                  <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
                     <PrimaryButton
                       label={houseSaving ? "Saving…" : "Save"}
                       onPress={saveHouseEdit}
@@ -1135,17 +1277,25 @@ export default function FarmDetailScreen() {
                     <PrimaryButton
                       label="Cancel"
                       secondary
-                      onPress={() => {
-                        if (!houseSaving) setEditingHouse(null);
-                      }}
+                      onPress={closeHouseEditor}
                       style={{ flex: 1 }}
                     />
                   </View>
                 </View>
               ) : null}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+            {houseActiveField ? (
+              <NumberKeypad
+                allowDecimal={
+                  houseActiveField === "squareFootage" || houseActiveField === "totalFanCFM"
+                }
+                onDigit={onHouseDigit}
+                onBackspace={onHouseBackspace}
+                onEnter={onHouseEnter}
+              />
+            ) : null}
+          </View>
+        </View>
       </Modal>
 
       <Modal
