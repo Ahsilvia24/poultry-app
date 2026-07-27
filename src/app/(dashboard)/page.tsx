@@ -48,7 +48,7 @@ export default async function DashboardPage() {
           </Card>
           <CollapsibleCard
             title="Upcoming"
-            defaultOpen={false}
+            defaultOpen
             count={data.upcomingSchedule.length}
           >
             {data.upcomingSchedule.length === 0 ? (

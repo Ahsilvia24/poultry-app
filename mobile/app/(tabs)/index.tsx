@@ -138,7 +138,7 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const [upcomingOpen, setUpcomingOpen] = useState(false);
+  const [upcomingOpen, setUpcomingOpen] = useState(true);
 
   const load = useCallback(async () => {
     try {
