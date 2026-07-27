@@ -118,11 +118,12 @@ function ScheduleCheckRow({
   );
 }
 
+/** e.g. Wed, Jul 29, 2026 */
 function formatCatchDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   const dt = new Date(y!, (m ?? 1) - 1, d ?? 1, 12);
-  return dt.toLocaleDateString(undefined, {
-    weekday: "long",
+  return dt.toLocaleDateString("en-US", {
+    weekday: "short",
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -337,6 +338,7 @@ export default function DashboardScreen() {
                     </Text>
                     <Text style={{ color: colors.muted, fontSize: 13 }}>
                       {formatCatchDate(c.date)}
+                      {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
                     </Text>
                   </Pressable>
                 ))

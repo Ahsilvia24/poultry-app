@@ -219,6 +219,7 @@ export function getDashboard() {
         phoneNumber: farm.phoneNumber,
         houseCount: farm.numberOfHouses,
         flockAgeDays: null,
+        placementDate: null as string | null,
         birdsPlaced: 0,
         projectedHeadCount: null,
         projectedMortality: null,
@@ -335,6 +336,7 @@ export function getDashboard() {
       phoneNumber: farm.phoneNumber,
       houseCount: hfs.length || farm.numberOfHouses,
       flockAgeDays,
+      placementDate: flock.placement_date,
       birdsPlaced: farmPlaced,
       projectedHeadCount,
       projectedMortality,
@@ -364,12 +366,14 @@ export function getDashboard() {
   );
 
   const upcomingCatches = farmCards
-    .filter((f) => f.projectedCatchDate)
+    .filter((f) => f.projectedCatchDate && f.placementDate)
     .map((f) => ({
       farmId: f.id,
       farmName: f.farmName,
       date: f.projectedCatchDate!,
       flockAgeDays: f.flockAgeDays,
+      /** Bird age (days) on the catch date. */
+      catchAgeDays: birdAgeFromPlacement(f.placementDate!, f.projectedCatchDate!),
     }))
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 8);
