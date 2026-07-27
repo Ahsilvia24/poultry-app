@@ -72,7 +72,7 @@ function formatUsDate(dateKey: string) {
 function formatShortDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0).toLocaleDateString(undefined, {
-    month: "short",
+    month: "long",
     day: "numeric",
     year: "numeric",
   });
