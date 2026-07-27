@@ -10,7 +10,6 @@ export function FarmQuickLinks({ farmId }: { farmId: string }) {
     { href: "#issues", label: "Issues" },
     { href: "#litter", label: "Litter" },
     { href: "#feed", label: "Feed" },
-    { href: `/history/${farmId}`, label: "History", external: true },
     { href: `/reports?farmId=${farmId}`, label: "Reports", external: true },
   ];
 

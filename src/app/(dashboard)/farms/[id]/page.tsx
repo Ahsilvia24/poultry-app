@@ -25,7 +25,8 @@ import {
   formatPct,
 } from "@/lib/utils";
 import { createFlockAction } from "@/app/actions/farms";
-import { CompleteFlockButton, ReactivateFlockButton } from "@/components/FarmOpsForms";
+import { ReactivateFlockButton } from "@/components/FarmOpsForms";
+import { CompleteFlockPicker } from "@/components/CompleteFlockPicker";
 import { HouseCard } from "@/components/HouseCard";
 import { AddFlockSection } from "@/components/AddFlockSection";
 import { AddHouseForm } from "@/components/AddHouseForm";
@@ -289,12 +290,18 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             <Link href={activeFlocks.length > 0 ? `/lfo/new/${farm.id}` : "/lfo"}>
               <Button variant="secondary">LFO</Button>
             </Link>
-            <Link href={`/history/${farm.id}`}>
-              <Button variant="secondary">History</Button>
-            </Link>
             <a href="#add-flock">
               <Button variant="secondary">Add flock</Button>
             </a>
+            {activeFlocks.length > 0 ? (
+              <CompleteFlockPicker
+                flocks={activeFlocks.map((flock) => ({
+                  id: flock.id,
+                  flockNumber: flock.flockNumber,
+                  ageDays: differenceInCalendarDays(today, flock.placementDate),
+                }))}
+              />
+            ) : null}
           </>
         }
       />
@@ -308,19 +315,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           {flockNumberLabel ? (
             <p className="mt-1 text-sm font-normal text-stone-500">{flockNumberLabel}</p>
           ) : null}
-          <div className="mt-2 flex flex-wrap gap-2">
-            {activeFlocks.map((flock) => (
-              <CompleteFlockButton
-                key={flock.id}
-                flockId={flock.id}
-                label={
-                  activeFlocks.length > 1
-                    ? `Complete ${flock.flockNumber}`
-                    : "Complete flock"
-                }
-              />
-            ))}
-          </div>
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Birds placed" value={formatNumber(flockPlaced)} />
             <StatTile
@@ -551,6 +545,15 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             notes: d.notes,
           }))}
         />
+      </div>
+
+      <div className="mt-8 flex justify-end">
+        <Link
+          href={`/history/${farm.id}`}
+          className="text-sm font-semibold text-emerald-800 hover:underline"
+        >
+          Farm History
+        </Link>
       </div>
     </div>
   );

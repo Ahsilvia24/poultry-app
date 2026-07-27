@@ -442,6 +442,45 @@ export default function FarmDetailScreen() {
     });
   })();
 
+  function confirmCompleteFlock(flockId: string, flockNumber: string) {
+    Alert.alert(
+      "Complete flock?",
+      `Mark flock ${flockNumber} as completed? You can reactivate it later from Farm History.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Complete",
+          onPress: () => {
+            try {
+              completeFlock(flockId);
+              load();
+            } catch (e) {
+              Alert.alert(
+                "Error",
+                e instanceof Error ? e.message : "Could not complete flock",
+              );
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  function promptCompleteFlock() {
+    if (activeFlocks.length === 0) return;
+    if (activeFlocks.length === 1) {
+      confirmCompleteFlock(activeFlocks[0]!.id, activeFlocks[0]!.flockNumber);
+      return;
+    }
+    Alert.alert("Complete flock", "Which flock do you want to complete?", [
+      ...activeFlocks.map((fl) => ({
+        text: `${fl.flockNumber} (${fl.flockAgeDays}d)`,
+        onPress: () => confirmCompleteFlock(fl.id, fl.flockNumber),
+      })),
+      { text: "Cancel", style: "cancel" as const },
+    ]);
+  }
+
   function openHouseEditor(h: HouseRow) {
     setHouseEditError(null);
     setHouseActiveField(null);
@@ -711,17 +750,6 @@ export default function FarmDetailScreen() {
               style={{ flexGrow: 1, minWidth: "45%" }}
             />
             <PrimaryButton
-              label="History"
-              secondary
-              onPress={() =>
-                router.push({
-                  pathname: "/(tabs)/farms/[id]/history",
-                  params: { id: farm.id },
-                })
-              }
-              style={{ flexGrow: 1, minWidth: "45%" }}
-            />
-            <PrimaryButton
               label="Add flock"
               secondary
               onPress={() =>
@@ -732,6 +760,14 @@ export default function FarmDetailScreen() {
               }
               style={{ flexGrow: 1, minWidth: "45%" }}
             />
+            {activeFlocks.length > 0 ? (
+              <PrimaryButton
+                label="Complete flock"
+                secondary
+                onPress={promptCompleteFlock}
+                style={{ flexGrow: 1, minWidth: "45%" }}
+              />
+            ) : null}
           </View>
         </View>
 
@@ -818,74 +854,6 @@ export default function FarmDetailScreen() {
               >
                 <Ionicons name="pencil-outline" size={20} color={colors.muted} />
               </Pressable>
-            </View>
-
-            <View style={{ marginTop: 8 }}>
-              <PrimaryButton
-                label={activeFlocks.length > 1 ? "Complete a flock" : "Complete flock"}
-                secondary
-                onPress={() => {
-                  if (activeFlocks.length === 1) {
-                    Alert.alert(
-                      "Complete flock?",
-                      "Mark this flock as completed? You can reactivate it later from History.",
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Complete",
-                          onPress: () => {
-                            try {
-                              completeFlock(activeFlocks[0]!.id);
-                              load();
-                            } catch (e) {
-                              Alert.alert(
-                                "Error",
-                                e instanceof Error ? e.message : "Could not complete flock",
-                              );
-                            }
-                          },
-                        },
-                      ],
-                    );
-                    return;
-                  }
-                  Alert.alert(
-                    "Complete a flock",
-                    "Which flock do you want to complete?",
-                    [
-                      ...activeFlocks.map((fl) => ({
-                        text: `${fl.flockNumber} (${fl.flockAgeDays}d)`,
-                        onPress: () => {
-                          Alert.alert(
-                            "Complete flock?",
-                            `Mark flock ${fl.flockNumber} as completed? You can reactivate it later from History.`,
-                            [
-                              { text: "Cancel", style: "cancel" },
-                              {
-                                text: "Complete",
-                                onPress: () => {
-                                  try {
-                                    completeFlock(fl.id);
-                                    load();
-                                  } catch (e) {
-                                    Alert.alert(
-                                      "Error",
-                                      e instanceof Error
-                                        ? e.message
-                                        : "Could not complete flock",
-                                    );
-                                  }
-                                },
-                              },
-                            ],
-                          );
-                        },
-                      })),
-                      { text: "Cancel", style: "cancel" as const },
-                    ],
-                  );
-                }}
-              />
             </View>
 
             <View style={[styles.row, { marginTop: 12 }]}>
@@ -1017,15 +985,6 @@ export default function FarmDetailScreen() {
                 { key: "issues", label: "Issues", onPress: () => scrollToSection("issues") },
                 { key: "litter", label: "Litter", onPress: () => scrollToSection("litter") },
                 { key: "feed", label: "Feed", onPress: () => scrollToSection("feed") },
-                {
-                  key: "history",
-                  label: "History",
-                  onPress: () =>
-                    router.push({
-                      pathname: "/(tabs)/farms/[id]/history",
-                      params: { id: farm.id },
-                    }),
-                },
                 {
                   key: "reports",
                   label: "Reports",
@@ -1478,6 +1437,29 @@ export default function FarmDetailScreen() {
               })
             }
           />
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "flex-end",
+            marginTop: 8,
+            marginBottom: 8,
+          }}
+        >
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "/(tabs)/farms/[id]/history",
+                params: { id: farm.id },
+              })
+            }
+            hitSlop={8}
+          >
+            <Text style={{ color: colors.accentDark, fontWeight: "600", fontSize: 14 }}>
+              Farm History
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
 
