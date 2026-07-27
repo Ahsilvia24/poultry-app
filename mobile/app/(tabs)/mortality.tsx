@@ -541,6 +541,10 @@ export default function MortalityScreen() {
               House <Text style={{ fontWeight: "700", color: colors.text }}>{selectedHouse.houseNumber}</Text>
               {" · Placed "}
               {formatNumber(selectedHouse.placedBirdCount)}
+              {" · Day 0 "}
+              <Text style={{ fontWeight: "700", color: colors.text }}>
+                {formatDayLabel(selectedFarm.activeFlock.placementDate)}
+              </Text>
               {" · "}
               <Text style={{ fontWeight: "700", color: colors.text }}>
                 {flockAgeDays != null ? `${flockAgeDays}d` : "—"}
@@ -630,9 +634,12 @@ export default function MortalityScreen() {
                               }}
                             >
                               <View style={{ flex: 1.1 }}>
-                                <Text style={{ fontWeight: "700", fontSize: 14 }}>Age {row.age}</Text>
+                                <Text style={{ fontWeight: "700", fontSize: 14 }}>
+                                  {row.age === 0 ? "Day 0" : `Age ${row.age}`}
+                                </Text>
                                 <Text style={{ color: colors.muted, fontSize: 12 }}>
                                   {formatDayLabel(row.mortalityDate)}
+                                  {row.age === 0 ? " · placement" : ""}
                                 </Text>
                               </View>
                               <TextInput
