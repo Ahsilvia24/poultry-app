@@ -55,10 +55,19 @@ export function StatTile({ label, value }: { label: string; value: string | numb
 }
 
 export function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  const multiline = value.includes("\n");
   return (
     <View style={{ width: "47%", marginBottom: 10 }}>
       <Text style={{ fontSize: 13, color: colors.muted }}>{label}</Text>
-      <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, marginTop: 2 }}>
+      <Text
+        style={{
+          fontSize: multiline ? 13 : 15,
+          fontWeight: "700",
+          color: colors.text,
+          marginTop: 2,
+          lineHeight: multiline ? 18 : undefined,
+        }}
+      >
         {value}
       </Text>
       {hint ? (

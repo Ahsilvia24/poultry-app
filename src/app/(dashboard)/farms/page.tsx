@@ -132,15 +132,28 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                     );
                   }, 0)
                 : null;
-            const flockAges = Array.from(
+            const placementDates = Array.from(
               new Set(
-                activeFlocks.map((fl) => differenceInCalendarDays(today, fl.placementDate)),
+                activeFlocks.map((fl) => format(fl.placementDate, "yyyy-MM-dd")),
               ),
-            ).sort((a, b) => a - b);
-            const earliestCatch = activeFlocks
-              .map((fl) => fl.projectedCatchDate)
-              .filter((d): d is Date => d != null)
-              .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+            ).sort();
+            const catchDates = Array.from(
+              new Set(
+                activeFlocks.map((fl) =>
+                  format(
+                    fl.projectedCatchDate ??
+                      new Date(
+                        fl.placementDate.getTime() + 52 * 24 * 60 * 60 * 1000,
+                      ),
+                    "yyyy-MM-dd",
+                  ),
+                ),
+              ),
+            ).sort();
+            const flockAges = placementDates
+              .map((d) => differenceInCalendarDays(today, new Date(`${d}T12:00:00`)))
+              .filter((a, i, arr) => arr.indexOf(a) === i)
+              .sort((a, b) => a - b);
 
             return (
               <Card key={farm.id} className="transition hover:border-emerald-400">
@@ -195,12 +208,18 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                       </p>
                     </div>
                     <div>
-                      <p className="text-stone-500">Placement date</p>
-                      <p className="font-semibold">
-                        {active
-                          ? format(active.placementDate, "EEE, MMM d, yyyy")
-                          : "—"}
+                      <p className="text-stone-500">
+                        Placement date{placementDates.length > 1 ? "s" : ""}
                       </p>
+                      {placementDates.length === 0 ? (
+                        <p className="font-semibold">—</p>
+                      ) : (
+                        placementDates.map((d) => (
+                          <p key={d} className="font-semibold leading-snug">
+                            {format(new Date(`${d}T12:00:00`), "EEE, MMM d, yyyy")}
+                          </p>
+                        ))
+                      )}
                     </div>
                     <div>
                       <p className="text-stone-500">Current Head Count</p>
@@ -209,12 +228,18 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                       </p>
                     </div>
                     <div>
-                      <p className="text-stone-500">Catch date</p>
-                      <p className="font-semibold">
-                        {earliestCatch
-                          ? format(earliestCatch, "EEE, MMM d, yyyy")
-                          : "—"}
+                      <p className="text-stone-500">
+                        Catch date{catchDates.length > 1 ? "s" : ""}
                       </p>
+                      {catchDates.length === 0 ? (
+                        <p className="font-semibold">—</p>
+                      ) : (
+                        catchDates.map((d) => (
+                          <p key={d} className="font-semibold leading-snug">
+                            {format(new Date(`${d}T12:00:00`), "EEE, MMM d, yyyy")}
+                          </p>
+                        ))
+                      )}
                     </div>
                   </div>
                 </Link>

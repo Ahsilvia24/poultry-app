@@ -193,7 +193,14 @@ export default function FarmsScreen() {
                   <Metric
                     label="Placement date"
                     value={
-                      farm.placementDate ? formatLongScheduleDate(farm.placementDate) : "—"
+                      (farm.placementDates?.length
+                        ? farm.placementDates
+                        : farm.placementDate
+                          ? [farm.placementDate]
+                          : []
+                      )
+                        .map((d) => formatLongScheduleDate(d))
+                        .join("\n") || "—"
                     }
                   />
                   <Metric
@@ -205,9 +212,14 @@ export default function FarmsScreen() {
                   <Metric
                     label="Catch date"
                     value={
-                      farm.projectedCatchDate
-                        ? formatLongScheduleDate(farm.projectedCatchDate)
-                        : "—"
+                      (farm.catchDates?.length
+                        ? farm.catchDates
+                        : farm.projectedCatchDate
+                          ? [farm.projectedCatchDate]
+                          : []
+                      )
+                        .map((d) => formatLongScheduleDate(d))
+                        .join("\n") || "—"
                     }
                   />
                 </View>

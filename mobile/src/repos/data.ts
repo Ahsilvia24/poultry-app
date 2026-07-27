@@ -147,9 +147,20 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
       const houseCount = houseCountRow?.c ?? f.number_of_houses;
       let birdsPlaced = 0;
       let remaining = 0;
+      const placementDateSet = new Set<string>();
+      const catchDateSet = new Set<string>();
       if (flocks.length > 0) {
-        const hfs = db.getAllSync<{ id: string; placed_bird_count: number }>(
-          `SELECT hf.id, hf.placed_bird_count FROM house_flocks hf
+        const hfs = db.getAllSync<{
+          id: string;
+          placed_bird_count: number;
+          placement_date: string | null;
+          catch_date: string | null;
+          flock_placement: string;
+          flock_catch: string | null;
+        }>(
+          `SELECT hf.id, hf.placed_bird_count, hf.placement_date, hf.catch_date,
+                  fl.placement_date as flock_placement, fl.projected_catch_date as flock_catch
+           FROM house_flocks hf
            JOIN flocks fl ON fl.id = hf.flock_id
            WHERE fl.farm_id = ? AND fl.flock_status = 'ACTIVE'`,
           [f.id],
@@ -162,13 +173,27 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
             [hf.id],
           );
           remaining += summarizeHouse(hf.placed_bird_count, records, today).remaining;
+
+          const place = hf.placement_date?.trim() || hf.flock_placement;
+          const catchDate =
+            hf.catch_date?.trim() ||
+            hf.flock_catch ||
+            (place ? addDaysKey(place, 52) : null);
+          if (place) placementDateSet.add(place);
+          if (catchDate) catchDateSet.add(catchDate);
+        }
+        // Flocks with no houses yet still contribute their schedule dates.
+        if (hfs.length === 0) {
+          for (const fl of flocks) {
+            placementDateSet.add(fl.placement_date);
+            catchDateSet.add(fl.projected_catch_date ?? addDaysKey(fl.placement_date, 52));
+          }
         }
       }
-      const earliestCatch = flocks
-        .map((fl) => fl.projected_catch_date ?? addDaysKey(fl.placement_date, 52))
-        .sort()[0] ?? null;
+      const placementDates = Array.from(placementDateSet).sort();
+      const catchDates = Array.from(catchDateSet).sort();
       const flockAgesDays = Array.from(
-        new Set(flocks.map((fl) => birdAgeFromPlacement(fl.placement_date, today))),
+        new Set(placementDates.map((d) => birdAgeFromPlacement(d, today))),
       ).sort((a, b) => a - b);
       return {
         id: f.id,
@@ -180,8 +205,10 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
         isActive: f.is_active === 1,
         birdsPlaced,
         currentHeadCount: remaining,
-        placementDate: flock?.placement_date ?? null,
-        projectedCatchDate: earliestCatch,
+        placementDate: placementDates[0] ?? null,
+        projectedCatchDate: catchDates[0] ?? null,
+        placementDates,
+        catchDates,
         flockAgeDays: flockAgesDays[0] ?? null,
         flockAgesDays,
         activeFlock: flock
