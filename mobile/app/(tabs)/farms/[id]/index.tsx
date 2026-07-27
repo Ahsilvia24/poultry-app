@@ -43,6 +43,7 @@ import {
   resolveGrowthRate,
 } from "../../../../src/lib/weight/projections";
 import { scrollFieldAboveKeypad } from "../../../../src/lib/scrollField";
+import { addDaysKey } from "../../../../src/lib/ids";
 import { colors, styles } from "../../../../src/theme";
 import {
   Card,
@@ -417,6 +418,10 @@ export default function FarmDetailScreen() {
     setHouseEditError(null);
     setHouseActiveField(null);
     setHouseReplaceOnType(false);
+    const placementDate = h.placementDate ?? data?.activeFlock?.placementDate ?? "";
+    const catchDate =
+      h.catchDate ??
+      (placementDate ? addDaysKey(placementDate, 52) : "");
     setEditingHouse({
       id: h.id,
       houseNumber: String(h.houseNumber),
@@ -424,12 +429,8 @@ export default function FarmDetailScreen() {
       totalFanCFM: h.totalFanCFM != null ? String(h.totalFanCFM) : "",
       numberOfFans: h.numberOfFans != null ? String(h.numberOfFans) : "",
       placedBirdCount: h.placedBirdCount != null ? String(h.placedBirdCount) : "",
-      placementDate: h.placementDate ?? data?.activeFlock?.placementDate ?? "",
-      catchDate:
-        h.catchDate ??
-        data?.activeFlock?.projectedCatchDate ??
-        data?.activeFlock?.resolvedCatchDate ??
-        "",
+      placementDate,
+      catchDate,
     });
   }
 
@@ -1416,9 +1417,21 @@ export default function FarmDetailScreen() {
                           label="Placement date"
                           value={editingHouse.placementDate}
                           onChange={(date) =>
-                            setEditingHouse((prev) =>
-                              prev ? { ...prev, placementDate: date } : prev,
-                            )
+                            setEditingHouse((prev) => {
+                              if (!prev) return prev;
+                              const oldDefault = prev.placementDate
+                                ? addDaysKey(prev.placementDate, 52)
+                                : "";
+                              const catchWasDefault =
+                                !prev.catchDate || prev.catchDate === oldDefault;
+                              return {
+                                ...prev,
+                                placementDate: date,
+                                catchDate: catchWasDefault
+                                  ? addDaysKey(date, 52)
+                                  : prev.catchDate,
+                              };
+                            })
                           }
                         />
                       </View>

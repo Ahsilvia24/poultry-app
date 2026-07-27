@@ -476,8 +476,10 @@ export function getFarmDetail(farmId: string) {
     const housePlacementDate = hf
       ? hf.placement_date?.trim() || flock?.placement_date || null
       : null;
+    // Default catch = house placement + 52 days (editable per house).
     const houseCatchDate = hf
-      ? hf.catch_date?.trim() || resolvedCatchDate
+      ? hf.catch_date?.trim() ||
+        (housePlacementDate ? addDaysKey(housePlacementDate, 52) : resolvedCatchDate)
       : null;
     const houseAgeDays =
       housePlacementDate != null
@@ -1572,6 +1574,8 @@ export function createFlock(input: {
     [id, input.farmId, flockNumber, input.placementDate, projectedCatchDate],
   );
   for (const hp of input.housePlacements) {
+    const housePlacement = input.placementDate;
+    const houseCatch = addDaysKey(housePlacement, marketAge);
     db.runSync(
       `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date)
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -1580,8 +1584,8 @@ export function createFlock(input: {
         id,
         hp.houseId,
         Math.floor(hp.placedBirdCount),
-        input.placementDate,
-        projectedCatchDate,
+        housePlacement,
+        houseCatch,
       ],
     );
   }
@@ -1832,8 +1836,6 @@ export function updateHouse(
         throw new Error("Add an active flock before setting birds placed / dates");
       }
     } else {
-      const flockCatch =
-        flock.projected_catch_date?.trim() || addDaysKey(flock.placement_date, 52);
       const placed =
         input.placedBirdCount === undefined
           ? undefined
@@ -1847,10 +1849,6 @@ export function updateHouse(
         input.placementDate === undefined
           ? undefined
           : input.placementDate?.trim() || flock.placement_date;
-      const catchDate =
-        input.catchDate === undefined
-          ? undefined
-          : input.catchDate?.trim() || flockCatch;
 
       const hf = db.getFirstSync<{
         id: string;
@@ -1864,17 +1862,36 @@ export function updateHouse(
 
       if (hf) {
         const nextPlaced = placed !== undefined && placed != null ? placed : hf.placed_bird_count;
+        const prevPlacement = hf.placement_date?.trim() || flock.placement_date;
         const nextPlacement =
-          placementDate !== undefined
-            ? placementDate
-            : (hf.placement_date ?? flock.placement_date);
-        const nextCatch =
-          catchDate !== undefined ? catchDate : (hf.catch_date ?? flockCatch);
+          placementDate !== undefined ? placementDate : prevPlacement;
+        const defaultCatch = addDaysKey(nextPlacement, 52);
+        const prevDefaultCatch = addDaysKey(prevPlacement, 52);
+        const prevCatch = hf.catch_date?.trim() || null;
+
+        let nextCatch: string;
+        if (input.catchDate !== undefined) {
+          nextCatch = input.catchDate?.trim() || defaultCatch;
+        } else if (
+          placementDate !== undefined &&
+          (!prevCatch || prevCatch === prevDefaultCatch)
+        ) {
+          // Placement moved and catch was still the default — follow placement + 52.
+          nextCatch = defaultCatch;
+        } else {
+          nextCatch = prevCatch ?? defaultCatch;
+        }
+
         db.runSync(
           `UPDATE house_flocks SET placed_bird_count = ?, placement_date = ?, catch_date = ? WHERE id = ?`,
           [nextPlaced, nextPlacement, nextCatch, hf.id],
         );
       } else if (placed != null) {
+        const nextPlacement = placementDate ?? flock.placement_date;
+        const nextCatch =
+          input.catchDate !== undefined
+            ? input.catchDate?.trim() || addDaysKey(nextPlacement, 52)
+            : addDaysKey(nextPlacement, 52);
         db.runSync(
           `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date)
            VALUES (?, ?, ?, ?, ?, ?)`,
@@ -1883,8 +1900,8 @@ export function updateHouse(
             flock.id,
             houseId,
             placed,
-            placementDate ?? flock.placement_date,
-            catchDate ?? flockCatch,
+            nextPlacement,
+            nextCatch,
           ],
         );
       }
