@@ -233,6 +233,8 @@ export function getDashboard() {
   let totalBirdsPlaced = 0;
   let mortalityEnteredToday = 0;
   let farmsMissingToday = 0;
+  let openIssuesTotal = 0;
+  let highPriorityIssues = 0;
   const farmCards = [];
   type ScheduleRow = {
     farmId: string;
@@ -279,6 +281,19 @@ export function getDashboard() {
       [farm.id],
     );
     if (flocks.length === 0) {
+      const openIssuesRow = db.getFirstSync<{ c: number }>(
+        `SELECT COUNT(*) as c FROM farm_issues
+         WHERE farm_id = ? AND status != 'RESOLVED'`,
+        [farm.id],
+      );
+      const openIssues = openIssuesRow?.c ?? 0;
+      openIssuesTotal += openIssues;
+      const highPri = db.getFirstSync<{ c: number }>(
+        `SELECT COUNT(*) as c FROM farm_issues
+         WHERE farm_id = ? AND status != 'RESOLVED' AND priority IN ('HIGH', 'CRITICAL')`,
+        [farm.id],
+      );
+      highPriorityIssues += highPri?.c ?? 0;
       farmCards.push({
         id: farm.id,
         farmName: farm.farmName,
@@ -294,7 +309,7 @@ export function getDashboard() {
         sevenDayMortality: 0,
         cumulativeMortality: 0,
         cumulativeMortalityPct: 0,
-        openIssues: 0,
+        openIssues,
         status: "Normal",
         missingTodayMortality: false,
         weeklyMortality: [] as Array<{ week: number; total: number }>,
@@ -416,6 +431,20 @@ export function getDashboard() {
         .map((fl) => fl.projected_catch_date ?? addDaysKey(fl.placement_date, 52))
         .sort()[0] ?? null;
 
+    const openIssuesRow = db.getFirstSync<{ c: number }>(
+      `SELECT COUNT(*) as c FROM farm_issues
+       WHERE farm_id = ? AND status != 'RESOLVED'`,
+      [farm.id],
+    );
+    const openIssues = openIssuesRow?.c ?? 0;
+    openIssuesTotal += openIssues;
+    const highPri = db.getFirstSync<{ c: number }>(
+      `SELECT COUNT(*) as c FROM farm_issues
+       WHERE farm_id = ? AND status != 'RESOLVED' AND priority IN ('HIGH', 'CRITICAL')`,
+      [farm.id],
+    );
+    highPriorityIssues += highPri?.c ?? 0;
+
     farmCards.push({
       id: farm.id,
       farmName: farm.farmName,
@@ -431,7 +460,7 @@ export function getDashboard() {
       sevenDayMortality: farmSeven,
       cumulativeMortality: farmCum,
       cumulativeMortalityPct: calcPercentage(farmCum, farmPlaced),
-      openIssues: 0,
+      openIssues,
       status: worst,
       missingTodayMortality: missing,
       weeklyMortality: Array.from(weekTotals.entries())
@@ -474,8 +503,8 @@ export function getDashboard() {
       totalBirdsPlaced,
       mortalityEnteredToday,
       farmsMissingToday,
-      openIssues: 0,
-      highPriorityIssues: 0,
+      openIssues: openIssuesTotal,
+      highPriorityIssues,
     },
     farmCards,
     upcomingCatches,
