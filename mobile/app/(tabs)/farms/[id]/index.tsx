@@ -135,6 +135,7 @@ type HouseEditDraft = {
   numberOfFans: string;
   placedBirdCount: string;
   placementDate: string;
+  catchDate: string;
 };
 
 type HouseNumField =
@@ -330,8 +331,20 @@ export default function FarmDetailScreen() {
     (sum, h) => sum + (h.projectedMortality ?? 0),
     0,
   );
+  const flockCatchDates =
+    data.activeFlock?.catchDates?.length
+      ? data.activeFlock.catchDates
+      : data.activeFlock?.projectedCatchDate || data.activeFlock?.resolvedCatchDate
+        ? [
+            data.activeFlock.projectedCatchDate ??
+              data.activeFlock.resolvedCatchDate!,
+          ]
+        : [];
   const catchLabel =
-    data.activeFlock?.projectedCatchDate ?? data.activeFlock?.resolvedCatchDate ?? null;
+    flockCatchDates[0] ??
+    data.activeFlock?.projectedCatchDate ??
+    data.activeFlock?.resolvedCatchDate ??
+    null;
   const growthRate = data.activeFlock
     ? resolveGrowthRate(data.activeFlock.growthRateLbsPerDay)
     : null;
@@ -343,6 +356,25 @@ export default function FarmDetailScreen() {
           growthRateLbsPerDay: growthRate,
         })
       : [];
+
+  const placementCatchLines = (() => {
+    const seen = new Set<string>();
+    const lines: Array<{ placement: string; catchDate: string | null }> = [];
+    for (const h of data.houses) {
+      if (h.placedBirdCount == null || !h.placementDate) continue;
+      const key = `${h.placementDate}|${h.catchDate ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      lines.push({ placement: h.placementDate, catchDate: h.catchDate });
+    }
+    if (lines.length === 0 && flockPlacementDates.length > 0) {
+      return flockPlacementDates.map((placement) => ({
+        placement,
+        catchDate: catchLabel,
+      }));
+    }
+    return lines;
+  })();
 
   function openHouseEditor(h: HouseRow) {
     setHouseEditError(null);
@@ -356,6 +388,11 @@ export default function FarmDetailScreen() {
       numberOfFans: h.numberOfFans != null ? String(h.numberOfFans) : "",
       placedBirdCount: h.placedBirdCount != null ? String(h.placedBirdCount) : "",
       placementDate: h.placementDate ?? data?.activeFlock?.placementDate ?? "",
+      catchDate:
+        h.catchDate ??
+        data?.activeFlock?.projectedCatchDate ??
+        data?.activeFlock?.resolvedCatchDate ??
+        "",
     });
   }
 
@@ -496,6 +533,7 @@ export default function FarmDetailScreen() {
           ? {
               placedBirdCount: placed,
               placementDate: editingHouse.placementDate.trim() || null,
+              catchDate: editingHouse.catchDate.trim() || null,
             }
           : null),
       });
@@ -715,10 +753,13 @@ export default function FarmDetailScreen() {
               />
             </View>
             <View style={{ marginTop: 4, gap: 2 }}>
-              {flockPlacementDates.map((placed) => (
-                <Text key={placed} style={styles.muted}>
-                  Placed {formatUsDate(placed)}
-                  {catchLabel ? ` · Catch ${formatUsDate(catchLabel)}` : ""}
+              {placementCatchLines.map((line) => (
+                <Text
+                  key={`${line.placement}|${line.catchDate ?? ""}`}
+                  style={styles.muted}
+                >
+                  Placed {formatUsDate(line.placement)}
+                  {line.catchDate ? ` · Catch ${formatUsDate(line.catchDate)}` : ""}
                 </Text>
               ))}
             </View>
@@ -1318,6 +1359,17 @@ export default function FarmDetailScreen() {
                           onChange={(date) =>
                             setEditingHouse((prev) =>
                               prev ? { ...prev, placementDate: date } : prev,
+                            )
+                          }
+                        />
+                      </View>
+                      <View style={{ marginBottom: 10 }}>
+                        <DatePickerField
+                          label="Catch date"
+                          value={editingHouse.catchDate}
+                          onChange={(date) =>
+                            setEditingHouse((prev) =>
+                              prev ? { ...prev, catchDate: date } : prev,
                             )
                           }
                         />

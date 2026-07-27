@@ -66,6 +66,7 @@ export function migrateDb() {
       house_id TEXT NOT NULL,
       placed_bird_count INTEGER NOT NULL,
       placement_date TEXT,
+      catch_date TEXT,
       FOREIGN KEY (flock_id) REFERENCES flocks(id),
       FOREIGN KEY (house_id) REFERENCES houses(id)
     );
@@ -198,10 +199,13 @@ export function migrateDb() {
     database.execSync("ALTER TABLE flocks ADD COLUMN growth_rate_lbs_per_day REAL");
   }
 
-  // Per-house placement dates (staggered placements within one flock)
+  // Per-house placement / catch dates (staggered within one flock)
   const hfCols = database.getAllSync<{ name: string }>("PRAGMA table_info(house_flocks)");
   if (!hfCols.some((c) => c.name === "placement_date")) {
     database.execSync("ALTER TABLE house_flocks ADD COLUMN placement_date TEXT");
+  }
+  if (!hfCols.some((c) => c.name === "catch_date")) {
+    database.execSync("ALTER TABLE house_flocks ADD COLUMN catch_date TEXT");
   }
 }
 
