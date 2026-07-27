@@ -492,16 +492,6 @@ export default function EditLfoScreen() {
                 </Card>
               ) : null}
 
-              <Card>
-                <Text style={styles.label}>Notes</Text>
-                <TextInput
-                  style={[styles.input, { minHeight: 72, textAlignVertical: "top" }]}
-                  multiline
-                  value={notes}
-                  onChangeText={setNotes}
-                />
-              </Card>
-
               <PrimaryButton label="Save changes" onPress={save} />
               <Pressable
                 onPress={confirmDelete}
