@@ -7,6 +7,7 @@ import {
   TextInput,
   View,
   type TextInput as TextInputType,
+  type ScrollView as ScrollViewType,
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -159,12 +160,22 @@ export default function MortalityScreen() {
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
   const [selection, setSelection] = useState<{ start: number; end: number } | undefined>();
   const inputRefs = useRef(new Map<string, TextInputType>());
+  const scrollRef = useRef<ScrollViewType>(null);
   const rowsRef = useRef(rows);
   const houseFlockIdRef = useRef(houseFlockId);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveGenRef = useRef(0);
   rowsRef.current = rows;
   houseFlockIdRef.current = houseFlockId;
+
+  function resetToTop() {
+    setActiveField(null);
+    setSelection(undefined);
+    for (const input of inputRefs.current.values()) {
+      input.blur();
+    }
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }
 
   const selectedFarm = useMemo(
     () => payload?.farms.find((f) => f.id === farmId) ?? payload?.farms[0] ?? null,
@@ -246,25 +257,36 @@ export default function MortalityScreen() {
     loadFarms();
   }, [loadFarms]);
 
-  // Re-apply farm context when arriving from a farm detail link
+  // Landing from Dashboard / farm detail: top of page, no keypad / focused cell
   useFocusEffect(
     useCallback(() => {
+      resetToTop();
+      // Second pass after layout so restored focus / scroll can't stick
+      const t = setTimeout(() => resetToTop(), 50);
       if (farmIdParam) {
         setFarmId(farmIdParam);
         loadFarms();
       }
+      return () => {
+        clearTimeout(t);
+        setActiveField(null);
+        setSelection(undefined);
+      };
     }, [farmIdParam, loadFarms]),
   );
 
   useEffect(() => {
     loadGrid();
-    setActiveField(null);
     setSaveStatus("idle");
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
     saveGenRef.current += 1;
+    // Grid mount can restore focus into the current week mid-page — keep top clean
+    resetToTop();
+    const t = setTimeout(() => resetToTop(), 100);
+    return () => clearTimeout(t);
   }, [loadGrid]);
 
   useEffect(() => {
@@ -460,9 +482,11 @@ export default function MortalityScreen() {
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={{ flex: 1 }}>
         <ScrollView
+          ref={scrollRef}
           style={styles.screen}
           contentContainerStyle={[styles.content, { paddingBottom: activeField ? 8 : 40 }]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <PageHeader
             title="Mortality entry"
