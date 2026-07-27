@@ -15,6 +15,7 @@ import { createFlock, getFarmDetail } from "../../../../src/repos/data";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { colors, styles } from "../../../../src/theme";
 import { Card, PageHeader, PrimaryButton } from "../../../../src/components/ui";
+import { DatePickerField } from "../../../../src/components/DatePickerField";
 
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -167,15 +168,13 @@ export default function AddFlockScreen() {
                 placeholderTextColor={colors.muted}
               />
 
-              <Text style={[styles.label, { marginTop: 8 }]}>Placement date (YYYY-MM-DD)</Text>
-              <TextInput
-                style={styles.input}
-                value={placementDate}
-                onChangeText={onPlacementChange}
-                autoCapitalize="none"
-                placeholder="2026-07-26"
-                placeholderTextColor={colors.muted}
-              />
+              <View style={{ marginTop: 8 }}>
+                <DatePickerField
+                  label="Placement date"
+                  value={placementDate}
+                  onChange={onPlacementChange}
+                />
+              </View>
 
               <Text style={[styles.label, { marginTop: 8 }]}>Market age (days)</Text>
               <TextInput
@@ -185,15 +184,13 @@ export default function AddFlockScreen() {
                 keyboardType="number-pad"
               />
 
-              <Text style={[styles.label, { marginTop: 8 }]}>Catch date (YYYY-MM-DD)</Text>
-              <TextInput
-                style={styles.input}
-                value={catchDate}
-                onChangeText={onCatchChange}
-                autoCapitalize="none"
-                placeholder="2026-09-16"
-                placeholderTextColor={colors.muted}
-              />
+              <View style={{ marginTop: 8 }}>
+                <DatePickerField
+                  label="Catch date"
+                  value={catchDate}
+                  onChange={onCatchChange}
+                />
+              </View>
 
               <Text
                 style={[
