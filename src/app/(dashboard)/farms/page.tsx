@@ -4,27 +4,10 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DeleteFarmButton, DeactivateFarmButton, ReactivateFarmButton } from "@/components/FarmOpsForms";
+import { FarmListSettingsButton } from "@/components/FarmListSettingsButton";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { summarizeForDate } from "@/lib/mortality/calculations";
 import { cn, formatNumber } from "@/lib/utils";
-
-function SettingsIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-    </svg>
-  );
-}
 
 type SearchParams = Promise<{ status?: string }>;
 
@@ -224,14 +207,16 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                   </div>
                 </Link>
                 <div className="mt-1 flex items-center justify-end gap-1">
-                  <Link
-                    href={`/farms/${farm.id}`}
-                    aria-label={`Edit ${farm.farmName} settings`}
-                    title="Settings"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-200 hover:text-stone-900"
-                  >
-                    <SettingsIcon className="h-5 w-5" />
-                  </Link>
+                  <FarmListSettingsButton
+                    farm={{
+                      id: farm.id,
+                      farmName: farm.farmName,
+                      growerName: farm.growerName,
+                      phoneNumber: farm.phoneNumber,
+                      email: farm.email,
+                      notes: farm.notes,
+                    }}
+                  />
                   {!farm.isActive ? <DeleteFarmButton farmId={farm.id} appearance="icon" /> : null}
                 </div>
               </Card>

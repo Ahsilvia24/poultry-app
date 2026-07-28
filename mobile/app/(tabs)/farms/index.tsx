@@ -2,10 +2,14 @@ import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -16,6 +20,7 @@ import {
   deleteFarm,
   listFarms,
   reactivateFarm,
+  updateFarm,
 } from "../../../src/repos/data";
 import { formatLongScheduleDate } from "../../../src/lib/schedule";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
@@ -25,10 +30,20 @@ import {
   Chip,
   Metric,
   PageHeader,
+  PrimaryButton,
   formatNumber,
 } from "../../../src/components/ui";
 
 type StatusFilter = "active" | "inactive" | "all";
+type FarmRow = ReturnType<typeof listFarms>["farms"][number];
+type FarmEditDraft = {
+  id: string;
+  farmName: string;
+  growerName: string;
+  phoneNumber: string;
+  email: string;
+  notes: string;
+};
 
 export default function FarmsScreen() {
   const router = useRouter();
@@ -38,6 +53,9 @@ export default function FarmsScreen() {
   const [data, setData] = useState<ReturnType<typeof listFarms> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingFarm, setEditingFarm] = useState<FarmEditDraft | null>(null);
+  const [farmEditError, setFarmEditError] = useState<string | null>(null);
+  const [farmSaving, setFarmSaving] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -104,6 +122,45 @@ export default function FarmsScreen() {
         },
       ],
     );
+  }
+
+  function openFarmEditor(farm: FarmRow) {
+    setFarmEditError(null);
+    setEditingFarm({
+      id: farm.id,
+      farmName: farm.farmName,
+      growerName: farm.growerName ?? "",
+      phoneNumber: farm.phoneNumber ?? "",
+      email: farm.email ?? "",
+      notes: farm.notes ?? "",
+    });
+  }
+
+  function closeFarmEditor() {
+    if (farmSaving) return;
+    setEditingFarm(null);
+    setFarmEditError(null);
+  }
+
+  function saveFarmEdit() {
+    if (!editingFarm) return;
+    setFarmSaving(true);
+    setFarmEditError(null);
+    try {
+      updateFarm(editingFarm.id, {
+        farmName: editingFarm.farmName,
+        growerName: editingFarm.growerName,
+        phoneNumber: editingFarm.phoneNumber,
+        email: editingFarm.email,
+        notes: editingFarm.notes,
+      });
+      setEditingFarm(null);
+      load();
+    } catch (e) {
+      setFarmEditError(e instanceof Error ? e.message : "Could not save farm");
+    } finally {
+      setFarmSaving(false);
+    }
   }
 
   if (loading && !data) {
@@ -264,12 +321,7 @@ export default function FarmsScreen() {
               >
                 <Pressable
                   accessibilityLabel={`Edit ${farm.farmName} settings`}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(tabs)/farms/[id]",
-                      params: { id: farm.id, edit: "1" },
-                    })
-                  }
+                  onPress={() => openFarmEditor(farm)}
                   hitSlop={8}
                   style={{
                     width: 36,
@@ -302,6 +354,124 @@ export default function FarmsScreen() {
           );
         })}
       </ScrollView>
+
+      <Modal
+        visible={editingFarm != null}
+        animationType="slide"
+        transparent
+        onRequestClose={closeFarmEditor}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        >
+          <Pressable
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              justifyContent: "flex-end",
+            }}
+            onPress={closeFarmEditor}
+          >
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: "#fff",
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                padding: 20,
+                paddingBottom: Platform.OS === "ios" ? 28 : 20,
+                maxHeight: "90%",
+              }}
+            >
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+                contentContainerStyle={{ paddingBottom: 24 }}
+              >
+                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                  Edit farm info
+                </Text>
+                {farmEditError ? (
+                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                    {farmEditError}
+                  </Text>
+                ) : null}
+                {editingFarm ? (
+                  <View style={{ marginTop: 14, gap: 4 }}>
+                    <Text style={styles.label}>Farm name *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.farmName}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, farmName: v } : prev))
+                      }
+                      autoCapitalize="words"
+                    />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Grower name</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.growerName}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, growerName: v } : prev))
+                      }
+                      autoCapitalize="words"
+                    />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Phone</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.phoneNumber}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, phoneNumber: v } : prev))
+                      }
+                      keyboardType="phone-pad"
+                    />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Email</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.email}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, email: v } : prev))
+                      }
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
+                    <TextInput
+                      style={[styles.input, { minHeight: 88, textAlignVertical: "top" }]}
+                      value={editingFarm.notes}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, notes: v } : prev))
+                      }
+                      multiline
+                    />
+                    <View style={{ marginTop: 16, gap: 10 }}>
+                      <PrimaryButton
+                        label={farmSaving ? "Saving…" : "Save farm changes"}
+                        onPress={saveFarmEdit}
+                      />
+                      <Pressable onPress={closeFarmEditor} disabled={farmSaving} hitSlop={8}>
+                        <Text
+                          style={{
+                            textAlign: "center",
+                            color: colors.muted,
+                            fontWeight: "700",
+                            paddingVertical: 8,
+                          }}
+                        >
+                          Cancel
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : null}
+              </ScrollView>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }

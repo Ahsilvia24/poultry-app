@@ -128,6 +128,8 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
     farm_name: string;
     grower_name: string;
     phone_number: string | null;
+    email: string | null;
+    notes: string | null;
     number_of_houses: number;
     is_active: number;
   }>(
@@ -212,6 +214,8 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
         farmName: f.farm_name,
         growerName: f.grower_name,
         phoneNumber: f.phone_number,
+        email: f.email ?? null,
+        notes: f.notes ?? null,
         numberOfHouses: houseCount,
         houseCount,
         isActive: f.is_active === 1,
