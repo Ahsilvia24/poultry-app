@@ -20,6 +20,7 @@ import {
   formatHouseLfoSummary,
 } from "../../../src/lib/lfo/calculate";
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
+import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, styles } from "../../../src/theme";
 import { Card, PageHeader, PrimaryButton } from "../../../src/components/ui";
 import { DatePickerField } from "../../../src/components/DatePickerField";
@@ -175,6 +176,7 @@ export default function EditLfoScreen() {
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
   const scrollRef = useRef<ScrollViewType>(null);
+  useTabScrollToTop("lfo", scrollRef);
   const scrollYRef = useRef(0);
   const fieldRefs = useRef(new Map<string, ViewType>());
 

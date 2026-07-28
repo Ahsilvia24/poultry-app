@@ -37,6 +37,7 @@ import {
   updateHouse,
 } from "../../../../src/repos/data";
 import { setFarmNavContext } from "../../../../src/lib/farmNavContext";
+import { useTabScrollToTop } from "../../../../src/lib/tabScroll";
 import { VISIT_TYPE_LABELS } from "../../../../src/lib/visits";
 import {
   ISSUE_CATEGORY_LABELS,
@@ -235,6 +236,7 @@ export default function FarmDetailScreen() {
   const [flockNumberError, setFlockNumberError] = useState<string | null>(null);
   const [flockNumberSaving, setFlockNumberSaving] = useState(false);
   const scrollRef = useRef<ScrollViewType>(null);
+  useTabScrollToTop("farms", scrollRef);
   const sectionY = useRef<Record<string, number>>({});
 
   function scrollToSection(key: string) {
@@ -738,7 +740,9 @@ export default function FarmDetailScreen() {
     setEditingFarm(null);
     setFarmEditError(null);
     if (openEdit) {
-      router.replace({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } });
+      // Opened from list gear — return to the farms list at the prior scroll position.
+      if (router.canGoBack()) router.back();
+      else router.replace("/(tabs)/farms");
     }
   }
 
@@ -756,9 +760,11 @@ export default function FarmDetailScreen() {
       });
       setEditingFarm(null);
       if (openEdit) {
-        router.replace({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } });
+        if (router.canGoBack()) router.back();
+        else router.replace("/(tabs)/farms");
+      } else {
+        load();
       }
-      load();
     } catch (e) {
       setFarmEditError(e instanceof Error ? e.message : "Could not save farm");
     } finally {
@@ -776,7 +782,10 @@ export default function FarmDetailScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Pressable
-          onPress={() => router.replace("/(tabs)/farms")}
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace("/(tabs)/farms");
+          }}
           style={{ marginBottom: 8 }}
           accessibilityRole="button"
           accessibilityLabel="Back to farms"

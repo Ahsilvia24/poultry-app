@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -13,6 +13,7 @@ import { getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
 import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
 import { formatShortScheduleDate } from "../../src/lib/schedule";
+import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import {
   Card,
   Metric,
@@ -134,6 +135,8 @@ function formatCatchDate(dateKey: string) {
 export default function DashboardScreen() {
   const { signOut } = useAuth();
   const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
+  useTabScrollToTop("index", scrollRef);
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -215,6 +218,7 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <ScrollView
+        ref={scrollRef}
         style={styles.screen}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}

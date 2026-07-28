@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { createLfo, deleteLfo, listFarms, listLfos } from "../../../src/repos/data";
 import { todayKey } from "../../../src/lib/ids";
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
+import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, styles } from "../../../src/theme";
 import {
   Card,
@@ -127,6 +128,7 @@ export default function LfoListScreen() {
   const [replaceOnType, setReplaceOnType] = useState(false);
 
   const scrollRef = useRef<ScrollViewType>(null);
+  useTabScrollToTop("lfo", scrollRef);
   const scrollYRef = useRef(0);
   const waterRef = useRef<ViewType>(null);
   const headRef = useRef<ViewType>(null);

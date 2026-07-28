@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,7 @@ import {
   reactivateFarm,
 } from "../../../src/repos/data";
 import { formatLongScheduleDate } from "../../../src/lib/schedule";
+import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, styles } from "../../../src/theme";
 import {
   Card,
@@ -31,6 +32,8 @@ type StatusFilter = "active" | "inactive" | "all";
 
 export default function FarmsScreen() {
   const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
+  useTabScrollToTop("farms", scrollRef);
   const [status, setStatus] = useState<StatusFilter>("active");
   const [data, setData] = useState<ReturnType<typeof listFarms> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,6 +117,7 @@ export default function FarmsScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <ScrollView
+        ref={scrollRef}
         style={styles.screen}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}

@@ -16,6 +16,7 @@ import {
 } from "../../src/lib/tools";
 import { formatMinVentCycle } from "../../src/lib/mortality";
 import { colors, styles } from "../../src/theme";
+import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { Card, Chip, PageHeader } from "../../src/components/ui";
 import { ExportDataCard } from "../../src/components/ExportDataCard";
 import {
@@ -38,6 +39,7 @@ const QUICK_LINKS: Array<{ key: SectionKey; label: string }> = [
 
 export default function ToolsScreen() {
   const scrollRef = useRef<ScrollView>(null);
+  useTabScrollToTop("tools", scrollRef);
   const sectionY = useRef<Partial<Record<SectionKey, number>>>({});
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
     temp: true,

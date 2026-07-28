@@ -1,8 +1,10 @@
 import { Tabs } from "expo-router";
 import { Pressable, Text, View } from "react-native";
+import { StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../src/theme";
 import { getFarmNavContext } from "../../src/lib/farmNavContext";
+import { requestTabScrollTop, tabStackIndex } from "../../src/lib/tabScroll";
 
 const TAB_ITEMS = [
   { name: "index", label: "Dashboard", href: "/" },
@@ -30,6 +32,18 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
     TAB_ITEMS.some((t) => t.name === route.name),
   );
 
+  function popNestedToRoot(tabRoute: { state?: { index?: number; key?: string } }) {
+    const nested = tabStackIndex(tabRoute);
+    if (nested.index > 0 && nested.key) {
+      navigation.dispatch({
+        ...StackActions.popToTop(),
+        target: nested.key,
+      });
+      return true;
+    }
+    return false;
+  }
+
   return (
     <View
       style={{
@@ -42,11 +56,12 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
       }}
     >
       <View style={{ flexDirection: "row", gap: 4 }}>
-        {visibleRoutes.map((route: { key: string; name: string }) => {
+        {visibleRoutes.map((route: { key: string; name: string; state?: any }) => {
           const index = state.routes.findIndex((r: { key: string }) => r.key === route.key);
           const focused = state.index === index;
           const item = TAB_ITEMS.find((t) => t.name === route.name);
           const label = item?.label ?? descriptors[route.key]?.options?.title ?? route.name;
+          const tabRoute = state.routes[index] as { key: string; name: string; state?: any };
 
           return (
             <Pressable
@@ -60,28 +75,43 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                   canPreventDefault: true,
                 });
                 if (event.defaultPrevented) return;
-                // Match web nav: tapping an active tab returns to that section's list/root
+
                 if (focused) {
+                  // Farms: leave a farm detail with a single pop (slide right), not a reset.
+                  if (route.name === "farms") {
+                    popNestedToRoot(tabRoute);
+                    requestTabScrollTop("farms");
+                    return;
+                  }
+                  if (route.name === "lfo") {
+                    popNestedToRoot(tabRoute);
+                    requestTabScrollTop("lfo");
+                    return;
+                  }
                   if (route.name === "mortality") {
                     const ctx = getFarmNavContext();
                     navigation.navigate(route.name, {
                       farmId: ctx.farmId ?? undefined,
                       houseFlockId: ctx.houseFlockId ?? undefined,
                     });
+                    requestTabScrollTop("mortality");
                     return;
                   }
-                  navigation.navigate(route.name, { screen: "index" });
+                  requestTabScrollTop(route.name);
                   return;
                 }
+
+                // Switching tabs: restore last screen in that tab, then snap to top.
                 if (route.name === "mortality") {
                   const ctx = getFarmNavContext();
                   navigation.navigate(route.name, {
                     farmId: ctx.farmId ?? undefined,
                     houseFlockId: ctx.houseFlockId ?? undefined,
                   });
-                  return;
+                } else {
+                  navigation.navigate(route.name);
                 }
-                navigation.navigate(route.name);
+                requestTabScrollTop(route.name);
               }}
               style={{
                 flex: 1,

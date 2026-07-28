@@ -19,6 +19,7 @@ import {
 import { birdAgeFromPlacement, flockWeekFromAge, calcTotalDailyLoss } from "../../src/lib/mortality";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import { getFarmNavContext } from "../../src/lib/farmNavContext";
+import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { colors, styles } from "../../src/theme";
 import {
   Card,
@@ -169,6 +170,7 @@ export default function MortalityScreen() {
   const [selection, setSelection] = useState<{ start: number; end: number } | undefined>();
   const inputRefs = useRef(new Map<string, TextInputType>());
   const scrollRef = useRef<ScrollViewType>(null);
+  useTabScrollToTop("mortality", scrollRef);
   const rowsRef = useRef(rows);
   const houseFlockIdRef = useRef(houseFlockId);
   const farmIdRef = useRef(farmId);
