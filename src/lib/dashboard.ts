@@ -157,8 +157,8 @@ export async function getDashboardData(userId: string) {
         label: due.label,
         flockNumber: flock.flockNumber,
         completed: due.completed,
-        // Event age vs placement (Prebrood = -2), not flock age as of today.
-        flockAgeDays: due.birdAgeDays,
+        // Current flock age today (can be negative pre-place), not the event's target age.
+        flockAgeDays: differenceInCalendarDays(today, flock.placementDate),
       });
       for (const due of dueToday) todaysSchedule.push(toRow(due));
       for (const due of upcoming) upcomingSchedule.push(toRow(due));

@@ -426,8 +426,8 @@ export function getDashboard() {
         farmId: farm.id,
         flockId: fl.id,
         farmName: farm.farmName,
-        // Event age vs placement (Prebrood = -2) — not flock age as of today.
-        flockAgeDays: v.birdAgeDays,
+        // Current flock age today (can be negative pre-place), not the event's target age.
+        flockAgeDays: daysSincePlacement(fl.placement_date, today),
         date: v.dateKey,
         label: v.label,
         completed: v.completed,
