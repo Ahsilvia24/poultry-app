@@ -43,6 +43,7 @@ type FarmEditDraft = {
   phoneNumber: string;
   email: string;
   notes: string;
+  numberOfGenerators: number;
 };
 
 export default function FarmsScreen() {
@@ -133,6 +134,7 @@ export default function FarmsScreen() {
       phoneNumber: farm.phoneNumber ?? "",
       email: farm.email ?? "",
       notes: farm.notes ?? "",
+      numberOfGenerators: farm.numberOfGenerators ?? 4,
     });
   }
 
@@ -153,6 +155,7 @@ export default function FarmsScreen() {
         phoneNumber: editingFarm.phoneNumber,
         email: editingFarm.email,
         notes: editingFarm.notes,
+        numberOfGenerators: editingFarm.numberOfGenerators,
       });
       setEditingFarm(null);
       load();
@@ -438,6 +441,21 @@ export default function FarmsScreen() {
                       autoCapitalize="none"
                       autoCorrect={false}
                     />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Number of generators</Text>
+                    <View style={[styles.row, { marginBottom: 8 }]}>
+                      {([1, 2, 3, 4] as const).map((n) => (
+                        <Chip
+                          key={n}
+                          label={String(n)}
+                          active={editingFarm.numberOfGenerators === n}
+                          onPress={() =>
+                            setEditingFarm((prev) =>
+                              prev ? { ...prev, numberOfGenerators: n } : prev,
+                            )
+                          }
+                        />
+                      ))}
+                    </View>
                     <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
                     <TextInput
                       style={[styles.input, { minHeight: 88, textAlignVertical: "top" }]}

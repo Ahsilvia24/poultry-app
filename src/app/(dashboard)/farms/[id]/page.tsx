@@ -285,6 +285,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           phoneNumber: farm.phoneNumber,
           email: farm.email,
           notes: farm.notes,
+          numberOfGenerators: farm.numberOfGenerators,
         }}
         subtitle={subtitle}
         actions={
@@ -497,6 +498,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
         <FarmGeneratorLogSection
           farmId={farm.id}
+          generatorCount={farm.numberOfGenerators}
           logs={farm.generatorLogs.map((log) => ({
             id: log.id,
             logDate: dateKeyFromDb(log.logDate),

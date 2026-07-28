@@ -15,6 +15,13 @@ export const farmSchema = z.object({
     z.string().email("Enter a valid email").nullable().optional(),
   ),
   notes: z.string().optional().nullable(),
+  numberOfGenerators: z.coerce
+    .number()
+    .int()
+    .min(1, "At least 1 generator")
+    .max(4, "At most 4 generators")
+    .optional()
+    .default(4),
 });
 
 export const createFarmSchema = farmSchema.extend({
@@ -281,8 +288,8 @@ export const lastFeedOrderSchema = z.object({
 export const generatorLogSchema = z.object({
   farmId: z.string().min(1),
   logDate: z.string().min(1, "Date is required"),
-  gen1Hours: z.coerce.number().min(0, "Gen 1 hours cannot be negative"),
-  gen2Hours: z.coerce.number().min(0, "Gen 2 hours cannot be negative"),
-  gen3Hours: z.coerce.number().min(0, "Gen 3 hours cannot be negative"),
-  gen4Hours: z.coerce.number().min(0, "Gen 4 hours cannot be negative"),
+  gen1Hours: z.coerce.number().min(0, "Gen 1 hours cannot be negative").default(0),
+  gen2Hours: z.coerce.number().min(0, "Gen 2 hours cannot be negative").default(0),
+  gen3Hours: z.coerce.number().min(0, "Gen 3 hours cannot be negative").default(0),
+  gen4Hours: z.coerce.number().min(0, "Gen 4 hours cannot be negative").default(0),
 });

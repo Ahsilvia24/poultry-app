@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createFarmAction } from "@/app/actions/farms";
-import { Button, Card, Input, Label, PageHeader, Textarea } from "@/components/ui";
+import { Button, Card, Input, Label, PageHeader, Select, Textarea } from "@/components/ui";
 
 async function submitCreateFarm(formData: FormData) {
   "use server";
@@ -41,6 +41,16 @@ export default function NewFarmPage() {
               <p className="mt-1 text-xs text-stone-500">
                 Creates houses 1–N with default 29,700 sq ft (editable later)
               </p>
+            </div>
+            <div>
+              <Label htmlFor="numberOfGenerators">Number of generators</Label>
+              <Select id="numberOfGenerators" name="numberOfGenerators" defaultValue="4">
+                {[1, 2, 3, 4].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div className="sm:col-span-2">
               <Label htmlFor="growerName">Grower name</Label>

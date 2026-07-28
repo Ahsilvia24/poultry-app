@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { updateFarmAction } from "@/app/actions/farms";
-import { Button, Card, Input, Label, Textarea } from "@/components/ui";
+import { Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
 
 type FarmInfo = {
   id: string;
@@ -11,6 +11,7 @@ type FarmInfo = {
   phoneNumber: string | null;
   email?: string | null;
   notes: string | null;
+  numberOfGenerators: number;
 };
 
 function GearIcon({ className }: { className?: string }) {
@@ -111,6 +112,20 @@ export function FarmInfoEditor({
                   defaultValue={farm.email ?? ""}
                   autoComplete="email"
                 />
+              </div>
+              <div>
+                <Label htmlFor="numberOfGenerators">Number of generators</Label>
+                <Select
+                  id="numberOfGenerators"
+                  name="numberOfGenerators"
+                  defaultValue={String(farm.numberOfGenerators ?? 4)}
+                >
+                  {[1, 2, 3, 4].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </Select>
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="notes">Notes</Label>

@@ -13,6 +13,7 @@ import {
   formatGeneratorChartsCopy,
   formatGeneratorHours,
   generatorDeltas,
+  generatorFieldsForCount,
   type GeneratorHours,
 } from "@/lib/generator/format";
 
@@ -24,13 +25,6 @@ export type GeneratorLogRow = {
   gen3Hours: number;
   gen4Hours: number;
 };
-
-const GEN_CHARTS = [
-  { key: "gen1", label: "Gen 1", hourKey: "gen1Hours" as const, deltaKey: "gen1" as const },
-  { key: "gen2", label: "Gen 2", hourKey: "gen2Hours" as const, deltaKey: "gen2" as const },
-  { key: "gen3", label: "Gen 3", hourKey: "gen3Hours" as const, deltaKey: "gen3" as const },
-  { key: "gen4", label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
-];
 
 const MAX_GENERATOR_LOGS_DISPLAY = 8;
 
@@ -187,6 +181,7 @@ function GeneratorLogForm({
   recordId,
   initial,
   previous,
+  generatorCount,
   onSuccess,
   onCancel,
 }: {
@@ -194,6 +189,7 @@ function GeneratorLogForm({
   recordId?: string;
   initial?: GeneratorLogRow;
   previous?: GeneratorHours | null;
+  generatorCount: number;
   onSuccess?: () => void;
   onCancel?: () => void;
 }) {
@@ -207,6 +203,8 @@ function GeneratorLogForm({
   const [gen3, setGen3] = useState(initial ? String(initial.gen3Hours) : "");
   const [gen4, setGen4] = useState(initial ? String(initial.gen4Hours) : "");
 
+  const fields = generatorFieldsForCount(generatorCount);
+
   const previewDeltas = useMemo(() => {
     const hours: GeneratorHours = {
       gen1Hours: Number(gen1) || 0,
@@ -216,6 +214,13 @@ function GeneratorLogForm({
     };
     return generatorDeltas(hours, previous ?? null);
   }, [gen1, gen2, gen3, gen4, previous]);
+
+  const fieldState = {
+    gen1Hours: [gen1, setGen1, previewDeltas.gen1] as const,
+    gen2Hours: [gen2, setGen2, previewDeltas.gen2] as const,
+    gen3Hours: [gen3, setGen3, previewDeltas.gen3] as const,
+    gen4Hours: [gen4, setGen4, previewDeltas.gen4] as const,
+  };
 
   return (
     <form
@@ -247,33 +252,29 @@ function GeneratorLogForm({
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        {(
-          [
-            ["gen1Hours", "Gen 1", gen1, setGen1, previewDeltas.gen1],
-            ["gen2Hours", "Gen 2", gen2, setGen2, previewDeltas.gen2],
-            ["gen3Hours", "Gen 3", gen3, setGen3, previewDeltas.gen3],
-            ["gen4Hours", "Gen 4", gen4, setGen4, previewDeltas.gen4],
-          ] as const
-        ).map(([name, label, value, setValue, delta]) => (
-          <div key={name}>
-            <Label htmlFor={`gen-${name}`}>{label} hours</Label>
-            <Input
-              id={`gen-${name}`}
-              name={name}
-              type="text"
-              inputMode="decimal"
-              required
-              value={value}
-              placeholder="0"
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ""))}
-              className="placeholder:text-stone-400/70"
-            />
-            <p className="mt-1 text-xs text-stone-500">
-              Time exercised: {formatGeneratorHours(delta)}
-            </p>
-          </div>
-        ))}
+        {fields.map((field) => {
+          const [value, setValue, delta] = fieldState[field.hourKey];
+          return (
+            <div key={field.hourKey}>
+              <Label htmlFor={`gen-${field.hourKey}`}>{field.label} hours</Label>
+              <Input
+                id={`gen-${field.hourKey}`}
+                name={field.hourKey}
+                type="text"
+                inputMode="decimal"
+                required
+                value={value}
+                placeholder="0"
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ""))}
+                className="placeholder:text-stone-400/70"
+              />
+              <p className="mt-1 text-xs text-stone-500">
+                Time exercised: {formatGeneratorHours(delta)}
+              </p>
+            </div>
+          );
+        })}
       </div>
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
@@ -293,13 +294,20 @@ function GeneratorLogForm({
 export function FarmGeneratorLogSection({
   farmId,
   logs,
+  generatorCount = 4,
 }: {
   farmId: string;
   logs: GeneratorLogRow[];
+  generatorCount?: number;
 }) {
   const [open, setOpen] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const genFields = useMemo(
+    () => generatorFieldsForCount(generatorCount),
+    [generatorCount],
+  );
 
   const allSorted = useMemo(
     () => [...logs].sort((a, b) => b.logDate.localeCompare(a.logDate) || b.id.localeCompare(a.id)),
@@ -312,7 +320,7 @@ export function FarmGeneratorLogSection({
   );
 
   const chartRowsByGen = useMemo(() => {
-    return GEN_CHARTS.map((gen) => ({
+    return genFields.map((gen) => ({
       ...gen,
       rows: sorted.map((log, index) => {
         const previous = allSorted[index + 1] ?? null;
@@ -339,7 +347,7 @@ export function FarmGeneratorLogSection({
         } satisfies ChartRow;
       }),
     }));
-  }, [sorted, allSorted]);
+  }, [sorted, allSorted, genFields]);
 
   const chartsCopyText = useMemo(() => {
     return formatGeneratorChartsCopy(
@@ -365,8 +373,9 @@ export function FarmGeneratorLogSection({
           deltas: generatorDeltas(hours, prevHours),
         };
       }),
+      generatorCount,
     );
-  }, [sorted, allSorted]);
+  }, [sorted, allSorted, generatorCount]);
 
   useEffect(() => {
     if (generatorsHashActive()) setOpen(true);
@@ -407,7 +416,7 @@ export function FarmGeneratorLogSection({
   if (!open) return <div id="generators" className="scroll-mt-24" />;
 
   const editingLog = editingId ? sorted.find((l) => l.id === editingId) : null;
-  const editingIndex = editingLog ? sorted.findIndex((l) => l.id === editingLog.id) : -1;
+  const editingIndex = editingLog ? sorted.findIndex((l) => l.id === editingId) : -1;
   const editingPrevious =
     editingIndex >= 0 && sorted[editingIndex + 1]
       ? {
@@ -441,6 +450,7 @@ export function FarmGeneratorLogSection({
             recordId={editingLog.id}
             initial={editingLog}
             previous={editingPrevious}
+            generatorCount={generatorCount}
             onSuccess={afterSaved}
             onCancel={() => setEditingId(null)}
           />
@@ -491,6 +501,7 @@ export function FarmGeneratorLogSection({
           <Card className="mt-3">
             <GeneratorLogForm
               farmId={farmId}
+              generatorCount={generatorCount}
               previous={
                 sorted[0]
                   ? {

@@ -35,6 +35,7 @@ export function migrateDb() {
       email TEXT,
       notes TEXT,
       number_of_houses INTEGER NOT NULL DEFAULT 0,
+      number_of_generators INTEGER NOT NULL DEFAULT 4,
       is_active INTEGER NOT NULL DEFAULT 1,
       deleted_at TEXT
     );
@@ -212,6 +213,11 @@ export function migrateDb() {
   }
   if (!farmCols.some((c) => c.name === "email")) {
     database.execSync("ALTER TABLE farms ADD COLUMN email TEXT");
+  }
+  if (!farmCols.some((c) => c.name === "number_of_generators")) {
+    database.execSync(
+      "ALTER TABLE farms ADD COLUMN number_of_generators INTEGER NOT NULL DEFAULT 4",
+    );
   }
 
   // Existing installs may lack newer flock columns

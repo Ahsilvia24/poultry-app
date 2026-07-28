@@ -215,6 +215,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                       phoneNumber: farm.phoneNumber,
                       email: farm.email,
                       notes: farm.notes,
+                      numberOfGenerators: farm.numberOfGenerators,
                     }}
                   />
                   {!farm.isActive ? <DeleteFarmButton farmId={farm.id} appearance="icon" /> : null}

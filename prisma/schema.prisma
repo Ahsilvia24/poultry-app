@@ -154,6 +154,7 @@ model Farm {
   phoneNumber    String?
   email          String?
   numberOfHouses Int       @default(0)
+  numberOfGenerators Int   @default(4)
   notes          String?
   isActive       Boolean   @default(true)
   deletedAt      DateTime?

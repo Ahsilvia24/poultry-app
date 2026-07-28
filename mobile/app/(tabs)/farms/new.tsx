@@ -13,7 +13,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { createFarm } from "../../../src/repos/data";
 import { colors, styles } from "../../../src/theme";
-import { Card, PageHeader, PrimaryButton } from "../../../src/components/ui";
+import { Card, Chip, PageHeader, PrimaryButton } from "../../../src/components/ui";
 
 export default function NewFarmScreen() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function NewFarmScreen() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [numberOfHouses, setNumberOfHouses] = useState("4");
+  const [numberOfGenerators, setNumberOfGenerators] = useState(4);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -35,6 +36,7 @@ export default function NewFarmScreen() {
         phoneNumber,
         notes,
         numberOfHouses: Number(numberOfHouses) || 0,
+        numberOfGenerators,
       });
       router.replace({ pathname: '/(tabs)/farms/[id]', params: { id } });
     } catch (e) {
@@ -81,6 +83,18 @@ export default function NewFarmScreen() {
             <Text style={[styles.muted, { marginTop: -8, marginBottom: 12, fontSize: 12 }]}>
               Creates houses 1–N with default 29,700 sq ft (editable later)
             </Text>
+
+            <Text style={styles.label}>Number of generators</Text>
+            <View style={[styles.row, { marginBottom: 12 }]}>
+              {([1, 2, 3, 4] as const).map((n) => (
+                <Chip
+                  key={n}
+                  label={String(n)}
+                  active={numberOfGenerators === n}
+                  onPress={() => setNumberOfGenerators(n)}
+                />
+              ))}
+            </View>
 
             <Text style={styles.label}>Grower name</Text>
             <TextInput

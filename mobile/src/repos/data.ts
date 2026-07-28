@@ -136,6 +136,7 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
     email: string | null;
     notes: string | null;
     number_of_houses: number;
+    number_of_generators: number;
     is_active: number;
   }>(
     status === "all"
@@ -222,6 +223,7 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
         email: f.email ?? null,
         notes: f.notes ?? null,
         numberOfHouses: houseCount,
+        numberOfGenerators: f.number_of_generators ?? 4,
         houseCount,
         isActive: f.is_active === 1,
         birdsPlaced,
@@ -544,6 +546,7 @@ export function getFarmDetail(farmId: string) {
     phone_number: string | null;
     email: string | null;
     notes: string | null;
+    number_of_generators: number;
   }>("SELECT * FROM farms WHERE id = ?", [farmId]);
   if (!farm) throw new Error("Farm not found");
 
@@ -760,6 +763,7 @@ export function getFarmDetail(farmId: string) {
       phoneNumber: farm.phone_number,
       email: farm.email ?? null,
       notes: farm.notes,
+      numberOfGenerators: farm.number_of_generators ?? 4,
     },
     activeFlocks,
     activeFlock: flock
@@ -1515,6 +1519,7 @@ export function createFarm(input: {
   email?: string | null;
   notes?: string | null;
   numberOfHouses?: number;
+  numberOfGenerators?: number;
 }) {
   const db = getDb();
   const farmName = input.farmName.trim();
@@ -1524,6 +1529,10 @@ export function createFarm(input: {
     0,
     Math.min(40, Math.floor(Number(input.numberOfHouses ?? 0) || 0)),
   );
+  const generatorCount = Math.max(
+    1,
+    Math.min(4, Math.floor(Number(input.numberOfGenerators ?? 4) || 4)),
+  );
   const id = newId("farm");
   const growerName = (input.growerName ?? "").trim();
   const phoneNumber = input.phoneNumber?.trim() || null;
@@ -1531,9 +1540,9 @@ export function createFarm(input: {
   const notes = input.notes?.trim() || null;
 
   db.runSync(
-    `INSERT INTO farms (id, farm_name, grower_name, phone_number, email, notes, number_of_houses, is_active)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-    [id, farmName, growerName, phoneNumber, email, notes, houseCount],
+    `INSERT INTO farms (id, farm_name, grower_name, phone_number, email, notes, number_of_houses, number_of_generators, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+    [id, farmName, growerName, phoneNumber, email, notes, houseCount, generatorCount],
   );
 
   for (let n = 1; n <= houseCount; n++) {
@@ -1555,6 +1564,7 @@ export function updateFarm(
     phoneNumber?: string | null;
     email?: string | null;
     notes?: string | null;
+    numberOfGenerators?: number;
   },
 ) {
   const db = getDb();
@@ -1564,9 +1574,14 @@ export function updateFarm(
   const farmName = input.farmName.trim();
   if (!farmName) throw new Error("Farm name is required");
 
+  const generatorCount = Math.max(
+    1,
+    Math.min(4, Math.floor(Number(input.numberOfGenerators ?? 4) || 4)),
+  );
+
   db.runSync(
     `UPDATE farms
-     SET farm_name = ?, grower_name = ?, phone_number = ?, email = ?, notes = ?
+     SET farm_name = ?, grower_name = ?, phone_number = ?, email = ?, notes = ?, number_of_generators = ?
      WHERE id = ?`,
     [
       farmName,
@@ -1574,6 +1589,7 @@ export function updateFarm(
       input.phoneNumber?.trim() || null,
       input.email?.trim() || null,
       input.notes?.trim() || null,
+      generatorCount,
       farmId,
     ],
   );

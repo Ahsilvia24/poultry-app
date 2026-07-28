@@ -50,6 +50,7 @@ import {
   formatGeneratorChartsCopy,
   formatGeneratorHours,
   generatorDeltas,
+  generatorFieldsForCount,
   type GeneratorHours,
 } from "../../../../src/lib/generator";
 import {
@@ -61,6 +62,7 @@ import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { colors, styles } from "../../../../src/theme";
 import {
   Card,
+  Chip,
   Metric,
   PrimaryButton,
   SectionTitle,
@@ -190,6 +192,7 @@ type FarmEditDraft = {
   phoneNumber: string;
   email: string;
   notes: string;
+  numberOfGenerators: number;
 };
 
 function houseFieldLabel(field: HouseNumField): string {
@@ -251,13 +254,6 @@ function HouseNumFieldButton({
     </View>
   );
 }
-
-const GENERATOR_CHARTS = [
-  { label: "Gen 1", hourKey: "gen1Hours" as const, deltaKey: "gen1" as const },
-  { label: "Gen 2", hourKey: "gen2Hours" as const, deltaKey: "gen2" as const },
-  { label: "Gen 3", hourKey: "gen3Hours" as const, deltaKey: "gen3" as const },
-  { label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
-];
 
 const MAX_GENERATOR_LOGS_DISPLAY = 8;
 
@@ -485,6 +481,7 @@ export default function FarmDetailScreen() {
       phoneNumber: farm.phoneNumber ?? "",
       email: farm.email ?? "",
       notes: farm.notes ?? "",
+      numberOfGenerators: farm.numberOfGenerators ?? 4,
     });
   }
 
@@ -936,7 +933,9 @@ export default function FarmDetailScreen() {
 
   function onGeneratorEnter() {
     if (!generatorActiveField) return;
-    const order: GeneratorNumField[] = ["gen1Hours", "gen2Hours", "gen3Hours", "gen4Hours"];
+    const order = generatorFieldsForCount(farm.numberOfGenerators).map(
+      (f) => f.hourKey,
+    ) as GeneratorNumField[];
     const idx = order.indexOf(generatorActiveField);
     const next = idx >= 0 ? order[idx + 1] : undefined;
     if (next) focusGeneratorField(next);
@@ -1056,6 +1055,7 @@ export default function FarmDetailScreen() {
         phoneNumber: editingFarm.phoneNumber,
         email: editingFarm.email,
         notes: editingFarm.notes,
+        numberOfGenerators: editingFarm.numberOfGenerators,
       });
       setEditingFarm(null);
       if (openEdit) {
@@ -1651,6 +1651,7 @@ export default function FarmDetailScreen() {
                           deltas: generatorDeltas(hours, prevHours),
                         };
                       }),
+                      farm.numberOfGenerators,
                     );
                     try {
                       const Clipboard = await import("expo-clipboard");
@@ -1671,7 +1672,7 @@ export default function FarmDetailScreen() {
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
               <>
-                {GENERATOR_CHARTS.map((gen) => {
+                {generatorFieldsForCount(farm.numberOfGenerators).map((gen) => {
                   const allLogs = data.generatorLogs ?? [];
                   const logs = allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY);
                   const rows: GeneratorChartRow[] = logs.map((log, index) => {
@@ -1701,7 +1702,7 @@ export default function FarmDetailScreen() {
                   });
                   return (
                     <GeneratorHoursChart
-                      key={gen.label}
+                      key={gen.key}
                       title={gen.label}
                       rows={rows}
                       onEdit={(id) => {
@@ -2482,6 +2483,21 @@ export default function FarmDetailScreen() {
                       autoCapitalize="none"
                       autoCorrect={false}
                     />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Number of generators</Text>
+                    <View style={[styles.row, { marginBottom: 8 }]}>
+                      {([1, 2, 3, 4] as const).map((n) => (
+                        <Chip
+                          key={n}
+                          label={String(n)}
+                          active={editingFarm.numberOfGenerators === n}
+                          onPress={() =>
+                            setEditingFarm((prev) =>
+                              prev ? { ...prev, numberOfGenerators: n } : prev,
+                            )
+                          }
+                        />
+                      ))}
+                    </View>
                     <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
                     <TextInput
                       style={[
@@ -2575,21 +2591,14 @@ export default function FarmDetailScreen() {
                   }
                 />
               </View>
-              {(
-                [
-                  ["gen1Hours", "Gen 1 hours"],
-                  ["gen2Hours", "Gen 2 hours"],
-                  ["gen3Hours", "Gen 3 hours"],
-                  ["gen4Hours", "Gen 4 hours"],
-                ] as const
-              ).map(([key, label]) => (
+              {generatorFieldsForCount(farm.numberOfGenerators).map((f) => (
                 <HouseNumFieldButton
-                  key={key}
-                  label={label}
-                  value={generatorDraft[key]}
-                  active={generatorActiveField === key}
-                  onPress={() => focusGeneratorField(key)}
-                  fieldRef={bindGeneratorFieldRef(key)}
+                  key={f.hourKey}
+                  label={`${f.label} hours`}
+                  value={generatorDraft[f.hourKey]}
+                  active={generatorActiveField === f.hourKey}
+                  onPress={() => focusGeneratorField(f.hourKey)}
+                  fieldRef={bindGeneratorFieldRef(f.hourKey)}
                 />
               ))}
               <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
