@@ -49,7 +49,6 @@ import {
   formatGeneratorHours,
   formatGeneratorLogCopy,
   generatorDeltas,
-  type GeneratorDeltas,
   type GeneratorHours,
 } from "../../../../src/lib/generator";
 import {
