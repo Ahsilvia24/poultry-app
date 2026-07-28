@@ -259,6 +259,8 @@ const GENERATOR_CHARTS = [
   { label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
 ];
 
+const MAX_GENERATOR_LOGS_DISPLAY = 8;
+
 type GeneratorChartRow = {
   id: string;
   dateLabel: string;
@@ -267,7 +269,6 @@ type GeneratorChartRow = {
 };
 
 function GeneratorHoursChart({ title, rows }: { title: string; rows: GeneratorChartRow[] }) {
-  const latest = rows[0];
   return (
     <View style={{ marginTop: 8 }}>
       <Text style={{ fontWeight: "700", fontSize: 12, color: colors.text, marginBottom: 2 }}>
@@ -280,43 +281,47 @@ function GeneratorHoursChart({ title, rows }: { title: string; rows: GeneratorCh
           Exercised
         </Text>
       </View>
-      {!latest ? (
+      {rows.length === 0 ? (
         <Text style={[styles.muted, { fontSize: 12 }]}>None yet</Text>
       ) : (
-        <View style={{ flexDirection: "row", gap: 12 }}>
-          <Text
-            style={{
-              width: 64,
-              fontSize: 12,
-              fontWeight: "600",
-              color: colors.text,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {latest.dateLabel}
-          </Text>
-          <Text
-            style={{
-              width: 48,
-              fontSize: 12,
-              fontWeight: "600",
-              color: colors.text,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {formatGeneratorHours(latest.hours)}
-          </Text>
-          <Text
-            style={{
-              width: 56,
-              fontSize: 12,
-              fontWeight: "600",
-              color: colors.text,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {formatGeneratorHours(latest.exercised)}
-          </Text>
+        <View style={{ gap: 1 }}>
+          {rows.map((row) => (
+            <View key={row.id} style={{ flexDirection: "row", gap: 12 }}>
+              <Text
+                style={{
+                  width: 64,
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: colors.text,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {row.dateLabel}
+              </Text>
+              <Text
+                style={{
+                  width: 48,
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: colors.text,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {formatGeneratorHours(row.hours)}
+              </Text>
+              <Text
+                style={{
+                  width: 56,
+                  fontSize: 12,
+                  fontWeight: "600",
+                  color: colors.text,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {formatGeneratorHours(row.exercised)}
+              </Text>
+            </View>
+          ))}
         </View>
       )}
     </View>
@@ -1574,37 +1579,48 @@ export default function FarmDetailScreen() {
             ) : (
               <>
                 {GENERATOR_CHARTS.map((gen) => {
-                  const logs = data.generatorLogs ?? [];
-                  const log = logs[0]!;
-                  const previous = logs[1] ?? null;
-                  const hours: GeneratorHours = {
-                    gen1Hours: log.gen1Hours,
-                    gen2Hours: log.gen2Hours,
-                    gen3Hours: log.gen3Hours,
-                    gen4Hours: log.gen4Hours,
-                  };
-                  const prevHours = previous
-                    ? {
-                        gen1Hours: previous.gen1Hours,
-                        gen2Hours: previous.gen2Hours,
-                        gen3Hours: previous.gen3Hours,
-                        gen4Hours: previous.gen4Hours,
-                      }
-                    : null;
-                  const deltas = generatorDeltas(hours, prevHours);
-                  const [y, m, d] = log.logDate.split("-").map(Number);
-                  const rows: GeneratorChartRow[] = [
-                    {
+                  const logs = (data.generatorLogs ?? []).slice(0, MAX_GENERATOR_LOGS_DISPLAY);
+                  const rows: GeneratorChartRow[] = logs.map((log, index) => {
+                    const previous = logs[index + 1] ?? null;
+                    const hours: GeneratorHours = {
+                      gen1Hours: log.gen1Hours,
+                      gen2Hours: log.gen2Hours,
+                      gen3Hours: log.gen3Hours,
+                      gen4Hours: log.gen4Hours,
+                    };
+                    const prevHours = previous
+                      ? {
+                          gen1Hours: previous.gen1Hours,
+                          gen2Hours: previous.gen2Hours,
+                          gen3Hours: previous.gen3Hours,
+                          gen4Hours: previous.gen4Hours,
+                        }
+                      : null;
+                    // Need previous outside the display window for the oldest shown row's delta
+                    const deltaPrev =
+                      prevHours ??
+                      ((data.generatorLogs ?? [])[index + 1]
+                        ? {
+                            gen1Hours: (data.generatorLogs ?? [])[index + 1]!.gen1Hours,
+                            gen2Hours: (data.generatorLogs ?? [])[index + 1]!.gen2Hours,
+                            gen3Hours: (data.generatorLogs ?? [])[index + 1]!.gen3Hours,
+                            gen4Hours: (data.generatorLogs ?? [])[index + 1]!.gen4Hours,
+                          }
+                        : null);
+                    const deltas = generatorDeltas(hours, deltaPrev);
+                    const [y, m, d] = log.logDate.split("-").map(Number);
+                    return {
                       id: log.id,
                       dateLabel: `${m}-${d}-${y}`,
                       hours: log[gen.hourKey],
                       exercised: deltas[gen.deltaKey],
-                    },
-                  ];
+                    };
+                  });
                   return <GeneratorHoursChart key={gen.label} title={gen.label} rows={rows} />;
                 })}
-                {(data.generatorLogs ?? []).map((log, index, all) => {
-                  const previous = all[index + 1] ?? null;
+                {(data.generatorLogs ?? []).slice(0, MAX_GENERATOR_LOGS_DISPLAY).map((log, index, all) => {
+                  const fullLogs = data.generatorLogs ?? [];
+                  const previous = fullLogs[index + 1] ?? null;
                   const hours: GeneratorHours = {
                     gen1Hours: log.gen1Hours,
                     gen2Hours: log.gen2Hours,

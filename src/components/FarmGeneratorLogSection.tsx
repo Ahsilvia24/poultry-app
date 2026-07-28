@@ -33,6 +33,8 @@ const GEN_CHARTS = [
   { key: "gen4", label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
 ];
 
+const MAX_GENERATOR_LOGS_DISPLAY = 8;
+
 type ChartRow = {
   id: string;
   dateLabel: string;
@@ -219,7 +221,10 @@ export function FarmGeneratorLogSection({
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const sorted = useMemo(
-    () => [...logs].sort((a, b) => b.logDate.localeCompare(a.logDate) || b.id.localeCompare(a.id)),
+    () =>
+      [...logs]
+        .sort((a, b) => b.logDate.localeCompare(a.logDate) || b.id.localeCompare(a.id))
+        .slice(0, MAX_GENERATOR_LOGS_DISPLAY),
     [logs],
   );
 
@@ -385,11 +390,7 @@ export function FarmGeneratorLogSection({
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {chartRowsByGen.map((gen) => (
-              <GeneratorHoursChart
-                key={gen.key}
-                title={gen.label}
-                rows={gen.rows.slice(0, 1)}
-              />
+              <GeneratorHoursChart key={gen.key} title={gen.label} rows={gen.rows} />
             ))}
           </div>
         )}
