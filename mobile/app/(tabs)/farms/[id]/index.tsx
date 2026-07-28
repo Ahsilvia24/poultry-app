@@ -36,6 +36,7 @@ import {
   updateFarm,
   updateFlockGrowthRate,
   updateFlockNumber,
+  updateGeneratorLog,
   updateHouse,
 } from "../../../../src/repos/data";
 import { setFarmNavContext } from "../../../../src/lib/farmNavContext";
@@ -268,25 +269,37 @@ type GeneratorChartRow = {
   exercised: number | null;
 };
 
-function GeneratorHoursChart({ title, rows }: { title: string; rows: GeneratorChartRow[] }) {
+function GeneratorHoursChart({
+  title,
+  rows,
+  onEdit,
+  onDelete,
+}: {
+  title: string;
+  rows: GeneratorChartRow[];
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+}) {
+  const showActions = onEdit != null && onDelete != null;
   return (
     <View style={{ marginTop: 8 }}>
       <Text style={{ fontWeight: "700", fontSize: 12, color: colors.text, marginBottom: 2 }}>
         {title}
       </Text>
-      <View style={{ flexDirection: "row", gap: 12 }}>
+      <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
         <Text style={{ width: 64, fontSize: 11, fontWeight: "600", color: colors.muted }}>Date</Text>
         <Text style={{ width: 48, fontSize: 11, fontWeight: "600", color: colors.muted }}>Hours</Text>
         <Text style={{ width: 56, fontSize: 11, fontWeight: "600", color: colors.muted }}>
           Exercised
         </Text>
+        {showActions ? <View style={{ width: 56 }} /> : null}
       </View>
       {rows.length === 0 ? (
         <Text style={[styles.muted, { fontSize: 12 }]}>None yet</Text>
       ) : (
         <View style={{ gap: 1 }}>
           {rows.map((row) => (
-            <View key={row.id} style={{ flexDirection: "row", gap: 12 }}>
+            <View key={row.id} style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
               <Text
                 style={{
                   width: 64,
@@ -320,6 +333,36 @@ function GeneratorHoursChart({ title, rows }: { title: string; rows: GeneratorCh
               >
                 {formatGeneratorHours(row.exercised)}
               </Text>
+              {showActions ? (
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Pressable
+                    accessibilityLabel="Edit generator log"
+                    onPress={() => onEdit(row.id)}
+                    hitSlop={6}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons name="pencil-outline" size={16} color={colors.muted} />
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel="Delete generator log"
+                    onPress={() => onDelete(row.id)}
+                    hitSlop={6}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                  </Pressable>
+                </View>
+              ) : null}
             </View>
           ))}
         </View>
@@ -361,6 +404,7 @@ export default function FarmDetailScreen() {
   const [generatorModalOpen, setGeneratorModalOpen] = useState(false);
   const [generatorSaving, setGeneratorSaving] = useState(false);
   const [generatorError, setGeneratorError] = useState<string | null>(null);
+  const [generatorEditingId, setGeneratorEditingId] = useState<string | null>(null);
   const [generatorDraft, setGeneratorDraft] = useState({
     logDate: todayKey(),
     gen1Hours: "",
@@ -801,8 +845,43 @@ export default function FarmDetailScreen() {
     if (generatorSaving) return;
     setGeneratorModalOpen(false);
     setGeneratorError(null);
+    setGeneratorEditingId(null);
     setGeneratorActiveField(null);
     setGeneratorReplaceOnType(false);
+  }
+
+  function openGeneratorEditor(log?: {
+    id: string;
+    logDate: string;
+    gen1Hours: number;
+    gen2Hours: number;
+    gen3Hours: number;
+    gen4Hours: number;
+  }) {
+    setGeneratorError(null);
+    setGeneratorActiveField(null);
+    setGeneratorReplaceOnType(false);
+    if (log) {
+      setGeneratorEditingId(log.id);
+      setGeneratorDraft({
+        logDate: log.logDate,
+        gen1Hours: String(log.gen1Hours),
+        gen2Hours: String(log.gen2Hours),
+        gen3Hours: String(log.gen3Hours),
+        gen4Hours: String(log.gen4Hours),
+      });
+    } else {
+      const latest = data?.generatorLogs?.[0];
+      setGeneratorEditingId(null);
+      setGeneratorDraft({
+        logDate: todayKey(),
+        gen1Hours: latest ? String(latest.gen1Hours) : "",
+        gen2Hours: latest ? String(latest.gen2Hours) : "",
+        gen3Hours: latest ? String(latest.gen3Hours) : "",
+        gen4Hours: latest ? String(latest.gen4Hours) : "",
+      });
+    }
+    setGeneratorModalOpen(true);
   }
 
   function focusGeneratorField(field: GeneratorNumField) {
@@ -1579,9 +1658,10 @@ export default function FarmDetailScreen() {
             ) : (
               <>
                 {GENERATOR_CHARTS.map((gen) => {
-                  const logs = (data.generatorLogs ?? []).slice(0, MAX_GENERATOR_LOGS_DISPLAY);
+                  const allLogs = data.generatorLogs ?? [];
+                  const logs = allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY);
                   const rows: GeneratorChartRow[] = logs.map((log, index) => {
-                    const previous = logs[index + 1] ?? null;
+                    const previous = allLogs[index + 1] ?? null;
                     const hours: GeneratorHours = {
                       gen1Hours: log.gen1Hours,
                       gen2Hours: log.gen2Hours,
@@ -1596,18 +1676,7 @@ export default function FarmDetailScreen() {
                           gen4Hours: previous.gen4Hours,
                         }
                       : null;
-                    // Need previous outside the display window for the oldest shown row's delta
-                    const deltaPrev =
-                      prevHours ??
-                      ((data.generatorLogs ?? [])[index + 1]
-                        ? {
-                            gen1Hours: (data.generatorLogs ?? [])[index + 1]!.gen1Hours,
-                            gen2Hours: (data.generatorLogs ?? [])[index + 1]!.gen2Hours,
-                            gen3Hours: (data.generatorLogs ?? [])[index + 1]!.gen3Hours,
-                            gen4Hours: (data.generatorLogs ?? [])[index + 1]!.gen4Hours,
-                          }
-                        : null);
-                    const deltas = generatorDeltas(hours, deltaPrev);
+                    const deltas = generatorDeltas(hours, prevHours);
                     const [y, m, d] = log.logDate.split("-").map(Number);
                     return {
                       id: log.id,
@@ -1616,93 +1685,29 @@ export default function FarmDetailScreen() {
                       exercised: deltas[gen.deltaKey],
                     };
                   });
-                  return <GeneratorHoursChart key={gen.label} title={gen.label} rows={rows} />;
-                })}
-                {(data.generatorLogs ?? []).slice(0, MAX_GENERATOR_LOGS_DISPLAY).map((log, index, all) => {
-                  const fullLogs = data.generatorLogs ?? [];
-                  const previous = fullLogs[index + 1] ?? null;
-                  const hours: GeneratorHours = {
-                    gen1Hours: log.gen1Hours,
-                    gen2Hours: log.gen2Hours,
-                    gen3Hours: log.gen3Hours,
-                    gen4Hours: log.gen4Hours,
-                  };
-                  const prevHours = previous
-                    ? {
-                        gen1Hours: previous.gen1Hours,
-                        gen2Hours: previous.gen2Hours,
-                        gen3Hours: previous.gen3Hours,
-                        gen4Hours: previous.gen4Hours,
-                      }
-                    : null;
-                  const deltas = generatorDeltas(hours, prevHours);
-                  const [y, m, d] = log.logDate.split("-").map(Number);
-                  const dateLabel = `${m}-${d}-${y}`;
-                  const copyText = formatGeneratorLogCopy({
-                    logDateLabel: dateLabel,
-                    hours,
-                    deltas,
-                  });
                   return (
-                    <View
-                      key={`actions-${log.id}`}
-                      style={{
-                        marginTop: 10,
-                        paddingTop: 10,
-                        borderTopWidth: index === 0 ? 1 : 0,
-                        borderTopColor: "#f5f5f4",
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 8,
+                    <GeneratorHoursChart
+                      key={gen.label}
+                      title={gen.label}
+                      rows={rows}
+                      onEdit={(id) => {
+                        const log = allLogs.find((l) => l.id === id);
+                        if (log) openGeneratorEditor(log);
                       }}
-                    >
-                      <Text style={{ flex: 1, fontWeight: "700", color: colors.text }}>
-                        {dateLabel}
-                      </Text>
-                      <Pressable
-                        onPress={async () => {
-                          try {
-                            const Clipboard = await import("expo-clipboard");
-                            await Clipboard.setStringAsync(copyText);
-                            Alert.alert("Copied", "Generator log copied to clipboard.");
-                          } catch {
-                            Alert.alert("Copy failed", "Could not copy on this device.");
-                          }
-                        }}
-                        style={{
-                          width: 36,
-                          height: 36,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                        accessibilityLabel="Copy generator log"
-                      >
-                        <Ionicons name="copy-outline" size={20} color={colors.accentDark} />
-                      </Pressable>
-                      <Pressable
-                        onPress={() =>
-                          Alert.alert("Delete generator log?", "This cannot be undone.", [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                              text: "Delete",
-                              style: "destructive",
-                              onPress: () => {
-                                deleteGeneratorLog(farm.id, log.id);
-                                load();
-                              },
+                      onDelete={(id) =>
+                        Alert.alert("Delete generator log?", "This cannot be undone.", [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Delete",
+                            style: "destructive",
+                            onPress: () => {
+                              deleteGeneratorLog(farm.id, id);
+                              load();
                             },
-                          ])
-                        }
-                        style={{
-                          width: 36,
-                          height: 36,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Ionicons name="trash-outline" size={20} color={colors.danger} />
-                      </Pressable>
-                    </View>
+                          },
+                        ])
+                      }
+                    />
                   );
                 })}
               </>
@@ -1710,20 +1715,7 @@ export default function FarmDetailScreen() {
           </Card>
           <RecordLink
             label="Log generators"
-            onPress={() => {
-              const latest = data.generatorLogs?.[0];
-              setGeneratorError(null);
-              setGeneratorActiveField(null);
-              setGeneratorReplaceOnType(false);
-              setGeneratorDraft({
-                logDate: todayKey(),
-                gen1Hours: latest ? String(latest.gen1Hours) : "",
-                gen2Hours: latest ? String(latest.gen2Hours) : "",
-                gen3Hours: latest ? String(latest.gen3Hours) : "",
-                gen4Hours: latest ? String(latest.gen4Hours) : "",
-              });
-              setGeneratorModalOpen(true);
-            }}
+            onPress={() => openGeneratorEditor()}
           />
         </View>
 

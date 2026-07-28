@@ -12,7 +12,6 @@ import { Button, Card, Input, Label } from "@/components/ui";
 import {
   formatGeneratorCopyLine,
   formatGeneratorHours,
-  formatGeneratorLogCopy,
   generatorDeltas,
   type GeneratorHours,
 } from "@/lib/generator/format";
@@ -71,7 +70,18 @@ function CopyLogButton({ text, label = "Copy" }: { text: string; label?: string 
   );
 }
 
-function GeneratorHoursChart({ title, rows }: { title: string; rows: ChartRow[] }) {
+function GeneratorHoursChart({
+  title,
+  rows,
+  onEdit,
+  onDelete,
+}: {
+  title: string;
+  rows: ChartRow[];
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => Promise<{ error?: string } | void>;
+}) {
+  const showActions = onEdit != null && onDelete != null;
   return (
     <div className="text-xs">
       <h4 className="mb-0.5 font-bold text-stone-900">{title}</h4>
@@ -79,13 +89,14 @@ function GeneratorHoursChart({ title, rows }: { title: string; rows: ChartRow[] 
         <span className="w-16 shrink-0 font-semibold">Date</span>
         <span className="w-12 shrink-0 font-semibold">Hours</span>
         <span className="w-14 shrink-0 font-semibold">Exercised</span>
+        {showActions ? <span className="w-14 shrink-0" aria-hidden /> : null}
       </div>
       {rows.length === 0 ? (
         <p className="text-stone-500">None yet</p>
       ) : (
         <div className="space-y-0.5">
           {rows.map((row) => (
-            <div key={row.id} className="flex gap-3 tabular-nums text-stone-800">
+            <div key={row.id} className="flex items-center gap-3 tabular-nums text-stone-800">
               <span className="w-16 shrink-0 font-medium">{row.dateLabel}</span>
               <span className="w-12 shrink-0 font-medium">
                 {formatGeneratorHours(row.hours)}
@@ -93,6 +104,18 @@ function GeneratorHoursChart({ title, rows }: { title: string; rows: ChartRow[] 
               <span className="w-14 shrink-0 font-medium">
                 {formatGeneratorHours(row.exercised)}
               </span>
+              {showActions ? (
+                <span className="flex shrink-0 items-center gap-0.5">
+                  <EditRecordButton
+                    label="Edit generator log"
+                    onClick={() => onEdit(row.id)}
+                  />
+                  <DeleteRecordButton
+                    label="Delete generator log"
+                    onDelete={() => onDelete(row.id)}
+                  />
+                </span>
+              ) : null}
             </div>
           ))}
         </div>
@@ -220,19 +243,21 @@ export function FarmGeneratorLogSection({
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const sorted = useMemo(
-    () =>
-      [...logs]
-        .sort((a, b) => b.logDate.localeCompare(a.logDate) || b.id.localeCompare(a.id))
-        .slice(0, MAX_GENERATOR_LOGS_DISPLAY),
+  const allSorted = useMemo(
+    () => [...logs].sort((a, b) => b.logDate.localeCompare(a.logDate) || b.id.localeCompare(a.id)),
     [logs],
+  );
+
+  const sorted = useMemo(
+    () => allSorted.slice(0, MAX_GENERATOR_LOGS_DISPLAY),
+    [allSorted],
   );
 
   const chartRowsByGen = useMemo(() => {
     return GEN_CHARTS.map((gen) => ({
       ...gen,
       rows: sorted.map((log, index) => {
-        const previous = sorted[index + 1] ?? null;
+        const previous = allSorted[index + 1] ?? null;
         const hours: GeneratorHours = {
           gen1Hours: log.gen1Hours,
           gen2Hours: log.gen2Hours,
@@ -256,38 +281,12 @@ export function FarmGeneratorLogSection({
         } satisfies ChartRow;
       }),
     }));
-  }, [sorted]);
-
-  const latestCopyText = useMemo(() => {
-    const latest = sorted[0];
-    if (!latest) return "";
-    const previous = sorted[1] ?? null;
-    const hours: GeneratorHours = {
-      gen1Hours: latest.gen1Hours,
-      gen2Hours: latest.gen2Hours,
-      gen3Hours: latest.gen3Hours,
-      gen4Hours: latest.gen4Hours,
-    };
-    const prevHours = previous
-      ? {
-          gen1Hours: previous.gen1Hours,
-          gen2Hours: previous.gen2Hours,
-          gen3Hours: previous.gen3Hours,
-          gen4Hours: previous.gen4Hours,
-        }
-      : null;
-    const deltas = generatorDeltas(hours, prevHours);
-    return formatGeneratorLogCopy({
-      logDateLabel: dateLabelFromKey(latest.logDate),
-      hours,
-      deltas,
-    });
-  }, [sorted]);
+  }, [sorted, allSorted]);
 
   const latestNumbersOnly = useMemo(() => {
-    const latest = sorted[0];
+    const latest = allSorted[0];
     if (!latest) return "";
-    const previous = sorted[1] ?? null;
+    const previous = allSorted[1] ?? null;
     const hours: GeneratorHours = {
       gen1Hours: latest.gen1Hours,
       gen2Hours: latest.gen2Hours,
@@ -303,7 +302,7 @@ export function FarmGeneratorLogSection({
         }
       : null;
     return formatGeneratorCopyLine(hours, generatorDeltas(hours, prevHours));
-  }, [sorted]);
+  }, [allSorted]);
 
   useEffect(() => {
     if (generatorsHashActive()) setOpen(true);
@@ -390,60 +389,21 @@ export function FarmGeneratorLogSection({
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {chartRowsByGen.map((gen) => (
-              <GeneratorHoursChart key={gen.key} title={gen.label} rows={gen.rows} />
+              <GeneratorHoursChart
+                key={gen.key}
+                title={gen.label}
+                rows={gen.rows}
+                onEdit={(id) => {
+                  setFormOpen(false);
+                  setEditingId(id);
+                }}
+                onDelete={async (id) => {
+                  await deleteGeneratorLogAction(id);
+                }}
+              />
             ))}
           </div>
         )}
-
-        {sorted.length > 0 ? (
-          <ul className="mt-4 space-y-2 border-t border-stone-100 pt-3 text-sm">
-            {sorted.map((log, index) => {
-              const previous = sorted[index + 1] ?? null;
-              const hours: GeneratorHours = {
-                gen1Hours: log.gen1Hours,
-                gen2Hours: log.gen2Hours,
-                gen3Hours: log.gen3Hours,
-                gen4Hours: log.gen4Hours,
-              };
-              const prevHours = previous
-                ? {
-                    gen1Hours: previous.gen1Hours,
-                    gen2Hours: previous.gen2Hours,
-                    gen3Hours: previous.gen3Hours,
-                    gen4Hours: previous.gen4Hours,
-                  }
-                : null;
-              const deltas = generatorDeltas(hours, prevHours);
-              const dateLabel = dateLabelFromKey(log.logDate);
-              const copyText = formatGeneratorLogCopy({
-                logDateLabel: dateLabel,
-                hours,
-                deltas,
-              });
-              return (
-                <li key={log.id} className="flex items-center justify-between gap-3">
-                  <span className="font-semibold tabular-nums text-stone-800">{dateLabel}</span>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <CopyLogButton text={index === 0 ? latestCopyText || copyText : copyText} />
-                    <EditRecordButton
-                      label="Edit generator log"
-                      onClick={() => {
-                        setFormOpen(false);
-                        setEditingId(log.id);
-                      }}
-                    />
-                    <DeleteRecordButton
-                      label="Delete generator log"
-                      onDelete={async () => {
-                        await deleteGeneratorLogAction(log.id);
-                      }}
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
       </Card>
 
       {!formOpen ? (
