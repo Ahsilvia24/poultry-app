@@ -71,28 +71,28 @@ function CopyLogButton({ text }: { text: string }) {
 function GeneratorHoursChart({ title, rows }: { title: string; rows: ChartRow[] }) {
   return (
     <div>
-      <h4 className="mb-2 text-sm font-bold text-stone-900">{title}</h4>
-      <div className="overflow-hidden rounded-lg border border-stone-200 bg-white text-sm">
-        <div className="grid grid-cols-[minmax(5.5rem,auto)_1fr_1fr] border-b border-stone-200 bg-stone-100 text-stone-700">
-          <div className="px-3 py-2 font-semibold">Date</div>
-          <div className="border-l border-stone-200 px-3 py-2 font-semibold">Hours</div>
-          <div className="border-l border-stone-200 px-3 py-2 font-semibold">Time exercised</div>
+      <h4 className="mb-1 text-xs font-bold text-stone-900">{title}</h4>
+      <div className="overflow-hidden rounded-md border border-stone-200 bg-white text-xs">
+        <div className="grid grid-cols-[4.5rem_1fr_1fr] border-b border-stone-200 bg-stone-50 text-stone-500">
+          <div className="px-2 py-1 font-semibold">Date</div>
+          <div className="border-l border-stone-200 px-2 py-1 font-semibold">Hours</div>
+          <div className="border-l border-stone-200 px-2 py-1 font-semibold">Exercised</div>
         </div>
         {rows.length === 0 ? (
-          <p className="px-3 py-3 text-stone-500">None yet</p>
+          <p className="px-2 py-1.5 text-stone-500">None yet</p>
         ) : (
           rows.map((row) => (
             <div
               key={row.id}
-              className="grid grid-cols-[minmax(5.5rem,auto)_1fr_1fr] border-b border-stone-100 last:border-b-0"
+              className="grid grid-cols-[4.5rem_1fr_1fr] border-b border-stone-100 last:border-b-0"
             >
-              <div className="px-3 py-1.5 font-semibold tabular-nums text-stone-900">
+              <div className="px-2 py-0.5 font-medium tabular-nums text-stone-800">
                 {row.dateLabel}
               </div>
-              <div className="border-l border-stone-100 px-3 py-1.5 text-right font-semibold tabular-nums text-stone-900">
+              <div className="border-l border-stone-100 px-2 py-0.5 text-right font-medium tabular-nums text-stone-800">
                 {formatGeneratorHours(row.hours)}
               </div>
-              <div className="border-l border-stone-100 px-3 py-1.5 text-right font-semibold tabular-nums text-stone-900">
+              <div className="border-l border-stone-100 px-2 py-0.5 text-right font-medium tabular-nums text-stone-800">
                 {formatGeneratorHours(row.exercised)}
               </div>
             </div>

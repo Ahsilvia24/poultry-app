@@ -267,15 +267,15 @@ type GeneratorChartRow = {
 
 function GeneratorHoursChart({ title, rows }: { title: string; rows: GeneratorChartRow[] }) {
   return (
-    <View style={{ marginTop: 12 }}>
-      <Text style={{ fontWeight: "800", fontSize: 14, color: colors.text, marginBottom: 6 }}>
+    <View style={{ marginTop: 8 }}>
+      <Text style={{ fontWeight: "700", fontSize: 12, color: colors.text, marginBottom: 3 }}>
         {title}
       </Text>
       <View
         style={{
           borderWidth: 1,
           borderColor: colors.border,
-          borderRadius: 12,
+          borderRadius: 8,
           overflow: "hidden",
           backgroundColor: "#fff",
         }}
@@ -283,19 +283,19 @@ function GeneratorHoursChart({ title, rows }: { title: string; rows: GeneratorCh
         <View
           style={{
             flexDirection: "row",
-            backgroundColor: "#f5f5f4",
+            backgroundColor: "#fafaf9",
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
           }}
         >
           <Text
             style={{
-              width: 78,
-              paddingHorizontal: 10,
-              paddingVertical: 8,
-              fontWeight: "700",
-              color: colors.text,
-              fontSize: 12,
+              width: 64,
+              paddingHorizontal: 6,
+              paddingVertical: 3,
+              fontWeight: "600",
+              color: colors.muted,
+              fontSize: 11,
             }}
           >
             Date
@@ -303,11 +303,11 @@ function GeneratorHoursChart({ title, rows }: { title: string; rows: GeneratorCh
           <Text
             style={{
               flex: 1,
-              paddingHorizontal: 10,
-              paddingVertical: 8,
-              fontWeight: "700",
-              color: colors.text,
-              fontSize: 12,
+              paddingHorizontal: 6,
+              paddingVertical: 3,
+              fontWeight: "600",
+              color: colors.muted,
+              fontSize: 11,
               borderLeftWidth: 1,
               borderLeftColor: colors.border,
             }}
@@ -317,20 +317,20 @@ function GeneratorHoursChart({ title, rows }: { title: string; rows: GeneratorCh
           <Text
             style={{
               flex: 1,
-              paddingHorizontal: 10,
-              paddingVertical: 8,
-              fontWeight: "700",
-              color: colors.text,
-              fontSize: 12,
+              paddingHorizontal: 6,
+              paddingVertical: 3,
+              fontWeight: "600",
+              color: colors.muted,
+              fontSize: 11,
               borderLeftWidth: 1,
               borderLeftColor: colors.border,
             }}
           >
-            Time exercised
+            Exercised
           </Text>
         </View>
         {rows.length === 0 ? (
-          <Text style={[styles.muted, { paddingHorizontal: 10, paddingVertical: 10 }]}>
+          <Text style={[styles.muted, { paddingHorizontal: 6, paddingVertical: 4, fontSize: 12 }]}>
             None yet
           </Text>
         ) : (
@@ -343,8 +343,15 @@ function GeneratorHoursChart({ title, rows }: { title: string; rows: GeneratorCh
                 borderBottomColor: "#f5f5f4",
               }}
             >
-              <View style={{ width: 78, paddingHorizontal: 10, paddingVertical: 7 }}>
-                <Text style={{ fontWeight: "700", color: colors.text, fontSize: 13 }}>
+              <View style={{ width: 64, paddingHorizontal: 6, paddingVertical: 2 }}>
+                <Text
+                  style={{
+                    fontWeight: "600",
+                    color: colors.text,
+                    fontSize: 12,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
                   {row.dateLabel}
                 </Text>
               </View>
@@ -353,12 +360,19 @@ function GeneratorHoursChart({ title, rows }: { title: string; rows: GeneratorCh
                   flex: 1,
                   borderLeftWidth: 1,
                   borderLeftColor: "#f5f5f4",
-                  paddingHorizontal: 10,
-                  paddingVertical: 7,
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
                   alignItems: "flex-end",
                 }}
               >
-                <Text style={{ fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                <Text
+                  style={{
+                    fontWeight: "600",
+                    color: colors.text,
+                    fontSize: 12,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
                   {formatGeneratorHours(row.hours)}
                 </Text>
               </View>
@@ -367,12 +381,19 @@ function GeneratorHoursChart({ title, rows }: { title: string; rows: GeneratorCh
                   flex: 1,
                   borderLeftWidth: 1,
                   borderLeftColor: "#f5f5f4",
-                  paddingHorizontal: 10,
-                  paddingVertical: 7,
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
                   alignItems: "flex-end",
                 }}
               >
-                <Text style={{ fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                <Text
+                  style={{
+                    fontWeight: "600",
+                    color: colors.text,
+                    fontSize: 12,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
                   {formatGeneratorHours(row.exercised)}
                 </Text>
               </View>
