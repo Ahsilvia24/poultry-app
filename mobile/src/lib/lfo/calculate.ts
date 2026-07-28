@@ -62,8 +62,27 @@ export function hourlyConsumptionLbs(headCount: number, consumptionRate: number)
   return (Math.max(0, headCount) * consumptionRate) / 24;
 }
 
+/** Round up to the next multiple of 500 (14001 → 14500; 14000 stays 14000). */
+export function roundUpToNearest500(lbs: number): number {
+  if (!Number.isFinite(lbs) || lbs <= 0) return 0;
+  return Math.ceil(lbs / 500) * 500;
+}
+
+/** Order (excess / LFO shortfall): round up to nearest 500, then add 2000. */
+export function roundOrderLbs(rawLbs: number): number {
+  if (!Number.isFinite(rawLbs) || rawLbs <= 0) return 0;
+  return roundUpToNearest500(rawLbs) + 2000;
+}
+
+/** Reclaim surplus: round up to nearest 500 only. */
+export function roundReclaimLbs(rawLbs: number): number {
+  return roundUpToNearest500(rawLbs);
+}
+
 /**
  * Last feed order calculation from bin inventory, feed-up times, and head count.
+ *   balance < 0 → order = roundUp500(|balance|) + 2000
+ *   balance > 0 → reclaim = roundUp500(balance)
  */
 /** Per-house summary lines: "H1-4000 lbs.", "H2-5000 Rec." (one per house). */
 export function formatHouseLfoSummary(
@@ -106,8 +125,10 @@ export function calculateLastFeedOrder(input: LfoCalculateInput): LfoCalculateRe
       hoursUntilFeedOff == null ? null : hoursUntilFeedOff * hourly;
     const balanceLbs =
       feedConsumedUntilOffLbs == null ? null : inventoryPounds - feedConsumedUntilOffLbs;
-    const orderLbs = balanceLbs == null ? null : balanceLbs < 0 ? Math.abs(balanceLbs) : 0;
-    const reclaimLbs = balanceLbs == null ? null : balanceLbs > 0 ? balanceLbs : 0;
+    const rawOrder = balanceLbs == null ? null : balanceLbs < 0 ? Math.abs(balanceLbs) : 0;
+    const rawReclaim = balanceLbs == null ? null : balanceLbs > 0 ? balanceLbs : 0;
+    const orderLbs = rawOrder == null ? null : roundOrderLbs(rawOrder);
+    const reclaimLbs = rawReclaim == null ? null : roundReclaimLbs(rawReclaim);
 
     return {
       houseId: h.houseId,

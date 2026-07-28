@@ -348,7 +348,45 @@ export default function LfoListScreen() {
             )}
           </Card>
 
-          <SectionTitle>Saved LFOs</SectionTitle>
+          <View
+            style={{
+              marginTop: 20,
+              marginBottom: 10,
+              flexDirection: "row",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0, flex: 1 }]}>
+              Saved LFOs
+            </Text>
+            <View style={{ maxWidth: 160 }}>
+              <Text
+                style={{
+                  fontSize: 11,
+                  lineHeight: 14,
+                  color: colors.muted,
+                  textAlign: "right",
+                  fontWeight: "600",
+                }}
+              >
+                Rounds up to nearest 500 and adds 2000
+              </Text>
+              <Text
+                style={{
+                  marginTop: 2,
+                  fontSize: 11,
+                  lineHeight: 14,
+                  color: colors.muted,
+                  textAlign: "right",
+                  fontWeight: "600",
+                }}
+              >
+                Reclaim rounds to nearest 500
+              </Text>
+            </View>
+          </View>
           {lfos.length === 0 ? (
             <Card>
               <Text style={styles.muted}>None yet — create one above.</Text>

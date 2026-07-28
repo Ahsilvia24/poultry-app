@@ -87,7 +87,13 @@ export default async function LfoPage() {
         <ConsumptionRateCalculator />
       </div>
 
-      <h2 className="mb-3 mt-8 text-lg font-bold text-stone-900">Saved LFOs</h2>
+      <div className="mb-3 mt-8 flex items-start justify-between gap-4">
+        <h2 className="text-lg font-bold text-stone-900">Saved LFOs</h2>
+        <div className="max-w-[14rem] text-right text-xs leading-snug text-stone-500">
+          <p>Rounds up to nearest 500 and adds 2000</p>
+          <p className="mt-0.5">Reclaim rounds to nearest 500</p>
+        </div>
+      </div>
 
       {savedWithSummary.length === 0 ? (
         <Card>
