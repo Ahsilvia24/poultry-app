@@ -138,6 +138,15 @@ export function HouseCardActions({
             aria-modal="true"
             className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
             onClick={(e) => e.stopPropagation()}
+            onFocusCapture={(e) => {
+              const t = e.target;
+              if (!(t instanceof HTMLElement)) return;
+              if (t.tagName !== "INPUT" && t.tagName !== "TEXTAREA") return;
+              // Keep the field above soft keyboards / modal bottom edge while typing.
+              window.setTimeout(() => {
+                t.scrollIntoView({ block: "center", behavior: "smooth" });
+              }, 50);
+            }}
           >
             {mode === "edit" ? (
               <>

@@ -30,7 +30,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       className={cn(
-        "min-h-12 w-full rounded-lg border border-stone-300 bg-white px-4 text-base text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200",
+        "min-h-12 w-full rounded-lg border border-stone-300 bg-white px-4 text-lg font-semibold text-stone-900 caret-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200",
         className,
       )}
       {...props}
@@ -42,7 +42,7 @@ export function Select({ className, children, ...props }: SelectHTMLAttributes<H
   return (
     <select
       className={cn(
-        "min-h-12 w-full rounded-lg border border-stone-300 bg-white px-4 text-base text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200",
+        "min-h-12 w-full rounded-lg border border-stone-300 bg-white px-4 text-lg font-semibold text-stone-900 caret-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200",
         className,
       )}
       {...props}
@@ -56,7 +56,7 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
   return (
     <textarea
       className={cn(
-        "min-h-24 w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200",
+        "min-h-24 w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-base font-medium text-stone-900 caret-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200",
         className,
       )}
       {...props}

@@ -168,6 +168,23 @@ type FarmEditDraft = {
   notes: string;
 };
 
+function houseFieldLabel(field: HouseNumField): string {
+  switch (field) {
+    case "houseNumber":
+      return "House number";
+    case "placedBirdCount":
+      return "Birds placed";
+    case "squareFootage":
+      return "Square footage";
+    case "totalFanCFM":
+      return "Total fan CFM";
+    case "numberOfFans":
+      return "Number of fans";
+    default:
+      return field;
+  }
+}
+
 function HouseNumFieldButton({
   label,
   value,
@@ -188,15 +205,21 @@ function HouseNumFieldButton({
         onPress={onPress}
         style={[
           styles.input,
+          {
+            justifyContent: "center",
+            backgroundColor: active ? "#ecfdf5" : "#fff",
+          },
           active ? { borderColor: colors.accentDark, borderWidth: 2 } : null,
         ]}
       >
         <Text
           style={{
-            fontSize: 18,
-            fontWeight: "700",
+            fontSize: 22,
+            fontWeight: "800",
             color: value ? colors.text : colors.muted,
+            letterSpacing: 0.2,
           }}
+          numberOfLines={1}
         >
           {value || "0"}
         </Text>
@@ -1580,7 +1603,7 @@ export default function FarmDetailScreen() {
             <ScrollView
               ref={houseScrollRef}
               keyboardShouldPersistTaps="handled"
-              style={{ maxHeight: houseActiveField ? 360 : undefined }}
+              style={{ maxHeight: houseActiveField ? 280 : undefined }}
               contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
               onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
                 houseScrollYRef.current = e.nativeEvent.contentOffset.y;
@@ -1651,7 +1674,7 @@ export default function FarmDetailScreen() {
                       </View>
                       <Text style={[styles.label, { marginTop: 2 }]}>Flock ID</Text>
                       <TextInput
-                        style={styles.input}
+                        style={[styles.input, { fontSize: 20, fontWeight: "700", color: colors.text }]}
                         value={editingHouse.flockNumber}
                         onChangeText={(v) =>
                           setEditingHouse((prev) =>
@@ -1750,14 +1773,39 @@ export default function FarmDetailScreen() {
               ) : null}
             </ScrollView>
             {houseActiveField ? (
-              <NumberKeypad
-                allowDecimal={
-                  houseActiveField === "squareFootage" || houseActiveField === "totalFanCFM"
-                }
-                onDigit={onHouseDigit}
-                onBackspace={onHouseBackspace}
-                onEnter={onHouseEnter}
-              />
+              <View
+                style={{
+                  borderTopWidth: 1,
+                  borderTopColor: colors.border,
+                  backgroundColor: "#fafaf9",
+                }}
+              >
+                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>
+                    {houseFieldLabel(houseActiveField)}
+                  </Text>
+                  <Text
+                    style={{
+                      marginTop: 2,
+                      fontSize: 32,
+                      fontWeight: "800",
+                      color: colors.text,
+                      letterSpacing: 0.3,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {getHouseFieldValue(houseActiveField) || "0"}
+                  </Text>
+                </View>
+                <NumberKeypad
+                  allowDecimal={
+                    houseActiveField === "squareFootage" || houseActiveField === "totalFanCFM"
+                  }
+                  onDigit={onHouseDigit}
+                  onBackspace={onHouseBackspace}
+                  onEnter={onHouseEnter}
+                />
+              </View>
             ) : null}
           </View>
         </View>
@@ -1892,39 +1940,43 @@ export default function FarmDetailScreen() {
                 <View style={{ marginTop: 14, gap: 4 }}>
                   <Text style={styles.label}>House number *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { fontSize: 22, fontWeight: "700", color: colors.text }]}
                     value={addingHouse.houseNumber}
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
                     }
                     keyboardType="number-pad"
+                    placeholderTextColor={colors.muted}
                   />
                   <Text style={[styles.label, { marginTop: 8 }]}>Square footage *</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { fontSize: 22, fontWeight: "700", color: colors.text }]}
                     value={addingHouse.squareFootage}
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
                     }
                     keyboardType="decimal-pad"
+                    placeholderTextColor={colors.muted}
                   />
                   <Text style={[styles.label, { marginTop: 8 }]}>Total fan CFM</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { fontSize: 22, fontWeight: "700", color: colors.text }]}
                     value={addingHouse.totalFanCFM}
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
                     }
                     keyboardType="decimal-pad"
+                    placeholderTextColor={colors.muted}
                   />
                   <Text style={[styles.label, { marginTop: 8 }]}>Number of fans</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { fontSize: 22, fontWeight: "700", color: colors.text }]}
                     value={addingHouse.numberOfFans}
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
                     }
                     keyboardType="number-pad"
+                    placeholderTextColor={colors.muted}
                   />
                   <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
                     <PrimaryButton

@@ -23,6 +23,13 @@ body {
     linear-gradient(180deg, #efe8da 0%, #f3efe6 40%, #e9e2d4 100%);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  color-scheme: light;
+}
+
+input,
+textarea,
+select {
+  color-scheme: light;
 }
 
 h1,
