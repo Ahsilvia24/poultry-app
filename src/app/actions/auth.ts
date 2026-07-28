@@ -40,11 +40,15 @@ export async function registerAction(formData: FormData) {
 
 export async function loginAction(formData: FormData) {
   try {
-    await signIn("credentials", {
+    const result = await signIn("credentials", {
       email: String(formData.get("email") ?? "").toLowerCase(),
       password: String(formData.get("password") ?? ""),
-      redirectTo: "/",
+      redirect: false,
     });
+    if (result?.error) {
+      return { error: "Invalid email or password" };
+    }
+    return { ok: true as const };
   } catch (error) {
     if (error instanceof AuthError) {
       return { error: "Invalid email or password" };

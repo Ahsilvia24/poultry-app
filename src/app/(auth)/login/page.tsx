@@ -1,17 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { loginAction } from "@/app/actions/auth";
 import { Button, Input, Label } from "@/components/ui";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
-  async function onSubmit(formData: FormData) {
+  function onSubmit(formData: FormData) {
     setError(null);
-    const result = await loginAction(formData);
-    if (result?.error) setError(result.error);
+    startTransition(async () => {
+      try {
+        const result = await loginAction(formData);
+        if (result?.error) {
+          setError(result.error);
+          return;
+        }
+        // Hard navigation is more reliable behind tunnels / port forwards
+        // than relying on Auth.js server-action redirects.
+        window.location.assign("/");
+      } catch {
+        setError("Sign in failed. Check your connection and try again.");
+      }
+    });
   }
 
   return (
@@ -29,8 +42,8 @@ export default function LoginPage() {
             <Input id="password" name="password" type="password" required defaultValue="password123" />
           </div>
           {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
-          <Button type="submit" className="w-full">
-            Sign in
+          <Button type="submit" className="w-full" disabled={pending}>
+            {pending ? "Signing in…" : "Sign in"}
           </Button>
         </form>
         <p className="mt-4 text-center text-sm text-stone-600">
