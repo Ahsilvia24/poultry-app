@@ -2715,6 +2715,18 @@ export function createGeneratorLog(input: GeneratorLogInput) {
       null,
     ],
   );
+
+  // Keep at most 8 logs per farm — drop oldest when over the cap.
+  const keep = 8;
+  const ids = db.getAllSync<{ id: string }>(
+    `SELECT id FROM generator_logs WHERE farm_id = ?
+     ORDER BY log_date DESC, id DESC`,
+    [input.farmId],
+  );
+  for (const row of ids.slice(keep)) {
+    db.runSync("DELETE FROM generator_logs WHERE id = ? AND farm_id = ?", [row.id, input.farmId]);
+  }
+
   return { id };
 }
 

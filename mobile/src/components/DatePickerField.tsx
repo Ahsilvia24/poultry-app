@@ -53,18 +53,22 @@ export function DatePickerField({
   value,
   onChange,
   presentation = "modal",
+  onOpen,
 }: {
   label: string;
   value: string;
   onChange: (dateKey: string) => void;
   /** `inline` expands under the field — required inside parent Modals. */
   presentation?: "modal" | "inline";
+  /** Fired when the calendar is opened (e.g. to dismiss a keypad). */
+  onOpen?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseDateKey(value));
   const useInline = presentation === "inline" || Platform.OS === "android";
 
   function openPicker() {
+    onOpen?.();
     setDraft(parseDateKey(value || todayKey()));
     setOpen((v) => !v);
   }

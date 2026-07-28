@@ -490,33 +490,24 @@ export function FarmGeneratorLogSection({
           Log generators
         </button>
       ) : (
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => setFormOpen(false)}
-            className="text-sm text-emerald-800 hover:underline"
-          >
-            Log generators
-          </button>
-          <Card className="mt-3">
-            <GeneratorLogForm
-              farmId={farmId}
-              generatorCount={generatorCount}
-              previous={
-                sorted[0]
-                  ? {
-                      gen1Hours: sorted[0].gen1Hours,
-                      gen2Hours: sorted[0].gen2Hours,
-                      gen3Hours: sorted[0].gen3Hours,
-                      gen4Hours: sorted[0].gen4Hours,
-                    }
-                  : null
-              }
-              onSuccess={afterSaved}
-              onCancel={() => setFormOpen(false)}
-            />
-          </Card>
-        </div>
+        <Card className="mt-3">
+          <GeneratorLogForm
+            farmId={farmId}
+            generatorCount={generatorCount}
+            previous={
+              sorted[0]
+                ? {
+                    gen1Hours: sorted[0].gen1Hours,
+                    gen2Hours: sorted[0].gen2Hours,
+                    gen3Hours: sorted[0].gen3Hours,
+                    gen4Hours: sorted[0].gen4Hours,
+                  }
+                : null
+            }
+            onSuccess={afterSaved}
+            onCancel={() => setFormOpen(false)}
+          />
+        </Card>
       )}
     </div>
   );

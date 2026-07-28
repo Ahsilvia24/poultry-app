@@ -668,6 +668,19 @@ export async function createGeneratorLogAction(formData: FormData) {
     },
   });
 
+  // Keep at most 8 logs per farm — drop oldest when over the cap.
+  const keep = 8;
+  const ids = await prisma.generatorLog.findMany({
+    where: { farmId: parsed.data.farmId },
+    orderBy: [{ logDate: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+    select: { id: true },
+  });
+  if (ids.length > keep) {
+    await prisma.generatorLog.deleteMany({
+      where: { id: { in: ids.slice(keep).map((r) => r.id) } },
+    });
+  }
+
   revalidatePath(`/farms/${parsed.data.farmId}`);
   return { success: true };
 }

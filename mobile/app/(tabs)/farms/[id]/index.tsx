@@ -888,6 +888,12 @@ export default function FarmDetailScreen() {
       });
     }
     setGeneratorModalOpen(true);
+    const first = generatorFieldsForCount(
+      data?.farm.numberOfGenerators ?? 4,
+    )[0]?.hourKey;
+    if (first) {
+      setTimeout(() => focusGeneratorField(first), 120);
+    }
   }
 
   function focusGeneratorField(field: GeneratorNumField) {
@@ -1728,10 +1734,9 @@ export default function FarmDetailScreen() {
               </>
             )}
           </Card>
-          <RecordLink
-            label="Log generators"
-            onPress={() => openGeneratorEditor()}
-          />
+          {!generatorModalOpen ? (
+            <RecordLink label="Log generators" onPress={() => openGeneratorEditor()} />
+          ) : null}
         </View>
 
         {/* ── Issues ── */}
@@ -2586,6 +2591,10 @@ export default function FarmDetailScreen() {
                   label="Date logged"
                   value={generatorDraft.logDate}
                   presentation="inline"
+                  onOpen={() => {
+                    setGeneratorActiveField(null);
+                    setGeneratorReplaceOnType(false);
+                  }}
                   onChange={(date) =>
                     setGeneratorDraft((prev) => ({ ...prev, logDate: date }))
                   }
