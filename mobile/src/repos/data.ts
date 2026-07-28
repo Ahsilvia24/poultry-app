@@ -855,7 +855,6 @@ export function getFarmDetail(farmId: string) {
       gen2Hours: log.gen2_hours,
       gen3Hours: log.gen3_hours,
       gen4Hours: log.gen4_hours,
-      notes: log.notes,
     })),
     litterEvents: db.getAllSync<{
       id: string;
