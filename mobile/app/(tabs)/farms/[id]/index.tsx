@@ -330,7 +330,10 @@ export default function FarmDetailScreen() {
       <SafeAreaView style={styles.screen} edges={["top"]}>
         <View style={styles.content}>
           <Pressable
-            onPress={() => router.replace("/(tabs)/farms")}
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace("/(tabs)/farms");
+            }}
             style={{ marginBottom: 12 }}
           >
             <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
