@@ -30,6 +30,10 @@ export type LfoHouseCalculateResult = {
   hourlyConsumptionLbs: number;
   feedConsumedUntilOffLbs: number | null;
   balanceLbs: number | null;
+  /** Unrounded order shortfall (|balance| when short). */
+  rawOrderLbs: number | null;
+  /** Unrounded reclaim surplus (balance when surplus). */
+  rawReclaimLbs: number | null;
   orderLbs: number | null;
   reclaimLbs: number | null;
 };
@@ -141,6 +145,8 @@ export function calculateLastFeedOrder(input: LfoCalculateInput): LfoCalculateRe
       hourlyConsumptionLbs: hourly,
       feedConsumedUntilOffLbs,
       balanceLbs,
+      rawOrderLbs: rawOrder,
+      rawReclaimLbs: rawReclaim,
       orderLbs,
       reclaimLbs,
     };

@@ -92,7 +92,7 @@ function firstUnfilledAfterLastFilled(rows: DayRow[], asOfDateKey: string): DayR
   return null;
 }
 
-function focusMortalityAge(age: number, field: "culls" | "mortality" = "culls") {
+function focusMortalityAge(age: number, field: "culls" | "mortality" = "mortality") {
   const el = document.querySelector<HTMLInputElement>(`[data-mort-nav="${field}-${age}"]`);
   if (!el) return false;
   el.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -269,8 +269,10 @@ export function MortalityEntryForm({
     if (initialHouseFlockId && houses.some((h) => h.houseFlockId === initialHouseFlockId)) {
       return initialHouseFlockId;
     }
-    return houses[0]?.houseFlockId ?? "";
+    // Don't auto-select a house when only a farm is chosen
+    return "";
   });
+  const jumpOnHouseLoadRef = useRef(Boolean(initialHouseFlockId));
 
   const house = useMemo(
     () => houses.find((h) => h.houseFlockId === houseFlockId) ?? null,
@@ -357,15 +359,15 @@ export function MortalityEntryForm({
     void performSave();
   }
 
-  // Keep house selection valid when farm changes
+  // Keep house selection valid when farm changes — clear invalid house, don't auto-pick
   useEffect(() => {
     if (!flock || houses.length === 0) {
       setHouseFlockId("");
       setRows([]);
       return;
     }
-    if (!houses.some((h) => h.houseFlockId === houseFlockId)) {
-      setHouseFlockId(houses[0]!.houseFlockId);
+    if (houseFlockId && !houses.some((h) => h.houseFlockId === houseFlockId)) {
+      setHouseFlockId("");
     }
   }, [farmId, flock?.id, houses, houseFlockId]);
 
@@ -384,17 +386,23 @@ export function MortalityEntryForm({
     const catchDate = resolveCatchDateKey(flock);
     const built = buildRows(flock.placementDate, catchDate, house, asOfDateKey);
     setRows(built);
-    const jumpTo = firstUnfilledAfterLastFilled(built, asOfDateKey);
+    const shouldJump = jumpOnHouseLoadRef.current;
+    jumpOnHouseLoadRef.current = true;
     const currentWeek = flockWeekFromAge(
       birdAgeFromPlacement(parseLocalDate(flock.placementDate), parseLocalDate(asOfDateKey)),
     );
+    if (!shouldJump) {
+      setExpandedWeeks(new Set([currentWeek]));
+      return;
+    }
+    const jumpTo = firstUnfilledAfterLastFilled(built, asOfDateKey);
     const openWeek = jumpTo ? flockWeekFromAge(jumpTo.age) : currentWeek;
     setExpandedWeeks(new Set([openWeek]));
 
     if (jumpTo) {
       const age = jumpTo.age;
       // Wait for the target week accordion to mount before scrolling/focusing.
-      const tryFocus = () => focusMortalityAge(age);
+      const tryFocus = () => focusMortalityAge(age, "mortality");
       requestAnimationFrame(() => {
         if (!tryFocus()) {
           window.setTimeout(() => {
@@ -497,19 +505,17 @@ export function MortalityEntryForm({
     setFarmId(nextFarmId);
     setSaveStatus("idle");
     setError(null);
-    const nextFarm = farms.find((f) => f.id === nextFarmId);
-    const firstHouse = nextFarm?.activeFlock?.houses[0]?.houseFlockId ?? "";
-    setHouseFlockId(firstHouse);
-    const qs = firstHouse
-      ? `/mortality?farmId=${nextFarmId}&houseFlockId=${firstHouse}`
-      : `/mortality?farmId=${nextFarmId}`;
-    router.replace(qs);
+    jumpOnHouseLoadRef.current = false;
+    setHouseFlockId("");
+    setRows([]);
+    router.replace(`/mortality?farmId=${nextFarmId}`);
   }
 
   function changeHouse(nextHouseId: string) {
     cancelScheduledSave();
     saveGenRef.current += 1;
     dirtyRef.current = false;
+    jumpOnHouseLoadRef.current = true;
     setHouseFlockId(nextHouseId);
     setSaveStatus("idle");
     setError(null);
@@ -586,6 +592,8 @@ export function MortalityEntryForm({
               <span className="font-medium text-emerald-800">Saved</span>
             ) : null}
           </div>
+        ) : flock ? (
+          <p className="text-sm text-stone-500">Select a house to enter mortality.</p>
         ) : (
           <p className="text-sm text-amber-800">This farm has no active flock or houses.</p>
         )}

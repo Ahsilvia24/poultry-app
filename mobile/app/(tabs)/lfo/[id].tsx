@@ -506,6 +506,21 @@ export default function EditLfoScreen() {
                             {formatLbs(result.hourlyConsumptionLbs)} lbs/hr
                           </Text>
                         </View>
+                        {result.rawOrderLbs != null && result.rawOrderLbs > 0 ? (
+                          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                            <Text style={styles.muted}>LFO</Text>
+                            <Text style={{ fontWeight: "600" }}>
+                              {formatLbs(result.rawOrderLbs)} lbs
+                            </Text>
+                          </View>
+                        ) : result.rawReclaimLbs != null && result.rawReclaimLbs > 0 ? (
+                          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                            <Text style={styles.muted}>Reclaim</Text>
+                            <Text style={{ fontWeight: "600" }}>
+                              {formatLbs(result.rawReclaimLbs)} lbs
+                            </Text>
+                          </View>
+                        ) : null}
                         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                           <Text style={styles.muted}>
                             {result.orderLbs != null && result.orderLbs > 0

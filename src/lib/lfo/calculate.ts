@@ -37,6 +37,10 @@ export type LfoHouseCalculateResult = {
    * Positive = reclaim (feed left); negative = LFO shortfall (order abs).
    */
   balanceLbs: number | null;
+  /** Unrounded order shortfall (|balance| when short). */
+  rawOrderLbs: number | null;
+  /** Unrounded reclaim surplus (balance when surplus). */
+  rawReclaimLbs: number | null;
   /** Amount to order when short (abs of negative balance). */
   orderLbs: number | null;
   /** Feed left to reclaim when surplus. */
@@ -156,6 +160,8 @@ export function calculateLastFeedOrder(input: LfoCalculateInput): LfoCalculateRe
       hourlyConsumptionLbs: hourly,
       feedConsumedUntilOffLbs,
       balanceLbs,
+      rawOrderLbs: rawOrder,
+      rawReclaimLbs: rawReclaim,
       orderLbs,
       reclaimLbs,
     };

@@ -285,7 +285,7 @@ function GeneratorHoursChart({
         {title}
       </Text>
       <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-        <Text style={{ width: 64, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 80, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
           Date
         </Text>
         <Text style={{ width: 48, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
@@ -307,13 +307,14 @@ function GeneratorHoursChart({
             >
               <Text
                 style={{
-                  width: 64,
+                  width: 80,
                   fontSize: 12,
                   lineHeight: 16,
                   fontWeight: "600",
                   color: colors.text,
                   fontVariant: ["tabular-nums"],
                 }}
+                numberOfLines={1}
               >
                 {row.dateLabel}
               </Text>

@@ -295,14 +295,21 @@ export function LfoInventoryForm({
                         {formatLbs(result.hourlyConsumptionLbs)} lbs/hr
                       </dd>
                     </div>
-                    <div className="flex justify-between gap-2 sm:block">
-                      <dt className="text-stone-500">Feed used until off</dt>
-                      <dd className="font-medium text-stone-800">
-                        {result.feedConsumedUntilOffLbs == null
-                          ? "—"
-                          : `${formatLbs(result.feedConsumedUntilOffLbs)} lbs`}
-                      </dd>
-                    </div>
+                    {result.rawOrderLbs != null && result.rawOrderLbs > 0 ? (
+                      <div className="flex justify-between gap-2 sm:block">
+                        <dt className="text-stone-500">LFO</dt>
+                        <dd className="font-medium text-stone-800">
+                          {formatLbs(result.rawOrderLbs)} lbs
+                        </dd>
+                      </div>
+                    ) : result.rawReclaimLbs != null && result.rawReclaimLbs > 0 ? (
+                      <div className="flex justify-between gap-2 sm:block">
+                        <dt className="text-stone-500">Reclaim</dt>
+                        <dd className="font-medium text-stone-800">
+                          {formatLbs(result.rawReclaimLbs)} lbs
+                        </dd>
+                      </div>
+                    ) : null}
                     <div className="flex justify-between gap-2 sm:col-span-2 sm:block">
                       <dt className="text-stone-500">
                         {result.orderLbs != null && result.orderLbs > 0
@@ -319,6 +326,14 @@ export function LfoInventoryForm({
                             : result.reclaimLbs != null && result.reclaimLbs > 0
                               ? `Reclaim ${formatLbs(result.reclaimLbs)} lbs`
                               : "Even — no order or reclaim"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-2 sm:block">
+                      <dt className="text-stone-500">Feed used until off</dt>
+                      <dd className="font-medium text-stone-800">
+                        {result.feedConsumedUntilOffLbs == null
+                          ? "—"
+                          : `${formatLbs(result.feedConsumedUntilOffLbs)} lbs`}
                       </dd>
                     </div>
                   </dl>

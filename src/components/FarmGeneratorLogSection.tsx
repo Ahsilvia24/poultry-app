@@ -123,7 +123,7 @@ function GeneratorHoursChart({
     <div className="text-xs leading-tight">
       <h4 className="mb-0.5 font-bold text-stone-900">{title}</h4>
       <div className="flex gap-3 text-[11px] leading-none text-stone-500">
-        <span className="w-16 shrink-0 font-semibold">Date</span>
+        <span className="w-20 shrink-0 font-semibold">Date</span>
         <span className="w-12 shrink-0 font-semibold">Hours</span>
         <span className="w-14 shrink-0 font-semibold">Exercised</span>
         {showActions ? <span className="w-12 shrink-0" aria-hidden /> : null}
@@ -137,7 +137,7 @@ function GeneratorHoursChart({
               key={row.id}
               className="flex items-center gap-3 py-px leading-none tabular-nums text-stone-800"
             >
-              <span className="w-16 shrink-0 font-medium">{row.dateLabel}</span>
+              <span className="w-20 shrink-0 whitespace-nowrap font-medium">{row.dateLabel}</span>
               <span className="w-12 shrink-0 font-medium">
                 {formatGeneratorHours(row.hours)}
               </span>

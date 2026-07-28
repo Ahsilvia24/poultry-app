@@ -271,9 +271,9 @@ export default function MortalityScreen() {
     const attempt = (triesLeft: number) => {
       jumpTimerRef.current = setTimeout(() => {
         scrollRowIntoView(age);
-        const input = inputRefs.current.get(fieldKey("culls", age));
+        const input = inputRefs.current.get(fieldKey("mort", age));
         if (input) {
-          setActiveField({ kind: "culls", age });
+          setActiveField({ kind: "mort", age });
           setSelection({ start: 0, end: 0 });
           input.focus();
           return;
@@ -297,11 +297,7 @@ export default function MortalityScreen() {
       ? birdAgeFromPlacement(selectedFarm.activeFlock.placementDate, todayKey())
       : null;
 
-  const firstHouseId = useCallback(
-    (farm: NonNullable<ReturnType<typeof getMortalityForm>["farms"][number]> | null | undefined) =>
-      farm?.activeFlock?.houses[0]?.houseFlockId ?? "",
-    [],
-  );
+  const jumpOnLoadRef = useRef(true);
 
   const loadFarms = useCallback(() => {
     setLoading(true);
@@ -315,32 +311,39 @@ export default function MortalityScreen() {
       const farm = data.farms.find((f) => f.id === preferred) ?? data.farms[0] ?? null;
       const nextId = farm?.id ?? "";
       const houses = farm?.activeFlock?.houses ?? [];
-      const house1 = firstHouseId(farm);
       const isValid = (id: string) => houses.some((h) => h.houseFlockId === id);
 
       setFarmId(nextId);
 
       if (houseFlockIdParam && isValid(houseFlockIdParam)) {
+        jumpOnLoadRef.current = true;
         setHouseFlockId(houseFlockIdParam);
       } else if (
         ctx.houseFlockId &&
         ctx.farmId === nextId &&
         isValid(ctx.houseFlockId)
       ) {
+        jumpOnLoadRef.current = true;
         setHouseFlockId(ctx.houseFlockId);
-      } else if (farmIdParam || houseFlockIdParam) {
-        setHouseFlockId(house1);
+      } else if (houseFlockIdParam) {
+        // Invalid house param — leave house unselected
+        jumpOnLoadRef.current = false;
+        setHouseFlockId("");
       } else {
-        setHouseFlockId((prev) => (isValid(prev) ? prev : house1));
+        // Farm-only navigation / farm tab: do not auto-select a house
+        jumpOnLoadRef.current = false;
+        setHouseFlockId((prev) => (isValid(prev) ? prev : ""));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [farmIdParam, houseFlockIdParam, firstHouseId]);
+  }, [farmIdParam, houseFlockIdParam]);
 
-  const loadGrid = useCallback(() => {
+  const loadGrid = useCallback((opts?: { jump?: boolean }) => {
+    const shouldJump = opts?.jump ?? jumpOnLoadRef.current;
+    jumpOnLoadRef.current = true;
     if (!houseFlockId) {
       setRows([]);
       return;
@@ -367,7 +370,11 @@ export default function MortalityScreen() {
         });
       }
       setRows(next);
-      jumpToFirstUnfilled(next);
+      if (shouldJump) jumpToFirstUnfilled(next);
+      else {
+        clearJumpTimer();
+        resetKeypad();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load grid");
     }
@@ -596,11 +603,13 @@ export default function MortalityScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: activeField ? 8 : 40 }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          onScrollBeginDrag={resetKeypad}
           onScroll={(e) => {
             scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
           }}
           scrollEventThrottle={16}
         >
+          <Pressable onPress={resetKeypad}>
           <PageHeader
             title="Mortality entry"
             subtitle="Enter mortality by house and bird age"
@@ -613,11 +622,13 @@ export default function MortalityScreen() {
                 label={f.farmName}
                 active={farmId === f.id}
                 onPress={() => {
+                  clearJumpTimer();
+                  jumpOnLoadRef.current = false;
                   setFarmId(f.id);
-                  // Always start on house 1 when switching farms
-                  setHouseFlockId(firstHouseId(f));
+                  setHouseFlockId("");
+                  setRows([]);
                   setSaveStatus("idle");
-                  setActiveField(null);
+                  resetKeypad();
                 }}
               />
             ))}
@@ -631,9 +642,10 @@ export default function MortalityScreen() {
                   label={`House ${h.houseNumber}`}
                   active={houseFlockId === h.houseFlockId}
                   onPress={() => {
+                    jumpOnLoadRef.current = true;
                     setHouseFlockId(h.houseFlockId);
                     setSaveStatus("idle");
-                    setActiveField(null);
+                    resetKeypad();
                   }}
                 />
               ))}
@@ -668,6 +680,10 @@ export default function MortalityScreen() {
           {!selectedFarm?.activeFlock ? (
             <Card>
               <Text>Add an active farm with a flock to enter mortality.</Text>
+            </Card>
+          ) : !houseFlockId ? (
+            <Card>
+              <Text style={styles.muted}>Select a house to enter mortality.</Text>
             </Card>
           ) : (
             <>
@@ -821,6 +837,7 @@ export default function MortalityScreen() {
               })}
             </>
           )}
+          </Pressable>
         </ScrollView>
 
         {activeField ? (
