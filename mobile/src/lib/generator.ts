@@ -63,3 +63,32 @@ export function formatGeneratorLogCopy(input: {
 }): string {
   return `${input.logDateLabel}\n${formatGeneratorCopyLine(input.hours, input.deltas)}`;
 }
+
+const GEN_COPY_FIELDS = [
+  { label: "Gen 1", hourKey: "gen1Hours" as const, deltaKey: "gen1" as const },
+  { label: "Gen 2", hourKey: "gen2Hours" as const, deltaKey: "gen2" as const },
+  { label: "Gen 3", hourKey: "gen3Hours" as const, deltaKey: "gen3" as const },
+  { label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
+];
+
+/** Text-friendly paste of Date / Hours / Exercised for all gens. */
+export function formatGeneratorChartsCopy(
+  logs: Array<{
+    dateLabel: string;
+    hours: GeneratorHours;
+    deltas: GeneratorDeltas;
+  }>,
+): string {
+  if (logs.length === 0) return "";
+  return GEN_COPY_FIELDS.map((gen) => {
+    const lines = [
+      gen.label,
+      "Date\tHours\tExercised",
+      ...logs.map(
+        (log) =>
+          `${log.dateLabel}\t${formatGeneratorHours(log.hours[gen.hourKey])}\t${formatGeneratorHours(log.deltas[gen.deltaKey])}`,
+      ),
+    ];
+    return lines.join("\n");
+  }).join("\n\n");
+}
