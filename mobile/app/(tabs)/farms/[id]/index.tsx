@@ -1655,10 +1655,9 @@ export default function FarmDetailScreen() {
                     }
                   }}
                   hitSlop={8}
+                  accessibilityLabel="Copy numbers"
                 >
-                  <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 13 }}>
-                    Copy numbers
-                  </Text>
+                  <Ionicons name="copy-outline" size={20} color={colors.accentDark} />
                 </Pressable>
               ) : null}
             </View>

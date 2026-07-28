@@ -49,12 +49,49 @@ function dateLabelFromKey(logDate: string) {
   return format(new Date(logDate + "T12:00:00"), "M-d-yyyy");
 }
 
-function CopyLogButton({ text, label = "Copy" }: { text: string; label?: string }) {
+function ClipboardIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function CopyLogButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
       type="button"
-      className="text-sm font-semibold text-emerald-800 hover:underline"
+      className="rounded p-1 text-emerald-800 hover:bg-emerald-50"
+      aria-label={copied ? "Copied" : "Copy numbers"}
+      title={copied ? "Copied" : "Copy numbers"}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
@@ -65,7 +102,7 @@ function CopyLogButton({ text, label = "Copy" }: { text: string; label?: string 
         }
       }}
     >
-      {copied ? "Copied" : label}
+      {copied ? <CheckIcon className="h-4 w-4" /> : <ClipboardIcon className="h-4 w-4" />}
     </button>
   );
 }
@@ -381,9 +418,7 @@ export function FarmGeneratorLogSection({
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-bold">Generator log</h3>
           <div className="flex items-center gap-3">
-            {latestNumbersOnly ? (
-              <CopyLogButton text={latestNumbersOnly} label="Copy numbers" />
-            ) : null}
+            {latestNumbersOnly ? <CopyLogButton text={latestNumbersOnly} /> : null}
             <button
               type="button"
               onClick={closeSection}
