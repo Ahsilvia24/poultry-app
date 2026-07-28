@@ -1707,6 +1707,7 @@ export default function FarmDetailScreen() {
                   const genLogs = allLogs
                     .filter((log) => log[gen.hourKey] != null)
                     .slice(0, MAX_GENERATOR_LOGS_DISPLAY);
+                  if (genLogs.length === 0) return null;
                   const rows: GeneratorChartRow[] = genLogs.map((log, index) => {
                     const previous = genLogs[index + 1] ?? null;
                     const [y, m, d] = log.logDate.split("-").map(Number);
