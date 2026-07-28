@@ -69,6 +69,26 @@ function needsEntry(row: DayRow, today: string) {
   return row.mortalityDate <= today && !row.hasEntry;
 }
 
+/**
+ * First past/today day that still needs entry after the last filled day
+ * (one box below the last number entered). If nothing is filled yet, the
+ * earliest day that needs entry.
+ */
+function firstUnfilledAfterLastFilled(rows: DayRow[], today: string): DayRow | null {
+  let lastFilledAge = -1;
+  for (const row of rows) {
+    if (row.hasEntry) lastFilledAge = Math.max(lastFilledAge, row.age);
+  }
+  const afterLast = rows.find(
+    (r) => r.age > lastFilledAge && r.mortalityDate <= today && !r.hasEntry,
+  );
+  if (afterLast) return afterLast;
+  if (lastFilledAge < 0) {
+    return rows.find((r) => needsEntry(r, today)) ?? null;
+  }
+  return null;
+}
+
 type FieldKind = "culls" | "mort";
 
 type ActiveField = {
@@ -169,13 +189,17 @@ export default function MortalityScreen() {
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
   const [selection, setSelection] = useState<{ start: number; end: number } | undefined>();
   const inputRefs = useRef(new Map<string, TextInputType>());
+  const rowRefs = useRef(new Map<number, View>());
   const scrollRef = useRef<ScrollViewType>(null);
+  const scrollHostRef = useRef<View>(null);
+  const scrollOffsetRef = useRef(0);
   useTabScrollToTop("mortality", scrollRef);
   const rowsRef = useRef(rows);
   const houseFlockIdRef = useRef(houseFlockId);
   const farmIdRef = useRef(farmId);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveGenRef = useRef(0);
+  const jumpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   rowsRef.current = rows;
   houseFlockIdRef.current = houseFlockId;
   farmIdRef.current = farmId;
@@ -187,13 +211,70 @@ export default function MortalityScreen() {
     });
   }, [activeField, navigation]);
 
-  function resetToTop() {
+  function clearJumpTimer() {
+    if (jumpTimerRef.current) {
+      clearTimeout(jumpTimerRef.current);
+      jumpTimerRef.current = null;
+    }
+  }
+
+  function resetKeypad() {
     setActiveField(null);
     setSelection(undefined);
     for (const input of inputRefs.current.values()) {
       input.blur();
     }
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }
+
+  function scrollRowIntoView(age: number) {
+    const row = rowRefs.current.get(age);
+    const scroll = scrollRef.current;
+    const host = scrollHostRef.current;
+    if (!row || !scroll || !host) return false;
+    row.measureInWindow((_rx: number, rowY: number) => {
+      host.measureInWindow((_sx: number, scrollY: number) => {
+        const delta = rowY - scrollY - 120;
+        scroll.scrollTo({
+          y: Math.max(0, scrollOffsetRef.current + delta),
+          animated: true,
+        });
+      });
+    });
+    return true;
+  }
+
+  function jumpToFirstUnfilled(nextRows: DayRow[]) {
+    clearJumpTimer();
+    const today = todayKey();
+    const jumpTo = firstUnfilledAfterLastFilled(nextRows, today);
+    const todayAge = nextRows.find((r) => r.mortalityDate === today)?.age;
+    const fallbackWeek =
+      todayAge != null
+        ? flockWeekFromAge(todayAge)
+        : nextRows[0]
+          ? flockWeekFromAge(nextRows[0].age)
+          : 1;
+    const openWeek = jumpTo ? flockWeekFromAge(jumpTo.age) : fallbackWeek;
+    setExpandedWeeks(new Set([openWeek]));
+    if (!jumpTo) {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      return;
+    }
+    const age = jumpTo.age;
+    const attempt = (triesLeft: number) => {
+      jumpTimerRef.current = setTimeout(() => {
+        scrollRowIntoView(age);
+        const input = inputRefs.current.get(fieldKey("culls", age));
+        if (input) {
+          setActiveField({ kind: "culls", age });
+          setSelection({ start: 0, end: 0 });
+          input.focus();
+          return;
+        }
+        if (triesLeft > 0) attempt(triesLeft - 1);
+      }, triesLeft === 3 ? 80 : 120);
+    };
+    attempt(3);
   }
 
   const selectedFarm = useMemo(
@@ -279,10 +360,7 @@ export default function MortalityScreen() {
         });
       }
       setRows(next);
-      const currentWeek = flockWeekFromAge(
-        birdAgeFromPlacement(series.placementDate, todayKey()),
-      );
-      setExpandedWeeks(new Set([currentWeek]));
+      jumpToFirstUnfilled(next);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load grid");
     }
@@ -292,16 +370,13 @@ export default function MortalityScreen() {
     loadFarms();
   }, [loadFarms]);
 
-  // Landing from Dashboard / farm detail: top of page, no keypad / focused cell
+  // Landing from Dashboard / farm detail: clear keypad, then load (grid jumps to first unfilled)
   useFocusEffect(
     useCallback(() => {
-      resetToTop();
-      // Second pass after layout so restored focus / scroll can't stick
-      const t = setTimeout(() => resetToTop(), 50);
-      // Reload so farmId param + house 1 are applied together (avoid blank house gap)
+      resetKeypad();
       loadFarms();
       return () => {
-        clearTimeout(t);
+        clearJumpTimer();
         setActiveField(null);
         setSelection(undefined);
         navigation.setOptions({ tabBarStyle: undefined });
@@ -317,10 +392,7 @@ export default function MortalityScreen() {
       saveTimerRef.current = null;
     }
     saveGenRef.current += 1;
-    // Grid mount can restore focus into the current week mid-page — keep top clean
-    resetToTop();
-    const t = setTimeout(() => resetToTop(), 100);
-    return () => clearTimeout(t);
+    return () => clearJumpTimer();
   }, [loadGrid]);
 
   useEffect(() => {
@@ -514,13 +586,17 @@ export default function MortalityScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <View style={{ flex: 1 }}>
+      <View ref={scrollHostRef} style={{ flex: 1 }} collapsable={false}>
         <ScrollView
           ref={scrollRef}
           style={styles.screen}
           contentContainerStyle={[styles.content, { paddingBottom: activeField ? 8 : 40 }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          onScroll={(e) => {
+            scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={16}
         >
           <PageHeader
             title="Mortality entry"
@@ -651,6 +727,11 @@ export default function MortalityScreen() {
                           return (
                             <View
                               key={row.mortalityDate}
+                              ref={(r) => {
+                                if (r) rowRefs.current.set(row.age, r);
+                                else rowRefs.current.delete(row.age);
+                              }}
+                              collapsable={false}
                               style={{
                                 flexDirection: "row",
                                 alignItems: "center",

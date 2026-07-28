@@ -66,6 +66,35 @@ function needsEntry(row: DayRow, asOfDateKey: string) {
   return row.mortalityDate <= asOfDateKey && !row.hasEntry;
 }
 
+/**
+ * First past/today day that still needs entry after the last filled day
+ * (one box below the last number entered). If nothing is filled yet, the
+ * earliest day that needs entry.
+ */
+function firstUnfilledAfterLastFilled(rows: DayRow[], asOfDateKey: string): DayRow | null {
+  let lastFilledAge = -1;
+  for (const row of rows) {
+    if (row.hasEntry) lastFilledAge = Math.max(lastFilledAge, row.age);
+  }
+  const afterLast = rows.find(
+    (r) => r.age > lastFilledAge && r.mortalityDate <= asOfDateKey && !r.hasEntry,
+  );
+  if (afterLast) return afterLast;
+  if (lastFilledAge < 0) {
+    return rows.find((r) => needsEntry(r, asOfDateKey)) ?? null;
+  }
+  return null;
+}
+
+function focusMortalityAge(age: number, field: "culls" | "mortality" = "culls") {
+  const el = document.querySelector<HTMLInputElement>(`[data-mort-nav="${field}-${age}"]`);
+  if (!el) return false;
+  el.scrollIntoView({ block: "center", behavior: "smooth" });
+  el.focus();
+  el.select();
+  return true;
+}
+
 function digitsOnly(value: string) {
   return value.replace(/\D/g, "");
 }
@@ -348,10 +377,25 @@ export function MortalityEntryForm({
     const catchDate = resolveCatchDateKey(flock);
     const built = buildRows(flock.placementDate, catchDate, house, asOfDateKey);
     setRows(built);
+    const jumpTo = firstUnfilledAfterLastFilled(built, asOfDateKey);
     const currentWeek = flockWeekFromAge(
       birdAgeFromPlacement(parseLocalDate(flock.placementDate), parseLocalDate(asOfDateKey)),
     );
-    setExpandedWeeks(new Set([currentWeek]));
+    const openWeek = jumpTo ? flockWeekFromAge(jumpTo.age) : currentWeek;
+    setExpandedWeeks(new Set([openWeek]));
+
+    if (jumpTo) {
+      const age = jumpTo.age;
+      // Wait for the target week accordion to mount before scrolling/focusing.
+      const tryFocus = () => focusMortalityAge(age);
+      requestAnimationFrame(() => {
+        if (!tryFocus()) {
+          window.setTimeout(() => {
+            if (!tryFocus()) window.setTimeout(tryFocus, 120);
+          }, 50);
+        }
+      });
+    }
   }, [
     farmId,
     flock?.id,
@@ -597,7 +641,11 @@ export function MortalityEntryForm({
                               Number(row.cullCount || 0),
                             );
                             return (
-                              <tr key={row.mortalityDate} className="border-b border-stone-100">
+                              <tr
+                                key={row.mortalityDate}
+                                data-mort-row={row.age}
+                                className="border-b border-stone-100"
+                              >
                                 <td className="sticky left-0 z-10 bg-white px-3 py-2 font-semibold text-stone-900">
                                   {row.age}
                                 </td>
