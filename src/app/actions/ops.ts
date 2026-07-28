@@ -649,6 +649,61 @@ export async function updateSettingsAction(formData: FormData) {
   return { success: true };
 }
 
+async function pruneGeneratorLogs(farmId: string, keep = 8) {
+  const ids = await prisma.generatorLog.findMany({
+    where: { farmId },
+    orderBy: [{ logDate: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+    select: { id: true },
+  });
+  if (ids.length > keep) {
+    await prisma.generatorLog.deleteMany({
+      where: { id: { in: ids.slice(keep).map((r) => r.id) } },
+    });
+  }
+}
+
+/** Merge non-null readings into an existing date row, or create a new row. */
+async function upsertGeneratorLogForDate(
+  farmId: string,
+  logDate: string,
+  hours: {
+    gen1Hours: number | null;
+    gen2Hours: number | null;
+    gen3Hours: number | null;
+    gen4Hours: number | null;
+  },
+) {
+  const existing = await prisma.generatorLog.findFirst({
+    where: { farmId, logDate: parseDateKey(logDate) },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  if (existing) {
+    await prisma.generatorLog.update({
+      where: { id: existing.id },
+      data: {
+        gen1Hours: hours.gen1Hours ?? existing.gen1Hours,
+        gen2Hours: hours.gen2Hours ?? existing.gen2Hours,
+        gen3Hours: hours.gen3Hours ?? existing.gen3Hours,
+        gen4Hours: hours.gen4Hours ?? existing.gen4Hours,
+        notes: null,
+      },
+    });
+    return existing.id;
+  }
+  const created = await prisma.generatorLog.create({
+    data: {
+      farm: { connect: { id: farmId } },
+      logDate: parseDateKey(logDate),
+      gen1Hours: hours.gen1Hours,
+      gen2Hours: hours.gen2Hours,
+      gen3Hours: hours.gen3Hours,
+      gen4Hours: hours.gen4Hours,
+      notes: null,
+    },
+  });
+  return created.id;
+}
+
 export async function createGeneratorLogAction(formData: FormData) {
   const user = await requireUser();
   const parsed = generatorLogSchema.safeParse({
@@ -672,30 +727,8 @@ export async function createGeneratorLogAction(formData: FormData) {
     return { error: "Enter hours for at least one generator" };
   }
 
-  await prisma.generatorLog.create({
-    data: {
-      farm: { connect: { id: parsed.data.farmId } },
-      logDate: parseDateKey(parsed.data.logDate),
-      gen1Hours: hours.gen1Hours,
-      gen2Hours: hours.gen2Hours,
-      gen3Hours: hours.gen3Hours,
-      gen4Hours: hours.gen4Hours,
-      notes: null,
-    },
-  });
-
-  // Keep at most 8 logs per farm — drop oldest when over the cap.
-  const keep = 8;
-  const ids = await prisma.generatorLog.findMany({
-    where: { farmId: parsed.data.farmId },
-    orderBy: [{ logDate: "desc" }, { createdAt: "desc" }, { id: "desc" }],
-    select: { id: true },
-  });
-  if (ids.length > keep) {
-    await prisma.generatorLog.deleteMany({
-      where: { id: { in: ids.slice(keep).map((r) => r.id) } },
-    });
-  }
+  await upsertGeneratorLogForDate(parsed.data.farmId, parsed.data.logDate, hours);
+  await pruneGeneratorLogs(parsed.data.farmId);
 
   revalidatePath(`/farms/${parsed.data.farmId}`);
   return { success: true };
@@ -764,31 +797,13 @@ export async function updateGeneratorLogAction(logId: string, formData: FormData
 
     // Date changed: move only this generator reading to the new date.
     await clearGeneratorHourOnLog(existing, onlyGenRaw);
-    const target = await prisma.generatorLog.findFirst({
-      where: {
-        farmId: existing.farmId,
-        logDate: parseDateKey(logDateRaw),
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    await upsertGeneratorLogForDate(existing.farmId, logDateRaw, {
+      gen1Hours: onlyGenRaw === "gen1Hours" ? hours : null,
+      gen2Hours: onlyGenRaw === "gen2Hours" ? hours : null,
+      gen3Hours: onlyGenRaw === "gen3Hours" ? hours : null,
+      gen4Hours: onlyGenRaw === "gen4Hours" ? hours : null,
     });
-    if (target) {
-      await prisma.generatorLog.update({
-        where: { id: target.id },
-        data: { [onlyGenRaw]: hours, notes: null },
-      });
-    } else {
-      await prisma.generatorLog.create({
-        data: {
-          farm: { connect: { id: existing.farmId } },
-          logDate: parseDateKey(logDateRaw),
-          gen1Hours: onlyGenRaw === "gen1Hours" ? hours : null,
-          gen2Hours: onlyGenRaw === "gen2Hours" ? hours : null,
-          gen3Hours: onlyGenRaw === "gen3Hours" ? hours : null,
-          gen4Hours: onlyGenRaw === "gen4Hours" ? hours : null,
-          notes: null,
-        },
-      });
-    }
+    await pruneGeneratorLogs(existing.farmId);
     revalidatePath(`/farms/${existing.farmId}`);
     return { success: true };
   }

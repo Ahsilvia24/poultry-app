@@ -2773,22 +2773,55 @@ export function createGeneratorLog(input: GeneratorLogInput) {
   if (!hasAnyGeneratorReading(hours)) {
     throw new Error("Enter hours for at least one generator");
   }
-  const id = newId("genlog");
-  db.runSync(
-    `INSERT INTO generator_logs
-      (id, farm_id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      id,
-      input.farmId,
-      input.logDate.trim(),
-      hours.gen1Hours,
-      hours.gen2Hours,
-      hours.gen3Hours,
-      hours.gen4Hours,
-      null,
-    ],
+
+  const logDate = input.logDate.trim();
+  const existing = db.getFirstSync<{
+    id: string;
+    gen1_hours: number | null;
+    gen2_hours: number | null;
+    gen3_hours: number | null;
+    gen4_hours: number | null;
+  }>(
+    `SELECT * FROM generator_logs
+     WHERE farm_id = ? AND log_date = ?
+     ORDER BY id DESC LIMIT 1`,
+    [input.farmId, logDate],
   );
+
+  let id: string;
+  if (existing) {
+    id = existing.id;
+    db.runSync(
+      `UPDATE generator_logs
+       SET gen1_hours = ?, gen2_hours = ?, gen3_hours = ?, gen4_hours = ?, notes = NULL
+       WHERE id = ? AND farm_id = ?`,
+      [
+        hours.gen1Hours ?? existing.gen1_hours,
+        hours.gen2Hours ?? existing.gen2_hours,
+        hours.gen3Hours ?? existing.gen3_hours,
+        hours.gen4Hours ?? existing.gen4_hours,
+        id,
+        input.farmId,
+      ],
+    );
+  } else {
+    id = newId("genlog");
+    db.runSync(
+      `INSERT INTO generator_logs
+        (id, farm_id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        input.farmId,
+        logDate,
+        hours.gen1Hours,
+        hours.gen2Hours,
+        hours.gen3Hours,
+        hours.gen4Hours,
+        null,
+      ],
+    );
+  }
 
   // Keep at most 8 logs per farm — drop oldest when over the cap.
   const keep = 8;

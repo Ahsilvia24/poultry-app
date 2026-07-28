@@ -15,6 +15,7 @@ import {
   hoursDelta,
   GENERATOR_FIELD_DEFS,
   type GenHourKey,
+  type GeneratorDeltas,
   type GeneratorHours,
 } from "@/lib/generator/format";
 
@@ -299,12 +300,18 @@ function GeneratorLogForm({
 function previousReadingForGen(
   logsNewestFirst: GeneratorLogRow[],
   hourKey: GenHourKey,
-  beforeLogId?: string,
+  opts?: { beforeLogId?: string; beforeDate?: string },
 ): number | null {
+  const beforeDate = opts?.beforeDate;
+  const beforeLogId = opts?.beforeLogId;
   let passedEdit = beforeLogId == null;
   for (const log of logsNewestFirst) {
+    if (beforeDate != null && log.logDate > beforeDate) continue;
+    if (beforeDate != null && log.logDate === beforeDate && beforeLogId == null) continue;
     if (!passedEdit) {
-      if (log.id === beforeLogId) passedEdit = true;
+      if (log.id === beforeLogId) {
+        passedEdit = true;
+      }
       continue;
     }
     if (log[hourKey] != null) return log[hourKey];
@@ -350,40 +357,37 @@ export function FarmGeneratorLogSection({
   }, [allSorted]);
 
   const chartsCopyText = useMemo(() => {
+    // Match chart windows: up to 8 readings per gen, not 8 shared date rows.
+    const byDate = new Map<
+      string,
+      { dateLabel: string; hours: GeneratorHours; deltas: GeneratorDeltas }
+    >();
+    for (const gen of chartRowsByGen) {
+      for (const row of gen.rows) {
+        const log = allSorted.find((l) => l.id === row.id);
+        if (!log) continue;
+        let entry = byDate.get(log.id);
+        if (!entry) {
+          entry = {
+            dateLabel: row.dateLabel,
+            hours: {
+              gen1Hours: null,
+              gen2Hours: null,
+              gen3Hours: null,
+              gen4Hours: null,
+            },
+            deltas: { gen1: null, gen2: null, gen3: null, gen4: null },
+          };
+          byDate.set(log.id, entry);
+        }
+        entry.hours[gen.hourKey] = row.hours;
+        entry.deltas[gen.deltaKey] = row.exercised;
+      }
+    }
     return formatGeneratorChartsCopy(
-      allSorted.slice(0, MAX_GENERATOR_LOGS_DISPLAY).map((log) => {
-        const hours: GeneratorHours = {
-          gen1Hours: log.gen1Hours,
-          gen2Hours: log.gen2Hours,
-          gen3Hours: log.gen3Hours,
-          gen4Hours: log.gen4Hours,
-        };
-        const deltas = {
-          gen1: hoursDelta(
-            log.gen1Hours,
-            previousReadingForGen(allSorted, "gen1Hours", log.id),
-          ),
-          gen2: hoursDelta(
-            log.gen2Hours,
-            previousReadingForGen(allSorted, "gen2Hours", log.id),
-          ),
-          gen3: hoursDelta(
-            log.gen3Hours,
-            previousReadingForGen(allSorted, "gen3Hours", log.id),
-          ),
-          gen4: hoursDelta(
-            log.gen4Hours,
-            previousReadingForGen(allSorted, "gen4Hours", log.id),
-          ),
-        };
-        return {
-          dateLabel: dateLabelFromKey(log.logDate),
-          hours,
-          deltas,
-        };
-      }),
+      [...byDate.values()].sort((a, b) => b.dateLabel.localeCompare(a.dateLabel)),
     );
-  }, [allSorted]);
+  }, [chartRowsByGen, allSorted]);
 
   const hasAnyChartRows = chartRowsByGen.some((gen) => gen.rows.length > 0);
 
@@ -430,15 +434,26 @@ export function FarmGeneratorLogSection({
 
   const editingLog = editingId ? allSorted.find((l) => l.id === editingId) : null;
   const createPreviousByGen: Partial<Record<GenHourKey, number | null>> = {
-    gen1Hours: previousReadingForGen(allSorted, "gen1Hours"),
-    gen2Hours: previousReadingForGen(allSorted, "gen2Hours"),
-    gen3Hours: previousReadingForGen(allSorted, "gen3Hours"),
-    gen4Hours: previousReadingForGen(allSorted, "gen4Hours"),
+    gen1Hours: previousReadingForGen(allSorted, "gen1Hours", {
+      beforeDate: new Date().toISOString().slice(0, 10),
+    }),
+    gen2Hours: previousReadingForGen(allSorted, "gen2Hours", {
+      beforeDate: new Date().toISOString().slice(0, 10),
+    }),
+    gen3Hours: previousReadingForGen(allSorted, "gen3Hours", {
+      beforeDate: new Date().toISOString().slice(0, 10),
+    }),
+    gen4Hours: previousReadingForGen(allSorted, "gen4Hours", {
+      beforeDate: new Date().toISOString().slice(0, 10),
+    }),
   };
   const editPreviousByGen =
     editingLog && editingGen
       ? {
-          [editingGen]: previousReadingForGen(allSorted, editingGen, editingLog.id),
+          [editingGen]: previousReadingForGen(allSorted, editingGen, {
+            beforeLogId: editingLog.id,
+            beforeDate: editingLog.logDate,
+          }),
         }
       : undefined;
 

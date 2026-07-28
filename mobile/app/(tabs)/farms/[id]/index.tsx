@@ -886,14 +886,13 @@ export default function FarmDetailScreen() {
         gen4Hours: log.gen4Hours == null ? "" : String(log.gen4Hours),
       });
     } else {
-      const latest = data?.generatorLogs?.[0];
       setGeneratorEditingId(null);
       setGeneratorDraft({
         logDate: todayKey(),
-        gen1Hours: latest?.gen1Hours == null ? "" : String(latest.gen1Hours),
-        gen2Hours: latest?.gen2Hours == null ? "" : String(latest.gen2Hours),
-        gen3Hours: latest?.gen3Hours == null ? "" : String(latest.gen3Hours),
-        gen4Hours: latest?.gen4Hours == null ? "" : String(latest.gen4Hours),
+        gen1Hours: "",
+        gen2Hours: "",
+        gen3Hours: "",
+        gen4Hours: "",
       });
     }
     setGeneratorModalOpen(true);

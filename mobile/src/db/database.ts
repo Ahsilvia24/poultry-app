@@ -253,26 +253,51 @@ export function migrateDb() {
         c.notnull === 1,
     )
   ) {
-    database.execSync(`
-      CREATE TABLE IF NOT EXISTS generator_logs_nullable (
-        id TEXT PRIMARY KEY NOT NULL,
-        farm_id TEXT NOT NULL,
-        log_date TEXT NOT NULL,
-        gen1_hours REAL,
-        gen2_hours REAL,
-        gen3_hours REAL,
-        gen4_hours REAL,
-        notes TEXT,
-        FOREIGN KEY (farm_id) REFERENCES farms(id)
-      );
-      INSERT INTO generator_logs_nullable
-        (id, farm_id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours, notes)
-      SELECT id, farm_id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours, notes
-      FROM generator_logs;
-      DROP TABLE generator_logs;
-      ALTER TABLE generator_logs_nullable RENAME TO generator_logs;
-      CREATE INDEX IF NOT EXISTS idx_generator_farm ON generator_logs(farm_id);
-    `);
+    database.execSync("BEGIN");
+    try {
+      database.execSync(`
+        CREATE TABLE generator_logs_nullable (
+          id TEXT PRIMARY KEY NOT NULL,
+          farm_id TEXT NOT NULL,
+          log_date TEXT NOT NULL,
+          gen1_hours REAL,
+          gen2_hours REAL,
+          gen3_hours REAL,
+          gen4_hours REAL,
+          notes TEXT,
+          FOREIGN KEY (farm_id) REFERENCES farms(id)
+        );
+        INSERT INTO generator_logs_nullable
+          (id, farm_id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours, notes)
+        SELECT id, farm_id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours, notes
+        FROM generator_logs;
+        DROP TABLE generator_logs;
+        ALTER TABLE generator_logs_nullable RENAME TO generator_logs;
+        CREATE INDEX IF NOT EXISTS idx_generator_farm ON generator_logs(farm_id);
+      `);
+      database.execSync("COMMIT");
+    } catch (e) {
+      database.execSync("ROLLBACK");
+      throw e;
+    }
+  }
+
+  // Recover if a prior migration left an orphan nullable table.
+  const orphan = database.getAllSync<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='generator_logs_nullable'",
+  );
+  if (orphan.length > 0) {
+    const main = database.getAllSync<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='generator_logs'",
+    );
+    if (main.length === 0) {
+      database.execSync(`
+        ALTER TABLE generator_logs_nullable RENAME TO generator_logs;
+        CREATE INDEX IF NOT EXISTS idx_generator_farm ON generator_logs(farm_id);
+      `);
+    } else {
+      database.execSync("DROP TABLE generator_logs_nullable");
+    }
   }
 }
 
