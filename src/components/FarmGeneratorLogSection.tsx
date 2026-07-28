@@ -478,7 +478,9 @@ export function FarmGeneratorLogSection({
           <p className="mt-3 text-sm text-stone-500">None yet</p>
         ) : (
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {chartRowsByGen.map((gen) => (
+            {chartRowsByGen
+              .filter((gen) => gen.rows.length > 0)
+              .map((gen) => (
               <GeneratorHoursChart
                 key={gen.key}
                 title={gen.label}
