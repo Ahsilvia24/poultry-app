@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import type { Session } from "next-auth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -9,7 +10,28 @@ const credentialsSchema = z.object({
   password: z.string().min(6),
 });
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const DEV_BYPASS = () => process.env.AUTH_DEV_BYPASS === "true";
+const DEV_USER_EMAIL = () =>
+  (process.env.AUTH_DEV_USER_EMAIL ?? "tech@poultry.local").toLowerCase();
+
+async function resolveDevBypassSession(): Promise<Session | null> {
+  if (!DEV_BYPASS()) return null;
+  const user = await prisma.user.findUnique({
+    where: { email: DEV_USER_EMAIL() },
+  });
+  if (!user) return null;
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    },
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
+const nextAuth = NextAuth({
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
@@ -46,6 +68,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.sub = user.id;
       }
+      // Keep JWT usable when bypassing (middleware may still lack a cookie).
+      if (!token.sub && DEV_BYPASS()) {
+        const u = await prisma.user.findUnique({
+          where: { email: DEV_USER_EMAIL() },
+          select: { id: true },
+        });
+        if (u) token.sub = u.id;
+      }
       return token;
     },
     async session({ session, token }) {
@@ -56,3 +86,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
+
+export const { handlers, signIn, signOut } = nextAuth;
+
+type AuthFn = typeof nextAuth.auth;
+
+/**
+ * Session helper with optional AUTH_DEV_BYPASS (skips login in local/tunnel demos).
+ * Also supports the Auth.js middleware wrapper form: auth((req) => ...).
+ */
+export const auth: AuthFn = ((...args: unknown[]) => {
+  if (typeof args[0] === "function") {
+    // Middleware / route handler wrapper — leave Auth.js wiring intact.
+    return (nextAuth.auth as (...a: unknown[]) => unknown)(...args);
+  }
+  return (async () => {
+    const session = await nextAuth.auth();
+    if (session?.user?.id) return session;
+    return (await resolveDevBypassSession()) ?? session;
+  })();
+}) as AuthFn;
+
+export function isAuthDevBypassEnabled() {
+  return DEV_BYPASS();
+}
