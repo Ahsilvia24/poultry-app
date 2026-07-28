@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
 import { Card, PageHeader, SectionTitle } from "../../src/components/ui";
+import { ExportDataCard } from "../../src/components/ExportDataCard";
 
 const LINKS = [
   {
@@ -49,6 +50,9 @@ export default function MoreScreen() {
             </Card>
           </Pressable>
         ))}
+
+        <SectionTitle>Backup & sync</SectionTitle>
+        <ExportDataCard />
 
         <SectionTitle>Coming soon on mobile</SectionTitle>
         <Card>

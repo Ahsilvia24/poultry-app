@@ -17,6 +17,7 @@ import {
 import { formatMinVentCycle } from "../../src/lib/mortality";
 import { colors, styles } from "../../src/theme";
 import { Card, Chip, PageHeader } from "../../src/components/ui";
+import { ExportDataCard } from "../../src/components/ExportDataCard";
 import {
   CoolCellsChart,
   LightsChart,
@@ -447,6 +448,10 @@ export default function ToolsScreen() {
           ) : (
             <SectionAnchor />
           )}
+        </View>
+
+        <View style={{ marginTop: 8, marginBottom: 24 }}>
+          <ExportDataCard />
         </View>
       </ScrollView>
     </SafeAreaView>
