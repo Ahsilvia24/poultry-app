@@ -22,7 +22,7 @@ export default function NewFarmScreen() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [numberOfHouses, setNumberOfHouses] = useState("4");
-  const [numberOfGenerators, setNumberOfGenerators] = useState(4);
+  const [numberOfGenerators, setNumberOfGenerators] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -85,7 +85,12 @@ export default function NewFarmScreen() {
             </Text>
 
             <Text style={styles.label}>Number of generators</Text>
-            <View style={[styles.row, { marginBottom: 12 }]}>
+            <View style={[styles.row, { marginBottom: 4, flexWrap: "wrap" }]}>
+              <Chip
+                label="Not set"
+                active={numberOfGenerators == null}
+                onPress={() => setNumberOfGenerators(null)}
+              />
               {([1, 2, 3, 4] as const).map((n) => (
                 <Chip
                   key={n}
@@ -95,6 +100,9 @@ export default function NewFarmScreen() {
                 />
               ))}
             </View>
+            <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
+              Optional — you can set this later
+            </Text>
 
             <Text style={styles.label}>Grower name</Text>
             <TextInput

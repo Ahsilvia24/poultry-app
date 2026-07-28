@@ -223,7 +223,10 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
         email: f.email ?? null,
         notes: f.notes ?? null,
         numberOfHouses: houseCount,
-        numberOfGenerators: f.number_of_generators ?? 4,
+        numberOfGenerators:
+          f.number_of_generators == null || f.number_of_generators === 0
+            ? null
+            : f.number_of_generators,
         houseCount,
         isActive: f.is_active === 1,
         birdsPlaced,
@@ -763,7 +766,10 @@ export function getFarmDetail(farmId: string) {
       phoneNumber: farm.phone_number,
       email: farm.email ?? null,
       notes: farm.notes,
-      numberOfGenerators: farm.number_of_generators ?? 4,
+      numberOfGenerators:
+        farm.number_of_generators == null || farm.number_of_generators === 0
+          ? null
+          : farm.number_of_generators,
     },
     activeFlocks,
     activeFlock: flock
@@ -1519,7 +1525,7 @@ export function createFarm(input: {
   email?: string | null;
   notes?: string | null;
   numberOfHouses?: number;
-  numberOfGenerators?: number;
+  numberOfGenerators?: number | null;
 }) {
   const db = getDb();
   const farmName = input.farmName.trim();
@@ -1529,10 +1535,11 @@ export function createFarm(input: {
     0,
     Math.min(40, Math.floor(Number(input.numberOfHouses ?? 0) || 0)),
   );
-  const generatorCount = Math.max(
-    1,
-    Math.min(4, Math.floor(Number(input.numberOfGenerators ?? 4) || 4)),
-  );
+  // 0 = not set (keeps compatibility with older NOT NULL columns)
+  const generatorCount =
+    input.numberOfGenerators == null || input.numberOfGenerators === 0
+      ? 0
+      : Math.max(1, Math.min(4, Math.floor(Number(input.numberOfGenerators) || 0)));
   const id = newId("farm");
   const growerName = (input.growerName ?? "").trim();
   const phoneNumber = input.phoneNumber?.trim() || null;
@@ -1564,7 +1571,7 @@ export function updateFarm(
     phoneNumber?: string | null;
     email?: string | null;
     notes?: string | null;
-    numberOfGenerators?: number;
+    numberOfGenerators?: number | null;
   },
 ) {
   const db = getDb();
@@ -1574,10 +1581,11 @@ export function updateFarm(
   const farmName = input.farmName.trim();
   if (!farmName) throw new Error("Farm name is required");
 
-  const generatorCount = Math.max(
-    1,
-    Math.min(4, Math.floor(Number(input.numberOfGenerators ?? 4) || 4)),
-  );
+  // 0 = not set (keeps compatibility with older NOT NULL columns)
+  const generatorCount =
+    input.numberOfGenerators == null || input.numberOfGenerators === 0
+      ? 0
+      : Math.max(1, Math.min(4, Math.floor(Number(input.numberOfGenerators) || 0)));
 
   db.runSync(
     `UPDATE farms

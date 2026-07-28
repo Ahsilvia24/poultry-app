@@ -19,7 +19,7 @@ export async function createFarmAction(formData: FormData) {
     phoneNumber: emptyToNull(formData.get("phoneNumber")),
     notes: emptyToNull(formData.get("notes")),
     numberOfHouses: formData.get("numberOfHouses") || 0,
-    numberOfGenerators: formData.get("numberOfGenerators") || 4,
+    numberOfGenerators: formData.get("numberOfGenerators") || null,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid farm" };
 
@@ -35,7 +35,7 @@ export async function createFarmAction(formData: FormData) {
         phoneNumber: parsed.data.phoneNumber,
         notes: parsed.data.notes,
         numberOfHouses: houseCount,
-        numberOfGenerators: parsed.data.numberOfGenerators,
+        numberOfGenerators: parsed.data.numberOfGenerators ?? null,
       },
     });
 
@@ -65,7 +65,7 @@ export async function updateFarmAction(farmId: string, formData: FormData) {
     phoneNumber: emptyToNull(formData.get("phoneNumber")),
     email: emptyToNull(formData.get("email")),
     notes: emptyToNull(formData.get("notes")),
-    numberOfGenerators: formData.get("numberOfGenerators") || 4,
+    numberOfGenerators: formData.get("numberOfGenerators") || null,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid farm" };
 
@@ -82,7 +82,7 @@ export async function updateFarmAction(farmId: string, formData: FormData) {
       phoneNumber: parsed.data.phoneNumber,
       email: parsed.data.email || null,
       notes: parsed.data.notes,
-      numberOfGenerators: parsed.data.numberOfGenerators,
+      numberOfGenerators: parsed.data.numberOfGenerators ?? null,
     },
   });
   revalidatePath(`/farms/${farmId}`);

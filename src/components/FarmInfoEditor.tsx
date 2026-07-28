@@ -11,7 +11,7 @@ type FarmInfo = {
   phoneNumber: string | null;
   email?: string | null;
   notes: string | null;
-  numberOfGenerators: number;
+  numberOfGenerators: number | null;
 };
 
 function GearIcon({ className }: { className?: string }) {
@@ -118,14 +118,18 @@ export function FarmInfoEditor({
                 <Select
                   id="numberOfGenerators"
                   name="numberOfGenerators"
-                  defaultValue={String(farm.numberOfGenerators ?? 4)}
+                  defaultValue={
+                    farm.numberOfGenerators != null ? String(farm.numberOfGenerators) : ""
+                  }
                 >
+                  <option value="">Not set</option>
                   {[1, 2, 3, 4].map((n) => (
                     <option key={n} value={n}>
                       {n}
                     </option>
                   ))}
                 </Select>
+                <p className="mt-1 text-xs text-stone-500">Optional — you can set this later</p>
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="notes">Notes</Label>

@@ -43,7 +43,7 @@ type FarmEditDraft = {
   phoneNumber: string;
   email: string;
   notes: string;
-  numberOfGenerators: number;
+  numberOfGenerators: number | null;
 };
 
 export default function FarmsScreen() {
@@ -134,7 +134,7 @@ export default function FarmsScreen() {
       phoneNumber: farm.phoneNumber ?? "",
       email: farm.email ?? "",
       notes: farm.notes ?? "",
-      numberOfGenerators: farm.numberOfGenerators ?? 4,
+      numberOfGenerators: farm.numberOfGenerators ?? null,
     });
   }
 
@@ -442,7 +442,16 @@ export default function FarmsScreen() {
                       autoCorrect={false}
                     />
                     <Text style={[styles.label, { marginTop: 8 }]}>Number of generators</Text>
-                    <View style={[styles.row, { marginBottom: 8 }]}>
+                    <View style={[styles.row, { marginBottom: 4, flexWrap: "wrap" }]}>
+                      <Chip
+                        label="Not set"
+                        active={editingFarm.numberOfGenerators == null}
+                        onPress={() =>
+                          setEditingFarm((prev) =>
+                            prev ? { ...prev, numberOfGenerators: null } : prev,
+                          )
+                        }
+                      />
                       {([1, 2, 3, 4] as const).map((n) => (
                         <Chip
                           key={n}
@@ -456,6 +465,9 @@ export default function FarmsScreen() {
                         />
                       ))}
                     </View>
+                    <Text style={[styles.muted, { marginBottom: 8, fontSize: 12 }]}>
+                      Optional — you can set this later
+                    </Text>
                     <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
                     <TextInput
                       style={[styles.input, { minHeight: 88, textAlignVertical: "top" }]}

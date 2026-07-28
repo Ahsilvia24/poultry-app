@@ -35,7 +35,7 @@ export function migrateDb() {
       email TEXT,
       notes TEXT,
       number_of_houses INTEGER NOT NULL DEFAULT 0,
-      number_of_generators INTEGER NOT NULL DEFAULT 4,
+      number_of_generators INTEGER,
       is_active INTEGER NOT NULL DEFAULT 1,
       deleted_at TEXT
     );
@@ -216,7 +216,7 @@ export function migrateDb() {
   }
   if (!farmCols.some((c) => c.name === "number_of_generators")) {
     database.execSync(
-      "ALTER TABLE farms ADD COLUMN number_of_generators INTEGER NOT NULL DEFAULT 4",
+      "ALTER TABLE farms ADD COLUMN number_of_generators INTEGER",
     );
   }
 

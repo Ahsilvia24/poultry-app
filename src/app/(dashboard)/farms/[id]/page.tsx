@@ -498,7 +498,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
         <FarmGeneratorLogSection
           farmId={farm.id}
-          generatorCount={farm.numberOfGenerators}
           logs={farm.generatorLogs.map((log) => ({
             id: log.id,
             logDate: dateKeyFromDb(log.logDate),

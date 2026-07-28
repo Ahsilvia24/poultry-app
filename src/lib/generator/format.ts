@@ -24,6 +24,13 @@ export type GeneratorDeltas = {
   gen4: number | null;
 };
 
+export const GENERATOR_FIELD_DEFS = [
+  { key: "gen1", label: "Gen 1", hourKey: "gen1Hours" as const, deltaKey: "gen1" as const },
+  { key: "gen2", label: "Gen 2", hourKey: "gen2Hours" as const, deltaKey: "gen2" as const },
+  { key: "gen3", label: "Gen 3", hourKey: "gen3Hours" as const, deltaKey: "gen3" as const },
+  { key: "gen4", label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
+] as const;
+
 export function generatorDeltas(
   current: GeneratorHours,
   previous: GeneratorHours | null | undefined,
@@ -47,11 +54,9 @@ export function generatorDeltas(
 export function formatGeneratorCopyLine(
   hours: GeneratorHours,
   deltas: GeneratorDeltas,
-  generatorCount: number = 4,
 ): string {
-  const fields = generatorFieldsForCount(generatorCount);
   const parts: string[] = [];
-  for (const field of fields) {
+  for (const field of GENERATOR_FIELD_DEFS) {
     parts.push(formatGeneratorHours(hours[field.hourKey]));
     parts.push(formatGeneratorHours(deltas[field.deltaKey]));
   }
@@ -62,43 +67,23 @@ export function formatGeneratorLogCopy(input: {
   logDateLabel: string;
   hours: GeneratorHours;
   deltas: GeneratorDeltas;
-  generatorCount?: number;
 }): string {
-  return `${input.logDateLabel}\n${formatGeneratorCopyLine(input.hours, input.deltas, input.generatorCount)}`;
+  return `${input.logDateLabel}\n${formatGeneratorCopyLine(input.hours, input.deltas)}`;
 }
 
-/** Clamp farm generator count to supported 1–4 range. */
-export function clampGeneratorCount(n: number | null | undefined): number {
-  const v = Math.floor(Number(n) || 4);
-  return Math.min(4, Math.max(1, v));
-}
-
-export const GENERATOR_FIELD_DEFS = [
-  { key: "gen1", label: "Gen 1", hourKey: "gen1Hours" as const, deltaKey: "gen1" as const },
-  { key: "gen2", label: "Gen 2", hourKey: "gen2Hours" as const, deltaKey: "gen2" as const },
-  { key: "gen3", label: "Gen 3", hourKey: "gen3Hours" as const, deltaKey: "gen3" as const },
-  { key: "gen4", label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
-] as const;
-
-export function generatorFieldsForCount(count: number | null | undefined) {
-  return GENERATOR_FIELD_DEFS.slice(0, clampGeneratorCount(count));
-}
-
-/** Text-friendly paste of Date / Hours / Exercised for configured gens. */
+/** Text-friendly paste of Date / Hours / Exercised for all four gens. */
 export function formatGeneratorChartsCopy(
   logs: Array<{
     dateLabel: string;
     hours: GeneratorHours;
     deltas: GeneratorDeltas;
   }>,
-  generatorCount: number = 4,
 ): string {
   if (logs.length === 0) return "";
 
   const pad = (value: string, width: number) => value.padEnd(width, " ");
-  const fields = generatorFieldsForCount(generatorCount);
 
-  return fields
+  return GENERATOR_FIELD_DEFS
     .map((gen) => {
       const rows = logs.map((log) => ({
         date: log.dateLabel,

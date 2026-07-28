@@ -44,13 +44,15 @@ export default function NewFarmPage() {
             </div>
             <div>
               <Label htmlFor="numberOfGenerators">Number of generators</Label>
-              <Select id="numberOfGenerators" name="numberOfGenerators" defaultValue="4">
+              <Select id="numberOfGenerators" name="numberOfGenerators" defaultValue="">
+                <option value="">Not set</option>
                 {[1, 2, 3, 4].map((n) => (
                   <option key={n} value={n}>
                     {n}
                   </option>
                 ))}
               </Select>
+              <p className="mt-1 text-xs text-stone-500">Optional — you can set this later</p>
             </div>
             <div className="sm:col-span-2">
               <Label htmlFor="growerName">Grower name</Label>

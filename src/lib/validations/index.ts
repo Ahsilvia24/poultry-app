@@ -15,13 +15,10 @@ export const farmSchema = z.object({
     z.string().email("Enter a valid email").nullable().optional(),
   ),
   notes: z.string().optional().nullable(),
-  numberOfGenerators: z.coerce
-    .number()
-    .int()
-    .min(1, "At least 1 generator")
-    .max(4, "At most 4 generators")
-    .optional()
-    .default(4),
+  numberOfGenerators: z.preprocess((v) => {
+    if (v === null || v === undefined || v === "") return null;
+    return v;
+  }, z.coerce.number().int().min(1).max(4).nullable().optional()),
 });
 
 export const createFarmSchema = farmSchema.extend({
