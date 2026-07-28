@@ -28,11 +28,12 @@ function previousWeekday(dateKey: string, weekday: number): string {
   return addDaysKey(dateKey, -daysBack);
 }
 
-function weightProjectDate(catchDate: string): string | null {
+function weightProjectDate(catchDate: string): string {
   const dow = weekdayOf(catchDate);
   if (dow >= 1 && dow <= 3) return previousWeekday(catchDate, 2); // Tue
   if (dow === 4 || dow === 5) return previousWeekday(catchDate, 5); // Fri
-  return null;
+  // Sat (6) / Sun (0) → Monday before
+  return previousWeekday(catchDate, 1);
 }
 
 function lfoDate(catchDate: string): string | null {
@@ -67,9 +68,7 @@ export function buildFlockVisitSchedule(
   }
 
   const wp = weightProjectDate(catchDate);
-  if (wp) {
-    push(wp, "Weight Proj.", daysBetween(placementDate, wp), "WEIGHT_PROJECT");
-  }
+  push(wp, "Weight Proj.", daysBetween(placementDate, wp), "WEIGHT_PROJECT");
 
   const lfo = lfoDate(catchDate);
   if (lfo) {

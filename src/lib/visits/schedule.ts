@@ -73,13 +73,15 @@ export function previousWeekday(date: Date, weekday: number): Date {
 
 /**
  * Weight Projection (~7 days before catch):
- * Mon–Wed kill → Tuesday before; Thu–Fri kill → Friday before.
+ * Mon–Wed kill → Tuesday before; Thu–Fri kill → Friday before;
+ * Sat–Sun kill → Monday before.
  */
-export function weightProjectDate(catchDate: Date): Date | null {
+export function weightProjectDate(catchDate: Date): Date {
   const dow = getDay(startOfDay(catchDate));
   if (dow >= MONDAY && dow <= WEDNESDAY) return previousWeekday(catchDate, TUESDAY);
   if (dow === THURSDAY || dow === FRIDAY) return previousWeekday(catchDate, FRIDAY);
-  return null;
+  // Sat (6) / Sun (0)
+  return previousWeekday(catchDate, MONDAY);
 }
 
 /**
@@ -132,9 +134,7 @@ export function buildFlockVisitSchedule(
   }
 
   const wp = weightProjectDate(catchEnd);
-  if (wp) {
-    push(wp, "Weight Proj.", differenceInCalendarDays(wp, placement), "WEIGHT_PROJECT");
-  }
+  push(wp, "Weight Proj.", differenceInCalendarDays(wp, placement), "WEIGHT_PROJECT");
 
   const lfo = lfoDate(catchEnd);
   if (lfo) {
