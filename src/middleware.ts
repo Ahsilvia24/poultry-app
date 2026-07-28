@@ -6,11 +6,20 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth || bypass;
   const { pathname } = req.nextUrl;
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
+  const isDevBypassLogin = pathname.startsWith("/api/dev-bypass-login");
   const isPublic =
     isAuthPage ||
+    isDevBypassLogin ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/mobile") ||
     pathname.startsWith("/preview");
+
+  // Mint a real session cookie once so forms/Server Actions work through tunnels.
+  if (bypass && !req.auth && !isDevBypassLogin && !pathname.startsWith("/api/auth")) {
+    const login = new URL("/api/dev-bypass-login", req.nextUrl.origin);
+    login.searchParams.set("next", pathname || "/");
+    return NextResponse.redirect(login);
+  }
 
   // Dev bypass: never force the login screen — go straight into the app.
   if (bypass && isAuthPage) {
