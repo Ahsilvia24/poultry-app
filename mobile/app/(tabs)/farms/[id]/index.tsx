@@ -49,7 +49,6 @@ import {
 import {
   formatGeneratorCopyLine,
   formatGeneratorHours,
-  formatGeneratorLogCopy,
   generatorDeltas,
   type GeneratorHours,
 } from "../../../../src/lib/generator";
@@ -282,28 +281,36 @@ function GeneratorHoursChart({
 }) {
   const showActions = onEdit != null && onDelete != null;
   return (
-    <View style={{ marginTop: 8 }}>
-      <Text style={{ fontWeight: "700", fontSize: 12, color: colors.text, marginBottom: 2 }}>
+    <View style={{ marginTop: 6 }}>
+      <Text style={{ fontWeight: "700", fontSize: 12, color: colors.text, marginBottom: 1 }}>
         {title}
       </Text>
       <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-        <Text style={{ width: 64, fontSize: 11, fontWeight: "600", color: colors.muted }}>Date</Text>
-        <Text style={{ width: 48, fontSize: 11, fontWeight: "600", color: colors.muted }}>Hours</Text>
-        <Text style={{ width: 56, fontSize: 11, fontWeight: "600", color: colors.muted }}>
+        <Text style={{ width: 64, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+          Date
+        </Text>
+        <Text style={{ width: 48, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+          Hours
+        </Text>
+        <Text style={{ width: 56, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
           Exercised
         </Text>
-        {showActions ? <View style={{ width: 56 }} /> : null}
+        {showActions ? <View style={{ width: 44 }} /> : null}
       </View>
       {rows.length === 0 ? (
         <Text style={[styles.muted, { fontSize: 12 }]}>None yet</Text>
       ) : (
-        <View style={{ gap: 1 }}>
+        <View>
           {rows.map((row) => (
-            <View key={row.id} style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+            <View
+              key={row.id}
+              style={{ flexDirection: "row", gap: 12, alignItems: "center", minHeight: 16 }}
+            >
               <Text
                 style={{
                   width: 64,
                   fontSize: 12,
+                  lineHeight: 16,
                   fontWeight: "600",
                   color: colors.text,
                   fontVariant: ["tabular-nums"],
@@ -315,6 +322,7 @@ function GeneratorHoursChart({
                 style={{
                   width: 48,
                   fontSize: 12,
+                  lineHeight: 16,
                   fontWeight: "600",
                   color: colors.text,
                   fontVariant: ["tabular-nums"],
@@ -326,6 +334,7 @@ function GeneratorHoursChart({
                 style={{
                   width: 56,
                   fontSize: 12,
+                  lineHeight: 16,
                   fontWeight: "600",
                   color: colors.text,
                   fontVariant: ["tabular-nums"],
@@ -338,28 +347,28 @@ function GeneratorHoursChart({
                   <Pressable
                     accessibilityLabel="Edit generator log"
                     onPress={() => onEdit(row.id)}
-                    hitSlop={6}
+                    hitSlop={4}
                     style={{
-                      width: 28,
-                      height: 28,
+                      width: 22,
+                      height: 16,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Ionicons name="pencil-outline" size={16} color={colors.muted} />
+                    <Ionicons name="pencil-outline" size={13} color={colors.muted} />
                   </Pressable>
                   <Pressable
                     accessibilityLabel="Delete generator log"
                     onPress={() => onDelete(row.id)}
-                    hitSlop={6}
+                    hitSlop={4}
                     style={{
-                      width: 28,
-                      height: 28,
+                      width: 22,
+                      height: 16,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Ionicons name="trash-outline" size={16} color={colors.danger} />
+                    <Ionicons name="trash-outline" size={13} color={colors.danger} />
                   </Pressable>
                 </View>
               ) : null}
@@ -2544,7 +2553,7 @@ export default function FarmDetailScreen() {
               scrollEventThrottle={16}
             >
               <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                Log generators
+                {generatorEditingId ? "Edit generators" : "Log generators"}
               </Text>
               {generatorError ? (
                 <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
@@ -2585,15 +2594,23 @@ export default function FarmDetailScreen() {
                     setGeneratorSaving(true);
                     setGeneratorError(null);
                     try {
-                      createGeneratorLog({
-                        farmId: farm.id,
+                      const payload = {
                         logDate: generatorDraft.logDate.trim(),
                         gen1Hours: Number(generatorDraft.gen1Hours || 0),
                         gen2Hours: Number(generatorDraft.gen2Hours || 0),
                         gen3Hours: Number(generatorDraft.gen3Hours || 0),
                         gen4Hours: Number(generatorDraft.gen4Hours || 0),
-                      });
+                      };
+                      if (generatorEditingId) {
+                        updateGeneratorLog(farm.id, generatorEditingId, payload);
+                      } else {
+                        createGeneratorLog({
+                          farmId: farm.id,
+                          ...payload,
+                        });
+                      }
                       setGeneratorModalOpen(false);
+                      setGeneratorEditingId(null);
                       setGeneratorActiveField(null);
                       setGeneratorReplaceOnType(false);
                       load();

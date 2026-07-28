@@ -83,20 +83,23 @@ function GeneratorHoursChart({
 }) {
   const showActions = onEdit != null && onDelete != null;
   return (
-    <div className="text-xs">
+    <div className="text-xs leading-tight">
       <h4 className="mb-0.5 font-bold text-stone-900">{title}</h4>
-      <div className="flex gap-3 text-stone-500">
+      <div className="flex gap-3 text-[11px] leading-none text-stone-500">
         <span className="w-16 shrink-0 font-semibold">Date</span>
         <span className="w-12 shrink-0 font-semibold">Hours</span>
         <span className="w-14 shrink-0 font-semibold">Exercised</span>
-        {showActions ? <span className="w-14 shrink-0" aria-hidden /> : null}
+        {showActions ? <span className="w-12 shrink-0" aria-hidden /> : null}
       </div>
       {rows.length === 0 ? (
         <p className="text-stone-500">None yet</p>
       ) : (
-        <div className="space-y-0.5">
+        <div>
           {rows.map((row) => (
-            <div key={row.id} className="flex items-center gap-3 tabular-nums text-stone-800">
+            <div
+              key={row.id}
+              className="flex items-center gap-3 py-px leading-none tabular-nums text-stone-800"
+            >
               <span className="w-16 shrink-0 font-medium">{row.dateLabel}</span>
               <span className="w-12 shrink-0 font-medium">
                 {formatGeneratorHours(row.hours)}
@@ -105,13 +108,31 @@ function GeneratorHoursChart({
                 {formatGeneratorHours(row.exercised)}
               </span>
               {showActions ? (
-                <span className="flex shrink-0 items-center gap-0.5">
-                  <EditRecordButton
-                    label="Edit generator log"
+                <span className="flex shrink-0 items-center">
+                  <button
+                    type="button"
                     onClick={() => onEdit(row.id)}
-                  />
+                    className="rounded p-0.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
+                    aria-label="Edit generator log"
+                    title="Edit generator log"
+                  >
+                    <svg
+                      className="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                  </button>
                   <DeleteRecordButton
                     label="Delete generator log"
+                    compact
                     onDelete={() => onDelete(row.id)}
                   />
                 </span>

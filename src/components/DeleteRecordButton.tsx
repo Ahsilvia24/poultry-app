@@ -69,9 +69,11 @@ export function EditRecordButton({
 export function DeleteRecordButton({
   label,
   onDelete,
+  compact,
 }: {
   label: string;
   onDelete: () => Promise<{ error?: string } | void>;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
@@ -121,11 +123,13 @@ export function DeleteRecordButton({
     <button
       type="button"
       onClick={() => setConfirming(true)}
-      className="shrink-0 rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-red-700"
+      className={`shrink-0 rounded text-stone-400 hover:bg-stone-100 hover:text-red-700 ${
+        compact ? "rounded p-0.5" : "rounded-lg p-1.5"
+      }`}
       aria-label={label}
       title={label}
     >
-      <TrashIcon className="h-4 w-4" />
+      <TrashIcon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
     </button>
   );
 }
