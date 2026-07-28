@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format } from "date-fns";
 import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
@@ -283,6 +283,11 @@ export function MortalityEntryForm({
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  /** Bumps to re-run house load/jump when the same house is re-selected. */
+  const [jumpToken, setJumpToken] = useState(0);
+  /** Bumps to retry focus after exclusive week expand (Enter / jump). */
+  const [focusToken, setFocusToken] = useState(0);
+  const pendingJumpRef = useRef<{ age: number; field: "culls" | "mortality" } | null>(null);
 
   const rowsRef = useRef(rows);
   const flockRef = useRef(flock);
@@ -377,9 +382,11 @@ export function MortalityEntryForm({
     dirtyRef.current = false;
     setSaveStatus("idle");
     setError(null);
+    pendingJumpRef.current = null;
 
     if (!flock || !house) {
       setRows([]);
+      setExpandedWeeks(new Set());
       return;
     }
 
@@ -395,21 +402,16 @@ export function MortalityEntryForm({
       setExpandedWeeks(new Set([currentWeek]));
       return;
     }
-    const jumpTo = firstUnfilledAfterLastFilled(built, asOfDateKey);
+    const jumpTo =
+      firstUnfilledAfterLastFilled(built, asOfDateKey) ??
+      built.find((r) => r.mortalityDate === asOfDateKey) ??
+      null;
     const openWeek = jumpTo ? flockWeekFromAge(jumpTo.age) : currentWeek;
+    // Exclusive accordion: only the jump target week stays open
     setExpandedWeeks(new Set([openWeek]));
-
     if (jumpTo) {
-      const age = jumpTo.age;
-      // Wait for the target week accordion to mount before scrolling/focusing.
-      const tryFocus = () => focusMortalityAge(age, "mortality");
-      requestAnimationFrame(() => {
-        if (!tryFocus()) {
-          window.setTimeout(() => {
-            if (!tryFocus()) window.setTimeout(tryFocus, 120);
-          }, 50);
-        }
-      });
+      pendingJumpRef.current = { age: jumpTo.age, field: "mortality" };
+      setFocusToken((t) => t + 1);
     }
   }, [
     farmId,
@@ -419,7 +421,31 @@ export function MortalityEntryForm({
     flock?.targetMarketAge,
     house?.houseFlockId,
     asOfDateKey,
+    jumpToken,
   ]);
+
+  useLayoutEffect(() => {
+    const pending = pendingJumpRef.current;
+    if (!pending) return;
+    const { age, field } = pending;
+    const tryFocus = () => focusMortalityAge(age, field);
+    if (tryFocus()) {
+      pendingJumpRef.current = null;
+      return;
+    }
+    // Week panel may need one frame after exclusive expand
+    const id = window.setTimeout(() => {
+      if (tryFocus()) pendingJumpRef.current = null;
+      else {
+        window.setTimeout(() => {
+          tryFocus();
+          pendingJumpRef.current = null;
+        }, 120);
+      }
+    }, 40);
+    return () => window.clearTimeout(id);
+  }, [rows, expandedWeeks, houseFlockId, focusToken]);
+
   useEffect(() => {
     return () => cancelScheduledSave();
   }, []);
@@ -464,27 +490,11 @@ export function MortalityEntryForm({
     const nextAge = age + 1;
     if (!rowsRef.current.some((r) => r.age === nextAge)) return;
 
+    // Keep only the week we're moving into open
     const week = flockWeekFromAge(nextAge);
-    setExpandedWeeks((prev) => {
-      if (prev.has(week)) return prev;
-      const next = new Set(prev);
-      next.add(week);
-      return next;
-    });
-
-    const focus = () => {
-      const el = document.querySelector<HTMLInputElement>(
-        `[data-mort-nav="${field}-${nextAge}"]`,
-      );
-      if (!el) return false;
-      el.focus();
-      el.select();
-      return true;
-    };
-
-    requestAnimationFrame(() => {
-      if (!focus()) window.setTimeout(focus, 50);
-    });
+    setExpandedWeeks(new Set([week]));
+    pendingJumpRef.current = { age: nextAge, field };
+    setFocusToken((t) => t + 1);
   }
 
   function onColumnEnter(
@@ -506,8 +516,10 @@ export function MortalityEntryForm({
     setSaveStatus("idle");
     setError(null);
     jumpOnHouseLoadRef.current = false;
+    pendingJumpRef.current = null;
     setHouseFlockId("");
     setRows([]);
+    setExpandedWeeks(new Set());
     router.replace(`/mortality?farmId=${nextFarmId}`);
   }
 
@@ -516,9 +528,15 @@ export function MortalityEntryForm({
     saveGenRef.current += 1;
     dirtyRef.current = false;
     jumpOnHouseLoadRef.current = true;
-    setHouseFlockId(nextHouseId);
     setSaveStatus("idle");
     setError(null);
+    // Collapse immediately so only the jump week re-opens after load
+    setExpandedWeeks(new Set());
+    if (nextHouseId === houseFlockId) {
+      setJumpToken((t) => t + 1);
+      return;
+    }
+    setHouseFlockId(nextHouseId);
     router.replace(`/mortality?farmId=${farmId}&houseFlockId=${nextHouseId}`);
   }
 

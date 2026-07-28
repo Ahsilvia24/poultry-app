@@ -253,7 +253,10 @@ export default function MortalityScreen() {
   function jumpToFirstUnfilled(nextRows: DayRow[]) {
     clearJumpTimer();
     const today = todayKey();
-    const jumpTo = firstUnfilledAfterLastFilled(nextRows, today);
+    const jumpTo =
+      firstUnfilledAfterLastFilled(nextRows, today) ??
+      nextRows.find((r) => r.mortalityDate === today) ??
+      null;
     const todayAge = nextRows.find((r) => r.mortalityDate === today)?.age;
     const fallbackWeek =
       todayAge != null
@@ -262,6 +265,7 @@ export default function MortalityScreen() {
           ? flockWeekFromAge(nextRows[0].age)
           : 1;
     const openWeek = jumpTo ? flockWeekFromAge(jumpTo.age) : fallbackWeek;
+    // Exclusive accordion: only the jump-target week is open
     setExpandedWeeks(new Set([openWeek]));
     if (!jumpTo) {
       scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -346,6 +350,7 @@ export default function MortalityScreen() {
     jumpOnLoadRef.current = true;
     if (!houseFlockId) {
       setRows([]);
+      setExpandedWeeks(new Set());
       return;
     }
     try {
@@ -374,6 +379,15 @@ export default function MortalityScreen() {
       else {
         clearJumpTimer();
         resetKeypad();
+        const today = todayKey();
+        const todayAge = next.find((r) => r.mortalityDate === today)?.age;
+        const week =
+          todayAge != null
+            ? flockWeekFromAge(todayAge)
+            : next[0]
+              ? flockWeekFromAge(next[0].age)
+              : 1;
+        setExpandedWeeks(new Set([week]));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load grid");
@@ -517,17 +531,22 @@ export default function MortalityScreen() {
 
   function focusField(kind: FieldKind, age: number) {
     const week = flockWeekFromAge(age);
-    setExpandedWeeks((prev) => {
-      if (prev.has(week)) return prev;
-      const next = new Set(prev);
-      next.add(week);
-      return next;
-    });
+    // Exclusive accordion when moving to a field (Enter / jump)
+    setExpandedWeeks(new Set([week]));
     const key = fieldKey(kind, age);
-    requestAnimationFrame(() => {
-      const input = inputRefs.current.get(key);
-      input?.focus();
-    });
+    const attempt = (triesLeft: number) => {
+      requestAnimationFrame(() => {
+        const input = inputRefs.current.get(key);
+        if (input) {
+          input.focus();
+          return;
+        }
+        if (triesLeft > 0) {
+          setTimeout(() => attempt(triesLeft - 1), 50);
+        }
+      });
+    };
+    attempt(3);
   }
 
   function onFieldFocus(kind: FieldKind, age: number, value: string) {
@@ -627,6 +646,7 @@ export default function MortalityScreen() {
                   setFarmId(f.id);
                   setHouseFlockId("");
                   setRows([]);
+                  setExpandedWeeks(new Set());
                   setSaveStatus("idle");
                   resetKeypad();
                 }}
@@ -643,9 +663,14 @@ export default function MortalityScreen() {
                   active={houseFlockId === h.houseFlockId}
                   onPress={() => {
                     jumpOnLoadRef.current = true;
-                    setHouseFlockId(h.houseFlockId);
-                    setSaveStatus("idle");
+                    setExpandedWeeks(new Set());
                     resetKeypad();
+                    setSaveStatus("idle");
+                    if (h.houseFlockId === houseFlockId) {
+                      loadGrid({ jump: true });
+                      return;
+                    }
+                    setHouseFlockId(h.houseFlockId);
                   }}
                 />
               ))}
