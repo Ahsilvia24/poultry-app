@@ -161,7 +161,7 @@ export async function saveMortalityHouseSeriesAction(raw: unknown) {
     } else {
       const existing = existingByDate.get(dateKey);
       if (existing && !existing.isDraft) {
-        remaining -= existing.totalDailyLoss;
+        remaining -= existing.dailyMortalityCount;
       }
     }
   }

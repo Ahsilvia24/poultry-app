@@ -348,7 +348,7 @@ export async function importMobileBackupAction(
                 birdAgeInDays: int(row.bird_age_in_days, 0),
                 dailyMortalityCount,
                 cullCount,
-                totalDailyLoss: int(row.total_daily_loss, dailyMortalityCount + cullCount),
+                totalDailyLoss: int(row.total_daily_loss, dailyMortalityCount),
                 mortalityCause: enumOr(
                   row.mortality_cause,
                   mortalityCauseValues,

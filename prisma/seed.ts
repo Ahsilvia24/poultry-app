@@ -17,7 +17,8 @@ const prisma = new PrismaClient();
 function lossForDay(day: number, houseIndex: number): { mort: number; cull: number; cause: MortalityCause } {
   const base = houseIndex % 3 === 0 ? 3 : houseIndex % 3 === 1 ? 2 : 1;
   const mort = Math.max(0, base + (day < 7 ? 2 : 0) + (day % 5 === 0 ? 2 : 0));
-  const cull = day % 4 === 0 ? 1 : 0;
+  // Culls are a subset of mortality (not added on top)
+  const cull = Math.min(day % 4 === 0 ? 1 : 0, mort);
   const causes: MortalityCause[] = [
     "EARLY_MORTALITY",
     "LEG_ISSUES",
@@ -108,7 +109,7 @@ async function createActiveFlock(input: {
             birdAgeInDays: d,
             dailyMortalityCount: dayLoss.mort,
             cullCount: dayLoss.cull,
-            totalDailyLoss: dayLoss.mort + dayLoss.cull,
+            totalDailyLoss: dayLoss.mort,
             mortalityCause: dayLoss.cause,
             enteredByUserId: input.userId,
           },

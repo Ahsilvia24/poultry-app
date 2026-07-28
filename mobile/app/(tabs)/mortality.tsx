@@ -16,7 +16,7 @@ import {
   getHouseMortalitySeries,
   saveHouseMortalitySeries,
 } from "../../src/repos/data";
-import { birdAgeFromPlacement, flockWeekFromAge, calcTotalDailyLoss } from "../../src/lib/mortality";
+import { birdAgeFromPlacement, flockWeekFromAge } from "../../src/lib/mortality";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import { getFarmNavContext } from "../../src/lib/farmNavContext";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
@@ -64,23 +64,30 @@ function NeedsEntryIcon() {
   );
 }
 
-/** Past/today with no confirmed entry yet — Loss cell shows ! instead of a number. */
-function needsEntry(row: DayRow, today: string) {
-  return row.mortalityDate <= today && !row.hasEntry;
+/** True once mortality (daily loss) has been entered for the day — including 0. */
+function mortalityEntered(row: DayRow) {
+  return row.dailyMortalityCount !== "";
 }
 
 /**
- * First past/today day that still needs entry after the last filled day
- * (one box below the last number entered). If nothing is filled yet, the
- * earliest day that needs entry.
+ * Past/today with no mortality total yet — Loss cell shows !.
+ * Culls are optional metadata and do not clear the !.
+ */
+function needsEntry(row: DayRow, today: string) {
+  return row.mortalityDate <= today && !mortalityEntered(row);
+}
+
+/**
+ * First past/today day still missing a mortality total after the last day
+ * that has one. If none entered yet, the earliest day that needs entry.
  */
 function firstUnfilledAfterLastFilled(rows: DayRow[], today: string): DayRow | null {
   let lastFilledAge = -1;
   for (const row of rows) {
-    if (row.hasEntry) lastFilledAge = Math.max(lastFilledAge, row.age);
+    if (mortalityEntered(row)) lastFilledAge = Math.max(lastFilledAge, row.age);
   }
   const afterLast = rows.find(
-    (r) => r.age > lastFilledAge && r.mortalityDate <= today && !r.hasEntry,
+    (r) => r.age > lastFilledAge && r.mortalityDate <= today && !mortalityEntered(r),
   );
   if (afterLast) return afterLast;
   if (lastFilledAge < 0) {
@@ -423,7 +430,7 @@ export default function MortalityScreen() {
           rows: weekRows,
           culls,
           mortality,
-          loss: culls + mortality,
+          loss: mortality,
           ageStart: weekRows[0]?.age ?? 0,
           ageEnd: weekRows[weekRows.length - 1]?.age ?? 0,
         };
@@ -486,17 +493,13 @@ export default function MortalityScreen() {
         if (r.age !== age) return r;
         const cullCount = kind === "culls" ? digits : r.cullCount;
         const dailyMortalityCount = kind === "mort" ? digits : r.dailyMortalityCount;
-        // Cleared both boxes, or wiped one and only a leftover 0 remains → unentered (blank + !)
-        // Leftover 0 is common after save (empty other field was stored as 0).
-        const cleared =
-          (cullCount === "" && dailyMortalityCount === "") ||
-          (cullCount === "" && dailyMortalityCount === "0") ||
-          (dailyMortalityCount === "" && cullCount === "0");
+        const hasMort = dailyMortalityCount !== "";
+        const hasCull = cullCount !== "";
         return {
           ...r,
-          cullCount: cleared ? "" : cullCount,
-          dailyMortalityCount: cleared ? "" : dailyMortalityCount,
-          hasEntry: !cleared,
+          cullCount,
+          dailyMortalityCount,
+          hasEntry: hasMort || hasCull,
         };
       });
       rowsRef.current = next;
@@ -692,7 +695,7 @@ export default function MortalityScreen() {
                         </Text>
                       </View>
                       <Text style={[styles.muted, { marginTop: 4 }]}>
-                        Culls {group.culls} · Mort {group.mortality} · Total {group.loss}
+                        Culls {group.culls} · Loss {group.loss}
                       </Text>
                     </Pressable>
 
@@ -715,10 +718,7 @@ export default function MortalityScreen() {
                           <Text style={[headerCell, { width: 68, textAlign: "right" }]}>Loss</Text>
                         </View>
                         {group.rows.map((row) => {
-                          const loss = calcTotalDailyLoss(
-                            Number(row.dailyMortalityCount || 0),
-                            Number(row.cullCount || 0),
-                          );
+                          const loss = Number(row.dailyMortalityCount || 0);
                           const cullActive =
                             activeField?.kind === "culls" && activeField.age === row.age;
                           const mortActive =
@@ -759,7 +759,7 @@ export default function MortalityScreen() {
                                 showSoftInputOnFocus={false}
                                 caretHidden={false}
                                 keyboardType="number-pad"
-                                value={row.hasEntry ? row.cullCount : ""}
+                                value={row.cullCount}
                                 placeholder=""
                                 selection={cullActive ? selection : undefined}
                                 onSelectionChange={(e) => {
@@ -777,7 +777,7 @@ export default function MortalityScreen() {
                                 showSoftInputOnFocus={false}
                                 caretHidden={false}
                                 keyboardType="number-pad"
-                                value={row.hasEntry ? row.dailyMortalityCount : ""}
+                                value={row.dailyMortalityCount}
                                 placeholder=""
                                 selection={mortActive ? selection : undefined}
                                 onSelectionChange={(e) => {
@@ -798,7 +798,7 @@ export default function MortalityScreen() {
                               >
                                 {showNeedsEntry ? (
                                   <NeedsEntryIcon />
-                                ) : row.hasEntry ? (
+                                ) : mortalityEntered(row) ? (
                                   <Text
                                     style={{
                                       fontWeight: "700",

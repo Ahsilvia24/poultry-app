@@ -6,9 +6,13 @@ import type {
   ThresholdSettings,
 } from "@/types";
 
-/** totalDailyLoss = mortality + culls */
-export function calcTotalDailyLoss(mortality: number, culls: number): number {
-  return Math.max(0, mortality) + Math.max(0, culls);
+/**
+ * Daily loss / mortality total.
+ * `dailyMortalityCount` is the full day's loss; culls are tracked separately
+ * (how many of that loss were culls) and must NOT be added on top.
+ */
+export function calcTotalDailyLoss(mortality: number, _culls: number = 0): number {
+  return Math.max(0, mortality);
 }
 
 export function calcPercentage(count: number, placed: number): number {
@@ -59,8 +63,7 @@ export function weeklyMortalityByPlacement(
     const age = birdAgeFromPlacement(placementDate, parseISO(dateKey));
     const week = flockWeekFromAge(age);
     if (week < 1 || week > currentWeek) continue;
-    const loss =
-      record.totalDailyLoss ?? calcTotalDailyLoss(record.dailyMortalityCount, record.cullCount);
+    const loss = calcTotalDailyLoss(record.dailyMortalityCount, record.cullCount);
     totals.set(week, (totals.get(week) ?? 0) + loss);
   }
 
@@ -96,7 +99,7 @@ export function buildMortalitySummaries(
 
   return sorted.map((record) => {
     const dateKey = toDateKey(record.mortalityDate);
-    const loss = record.totalDailyLoss ?? calcTotalDailyLoss(record.dailyMortalityCount, record.cullCount);
+    const loss = calcTotalDailyLoss(record.dailyMortalityCount, record.cullCount);
     cumulative += loss;
 
     // Rolling 7-day window inclusive of current date
@@ -106,7 +109,7 @@ export function buildMortalitySummaries(
       const key = format(subDays(end, i), "yyyy-MM-dd");
       const day = byDate.get(key);
       if (day) {
-        rolling7 += day.totalDailyLoss ?? calcTotalDailyLoss(day.dailyMortalityCount, day.cullCount);
+        rolling7 += calcTotalDailyLoss(day.dailyMortalityCount, day.cullCount);
       }
     }
 
@@ -198,7 +201,7 @@ export function averageDailyMortalityLast7Days(
   const byDate = new Map(
     records.map((r) => [
       toDateKey(r.mortalityDate),
-      r.totalDailyLoss ?? calcTotalDailyLoss(r.dailyMortalityCount, r.cullCount),
+      calcTotalDailyLoss(r.dailyMortalityCount, r.cullCount),
     ]),
   );
   let total = 0;
@@ -256,7 +259,7 @@ export function isRisingThreeDays(records: MortalityRecordLike[], asOf: Date): b
   const byDate = new Map(
     records.map((r) => [
       toDateKey(r.mortalityDate),
-      r.totalDailyLoss ?? calcTotalDailyLoss(r.dailyMortalityCount, r.cullCount),
+      calcTotalDailyLoss(r.dailyMortalityCount, r.cullCount),
     ]),
   );
   const d0 = byDate.get(format(subDays(parseISO(key), 2), "yyyy-MM-dd")) ?? 0;

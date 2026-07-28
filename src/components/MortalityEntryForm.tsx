@@ -6,7 +6,6 @@ import { addDays, format } from "date-fns";
 import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
 import {
   birdAgeFromPlacement,
-  calcTotalDailyLoss,
   flockWeekFromAge,
 } from "@/lib/mortality/calculations";
 import { formatNumber } from "@/lib/utils";
@@ -61,23 +60,30 @@ function NeedsEntryIcon() {
   );
 }
 
-/** Past/today with no confirmed entry yet — Loss cell shows ! instead of a number. */
-function needsEntry(row: DayRow, asOfDateKey: string) {
-  return row.mortalityDate <= asOfDateKey && !row.hasEntry;
+/** True once mortality (daily loss) has been entered for the day — including 0. */
+function mortalityEntered(row: DayRow) {
+  return row.dailyMortalityCount !== "";
 }
 
 /**
- * First past/today day that still needs entry after the last filled day
- * (one box below the last number entered). If nothing is filled yet, the
- * earliest day that needs entry.
+ * Past/today with no mortality total yet — Loss cell shows !.
+ * Culls are optional metadata and do not clear the !.
+ */
+function needsEntry(row: DayRow, asOfDateKey: string) {
+  return row.mortalityDate <= asOfDateKey && !mortalityEntered(row);
+}
+
+/**
+ * First past/today day still missing a mortality total after the last day
+ * that has one. If none entered yet, the earliest day that needs entry.
  */
 function firstUnfilledAfterLastFilled(rows: DayRow[], asOfDateKey: string): DayRow | null {
   let lastFilledAge = -1;
   for (const row of rows) {
-    if (row.hasEntry) lastFilledAge = Math.max(lastFilledAge, row.age);
+    if (mortalityEntered(row)) lastFilledAge = Math.max(lastFilledAge, row.age);
   }
   const afterLast = rows.find(
-    (r) => r.age > lastFilledAge && r.mortalityDate <= asOfDateKey && !r.hasEntry,
+    (r) => r.age > lastFilledAge && r.mortalityDate <= asOfDateKey && !mortalityEntered(r),
   );
   if (afterLast) return afterLast;
   if (lastFilledAge < 0) {
@@ -228,7 +234,8 @@ function groupRowsByWeek(rows: DayRow[]): WeekGroup[] {
         rows: weekRows,
         culls,
         mortality,
-        loss: culls + mortality,
+        // Loss = mortality total only (culls are not added)
+        loss: mortality,
         ageStart: weekRows[0]!.age,
         ageEnd: weekRows[weekRows.length - 1]!.age,
       };
@@ -429,16 +436,13 @@ export function MortalityEntryForm({
           patch.dailyMortalityCount !== undefined
             ? patch.dailyMortalityCount
             : r.dailyMortalityCount;
-        // Cleared both boxes, or wiped one and only a leftover 0 remains → unentered (blank + !)
-        const cleared =
-          (cullCount === "" && dailyMortalityCount === "") ||
-          (cullCount === "" && dailyMortalityCount === "0") ||
-          (dailyMortalityCount === "" && cullCount === "0");
+        const hasMort = dailyMortalityCount !== "";
+        const hasCull = cullCount !== "";
         return {
           ...r,
-          cullCount: cleared ? "" : cullCount,
-          dailyMortalityCount: cleared ? "" : dailyMortalityCount,
-          hasEntry: !cleared,
+          cullCount,
+          dailyMortalityCount,
+          hasEntry: hasMort || hasCull,
         };
       });
       rowsRef.current = next;
@@ -611,9 +615,7 @@ export function MortalityEntryForm({
                   <span className="shrink-0 text-sm text-stone-600">
                     Culls <span className="font-semibold text-stone-900">{group.culls}</span>
                     <span className="mx-1.5 text-stone-300">·</span>
-                    Mort <span className="font-semibold text-stone-900">{group.mortality}</span>
-                    <span className="mx-1.5 text-stone-300">·</span>
-                    Total <span className="font-semibold text-stone-900">{group.loss}</span>
+                    Loss <span className="font-semibold text-stone-900">{group.loss}</span>
                   </span>
                 </button>
 
@@ -636,10 +638,7 @@ export function MortalityEntryForm({
                         </thead>
                         <tbody>
                           {group.rows.map((row) => {
-                            const loss = calcTotalDailyLoss(
-                              Number(row.dailyMortalityCount || 0),
-                              Number(row.cullCount || 0),
-                            );
+                            const loss = Number(row.dailyMortalityCount || 0);
                             return (
                               <tr
                                 key={row.mortalityDate}
@@ -665,7 +664,7 @@ export function MortalityEntryForm({
                                     spellCheck={false}
                                     className="min-h-11 px-3"
                                     placeholder=""
-                                    value={row.hasEntry ? row.cullCount : ""}
+                                    value={row.cullCount}
                                     onFocus={(e) => e.target.select()}
                                     onBlur={() => flushSave()}
                                     onKeyDown={(e) =>
@@ -698,7 +697,7 @@ export function MortalityEntryForm({
                                     spellCheck={false}
                                     className="min-h-11 px-3"
                                     placeholder=""
-                                    value={row.hasEntry ? row.dailyMortalityCount : ""}
+                                    value={row.dailyMortalityCount}
                                     onFocus={(e) => e.target.select()}
                                     onBlur={() => flushSave()}
                                     onKeyDown={(e) =>
@@ -721,7 +720,7 @@ export function MortalityEntryForm({
                                 <td className="px-3 py-2 text-right font-semibold text-stone-800">
                                   {needsEntry(row, asOfDateKey) ? (
                                     <NeedsEntryIcon />
-                                  ) : row.hasEntry ? (
+                                  ) : mortalityEntered(row) ? (
                                     loss
                                   ) : null}
                                 </td>

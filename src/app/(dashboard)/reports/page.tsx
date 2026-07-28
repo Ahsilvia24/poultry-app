@@ -133,7 +133,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
 
   const byAgeMap = new Map<number, number>();
   for (const m of mortalities) {
-    byAgeMap.set(m.birdAgeInDays, (byAgeMap.get(m.birdAgeInDays) ?? 0) + m.totalDailyLoss);
+    byAgeMap.set(m.birdAgeInDays, (byAgeMap.get(m.birdAgeInDays) ?? 0) + m.dailyMortalityCount);
   }
   const ages = [...byAgeMap.keys()].sort((a, b) => a - b);
   let running = 0;
@@ -153,7 +153,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
     };
     row.mortality += m.dailyMortalityCount;
     row.culls += m.cullCount;
-    row.total += m.totalDailyLoss;
+    row.total += m.dailyMortalityCount;
     houseMap.set(key, row);
   }
   const byHouse = [...houseMap.values()].sort((a, b) => b.total - a.total);
@@ -179,7 +179,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       byDate: Object.fromEntries(dateKeys.map((d) => [d, 0])),
     };
     const dateKey = dateKeyFromDb(m.mortalityDate);
-    row.byDate[dateKey] = (row.byDate[dateKey] ?? 0) + m.totalDailyLoss;
+    row.byDate[dateKey] = (row.byDate[dateKey] ?? 0) + m.dailyMortalityCount;
     houseDateMap.set(sortKey, row);
   }
   if (selectedFarmId || selectedFlockId) {
@@ -226,8 +226,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
   const causeMap = new Map<string, number>();
   let causeTotal = 0;
   for (const m of mortalities) {
-    causeMap.set(m.mortalityCause, (causeMap.get(m.mortalityCause) ?? 0) + m.totalDailyLoss);
-    causeTotal += m.totalDailyLoss;
+    causeMap.set(m.mortalityCause, (causeMap.get(m.mortalityCause) ?? 0) + m.dailyMortalityCount);
+    causeTotal += m.dailyMortalityCount;
   }
   const byCause: CauseRow[] = [...causeMap.entries()]
     .map(([cause, count]) => ({
@@ -269,7 +269,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
     };
     row.mortality += m.dailyMortalityCount;
     row.culls += m.cullCount;
-    row.total += m.totalDailyLoss;
+    row.total += m.dailyMortalityCount;
     farmAgg.set(name, row);
   }
   const byFarm: FarmRow[] = [...farmAgg.values()]

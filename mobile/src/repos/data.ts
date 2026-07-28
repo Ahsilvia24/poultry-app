@@ -72,20 +72,23 @@ function summarizeHouse(
     if (r.mortality_date > asOf) continue;
     // Stale rows from before a placement-date edit must not inflate week totals.
     if (place && r.mortality_date < place) continue;
-    cumulative += r.total_daily_loss;
+    const loss = calcTotalDailyLoss(r.daily_mortality_count, r.cull_count);
+    cumulative += loss;
     const age = place
       ? birdAgeFromPlacement(place, r.mortality_date)
       : r.bird_age_in_days;
     const week = flockWeekFromAge(age);
-    weekTotals.set(week, (weekTotals.get(week) ?? 0) + r.total_daily_loss);
-    if (r.mortality_date === asOf) today += r.total_daily_loss;
+    weekTotals.set(week, (weekTotals.get(week) ?? 0) + loss);
+    if (r.mortality_date === asOf) today += loss;
   }
 
   for (let i = 0; i < 7; i++) {
     const key = addDaysKey(asOf, -i);
     for (const r of records) {
       if (place && r.mortality_date < place) continue;
-      if (r.mortality_date === key) sevenDay += r.total_daily_loss;
+      if (r.mortality_date === key) {
+        sevenDay += calcTotalDailyLoss(r.daily_mortality_count, r.cull_count);
+      }
     }
   }
 
@@ -94,7 +97,9 @@ function summarizeHouse(
     let dayLoss = 0;
     for (const r of records) {
       if (place && r.mortality_date < place) continue;
-      if (r.mortality_date === key) dayLoss += r.total_daily_loss;
+      if (r.mortality_date === key) {
+        dayLoss += calcTotalDailyLoss(r.daily_mortality_count, r.cull_count);
+      }
     }
     last3.push(dayLoss);
   }
@@ -1250,13 +1255,14 @@ export function getReports(from: string, to: string, farmId?: string) {
     if (hfs.length === 0) continue;
     for (const hf of hfs) {
       const byDate: Record<string, number> = Object.fromEntries(dates.map((d) => [d, 0]));
-      const records = db.getAllSync<{ mortality_date: string; total_daily_loss: number }>(
-        `SELECT mortality_date, total_daily_loss FROM daily_mortality
+      const records = db.getAllSync<{ mortality_date: string; daily_mortality_count: number }>(
+        `SELECT mortality_date, daily_mortality_count FROM daily_mortality
          WHERE house_flock_id = ? AND is_draft = 0 AND mortality_date >= ? AND mortality_date <= ?`,
         [hf.id, from, to],
       );
       for (const r of records) {
-        byDate[r.mortality_date] = (byDate[r.mortality_date] ?? 0) + r.total_daily_loss;
+        byDate[r.mortality_date] =
+          (byDate[r.mortality_date] ?? 0) + Math.max(0, r.daily_mortality_count);
       }
       rows.push({
         houseLabel: farmId ? `House ${hf.house_number}` : `${farm.farmName} H${hf.house_number}`,

@@ -1,5 +1,9 @@
-export function calcTotalDailyLoss(mortality: number, culls: number): number {
-  return Math.max(0, mortality) + Math.max(0, culls);
+/**
+ * Daily loss / mortality total.
+ * Mortality is the full day's loss; culls are tracked separately and not added.
+ */
+export function calcTotalDailyLoss(mortality: number, _culls: number = 0): number {
+  return Math.max(0, mortality);
 }
 
 export function calcPercentage(count: number, placed: number): number {

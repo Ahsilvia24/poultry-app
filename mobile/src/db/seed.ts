@@ -13,7 +13,7 @@ function lastPastVisitDate(placement: string, catchDate: string, today: string):
 function lossForDay(day: number, houseIndex: number) {
   const base = houseIndex % 3 === 0 ? 3 : houseIndex % 3 === 1 ? 2 : 1;
   const mort = Math.max(0, base + (day < 7 ? 2 : 0) + (day % 5 === 0 ? 2 : 0));
-  const cull = day % 4 === 0 ? 1 : 0;
+  const cull = Math.min(day % 4 === 0 ? 1 : 0, mort);
   const causes = [
     "EARLY_MORTALITY",
     "LEG_ISSUES",
