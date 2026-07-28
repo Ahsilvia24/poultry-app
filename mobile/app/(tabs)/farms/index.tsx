@@ -184,6 +184,18 @@ export default function FarmsScreen() {
                     flexShrink: 0,
                   }}
                 >
+                <Pressable
+                  accessibilityLabel={
+                    farm.isActive
+                      ? `Make ${farm.farmName} inactive`
+                      : `Make ${farm.farmName} active`
+                  }
+                  onPress={() => {
+                    if (farm.isActive) confirmMakeInactive(farm.id, farm.farmName);
+                    else confirmReactivate(farm.id, farm.farmName);
+                  }}
+                  hitSlop={8}
+                >
                   <Text
                     style={[
                       styles.badge,
@@ -194,7 +206,8 @@ export default function FarmsScreen() {
                   >
                     {farm.isActive ? "Active" : "Inactive"}
                   </Text>
-                </View>
+                </Pressable>
+              </View>
               </View>
 
               <Pressable
@@ -249,22 +262,6 @@ export default function FarmsScreen() {
                   marginTop: 4,
                 }}
               >
-                {!farm.isActive ? (
-                  <Pressable
-                    accessibilityLabel={`Make ${farm.farmName} active`}
-                    onPress={() => confirmReactivate(farm.id, farm.farmName)}
-                    hitSlop={8}
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 8,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 13 }}>
-                      Make active
-                    </Text>
-                  </Pressable>
-                ) : null}
                 <Pressable
                   accessibilityLabel={`Edit ${farm.farmName} settings`}
                   onPress={() =>
@@ -284,22 +281,7 @@ export default function FarmsScreen() {
                 >
                   <Ionicons name="settings-outline" size={20} color={colors.muted} />
                 </Pressable>
-                {farm.isActive ? (
-                  <Pressable
-                    accessibilityLabel={`Make ${farm.farmName} inactive`}
-                    onPress={() => confirmMakeInactive(farm.id, farm.farmName)}
-                    hitSlop={8}
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 8,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons name="pause-circle-outline" size={22} color={colors.muted} />
-                  </Pressable>
-                ) : (
+                {!farm.isActive ? (
                   <Pressable
                     accessibilityLabel={`Delete ${farm.farmName} permanently`}
                     onPress={() => confirmPermanentDelete(farm.id, farm.farmName)}
@@ -314,7 +296,7 @@ export default function FarmsScreen() {
                   >
                     <Ionicons name="trash-outline" size={20} color={colors.muted} />
                   </Pressable>
-                )}
+                ) : null}
               </View>
             </Card>
           );

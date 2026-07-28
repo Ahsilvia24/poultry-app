@@ -888,7 +888,7 @@ export default function FarmDetailScreen() {
             >
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={{ fontWeight: "800", fontSize: 16 }}>
-                  {activeFlocks.length > 1 ? "Active flocks" : "Active flock"} —{" "}
+                  {activeFlocks.length > 1 ? "Active flocks" : "Active flock"}{" "}
                   {flockAgeLabel}
                 </Text>
                 {flockIdLabel ? (

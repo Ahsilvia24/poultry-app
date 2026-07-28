@@ -172,16 +172,11 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                     ) : null}
                   </Link>
                   <div className="ml-2 flex shrink-0 items-center gap-1">
-                    <span
-                      className={cn(
-                        "inline-flex rounded-md px-2.5 py-1 text-sm font-bold",
-                        farm.isActive
-                          ? "bg-emerald-100 text-emerald-900"
-                          : "bg-stone-100 text-stone-700",
-                      )}
-                    >
-                      {farm.isActive ? "Active" : "Inactive"}
-                    </span>
+                    {farm.isActive ? (
+                      <DeactivateFarmButton farmId={farm.id} appearance="badge" />
+                    ) : (
+                      <ReactivateFarmButton farmId={farm.id} appearance="badge" />
+                    )}
                   </div>
                 </div>
                 <Link href={`/farms/${farm.id}`} className="mt-4 block">
@@ -229,9 +224,6 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                   </div>
                 </Link>
                 <div className="mt-1 flex items-center justify-end gap-1">
-                  {!farm.isActive ? (
-                    <ReactivateFarmButton farmId={farm.id} appearance="text" />
-                  ) : null}
                   <Link
                     href={`/farms/${farm.id}`}
                     aria-label={`Edit ${farm.farmName} settings`}
@@ -240,11 +232,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                   >
                     <SettingsIcon className="h-5 w-5" />
                   </Link>
-                  {farm.isActive ? (
-                    <DeactivateFarmButton farmId={farm.id} appearance="icon" />
-                  ) : (
-                    <DeleteFarmButton farmId={farm.id} appearance="icon" />
-                  )}
+                  {!farm.isActive ? <DeleteFarmButton farmId={farm.id} appearance="icon" /> : null}
                 </div>
               </Card>
             );

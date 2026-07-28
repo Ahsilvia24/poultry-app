@@ -315,7 +315,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             <div className="min-w-0">
               <h2 className="text-xl font-bold">
                 {activeFlocks.length > 1 ? "Active flocks" : "Active flock"}
-                {flockAgeLabel ? ` — ${flockAgeLabel}` : ""}
+                {flockAgeLabel ? ` ${flockAgeLabel}` : ""}
               </h2>
               {flockNumberLabel ? (
                 <p className="mt-1 text-sm font-normal text-stone-500">{flockNumberLabel}</p>

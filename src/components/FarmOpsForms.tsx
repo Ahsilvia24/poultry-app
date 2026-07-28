@@ -421,14 +421,29 @@ export function DeactivateFarmButton({
   appearance = "button",
 }: {
   farmId: string;
-  appearance?: "button" | "icon";
+  appearance?: "button" | "icon" | "badge";
 }) {
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      {appearance === "icon" ? (
+      {appearance === "badge" ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(true);
+          }}
+          aria-label="Make farm inactive"
+          title="Make inactive"
+          className="inline-flex rounded-md bg-emerald-100 px-2.5 py-1 text-sm font-bold text-emerald-900 hover:bg-emerald-200 disabled:opacity-50"
+        >
+          Active
+        </button>
+      ) : appearance === "icon" ? (
         <button
           type="button"
           disabled={pending}
@@ -461,6 +476,7 @@ export function DeactivateFarmButton({
             aria-modal="true"
             aria-labelledby="deactivate-farm-title"
             className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
           >
             <h3 id="deactivate-farm-title" className="text-lg font-bold text-stone-900">
               Make this farm inactive?
@@ -502,9 +518,76 @@ export function ReactivateFarmButton({
   appearance = "button",
 }: {
   farmId: string;
-  appearance?: "button" | "text";
+  appearance?: "button" | "text" | "badge";
 }) {
   const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
+
+  if (appearance === "badge") {
+    return (
+      <>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(true);
+          }}
+          aria-label="Make farm active"
+          title="Make active"
+          className="inline-flex rounded-md bg-stone-100 px-2.5 py-1 text-sm font-bold text-stone-700 hover:bg-stone-200 disabled:opacity-50"
+        >
+          Inactive
+        </button>
+        {open ? (
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="reactivate-farm-title"
+              className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 id="reactivate-farm-title" className="text-lg font-bold text-stone-900">
+                Make this farm active?
+              </h3>
+              <p className="mt-2 text-sm text-stone-600">
+                It will move back to Active and show up in your normal farm lists.
+              </p>
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <Button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    start(async () => {
+                      await reactivateFarmAction(farmId);
+                    });
+                  }}
+                >
+                  {pending ? "Working…" : "Make active"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={() => setOpen(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </>
+    );
+  }
 
   if (appearance === "text") {
     return (
