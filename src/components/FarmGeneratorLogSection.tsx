@@ -13,7 +13,6 @@ import {
   formatGeneratorHours,
   formatGeneratorLogCopy,
   generatorDeltas,
-  type GeneratorDeltas,
   type GeneratorHours,
 } from "@/lib/generator/format";
 
@@ -26,15 +25,26 @@ export type GeneratorLogRow = {
   gen4Hours: number;
 };
 
-const GEN_ROWS = [
+const GEN_CHARTS = [
   { key: "gen1", label: "Gen 1", hourKey: "gen1Hours" as const, deltaKey: "gen1" as const },
   { key: "gen2", label: "Gen 2", hourKey: "gen2Hours" as const, deltaKey: "gen2" as const },
   { key: "gen3", label: "Gen 3", hourKey: "gen3Hours" as const, deltaKey: "gen3" as const },
   { key: "gen4", label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
 ];
 
+type ChartRow = {
+  id: string;
+  dateLabel: string;
+  hours: number;
+  exercised: number | null;
+};
+
 function generatorsHashActive() {
   return typeof window !== "undefined" && window.location.hash === "#generators";
+}
+
+function dateLabelFromKey(logDate: string) {
+  return format(new Date(logDate + "T12:00:00"), "M-d-yyyy");
 }
 
 function CopyLogButton({ text }: { text: string }) {
@@ -58,49 +68,36 @@ function CopyLogButton({ text }: { text: string }) {
   );
 }
 
-function GeneratorHoursChart({
-  dateLabel,
-  hours,
-  deltas,
-}: {
-  dateLabel: string;
-  hours: GeneratorHours;
-  deltas: GeneratorDeltas;
-}) {
+function GeneratorHoursChart({ title, rows }: { title: string; rows: ChartRow[] }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-stone-200 bg-white text-sm">
-      <div className="grid grid-cols-[minmax(5.5rem,auto)_1fr_1fr] border-b border-stone-200 bg-stone-100 text-stone-700">
-        <div className="px-3 py-2 font-semibold">Date</div>
-        <div className="border-l border-stone-200 px-3 py-2 font-semibold">Hours</div>
-        <div className="border-l border-stone-200 px-3 py-2 font-semibold">Time exercised</div>
-      </div>
-      <div className="grid grid-cols-[minmax(5.5rem,auto)_1fr_1fr]">
-        <div className="flex items-center px-3 py-2 font-semibold tabular-nums text-stone-900">
-          {dateLabel}
+    <div>
+      <h4 className="mb-2 text-sm font-bold text-stone-900">{title}</h4>
+      <div className="overflow-hidden rounded-lg border border-stone-200 bg-white text-sm">
+        <div className="grid grid-cols-[minmax(5.5rem,auto)_1fr_1fr] border-b border-stone-200 bg-stone-100 text-stone-700">
+          <div className="px-3 py-2 font-semibold">Date</div>
+          <div className="border-l border-stone-200 px-3 py-2 font-semibold">Hours</div>
+          <div className="border-l border-stone-200 px-3 py-2 font-semibold">Time exercised</div>
         </div>
-        <div className="border-l border-stone-200">
-          {GEN_ROWS.map((row) => (
+        {rows.length === 0 ? (
+          <p className="px-3 py-3 text-stone-500">None yet</p>
+        ) : (
+          rows.map((row) => (
             <div
-              key={row.key}
-              className="flex items-center justify-between gap-2 border-b border-stone-100 px-3 py-1.5 last:border-b-0"
+              key={row.id}
+              className="grid grid-cols-[minmax(5.5rem,auto)_1fr_1fr] border-b border-stone-100 last:border-b-0"
             >
-              <span className="text-stone-500">{row.label}</span>
-              <span className="font-semibold tabular-nums text-stone-900">
-                {formatGeneratorHours(hours[row.hourKey])}
-              </span>
+              <div className="px-3 py-1.5 font-semibold tabular-nums text-stone-900">
+                {row.dateLabel}
+              </div>
+              <div className="border-l border-stone-100 px-3 py-1.5 text-right font-semibold tabular-nums text-stone-900">
+                {formatGeneratorHours(row.hours)}
+              </div>
+              <div className="border-l border-stone-100 px-3 py-1.5 text-right font-semibold tabular-nums text-stone-900">
+                {formatGeneratorHours(row.exercised)}
+              </div>
             </div>
-          ))}
-        </div>
-        <div className="border-l border-stone-200">
-          {GEN_ROWS.map((row) => (
-            <div
-              key={row.key}
-              className="border-b border-stone-100 px-3 py-1.5 text-right font-semibold tabular-nums text-stone-900 last:border-b-0"
-            >
-              {formatGeneratorHours(deltas[row.deltaKey])}
-            </div>
-          ))}
-        </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -230,6 +227,36 @@ export function FarmGeneratorLogSection({
     [logs],
   );
 
+  const chartRowsByGen = useMemo(() => {
+    return GEN_CHARTS.map((gen) => ({
+      ...gen,
+      rows: sorted.map((log, index) => {
+        const previous = sorted[index + 1] ?? null;
+        const hours: GeneratorHours = {
+          gen1Hours: log.gen1Hours,
+          gen2Hours: log.gen2Hours,
+          gen3Hours: log.gen3Hours,
+          gen4Hours: log.gen4Hours,
+        };
+        const prevHours = previous
+          ? {
+              gen1Hours: previous.gen1Hours,
+              gen2Hours: previous.gen2Hours,
+              gen3Hours: previous.gen3Hours,
+              gen4Hours: previous.gen4Hours,
+            }
+          : null;
+        const deltas = generatorDeltas(hours, prevHours);
+        return {
+          id: log.id,
+          dateLabel: dateLabelFromKey(log.logDate),
+          hours: log[gen.hourKey],
+          exercised: deltas[gen.deltaKey],
+        } satisfies ChartRow;
+      }),
+    }));
+  }, [sorted]);
+
   useEffect(() => {
     if (generatorsHashActive()) setOpen(true);
 
@@ -268,6 +295,18 @@ export function FarmGeneratorLogSection({
 
   if (!open) return <div id="generators" className="scroll-mt-24" />;
 
+  const editingLog = editingId ? sorted.find((l) => l.id === editingId) : null;
+  const editingIndex = editingLog ? sorted.findIndex((l) => l.id === editingLog.id) : -1;
+  const editingPrevious =
+    editingIndex >= 0 && sorted[editingIndex + 1]
+      ? {
+          gen1Hours: sorted[editingIndex + 1]!.gen1Hours,
+          gen2Hours: sorted[editingIndex + 1]!.gen2Hours,
+          gen3Hours: sorted[editingIndex + 1]!.gen3Hours,
+          gen4Hours: sorted[editingIndex + 1]!.gen4Hours,
+        }
+      : null;
+
   return (
     <div id="generators" className="scroll-mt-24">
       <Card>
@@ -282,54 +321,56 @@ export function FarmGeneratorLogSection({
           </button>
         </div>
 
-        <ul className="mt-3 space-y-4 text-sm">
-          {sorted.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-          {sorted.map((log, index) => {
-            const previous = sorted[index + 1] ?? null;
-            const hours: GeneratorHours = {
-              gen1Hours: log.gen1Hours,
-              gen2Hours: log.gen2Hours,
-              gen3Hours: log.gen3Hours,
-              gen4Hours: log.gen4Hours,
-            };
-            const prevHours = previous
-              ? {
-                  gen1Hours: previous.gen1Hours,
-                  gen2Hours: previous.gen2Hours,
-                  gen3Hours: previous.gen3Hours,
-                  gen4Hours: previous.gen4Hours,
-                }
-              : null;
-            const deltas = generatorDeltas(hours, prevHours);
-            const dateLabel = format(new Date(log.logDate + "T12:00:00"), "M-d-yyyy");
-            const copyText = formatGeneratorLogCopy({
-              logDateLabel: dateLabel,
-              hours,
-              deltas,
-            });
+        {editingLog ? (
+          <GeneratorLogForm
+            farmId={farmId}
+            recordId={editingLog.id}
+            initial={editingLog}
+            previous={editingPrevious}
+            onSuccess={afterSaved}
+            onCancel={() => setEditingId(null)}
+          />
+        ) : null}
 
-            if (editingId === log.id) {
+        {sorted.length === 0 ? (
+          <p className="mt-3 text-sm text-stone-500">None yet</p>
+        ) : (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {chartRowsByGen.map((gen) => (
+              <GeneratorHoursChart key={gen.key} title={gen.label} rows={gen.rows} />
+            ))}
+          </div>
+        )}
+
+        {sorted.length > 0 ? (
+          <ul className="mt-4 space-y-2 border-t border-stone-100 pt-3 text-sm">
+            {sorted.map((log, index) => {
+              const previous = sorted[index + 1] ?? null;
+              const hours: GeneratorHours = {
+                gen1Hours: log.gen1Hours,
+                gen2Hours: log.gen2Hours,
+                gen3Hours: log.gen3Hours,
+                gen4Hours: log.gen4Hours,
+              };
+              const prevHours = previous
+                ? {
+                    gen1Hours: previous.gen1Hours,
+                    gen2Hours: previous.gen2Hours,
+                    gen3Hours: previous.gen3Hours,
+                    gen4Hours: previous.gen4Hours,
+                  }
+                : null;
+              const deltas = generatorDeltas(hours, prevHours);
+              const dateLabel = dateLabelFromKey(log.logDate);
+              const copyText = formatGeneratorLogCopy({
+                logDateLabel: dateLabel,
+                hours,
+                deltas,
+              });
               return (
-                <li key={log.id} className="border-b border-stone-100 pb-3 last:border-0">
-                  <GeneratorLogForm
-                    farmId={farmId}
-                    recordId={log.id}
-                    initial={log}
-                    previous={prevHours}
-                    onSuccess={afterSaved}
-                    onCancel={() => setEditingId(null)}
-                  />
-                </li>
-              );
-            }
-
-            return (
-              <li key={log.id}>
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <GeneratorHoursChart dateLabel={dateLabel} hours={hours} deltas={deltas} />
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1 pt-1 sm:flex-row sm:items-center sm:gap-2">
+                <li key={log.id} className="flex items-center justify-between gap-3">
+                  <span className="font-semibold tabular-nums text-stone-800">{dateLabel}</span>
+                  <div className="flex shrink-0 items-center gap-2">
                     <CopyLogButton text={copyText} />
                     <EditRecordButton
                       label="Edit generator log"
@@ -345,11 +386,11 @@ export function FarmGeneratorLogSection({
                       }}
                     />
                   </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
       </Card>
 
       {!formOpen ? (

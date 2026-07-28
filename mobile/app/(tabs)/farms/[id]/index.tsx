@@ -252,115 +252,134 @@ function HouseNumFieldButton({
   );
 }
 
-const GENERATOR_CHART_ROWS = [
+const GENERATOR_CHARTS = [
   { label: "Gen 1", hourKey: "gen1Hours" as const, deltaKey: "gen1" as const },
   { label: "Gen 2", hourKey: "gen2Hours" as const, deltaKey: "gen2" as const },
   { label: "Gen 3", hourKey: "gen3Hours" as const, deltaKey: "gen3" as const },
   { label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
 ];
 
-function GeneratorHoursChart({
-  dateLabel,
-  hours,
-  deltas,
-}: {
+type GeneratorChartRow = {
+  id: string;
   dateLabel: string;
-  hours: GeneratorHours;
-  deltas: GeneratorDeltas;
-}) {
+  hours: number;
+  exercised: number | null;
+};
+
+function GeneratorHoursChart({ title, rows }: { title: string; rows: GeneratorChartRow[] }) {
   return (
-    <View
-      style={{
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 12,
-        overflow: "hidden",
-        backgroundColor: "#fff",
-      }}
-    >
+    <View style={{ marginTop: 12 }}>
+      <Text style={{ fontWeight: "800", fontSize: 14, color: colors.text, marginBottom: 6 }}>
+        {title}
+      </Text>
       <View
         style={{
-          flexDirection: "row",
-          backgroundColor: "#f5f5f4",
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 12,
+          overflow: "hidden",
+          backgroundColor: "#fff",
         }}
       >
-        <Text style={{ width: 78, paddingHorizontal: 10, paddingVertical: 8, fontWeight: "700", color: colors.text, fontSize: 12 }}>
-          Date
-        </Text>
-        <Text
+        <View
           style={{
-            flex: 1,
-            paddingHorizontal: 10,
-            paddingVertical: 8,
-            fontWeight: "700",
-            color: colors.text,
-            fontSize: 12,
-            borderLeftWidth: 1,
-            borderLeftColor: colors.border,
+            flexDirection: "row",
+            backgroundColor: "#f5f5f4",
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
           }}
         >
-          Hours
-        </Text>
-        <Text
-          style={{
-            flex: 1,
-            paddingHorizontal: 10,
-            paddingVertical: 8,
-            fontWeight: "700",
-            color: colors.text,
-            fontSize: 12,
-            borderLeftWidth: 1,
-            borderLeftColor: colors.border,
-          }}
-        >
-          Time exercised
-        </Text>
-      </View>
-      <View style={{ flexDirection: "row" }}>
-        <View style={{ width: 78, justifyContent: "center", paddingHorizontal: 10, paddingVertical: 8 }}>
-          <Text style={{ fontWeight: "800", color: colors.text, fontSize: 13 }}>{dateLabel}</Text>
+          <Text
+            style={{
+              width: 78,
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+              fontWeight: "700",
+              color: colors.text,
+              fontSize: 12,
+            }}
+          >
+            Date
+          </Text>
+          <Text
+            style={{
+              flex: 1,
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+              fontWeight: "700",
+              color: colors.text,
+              fontSize: 12,
+              borderLeftWidth: 1,
+              borderLeftColor: colors.border,
+            }}
+          >
+            Hours
+          </Text>
+          <Text
+            style={{
+              flex: 1,
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+              fontWeight: "700",
+              color: colors.text,
+              fontSize: 12,
+              borderLeftWidth: 1,
+              borderLeftColor: colors.border,
+            }}
+          >
+            Time exercised
+          </Text>
         </View>
-        <View style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: colors.border }}>
-          {GENERATOR_CHART_ROWS.map((row) => (
+        {rows.length === 0 ? (
+          <Text style={[styles.muted, { paddingHorizontal: 10, paddingVertical: 10 }]}>
+            None yet
+          </Text>
+        ) : (
+          rows.map((row) => (
             <View
-              key={row.label}
+              key={row.id}
               style={{
                 flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                paddingHorizontal: 10,
-                paddingVertical: 6,
                 borderBottomWidth: 1,
                 borderBottomColor: "#f5f5f4",
               }}
             >
-              <Text style={{ color: colors.muted, fontSize: 12 }}>{row.label}</Text>
-              <Text style={{ fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
-                {formatGeneratorHours(hours[row.hourKey])}
-              </Text>
+              <View style={{ width: 78, paddingHorizontal: 10, paddingVertical: 7 }}>
+                <Text style={{ fontWeight: "700", color: colors.text, fontSize: 13 }}>
+                  {row.dateLabel}
+                </Text>
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  borderLeftWidth: 1,
+                  borderLeftColor: "#f5f5f4",
+                  paddingHorizontal: 10,
+                  paddingVertical: 7,
+                  alignItems: "flex-end",
+                }}
+              >
+                <Text style={{ fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                  {formatGeneratorHours(row.hours)}
+                </Text>
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  borderLeftWidth: 1,
+                  borderLeftColor: "#f5f5f4",
+                  paddingHorizontal: 10,
+                  paddingVertical: 7,
+                  alignItems: "flex-end",
+                }}
+              >
+                <Text style={{ fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                  {formatGeneratorHours(row.exercised)}
+                </Text>
+              </View>
             </View>
-          ))}
-        </View>
-        <View style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: colors.border }}>
-          {GENERATOR_CHART_ROWS.map((row) => (
-            <View
-              key={row.label}
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderBottomWidth: 1,
-                borderBottomColor: "#f5f5f4",
-                alignItems: "flex-end",
-              }}
-            >
-              <Text style={{ fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
-                {formatGeneratorHours(deltas[row.deltaKey])}
-              </Text>
-            </View>
-          ))}
-        </View>
+          ))
+        )}
       </View>
     </View>
   );
@@ -1567,46 +1586,76 @@ export default function FarmDetailScreen() {
             {(data.generatorLogs ?? []).length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
-              (data.generatorLogs ?? []).map((log, index, all) => {
-                const previous = all[index + 1] ?? null;
-                const hours: GeneratorHours = {
-                  gen1Hours: log.gen1Hours,
-                  gen2Hours: log.gen2Hours,
-                  gen3Hours: log.gen3Hours,
-                  gen4Hours: log.gen4Hours,
-                };
-                const prevHours = previous
-                  ? {
-                      gen1Hours: previous.gen1Hours,
-                      gen2Hours: previous.gen2Hours,
-                      gen3Hours: previous.gen3Hours,
-                      gen4Hours: previous.gen4Hours,
-                    }
-                  : null;
-                const deltas = generatorDeltas(hours, prevHours);
-                const dateLabel = (() => {
+              <>
+                {GENERATOR_CHARTS.map((gen) => {
+                  const logs = data.generatorLogs ?? [];
+                  const rows: GeneratorChartRow[] = logs.map((log, index) => {
+                    const previous = logs[index + 1] ?? null;
+                    const hours: GeneratorHours = {
+                      gen1Hours: log.gen1Hours,
+                      gen2Hours: log.gen2Hours,
+                      gen3Hours: log.gen3Hours,
+                      gen4Hours: log.gen4Hours,
+                    };
+                    const prevHours = previous
+                      ? {
+                          gen1Hours: previous.gen1Hours,
+                          gen2Hours: previous.gen2Hours,
+                          gen3Hours: previous.gen3Hours,
+                          gen4Hours: previous.gen4Hours,
+                        }
+                      : null;
+                    const deltas = generatorDeltas(hours, prevHours);
+                    const [y, m, d] = log.logDate.split("-").map(Number);
+                    return {
+                      id: log.id,
+                      dateLabel: `${m}-${d}-${y}`,
+                      hours: log[gen.hourKey],
+                      exercised: deltas[gen.deltaKey],
+                    };
+                  });
+                  return <GeneratorHoursChart key={gen.label} title={gen.label} rows={rows} />;
+                })}
+                {(data.generatorLogs ?? []).map((log, index, all) => {
+                  const previous = all[index + 1] ?? null;
+                  const hours: GeneratorHours = {
+                    gen1Hours: log.gen1Hours,
+                    gen2Hours: log.gen2Hours,
+                    gen3Hours: log.gen3Hours,
+                    gen4Hours: log.gen4Hours,
+                  };
+                  const prevHours = previous
+                    ? {
+                        gen1Hours: previous.gen1Hours,
+                        gen2Hours: previous.gen2Hours,
+                        gen3Hours: previous.gen3Hours,
+                        gen4Hours: previous.gen4Hours,
+                      }
+                    : null;
+                  const deltas = generatorDeltas(hours, prevHours);
                   const [y, m, d] = log.logDate.split("-").map(Number);
-                  return `${m}-${d}-${y}`;
-                })();
-                const copyText = formatGeneratorLogCopy({
-                  logDateLabel: dateLabel,
-                  hours,
-                  deltas,
-                });
-                return (
-                  <View
-                    key={log.id}
-                    style={{
-                      marginTop: 10,
-                      paddingTop: 10,
-                      borderTopWidth: 1,
-                      borderTopColor: "#f5f5f4",
-                    }}
-                  >
-                    <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <GeneratorHoursChart dateLabel={dateLabel} hours={hours} deltas={deltas} />
-                      </View>
+                  const dateLabel = `${m}-${d}-${y}`;
+                  const copyText = formatGeneratorLogCopy({
+                    logDateLabel: dateLabel,
+                    hours,
+                    deltas,
+                  });
+                  return (
+                    <View
+                      key={`actions-${log.id}`}
+                      style={{
+                        marginTop: 10,
+                        paddingTop: 10,
+                        borderTopWidth: index === 0 ? 1 : 0,
+                        borderTopColor: "#f5f5f4",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <Text style={{ flex: 1, fontWeight: "700", color: colors.text }}>
+                        {dateLabel}
+                      </Text>
                       <Pressable
                         onPress={async () => {
                           try {
@@ -1651,9 +1700,9 @@ export default function FarmDetailScreen() {
                         <Ionicons name="trash-outline" size={20} color={colors.danger} />
                       </Pressable>
                     </View>
-                  </View>
-                );
-              })
+                  );
+                })}
+              </>
             )}
           </Card>
           <RecordLink
