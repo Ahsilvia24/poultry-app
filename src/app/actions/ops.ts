@@ -674,7 +674,7 @@ export async function createGeneratorLogAction(formData: FormData) {
 
   await prisma.generatorLog.create({
     data: {
-      farmId: parsed.data.farmId,
+      farm: { connect: { id: parsed.data.farmId } },
       logDate: parseDateKey(parsed.data.logDate),
       gen1Hours: hours.gen1Hours,
       gen2Hours: hours.gen2Hours,
@@ -779,7 +779,7 @@ export async function updateGeneratorLogAction(logId: string, formData: FormData
     } else {
       await prisma.generatorLog.create({
         data: {
-          farmId: existing.farmId,
+          farm: { connect: { id: existing.farmId } },
           logDate: parseDateKey(logDateRaw),
           gen1Hours: onlyGenRaw === "gen1Hours" ? hours : null,
           gen2Hours: onlyGenRaw === "gen2Hours" ? hours : null,
