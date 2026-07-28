@@ -436,12 +436,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               id: house.id,
               houseNumber: house.houseNumber,
               squareFootage: house.squareFootage,
-              houseLength: house.houseLength,
-              houseWidth: house.houseWidth,
               totalFanCFM: house.totalFanCFM,
               numberOfFans: house.numberOfFans,
-              feederType: house.feederType,
-              drinkerType: house.drinkerType,
               notes: house.notes,
             }}
             hasFlock={Boolean(hf)}

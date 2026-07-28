@@ -133,13 +133,9 @@ function parseHouseForm(formData: FormData) {
   return houseSchema.safeParse({
     houseNumber: formData.get("houseNumber"),
     squareFootage: formData.get("squareFootage"),
-    houseLength: emptyToNull(formData.get("houseLength")),
-    houseWidth: emptyToNull(formData.get("houseWidth")),
     totalFanCFM: emptyToNull(formData.get("totalFanCFM")),
     numberOfFans: emptyToNull(formData.get("numberOfFans")),
     coolingPadSquareFootage: emptyToNull(formData.get("coolingPadSquareFootage")),
-    feederType: emptyToNull(formData.get("feederType")),
-    drinkerType: emptyToNull(formData.get("drinkerType")),
     controllerType: emptyToNull(formData.get("controllerType")),
     yearBuilt: emptyToNull(formData.get("yearBuilt")),
     minVentilationCFM: emptyToNull(formData.get("minVentilationCFM")),

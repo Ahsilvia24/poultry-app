@@ -75,22 +75,6 @@ export function AddHouseForm({ farmId }: { farmId: string }) {
               <Label htmlFor="numberOfFans">Number of fans</Label>
               <Input id="numberOfFans" name="numberOfFans" type="number" min={0} />
             </div>
-            <div>
-              <Label htmlFor="houseLength">Length (ft)</Label>
-              <Input id="houseLength" name="houseLength" type="number" step="any" />
-            </div>
-            <div>
-              <Label htmlFor="houseWidth">Width (ft)</Label>
-              <Input id="houseWidth" name="houseWidth" type="number" step="any" />
-            </div>
-            <div>
-              <Label htmlFor="feederType">Feeder type</Label>
-              <Input id="feederType" name="feederType" />
-            </div>
-            <div>
-              <Label htmlFor="drinkerType">Drinker type</Label>
-              <Input id="drinkerType" name="drinkerType" />
-            </div>
           </div>
           <div>
             <Label htmlFor="houseNotes">Notes</Label>

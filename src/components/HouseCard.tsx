@@ -10,12 +10,8 @@ type HouseData = {
   id: string;
   houseNumber: number;
   squareFootage: number;
-  houseLength: number | null;
-  houseWidth: number | null;
   totalFanCFM: number | null;
   numberOfFans: number | null;
-  feederType: string | null;
-  drinkerType: string | null;
   notes: string | null;
   placedBirdCount?: number | null;
 };

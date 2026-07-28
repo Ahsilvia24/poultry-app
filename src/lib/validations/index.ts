@@ -28,13 +28,9 @@ export const createFarmSchema = farmSchema.extend({
 export const houseSchema = z.object({
   houseNumber: z.coerce.number().int().positive(),
   squareFootage: z.coerce.number().positive("Square footage must be greater than zero"),
-  houseLength: z.coerce.number().optional().nullable(),
-  houseWidth: z.coerce.number().optional().nullable(),
   totalFanCFM: z.coerce.number().min(0, "Total CFM cannot be negative").optional().nullable(),
   numberOfFans: z.coerce.number().int().optional().nullable(),
   coolingPadSquareFootage: z.coerce.number().optional().nullable(),
-  feederType: z.string().optional().nullable(),
-  drinkerType: z.string().optional().nullable(),
   controllerType: z.string().optional().nullable(),
   yearBuilt: z.coerce.number().int().optional().nullable(),
   minVentilationCFM: z.coerce.number().optional().nullable(),

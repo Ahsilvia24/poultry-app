@@ -9,12 +9,8 @@ export type HouseEditValues = {
   id: string;
   houseNumber: number;
   squareFootage: number;
-  houseLength: number | null;
-  houseWidth: number | null;
   totalFanCFM: number | null;
   numberOfFans: number | null;
-  feederType: string | null;
-  drinkerType: string | null;
   notes: string | null;
   placedBirdCount: number | null;
 };
@@ -205,42 +201,6 @@ export function HouseCardActions({
                         type="number"
                         min={0}
                         defaultValue={house.numberOfFans ?? ""}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`edit-houseLength-${house.id}`}>Length (ft)</Label>
-                      <Input
-                        id={`edit-houseLength-${house.id}`}
-                        name="houseLength"
-                        type="number"
-                        step="any"
-                        defaultValue={house.houseLength ?? ""}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`edit-houseWidth-${house.id}`}>Width (ft)</Label>
-                      <Input
-                        id={`edit-houseWidth-${house.id}`}
-                        name="houseWidth"
-                        type="number"
-                        step="any"
-                        defaultValue={house.houseWidth ?? ""}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`edit-feederType-${house.id}`}>Feeder type</Label>
-                      <Input
-                        id={`edit-feederType-${house.id}`}
-                        name="feederType"
-                        defaultValue={house.feederType ?? ""}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`edit-drinkerType-${house.id}`}>Drinker type</Label>
-                      <Input
-                        id={`edit-drinkerType-${house.id}`}
-                        name="drinkerType"
-                        defaultValue={house.drinkerType ?? ""}
                       />
                     </div>
                   </div>
