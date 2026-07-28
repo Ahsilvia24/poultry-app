@@ -2675,7 +2675,6 @@ type GeneratorLogInput = {
   gen2Hours: number;
   gen3Hours: number;
   gen4Hours: number;
-  notes?: string | null;
 };
 
 export function createGeneratorLog(input: GeneratorLogInput) {
@@ -2698,7 +2697,7 @@ export function createGeneratorLog(input: GeneratorLogInput) {
       input.gen2Hours,
       input.gen3Hours,
       input.gen4Hours,
-      input.notes?.trim() || null,
+      null,
     ],
   );
   return { id };
@@ -2726,7 +2725,7 @@ export function updateGeneratorLog(farmId: string, logId: string, input: Omit<Ge
       input.gen2Hours,
       input.gen3Hours,
       input.gen4Hours,
-      input.notes?.trim() || null,
+      null,
       logId,
       farmId,
     ],

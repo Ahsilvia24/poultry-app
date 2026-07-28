@@ -652,7 +652,6 @@ export async function createGeneratorLogAction(formData: FormData) {
     gen2Hours: formData.get("gen2Hours"),
     gen3Hours: formData.get("gen3Hours"),
     gen4Hours: formData.get("gen4Hours"),
-    notes: emptyToNull(formData.get("notes")),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid generator log" };
   await assertFarmAccess(parsed.data.farmId, user.id!);
@@ -665,7 +664,7 @@ export async function createGeneratorLogAction(formData: FormData) {
       gen2Hours: parsed.data.gen2Hours,
       gen3Hours: parsed.data.gen3Hours,
       gen4Hours: parsed.data.gen4Hours,
-      notes: parsed.data.notes,
+      notes: null,
     },
   });
 
@@ -687,7 +686,6 @@ export async function updateGeneratorLogAction(logId: string, formData: FormData
     gen2Hours: formData.get("gen2Hours"),
     gen3Hours: formData.get("gen3Hours"),
     gen4Hours: formData.get("gen4Hours"),
-    notes: emptyToNull(formData.get("notes")),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid generator log" };
 
@@ -699,7 +697,7 @@ export async function updateGeneratorLogAction(logId: string, formData: FormData
       gen2Hours: parsed.data.gen2Hours,
       gen3Hours: parsed.data.gen3Hours,
       gen4Hours: parsed.data.gen4Hours,
-      notes: parsed.data.notes,
+      notes: null,
     },
   });
 

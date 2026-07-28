@@ -504,7 +504,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             gen2Hours: log.gen2Hours,
             gen3Hours: log.gen3Hours,
             gen4Hours: log.gen4Hours,
-            notes: log.notes,
           }))}
         />
 

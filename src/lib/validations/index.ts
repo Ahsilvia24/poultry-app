@@ -285,5 +285,4 @@ export const generatorLogSchema = z.object({
   gen2Hours: z.coerce.number().min(0, "Gen 2 hours cannot be negative"),
   gen3Hours: z.coerce.number().min(0, "Gen 3 hours cannot be negative"),
   gen4Hours: z.coerce.number().min(0, "Gen 4 hours cannot be negative"),
-  notes: z.string().optional().nullable(),
 });

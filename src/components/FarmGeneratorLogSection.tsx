@@ -8,7 +8,7 @@ import {
   updateGeneratorLogAction,
 } from "@/app/actions/ops";
 import { DeleteRecordButton, EditRecordButton } from "@/components/DeleteRecordButton";
-import { Button, Card, Input, Label, Textarea } from "@/components/ui";
+import { Button, Card, Input, Label } from "@/components/ui";
 import {
   formatGeneratorCopyLine,
   formatGeneratorHours,
@@ -24,7 +24,6 @@ export type GeneratorLogRow = {
   gen2Hours: number;
   gen3Hours: number;
   gen4Hours: number;
-  notes: string | null;
 };
 
 function generatorsHashActive() {
@@ -144,10 +143,6 @@ function GeneratorLogForm({
             </p>
           </div>
         ))}
-      </div>
-      <div>
-        <Label htmlFor="gen-notes">Notes</Label>
-        <Textarea id="gen-notes" name="notes" rows={2} defaultValue={initial?.notes ?? ""} />
       </div>
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
@@ -295,7 +290,6 @@ export function FarmGeneratorLogSection({
                         </p>
                       ))}
                     </div>
-                    {log.notes ? <p className="mt-1 text-stone-500">{log.notes}</p> : null}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <CopyLogButton text={copyText} />

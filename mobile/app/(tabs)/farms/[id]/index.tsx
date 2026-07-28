@@ -169,6 +169,21 @@ type HouseNumField =
   | "numberOfFans"
   | "placedBirdCount";
 
+type GeneratorNumField = "gen1Hours" | "gen2Hours" | "gen3Hours" | "gen4Hours";
+
+function generatorFieldLabel(field: GeneratorNumField): string {
+  switch (field) {
+    case "gen1Hours":
+      return "Gen 1 hours";
+    case "gen2Hours":
+      return "Gen 2 hours";
+    case "gen3Hours":
+      return "Gen 3 hours";
+    case "gen4Hours":
+      return "Gen 4 hours";
+  }
+}
+
 type FarmEditDraft = {
   farmName: string;
   growerName: string;
@@ -276,8 +291,12 @@ export default function FarmDetailScreen() {
     gen2Hours: "",
     gen3Hours: "",
     gen4Hours: "",
-    notes: "",
   });
+  const [generatorActiveField, setGeneratorActiveField] = useState<GeneratorNumField | null>(null);
+  const [generatorReplaceOnType, setGeneratorReplaceOnType] = useState(false);
+  const generatorScrollRef = useRef<ScrollViewType>(null);
+  const generatorScrollYRef = useRef(0);
+  const generatorFieldRefs = useRef(new Map<GeneratorNumField, ViewType>());
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("farms", scrollRef);
   const sectionY = useRef<Record<string, number>>({});
@@ -356,6 +375,15 @@ export default function FarmDetailScreen() {
     }, 100);
     return () => clearTimeout(t);
   }, [houseActiveField]);
+
+  useEffect(() => {
+    if (!generatorActiveField) return;
+    const t = setTimeout(() => {
+      const node = generatorFieldRefs.current.get(generatorActiveField) ?? null;
+      scrollFieldAboveKeypad(generatorScrollRef, { current: node }, generatorScrollYRef);
+    }, 100);
+    return () => clearTimeout(t);
+  }, [generatorActiveField]);
 
   // Never render a previous farm under a new id
   const ready = data != null && data.farm.id === farmId;
@@ -691,6 +719,67 @@ export default function FarmDetailScreen() {
   function onHouseEnter() {
     setHouseActiveField(null);
     setHouseReplaceOnType(false);
+  }
+
+  function closeGeneratorModal() {
+    if (generatorSaving) return;
+    setGeneratorModalOpen(false);
+    setGeneratorError(null);
+    setGeneratorActiveField(null);
+    setGeneratorReplaceOnType(false);
+  }
+
+  function focusGeneratorField(field: GeneratorNumField) {
+    setGeneratorActiveField(field);
+    setGeneratorReplaceOnType(true);
+    setTimeout(() => {
+      const node = generatorFieldRefs.current.get(field) ?? null;
+      scrollFieldAboveKeypad(generatorScrollRef, { current: node }, generatorScrollYRef);
+    }, 50);
+  }
+
+  function bindGeneratorFieldRef(field: GeneratorNumField) {
+    return (node: ViewType | null) => {
+      if (node) generatorFieldRefs.current.set(field, node);
+      else generatorFieldRefs.current.delete(field);
+    };
+  }
+
+  function getGeneratorFieldValue(field: GeneratorNumField) {
+    return generatorDraft[field];
+  }
+
+  function setGeneratorFieldValue(field: GeneratorNumField, value: string) {
+    setGeneratorDraft((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function onGeneratorDigit(d: string) {
+    if (!generatorActiveField) return;
+    const current = getGeneratorFieldValue(generatorActiveField);
+    const base = generatorReplaceOnType && d !== "." ? "" : current;
+    setGeneratorReplaceOnType(false);
+    setGeneratorFieldValue(generatorActiveField, appendKeypadDigit(base, d, true));
+  }
+
+  function onGeneratorBackspace() {
+    if (!generatorActiveField) return;
+    setGeneratorReplaceOnType(false);
+    setGeneratorFieldValue(
+      generatorActiveField,
+      backspaceKeypadValue(getGeneratorFieldValue(generatorActiveField)),
+    );
+  }
+
+  function onGeneratorEnter() {
+    if (!generatorActiveField) return;
+    const order: GeneratorNumField[] = ["gen1Hours", "gen2Hours", "gen3Hours", "gen4Hours"];
+    const idx = order.indexOf(generatorActiveField);
+    const next = idx >= 0 ? order[idx + 1] : undefined;
+    if (next) focusGeneratorField(next);
+    else {
+      setGeneratorActiveField(null);
+      setGeneratorReplaceOnType(false);
+    }
   }
 
   function confirmDeleteHouse(h: HouseRow) {
@@ -1481,13 +1570,14 @@ export default function FarmDetailScreen() {
             onPress={() => {
               const latest = data.generatorLogs?.[0];
               setGeneratorError(null);
+              setGeneratorActiveField(null);
+              setGeneratorReplaceOnType(false);
               setGeneratorDraft({
                 logDate: todayKey(),
                 gen1Hours: latest ? String(latest.gen1Hours) : "",
                 gen2Hours: latest ? String(latest.gen2Hours) : "",
                 gen3Hours: latest ? String(latest.gen3Hours) : "",
                 gen4Hours: latest ? String(latest.gen4Hours) : "",
-                notes: "",
               });
               setGeneratorModalOpen(true);
             }}
@@ -2289,133 +2379,142 @@ export default function FarmDetailScreen() {
         visible={generatorModalOpen}
         animationType="slide"
         transparent
-        onRequestClose={() => {
-          if (!generatorSaving) setGeneratorModalOpen(false);
-        }}
+        onRequestClose={closeGeneratorModal}
       >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+          }}
         >
-          <Pressable
+          <Pressable style={{ flex: 1 }} onPress={closeGeneratorModal} />
+          <View
             style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
-            }}
-            onPress={() => {
-              if (!generatorSaving) setGeneratorModalOpen(false);
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              maxHeight: "92%",
+              overflow: "hidden",
             }}
           >
-            <Pressable
-              onPress={(e) => e.stopPropagation()}
-              style={{
-                backgroundColor: "#fff",
-                borderTopLeftRadius: 16,
-                borderTopRightRadius: 16,
-                padding: 20,
-                maxHeight: "90%",
-                paddingBottom: Platform.OS === "ios" ? 28 : 20,
+            <ScrollView
+              ref={generatorScrollRef}
+              keyboardShouldPersistTaps="handled"
+              style={{ maxHeight: generatorActiveField ? 280 : undefined }}
+              contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
+              onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                generatorScrollYRef.current = e.nativeEvent.contentOffset.y;
               }}
+              scrollEventThrottle={16}
             >
-              <ScrollView keyboardShouldPersistTaps="handled">
-                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                  Log generators
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                Log generators
+              </Text>
+              {generatorError ? (
+                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                  {generatorError}
                 </Text>
-                {generatorError ? (
-                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
-                    {generatorError}
-                  </Text>
-                ) : null}
-                <Text style={[styles.label, { marginTop: 14 }]}>Date logged</Text>
-                <TextInput
-                  style={[styles.input, { fontWeight: "700", color: colors.text }]}
+              ) : null}
+              <View style={{ marginTop: 14, marginBottom: 10 }}>
+                <DatePickerField
+                  label="Date logged"
                   value={generatorDraft.logDate}
-                  onChangeText={(v) =>
-                    setGeneratorDraft((prev) => ({ ...prev, logDate: v }))
+                  presentation="inline"
+                  onChange={(date) =>
+                    setGeneratorDraft((prev) => ({ ...prev, logDate: date }))
                   }
-                  placeholder="yyyy-mm-dd"
-                  placeholderTextColor={colors.muted}
-                  autoCapitalize="none"
                 />
-                {(
-                  [
-                    ["gen1Hours", "Gen 1 hours"],
-                    ["gen2Hours", "Gen 2 hours"],
-                    ["gen3Hours", "Gen 3 hours"],
-                    ["gen4Hours", "Gen 4 hours"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <View key={key}>
-                    <Text style={[styles.label, { marginTop: 8 }]}>{label}</Text>
-                    <TextInput
-                      style={[styles.input, { fontSize: 20, fontWeight: "700", color: colors.text }]}
-                      value={generatorDraft[key]}
-                      onChangeText={(v) =>
-                        setGeneratorDraft((prev) => ({
-                          ...prev,
-                          [key]: v.replace(/[^\d.]/g, ""),
-                        }))
-                      }
-                      keyboardType="decimal-pad"
-                      placeholder="0"
-                      placeholderTextColor="rgba(120,113,108,0.55)"
-                      selectTextOnFocus
-                    />
-                  </View>
-                ))}
-                <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
-                <TextInput
-                  style={[styles.input, { minHeight: 64, color: colors.text }]}
-                  value={generatorDraft.notes}
-                  onChangeText={(v) =>
-                    setGeneratorDraft((prev) => ({ ...prev, notes: v }))
-                  }
-                  multiline
-                  placeholderTextColor={colors.muted}
+              </View>
+              {(
+                [
+                  ["gen1Hours", "Gen 1 hours"],
+                  ["gen2Hours", "Gen 2 hours"],
+                  ["gen3Hours", "Gen 3 hours"],
+                  ["gen4Hours", "Gen 4 hours"],
+                ] as const
+              ).map(([key, label]) => (
+                <HouseNumFieldButton
+                  key={key}
+                  label={label}
+                  value={generatorDraft[key]}
+                  active={generatorActiveField === key}
+                  onPress={() => focusGeneratorField(key)}
+                  fieldRef={bindGeneratorFieldRef(key)}
                 />
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
-                  <PrimaryButton
-                    label={generatorSaving ? "Saving…" : "Save"}
-                    onPress={() => {
-                      setGeneratorSaving(true);
-                      setGeneratorError(null);
-                      try {
-                        createGeneratorLog({
-                          farmId: farm.id,
-                          logDate: generatorDraft.logDate.trim(),
-                          gen1Hours: Number(generatorDraft.gen1Hours || 0),
-                          gen2Hours: Number(generatorDraft.gen2Hours || 0),
-                          gen3Hours: Number(generatorDraft.gen3Hours || 0),
-                          gen4Hours: Number(generatorDraft.gen4Hours || 0),
-                          notes: generatorDraft.notes.trim() || null,
-                        });
-                        setGeneratorModalOpen(false);
-                        load();
-                      } catch (e) {
-                        setGeneratorError(
-                          e instanceof Error ? e.message : "Could not save generator log",
-                        );
-                      } finally {
-                        setGeneratorSaving(false);
-                      }
+              ))}
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+                <PrimaryButton
+                  label={generatorSaving ? "Saving…" : "Save"}
+                  onPress={() => {
+                    setGeneratorSaving(true);
+                    setGeneratorError(null);
+                    try {
+                      createGeneratorLog({
+                        farmId: farm.id,
+                        logDate: generatorDraft.logDate.trim(),
+                        gen1Hours: Number(generatorDraft.gen1Hours || 0),
+                        gen2Hours: Number(generatorDraft.gen2Hours || 0),
+                        gen3Hours: Number(generatorDraft.gen3Hours || 0),
+                        gen4Hours: Number(generatorDraft.gen4Hours || 0),
+                      });
+                      setGeneratorModalOpen(false);
+                      setGeneratorActiveField(null);
+                      setGeneratorReplaceOnType(false);
+                      load();
+                    } catch (e) {
+                      setGeneratorError(
+                        e instanceof Error ? e.message : "Could not save generator log",
+                      );
+                    } finally {
+                      setGeneratorSaving(false);
+                    }
+                  }}
+                  style={{ flex: 1 }}
+                />
+                <PrimaryButton
+                  label="Cancel"
+                  secondary
+                  onPress={closeGeneratorModal}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </ScrollView>
+            {generatorActiveField ? (
+              <View
+                style={{
+                  borderTopWidth: 1,
+                  borderTopColor: colors.border,
+                  backgroundColor: "#fafaf9",
+                }}
+              >
+                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>
+                    {generatorFieldLabel(generatorActiveField)}
+                  </Text>
+                  <Text
+                    style={{
+                      marginTop: 2,
+                      fontSize: 32,
+                      fontWeight: "800",
+                      color: colors.text,
+                      letterSpacing: 0.3,
                     }}
-                    style={{ flex: 1 }}
-                  />
-                  <PrimaryButton
-                    label="Cancel"
-                    secondary
-                    onPress={() => {
-                      if (!generatorSaving) setGeneratorModalOpen(false);
-                    }}
-                    style={{ flex: 1 }}
-                  />
+                    numberOfLines={1}
+                  >
+                    {getGeneratorFieldValue(generatorActiveField) || "0"}
+                  </Text>
                 </View>
-              </ScrollView>
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
+                <NumberKeypad
+                  allowDecimal
+                  onDigit={onGeneratorDigit}
+                  onBackspace={onGeneratorBackspace}
+                  onEnter={onGeneratorEnter}
+                />
+              </View>
+            ) : null}
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
