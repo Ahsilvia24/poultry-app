@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { auth, isAuthDevBypassEnabled } from "@/lib/auth";
 
 export default auth((req) => {
-  const isLoggedIn = !!req.auth;
+  const bypass = isAuthDevBypassEnabled();
+  const isLoggedIn = !!req.auth || bypass;
   const { pathname } = req.nextUrl;
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
   const isPublic =
@@ -10,6 +11,11 @@ export default auth((req) => {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/mobile") ||
     pathname.startsWith("/preview");
+
+  // Dev bypass: never force the login screen — go straight into the app.
+  if (bypass && isAuthPage) {
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+  }
 
   if (!isLoggedIn && !isPublic) {
     // API routes should return 401, not redirect HTML
