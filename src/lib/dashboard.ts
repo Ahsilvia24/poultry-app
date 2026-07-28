@@ -75,6 +75,7 @@ export async function getDashboardData(userId: string) {
     date: string;
     flockNumber: string;
     flockAgeDays: number;
+    catchAgeDays: number;
   }> = [];
   type FollowUpRow = {
     farmId: string;
@@ -132,11 +133,13 @@ export async function getDashboardData(userId: string) {
 
     for (const flock of activeFlocks) {
       if (flock.projectedCatchDate) {
+        const catchDate = resolveCatchDate(flock);
         upcomingCatches.push({
           farmName: farm.farmName,
-          date: format(flock.projectedCatchDate, "yyyy-MM-dd"),
+          date: format(catchDate, "yyyy-MM-dd"),
           flockNumber: flock.flockNumber,
           flockAgeDays: differenceInCalendarDays(today, flock.placementDate),
+          catchAgeDays: differenceInCalendarDays(catchDate, flock.placementDate),
         });
       }
 

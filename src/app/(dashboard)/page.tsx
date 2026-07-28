@@ -74,7 +74,8 @@ export default async function DashboardPage() {
                       <span className="font-normal text-stone-500"> · {c.flockAgeDays}d</span>
                     </span>
                   <span className="shrink-0 text-stone-600">
-                    {format(parseISO(c.date), "EEEE, MMM d, yyyy")}
+                    {format(parseISO(c.date), "EEE, MMM d, yyyy")}
+                    {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
                   </span>
                 </li>
               ))
