@@ -7,7 +7,7 @@ import {
   deleteGeneratorLogAction,
   updateGeneratorLogAction,
 } from "@/app/actions/ops";
-import { DeleteRecordButton, EditRecordButton } from "@/components/DeleteRecordButton";
+import { DeleteRecordButton } from "@/components/DeleteRecordButton";
 import { Button, Card, Input, Label } from "@/components/ui";
 import {
   formatGeneratorCopyLine,
@@ -408,7 +408,7 @@ export function FarmGeneratorLogSection({
         {sorted.length === 0 ? (
           <p className="mt-3 text-sm text-stone-500">None yet</p>
         ) : (
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {chartRowsByGen.map((gen) => (
               <GeneratorHoursChart
                 key={gen.key}
