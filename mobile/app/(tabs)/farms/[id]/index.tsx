@@ -47,7 +47,7 @@ import {
   LITTER_EVENT_LABELS,
 } from "../../../../src/lib/opsLabels";
 import {
-  formatGeneratorCopyLine,
+  formatGeneratorChartsCopy,
   formatGeneratorHours,
   generatorDeltas,
   type GeneratorHours,
@@ -1625,37 +1625,43 @@ export default function FarmDetailScreen() {
               {(data.generatorLogs ?? []).length > 0 ? (
                 <Pressable
                   onPress={async () => {
-                    const logs = data.generatorLogs ?? [];
-                    const latest = logs[0]!;
-                    const previous = logs[1] ?? null;
-                    const hours: GeneratorHours = {
-                      gen1Hours: latest.gen1Hours,
-                      gen2Hours: latest.gen2Hours,
-                      gen3Hours: latest.gen3Hours,
-                      gen4Hours: latest.gen4Hours,
-                    };
-                    const prevHours = previous
-                      ? {
-                          gen1Hours: previous.gen1Hours,
-                          gen2Hours: previous.gen2Hours,
-                          gen3Hours: previous.gen3Hours,
-                          gen4Hours: previous.gen4Hours,
-                        }
-                      : null;
-                    const numbers = formatGeneratorCopyLine(
-                      hours,
-                      generatorDeltas(hours, prevHours),
+                    const allLogs = data.generatorLogs ?? [];
+                    const logs = allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY);
+                    const text = formatGeneratorChartsCopy(
+                      logs.map((log, index) => {
+                        const previous = allLogs[index + 1] ?? null;
+                        const hours: GeneratorHours = {
+                          gen1Hours: log.gen1Hours,
+                          gen2Hours: log.gen2Hours,
+                          gen3Hours: log.gen3Hours,
+                          gen4Hours: log.gen4Hours,
+                        };
+                        const prevHours = previous
+                          ? {
+                              gen1Hours: previous.gen1Hours,
+                              gen2Hours: previous.gen2Hours,
+                              gen3Hours: previous.gen3Hours,
+                              gen4Hours: previous.gen4Hours,
+                            }
+                          : null;
+                        const [y, m, d] = log.logDate.split("-").map(Number);
+                        return {
+                          dateLabel: `${m}-${d}-${y}`,
+                          hours,
+                          deltas: generatorDeltas(hours, prevHours),
+                        };
+                      }),
                     );
                     try {
                       const Clipboard = await import("expo-clipboard");
-                      await Clipboard.setStringAsync(numbers);
-                      Alert.alert("Copied", "Generator numbers copied to clipboard.");
+                      await Clipboard.setStringAsync(text);
+                      Alert.alert("Copied", "Generator log copied to clipboard.");
                     } catch {
                       Alert.alert("Copy failed", "Could not copy on this device.");
                     }
                   }}
                   hitSlop={8}
-                  accessibilityLabel="Copy numbers"
+                  accessibilityLabel="Copy generator log"
                 >
                   <Ionicons name="copy-outline" size={20} color={colors.accentDark} />
                 </Pressable>

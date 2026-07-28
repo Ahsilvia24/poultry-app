@@ -10,7 +10,7 @@ import {
 import { DeleteRecordButton } from "@/components/DeleteRecordButton";
 import { Button, Card, Input, Label } from "@/components/ui";
 import {
-  formatGeneratorCopyLine,
+  formatGeneratorChartsCopy,
   formatGeneratorHours,
   generatorDeltas,
   type GeneratorHours,
@@ -90,8 +90,8 @@ function CopyLogButton({ text }: { text: string }) {
     <button
       type="button"
       className="rounded p-1 text-emerald-800 hover:bg-emerald-50"
-      aria-label={copied ? "Copied" : "Copy numbers"}
-      title={copied ? "Copied" : "Copy numbers"}
+      aria-label={copied ? "Copied" : "Copy generator log"}
+      title={copied ? "Copied" : "Copy generator log"}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
@@ -341,26 +341,32 @@ export function FarmGeneratorLogSection({
     }));
   }, [sorted, allSorted]);
 
-  const latestNumbersOnly = useMemo(() => {
-    const latest = allSorted[0];
-    if (!latest) return "";
-    const previous = allSorted[1] ?? null;
-    const hours: GeneratorHours = {
-      gen1Hours: latest.gen1Hours,
-      gen2Hours: latest.gen2Hours,
-      gen3Hours: latest.gen3Hours,
-      gen4Hours: latest.gen4Hours,
-    };
-    const prevHours = previous
-      ? {
-          gen1Hours: previous.gen1Hours,
-          gen2Hours: previous.gen2Hours,
-          gen3Hours: previous.gen3Hours,
-          gen4Hours: previous.gen4Hours,
-        }
-      : null;
-    return formatGeneratorCopyLine(hours, generatorDeltas(hours, prevHours));
-  }, [allSorted]);
+  const chartsCopyText = useMemo(() => {
+    return formatGeneratorChartsCopy(
+      sorted.map((log, index) => {
+        const previous = allSorted[index + 1] ?? null;
+        const hours: GeneratorHours = {
+          gen1Hours: log.gen1Hours,
+          gen2Hours: log.gen2Hours,
+          gen3Hours: log.gen3Hours,
+          gen4Hours: log.gen4Hours,
+        };
+        const prevHours = previous
+          ? {
+              gen1Hours: previous.gen1Hours,
+              gen2Hours: previous.gen2Hours,
+              gen3Hours: previous.gen3Hours,
+              gen4Hours: previous.gen4Hours,
+            }
+          : null;
+        return {
+          dateLabel: dateLabelFromKey(log.logDate),
+          hours,
+          deltas: generatorDeltas(hours, prevHours),
+        };
+      }),
+    );
+  }, [sorted, allSorted]);
 
   useEffect(() => {
     if (generatorsHashActive()) setOpen(true);
@@ -418,7 +424,7 @@ export function FarmGeneratorLogSection({
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-bold">Generator log</h3>
           <div className="flex items-center gap-3">
-            {latestNumbersOnly ? <CopyLogButton text={latestNumbersOnly} /> : null}
+            {chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
             <button
               type="button"
               onClick={closeSection}
