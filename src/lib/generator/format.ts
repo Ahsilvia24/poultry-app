@@ -95,9 +95,9 @@ export function formatGeneratorChartsCopy(
     const hoursWidth = Math.max(5, "Hours".length, ...rows.map((r) => r.hours.length));
     const lines = [
       gen.label,
-      `${pad("Date", dateWidth)}  ${pad("Hours", hoursWidth)}  Exercised`,
+      `${pad("Date", dateWidth)}    ${pad("Hours", hoursWidth)}    Exercised`,
       ...rows.map(
-        (r) => `${pad(r.date, dateWidth)}  ${pad(r.hours, hoursWidth)}  ${r.exercised}`,
+        (r) => `${pad(r.date, dateWidth)}    ${pad(r.hours, hoursWidth)}    ${r.exercised}`,
       ),
     ];
     return lines.join("\n");
