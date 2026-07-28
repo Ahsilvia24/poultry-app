@@ -70,16 +70,19 @@ type CalcField = "water" | "head";
 function CalcFieldButton({
   label,
   value,
+  placeholder,
   active,
   onPress,
   fieldRef,
 }: {
   label: string;
   value: string;
+  placeholder: string;
   active: boolean;
   onPress: () => void;
   fieldRef?: React.RefObject<ViewType | null>;
 }) {
+  const showPlaceholder = !value;
   return (
     <View ref={fieldRef} collapsable={false} style={{ flex: 1 }}>
       <Text style={styles.label}>{label}</Text>
@@ -94,10 +97,10 @@ function CalcFieldButton({
           style={{
             fontSize: 18,
             fontWeight: "700",
-            color: value ? colors.text : colors.muted,
+            color: showPlaceholder ? "rgba(120,113,108,0.55)" : colors.text,
           }}
         >
-          {value || "0"}
+          {showPlaceholder ? placeholder : value}
         </Text>
       </Pressable>
     </View>
@@ -122,8 +125,8 @@ export default function LfoListScreen() {
   });
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [waterGal, setWaterGal] = useState(DEFAULT_WATER_GAL);
-  const [headCount, setHeadCount] = useState(DEFAULT_HEAD_COUNT);
+  const [waterGal, setWaterGal] = useState("");
+  const [headCount, setHeadCount] = useState("");
   const [activeField, setActiveField] = useState<CalcField | null>(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
 
@@ -172,8 +175,8 @@ export default function LfoListScreen() {
   }, [activeField]);
 
   const calcResult = useMemo(() => {
-    const water = Number(waterGal);
-    const heads = Number(headCount);
+    const water = Number(waterGal || DEFAULT_WATER_GAL);
+    const heads = Number(headCount || DEFAULT_HEAD_COUNT);
     if (!Number.isFinite(water) || water <= 0 || !Number.isFinite(heads) || heads <= 0) {
       return null;
     }
@@ -309,6 +312,7 @@ export default function LfoListScreen() {
               <CalcFieldButton
                 label="Daily water (gal)"
                 value={waterGal}
+                placeholder={DEFAULT_WATER_GAL}
                 active={activeField === "water"}
                 onPress={() => focusField("water")}
                 fieldRef={waterRef}
@@ -316,6 +320,7 @@ export default function LfoListScreen() {
               <CalcFieldButton
                 label="Current head count"
                 value={headCount}
+                placeholder={DEFAULT_HEAD_COUNT}
                 active={activeField === "head"}
                 onPress={() => focusField("head")}
                 fieldRef={headRef}

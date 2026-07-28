@@ -23,8 +23,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
   completeFlock,
+  createGeneratorLog,
   createHouse,
   deleteFeedDelivery,
+  deleteGeneratorLog,
   deleteHouse,
   deleteIssue,
   deleteLitterEvent,
@@ -44,11 +46,18 @@ import {
   LITTER_EVENT_LABELS,
 } from "../../../../src/lib/opsLabels";
 import {
+  formatGeneratorCopyLine,
+  formatGeneratorHours,
+  formatGeneratorLogCopy,
+  generatorDeltas,
+  type GeneratorHours,
+} from "../../../../src/lib/generator";
+import {
   catchWeightProjections,
   resolveGrowthRate,
 } from "../../../../src/lib/weight/projections";
 import { scrollFieldAboveKeypad } from "../../../../src/lib/scrollField";
-import { addDaysKey } from "../../../../src/lib/ids";
+import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { colors, styles } from "../../../../src/theme";
 import {
   Card,
@@ -258,6 +267,17 @@ export default function FarmDetailScreen() {
   const [flockNumberDraft, setFlockNumberDraft] = useState("");
   const [flockNumberError, setFlockNumberError] = useState<string | null>(null);
   const [flockNumberSaving, setFlockNumberSaving] = useState(false);
+  const [generatorModalOpen, setGeneratorModalOpen] = useState(false);
+  const [generatorSaving, setGeneratorSaving] = useState(false);
+  const [generatorError, setGeneratorError] = useState<string | null>(null);
+  const [generatorDraft, setGeneratorDraft] = useState({
+    logDate: todayKey(),
+    gen1Hours: "",
+    gen2Hours: "",
+    gen3Hours: "",
+    gen4Hours: "",
+    notes: "",
+  });
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("farms", scrollRef);
   const sectionY = useRef<Record<string, number>>({});
@@ -1061,6 +1081,11 @@ export default function FarmDetailScreen() {
             {(
               [
                 { key: "visits", label: "Visits", onPress: () => scrollToSection("visits") },
+                {
+                  key: "generators",
+                  label: "Generator Log",
+                  onPress: () => scrollToSection("generators"),
+                },
                 { key: "issues", label: "Issues", onPress: () => scrollToSection("issues") },
                 { key: "litter", label: "Litter", onPress: () => scrollToSection("litter") },
                 { key: "feed", label: "Feed", onPress: () => scrollToSection("feed") },
@@ -1329,6 +1354,143 @@ export default function FarmDetailScreen() {
                 params: { id: farm.id },
               })
             }
+          />
+        </View>
+
+        {/* ── Generator log ── */}
+        <View onLayout={onSectionLayout("generators")}>
+          <Card>
+            <Text style={{ fontWeight: "800", fontSize: 16 }}>Generator log</Text>
+            {(data.generatorLogs ?? []).length === 0 ? (
+              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
+            ) : (
+              (data.generatorLogs ?? []).map((log, index, all) => {
+                const previous = all[index + 1] ?? null;
+                const hours: GeneratorHours = {
+                  gen1Hours: log.gen1Hours,
+                  gen2Hours: log.gen2Hours,
+                  gen3Hours: log.gen3Hours,
+                  gen4Hours: log.gen4Hours,
+                };
+                const prevHours = previous
+                  ? {
+                      gen1Hours: previous.gen1Hours,
+                      gen2Hours: previous.gen2Hours,
+                      gen3Hours: previous.gen3Hours,
+                      gen4Hours: previous.gen4Hours,
+                    }
+                  : null;
+                const deltas = generatorDeltas(hours, prevHours);
+                const dateLabel = (() => {
+                  const [y, m, d] = log.logDate.split("-").map(Number);
+                  return `${m}-${d}-${y}`;
+                })();
+                const compact = formatGeneratorCopyLine(hours, deltas);
+                const copyText = formatGeneratorLogCopy({
+                  logDateLabel: dateLabel,
+                  hours,
+                  deltas,
+                });
+                return (
+                  <View
+                    key={log.id}
+                    style={{
+                      marginTop: 10,
+                      paddingTop: 10,
+                      borderTopWidth: 1,
+                      borderTopColor: "#f5f5f4",
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ fontWeight: "700" }}>{dateLabel}</Text>
+                        <Text
+                          style={{
+                            marginTop: 4,
+                            fontWeight: "600",
+                            fontVariant: ["tabular-nums"],
+                            color: colors.text,
+                          }}
+                        >
+                          {compact}
+                        </Text>
+                        <Text style={[styles.muted, { marginTop: 6, fontSize: 12 }]}>
+                          Gen1 {formatGeneratorHours(hours.gen1Hours)},{" "}
+                          {formatGeneratorHours(deltas.gen1)} · Gen2{" "}
+                          {formatGeneratorHours(hours.gen2Hours)},{" "}
+                          {formatGeneratorHours(deltas.gen2)}
+                        </Text>
+                        <Text style={[styles.muted, { marginTop: 2, fontSize: 12 }]}>
+                          Gen3 {formatGeneratorHours(hours.gen3Hours)},{" "}
+                          {formatGeneratorHours(deltas.gen3)} · Gen4{" "}
+                          {formatGeneratorHours(hours.gen4Hours)},{" "}
+                          {formatGeneratorHours(deltas.gen4)}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={async () => {
+                          try {
+                            const Clipboard = await import("expo-clipboard");
+                            await Clipboard.setStringAsync(copyText);
+                            Alert.alert("Copied", "Generator log copied to clipboard.");
+                          } catch {
+                            Alert.alert("Copy failed", "Could not copy on this device.");
+                          }
+                        }}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                        accessibilityLabel="Copy generator log"
+                      >
+                        <Ionicons name="copy-outline" size={20} color={colors.accentDark} />
+                      </Pressable>
+                      <Pressable
+                        onPress={() =>
+                          Alert.alert("Delete generator log?", "This cannot be undone.", [
+                            { text: "Cancel", style: "cancel" },
+                            {
+                              text: "Delete",
+                              style: "destructive",
+                              onPress: () => {
+                                deleteGeneratorLog(farm.id, log.id);
+                                load();
+                              },
+                            },
+                          ])
+                        }
+                        style={{
+                          width: 36,
+                          height: 36,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </Card>
+          <RecordLink
+            label="Log generators"
+            onPress={() => {
+              const latest = data.generatorLogs?.[0];
+              setGeneratorError(null);
+              setGeneratorDraft({
+                logDate: todayKey(),
+                gen1Hours: latest ? String(latest.gen1Hours) : "",
+                gen2Hours: latest ? String(latest.gen2Hours) : "",
+                gen3Hours: latest ? String(latest.gen3Hours) : "",
+                gen4Hours: latest ? String(latest.gen4Hours) : "",
+                notes: "",
+              });
+              setGeneratorModalOpen(true);
+            }}
           />
         </View>
 
@@ -2117,6 +2279,139 @@ export default function FarmDetailScreen() {
                     </View>
                   </View>
                 ) : null}
+              </ScrollView>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal
+        visible={generatorModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => {
+          if (!generatorSaving) setGeneratorModalOpen(false);
+        }}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        >
+          <Pressable
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              justifyContent: "flex-end",
+            }}
+            onPress={() => {
+              if (!generatorSaving) setGeneratorModalOpen(false);
+            }}
+          >
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: "#fff",
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                padding: 20,
+                maxHeight: "90%",
+                paddingBottom: Platform.OS === "ios" ? 28 : 20,
+              }}
+            >
+              <ScrollView keyboardShouldPersistTaps="handled">
+                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                  Log generators
+                </Text>
+                {generatorError ? (
+                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                    {generatorError}
+                  </Text>
+                ) : null}
+                <Text style={[styles.label, { marginTop: 14 }]}>Date logged</Text>
+                <TextInput
+                  style={[styles.input, { fontWeight: "700", color: colors.text }]}
+                  value={generatorDraft.logDate}
+                  onChangeText={(v) =>
+                    setGeneratorDraft((prev) => ({ ...prev, logDate: v }))
+                  }
+                  placeholder="yyyy-mm-dd"
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="none"
+                />
+                {(
+                  [
+                    ["gen1Hours", "Gen 1 hours"],
+                    ["gen2Hours", "Gen 2 hours"],
+                    ["gen3Hours", "Gen 3 hours"],
+                    ["gen4Hours", "Gen 4 hours"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <View key={key}>
+                    <Text style={[styles.label, { marginTop: 8 }]}>{label}</Text>
+                    <TextInput
+                      style={[styles.input, { fontSize: 20, fontWeight: "700", color: colors.text }]}
+                      value={generatorDraft[key]}
+                      onChangeText={(v) =>
+                        setGeneratorDraft((prev) => ({
+                          ...prev,
+                          [key]: v.replace(/[^\d.]/g, ""),
+                        }))
+                      }
+                      keyboardType="decimal-pad"
+                      placeholder="0"
+                      placeholderTextColor="rgba(120,113,108,0.55)"
+                      selectTextOnFocus
+                    />
+                  </View>
+                ))}
+                <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
+                <TextInput
+                  style={[styles.input, { minHeight: 64, color: colors.text }]}
+                  value={generatorDraft.notes}
+                  onChangeText={(v) =>
+                    setGeneratorDraft((prev) => ({ ...prev, notes: v }))
+                  }
+                  multiline
+                  placeholderTextColor={colors.muted}
+                />
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                  <PrimaryButton
+                    label={generatorSaving ? "Saving…" : "Save"}
+                    onPress={() => {
+                      setGeneratorSaving(true);
+                      setGeneratorError(null);
+                      try {
+                        createGeneratorLog({
+                          farmId: farm.id,
+                          logDate: generatorDraft.logDate.trim(),
+                          gen1Hours: Number(generatorDraft.gen1Hours || 0),
+                          gen2Hours: Number(generatorDraft.gen2Hours || 0),
+                          gen3Hours: Number(generatorDraft.gen3Hours || 0),
+                          gen4Hours: Number(generatorDraft.gen4Hours || 0),
+                          notes: generatorDraft.notes.trim() || null,
+                        });
+                        setGeneratorModalOpen(false);
+                        load();
+                      } catch (e) {
+                        setGeneratorError(
+                          e instanceof Error ? e.message : "Could not save generator log",
+                        );
+                      } finally {
+                        setGeneratorSaving(false);
+                      }
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                  <PrimaryButton
+                    label="Cancel"
+                    secondary
+                    onPress={() => {
+                      if (!generatorSaving) setGeneratorModalOpen(false);
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                </View>
               </ScrollView>
             </Pressable>
           </Pressable>

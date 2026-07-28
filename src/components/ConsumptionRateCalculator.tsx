@@ -9,6 +9,9 @@ const LBS_PER_GALLON = 8.34;
 const WATER_TO_FEED_RATIO = 1.9;
 const STORAGE_KEY = "poultry.lfo.consumptionRateCalculator";
 
+const DEFAULT_WATER_GAL = "2500";
+const DEFAULT_HEAD_COUNT = "24360";
+
 function parsePositive(value: string): number | null {
   if (value.trim() === "") return null;
   const n = Number(value);
@@ -36,14 +39,18 @@ function readStored(): { dailyWaterGallons: string; headCount: string } {
 }
 
 export function ConsumptionRateCalculator() {
+  // Empty = show transparent defaults; typing replaces without backspacing.
   const [dailyWaterGallons, setDailyWaterGallons] = useState("");
   const [headCount, setHeadCount] = useState("");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const stored = readStored();
-    setDailyWaterGallons(stored.dailyWaterGallons);
-    setHeadCount(stored.headCount);
+    // Treat legacy stored defaults as empty so placeholders stay transparent.
+    setDailyWaterGallons(
+      stored.dailyWaterGallons === DEFAULT_WATER_GAL ? "" : stored.dailyWaterGallons,
+    );
+    setHeadCount(stored.headCount === DEFAULT_HEAD_COUNT ? "" : stored.headCount);
     setReady(true);
   }, []);
 
@@ -60,9 +67,11 @@ export function ConsumptionRateCalculator() {
   }, [dailyWaterGallons, headCount, ready]);
 
   const result = useMemo(() => {
-    const water = parsePositive(dailyWaterGallons);
-    const chc = parsePositive(headCount);
-    if (water == null || chc == null) return null;
+    const water = parsePositive(dailyWaterGallons) ?? Number(DEFAULT_WATER_GAL);
+    const chc = parsePositive(headCount) ?? Number(DEFAULT_HEAD_COUNT);
+    if (!Number.isFinite(water) || water <= 0 || !Number.isFinite(chc) || chc <= 0) {
+      return null;
+    }
 
     const wc = water * LBS_PER_GALLON;
     const fc = wc / WATER_TO_FEED_RATIO;
@@ -83,26 +92,26 @@ export function ConsumptionRateCalculator() {
           <Label htmlFor="calcWater">Daily water (gal)</Label>
           <Input
             id="calcWater"
-            type="number"
-            min={0}
-            step="any"
+            type="text"
             inputMode="decimal"
             value={dailyWaterGallons}
-            onChange={(e) => setDailyWaterGallons(e.target.value)}
-            className="mt-1"
+            placeholder={DEFAULT_WATER_GAL}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => setDailyWaterGallons(e.target.value.replace(/[^\d.]/g, ""))}
+            className="mt-1 placeholder:text-stone-400/70"
           />
         </div>
         <div>
           <Label htmlFor="calcHeadCount">Current head count</Label>
           <Input
             id="calcHeadCount"
-            type="number"
-            min={0}
-            step={1}
+            type="text"
             inputMode="numeric"
             value={headCount}
-            onChange={(e) => setHeadCount(e.target.value)}
-            className="mt-1"
+            placeholder={DEFAULT_HEAD_COUNT}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => setHeadCount(e.target.value.replace(/\D/g, ""))}
+            className="mt-1 placeholder:text-stone-400/70"
           />
         </div>
       </div>

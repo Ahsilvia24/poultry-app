@@ -35,6 +35,7 @@ import { AddHouseForm } from "@/components/AddHouseForm";
 import { FarmInfoEditor } from "@/components/FarmInfoEditor";
 import { FarmQuickLinks } from "@/components/FarmQuickLinks";
 import { FarmFeedSection } from "@/components/FarmFeedSection";
+import { FarmGeneratorLogSection } from "@/components/FarmGeneratorLogSection";
 import { FarmIssuesSection } from "@/components/FarmIssuesSection";
 import { FarmLitterSection } from "@/components/FarmLitterSection";
 import { FarmVisitsSection } from "@/components/FarmVisitsSection";
@@ -71,6 +72,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         },
       },
       visits: { orderBy: { visitDate: "desc" }, take: 8 },
+      generatorLogs: { orderBy: [{ logDate: "desc" }, { createdAt: "desc" }], take: 20 },
       issues: { orderBy: { dateReported: "desc" }, take: 8 },
       litterEvents: { orderBy: { eventDate: "desc" }, take: 8, include: { house: true } },
     },
@@ -490,6 +492,19 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             followUpRequired: v.followUpRequired,
             followUpDate: v.followUpDate ? dateKeyFromDb(v.followUpDate) : null,
             notes: v.notes,
+          }))}
+        />
+
+        <FarmGeneratorLogSection
+          farmId={farm.id}
+          logs={farm.generatorLogs.map((log) => ({
+            id: log.id,
+            logDate: dateKeyFromDb(log.logDate),
+            gen1Hours: log.gen1Hours,
+            gen2Hours: log.gen2Hours,
+            gen3Hours: log.gen3Hours,
+            gen4Hours: log.gen4Hours,
+            notes: log.notes,
           }))}
         />
 

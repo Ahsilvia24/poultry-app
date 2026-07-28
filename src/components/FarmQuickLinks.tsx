@@ -7,6 +7,7 @@ const linkClass =
 export function FarmQuickLinks({ farmId }: { farmId: string }) {
   const links: Array<{ href: string; label: string; external?: boolean }> = [
     { href: "#visits", label: "Visits" },
+    { href: "#generators", label: "Generator Log" },
     { href: "#issues", label: "Issues" },
     { href: "#litter", label: "Litter" },
     { href: "#feed", label: "Feed" },

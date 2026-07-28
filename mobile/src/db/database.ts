@@ -162,6 +162,18 @@ export function migrateDb() {
       FOREIGN KEY (farm_id) REFERENCES farms(id)
     );
 
+    CREATE TABLE IF NOT EXISTS generator_logs (
+      id TEXT PRIMARY KEY NOT NULL,
+      farm_id TEXT NOT NULL,
+      log_date TEXT NOT NULL,
+      gen1_hours REAL NOT NULL DEFAULT 0,
+      gen2_hours REAL NOT NULL DEFAULT 0,
+      gen3_hours REAL NOT NULL DEFAULT 0,
+      gen4_hours REAL NOT NULL DEFAULT 0,
+      notes TEXT,
+      FOREIGN KEY (farm_id) REFERENCES farms(id)
+    );
+
     CREATE TABLE IF NOT EXISTS feed_deliveries (
       id TEXT PRIMARY KEY NOT NULL,
       flock_id TEXT,
@@ -183,6 +195,7 @@ export function migrateDb() {
     CREATE INDEX IF NOT EXISTS idx_fuc_farm ON follow_up_completions(farm_id);
     CREATE INDEX IF NOT EXISTS idx_issues_farm ON farm_issues(farm_id);
     CREATE INDEX IF NOT EXISTS idx_litter_farm ON litter_events(farm_id);
+    CREATE INDEX IF NOT EXISTS idx_generator_farm ON generator_logs(farm_id);
     CREATE INDEX IF NOT EXISTS idx_feed_flock ON feed_deliveries(flock_id);
   `);
 

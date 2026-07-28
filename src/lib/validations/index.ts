@@ -277,3 +277,13 @@ export const lastFeedOrderSchema = z.object({
     .array(lastFeedOrderHouseInventorySchema)
     .min(1, "Add inventory for at least one house"),
 });
+
+export const generatorLogSchema = z.object({
+  farmId: z.string().min(1),
+  logDate: z.string().min(1, "Date is required"),
+  gen1Hours: z.coerce.number().min(0, "Gen 1 hours cannot be negative"),
+  gen2Hours: z.coerce.number().min(0, "Gen 2 hours cannot be negative"),
+  gen3Hours: z.coerce.number().min(0, "Gen 3 hours cannot be negative"),
+  gen4Hours: z.coerce.number().min(0, "Gen 4 hours cannot be negative"),
+  notes: z.string().optional().nullable(),
+});

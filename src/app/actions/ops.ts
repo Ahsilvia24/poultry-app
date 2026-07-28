@@ -11,6 +11,7 @@ import {
   farmVisitSchema,
   feedDeliverySchema,
   flockSettlementSchema,
+  generatorLogSchema,
   litterEventSchema,
   performanceSchema,
   settingsSchema,
@@ -639,5 +640,81 @@ export async function updateSettingsAction(formData: FormData) {
 
   revalidatePath("/settings");
   revalidatePath("/");
+  return { success: true };
+}
+
+export async function createGeneratorLogAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = generatorLogSchema.safeParse({
+    farmId: formData.get("farmId"),
+    logDate: formData.get("logDate"),
+    gen1Hours: formData.get("gen1Hours"),
+    gen2Hours: formData.get("gen2Hours"),
+    gen3Hours: formData.get("gen3Hours"),
+    gen4Hours: formData.get("gen4Hours"),
+    notes: emptyToNull(formData.get("notes")),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid generator log" };
+  await assertFarmAccess(parsed.data.farmId, user.id!);
+
+  await prisma.generatorLog.create({
+    data: {
+      farmId: parsed.data.farmId,
+      logDate: parseDateKey(parsed.data.logDate),
+      gen1Hours: parsed.data.gen1Hours,
+      gen2Hours: parsed.data.gen2Hours,
+      gen3Hours: parsed.data.gen3Hours,
+      gen4Hours: parsed.data.gen4Hours,
+      notes: parsed.data.notes,
+    },
+  });
+
+  revalidatePath(`/farms/${parsed.data.farmId}`);
+  return { success: true };
+}
+
+export async function updateGeneratorLogAction(logId: string, formData: FormData) {
+  const user = await requireUser();
+  const existing = await prisma.generatorLog.findFirst({
+    where: { id: logId, farm: { userId: user.id!, deletedAt: null } },
+  });
+  if (!existing) return { error: "Generator log not found" };
+
+  const parsed = generatorLogSchema.safeParse({
+    farmId: existing.farmId,
+    logDate: formData.get("logDate"),
+    gen1Hours: formData.get("gen1Hours"),
+    gen2Hours: formData.get("gen2Hours"),
+    gen3Hours: formData.get("gen3Hours"),
+    gen4Hours: formData.get("gen4Hours"),
+    notes: emptyToNull(formData.get("notes")),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid generator log" };
+
+  await prisma.generatorLog.update({
+    where: { id: logId },
+    data: {
+      logDate: parseDateKey(parsed.data.logDate),
+      gen1Hours: parsed.data.gen1Hours,
+      gen2Hours: parsed.data.gen2Hours,
+      gen3Hours: parsed.data.gen3Hours,
+      gen4Hours: parsed.data.gen4Hours,
+      notes: parsed.data.notes,
+    },
+  });
+
+  revalidatePath(`/farms/${existing.farmId}`);
+  return { success: true };
+}
+
+export async function deleteGeneratorLogAction(logId: string) {
+  const user = await requireUser();
+  const existing = await prisma.generatorLog.findFirst({
+    where: { id: logId, farm: { userId: user.id!, deletedAt: null } },
+  });
+  if (!existing) return { error: "Generator log not found" };
+
+  await prisma.generatorLog.delete({ where: { id: logId } });
+  revalidatePath(`/farms/${existing.farmId}`);
   return { success: true };
 }

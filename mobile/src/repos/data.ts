@@ -836,6 +836,27 @@ export function getFarmDetail(farmId: string) {
       description: issue.description,
       correctiveAction: issue.corrective_action,
     })),
+    generatorLogs: db.getAllSync<{
+      id: string;
+      log_date: string;
+      gen1_hours: number;
+      gen2_hours: number;
+      gen3_hours: number;
+      gen4_hours: number;
+      notes: string | null;
+    }>(
+      `SELECT * FROM generator_logs WHERE farm_id = ?
+       ORDER BY log_date DESC, id DESC LIMIT 20`,
+      [farmId],
+    ).map((log) => ({
+      id: log.id,
+      logDate: log.log_date,
+      gen1Hours: log.gen1_hours,
+      gen2Hours: log.gen2_hours,
+      gen3Hours: log.gen3_hours,
+      gen4Hours: log.gen4_hours,
+      notes: log.notes,
+    })),
     litterEvents: db.getAllSync<{
       id: string;
       event_date: string;
@@ -2642,6 +2663,85 @@ export function deleteIssue(farmId: string, issueId: string) {
   );
   if (!existing) throw new Error("Issue not found");
   db.runSync("DELETE FROM farm_issues WHERE id = ? AND farm_id = ?", [issueId, farmId]);
+  return { success: true as const };
+}
+
+/* ─── Generator logs ───────────────────────────────────────────────────── */
+
+type GeneratorLogInput = {
+  farmId: string;
+  logDate: string;
+  gen1Hours: number;
+  gen2Hours: number;
+  gen3Hours: number;
+  gen4Hours: number;
+  notes?: string | null;
+};
+
+export function createGeneratorLog(input: GeneratorLogInput) {
+  const db = getDb();
+  if (!input.logDate?.trim()) throw new Error("Date is required");
+  const gens = [input.gen1Hours, input.gen2Hours, input.gen3Hours, input.gen4Hours];
+  for (const h of gens) {
+    if (!Number.isFinite(h) || h < 0) throw new Error("Generator hours must be 0 or greater");
+  }
+  const id = newId("genlog");
+  db.runSync(
+    `INSERT INTO generator_logs
+      (id, farm_id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      input.farmId,
+      input.logDate.trim(),
+      input.gen1Hours,
+      input.gen2Hours,
+      input.gen3Hours,
+      input.gen4Hours,
+      input.notes?.trim() || null,
+    ],
+  );
+  return { id };
+}
+
+export function updateGeneratorLog(farmId: string, logId: string, input: Omit<GeneratorLogInput, "farmId">) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM generator_logs WHERE id = ? AND farm_id = ?",
+    [logId, farmId],
+  );
+  if (!existing) throw new Error("Generator log not found");
+  if (!input.logDate?.trim()) throw new Error("Date is required");
+  const gens = [input.gen1Hours, input.gen2Hours, input.gen3Hours, input.gen4Hours];
+  for (const h of gens) {
+    if (!Number.isFinite(h) || h < 0) throw new Error("Generator hours must be 0 or greater");
+  }
+  db.runSync(
+    `UPDATE generator_logs
+     SET log_date = ?, gen1_hours = ?, gen2_hours = ?, gen3_hours = ?, gen4_hours = ?, notes = ?
+     WHERE id = ? AND farm_id = ?`,
+    [
+      input.logDate.trim(),
+      input.gen1Hours,
+      input.gen2Hours,
+      input.gen3Hours,
+      input.gen4Hours,
+      input.notes?.trim() || null,
+      logId,
+      farmId,
+    ],
+  );
+  return { success: true as const };
+}
+
+export function deleteGeneratorLog(farmId: string, logId: string) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM generator_logs WHERE id = ? AND farm_id = ?",
+    [logId, farmId],
+  );
+  if (!existing) throw new Error("Generator log not found");
+  db.runSync("DELETE FROM generator_logs WHERE id = ? AND farm_id = ?", [logId, farmId]);
   return { success: true as const };
 }
 
