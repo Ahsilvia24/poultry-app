@@ -318,6 +318,10 @@ export default function MortalityScreen() {
       if (houseFlockIdParam && isValid(houseFlockIdParam)) {
         jumpOnLoadRef.current = true;
         setHouseFlockId(houseFlockIdParam);
+      } else if (farmIdParam && !houseFlockIdParam) {
+        // Farm-level entry: pick a house explicitly
+        jumpOnLoadRef.current = false;
+        setHouseFlockId("");
       } else if (
         ctx.houseFlockId &&
         ctx.farmId === nextId &&
@@ -325,12 +329,8 @@ export default function MortalityScreen() {
       ) {
         jumpOnLoadRef.current = true;
         setHouseFlockId(ctx.houseFlockId);
-      } else if (houseFlockIdParam) {
-        // Invalid house param — leave house unselected
-        jumpOnLoadRef.current = false;
-        setHouseFlockId("");
       } else {
-        // Farm-only navigation / farm tab: do not auto-select a house
+        // Do not auto-select a house
         jumpOnLoadRef.current = false;
         setHouseFlockId((prev) => (isValid(prev) ? prev : ""));
       }
