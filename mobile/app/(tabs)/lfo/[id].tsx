@@ -337,7 +337,8 @@ export default function EditLfoScreen() {
         style: "destructive",
         onPress: () => {
           deleteLfo(id);
-          router.replace("/(tabs)/lfo");
+          if (router.canGoBack()) router.back();
+          else router.replace("/(tabs)/lfo");
         },
       },
     ]);
@@ -379,7 +380,13 @@ export default function EditLfoScreen() {
           {error ? (
             <Card>
               <Text style={{ color: colors.danger, fontWeight: "700" }}>{error}</Text>
-              <PrimaryButton label="Back to LFOs" onPress={() => router.replace("/(tabs)/lfo")} />
+              <PrimaryButton
+                label="Back to LFOs"
+                onPress={() => {
+                  if (router.canGoBack()) router.back();
+                  else router.replace("/(tabs)/lfo");
+                }}
+              />
             </Card>
           ) : null}
 

@@ -389,12 +389,21 @@ export default function DashboardScreen() {
                           {" "}
                           ({farm.houseCount})
                         </Text>
-                        {farm.flockAgeDays != null ? (
-                          <Text style={{ fontWeight: "600", color: colors.muted }}>
-                            {" "}
-                            · {farm.flockAgeDays}d
-                          </Text>
-                        ) : null}
+                        {(() => {
+                          const ages =
+                            farm.flockAgesDays?.length
+                              ? farm.flockAgesDays
+                              : farm.flockAgeDays != null
+                                ? [farm.flockAgeDays]
+                                : [];
+                          if (!ages.length) return null;
+                          return (
+                            <Text style={{ fontWeight: "600", color: colors.muted }}>
+                              {" "}
+                              · {ages.map((a) => `${a}d`).join(" · ")}
+                            </Text>
+                          );
+                        })()}
                       </Text>
                       <Text style={styles.muted}>{farm.growerName}</Text>
                       {farm.phoneNumber ? (

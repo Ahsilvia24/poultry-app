@@ -161,6 +161,12 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
       let remaining = 0;
       const placementDateSet = new Set<string>();
       const catchDateSet = new Set<string>();
+      // Always include every ACTIVE flock so multi-flock / pre-place ages show on the tile
+      // (even when another flock already has houses).
+      for (const fl of flocks) {
+        placementDateSet.add(fl.placement_date);
+        catchDateSet.add(fl.projected_catch_date ?? addDaysKey(fl.placement_date, 52));
+      }
       if (flocks.length > 0) {
         const hfs = db.getAllSync<{
           id: string;
@@ -194,16 +200,10 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
           if (place) placementDateSet.add(place);
           if (catchDate) catchDateSet.add(catchDate);
         }
-        // Flocks with no houses yet still contribute their schedule dates.
-        if (hfs.length === 0) {
-          for (const fl of flocks) {
-            placementDateSet.add(fl.placement_date);
-            catchDateSet.add(fl.projected_catch_date ?? addDaysKey(fl.placement_date, 52));
-          }
-        }
       }
       const placementDates = Array.from(placementDateSet).sort();
       const catchDates = Array.from(catchDateSet).sort();
+      // One age per distinct placement (flock + staggered house dates), including negatives.
       const flockAgesDays = Array.from(
         new Set(placementDates.map((d) => daysSincePlacement(d, today))),
       ).sort((a, b) => a - b);
@@ -312,6 +312,7 @@ export function getDashboard() {
         phoneNumber: farm.phoneNumber,
         houseCount: farm.numberOfHouses,
         flockAgeDays: null,
+        flockAgesDays: [] as number[],
         placementDate: null as string | null,
         birdsPlaced: 0,
         projectedHeadCount: null,
@@ -404,7 +405,6 @@ export function getDashboard() {
 
     if (missing) farmsMissingToday += 1;
 
-    const flockAgeDays = daysSincePlacement(flock.placement_date, today);
     const projectedHeadCount = hasProjection ? projectedHeadSum : null;
     const projectedMortality = hasProjection ? projectedMortSum : null;
 
@@ -462,8 +462,9 @@ export function getDashboard() {
       growerName: farm.growerName,
       phoneNumber: farm.phoneNumber,
       houseCount: hfs.length || farm.numberOfHouses,
-      flockAgeDays,
-      placementDate: flock.placement_date,
+      flockAgeDays: farm.flockAgeDays,
+      flockAgesDays: farm.flockAgesDays ?? (farm.flockAgeDays != null ? [farm.flockAgeDays] : []),
+      placementDate: farm.placementDate ?? flock.placement_date,
       birdsPlaced: farmPlaced,
       projectedHeadCount,
       projectedMortality,
@@ -693,12 +694,13 @@ export function getFarmDetail(farmId: string) {
   ).sort();
 
   const flockAgesDays = Array.from(
-    new Set(
-      houses
+    new Set([
+      ...activeFlocksRaw.map((f) => daysSincePlacement(f.placement_date, today)),
+      ...houses
         .filter((h) => h.placedBirdCount != null)
         .map((h) => h.ageDays)
         .filter((a): a is number => a != null),
-    ),
+    ]),
   ).sort((a, b) => a - b);
 
   const flockAgeDays =

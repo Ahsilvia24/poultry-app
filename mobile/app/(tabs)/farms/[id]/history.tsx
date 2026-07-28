@@ -216,9 +216,10 @@ export default function FarmHistoryScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       >
         <Pressable
-          onPress={() =>
-            router.replace({ pathname: "/(tabs)/farms/[id]", params: { id: farmId } })
-          }
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace({ pathname: "/(tabs)/farms/[id]", params: { id: farmId } });
+          }}
           style={{ marginBottom: 8 }}
         >
           <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back to farm</Text>

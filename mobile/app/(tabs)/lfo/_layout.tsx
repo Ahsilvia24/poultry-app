@@ -7,6 +7,7 @@ export default function LfoLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.bg },
+        animation: "slide_from_right",
       }}
     >
       <Stack.Screen name="index" />
