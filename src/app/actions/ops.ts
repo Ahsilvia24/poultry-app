@@ -3,9 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { poundsToTons } from "@/lib/feed/calculations";
+import {
+  isGenHourKey,
+  logHasAnyGeneratorReading,
+  parseOptionalGeneratorHours,
+  type GenHourKey,
+} from "@/lib/generator/format";
 import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
-import { parseDateKey } from "@/lib/visits/schedule";
+import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
 import {
   farmIssueSchema,
   farmVisitSchema,
@@ -648,22 +654,32 @@ export async function createGeneratorLogAction(formData: FormData) {
   const parsed = generatorLogSchema.safeParse({
     farmId: formData.get("farmId"),
     logDate: formData.get("logDate"),
-    gen1Hours: formData.get("gen1Hours") || 0,
-    gen2Hours: formData.get("gen2Hours") || 0,
-    gen3Hours: formData.get("gen3Hours") || 0,
-    gen4Hours: formData.get("gen4Hours") || 0,
+    gen1Hours: formData.get("gen1Hours"),
+    gen2Hours: formData.get("gen2Hours"),
+    gen3Hours: formData.get("gen3Hours"),
+    gen4Hours: formData.get("gen4Hours"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid generator log" };
   await assertFarmAccess(parsed.data.farmId, user.id!);
+
+  const hours = {
+    gen1Hours: parsed.data.gen1Hours,
+    gen2Hours: parsed.data.gen2Hours,
+    gen3Hours: parsed.data.gen3Hours,
+    gen4Hours: parsed.data.gen4Hours,
+  };
+  if (!logHasAnyGeneratorReading(hours)) {
+    return { error: "Enter hours for at least one generator" };
+  }
 
   await prisma.generatorLog.create({
     data: {
       farmId: parsed.data.farmId,
       logDate: parseDateKey(parsed.data.logDate),
-      gen1Hours: parsed.data.gen1Hours,
-      gen2Hours: parsed.data.gen2Hours,
-      gen3Hours: parsed.data.gen3Hours,
-      gen4Hours: parsed.data.gen4Hours,
+      gen1Hours: hours.gen1Hours,
+      gen2Hours: hours.gen2Hours,
+      gen3Hours: hours.gen3Hours,
+      gen4Hours: hours.gen4Hours,
       notes: null,
     },
   });
@@ -685,6 +701,34 @@ export async function createGeneratorLogAction(formData: FormData) {
   return { success: true };
 }
 
+async function clearGeneratorHourOnLog(
+  log: {
+    id: string;
+    farmId: string;
+    gen1Hours: number | null;
+    gen2Hours: number | null;
+    gen3Hours: number | null;
+    gen4Hours: number | null;
+  },
+  hourKey: GenHourKey,
+) {
+  const next = {
+    gen1Hours: log.gen1Hours,
+    gen2Hours: log.gen2Hours,
+    gen3Hours: log.gen3Hours,
+    gen4Hours: log.gen4Hours,
+    [hourKey]: null,
+  };
+  if (!logHasAnyGeneratorReading(next)) {
+    await prisma.generatorLog.delete({ where: { id: log.id } });
+    return;
+  }
+  await prisma.generatorLog.update({
+    where: { id: log.id },
+    data: { [hourKey]: null, notes: null },
+  });
+}
+
 export async function updateGeneratorLogAction(logId: string, formData: FormData) {
   const user = await requireUser();
   const existing = await prisma.generatorLog.findFirst({
@@ -692,24 +736,93 @@ export async function updateGeneratorLogAction(logId: string, formData: FormData
   });
   if (!existing) return { error: "Generator log not found" };
 
+  const onlyGenRaw = formData.get("onlyGen");
+  if (isGenHourKey(onlyGenRaw)) {
+    const logDateRaw = String(formData.get("logDate") ?? "").trim();
+    if (!logDateRaw) return { error: "Date is required" };
+    let hours: number | null;
+    try {
+      hours = parseOptionalGeneratorHours(formData.get(onlyGenRaw));
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Invalid generator hours" };
+    }
+    if (hours == null) {
+      await clearGeneratorHourOnLog(existing, onlyGenRaw);
+      revalidatePath(`/farms/${existing.farmId}`);
+      return { success: true };
+    }
+
+    const existingDateKey = dateKeyFromDb(existing.logDate);
+    if (existingDateKey === logDateRaw) {
+      await prisma.generatorLog.update({
+        where: { id: logId },
+        data: { [onlyGenRaw]: hours, notes: null },
+      });
+      revalidatePath(`/farms/${existing.farmId}`);
+      return { success: true };
+    }
+
+    // Date changed: move only this generator reading to the new date.
+    await clearGeneratorHourOnLog(existing, onlyGenRaw);
+    const target = await prisma.generatorLog.findFirst({
+      where: {
+        farmId: existing.farmId,
+        logDate: parseDateKey(logDateRaw),
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    });
+    if (target) {
+      await prisma.generatorLog.update({
+        where: { id: target.id },
+        data: { [onlyGenRaw]: hours, notes: null },
+      });
+    } else {
+      await prisma.generatorLog.create({
+        data: {
+          farmId: existing.farmId,
+          logDate: parseDateKey(logDateRaw),
+          gen1Hours: onlyGenRaw === "gen1Hours" ? hours : null,
+          gen2Hours: onlyGenRaw === "gen2Hours" ? hours : null,
+          gen3Hours: onlyGenRaw === "gen3Hours" ? hours : null,
+          gen4Hours: onlyGenRaw === "gen4Hours" ? hours : null,
+          notes: null,
+        },
+      });
+    }
+    revalidatePath(`/farms/${existing.farmId}`);
+    return { success: true };
+  }
+
   const parsed = generatorLogSchema.safeParse({
     farmId: existing.farmId,
     logDate: formData.get("logDate"),
-    gen1Hours: formData.get("gen1Hours") || 0,
-    gen2Hours: formData.get("gen2Hours") || 0,
-    gen3Hours: formData.get("gen3Hours") || 0,
-    gen4Hours: formData.get("gen4Hours") || 0,
+    gen1Hours: formData.get("gen1Hours"),
+    gen2Hours: formData.get("gen2Hours"),
+    gen3Hours: formData.get("gen3Hours"),
+    gen4Hours: formData.get("gen4Hours"),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid generator log" };
+
+  const hours = {
+    gen1Hours: parsed.data.gen1Hours,
+    gen2Hours: parsed.data.gen2Hours,
+    gen3Hours: parsed.data.gen3Hours,
+    gen4Hours: parsed.data.gen4Hours,
+  };
+  if (!logHasAnyGeneratorReading(hours)) {
+    await prisma.generatorLog.delete({ where: { id: logId } });
+    revalidatePath(`/farms/${existing.farmId}`);
+    return { success: true };
+  }
 
   await prisma.generatorLog.update({
     where: { id: logId },
     data: {
       logDate: parseDateKey(parsed.data.logDate),
-      gen1Hours: parsed.data.gen1Hours,
-      gen2Hours: parsed.data.gen2Hours,
-      gen3Hours: parsed.data.gen3Hours,
-      gen4Hours: parsed.data.gen4Hours,
+      gen1Hours: hours.gen1Hours,
+      gen2Hours: hours.gen2Hours,
+      gen3Hours: hours.gen3Hours,
+      gen4Hours: hours.gen4Hours,
       notes: null,
     },
   });
@@ -718,14 +831,19 @@ export async function updateGeneratorLogAction(logId: string, formData: FormData
   return { success: true };
 }
 
-export async function deleteGeneratorLogAction(logId: string) {
+/** Delete one generator's reading on a log date (other gens on that date stay). */
+export async function deleteGeneratorLogAction(logId: string, hourKey?: GenHourKey) {
   const user = await requireUser();
   const existing = await prisma.generatorLog.findFirst({
     where: { id: logId, farm: { userId: user.id!, deletedAt: null } },
   });
   if (!existing) return { error: "Generator log not found" };
 
-  await prisma.generatorLog.delete({ where: { id: logId } });
+  if (hourKey && isGenHourKey(hourKey)) {
+    await clearGeneratorHourOnLog(existing, hourKey);
+  } else {
+    await prisma.generatorLog.delete({ where: { id: logId } });
+  }
   revalidatePath(`/farms/${existing.farmId}`);
   return { success: true };
 }

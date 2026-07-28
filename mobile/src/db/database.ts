@@ -167,10 +167,10 @@ export function migrateDb() {
       id TEXT PRIMARY KEY NOT NULL,
       farm_id TEXT NOT NULL,
       log_date TEXT NOT NULL,
-      gen1_hours REAL NOT NULL DEFAULT 0,
-      gen2_hours REAL NOT NULL DEFAULT 0,
-      gen3_hours REAL NOT NULL DEFAULT 0,
-      gen4_hours REAL NOT NULL DEFAULT 0,
+      gen1_hours REAL,
+      gen2_hours REAL,
+      gen3_hours REAL,
+      gen4_hours REAL,
       notes TEXT,
       FOREIGN KEY (farm_id) REFERENCES farms(id)
     );
@@ -236,6 +236,43 @@ export function migrateDb() {
   }
   if (!hfCols.some((c) => c.name === "catch_date")) {
     database.execSync("ALTER TABLE house_flocks ADD COLUMN catch_date TEXT");
+  }
+
+  // Allow clearing a single generator reading without deleting the whole date row.
+  const genLogCols = database.getAllSync<{ name: string; notnull: number }>(
+    "PRAGMA table_info(generator_logs)",
+  );
+  if (
+    genLogCols.length > 0 &&
+    genLogCols.some(
+      (c) =>
+        (c.name === "gen1_hours" ||
+          c.name === "gen2_hours" ||
+          c.name === "gen3_hours" ||
+          c.name === "gen4_hours") &&
+        c.notnull === 1,
+    )
+  ) {
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS generator_logs_nullable (
+        id TEXT PRIMARY KEY NOT NULL,
+        farm_id TEXT NOT NULL,
+        log_date TEXT NOT NULL,
+        gen1_hours REAL,
+        gen2_hours REAL,
+        gen3_hours REAL,
+        gen4_hours REAL,
+        notes TEXT,
+        FOREIGN KEY (farm_id) REFERENCES farms(id)
+      );
+      INSERT INTO generator_logs_nullable
+        (id, farm_id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours, notes)
+      SELECT id, farm_id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours, notes
+      FROM generator_logs;
+      DROP TABLE generator_logs;
+      ALTER TABLE generator_logs_nullable RENAME TO generator_logs;
+      CREATE INDEX IF NOT EXISTS idx_generator_farm ON generator_logs(farm_id);
+    `);
   }
 }
 

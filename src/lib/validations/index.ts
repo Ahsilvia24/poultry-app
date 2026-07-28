@@ -285,8 +285,20 @@ export const lastFeedOrderSchema = z.object({
 export const generatorLogSchema = z.object({
   farmId: z.string().min(1),
   logDate: z.string().min(1, "Date is required"),
-  gen1Hours: z.coerce.number().min(0, "Gen 1 hours cannot be negative").default(0),
-  gen2Hours: z.coerce.number().min(0, "Gen 2 hours cannot be negative").default(0),
-  gen3Hours: z.coerce.number().min(0, "Gen 3 hours cannot be negative").default(0),
-  gen4Hours: z.coerce.number().min(0, "Gen 4 hours cannot be negative").default(0),
+  gen1Hours: z.preprocess((v) => {
+    if (v === null || v === undefined || v === "") return null;
+    return v;
+  }, z.coerce.number().min(0, "Gen 1 hours cannot be negative").nullable()),
+  gen2Hours: z.preprocess((v) => {
+    if (v === null || v === undefined || v === "") return null;
+    return v;
+  }, z.coerce.number().min(0, "Gen 2 hours cannot be negative").nullable()),
+  gen3Hours: z.preprocess((v) => {
+    if (v === null || v === undefined || v === "") return null;
+    return v;
+  }, z.coerce.number().min(0, "Gen 3 hours cannot be negative").nullable()),
+  gen4Hours: z.preprocess((v) => {
+    if (v === null || v === undefined || v === "") return null;
+    return v;
+  }, z.coerce.number().min(0, "Gen 4 hours cannot be negative").nullable()),
 });

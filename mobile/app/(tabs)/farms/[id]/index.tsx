@@ -49,8 +49,9 @@ import {
 import {
   formatGeneratorChartsCopy,
   formatGeneratorHours,
-  generatorDeltas,
+  hoursDelta,
   GENERATOR_FIELD_DEFS,
+  type GenHourKey,
   type GeneratorHours,
 } from "../../../../src/lib/generator";
 import {
@@ -412,6 +413,7 @@ export default function FarmDetailScreen() {
   const [generatorSaving, setGeneratorSaving] = useState(false);
   const [generatorError, setGeneratorError] = useState<string | null>(null);
   const [generatorEditingId, setGeneratorEditingId] = useState<string | null>(null);
+  const [generatorEditingGen, setGeneratorEditingGen] = useState<GenHourKey | null>(null);
   const [generatorDraft, setGeneratorDraft] = useState({
     logDate: todayKey(),
     gen1Hours: "",
@@ -854,43 +856,49 @@ export default function FarmDetailScreen() {
     setGeneratorModalOpen(false);
     setGeneratorError(null);
     setGeneratorEditingId(null);
+    setGeneratorEditingGen(null);
     setGeneratorActiveField(null);
     setGeneratorReplaceOnType(false);
   }
 
-  function openGeneratorEditor(log?: {
-    id: string;
-    logDate: string;
-    gen1Hours: number;
-    gen2Hours: number;
-    gen3Hours: number;
-    gen4Hours: number;
-  }) {
+  function openGeneratorEditor(
+    log?: {
+      id: string;
+      logDate: string;
+      gen1Hours: number | null;
+      gen2Hours: number | null;
+      gen3Hours: number | null;
+      gen4Hours: number | null;
+    },
+    onlyGen?: GenHourKey,
+  ) {
     setGeneratorError(null);
     setGeneratorActiveField(null);
     setGeneratorReplaceOnType(false);
+    setGeneratorEditingGen(onlyGen ?? null);
     if (log) {
       setGeneratorEditingId(log.id);
       setGeneratorDraft({
         logDate: log.logDate,
-        gen1Hours: String(log.gen1Hours),
-        gen2Hours: String(log.gen2Hours),
-        gen3Hours: String(log.gen3Hours),
-        gen4Hours: String(log.gen4Hours),
+        gen1Hours: log.gen1Hours == null ? "" : String(log.gen1Hours),
+        gen2Hours: log.gen2Hours == null ? "" : String(log.gen2Hours),
+        gen3Hours: log.gen3Hours == null ? "" : String(log.gen3Hours),
+        gen4Hours: log.gen4Hours == null ? "" : String(log.gen4Hours),
       });
     } else {
       const latest = data?.generatorLogs?.[0];
       setGeneratorEditingId(null);
       setGeneratorDraft({
         logDate: todayKey(),
-        gen1Hours: latest ? String(latest.gen1Hours) : "",
-        gen2Hours: latest ? String(latest.gen2Hours) : "",
-        gen3Hours: latest ? String(latest.gen3Hours) : "",
-        gen4Hours: latest ? String(latest.gen4Hours) : "",
+        gen1Hours: latest?.gen1Hours == null ? "" : String(latest.gen1Hours),
+        gen2Hours: latest?.gen2Hours == null ? "" : String(latest.gen2Hours),
+        gen3Hours: latest?.gen3Hours == null ? "" : String(latest.gen3Hours),
+        gen4Hours: latest?.gen4Hours == null ? "" : String(latest.gen4Hours),
       });
     }
     setGeneratorModalOpen(true);
-    setTimeout(() => focusGeneratorField("gen1Hours"), 120);
+    const focusField = onlyGen ?? "gen1Hours";
+    setTimeout(() => focusGeneratorField(focusField), 120);
   }
 
   function focusGeneratorField(field: GeneratorNumField) {
@@ -936,7 +944,11 @@ export default function FarmDetailScreen() {
 
   function onGeneratorEnter() {
     if (!generatorActiveField) return;
-    const order = GENERATOR_FIELD_DEFS.map((f) => f.hourKey) as GeneratorNumField[];
+    const order = (
+      generatorEditingGen
+        ? GENERATOR_FIELD_DEFS.filter((f) => f.hourKey === generatorEditingGen)
+        : GENERATOR_FIELD_DEFS
+    ).map((f) => f.hourKey) as GeneratorNumField[];
     const idx = order.indexOf(generatorActiveField);
     const next = idx >= 0 ? order[idx + 1] : undefined;
     if (next) focusGeneratorField(next);
@@ -1623,33 +1635,45 @@ export default function FarmDetailScreen() {
               }}
             >
               <Text style={{ fontWeight: "800", fontSize: 16 }}>Generator log</Text>
-              {(data.generatorLogs ?? []).length > 0 ? (
+              {(data.generatorLogs ?? []).some(
+                (log) =>
+                  log.gen1Hours != null ||
+                  log.gen2Hours != null ||
+                  log.gen3Hours != null ||
+                  log.gen4Hours != null,
+              ) ? (
                 <Pressable
                   onPress={async () => {
                     const allLogs = data.generatorLogs ?? [];
-                    const logs = allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY);
                     const text = formatGeneratorChartsCopy(
-                      logs.map((log, index) => {
-                        const previous = allLogs[index + 1] ?? null;
+                      allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY).map((log) => {
                         const hours: GeneratorHours = {
                           gen1Hours: log.gen1Hours,
                           gen2Hours: log.gen2Hours,
                           gen3Hours: log.gen3Hours,
                           gen4Hours: log.gen4Hours,
                         };
-                        const prevHours = previous
-                          ? {
-                              gen1Hours: previous.gen1Hours,
-                              gen2Hours: previous.gen2Hours,
-                              gen3Hours: previous.gen3Hours,
-                              gen4Hours: previous.gen4Hours,
+                        const priorFor = (hourKey: GenHourKey) => {
+                          let seen = false;
+                          for (const candidate of allLogs) {
+                            if (!seen) {
+                              if (candidate.id === log.id) seen = true;
+                              continue;
                             }
-                          : null;
+                            if (candidate[hourKey] != null) return candidate[hourKey];
+                          }
+                          return null;
+                        };
                         const [y, m, d] = log.logDate.split("-").map(Number);
                         return {
                           dateLabel: `${m}-${d}-${y}`,
                           hours,
-                          deltas: generatorDeltas(hours, prevHours),
+                          deltas: {
+                            gen1: hoursDelta(log.gen1Hours, priorFor("gen1Hours")),
+                            gen2: hoursDelta(log.gen2Hours, priorFor("gen2Hours")),
+                            gen3: hoursDelta(log.gen3Hours, priorFor("gen3Hours")),
+                            gen4: hoursDelta(log.gen4Hours, priorFor("gen4Hours")),
+                          },
                         };
                       }),
                     );
@@ -1668,36 +1692,29 @@ export default function FarmDetailScreen() {
                 </Pressable>
               ) : null}
             </View>
-            {(data.generatorLogs ?? []).length === 0 ? (
+            {(data.generatorLogs ?? []).every(
+              (log) =>
+                log.gen1Hours == null &&
+                log.gen2Hours == null &&
+                log.gen3Hours == null &&
+                log.gen4Hours == null,
+            ) ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
               <>
                 {GENERATOR_FIELD_DEFS.map((gen) => {
                   const allLogs = data.generatorLogs ?? [];
-                  const logs = allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY);
-                  const rows: GeneratorChartRow[] = logs.map((log, index) => {
-                    const previous = allLogs[index + 1] ?? null;
-                    const hours: GeneratorHours = {
-                      gen1Hours: log.gen1Hours,
-                      gen2Hours: log.gen2Hours,
-                      gen3Hours: log.gen3Hours,
-                      gen4Hours: log.gen4Hours,
-                    };
-                    const prevHours = previous
-                      ? {
-                          gen1Hours: previous.gen1Hours,
-                          gen2Hours: previous.gen2Hours,
-                          gen3Hours: previous.gen3Hours,
-                          gen4Hours: previous.gen4Hours,
-                        }
-                      : null;
-                    const deltas = generatorDeltas(hours, prevHours);
+                  const genLogs = allLogs
+                    .filter((log) => log[gen.hourKey] != null)
+                    .slice(0, MAX_GENERATOR_LOGS_DISPLAY);
+                  const rows: GeneratorChartRow[] = genLogs.map((log, index) => {
+                    const previous = genLogs[index + 1] ?? null;
                     const [y, m, d] = log.logDate.split("-").map(Number);
                     return {
                       id: log.id,
                       dateLabel: `${m}-${d}-${y}`,
-                      hours: log[gen.hourKey],
-                      exercised: deltas[gen.deltaKey],
+                      hours: log[gen.hourKey] as number,
+                      exercised: hoursDelta(log[gen.hourKey], previous?.[gen.hourKey]),
                     };
                   });
                   return (
@@ -1707,20 +1724,24 @@ export default function FarmDetailScreen() {
                       rows={rows}
                       onEdit={(id) => {
                         const log = allLogs.find((l) => l.id === id);
-                        if (log) openGeneratorEditor(log);
+                        if (log) openGeneratorEditor(log, gen.hourKey);
                       }}
                       onDelete={(id) =>
-                        Alert.alert("Delete generator log?", "This cannot be undone.", [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "Delete",
-                            style: "destructive",
-                            onPress: () => {
-                              deleteGeneratorLog(farm.id, id);
-                              load();
+                        Alert.alert(
+                          `Delete ${gen.label} entry?`,
+                          "Only this generator reading will be removed. Other generators on this date stay.",
+                          [
+                            { text: "Cancel", style: "cancel" },
+                            {
+                              text: "Delete",
+                              style: "destructive",
+                              onPress: () => {
+                                deleteGeneratorLog(farm.id, id, gen.hourKey);
+                                load();
+                              },
                             },
-                          },
-                        ])
+                          ],
+                        )
                       }
                     />
                   );
@@ -2585,7 +2606,11 @@ export default function FarmDetailScreen() {
               scrollEventThrottle={16}
             >
               <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                {generatorEditingId ? "Edit generators" : "Log generators"}
+                {generatorEditingId
+                  ? generatorEditingGen
+                    ? `Edit ${GENERATOR_FIELD_DEFS.find((f) => f.hourKey === generatorEditingGen)?.label ?? "generator"}`
+                    : "Edit generators"
+                  : "Log generators"}
               </Text>
               {generatorError ? (
                 <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
@@ -2606,7 +2631,10 @@ export default function FarmDetailScreen() {
                   }
                 />
               </View>
-              {GENERATOR_FIELD_DEFS.map((f) => (
+              {(generatorEditingGen
+                ? GENERATOR_FIELD_DEFS.filter((f) => f.hourKey === generatorEditingGen)
+                : GENERATOR_FIELD_DEFS
+              ).map((f) => (
                 <HouseNumFieldButton
                   key={f.hourKey}
                   label={`${f.label} hours`}
@@ -2624,15 +2652,27 @@ export default function FarmDetailScreen() {
                     setGeneratorSaving(true);
                     setGeneratorError(null);
                     try {
+                      const parseHours = (raw: string) => {
+                        const trimmed = raw.trim();
+                        if (trimmed === "") return null;
+                        const n = Number(trimmed);
+                        if (!Number.isFinite(n) || n < 0) {
+                          throw new Error("Generator hours must be 0 or greater");
+                        }
+                        return n;
+                      };
                       const payload = {
                         logDate: generatorDraft.logDate.trim(),
-                        gen1Hours: Number(generatorDraft.gen1Hours || 0),
-                        gen2Hours: Number(generatorDraft.gen2Hours || 0),
-                        gen3Hours: Number(generatorDraft.gen3Hours || 0),
-                        gen4Hours: Number(generatorDraft.gen4Hours || 0),
+                        gen1Hours: parseHours(generatorDraft.gen1Hours),
+                        gen2Hours: parseHours(generatorDraft.gen2Hours),
+                        gen3Hours: parseHours(generatorDraft.gen3Hours),
+                        gen4Hours: parseHours(generatorDraft.gen4Hours),
                       };
                       if (generatorEditingId) {
-                        updateGeneratorLog(farm.id, generatorEditingId, payload);
+                        updateGeneratorLog(farm.id, generatorEditingId, {
+                          ...payload,
+                          onlyGen: generatorEditingGen ?? undefined,
+                        });
                       } else {
                         createGeneratorLog({
                           farmId: farm.id,
@@ -2641,6 +2681,7 @@ export default function FarmDetailScreen() {
                       }
                       setGeneratorModalOpen(false);
                       setGeneratorEditingId(null);
+                      setGeneratorEditingGen(null);
                       setGeneratorActiveField(null);
                       setGeneratorReplaceOnType(false);
                       load();
