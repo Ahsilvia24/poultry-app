@@ -318,36 +318,47 @@ export function FarmGeneratorLogSection({
             );
           })}
         </ul>
+      </Card>
 
-        {formOpen ? (
-          <GeneratorLogForm
-            farmId={farmId}
-            previous={
-              sorted[0]
-                ? {
-                    gen1Hours: sorted[0].gen1Hours,
-                    gen2Hours: sorted[0].gen2Hours,
-                    gen3Hours: sorted[0].gen3Hours,
-                    gen4Hours: sorted[0].gen4Hours,
-                  }
-                : null
-            }
-            onSuccess={afterSaved}
-            onCancel={() => setFormOpen(false)}
-          />
-        ) : (
+      {!formOpen ? (
+        <button
+          type="button"
+          onClick={() => {
+            setEditingId(null);
+            setFormOpen(true);
+          }}
+          className="mt-3 text-sm text-emerald-800 hover:underline"
+        >
+          Log generators
+        </button>
+      ) : (
+        <div className="mt-3">
           <button
             type="button"
-            className="mt-4 text-sm font-semibold text-emerald-800 hover:underline"
-            onClick={() => {
-              setEditingId(null);
-              setFormOpen(true);
-            }}
+            onClick={() => setFormOpen(false)}
+            className="text-sm text-emerald-800 hover:underline"
           >
             Log generators
           </button>
-        )}
-      </Card>
+          <Card className="mt-3">
+            <GeneratorLogForm
+              farmId={farmId}
+              previous={
+                sorted[0]
+                  ? {
+                      gen1Hours: sorted[0].gen1Hours,
+                      gen2Hours: sorted[0].gen2Hours,
+                      gen3Hours: sorted[0].gen3Hours,
+                      gen4Hours: sorted[0].gen4Hours,
+                    }
+                  : null
+              }
+              onSuccess={afterSaved}
+              onCancel={() => setFormOpen(false)}
+            />
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
