@@ -10,10 +10,10 @@ import {
 import { DeleteRecordButton, EditRecordButton } from "@/components/DeleteRecordButton";
 import { Button, Card, Input, Label } from "@/components/ui";
 import {
-  formatGeneratorCopyLine,
   formatGeneratorHours,
   formatGeneratorLogCopy,
   generatorDeltas,
+  type GeneratorDeltas,
   type GeneratorHours,
 } from "@/lib/generator/format";
 
@@ -25,6 +25,13 @@ export type GeneratorLogRow = {
   gen3Hours: number;
   gen4Hours: number;
 };
+
+const GEN_ROWS = [
+  { key: "gen1", label: "Gen 1", hourKey: "gen1Hours" as const, deltaKey: "gen1" as const },
+  { key: "gen2", label: "Gen 2", hourKey: "gen2Hours" as const, deltaKey: "gen2" as const },
+  { key: "gen3", label: "Gen 3", hourKey: "gen3Hours" as const, deltaKey: "gen3" as const },
+  { key: "gen4", label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
+];
 
 function generatorsHashActive() {
   return typeof window !== "undefined" && window.location.hash === "#generators";
@@ -48,6 +55,54 @@ function CopyLogButton({ text }: { text: string }) {
     >
       {copied ? "Copied" : "Copy"}
     </button>
+  );
+}
+
+function GeneratorHoursChart({
+  dateLabel,
+  hours,
+  deltas,
+}: {
+  dateLabel: string;
+  hours: GeneratorHours;
+  deltas: GeneratorDeltas;
+}) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-stone-200 bg-white text-sm">
+      <div className="grid grid-cols-[minmax(5.5rem,auto)_1fr_1fr] border-b border-stone-200 bg-stone-100 text-stone-700">
+        <div className="px-3 py-2 font-semibold">Date</div>
+        <div className="border-l border-stone-200 px-3 py-2 font-semibold">Hours</div>
+        <div className="border-l border-stone-200 px-3 py-2 font-semibold">Time exercised</div>
+      </div>
+      <div className="grid grid-cols-[minmax(5.5rem,auto)_1fr_1fr]">
+        <div className="flex items-center px-3 py-2 font-semibold tabular-nums text-stone-900">
+          {dateLabel}
+        </div>
+        <div className="border-l border-stone-200">
+          {GEN_ROWS.map((row) => (
+            <div
+              key={row.key}
+              className="flex items-center justify-between gap-2 border-b border-stone-100 px-3 py-1.5 last:border-b-0"
+            >
+              <span className="text-stone-500">{row.label}</span>
+              <span className="font-semibold tabular-nums text-stone-900">
+                {formatGeneratorHours(hours[row.hourKey])}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="border-l border-stone-200">
+          {GEN_ROWS.map((row) => (
+            <div
+              key={row.key}
+              className="border-b border-stone-100 px-3 py-1.5 text-right font-semibold tabular-nums text-stone-900 last:border-b-0"
+            >
+              {formatGeneratorHours(deltas[row.deltaKey])}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -139,7 +194,7 @@ function GeneratorLogForm({
               className="placeholder:text-stone-400/70"
             />
             <p className="mt-1 text-xs text-stone-500">
-              Since last: {formatGeneratorHours(delta)}
+              Time exercised: {formatGeneratorHours(delta)}
             </p>
           </div>
         ))}
@@ -227,7 +282,7 @@ export function FarmGeneratorLogSection({
           </button>
         </div>
 
-        <ul className="mt-3 space-y-3 text-sm">
+        <ul className="mt-3 space-y-4 text-sm">
           {sorted.length === 0 ? <li className="text-stone-500">None yet</li> : null}
           {sorted.map((log, index) => {
             const previous = sorted[index + 1] ?? null;
@@ -252,7 +307,6 @@ export function FarmGeneratorLogSection({
               hours,
               deltas,
             });
-            const compact = formatGeneratorCopyLine(hours, deltas);
 
             if (editingId === log.id) {
               return (
@@ -270,28 +324,12 @@ export function FarmGeneratorLogSection({
             }
 
             return (
-              <li key={log.id} className="border-b border-stone-100 pb-3 last:border-0 last:pb-0">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-stone-900">{dateLabel}</p>
-                    <p className="mt-1 font-mono text-sm tabular-nums text-stone-800">{compact}</p>
-                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-stone-600 sm:grid-cols-4">
-                      {(
-                        [
-                          ["Gen 1", hours.gen1Hours, deltas.gen1],
-                          ["Gen 2", hours.gen2Hours, deltas.gen2],
-                          ["Gen 3", hours.gen3Hours, deltas.gen3],
-                          ["Gen 4", hours.gen4Hours, deltas.gen4],
-                        ] as const
-                      ).map(([label, reading, delta]) => (
-                        <p key={label}>
-                          <span className="font-semibold text-stone-700">{label}</span>{" "}
-                          {formatGeneratorHours(reading)}, {formatGeneratorHours(delta)}
-                        </p>
-                      ))}
-                    </div>
+              <li key={log.id}>
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <GeneratorHoursChart dateLabel={dateLabel} hours={hours} deltas={deltas} />
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-col items-end gap-1 pt-1 sm:flex-row sm:items-center sm:gap-2">
                     <CopyLogButton text={copyText} />
                     <EditRecordButton
                       label="Edit generator log"

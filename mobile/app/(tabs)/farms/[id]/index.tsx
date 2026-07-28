@@ -46,10 +46,10 @@ import {
   LITTER_EVENT_LABELS,
 } from "../../../../src/lib/opsLabels";
 import {
-  formatGeneratorCopyLine,
   formatGeneratorHours,
   formatGeneratorLogCopy,
   generatorDeltas,
+  type GeneratorDeltas,
   type GeneratorHours,
 } from "../../../../src/lib/generator";
 import {
@@ -248,6 +248,120 @@ function HouseNumFieldButton({
           {value || "0"}
         </Text>
       </Pressable>
+    </View>
+  );
+}
+
+const GENERATOR_CHART_ROWS = [
+  { label: "Gen 1", hourKey: "gen1Hours" as const, deltaKey: "gen1" as const },
+  { label: "Gen 2", hourKey: "gen2Hours" as const, deltaKey: "gen2" as const },
+  { label: "Gen 3", hourKey: "gen3Hours" as const, deltaKey: "gen3" as const },
+  { label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
+];
+
+function GeneratorHoursChart({
+  dateLabel,
+  hours,
+  deltas,
+}: {
+  dateLabel: string;
+  hours: GeneratorHours;
+  deltas: GeneratorDeltas;
+}) {
+  return (
+    <View
+      style={{
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 12,
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          backgroundColor: "#f5f5f4",
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
+      >
+        <Text style={{ width: 78, paddingHorizontal: 10, paddingVertical: 8, fontWeight: "700", color: colors.text, fontSize: 12 }}>
+          Date
+        </Text>
+        <Text
+          style={{
+            flex: 1,
+            paddingHorizontal: 10,
+            paddingVertical: 8,
+            fontWeight: "700",
+            color: colors.text,
+            fontSize: 12,
+            borderLeftWidth: 1,
+            borderLeftColor: colors.border,
+          }}
+        >
+          Hours
+        </Text>
+        <Text
+          style={{
+            flex: 1,
+            paddingHorizontal: 10,
+            paddingVertical: 8,
+            fontWeight: "700",
+            color: colors.text,
+            fontSize: 12,
+            borderLeftWidth: 1,
+            borderLeftColor: colors.border,
+          }}
+        >
+          Time exercised
+        </Text>
+      </View>
+      <View style={{ flexDirection: "row" }}>
+        <View style={{ width: 78, justifyContent: "center", paddingHorizontal: 10, paddingVertical: 8 }}>
+          <Text style={{ fontWeight: "800", color: colors.text, fontSize: 13 }}>{dateLabel}</Text>
+        </View>
+        <View style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: colors.border }}>
+          {GENERATOR_CHART_ROWS.map((row) => (
+            <View
+              key={row.label}
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderBottomWidth: 1,
+                borderBottomColor: "#f5f5f4",
+              }}
+            >
+              <Text style={{ color: colors.muted, fontSize: 12 }}>{row.label}</Text>
+              <Text style={{ fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                {formatGeneratorHours(hours[row.hourKey])}
+              </Text>
+            </View>
+          ))}
+        </View>
+        <View style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: colors.border }}>
+          {GENERATOR_CHART_ROWS.map((row) => (
+            <View
+              key={row.label}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderBottomWidth: 1,
+                borderBottomColor: "#f5f5f4",
+                alignItems: "flex-end",
+              }}
+            >
+              <Text style={{ fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                {formatGeneratorHours(deltas[row.deltaKey])}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
     </View>
   );
 }
@@ -1474,7 +1588,6 @@ export default function FarmDetailScreen() {
                   const [y, m, d] = log.logDate.split("-").map(Number);
                   return `${m}-${d}-${y}`;
                 })();
-                const compact = formatGeneratorCopyLine(hours, deltas);
                 const copyText = formatGeneratorLogCopy({
                   logDateLabel: dateLabel,
                   hours,
@@ -1490,31 +1603,9 @@ export default function FarmDetailScreen() {
                       borderTopColor: "#f5f5f4",
                     }}
                   >
-                    <View style={{ flexDirection: "row", gap: 8 }}>
+                    <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
                       <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={{ fontWeight: "700" }}>{dateLabel}</Text>
-                        <Text
-                          style={{
-                            marginTop: 4,
-                            fontWeight: "600",
-                            fontVariant: ["tabular-nums"],
-                            color: colors.text,
-                          }}
-                        >
-                          {compact}
-                        </Text>
-                        <Text style={[styles.muted, { marginTop: 6, fontSize: 12 }]}>
-                          Gen1 {formatGeneratorHours(hours.gen1Hours)},{" "}
-                          {formatGeneratorHours(deltas.gen1)} · Gen2{" "}
-                          {formatGeneratorHours(hours.gen2Hours)},{" "}
-                          {formatGeneratorHours(deltas.gen2)}
-                        </Text>
-                        <Text style={[styles.muted, { marginTop: 2, fontSize: 12 }]}>
-                          Gen3 {formatGeneratorHours(hours.gen3Hours)},{" "}
-                          {formatGeneratorHours(deltas.gen3)} · Gen4{" "}
-                          {formatGeneratorHours(hours.gen4Hours)},{" "}
-                          {formatGeneratorHours(deltas.gen4)}
-                        </Text>
+                        <GeneratorHoursChart dateLabel={dateLabel} hours={hours} deltas={deltas} />
                       </View>
                       <Pressable
                         onPress={async () => {
