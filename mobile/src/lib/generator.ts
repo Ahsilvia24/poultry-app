@@ -80,13 +80,22 @@ export function formatGeneratorChartsCopy(
   }>,
 ): string {
   if (logs.length === 0) return "";
+
+  const pad = (value: string, width: number) => value.padEnd(width, " ");
+
   return GEN_COPY_FIELDS.map((gen) => {
+    const rows = logs.map((log) => ({
+      date: log.dateLabel,
+      hours: formatGeneratorHours(log.hours[gen.hourKey]),
+      exercised: formatGeneratorHours(log.deltas[gen.deltaKey]),
+    }));
+    const dateWidth = Math.max(4, "Date".length, ...rows.map((r) => r.date.length));
+    const hoursWidth = Math.max(5, "Hours".length, ...rows.map((r) => r.hours.length));
     const lines = [
       gen.label,
-      "Date\tHours\tExercised",
-      ...logs.map(
-        (log) =>
-          `${log.dateLabel}\t${formatGeneratorHours(log.hours[gen.hourKey])}\t${formatGeneratorHours(log.deltas[gen.deltaKey])}`,
+      `${pad("Date", dateWidth)}  ${pad("Hours", hoursWidth)}  Exercised`,
+      ...rows.map(
+        (r) => `${pad(r.date, dateWidth)}  ${pad(r.hours, hoursWidth)}  ${r.exercised}`,
       ),
     ];
     return lines.join("\n");
