@@ -124,7 +124,7 @@ export async function updateFarmAction(farmId: string, formData: FormData) {
   revalidatePath("/");
 }
 
-export async function deactivateFarmAction(farmId: string) {
+export async function deactivateFarmAction(farmId: string, options?: { skipRedirect?: boolean }) {
   const user = await requireUser();
   await assertFarmAccess(farmId, user.id!);
   await prisma.farm.update({
@@ -134,7 +134,9 @@ export async function deactivateFarmAction(farmId: string) {
   revalidatePath("/farms");
   revalidatePath(`/farms/${farmId}`);
   revalidatePath("/");
-  redirect("/farms?status=inactive");
+  if (!options?.skipRedirect) {
+    redirect("/farms?status=inactive");
+  }
 }
 
 export async function reactivateFarmAction(farmId: string) {

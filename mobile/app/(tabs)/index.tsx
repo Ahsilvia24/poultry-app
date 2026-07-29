@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -9,7 +10,9 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
+import { Ionicons } from "@expo/vector-icons";
+import { Swipeable } from "react-native-gesture-handler";
+import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
 import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
 import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/schedule";
@@ -227,6 +230,28 @@ export default function DashboardScreen() {
       setLoading(false);
     }
   }, []);
+
+  function confirmMakeInactive(farmId: string, farmName: string) {
+    Alert.alert(
+      "Make farm inactive?",
+      `${farmName} will move to Inactive. You can make it active again later.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Make inactive",
+          onPress: () => {
+            deactivateFarm(farmId);
+            setExpandedFarmIds((prev) => {
+              const next = new Set(prev);
+              next.delete(farmId);
+              return next;
+            });
+            load();
+          },
+        },
+      ],
+    );
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -472,137 +497,173 @@ export default function DashboardScreen() {
             {data.farmCards.map((farm) => {
               const open = expandedFarmIds.has(farm.id);
               return (
-                <Card key={farm.id} style={{ padding: 0, overflow: "hidden" }}>
-                  <Pressable
-                    onPress={() => toggleFarmExpanded(farm.id)}
-                    accessibilityRole="button"
-                    accessibilityState={{ expanded: open }}
-                    accessibilityLabel={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
-                    style={{ padding: 14 }}
-                  >
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                          <Text style={{ fontWeight: "600", color: colors.muted }}>
-                            {open ? "▾ " : "▸ "}
-                          </Text>
-                          {farm.farmName}
-                          <Text style={{ fontWeight: "600", color: colors.muted }}>
-                            {" "}
-                            ({farm.houseCount})
-                          </Text>
-                          {(() => {
-                            const ages =
-                              farm.flockAgesDays?.length
-                                ? farm.flockAgesDays
-                                : farm.flockAgeDays != null
-                                  ? [farm.flockAgeDays]
-                                  : [];
-                            if (!ages.length) return null;
-                            return (
-                              <Text style={{ fontWeight: "600", color: colors.muted }}>
-                                {" "}
-                                · {ages.map((a) => `${a}d`).join(" · ")}
-                              </Text>
-                            );
-                          })()}
-                        </Text>
-                      </View>
-                      <StatusBadge status={farm.status} />
-                    </View>
-                  </Pressable>
-
-                  {open ? (
-                    <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                        <Metric
-                          columns={3}
-                          label="Birds placed"
-                          value={formatNumber(farm.birdsPlaced)}
-                        />
-                        <Metric
-                          columns={3}
-                          label="Birds remaining"
-                          value={formatNumber(farm.birdsRemaining)}
-                        />
-                        <Metric
-                          columns={3}
-                          label="Proj. Head Count"
-                          value={formatNumber(farm.projectedHeadCount)}
-                        />
-                        <Metric
-                          columns={3}
-                          label="Today's Mortality"
-                          value={String(farm.todayMortality)}
-                        />
-                        <Metric
-                          columns={3}
-                          label="Total Mortality"
-                          value={`${farm.cumulativeMortality} (${formatPct(farm.cumulativeMortalityPct)})`}
-                        />
-                        <Metric
-                          columns={3}
-                          label="Projected Mortality"
-                          value={
-                            farm.projectedMortality != null && farm.birdsPlaced > 0
-                              ? `${formatNumber(farm.projectedMortality)} (${formatPct(
-                                  (farm.projectedMortality / farm.birdsPlaced) * 100,
-                                )})`
-                              : formatNumber(farm.projectedMortality)
-                          }
-                        />
-                      </View>
-
-                      {farm.weeklyMortality.length > 0 ? (
-                        <View
-                          style={{
-                            borderTopWidth: 1,
-                            borderTopColor: "#f5f5f4",
-                            paddingTop: 10,
-                            marginTop: 4,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 11,
-                              fontWeight: "700",
-                              color: colors.muted,
-                              textTransform: "uppercase",
-                              letterSpacing: 0.4,
-                              marginBottom: 8,
-                            }}
-                          >
-                            Weekly mortality
-                          </Text>
-                          <WeeklyMortalityList weeks={farm.weeklyMortality} />
-                        </View>
-                      ) : null}
-
-                      <View
+                <Swipeable
+                  key={farm.id}
+                  overshootRight={false}
+                  friction={2}
+                  rightThreshold={40}
+                  containerStyle={{ marginBottom: 12 }}
+                  renderRightActions={() => (
+                    <Pressable
+                      accessibilityLabel={`Make ${farm.farmName} inactive`}
+                      onPress={() => confirmMakeInactive(farm.id, farm.farmName)}
+                      style={{
+                        backgroundColor: "#57534e",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        width: 100,
+                        borderRadius: 14,
+                        marginLeft: 8,
+                      }}
+                    >
+                      <Ionicons name="pause-circle-outline" size={22} color="#fff" />
+                      <Text
                         style={{
-                          flexDirection: "row",
-                          flexWrap: "wrap",
-                          gap: 12,
-                          marginTop: 10,
+                          color: "#fff",
+                          fontWeight: "800",
+                          fontSize: 11,
+                          marginTop: 4,
+                          textAlign: "center",
+                          paddingHorizontal: 4,
                         }}
                       >
-                        <Text style={[styles.muted, { fontSize: 12 }]}>
-                          Last visit:{" "}
-                          {farm.lastVisitDate
-                            ? formatLastVisitDate(farm.lastVisitDate)
-                            : "—"}
-                        </Text>
-                        <Text style={[styles.muted, { fontSize: 12 }]}>
-                          {farm.openIssues <= 0
-                            ? "No open issues"
-                            : farm.openIssues === 1
-                              ? "1 open issue"
-                              : `${farm.openIssues} open issues`}
-                        </Text>
+                        Make inactive
+                      </Text>
+                    </Pressable>
+                  )}
+                >
+                  <Card style={{ padding: 0, overflow: "hidden", marginBottom: 0 }}>
+                    <Pressable
+                      onPress={() => toggleFarmExpanded(farm.id)}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: open }}
+                      accessibilityLabel={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
+                      style={{ padding: 14 }}
+                    >
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                            <Text style={{ fontWeight: "600", color: colors.muted }}>
+                              {open ? "▾ " : "▸ "}
+                            </Text>
+                            {farm.farmName}
+                            <Text style={{ fontWeight: "600", color: colors.muted }}>
+                              {" "}
+                              ({farm.houseCount})
+                            </Text>
+                            {(() => {
+                              const ages =
+                                farm.flockAgesDays?.length
+                                  ? farm.flockAgesDays
+                                  : farm.flockAgeDays != null
+                                    ? [farm.flockAgeDays]
+                                    : [];
+                              if (!ages.length) return null;
+                              return (
+                                <Text style={{ fontWeight: "600", color: colors.muted }}>
+                                  {" "}
+                                  · {ages.map((a) => `${a}d`).join(" · ")}
+                                </Text>
+                              );
+                            })()}
+                          </Text>
+                        </View>
+                        <StatusBadge status={farm.status} />
                       </View>
-                    </View>
-                  ) : null}
-                </Card>
+                    </Pressable>
+
+                    {open ? (
+                      <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+                        <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                          <Metric
+                            columns={3}
+                            label="Birds placed"
+                            value={formatNumber(farm.birdsPlaced)}
+                          />
+                          <Metric
+                            columns={3}
+                            label="Birds remaining"
+                            value={formatNumber(farm.birdsRemaining)}
+                          />
+                          <Metric
+                            columns={3}
+                            label="Proj. Head Count"
+                            value={formatNumber(farm.projectedHeadCount)}
+                          />
+                          <Metric
+                            columns={3}
+                            label="Today's Mortality"
+                            value={String(farm.todayMortality)}
+                          />
+                          <Metric
+                            columns={3}
+                            label="Total Mortality"
+                            value={`${farm.cumulativeMortality} (${formatPct(farm.cumulativeMortalityPct)})`}
+                          />
+                          <Metric
+                            columns={3}
+                            label="Projected Mortality"
+                            value={
+                              farm.projectedMortality != null && farm.birdsPlaced > 0
+                                ? `${formatNumber(farm.projectedMortality)} (${formatPct(
+                                    (farm.projectedMortality / farm.birdsPlaced) * 100,
+                                  )})`
+                                : formatNumber(farm.projectedMortality)
+                            }
+                          />
+                        </View>
+
+                        {farm.weeklyMortality.length > 0 ? (
+                          <View
+                            style={{
+                              borderTopWidth: 1,
+                              borderTopColor: "#f5f5f4",
+                              paddingTop: 10,
+                              marginTop: 4,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                fontWeight: "700",
+                                color: colors.muted,
+                                textTransform: "uppercase",
+                                letterSpacing: 0.4,
+                                marginBottom: 8,
+                              }}
+                            >
+                              Weekly mortality
+                            </Text>
+                            <WeeklyMortalityList weeks={farm.weeklyMortality} />
+                          </View>
+                        ) : null}
+
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            flexWrap: "wrap",
+                            gap: 12,
+                            marginTop: 10,
+                          }}
+                        >
+                          <Text style={[styles.muted, { fontSize: 12 }]}>
+                            Last visit:{" "}
+                            {farm.lastVisitDate
+                              ? formatLastVisitDate(farm.lastVisitDate)
+                              : "—"}
+                          </Text>
+                          <Text style={[styles.muted, { fontSize: 12 }]}>
+                            {farm.openIssues <= 0
+                              ? "No open issues"
+                              : farm.openIssues === 1
+                                ? "1 open issue"
+                                : `${farm.openIssues} open issues`}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : null}
+                  </Card>
+                </Swipeable>
               );
             })}
           </>
