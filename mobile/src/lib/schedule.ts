@@ -110,10 +110,9 @@ export function todayScheduleRankFromLabel(label: string): number {
 
 /**
  * Split schedule into today vs upcoming.
- * Today's list resets at local midnight (00:00 / 0001 start of the new day).
- * Completed today-items stay checked for the rest of that calendar day, then drop.
- * Completing an upcoming item early hides it from Upcoming and keeps it from
- * reappearing on Today later (same date/label completion key).
+ * Checking an item keeps it visible (crossed out) for the rest of that local
+ * calendar day, then it drops at midnight. Completions from a previous day never
+ * reappear on Upcoming or on Today's schedule when their due date arrives.
  */
 export function splitScheduleForDashboard(
   schedule: ScheduledVisit[],
@@ -132,8 +131,11 @@ export function splitScheduleForDashboard(
 
     const key = completionKey(v.dateKey, v.label);
     const info = completions.get(key);
-    // Completed upcoming: stay off the list (and won't repopulate on their day).
-    if (info && v.dateKey !== today) continue;
+    if (info) {
+      // Local calendar day the tech checked it off — not the visit's scheduled date.
+      const completedDayKey = todayKey(info.completedAt);
+      if (completedDayKey < today) continue;
+    }
 
     const item: DueScheduledVisit = { ...v, completed: Boolean(info) };
     if (v.dateKey === today) todayItems.push(item);
