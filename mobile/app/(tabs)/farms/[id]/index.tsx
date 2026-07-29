@@ -1061,6 +1061,15 @@ export default function FarmDetailScreen() {
               {(
                 [
                   {
+                    key: "service",
+                    label: "Service Farm",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/service",
+                        params: { id: farm.id },
+                      }),
+                  },
+                  {
                     key: "mortality",
                     label: "Mortality",
                     onPress: () =>

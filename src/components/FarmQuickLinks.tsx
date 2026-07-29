@@ -21,6 +21,7 @@ export function FarmQuickLinks({
   const lfoHref = hasActiveFlock ? `/lfo/new/${farmId}` : "/lfo";
 
   const links: Array<{ key: string; href: string; label: string; external?: boolean }> = [
+    { key: "service", href: `/farms/${farmId}/service`, label: "Service Farm", external: true },
     { key: "mortality", href: `/mortality?farmId=${farmId}`, label: "Mortality", external: true },
     { key: "lfo", href: lfoHref, label: "LFO", external: true },
     { key: "weight", href: "#weight-projections", label: "Weight Proj." },
