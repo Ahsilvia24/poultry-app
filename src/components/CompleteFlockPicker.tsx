@@ -50,7 +50,7 @@ export function CompleteFlockPicker({
           onClick={() => complete(flocks[0]!)}
           className={triggerClass}
         >
-          Complete flock
+          Complete Flock
         </button>
       );
     }
@@ -61,7 +61,7 @@ export function CompleteFlockPicker({
         disabled={pending}
         onClick={() => complete(flocks[0]!)}
       >
-        Complete flock
+        Complete Flock
       </Button>
     );
   }
@@ -75,7 +75,7 @@ export function CompleteFlockPicker({
           onClick={() => setOpen((v) => !v)}
           className={triggerClass}
         >
-          Complete flock
+          Complete Flock
         </button>
       ) : (
         <Button
@@ -84,7 +84,7 @@ export function CompleteFlockPicker({
           disabled={pending}
           onClick={() => setOpen((v) => !v)}
         >
-          Complete flock
+          Complete Flock
         </Button>
       )}
       {open ? (
