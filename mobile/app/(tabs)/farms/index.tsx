@@ -156,20 +156,32 @@ export default function FarmsScreen() {
             : ` (${houseCount})`;
 
           return (
-            <Card key={farm.id}>
-              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+            <Card
+              key={farm.id}
+              style={{ paddingVertical: 10, paddingHorizontal: 12, marginBottom: 8 }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Pressable
                     onPress={() =>
                       router.push({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } })
                     }
                   >
-                    <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: "800",
+                        color: colors.text,
+                        lineHeight: 20,
+                      }}
+                    >
                       {farm.farmName}
                       <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
                     </Text>
                     {farm.growerName ? (
-                      <Text style={[styles.muted, { marginTop: 2 }]}>{farm.growerName}</Text>
+                      <Text style={[styles.muted, { marginTop: 1, lineHeight: 16 }]}>
+                        {farm.growerName}
+                      </Text>
                     ) : null}
                   </Pressable>
                   {farm.phoneNumber ? (
@@ -178,13 +190,14 @@ export default function FarmsScreen() {
                       accessibilityLabel={`Call ${farm.phoneNumber}`}
                       onPress={() => Linking.openURL(dialUrl(farm.phoneNumber!))}
                       hitSlop={8}
-                      style={{ alignSelf: "flex-start", marginTop: 2 }}
+                      style={{ alignSelf: "flex-start", marginTop: 1 }}
                     >
                       <Text
                         style={{
                           color: colors.accentDark,
                           fontWeight: "700",
-                          fontSize: 14,
+                          fontSize: 13,
+                          lineHeight: 16,
                           textDecorationLine: "underline",
                         }}
                       >
@@ -199,7 +212,6 @@ export default function FarmsScreen() {
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 4,
-                    marginLeft: 8,
                     flexShrink: 0,
                   }}
                 >
@@ -218,6 +230,11 @@ export default function FarmsScreen() {
                     <Text
                       style={[
                         styles.badge,
+                        {
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          fontSize: 12,
+                        },
                         farm.isActive
                           ? { backgroundColor: "#d1fae5", color: "#065f46" }
                           : { backgroundColor: "#e7e5e4", color: "#44403c" },
@@ -232,14 +249,14 @@ export default function FarmsScreen() {
                       onPress={() => confirmPermanentDelete(farm.id, farm.farmName)}
                       hitSlop={8}
                       style={{
-                        width: 36,
-                        height: 36,
+                        width: 32,
+                        height: 32,
                         borderRadius: 8,
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
-                      <Ionicons name="trash-outline" size={20} color={colors.muted} />
+                      <Ionicons name="trash-outline" size={18} color={colors.muted} />
                     </Pressable>
                   ) : null}
                 </View>
