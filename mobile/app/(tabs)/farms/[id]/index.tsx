@@ -613,10 +613,10 @@ export default function FarmDetailScreen() {
 
   function openHouseEditor(h: HouseRow) {
     setHouseEditError(null);
-    const placementDate = h.placementDate ?? data?.activeFlock?.placementDate ?? "";
-    const catchDate =
-      h.catchDate ??
-      (placementDate ? addDaysKey(placementDate, 52) : "");
+    // Only prefill dates the house already has — don't inherit an old flock
+    // date. Empty fields open the calendar on today via DatePickerField.
+    const placementDate = h.placementDate ?? "";
+    const catchDate = h.catchDate ?? "";
     setEditingHouse({
       id: h.id,
       houseNumber: String(h.houseNumber),

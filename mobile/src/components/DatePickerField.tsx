@@ -21,11 +21,12 @@ export function formatDisplayDate(dateKey: string) {
 }
 
 function parseDateKey(dateKey: string): Date {
-  if (!dateKey) {
+  const trimmed = dateKey.trim();
+  if (!trimmed) {
     const [y, m, d] = todayKey().split("-").map(Number);
     return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
   }
-  const [y, m, d] = dateKey.split("-").map(Number);
+  const [y, m, d] = trimmed.split("-").map(Number);
   const dt = new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
   if (!Number.isFinite(dt.getTime())) {
     const [ty, tm, td] = todayKey().split("-").map(Number);
@@ -69,7 +70,8 @@ export function DatePickerField({
 
   function openPicker() {
     onOpen?.();
-    setDraft(parseDateKey(value || todayKey()));
+    // Unset fields start the calendar on today instead of a stale inherited date.
+    setDraft(parseDateKey(value.trim() ? value : todayKey()));
     setOpen((v) => !v);
   }
 
