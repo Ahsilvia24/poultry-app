@@ -14,7 +14,7 @@ import { Swipeable } from "react-native-gesture-handler";
 import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
 import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
-import { formatShortScheduleDate, formatLastVisitDate, todayKey } from "../../src/lib/schedule";
+import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/schedule";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import {
   Card,
@@ -345,12 +345,11 @@ export default function DashboardScreen() {
               ) : (
                 data.todaysSchedule.map((item) => {
                   const key = scheduleItemKey(item);
-                  const today = todayKey();
                   return (
                     <ScheduleCheckRow
                       key={key}
                       item={item}
-                      showDate={item.date !== today}
+                      showDate
                       checked={checked[key] ?? item.completed}
                       busy={pendingKey === key}
                       onToggle={() => toggleScheduleItem(item)}
