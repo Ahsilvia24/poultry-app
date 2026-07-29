@@ -1081,7 +1081,7 @@ export default function FarmDetailScreen() {
                   },
                   {
                     key: "weight",
-                    label: "Weight Projections",
+                    label: "Weight Proj.",
                     onPress: () => scrollToSection("weight"),
                   },
                   {
@@ -1104,7 +1104,7 @@ export default function FarmDetailScreen() {
                   },
                   {
                     key: "add-flock",
-                    label: "Add flock",
+                    label: "Add Flock",
                     onPress: () =>
                       router.push({
                         pathname: "/(tabs)/farms/[id]/add-flock",
@@ -1115,7 +1115,7 @@ export default function FarmDetailScreen() {
                     ? [
                         {
                           key: "complete-flock",
-                          label: "Complete flock",
+                          label: "Complete Flock",
                           onPress: promptCompleteFlock,
                         },
                       ]
