@@ -22,6 +22,17 @@ type Metrics = {
   remaining: number;
 };
 
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+/** e.g. Wed 29 Jul 26 */
+function formatHouseDetailDate(dateKey: string) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  if (!y || !m || !d) return dateKey;
+  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+  return `${WEEKDAYS[dt.getDay()]} ${d} ${MONTHS[m - 1]} ${String(y).slice(-2)}`;
+}
+
 export function HouseCard({
   farmId,
   house,
@@ -32,9 +43,10 @@ export function HouseCard({
   projectedHeadCount,
   projectedMortality,
   weeklyMortality,
-  recommendedMinVent,
   flockLabel = null,
   houseFlockId = null,
+  placementDateKey = null,
+  catchDateKey = null,
 }: {
   farmId: string;
   house: HouseData;
@@ -45,11 +57,22 @@ export function HouseCard({
   projectedHeadCount: number | null;
   projectedMortality: number | null;
   weeklyMortality: Array<{ week: number; total: number }>;
-  recommendedMinVent: string | null;
   flockLabel?: string | null;
   houseFlockId?: string | null;
+  placementDateKey?: string | null;
+  catchDateKey?: string | null;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+
+  const mortalityValue = metrics
+    ? `${formatNumber(metrics.cumulative)} (${formatPct(metrics.cumulativePct)})`
+    : "—";
+  const projMortValue =
+    projectedMortality != null && birdsPlaced != null && birdsPlaced > 0
+      ? `${formatNumber(projectedMortality)} (${formatPct((projectedMortality / birdsPlaced) * 100)})`
+      : projectedMortality != null
+        ? formatNumber(projectedMortality)
+        : "—";
 
   return (
     <Card>
@@ -117,47 +140,48 @@ export function HouseCard({
       </button>
 
       {detailsOpen ? (
-        <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-          <div>
-            <p className="text-stone-500">Placed</p>
-            <p className="font-semibold">
-              {birdsPlaced != null ? formatNumber(birdsPlaced) : "—"}
-            </p>
+        <div className="mt-3 space-y-3 text-sm">
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <p className="text-stone-500">Placed</p>
+              <p className="font-semibold">
+                {birdsPlaced != null ? formatNumber(birdsPlaced) : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-stone-500">Remaining</p>
+              <p className="font-semibold">
+                {metrics ? formatNumber(metrics.remaining) : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-stone-500">PHC</p>
+              <p className="font-semibold">
+                {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
+              </p>
+              <p className="mt-0.5 text-[11px] text-stone-400">Assumes 150 catch crew</p>
+            </div>
           </div>
-          <div>
-            <p className="text-stone-500">Remaining</p>
-            <p className="font-semibold">
-              {metrics ? formatNumber(metrics.remaining) : "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-stone-500">PHC</p>
-            <p className="font-semibold">
-              {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
-            </p>
-            <p className="mt-0.5 text-[11px] text-stone-400">Assumes 150 for catch crew</p>
-          </div>
-          <div>
-            <p className="text-stone-500">M</p>
-            <p className="font-semibold">
-              {metrics
-                ? `${formatNumber(metrics.cumulative)} (${formatPct(metrics.cumulativePct)})`
-                : "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-stone-500">Projected mortality</p>
-            <p className="font-semibold">
-              {projectedMortality != null && birdsPlaced != null && birdsPlaced > 0
-                ? `${formatNumber(projectedMortality)} (${formatPct((projectedMortality / birdsPlaced) * 100)})`
-                : projectedMortality != null
-                  ? formatNumber(projectedMortality)
-                  : "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-stone-500">Recommended Min Vent</p>
-            <p className="font-semibold tabular-nums">{recommendedMinVent ?? "—"}</p>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <p className="text-stone-500">Placed/Catch</p>
+              {placementDateKey ? (
+                <p className="font-semibold leading-snug">{formatHouseDetailDate(placementDateKey)}</p>
+              ) : (
+                <p className="font-semibold">—</p>
+              )}
+              {catchDateKey ? (
+                <p className="font-semibold leading-snug">{formatHouseDetailDate(catchDateKey)}</p>
+              ) : null}
+            </div>
+            <div>
+              <p className="text-stone-500">Mortality</p>
+              <p className="font-semibold">{mortalityValue}</p>
+            </div>
+            <div>
+              <p className="text-stone-500">Proj. Mort.</p>
+              <p className="font-semibold">{projMortValue}</p>
+            </div>
           </div>
         </div>
       ) : null}

@@ -6,19 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { getUserThresholds } from "@/lib/dashboard";
 import {
   averageDailyMortalityLast7Days,
-  birdAgeFromPlacement,
   daysSincePlacement,
-  flockWeekFromAge,
   isRisingThreeDays,
   projectedHeadCountAtCatch,
   resolveMortalityStatus,
   summarizeForDate,
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
-import {
-  formatMinVentCycle,
-  recommendedMinVent,
-} from "@/lib/tools/ventilation";
 import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
 import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
 import {
@@ -119,9 +113,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     const catchDate = houseFlock ? resolveCatchDate(houseFlock) : null;
     const daysUntilCatch =
       catchDate != null ? Math.max(0, differenceInCalendarDays(catchDate, today)) : null;
-    const houseWeek = houseFlock
-      ? flockWeekFromAge(birdAgeFromPlacement(houseFlock.placementDate, today))
-      : null;
     const metrics = hf
       ? summarizeForDate(hf.placedBirdCount, hf.mortalities, today)
       : null;
@@ -147,15 +138,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         )
       : "Normal";
 
-    const minVent =
-      hf && houseWeek != null && house.totalFanCFM != null && house.totalFanCFM > 0
-        ? recommendedMinVent({
-            birdsPlaced: hf.placedBirdCount,
-            flockWeek: houseWeek,
-            totalFanCFM: house.totalFanCFM,
-          })
-        : null;
-
     if (hf && metrics) {
       flockPlaced += hf.placedBirdCount;
       flockCum += metrics.cumulative;
@@ -179,9 +161,10 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       projectedHeadCount,
       projectedMortality,
       status,
-      recommendedMinVentLabel: minVent
-        ? formatMinVentCycle(minVent.onSeconds, minVent.offSeconds)
+      placementDateKey: houseFlock
+        ? format(houseFlock.placementDate, "yyyy-MM-dd")
         : null,
+      catchDateKey: catchDate ? format(catchDate, "yyyy-MM-dd") : null,
     };
   });
 
@@ -310,7 +293,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             projectedHeadCount,
             projectedMortality,
             status,
-            recommendedMinVentLabel,
+            placementDateKey,
+            catchDateKey,
           }) => (
           <HouseCard
             key={house.id}
@@ -330,9 +314,10 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             projectedHeadCount={projectedHeadCount}
             projectedMortality={projectedMortality}
             weeklyMortality={weeklyMortality}
-            recommendedMinVent={recommendedMinVentLabel}
             flockLabel={flockNumber}
             houseFlockId={hf?.id ?? null}
+            placementDateKey={placementDateKey}
+            catchDateKey={catchDateKey}
           />
         ),
         )}
@@ -370,7 +355,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             <StatTile
               label="Proj. Head Count"
               value={formatNumber(flockProjectedHead)}
-              hint="Assumes 150 for catch crew per house"
+              hint="Assumes 150 catch crew per house"
             />
             <StatTile
               label="Cumulative Mortality"

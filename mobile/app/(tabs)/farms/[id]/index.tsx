@@ -87,6 +87,30 @@ function formatUsDate(dateKey: string) {
   return `${m}-${d}-${y}`;
 }
 
+const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** e.g. Wed 29 Jul 26 */
+function formatHouseDetailDate(dateKey: string) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  if (!y || !m || !d) return dateKey;
+  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+  return `${WEEKDAYS_SHORT[dt.getDay()]} ${d} ${MONTHS_SHORT[m - 1]} ${String(y).slice(-2)}`;
+}
+
 function formatShortDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0).toLocaleDateString(undefined, {
@@ -1211,9 +1235,7 @@ export default function FarmDetailScreen() {
                   key={link.key}
                   onPress={link.onPress}
                   style={{
-                    width: "31%",
-                    flexGrow: 1,
-                    maxWidth: "32.5%",
+                    width: "31.5%",
                     minHeight: 44,
                     borderRadius: 10,
                     backgroundColor: colors.accentDark,
@@ -1375,35 +1397,53 @@ export default function FarmDetailScreen() {
               </Pressable>
 
               {detailsOpen ? (
-                <View style={[styles.row, { marginTop: 10 }]}>
-                  <Metric label="Placed" value={formatNumber(h.placedBirdCount)} />
-                  <Metric label="Remaining" value={formatNumber(h.remainingBirdCount)} />
-                  <Metric
-                    label="PHC"
-                    value={formatNumber(h.projectedHeadCount)}
-                    hint="Assumes 150 for catch crew"
-                  />
-                  <Metric
-                    label="M"
-                    value={
-                      h.placedBirdCount != null
-                        ? `${formatNumber(h.cumulativeMortality)} (${formatPct(h.cumulativeMortalityPct)})`
-                        : formatNumber(h.cumulativeMortality)
-                    }
-                  />
-                  <Metric
-                    label="Projected mortality"
-                    value={
-                      h.projectedMortality != null &&
-                      h.placedBirdCount != null &&
-                      h.placedBirdCount > 0
-                        ? `${formatNumber(h.projectedMortality)} (${formatPct(
-                            (h.projectedMortality / h.placedBirdCount) * 100,
-                          )})`
-                        : formatNumber(h.projectedMortality)
-                    }
-                  />
-                  <Metric label="Recommended Min Vent" value={h.recommendedMinVent ?? "—"} />
+                <View style={{ marginTop: 10, gap: 10 }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    <Metric columns={3} label="Placed" value={formatNumber(h.placedBirdCount)} />
+                    <Metric columns={3} label="Remaining" value={formatNumber(h.remainingBirdCount)} />
+                    <Metric
+                      columns={3}
+                      label="PHC"
+                      value={formatNumber(h.projectedHeadCount)}
+                      hint="Assumes 150 catch crew"
+                    />
+                  </View>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    <Metric
+                      columns={3}
+                      label="Placed/Catch"
+                      value={
+                        [
+                          h.placementDate ? formatHouseDetailDate(h.placementDate) : null,
+                          h.catchDate ? formatHouseDetailDate(h.catchDate) : null,
+                        ]
+                          .filter(Boolean)
+                          .join("\n") || "—"
+                      }
+                    />
+                    <Metric
+                      columns={3}
+                      label="Mortality"
+                      value={
+                        h.placedBirdCount != null
+                          ? `${formatNumber(h.cumulativeMortality)} (${formatPct(h.cumulativeMortalityPct)})`
+                          : formatNumber(h.cumulativeMortality)
+                      }
+                    />
+                    <Metric
+                      columns={3}
+                      label="Proj. Mort."
+                      value={
+                        h.projectedMortality != null &&
+                        h.placedBirdCount != null &&
+                        h.placedBirdCount > 0
+                          ? `${formatNumber(h.projectedMortality)} (${formatPct(
+                              (h.projectedMortality / h.placedBirdCount) * 100,
+                            )})`
+                          : formatNumber(h.projectedMortality)
+                      }
+                    />
+                  </View>
                 </View>
               ) : null}
             </Card>

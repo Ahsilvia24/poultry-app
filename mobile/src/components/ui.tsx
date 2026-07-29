@@ -54,10 +54,21 @@ export function StatTile({ label, value }: { label: string; value: string | numb
   );
 }
 
-export function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
+export function Metric({
+  label,
+  value,
+  hint,
+  columns = 2,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  columns?: 2 | 3;
+}) {
   const multiline = value.includes("\n");
+  const width = columns === 3 ? "31.5%" : "47%";
   return (
-    <View style={{ width: "47%", marginBottom: 10 }}>
+    <View style={{ width, marginBottom: 10 }}>
       <Text style={{ fontSize: 13, color: colors.muted }}>{label}</Text>
       <Text
         style={{
