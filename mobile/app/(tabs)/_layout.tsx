@@ -103,15 +103,16 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
 
                 // Switching tabs.
                 if (route.name === "farms") {
-                  // After Enter mortality (or any mortality visit with a farm in
-                  // context), return to that farm detail — not the farms list.
-                  // Otherwise restore the farms stack as-is.
+                  // From Mortality: always open the farm (and house) selected there.
                   const ctx = getFarmNavContext();
                   const fromMortality = focusedRoute?.name === "mortality";
                   if (fromMortality && ctx.farmId) {
                     navigation.navigate("farms", {
                       screen: "[id]",
-                      params: { id: ctx.farmId },
+                      params: {
+                        id: ctx.farmId,
+                        focusHouseFlockId: ctx.houseFlockId ?? undefined,
+                      },
                     });
                   } else {
                     navigation.navigate("farms");

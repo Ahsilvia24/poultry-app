@@ -35,7 +35,7 @@ import {
   updateGeneratorLog,
   updateHouse,
 } from "../../../../src/repos/data";
-import { setFarmNavContext } from "../../../../src/lib/farmNavContext";
+import { getFarmNavContext, setFarmNavContext } from "../../../../src/lib/farmNavContext";
 import { useTabScrollToTop } from "../../../../src/lib/tabScroll";
 import { VISIT_TYPE_LABELS } from "../../../../src/lib/visits";
 import {
@@ -344,9 +344,11 @@ export default function FarmDetailScreen() {
   const params = useLocalSearchParams<{
     id?: string | string[];
     edit?: string | string[];
+    focusHouseFlockId?: string | string[];
   }>();
   const farmId = paramId(params.id);
   const openEdit = paramId(params.edit) === "1";
+  const focusHouseFlockIdParam = paramId(params.focusHouseFlockId);
   const router = useRouter();
   const [data, setData] = useState<FarmDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -420,9 +422,47 @@ export default function FarmDetailScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
-      if (farmId) setFarmNavContext({ farmId, houseFlockId: null });
-    }, [load, farmId]),
+      if (!farmId) return;
+      const ctx = getFarmNavContext();
+      const focusHouse =
+        focusHouseFlockIdParam ||
+        (ctx.farmId === farmId ? ctx.houseFlockId : null);
+      // Preserve the mortality-selected house when returning to this farm.
+      setFarmNavContext({
+        farmId,
+        houseFlockId: focusHouse ?? null,
+      });
+    }, [load, farmId, focusHouseFlockIdParam]),
   );
+
+  // Scroll to the house selected on Mortality (e.g. House 4).
+  useEffect(() => {
+    if (!data || data.farm.id !== farmId) return;
+    const ctx = getFarmNavContext();
+    const target =
+      focusHouseFlockIdParam ||
+      (ctx.farmId === farmId ? ctx.houseFlockId : null);
+    if (!target) return;
+    const house = data.houses.find((h) => h.houseFlockId === target);
+    if (!house) return;
+    const key = `house-${house.id}`;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const tryScroll = () => {
+      const y = sectionY.current[key];
+      if (y != null) {
+        scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
+        return;
+      }
+      if (attempts++ < 10) {
+        timer = setTimeout(tryScroll, 50);
+      }
+    };
+    timer = setTimeout(tryScroll, 50);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [data, farmId, focusHouseFlockIdParam]);
 
   function openFarmEditor(farm: FarmDetail["farm"]) {
     setFarmEditError(null);
@@ -962,12 +1002,16 @@ export default function FarmDetailScreen() {
         {data.houses.map((h) => {
           const detailsOpen = expandedHouses.has(h.id);
           return (
-            <Swipeable
+            <View
               key={`${farm.id}-${h.id}`}
+              collapsable={false}
+              onLayout={onSectionLayout(`house-${h.id}`)}
+              style={{ marginBottom: 12 }}
+            >
+            <Swipeable
               overshootRight={false}
               friction={2}
               rightThreshold={40}
-              containerStyle={{ marginBottom: 12 }}
               renderRightActions={() => (
                 <Pressable
                   accessibilityLabel={`Delete house ${h.houseNumber}`}
@@ -1209,6 +1253,7 @@ export default function FarmDetailScreen() {
                 ) : null}
               </Card>
             </Swipeable>
+            </View>
           );
         })}
 

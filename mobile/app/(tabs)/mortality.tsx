@@ -473,6 +473,15 @@ export default function MortalityScreen() {
     return () => clearJumpTimer();
   }, [loadGrid]);
 
+  // Keep Farms-tab return target in sync with the selection on this screen.
+  useEffect(() => {
+    if (!farmId) return;
+    setFarmNavContext({
+      farmId,
+      houseFlockId: houseFlockId || null,
+    });
+  }, [farmId, houseFlockId]);
+
   useEffect(() => {
     return () => {
       persistRowsForCurrentHouse();
@@ -698,6 +707,7 @@ export default function MortalityScreen() {
                   jumpOnLoadRef.current = false;
                   setFarmId(f.id);
                   setHouseFlockId("");
+                  setFarmNavContext({ farmId: f.id, houseFlockId: null });
                   setRows([]);
                   setExpandedWeeks(new Set());
                   setSaveStatus("idle");
@@ -720,6 +730,12 @@ export default function MortalityScreen() {
                     setExpandedWeeks(new Set());
                     resetKeypad();
                     setSaveStatus("idle");
+                    if (farmId) {
+                      setFarmNavContext({
+                        farmId,
+                        houseFlockId: h.houseFlockId,
+                      });
+                    }
                     if (h.houseFlockId === houseFlockId) {
                       loadGrid({ jump: true });
                       return;
@@ -940,7 +956,10 @@ export default function MortalityScreen() {
                     });
                     router.push({
                       pathname: "/(tabs)/farms/[id]",
-                      params: { id: farmId },
+                      params: {
+                        id: farmId,
+                        focusHouseFlockId: selectedHouse.houseFlockId,
+                      },
                     });
                   }
                 : undefined
