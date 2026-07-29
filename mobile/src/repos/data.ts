@@ -2274,23 +2274,50 @@ function resolveActiveFlockForPlacement(
   return { id, placement_date: placementDate, projected_catch_date: catchDate };
 }
 
-/** Drop mortality before the new placement and refresh ages from placement. */
-function realignMortalityForHouseFlock(houseFlockId: string, placementDate: string) {
+/**
+ * When placement moves, keep each entry on the same bird age (what techs enter by)
+ * and shift the calendar date. Previously we kept the date and recomputed age, which
+ * made "Age 1" mortality appear on Age 3 after a 2-day placement edit.
+ */
+function realignMortalityForHouseFlock(
+  houseFlockId: string,
+  prevPlacementDate: string,
+  nextPlacementDate: string,
+) {
+  if (prevPlacementDate === nextPlacementDate) return;
   const db = getDb();
-  db.runSync(
-    `DELETE FROM daily_mortality WHERE house_flock_id = ? AND mortality_date < ?`,
-    [houseFlockId, placementDate],
-  );
-  const rows = db.getAllSync<{ id: string; mortality_date: string }>(
-    `SELECT id, mortality_date FROM daily_mortality WHERE house_flock_id = ?`,
+  const rows = db.getAllSync<{
+    id: string;
+    mortality_date: string;
+    bird_age_in_days: number;
+  }>(
+    `SELECT id, mortality_date, bird_age_in_days FROM daily_mortality WHERE house_flock_id = ?`,
     [houseFlockId],
   );
-  for (const row of rows) {
-    const age = birdAgeFromPlacement(placementDate, row.mortality_date);
-    db.runSync(`UPDATE daily_mortality SET bird_age_in_days = ? WHERE id = ?`, [
+  if (!rows.length) return;
+
+  // Age under the previous placement (what the tech saw when entering).
+  const remapped = rows.map((row) => {
+    const age = birdAgeFromPlacement(prevPlacementDate, row.mortality_date);
+    return {
+      id: row.id,
       age,
+      mortalityDate: addDaysKey(nextPlacementDate, age),
+    };
+  });
+
+  // Temp dates avoid UNIQUE(house_flock_id, mortality_date) collisions while shifting.
+  for (const row of remapped) {
+    db.runSync(`UPDATE daily_mortality SET mortality_date = ? WHERE id = ?`, [
+      `__tmp_${row.id}`,
       row.id,
     ]);
+  }
+  for (const row of remapped) {
+    db.runSync(
+      `UPDATE daily_mortality SET mortality_date = ?, bird_age_in_days = ? WHERE id = ?`,
+      [row.mortalityDate, row.age, row.id],
+    );
   }
 }
 
@@ -2396,7 +2423,7 @@ function applyHouseFlockFields(
        WHERE id = ?`,
       [flock.id, nextPlaced ?? currentHf.placed_bird_count, nextPlacement, nextCatch, currentHf.id],
     );
-    realignMortalityForHouseFlock(currentHf.id, nextPlacement);
+    realignMortalityForHouseFlock(currentHf.id, prevPlacement, nextPlacement);
     if (prevFlockId !== flock.id) {
       syncFlockDatesAndPrune(farmId, prevFlockId);
     }

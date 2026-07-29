@@ -210,6 +210,33 @@ export default function MortalityScreen() {
   houseFlockIdRef.current = houseFlockId;
   farmIdRef.current = farmId;
 
+  /** Persist using refs so we can flush before houseId changes (avoid writing the wrong house). */
+  function persistRowsForCurrentHouse() {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const id = houseFlockIdRef.current;
+    if (!id) return;
+    const snapshot = rowsRef.current;
+    if (!snapshot.length) return;
+    try {
+      saveHouseMortalitySeries({
+        houseFlockId: id,
+        entries: snapshot
+          .filter((r) => r.hasEntry)
+          .map((r) => ({
+            mortalityDate: r.mortalityDate,
+            dailyMortalityCount: Number(r.dailyMortalityCount || 0),
+            cullCount: Number(r.cullCount || 0),
+          })),
+        clearDates: snapshot.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
+      });
+    } catch {
+      // Best-effort when switching context / unmounting
+    }
+  }
+
   // Hide bottom tabs while the custom keypad is open
   useEffect(() => {
     navigation.setOptions({
@@ -303,6 +330,8 @@ export default function MortalityScreen() {
   const jumpOnLoadRef = useRef(true);
 
   const loadFarms = useCallback(() => {
+    // Flush edits for the house currently on screen before farm/house selection changes.
+    persistRowsForCurrentHouse();
     setLoading(true);
     setError(null);
     try {
@@ -404,6 +433,7 @@ export default function MortalityScreen() {
       loadFarms();
       return () => {
         clearJumpTimer();
+        persistRowsForCurrentHouse();
         setActiveField(null);
         setSelection(undefined);
         navigation.setOptions({ tabBarStyle: undefined });
@@ -414,17 +444,13 @@ export default function MortalityScreen() {
   useEffect(() => {
     loadGrid();
     setSaveStatus("idle");
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    }
     saveGenRef.current += 1;
     return () => clearJumpTimer();
   }, [loadGrid]);
 
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      persistRowsForCurrentHouse();
     };
   }, []);
 
@@ -640,6 +666,7 @@ export default function MortalityScreen() {
                 label={f.farmName}
                 active={farmId === f.id}
                 onPress={() => {
+                  persistRowsForCurrentHouse();
                   clearJumpTimer();
                   jumpOnLoadRef.current = false;
                   setFarmId(f.id);
@@ -661,6 +688,7 @@ export default function MortalityScreen() {
                   label={`House ${h.houseNumber}`}
                   active={houseFlockId === h.houseFlockId}
                   onPress={() => {
+                    persistRowsForCurrentHouse();
                     jumpOnLoadRef.current = true;
                     setExpandedWeeks(new Set());
                     resetKeypad();

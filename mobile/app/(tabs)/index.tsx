@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -231,26 +230,14 @@ export default function DashboardScreen() {
     }
   }, []);
 
-  function confirmMakeInactive(farmId: string, farmName: string) {
-    Alert.alert(
-      "Make farm inactive?",
-      `${farmName} will move to Inactive. You can make it active again later.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Make inactive",
-          onPress: () => {
-            deactivateFarm(farmId);
-            setExpandedFarmIds((prev) => {
-              const next = new Set(prev);
-              next.delete(farmId);
-              return next;
-            });
-            load();
-          },
-        },
-      ],
-    );
+  function makeInactive(farmId: string) {
+    deactivateFarm(farmId);
+    setExpandedFarmIds((prev) => {
+      const next = new Set(prev);
+      next.delete(farmId);
+      return next;
+    });
+    load();
   }
 
   useFocusEffect(
@@ -503,10 +490,13 @@ export default function DashboardScreen() {
                   friction={2}
                   rightThreshold={40}
                   containerStyle={{ marginBottom: 12 }}
+                  onSwipeableOpen={(direction) => {
+                    if (direction === "right") makeInactive(farm.id);
+                  }}
                   renderRightActions={() => (
                     <Pressable
                       accessibilityLabel={`Make ${farm.farmName} inactive`}
-                      onPress={() => confirmMakeInactive(farm.id, farm.farmName)}
+                      onPress={() => makeInactive(farm.id)}
                       style={{
                         backgroundColor: "#57534e",
                         justifyContent: "center",

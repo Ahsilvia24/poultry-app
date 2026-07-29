@@ -154,6 +154,8 @@ export default function TabsLayout() {
     <Tabs
       tabBar={(props) => <WebStyleTabBar {...props} />}
       screenOptions={{
+        // Mount all tabs up front so the first visit to each tab isn't a janky remount.
+        lazy: false,
         headerStyle: { backgroundColor: colors.headerBg },
         headerShadowVisible: false,
         headerTitleStyle: {

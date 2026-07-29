@@ -508,9 +508,7 @@ export function MortalityEntryForm({
   }
 
   function changeFarm(nextFarmId: string) {
-    cancelScheduledSave();
-    saveGenRef.current += 1;
-    dirtyRef.current = false;
+    flushSave();
     setFarmId(nextFarmId);
     setSaveStatus("idle");
     setError(null);
@@ -523,9 +521,7 @@ export function MortalityEntryForm({
   }
 
   function changeHouse(nextHouseId: string) {
-    cancelScheduledSave();
-    saveGenRef.current += 1;
-    dirtyRef.current = false;
+    flushSave();
     jumpOnHouseLoadRef.current = true;
     setSaveStatus("idle");
     setError(null);

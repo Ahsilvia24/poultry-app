@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { format, parseISO } from "date-fns";
 import { deactivateFarmAction } from "@/app/actions/farms";
 import { formatNumber, formatPct } from "@/lib/utils";
-import { Button, Card, StatusBadge } from "@/components/ui";
+import { Card, StatusBadge } from "@/components/ui";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import type { FarmCardSummary } from "@/types";
 
@@ -21,9 +21,22 @@ function openIssuesLabel(count: number) {
 function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
   const [open, setOpen] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, start] = useTransition();
   const touchStartX = useRef<number | null>(null);
+  const deactivatingRef = useRef(false);
+
+  function makeInactive() {
+    if (pending || deactivatingRef.current) return;
+    deactivatingRef.current = true;
+    setSwipeX(0);
+    start(async () => {
+      try {
+        await deactivateFarmAction(farm.id, { skipRedirect: true });
+      } finally {
+        deactivatingRef.current = false;
+      }
+    });
+  }
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -42,7 +55,8 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
       setSwipeX(0);
       return;
     }
-    if (swipeX <= -48) setSwipeX(-100);
+    // Full swipe past threshold → deactivate immediately (no confirm)
+    if (swipeX <= -48) makeInactive();
     else setSwipeX(0);
     touchStartX.current = null;
   }
@@ -55,14 +69,12 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
       >
         <button
           type="button"
-          onClick={() => {
-            setSwipeX(0);
-            setConfirmOpen(true);
-          }}
-          className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-xs font-bold text-white"
+          disabled={pending}
+          onClick={makeInactive}
+          className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-xs font-bold text-white disabled:opacity-60"
           aria-label={`Make ${farm.farmName} inactive`}
         >
-          Make inactive
+          {pending ? "Working…" : "Make inactive"}
         </button>
       </div>
 
@@ -160,57 +172,6 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
           </button>
         </Card>
       </div>
-
-      {confirmOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`deactivate-dashboard-farm-${farm.id}`}
-            className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3
-              id={`deactivate-dashboard-farm-${farm.id}`}
-              className="text-lg font-bold text-stone-900"
-            >
-              Make this farm inactive?
-            </h3>
-            <p className="mt-2 text-sm text-stone-600">
-              {farm.farmName} will move to Inactive. You can make it active again later.
-              Historical records stay intact.
-            </p>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button
-                type="button"
-                disabled={pending}
-                onClick={() => {
-                  start(async () => {
-                    await deactivateFarmAction(farm.id, { skipRedirect: true });
-                    setConfirmOpen(false);
-                  });
-                }}
-              >
-                {pending ? "Working…" : "Make inactive"}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={pending}
-                onClick={() => setConfirmOpen(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
