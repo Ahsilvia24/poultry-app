@@ -155,11 +155,32 @@ async function main() {
   await prisma.house.deleteMany();
   await prisma.farm.deleteMany();
   await prisma.userSettings.deleteMany();
-  await prisma.user.deleteMany();
 
   const passwordHash = await bcrypt.hash("password123", 12);
-  const user = await prisma.user.create({
-    data: {
+  // Keep a stable tech user id across re-seeds so live sessions stay valid.
+  const user = await prisma.user.upsert({
+    where: { email: "tech@poultry.local" },
+    update: {
+      name: "Alex Technician",
+      passwordHash,
+      settings: {
+        upsert: {
+          create: {
+            dailyMortalityWarningPct: 0.15,
+            dailyMortalityCriticalPct: 0.3,
+            sevenDayMortalityWarningPct: 1.0,
+            sevenDayMortalityCriticalPct: 2.0,
+          },
+          update: {
+            dailyMortalityWarningPct: 0.15,
+            dailyMortalityCriticalPct: 0.3,
+            sevenDayMortalityWarningPct: 1.0,
+            sevenDayMortalityCriticalPct: 2.0,
+          },
+        },
+      },
+    },
+    create: {
       name: "Alex Technician",
       email: "tech@poultry.local",
       passwordHash,
@@ -173,6 +194,9 @@ async function main() {
       },
     },
   });
+
+  // Drop any other seeded users (keep tech session stable).
+  await prisma.user.deleteMany({ where: { email: { not: "tech@poultry.local" } } });
 
   const today = startOfDay(new Date());
 
@@ -192,6 +216,9 @@ async function main() {
     note: string;
   };
 
+  // Placement ages are relative to seed-run "today". Today's schedule only shows
+  // visits due on the calendar day, so after midnight those items drop off.
+  // Include a T+1 Prebrood farm so a one-night-old seed still has something due.
   const demos: Demo[] = [
     {
       farmName: "Oak Hollow",
@@ -202,6 +229,16 @@ async function main() {
       placementDate: addDays(today, 2),
       projectedCatchDate: addDays(addDays(today, 2), 42),
       note: "Prebrood today / Placement in 2 days",
+    },
+    {
+      farmName: "Ash Grove",
+      growerName: "Riley Chen",
+      phoneNumber: "410-555-0118",
+      houses: 2,
+      flockNumber: "AG-119",
+      placementDate: addDays(today, 3),
+      projectedCatchDate: addDays(addDays(today, 3), 42),
+      note: "Prebrood tomorrow (keeps Today's schedule non-empty overnight)",
     },
     {
       farmName: "Willow Bend",
@@ -261,7 +298,7 @@ async function main() {
       flockNumber: "SF-507",
       placementDate: subDays(catchMon, 42),
       projectedCatchDate: catchMon,
-      note: `Catch Mon ${format(catchMon, "MMM d")} — 28 overdue, 35 Day + Weight Projection + LFO`,
+      note: `Catch Mon ${format(catchMon, "MMM d")} — Weight Projection / LFO near catch`,
     },
     {
       farmName: "River Bend",
@@ -298,7 +335,7 @@ async function main() {
       projectedCatchDate: demo.projectedCatchDate,
     });
 
-    if (demos.indexOf(demo) === 2) {
+    if (demo.farmName === "Cedar Creek") {
       await prisma.farmIssue.create({
         data: {
           farmId: farm.id,
@@ -333,7 +370,8 @@ async function main() {
     }
   }
 
-  console.log("Seed complete — 8 demo farms with staggered follow-ups.");
+  console.log(`Seed complete — ${demos.length} demo farms relative to ${format(today, "yyyy-MM-dd")}.`);
+  console.log("Re-run npm run db:seed after midnight so Today's schedule stays populated.");
   console.log("Login: tech@poultry.local / password123");
   for (const d of demos) {
     console.log(
