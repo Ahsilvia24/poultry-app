@@ -44,6 +44,7 @@ export type FarmCardSummary = {
   houseCount: number;
   flockAgeDays: number | null;
   totalBirdsPlaced: number;
+  birdsRemaining: number;
   todayMortality: number;
   projectedHeadCount: number | null;
   projectedMortality: number | null;

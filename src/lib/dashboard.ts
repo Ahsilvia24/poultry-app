@@ -121,6 +121,7 @@ export async function getDashboardData(userId: string) {
     let placed = 0;
     let todayMort = 0;
     let cum = 0;
+    let remaining = 0;
     let projectedHead = 0;
     let projectedMortExtra = 0;
     let dailyPct = 0;
@@ -172,6 +173,7 @@ export async function getDashboardData(userId: string) {
         const metrics = summarizeForDate(hf.placedBirdCount, hf.mortalities, today);
         todayMort += metrics.today;
         cum += metrics.cumulative;
+        remaining += metrics.remaining;
         dailyPct = Math.max(dailyPct, metrics.dailyPct);
         sevenPct = Math.max(sevenPct, metrics.sevenDayPct);
         if (isRisingThreeDays(hf.mortalities, today)) rising = true;
@@ -212,6 +214,7 @@ export async function getDashboardData(userId: string) {
         ? differenceInCalendarDays(today, active.placementDate)
         : null,
       totalBirdsPlaced: placed,
+      birdsRemaining: remaining,
       todayMortality: todayMort,
       projectedHeadCount: active ? projectedHead : null,
       projectedMortality: active ? Math.max(0, Math.round(cum + projectedMortExtra)) : null,

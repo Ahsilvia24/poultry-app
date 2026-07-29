@@ -456,13 +456,33 @@ export default function DashboardScreen() {
                   {open ? (
                     <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
                       <View style={styles.row}>
-                        <Metric label="Today's Mortality" value={String(farm.todayMortality)} />
                         <Metric
-                          label="Cumulative Mortality"
+                          columns={3}
+                          label="Birds placed"
+                          value={formatNumber(farm.birdsPlaced)}
+                        />
+                        <Metric
+                          columns={3}
+                          label="Birds remaining"
+                          value={formatNumber(farm.birdsRemaining)}
+                        />
+                        <Metric
+                          columns={3}
+                          label="Proj. Head Count"
+                          value={formatNumber(farm.projectedHeadCount)}
+                        />
+                        <Metric
+                          columns={3}
+                          label="Today's Mortality"
+                          value={String(farm.todayMortality)}
+                        />
+                        <Metric
+                          columns={3}
+                          label="Total Mortality"
                           value={`${farm.cumulativeMortality} (${formatPct(farm.cumulativeMortalityPct)})`}
                         />
-                        <Metric label="Birds placed" value={formatNumber(farm.birdsPlaced)} />
                         <Metric
+                          columns={3}
                           label="Projected Mortality"
                           value={
                             farm.projectedMortality != null && farm.birdsPlaced > 0
@@ -472,12 +492,6 @@ export default function DashboardScreen() {
                               : formatNumber(farm.projectedMortality)
                           }
                         />
-                        <Metric
-                          label="Proj. Head Count"
-                          value={formatNumber(farm.projectedHeadCount)}
-                          hint="150 per house @ catch"
-                        />
-                        <Metric label="Open issues" value={String(farm.openIssues)} />
                       </View>
 
                       {farm.weeklyMortality.length > 0 ? (
@@ -519,11 +533,13 @@ export default function DashboardScreen() {
                             ? formatLastVisitDate(farm.lastVisitDate)
                             : "—"}
                         </Text>
-                        {farm.missingTodayMortality ? (
-                          <Text style={{ color: colors.warn, fontWeight: "800", fontSize: 12 }}>
-                            Missing today&apos;s mortality
-                          </Text>
-                        ) : null}
+                        <Text style={[styles.muted, { fontSize: 12 }]}>
+                          {farm.openIssues <= 0
+                            ? "No open issues"
+                            : farm.openIssues === 1
+                              ? "1 open issue"
+                              : `${farm.openIssues} open issues`}
+                        </Text>
                       </View>
                     </View>
                   ) : null}

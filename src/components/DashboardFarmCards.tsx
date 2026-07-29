@@ -11,6 +11,12 @@ function formatLastVisitDate(dateKey: string) {
   return format(parseISO(dateKey), "EEE, d MMM yy");
 }
 
+function openIssuesLabel(count: number) {
+  if (count <= 0) return "No open issues";
+  if (count === 1) return "1 open issue";
+  return `${count} open issues`;
+}
+
 export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
 
@@ -55,20 +61,32 @@ export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
 
             {open ? (
               <div className="border-t border-stone-100 px-4 pb-4 pt-3">
-                <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <p className="text-stone-500">Birds placed</p>
+                    <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
+                  </div>
+                  <div>
+                    <p className="text-stone-500">Birds remaining</p>
+                    <p className="font-semibold">{formatNumber(farm.birdsRemaining)}</p>
+                  </div>
+                  <div>
+                    <p className="text-stone-500">Proj. Head Count</p>
+                    <p className="font-semibold">
+                      {farm.projectedHeadCount != null
+                        ? formatNumber(farm.projectedHeadCount)
+                        : "—"}
+                    </p>
+                  </div>
                   <div>
                     <p className="text-stone-500">Today&apos;s Mortality</p>
                     <p className="font-semibold">{farm.todayMortality}</p>
                   </div>
                   <div>
-                    <p className="text-stone-500">Cumulative Mortality</p>
+                    <p className="text-stone-500">Total Mortality</p>
                     <p className="font-semibold">
                       {farm.cumulativeMortality} ({formatPct(farm.cumulativeMortalityPct)})
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-stone-500">Birds placed</p>
-                    <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
                   </div>
                   <div>
                     <p className="text-stone-500">Projected Mortality</p>
@@ -81,19 +99,6 @@ export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
                           )})`
                         : "—"}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-stone-500">Proj. Head Count</p>
-                    <p className="font-semibold">
-                      {farm.projectedHeadCount != null
-                        ? formatNumber(farm.projectedHeadCount)
-                        : "—"}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-stone-400">150 per house @ catch</p>
-                  </div>
-                  <div>
-                    <p className="text-stone-500">Open issues</p>
-                    <p className="font-semibold">{farm.openIssues}</p>
                   </div>
                 </div>
                 {farm.weeklyMortality.length > 0 ? (
@@ -109,11 +114,7 @@ export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
                     Last visit:{" "}
                     {farm.lastVisitDate ? formatLastVisitDate(farm.lastVisitDate) : "—"}
                   </span>
-                  {farm.missingTodayMortality ? (
-                    <span className="font-bold text-amber-700">
-                      Missing today&apos;s mortality
-                    </span>
-                  ) : null}
+                  <span>{openIssuesLabel(farm.openIssues)}</span>
                 </div>
               </div>
             ) : null}
