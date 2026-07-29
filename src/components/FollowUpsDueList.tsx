@@ -86,7 +86,7 @@ export function FollowUpsDueList({
               key={key}
               className={`flex items-center justify-between gap-3 ${isDone ? "opacity-50" : ""}`}
             >
-              <div className="flex min-w-0 items-center gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 <button
                   type="button"
                   aria-label={
@@ -107,22 +107,22 @@ export function FollowUpsDueList({
                 </button>
                 <Link
                   href={`/farms/${f.farmId}`}
-                  className={`truncate font-semibold text-stone-900 hover:underline ${
+                  className={`flex min-w-0 items-baseline gap-1 font-semibold text-stone-900 hover:underline ${
                     isDone ? "line-through" : ""
                   }`}
                 >
-                  {f.farmName}
+                  <span className="truncate">{f.farmName}</span>
                   {f.flockAgeDays != null ? (
-                    <span className="font-normal text-stone-500"> · {f.flockAgeDays}d</span>
+                    <span className="shrink-0 font-normal text-stone-500">· {f.flockAgeDays}d</span>
                   ) : null}
                 </Link>
               </div>
-              <span className="flex shrink-0 items-baseline gap-4 text-stone-600">
-                <span className="min-w-[7.5rem] text-right font-medium text-stone-800">
+              <span className="flex shrink-0 items-baseline gap-3 text-stone-600">
+                <span className="min-w-[6.5rem] text-right font-medium text-stone-800">
                   {f.label}
                 </span>
                 {showDate ? (
-                  <span className="min-w-[5.5rem] text-stone-500">
+                  <span className="min-w-[5.5rem] text-right text-stone-500">
                     {format(parseISO(f.date), "EEE, MMM d")}
                   </span>
                 ) : null}

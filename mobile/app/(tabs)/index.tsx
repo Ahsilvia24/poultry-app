@@ -85,26 +85,67 @@ function ScheduleCheckRow({
       </Pressable>
       <Pressable
         onPress={onOpenFarm}
-        style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 }}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+        }}
       >
-        <Text
+        <View
           style={{
-            fontWeight: "700",
-            color: colors.text,
             flex: 1,
-            textDecorationLine: checked ? "line-through" : "none",
+            minWidth: 0,
+            flexDirection: "row",
+            alignItems: "baseline",
+            flexShrink: 1,
           }}
-          numberOfLines={2}
         >
-          {item.farmName}
+          <Text
+            style={{
+              fontWeight: "700",
+              color: colors.text,
+              flexShrink: 1,
+              textDecorationLine: checked ? "line-through" : "none",
+            }}
+            numberOfLines={1}
+          >
+            {item.farmName}
+          </Text>
           {item.flockAgeDays != null ? (
-            <Text style={{ fontWeight: "400", color: colors.muted }}> · {item.flockAgeDays}d</Text>
-          ) : null}
-        </Text>
-        {showDate ? (
-          <>
             <Text
-              style={{ color: colors.muted, fontSize: 13, fontWeight: "500", width: 86 }}
+              style={{
+                fontWeight: "400",
+                color: colors.muted,
+                flexShrink: 0,
+                textDecorationLine: checked ? "line-through" : "none",
+              }}
+              numberOfLines={1}
+            >
+              {" "}
+              · {item.flockAgeDays}d
+            </Text>
+          ) : null}
+        </View>
+        {showDate ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              flexShrink: 0,
+              gap: 10,
+            }}
+          >
+            <Text
+              style={{
+                color: colors.muted,
+                fontSize: 13,
+                fontWeight: "600",
+                textAlign: "right",
+                minWidth: 78,
+              }}
               numberOfLines={1}
             >
               {item.label}
@@ -114,16 +155,26 @@ function ScheduleCheckRow({
                 color: colors.muted,
                 fontSize: 13,
                 fontWeight: "700",
-                width: 98,
                 textAlign: "right",
+                width: 92,
               }}
               numberOfLines={1}
             >
               {formatShortScheduleDate(item.date)}
             </Text>
-          </>
+          </View>
         ) : (
-          <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "700" }}>{item.label}</Text>
+          <Text
+            style={{
+              color: colors.muted,
+              fontSize: 13,
+              fontWeight: "700",
+              flexShrink: 0,
+            }}
+            numberOfLines={1}
+          >
+            {item.label}
+          </Text>
         )}
       </Pressable>
     </View>
