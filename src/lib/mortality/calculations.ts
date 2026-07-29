@@ -47,7 +47,8 @@ export function weeklyMortalityByPlacement(
   asOfDate: Date = new Date(),
 ): Array<{ week: number; total: number }> {
   const ageToday = birdAgeFromPlacement(placementDate, asOfDate);
-  const currentWeek = flockWeekFromAge(ageToday);
+  // Cap so a bad/old placement can't inflate the week grid into tiny unreadables.
+  const currentWeek = Math.min(flockWeekFromAge(ageToday), 16);
   const totals = new Map<number, number>();
 
   for (let w = 1; w <= currentWeek; w++) {
