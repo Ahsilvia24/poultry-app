@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { auth } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard";
-import { Card, Button } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { DashboardFarmCards } from "@/components/DashboardFarmCards";
@@ -32,11 +31,6 @@ export default async function DashboardPage() {
           </form>
         </div>
         <p className="mt-1 text-stone-600">Active farms, mortality, and follow-ups</p>
-        <div className="mt-3">
-          <Link href="/mortality">
-            <Button>Enter mortality</Button>
-          </Link>
-        </div>
       </div>
 
       <div className="space-y-3">

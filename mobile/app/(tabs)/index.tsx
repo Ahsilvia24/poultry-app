@@ -17,7 +17,6 @@ import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import {
   Card,
   Metric,
-  PrimaryButton,
   SectionTitle,
   StatusBadge,
   WeeklyMortalityList,
@@ -257,12 +256,6 @@ export default function DashboardScreen() {
             </Pressable>
           </View>
           <Text style={styles.subtitle}>Active farms, mortality, and follow-ups</Text>
-          <View style={{ marginTop: 12 }}>
-            <PrimaryButton
-              label="Enter mortality"
-              onPress={() => router.push("/(tabs)/mortality")}
-            />
-          </View>
         </View>
 
         {error ? <Text style={{ color: colors.danger, marginBottom: 12 }}>{error}</Text> : null}
