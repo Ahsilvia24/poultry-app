@@ -100,17 +100,28 @@ function ScheduleCheckRow({
           {item.flockAgeDays != null ? (
             <Text style={{ fontWeight: "400", color: colors.muted }}> · {item.flockAgeDays}d</Text>
           ) : null}
-          {showDate ? (
-            <Text style={{ fontWeight: "400", color: colors.muted }}>
-              {"  "}
-              {item.label}
-            </Text>
-          ) : null}
         </Text>
         {showDate ? (
-          <Text style={{ color: colors.muted, fontSize: 13 }}>
-            {formatShortScheduleDate(item.date)}
-          </Text>
+          <>
+            <Text
+              style={{ color: colors.muted, fontSize: 13, fontWeight: "500", width: 86 }}
+              numberOfLines={1}
+            >
+              {item.label}
+            </Text>
+            <Text
+              style={{
+                color: colors.muted,
+                fontSize: 13,
+                fontWeight: "700",
+                width: 98,
+                textAlign: "right",
+              }}
+              numberOfLines={1}
+            >
+              {formatShortScheduleDate(item.date)}
+            </Text>
+          </>
         ) : (
           <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "700" }}>{item.label}</Text>
         )}
