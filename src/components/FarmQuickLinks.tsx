@@ -23,17 +23,17 @@ export function FarmQuickLinks({
   const links: Array<{ key: string; href: string; label: string; external?: boolean }> = [
     { key: "mortality", href: `/mortality?farmId=${farmId}`, label: "Mortality", external: true },
     { key: "lfo", href: lfoHref, label: "LFO", external: true },
-    { key: "add-flock", href: "#add-flock", label: "Add flock" },
-    { key: "visits", href: "#visits", label: "Visits" },
-    { key: "generators", href: "#generators", label: "Generator Log" },
     { key: "weight", href: "#weight-projections", label: "Weight Projections" },
+    { key: "generators", href: "#generators", label: "Generator Log" },
+    { key: "visits", href: "#visits", label: "Visits" },
     { key: "issues", href: "#issues", label: "Issues" },
     { key: "litter", href: "#litter", label: "Litter" },
     { key: "feed", href: "#feed", label: "Feed" },
     { key: "reports", href: `/reports?farmId=${farmId}`, label: "Reports", external: true },
+    { key: "add-flock", href: "#add-flock", label: "Add flock" },
   ];
 
-  // Insert Complete flock after Add flock when there is an active flock.
+  // Append Complete flock after Add flock when there is an active flock.
   const items: Array<
     | { kind: "link"; key: string; href: string; label: string; external?: boolean }
     | { kind: "complete"; key: string }

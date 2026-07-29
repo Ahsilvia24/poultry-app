@@ -1057,17 +1057,6 @@ export default function FarmDetailScreen() {
               <Ionicons name="settings-outline" size={22} color={colors.muted} />
             </Pressable>
           </View>
-          {farm.phoneNumber ? (
-            <Pressable
-              onPress={() => Linking.openURL(`tel:${farm.phoneNumber}`)}
-              style={{ alignSelf: "flex-start", marginTop: 4 }}
-              hitSlop={8}
-            >
-              <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 15 }}>
-                {farm.phoneNumber}
-              </Text>
-            </Pressable>
-          ) : null}
           <Card style={{ marginTop: 12 }}>
             <Text style={{ fontWeight: "800", fontSize: 14, marginBottom: 8 }}>Quick links</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>

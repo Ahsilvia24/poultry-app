@@ -9,11 +9,6 @@ import { cn } from "@/lib/utils";
 
 type SearchParams = Promise<{ status?: string }>;
 
-function dialHref(phone: string) {
-  const digits = phone.replace(/[^\d+]/g, "");
-  return digits ? `tel:${digits}` : `tel:${phone}`;
-}
-
 export default async function FarmsPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -106,14 +101,6 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                         <p className="mt-0.5 text-sm leading-snug text-stone-600">{farm.growerName}</p>
                       ) : null}
                     </Link>
-                    {farm.phoneNumber ? (
-                      <a
-                        href={dialHref(farm.phoneNumber)}
-                        className="mt-0.5 inline-block text-sm font-semibold leading-snug text-emerald-800 underline-offset-2 hover:underline"
-                      >
-                        {farm.phoneNumber}
-                      </a>
-                    ) : null}
                   </div>
                   <div className="ml-1 flex shrink-0 items-center gap-1">
                     {farm.isActive ? (

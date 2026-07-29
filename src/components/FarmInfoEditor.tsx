@@ -62,14 +62,6 @@ export function FarmInfoEditor({
               <GearIcon className="h-5 w-5" />
             </button>
           </div>
-          {farm.phoneNumber ? (
-            <a
-              href={`tel:${farm.phoneNumber}`}
-              className="mt-1 inline-block text-sm font-semibold text-emerald-800 hover:underline"
-            >
-              {farm.phoneNumber}
-            </a>
-          ) : null}
         </div>
         {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </div>
