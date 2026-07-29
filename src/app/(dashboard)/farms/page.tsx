@@ -78,7 +78,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
           </Link>
         </Card>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-2 md:grid-cols-2">
           {farms.map((farm) => {
             const houseCount = farm.houses.length;
             const flockAges = Array.from(
@@ -88,11 +88,11 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
             ).sort((a, b) => a - b);
 
             return (
-              <Card key={farm.id} className="transition hover:border-emerald-400">
-                <div className="flex items-start justify-between gap-3">
+              <Card key={farm.id} className="p-3 transition hover:border-emerald-400">
+                <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <Link href={`/farms/${farm.id}`} className="block">
-                      <p className="text-lg font-bold text-stone-900">
+                      <p className="text-base font-bold leading-snug text-stone-900">
                         {farm.farmName}
                         <span className="font-semibold text-stone-500"> ({houseCount})</span>
                         {flockAges.length > 0 ? (
@@ -103,19 +103,19 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                         ) : null}
                       </p>
                       {farm.growerName ? (
-                        <p className="mt-0.5 text-sm text-stone-600">{farm.growerName}</p>
+                        <p className="mt-0.5 text-sm leading-snug text-stone-600">{farm.growerName}</p>
                       ) : null}
                     </Link>
                     {farm.phoneNumber ? (
                       <a
                         href={dialHref(farm.phoneNumber)}
-                        className="mt-0.5 inline-block text-sm font-semibold text-emerald-800 underline-offset-2 hover:underline"
+                        className="mt-0.5 inline-block text-sm font-semibold leading-snug text-emerald-800 underline-offset-2 hover:underline"
                       >
                         {farm.phoneNumber}
                       </a>
                     ) : null}
                   </div>
-                  <div className="ml-2 flex shrink-0 flex-col items-end gap-1">
+                  <div className="ml-1 flex shrink-0 items-center gap-1">
                     {farm.isActive ? (
                       <DeactivateFarmButton farmId={farm.id} appearance="badge" />
                     ) : (
