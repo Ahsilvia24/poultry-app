@@ -72,6 +72,24 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
               accessibilityRole="button"
               accessibilityState={focused ? { selected: true } : {}}
               onPress={() => {
+                const ctx = getFarmNavContext();
+                const fromMortality = focusedRoute?.name === "mortality";
+
+                // Mortality → Farms: open the selected farm/house.
+                // Skip tabPress emit — nested stack listeners popToTop on tabPress
+                // and were winning the race back to the main farms list.
+                if (!focused && route.name === "farms" && fromMortality && ctx.farmId) {
+                  armFarmReturnFromMortality();
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]",
+                    params: {
+                      id: ctx.farmId,
+                      focusHouseFlockId: ctx.houseFlockId ?? "",
+                    },
+                  });
+                  return;
+                }
+
                 const event = navigation.emit({
                   type: "tabPress",
                   target: route.key,
@@ -80,7 +98,7 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 if (event.defaultPrevented) return;
 
                 if (focused) {
-                  // Farms: always return to the main farms list.
+                  // Re-tap while already on Farms/LFO: pop nested stack to root.
                   if (route.name === "farms") {
                     popNestedToRoot(tabRoute);
                     requestTabScrollTop("farms");
@@ -92,7 +110,6 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                     return;
                   }
                   if (route.name === "mortality") {
-                    const ctx = getFarmNavContext();
                     navigation.navigate(route.name, {
                       farmId: ctx.farmId ?? undefined,
                       houseFlockId: ctx.houseFlockId ?? undefined,
@@ -104,28 +121,12 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                   return;
                 }
 
-                // Switching tabs.
+                // Switching tabs — restore last screen (never force Farms → list).
                 if (route.name === "farms") {
-                  const ctx = getFarmNavContext();
-                  const fromMortality = focusedRoute?.name === "mortality";
-                  if (fromMortality && ctx.farmId) {
-                    // Arm list-level redirect as a safety net, then open the farm.
-                    armFarmReturnFromMortality();
-                    router.replace({
-                      pathname: "/(tabs)/farms/[id]",
-                      params: {
-                        id: ctx.farmId,
-                        focusHouseFlockId: ctx.houseFlockId ?? "",
-                      },
-                    });
-                    return;
-                  }
                   navigation.navigate("farms");
-                  requestTabScrollTop("farms");
                   return;
                 }
                 if (route.name === "mortality") {
-                  const ctx = getFarmNavContext();
                   navigation.navigate(route.name, {
                     farmId: ctx.farmId ?? undefined,
                     houseFlockId: ctx.houseFlockId ?? undefined,

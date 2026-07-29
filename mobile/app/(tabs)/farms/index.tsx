@@ -53,10 +53,11 @@ export default function FarmsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // Mortality → Farms: jump straight to the selected farm (not this list).
+      // Safety net: if Mortality armed a return target but we landed on the list,
+      // push straight to that farm/house.
       const pending = consumeFarmReturnFromMortality();
       if (pending?.farmId) {
-        router.replace({
+        router.push({
           pathname: "/(tabs)/farms/[id]",
           params: {
             id: pending.farmId,
