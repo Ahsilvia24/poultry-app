@@ -201,43 +201,23 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
 
               {weekRows.length > 0 ? (
                 <div className="mt-3 border-t border-stone-100 pt-3">
-                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-500">
-                    Weekly min vent
-                  </p>
-                  <ul className="space-y-1">
-                    {weekRows.map((w) => {
-                      const isResult = resultWeek === w.week;
-                      return (
-                        <li
-                          key={w.week}
-                          className={cn(
-                            "flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm",
-                            isResult ? "bg-emerald-50" : null,
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              "min-w-0",
-                              isResult ? "font-extrabold text-stone-900" : "font-semibold text-stone-700",
-                            )}
-                          >
-                            Wk{w.week}
-                            {isResult ? " · Result" : ""}{" "}
-                            <span className="font-medium text-stone-500">
-                              ({w.dayStart}-{w.dayEnd}d · {formatCfmPerBird(w.cfmPerBird)})
-                            </span>
+                  <ul className="space-y-1.5">
+                    {weekRows.map((w) => (
+                      <li
+                        key={w.week}
+                        className="flex items-baseline justify-between gap-3 text-sm"
+                      >
+                        <span className="text-stone-700">
+                          Wk{w.week}{" "}
+                          <span className="text-stone-500">
+                            ({w.dayStart}-{w.dayEnd}d · {formatCfmPerBird(w.cfmPerBird)} CFM/bird)
                           </span>
-                          <span
-                            className={cn(
-                              "shrink-0 tabular-nums font-extrabold",
-                              isResult ? "text-emerald-900" : "text-stone-900",
-                            )}
-                          >
-                            {formatMinVentCycle(w.onSeconds, w.offSeconds)}
-                          </span>
-                        </li>
-                      );
-                    })}
+                        </span>
+                        <span className="shrink-0 font-extrabold tabular-nums text-stone-900">
+                          {formatMinVentCycle(w.onSeconds, w.offSeconds)}
+                        </span>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               ) : null}

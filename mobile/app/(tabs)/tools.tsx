@@ -321,63 +321,35 @@ export default function ToolsScreen() {
                           borderTopColor: "#f5f5f4",
                         }}
                       >
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: "700",
-                            color: colors.muted,
-                            textTransform: "uppercase",
-                            marginBottom: 8,
-                          }}
-                        >
-                          Weekly min vent
-                        </Text>
-                        {weekRows.map((w) => {
-                          const isResult = resultWeek === w.week;
-                          return (
-                            <View
-                              key={w.week}
+                        {weekRows.map((w) => (
+                          <View
+                            key={w.week}
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "baseline",
+                              gap: 8,
+                              paddingVertical: 5,
+                            }}
+                          >
+                            <Text style={{ flex: 1, fontSize: 13, color: colors.text }}>
+                              Wk{w.week}{" "}
+                              <Text style={{ color: colors.muted }}>
+                                ({w.dayStart}-{w.dayEnd}d · {w.cfmPerBird.toFixed(2)} CFM/bird)
+                              </Text>
+                            </Text>
+                            <Text
                               style={{
-                                flexDirection: "row",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                gap: 8,
-                                paddingVertical: 7,
-                                paddingHorizontal: 8,
-                                marginHorizontal: -8,
-                                borderRadius: 8,
-                                backgroundColor: isResult ? "#ecfdf5" : "transparent",
+                                fontSize: 14,
+                                fontWeight: "800",
+                                color: colors.text,
+                                fontVariant: ["tabular-nums"],
                               }}
                             >
-                              <View style={{ flex: 1, minWidth: 0 }}>
-                                <Text
-                                  style={{
-                                    fontSize: 13,
-                                    fontWeight: isResult ? "800" : "600",
-                                    color: colors.text,
-                                  }}
-                                >
-                                  Wk{w.week}
-                                  {isResult ? " · Result" : ""}
-                                  <Text style={{ fontWeight: "500", color: colors.muted }}>
-                                    {" "}
-                                    ({w.dayStart}-{w.dayEnd}d · {w.cfmPerBird.toFixed(2)})
-                                  </Text>
-                                </Text>
-                              </View>
-                              <Text
-                                style={{
-                                  fontSize: isResult ? 15 : 14,
-                                  fontWeight: "800",
-                                  color: isResult ? colors.accentDark : colors.text,
-                                  fontVariant: ["tabular-nums"],
-                                }}
-                              >
-                                {formatMinVentCycle(w.onSeconds, w.offSeconds)}
-                              </Text>
-                            </View>
-                          );
-                        })}
+                              {formatMinVentCycle(w.onSeconds, w.offSeconds)}
+                            </Text>
+                          </View>
+                        ))}
                       </View>
                     ) : null}
 
