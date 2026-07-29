@@ -309,6 +309,53 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         }
       />
 
+      <h2 className="mt-6 text-xl font-bold">{farm.farmName}</h2>
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        {houseCards.map(
+          ({
+            house,
+            hf,
+            flockNumber,
+            metrics,
+            weeklyMortality,
+            projectedHeadCount,
+            projectedMortality,
+            status,
+            recommendedMinVentLabel,
+          }) => (
+          <HouseCard
+            key={house.id}
+            farmId={farm.id}
+            house={{
+              id: house.id,
+              houseNumber: house.houseNumber,
+              squareFootage: house.squareFootage,
+              totalFanCFM: house.totalFanCFM,
+              numberOfFans: house.numberOfFans,
+              notes: house.notes,
+            }}
+            hasFlock={Boolean(hf)}
+            status={status}
+            birdsPlaced={hf?.placedBirdCount ?? null}
+            metrics={metrics}
+            projectedHeadCount={projectedHeadCount}
+            projectedMortality={projectedMortality}
+            weeklyMortality={weeklyMortality}
+            recommendedMinVent={recommendedMinVentLabel}
+            flockLabel={flockNumber}
+            houseFlockId={hf?.id ?? null}
+          />
+        ),
+        )}
+        {farm.houses.length === 0 ? (
+          <Card>
+            <p className="text-stone-600">No houses yet. Add one below.</p>
+          </Card>
+        ) : null}
+      </div>
+
+      <AddHouseForm farmId={farm.id} />
+
       {activeFlocks.length > 0 ? (
         <div className="mt-6">
           <div className="flex items-start justify-between gap-3">
@@ -414,53 +461,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           <FarmQuickLinks farmId={farm.id} />
         </div>
       ) : null}
-
-      <h2 className="mt-8 text-xl font-bold">{farm.farmName}</h2>
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
-        {houseCards.map(
-          ({
-            house,
-            hf,
-            flockNumber,
-            metrics,
-            weeklyMortality,
-            projectedHeadCount,
-            projectedMortality,
-            status,
-            recommendedMinVentLabel,
-          }) => (
-          <HouseCard
-            key={house.id}
-            farmId={farm.id}
-            house={{
-              id: house.id,
-              houseNumber: house.houseNumber,
-              squareFootage: house.squareFootage,
-              totalFanCFM: house.totalFanCFM,
-              numberOfFans: house.numberOfFans,
-              notes: house.notes,
-            }}
-            hasFlock={Boolean(hf)}
-            status={status}
-            birdsPlaced={hf?.placedBirdCount ?? null}
-            metrics={metrics}
-            projectedHeadCount={projectedHeadCount}
-            projectedMortality={projectedMortality}
-            weeklyMortality={weeklyMortality}
-            recommendedMinVent={recommendedMinVentLabel}
-            flockLabel={flockNumber}
-            houseFlockId={hf?.id ?? null}
-          />
-        ),
-        )}
-        {farm.houses.length === 0 ? (
-          <Card>
-            <p className="text-stone-600">No houses yet. Add one below.</p>
-          </Card>
-        ) : null}
-      </div>
-
-      <AddHouseForm farmId={farm.id} />
 
       <AddFlockSection
         action={submitFlock}
