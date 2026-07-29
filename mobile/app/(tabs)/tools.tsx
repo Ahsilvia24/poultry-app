@@ -260,21 +260,37 @@ export default function ToolsScreen() {
                       borderColor: colors.border,
                       borderRadius: 10,
                       backgroundColor: "#fff",
-                      padding: 12,
-                      marginBottom: 12,
+                      padding: 10,
+                      marginBottom: 10,
                     }}
                   >
-                    <Text style={{ fontWeight: "700", fontSize: 15 }}>
-                      House {selectedHouse.houseNumber}
-                    </Text>
-                    <Text style={[styles.muted, { marginTop: 4 }]}>
-                      {flockWeek != null
-                        ? `Flock week ${flockWeek}${
-                            selectedHouse.ageDays != null ? ` · ${selectedHouse.ageDays}d` : ""
-                          }`
-                        : "No active flock — week / HP unavailable."}
-                    </Text>
-                    <View style={[styles.row, { marginTop: 12 }]}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "baseline",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
+                    >
+                      <Text style={{ fontWeight: "700", fontSize: 15, flexShrink: 0 }}>
+                        House {selectedHouse.houseNumber}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.muted,
+                          { fontSize: 13, flex: 1, textAlign: "right" },
+                          flockWeek == null ? { color: colors.warn } : null,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {flockWeek != null
+                          ? `Flock week ${flockWeek}${
+                              selectedHouse.ageDays != null ? ` · ${selectedHouse.ageDays}d` : ""
+                            }`
+                          : "No active flock"}
+                      </Text>
+                    </View>
+                    <View style={[styles.row, { marginTop: 8 }]}>
                       <MetricTile
                         label="HP"
                         value={selectedHouse.placedBirdCount?.toLocaleString() ?? "—"}
@@ -307,8 +323,8 @@ export default function ToolsScreen() {
                     {weekRows.length > 0 ? (
                       <View
                         style={{
-                          marginTop: 12,
-                          paddingTop: 12,
+                          marginTop: 6,
+                          paddingTop: 6,
                           borderTopWidth: 1,
                           borderTopColor: "#f5f5f4",
                         }}
@@ -321,7 +337,7 @@ export default function ToolsScreen() {
                               justifyContent: "space-between",
                               alignItems: "baseline",
                               gap: 8,
-                              paddingVertical: 5,
+                              paddingVertical: 3,
                             }}
                           >
                             <Text style={{ flex: 1, fontSize: 13, color: colors.text }}>
@@ -570,11 +586,11 @@ export default function ToolsScreen() {
 
 function MetricTile({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ width: "47%", marginBottom: 8 }}>
+    <View style={{ width: "47%", marginBottom: 4 }}>
       <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase" }}>
         {label}
       </Text>
-      <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, marginTop: 2 }}>
+      <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, marginTop: 1 }}>
         {value}
       </Text>
     </View>

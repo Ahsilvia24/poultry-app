@@ -147,18 +147,22 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
           )}
 
           {house ? (
-            <div className="rounded-lg border border-stone-200 bg-white px-3 py-3 text-sm text-stone-700">
-              <p className="font-semibold text-stone-900">House {house.houseNumber}</p>
-              {flockWeek != null ? (
-                <p className="mt-1 text-stone-600">
-                  Flock week {flockWeek}
-                  {farm?.birdAgeDays != null ? ` · ${farm.birdAgeDays}d` : ""}
+            <div className="rounded-lg border border-stone-200 bg-white px-2.5 py-2.5 text-sm text-stone-700">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="shrink-0 font-semibold text-stone-900">
+                  House {house.houseNumber}
                 </p>
-              ) : (
-                <p className="mt-1 text-amber-800">No active flock — week / HP unavailable.</p>
-              )}
+                {flockWeek != null ? (
+                  <p className="truncate text-right text-[13px] text-stone-600">
+                    Flock week {flockWeek}
+                    {farm?.birdAgeDays != null ? ` · ${farm.birdAgeDays}d` : ""}
+                  </p>
+                ) : (
+                  <p className="truncate text-right text-[13px] text-amber-800">No active flock</p>
+                )}
+              </div>
 
-              <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4">
+              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-4">
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-stone-500">HP</dt>
                   <dd className="font-semibold tabular-nums text-stone-900">
@@ -193,12 +197,12 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
               </dl>
 
               {weekRows.length > 0 ? (
-                <div className="mt-3 border-t border-stone-100 pt-3">
-                  <ul className="space-y-1.5">
+                <div className="mt-2 border-t border-stone-100 pt-1.5">
+                  <ul className="space-y-0.5">
                     {weekRows.map((w) => (
                       <li
                         key={w.week}
-                        className="flex items-baseline justify-between gap-3 text-sm"
+                        className="flex items-baseline justify-between gap-3 py-0.5 text-sm"
                       >
                         <span className="text-stone-700">
                           Wk{w.week}{" "}
@@ -216,7 +220,7 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
               ) : null}
 
               {breakdown ? (
-                <div className="mt-3">
+                <div className="mt-2">
                   <button
                     type="button"
                     onClick={() => setShowMath((v) => !v)}
@@ -225,7 +229,7 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                     {showMath ? "Hide math" : "Show math"}
                   </button>
                   {showMath ? (
-                    <div className="mt-3 space-y-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700">
+                    <div className="mt-2 space-y-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm text-stone-700">
                       <p>
                         ON = (HP × CFM/Bird ÷ Total CFM) × {MIN_VENT_CYCLE_SECONDS}
                       </p>
