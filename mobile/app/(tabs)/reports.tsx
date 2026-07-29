@@ -101,7 +101,22 @@ export default function ReportsScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
+        <Pressable
+          onPress={() => {
+            // Prefer the originating farm (passed as `farmId`), since tab-stack
+            // navigation can make `router.back()` land on Dashboard.
+            if (farmIdParam) {
+              router.replace({
+                pathname: "/(tabs)/farms/[id]",
+                params: { id: farmIdParam },
+              });
+              return;
+            }
+
+            if (router.canGoBack()) router.back();
+          }}
+          style={{ marginBottom: 8 }}
+        >
           <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
         </Pressable>
         <PageHeader title="Reports" subtitle="Choose a report type, then run filters" />
