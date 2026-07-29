@@ -204,151 +204,155 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("vent", e)} collapsable={false}>
           {open.vent ? (
-            <SectionPanel
-              title="Ventilation"
-              onClose={() => setOpen((p) => ({ ...p, vent: false }))}
-            >
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: 10,
-                  backgroundColor: "#fafaf9",
-                  padding: 12,
-                  marginBottom: 14,
-                }}
+            <>
+              <SectionPanel
+                title="Ventilation"
+                onClose={() => setOpen((p) => ({ ...p, vent: false }))}
               >
-                <Text style={{ fontWeight: "700", color: colors.text }}>
-                  Recommended Min Vent math
-                </Text>
-                <Text style={{ marginTop: 8, color: colors.text, fontSize: 14 }}>
-                  ON = (HP × CFM/Bird ÷ Total CFM) × {MIN_VENT_CYCLE_SECONDS}
-                </Text>
-                <Text style={{ marginTop: 4, color: colors.text, fontSize: 14 }}>
-                  OFF = {MIN_VENT_CYCLE_SECONDS} − ON
-                </Text>
-              </View>
-
-              <Text style={styles.label}>Farm</Text>
-              <ChipScroller>
-                {farms.map((f) => (
-                  <Chip
-                    key={f.id}
-                    label={f.farmName}
-                    active={farmId === f.id}
-                    onPress={() => {
-                      setFarmId(f.id);
-                      setHouseId("");
-                    }}
-                  />
-                ))}
-              </ChipScroller>
-
-              <Text style={styles.label}>House</Text>
-              <ChipScroller>
-                {houses.map((h) => (
-                  <Chip
-                    key={h.id}
-                    label={`House ${h.houseNumber}`}
-                    active={(selectedHouse?.id ?? "") === h.id}
-                    onPress={() => setHouseId(h.id)}
-                  />
-                ))}
-              </ChipScroller>
-
-              {selectedHouse ? (
                 <View
                   style={{
                     borderWidth: 1,
                     borderColor: colors.border,
                     borderRadius: 10,
-                    backgroundColor: "#fff",
+                    backgroundColor: "#fafaf9",
                     padding: 12,
-                    marginBottom: 12,
+                    marginBottom: 14,
                   }}
                 >
-                  <Text style={{ fontWeight: "700", fontSize: 15 }}>
-                    House {selectedHouse.houseNumber} — worked example
+                  <Text style={{ fontWeight: "700", color: colors.text }}>
+                    Recommended Min Vent math
                   </Text>
-                  <Text style={[styles.muted, { marginTop: 4 }]}>
-                    {detail?.activeFlock?.flockWeek != null
-                      ? `Flock week ${detail.activeFlock.flockWeek}`
-                      : "No active flock — week / HP unavailable."}
+                  <Text style={{ marginTop: 8, color: colors.text, fontSize: 14 }}>
+                    ON = (HP × CFM/Bird ÷ Total CFM) × {MIN_VENT_CYCLE_SECONDS}
                   </Text>
-                  <View style={[styles.row, { marginTop: 12 }]}>
-                    <MetricTile
-                      label="HP"
-                      value={selectedHouse.placedBirdCount?.toLocaleString() ?? "—"}
-                    />
-                    <MetricTile
-                      label="CFM / Bird"
-                      value={
-                        breakdown
-                          ? breakdown.cfmPerBird.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })
-                          : "—"
-                      }
-                    />
-                    <MetricTile
-                      label="Total CFM"
-                      value={selectedHouse.totalFanCFM?.toLocaleString() ?? "—"}
-                    />
-                    <MetricTile
-                      label="Result"
-                      value={
-                        breakdown
-                          ? formatMinVentCycle(breakdown.onSeconds, breakdown.offSeconds)
-                          : "—"
-                      }
-                    />
-                  </View>
-                  {breakdown ? (
-                    <View
-                      style={{
-                        marginTop: 10,
-                        paddingTop: 10,
-                        borderTopWidth: 1,
-                        borderTopColor: "#f5f5f4",
-                        gap: 4,
-                      }}
-                    >
-                      <Text style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}>
-                        {selectedHouse.placedBirdCount!.toLocaleString()} ×{" "}
-                        {breakdown.cfmPerBird.toFixed(2)} ={" "}
-                        {breakdown.requiredCfm.toFixed(1)} required CFM
-                      </Text>
-                      <Text style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}>
-                        {breakdown.requiredCfm.toFixed(1)} ÷{" "}
-                        {selectedHouse.totalFanCFM!.toLocaleString()} × {MIN_VENT_CYCLE_SECONDS} ={" "}
-                        {breakdown.onRaw.toFixed(2)}
-                      </Text>
-                      <Text style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}>
-                        Round → {breakdown.onSeconds} ON / {breakdown.offSeconds} OFF
-                      </Text>
-                    </View>
-                  ) : (
-                    <Text style={{ color: colors.warn, marginTop: 10 }}>
-                      Need birds placed, flock week, and Total fan CFM on this house to calculate.
-                    </Text>
-                  )}
+                  <Text style={{ marginTop: 4, color: colors.text, fontSize: 14 }}>
+                    OFF = {MIN_VENT_CYCLE_SECONDS} − ON
+                  </Text>
                 </View>
-              ) : null}
 
-              <Pressable onPress={() => setCfmOpen((v) => (v === "bird" ? null : "bird"))}>
-                <Text style={{ color: colors.accentDark, fontWeight: "700", marginBottom: 8 }}>
-                  CFM / Bird
-                </Text>
+                <Text style={styles.label}>Farm</Text>
+                <ChipScroller>
+                  {farms.map((f) => (
+                    <Chip
+                      key={f.id}
+                      label={f.farmName}
+                      active={farmId === f.id}
+                      onPress={() => {
+                        setFarmId(f.id);
+                        setHouseId("");
+                      }}
+                    />
+                  ))}
+                </ChipScroller>
+
+                <Text style={styles.label}>House</Text>
+                <ChipScroller>
+                  {houses.map((h) => (
+                    <Chip
+                      key={h.id}
+                      label={`House ${h.houseNumber}`}
+                      active={(selectedHouse?.id ?? "") === h.id}
+                      onPress={() => setHouseId(h.id)}
+                    />
+                  ))}
+                </ChipScroller>
+
+                {selectedHouse ? (
+                  <View
+                    style={{
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      borderRadius: 10,
+                      backgroundColor: "#fff",
+                      padding: 12,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Text style={{ fontWeight: "700", fontSize: 15 }}>
+                      House {selectedHouse.houseNumber} — worked example
+                    </Text>
+                    <Text style={[styles.muted, { marginTop: 4 }]}>
+                      {detail?.activeFlock?.flockWeek != null
+                        ? `Flock week ${detail.activeFlock.flockWeek}`
+                        : "No active flock — week / HP unavailable."}
+                    </Text>
+                    <View style={[styles.row, { marginTop: 12 }]}>
+                      <MetricTile
+                        label="HP"
+                        value={selectedHouse.placedBirdCount?.toLocaleString() ?? "—"}
+                      />
+                      <MetricTile
+                        label="CFM / Bird"
+                        value={
+                          breakdown
+                            ? breakdown.cfmPerBird.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })
+                            : "—"
+                        }
+                      />
+                      <MetricTile
+                        label="Total CFM"
+                        value={selectedHouse.totalFanCFM?.toLocaleString() ?? "—"}
+                      />
+                      <MetricTile
+                        label="Result"
+                        value={
+                          breakdown
+                            ? formatMinVentCycle(breakdown.onSeconds, breakdown.offSeconds)
+                            : "—"
+                        }
+                      />
+                    </View>
+                    {breakdown ? (
+                      <View
+                        style={{
+                          marginTop: 10,
+                          paddingTop: 10,
+                          borderTopWidth: 1,
+                          borderTopColor: "#f5f5f4",
+                          gap: 4,
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}>
+                          {selectedHouse.placedBirdCount!.toLocaleString()} ×{" "}
+                          {breakdown.cfmPerBird.toFixed(2)} ={" "}
+                          {breakdown.requiredCfm.toFixed(1)} required CFM
+                        </Text>
+                        <Text style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}>
+                          {breakdown.requiredCfm.toFixed(1)} ÷{" "}
+                          {selectedHouse.totalFanCFM!.toLocaleString()} × {MIN_VENT_CYCLE_SECONDS} ={" "}
+                          {breakdown.onRaw.toFixed(2)}
+                        </Text>
+                        <Text style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}>
+                          Round → {breakdown.onSeconds} ON / {breakdown.offSeconds} OFF
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={{ color: colors.warn, marginTop: 10 }}>
+                        Need birds placed, flock week, and Total fan CFM on this house to calculate.
+                      </Text>
+                    )}
+                  </View>
+                ) : null}
+              </SectionPanel>
+
+              <Pressable
+                onPress={() => setCfmOpen((v) => (v === "bird" ? null : "bird"))}
+                style={{ marginTop: 12 }}
+              >
+                <Text style={{ color: colors.accentDark, fontWeight: "700" }}>CFM / Bird</Text>
               </Pressable>
               {cfmOpen === "bird" ? (
                 <View
                   style={{
                     borderWidth: 1,
                     borderColor: colors.border,
-                    borderRadius: 10,
+                    borderRadius: 12,
                     overflow: "hidden",
-                    marginBottom: 12,
+                    marginTop: 10,
+                    marginBottom: 4,
                     backgroundColor: "#fff",
                   }}
                 >
@@ -386,18 +390,21 @@ export default function ToolsScreen() {
                 </View>
               ) : null}
 
-              <Pressable onPress={() => setCfmOpen((v) => (v === "fan" ? null : "fan"))}>
-                <Text style={{ color: colors.accentDark, fontWeight: "700", marginBottom: 8 }}>
-                  CFM / Fan size
-                </Text>
+              <Pressable
+                onPress={() => setCfmOpen((v) => (v === "fan" ? null : "fan"))}
+                style={{ marginTop: 10 }}
+              >
+                <Text style={{ color: colors.accentDark, fontWeight: "700" }}>CFM / Fan size</Text>
               </Pressable>
               {cfmOpen === "fan" ? (
                 <View
                   style={{
                     borderWidth: 1,
                     borderColor: colors.border,
-                    borderRadius: 10,
+                    borderRadius: 12,
                     overflow: "hidden",
+                    marginTop: 10,
+                    marginBottom: 8,
                     backgroundColor: "#fff",
                   }}
                 >
@@ -434,7 +441,7 @@ export default function ToolsScreen() {
                   ))}
                 </View>
               ) : null}
-            </SectionPanel>
+            </>
           ) : (
             <SectionAnchor />
           )}

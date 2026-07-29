@@ -8,12 +8,15 @@ export function ToolsSectionPanel({
   title,
   subtitle,
   children,
+  footer,
   defaultOpen = true,
 }: {
   hashId: string;
   title: string;
   subtitle?: string;
   children?: React.ReactNode;
+  /** Rendered below the section card (e.g. green action links). */
+  footer?: React.ReactNode;
   /** When false, section stays hidden until opened via quick link. */
   defaultOpen?: boolean;
 }) {
@@ -56,6 +59,7 @@ export function ToolsSectionPanel({
         </div>
         {children ? <div className="mt-4">{children}</div> : null}
       </Card>
+      {footer ?? null}
     </div>
   );
 }

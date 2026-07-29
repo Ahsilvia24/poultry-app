@@ -12,6 +12,7 @@ import { TempCurveChart } from "@/components/TempCurveChart";
 import { ToolsQuickLinks } from "@/components/ToolsQuickLinks";
 import { ToolsSectionPanel } from "@/components/ToolsSectionPanel";
 import {
+  VentilationCfmCharts,
   VentilationLinks,
   type VentilationFarmPayload,
 } from "@/components/VentilationLinks";
@@ -100,7 +101,11 @@ export default async function ToolsPage() {
           <LightsChart />
         </ToolsSectionPanel>
 
-        <ToolsSectionPanel hashId="ventilation" title="Ventilation">
+        <ToolsSectionPanel
+          hashId="ventilation"
+          title="Ventilation"
+          footer={<VentilationCfmCharts />}
+        >
           <VentilationLinks farms={farms} />
         </ToolsSectionPanel>
 
