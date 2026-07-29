@@ -1121,11 +1121,14 @@ export default function FarmDetailScreen() {
                           });
                           // navigate (not push) so the Farms stack keeps this farm
                           // underneath when the user returns via the Farms tab.
+                          // `jump` changes every tap so re-entering the same house
+                          // still triggers mortality's focus/jump-to-box logic.
                           router.navigate({
                             pathname: "/(tabs)/mortality",
                             params: {
                               farmId: farm.id,
                               houseFlockId: h.houseFlockId!,
+                              jump: String(Date.now()),
                             },
                           });
                         }}

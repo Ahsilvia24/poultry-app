@@ -210,9 +210,12 @@ export default function MortalityScreen() {
   const params = useLocalSearchParams<{
     farmId?: string | string[];
     houseFlockId?: string | string[];
+    /** Changes on every Enter mortality tap so same-house re-entry still jumps. */
+    jump?: string | string[];
   }>();
   const farmIdParam = paramValue(params.farmId);
   const houseFlockIdParam = paramValue(params.houseFlockId);
+  const jumpParam = paramValue(params.jump);
   const [farmId, setFarmId] = useState(farmIdParam);
   const [houseFlockId, setHouseFlockId] = useState(houseFlockIdParam);
   const [payload, setPayload] = useState<ReturnType<typeof getMortalityForm> | null>(null);
@@ -338,9 +341,10 @@ export default function MortalityScreen() {
           return;
         }
         if (triesLeft > 0) attempt(triesLeft - 1);
-      }, triesLeft === 3 ? 80 : 120);
+      }, triesLeft >= 6 ? 50 : 100);
     };
-    attempt(3);
+    // Extra retries: re-entering the same house remounts week rows after focus.
+    attempt(8);
   }
 
   const selectedFarm = useMemo(
@@ -411,16 +415,17 @@ export default function MortalityScreen() {
     }
   }, [farmIdParam, houseFlockIdParam]);
 
-  const loadGrid = useCallback((opts?: { jump?: boolean }) => {
+  const loadGrid = useCallback((opts?: { jump?: boolean; houseFlockId?: string }) => {
     const shouldJump = opts?.jump ?? jumpOnLoadRef.current;
     jumpOnLoadRef.current = true;
-    if (!houseFlockId) {
+    const id = opts?.houseFlockId || houseFlockIdRef.current || houseFlockId;
+    if (!id) {
       setRows([]);
       setExpandedWeeks(new Set());
       return;
     }
     try {
-      const series = getHouseMortalitySeries(houseFlockId);
+      const series = getHouseMortalitySeries(id);
       const catchEnd = series.projectedCatchDate ?? todayKey();
       const maxAge = Math.max(
         birdAgeFromPlacement(series.placementDate, todayKey()),
@@ -464,12 +469,23 @@ export default function MortalityScreen() {
     loadFarms();
   }, [loadFarms]);
 
-  // Landing from Dashboard / farm detail: clear keypad, then load (grid jumps to first unfilled)
+  // Landing from farm detail / tab focus: always jump to the entry box when a
+  // house is selected — including re-entering the same house (houseFlockId
+  // unchanged, so the loadGrid effect alone would not re-run).
   useFocusEffect(
     useCallback(() => {
       resetKeypad();
       loadFarms();
+      const houseId = houseFlockIdParam || houseFlockIdRef.current;
+      let jumpTimer: ReturnType<typeof setTimeout> | undefined;
+      if (houseId) {
+        jumpOnLoadRef.current = true;
+        jumpTimer = setTimeout(() => {
+          loadGrid({ jump: true, houseFlockId: houseId });
+        }, 60);
+      }
       return () => {
+        if (jumpTimer) clearTimeout(jumpTimer);
         clearJumpTimer();
         persistRowsForCurrentHouse();
         setActiveField(null);
@@ -478,7 +494,7 @@ export default function MortalityScreen() {
         // So Farms tab opens this farm instead of the main list.
         armFarmReturnFromMortality();
       };
-    }, [farmIdParam, houseFlockIdParam, loadFarms, navigation]),
+    }, [farmIdParam, houseFlockIdParam, jumpParam, loadFarms, loadGrid, navigation]),
   );
 
   useEffect(() => {
