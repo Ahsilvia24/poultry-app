@@ -148,7 +148,11 @@ export function buildFlockVisitSchedule(
 
 export type DueScheduledVisit = ScheduledVisit & { completed: boolean };
 
-export type CompletionInfo = { completedAt: Date };
+export type CompletionInfo = {
+  completedAt: Date;
+  /** When true, hide immediately and never show crossed-out. */
+  dismissed?: boolean;
+};
 
 /**
  * Split schedule into today vs upcoming.
@@ -181,6 +185,7 @@ export function splitScheduleForDashboard(
 
     const key = completionKey(v.dateKey, v.label);
     const info = completions.get(key);
+    if (info?.dismissed) continue; // removed from list — never show
     if (info) {
       // Local calendar day the tech checked it off — not the visit's scheduled date.
       const completedDayKey = format(info.completedAt, "yyyy-MM-dd");

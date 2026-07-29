@@ -131,6 +131,7 @@ export function migrateDb() {
       scheduled_date TEXT NOT NULL,
       label TEXT NOT NULL,
       completed_at TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'COMPLETED',
       UNIQUE(farm_id, scheduled_date, label),
       FOREIGN KEY (farm_id) REFERENCES farms(id)
     );
@@ -204,6 +205,16 @@ export function migrateDb() {
   const houseCols = database.getAllSync<{ name: string }>("PRAGMA table_info(houses)");
   if (!houseCols.some((c) => c.name === "deleted_at")) {
     database.execSync("ALTER TABLE houses ADD COLUMN deleted_at TEXT");
+  }
+
+  // Schedule dismissals: COMPLETED (crossed out until midnight) vs DISMISSED (gone now)
+  const fucCols = database.getAllSync<{ name: string }>(
+    "PRAGMA table_info(follow_up_completions)",
+  );
+  if (fucCols.length > 0 && !fucCols.some((c) => c.name === "status")) {
+    database.execSync(
+      "ALTER TABLE follow_up_completions ADD COLUMN status TEXT NOT NULL DEFAULT 'COMPLETED'",
+    );
   }
 
   // Soft-delete farms (permanent remove from all lists)

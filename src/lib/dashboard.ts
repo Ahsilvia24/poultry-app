@@ -95,9 +95,18 @@ export async function getDashboardData(userId: string) {
 
   const completions = await prisma.followUpCompletion.findMany({
     where: { farm: { userId, deletedAt: null, isActive: true } },
-    select: { farmId: true, scheduledDate: true, label: true, completedAt: true },
+    select: {
+      farmId: true,
+      scheduledDate: true,
+      label: true,
+      completedAt: true,
+      status: true,
+    },
   });
-  const completedByFarm = new Map<string, Map<string, { completedAt: Date }>>();
+  const completedByFarm = new Map<
+    string,
+    Map<string, { completedAt: Date; dismissed?: boolean }>
+  >();
   for (const c of completions) {
     const label = c.label === "Weight Projection" ? "Weight Proj." : c.label;
     const key = completionKey(dateKeyFromDb(c.scheduledDate), label);
@@ -106,7 +115,10 @@ export async function getDashboardData(userId: string) {
       map = new Map();
       completedByFarm.set(c.farmId, map);
     }
-    map.set(key, { completedAt: c.completedAt });
+    map.set(key, {
+      completedAt: c.completedAt,
+      dismissed: c.status === "DISMISSED",
+    });
   }
 
   for (const farm of farms) {

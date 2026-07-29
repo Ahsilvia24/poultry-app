@@ -509,6 +509,7 @@ export async function importMobileBackupAction(
                 flockId: oldFlockId ? flockIds.get(oldFlockId) ?? null : null,
                 scheduledDate,
                 label,
+                status: str(row.status) === "DISMISSED" ? "DISMISSED" : "COMPLETED",
                 completedAt,
                 completedByUserId: userId,
               },

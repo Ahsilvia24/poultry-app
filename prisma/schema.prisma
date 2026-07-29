@@ -450,6 +450,8 @@ model FollowUpCompletion {
   flockId       String?
   scheduledDate DateTime @db.Date
   label         String
+  /// COMPLETED = checked off (visible crossed out until midnight); DISMISSED = removed from list
+  status        String   @default("COMPLETED")
   completedAt   DateTime @default(now())
   completedByUserId String?
   createdAt     DateTime @default(now())
