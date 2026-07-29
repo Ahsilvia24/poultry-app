@@ -1613,26 +1613,42 @@ export function updateFarm(
   const farmName = input.farmName.trim();
   if (!farmName) throw new Error("Farm name is required");
 
-  // 0 = not set (keeps compatibility with older NOT NULL columns)
-  const generatorCount =
-    input.numberOfGenerators == null || input.numberOfGenerators === 0
-      ? 0
-      : Math.max(1, Math.min(4, Math.floor(Number(input.numberOfGenerators) || 0)));
-
-  db.runSync(
-    `UPDATE farms
-     SET farm_name = ?, grower_name = ?, phone_number = ?, email = ?, notes = ?, number_of_generators = ?
-     WHERE id = ?`,
-    [
-      farmName,
-      (input.growerName ?? "").trim(),
-      input.phoneNumber?.trim() || null,
-      input.email?.trim() || null,
-      input.notes?.trim() || null,
-      generatorCount,
-      farmId,
-    ],
-  );
+  // Keep existing generator count unless explicitly provided — generator log
+  // owns how many gens are recorded; farm settings no longer edit this.
+  if (input.numberOfGenerators !== undefined) {
+    const generatorCount =
+      input.numberOfGenerators == null || input.numberOfGenerators === 0
+        ? 0
+        : Math.max(1, Math.min(4, Math.floor(Number(input.numberOfGenerators) || 0)));
+    db.runSync(
+      `UPDATE farms
+       SET farm_name = ?, grower_name = ?, phone_number = ?, email = ?, notes = ?, number_of_generators = ?
+       WHERE id = ?`,
+      [
+        farmName,
+        (input.growerName ?? "").trim(),
+        input.phoneNumber?.trim() || null,
+        input.email?.trim() || null,
+        input.notes?.trim() || null,
+        generatorCount,
+        farmId,
+      ],
+    );
+  } else {
+    db.runSync(
+      `UPDATE farms
+       SET farm_name = ?, grower_name = ?, phone_number = ?, email = ?, notes = ?
+       WHERE id = ?`,
+      [
+        farmName,
+        (input.growerName ?? "").trim(),
+        input.phoneNumber?.trim() || null,
+        input.email?.trim() || null,
+        input.notes?.trim() || null,
+        farmId,
+      ],
+    );
+  }
   return { success: true as const };
 }
 

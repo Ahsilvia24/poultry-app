@@ -998,7 +998,6 @@ export default function FarmDetailScreen() {
         phoneNumber: editingFarm.phoneNumber,
         email: editingFarm.email,
         notes: editingFarm.notes,
-        numberOfGenerators: editingFarm.numberOfGenerators,
       });
       setEditingFarm(null);
       if (openEdit) {
@@ -2304,33 +2303,6 @@ export default function FarmDetailScreen() {
                       autoCapitalize="none"
                       autoCorrect={false}
                     />
-                    <Text style={[styles.label, { marginTop: 8 }]}>Number of generators</Text>
-                    <View style={[styles.row, { marginBottom: 4, flexWrap: "wrap" }]}>
-                      <Chip
-                        label="Not set"
-                        active={editingFarm.numberOfGenerators == null}
-                        onPress={() =>
-                          setEditingFarm((prev) =>
-                            prev ? { ...prev, numberOfGenerators: null } : prev,
-                          )
-                        }
-                      />
-                      {([1, 2, 3, 4] as const).map((n) => (
-                        <Chip
-                          key={n}
-                          label={String(n)}
-                          active={editingFarm.numberOfGenerators === n}
-                          onPress={() =>
-                            setEditingFarm((prev) =>
-                              prev ? { ...prev, numberOfGenerators: n } : prev,
-                            )
-                          }
-                        />
-                      ))}
-                    </View>
-                    <Text style={[styles.muted, { marginBottom: 8, fontSize: 12 }]}>
-                      Optional — you can set this later
-                    </Text>
                     <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
                     <TextInput
                       style={[
