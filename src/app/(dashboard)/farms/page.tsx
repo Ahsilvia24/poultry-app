@@ -88,38 +88,37 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
             ).sort((a, b) => a - b);
 
             return (
-              <Card key={farm.id} className="p-3 transition hover:border-emerald-400">
-                <div className="flex items-center justify-between gap-2">
+              <Card
+                key={farm.id}
+                className="relative p-3 transition hover:border-emerald-400"
+              >
+                <Link
+                  href={`/farms/${farm.id}`}
+                  className="absolute inset-0 z-0 rounded-[inherit]"
+                  aria-label={`Open ${farm.farmName}`}
+                />
+                <div className="relative z-10 flex pointer-events-none items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <Link href={`/farms/${farm.id}`} className="block">
-                      <p className="text-base font-bold leading-snug text-stone-900">
-                        {farm.farmName}
-                        <span className="font-semibold text-stone-500"> ({houseCount})</span>
-                        {flockAges.length > 0 ? (
-                          <span className="font-semibold text-stone-500">
-                            {" "}
-                            · {flockAges.map((a) => `${a}d`).join(" · ")}
-                          </span>
-                        ) : null}
-                      </p>
-                    </Link>
+                    <p className="text-base font-bold leading-snug text-stone-900">
+                      {farm.farmName}
+                      <span className="font-semibold text-stone-500"> ({houseCount})</span>
+                      {flockAges.length > 0 ? (
+                        <span className="font-semibold text-stone-500">
+                          {" "}
+                          · {flockAges.map((a) => `${a}d`).join(" · ")}
+                        </span>
+                      ) : null}
+                    </p>
                     {farm.growerName || farm.phoneNumber ? (
-                      <p className="mt-0.5 text-sm leading-snug">
-                        {farm.growerName ? (
-                          <Link
-                            href={`/farms/${farm.id}`}
-                            className="text-stone-600 hover:text-stone-800"
-                          >
-                            {farm.growerName}
-                          </Link>
-                        ) : null}
+                      <p className="mt-0.5 text-sm leading-snug text-stone-600">
+                        {farm.growerName ? <span>{farm.growerName}</span> : null}
                         {farm.growerName && farm.phoneNumber ? (
                           <span className="text-stone-400"> · </span>
                         ) : null}
                         {farm.phoneNumber ? (
                           <a
                             href={dialHref(farm.phoneNumber)}
-                            className="font-semibold text-emerald-800 underline-offset-2 hover:underline"
+                            className="pointer-events-auto relative z-10 font-semibold text-emerald-800 underline-offset-2 hover:underline"
                           >
                             {farm.phoneNumber}
                           </a>
@@ -127,7 +126,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                       </p>
                     ) : null}
                   </div>
-                  <div className="ml-1 flex shrink-0 items-center gap-1">
+                  <div className="pointer-events-auto relative z-10 ml-1 flex shrink-0 items-center gap-1">
                     {farm.isActive ? (
                       <DeactivateFarmButton farmId={farm.id} appearance="badge" />
                     ) : (
