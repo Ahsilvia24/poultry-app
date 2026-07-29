@@ -169,7 +169,9 @@ export function SavedLfoRow({
               <p className="font-semibold text-stone-900">{farmName}</p>
               <p className="text-sm text-stone-600">{dateLabel}</p>
             </div>
-            {lines.length > 0 ? <CopyHouseSummaryButton lines={lines} /> : null}
+            {lines.length > 0 ? (
+              <CopyHouseSummaryButton lines={lines} farmName={farmName} />
+            ) : null}
           </div>
           {lines.length > 0 ? (
             <div className="relative z-10 pointer-events-none mt-2 space-y-0.5">
