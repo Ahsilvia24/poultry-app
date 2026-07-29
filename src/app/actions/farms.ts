@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { addDays } from "date-fns";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { farmSchema, createFarmSchema, flockSchema, houseSchema } from "@/lib/validations";
@@ -9,6 +10,39 @@ import { farmSchema, createFarmSchema, flockSchema, houseSchema } from "@/lib/va
 function emptyToNull(value: FormDataEntryValue | null) {
   const s = String(value ?? "").trim();
   return s === "" ? null : s;
+}
+
+/** Parse `yyyy-MM-dd` as local noon to avoid UTC day shifts. */
+function parseDateKey(value: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!y || !mo || !d) return null;
+  return new Date(y, mo - 1, d, 12, 0, 0, 0);
+}
+
+async function syncFlockDatesFromHouses(flockId: string) {
+  const hfs = await prisma.houseFlock.findMany({
+    where: { flockId },
+    select: { placementDate: true, catchDate: true },
+  });
+  const places = hfs
+    .map((h) => h.placementDate)
+    .filter((d): d is Date => d != null)
+    .sort((a, b) => a.getTime() - b.getTime());
+  const catches = hfs
+    .map((h) => h.catchDate)
+    .filter((d): d is Date => d != null)
+    .sort((a, b) => a.getTime() - b.getTime());
+  const place = places[0];
+  if (!place) return;
+  const catchDate = catches[0] ?? addDays(place, 52);
+  await prisma.flock.update({
+    where: { id: flockId },
+    data: { placementDate: place, projectedCatchDate: catchDate },
+  });
 }
 
 export async function createFarmAction(formData: FormData) {
@@ -191,11 +225,33 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
   });
 
   const placedRaw = emptyToNull(formData.get("placedBirdCount"));
-  if (placedRaw != null) {
-    const placedBirdCount = Number(placedRaw);
-    if (!Number.isFinite(placedBirdCount) || placedBirdCount < 1) {
-      return { error: "Birds placed must be at least 1" };
+  const placementRaw = emptyToNull(formData.get("placementDate"));
+  const catchRaw = emptyToNull(formData.get("catchDate"));
+  const wantsFlockFields =
+    placedRaw != null || placementRaw != null || catchRaw != null;
+
+  if (wantsFlockFields) {
+    let placedBirdCount: number | null = null;
+    if (placedRaw != null) {
+      placedBirdCount = Number(placedRaw);
+      if (!Number.isFinite(placedBirdCount) || placedBirdCount < 1) {
+        return { error: "Birds placed must be at least 1" };
+      }
+      placedBirdCount = Math.floor(placedBirdCount);
     }
+
+    let placementDate = placementRaw ? parseDateKey(placementRaw) : null;
+    if (placementRaw && !placementDate) {
+      return { error: "Placement date is invalid" };
+    }
+    let catchDate = catchRaw ? parseDateKey(catchRaw) : null;
+    if (catchRaw && !catchDate) {
+      return { error: "Catch date is invalid" };
+    }
+    if (placementDate && !catchDate) {
+      catchDate = addDays(placementDate, 52);
+    }
+
     // Prefer the active flock this house already belongs to.
     let activeFlock = await prisma.flock.findFirst({
       where: {
@@ -213,33 +269,51 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
       });
     }
     if (!activeFlock) {
-      return { error: "Add an active flock before setting birds placed" };
+      return { error: "Add an active flock before setting birds placed or dates" };
     }
+
     const hf = await prisma.houseFlock.findFirst({
       where: { flockId: activeFlock.id, houseId },
     });
+
     if (hf) {
       await prisma.houseFlock.update({
         where: { id: hf.id },
-        data: { placedBirdCount: Math.floor(placedBirdCount) },
+        data: {
+          ...(placedBirdCount != null ? { placedBirdCount } : {}),
+          ...(placementDate != null ? { placementDate } : {}),
+          ...(catchDate != null ? { catchDate } : {}),
+        },
       });
     } else {
+      if (placedBirdCount == null) {
+        return { error: "Birds placed is required when adding this house to the flock" };
+      }
+      const place = placementDate ?? activeFlock.placementDate;
+      const catchResolved = catchDate ?? addDays(place, 52);
       await prisma.houseFlock.create({
         data: {
           flockId: activeFlock.id,
           houseId,
-          placedBirdCount: Math.floor(placedBirdCount),
+          placedBirdCount,
+          placementDate: place,
+          catchDate: catchResolved,
         },
       });
     }
+
     const sum = await prisma.houseFlock.aggregate({
       where: { flockId: activeFlock.id },
       _sum: { placedBirdCount: true },
     });
     await prisma.flock.update({
       where: { id: activeFlock.id },
-      data: { initialBirdCount: sum._sum.placedBirdCount ?? Math.floor(placedBirdCount) },
+      data: {
+        initialBirdCount:
+          sum._sum.placedBirdCount ?? placedBirdCount ?? activeFlock.initialBirdCount,
+      },
     });
+    await syncFlockDatesFromHouses(activeFlock.id);
   }
 
   revalidatePath(`/farms/${farmId}`);

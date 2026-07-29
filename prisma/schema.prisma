@@ -264,6 +264,10 @@ model HouseFlock {
   flockId                 String
   houseId                 String
   placedBirdCount         Int
+  /** Optional per-house override; falls back to flock.placementDate when null. */
+  placementDate           DateTime? @db.Date
+  /** Optional per-house catch; falls back to flock projected/actual catch when null. */
+  catchDate               DateTime? @db.Date
   processingPlant         String?
   finalBirdCount          Int?
   finalAverageWeight      Float?

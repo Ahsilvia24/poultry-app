@@ -107,7 +107,13 @@ export function HouseCard({
           {hasFlock ? <StatusBadge status={status} /> : null}
           <HouseCardActions
             farmId={farmId}
-            house={{ ...house, placedBirdCount: birdsPlaced ?? house.placedBirdCount ?? null }}
+            hasActiveFlock={hasFlock}
+            house={{
+              ...house,
+              placedBirdCount: birdsPlaced ?? house.placedBirdCount ?? null,
+              placementDateKey,
+              catchDateKey,
+            }}
           />
         </div>
       </div>

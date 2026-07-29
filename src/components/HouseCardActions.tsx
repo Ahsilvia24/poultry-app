@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { deleteHouseAction, updateHouseAction } from "@/app/actions/farms";
 import { Button, Input, Label, Textarea } from "@/components/ui";
 
@@ -13,7 +13,20 @@ export type HouseEditValues = {
   numberOfFans: number | null;
   notes: string | null;
   placedBirdCount: number | null;
+  placementDateKey?: string | null;
+  catchDateKey?: string | null;
 };
+
+function addDaysKey(dateKey: string, days: number) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  if (!y || !m || !d) return dateKey;
+  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+  dt.setDate(dt.getDate() + days);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
 
 function GearIcon({ className }: { className?: string }) {
   return (
@@ -56,19 +69,40 @@ function TrashIcon({ className }: { className?: string }) {
 export function HouseCardActions({
   farmId,
   house,
+  hasActiveFlock = false,
 }: {
   farmId: string;
   house: HouseEditValues;
+  hasActiveFlock?: boolean;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<"idle" | "edit" | "delete">("idle");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [placementDate, setPlacementDate] = useState(house.placementDateKey ?? "");
+  const [catchDate, setCatchDate] = useState(house.catchDateKey ?? "");
+
+  useEffect(() => {
+    if (mode === "edit") {
+      setPlacementDate(house.placementDateKey ?? "");
+      setCatchDate(house.catchDateKey ?? "");
+    }
+  }, [mode, house.placementDateKey, house.catchDateKey]);
 
   function close() {
     if (pending) return;
     setMode("idle");
     setError(null);
+  }
+
+  function onPlacementChange(next: string) {
+    setPlacementDate(next);
+    if (!next) return;
+    const oldDefault = placementDate ? addDaysKey(placementDate, 52) : "";
+    const catchWasDefault = !catchDate || catchDate === oldDefault;
+    if (catchWasDefault) {
+      setCatchDate(addDaysKey(next, 52));
+    }
   }
 
   function onSave(formData: FormData) {
@@ -142,7 +176,6 @@ export function HouseCardActions({
               const t = e.target;
               if (!(t instanceof HTMLElement)) return;
               if (t.tagName !== "INPUT" && t.tagName !== "TEXTAREA") return;
-              // Keep the field above soft keyboards / modal bottom edge while typing.
               window.setTimeout(() => {
                 t.scrollIntoView({ block: "center", behavior: "smooth" });
               }, 50);
@@ -155,18 +188,57 @@ export function HouseCardActions({
                 </h3>
                 {error ? <p className="mt-2 text-sm text-red-700">{error}</p> : null}
                 <form action={onSave} className="mt-4 space-y-3">
+                  <div>
+                    <Label htmlFor={`edit-houseNumber-${house.id}`}>House number</Label>
+                    <Input
+                      id={`edit-houseNumber-${house.id}`}
+                      name="houseNumber"
+                      type="number"
+                      min={1}
+                      required
+                      defaultValue={house.houseNumber}
+                    />
+                  </div>
+                  {hasActiveFlock ? (
+                    <>
+                      <div>
+                        <Label htmlFor={`edit-placedBirdCount-${house.id}`}>Birds placed</Label>
+                        <Input
+                          id={`edit-placedBirdCount-${house.id}`}
+                          name="placedBirdCount"
+                          type="number"
+                          min={1}
+                          step={1}
+                          defaultValue={house.placedBirdCount ?? ""}
+                          placeholder="e.g. 29700"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`edit-placementDate-${house.id}`}>Placement date</Label>
+                        <Input
+                          id={`edit-placementDate-${house.id}`}
+                          name="placementDate"
+                          type="date"
+                          value={placementDate}
+                          onChange={(e) => onPlacementChange(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`edit-catchDate-${house.id}`}>Catch date</Label>
+                        <Input
+                          id={`edit-catchDate-${house.id}`}
+                          name="catchDate"
+                          type="date"
+                          value={catchDate}
+                          onChange={(e) => setCatchDate(e.target.value)}
+                        />
+                        <p className="mt-1 text-xs text-stone-500">
+                          Defaults to 52 days after placement; change anytime.
+                        </p>
+                      </div>
+                    </>
+                  ) : null}
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <Label htmlFor={`edit-houseNumber-${house.id}`}>House number</Label>
-                      <Input
-                        id={`edit-houseNumber-${house.id}`}
-                        name="houseNumber"
-                        type="number"
-                        min={1}
-                        required
-                        defaultValue={house.houseNumber}
-                      />
-                    </div>
                     <div>
                       <Label htmlFor={`edit-squareFootage-${house.id}`}>Square footage</Label>
                       <Input
@@ -177,18 +249,6 @@ export function HouseCardActions({
                         step="any"
                         required
                         defaultValue={house.squareFootage}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`edit-placedBirdCount-${house.id}`}>Birds placed</Label>
-                      <Input
-                        id={`edit-placedBirdCount-${house.id}`}
-                        name="placedBirdCount"
-                        type="number"
-                        min={1}
-                        step={1}
-                        defaultValue={house.placedBirdCount ?? ""}
-                        placeholder="Active flock only"
                       />
                     </div>
                     <div>

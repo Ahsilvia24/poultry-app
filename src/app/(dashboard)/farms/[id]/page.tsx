@@ -90,15 +90,27 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     const matched = hfByHouseId.get(house.id) ?? null;
     const hf = matched?.hf ?? null;
     const houseFlock = matched?.flock ?? null;
-    const catchDate = houseFlock ? resolveCatchDate(houseFlock) : null;
+    const placementDate = hf?.placementDate ?? houseFlock?.placementDate ?? null;
+    const catchDate = hf?.catchDate
+      ? hf.catchDate
+      : houseFlock && placementDate
+        ? resolveCatchDate({
+            placementDate,
+            projectedCatchDate: houseFlock.projectedCatchDate,
+            actualCatchDate: houseFlock.actualCatchDate,
+            targetMarketAge: houseFlock.targetMarketAge,
+          })
+        : houseFlock
+          ? resolveCatchDate(houseFlock)
+          : null;
     const daysUntilCatch =
       catchDate != null ? Math.max(0, differenceInCalendarDays(catchDate, today)) : null;
     const metrics = hf
       ? summarizeForDate(hf.placedBirdCount, hf.mortalities, today)
       : null;
     const weeklyMortality =
-      hf && houseFlock
-        ? weeklyMortalityByPlacement(houseFlock.placementDate, hf.mortalities, today)
+      hf && placementDate
+        ? weeklyMortalityByPlacement(placementDate, hf.mortalities, today)
         : [];
     const avgDaily =
       hf != null ? averageDailyMortalityLast7Days(hf.mortalities, today) : 0;
@@ -127,13 +139,9 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       projectedHeadCount,
       projectedMortality,
       status,
-      placementDateKey: houseFlock
-        ? format(houseFlock.placementDate, "yyyy-MM-dd")
-        : null,
+      placementDateKey: placementDate ? format(placementDate, "yyyy-MM-dd") : null,
       catchDateKey: catchDate ? format(catchDate, "yyyy-MM-dd") : null,
-      birdAgeDays: houseFlock
-        ? daysSincePlacement(houseFlock.placementDate, today)
-        : null,
+      birdAgeDays: placementDate ? daysSincePlacement(placementDate, today) : null,
     };
   });
 
