@@ -269,7 +269,7 @@ export default function ToolsScreen() {
                     }}
                   >
                     <Text style={{ fontWeight: "700", fontSize: 15 }}>
-                      House {selectedHouse.houseNumber} — worked example
+                      House {selectedHouse.houseNumber}
                     </Text>
                     <Text style={[styles.muted, { marginTop: 4 }]}>
                       {detail?.activeFlock?.flockWeek != null
@@ -340,7 +340,6 @@ export default function ToolsScreen() {
 
               <Pressable
                 onPress={() => setCfmOpen((v) => (v === "bird" ? null : "bird"))}
-                style={{ marginTop: 12 }}
               >
                 <Text style={{ color: colors.accentDark, fontWeight: "700" }}>CFM / Bird</Text>
               </Pressable>
@@ -392,7 +391,7 @@ export default function ToolsScreen() {
 
               <Pressable
                 onPress={() => setCfmOpen((v) => (v === "fan" ? null : "fan"))}
-                style={{ marginTop: 10 }}
+                style={{ marginTop: 10, marginBottom: 12 }}
               >
                 <Text style={{ color: colors.accentDark, fontWeight: "700" }}>CFM / Fan size</Text>
               </Pressable>

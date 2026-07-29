@@ -153,9 +153,7 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
 
           {house ? (
             <div className="rounded-lg border border-stone-200 bg-white px-3 py-3 text-sm text-stone-700">
-              <p className="font-semibold text-stone-900">
-                House {house.houseNumber} — worked example
-              </p>
+              <p className="font-semibold text-stone-900">House {house.houseNumber}</p>
               {farm?.flockWeek != null ? (
                 <p className="mt-1 text-stone-600">
                   Flock week {farm.flockWeek}
@@ -231,7 +229,7 @@ export function VentilationCfmCharts() {
   const [open, setOpen] = useState<"cfm-bird" | "cfm-fan" | null>(null);
 
   return (
-    <div className="mt-3 space-y-3">
+    <div className="space-y-3 pb-1">
       <div className="flex flex-col items-start gap-2">
         <button
           type="button"
