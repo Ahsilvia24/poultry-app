@@ -296,17 +296,6 @@ export default function ToolsScreen() {
                         value={selectedHouse.placedBirdCount?.toLocaleString() ?? "—"}
                       />
                       <MetricTile
-                        label="CFM / Bird"
-                        value={
-                          breakdown
-                            ? breakdown.cfmPerBird.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })
-                            : "—"
-                        }
-                      />
-                      <MetricTile
                         label="Total CFM"
                         value={
                           selectedHouse.totalFanCFM != null
@@ -315,6 +304,17 @@ export default function ToolsScreen() {
                                   ? ` · ${selectedHouse.numberOfFans} fans`
                                   : ""
                               }`
+                            : "—"
+                        }
+                      />
+                      <MetricTile
+                        label="CFM / Bird"
+                        value={
+                          breakdown
+                            ? breakdown.cfmPerBird.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })
                             : "—"
                         }
                       />

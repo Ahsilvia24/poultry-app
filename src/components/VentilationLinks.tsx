@@ -168,12 +168,6 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-stone-500">CFM / Bird</dt>
-                  <dd className="font-semibold tabular-nums text-stone-900">
-                    {breakdown ? formatCfmPerBird(breakdown.cfmPerBird) : "—"}
-                  </dd>
-                </div>
-                <div>
                   <dt className="text-xs uppercase tracking-wide text-stone-500">Total CFM</dt>
                   <dd className="font-semibold tabular-nums text-stone-900">
                     {house.totalFanCFM != null ? formatCfm(house.totalFanCFM) : "—"}
@@ -183,6 +177,12 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                         · {house.numberOfFans} fans
                       </span>
                     ) : null}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-stone-500">CFM / Bird</dt>
+                  <dd className="font-semibold tabular-nums text-stone-900">
+                    {breakdown ? formatCfmPerBird(breakdown.cfmPerBird) : "—"}
                   </dd>
                 </div>
                 <div>
