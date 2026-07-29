@@ -514,13 +514,13 @@ export default function MortalityScreen() {
     return kind === "culls" ? row.cullCount : row.dailyMortalityCount;
   }
 
-  function flushSave() {
+  function flushSave(houseFlockIdOverride?: string) {
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
-    const id = houseFlockIdRef.current;
-    if (!id) return;
+    const id = houseFlockIdOverride || houseFlockIdRef.current;
+    if (!id) return false;
     const gen = ++saveGenRef.current;
     const snapshot = rowsRef.current;
     setSaveStatus("saving");
@@ -539,11 +539,13 @@ export default function MortalityScreen() {
         clearDates: snapshot.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
       });
       if (gen === saveGenRef.current) setSaveStatus("saved");
+      return true;
     } catch (e) {
       if (gen === saveGenRef.current) {
         setSaveStatus("idle");
         setError(e instanceof Error ? e.message : "Save failed");
       }
+      return false;
     }
   }
 
@@ -928,7 +930,9 @@ export default function MortalityScreen() {
             onBackToHouse={
               farmId && selectedHouse
                 ? () => {
-                    flushSave();
+                    // Must land in SQLite before leaving — don't navigate on failure
+                    const saved = flushSave(selectedHouse.houseFlockId);
+                    if (!saved) return;
                     resetKeypad();
                     setFarmNavContext({
                       farmId,
