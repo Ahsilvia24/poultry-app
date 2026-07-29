@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { DEFAULT_GROWTH_RATE_LBS_PER_DAY } from "../lib/weight/projections";
 import { colors, styles } from "../theme";
-import { PrimaryButton } from "./ui";
+import { Card, PrimaryButton } from "./ui";
 
 const DAY_2 = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
 
@@ -71,129 +71,135 @@ export function WeightProjectionTile({
   }
 
   return (
-    <View
-      style={{
-        marginTop: 14,
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
-        paddingTop: 14,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: "row",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-          gap: 8,
-        }}
-      >
-        <View style={{ flex: 1, minWidth: 160 }}>
-          <Text style={{ fontSize: 15, fontWeight: "700", color: colors.muted }}>
-            Weight projections
-          </Text>
-          <Text style={[styles.muted, { marginTop: 2, fontSize: 13 }]}>
-            Age at kill × growth rate
+    <View>
+      <Card>
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            gap: 8,
+          }}
+        >
+          <View style={{ flex: 1, minWidth: 160 }}>
+            <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight projections</Text>
+            <Text style={[styles.muted, { marginTop: 2, fontSize: 13 }]}>
+              Age at kill × growth rate
+            </Text>
+          </View>
+          <Text style={{ fontSize: 14, color: colors.text }}>
+            Using{" "}
+            <Text style={{ fontWeight: "800" }}>{growthRateLbsPerDay.toFixed(3)} lb/day</Text>
           </Text>
         </View>
-        <Text style={{ fontSize: 14, color: colors.text }}>
-          Using{" "}
-          <Text style={{ fontWeight: "800" }}>{growthRateLbsPerDay.toFixed(3)} lb/day</Text>
-        </Text>
-      </View>
 
-      {groups.map((group) => (
-        <View key={group.catchDateKey} style={{ marginTop: 12 }}>
-          {groups.length > 1 ? (
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "700",
-                color: colors.text,
-                marginBottom: 8,
-              }}
-            >
-              Catch {formatCatchShort(group.catchDateKey)}
-            </Text>
-          ) : null}
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {group.projections.map((p) => (
-              <View
-                key={`${group.catchDateKey}-${p.offsetDays}`}
+        {groups.map((group) => (
+          <View key={group.catchDateKey} style={{ marginTop: 12 }}>
+            {groups.length > 1 ? (
+              <Text
                 style={{
-                  flex: 1,
-                  backgroundColor: "#fafaf9",
-                  borderRadius: 10,
-                  paddingHorizontal: 10,
-                  paddingVertical: 10,
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: colors.text,
+                  marginBottom: 8,
                 }}
               >
-                <Text style={{ fontSize: 12, color: colors.muted }}>{p.label}</Text>
-                <Text
-                  style={{ fontSize: 16, fontWeight: "800", color: colors.text, marginTop: 2 }}
+                Catch {formatCatchShort(group.catchDateKey)}
+              </Text>
+            ) : null}
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {group.projections.map((p) => (
+                <View
+                  key={`${group.catchDateKey}-${p.offsetDays}`}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#fafaf9",
+                    borderRadius: 10,
+                    paddingHorizontal: 10,
+                    paddingVertical: 10,
+                  }}
                 >
-                  {p.weightLbs.toFixed(2)} lb
-                </Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-                  {p.ageDays}d · {formatCatchShort(p.dateKey)}
-                </Text>
-              </View>
+                  <Text style={{ fontSize: 12, color: colors.muted }}>{p.label}</Text>
+                  <Text
+                    style={{ fontSize: 16, fontWeight: "800", color: colors.text, marginTop: 2 }}
+                  >
+                    {p.weightLbs.toFixed(2)} lb
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+                    {p.ageDays}d · {formatCatchShort(p.dateKey)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ))}
+
+        {groups.length > 1 ? (
+          <View style={{ marginTop: 12, gap: 2 }}>
+            {catchDatesSorted.map((dateKey) => (
+              <Text key={dateKey} style={[styles.muted, { fontSize: 13 }]}>
+                Catch {formatCatchShort(dateKey)}
+              </Text>
             ))}
           </View>
-        </View>
-      ))}
-
-      {groups.length > 1 ? (
-        <View style={{ marginTop: 12, gap: 2 }}>
-          {catchDatesSorted.map((dateKey) => (
-            <Text key={dateKey} style={[styles.muted, { fontSize: 13 }]}>
-              Catch {formatCatchShort(dateKey)}
-            </Text>
-          ))}
-        </View>
-      ) : null}
+        ) : null}
+      </Card>
 
       {!editing ? (
-        <Pressable onPress={startEdit} style={{ marginTop: groups.length > 1 ? 10 : 12 }}>
-          <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 13 }}>
+        <Pressable onPress={startEdit} style={{ marginTop: 4, marginBottom: 16 }}>
+          <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
             Edit growth rate
           </Text>
         </Pressable>
       ) : (
-        <View style={{ marginTop: 12, gap: 10 }}>
-          <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
-            Growth rate (lb/day)
-          </Text>
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            keyboardType="decimal-pad"
-            style={styles.input}
-            placeholder={String(DEFAULT_GROWTH_RATE_LBS_PER_DAY)}
-            placeholderTextColor={colors.muted}
-          />
-          <Text style={[styles.muted, { fontSize: 12 }]}>
-            Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY} · Weight = days of age × GR
-          </Text>
-          {error ? <Text style={{ color: colors.danger, fontSize: 13 }}>{error}</Text> : null}
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <PrimaryButton
-              label={saving ? "Saving…" : "Save"}
-              onPress={() => {
-                if (!saving) save();
-              }}
-              style={{ flex: 1 }}
+        <View style={{ marginTop: 4, marginBottom: 16 }}>
+          <Pressable
+            onPress={() => {
+              if (saving) return;
+              setEditing(false);
+              setError(null);
+            }}
+          >
+            <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
+              Edit growth rate
+            </Text>
+          </Pressable>
+          <Card style={{ marginTop: 12 }}>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
+              Growth rate (lb/day)
+            </Text>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              keyboardType="decimal-pad"
+              style={styles.input}
+              placeholder={String(DEFAULT_GROWTH_RATE_LBS_PER_DAY)}
+              placeholderTextColor={colors.muted}
             />
-            <PrimaryButton
-              label="Cancel"
-              secondary
-              onPress={() => {
-                if (saving) return;
-                setEditing(false);
-                setError(null);
-              }}
-              style={{ flex: 1 }}
-            />
-          </View>
+            <Text style={[styles.muted, { fontSize: 12 }]}>
+              Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY} · Weight = days of age × GR
+            </Text>
+            {error ? <Text style={{ color: colors.danger, fontSize: 13 }}>{error}</Text> : null}
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+              <PrimaryButton
+                label={saving ? "Saving…" : "Save"}
+                onPress={() => {
+                  if (!saving) save();
+                }}
+                style={{ flex: 1 }}
+              />
+              <PrimaryButton
+                label="Cancel"
+                secondary
+                onPress={() => {
+                  if (saving) return;
+                  setEditing(false);
+                  setError(null);
+                }}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </Card>
         </View>
       )}
     </View>

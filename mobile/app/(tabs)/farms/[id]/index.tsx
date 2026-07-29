@@ -1548,18 +1548,16 @@ export default function FarmDetailScreen() {
         {/* ── Weight projections ── */}
         <View onLayout={onSectionLayout("weight")}>
           {growthRate != null && weightProjectionGroups.length > 0 ? (
-            <Card>
-              <WeightProjectionTile
-                groups={weightProjectionGroups}
-                growthRateLbsPerDay={growthRate}
-                onSaveGrowthRate={(rate) => {
-                  for (const fl of activeFlocks) {
-                    updateFlockGrowthRate(fl.id, rate);
-                  }
-                  load();
-                }}
-              />
-            </Card>
+            <WeightProjectionTile
+              groups={weightProjectionGroups}
+              growthRateLbsPerDay={growthRate}
+              onSaveGrowthRate={(rate) => {
+                for (const fl of activeFlocks) {
+                  updateFlockGrowthRate(fl.id, rate);
+                }
+                load();
+              }}
+            />
           ) : (
             <Card>
               <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight projections</Text>

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateFlockWeightProjectionAction } from "@/app/actions/farms";
 import { DEFAULT_GROWTH_RATE_LBS_PER_DAY } from "@/lib/weight/projections";
-import { Button, Input, Label } from "@/components/ui";
+import { Button, Card, Input, Label } from "@/components/ui";
 
 const DAY_2 = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
 
@@ -60,89 +60,114 @@ export function WeightProjectionTile({
   }
 
   return (
-    <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-base font-semibold text-stone-500">Weight projections</p>
-          <p className="mt-0.5 text-sm text-stone-400">Age at kill × growth rate</p>
+    <div>
+      <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="text-base font-semibold text-stone-500">Weight projections</p>
+            <p className="mt-0.5 text-sm text-stone-400">Age at kill × growth rate</p>
+          </div>
+          <p className="text-base text-stone-600">
+            Using{" "}
+            <span className="font-semibold text-stone-900">
+              {growthRateLbsPerDay.toFixed(3)} lb/day
+            </span>
+          </p>
         </div>
-        <p className="text-base text-stone-600">
-          Using{" "}
-          <span className="font-semibold text-stone-900">
-            {growthRateLbsPerDay.toFixed(3)} lb/day
-          </span>
-        </p>
-      </div>
 
-      {groups.map((group) => (
-        <div key={group.catchDateKey} className="mt-3">
-          {groups.length > 1 ? (
-            <p className="mb-2 text-sm font-semibold text-stone-700">
-              Catch {formatCatchShort(group.catchDateKey)}
-            </p>
-          ) : null}
-          <div className="grid grid-cols-3 gap-2 text-lg">
-            {group.projections.map((p) => (
-              <div
-                key={`${group.catchDateKey}-${p.offsetDays}`}
-                className="rounded-lg bg-stone-50 px-3 py-2"
-              >
-                <p className="text-sm text-stone-500">{p.label}</p>
-                <p className="font-bold text-stone-900">{p.weightLbs.toFixed(2)} lb</p>
-                <p className="text-sm text-stone-400">
-                  {p.ageDays}d · {formatCatchShort(p.dateKey)}
-                </p>
-              </div>
+        {groups.map((group) => (
+          <div key={group.catchDateKey} className="mt-3">
+            {groups.length > 1 ? (
+              <p className="mb-2 text-sm font-semibold text-stone-700">
+                Catch {formatCatchShort(group.catchDateKey)}
+              </p>
+            ) : null}
+            <div className="grid grid-cols-3 gap-2 text-lg">
+              {group.projections.map((p) => (
+                <div
+                  key={`${group.catchDateKey}-${p.offsetDays}`}
+                  className="rounded-lg bg-stone-50 px-3 py-2"
+                >
+                  <p className="text-sm text-stone-500">{p.label}</p>
+                  <p className="font-bold text-stone-900">{p.weightLbs.toFixed(2)} lb</p>
+                  <p className="text-sm text-stone-400">
+                    {p.ageDays}d · {formatCatchShort(p.dateKey)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {groups.length > 1 ? (
+          <div className="mt-3 space-y-0.5">
+            {catchDatesSorted.map((dateKey) => (
+              <p key={dateKey} className="text-sm text-stone-500">
+                Catch {formatCatchShort(dateKey)}
+              </p>
             ))}
           </div>
-        </div>
-      ))}
-
-      {groups.length > 1 ? (
-        <div className="mt-3 space-y-0.5">
-          {catchDatesSorted.map((dateKey) => (
-            <p key={dateKey} className="text-sm text-stone-500">
-              Catch {formatCatchShort(dateKey)}
-            </p>
-          ))}
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       {!editing ? (
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className={`${groups.length > 1 ? "mt-2" : "mt-3"} text-sm font-semibold text-emerald-800 hover:underline`}
+          className="mt-3 text-sm text-emerald-800 hover:underline"
         >
           Edit growth rate
         </button>
       ) : (
-        <form action={onSave} className="mt-3 space-y-3 border-t border-stone-100 pt-3">
-          <div className="max-w-xs">
-            <Label htmlFor="growthRateLbsPerDay">Growth rate (lb/day)</Label>
-            <Input
-              id="growthRateLbsPerDay"
-              name="growthRateLbsPerDay"
-              type="number"
-              min={0}
-              step="0.001"
-              required
-              defaultValue={growthRateLbsPerDay || DEFAULT_GROWTH_RATE_LBS_PER_DAY}
-            />
-            <p className="mt-1 text-xs text-stone-500">
-              Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY} · Weight = days of age × GR
-            </p>
-          </div>
-          {error ? <p className="text-sm text-red-700">{error}</p> : null}
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Save"}
-            </Button>
-            <Button type="button" variant="ghost" disabled={pending} onClick={() => setEditing(false)}>
-              Cancel
-            </Button>
-          </div>
-        </form>
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (pending) return;
+              setEditing(false);
+              setError(null);
+            }}
+            className="text-sm text-emerald-800 hover:underline"
+          >
+            Edit growth rate
+          </button>
+          <Card className="mt-3">
+            <form action={onSave} className="space-y-3">
+              <div className="max-w-xs">
+                <Label htmlFor="growthRateLbsPerDay">Growth rate (lb/day)</Label>
+                <Input
+                  id="growthRateLbsPerDay"
+                  name="growthRateLbsPerDay"
+                  type="number"
+                  min={0}
+                  step="0.001"
+                  required
+                  defaultValue={growthRateLbsPerDay || DEFAULT_GROWTH_RATE_LBS_PER_DAY}
+                />
+                <p className="mt-1 text-xs text-stone-500">
+                  Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY} · Weight = days of age × GR
+                </p>
+              </div>
+              {error ? <p className="text-sm text-red-700">{error}</p> : null}
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" disabled={pending}>
+                  {pending ? "Saving…" : "Save"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={pending}
+                  onClick={() => {
+                    setEditing(false);
+                    setError(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
       )}
     </div>
   );
