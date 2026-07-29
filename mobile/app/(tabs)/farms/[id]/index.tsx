@@ -63,7 +63,6 @@ import {
   Chip,
   Metric,
   PrimaryButton,
-  SectionTitle,
   StatusBadge,
   WeeklyMortalityList,
   formatNumber,
@@ -1153,7 +1152,6 @@ export default function FarmDetailScreen() {
           </Card>
         </View>
 
-        <SectionTitle>{farm.farmName}</SectionTitle>
         {data.houses.map((h) => {
           const detailsOpen = expandedHouses.has(h.id);
           function openMortalityForHouse() {
