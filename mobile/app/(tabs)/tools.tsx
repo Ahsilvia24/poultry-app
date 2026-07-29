@@ -362,7 +362,7 @@ export default function ToolsScreen() {
                     ) : null}
 
                     {breakdown ? (
-                      <View style={{ marginTop: 12 }}>
+                      <View style={{ marginTop: 6 }}>
                         <Pressable
                           onPress={() => setShowVentMath((v) => !v)}
                           hitSlop={8}
@@ -375,13 +375,13 @@ export default function ToolsScreen() {
                         {showVentMath ? (
                           <View
                             style={{
-                              marginTop: 10,
-                              padding: 12,
+                              marginTop: 8,
+                              padding: 10,
                               borderRadius: 10,
                               backgroundColor: "#fafaf9",
                               borderWidth: 1,
                               borderColor: colors.border,
-                              gap: 6,
+                              gap: 4,
                             }}
                           >
                             <Text style={{ fontSize: 13, color: colors.text }}>
