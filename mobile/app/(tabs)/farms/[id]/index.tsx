@@ -164,6 +164,8 @@ type HouseEditDraft = {
   totalFanCFM: string;
   numberOfFans: string;
   placedBirdCount: string;
+  /** Shown as placeholder while the field stays empty for easy retype. */
+  placedBirdCountPlaceholder: string;
   placementDate: string;
   catchDate: string;
   flockNumber: string;
@@ -672,6 +674,8 @@ export default function FarmDetailScreen() {
       // Leave blank so the tech can type a new count without deleting first.
       // Placeholder shows the current value; empty on save keeps it.
       placedBirdCount: "",
+      placedBirdCountPlaceholder:
+        h.placedBirdCount != null ? String(h.placedBirdCount) : "Type birds placed",
       placementDate,
       catchDate,
       flockNumber: h.flockNumber ?? "",
@@ -1809,15 +1813,7 @@ export default function FarmDetailScreen() {
                         <NativeNumInput
                           label="Birds placed"
                           value={editingHouse.placedBirdCount}
-                          placeholder={
-                            data.houses.find((h) => h.id === editingHouse.id)?.placedBirdCount !=
-                            null
-                              ? String(
-                                  data.houses.find((h) => h.id === editingHouse.id)
-                                    ?.placedBirdCount,
-                                )
-                              : "Type birds placed"
-                          }
+                          placeholder={editingHouse.placedBirdCountPlaceholder}
                           onChangeText={(v) =>
                             setEditingHouse((prev) =>
                               prev ? { ...prev, placedBirdCount: v } : prev,
