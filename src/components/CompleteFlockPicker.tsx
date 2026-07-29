@@ -4,10 +4,19 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { completeFlockAction } from "@/app/actions/farms";
 import { Button } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 type FlockOption = { id: string; flockNumber: string; ageDays: number };
 
-export function CompleteFlockPicker({ flocks }: { flocks: FlockOption[] }) {
+export function CompleteFlockPicker({
+  flocks,
+  appearance = "button",
+  className,
+}: {
+  flocks: FlockOption[];
+  appearance?: "button" | "quickLink";
+  className?: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -27,7 +36,24 @@ export function CompleteFlockPicker({ flocks }: { flocks: FlockOption[] }) {
     });
   }
 
+  const triggerClass =
+    appearance === "quickLink"
+      ? cn(className)
+      : undefined;
+
   if (flocks.length === 1) {
+    if (appearance === "quickLink") {
+      return (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => complete(flocks[0]!)}
+          className={triggerClass}
+        >
+          Complete flock
+        </button>
+      );
+    }
     return (
       <Button
         type="button"
@@ -42,16 +68,27 @@ export function CompleteFlockPicker({ flocks }: { flocks: FlockOption[] }) {
 
   return (
     <div className="relative">
-      <Button
-        type="button"
-        variant="secondary"
-        disabled={pending}
-        onClick={() => setOpen((v) => !v)}
-      >
-        Complete flock
-      </Button>
+      {appearance === "quickLink" ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => setOpen((v) => !v)}
+          className={triggerClass}
+        >
+          Complete flock
+        </button>
+      ) : (
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={pending}
+          onClick={() => setOpen((v) => !v)}
+        >
+          Complete flock
+        </Button>
+      )}
       {open ? (
-        <div className="absolute right-0 z-20 mt-1 min-w-[12rem] rounded-lg border border-stone-200 bg-white p-1 shadow-lg">
+        <div className="absolute left-0 z-20 mt-1 min-w-[12rem] rounded-lg border border-stone-200 bg-white p-1 shadow-lg">
           <p className="px-2 py-1 text-xs font-semibold text-stone-500">Choose flock</p>
           {flocks.map((flock) => (
             <button

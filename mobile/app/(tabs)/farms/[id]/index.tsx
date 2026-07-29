@@ -1141,48 +1141,103 @@ export default function FarmDetailScreen() {
               </Text>
             </Pressable>
           ) : null}
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
-            <PrimaryButton
-              label="Mortality"
-              onPress={() =>
-                router.push({
-                  pathname: "/(tabs)/mortality",
-                  params: { farmId: farm.id },
-                })
-              }
-              style={{ flexGrow: 1, minWidth: "45%" }}
-            />
-            <PrimaryButton
-              label="LFO"
-              secondary
-              onPress={() =>
-                router.push({
-                  pathname: "/(tabs)/lfo",
-                  params: { farmId: farm.id },
-                })
-              }
-              style={{ flexGrow: 1, minWidth: "45%" }}
-            />
-            <PrimaryButton
-              label="Add flock"
-              secondary
-              onPress={() =>
-                router.push({
-                  pathname: "/(tabs)/farms/[id]/add-flock",
-                  params: { id: farm.id },
-                })
-              }
-              style={{ flexGrow: 1, minWidth: "45%" }}
-            />
-            {activeFlocks.length > 0 ? (
-              <PrimaryButton
-                label="Complete flock"
-                secondary
-                onPress={promptCompleteFlock}
-                style={{ flexGrow: 1, minWidth: "45%" }}
-              />
-            ) : null}
-          </View>
+          <Card style={{ marginTop: 12 }}>
+            <Text style={{ fontWeight: "800", fontSize: 14, marginBottom: 8 }}>Quick links</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {(
+                [
+                  {
+                    key: "mortality",
+                    label: "Mortality",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/mortality",
+                        params: { farmId: farm.id },
+                      }),
+                  },
+                  {
+                    key: "lfo",
+                    label: "LFO",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/lfo",
+                        params: { farmId: farm.id },
+                      }),
+                  },
+                  {
+                    key: "add-flock",
+                    label: "Add flock",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/add-flock",
+                        params: { id: farm.id },
+                      }),
+                  },
+                  ...(activeFlocks.length > 0
+                    ? [
+                        {
+                          key: "complete-flock",
+                          label: "Complete flock",
+                          onPress: promptCompleteFlock,
+                        },
+                      ]
+                    : []),
+                  { key: "visits", label: "Visits", onPress: () => scrollToSection("visits") },
+                  {
+                    key: "generators",
+                    label: "Generator Log",
+                    onPress: () => scrollToSection("generators"),
+                  },
+                  {
+                    key: "weight",
+                    label: "Weight Projections",
+                    onPress: () => scrollToSection("weight"),
+                  },
+                  { key: "issues", label: "Issues", onPress: () => scrollToSection("issues") },
+                  { key: "litter", label: "Litter", onPress: () => scrollToSection("litter") },
+                  { key: "feed", label: "Feed", onPress: () => scrollToSection("feed") },
+                  {
+                    key: "reports",
+                    label: "Reports",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/reports",
+                        params: { farmId: farm.id },
+                      }),
+                  },
+                ] as Array<{ key: string; label: string; onPress: () => void }>
+              ).map((link) => (
+                <Pressable
+                  key={link.key}
+                  onPress={link.onPress}
+                  style={{
+                    width: "31%",
+                    flexGrow: 1,
+                    maxWidth: "32.5%",
+                    minHeight: 44,
+                    borderRadius: 10,
+                    backgroundColor: colors.accentDark,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingHorizontal: 4,
+                    paddingVertical: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#fff",
+                      fontWeight: "800",
+                      fontSize: 12,
+                      textAlign: "center",
+                    }}
+                    numberOfLines={2}
+                  >
+                    {link.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </Card>
         </View>
 
         <SectionTitle>{farm.farmName}</SectionTitle>
@@ -1433,18 +1488,6 @@ export default function FarmDetailScreen() {
                 </Text>
               ))}
             </View>
-            {growthRate != null && weightProjectionGroups.length > 0 ? (
-              <WeightProjectionTile
-                groups={weightProjectionGroups}
-                growthRateLbsPerDay={growthRate}
-                onSaveGrowthRate={(rate) => {
-                  for (const fl of activeFlocks) {
-                    updateFlockGrowthRate(fl.id, rate);
-                  }
-                  load();
-                }}
-              />
-            ) : null}
             {flockWeeklyMortality.length > 0 ? (
               <View
                 style={{
@@ -1519,52 +1562,6 @@ export default function FarmDetailScreen() {
             </View>
           </Card>
         )}
-
-        <Card>
-          <Text style={{ fontWeight: "800", fontSize: 14, marginBottom: 8 }}>Quick links</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {(
-              [
-                { key: "visits", label: "Visits", onPress: () => scrollToSection("visits") },
-                {
-                  key: "generators",
-                  label: "Generator Log",
-                  onPress: () => scrollToSection("generators"),
-                },
-                { key: "issues", label: "Issues", onPress: () => scrollToSection("issues") },
-                { key: "litter", label: "Litter", onPress: () => scrollToSection("litter") },
-                { key: "feed", label: "Feed", onPress: () => scrollToSection("feed") },
-                {
-                  key: "reports",
-                  label: "Reports",
-                  onPress: () =>
-                    router.push({
-                      pathname: "/(tabs)/reports",
-                      params: { farmId: farm.id },
-                    }),
-                },
-              ] as const
-            ).map((link) => (
-              <Pressable
-                key={link.key}
-                onPress={link.onPress}
-                style={{
-                  width: "47%",
-                  flexGrow: 1,
-                  minHeight: 44,
-                  borderRadius: 10,
-                  backgroundColor: colors.accentDark,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  paddingHorizontal: 8,
-                  paddingVertical: 10,
-                }}
-              >
-                <Text style={{ color: "#fff", fontWeight: "800", fontSize: 14 }}>{link.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Card>
 
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
@@ -1753,6 +1750,31 @@ export default function FarmDetailScreen() {
           {!generatorModalOpen ? (
             <RecordLink label="Log generators" onPress={() => openGeneratorEditor()} />
           ) : null}
+        </View>
+
+        {/* ── Weight projections ── */}
+        <View onLayout={onSectionLayout("weight")}>
+          {growthRate != null && weightProjectionGroups.length > 0 ? (
+            <Card>
+              <WeightProjectionTile
+                groups={weightProjectionGroups}
+                growthRateLbsPerDay={growthRate}
+                onSaveGrowthRate={(rate) => {
+                  for (const fl of activeFlocks) {
+                    updateFlockGrowthRate(fl.id, rate);
+                  }
+                  load();
+                }}
+              />
+            </Card>
+          ) : (
+            <Card>
+              <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight projections</Text>
+              <Text style={[styles.muted, { marginTop: 8 }]}>
+                Add an active flock with a catch date to see weight projections.
+              </Text>
+            </Card>
+          )}
         </View>
 
         {/* ── Issues ── */}

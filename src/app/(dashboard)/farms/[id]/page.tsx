@@ -27,7 +27,6 @@ import {
 } from "@/lib/utils";
 import { createFlockAction } from "@/app/actions/farms";
 import { ReactivateFlockButton } from "@/components/FarmOpsForms";
-import { CompleteFlockPicker } from "@/components/CompleteFlockPicker";
 import { EditFlockNumberButton } from "@/components/EditFlockNumberButton";
 import { HouseCard } from "@/components/HouseCard";
 import { AddFlockSection } from "@/components/AddFlockSection";
@@ -41,7 +40,7 @@ import { FarmLitterSection } from "@/components/FarmLitterSection";
 import { FarmVisitsSection } from "@/components/FarmVisitsSection";
 import { WeightProjectionTile } from "@/components/WeightProjectionTile";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
-import { Button, Card, StatTile } from "@/components/ui";
+import { Card, StatTile } from "@/components/ui";
 
 type Params = Promise<{ id: string }>;
 
@@ -285,29 +284,19 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           notes: farm.notes,
           numberOfGenerators: farm.numberOfGenerators,
         }}
-        actions={
-          <>
-            <Link href={`/mortality?farmId=${farm.id}`}>
-              <Button>Mortality</Button>
-            </Link>
-            <Link href={activeFlocks.length > 0 ? `/lfo/new/${farm.id}` : "/lfo"}>
-              <Button variant="secondary">LFO</Button>
-            </Link>
-            <a href="#add-flock">
-              <Button variant="secondary">Add flock</Button>
-            </a>
-            {activeFlocks.length > 0 ? (
-              <CompleteFlockPicker
-                flocks={activeFlocks.map((flock) => ({
-                  id: flock.id,
-                  flockNumber: flock.flockNumber,
-                  ageDays: differenceInCalendarDays(today, flock.placementDate),
-                }))}
-              />
-            ) : null}
-          </>
-        }
       />
+
+      <div className="mb-6">
+        <FarmQuickLinks
+          farmId={farm.id}
+          hasActiveFlock={activeFlocks.length > 0}
+          completeFlocks={activeFlocks.map((flock) => ({
+            id: flock.id,
+            flockNumber: flock.flockNumber,
+            ageDays: differenceInCalendarDays(today, flock.placementDate),
+          }))}
+        />
+      </div>
 
       <h2 className="mt-6 text-xl font-bold">{farm.farmName}</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -403,13 +392,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               ))}
             </div>
           ) : null}
-          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <WeightProjectionTile
-              flockId={activeFlock!.id}
-              growthRateLbsPerDay={growthRate ?? resolveGrowthRate(null)}
-              groups={weightProjectionGroups}
-            />
-          </div>
           {flockWeeklyMortality.length > 0 ? (
             <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3">
               <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
@@ -418,9 +400,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               <WeeklyMortalityList weeks={flockWeeklyMortality} />
             </div>
           ) : null}
-          <div className="mt-4">
-            <FarmQuickLinks farmId={farm.id} />
-          </div>
         </div>
       ) : (
         <Card className="mt-6">
@@ -455,12 +434,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           ) : null}
         </Card>
       )}
-
-      {activeFlocks.length === 0 ? (
-        <div className="mt-4">
-          <FarmQuickLinks farmId={farm.id} />
-        </div>
-      ) : null}
 
       <AddFlockSection
         action={submitFlock}
@@ -504,6 +477,18 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             gen4Hours: log.gen4Hours,
           }))}
         />
+
+        {weightProjectionGroups.length > 0 && activeFlock ? (
+          <div id="weight-projections" className="scroll-mt-24 lg:col-span-2">
+            <WeightProjectionTile
+              flockId={activeFlock.id}
+              growthRateLbsPerDay={growthRate ?? resolveGrowthRate(null)}
+              groups={weightProjectionGroups}
+            />
+          </div>
+        ) : (
+          <div id="weight-projections" className="scroll-mt-24 lg:col-span-2" />
+        )}
 
         <FarmIssuesSection
           farmId={farm.id}
