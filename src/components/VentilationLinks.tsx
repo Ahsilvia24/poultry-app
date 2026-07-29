@@ -88,13 +88,6 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
         })
       : [];
 
-  const resultWeek =
-    flockWeek == null
-      ? null
-      : flockWeek <= 1
-        ? 1
-        : Math.min(flockWeek, CFM_PER_BIRD[CFM_PER_BIRD.length - 1]!.week);
-
   return (
     <div className="space-y-3">
       {farms.length === 0 ? (

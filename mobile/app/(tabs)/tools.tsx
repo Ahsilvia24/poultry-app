@@ -96,14 +96,6 @@ export default function ToolsScreen() {
         })
       : [];
 
-  /** Chart week that matches the flock’s current age (weeks past 8 stay on week 8). */
-  const resultWeek =
-    flockWeek == null
-      ? null
-      : flockWeek <= 1
-        ? 1
-        : Math.min(flockWeek, CFM_PER_BIRD[CFM_PER_BIRD.length - 1]!.week);
-
   function onSectionLayout(key: SectionKey, e: LayoutChangeEvent) {
     sectionY.current[key] = e.nativeEvent.layout.y;
   }
