@@ -272,6 +272,15 @@ export function getDashboard() {
   };
   const todaysSchedule: ScheduleRow[] = [];
   const upcomingSchedule: ScheduleRow[] = [];
+  type CatchRow = {
+    farmId: string;
+    farmName: string;
+    date: string;
+    flockAgeDays: number | null;
+    catchAgeDays: number;
+  };
+  const upcomingCatches: CatchRow[] = [];
+  const seenCatchKeys = new Set<string>();
 
   const completionRows = db.getAllSync<{
     farm_id: string;
@@ -403,6 +412,17 @@ export function getDashboard() {
         hf.catch_date?.trim() ||
         hf.flock_catch ||
         addDaysKey(housePlacement, 52);
+      const catchKey = `${farm.id}|${houseCatch}`;
+      if (!seenCatchKeys.has(catchKey)) {
+        seenCatchKeys.add(catchKey);
+        upcomingCatches.push({
+          farmId: farm.id,
+          farmName: farm.farmName,
+          date: houseCatch,
+          flockAgeDays: daysSincePlacement(housePlacement, today),
+          catchAgeDays: birdAgeFromPlacement(housePlacement, houseCatch),
+        });
+      }
       const daysUntilCatch = daysUntilDateKey(today, houseCatch);
       if (daysUntilCatch != null) {
         hasProjection = true;
@@ -415,6 +435,22 @@ export function getDashboard() {
           0,
           Math.round(s.cumulative + avgDaily * daysUntilCatch),
         );
+      }
+    }
+
+    if (hfs.length === 0) {
+      for (const fl of flocks) {
+        const catchDate = fl.projected_catch_date ?? addDaysKey(fl.placement_date, 52);
+        const catchKey = `${farm.id}|${catchDate}`;
+        if (seenCatchKeys.has(catchKey)) continue;
+        seenCatchKeys.add(catchKey);
+        upcomingCatches.push({
+          farmId: farm.id,
+          farmName: farm.farmName,
+          date: catchDate,
+          flockAgeDays: daysSincePlacement(fl.placement_date, today),
+          catchAgeDays: birdAgeFromPlacement(fl.placement_date, catchDate),
+        });
       }
     }
 
@@ -511,18 +547,11 @@ export function getDashboard() {
       a.farmName.localeCompare(b.farmName),
   );
 
-  const upcomingCatches = farmCards
-    .filter((f) => f.projectedCatchDate && f.placementDate)
-    .map((f) => ({
-      farmId: f.id,
-      farmName: f.farmName,
-      date: f.projectedCatchDate!,
-      flockAgeDays: f.flockAgeDays,
-      /** Bird age (days) on the catch date. */
-      catchAgeDays: birdAgeFromPlacement(f.placementDate!, f.projectedCatchDate!),
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 8);
+  const upcomingCatchesSorted = upcomingCatches
+    .sort(
+      (a, b) => a.date.localeCompare(b.date) || a.farmName.localeCompare(b.farmName),
+    )
+    .slice(0, 24);
 
   return {
     stats: {
@@ -535,7 +564,7 @@ export function getDashboard() {
       highPriorityIssues,
     },
     farmCards,
-    upcomingCatches,
+    upcomingCatches: upcomingCatchesSorted,
     todaysSchedule,
     upcomingSchedule,
   };

@@ -77,6 +77,7 @@ export async function getDashboardData(userId: string) {
     flockAgeDays: number;
     catchAgeDays: number;
   }> = [];
+  const seenFarmCatchKeys = new Set<string>();
   type FollowUpRow = {
     farmId: string;
     flockId: string;
@@ -133,14 +134,37 @@ export async function getDashboardData(userId: string) {
     const farmCompletions = completedByFarm.get(farm.id) ?? new Map();
 
     for (const flock of activeFlocks) {
-      if (flock.projectedCatchDate) {
+      const flockCatchDates = new Map<
+        string,
+        { catchDate: Date; placement: Date }
+      >();
+      for (const hf of flock.houseFlocks) {
+        const placement = hf.placementDate ?? flock.placementDate;
+        const catchDate = hf.catchDate
+          ? startOfDay(hf.catchDate)
+          : resolveCatchDate(flock);
+        const key = format(catchDate, "yyyy-MM-dd");
+        if (!flockCatchDates.has(key)) {
+          flockCatchDates.set(key, { catchDate, placement: startOfDay(placement) });
+        }
+      }
+      if (flockCatchDates.size === 0 && flock.projectedCatchDate) {
         const catchDate = resolveCatchDate(flock);
+        flockCatchDates.set(format(catchDate, "yyyy-MM-dd"), {
+          catchDate,
+          placement: startOfDay(flock.placementDate),
+        });
+      }
+      for (const [dateKey, { catchDate, placement }] of flockCatchDates) {
+        const farmCatchKey = `${farm.id}|${dateKey}`;
+        if (seenFarmCatchKeys.has(farmCatchKey)) continue;
+        seenFarmCatchKeys.add(farmCatchKey);
         upcomingCatches.push({
           farmName: farm.farmName,
-          date: format(catchDate, "yyyy-MM-dd"),
+          date: dateKey,
           flockNumber: flock.flockNumber,
-          flockAgeDays: differenceInCalendarDays(today, flock.placementDate),
-          catchAgeDays: differenceInCalendarDays(catchDate, flock.placementDate),
+          flockAgeDays: differenceInCalendarDays(today, placement),
+          catchAgeDays: differenceInCalendarDays(catchDate, placement),
         });
       }
 
@@ -267,8 +291,8 @@ export async function getDashboardData(userId: string) {
     },
     farmCards,
     upcomingCatches: upcomingCatches
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 8),
+      .sort((a, b) => a.date.localeCompare(b.date) || a.farmName.localeCompare(b.farmName))
+      .slice(0, 24),
     todaysSchedule: todaysSchedule.slice(0, 30),
     upcomingSchedule: upcomingSchedule.slice(0, 40),
     recentCleanouts: recentCleanouts.map((c) => ({

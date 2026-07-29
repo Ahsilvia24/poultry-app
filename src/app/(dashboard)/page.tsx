@@ -62,7 +62,7 @@ export default async function DashboardPage() {
             ) : (
               data.upcomingCatches.map((c) => (
                 <li
-                  key={`${c.farmName}-${c.date}`}
+                  key={`${c.farmName}-${c.date}-${c.flockNumber}`}
                   className="flex items-baseline justify-between gap-3"
                 >
                   <span className="font-semibold text-stone-900">
