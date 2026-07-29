@@ -76,9 +76,7 @@ export default async function LfoPage() {
 
   return (
     <div>
-      <PageHeader
-        title="LFO"
-        subtitle="Last feed order inventory and consumption rate"
+      <PageHeader title="Last Feed Order"
       />
 
       <LfoCreateBar farms={farms} />

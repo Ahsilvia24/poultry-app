@@ -263,8 +263,7 @@ export default function LfoListScreen() {
           scrollEventThrottle={16}
         >
           <PageHeader
-            title="LFO"
-            subtitle="Last feed order inventory and consumption rate"
+            title="Last Feed Order"
           />
 
           <ChipScroller>
