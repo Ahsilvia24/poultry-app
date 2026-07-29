@@ -215,8 +215,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     return result;
   }
 
-  const subtitle = farm.growerName || "Farm details";
-
   const growthRate = activeFlock
     ? resolveGrowthRate(activeFlock.growthRateLbsPerDay)
     : null;
@@ -287,7 +285,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           notes: farm.notes,
           numberOfGenerators: farm.numberOfGenerators,
         }}
-        subtitle={subtitle}
         actions={
           <>
             <Link href={`/mortality?farmId=${farm.id}`}>

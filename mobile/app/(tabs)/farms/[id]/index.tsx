@@ -1106,41 +1106,41 @@ export default function FarmDetailScreen() {
         </Pressable>
 
         <View style={{ marginBottom: 16 }}>
-          <Text style={styles.title}>{farm.farmName}</Text>
           <View
             style={{
               flexDirection: "row",
-              flexWrap: "wrap",
               alignItems: "center",
               gap: 8,
-              marginTop: 4,
             }}
           >
-            {farm.growerName ? (
-              <Text style={styles.subtitle}>{farm.growerName}</Text>
-            ) : null}
-            {farm.phoneNumber ? (
-              <Pressable onPress={() => Linking.openURL(`tel:${farm.phoneNumber}`)}>
-                <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 15 }}>
-                  {farm.phoneNumber}
-                </Text>
-              </Pressable>
-            ) : null}
+            <Text style={[styles.title, { flexShrink: 1 }]}>{farm.farmName}</Text>
             <Pressable
               accessibilityLabel="Edit farm info"
               onPress={() => openFarmEditor(farm)}
               hitSlop={8}
               style={{
-                width: 32,
-                height: 32,
+                width: 36,
+                height: 36,
                 borderRadius: 8,
                 alignItems: "center",
                 justifyContent: "center",
+                flexShrink: 0,
               }}
             >
-              <Ionicons name="settings-outline" size={20} color={colors.muted} />
+              <Ionicons name="settings-outline" size={22} color={colors.muted} />
             </Pressable>
           </View>
+          {farm.phoneNumber ? (
+            <Pressable
+              onPress={() => Linking.openURL(`tel:${farm.phoneNumber}`)}
+              style={{ alignSelf: "flex-start", marginTop: 4 }}
+              hitSlop={8}
+            >
+              <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 15 }}>
+                {farm.phoneNumber}
+              </Text>
+            </Pressable>
+          ) : null}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
             <PrimaryButton
               label="Mortality"

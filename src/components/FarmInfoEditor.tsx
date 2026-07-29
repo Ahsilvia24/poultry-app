@@ -34,11 +34,11 @@ function GearIcon({ className }: { className?: string }) {
 
 export function FarmInfoEditor({
   farm,
-  subtitle,
   actions,
 }: {
   farm: FarmInfo;
-  subtitle: string;
+  /** @deprecated Grower is edited in the settings form; not shown in the header. */
+  subtitle?: string;
   actions?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -46,31 +46,30 @@ export function FarmInfoEditor({
   return (
     <div className="mb-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
-            {farm.farmName}
-          </h1>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <p className="text-stone-600">{subtitle}</p>
-            {farm.phoneNumber ? (
-              <a
-                href={`tel:${farm.phoneNumber}`}
-                className="text-sm font-semibold text-emerald-800 hover:underline"
-              >
-                {farm.phoneNumber}
-              </a>
-            ) : null}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 className="min-w-0 text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
+              {farm.farmName}
+            </h1>
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Close farm settings" : "Edit farm info"}
               aria-expanded={open}
               title="Edit farm info"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
             >
-              <GearIcon className="h-4 w-4" />
+              <GearIcon className="h-5 w-5" />
             </button>
           </div>
+          {farm.phoneNumber ? (
+            <a
+              href={`tel:${farm.phoneNumber}`}
+              className="mt-1 inline-block text-sm font-semibold text-emerald-800 hover:underline"
+            >
+              {farm.phoneNumber}
+            </a>
+          ) : null}
         </div>
         {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </div>
