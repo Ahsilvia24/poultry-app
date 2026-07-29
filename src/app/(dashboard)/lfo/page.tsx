@@ -104,7 +104,7 @@ export default async function LfoPage() {
           </p>
         </Card>
       ) : (
-        <ul className="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
+        <div className="grid gap-2">
           {savedWithSummary.map((lfo) => (
             <SavedLfoRow
               key={lfo.id}
@@ -114,7 +114,7 @@ export default async function LfoPage() {
               houseSummary={lfo.houseSummary}
             />
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

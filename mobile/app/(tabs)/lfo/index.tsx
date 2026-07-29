@@ -14,6 +14,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Swipeable } from "react-native-gesture-handler";
 import { createLfo, deleteLfo, listFarms, listLfos } from "../../../src/repos/data";
 import { todayKey } from "../../../src/lib/ids";
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
@@ -24,7 +25,6 @@ import {
   Chip,
   PageHeader,
   PrimaryButton,
-  SectionTitle,
 } from "../../../src/components/ui";
 import { CopyHouseSummaryButton } from "../../../src/components/LfoHouseSummaryBlock";
 import {
@@ -230,18 +230,22 @@ export default function LfoListScreen() {
   }
 
   function confirmDelete(id: string, farmName: string) {
-    Alert.alert("Delete LFO", `Delete LFO for ${farmName}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          deleteLfo(id);
-          setLfos(listLfos());
-          setMsg("LFO deleted");
+    Alert.alert(
+      "Are you sure?",
+      `Delete LFO for ${farmName}? This cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            deleteLfo(id);
+            setLfos(listLfos());
+            setMsg("LFO deleted");
+          },
         },
-      },
-    ]);
+      ],
+    );
   }
 
   return (
@@ -379,71 +383,77 @@ export default function LfoListScreen() {
             </Card>
           ) : null}
           {lfos.map((l) => (
-            <Card key={l.id}>
-              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                <Pressable
-                  style={{ flex: 1, minWidth: 0 }}
-                  onPress={() => openLfo(l.id)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open LFO for ${l.farmName}`}
-                >
-                  <Text style={{ fontWeight: "800" }} numberOfLines={1}>
-                    {l.farmName}
-                  </Text>
-                  <Text style={[styles.muted, { marginTop: 2 }]}>
-                    {formatLfoDate(l.orderDate)}
-                  </Text>
-                </Pressable>
-                {l.houseSummary.length > 0 ? (
-                  <CopyHouseSummaryButton lines={l.houseSummary} />
-                ) : null}
-                <Pressable
-                  accessibilityLabel={`Edit LFO for ${l.farmName}`}
-                  onPress={() => openLfo(l.id)}
-                  hitSlop={8}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="pencil-outline" size={20} color={colors.muted} />
-                </Pressable>
+            <Swipeable
+              key={l.id}
+              overshootRight={false}
+              friction={2}
+              rightThreshold={40}
+              containerStyle={{ marginBottom: 12 }}
+              renderRightActions={() => (
                 <Pressable
                   accessibilityLabel={`Delete LFO for ${l.farmName}`}
                   onPress={() => confirmDelete(l.id, l.farmName)}
-                  hitSlop={8}
                   style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    alignItems: "center",
+                    backgroundColor: colors.danger,
                     justifyContent: "center",
+                    alignItems: "center",
+                    width: 88,
+                    borderRadius: 14,
+                    marginLeft: 8,
                   }}
                 >
-                  <Ionicons name="trash-outline" size={20} color={colors.muted} />
+                  <Ionicons name="trash-outline" size={22} color="#fff" />
+                  <Text
+                    style={{
+                      color: "#fff",
+                      fontWeight: "800",
+                      fontSize: 12,
+                      marginTop: 4,
+                    }}
+                  >
+                    Delete
+                  </Text>
                 </Pressable>
-              </View>
-              {l.houseSummary.length > 0 ? (
+              )}
+            >
+              <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
                 <Pressable
                   onPress={() => openLfo(l.id)}
                   accessibilityRole="button"
-                  accessibilityLabel={`House summary for ${l.farmName}`}
-                  style={{ marginTop: 8, gap: 2, flexShrink: 0 }}
+                  accessibilityLabel={`Edit LFO for ${l.farmName}`}
+                  style={({ pressed }) => ({
+                    padding: 16,
+                    opacity: pressed ? 0.85 : 1,
+                  })}
                 >
-                  {l.houseSummary.map((line) => (
-                    <Text
-                      key={line}
-                      style={{ fontWeight: "700", color: colors.text, fontSize: 13 }}
-                    >
-                      {line}
-                    </Text>
-                  ))}
+                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ fontWeight: "800" }} numberOfLines={1}>
+                        {l.farmName}
+                      </Text>
+                      <Text style={[styles.muted, { marginTop: 2 }]}>
+                        {formatLfoDate(l.orderDate)}
+                      </Text>
+                    </View>
+                    {l.houseSummary.length > 0 ? (
+                      <CopyHouseSummaryButton lines={l.houseSummary} />
+                    ) : null}
+                  </View>
+                  {l.houseSummary.length > 0 ? (
+                    <View style={{ marginTop: 8, gap: 2, flexShrink: 0 }}>
+                      {l.houseSummary.map((line) => (
+                        <Text
+                          key={line}
+                          style={{ fontWeight: "700", color: colors.text, fontSize: 13 }}
+                        >
+                          {line}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : null}
                 </Pressable>
-              ) : null}
-            </Card>
+              </Card>
+            </Swipeable>
           ))}
         </ScrollView>
 

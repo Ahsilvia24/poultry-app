@@ -2,46 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { deleteLastFeedOrderAction } from "@/app/actions/lfo";
-
-function PencilIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-    </svg>
-  );
-}
-
-function TrashIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      <line x1="10" y1="11" x2="10" y2="17" />
-      <line x1="14" y1="11" x2="14" y2="17" />
-    </svg>
-  );
-}
+import { Button, Card } from "@/components/ui";
 
 function CopyIcon({ className }: { className?: string }) {
   return (
@@ -100,7 +63,7 @@ function CopyHouseSummaryButton({ lines }: { lines: string[] }) {
         await navigator.clipboard.writeText(lines.join("\n"));
         setCopied(true);
       }}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
+      className="pointer-events-auto relative z-10 inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
     >
       {copied ? <CheckIcon className="h-4 w-4 text-emerald-700" /> : <CopyIcon className="h-4 w-4" />}
     </button>
@@ -121,54 +84,134 @@ export function SavedLfoRow({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [swipeX, setSwipeX] = useState(0);
+  const touchStartX = useRef<number | null>(null);
   const lines = houseSummary ?? [];
+  const actionWidth = 88;
+
+  function onTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+  }
+
+  function onTouchMove(e: React.TouchEvent) {
+    if (touchStartX.current == null) return;
+    const x = e.touches[0]?.clientX;
+    if (x == null) return;
+    const dx = x - touchStartX.current;
+    setSwipeX(Math.max(-actionWidth, Math.min(0, dx)));
+  }
+
+  function onTouchEnd() {
+    if (touchStartX.current == null) {
+      setSwipeX(0);
+      return;
+    }
+    if (swipeX <= -48) setSwipeX(-actionWidth);
+    else setSwipeX(0);
+    touchStartX.current = null;
+  }
 
   function onDelete() {
-    if (!window.confirm(`Delete LFO for ${farmName}?`)) return;
     startTransition(async () => {
       await deleteLastFeedOrderAction(id);
+      setConfirmOpen(false);
       router.refresh();
     });
   }
 
   return (
-    <li className="px-4 py-3 hover:bg-stone-50">
-      <div className="flex items-start gap-2">
-        <Link href={`/lfo/${id}`} className="min-w-0 flex-1">
-          <p className="font-semibold text-stone-900">{farmName}</p>
-          <p className="text-sm text-stone-600">{dateLabel}</p>
-        </Link>
-        <div className="flex shrink-0 items-center gap-0.5">
-          {lines.length > 0 ? <CopyHouseSummaryButton lines={lines} /> : null}
+    <div className="relative overflow-hidden rounded-xl">
+      <div
+        className="absolute inset-y-0 right-0 flex w-[88px] items-stretch"
+        aria-hidden={swipeX > -40}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setSwipeX(0);
+            setConfirmOpen(true);
+          }}
+          className="flex w-full flex-col items-center justify-center gap-1 rounded-xl bg-red-700 px-1 text-center text-xs font-bold text-white"
+          aria-label={`Delete LFO for ${farmName}`}
+        >
+          Delete
+        </button>
+      </div>
+
+      <div
+        className="relative transition-transform duration-150 ease-out"
+        style={{ transform: `translateX(${swipeX}px)` }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={() => {
+          touchStartX.current = null;
+          setSwipeX(0);
+        }}
+      >
+        <Card className="relative p-4 transition hover:border-emerald-400">
           <Link
             href={`/lfo/${id}`}
+            className="absolute inset-0 z-0 rounded-[inherit]"
             aria-label={`Edit LFO for ${farmName}`}
-            title="Edit"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
-          >
-            <PencilIcon className="h-4 w-4" />
-          </Link>
-          <button
-            type="button"
-            aria-label={`Delete LFO for ${farmName}`}
-            title="Delete"
-            disabled={pending}
-            onClick={onDelete}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </button>
-        </div>
+          />
+          <div className="relative z-10 flex pointer-events-none items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-stone-900">{farmName}</p>
+              <p className="text-sm text-stone-600">{dateLabel}</p>
+            </div>
+            {lines.length > 0 ? <CopyHouseSummaryButton lines={lines} /> : null}
+          </div>
+          {lines.length > 0 ? (
+            <div className="relative z-10 pointer-events-none mt-2 space-y-0.5">
+              {lines.map((line) => (
+                <p key={line} className="text-sm font-medium text-stone-800">
+                  {line}
+                </p>
+              ))}
+            </div>
+          ) : null}
+        </Card>
       </div>
-      {lines.length > 0 ? (
-        <Link href={`/lfo/${id}`} className="mt-2 block space-y-0.5">
-          {lines.map((line) => (
-            <p key={line} className="text-sm font-medium text-stone-800">
-              {line}
+
+      {confirmOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`delete-lfo-${id}`}
+            className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id={`delete-lfo-${id}`} className="text-lg font-bold text-stone-900">
+              Are you sure?
+            </h3>
+            <p className="mt-2 text-sm text-stone-600">
+              Delete LFO for {farmName}? This cannot be undone.
             </p>
-          ))}
-        </Link>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button type="button" variant="danger" disabled={pending} onClick={onDelete}>
+                {pending ? "Deleting…" : "Delete"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={pending}
+                onClick={() => setConfirmOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
       ) : null}
-    </li>
+    </div>
   );
 }
