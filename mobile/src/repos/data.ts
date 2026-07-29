@@ -46,6 +46,9 @@ function daysUntilDateKey(fromKey: string, toKey: string): number {
   );
 }
 
+/** Broiler flocks don't run past this — caps bad ages from inflating the week grid. */
+const MAX_WEEKLY_MORTALITY_WEEK = 16;
+
 function summarizeHouse(
   placed: number,
   records: MortRow[],
@@ -65,8 +68,24 @@ function summarizeHouse(
   let today = 0;
   let sevenDay = 0;
   const last3: number[] = [];
-  const weekTotals = new Map<number, number>();
   const place = placementDate?.trim() || null;
+
+  // Match web: show weeks 1…current flock week only (zeros for empty weeks).
+  let currentWeek = 1;
+  if (place) {
+    currentWeek = flockWeekFromAge(birdAgeFromPlacement(place, asOf));
+  } else {
+    let maxAge = 0;
+    for (const r of records) {
+      if (r.mortality_date > asOf) continue;
+      maxAge = Math.max(maxAge, r.bird_age_in_days);
+    }
+    currentWeek = flockWeekFromAge(maxAge);
+  }
+  currentWeek = Math.min(Math.max(1, currentWeek), MAX_WEEKLY_MORTALITY_WEEK);
+
+  const weekTotals = new Map<number, number>();
+  for (let w = 1; w <= currentWeek; w++) weekTotals.set(w, 0);
 
   for (const r of records) {
     if (r.mortality_date > asOf) continue;
@@ -78,7 +97,9 @@ function summarizeHouse(
       ? birdAgeFromPlacement(place, r.mortality_date)
       : r.bird_age_in_days;
     const week = flockWeekFromAge(age);
-    weekTotals.set(week, (weekTotals.get(week) ?? 0) + loss);
+    if (week >= 1 && week <= currentWeek) {
+      weekTotals.set(week, (weekTotals.get(week) ?? 0) + loss);
+    }
     if (r.mortality_date === asOf) today += loss;
   }
 

@@ -172,7 +172,12 @@ type WeekTotal = { week: number; total: number };
 /** Weeks 1–4 / 5–8 / 9–12 as fixed 4-column rows (empty slots keep columns aligned). */
 function groupByFourWeekRows(weeks: WeekTotal[]): Array<Array<WeekTotal | null>> {
   if (weeks.length === 0) return [];
-  const byWeek = new Map(weeks.map((w) => [Math.max(1, w.week), w]));
+  const byWeek = new Map(
+    weeks
+      .filter((w) => w.week >= 1 && w.week <= 16)
+      .map((w) => [w.week, w]),
+  );
+  if (byWeek.size === 0) return [];
   const maxWeek = Math.max(...Array.from(byWeek.keys()));
   const rows: Array<Array<WeekTotal | null>> = [];
   for (let start = 1; start <= maxWeek; start += 4) {
@@ -191,36 +196,46 @@ function groupByFourWeekRows(weeks: WeekTotal[]): Array<Array<WeekTotal | null>>
   return rows;
 }
 
-/** Weeks 1–4 / 5–8 / 9–12 per row; totals bold and slightly larger than body metrics. */
+/**
+ * Weeks 1–4 / 5–8 / 9–12 per row.
+ * Label + total stack vertically so 4–5 digit counts stay readable (no auto-shrink).
+ */
 export function WeeklyMortalityList({ weeks }: { weeks: WeekTotal[] }) {
   if (weeks.length === 0) return null;
   const rows = groupByFourWeekRows(weeks);
 
   return (
-    <View style={{ marginTop: 2, gap: 6 }}>
+    <View style={{ marginTop: 2, gap: 8 }}>
       {rows.map((row, rowIndex) => (
         <View
           key={rowIndex}
-          style={{ flexDirection: "row", flexWrap: "nowrap", gap: 4 }}
+          style={{ flexDirection: "row", flexWrap: "nowrap", gap: 6 }}
         >
           {row.map((w, colIndex) =>
             w ? (
               <View key={w.week} style={{ flex: 1, minWidth: 0 }}>
                 <Text
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.72}
                   style={{
-                    fontSize: 13,
-                    lineHeight: 18,
+                    fontSize: 11,
+                    lineHeight: 14,
+                    fontWeight: "700",
                     color: colors.muted,
-                    fontVariant: ["tabular-nums"],
                   }}
                 >
-                  Wk{w.week}{" "}
-                  <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text }}>
-                    {w.total}
-                  </Text>
+                  Wk{w.week}
+                </Text>
+                <Text
+                  style={{
+                    marginTop: 1,
+                    fontSize: 17,
+                    lineHeight: 22,
+                    fontWeight: "800",
+                    color: colors.text,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                  numberOfLines={1}
+                >
+                  {w.total.toLocaleString()}
                 </Text>
               </View>
             ) : (
