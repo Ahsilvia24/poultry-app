@@ -178,32 +178,50 @@ export default function FarmsScreen() {
                       {farm.farmName}
                       <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
                     </Text>
-                    {farm.growerName ? (
-                      <Text style={[styles.muted, { marginTop: 1, lineHeight: 16 }]}>
-                        {farm.growerName}
-                      </Text>
-                    ) : null}
                   </Pressable>
-                  {farm.phoneNumber ? (
-                    <Pressable
-                      accessibilityRole="link"
-                      accessibilityLabel={`Call ${farm.phoneNumber}`}
-                      onPress={() => Linking.openURL(dialUrl(farm.phoneNumber!))}
-                      hitSlop={8}
-                      style={{ alignSelf: "flex-start", marginTop: 1 }}
+                  {farm.growerName || farm.phoneNumber ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        alignItems: "baseline",
+                        gap: 6,
+                        marginTop: 1,
+                      }}
                     >
-                      <Text
-                        style={{
-                          color: colors.accentDark,
-                          fontWeight: "700",
-                          fontSize: 13,
-                          lineHeight: 16,
-                          textDecorationLine: "underline",
-                        }}
-                      >
-                        {farm.phoneNumber}
-                      </Text>
-                    </Pressable>
+                      {farm.growerName ? (
+                        <Pressable
+                          onPress={() =>
+                            router.push({
+                              pathname: "/(tabs)/farms/[id]",
+                              params: { id: farm.id },
+                            })
+                          }
+                        >
+                          <Text style={[styles.muted, { lineHeight: 16 }]}>{farm.growerName}</Text>
+                        </Pressable>
+                      ) : null}
+                      {farm.phoneNumber ? (
+                        <Pressable
+                          accessibilityRole="link"
+                          accessibilityLabel={`Call ${farm.phoneNumber}`}
+                          onPress={() => Linking.openURL(dialUrl(farm.phoneNumber!))}
+                          hitSlop={8}
+                        >
+                          <Text
+                            style={{
+                              color: colors.accentDark,
+                              fontWeight: "700",
+                              fontSize: 13,
+                              lineHeight: 16,
+                              textDecorationLine: "underline",
+                            }}
+                          >
+                            {farm.phoneNumber}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
                   ) : null}
                 </View>
 

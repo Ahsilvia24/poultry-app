@@ -102,17 +102,29 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
                           </span>
                         ) : null}
                       </p>
-                      {farm.growerName ? (
-                        <p className="mt-0.5 text-sm leading-snug text-stone-600">{farm.growerName}</p>
-                      ) : null}
                     </Link>
-                    {farm.phoneNumber ? (
-                      <a
-                        href={dialHref(farm.phoneNumber)}
-                        className="mt-0.5 inline-block text-sm font-semibold leading-snug text-emerald-800 underline-offset-2 hover:underline"
-                      >
-                        {farm.phoneNumber}
-                      </a>
+                    {farm.growerName || farm.phoneNumber ? (
+                      <p className="mt-0.5 text-sm leading-snug">
+                        {farm.growerName ? (
+                          <Link
+                            href={`/farms/${farm.id}`}
+                            className="text-stone-600 hover:text-stone-800"
+                          >
+                            {farm.growerName}
+                          </Link>
+                        ) : null}
+                        {farm.growerName && farm.phoneNumber ? (
+                          <span className="text-stone-400"> · </span>
+                        ) : null}
+                        {farm.phoneNumber ? (
+                          <a
+                            href={dialHref(farm.phoneNumber)}
+                            className="font-semibold text-emerald-800 underline-offset-2 hover:underline"
+                          >
+                            {farm.phoneNumber}
+                          </a>
+                        ) : null}
+                      </p>
                     ) : null}
                   </div>
                   <div className="ml-1 flex shrink-0 items-center gap-1">
