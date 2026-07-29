@@ -7,6 +7,7 @@ import {
   MIN_VENT_CYCLE_SECONDS,
   formatMinVentCycle,
   recommendedMinVent,
+  upcomingMinVentWeeks,
 } from "@/lib/tools/ventilation";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,7 @@ function formatRaw(n: number) {
 export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayload[] }) {
   const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
   const [houseId, setHouseId] = useState(farms[0]?.houses?.[0]?.id ?? "");
+  const [showMath, setShowMath] = useState(false);
 
   const farm = useMemo(
     () => farms.find((f) => f.id === farmId) ?? null,
@@ -58,43 +60,38 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
     setHouseId(next?.houses[0]?.id ?? "");
   }
 
+  const flockWeek = farm?.flockWeek ?? null;
+
   const breakdown =
     house &&
-    farm?.flockWeek != null &&
+    flockWeek != null &&
     house.birdsPlaced != null &&
     house.birdsPlaced > 0 &&
     house.totalFanCFM != null &&
     house.totalFanCFM > 0
       ? recommendedMinVent({
           birdsPlaced: house.birdsPlaced,
-          flockWeek: farm.flockWeek,
+          flockWeek,
           totalFanCFM: house.totalFanCFM,
         })
       : null;
 
+  const upcomingWeeks =
+    house &&
+    flockWeek != null &&
+    house.birdsPlaced != null &&
+    house.birdsPlaced > 0 &&
+    house.totalFanCFM != null &&
+    house.totalFanCFM > 0
+      ? upcomingMinVentWeeks({
+          birdsPlaced: house.birdsPlaced,
+          flockWeek,
+          totalFanCFM: house.totalFanCFM,
+        })
+      : [];
+
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700">
-        <p className="font-semibold text-stone-900">Recommended Min Vent math</p>
-        <p className="mt-2">
-          ON = (HP × CFM/Bird ÷ Total CFM) × {MIN_VENT_CYCLE_SECONDS}
-        </p>
-        <p className="mt-1">OFF = {MIN_VENT_CYCLE_SECONDS} − ON</p>
-        <ul className="mt-3 list-disc space-y-1 pl-5">
-          <li>
-            <span className="font-medium text-stone-900">HP</span> — birds placed in the house
-          </li>
-          <li>
-            <span className="font-medium text-stone-900">CFM/Bird</span> — from the weekly chart
-            below (by current flock week)
-          </li>
-          <li>
-            <span className="font-medium text-stone-900">Total CFM</span> — number of fans ×
-            CFM/Fan (house Total fan CFM)
-          </li>
-        </ul>
-      </div>
-
       {farms.length === 0 ? (
         <p className="text-sm text-stone-600">Add a farm to inspect house min-vent math.</p>
       ) : (
@@ -154,10 +151,10 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
           {house ? (
             <div className="rounded-lg border border-stone-200 bg-white px-3 py-3 text-sm text-stone-700">
               <p className="font-semibold text-stone-900">House {house.houseNumber}</p>
-              {farm?.flockWeek != null ? (
+              {flockWeek != null ? (
                 <p className="mt-1 text-stone-600">
-                  Flock week {farm.flockWeek}
-                  {farm.birdAgeDays != null ? ` · ${farm.birdAgeDays}d` : ""}
+                  Flock week {flockWeek}
+                  {farm?.birdAgeDays != null ? ` · ${farm.birdAgeDays}d` : ""}
                 </p>
               ) : (
                 <p className="mt-1 text-amber-800">No active flock — week / HP unavailable.</p>
@@ -197,19 +194,76 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                 </div>
               </dl>
 
+              {breakdown && upcomingWeeks.length > 0 ? (
+                <div className="mt-3 border-t border-stone-100 pt-3">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-500">
+                    Upcoming weeks
+                  </p>
+                  <ul className="space-y-1.5">
+                    {upcomingWeeks.map((w) => (
+                      <li
+                        key={w.week}
+                        className="flex items-baseline justify-between gap-3 text-sm"
+                      >
+                        <span className="text-stone-700">
+                          Wk{w.week}{" "}
+                          <span className="text-stone-500">
+                            ({w.dayStart}-{w.dayEnd}d · {formatCfmPerBird(w.cfmPerBird)} CFM/bird)
+                          </span>
+                        </span>
+                        <span className="shrink-0 font-extrabold tabular-nums text-stone-900">
+                          {formatMinVentCycle(w.onSeconds, w.offSeconds)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
               {breakdown ? (
-                <div className="mt-3 space-y-1 border-t border-stone-100 pt-3 font-mono text-[13px] leading-relaxed text-stone-800">
-                  <p>
-                    {formatCfm(house.birdsPlaced!)} × {formatCfmPerBird(breakdown.cfmPerBird)} ={" "}
-                    {formatCfm(breakdown.requiredCfm)} required CFM
-                  </p>
-                  <p>
-                    {formatCfm(breakdown.requiredCfm)} ÷ {formatCfm(house.totalFanCFM!)} ×{" "}
-                    {MIN_VENT_CYCLE_SECONDS} = {formatRaw(breakdown.onRaw)}
-                  </p>
-                  <p>
-                    Round → {breakdown.onSeconds} ON / {breakdown.offSeconds} OFF
-                  </p>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowMath((v) => !v)}
+                    className={linkClass}
+                  >
+                    {showMath ? "Hide math" : "Show math"}
+                  </button>
+                  {showMath ? (
+                    <div className="mt-3 space-y-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700">
+                      <p>
+                        ON = (HP × CFM/Bird ÷ Total CFM) × {MIN_VENT_CYCLE_SECONDS}
+                      </p>
+                      <p>OFF = {MIN_VENT_CYCLE_SECONDS} − ON</p>
+                      <ul className="list-disc space-y-1 pl-5">
+                        <li>
+                          <span className="font-medium text-stone-900">HP</span> — birds placed
+                        </li>
+                        <li>
+                          <span className="font-medium text-stone-900">CFM/Bird</span> — weekly
+                          chart by flock week
+                        </li>
+                        <li>
+                          <span className="font-medium text-stone-900">Total CFM</span> — house
+                          total fan CFM
+                        </li>
+                      </ul>
+                      <div className="space-y-1 border-t border-stone-200 pt-3 font-mono text-[13px] leading-relaxed text-stone-800">
+                        <p>
+                          {formatCfm(house.birdsPlaced!)} ×{" "}
+                          {formatCfmPerBird(breakdown.cfmPerBird)} ={" "}
+                          {formatCfm(breakdown.requiredCfm)} required CFM
+                        </p>
+                        <p>
+                          {formatCfm(breakdown.requiredCfm)} ÷ {formatCfm(house.totalFanCFM!)} ×{" "}
+                          {MIN_VENT_CYCLE_SECONDS} = {formatRaw(breakdown.onRaw)}
+                        </p>
+                        <p>
+                          Round → {breakdown.onSeconds} ON / {breakdown.offSeconds} OFF
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <p className="mt-3 text-amber-800">

@@ -60,6 +60,45 @@ export function recommendedMinVent(input: {
   };
 }
 
+/** Min-vent results for weeks after the current one (when CFM/bird steps up). */
+export function upcomingMinVentWeeks(input: {
+  birdsPlaced: number;
+  flockWeek: number;
+  totalFanCFM: number;
+}): Array<{
+  week: number;
+  dayStart: number;
+  dayEnd: number;
+  cfmPerBird: number;
+  onSeconds: number;
+  offSeconds: number;
+}> {
+  const maxWeek = CFM_PER_BIRD[CFM_PER_BIRD.length - 1]!.week;
+  const start = Math.max(1, Math.floor(input.flockWeek)) + 1;
+  const rows: Array<{
+    week: number;
+    dayStart: number;
+    dayEnd: number;
+    cfmPerBird: number;
+    onSeconds: number;
+    offSeconds: number;
+  }> = [];
+  for (let week = start; week <= maxWeek; week++) {
+    const breakdown = recommendedMinVent({ ...input, flockWeek: week });
+    if (!breakdown) continue;
+    const chart = CFM_PER_BIRD.find((r) => r.week === week);
+    rows.push({
+      week,
+      dayStart: chart?.dayStart ?? 0,
+      dayEnd: chart?.dayEnd ?? 0,
+      cfmPerBird: breakdown.cfmPerBird,
+      onSeconds: breakdown.onSeconds,
+      offSeconds: breakdown.offSeconds,
+    });
+  }
+  return rows;
+}
+
 export type CoolCellStage = {
   day: number;
   diff: number;

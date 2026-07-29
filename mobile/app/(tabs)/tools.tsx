@@ -13,8 +13,9 @@ import {
   CFM_PER_BIRD,
   MIN_VENT_CYCLE_SECONDS,
   recommendedMinVent,
+  upcomingMinVentWeeks,
 } from "../../src/lib/tools";
-import { formatMinVentCycle } from "../../src/lib/mortality";
+import { flockWeekFromAge, formatMinVentCycle } from "../../src/lib/mortality";
 import { colors, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { Card, Chip, PageHeader } from "../../src/components/ui";
@@ -50,6 +51,7 @@ export default function ToolsScreen() {
     phone: true,
   });
   const [cfmOpen, setCfmOpen] = useState<"bird" | "fan" | null>(null);
+  const [showVentMath, setShowVentMath] = useState(false);
 
   const farms = useMemo(() => listFarms().farms, []);
   const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
@@ -67,17 +69,34 @@ export default function ToolsScreen() {
   const houses = detail?.houses ?? [];
   const selectedHouse = houses.find((h) => h.id === houseId) ?? houses[0] ?? null;
 
+  const flockWeek =
+    selectedHouse?.ageDays != null
+      ? flockWeekFromAge(Math.max(0, selectedHouse.ageDays))
+      : (detail?.activeFlock?.flockWeek ?? null);
+
   const breakdown =
     selectedHouse &&
-    detail?.activeFlock?.flockWeek != null &&
+    flockWeek != null &&
     selectedHouse.placedBirdCount != null &&
     selectedHouse.totalFanCFM != null
       ? recommendedMinVent({
           birdsPlaced: selectedHouse.placedBirdCount,
-          flockWeek: detail.activeFlock.flockWeek,
+          flockWeek,
           totalFanCFM: selectedHouse.totalFanCFM,
         })
       : null;
+
+  const upcomingWeeks =
+    selectedHouse &&
+    flockWeek != null &&
+    selectedHouse.placedBirdCount != null &&
+    selectedHouse.totalFanCFM != null
+      ? upcomingMinVentWeeks({
+          birdsPlaced: selectedHouse.placedBirdCount,
+          flockWeek,
+          totalFanCFM: selectedHouse.totalFanCFM,
+        })
+      : [];
 
   function onSectionLayout(key: SectionKey, e: LayoutChangeEvent) {
     sectionY.current[key] = e.nativeEvent.layout.y;
@@ -209,27 +228,6 @@ export default function ToolsScreen() {
                 title="Ventilation"
                 onClose={() => setOpen((p) => ({ ...p, vent: false }))}
               >
-                <View
-                  style={{
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    borderRadius: 10,
-                    backgroundColor: "#fafaf9",
-                    padding: 12,
-                    marginBottom: 14,
-                  }}
-                >
-                  <Text style={{ fontWeight: "700", color: colors.text }}>
-                    Recommended Min Vent math
-                  </Text>
-                  <Text style={{ marginTop: 8, color: colors.text, fontSize: 14 }}>
-                    ON = (HP × CFM/Bird ÷ Total CFM) × {MIN_VENT_CYCLE_SECONDS}
-                  </Text>
-                  <Text style={{ marginTop: 4, color: colors.text, fontSize: 14 }}>
-                    OFF = {MIN_VENT_CYCLE_SECONDS} − ON
-                  </Text>
-                </View>
-
                 <Text style={styles.label}>Farm</Text>
                 <ChipScroller>
                   {farms.map((f) => (
@@ -272,8 +270,10 @@ export default function ToolsScreen() {
                       House {selectedHouse.houseNumber}
                     </Text>
                     <Text style={[styles.muted, { marginTop: 4 }]}>
-                      {detail?.activeFlock?.flockWeek != null
-                        ? `Flock week ${detail.activeFlock.flockWeek}`
+                      {flockWeek != null
+                        ? `Flock week ${flockWeek}${
+                            selectedHouse.ageDays != null ? ` · ${selectedHouse.ageDays}d` : ""
+                          }`
                         : "No active flock — week / HP unavailable."}
                     </Text>
                     <View style={[styles.row, { marginTop: 12 }]}>
@@ -305,29 +305,119 @@ export default function ToolsScreen() {
                         }
                       />
                     </View>
-                    {breakdown ? (
+
+                    {breakdown && upcomingWeeks.length > 0 ? (
                       <View
                         style={{
-                          marginTop: 10,
-                          paddingTop: 10,
+                          marginTop: 12,
+                          paddingTop: 12,
                           borderTopWidth: 1,
                           borderTopColor: "#f5f5f4",
-                          gap: 4,
                         }}
                       >
-                        <Text style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}>
-                          {selectedHouse.placedBirdCount!.toLocaleString()} ×{" "}
-                          {breakdown.cfmPerBird.toFixed(2)} ={" "}
-                          {breakdown.requiredCfm.toFixed(1)} required CFM
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color: colors.muted,
+                            textTransform: "uppercase",
+                            marginBottom: 8,
+                          }}
+                        >
+                          Upcoming weeks
                         </Text>
-                        <Text style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}>
-                          {breakdown.requiredCfm.toFixed(1)} ÷{" "}
-                          {selectedHouse.totalFanCFM!.toLocaleString()} × {MIN_VENT_CYCLE_SECONDS} ={" "}
-                          {breakdown.onRaw.toFixed(2)}
-                        </Text>
-                        <Text style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}>
-                          Round → {breakdown.onSeconds} ON / {breakdown.offSeconds} OFF
-                        </Text>
+                        {upcomingWeeks.map((w) => (
+                          <View
+                            key={w.week}
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "baseline",
+                              gap: 8,
+                              paddingVertical: 5,
+                            }}
+                          >
+                            <Text style={{ flex: 1, fontSize: 13, color: colors.text }}>
+                              Wk{w.week}{" "}
+                              <Text style={{ color: colors.muted }}>
+                                ({w.dayStart}-{w.dayEnd}d · {w.cfmPerBird.toFixed(2)} CFM/bird)
+                              </Text>
+                            </Text>
+                            <Text
+                              style={{
+                                fontSize: 14,
+                                fontWeight: "800",
+                                color: colors.text,
+                                fontVariant: ["tabular-nums"],
+                              }}
+                            >
+                              {formatMinVentCycle(w.onSeconds, w.offSeconds)}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+
+                    {breakdown ? (
+                      <View style={{ marginTop: 12 }}>
+                        <Pressable
+                          onPress={() => setShowVentMath((v) => !v)}
+                          hitSlop={8}
+                          style={{ alignSelf: "flex-start" }}
+                        >
+                          <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 13 }}>
+                            {showVentMath ? "Hide math" : "Show math"}
+                          </Text>
+                        </Pressable>
+                        {showVentMath ? (
+                          <View
+                            style={{
+                              marginTop: 10,
+                              padding: 12,
+                              borderRadius: 10,
+                              backgroundColor: "#fafaf9",
+                              borderWidth: 1,
+                              borderColor: colors.border,
+                              gap: 6,
+                            }}
+                          >
+                            <Text style={{ fontSize: 13, color: colors.text }}>
+                              ON = (HP × CFM/Bird ÷ Total CFM) × {MIN_VENT_CYCLE_SECONDS}
+                            </Text>
+                            <Text style={{ fontSize: 13, color: colors.text }}>
+                              OFF = {MIN_VENT_CYCLE_SECONDS} − ON
+                            </Text>
+                            <View
+                              style={{
+                                marginTop: 6,
+                                paddingTop: 8,
+                                borderTopWidth: 1,
+                                borderTopColor: "#e7e5e4",
+                                gap: 4,
+                              }}
+                            >
+                              <Text
+                                style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}
+                              >
+                                {selectedHouse.placedBirdCount!.toLocaleString()} ×{" "}
+                                {breakdown.cfmPerBird.toFixed(2)} ={" "}
+                                {breakdown.requiredCfm.toFixed(1)} required CFM
+                              </Text>
+                              <Text
+                                style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}
+                              >
+                                {breakdown.requiredCfm.toFixed(1)} ÷{" "}
+                                {selectedHouse.totalFanCFM!.toLocaleString()} ×{" "}
+                                {MIN_VENT_CYCLE_SECONDS} = {breakdown.onRaw.toFixed(2)}
+                              </Text>
+                              <Text
+                                style={{ fontSize: 13, fontFamily: "Courier", color: colors.text }}
+                              >
+                                Round → {breakdown.onSeconds} ON / {breakdown.offSeconds} OFF
+                              </Text>
+                            </View>
+                          </View>
+                        ) : null}
                       </View>
                     ) : (
                       <Text style={{ color: colors.warn, marginTop: 10 }}>
