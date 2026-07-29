@@ -52,9 +52,6 @@ export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
                     <span className="font-semibold text-stone-500"> · {farm.flockAgeDays}d</span>
                   ) : null}
                 </p>
-                {farm.growerName ? (
-                  <p className="mt-0.5 pl-5 text-sm text-stone-600">{farm.growerName}</p>
-                ) : null}
               </div>
               <StatusBadge status={farm.status} />
             </button>

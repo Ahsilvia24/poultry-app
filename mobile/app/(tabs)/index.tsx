@@ -445,9 +445,6 @@ export default function DashboardScreen() {
                             );
                           })()}
                         </Text>
-                        {farm.growerName ? (
-                          <Text style={[styles.muted, { marginTop: 2 }]}>{farm.growerName}</Text>
-                        ) : null}
                       </View>
                       <StatusBadge status={farm.status} />
                     </View>
