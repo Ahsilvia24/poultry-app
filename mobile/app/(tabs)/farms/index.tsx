@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -22,6 +23,11 @@ import { colors, styles } from "../../../src/theme";
 import { Card, Chip, PageHeader } from "../../../src/components/ui";
 
 type StatusFilter = "active" | "inactive" | "all";
+
+function dialUrl(phone: string) {
+  const digits = phone.replace(/[^\d+]/g, "");
+  return `tel:${digits || phone}`;
+}
 
 export default function FarmsScreen() {
   const router = useRouter();
@@ -178,6 +184,27 @@ export default function FarmsScreen() {
                       </Text>
                     ) : null}
                   </Pressable>
+                  {farm.phoneNumber ? (
+                    <Pressable
+                      accessibilityRole="link"
+                      accessibilityLabel={`Call ${farm.phoneNumber}`}
+                      onPress={() => Linking.openURL(dialUrl(farm.phoneNumber!))}
+                      hitSlop={8}
+                      style={{ alignSelf: "flex-start", marginTop: 1 }}
+                    >
+                      <Text
+                        style={{
+                          color: colors.accentDark,
+                          fontWeight: "700",
+                          fontSize: 13,
+                          lineHeight: 16,
+                          textDecorationLine: "underline",
+                        }}
+                      >
+                        {farm.phoneNumber}
+                      </Text>
+                    </Pressable>
+                  ) : null}
                 </View>
 
                 <View
