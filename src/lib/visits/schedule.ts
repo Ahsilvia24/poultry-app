@@ -152,11 +152,12 @@ export type CompletionInfo = { completedAt: Date };
 
 /**
  * Split schedule into today vs upcoming.
- * - Today: events due today only; list resets at local midnight (00:00 / 0001).
- * - Upcoming: after today through horizon
+ * - Today: events due today, plus recent overdue (uncompleted) visits so missed
+ *   service days stay on the list until checked off.
+ * - Upcoming: after today through horizon.
  * Checking an item keeps it visible (crossed out) for the rest of that local
  * calendar day, then it drops at midnight. Completions from a previous day never
- * reappear on Upcoming or on Today's schedule when their due date arrives.
+ * reappear.
  */
 export function splitScheduleForDashboard(
   schedule: ScheduledVisit[],
@@ -165,15 +166,18 @@ export function splitScheduleForDashboard(
   completions: Map<string, CompletionInfo>,
   _now: Date = new Date(),
 ): { today: DueScheduledVisit[]; upcoming: DueScheduledVisit[] } {
-  const todayKey = format(startOfDay(today), "yyyy-MM-dd");
+  const todayStart = startOfDay(today);
+  const todayKey = format(todayStart, "yyyy-MM-dd");
   const endKey = format(startOfDay(horizon), "yyyy-MM-dd");
+  const horizonDays = Math.max(0, differenceInCalendarDays(startOfDay(horizon), todayStart));
+  const overdueStart = format(subDays(todayStart, horizonDays), "yyyy-MM-dd");
 
   const todayItems: DueScheduledVisit[] = [];
   const upcomingItems: DueScheduledVisit[] = [];
 
   for (const v of schedule) {
-    if (v.dateKey < todayKey) continue; // only show on the calendar day they are due
     if (v.dateKey > endKey) continue;
+    if (v.dateKey < overdueStart) continue;
 
     const key = completionKey(v.dateKey, v.label);
     const info = completions.get(key);
@@ -184,12 +188,17 @@ export function splitScheduleForDashboard(
     }
 
     const item: DueScheduledVisit = { ...v, completed: Boolean(info) };
-    if (v.dateKey === todayKey) {
+    if (v.dateKey <= todayKey) {
       todayItems.push(item);
     } else {
       upcomingItems.push(item);
     }
   }
+
+  const byToday = (a: DueScheduledVisit, b: DueScheduledVisit) =>
+    a.dateKey.localeCompare(b.dateKey) ||
+    compareTodaySchedulePriority(a, b) ||
+    a.label.localeCompare(b.label);
 
   const byUpcoming = (a: DueScheduledVisit, b: DueScheduledVisit) =>
     a.date.getTime() - b.date.getTime() ||
@@ -197,9 +206,7 @@ export function splitScheduleForDashboard(
     a.label.localeCompare(b.label);
 
   return {
-    today: todayItems.sort(
-      (a, b) => compareTodaySchedulePriority(a, b) || a.label.localeCompare(b.label),
-    ),
+    today: todayItems.sort(byToday),
     upcoming: upcomingItems.sort(byUpcoming),
   };
 }

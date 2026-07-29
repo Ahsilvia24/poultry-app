@@ -128,18 +128,27 @@ const DEMOS: DemoFarm[] = [
  */
 function refreshDemoScheduleAges() {
   const today = todayKey();
-  if (getMeta("demo_schedule_day") === today) return;
+  // v2: also match demos by grower name when notes were edited; force one re-anchor after upgrade.
+  if (getMeta("demo_schedule_day_v2") === today) return;
 
   const db = getDb();
   for (const demo of DEMOS) {
-    // Only touch farms that were created as offline demos — never match a
-    // grower's real farm that happens to share a name.
-    const farm = db.getFirstSync<{ id: string }>(
-      `SELECT id FROM farms
-       WHERE farm_name = ? AND is_active = 1 AND notes = 'Offline demo farm'
-       LIMIT 1`,
-      [demo.farmName],
-    );
+    // Update only farms that already exist from the original demo seed.
+    // Prefer the offline-demo note, but also match known demo names so ages
+    // keep rolling after upgrades (never INSERT).
+    const farm =
+      db.getFirstSync<{ id: string }>(
+        `SELECT id FROM farms
+         WHERE farm_name = ? AND is_active = 1 AND notes = 'Offline demo farm'
+         LIMIT 1`,
+        [demo.farmName],
+      ) ??
+      db.getFirstSync<{ id: string }>(
+        `SELECT id FROM farms
+         WHERE farm_name = ? AND is_active = 1 AND grower_name = ?
+         LIMIT 1`,
+        [demo.farmName, demo.growerName],
+      );
     if (!farm) continue;
 
     const flock = db.getFirstSync<{ id: string }>(
@@ -166,6 +175,7 @@ function refreshDemoScheduleAges() {
     );
   }
 
+  setMeta("demo_schedule_day_v2", today);
   setMeta("demo_schedule_day", today);
 }
 function ensureDemoVisits() {

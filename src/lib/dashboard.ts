@@ -170,26 +170,47 @@ export async function getDashboardData(userId: string) {
 
       const catchDate = resolveCatchDate(flock);
       const daysUntilCatch = Math.max(0, differenceInCalendarDays(catchDate, today));
-      const schedule = buildFlockVisitSchedule(flock.placementDate, catchDate);
-      const { today: dueToday, upcoming } = splitScheduleForDashboard(
-        schedule,
-        today,
-        horizon,
-        farmCompletions,
-      );
-      const toRow = (due: (typeof dueToday)[number]): FollowUpRow => ({
-        farmId: farm.id,
-        flockId: flock.id,
-        farmName: farm.farmName,
-        date: due.dateKey,
-        label: due.label,
-        flockNumber: flock.flockNumber,
-        completed: due.completed,
-        // Current flock age today (can be negative pre-place), not the event's target age.
-        flockAgeDays: differenceInCalendarDays(today, flock.placementDate),
-      });
-      for (const due of dueToday) todaysSchedule.push(toRow(due));
-      for (const due of upcoming) upcomingSchedule.push(toRow(due));
+
+      // Distinct house place/catch dates so staggered houses each drive service days.
+      const scheduleGroups = new Map<string, { placement: Date; catchDate: Date }>();
+      for (const hf of flock.houseFlocks) {
+        const placement = startOfDay(hf.placementDate ?? flock.placementDate);
+        const houseCatch = hf.catchDate
+          ? startOfDay(hf.catchDate)
+          : resolveCatchDate(flock);
+        const key = `${format(placement, "yyyy-MM-dd")}|${format(houseCatch, "yyyy-MM-dd")}`;
+        if (!scheduleGroups.has(key)) {
+          scheduleGroups.set(key, { placement, catchDate: houseCatch });
+        }
+      }
+      if (scheduleGroups.size === 0) {
+        scheduleGroups.set("flock", {
+          placement: startOfDay(flock.placementDate),
+          catchDate,
+        });
+      }
+      for (const group of scheduleGroups.values()) {
+        const schedule = buildFlockVisitSchedule(group.placement, group.catchDate);
+        const { today: dueToday, upcoming } = splitScheduleForDashboard(
+          schedule,
+          today,
+          horizon,
+          farmCompletions,
+        );
+        const toRow = (due: (typeof dueToday)[number]): FollowUpRow => ({
+          farmId: farm.id,
+          flockId: flock.id,
+          farmName: farm.farmName,
+          date: due.dateKey,
+          label: due.label,
+          flockNumber: flock.flockNumber,
+          completed: due.completed,
+          // Current flock age today (can be negative pre-place), not the event's target age.
+          flockAgeDays: differenceInCalendarDays(today, group.placement),
+        });
+        for (const due of dueToday) todaysSchedule.push(toRow(due));
+        for (const due of upcoming) upcomingSchedule.push(toRow(due));
+      }
 
       for (const hf of flock.houseFlocks) {
         activeHouseCount += 1;
@@ -256,6 +277,7 @@ export async function getDashboardData(userId: string) {
 
   todaysSchedule.sort(
     (a, b) =>
+      a.date.localeCompare(b.date) ||
       todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
       a.farmName.localeCompare(b.farmName),
   );

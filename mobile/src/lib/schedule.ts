@@ -111,9 +111,12 @@ export function todayScheduleRankFromLabel(label: string): number {
 
 /**
  * Split schedule into today vs upcoming.
+ * - Today: events due today, plus recent overdue (uncompleted) visits so missed
+ *   service days stay on the list until checked off.
+ * - Upcoming: after today through horizon.
  * Checking an item keeps it visible (crossed out) for the rest of that local
  * calendar day, then it drops at midnight. Completions from a previous day never
- * reappear on Upcoming or on Today's schedule when their due date arrives.
+ * reappear.
  */
 export function splitScheduleForDashboard(
   schedule: ScheduledVisit[],
@@ -123,12 +126,14 @@ export function splitScheduleForDashboard(
   _now: Date = new Date(),
 ): { today: DueScheduledVisit[]; upcoming: DueScheduledVisit[] } {
   const endKey = addDaysKey(today, horizonDays);
+  // Missed visits from the same outlook window still belong on Today.
+  const overdueStart = addDaysKey(today, -horizonDays);
   const todayItems: DueScheduledVisit[] = [];
   const upcomingItems: DueScheduledVisit[] = [];
 
   for (const v of schedule) {
-    if (v.dateKey < today) continue;
     if (v.dateKey > endKey) continue;
+    if (v.dateKey < overdueStart) continue;
 
     const key = completionKey(v.dateKey, v.label);
     const info = completions.get(key);
@@ -139,12 +144,15 @@ export function splitScheduleForDashboard(
     }
 
     const item: DueScheduledVisit = { ...v, completed: Boolean(info) };
-    if (v.dateKey === today) todayItems.push(item);
+    if (v.dateKey <= today) todayItems.push(item);
     else upcomingItems.push(item);
   }
 
   todayItems.sort(
-    (a, b) => todayScheduleRank(a) - todayScheduleRank(b) || a.label.localeCompare(b.label),
+    (a, b) =>
+      a.dateKey.localeCompare(b.dateKey) ||
+      todayScheduleRank(a) - todayScheduleRank(b) ||
+      a.label.localeCompare(b.label),
   );
   upcomingItems.sort(
     (a, b) =>

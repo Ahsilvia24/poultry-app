@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfDay } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toggleFollowUpCompletionAction } from "@/app/actions/follow-ups";
@@ -32,6 +32,7 @@ export function FollowUpsDueList({
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const todayKey = format(startOfDay(new Date()), "yyyy-MM-dd");
 
   const serverChecked = useMemo(
     () => Object.fromEntries(items.map((f) => [itemKey(f), f.completed])),
@@ -121,7 +122,7 @@ export function FollowUpsDueList({
                 <span className="min-w-[6.5rem] text-right font-medium text-stone-800">
                   {f.label}
                 </span>
-                {showDate ? (
+                {showDate || f.date !== todayKey ? (
                   <span className="min-w-[5.5rem] text-right text-stone-500">
                     {format(parseISO(f.date), "EEE, MMM d")}
                   </span>

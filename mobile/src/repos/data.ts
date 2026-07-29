@@ -358,13 +358,14 @@ export function getDashboard() {
     const flock = flocks[0]!;
     const hfs = db.getAllSync<{
       id: string;
+      flock_id: string;
       placed_bird_count: number;
       catch_date: string | null;
       placement_date: string | null;
       flock_placement: string;
       flock_catch: string | null;
     }>(
-      `SELECT hf.id, hf.placed_bird_count, hf.catch_date, hf.placement_date,
+      `SELECT hf.id, hf.flock_id, hf.placed_bird_count, hf.catch_date, hf.placement_date,
               f.placement_date as flock_placement, f.projected_catch_date as flock_catch
        FROM house_flocks hf
        JOIN flocks f ON f.id = hf.flock_id
@@ -460,9 +461,37 @@ export function getDashboard() {
     const projectedMortality = hasProjection ? projectedMortSum : null;
 
     const farmCompletions = completedByFarm.get(farm.id) ?? new Map();
-    for (const fl of flocks) {
-      const catchDate = fl.projected_catch_date ?? addDaysKey(fl.placement_date, 52);
-      const schedule = buildFlockVisitSchedule(fl.placement_date, catchDate);
+    // Build schedule from distinct house place/catch dates (staggered houses),
+    // falling back to flock-level dates when no houses are attached yet.
+    const scheduleGroups = new Map<
+      string,
+      { flockId: string; placement: string; catchDate: string }
+    >();
+    for (const hf of hfs) {
+      const placement = hf.placement_date?.trim() || hf.flock_placement;
+      const catchDate =
+        hf.catch_date?.trim() || hf.flock_catch || addDaysKey(placement, 52);
+      const key = `${hf.flock_id}|${placement}|${catchDate}`;
+      if (!scheduleGroups.has(key)) {
+        scheduleGroups.set(key, {
+          flockId: hf.flock_id,
+          placement,
+          catchDate,
+        });
+      }
+    }
+    if (scheduleGroups.size === 0) {
+      for (const fl of flocks) {
+        const catchDate = fl.projected_catch_date ?? addDaysKey(fl.placement_date, 52);
+        scheduleGroups.set(fl.id, {
+          flockId: fl.id,
+          placement: fl.placement_date,
+          catchDate,
+        });
+      }
+    }
+    for (const group of scheduleGroups.values()) {
+      const schedule = buildFlockVisitSchedule(group.placement, group.catchDate);
       const { today: dueToday, upcoming } = splitScheduleForDashboard(
         schedule,
         today,
@@ -471,10 +500,10 @@ export function getDashboard() {
       );
       const toRow = (v: ScheduledVisit & { completed: boolean }): ScheduleRow => ({
         farmId: farm.id,
-        flockId: fl.id,
+        flockId: group.flockId,
         farmName: farm.farmName,
         // Current flock age today (can be negative pre-place), not the event's target age.
-        flockAgeDays: daysSincePlacement(fl.placement_date, today),
+        flockAgeDays: daysSincePlacement(group.placement, today),
         date: v.dateKey,
         label: v.label,
         completed: v.completed,
@@ -537,6 +566,7 @@ export function getDashboard() {
 
   todaysSchedule.sort(
     (a, b) =>
+      a.date.localeCompare(b.date) ||
       todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
       a.farmName.localeCompare(b.farmName),
   );
