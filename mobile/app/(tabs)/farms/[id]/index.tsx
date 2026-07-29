@@ -13,10 +13,7 @@ import {
   TextInput,
   View,
   type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
   type ScrollView as ScrollViewType,
-  type View as ViewType,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -57,7 +54,6 @@ import {
   catchWeightProjections,
   resolveGrowthRate,
 } from "../../../../src/lib/weight/projections";
-import { scrollFieldAboveKeypad } from "../../../../src/lib/scrollField";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { colors, styles } from "../../../../src/theme";
 import {
@@ -71,11 +67,6 @@ import {
 } from "../../../../src/components/ui";
 import { WeightProjectionTile } from "../../../../src/components/WeightProjectionTile";
 import { DatePickerField } from "../../../../src/components/DatePickerField";
-import {
-  NumberKeypad,
-  appendKeypadDigit,
-  backspaceKeypadValue,
-} from "../../../../src/components/NumberKeypad";
 
 /** "2026-07-25" → "07-25-2026" */
 function formatUsDate(dateKey: string) {
@@ -187,28 +178,6 @@ type AddHouseDraft = {
   numberOfFans: string;
 };
 
-type HouseNumField =
-  | "houseNumber"
-  | "squareFootage"
-  | "totalFanCFM"
-  | "numberOfFans"
-  | "placedBirdCount";
-
-type GeneratorNumField = "gen1Hours" | "gen2Hours" | "gen3Hours" | "gen4Hours";
-
-function generatorFieldLabel(field: GeneratorNumField): string {
-  switch (field) {
-    case "gen1Hours":
-      return "Gen 1 hours";
-    case "gen2Hours":
-      return "Gen 2 hours";
-    case "gen3Hours":
-      return "Gen 3 hours";
-    case "gen4Hours":
-      return "Gen 4 hours";
-  }
-}
-
 type FarmEditDraft = {
   farmName: string;
   growerName: string;
@@ -218,64 +187,33 @@ type FarmEditDraft = {
   numberOfGenerators: number | null;
 };
 
-function houseFieldLabel(field: HouseNumField): string {
-  switch (field) {
-    case "houseNumber":
-      return "House number";
-    case "placedBirdCount":
-      return "Birds placed";
-    case "squareFootage":
-      return "Square footage";
-    case "totalFanCFM":
-      return "Total fan CFM";
-    case "numberOfFans":
-      return "Number of fans";
-    default:
-      return field;
-  }
-}
-
-function HouseNumFieldButton({
+/** Native iOS number pad — same feel as Flock ID text field. */
+function NativeNumInput({
   label,
   value,
-  active,
-  onPress,
-  fieldRef,
-  emptyLabel = "0",
+  onChangeText,
+  decimal,
+  placeholder,
+  style,
 }: {
   label: string;
   value: string;
-  active: boolean;
-  onPress: () => void;
-  fieldRef?: (node: ViewType | null) => void;
-  emptyLabel?: string;
+  onChangeText: (v: string) => void;
+  decimal?: boolean;
+  placeholder?: string;
+  style?: object;
 }) {
   return (
-    <View ref={fieldRef} collapsable={false} style={{ marginBottom: 10 }}>
+    <View style={[{ marginBottom: 10 }, style]}>
       <Text style={styles.label}>{label}</Text>
-      <Pressable
-        onPress={onPress}
-        style={[
-          styles.input,
-          {
-            justifyContent: "center",
-            backgroundColor: active ? "#ecfdf5" : "#fff",
-          },
-          active ? { borderColor: colors.accentDark, borderWidth: 2 } : null,
-        ]}
-      >
-        <Text
-          style={{
-            fontSize: 22,
-            fontWeight: "800",
-            color: value ? colors.text : colors.muted,
-            letterSpacing: 0.2,
-          }}
-          numberOfLines={1}
-        >
-          {value || emptyLabel}
-        </Text>
-      </Pressable>
+      <TextInput
+        style={[styles.input, { fontSize: 20, fontWeight: "700", color: colors.text }]}
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType={decimal ? "decimal-pad" : "number-pad"}
+        placeholder={placeholder}
+        placeholderTextColor={colors.muted}
+      />
     </View>
   );
 }
@@ -419,11 +357,6 @@ export default function FarmDetailScreen() {
   const [addingHouse, setAddingHouse] = useState<AddHouseDraft | null>(null);
   const [addHouseError, setAddHouseError] = useState<string | null>(null);
   const [addHouseSaving, setAddHouseSaving] = useState(false);
-  const [houseActiveField, setHouseActiveField] = useState<HouseNumField | null>(null);
-  const [houseReplaceOnType, setHouseReplaceOnType] = useState(false);
-  const houseScrollRef = useRef<ScrollViewType>(null);
-  const houseScrollYRef = useRef(0);
-  const houseFieldRefs = useRef(new Map<HouseNumField, ViewType>());
   const [expandedHouses, setExpandedHouses] = useState<Set<string>>(new Set());
   const [editingFarm, setEditingFarm] = useState<FarmEditDraft | null>(null);
   const [farmEditError, setFarmEditError] = useState<string | null>(null);
@@ -440,11 +373,6 @@ export default function FarmDetailScreen() {
     gen3Hours: "",
     gen4Hours: "",
   });
-  const [generatorActiveField, setGeneratorActiveField] = useState<GeneratorNumField | null>(null);
-  const [generatorReplaceOnType, setGeneratorReplaceOnType] = useState(false);
-  const generatorScrollRef = useRef<ScrollViewType>(null);
-  const generatorScrollYRef = useRef(0);
-  const generatorFieldRefs = useRef(new Map<GeneratorNumField, ViewType>());
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("farms", scrollRef);
   const sectionY = useRef<Record<string, number>>({});
@@ -513,26 +441,6 @@ export default function FarmDetailScreen() {
     if (!openEdit || !data || data.farm.id !== farmId || editingFarm) return;
     openFarmEditor(data.farm);
   }, [openEdit, data, farmId, editingFarm]);
-
-  // Keep the active field visible after the keypad mounts (layout shift)
-  // Must stay above any early returns (Rules of Hooks).
-  useEffect(() => {
-    if (!houseActiveField) return;
-    const t = setTimeout(() => {
-      const node = houseFieldRefs.current.get(houseActiveField) ?? null;
-      scrollFieldAboveKeypad(houseScrollRef, { current: node }, houseScrollYRef);
-    }, 100);
-    return () => clearTimeout(t);
-  }, [houseActiveField]);
-
-  useEffect(() => {
-    if (!generatorActiveField) return;
-    const t = setTimeout(() => {
-      const node = generatorFieldRefs.current.get(generatorActiveField) ?? null;
-      scrollFieldAboveKeypad(generatorScrollRef, { current: node }, generatorScrollYRef);
-    }, 100);
-    return () => clearTimeout(t);
-  }, [generatorActiveField]);
 
   // Never render a previous farm under a new id
   const ready = data != null && data.farm.id === farmId;
@@ -705,8 +613,6 @@ export default function FarmDetailScreen() {
 
   function openHouseEditor(h: HouseRow) {
     setHouseEditError(null);
-    setHouseActiveField(null);
-    setHouseReplaceOnType(false);
     const placementDate = h.placementDate ?? data?.activeFlock?.placementDate ?? "";
     const catchDate =
       h.catchDate ??
@@ -730,54 +636,6 @@ export default function FarmDetailScreen() {
     if (houseSaving) return;
     setEditingHouse(null);
     setHouseEditError(null);
-    setHouseActiveField(null);
-    setHouseReplaceOnType(false);
-  }
-
-  function focusHouseField(field: HouseNumField) {
-    setHouseActiveField(field);
-    setHouseReplaceOnType(true);
-    setTimeout(() => {
-      const node = houseFieldRefs.current.get(field) ?? null;
-      scrollFieldAboveKeypad(houseScrollRef, { current: node }, houseScrollYRef);
-    }, 50);
-  }
-
-  function bindHouseFieldRef(field: HouseNumField) {
-    return (node: ViewType | null) => {
-      if (node) houseFieldRefs.current.set(field, node);
-      else houseFieldRefs.current.delete(field);
-    };
-  }
-
-  function getHouseFieldValue(field: HouseNumField) {
-    if (!editingHouse) return "";
-    return editingHouse[field];
-  }
-
-  function setHouseFieldValue(field: HouseNumField, value: string) {
-    setEditingHouse((prev) => (prev ? { ...prev, [field]: value } : prev));
-  }
-
-  function onHouseDigit(d: string) {
-    if (!houseActiveField) return;
-    const allowDecimal =
-      houseActiveField === "squareFootage" || houseActiveField === "totalFanCFM";
-    const current = getHouseFieldValue(houseActiveField);
-    const base = houseReplaceOnType && d !== "." ? "" : current;
-    setHouseReplaceOnType(false);
-    setHouseFieldValue(houseActiveField, appendKeypadDigit(base, d, allowDecimal));
-  }
-
-  function onHouseBackspace() {
-    if (!houseActiveField) return;
-    setHouseReplaceOnType(false);
-    setHouseFieldValue(houseActiveField, backspaceKeypadValue(getHouseFieldValue(houseActiveField)));
-  }
-
-  function onHouseEnter() {
-    setHouseActiveField(null);
-    setHouseReplaceOnType(false);
   }
 
   function closeGeneratorModal() {
@@ -786,8 +644,6 @@ export default function FarmDetailScreen() {
     setGeneratorError(null);
     setGeneratorEditingId(null);
     setGeneratorEditingGen(null);
-    setGeneratorActiveField(null);
-    setGeneratorReplaceOnType(false);
   }
 
   function openGeneratorEditor(
@@ -802,8 +658,6 @@ export default function FarmDetailScreen() {
     onlyGen?: GenHourKey,
   ) {
     setGeneratorError(null);
-    setGeneratorActiveField(null);
-    setGeneratorReplaceOnType(false);
     setGeneratorEditingGen(onlyGen ?? null);
     if (log) {
       setGeneratorEditingId(log.id);
@@ -825,65 +679,6 @@ export default function FarmDetailScreen() {
       });
     }
     setGeneratorModalOpen(true);
-    const focusField = onlyGen ?? "gen1Hours";
-    setTimeout(() => focusGeneratorField(focusField), 120);
-  }
-
-  function focusGeneratorField(field: GeneratorNumField) {
-    setGeneratorActiveField(field);
-    setGeneratorReplaceOnType(true);
-    setTimeout(() => {
-      const node = generatorFieldRefs.current.get(field) ?? null;
-      scrollFieldAboveKeypad(generatorScrollRef, { current: node }, generatorScrollYRef);
-    }, 50);
-  }
-
-  function bindGeneratorFieldRef(field: GeneratorNumField) {
-    return (node: ViewType | null) => {
-      if (node) generatorFieldRefs.current.set(field, node);
-      else generatorFieldRefs.current.delete(field);
-    };
-  }
-
-  function getGeneratorFieldValue(field: GeneratorNumField) {
-    return generatorDraft[field];
-  }
-
-  function setGeneratorFieldValue(field: GeneratorNumField, value: string) {
-    setGeneratorDraft((prev) => ({ ...prev, [field]: value }));
-  }
-
-  function onGeneratorDigit(d: string) {
-    if (!generatorActiveField) return;
-    const current = getGeneratorFieldValue(generatorActiveField);
-    const base = generatorReplaceOnType && d !== "." ? "" : current;
-    setGeneratorReplaceOnType(false);
-    setGeneratorFieldValue(generatorActiveField, appendKeypadDigit(base, d, true));
-  }
-
-  function onGeneratorBackspace() {
-    if (!generatorActiveField) return;
-    setGeneratorReplaceOnType(false);
-    setGeneratorFieldValue(
-      generatorActiveField,
-      backspaceKeypadValue(getGeneratorFieldValue(generatorActiveField)),
-    );
-  }
-
-  function onGeneratorEnter() {
-    if (!generatorActiveField) return;
-    const order = (
-      generatorEditingGen
-        ? GENERATOR_FIELD_DEFS.filter((f) => f.hourKey === generatorEditingGen)
-        : GENERATOR_FIELD_DEFS
-    ).map((f) => f.hourKey) as GeneratorNumField[];
-    const idx = order.indexOf(generatorActiveField);
-    const next = idx >= 0 ? order[idx + 1] : undefined;
-    if (next) focusGeneratorField(next);
-    else {
-      setGeneratorActiveField(null);
-      setGeneratorReplaceOnType(false);
-    }
   }
 
   function confirmDeleteHouse(h: HouseRow) {
@@ -1889,282 +1684,254 @@ export default function FarmDetailScreen() {
         transparent
         onRequestClose={closeHouseEditor}
       >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.4)",
-            justifyContent: "flex-end",
-          }}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
         >
-          <Pressable style={{ flex: 1 }} onPress={closeHouseEditor} />
           <View
             style={{
-              backgroundColor: "#fff",
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              maxHeight: "92%",
-              overflow: "hidden",
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              justifyContent: "flex-end",
             }}
           >
-            <ScrollView
-              ref={houseScrollRef}
-              keyboardShouldPersistTaps="handled"
-              style={{ maxHeight: houseActiveField ? 280 : undefined }}
-              contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
-              onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                houseScrollYRef.current = e.nativeEvent.contentOffset.y;
+            <Pressable style={{ flex: 1 }} onPress={closeHouseEditor} />
+            <View
+              style={{
+                backgroundColor: "#fff",
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                maxHeight: "92%",
+                overflow: "hidden",
               }}
-              scrollEventThrottle={16}
             >
-              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                Edit house {editingHouse?.houseNumber}
-              </Text>
-              {houseEditError ? (
-                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
-                  {houseEditError}
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ padding: 20, paddingBottom: Platform.OS === "ios" ? 28 : 24 }}
+              >
+                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                  Edit house {editingHouse?.houseNumber}
                 </Text>
-              ) : null}
-              {editingHouse ? (
-                <View style={{ marginTop: 14 }}>
-                  <HouseNumFieldButton
-                    label="House number"
-                    value={editingHouse.houseNumber}
-                    active={houseActiveField === "houseNumber"}
-                    onPress={() => focusHouseField("houseNumber")}
-                    fieldRef={bindHouseFieldRef("houseNumber")}
-                  />
-                  {data.activeFlock ? (
-                    <>
-                      <Text style={[styles.label, { marginTop: 2 }]}>Flock ID</Text>
-                      <TextInput
-                        style={[styles.input, { fontSize: 20, fontWeight: "700", color: colors.text }]}
-                        value={editingHouse.flockNumber}
-                        onChangeText={(v) =>
-                          setEditingHouse((prev) =>
-                            prev ? { ...prev, flockNumber: v } : prev,
-                          )
-                        }
-                        autoCapitalize="characters"
-                        autoCorrect={false}
-                        placeholder="e.g. 26-07"
-                        placeholderTextColor={colors.muted}
-                      />
-                      <HouseNumFieldButton
-                        label="Birds placed"
-                        value={editingHouse.placedBirdCount}
-                        active={houseActiveField === "placedBirdCount"}
-                        onPress={() => focusHouseField("placedBirdCount")}
-                        fieldRef={bindHouseFieldRef("placedBirdCount")}
-                      />
-                      <View style={{ marginBottom: 10 }}>
-                        <DatePickerField
-                          label="Placement date"
-                          value={editingHouse.placementDate}
-                          presentation="inline"
-                          onChange={(date) =>
-                            setEditingHouse((prev) => {
-                              if (!prev) return prev;
-                              const oldDefault = prev.placementDate
-                                ? addDaysKey(prev.placementDate, 52)
-                                : "";
-                              const catchWasDefault =
-                                !prev.catchDate || prev.catchDate === oldDefault;
-                              return {
-                                ...prev,
-                                placementDate: date,
-                                catchDate: catchWasDefault
-                                  ? addDaysKey(date, 52)
-                                  : prev.catchDate,
-                              };
-                            })
-                          }
-                        />
-                      </View>
-                      <View style={{ marginBottom: 10 }}>
-                        <DatePickerField
-                          label="Catch date"
-                          value={editingHouse.catchDate}
-                          presentation="inline"
-                          onChange={(date) =>
+                {houseEditError ? (
+                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                    {houseEditError}
+                  </Text>
+                ) : null}
+                {editingHouse ? (
+                  <View style={{ marginTop: 14 }}>
+                    <NativeNumInput
+                      label="House number"
+                      value={editingHouse.houseNumber}
+                      onChangeText={(v) =>
+                        setEditingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
+                      }
+                    />
+                    {data.activeFlock ? (
+                      <>
+                        <Text style={[styles.label, { marginTop: 2 }]}>Flock ID</Text>
+                        <TextInput
+                          style={[
+                            styles.input,
+                            { fontSize: 20, fontWeight: "700", color: colors.text },
+                          ]}
+                          value={editingHouse.flockNumber}
+                          onChangeText={(v) =>
                             setEditingHouse((prev) =>
-                              prev ? { ...prev, catchDate: date } : prev,
+                              prev ? { ...prev, flockNumber: v } : prev,
+                            )
+                          }
+                          autoCapitalize="characters"
+                          autoCorrect={false}
+                          placeholder="e.g. 26-07"
+                          placeholderTextColor={colors.muted}
+                        />
+                        <NativeNumInput
+                          label="Birds placed"
+                          value={editingHouse.placedBirdCount}
+                          onChangeText={(v) =>
+                            setEditingHouse((prev) =>
+                              prev ? { ...prev, placedBirdCount: v } : prev,
                             )
                           }
                         />
-                      </View>
-                      <Pressable
-                        onPress={() =>
-                          setEditingHouse((prev) =>
-                            prev
-                              ? { ...prev, applyToRemaining: !prev.applyToRemaining }
-                              : prev,
-                          )
-                        }
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "flex-start",
-                          gap: 10,
-                          marginBottom: 12,
-                          paddingVertical: 4,
-                        }}
-                      >
-                        <View
+                        <View style={{ marginBottom: 10 }}>
+                          <DatePickerField
+                            label="Placement date"
+                            value={editingHouse.placementDate}
+                            presentation="inline"
+                            onChange={(date) =>
+                              setEditingHouse((prev) => {
+                                if (!prev) return prev;
+                                const oldDefault = prev.placementDate
+                                  ? addDaysKey(prev.placementDate, 52)
+                                  : "";
+                                const catchWasDefault =
+                                  !prev.catchDate || prev.catchDate === oldDefault;
+                                return {
+                                  ...prev,
+                                  placementDate: date,
+                                  catchDate: catchWasDefault
+                                    ? addDaysKey(date, 52)
+                                    : prev.catchDate,
+                                };
+                              })
+                            }
+                          />
+                        </View>
+                        <View style={{ marginBottom: 10 }}>
+                          <DatePickerField
+                            label="Catch date"
+                            value={editingHouse.catchDate}
+                            presentation="inline"
+                            onChange={(date) =>
+                              setEditingHouse((prev) =>
+                                prev ? { ...prev, catchDate: date } : prev,
+                              )
+                            }
+                          />
+                        </View>
+                        <Pressable
+                          onPress={() =>
+                            setEditingHouse((prev) =>
+                              prev
+                                ? { ...prev, applyToRemaining: !prev.applyToRemaining }
+                                : prev,
+                            )
+                          }
                           style={{
-                            width: 22,
-                            height: 22,
-                            borderRadius: 6,
-                            borderWidth: 2,
-                            borderColor: editingHouse.applyToRemaining
-                              ? colors.accentDark
-                              : colors.border,
-                            backgroundColor: editingHouse.applyToRemaining
-                              ? colors.accentDark
-                              : "#fff",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            marginTop: 1,
+                            flexDirection: "row",
+                            alignItems: "flex-start",
+                            gap: 10,
+                            marginBottom: 12,
+                            paddingVertical: 4,
                           }}
                         >
-                          {editingHouse.applyToRemaining ? (
-                            <Ionicons name="checkmark" size={16} color="#fff" />
-                          ) : null}
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
-                            Apply to all remaining houses
-                          </Text>
-                          <Text style={[styles.muted, { marginTop: 2 }]}>
-                            Birds placed, placement date, catch date, and flock for houses after
-                            this one. Earlier houses stay unchanged.
-                          </Text>
-                        </View>
-                      </Pressable>
-                    </>
-                  ) : null}
-                  <HouseNumFieldButton
-                    label="Square footage"
-                    value={editingHouse.squareFootage}
-                    active={houseActiveField === "squareFootage"}
-                    onPress={() => focusHouseField("squareFootage")}
-                    fieldRef={bindHouseFieldRef("squareFootage")}
-                  />
-                  <HouseNumFieldButton
-                    label="Total fan CFM"
-                    value={editingHouse.totalFanCFM}
-                    active={houseActiveField === "totalFanCFM"}
-                    onPress={() => focusHouseField("totalFanCFM")}
-                    fieldRef={bindHouseFieldRef("totalFanCFM")}
-                  />
-                  <HouseNumFieldButton
-                    label="Number of fans"
-                    value={editingHouse.numberOfFans}
-                    active={houseActiveField === "numberOfFans"}
-                    onPress={() => focusHouseField("numberOfFans")}
-                    fieldRef={bindHouseFieldRef("numberOfFans")}
-                  />
-                  <Pressable
-                    onPress={() =>
-                      setEditingHouse((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              applySpecsToRemaining: !prev.applySpecsToRemaining,
-                            }
-                          : prev,
-                      )
-                    }
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "flex-start",
-                      gap: 10,
-                      marginBottom: 12,
-                      paddingVertical: 4,
-                    }}
-                  >
-                    <View
+                          <View
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 6,
+                              borderWidth: 2,
+                              borderColor: editingHouse.applyToRemaining
+                                ? colors.accentDark
+                                : colors.border,
+                              backgroundColor: editingHouse.applyToRemaining
+                                ? colors.accentDark
+                                : "#fff",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              marginTop: 1,
+                            }}
+                          >
+                            {editingHouse.applyToRemaining ? (
+                              <Ionicons name="checkmark" size={16} color="#fff" />
+                            ) : null}
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
+                              Apply to all remaining houses
+                            </Text>
+                            <Text style={[styles.muted, { marginTop: 2 }]}>
+                              Birds placed, placement date, catch date, and flock for houses after
+                              this one. Earlier houses stay unchanged.
+                            </Text>
+                          </View>
+                        </Pressable>
+                      </>
+                    ) : null}
+                    <NativeNumInput
+                      label="Square footage"
+                      value={editingHouse.squareFootage}
+                      decimal
+                      onChangeText={(v) =>
+                        setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
+                      }
+                    />
+                    <NativeNumInput
+                      label="Total fan CFM"
+                      value={editingHouse.totalFanCFM}
+                      decimal
+                      onChangeText={(v) =>
+                        setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
+                      }
+                    />
+                    <NativeNumInput
+                      label="Number of fans"
+                      value={editingHouse.numberOfFans}
+                      onChangeText={(v) =>
+                        setEditingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
+                      }
+                    />
+                    <Pressable
+                      onPress={() =>
+                        setEditingHouse((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                applySpecsToRemaining: !prev.applySpecsToRemaining,
+                              }
+                            : prev,
+                        )
+                      }
                       style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: 6,
-                        borderWidth: 2,
-                        borderColor: editingHouse.applySpecsToRemaining
-                          ? colors.accentDark
-                          : colors.border,
-                        backgroundColor: editingHouse.applySpecsToRemaining
-                          ? colors.accentDark
-                          : "#fff",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginTop: 1,
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        marginBottom: 12,
+                        paddingVertical: 4,
                       }}
                     >
-                      {editingHouse.applySpecsToRemaining ? (
-                        <Ionicons name="checkmark" size={16} color="#fff" />
-                      ) : null}
+                      <View
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 6,
+                          borderWidth: 2,
+                          borderColor: editingHouse.applySpecsToRemaining
+                            ? colors.accentDark
+                            : colors.border,
+                          backgroundColor: editingHouse.applySpecsToRemaining
+                            ? colors.accentDark
+                            : "#fff",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          marginTop: 1,
+                        }}
+                      >
+                        {editingHouse.applySpecsToRemaining ? (
+                          <Ionicons name="checkmark" size={16} color="#fff" />
+                        ) : null}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
+                          Apply to all remaining houses
+                        </Text>
+                        <Text style={[styles.muted, { marginTop: 2 }]}>
+                          Square footage, fan CFM, and number of fans for houses after this one.
+                          Earlier houses stay unchanged.
+                        </Text>
+                      </View>
+                    </Pressable>
+                    <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+                      <PrimaryButton
+                        label={houseSaving ? "Saving…" : "Save"}
+                        onPress={saveHouseEdit}
+                        style={{ flex: 1 }}
+                      />
+                      <PrimaryButton
+                        label="Cancel"
+                        secondary
+                        onPress={closeHouseEditor}
+                        style={{ flex: 1 }}
+                      />
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
-                        Apply to all remaining houses
-                      </Text>
-                      <Text style={[styles.muted, { marginTop: 2 }]}>
-                        Square footage, fan CFM, and number of fans for houses after this one.
-                        Earlier houses stay unchanged.
-                      </Text>
-                    </View>
-                  </Pressable>
-                  <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-                    <PrimaryButton
-                      label={houseSaving ? "Saving…" : "Save"}
-                      onPress={saveHouseEdit}
-                      style={{ flex: 1 }}
-                    />
-                    <PrimaryButton
-                      label="Cancel"
-                      secondary
-                      onPress={closeHouseEditor}
-                      style={{ flex: 1 }}
-                    />
                   </View>
-                </View>
-              ) : null}
-            </ScrollView>
-            {houseActiveField ? (
-              <View
-                style={{
-                  borderTopWidth: 1,
-                  borderTopColor: colors.border,
-                  backgroundColor: "#fafaf9",
-                }}
-              >
-                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>
-                    {houseFieldLabel(houseActiveField)}
-                  </Text>
-                  <Text
-                    style={{
-                      marginTop: 2,
-                      fontSize: 32,
-                      fontWeight: "800",
-                      color: colors.text,
-                      letterSpacing: 0.3,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {getHouseFieldValue(houseActiveField) || "0"}
-                  </Text>
-                </View>
-                <NumberKeypad
-                  allowDecimal={
-                    houseActiveField === "squareFootage" || houseActiveField === "totalFanCFM"
-                  }
-                  onDigit={onHouseDigit}
-                  onBackspace={onHouseBackspace}
-                  onEnter={onHouseEnter}
-                />
-              </View>
-            ) : null}
+                ) : null}
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal
@@ -2205,48 +1972,38 @@ export default function FarmDetailScreen() {
                 </Text>
               ) : null}
               {addingHouse ? (
-                <View style={{ marginTop: 14, gap: 4 }}>
-                  <Text style={styles.label}>House number *</Text>
-                  <TextInput
-                    style={[styles.input, { fontSize: 22, fontWeight: "700", color: colors.text }]}
+                <View style={{ marginTop: 14 }}>
+                  <NativeNumInput
+                    label="House number *"
                     value={addingHouse.houseNumber}
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
                     }
-                    keyboardType="number-pad"
-                    placeholderTextColor={colors.muted}
                   />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Square footage *</Text>
-                  <TextInput
-                    style={[styles.input, { fontSize: 22, fontWeight: "700", color: colors.text }]}
+                  <NativeNumInput
+                    label="Square footage *"
                     value={addingHouse.squareFootage}
+                    decimal
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
                     }
-                    keyboardType="decimal-pad"
-                    placeholderTextColor={colors.muted}
                   />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Total fan CFM</Text>
-                  <TextInput
-                    style={[styles.input, { fontSize: 22, fontWeight: "700", color: colors.text }]}
+                  <NativeNumInput
+                    label="Total fan CFM"
                     value={addingHouse.totalFanCFM}
+                    decimal
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
                     }
-                    keyboardType="decimal-pad"
-                    placeholderTextColor={colors.muted}
                   />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Number of fans</Text>
-                  <TextInput
-                    style={[styles.input, { fontSize: 22, fontWeight: "700", color: colors.text }]}
+                  <NativeNumInput
+                    label="Number of fans"
                     value={addingHouse.numberOfFans}
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
                     }
-                    keyboardType="number-pad"
-                    placeholderTextColor={colors.muted}
                   />
-                  <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                  <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
                     <PrimaryButton
                       label={addHouseSaving ? "Saving…" : "Save house"}
                       onPress={saveAddHouse}
@@ -2400,166 +2157,131 @@ export default function FarmDetailScreen() {
         transparent
         onRequestClose={closeGeneratorModal}
       >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.4)",
-            justifyContent: "flex-end",
-          }}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
         >
-          <Pressable style={{ flex: 1 }} onPress={closeGeneratorModal} />
           <View
             style={{
-              backgroundColor: "#fff",
-              borderTopLeftRadius: 16,
-              borderTopRightRadius: 16,
-              maxHeight: "92%",
-              overflow: "hidden",
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              justifyContent: "flex-end",
             }}
           >
-            <ScrollView
-              ref={generatorScrollRef}
-              keyboardShouldPersistTaps="handled"
-              style={{ maxHeight: generatorActiveField ? 280 : undefined }}
-              contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
-              onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                generatorScrollYRef.current = e.nativeEvent.contentOffset.y;
+            <Pressable style={{ flex: 1 }} onPress={closeGeneratorModal} />
+            <View
+              style={{
+                backgroundColor: "#fff",
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                maxHeight: "92%",
+                overflow: "hidden",
               }}
-              scrollEventThrottle={16}
             >
-              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                {generatorEditingId
-                  ? generatorEditingGen
-                    ? `Edit ${GENERATOR_FIELD_DEFS.find((f) => f.hourKey === generatorEditingGen)?.label ?? "generator"}`
-                    : "Edit generators"
-                  : "Log generators"}
-              </Text>
-              {generatorError ? (
-                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
-                  {generatorError}
-                </Text>
-              ) : null}
-              <View style={{ marginTop: 14, marginBottom: 10 }}>
-                <DatePickerField
-                  label="Date logged"
-                  value={generatorDraft.logDate}
-                  presentation="inline"
-                  onOpen={() => {
-                    setGeneratorActiveField(null);
-                    setGeneratorReplaceOnType(false);
-                  }}
-                  onChange={(date) =>
-                    setGeneratorDraft((prev) => ({ ...prev, logDate: date }))
-                  }
-                />
-              </View>
-              {(generatorEditingGen
-                ? GENERATOR_FIELD_DEFS.filter((f) => f.hourKey === generatorEditingGen)
-                : GENERATOR_FIELD_DEFS
-              ).map((f) => (
-                <HouseNumFieldButton
-                  key={f.hourKey}
-                  label={`${f.label} hours`}
-                  value={generatorDraft[f.hourKey]}
-                  active={generatorActiveField === f.hourKey}
-                  onPress={() => focusGeneratorField(f.hourKey)}
-                  fieldRef={bindGeneratorFieldRef(f.hourKey)}
-                  emptyLabel="Optional"
-                />
-              ))}
-              <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-                <PrimaryButton
-                  label={generatorSaving ? "Saving…" : "Save"}
-                  onPress={() => {
-                    setGeneratorSaving(true);
-                    setGeneratorError(null);
-                    try {
-                      const parseHours = (raw: string) => {
-                        const trimmed = raw.trim();
-                        if (trimmed === "") return null;
-                        const n = Number(trimmed);
-                        if (!Number.isFinite(n) || n < 0) {
-                          throw new Error("Generator hours must be 0 or greater");
-                        }
-                        return n;
-                      };
-                      const payload = {
-                        logDate: generatorDraft.logDate.trim(),
-                        gen1Hours: parseHours(generatorDraft.gen1Hours),
-                        gen2Hours: parseHours(generatorDraft.gen2Hours),
-                        gen3Hours: parseHours(generatorDraft.gen3Hours),
-                        gen4Hours: parseHours(generatorDraft.gen4Hours),
-                      };
-                      if (generatorEditingId) {
-                        updateGeneratorLog(farm.id, generatorEditingId, {
-                          ...payload,
-                          onlyGen: generatorEditingGen ?? undefined,
-                        });
-                      } else {
-                        createGeneratorLog({
-                          farmId: farm.id,
-                          ...payload,
-                        });
-                      }
-                      setGeneratorModalOpen(false);
-                      setGeneratorEditingId(null);
-                      setGeneratorEditingGen(null);
-                      setGeneratorActiveField(null);
-                      setGeneratorReplaceOnType(false);
-                      load();
-                    } catch (e) {
-                      setGeneratorError(
-                        e instanceof Error ? e.message : "Could not save generator log",
-                      );
-                    } finally {
-                      setGeneratorSaving(false);
-                    }
-                  }}
-                  style={{ flex: 1 }}
-                />
-                <PrimaryButton
-                  label="Cancel"
-                  secondary
-                  onPress={closeGeneratorModal}
-                  style={{ flex: 1 }}
-                />
-              </View>
-            </ScrollView>
-            {generatorActiveField ? (
-              <View
-                style={{
-                  borderTopWidth: 1,
-                  borderTopColor: colors.border,
-                  backgroundColor: "#fafaf9",
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{
+                  padding: 20,
+                  paddingBottom: Platform.OS === "ios" ? 28 : 24,
                 }}
               >
-                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.muted }}>
-                    {generatorFieldLabel(generatorActiveField)}
+                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                  {generatorEditingId
+                    ? generatorEditingGen
+                      ? `Edit ${GENERATOR_FIELD_DEFS.find((f) => f.hourKey === generatorEditingGen)?.label ?? "generator"}`
+                      : "Edit generators"
+                    : "Log generators"}
+                </Text>
+                {generatorError ? (
+                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                    {generatorError}
                   </Text>
-                  <Text
-                    style={{
-                      marginTop: 2,
-                      fontSize: 32,
-                      fontWeight: "800",
-                      color: colors.text,
-                      letterSpacing: 0.3,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {getGeneratorFieldValue(generatorActiveField) || "0"}
-                  </Text>
+                ) : null}
+                <View style={{ marginTop: 14, marginBottom: 10 }}>
+                  <DatePickerField
+                    label="Date logged"
+                    value={generatorDraft.logDate}
+                    presentation="inline"
+                    onChange={(date) =>
+                      setGeneratorDraft((prev) => ({ ...prev, logDate: date }))
+                    }
+                  />
                 </View>
-                <NumberKeypad
-                  allowDecimal
-                  onDigit={onGeneratorDigit}
-                  onBackspace={onGeneratorBackspace}
-                  onEnter={onGeneratorEnter}
-                />
-              </View>
-            ) : null}
+                {(generatorEditingGen
+                  ? GENERATOR_FIELD_DEFS.filter((f) => f.hourKey === generatorEditingGen)
+                  : GENERATOR_FIELD_DEFS
+                ).map((f) => (
+                  <NativeNumInput
+                    key={f.hourKey}
+                    label={`${f.label} hours`}
+                    value={generatorDraft[f.hourKey]}
+                    decimal
+                    placeholder="Optional"
+                    onChangeText={(v) =>
+                      setGeneratorDraft((prev) => ({ ...prev, [f.hourKey]: v }))
+                    }
+                  />
+                ))}
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+                  <PrimaryButton
+                    label={generatorSaving ? "Saving…" : "Save"}
+                    onPress={() => {
+                      setGeneratorSaving(true);
+                      setGeneratorError(null);
+                      try {
+                        const parseHours = (raw: string) => {
+                          const trimmed = raw.trim();
+                          if (trimmed === "") return null;
+                          const n = Number(trimmed);
+                          if (!Number.isFinite(n) || n < 0) {
+                            throw new Error("Generator hours must be 0 or greater");
+                          }
+                          return n;
+                        };
+                        const payload = {
+                          logDate: generatorDraft.logDate.trim(),
+                          gen1Hours: parseHours(generatorDraft.gen1Hours),
+                          gen2Hours: parseHours(generatorDraft.gen2Hours),
+                          gen3Hours: parseHours(generatorDraft.gen3Hours),
+                          gen4Hours: parseHours(generatorDraft.gen4Hours),
+                        };
+                        if (generatorEditingId) {
+                          updateGeneratorLog(farm.id, generatorEditingId, {
+                            ...payload,
+                            onlyGen: generatorEditingGen ?? undefined,
+                          });
+                        } else {
+                          createGeneratorLog({
+                            farmId: farm.id,
+                            ...payload,
+                          });
+                        }
+                        setGeneratorModalOpen(false);
+                        setGeneratorEditingId(null);
+                        setGeneratorEditingGen(null);
+                        load();
+                      } catch (e) {
+                        setGeneratorError(
+                          e instanceof Error ? e.message : "Could not save generator log",
+                        );
+                      } finally {
+                        setGeneratorSaving(false);
+                      }
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                  <PrimaryButton
+                    label="Cancel"
+                    secondary
+                    onPress={closeGeneratorModal}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
