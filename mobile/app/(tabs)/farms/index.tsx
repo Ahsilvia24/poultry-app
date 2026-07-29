@@ -19,6 +19,7 @@ import {
   listFarms,
   reactivateFarm,
 } from "../../../src/repos/data";
+import { consumeFarmReturnFromMortality } from "../../../src/lib/farmNavContext";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, styles } from "../../../src/theme";
 import { Card, Chip, PageHeader } from "../../../src/components/ui";
@@ -52,9 +53,21 @@ export default function FarmsScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // Mortality → Farms: jump straight to the selected farm (not this list).
+      const pending = consumeFarmReturnFromMortality();
+      if (pending?.farmId) {
+        router.replace({
+          pathname: "/(tabs)/farms/[id]",
+          params: {
+            id: pending.farmId,
+            focusHouseFlockId: pending.houseFlockId ?? "",
+          },
+        });
+        return;
+      }
       setLoading(true);
       load();
-    }, [load]),
+    }, [load, router]),
   );
 
   function confirmMakeInactive(farmId: string, farmName: string) {

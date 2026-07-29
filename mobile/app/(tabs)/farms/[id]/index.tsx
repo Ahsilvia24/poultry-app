@@ -35,7 +35,11 @@ import {
   updateGeneratorLog,
   updateHouse,
 } from "../../../../src/repos/data";
-import { getFarmNavContext, setFarmNavContext } from "../../../../src/lib/farmNavContext";
+import {
+  consumeFarmReturnFromMortality,
+  getFarmNavContext,
+  setFarmNavContext,
+} from "../../../../src/lib/farmNavContext";
 import { useTabScrollToTop } from "../../../../src/lib/tabScroll";
 import { VISIT_TYPE_LABELS } from "../../../../src/lib/visits";
 import {
@@ -447,9 +451,12 @@ export default function FarmDetailScreen() {
     useCallback(() => {
       load();
       if (!farmId) return;
+      // Clear Mortality→Farms pending so the list doesn't redirect later.
+      const pending = consumeFarmReturnFromMortality();
       const ctx = getFarmNavContext();
       const focusHouse =
         focusHouseFlockIdParam ||
+        pending?.houseFlockId ||
         (ctx.farmId === farmId ? ctx.houseFlockId : null) ||
         null;
       // Preserve the mortality-selected house when returning to this farm.

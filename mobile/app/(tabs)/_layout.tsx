@@ -3,7 +3,10 @@ import { Pressable, Text, View } from "react-native";
 import { StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../src/theme";
-import { getFarmNavContext } from "../../src/lib/farmNavContext";
+import {
+  armFarmReturnFromMortality,
+  getFarmNavContext,
+} from "../../src/lib/farmNavContext";
 import { requestTabScrollTop, tabStackIndex } from "../../src/lib/tabScroll";
 
 const TAB_ITEMS = [
@@ -103,13 +106,12 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
 
                 // Switching tabs.
                 if (route.name === "farms") {
-                  // From Mortality: always open the selected farm/house — not the list.
                   const ctx = getFarmNavContext();
                   const fromMortality = focusedRoute?.name === "mortality";
                   if (fromMortality && ctx.farmId) {
-                    // Same path as "Back to House" — reliable across expo-router.
-                    // Do not also requestTabScrollTop (that snaps to y=0).
-                    router.push({
+                    // Arm list-level redirect as a safety net, then open the farm.
+                    armFarmReturnFromMortality();
+                    router.replace({
                       pathname: "/(tabs)/farms/[id]",
                       params: {
                         id: ctx.farmId,

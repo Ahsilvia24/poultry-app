@@ -5,6 +5,15 @@
 let currentFarmId: string | null = null;
 let currentHouseFlockId: string | null = null;
 
+/**
+ * When leaving Mortality, Farms should open this farm (not the list).
+ * Consumed once by the farms list (or tab handler).
+ */
+let pendingFarmReturn: {
+  farmId: string;
+  houseFlockId: string | null;
+} | null = null;
+
 export function setFarmNavContext(input: {
   farmId: string | null;
   houseFlockId?: string | null;
@@ -24,4 +33,27 @@ export function getFarmNavContext() {
 
 export function clearHouseFlockNavContext() {
   currentHouseFlockId = null;
+}
+
+/** Call when leaving Mortality so Farms can open the selected farm. */
+export function armFarmReturnFromMortality() {
+  if (!currentFarmId) {
+    pendingFarmReturn = null;
+    return;
+  }
+  pendingFarmReturn = {
+    farmId: currentFarmId,
+    houseFlockId: currentHouseFlockId,
+  };
+}
+
+/** Read-and-clear the Mortality → Farms return target. */
+export function consumeFarmReturnFromMortality() {
+  const next = pendingFarmReturn;
+  pendingFarmReturn = null;
+  return next;
+}
+
+export function peekFarmReturnFromMortality() {
+  return pendingFarmReturn;
 }
