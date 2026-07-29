@@ -123,7 +123,8 @@ const DEMOS: DemoFarm[] = [
 
 /**
  * Demo flock ages are relative to the seed calendar day. After midnight those
- * service days drift off Today's schedule — re-anchor demo farms each day.
+ * service days drift off Today's schedule — re-anchor **existing** demo farms
+ * each day. Never create new demo farms on an already-seeded install (user data).
  */
 function refreshDemoScheduleAges() {
   const today = todayKey();
@@ -131,55 +132,15 @@ function refreshDemoScheduleAges() {
 
   const db = getDb();
   for (const demo of DEMOS) {
-    let farm = db.getFirstSync<{ id: string }>(
-      "SELECT id FROM farms WHERE farm_name = ? AND is_active = 1 LIMIT 1",
+    // Only touch farms that were created as offline demos — never match a
+    // grower's real farm that happens to share a name.
+    const farm = db.getFirstSync<{ id: string }>(
+      `SELECT id FROM farms
+       WHERE farm_name = ? AND is_active = 1 AND notes = 'Offline demo farm'
+       LIMIT 1`,
       [demo.farmName],
     );
-
-    // Existing installs may lack newer demo farms (e.g. Ash Grove).
-    if (!farm) {
-      const farmId = newId("farm");
-      db.runSync(
-        `INSERT INTO farms (id, farm_name, grower_name, phone_number, notes, number_of_houses, is_active)
-         VALUES (?, ?, ?, ?, ?, ?, 1)`,
-        [
-          farmId,
-          demo.farmName,
-          demo.growerName,
-          demo.phone,
-          "Offline demo farm",
-          demo.houses,
-        ],
-      );
-      const houseIds: string[] = [];
-      for (let n = 1; n <= demo.houses; n++) {
-        const houseId = newId("house");
-        houseIds.push(houseId);
-        db.runSync(
-          `INSERT INTO houses (id, farm_id, house_number, square_footage, total_fan_cfm, number_of_fans)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [houseId, farmId, n, 24000 + n * 200, 170000, 11],
-        );
-      }
-      const placement = addDaysKey(today, -demo.ageDays);
-      const catchDate = addDaysKey(placement, demo.marketAge);
-      const flockId = newId("flock");
-      db.runSync(
-        `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
-         VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
-        [flockId, farmId, demo.flockNumber, placement, catchDate],
-      );
-      const perHouse = 22000 + (demo.houses % 3) * 500;
-      for (const houseId of houseIds) {
-        db.runSync(
-          `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [newId("hf"), flockId, houseId, perHouse, placement, catchDate],
-        );
-      }
-      farm = { id: farmId };
-      continue;
-    }
+    if (!farm) continue;
 
     const flock = db.getFirstSync<{ id: string }>(
       `SELECT id FROM flocks
@@ -449,9 +410,8 @@ function ensureSplitStaggeredActiveFlocks() {
 
 export function seedIfNeeded() {
   if (getMeta("seeded") === "1") {
-    ensureDemoVisits();
-    ensureMultiFlockDemoFarm();
-    ensureSplitStaggeredActiveFlocks();
+    // Already has user/demo data — never inject new farms, visits, or mortality.
+    // Only re-anchor ages on farms that were originally seeded as demos.
     refreshDemoScheduleAges();
     return;
   }
@@ -553,6 +513,8 @@ export function seedIfNeeded() {
   setMeta("visits_v2", "1");
   setMeta("demo_schedule_day", today);
   setMeta("userId", userId);
+  setMeta("multi_flock_demo_v1", "1");
+  setMeta("split_staggered_active_flocks_v1", "1");
   ensureMultiFlockDemoFarm();
   ensureSplitStaggeredActiveFlocks();
 }
