@@ -15,13 +15,7 @@ import {
 } from "@/lib/mortality/calculations";
 import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
 import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
-import {
-  formatNumber,
-  formatPct,
-} from "@/lib/utils";
 import { createFlockAction } from "@/app/actions/farms";
-import { ReactivateFlockButton } from "@/components/FarmOpsForms";
-import { EditFlockNumberButton } from "@/components/EditFlockNumberButton";
 import { HouseCard } from "@/components/HouseCard";
 import { AddFlockSection } from "@/components/AddFlockSection";
 import { AddHouseForm } from "@/components/AddHouseForm";
@@ -33,8 +27,7 @@ import { FarmIssuesSection } from "@/components/FarmIssuesSection";
 import { FarmLitterSection } from "@/components/FarmLitterSection";
 import { FarmVisitsSection } from "@/components/FarmVisitsSection";
 import { WeightProjectionTile } from "@/components/WeightProjectionTile";
-import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
-import { Card, StatTile } from "@/components/ui";
+import { Card } from "@/components/ui";
 
 type Params = Promise<{ id: string }>;
 
@@ -80,10 +73,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     .slice()
     .sort((a, b) => a.placementDate.getTime() - b.placementDate.getTime());
   const activeFlock = activeFlocks[0] ?? null;
-  const latestCompletedFlock =
-    activeFlocks.length === 0
-      ? (farm.flocks.find((f) => f.flockStatus === "COMPLETED") ?? null)
-      : null;
 
   const hfByHouseId = new Map<
     string,
@@ -96,15 +85,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       }
     }
   }
-
-  let flockPlaced = 0;
-  let flockCum = 0;
-  let flockProjectedHead = 0;
-  let flockProjectedMortality = 0;
-  const flockWeeklyTotals = new Map<number, number>();
-  const flockAgesDays = Array.from(
-    new Set(activeFlocks.map((f) => daysSincePlacement(f.placementDate, today))),
-  ).sort((a, b) => a - b);
 
   const houseCards = farm.houses.map((house) => {
     const matched = hfByHouseId.get(house.id) ?? null;
@@ -138,20 +118,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         )
       : "Normal";
 
-    if (hf && metrics) {
-      flockPlaced += hf.placedBirdCount;
-      flockCum += metrics.cumulative;
-    }
-    if (projectedHeadCount != null) {
-      flockProjectedHead += projectedHeadCount;
-    }
-    if (hf && daysUntilCatch != null) {
-      flockProjectedMortality += avgDaily * daysUntilCatch;
-    }
-    for (const w of weeklyMortality) {
-      flockWeeklyTotals.set(w.week, (flockWeeklyTotals.get(w.week) ?? 0) + w.total);
-    }
-
     return {
       house,
       hf,
@@ -165,17 +131,11 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         ? format(houseFlock.placementDate, "yyyy-MM-dd")
         : null,
       catchDateKey: catchDate ? format(catchDate, "yyyy-MM-dd") : null,
+      birdAgeDays: houseFlock
+        ? daysSincePlacement(houseFlock.placementDate, today)
+        : null,
     };
   });
-
-  const flockWeeklyMortality = Array.from(flockWeeklyTotals.entries())
-    .sort((a, b) => a[0] - b[0])
-    .map(([week, total]) => ({ week, total }));
-
-  const projectedMortalityCount = Math.max(
-    0,
-    Math.round(flockCum + flockProjectedMortality),
-  );
 
   const allFeedDeliveries = activeFlocks
     .flatMap((flock) => [
@@ -228,24 +188,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           .sort((a, b) => a.catchDateKey.localeCompare(b.catchDateKey))
       : [];
 
-  const placementCatchLines = Array.from(
-    new Set(
-      activeFlocks.map((flock) =>
-        [
-          `Placed ${format(flock.placementDate, "MMM d, yyyy")}`,
-          flock.projectedCatchDate
-            ? `Catch ${format(flock.projectedCatchDate, "MMM d, yyyy")}`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" · "),
-      ),
-    ),
-  );
-  const flockAgeLabel =
-    flockAgesDays.length > 0 ? flockAgesDays.map((a) => `(${a}d)`).join(" ") : null;
-  const flockNumberLabel = activeFlocks.map((f) => f.flockNumber).filter(Boolean).join(" · ");
-
   return (
     <div>
       <Link
@@ -295,6 +237,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             status,
             placementDateKey,
             catchDateKey,
+            birdAgeDays,
           }) => (
           <HouseCard
             key={house.id}
@@ -318,6 +261,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             houseFlockId={hf?.id ?? null}
             placementDateKey={placementDateKey}
             catchDateKey={catchDateKey}
+            birdAgeDays={birdAgeDays}
           />
         ),
         )}
@@ -329,96 +273,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       </div>
 
       <AddHouseForm farmId={farm.id} />
-
-      {activeFlocks.length > 0 ? (
-        <div className="mt-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-xl font-bold">
-                {activeFlocks.length > 1 ? "Active flocks" : "Active flock"}
-                {flockAgeLabel ? ` ${flockAgeLabel}` : ""}
-              </h2>
-              {flockNumberLabel ? (
-                <p className="mt-1 text-sm font-normal text-stone-500">{flockNumberLabel}</p>
-              ) : null}
-            </div>
-            <EditFlockNumberButton
-              flocks={activeFlocks.map((flock) => ({
-                id: flock.id,
-                flockNumber: flock.flockNumber,
-                ageDays: differenceInCalendarDays(today, flock.placementDate),
-              }))}
-            />
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatTile label="Birds placed" value={formatNumber(flockPlaced)} />
-            <StatTile
-              label="Proj. Head Count"
-              value={formatNumber(flockProjectedHead)}
-              hint="150 catch crew per house"
-            />
-            <StatTile
-              label="Cumulative Mortality"
-              value={`${flockCum} (${formatPct(flockPlaced > 0 ? (flockCum / flockPlaced) * 100 : 0)})`}
-            />
-            <StatTile
-              label="Projected Mortality"
-              value={`${formatNumber(projectedMortalityCount)} (${formatPct(
-                flockPlaced > 0 ? (projectedMortalityCount / flockPlaced) * 100 : 0,
-              )})`}
-            />
-          </div>
-          {placementCatchLines.length > 0 ? (
-            <div className="mt-2 space-y-0.5">
-              {placementCatchLines.map((line) => (
-                <p key={line} className="text-sm text-stone-600">
-                  {line}
-                </p>
-              ))}
-            </div>
-          ) : null}
-          {flockWeeklyMortality.length > 0 ? (
-            <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-                Weekly mortality
-              </p>
-              <WeeklyMortalityList weeks={flockWeeklyMortality} />
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <Card className="mt-6">
-          <p className="font-semibold text-stone-800">No active flock</p>
-          <p className="mt-1 text-sm text-stone-600">
-            {latestCompletedFlock ? (
-              <>
-                Flock {latestCompletedFlock.flockNumber} was completed. You can make it active again,
-                or{" "}
-                <a href="#add-flock" className="font-semibold text-emerald-800 underline">
-                  add a new flock
-                </a>
-                .
-              </>
-            ) : (
-              <>
-                Use{" "}
-                <a href="#add-flock" className="font-semibold text-emerald-800 underline">
-                  Add flock
-                </a>{" "}
-                to start tracking mortality.
-              </>
-            )}
-          </p>
-          {latestCompletedFlock ? (
-            <div className="mt-3">
-              <ReactivateFlockButton
-                flockId={latestCompletedFlock.id}
-                flockNumber={latestCompletedFlock.flockNumber}
-              />
-            </div>
-          ) : null}
-        </Card>
-      )}
 
       <AddFlockSection
         action={submitFlock}

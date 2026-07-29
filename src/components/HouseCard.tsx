@@ -47,6 +47,7 @@ export function HouseCard({
   houseFlockId = null,
   placementDateKey = null,
   catchDateKey = null,
+  birdAgeDays = null,
 }: {
   farmId: string;
   house: HouseData;
@@ -61,6 +62,7 @@ export function HouseCard({
   houseFlockId?: string | null;
   placementDateKey?: string | null;
   catchDateKey?: string | null;
+  birdAgeDays?: number | null;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -86,6 +88,9 @@ export function HouseCard({
             House {house.houseNumber}
             {flockLabel ? (
               <span className="font-semibold text-stone-600"> · {flockLabel}</span>
+            ) : null}
+            {birdAgeDays != null ? (
+              <span className="font-semibold text-stone-600"> · {birdAgeDays}d</span>
             ) : null}
           </p>
           {metrics || projectedHeadCount != null ? (
