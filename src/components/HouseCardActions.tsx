@@ -82,11 +82,15 @@ export function HouseCardActions({
   const [pending, startTransition] = useTransition();
   const [placementDate, setPlacementDate] = useState(house.placementDateKey ?? "");
   const [catchDate, setCatchDate] = useState(house.catchDateKey ?? "");
+  const [applyToRemaining, setApplyToRemaining] = useState(false);
+  const [applySpecsToRemaining, setApplySpecsToRemaining] = useState(false);
 
   useEffect(() => {
     if (mode === "edit") {
       setPlacementDate(house.placementDateKey ?? "");
       setCatchDate(house.catchDateKey ?? "");
+      setApplyToRemaining(false);
+      setApplySpecsToRemaining(false);
     }
   }, [mode, house.placementDateKey, house.catchDateKey]);
 
@@ -247,6 +251,25 @@ export function HouseCardActions({
                           Defaults to 52 days after placement; change anytime.
                         </p>
                       </div>
+                      <label className="flex cursor-pointer items-start gap-2.5">
+                        <input
+                          type="checkbox"
+                          name="applyToRemaining"
+                          value="true"
+                          checked={applyToRemaining}
+                          onChange={(e) => setApplyToRemaining(e.target.checked)}
+                          className="mt-1 h-4 w-4 rounded border-stone-300 text-emerald-700 focus:ring-emerald-700"
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold text-stone-800">
+                            Apply to all remaining houses
+                          </span>
+                          <span className="mt-0.5 block text-xs text-stone-500">
+                            Birds placed, placement date, catch date, and flock for houses after
+                            this one. Earlier houses stay unchanged.
+                          </span>
+                        </span>
+                      </label>
                     </>
                   ) : null}
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -284,6 +307,25 @@ export function HouseCardActions({
                       />
                     </div>
                   </div>
+                  <label className="flex cursor-pointer items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      name="applySpecsToRemaining"
+                      value="true"
+                      checked={applySpecsToRemaining}
+                      onChange={(e) => setApplySpecsToRemaining(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-stone-300 text-emerald-700 focus:ring-emerald-700"
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-stone-800">
+                        Apply to all remaining houses
+                      </span>
+                      <span className="mt-0.5 block text-xs text-stone-500">
+                        Square footage, fan CFM, and number of fans for houses after this one.
+                        Earlier houses stay unchanged.
+                      </span>
+                    </span>
+                  </label>
                   <div>
                     <Label htmlFor={`edit-notes-${house.id}`}>Notes</Label>
                     <Textarea

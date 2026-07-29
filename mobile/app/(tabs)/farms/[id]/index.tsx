@@ -176,6 +176,7 @@ type HouseEditDraft = {
   catchDate: string;
   flockNumber: string;
   applyToRemaining: boolean;
+  applySpecsToRemaining: boolean;
 };
 
 type AddHouseDraft = {
@@ -720,6 +721,7 @@ export default function FarmDetailScreen() {
       catchDate,
       flockNumber: h.flockNumber ?? "",
       applyToRemaining: false,
+      applySpecsToRemaining: false,
     });
   }
 
@@ -952,6 +954,7 @@ export default function FarmDetailScreen() {
         squareFootage: sq,
         totalFanCFM: cfm,
         numberOfFans: fans,
+        applySpecsToRemainingHouses: editingHouse.applySpecsToRemaining,
         ...(data?.activeFlock
           ? {
               placedBirdCount: placed,
@@ -1999,6 +2002,56 @@ export default function FarmDetailScreen() {
                     onPress={() => focusHouseField("numberOfFans")}
                     fieldRef={bindHouseFieldRef("numberOfFans")}
                   />
+                  <Pressable
+                    onPress={() =>
+                      setEditingHouse((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              applySpecsToRemaining: !prev.applySpecsToRemaining,
+                            }
+                          : prev,
+                      )
+                    }
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      gap: 10,
+                      marginBottom: 12,
+                      paddingVertical: 4,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 6,
+                        borderWidth: 2,
+                        borderColor: editingHouse.applySpecsToRemaining
+                          ? colors.accentDark
+                          : colors.border,
+                        backgroundColor: editingHouse.applySpecsToRemaining
+                          ? colors.accentDark
+                          : "#fff",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginTop: 1,
+                      }}
+                    >
+                      {editingHouse.applySpecsToRemaining ? (
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                      ) : null}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
+                        Apply to all remaining houses
+                      </Text>
+                      <Text style={[styles.muted, { marginTop: 2 }]}>
+                        Square footage, fan CFM, and number of fans for houses after this one.
+                        Earlier houses stay unchanged.
+                      </Text>
+                    </View>
+                  </Pressable>
                   <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
                     <PrimaryButton
                       label={houseSaving ? "Saving…" : "Save"}

@@ -2399,6 +2399,11 @@ export function updateHouse(
      * higher house number (does not change earlier houses).
      */
     applyToRemainingHouses?: boolean;
+    /**
+     * Also apply square footage / total fan CFM / number of fans to houses with
+     * a higher house number (does not change earlier houses).
+     */
+    applySpecsToRemainingHouses?: boolean;
   },
 ) {
   const db = getDb();
@@ -2437,6 +2442,15 @@ export function updateHouse(
       farmId,
     ],
   );
+
+  if (input.applySpecsToRemainingHouses) {
+    db.runSync(
+      `UPDATE houses
+       SET square_footage = ?, total_fan_cfm = ?, number_of_fans = ?
+       WHERE farm_id = ? AND deleted_at IS NULL AND house_number > ?`,
+      [squareFootage, input.totalFanCFM, input.numberOfFans, farmId, houseNumber],
+    );
+  }
 
   const touchesFlockPlacement =
     input.placedBirdCount !== undefined ||

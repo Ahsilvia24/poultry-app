@@ -224,10 +224,30 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
     data: parsed.data,
   });
 
+  const applySpecsToRemaining =
+    formData.get("applySpecsToRemaining") === "true" ||
+    formData.get("applySpecsToRemaining") === "on";
+  if (applySpecsToRemaining) {
+    await prisma.house.updateMany({
+      where: {
+        farmId,
+        deletedAt: null,
+        houseNumber: { gt: parsed.data.houseNumber },
+      },
+      data: {
+        squareFootage: parsed.data.squareFootage,
+        totalFanCFM: parsed.data.totalFanCFM,
+        numberOfFans: parsed.data.numberOfFans,
+      },
+    });
+  }
+
   const placedRaw = emptyToNull(formData.get("placedBirdCount"));
   const placementRaw = emptyToNull(formData.get("placementDate"));
   const catchRaw = emptyToNull(formData.get("catchDate"));
   const flockNumberRaw = emptyToNull(formData.get("flockNumber"));
+  const applyToRemaining =
+    formData.get("applyToRemaining") === "true" || formData.get("applyToRemaining") === "on";
   const wantsFlockFields =
     placedRaw != null ||
     placementRaw != null ||
@@ -287,34 +307,58 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
       });
     }
 
-    const hf = await prisma.houseFlock.findFirst({
-      where: { flockId: activeFlock.id, houseId },
-    });
-
-    if (hf) {
-      await prisma.houseFlock.update({
-        where: { id: hf.id },
-        data: {
-          ...(placedBirdCount != null ? { placedBirdCount } : {}),
-          ...(placementDate != null ? { placementDate } : {}),
-          ...(catchDate != null ? { catchDate } : {}),
-        },
+    async function upsertHouseFlockFields(targetHouseId: string, includeFlockNumber: boolean) {
+      const targetHf = await prisma.houseFlock.findFirst({
+        where: { flockId: activeFlock!.id, houseId: targetHouseId },
       });
-    } else if (placedBirdCount != null || placementDate != null || catchDate != null) {
-      if (placedBirdCount == null) {
-        return { error: "Birds placed is required when adding this house to the flock" };
+      if (targetHf) {
+        await prisma.houseFlock.update({
+          where: { id: targetHf.id },
+          data: {
+            ...(placedBirdCount != null ? { placedBirdCount } : {}),
+            ...(placementDate != null ? { placementDate } : {}),
+            ...(catchDate != null ? { catchDate } : {}),
+          },
+        });
+      } else if (placedBirdCount != null || placementDate != null || catchDate != null) {
+        if (placedBirdCount == null) {
+          throw new Error("Birds placed is required when adding this house to the flock");
+        }
+        const place = placementDate ?? activeFlock!.placementDate;
+        const catchResolved = catchDate ?? addDays(place, 52);
+        await prisma.houseFlock.create({
+          data: {
+            flockId: activeFlock!.id,
+            houseId: targetHouseId,
+            placedBirdCount,
+            placementDate: place,
+            catchDate: catchResolved,
+          },
+        });
       }
-      const place = placementDate ?? activeFlock.placementDate;
-      const catchResolved = catchDate ?? addDays(place, 52);
-      await prisma.houseFlock.create({
-        data: {
-          flockId: activeFlock.id,
-          houseId,
-          placedBirdCount,
-          placementDate: place,
-          catchDate: catchResolved,
-        },
-      });
+      void includeFlockNumber;
+    }
+
+    try {
+      await upsertHouseFlockFields(houseId, true);
+      if (applyToRemaining) {
+        const remaining = await prisma.house.findMany({
+          where: {
+            farmId,
+            deletedAt: null,
+            houseNumber: { gt: parsed.data.houseNumber },
+          },
+          select: { id: true },
+          orderBy: { houseNumber: "asc" },
+        });
+        for (const h of remaining) {
+          await upsertHouseFlockFields(h.id, false);
+        }
+      }
+    } catch (e) {
+      return {
+        error: e instanceof Error ? e.message : "Could not update house flock fields",
+      };
     }
 
     const sum = await prisma.houseFlock.aggregate({
