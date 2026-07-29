@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -2277,6 +2278,9 @@ export default function FarmDetailScreen() {
                         setEditingFarm((prev) => (prev ? { ...prev, phoneNumber: v } : prev))
                       }
                       keyboardType="phone-pad"
+                      returnKeyType="done"
+                      blurOnSubmit
+                      onSubmitEditing={() => Keyboard.dismiss()}
                     />
                     <Text style={[styles.label, { marginTop: 8 }]}>Email</Text>
                     <TextInput
