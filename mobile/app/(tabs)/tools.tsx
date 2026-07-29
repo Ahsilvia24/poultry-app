@@ -12,8 +12,8 @@ import {
   CFM_BY_FAN_SIZE,
   CFM_PER_BIRD,
   MIN_VENT_CYCLE_SECONDS,
+  allMinVentWeeks,
   recommendedMinVent,
-  upcomingMinVentWeeks,
 } from "../../src/lib/tools";
 import { flockWeekFromAge, formatMinVentCycle } from "../../src/lib/mortality";
 import { colors, styles } from "../../src/theme";
@@ -86,17 +86,23 @@ export default function ToolsScreen() {
         })
       : null;
 
-  const upcomingWeeks =
+  const weekRows =
     selectedHouse &&
-    flockWeek != null &&
     selectedHouse.placedBirdCount != null &&
     selectedHouse.totalFanCFM != null
-      ? upcomingMinVentWeeks({
+      ? allMinVentWeeks({
           birdsPlaced: selectedHouse.placedBirdCount,
-          flockWeek,
           totalFanCFM: selectedHouse.totalFanCFM,
         })
       : [];
+
+  /** Chart week that matches the flock’s current age (weeks past 8 stay on week 8). */
+  const resultWeek =
+    flockWeek == null
+      ? null
+      : flockWeek <= 1
+        ? 1
+        : Math.min(flockWeek, CFM_PER_BIRD[CFM_PER_BIRD.length - 1]!.week);
 
   function onSectionLayout(key: SectionKey, e: LayoutChangeEvent) {
     sectionY.current[key] = e.nativeEvent.layout.y;
@@ -306,7 +312,7 @@ export default function ToolsScreen() {
                       />
                     </View>
 
-                    {breakdown && upcomingWeeks.length > 0 ? (
+                    {weekRows.length > 0 ? (
                       <View
                         style={{
                           marginTop: 12,
@@ -324,37 +330,54 @@ export default function ToolsScreen() {
                             marginBottom: 8,
                           }}
                         >
-                          Upcoming weeks
+                          Weekly min vent
                         </Text>
-                        {upcomingWeeks.map((w) => (
-                          <View
-                            key={w.week}
-                            style={{
-                              flexDirection: "row",
-                              justifyContent: "space-between",
-                              alignItems: "baseline",
-                              gap: 8,
-                              paddingVertical: 5,
-                            }}
-                          >
-                            <Text style={{ flex: 1, fontSize: 13, color: colors.text }}>
-                              Wk{w.week}{" "}
-                              <Text style={{ color: colors.muted }}>
-                                ({w.dayStart}-{w.dayEnd}d · {w.cfmPerBird.toFixed(2)} CFM/bird)
-                              </Text>
-                            </Text>
-                            <Text
+                        {weekRows.map((w) => {
+                          const isResult = resultWeek === w.week;
+                          return (
+                            <View
+                              key={w.week}
                               style={{
-                                fontSize: 14,
-                                fontWeight: "800",
-                                color: colors.text,
-                                fontVariant: ["tabular-nums"],
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                gap: 8,
+                                paddingVertical: 7,
+                                paddingHorizontal: 8,
+                                marginHorizontal: -8,
+                                borderRadius: 8,
+                                backgroundColor: isResult ? "#ecfdf5" : "transparent",
                               }}
                             >
-                              {formatMinVentCycle(w.onSeconds, w.offSeconds)}
-                            </Text>
-                          </View>
-                        ))}
+                              <View style={{ flex: 1, minWidth: 0 }}>
+                                <Text
+                                  style={{
+                                    fontSize: 13,
+                                    fontWeight: isResult ? "800" : "600",
+                                    color: colors.text,
+                                  }}
+                                >
+                                  Wk{w.week}
+                                  {isResult ? " · Result" : ""}
+                                  <Text style={{ fontWeight: "500", color: colors.muted }}>
+                                    {" "}
+                                    ({w.dayStart}-{w.dayEnd}d · {w.cfmPerBird.toFixed(2)})
+                                  </Text>
+                                </Text>
+                              </View>
+                              <Text
+                                style={{
+                                  fontSize: isResult ? 15 : 14,
+                                  fontWeight: "800",
+                                  color: isResult ? colors.accentDark : colors.text,
+                                  fontVariant: ["tabular-nums"],
+                                }}
+                              >
+                                {formatMinVentCycle(w.onSeconds, w.offSeconds)}
+                              </Text>
+                            </View>
+                          );
+                        })}
                       </View>
                     ) : null}
 

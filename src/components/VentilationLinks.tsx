@@ -5,9 +5,9 @@ import {
   CFM_BY_FAN_SIZE,
   CFM_PER_BIRD,
   MIN_VENT_CYCLE_SECONDS,
+  allMinVentWeeks,
   formatMinVentCycle,
   recommendedMinVent,
-  upcomingMinVentWeeks,
 } from "@/lib/tools/ventilation";
 import { cn } from "@/lib/utils";
 
@@ -76,19 +76,24 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
         })
       : null;
 
-  const upcomingWeeks =
+  const weekRows =
     house &&
-    flockWeek != null &&
     house.birdsPlaced != null &&
     house.birdsPlaced > 0 &&
     house.totalFanCFM != null &&
     house.totalFanCFM > 0
-      ? upcomingMinVentWeeks({
+      ? allMinVentWeeks({
           birdsPlaced: house.birdsPlaced,
-          flockWeek,
           totalFanCFM: house.totalFanCFM,
         })
       : [];
+
+  const resultWeek =
+    flockWeek == null
+      ? null
+      : flockWeek <= 1
+        ? 1
+        : Math.min(flockWeek, CFM_PER_BIRD[CFM_PER_BIRD.length - 1]!.week);
 
   return (
     <div className="space-y-3">
@@ -194,28 +199,45 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                 </div>
               </dl>
 
-              {breakdown && upcomingWeeks.length > 0 ? (
+              {weekRows.length > 0 ? (
                 <div className="mt-3 border-t border-stone-100 pt-3">
                   <p className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-500">
-                    Upcoming weeks
+                    Weekly min vent
                   </p>
-                  <ul className="space-y-1.5">
-                    {upcomingWeeks.map((w) => (
-                      <li
-                        key={w.week}
-                        className="flex items-baseline justify-between gap-3 text-sm"
-                      >
-                        <span className="text-stone-700">
-                          Wk{w.week}{" "}
-                          <span className="text-stone-500">
-                            ({w.dayStart}-{w.dayEnd}d · {formatCfmPerBird(w.cfmPerBird)} CFM/bird)
+                  <ul className="space-y-1">
+                    {weekRows.map((w) => {
+                      const isResult = resultWeek === w.week;
+                      return (
+                        <li
+                          key={w.week}
+                          className={cn(
+                            "flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm",
+                            isResult ? "bg-emerald-50" : null,
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "min-w-0",
+                              isResult ? "font-extrabold text-stone-900" : "font-semibold text-stone-700",
+                            )}
+                          >
+                            Wk{w.week}
+                            {isResult ? " · Result" : ""}{" "}
+                            <span className="font-medium text-stone-500">
+                              ({w.dayStart}-{w.dayEnd}d · {formatCfmPerBird(w.cfmPerBird)})
+                            </span>
                           </span>
-                        </span>
-                        <span className="shrink-0 font-extrabold tabular-nums text-stone-900">
-                          {formatMinVentCycle(w.onSeconds, w.offSeconds)}
-                        </span>
-                      </li>
-                    ))}
+                          <span
+                            className={cn(
+                              "shrink-0 tabular-nums font-extrabold",
+                              isResult ? "text-emerald-900" : "text-stone-900",
+                            )}
+                          >
+                            {formatMinVentCycle(w.onSeconds, w.offSeconds)}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ) : null}

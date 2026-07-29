@@ -60,10 +60,9 @@ export function recommendedMinVent(input: {
   };
 }
 
-/** Min-vent results for weeks after the current one (when CFM/bird steps up). */
-export function upcomingMinVentWeeks(input: {
+/** Min-vent ON/OFF for every chart week (1–8) for this house. */
+export function allMinVentWeeks(input: {
   birdsPlaced: number;
-  flockWeek: number;
   totalFanCFM: number;
 }): Array<{
   week: number;
@@ -73,8 +72,6 @@ export function upcomingMinVentWeeks(input: {
   onSeconds: number;
   offSeconds: number;
 }> {
-  const maxWeek = CFM_PER_BIRD[CFM_PER_BIRD.length - 1]!.week;
-  const start = Math.max(1, Math.floor(input.flockWeek)) + 1;
   const rows: Array<{
     week: number;
     dayStart: number;
@@ -83,14 +80,17 @@ export function upcomingMinVentWeeks(input: {
     onSeconds: number;
     offSeconds: number;
   }> = [];
-  for (let week = start; week <= maxWeek; week++) {
-    const breakdown = recommendedMinVent({ ...input, flockWeek: week });
+  for (const chart of CFM_PER_BIRD) {
+    const breakdown = recommendedMinVent({
+      birdsPlaced: input.birdsPlaced,
+      flockWeek: chart.week,
+      totalFanCFM: input.totalFanCFM,
+    });
     if (!breakdown) continue;
-    const chart = CFM_PER_BIRD.find((r) => r.week === week);
     rows.push({
-      week,
-      dayStart: chart?.dayStart ?? 0,
-      dayEnd: chart?.dayEnd ?? 0,
+      week: chart.week,
+      dayStart: chart.dayStart,
+      dayEnd: chart.dayEnd,
       cfmPerBird: breakdown.cfmPerBird,
       onSeconds: breakdown.onSeconds,
       offSeconds: breakdown.offSeconds,
