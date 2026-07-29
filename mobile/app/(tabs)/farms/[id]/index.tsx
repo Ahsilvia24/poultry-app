@@ -669,7 +669,9 @@ export default function FarmDetailScreen() {
       squareFootage: String(h.squareFootage ?? ""),
       totalFanCFM: h.totalFanCFM != null ? String(h.totalFanCFM) : "",
       numberOfFans: h.numberOfFans != null ? String(h.numberOfFans) : "",
-      placedBirdCount: h.placedBirdCount != null ? String(h.placedBirdCount) : "",
+      // Leave blank so the tech can type a new count without deleting first.
+      // Placeholder shows the current value; empty on save keeps it.
+      placedBirdCount: "",
       placementDate,
       catchDate,
       flockNumber: h.flockNumber ?? "",
@@ -791,6 +793,9 @@ export default function FarmDetailScreen() {
       ) {
         throw new Error("Birds placed must be at least 1");
       }
+      // Empty birds-placed field = leave the existing count unchanged.
+      const existingPlaced =
+        data?.houses.find((h) => h.id === editingHouse.id)?.placedBirdCount ?? null;
       updateHouse(farm.id, editingHouse.id, {
         houseNumber: Number(editingHouse.houseNumber),
         squareFootage: sq,
@@ -799,7 +804,11 @@ export default function FarmDetailScreen() {
         applySpecsToRemainingHouses: editingHouse.applySpecsToRemaining,
         ...(data?.activeFlock
           ? {
-              placedBirdCount: placed,
+              ...(placedRaw !== ""
+                ? { placedBirdCount: placed }
+                : existingPlaced != null
+                  ? { placedBirdCount: existingPlaced }
+                  : {}),
               placementDate: editingHouse.placementDate.trim() || null,
               catchDate: editingHouse.catchDate.trim() || null,
               flockNumber: editingHouse.flockNumber.trim() || null,
@@ -1800,6 +1809,15 @@ export default function FarmDetailScreen() {
                         <NativeNumInput
                           label="Birds placed"
                           value={editingHouse.placedBirdCount}
+                          placeholder={
+                            data.houses.find((h) => h.id === editingHouse.id)?.placedBirdCount !=
+                            null
+                              ? String(
+                                  data.houses.find((h) => h.id === editingHouse.id)
+                                    ?.placedBirdCount,
+                                )
+                              : "Type birds placed"
+                          }
                           onChangeText={(v) =>
                             setEditingHouse((prev) =>
                               prev ? { ...prev, placedBirdCount: v } : prev,
