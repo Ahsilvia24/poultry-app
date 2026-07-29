@@ -134,56 +134,49 @@ export function HouseCard({
         }}
       >
         <Card>
-          <div className="flex items-start justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setMode("edit")}
-              className="min-w-0 flex-1 text-left text-inherit"
-              aria-label={`Edit house ${house.houseNumber}`}
-            >
-              <p className="text-lg font-bold">
-                House {house.houseNumber}
-                {flockLabel ? (
-                  <span className="font-semibold text-stone-600"> · {flockLabel}</span>
-                ) : null}
-                {birdAgeDays != null ? (
-                  <span className="font-semibold text-stone-600"> · {birdAgeDays}d</span>
-                ) : null}
-              </p>
-              {metrics || projectedHeadCount != null ? (
-                <p className="mt-0.5 text-sm font-semibold text-stone-600">
-                  {metrics ? `M ${formatNumber(metrics.cumulative)}` : null}
-                  {metrics && projectedHeadCount != null ? " · " : null}
-                  {projectedHeadCount != null
-                    ? `PHC ${formatNumber(projectedHeadCount)}`
-                    : null}
+          <button
+            type="button"
+            onClick={() => setMode("edit")}
+            className="w-full text-left text-inherit"
+            aria-label={`Edit house ${house.houseNumber}`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-bold">
+                  House {house.houseNumber}
+                  {flockLabel ? (
+                    <span className="font-semibold text-stone-600"> · {flockLabel}</span>
+                  ) : null}
+                  {birdAgeDays != null ? (
+                    <span className="font-semibold text-stone-600"> · {birdAgeDays}d</span>
+                  ) : null}
                 </p>
-              ) : null}
-            </button>
-            <div className="flex shrink-0 items-start gap-2">
-              {hasFlock ? <StatusBadge status={status} /> : null}
+                {metrics || projectedHeadCount != null ? (
+                  <p className="mt-0.5 text-sm font-semibold text-stone-600">
+                    {metrics ? `M ${formatNumber(metrics.cumulative)}` : null}
+                    {metrics && projectedHeadCount != null ? " · " : null}
+                    {projectedHeadCount != null
+                      ? `PHC ${formatNumber(projectedHeadCount)}`
+                      : null}
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 items-start gap-2">
+                {hasFlock ? <StatusBadge status={status} /> : null}
+              </div>
             </div>
-          </div>
 
-          {weeklyMortality.length > 0 ? (
-            <a
-              href={`/mortality?farmId=${farmId}${houseFlockId ? `&houseFlockId=${houseFlockId}` : ""}`}
-              className="mt-3 block text-inherit no-underline"
-              aria-label={`Weekly mortality for house ${house.houseNumber}`}
-            >
-              <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-                Weekly mortality
-              </p>
-              <WeeklyMortalityList weeks={weeklyMortality} />
-            </a>
-          ) : (
-            <a
-              href={`/mortality?farmId=${farmId}${houseFlockId ? `&houseFlockId=${houseFlockId}` : ""}`}
-              className="mt-3 block text-sm text-stone-500 no-underline"
-            >
-              No weekly mortality yet.
-            </a>
-          )}
+            {weeklyMortality.length > 0 ? (
+              <div className="mt-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                  Weekly mortality
+                </p>
+                <WeeklyMortalityList weeks={weeklyMortality} />
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-stone-500">No weekly mortality yet.</p>
+            )}
+          </button>
 
           <button
             type="button"
@@ -198,7 +191,12 @@ export function HouseCard({
           </button>
 
           {detailsOpen ? (
-            <div className="mt-3 space-y-3 text-sm">
+            <button
+              type="button"
+              onClick={() => setMode("edit")}
+              className="mt-3 w-full space-y-3 text-left text-sm text-inherit"
+              aria-label={`Edit house ${house.houseNumber} details`}
+            >
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <p className="text-stone-500">Placed</p>
@@ -245,7 +243,7 @@ export function HouseCard({
                   <p className="font-semibold">{projMortValue}</p>
                 </div>
               </div>
-            </div>
+            </button>
           ) : null}
         </Card>
       </div>
