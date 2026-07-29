@@ -12,6 +12,7 @@ import {
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Swipeable } from "react-native-gesture-handler";
 import {
   deactivateFarm,
   deleteFarm,
@@ -156,135 +157,145 @@ export default function FarmsScreen() {
             : ` (${houseCount})`;
 
           return (
-            <Card
+            <Swipeable
               key={farm.id}
-              style={{ padding: 0, marginBottom: 8, overflow: "hidden" }}
-            >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Open ${farm.farmName}`}
-                onPress={() =>
-                  router.push({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } })
-                }
-                style={({ pressed }) => ({
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
-                  opacity: pressed ? 0.85 : 1,
-                })}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        fontWeight: "800",
-                        color: colors.text,
-                        lineHeight: 20,
-                      }}
-                    >
-                      {farm.farmName}
-                      <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
-                    </Text>
-                    {farm.growerName || farm.phoneNumber ? (
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          flexWrap: "wrap",
-                          alignItems: "baseline",
-                          gap: 6,
-                          marginTop: 1,
-                        }}
-                      >
-                        {farm.growerName ? (
-                          <Text style={[styles.muted, { lineHeight: 16 }]}>{farm.growerName}</Text>
-                        ) : null}
-                        {farm.phoneNumber ? (
-                          <Pressable
-                            accessibilityRole="link"
-                            accessibilityLabel={`Call ${farm.phoneNumber}`}
-                            onPress={(e) => {
-                              e?.stopPropagation?.();
-                              Linking.openURL(dialUrl(farm.phoneNumber!));
-                            }}
-                            hitSlop={8}
-                          >
-                            <Text
-                              style={{
-                                color: colors.accentDark,
-                                fontWeight: "700",
-                                fontSize: 13,
-                                lineHeight: 16,
-                                textDecorationLine: "underline",
-                              }}
-                            >
-                              {farm.phoneNumber}
-                            </Text>
-                          </Pressable>
-                        ) : null}
-                      </View>
-                    ) : null}
-                  </View>
-
-                  <View
+              overshootRight={false}
+              friction={2}
+              rightThreshold={40}
+              containerStyle={{ marginBottom: 8 }}
+              renderRightActions={() => (
+                <View style={{ flexDirection: "row" }}>
+                  <Pressable
+                    accessibilityLabel={
+                      farm.isActive
+                        ? `Make ${farm.farmName} inactive`
+                        : `Make ${farm.farmName} active`
+                    }
+                    onPress={() => {
+                      if (farm.isActive) confirmMakeInactive(farm.id, farm.farmName);
+                      else confirmReactivate(farm.id, farm.farmName);
+                    }}
                     style={{
-                      flexDirection: "row",
+                      backgroundColor: farm.isActive ? "#57534e" : colors.accentDark,
+                      justifyContent: "center",
                       alignItems: "center",
-                      gap: 4,
-                      flexShrink: 0,
+                      width: 100,
+                      borderRadius: 14,
+                      marginLeft: 8,
                     }}
                   >
-                    <Pressable
-                      accessibilityLabel={
-                        farm.isActive
-                          ? `Make ${farm.farmName} inactive`
-                          : `Make ${farm.farmName} active`
-                      }
-                      onPress={(e) => {
-                        e?.stopPropagation?.();
-                        if (farm.isActive) confirmMakeInactive(farm.id, farm.farmName);
-                        else confirmReactivate(farm.id, farm.farmName);
+                    <Ionicons
+                      name={farm.isActive ? "pause-circle-outline" : "play-circle-outline"}
+                      size={22}
+                      color="#fff"
+                    />
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontWeight: "800",
+                        fontSize: 11,
+                        marginTop: 4,
+                        textAlign: "center",
+                        paddingHorizontal: 4,
                       }}
-                      hitSlop={8}
                     >
+                      {farm.isActive ? "Make inactive" : "Make active"}
+                    </Text>
+                  </Pressable>
+                  {!farm.isActive ? (
+                    <Pressable
+                      accessibilityLabel={`Delete ${farm.farmName} permanently`}
+                      onPress={() => confirmPermanentDelete(farm.id, farm.farmName)}
+                      style={{
+                        backgroundColor: colors.danger,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        width: 88,
+                        borderRadius: 14,
+                        marginLeft: 8,
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={22} color="#fff" />
                       <Text
-                        style={[
-                          styles.badge,
-                          {
-                            paddingHorizontal: 8,
-                            paddingVertical: 3,
-                            fontSize: 12,
-                          },
-                          farm.isActive
-                            ? { backgroundColor: "#d1fae5", color: "#065f46" }
-                            : { backgroundColor: "#e7e5e4", color: "#44403c" },
-                        ]}
+                        style={{
+                          color: "#fff",
+                          fontWeight: "800",
+                          fontSize: 12,
+                          marginTop: 4,
+                        }}
                       >
-                        {farm.isActive ? "Active" : "Inactive"}
+                        Delete
                       </Text>
                     </Pressable>
-                    {!farm.isActive ? (
-                      <Pressable
-                        accessibilityLabel={`Delete ${farm.farmName} permanently`}
-                        onPress={(e) => {
-                          e?.stopPropagation?.();
-                          confirmPermanentDelete(farm.id, farm.farmName);
-                        }}
-                        hitSlop={8}
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 8,
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Ionicons name="trash-outline" size={18} color={colors.muted} />
-                      </Pressable>
-                    ) : null}
-                  </View>
+                  ) : null}
                 </View>
-              </Pressable>
-            </Card>
+              )}
+            >
+              <Card style={{ padding: 0, marginBottom: 0, overflow: "hidden" }}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${farm.farmName}`}
+                  onPress={() =>
+                    router.push({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } })
+                  }
+                  style={({ pressed }) => ({
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "800",
+                      color: colors.text,
+                      lineHeight: 20,
+                    }}
+                  >
+                    {farm.farmName}
+                    <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
+                  </Text>
+                  {farm.growerName || farm.phoneNumber ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        alignItems: "baseline",
+                        gap: 6,
+                        marginTop: 1,
+                      }}
+                    >
+                      {farm.growerName ? (
+                        <Text style={[styles.muted, { lineHeight: 16 }]}>{farm.growerName}</Text>
+                      ) : null}
+                      {farm.phoneNumber ? (
+                        <Pressable
+                          accessibilityRole="link"
+                          accessibilityLabel={`Call ${farm.phoneNumber}`}
+                          onPress={(e) => {
+                            e?.stopPropagation?.();
+                            Linking.openURL(dialUrl(farm.phoneNumber!));
+                          }}
+                          hitSlop={8}
+                        >
+                          <Text
+                            style={{
+                              color: colors.accentDark,
+                              fontWeight: "700",
+                              fontSize: 13,
+                              lineHeight: 16,
+                              textDecorationLine: "underline",
+                            }}
+                          >
+                            {farm.phoneNumber}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </Pressable>
+              </Card>
+            </Swipeable>
           );
         })}
       </ScrollView>

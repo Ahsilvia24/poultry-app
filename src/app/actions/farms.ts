@@ -139,7 +139,7 @@ export async function deactivateFarmAction(farmId: string, options?: { skipRedir
   }
 }
 
-export async function reactivateFarmAction(farmId: string) {
+export async function reactivateFarmAction(farmId: string, options?: { skipRedirect?: boolean }) {
   const user = await requireUser();
   await assertFarmAccess(farmId, user.id!);
   await prisma.farm.update({
@@ -149,10 +149,12 @@ export async function reactivateFarmAction(farmId: string) {
   revalidatePath("/farms");
   revalidatePath(`/farms/${farmId}`);
   revalidatePath("/");
-  redirect("/farms");
+  if (!options?.skipRedirect) {
+    redirect("/farms");
+  }
 }
 
-export async function deleteFarmAction(farmId: string) {
+export async function deleteFarmAction(farmId: string, options?: { skipRedirect?: boolean }) {
   const user = await requireUser();
   await assertFarmAccess(farmId, user.id!);
   await prisma.farm.update({
@@ -161,7 +163,9 @@ export async function deleteFarmAction(farmId: string) {
   });
   revalidatePath("/farms");
   revalidatePath("/");
-  redirect("/farms");
+  if (!options?.skipRedirect) {
+    redirect("/farms");
+  }
 }
 
 /** @deprecated Use deleteFarmAction */

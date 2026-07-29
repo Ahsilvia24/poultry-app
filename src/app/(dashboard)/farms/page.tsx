@@ -3,16 +3,11 @@ import { differenceInCalendarDays } from "date-fns";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { DeleteFarmButton, DeactivateFarmButton, ReactivateFarmButton } from "@/components/FarmOpsForms";
+import { FarmsListTiles } from "@/components/FarmsListTiles";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 type SearchParams = Promise<{ status?: string }>;
-
-function dialHref(phone: string) {
-  const digits = phone.replace(/[^\d+]/g, "");
-  return digits ? `tel:${digits}` : `tel:${phone}`;
-}
 
 export default async function FarmsPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await auth();
@@ -44,6 +39,18 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
     { key: "inactive", label: "Inactive" },
     { key: "all", label: "All" },
   ] as const;
+
+  const tiles = farms.map((farm) => ({
+    id: farm.id,
+    farmName: farm.farmName,
+    growerName: farm.growerName,
+    phoneNumber: farm.phoneNumber,
+    isActive: farm.isActive,
+    houseCount: farm.houses.length,
+    flockAges: Array.from(
+      new Set(farm.flocks.map((fl) => differenceInCalendarDays(today, fl.placementDate))),
+    ).sort((a, b) => a - b),
+  }));
 
   return (
     <div>
@@ -78,69 +85,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
           </Link>
         </Card>
       ) : (
-        <div className="grid gap-2 md:grid-cols-2">
-          {farms.map((farm) => {
-            const houseCount = farm.houses.length;
-            const flockAges = Array.from(
-              new Set(
-                farm.flocks.map((fl) => differenceInCalendarDays(today, fl.placementDate)),
-              ),
-            ).sort((a, b) => a - b);
-
-            return (
-              <Card
-                key={farm.id}
-                className="relative p-3 transition hover:border-emerald-400"
-              >
-                <Link
-                  href={`/farms/${farm.id}`}
-                  className="absolute inset-0 z-0 rounded-[inherit]"
-                  aria-label={`Open ${farm.farmName}`}
-                />
-                <div className="relative z-10 flex pointer-events-none items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-base font-bold leading-snug text-stone-900">
-                      {farm.farmName}
-                      <span className="font-semibold text-stone-500"> ({houseCount})</span>
-                      {flockAges.length > 0 ? (
-                        <span className="font-semibold text-stone-500">
-                          {" "}
-                          · {flockAges.map((a) => `${a}d`).join(" · ")}
-                        </span>
-                      ) : null}
-                    </p>
-                    {farm.growerName || farm.phoneNumber ? (
-                      <p className="mt-0.5 text-sm leading-snug text-stone-600">
-                        {farm.growerName ? <span>{farm.growerName}</span> : null}
-                        {farm.growerName && farm.phoneNumber ? (
-                          <span className="text-stone-400"> · </span>
-                        ) : null}
-                        {farm.phoneNumber ? (
-                          <a
-                            href={dialHref(farm.phoneNumber)}
-                            className="pointer-events-auto relative z-10 font-semibold text-emerald-800 underline-offset-2 hover:underline"
-                          >
-                            {farm.phoneNumber}
-                          </a>
-                        ) : null}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="pointer-events-auto relative z-10 ml-1 flex shrink-0 items-center gap-1">
-                    {farm.isActive ? (
-                      <DeactivateFarmButton farmId={farm.id} appearance="badge" />
-                    ) : (
-                      <ReactivateFarmButton farmId={farm.id} appearance="badge" />
-                    )}
-                    {!farm.isActive ? (
-                      <DeleteFarmButton farmId={farm.id} appearance="icon" />
-                    ) : null}
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
+        <FarmsListTiles farms={tiles} />
       )}
     </div>
   );
