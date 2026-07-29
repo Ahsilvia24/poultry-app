@@ -376,24 +376,33 @@ export default function MortalityScreen() {
 
       setFarmId(nextId);
 
+      let nextHouse = "";
       if (houseFlockIdParam && isValid(houseFlockIdParam)) {
         jumpOnLoadRef.current = true;
-        setHouseFlockId(houseFlockIdParam);
+        nextHouse = houseFlockIdParam;
       } else if (farmIdParam && !houseFlockIdParam) {
         // Farm-level entry: pick a house explicitly
         jumpOnLoadRef.current = false;
-        setHouseFlockId("");
+        nextHouse = "";
       } else if (
         ctx.houseFlockId &&
         ctx.farmId === nextId &&
         isValid(ctx.houseFlockId)
       ) {
         jumpOnLoadRef.current = true;
-        setHouseFlockId(ctx.houseFlockId);
+        nextHouse = ctx.houseFlockId;
       } else {
         // Do not auto-select a house
         jumpOnLoadRef.current = false;
-        setHouseFlockId((prev) => (isValid(prev) ? prev : ""));
+        nextHouse = isValid(houseFlockIdRef.current) ? houseFlockIdRef.current : "";
+      }
+      setHouseFlockId(nextHouse);
+      // Sync immediately so Farms-tab return works before the useEffect runs.
+      if (nextId) {
+        setFarmNavContext({
+          farmId: nextId,
+          houseFlockId: nextHouse || null,
+        });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
@@ -960,7 +969,7 @@ export default function MortalityScreen() {
                       farmId,
                       houseFlockId: selectedHouse.houseFlockId,
                     });
-                    router.push({
+                    router.navigate({
                       pathname: "/(tabs)/farms/[id]",
                       params: {
                         id: farmId,

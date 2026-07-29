@@ -1,10 +1,11 @@
-import { Tabs, router } from "expo-router";
+import { Tabs } from "expo-router";
 import { Pressable, Text, View } from "react-native";
-import { StackActions } from "@react-navigation/native";
+import { CommonActions, StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../src/theme";
 import {
   armFarmReturnFromMortality,
+  farmDetailNavParams,
   getFarmNavContext,
 } from "../../src/lib/farmNavContext";
 import { requestTabScrollTop, tabStackIndex } from "../../src/lib/tabScroll";
@@ -47,6 +48,23 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
     return false;
   }
 
+  /** Force the Farms stack onto farm detail (index under it for back). */
+  function openFarmFromMortality(farmId: string, houseFlockId: string | null) {
+    const detail = farmDetailNavParams(farmId, houseFlockId);
+    armFarmReturnFromMortality();
+    navigation.dispatch(
+      CommonActions.navigate({
+        name: "farms",
+        params: {
+          state: {
+            index: 1,
+            routes: [{ name: "index" }, { name: "[id]", params: detail }],
+          },
+        },
+      }),
+    );
+  }
+
   return (
     <View
       style={{
@@ -75,18 +93,17 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 const ctx = getFarmNavContext();
                 const fromMortality = focusedRoute?.name === "mortality";
 
-                // Mortality → Farms: open the selected farm/house.
-                // Skip tabPress emit — nested stack listeners popToTop on tabPress
-                // and were winning the race back to the main farms list.
-                if (!focused && route.name === "farms" && fromMortality && ctx.farmId) {
+                // Mortality → Farms: open selected farm. Do NOT emit tabPress —
+                // Expo Router stack listeners popToTop on tabPress and send
+                // users back to the main farms list.
+                if (!focused && route.name === "farms" && fromMortality) {
                   armFarmReturnFromMortality();
-                  router.push({
-                    pathname: "/(tabs)/farms/[id]",
-                    params: {
-                      id: ctx.farmId,
-                      focusHouseFlockId: ctx.houseFlockId ?? "",
-                    },
-                  });
+                  if (ctx.farmId) {
+                    openFarmFromMortality(ctx.farmId, ctx.houseFlockId);
+                  } else {
+                    // Layout/list will still redirect if blur-arm filled pending.
+                    navigation.navigate("farms");
+                  }
                   return;
                 }
 

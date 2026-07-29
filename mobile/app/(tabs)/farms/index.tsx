@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
@@ -19,7 +19,10 @@ import {
   listFarms,
   reactivateFarm,
 } from "../../../src/repos/data";
-import { consumeFarmReturnFromMortality } from "../../../src/lib/farmNavContext";
+import {
+  farmDetailNavParams,
+  peekFarmReturnFromMortality,
+} from "../../../src/lib/farmNavContext";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, styles } from "../../../src/theme";
 import { Card, Chip, PageHeader } from "../../../src/components/ui";
@@ -33,6 +36,7 @@ function dialUrl(phone: string) {
 
 export default function FarmsScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("farms", scrollRef);
   const [status, setStatus] = useState<StatusFilter>("active");
@@ -53,22 +57,18 @@ export default function FarmsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // Safety net: if Mortality armed a return target but we landed on the list,
-      // push straight to that farm/house.
-      const pending = consumeFarmReturnFromMortality();
+      // Safety net: Mortality → Farms landed on the list; open farm from this stack.
+      const pending = peekFarmReturnFromMortality();
       if (pending?.farmId) {
-        router.push({
-          pathname: "/(tabs)/farms/[id]",
-          params: {
-            id: pending.farmId,
-            focusHouseFlockId: pending.houseFlockId ?? "",
-          },
-        });
+        (navigation as any).navigate(
+          "[id]",
+          farmDetailNavParams(pending.farmId, pending.houseFlockId),
+        );
         return;
       }
       setLoading(true);
       load();
-    }, [load, router]),
+    }, [load, navigation]),
   );
 
   function confirmMakeInactive(farmId: string, farmName: string) {

@@ -936,11 +936,13 @@ export default function FarmDetailScreen() {
                   {
                     key: "mortality",
                     label: "Mortality",
-                    onPress: () =>
-                      router.push({
+                    onPress: () => {
+                      setFarmNavContext({ farmId: farm.id, houseFlockId: null });
+                      router.navigate({
                         pathname: "/(tabs)/mortality",
                         params: { farmId: farm.id },
-                      }),
+                      });
+                    },
                   },
                   {
                     key: "lfo",
@@ -1117,7 +1119,9 @@ export default function FarmDetailScreen() {
                             farmId: farm.id,
                             houseFlockId: h.houseFlockId,
                           });
-                          router.push({
+                          // navigate (not push) so the Farms stack keeps this farm
+                          // underneath when the user returns via the Farms tab.
+                          router.navigate({
                             pathname: "/(tabs)/mortality",
                             params: {
                               farmId: farm.id,

@@ -7,7 +7,7 @@ let currentHouseFlockId: string | null = null;
 
 /**
  * When leaving Mortality, Farms should open this farm (not the list).
- * Consumed once by the farms list (or tab handler).
+ * Cleared once farm detail successfully focuses.
  */
 let pendingFarmReturn: {
   farmId: string;
@@ -47,6 +47,11 @@ export function armFarmReturnFromMortality() {
   };
 }
 
+/** Read pending return without clearing (list/layout redirect). */
+export function peekFarmReturnFromMortality() {
+  return pendingFarmReturn;
+}
+
 /** Read-and-clear the Mortality → Farms return target. */
 export function consumeFarmReturnFromMortality() {
   const next = pendingFarmReturn;
@@ -54,6 +59,16 @@ export function consumeFarmReturnFromMortality() {
   return next;
 }
 
-export function peekFarmReturnFromMortality() {
-  return pendingFarmReturn;
+/** Nested Farms-stack params that open a farm detail + house focus. */
+export function farmDetailNavParams(farmId: string, houseFlockId?: string | null) {
+  const focusHouseFlockId = houseFlockId ?? "";
+  return {
+    id: farmId,
+    focusHouseFlockId,
+    screen: "index" as const,
+    params: {
+      id: farmId,
+      focusHouseFlockId,
+    },
+  };
 }
