@@ -415,11 +415,45 @@ export default function ToolsScreen() {
                 ) : null}
               </SectionPanel>
 
-              <Pressable
-                onPress={() => setCfmOpen((v) => (v === "bird" ? null : "bird"))}
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: 28,
+                  marginTop: 4,
+                  marginBottom: 12,
+                }}
               >
-                <Text style={{ color: colors.accentDark, fontWeight: "700" }}>CFM / Bird</Text>
-              </Pressable>
+                <Pressable
+                  onPress={() => setCfmOpen((v) => (v === "bird" ? null : "bird"))}
+                  hitSlop={8}
+                >
+                  <Text
+                    style={{
+                      color: colors.accentDark,
+                      fontWeight: "700",
+                      textAlign: "center",
+                    }}
+                  >
+                    CFM / Bird
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setCfmOpen((v) => (v === "fan" ? null : "fan"))}
+                  hitSlop={8}
+                >
+                  <Text
+                    style={{
+                      color: colors.accentDark,
+                      fontWeight: "700",
+                      textAlign: "center",
+                    }}
+                  >
+                    CFM / Fan size
+                  </Text>
+                </Pressable>
+              </View>
               {cfmOpen === "bird" ? (
                 <View
                   style={{
@@ -427,8 +461,7 @@ export default function ToolsScreen() {
                     borderColor: colors.border,
                     borderRadius: 12,
                     overflow: "hidden",
-                    marginTop: 10,
-                    marginBottom: 4,
+                    marginBottom: 12,
                     backgroundColor: "#fff",
                   }}
                 >
@@ -465,13 +498,6 @@ export default function ToolsScreen() {
                   ))}
                 </View>
               ) : null}
-
-              <Pressable
-                onPress={() => setCfmOpen((v) => (v === "fan" ? null : "fan"))}
-                style={{ marginTop: 10, marginBottom: 12 }}
-              >
-                <Text style={{ color: colors.accentDark, fontWeight: "700" }}>CFM / Fan size</Text>
-              </Pressable>
               {cfmOpen === "fan" ? (
                 <View
                   style={{
@@ -479,8 +505,7 @@ export default function ToolsScreen() {
                     borderColor: colors.border,
                     borderRadius: 12,
                     overflow: "hidden",
-                    marginTop: 10,
-                    marginBottom: 8,
+                    marginBottom: 12,
                     backgroundColor: "#fff",
                   }}
                 >
