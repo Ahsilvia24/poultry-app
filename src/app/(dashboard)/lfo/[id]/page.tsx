@@ -89,6 +89,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
       <Card>
         <LfoInventoryForm
           action={submit}
+          farmName={lfo.farm.farmName}
           orderDate={format(lfo.orderDate, "yyyy-MM-dd")}
           consumptionRate={lfo.consumptionRate}
           submitLabel="Save changes"

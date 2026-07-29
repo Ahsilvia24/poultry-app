@@ -67,6 +67,7 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
       <Card>
         <LfoInventoryForm
           action={submit}
+          farmName={farm.farmName}
           orderDate={today}
           consumptionRate={DEFAULT_LFO_CONSUMPTION_RATE}
           submitLabel="Save LFO"

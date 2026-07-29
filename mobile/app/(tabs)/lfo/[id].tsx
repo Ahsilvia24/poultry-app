@@ -556,7 +556,11 @@ export default function EditLfoScreen() {
               {houseSummary.length > 0 ? (
                 <Card>
                   <View style={{ marginTop: -4 }}>
-                    <LfoHouseSummaryBlock lines={houseSummary} fontSize={15} />
+                    <LfoHouseSummaryBlock
+                      lines={houseSummary}
+                      farmName={farmName}
+                      fontSize={15}
+                    />
                   </View>
                 </Card>
               ) : null}

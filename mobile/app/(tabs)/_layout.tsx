@@ -1,6 +1,6 @@
 import { Tabs, router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
-import { CommonActions, StackActions } from "@react-navigation/native";
+import { StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../src/theme";
 import { getFarmNavContext } from "../../src/lib/farmNavContext";
@@ -107,42 +107,14 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                   const ctx = getFarmNavContext();
                   const fromMortality = focusedRoute?.name === "mortality";
                   if (fromMortality && ctx.farmId) {
-                    const farmParams = {
-                      id: ctx.farmId,
-                      focusHouseFlockId: ctx.houseFlockId ?? "",
-                    };
-                    // Force the farms stack onto this farm detail. A plain
-                    // navigate("farms") / shallow [id] navigate was leaving
-                    // users on the main farms list.
-                    navigation.dispatch(
-                      CommonActions.navigate({
-                        name: "farms",
-                        params: {
-                          state: {
-                            index: 1,
-                            routes: [
-                              { name: "index" },
-                              {
-                                name: "[id]",
-                                params: {
-                                  ...farmParams,
-                                  state: {
-                                    index: 0,
-                                    routes: [{ name: "index", params: farmParams }],
-                                  },
-                                },
-                              },
-                            ],
-                          },
-                        },
-                      }),
-                    );
-                    // Fallback if the stack state shape differs across expo-router builds.
-                    requestAnimationFrame(() => {
-                      router.navigate({
-                        pathname: "/(tabs)/farms/[id]",
-                        params: farmParams,
-                      });
+                    // Same path as "Back to House" — reliable across expo-router.
+                    // Do not also requestTabScrollTop (that snaps to y=0).
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]",
+                      params: {
+                        id: ctx.farmId,
+                        focusHouseFlockId: ctx.houseFlockId ?? "",
+                      },
                     });
                     return;
                   }

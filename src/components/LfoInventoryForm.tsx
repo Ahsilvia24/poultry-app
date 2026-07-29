@@ -64,7 +64,13 @@ function joinFeedUp(date: string, time: string) {
   return `${date}T${time}`;
 }
 
-function CopySummaryButton({ lines }: { lines: string[] }) {
+function CopySummaryButton({
+  lines,
+  farmName,
+}: {
+  lines: string[];
+  farmName?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -77,7 +83,9 @@ function CopySummaryButton({ lines }: { lines: string[] }) {
     <button
       type="button"
       onClick={async () => {
-        await navigator.clipboard.writeText(lines.join("\n"));
+        const name = farmName?.trim();
+        const text = name ? [name, ...lines].join("\n") : lines.join("\n");
+        await navigator.clipboard.writeText(text);
         setCopied(true);
       }}
       className="shrink-0 text-sm font-semibold text-emerald-800 hover:underline"
@@ -91,6 +99,7 @@ export function LfoInventoryForm({
   action,
   houses: initialHouses,
   orderDate,
+  farmName,
   consumptionRate: initialRate = DEFAULT_LFO_CONSUMPTION_RATE,
   submitLabel,
   deleteAction,
@@ -98,6 +107,7 @@ export function LfoInventoryForm({
   action: (formData: FormData) => Promise<{ error?: string; ok?: boolean } | void>;
   houses: LfoHouseRow[];
   orderDate: string;
+  farmName?: string;
   consumptionRate?: number;
   submitLabel: string;
   deleteAction?: () => Promise<void>;
@@ -353,7 +363,7 @@ export function LfoInventoryForm({
               </p>
             ))}
           </div>
-          <CopySummaryButton lines={houseSummary} />
+          <CopySummaryButton lines={houseSummary} farmName={farmName} />
         </div>
       ) : null}
 

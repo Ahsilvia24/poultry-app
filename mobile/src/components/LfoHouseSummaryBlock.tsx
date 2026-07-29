@@ -57,9 +57,11 @@ export function CopyHouseSummaryButton({
 /** Stacked H1/H2/… summary with copy-to-clipboard. Shows every line (no truncation). */
 export function LfoHouseSummaryBlock({
   lines,
+  farmName,
   fontSize = 13,
 }: {
   lines: string[];
+  farmName?: string;
   fontSize?: number;
 }) {
   if (lines.length === 0) return null;
@@ -77,7 +79,7 @@ export function LfoHouseSummaryBlock({
             </Text>
           ))}
         </View>
-        <CopyHouseSummaryButton lines={lines} />
+        <CopyHouseSummaryButton lines={lines} farmName={farmName} />
       </View>
     </View>
   );
