@@ -148,17 +148,15 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
 
           {house ? (
             <div className="rounded-lg border border-stone-200 bg-white px-2.5 py-2.5 text-sm text-stone-700">
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="shrink-0 font-semibold text-stone-900">
-                  House {house.houseNumber}
-                </p>
+              <div className="flex flex-wrap items-baseline gap-1.5">
+                <p className="font-semibold text-stone-900">House {house.houseNumber}</p>
                 {flockWeek != null ? (
-                  <p className="truncate text-right text-[13px] text-stone-600">
-                    Flock week {flockWeek}
+                  <p className="text-[13px] text-stone-600">
+                    · Flock week {flockWeek}
                     {farm?.birdAgeDays != null ? ` · ${farm.birdAgeDays}d` : ""}
                   </p>
                 ) : (
-                  <p className="truncate text-right text-[13px] text-amber-800">No active flock</p>
+                  <p className="text-[13px] text-amber-800">· No active flock</p>
                 )}
               </div>
 
@@ -179,12 +177,13 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                   <dt className="text-xs uppercase tracking-wide text-stone-500">Total CFM</dt>
                   <dd className="font-semibold tabular-nums text-stone-900">
                     {house.totalFanCFM != null ? formatCfm(house.totalFanCFM) : "—"}
+                    {house.numberOfFans != null ? (
+                      <span className="font-medium text-stone-500">
+                        {" "}
+                        · {house.numberOfFans} fans
+                      </span>
+                    ) : null}
                   </dd>
-                  {house.numberOfFans != null ? (
-                    <dd className="text-[11px] text-stone-400">
-                      {house.numberOfFans} fans
-                    </dd>
-                  ) : null}
                 </div>
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-stone-500">Result</dt>

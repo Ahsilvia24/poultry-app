@@ -268,26 +268,26 @@ export default function ToolsScreen() {
                       style={{
                         flexDirection: "row",
                         alignItems: "baseline",
-                        justifyContent: "space-between",
-                        gap: 8,
+                        flexWrap: "wrap",
+                        gap: 6,
                       }}
                     >
-                      <Text style={{ fontWeight: "700", fontSize: 15, flexShrink: 0 }}>
+                      <Text style={{ fontWeight: "700", fontSize: 15 }}>
                         House {selectedHouse.houseNumber}
                       </Text>
                       <Text
                         style={[
                           styles.muted,
-                          { fontSize: 13, flex: 1, textAlign: "right" },
+                          { fontSize: 13 },
                           flockWeek == null ? { color: colors.warn } : null,
                         ]}
                         numberOfLines={1}
                       >
                         {flockWeek != null
-                          ? `Flock week ${flockWeek}${
+                          ? `· Flock week ${flockWeek}${
                               selectedHouse.ageDays != null ? ` · ${selectedHouse.ageDays}d` : ""
                             }`
-                          : "No active flock"}
+                          : "· No active flock"}
                       </Text>
                     </View>
                     <View style={[styles.row, { marginTop: 8 }]}>
@@ -308,7 +308,15 @@ export default function ToolsScreen() {
                       />
                       <MetricTile
                         label="Total CFM"
-                        value={selectedHouse.totalFanCFM?.toLocaleString() ?? "—"}
+                        value={
+                          selectedHouse.totalFanCFM != null
+                            ? `${selectedHouse.totalFanCFM.toLocaleString()}${
+                                selectedHouse.numberOfFans != null
+                                  ? ` · ${selectedHouse.numberOfFans} fans`
+                                  : ""
+                              }`
+                            : "—"
+                        }
                       />
                       <MetricTile
                         label="Result"
