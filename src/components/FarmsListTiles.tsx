@@ -32,7 +32,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
   const [pending, start] = useTransition();
   const touchStartX = useRef<number | null>(null);
 
-  const actionWidth = farm.isActive ? 100 : 196;
+  const actionWidth = farm.isActive ? 100 : 88;
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -63,40 +63,35 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
   return (
     <div className="relative overflow-hidden rounded-xl">
       <div
-        className="absolute inset-y-0 right-0 flex items-stretch gap-2"
+        className="absolute inset-y-0 right-0 flex items-stretch"
         style={{ width: actionWidth }}
         aria-hidden={swipeX > -40}
       >
-        <button
-          type="button"
-          onClick={() => {
-            closeSwipe();
-            setConfirm(farm.isActive ? "inactive" : "active");
-          }}
-          className={`flex w-[100px] flex-col items-center justify-center gap-1 rounded-xl px-1 text-center text-xs font-bold text-white ${
-            farm.isActive ? "bg-stone-600" : "bg-emerald-800"
-          }`}
-          aria-label={
-            farm.isActive
-              ? `Make ${farm.farmName} inactive`
-              : `Make ${farm.farmName} active`
-          }
-        >
-          {farm.isActive ? "Make inactive" : "Make active"}
-        </button>
-        {!farm.isActive ? (
+        {farm.isActive ? (
+          <button
+            type="button"
+            onClick={() => {
+              closeSwipe();
+              setConfirm("inactive");
+            }}
+            className="flex w-full flex-col items-center justify-center gap-1 rounded-xl bg-stone-600 px-1 text-center text-xs font-bold text-white"
+            aria-label={`Make ${farm.farmName} inactive`}
+          >
+            Make inactive
+          </button>
+        ) : (
           <button
             type="button"
             onClick={() => {
               closeSwipe();
               setConfirm("delete");
             }}
-            className="flex w-[88px] flex-col items-center justify-center gap-1 rounded-xl bg-red-700 px-1 text-center text-xs font-bold text-white"
+            className="flex w-full flex-col items-center justify-center gap-1 rounded-xl bg-red-700 px-1 text-center text-xs font-bold text-white"
             aria-label={`Delete ${farm.farmName} permanently`}
           >
             Delete
           </button>
-        ) : null}
+        )}
       </div>
 
       <div
@@ -116,32 +111,49 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
             className="absolute inset-0 z-0 rounded-[inherit]"
             aria-label={`Open ${farm.farmName}`}
           />
-          <div className="relative z-10 pointer-events-none min-w-0">
-            <p className="text-base font-bold leading-snug text-stone-900">
-              {farm.farmName}
-              <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
-              {farm.flockAges.length > 0 ? (
-                <span className="font-semibold text-stone-500">
-                  {" "}
-                  · {farm.flockAges.map((a) => `${a}d`).join(" · ")}
-                </span>
-              ) : null}
-            </p>
-            {farm.growerName || farm.phoneNumber ? (
-              <p className="mt-0.5 text-sm leading-snug text-stone-600">
-                {farm.growerName ? <span>{farm.growerName}</span> : null}
-                {farm.growerName && farm.phoneNumber ? (
-                  <span className="text-stone-400"> · </span>
-                ) : null}
-                {farm.phoneNumber ? (
-                  <a
-                    href={dialHref(farm.phoneNumber)}
-                    className="pointer-events-auto relative z-10 font-semibold text-emerald-800 underline-offset-2 hover:underline"
-                  >
-                    {farm.phoneNumber}
-                  </a>
+          <div className="relative z-10 flex pointer-events-none items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-bold leading-snug text-stone-900">
+                {farm.farmName}
+                <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
+                {farm.flockAges.length > 0 ? (
+                  <span className="font-semibold text-stone-500">
+                    {" "}
+                    · {farm.flockAges.map((a) => `${a}d`).join(" · ")}
+                  </span>
                 ) : null}
               </p>
+              {farm.growerName || farm.phoneNumber ? (
+                <p className="mt-0.5 text-sm leading-snug text-stone-600">
+                  {farm.growerName ? <span>{farm.growerName}</span> : null}
+                  {farm.growerName && farm.phoneNumber ? (
+                    <span className="text-stone-400"> · </span>
+                  ) : null}
+                  {farm.phoneNumber ? (
+                    <a
+                      href={dialHref(farm.phoneNumber)}
+                      className="pointer-events-auto relative z-10 font-semibold text-emerald-800 underline-offset-2 hover:underline"
+                    >
+                      {farm.phoneNumber}
+                    </a>
+                  ) : null}
+                </p>
+              ) : null}
+            </div>
+            {!farm.isActive ? (
+              <button
+                type="button"
+                className="pointer-events-auto relative z-10 inline-flex shrink-0 rounded-md bg-stone-100 px-2.5 py-1 text-sm font-bold text-stone-700 hover:bg-stone-200"
+                aria-label={`Make ${farm.farmName} active`}
+                title="Make active"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setConfirm("active");
+                }}
+              >
+                Inactive
+              </button>
             ) : null}
           </div>
         </Card>
@@ -170,14 +182,14 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
                 ? "Make this farm inactive?"
                 : confirm === "active"
                   ? "Make this farm active?"
-                  : "Delete farm permanently?"}
+                  : "Are you sure?"}
             </h3>
             <p className="mt-2 text-sm text-stone-600">
               {confirm === "inactive"
                 ? `${farm.farmName} will move to Inactive. You can make it active again later. Historical records stay intact.`
                 : confirm === "active"
                   ? `${farm.farmName} will move back to Active and show up in your normal farm lists.`
-                  : `${farm.farmName} will be removed from all farm lists and cannot be restored from Inactive.`}
+                  : `${farm.farmName} will be deleted permanently and cannot be restored from Inactive.`}
             </p>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
@@ -203,7 +215,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
                     ? "Make inactive"
                     : confirm === "active"
                       ? "Make active"
-                      : "Delete permanently"}
+                      : "Delete"}
               </Button>
               <Button
                 type="button"

@@ -90,12 +90,12 @@ export default function FarmsScreen() {
 
   function confirmPermanentDelete(farmId: string, farmName: string) {
     Alert.alert(
-      "Delete farm permanently?",
-      `${farmName} will be removed from all farm lists and cannot be restored from Inactive.`,
+      "Are you sure?",
+      `${farmName} will be deleted permanently and cannot be restored from Inactive.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete permanently",
+          text: "Delete",
           style: "destructive",
           onPress: () => {
             deleteFarm(farmId);
@@ -163,20 +163,13 @@ export default function FarmsScreen() {
               friction={2}
               rightThreshold={40}
               containerStyle={{ marginBottom: 8 }}
-              renderRightActions={() => (
-                <View style={{ flexDirection: "row" }}>
+              renderRightActions={() =>
+                farm.isActive ? (
                   <Pressable
-                    accessibilityLabel={
-                      farm.isActive
-                        ? `Make ${farm.farmName} inactive`
-                        : `Make ${farm.farmName} active`
-                    }
-                    onPress={() => {
-                      if (farm.isActive) confirmMakeInactive(farm.id, farm.farmName);
-                      else confirmReactivate(farm.id, farm.farmName);
-                    }}
+                    accessibilityLabel={`Make ${farm.farmName} inactive`}
+                    onPress={() => confirmMakeInactive(farm.id, farm.farmName)}
                     style={{
-                      backgroundColor: farm.isActive ? "#57534e" : colors.accentDark,
+                      backgroundColor: "#57534e",
                       justifyContent: "center",
                       alignItems: "center",
                       width: 100,
@@ -184,11 +177,7 @@ export default function FarmsScreen() {
                       marginLeft: 8,
                     }}
                   >
-                    <Ionicons
-                      name={farm.isActive ? "pause-circle-outline" : "play-circle-outline"}
-                      size={22}
-                      color="#fff"
-                    />
+                    <Ionicons name="pause-circle-outline" size={22} color="#fff" />
                     <Text
                       style={{
                         color: "#fff",
@@ -199,37 +188,36 @@ export default function FarmsScreen() {
                         paddingHorizontal: 4,
                       }}
                     >
-                      {farm.isActive ? "Make inactive" : "Make active"}
+                      Make inactive
                     </Text>
                   </Pressable>
-                  {!farm.isActive ? (
-                    <Pressable
-                      accessibilityLabel={`Delete ${farm.farmName} permanently`}
-                      onPress={() => confirmPermanentDelete(farm.id, farm.farmName)}
+                ) : (
+                  <Pressable
+                    accessibilityLabel={`Delete ${farm.farmName} permanently`}
+                    onPress={() => confirmPermanentDelete(farm.id, farm.farmName)}
+                    style={{
+                      backgroundColor: colors.danger,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      width: 88,
+                      borderRadius: 14,
+                      marginLeft: 8,
+                    }}
+                  >
+                    <Ionicons name="trash-outline" size={22} color="#fff" />
+                    <Text
                       style={{
-                        backgroundColor: colors.danger,
-                        justifyContent: "center",
-                        alignItems: "center",
-                        width: 88,
-                        borderRadius: 14,
-                        marginLeft: 8,
+                        color: "#fff",
+                        fontWeight: "800",
+                        fontSize: 12,
+                        marginTop: 4,
                       }}
                     >
-                      <Ionicons name="trash-outline" size={22} color="#fff" />
-                      <Text
-                        style={{
-                          color: "#fff",
-                          fontWeight: "800",
-                          fontSize: 12,
-                          marginTop: 4,
-                        }}
-                      >
-                        Delete
-                      </Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-              )}
+                      Delete
+                    </Text>
+                  </Pressable>
+                )
+              }
             >
               <Card style={{ padding: 0, marginBottom: 0, overflow: "hidden" }}>
                 <Pressable
@@ -244,55 +232,86 @@ export default function FarmsScreen() {
                     opacity: pressed ? 0.85 : 1,
                   })}
                 >
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: "800",
-                      color: colors.text,
-                      lineHeight: 20,
-                    }}
-                  >
-                    {farm.farmName}
-                    <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
-                  </Text>
-                  {farm.growerName || farm.phoneNumber ? (
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        alignItems: "baseline",
-                        gap: 6,
-                        marginTop: 1,
-                      }}
-                    >
-                      {farm.growerName ? (
-                        <Text style={[styles.muted, { lineHeight: 16 }]}>{farm.growerName}</Text>
-                      ) : null}
-                      {farm.phoneNumber ? (
-                        <Pressable
-                          accessibilityRole="link"
-                          accessibilityLabel={`Call ${farm.phoneNumber}`}
-                          onPress={(e) => {
-                            e?.stopPropagation?.();
-                            Linking.openURL(dialUrl(farm.phoneNumber!));
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "800",
+                          color: colors.text,
+                          lineHeight: 20,
+                        }}
+                      >
+                        {farm.farmName}
+                        <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
+                      </Text>
+                      {farm.growerName || farm.phoneNumber ? (
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            flexWrap: "wrap",
+                            alignItems: "baseline",
+                            gap: 6,
+                            marginTop: 1,
                           }}
-                          hitSlop={8}
                         >
-                          <Text
-                            style={{
-                              color: colors.accentDark,
-                              fontWeight: "700",
-                              fontSize: 13,
-                              lineHeight: 16,
-                              textDecorationLine: "underline",
-                            }}
-                          >
-                            {farm.phoneNumber}
-                          </Text>
-                        </Pressable>
+                          {farm.growerName ? (
+                            <Text style={[styles.muted, { lineHeight: 16 }]}>
+                              {farm.growerName}
+                            </Text>
+                          ) : null}
+                          {farm.phoneNumber ? (
+                            <Pressable
+                              accessibilityRole="link"
+                              accessibilityLabel={`Call ${farm.phoneNumber}`}
+                              onPress={(e) => {
+                                e?.stopPropagation?.();
+                                Linking.openURL(dialUrl(farm.phoneNumber!));
+                              }}
+                              hitSlop={8}
+                            >
+                              <Text
+                                style={{
+                                  color: colors.accentDark,
+                                  fontWeight: "700",
+                                  fontSize: 13,
+                                  lineHeight: 16,
+                                  textDecorationLine: "underline",
+                                }}
+                              >
+                                {farm.phoneNumber}
+                              </Text>
+                            </Pressable>
+                          ) : null}
+                        </View>
                       ) : null}
                     </View>
-                  ) : null}
+                    {!farm.isActive ? (
+                      <Pressable
+                        accessibilityLabel={`Make ${farm.farmName} active`}
+                        onPress={(e) => {
+                          e?.stopPropagation?.();
+                          confirmReactivate(farm.id, farm.farmName);
+                        }}
+                        hitSlop={8}
+                      >
+                        <Text
+                          style={[
+                            styles.badge,
+                            {
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                              fontSize: 12,
+                              backgroundColor: "#e7e5e4",
+                              color: "#44403c",
+                            },
+                          ]}
+                        >
+                          Inactive
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
                 </Pressable>
               </Card>
             </Swipeable>
