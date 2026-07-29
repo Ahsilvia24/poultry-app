@@ -1,6 +1,6 @@
-import { Tabs } from "expo-router";
+import { Tabs, router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
-import { StackActions } from "@react-navigation/native";
+import { CommonActions, StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../src/theme";
 import { getFarmNavContext } from "../../src/lib/farmNavContext";
@@ -103,20 +103,50 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
 
                 // Switching tabs.
                 if (route.name === "farms") {
-                  // From Mortality: always open the farm (and house) selected there.
+                  // From Mortality: always open the selected farm/house — not the list.
                   const ctx = getFarmNavContext();
                   const fromMortality = focusedRoute?.name === "mortality";
                   if (fromMortality && ctx.farmId) {
-                    navigation.navigate("farms", {
-                      screen: "[id]",
-                      params: {
-                        id: ctx.farmId,
-                        focusHouseFlockId: ctx.houseFlockId ?? undefined,
-                      },
+                    const farmParams = {
+                      id: ctx.farmId,
+                      focusHouseFlockId: ctx.houseFlockId ?? "",
+                    };
+                    // Force the farms stack onto this farm detail. A plain
+                    // navigate("farms") / shallow [id] navigate was leaving
+                    // users on the main farms list.
+                    navigation.dispatch(
+                      CommonActions.navigate({
+                        name: "farms",
+                        params: {
+                          state: {
+                            index: 1,
+                            routes: [
+                              { name: "index" },
+                              {
+                                name: "[id]",
+                                params: {
+                                  ...farmParams,
+                                  state: {
+                                    index: 0,
+                                    routes: [{ name: "index", params: farmParams }],
+                                  },
+                                },
+                              },
+                            ],
+                          },
+                        },
+                      }),
+                    );
+                    // Fallback if the stack state shape differs across expo-router builds.
+                    requestAnimationFrame(() => {
+                      router.navigate({
+                        pathname: "/(tabs)/farms/[id]",
+                        params: farmParams,
+                      });
                     });
-                  } else {
-                    navigation.navigate("farms");
+                    return;
                   }
+                  navigation.navigate("farms");
                   requestTabScrollTop("farms");
                   return;
                 }

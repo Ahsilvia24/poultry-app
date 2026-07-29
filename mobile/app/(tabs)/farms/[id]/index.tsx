@@ -419,6 +419,28 @@ export default function FarmDetailScreen() {
     }
   }, [farmId]);
 
+  const [focusNonce, setFocusNonce] = useState(0);
+
+  const scrollToHouseFlock = useCallback(
+    (houseFlockId: string | null | undefined) => {
+      if (!houseFlockId || !data || data.farm.id !== farmId) return;
+      const house = data.houses.find((h) => h.houseFlockId === houseFlockId);
+      if (!house) return;
+      const key = `house-${house.id}`;
+      let attempts = 0;
+      const tryScroll = () => {
+        const y = sectionY.current[key];
+        if (y != null) {
+          scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
+          return;
+        }
+        if (attempts++ < 12) setTimeout(tryScroll, 50);
+      };
+      setTimeout(tryScroll, 32);
+    },
+    [data, farmId],
+  );
+
   useFocusEffect(
     useCallback(() => {
       load();
@@ -426,43 +448,27 @@ export default function FarmDetailScreen() {
       const ctx = getFarmNavContext();
       const focusHouse =
         focusHouseFlockIdParam ||
-        (ctx.farmId === farmId ? ctx.houseFlockId : null);
+        (ctx.farmId === farmId ? ctx.houseFlockId : null) ||
+        null;
       // Preserve the mortality-selected house when returning to this farm.
       setFarmNavContext({
         farmId,
-        houseFlockId: focusHouse ?? null,
+        houseFlockId: focusHouse,
       });
+      // Bump so the scroll effect re-runs on every return from Mortality.
+      setFocusNonce((n) => n + 1);
     }, [load, farmId, focusHouseFlockIdParam]),
   );
 
   // Scroll to the house selected on Mortality (e.g. House 4).
   useEffect(() => {
-    if (!data || data.farm.id !== farmId) return;
+    if (!data || data.farm.id !== farmId || focusNonce === 0) return;
     const ctx = getFarmNavContext();
     const target =
       focusHouseFlockIdParam ||
       (ctx.farmId === farmId ? ctx.houseFlockId : null);
-    if (!target) return;
-    const house = data.houses.find((h) => h.houseFlockId === target);
-    if (!house) return;
-    const key = `house-${house.id}`;
-    let attempts = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const tryScroll = () => {
-      const y = sectionY.current[key];
-      if (y != null) {
-        scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
-        return;
-      }
-      if (attempts++ < 10) {
-        timer = setTimeout(tryScroll, 50);
-      }
-    };
-    timer = setTimeout(tryScroll, 50);
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [data, farmId, focusHouseFlockIdParam]);
+    scrollToHouseFlock(target);
+  }, [data, farmId, focusHouseFlockIdParam, focusNonce, scrollToHouseFlock]);
 
   function openFarmEditor(farm: FarmDetail["farm"]) {
     setFarmEditError(null);
