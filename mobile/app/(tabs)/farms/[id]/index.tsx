@@ -1092,6 +1092,29 @@ export default function FarmDetailScreen() {
                       }),
                   },
                   {
+                    key: "weight",
+                    label: "Weight Projections",
+                    onPress: () => scrollToSection("weight"),
+                  },
+                  {
+                    key: "generators",
+                    label: "Generator Log",
+                    onPress: () => scrollToSection("generators"),
+                  },
+                  { key: "visits", label: "Visits", onPress: () => scrollToSection("visits") },
+                  { key: "issues", label: "Issues", onPress: () => scrollToSection("issues") },
+                  { key: "litter", label: "Litter", onPress: () => scrollToSection("litter") },
+                  { key: "feed", label: "Feed", onPress: () => scrollToSection("feed") },
+                  {
+                    key: "reports",
+                    label: "Reports",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/reports",
+                        params: { farmId: farm.id },
+                      }),
+                  },
+                  {
                     key: "add-flock",
                     label: "Add flock",
                     onPress: () =>
@@ -1109,29 +1132,6 @@ export default function FarmDetailScreen() {
                         },
                       ]
                     : []),
-                  { key: "visits", label: "Visits", onPress: () => scrollToSection("visits") },
-                  {
-                    key: "generators",
-                    label: "Generator Log",
-                    onPress: () => scrollToSection("generators"),
-                  },
-                  {
-                    key: "weight",
-                    label: "Weight Projections",
-                    onPress: () => scrollToSection("weight"),
-                  },
-                  { key: "issues", label: "Issues", onPress: () => scrollToSection("issues") },
-                  { key: "litter", label: "Litter", onPress: () => scrollToSection("litter") },
-                  { key: "feed", label: "Feed", onPress: () => scrollToSection("feed") },
-                  {
-                    key: "reports",
-                    label: "Reports",
-                    onPress: () =>
-                      router.push({
-                        pathname: "/(tabs)/reports",
-                        params: { farmId: farm.id },
-                      }),
-                  },
                 ] as Array<{ key: string; label: string; onPress: () => void }>
               ).map((link) => (
                 <Pressable
