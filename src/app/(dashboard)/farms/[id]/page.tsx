@@ -223,7 +223,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         />
       </div>
 
-      <h2 className="mt-6 text-xl font-bold">{farm.farmName}</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         {houseCards.map(
           ({
