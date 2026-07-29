@@ -68,14 +68,7 @@ const nextAuth = NextAuth({
       if (user) {
         token.sub = user.id;
       }
-      // Keep JWT usable when bypassing (middleware may still lack a cookie).
-      if (!token.sub && DEV_BYPASS()) {
-        const u = await prisma.user.findUnique({
-          where: { email: DEV_USER_EMAIL() },
-          select: { id: true },
-        });
-        if (u) token.sub = u.id;
-      }
+      // Avoid Prisma in this callback — Auth.js middleware runs on Edge.
       return token;
     },
     async session({ session, token }) {
@@ -102,6 +95,15 @@ export const auth: AuthFn = ((...args: unknown[]) => {
   }
   return (async () => {
     const session = await nextAuth.auth();
+    if (DEV_BYPASS()) {
+      // Prefer the live demo user over a stale JWT from a prior re-seed.
+      const bypass = await resolveDevBypassSession();
+      if (bypass?.user?.id) {
+        if (!session?.user?.id || session.user.id !== bypass.user.id) {
+          return bypass;
+        }
+      }
+    }
     if (session?.user?.id) return session;
     return (await resolveDevBypassSession()) ?? session;
   })();

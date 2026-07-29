@@ -1305,7 +1305,7 @@ export default function FarmDetailScreen() {
 
               {detailsOpen ? (
                 <View style={{ marginTop: 10, gap: 10 }}>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                     <Metric columns={3} label="Placed" value={formatNumber(h.placedBirdCount)} />
                     <Metric columns={3} label="Remaining" value={formatNumber(h.remainingBirdCount)} />
                     <Metric
@@ -1315,7 +1315,7 @@ export default function FarmDetailScreen() {
                       hint="150 catch crew"
                     />
                   </View>
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                     <Metric
                       columns={3}
                       label="Placed/Catch"

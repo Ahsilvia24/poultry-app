@@ -66,9 +66,17 @@ export function Metric({
   columns?: 2 | 3;
 }) {
   const multiline = value.includes("\n");
-  const width = columns === 3 ? "31.5%" : "47%";
+  // Use full 1/N width with inner padding — parent rows must not add `gap`, or
+  // the third column wraps (2 across × 3 down instead of 3 × 2).
+  const width = columns === 3 ? "33.333%" : "50%";
   return (
-    <View style={{ width, marginBottom: 10 }}>
+    <View
+      style={{
+        width,
+        paddingRight: columns === 3 ? 8 : 10,
+        marginBottom: 10,
+      }}
+    >
       <Text style={{ fontSize: 13, color: colors.muted }}>{label}</Text>
       <Text
         style={{

@@ -452,7 +452,7 @@ export default function DashboardScreen() {
 
                   {open ? (
                     <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
-                      <View style={styles.row}>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                         <Metric
                           columns={3}
                           label="Birds placed"
