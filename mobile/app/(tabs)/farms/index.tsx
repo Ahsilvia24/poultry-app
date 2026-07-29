@@ -125,6 +125,11 @@ export default function FarmsScreen() {
         <PageHeader title="Farms" subtitle="Manage grower farms and houses" />
 
         <View style={[styles.row, { marginBottom: 8 }]}>
+          <Chip
+            label="Add Farm"
+            active
+            onPress={() => router.push("/(tabs)/farms/new")}
+          />
           {(["active", "inactive", "all"] as const).map((key) => (
             <Chip
               key={key}
@@ -133,7 +138,6 @@ export default function FarmsScreen() {
               onPress={() => setStatus(key)}
             />
           ))}
-          <Chip label="Add Farm" onPress={() => router.push("/(tabs)/farms/new")} />
         </View>
 
         {error ? <Text style={{ color: colors.danger }}>{error}</Text> : null}
