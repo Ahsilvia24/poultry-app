@@ -1,11 +1,11 @@
-import { Tabs } from "expo-router";
+import { Tabs, router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
-import { CommonActions, StackActions } from "@react-navigation/native";
+import { StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../src/theme";
 import {
   armFarmReturnFromMortality,
-  farmDetailNavParams,
+  clearFarmReturnFromMortality,
   getFarmNavContext,
 } from "../../src/lib/farmNavContext";
 import { requestTabScrollTop, tabStackIndex } from "../../src/lib/tabScroll";
@@ -48,23 +48,6 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
     return false;
   }
 
-  /** Force the Farms stack onto farm detail (index under it for back). */
-  function openFarmFromMortality(farmId: string, houseFlockId: string | null) {
-    const detail = farmDetailNavParams(farmId, houseFlockId);
-    armFarmReturnFromMortality();
-    navigation.dispatch(
-      CommonActions.navigate({
-        name: "farms",
-        params: {
-          state: {
-            index: 1,
-            routes: [{ name: "index" }, { name: "[id]", params: detail }],
-          },
-        },
-      }),
-    );
-  }
-
   return (
     <View
       style={{
@@ -93,17 +76,18 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 const ctx = getFarmNavContext();
                 const fromMortality = focusedRoute?.name === "mortality";
 
-                // Mortality → Farms: open selected farm. Do NOT emit tabPress —
-                // Expo Router stack listeners popToTop on tabPress and send
-                // users back to the main farms list.
-                if (!focused && route.name === "farms" && fromMortality) {
+                // Mortality → Farms: open the selected farm/house.
+                // Do not emit tabPress (nested stacks popToTop on that event).
+                // Do not navigate to farms/index — that was forcing the list.
+                if (!focused && route.name === "farms" && fromMortality && ctx.farmId) {
                   armFarmReturnFromMortality();
-                  if (ctx.farmId) {
-                    openFarmFromMortality(ctx.farmId, ctx.houseFlockId);
-                  } else {
-                    // Layout/list will still redirect if blur-arm filled pending.
-                    navigation.navigate("farms");
-                  }
+                  router.navigate({
+                    pathname: "/(tabs)/farms/[id]",
+                    params: {
+                      id: ctx.farmId,
+                      focusHouseFlockId: ctx.houseFlockId ?? "",
+                    },
+                  });
                   return;
                 }
 
@@ -115,8 +99,9 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 if (event.defaultPrevented) return;
 
                 if (focused) {
-                  // Re-tap while already on Farms/LFO: pop nested stack to root.
+                  // Re-tap Farms/LFO while already on that tab → root list.
                   if (route.name === "farms") {
+                    clearFarmReturnFromMortality();
                     popNestedToRoot(tabRoute);
                     requestTabScrollTop("farms");
                     return;

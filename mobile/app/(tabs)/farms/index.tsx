@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import { Redirect, useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
@@ -19,10 +19,7 @@ import {
   listFarms,
   reactivateFarm,
 } from "../../../src/repos/data";
-import {
-  farmDetailNavParams,
-  peekFarmReturnFromMortality,
-} from "../../../src/lib/farmNavContext";
+import { peekFarmReturnFromMortality } from "../../../src/lib/farmNavContext";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, styles } from "../../../src/theme";
 import { Card, Chip, PageHeader } from "../../../src/components/ui";
@@ -36,13 +33,14 @@ function dialUrl(phone: string) {
 
 export default function FarmsScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
   const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("farms", scrollRef);
   const [status, setStatus] = useState<StatusFilter>("active");
   const [data, setData] = useState<ReturnType<typeof listFarms> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Re-read on focus so Mortality → Farms pending redirect is picked up.
+  const [pendingReturn, setPendingReturn] = useState(() => peekFarmReturnFromMortality());
 
   const load = useCallback(async () => {
     try {
@@ -57,19 +55,28 @@ export default function FarmsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // Safety net: Mortality → Farms landed on the list; open farm from this stack.
       const pending = peekFarmReturnFromMortality();
-      if (pending?.farmId) {
-        (navigation as any).navigate(
-          "[id]",
-          farmDetailNavParams(pending.farmId, pending.houseFlockId),
-        );
-        return;
-      }
+      setPendingReturn(pending);
+      if (pending?.farmId) return;
       setLoading(true);
       load();
-    }, [load, navigation]),
+    }, [load]),
   );
+
+  // If Mortality armed a return target and we landed on the list, bounce to that farm.
+  if (pendingReturn?.farmId) {
+    return (
+      <Redirect
+        href={{
+          pathname: "/(tabs)/farms/[id]",
+          params: {
+            id: pendingReturn.farmId,
+            focusHouseFlockId: pendingReturn.houseFlockId ?? "",
+          },
+        }}
+      />
+    );
+  }
 
   function confirmMakeInactive(farmId: string, farmName: string) {
     Alert.alert(
