@@ -81,83 +81,83 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="flex w-full items-start justify-between gap-2 px-4 py-3 text-left transition hover:bg-stone-50"
+            className="w-full px-4 py-3 text-left transition hover:bg-stone-50"
             aria-expanded={open}
+            aria-label={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
           >
-            <div className="min-w-0 flex-1">
-              <p className="text-lg font-bold text-stone-900">
-                <span className="mr-1.5 inline-block w-4 text-stone-500" aria-hidden="true">
-                  {open ? "▾" : "▸"}
-                </span>
-                {farm.farmName}
-                <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
-                {farm.flockAgeDays != null ? (
-                  <span className="font-semibold text-stone-500"> · {farm.flockAgeDays}d</span>
-                ) : null}
-              </p>
+            <div className="flex w-full items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-bold text-stone-900">
+                  {farm.farmName}
+                  <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
+                  {farm.flockAgeDays != null ? (
+                    <span className="font-semibold text-stone-500"> · {farm.flockAgeDays}d</span>
+                  ) : null}
+                </p>
+              </div>
+              <StatusBadge status={farm.status} />
             </div>
-            <StatusBadge status={farm.status} />
-          </button>
 
-          {open ? (
-            <div className="border-t border-stone-100 px-4 pb-4 pt-3">
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <div>
-                  <p className="text-stone-500">Birds placed</p>
-                  <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
+            {open ? (
+              <div className="mt-3 border-t border-stone-100 pt-3">
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <p className="text-stone-500">Birds placed</p>
+                    <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
+                  </div>
+                  <div>
+                    <p className="text-stone-500">Birds remaining</p>
+                    <p className="font-semibold">{formatNumber(farm.birdsRemaining)}</p>
+                  </div>
+                  <div>
+                    <p className="text-stone-500">Proj. Head Count</p>
+                    <p className="font-semibold">
+                      {farm.projectedHeadCount != null
+                        ? formatNumber(farm.projectedHeadCount)
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-stone-500">Today&apos;s Mortality</p>
+                    <p className="font-semibold">{farm.todayMortality}</p>
+                  </div>
+                  <div>
+                    <p className="text-stone-500">Total Mortality</p>
+                    <p className="font-semibold">
+                      {farm.cumulativeMortality} ({formatPct(farm.cumulativeMortalityPct)})
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-stone-500">Projected Mortality</p>
+                    <p className="font-semibold">
+                      {farm.projectedMortality != null
+                        ? `${formatNumber(farm.projectedMortality)} (${formatPct(
+                            farm.totalBirdsPlaced > 0
+                              ? (farm.projectedMortality / farm.totalBirdsPlaced) * 100
+                              : 0,
+                          )})`
+                        : "—"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-stone-500">Birds remaining</p>
-                  <p className="font-semibold">{formatNumber(farm.birdsRemaining)}</p>
-                </div>
-                <div>
-                  <p className="text-stone-500">Proj. Head Count</p>
-                  <p className="font-semibold">
-                    {farm.projectedHeadCount != null
-                      ? formatNumber(farm.projectedHeadCount)
-                      : "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-stone-500">Today&apos;s Mortality</p>
-                  <p className="font-semibold">{farm.todayMortality}</p>
-                </div>
-                <div>
-                  <p className="text-stone-500">Total Mortality</p>
-                  <p className="font-semibold">
-                    {farm.cumulativeMortality} ({formatPct(farm.cumulativeMortalityPct)})
-                  </p>
-                </div>
-                <div>
-                  <p className="text-stone-500">Projected Mortality</p>
-                  <p className="font-semibold">
-                    {farm.projectedMortality != null
-                      ? `${formatNumber(farm.projectedMortality)} (${formatPct(
-                          farm.totalBirdsPlaced > 0
-                            ? (farm.projectedMortality / farm.totalBirdsPlaced) * 100
-                            : 0,
-                        )})`
-                      : "—"}
-                  </p>
+                {farm.weeklyMortality.length > 0 ? (
+                  <div className="mt-3 border-t border-stone-100 pt-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                      Weekly mortality
+                    </p>
+                    <WeeklyMortalityList weeks={farm.weeklyMortality} />
+                  </div>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
+                  <span>
+                    Last visit:{" "}
+                    {farm.lastVisitDate ? formatLastVisitDate(farm.lastVisitDate) : "—"}
+                  </span>
+                  <span>{openIssuesLabel(farm.openIssues)}</span>
                 </div>
               </div>
-              {farm.weeklyMortality.length > 0 ? (
-                <div className="mt-3 border-t border-stone-100 pt-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-                    Weekly mortality
-                  </p>
-                  <WeeklyMortalityList weeks={farm.weeklyMortality} />
-                </div>
-              ) : null}
-              <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
-                <span>
-                  Last visit:{" "}
-                  {farm.lastVisitDate ? formatLastVisitDate(farm.lastVisitDate) : "—"}
-                </span>
-                <span>{openIssuesLabel(farm.openIssues)}</span>
-              </div>
-            </div>
-          ) : null}
+            ) : null}
+          </button>
         </Card>
       </div>
 

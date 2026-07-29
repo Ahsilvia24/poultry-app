@@ -543,9 +543,6 @@ export default function DashboardScreen() {
                       <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
                         <View style={{ flex: 1, minWidth: 0 }}>
                           <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                            <Text style={{ fontWeight: "600", color: colors.muted }}>
-                              {open ? "▾ " : "▸ "}
-                            </Text>
                             {farm.farmName}
                             <Text style={{ fontWeight: "600", color: colors.muted }}>
                               {" "}
@@ -570,98 +567,98 @@ export default function DashboardScreen() {
                         </View>
                         <StatusBadge status={farm.status} />
                       </View>
-                    </Pressable>
 
-                    {open ? (
-                      <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
-                        <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                          <Metric
-                            columns={3}
-                            label="Birds placed"
-                            value={formatNumber(farm.birdsPlaced)}
-                          />
-                          <Metric
-                            columns={3}
-                            label="Birds remaining"
-                            value={formatNumber(farm.birdsRemaining)}
-                          />
-                          <Metric
-                            columns={3}
-                            label="Proj. Head Count"
-                            value={formatNumber(farm.projectedHeadCount)}
-                          />
-                          <Metric
-                            columns={3}
-                            label="Today's Mortality"
-                            value={String(farm.todayMortality)}
-                          />
-                          <Metric
-                            columns={3}
-                            label="Total Mortality"
-                            value={`${farm.cumulativeMortality} (${formatPct(farm.cumulativeMortalityPct)})`}
-                          />
-                          <Metric
-                            columns={3}
-                            label="Projected Mortality"
-                            value={
-                              farm.projectedMortality != null && farm.birdsPlaced > 0
-                                ? `${formatNumber(farm.projectedMortality)} (${formatPct(
-                                    (farm.projectedMortality / farm.birdsPlaced) * 100,
-                                  )})`
-                                : formatNumber(farm.projectedMortality)
-                            }
-                          />
-                        </View>
+                      {open ? (
+                        <View style={{ paddingTop: 14 }}>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                            <Metric
+                              columns={3}
+                              label="Birds placed"
+                              value={formatNumber(farm.birdsPlaced)}
+                            />
+                            <Metric
+                              columns={3}
+                              label="Birds remaining"
+                              value={formatNumber(farm.birdsRemaining)}
+                            />
+                            <Metric
+                              columns={3}
+                              label="Proj. Head Count"
+                              value={formatNumber(farm.projectedHeadCount)}
+                            />
+                            <Metric
+                              columns={3}
+                              label="Today's Mortality"
+                              value={String(farm.todayMortality)}
+                            />
+                            <Metric
+                              columns={3}
+                              label="Total Mortality"
+                              value={`${farm.cumulativeMortality} (${formatPct(farm.cumulativeMortalityPct)})`}
+                            />
+                            <Metric
+                              columns={3}
+                              label="Projected Mortality"
+                              value={
+                                farm.projectedMortality != null && farm.birdsPlaced > 0
+                                  ? `${formatNumber(farm.projectedMortality)} (${formatPct(
+                                      (farm.projectedMortality / farm.birdsPlaced) * 100,
+                                    )})`
+                                  : formatNumber(farm.projectedMortality)
+                              }
+                            />
+                          </View>
 
-                        {farm.weeklyMortality.length > 0 ? (
-                          <View
-                            style={{
-                              borderTopWidth: 1,
-                              borderTopColor: "#f5f5f4",
-                              paddingTop: 10,
-                              marginTop: 4,
-                            }}
-                          >
-                            <Text
+                          {farm.weeklyMortality.length > 0 ? (
+                            <View
                               style={{
-                                fontSize: 11,
-                                fontWeight: "700",
-                                color: colors.muted,
-                                textTransform: "uppercase",
-                                letterSpacing: 0.4,
-                                marginBottom: 8,
+                                borderTopWidth: 1,
+                                borderTopColor: "#f5f5f4",
+                                paddingTop: 10,
+                                marginTop: 4,
                               }}
                             >
-                              Weekly mortality
-                            </Text>
-                            <WeeklyMortalityList weeks={farm.weeklyMortality} />
-                          </View>
-                        ) : null}
+                              <Text
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: "700",
+                                  color: colors.muted,
+                                  textTransform: "uppercase",
+                                  letterSpacing: 0.4,
+                                  marginBottom: 8,
+                                }}
+                              >
+                                Weekly mortality
+                              </Text>
+                              <WeeklyMortalityList weeks={farm.weeklyMortality} />
+                            </View>
+                          ) : null}
 
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            flexWrap: "wrap",
-                            gap: 12,
-                            marginTop: 10,
-                          }}
-                        >
-                          <Text style={[styles.muted, { fontSize: 12 }]}>
-                            Last visit:{" "}
-                            {farm.lastVisitDate
-                              ? formatLastVisitDate(farm.lastVisitDate)
-                              : "—"}
-                          </Text>
-                          <Text style={[styles.muted, { fontSize: 12 }]}>
-                            {farm.openIssues <= 0
-                              ? "No open issues"
-                              : farm.openIssues === 1
-                                ? "1 open issue"
-                                : `${farm.openIssues} open issues`}
-                          </Text>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              flexWrap: "wrap",
+                              gap: 12,
+                              marginTop: 10,
+                            }}
+                          >
+                            <Text style={[styles.muted, { fontSize: 12 }]}>
+                              Last visit:{" "}
+                              {farm.lastVisitDate
+                                ? formatLastVisitDate(farm.lastVisitDate)
+                                : "—"}
+                            </Text>
+                            <Text style={[styles.muted, { fontSize: 12 }]}>
+                              {farm.openIssues <= 0
+                                ? "No open issues"
+                                : farm.openIssues === 1
+                                  ? "1 open issue"
+                                  : `${farm.openIssues} open issues`}
+                            </Text>
+                          </View>
                         </View>
-                      </View>
-                    ) : null}
+                      ) : null}
+                    </Pressable>
                   </Card>
                 </Swipeable>
               );
