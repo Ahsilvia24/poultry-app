@@ -77,7 +77,7 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 if (event.defaultPrevented) return;
 
                 if (focused) {
-                  // Farms: leave a farm detail with a single pop (slide right), not a reset.
+                  // Farms: always return to the main farms list.
                   if (route.name === "farms") {
                     popNestedToRoot(tabRoute);
                     requestTabScrollTop("farms");
@@ -101,7 +101,13 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                   return;
                 }
 
-                // Switching tabs: restore last screen in that tab, then snap to top.
+                // Switching tabs.
+                if (route.name === "farms") {
+                  // Always land on the farms list (not a previously open farm detail).
+                  navigation.navigate("farms", { screen: "index" });
+                  requestTabScrollTop("farms");
+                  return;
+                }
                 if (route.name === "mortality") {
                   const ctx = getFarmNavContext();
                   navigation.navigate(route.name, {

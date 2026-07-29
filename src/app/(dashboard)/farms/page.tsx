@@ -1,15 +1,18 @@
 import Link from "next/link";
-import { addDays, differenceInCalendarDays, format } from "date-fns";
+import { differenceInCalendarDays } from "date-fns";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DeleteFarmButton, DeactivateFarmButton, ReactivateFarmButton } from "@/components/FarmOpsForms";
-import { FarmListSettingsButton } from "@/components/FarmListSettingsButton";
 import { Button, Card, PageHeader } from "@/components/ui";
-import { summarizeForDate } from "@/lib/mortality/calculations";
-import { cn, formatNumber } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 type SearchParams = Promise<{ status?: string }>;
+
+function dialHref(phone: string) {
+  const digits = phone.replace(/[^\d+]/g, "");
+  return digits ? `tel:${digits}` : `tel:${phone}`;
+}
 
 export default async function FarmsPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await auth();
@@ -30,22 +33,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
       flocks: {
         where: { flockStatus: "ACTIVE", deletedAt: null },
         orderBy: { placementDate: "asc" },
-        include: {
-          houseFlocks: {
-            include: {
-              mortalities: {
-                where: { isDraft: false },
-                select: {
-                  mortalityDate: true,
-                  birdAgeInDays: true,
-                  dailyMortalityCount: true,
-                  cullCount: true,
-                  totalDailyLoss: true,
-                },
-              },
-            },
-          },
-        },
+        select: { placementDate: true },
       },
     },
     orderBy: { farmName: "asc" },
@@ -92,133 +80,51 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {farms.map((farm) => {
-            const activeFlocks = farm.flocks;
             const houseCount = farm.houses.length;
-            const birdsPlaced =
-              activeFlocks.length > 0
-                ? activeFlocks.reduce(
-                    (sum, fl) =>
-                      sum + fl.houseFlocks.reduce((s, hf) => s + hf.placedBirdCount, 0),
-                    0,
-                  )
-                : null;
-            const currentHeadCount =
-              activeFlocks.length > 0
-                ? activeFlocks.reduce((sum, fl) => {
-                    return (
-                      sum +
-                      fl.houseFlocks.reduce((s, hf) => {
-                        const metrics = summarizeForDate(hf.placedBirdCount, hf.mortalities, today);
-                        return s + metrics.remaining;
-                      }, 0)
-                    );
-                  }, 0)
-                : null;
-            const placementDates = Array.from(
+            const flockAges = Array.from(
               new Set(
-                activeFlocks.map((fl) => format(fl.placementDate, "yyyy-MM-dd")),
+                farm.flocks.map((fl) => differenceInCalendarDays(today, fl.placementDate)),
               ),
-            ).sort();
-            const catchDates = Array.from(
-              new Set(
-                activeFlocks.map((fl) =>
-                  format(fl.projectedCatchDate ?? addDays(fl.placementDate, 52), "yyyy-MM-dd"),
-                ),
-              ),
-            ).sort();
-            const flockAges = placementDates
-              .map((d) => differenceInCalendarDays(today, new Date(`${d}T12:00:00`)))
-              .filter((a, i, arr) => arr.indexOf(a) === i)
-              .sort((a, b) => a - b);
+            ).sort((a, b) => a - b);
 
             return (
               <Card key={farm.id} className="transition hover:border-emerald-400">
                 <div className="flex items-start justify-between gap-3">
-                  <Link href={`/farms/${farm.id}`} className="min-w-0 flex-1">
-                    <p className="text-lg font-bold text-stone-900">
-                      {farm.farmName}
-                      <span className="font-semibold text-stone-500">
-                        {" "}
-                        ({houseCount})
-                      </span>
-                      {flockAges.length > 0 ? (
-                        <span className="font-semibold text-stone-500">
-                          {" "}
-                          · {flockAges.map((a) => `${a}d`).join(" · ")}
-                        </span>
-                      ) : null}
-                    </p>
-                    {farm.growerName || farm.phoneNumber ? (
-                      <p className="text-sm text-stone-600">
-                        {[farm.growerName, farm.phoneNumber].filter(Boolean).join("  ")}
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/farms/${farm.id}`} className="block">
+                      <p className="text-lg font-bold text-stone-900">
+                        {farm.farmName}
+                        <span className="font-semibold text-stone-500"> ({houseCount})</span>
+                        {flockAges.length > 0 ? (
+                          <span className="font-semibold text-stone-500">
+                            {" "}
+                            · {flockAges.map((a) => `${a}d`).join(" · ")}
+                          </span>
+                        ) : null}
                       </p>
+                      {farm.growerName ? (
+                        <p className="mt-0.5 text-sm text-stone-600">{farm.growerName}</p>
+                      ) : null}
+                    </Link>
+                    {farm.phoneNumber ? (
+                      <a
+                        href={dialHref(farm.phoneNumber)}
+                        className="mt-0.5 inline-block text-sm font-semibold text-emerald-800 underline-offset-2 hover:underline"
+                      >
+                        {farm.phoneNumber}
+                      </a>
                     ) : null}
-                  </Link>
-                  <div className="ml-2 flex shrink-0 items-center gap-1">
+                  </div>
+                  <div className="ml-2 flex shrink-0 flex-col items-end gap-1">
                     {farm.isActive ? (
                       <DeactivateFarmButton farmId={farm.id} appearance="badge" />
                     ) : (
                       <ReactivateFarmButton farmId={farm.id} appearance="badge" />
                     )}
+                    {!farm.isActive ? (
+                      <DeleteFarmButton farmId={farm.id} appearance="icon" />
+                    ) : null}
                   </div>
-                </div>
-                <Link href={`/farms/${farm.id}`} className="mt-4 block">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <p className="text-stone-500">Birds placed</p>
-                      <p className="font-semibold">
-                        {birdsPlaced != null ? formatNumber(birdsPlaced) : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-stone-500">
-                        Placement date{placementDates.length > 1 ? "s" : ""}
-                      </p>
-                      {placementDates.length === 0 ? (
-                        <p className="font-semibold">—</p>
-                      ) : (
-                        placementDates.map((d) => (
-                          <p key={d} className="font-semibold leading-snug">
-                            {format(new Date(`${d}T12:00:00`), "EEE, MMM d, yyyy")}
-                          </p>
-                        ))
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-stone-500">Current Head Count</p>
-                      <p className="font-semibold">
-                        {currentHeadCount != null ? formatNumber(currentHeadCount) : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-stone-500">
-                        Catch date{catchDates.length > 1 ? "s" : ""}
-                      </p>
-                      {catchDates.length === 0 ? (
-                        <p className="font-semibold">—</p>
-                      ) : (
-                        catchDates.map((d) => (
-                          <p key={d} className="font-semibold leading-snug">
-                            {format(new Date(`${d}T12:00:00`), "EEE, MMM d, yyyy")}
-                          </p>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </Link>
-                <div className="mt-1 flex items-center justify-end gap-1">
-                  <FarmListSettingsButton
-                    farm={{
-                      id: farm.id,
-                      farmName: farm.farmName,
-                      growerName: farm.growerName,
-                      phoneNumber: farm.phoneNumber,
-                      email: farm.email,
-                      notes: farm.notes,
-                      numberOfGenerators: farm.numberOfGenerators,
-                    }}
-                  />
-                  {!farm.isActive ? <DeleteFarmButton farmId={farm.id} appearance="icon" /> : null}
                 </div>
               </Card>
             );
