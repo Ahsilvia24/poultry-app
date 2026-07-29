@@ -547,11 +547,12 @@ export function getDashboard() {
       a.farmName.localeCompare(b.farmName),
   );
 
+  const catchHorizonEnd = addDaysKey(today, 12);
   const upcomingCatchesSorted = upcomingCatches
+    .filter((c) => c.date >= today && c.date <= catchHorizonEnd)
     .sort(
       (a, b) => a.date.localeCompare(b.date) || a.farmName.localeCompare(b.farmName),
-    )
-    .slice(0, 24);
+    );
 
   return {
     stats: {

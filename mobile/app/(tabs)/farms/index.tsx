@@ -124,17 +124,29 @@ export default function FarmsScreen() {
       >
         <PageHeader title="Farms" subtitle="Manage grower farms and houses" />
 
-        <View style={[styles.row, { marginBottom: 8 }]}>
-          <Chip
-            label="Add Farm"
-            active
+        <View style={[styles.row, { marginBottom: 8, alignItems: "center" }]}>
+          <Pressable
             onPress={() => router.push("/(tabs)/farms/new")}
-          />
+            accessibilityRole="button"
+            accessibilityLabel="Add Farm"
+            style={{
+              borderRadius: 10,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              marginRight: 8,
+              marginBottom: 8,
+              flexShrink: 0,
+              backgroundColor: colors.accentDark,
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Add Farm</Text>
+          </Pressable>
           {(["active", "inactive", "all"] as const).map((key) => (
             <Chip
               key={key}
               label={key[0]!.toUpperCase() + key.slice(1)}
               active={status === key}
+              tone="neutral"
               onPress={() => setStatus(key)}
             />
           ))}

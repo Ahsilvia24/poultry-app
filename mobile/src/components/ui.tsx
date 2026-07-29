@@ -100,11 +100,15 @@ export function Chip({
   label,
   active,
   onPress,
+  tone = "accent",
 }: {
   label: string;
   active?: boolean;
   onPress: () => void;
+  /** accent = green when active (default); neutral = dark stone when active */
+  tone?: "accent" | "neutral";
 }) {
+  const activeBg = tone === "neutral" ? "#292524" : colors.accentDark;
   return (
     <Pressable
       onPress={onPress}
@@ -116,7 +120,7 @@ export function Chip({
           marginRight: 8,
           marginBottom: 8,
           flexShrink: 0,
-          backgroundColor: active ? colors.accentDark : "#e7e5e4",
+          backgroundColor: active ? activeBg : "#e7e5e4",
         },
       ]}
     >

@@ -279,6 +279,9 @@ export async function getDashboardData(userId: string) {
 
   const totalHouses = farms.reduce((s, f) => s + f.houses.length, 0);
 
+  const catchHorizonEnd = format(addDays(startOfDay(today), 12), "yyyy-MM-dd");
+  const todayCatchKey = format(startOfDay(today), "yyyy-MM-dd");
+
   return {
     stats: {
       activeFarms: farms.length,
@@ -291,8 +294,8 @@ export async function getDashboardData(userId: string) {
     },
     farmCards,
     upcomingCatches: upcomingCatches
-      .sort((a, b) => a.date.localeCompare(b.date) || a.farmName.localeCompare(b.farmName))
-      .slice(0, 24),
+      .filter((c) => c.date >= todayCatchKey && c.date <= catchHorizonEnd)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.farmName.localeCompare(b.farmName)),
     todaysSchedule: todaysSchedule.slice(0, 30),
     upcomingSchedule: upcomingSchedule.slice(0, 40),
     recentCleanouts: recentCleanouts.map((c) => ({
