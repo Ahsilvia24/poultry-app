@@ -67,10 +67,11 @@ function mortalityEntered(row: DayRow) {
 
 /**
  * Past/today with no mortality total yet — Loss cell shows !.
+ * Day 0 is usually left blank (entry starts on day 1), so it never prompts.
  * Culls are optional metadata and do not clear the !.
  */
 function needsEntry(row: DayRow, asOfDateKey: string) {
-  return row.mortalityDate <= asOfDateKey && !mortalityEntered(row);
+  return row.age > 0 && row.mortalityDate <= asOfDateKey && !mortalityEntered(row);
 }
 
 /**
@@ -82,9 +83,7 @@ function firstUnfilledAfterLastFilled(rows: DayRow[], asOfDateKey: string): DayR
   for (const row of rows) {
     if (mortalityEntered(row)) lastFilledAge = Math.max(lastFilledAge, row.age);
   }
-  const afterLast = rows.find(
-    (r) => r.age > lastFilledAge && r.mortalityDate <= asOfDateKey && !mortalityEntered(r),
-  );
+  const afterLast = rows.find((r) => r.age > lastFilledAge && needsEntry(r, asOfDateKey));
   if (afterLast) return afterLast;
   if (lastFilledAge < 0) {
     return rows.find((r) => needsEntry(r, asOfDateKey)) ?? null;
