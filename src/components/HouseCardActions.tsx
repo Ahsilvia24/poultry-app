@@ -15,6 +15,7 @@ export type HouseEditValues = {
   placedBirdCount: number | null;
   placementDateKey?: string | null;
   catchDateKey?: string | null;
+  flockNumber?: string | null;
 };
 
 function addDaysKey(dateKey: string, days: number) {
@@ -201,6 +202,16 @@ export function HouseCardActions({
                   </div>
                   {hasActiveFlock ? (
                     <>
+                      <div>
+                        <Label htmlFor={`edit-flockNumber-${house.id}`}>Flock ID</Label>
+                        <Input
+                          id={`edit-flockNumber-${house.id}`}
+                          name="flockNumber"
+                          defaultValue={house.flockNumber ?? ""}
+                          placeholder="e.g. 26-07"
+                          autoCapitalize="characters"
+                        />
+                      </div>
                       <div>
                         <Label htmlFor={`edit-placedBirdCount-${house.id}`}>Birds placed</Label>
                         <Input

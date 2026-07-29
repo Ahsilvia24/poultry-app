@@ -227,8 +227,12 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
   const placedRaw = emptyToNull(formData.get("placedBirdCount"));
   const placementRaw = emptyToNull(formData.get("placementDate"));
   const catchRaw = emptyToNull(formData.get("catchDate"));
+  const flockNumberRaw = emptyToNull(formData.get("flockNumber"));
   const wantsFlockFields =
-    placedRaw != null || placementRaw != null || catchRaw != null;
+    placedRaw != null ||
+    placementRaw != null ||
+    catchRaw != null ||
+    flockNumberRaw != null;
 
   if (wantsFlockFields) {
     let placedBirdCount: number | null = null;
@@ -272,6 +276,17 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
       return { error: "Add an active flock before setting birds placed or dates" };
     }
 
+    if (flockNumberRaw != null) {
+      const nextNumber = flockNumberRaw.trim();
+      if (!nextNumber) {
+        return { error: "Flock ID is required" };
+      }
+      await prisma.flock.update({
+        where: { id: activeFlock.id },
+        data: { flockNumber: nextNumber },
+      });
+    }
+
     const hf = await prisma.houseFlock.findFirst({
       where: { flockId: activeFlock.id, houseId },
     });
@@ -285,7 +300,7 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
           ...(catchDate != null ? { catchDate } : {}),
         },
       });
-    } else {
+    } else if (placedBirdCount != null || placementDate != null || catchDate != null) {
       if (placedBirdCount == null) {
         return { error: "Birds placed is required when adding this house to the flock" };
       }

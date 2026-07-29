@@ -1872,6 +1872,20 @@ export default function FarmDetailScreen() {
                   />
                   {data.activeFlock ? (
                     <>
+                      <Text style={[styles.label, { marginTop: 2 }]}>Flock ID</Text>
+                      <TextInput
+                        style={[styles.input, { fontSize: 20, fontWeight: "700", color: colors.text }]}
+                        value={editingHouse.flockNumber}
+                        onChangeText={(v) =>
+                          setEditingHouse((prev) =>
+                            prev ? { ...prev, flockNumber: v } : prev,
+                          )
+                        }
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        placeholder="e.g. 26-07"
+                        placeholderTextColor={colors.muted}
+                      />
                       <HouseNumFieldButton
                         label="Birds placed"
                         value={editingHouse.placedBirdCount}
@@ -1915,20 +1929,6 @@ export default function FarmDetailScreen() {
                           }
                         />
                       </View>
-                      <Text style={[styles.label, { marginTop: 2 }]}>Flock ID</Text>
-                      <TextInput
-                        style={[styles.input, { fontSize: 20, fontWeight: "700", color: colors.text }]}
-                        value={editingHouse.flockNumber}
-                        onChangeText={(v) =>
-                          setEditingHouse((prev) =>
-                            prev ? { ...prev, flockNumber: v } : prev,
-                          )
-                        }
-                        autoCapitalize="characters"
-                        autoCorrect={false}
-                        placeholder="e.g. 26-07"
-                        placeholderTextColor={colors.muted}
-                      />
                       <Pressable
                         onPress={() =>
                           setEditingHouse((prev) =>

@@ -113,6 +113,7 @@ export function HouseCard({
               placedBirdCount: birdsPlaced ?? house.placedBirdCount ?? null,
               placementDateKey,
               catchDateKey,
+              flockNumber: flockLabel,
             }}
           />
         </div>
