@@ -31,8 +31,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
   const [confirm, setConfirm] = useState<ConfirmKind>(null);
   const [pending, start] = useTransition();
   const touchStartX = useRef<number | null>(null);
-
-  const actionWidth = farm.isActive ? 100 : 88;
+  const actionWidth = 88;
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -63,35 +62,20 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
   return (
     <div className="relative overflow-hidden rounded-xl">
       <div
-        className="absolute inset-y-0 right-0 flex items-stretch"
-        style={{ width: actionWidth }}
+        className="absolute inset-y-0 right-0 flex w-[88px] items-stretch"
         aria-hidden={swipeX > -40}
       >
-        {farm.isActive ? (
-          <button
-            type="button"
-            onClick={() => {
-              closeSwipe();
-              setConfirm("inactive");
-            }}
-            className="flex w-full flex-col items-center justify-center gap-1 rounded-xl bg-stone-600 px-1 text-center text-xs font-bold text-white"
-            aria-label={`Make ${farm.farmName} inactive`}
-          >
-            Make inactive
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              closeSwipe();
-              setConfirm("delete");
-            }}
-            className="flex w-full flex-col items-center justify-center gap-1 rounded-xl bg-red-700 px-1 text-center text-xs font-bold text-white"
-            aria-label={`Delete ${farm.farmName} permanently`}
-          >
-            Delete
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => {
+            closeSwipe();
+            setConfirm("delete");
+          }}
+          className="flex w-full flex-col items-center justify-center gap-1 rounded-xl bg-red-700 px-1 text-center text-xs font-bold text-white"
+          aria-label={`Delete ${farm.farmName} permanently`}
+        >
+          Delete
+        </button>
       </div>
 
       <div
@@ -140,21 +124,27 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
                 </p>
               ) : null}
             </div>
-            {!farm.isActive ? (
-              <button
-                type="button"
-                className="pointer-events-auto relative z-10 inline-flex shrink-0 rounded-md bg-stone-100 px-2.5 py-1 text-sm font-bold text-stone-700 hover:bg-stone-200"
-                aria-label={`Make ${farm.farmName} active`}
-                title="Make active"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setConfirm("active");
-                }}
-              >
-                Inactive
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className={
+                farm.isActive
+                  ? "pointer-events-auto relative z-10 inline-flex shrink-0 rounded-md bg-emerald-100 px-2.5 py-1 text-sm font-bold text-emerald-900 hover:bg-emerald-200"
+                  : "pointer-events-auto relative z-10 inline-flex shrink-0 rounded-md bg-stone-100 px-2.5 py-1 text-sm font-bold text-stone-700 hover:bg-stone-200"
+              }
+              aria-label={
+                farm.isActive
+                  ? `Make ${farm.farmName} inactive`
+                  : `Make ${farm.farmName} active`
+              }
+              title={farm.isActive ? "Make inactive" : "Make active"}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setConfirm(farm.isActive ? "inactive" : "active");
+              }}
+            >
+              {farm.isActive ? "Active" : "Inactive"}
+            </button>
           </div>
         </Card>
       </div>
@@ -189,7 +179,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
                 ? `${farm.farmName} will move to Inactive. You can make it active again later. Historical records stay intact.`
                 : confirm === "active"
                   ? `${farm.farmName} will move back to Active and show up in your normal farm lists.`
-                  : `${farm.farmName} will be deleted permanently and cannot be restored from Inactive.`}
+                  : `${farm.farmName} will be deleted permanently and cannot be restored.`}
             </p>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button

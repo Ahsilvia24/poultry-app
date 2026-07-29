@@ -91,7 +91,7 @@ export default function FarmsScreen() {
   function confirmPermanentDelete(farmId: string, farmName: string) {
     Alert.alert(
       "Are you sure?",
-      `${farmName} will be deleted permanently and cannot be restored from Inactive.`,
+      `${farmName} will be deleted permanently and cannot be restored.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -163,61 +163,32 @@ export default function FarmsScreen() {
               friction={2}
               rightThreshold={40}
               containerStyle={{ marginBottom: 8 }}
-              renderRightActions={() =>
-                farm.isActive ? (
-                  <Pressable
-                    accessibilityLabel={`Make ${farm.farmName} inactive`}
-                    onPress={() => confirmMakeInactive(farm.id, farm.farmName)}
+              renderRightActions={() => (
+                <Pressable
+                  accessibilityLabel={`Delete ${farm.farmName} permanently`}
+                  onPress={() => confirmPermanentDelete(farm.id, farm.farmName)}
+                  style={{
+                    backgroundColor: colors.danger,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    width: 88,
+                    borderRadius: 14,
+                    marginLeft: 8,
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={22} color="#fff" />
+                  <Text
                     style={{
-                      backgroundColor: "#57534e",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      width: 100,
-                      borderRadius: 14,
-                      marginLeft: 8,
+                      color: "#fff",
+                      fontWeight: "800",
+                      fontSize: 12,
+                      marginTop: 4,
                     }}
                   >
-                    <Ionicons name="pause-circle-outline" size={22} color="#fff" />
-                    <Text
-                      style={{
-                        color: "#fff",
-                        fontWeight: "800",
-                        fontSize: 11,
-                        marginTop: 4,
-                        textAlign: "center",
-                        paddingHorizontal: 4,
-                      }}
-                    >
-                      Make inactive
-                    </Text>
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    accessibilityLabel={`Delete ${farm.farmName} permanently`}
-                    onPress={() => confirmPermanentDelete(farm.id, farm.farmName)}
-                    style={{
-                      backgroundColor: colors.danger,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      width: 88,
-                      borderRadius: 14,
-                      marginLeft: 8,
-                    }}
-                  >
-                    <Ionicons name="trash-outline" size={22} color="#fff" />
-                    <Text
-                      style={{
-                        color: "#fff",
-                        fontWeight: "800",
-                        fontSize: 12,
-                        marginTop: 4,
-                      }}
-                    >
-                      Delete
-                    </Text>
-                  </Pressable>
-                )
-              }
+                    Delete
+                  </Text>
+                </Pressable>
+              )}
             >
               <Card style={{ padding: 0, marginBottom: 0, overflow: "hidden" }}>
                 <Pressable
@@ -286,31 +257,35 @@ export default function FarmsScreen() {
                         </View>
                       ) : null}
                     </View>
-                    {!farm.isActive ? (
-                      <Pressable
-                        accessibilityLabel={`Make ${farm.farmName} active`}
-                        onPress={(e) => {
-                          e?.stopPropagation?.();
-                          confirmReactivate(farm.id, farm.farmName);
-                        }}
-                        hitSlop={8}
+                    <Pressable
+                      accessibilityLabel={
+                        farm.isActive
+                          ? `Make ${farm.farmName} inactive`
+                          : `Make ${farm.farmName} active`
+                      }
+                      onPress={(e) => {
+                        e?.stopPropagation?.();
+                        if (farm.isActive) confirmMakeInactive(farm.id, farm.farmName);
+                        else confirmReactivate(farm.id, farm.farmName);
+                      }}
+                      hitSlop={8}
+                    >
+                      <Text
+                        style={[
+                          styles.badge,
+                          {
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            fontSize: 12,
+                          },
+                          farm.isActive
+                            ? { backgroundColor: "#d1fae5", color: "#065f46" }
+                            : { backgroundColor: "#e7e5e4", color: "#44403c" },
+                        ]}
                       >
-                        <Text
-                          style={[
-                            styles.badge,
-                            {
-                              paddingHorizontal: 8,
-                              paddingVertical: 3,
-                              fontSize: 12,
-                              backgroundColor: "#e7e5e4",
-                              color: "#44403c",
-                            },
-                          ]}
-                        >
-                          Inactive
-                        </Text>
-                      </Pressable>
-                    ) : null}
+                        {farm.isActive ? "Active" : "Inactive"}
+                      </Text>
+                    </Pressable>
                   </View>
                 </Pressable>
               </Card>
