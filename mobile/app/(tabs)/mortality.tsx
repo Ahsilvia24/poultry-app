@@ -9,7 +9,7 @@ import {
   type TextInput as TextInputType,
   type ScrollView as ScrollViewType,
 } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   getMortalityForm,
@@ -18,7 +18,7 @@ import {
 } from "../../src/repos/data";
 import { birdAgeFromPlacement, flockWeekFromAge } from "../../src/lib/mortality";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
-import { getFarmNavContext } from "../../src/lib/farmNavContext";
+import { getFarmNavContext, setFarmNavContext } from "../../src/lib/farmNavContext";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { colors, styles } from "../../src/theme";
 import {
@@ -123,10 +123,14 @@ function MortalityKeypad({
   onDigit,
   onBackspace,
   onEnter,
+  onBackToHouse,
+  backToHouseLabel,
 }: {
   onDigit: (d: string) => void;
   onBackspace: () => void;
   onEnter: () => void;
+  onBackToHouse?: () => void;
+  backToHouseLabel?: string;
 }) {
   const insets = useSafeAreaInsets();
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
@@ -143,6 +147,26 @@ function MortalityKeypad({
         gap: 8,
       }}
     >
+      {onBackToHouse ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={backToHouseLabel ?? "Back to house"}
+          onPress={onBackToHouse}
+          style={({ pressed }) => ({
+            minHeight: 48,
+            borderRadius: 10,
+            backgroundColor: colors.accentDark,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 12,
+            opacity: pressed ? 0.88 : 1,
+          })}
+        >
+          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>
+            {backToHouseLabel ?? "Back to house"}
+          </Text>
+        </Pressable>
+      ) : null}
       {[0, 1, 2].map((row) => (
         <View key={row} style={{ flexDirection: "row", gap: 8 }}>
           {keys.slice(row * 3, row * 3 + 3).map((d) => (
@@ -178,6 +202,7 @@ function paramValue(value: string | string[] | undefined) {
 
 export default function MortalityScreen() {
   const navigation = useNavigation();
+  const router = useRouter();
   const params = useLocalSearchParams<{
     farmId?: string | string[];
     houseFlockId?: string | string[];
@@ -897,6 +922,25 @@ export default function MortalityScreen() {
             onDigit={onDigit}
             onBackspace={onBackspace}
             onEnter={onEnter}
+            backToHouseLabel={
+              selectedHouse ? `Back to House ${selectedHouse.houseNumber}` : undefined
+            }
+            onBackToHouse={
+              farmId && selectedHouse
+                ? () => {
+                    flushSave();
+                    resetKeypad();
+                    setFarmNavContext({
+                      farmId,
+                      houseFlockId: selectedHouse.houseFlockId,
+                    });
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]",
+                      params: { id: farmId },
+                    });
+                  }
+                : undefined
+            }
           />
         ) : null}
       </View>

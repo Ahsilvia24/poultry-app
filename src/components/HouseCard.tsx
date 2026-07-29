@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { HouseCardActions } from "@/components/HouseCardActions";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import { formatNumber, formatPct } from "@/lib/utils";
-import { Card, StatusBadge } from "@/components/ui";
+import { Card } from "@/components/ui";
 
 type HouseData = {
   id: string;
@@ -37,7 +37,7 @@ export function HouseCard({
   farmId,
   house,
   hasFlock,
-  status,
+  status: _status,
   birdsPlaced,
   metrics,
   projectedHeadCount,
@@ -134,47 +134,60 @@ export function HouseCard({
         }}
       >
         <Card>
+          <div className="flex items-start justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setMode("edit")}
+              className="min-w-0 flex-1 text-left text-inherit"
+              aria-label={`Edit house ${house.houseNumber}`}
+            >
+              <p className="text-lg font-bold">
+                House {house.houseNumber}
+                {flockLabel ? (
+                  <span className="font-semibold text-stone-600"> · {flockLabel}</span>
+                ) : null}
+                {birdAgeDays != null ? (
+                  <span className="font-semibold text-stone-600"> · {birdAgeDays}d</span>
+                ) : null}
+              </p>
+              {metrics || projectedHeadCount != null ? (
+                <p className="mt-0.5 text-sm font-semibold text-stone-600">
+                  {metrics ? `M ${formatNumber(metrics.cumulative)}` : null}
+                  {metrics && projectedHeadCount != null ? " · " : null}
+                  {projectedHeadCount != null
+                    ? `PHC ${formatNumber(projectedHeadCount)}`
+                    : null}
+                </p>
+              ) : null}
+            </button>
+            {hasFlock && houseFlockId ? (
+              <a
+                href={`/mortality?farmId=${encodeURIComponent(farmId)}&houseFlockId=${encodeURIComponent(houseFlockId)}`}
+                className="inline-flex min-h-14 min-w-24 shrink-0 items-center justify-center rounded-xl bg-emerald-800 px-3 py-3 text-center text-sm font-extrabold leading-tight text-white hover:bg-emerald-900"
+                aria-label={`Enter mortality for house ${house.houseNumber}`}
+              >
+                Enter
+                <br />
+                mortality
+              </a>
+            ) : null}
+          </div>
+
           <button
             type="button"
             onClick={() => setMode("edit")}
-            className="w-full text-left text-inherit"
-            aria-label={`Edit house ${house.houseNumber}`}
+            className="mt-3 w-full text-left text-inherit"
+            aria-label={`Edit house ${house.houseNumber} weekly mortality`}
           >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-lg font-bold">
-                  House {house.houseNumber}
-                  {flockLabel ? (
-                    <span className="font-semibold text-stone-600"> · {flockLabel}</span>
-                  ) : null}
-                  {birdAgeDays != null ? (
-                    <span className="font-semibold text-stone-600"> · {birdAgeDays}d</span>
-                  ) : null}
-                </p>
-                {metrics || projectedHeadCount != null ? (
-                  <p className="mt-0.5 text-sm font-semibold text-stone-600">
-                    {metrics ? `M ${formatNumber(metrics.cumulative)}` : null}
-                    {metrics && projectedHeadCount != null ? " · " : null}
-                    {projectedHeadCount != null
-                      ? `PHC ${formatNumber(projectedHeadCount)}`
-                      : null}
-                  </p>
-                ) : null}
-              </div>
-              <div className="flex shrink-0 items-start gap-2">
-                {hasFlock ? <StatusBadge status={status} /> : null}
-              </div>
-            </div>
-
             {weeklyMortality.length > 0 ? (
-              <div className="mt-3">
+              <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
                   Weekly mortality
                 </p>
                 <WeeklyMortalityList weeks={weeklyMortality} />
               </div>
             ) : (
-              <p className="mt-3 text-sm text-stone-500">No weekly mortality yet.</p>
+              <p className="text-sm text-stone-500">No weekly mortality yet.</p>
             )}
           </button>
 

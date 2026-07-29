@@ -513,8 +513,6 @@ export function seedIfNeeded() {
   setMeta("visits_v2", "1");
   setMeta("demo_schedule_day", today);
   setMeta("userId", userId);
-  setMeta("multi_flock_demo_v1", "1");
-  setMeta("split_staggered_active_flocks_v1", "1");
   ensureMultiFlockDemoFarm();
   ensureSplitStaggeredActiveFlocks();
 }

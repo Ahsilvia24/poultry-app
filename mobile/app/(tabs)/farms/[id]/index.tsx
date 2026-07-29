@@ -65,7 +65,6 @@ import {
   Chip,
   Metric,
   PrimaryButton,
-  StatusBadge,
   WeeklyMortalityList,
   formatNumber,
   formatPct,
@@ -1195,18 +1194,18 @@ export default function FarmDetailScreen() {
               )}
             >
               <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
-                <Pressable
-                  onPress={() => openHouseEditor(h)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Edit house ${h.houseNumber}`}
-                  style={({ pressed }) => ({
-                    padding: 16,
-                    paddingBottom: 4,
-                    opacity: pressed ? 0.85 : 1,
-                  })}
-                >
-                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
+                <View style={{ padding: 16, paddingBottom: 4 }}>
+                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                    <Pressable
+                      onPress={() => openHouseEditor(h)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit house ${h.houseNumber}`}
+                      style={({ pressed }) => ({
+                        flex: 1,
+                        minWidth: 0,
+                        opacity: pressed ? 0.85 : 1,
+                      })}
+                    >
                       <Text style={{ fontSize: 17, fontWeight: "800" }}>
                         House {h.houseNumber}
                         {h.flockNumber ? (
@@ -1242,31 +1241,81 @@ export default function FarmDetailScreen() {
                             : null}
                         </Text>
                       ) : null}
-                    </View>
-                    <StatusBadge status={h.status} />
+                    </Pressable>
+                    {h.houseFlockId ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Enter mortality for house ${h.houseNumber}`}
+                        hitSlop={6}
+                        onPress={() => {
+                          setFarmNavContext({
+                            farmId: farm.id,
+                            houseFlockId: h.houseFlockId,
+                          });
+                          router.push({
+                            pathname: "/(tabs)/mortality",
+                            params: {
+                              farmId: farm.id,
+                              houseFlockId: h.houseFlockId!,
+                            },
+                          });
+                        }}
+                        style={({ pressed }) => ({
+                          backgroundColor: colors.accentDark,
+                          paddingHorizontal: 12,
+                          paddingVertical: 12,
+                          borderRadius: 12,
+                          minWidth: 96,
+                          minHeight: 56,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          opacity: pressed ? 0.88 : 1,
+                        })}
+                      >
+                        <Text
+                          style={{
+                            color: "#fff",
+                            fontWeight: "800",
+                            fontSize: 13,
+                            textAlign: "center",
+                            lineHeight: 16,
+                          }}
+                        >
+                          Enter{"\n"}mortality
+                        </Text>
+                      </Pressable>
+                    ) : null}
                   </View>
 
-                  {h.weeklyMortality.length > 0 ? (
-                    <View style={{ marginTop: 12 }}>
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          fontWeight: "700",
-                          color: colors.muted,
-                          textTransform: "uppercase",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Weekly mortality
-                      </Text>
-                      <WeeklyMortalityList weeks={h.weeklyMortality} />
-                    </View>
-                  ) : (
-                    <Text style={[styles.muted, { marginTop: 12 }]}>
-                      No weekly mortality yet.
-                    </Text>
-                  )}
-                </Pressable>
+                  <Pressable
+                    onPress={() => openHouseEditor(h)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit house ${h.houseNumber} weekly mortality`}
+                    style={({ pressed }) => ({
+                      marginTop: 12,
+                      opacity: pressed ? 0.85 : 1,
+                    })}
+                  >
+                    {h.weeklyMortality.length > 0 ? (
+                      <View>
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color: colors.muted,
+                            textTransform: "uppercase",
+                            marginBottom: 8,
+                          }}
+                        >
+                          Weekly mortality
+                        </Text>
+                        <WeeklyMortalityList weeks={h.weeklyMortality} />
+                      </View>
+                    ) : (
+                      <Text style={styles.muted}>No weekly mortality yet.</Text>
+                    )}
+                  </Pressable>
+                </View>
 
                 <Pressable
                   onPress={() =>
