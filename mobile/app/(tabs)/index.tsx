@@ -142,7 +142,8 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const [upcomingOpen, setUpcomingOpen] = useState(true);
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
+  const [catchesOpen, setCatchesOpen] = useState(false);
   const [expandedFarmIds, setExpandedFarmIds] = useState<Set<string>>(() => new Set());
 
   function toggleFarmExpanded(farmId: string) {
@@ -309,7 +310,7 @@ export default function DashboardScreen() {
                 }}
               >
                 <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted, flex: 1 }}>
-                  Upcoming
+                  Upcoming Visits
                   {!upcomingOpen ? (
                     <Text style={{ fontWeight: "500", color: colors.muted }}>
                       {" "}
@@ -349,39 +350,67 @@ export default function DashboardScreen() {
             </Card>
 
             <Card>
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
-                Upcoming catches
-              </Text>
-              {data.upcomingCatches.length === 0 ? (
-                <Text style={[styles.muted, { marginTop: 8 }]}>None</Text>
-              ) : (
-                data.upcomingCatches.map((c) => (
-                  <Pressable
-                    key={`${c.farmId}-${c.date}`}
-                    onPress={() => router.push({ pathname: '/(tabs)/farms/[id]', params: { id: c.farmId } })}
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      gap: 8,
-                      marginTop: 10,
-                    }}
-                  >
-                    <Text style={{ fontWeight: "700", color: colors.text, flex: 1 }}>
-                      {c.farmName}
-                      {c.flockAgeDays != null ? (
-                        <Text style={{ fontWeight: "400", color: colors.muted }}>
-                          {" "}
-                          · {c.flockAgeDays}d
-                        </Text>
-                      ) : null}
+              <Pressable
+                onPress={() => setCatchesOpen((v) => !v)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: catchesOpen }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted, flex: 1 }}>
+                  Upcoming catches
+                  {!catchesOpen ? (
+                    <Text style={{ fontWeight: "500", color: colors.muted }}>
+                      {" "}
+                      · {data.upcomingCatches.length}
                     </Text>
-                    <Text style={{ color: colors.muted, fontSize: 13 }}>
-                      {formatCatchDate(c.date)}
-                      {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
-                    </Text>
-                  </Pressable>
-                ))
-              )}
+                  ) : null}
+                </Text>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.accentDark }}>
+                  {catchesOpen ? "Hide" : "Show"}
+                </Text>
+              </Pressable>
+              {catchesOpen ? (
+                data.upcomingCatches.length === 0 ? (
+                  <Text style={[styles.muted, { marginTop: 8 }]}>None</Text>
+                ) : (
+                  data.upcomingCatches.map((c) => (
+                    <Pressable
+                      key={`${c.farmId}-${c.date}`}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/(tabs)/farms/[id]",
+                          params: { id: c.farmId },
+                        })
+                      }
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        marginTop: 10,
+                      }}
+                    >
+                      <Text style={{ fontWeight: "700", color: colors.text, flex: 1 }}>
+                        {c.farmName}
+                        {c.flockAgeDays != null ? (
+                          <Text style={{ fontWeight: "400", color: colors.muted }}>
+                            {" "}
+                            · {c.flockAgeDays}d
+                          </Text>
+                        ) : null}
+                      </Text>
+                      <Text style={{ color: colors.muted, fontSize: 13 }}>
+                        {formatCatchDate(c.date)}
+                        {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
+                      </Text>
+                    </Pressable>
+                  ))
+                )
+              ) : null}
             </Card>
 
             <SectionTitle>Active farms</SectionTitle>

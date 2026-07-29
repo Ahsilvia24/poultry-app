@@ -46,8 +46,8 @@ export default async function DashboardPage() {
             <FollowUpsDueList items={data.todaysSchedule} />
           </Card>
           <CollapsibleCard
-            title="Upcoming"
-            defaultOpen
+            title="Upcoming Visits"
+            defaultOpen={false}
             count={data.upcomingSchedule.length}
           >
             {data.upcomingSchedule.length === 0 ? (
@@ -57,8 +57,11 @@ export default async function DashboardPage() {
             )}
           </CollapsibleCard>
         </div>
-        <Card>
-          <p className="text-sm font-semibold text-stone-500">Upcoming catches</p>
+        <CollapsibleCard
+          title="Upcoming catches"
+          defaultOpen={false}
+          count={data.upcomingCatches.length}
+        >
           <ul className="mt-2 space-y-1.5 text-sm">
             {data.upcomingCatches.length === 0 ? (
               <li className="text-stone-500">None</li>
@@ -68,10 +71,10 @@ export default async function DashboardPage() {
                   key={`${c.farmName}-${c.date}`}
                   className="flex items-baseline justify-between gap-3"
                 >
-                    <span className="font-semibold text-stone-900">
-                      {c.farmName}
-                      <span className="font-normal text-stone-500"> · {c.flockAgeDays}d</span>
-                    </span>
+                  <span className="font-semibold text-stone-900">
+                    {c.farmName}
+                    <span className="font-normal text-stone-500"> · {c.flockAgeDays}d</span>
+                  </span>
                   <span className="shrink-0 text-stone-600">
                     {format(parseISO(c.date), "EEE, MMM d, yyyy")}
                     {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
@@ -80,7 +83,7 @@ export default async function DashboardPage() {
               ))
             )}
           </ul>
-        </Card>
+        </CollapsibleCard>
       </div>
 
       <h2 className="mt-8 text-xl font-bold">Active farms</h2>
