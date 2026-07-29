@@ -159,7 +159,7 @@ export function HouseCard({
               <p className="font-semibold">
                 {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
               </p>
-              <p className="mt-0.5 text-[11px] text-stone-400">Assumes 150 catch crew</p>
+              <p className="mt-0.5 text-[11px] text-stone-400">150 catch crew</p>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2">

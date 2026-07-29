@@ -355,7 +355,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             <StatTile
               label="Proj. Head Count"
               value={formatNumber(flockProjectedHead)}
-              hint="Assumes 150 catch crew per house"
+              hint="150 catch crew per house"
             />
             <StatTile
               label="Cumulative Mortality"

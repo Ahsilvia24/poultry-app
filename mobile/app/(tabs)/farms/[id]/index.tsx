@@ -1405,7 +1405,7 @@ export default function FarmDetailScreen() {
                       columns={3}
                       label="PHC"
                       value={formatNumber(h.projectedHeadCount)}
-                      hint="Assumes 150 catch crew"
+                      hint="150 catch crew"
                     />
                   </View>
                   <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
