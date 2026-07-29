@@ -3,7 +3,14 @@ import { Alert, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme";
 
-export function CopyHouseSummaryButton({ lines }: { lines: string[] }) {
+export function CopyHouseSummaryButton({
+  lines,
+  farmName,
+}: {
+  lines: string[];
+  /** Prefixed on its own line when copying (e.g. saved LFO tile). */
+  farmName?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -19,7 +26,9 @@ export function CopyHouseSummaryButton({ lines }: { lines: string[] }) {
       onPress={async () => {
         try {
           const Clipboard = await import("expo-clipboard");
-          await Clipboard.setStringAsync(lines.join("\n"));
+          const name = farmName?.trim();
+          const text = name ? [name, ...lines].join("\n") : lines.join("\n");
+          await Clipboard.setStringAsync(text);
           setCopied(true);
         } catch {
           Alert.alert("Copy failed", "Could not copy to clipboard on this device.");

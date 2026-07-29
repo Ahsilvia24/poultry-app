@@ -41,7 +41,13 @@ function CheckIcon({ className }: { className?: string }) {
   );
 }
 
-function CopyHouseSummaryButton({ lines }: { lines: string[] }) {
+function CopyHouseSummaryButton({
+  lines,
+  farmName,
+}: {
+  lines: string[];
+  farmName?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -60,7 +66,9 @@ function CopyHouseSummaryButton({ lines }: { lines: string[] }) {
       onClick={async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        await navigator.clipboard.writeText(lines.join("\n"));
+        const name = farmName?.trim();
+        const text = name ? [name, ...lines].join("\n") : lines.join("\n");
+        await navigator.clipboard.writeText(text);
         setCopied(true);
       }}
       className="pointer-events-auto relative z-10 inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"

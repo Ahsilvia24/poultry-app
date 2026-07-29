@@ -436,7 +436,7 @@ export default function LfoListScreen() {
                       </Text>
                     </View>
                     {l.houseSummary.length > 0 ? (
-                      <CopyHouseSummaryButton lines={l.houseSummary} />
+                      <CopyHouseSummaryButton lines={l.houseSummary} farmName={l.farmName} />
                     ) : null}
                   </View>
                   {l.houseSummary.length > 0 ? (
