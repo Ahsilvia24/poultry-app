@@ -13,7 +13,8 @@ export default auth((req) => {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/mobile") ||
     pathname.startsWith("/preview") ||
-    pathname.startsWith("/support");
+    pathname.startsWith("/support") ||
+    pathname.startsWith("/privacy");
 
   // Mint a real session cookie once so forms/Server Actions work through tunnels.
   if (
@@ -21,7 +22,8 @@ export default auth((req) => {
     !req.auth &&
     !isDevBypassLogin &&
     !pathname.startsWith("/api/auth") &&
-    !pathname.startsWith("/support")
+    !pathname.startsWith("/support") &&
+    !pathname.startsWith("/privacy")
   ) {
     const login = new URL("/api/dev-bypass-login", req.nextUrl.origin);
     login.searchParams.set("next", pathname || "/");

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Support — PoultryTech",
@@ -41,6 +42,14 @@ export default function SupportPage() {
         <p className="mt-10 text-sm text-stone-500">
           For App Store review questions about demo access or account setup, email the address
           above and mention Apple App Review.
+        </p>
+        <p className="mt-4 text-sm text-stone-500">
+          <Link
+            href="/privacy"
+            className="font-semibold text-emerald-800 underline-offset-2 hover:underline"
+          >
+            Privacy Policy
+          </Link>
         </p>
       </div>
     </main>
