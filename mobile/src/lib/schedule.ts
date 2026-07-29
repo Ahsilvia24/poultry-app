@@ -1,4 +1,5 @@
 import { addDaysKey, daysBetween, parseDateKey, todayKey } from "./ids";
+import { format } from "date-fns";
 
 const SERVICE_DAY_AGES = [3, 7, 14, 21, 28, 35, 42] as const;
 
@@ -162,6 +163,11 @@ export function formatShortScheduleDate(dateKey: string) {
     month: "short",
     day: "numeric",
   });
+}
+
+/** Expanded dashboard last visit — e.g. Tue, 6 Aug 26 */
+export function formatLastVisitDate(dateKey: string) {
+  return format(parseDateKey(dateKey), "EEE, d MMM yy");
 }
 
 /** Matches web `EEE, MMM d, yyyy` — e.g. Sun, Aug 16, 2026 */

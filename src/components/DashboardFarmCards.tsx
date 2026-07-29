@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { format, parseISO } from "date-fns";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Card, StatusBadge } from "@/components/ui";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import type { FarmCardSummary } from "@/types";
+
+function formatLastVisitDate(dateKey: string) {
+  return format(parseISO(dateKey), "EEE, d MMM yy");
+}
 
 export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
@@ -100,7 +105,10 @@ export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
                   </div>
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
-                  <span>Last visit: {farm.lastVisitDate ?? "—"}</span>
+                  <span>
+                    Last visit:{" "}
+                    {farm.lastVisitDate ? formatLastVisitDate(farm.lastVisitDate) : "—"}
+                  </span>
                   {farm.missingTodayMortality ? (
                     <span className="font-bold text-amber-700">
                       Missing today&apos;s mortality

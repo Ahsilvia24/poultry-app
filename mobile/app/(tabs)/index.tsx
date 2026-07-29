@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
 import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
-import { formatShortScheduleDate } from "../../src/lib/schedule";
+import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/schedule";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import {
   Card,
@@ -523,7 +523,7 @@ export default function DashboardScreen() {
                         <Text style={[styles.muted, { fontSize: 12 }]}>
                           Last visit:{" "}
                           {farm.lastVisitDate
-                            ? formatShortScheduleDate(farm.lastVisitDate)
+                            ? formatLastVisitDate(farm.lastVisitDate)
                             : "—"}
                         </Text>
                         {farm.missingTodayMortality ? (
