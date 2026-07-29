@@ -12,11 +12,7 @@ export type ScheduledVisit = {
 
 export type DueScheduledVisit = ScheduledVisit & { completed: boolean };
 
-export type CompletionInfo = {
-  completedAt: Date;
-  /** When true, hide immediately and never show crossed-out. */
-  dismissed?: boolean;
-};
+export type CompletionInfo = { completedAt: Date };
 
 export function completionKey(dateKey: string, label: string) {
   return `${dateKey}::${label}`;
@@ -141,7 +137,6 @@ export function splitScheduleForDashboard(
 
     const key = completionKey(v.dateKey, v.label);
     const info = completions.get(key);
-    if (info?.dismissed) continue; // removed from list — never show
     if (info) {
       // Local calendar day the tech checked it off — not the visit's scheduled date.
       const completedDayKey = todayKey(info.completedAt);

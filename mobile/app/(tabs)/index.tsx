@@ -11,12 +11,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
-import {
-  deactivateFarm,
-  dismissFollowUp,
-  getDashboard,
-  toggleFollowUpCompletion,
-} from "../../src/repos/data";
+import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
 import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
 import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/schedule";
@@ -45,7 +40,6 @@ function ScheduleCheckRow({
   checked,
   busy,
   onToggle,
-  onRemove,
   onOpenFarm,
 }: {
   item: ScheduleItem;
@@ -53,171 +47,139 @@ function ScheduleCheckRow({
   checked: boolean;
   busy: boolean;
   onToggle: () => void;
-  onRemove: () => void;
   onOpenFarm: () => void;
 }) {
   return (
-    <Swipeable
-      overshootRight={false}
-      friction={2}
-      rightThreshold={40}
-      containerStyle={{ marginTop: 10 }}
-      onSwipeableOpen={(direction) => {
-        if (direction === "right") onRemove();
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        marginTop: 10,
+        opacity: checked ? 0.5 : 1,
       }}
-      renderRightActions={() => (
-        <Pressable
-          accessibilityLabel={`Remove ${item.farmName} ${item.label} from schedule`}
-          onPress={onRemove}
-          style={{
-            backgroundColor: colors.danger,
-            justifyContent: "center",
-            alignItems: "center",
-            width: 88,
-            borderRadius: 10,
-            marginLeft: 8,
-          }}
-        >
-          <Ionicons name="trash-outline" size={20} color="#fff" />
-          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 11, marginTop: 2 }}>
-            Remove
-          </Text>
-        </Pressable>
-      )}
     >
-      <View
+      <Pressable
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked, disabled: busy }}
+        accessibilityLabel={
+          checked
+            ? `Unmark ${item.farmName} ${item.label} complete`
+            : `Mark ${item.farmName} ${item.label} complete`
+        }
+        onPress={onToggle}
+        disabled={busy}
+        hitSlop={8}
         style={{
-          flexDirection: "row",
+          width: 22,
+          height: 22,
+          borderRadius: 5,
+          borderWidth: checked ? 0 : 1.5,
+          borderColor: "#a8a29e",
+          backgroundColor: checked ? colors.accentDark : "#fff",
           alignItems: "center",
-          gap: 10,
-          opacity: checked ? 0.5 : 1,
-          backgroundColor: "#fff",
+          justifyContent: "center",
         }}
       >
-        <Pressable
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked, disabled: busy }}
-          accessibilityLabel={
-            checked
-              ? `Unmark ${item.farmName} ${item.label} complete`
-              : `Mark ${item.farmName} ${item.label} complete`
-          }
-          onPress={onToggle}
-          disabled={busy}
-          hitSlop={8}
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: 5,
-            borderWidth: checked ? 0 : 1.5,
-            borderColor: "#a8a29e",
-            backgroundColor: checked ? colors.accentDark : "#fff",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {checked ? (
-            <Text style={{ color: "#fff", fontSize: 13, fontWeight: "900", lineHeight: 15 }}>
-              ✓
-            </Text>
-          ) : null}
-        </Pressable>
-        <Pressable
-          onPress={onOpenFarm}
+        {checked ? (
+          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "900", lineHeight: 15 }}>✓</Text>
+        ) : null}
+      </Pressable>
+      <Pressable
+        onPress={onOpenFarm}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+        }}
+      >
+        <View
           style={{
             flex: 1,
             minWidth: 0,
             flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
+            alignItems: "baseline",
+            flexShrink: 1,
           }}
         >
-          <View
+          <Text
             style={{
-              flex: 1,
-              minWidth: 0,
-              flexDirection: "row",
-              alignItems: "baseline",
+              fontWeight: "700",
+              color: colors.text,
               flexShrink: 1,
+              textDecorationLine: checked ? "line-through" : "none",
             }}
+            numberOfLines={1}
           >
+            {item.farmName}
+          </Text>
+          {item.flockAgeDays != null ? (
             <Text
               style={{
-                fontWeight: "700",
-                color: colors.text,
-                flexShrink: 1,
+                fontWeight: "400",
+                color: colors.muted,
+                flexShrink: 0,
                 textDecorationLine: checked ? "line-through" : "none",
               }}
               numberOfLines={1}
             >
-              {item.farmName}
+              {" "}
+              · {item.flockAgeDays}d
             </Text>
-            {item.flockAgeDays != null ? (
-              <Text
-                style={{
-                  fontWeight: "400",
-                  color: colors.muted,
-                  flexShrink: 0,
-                  textDecorationLine: checked ? "line-through" : "none",
-                }}
-                numberOfLines={1}
-              >
-                {" "}
-                · {item.flockAgeDays}d
-              </Text>
-            ) : null}
-          </View>
-          {showDate ? (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                flexShrink: 0,
-                gap: 10,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.muted,
-                  fontSize: 13,
-                  fontWeight: "600",
-                  textAlign: "right",
-                  minWidth: 78,
-                }}
-                numberOfLines={1}
-              >
-                {item.label}
-              </Text>
-              <Text
-                style={{
-                  color: colors.muted,
-                  fontSize: 13,
-                  fontWeight: "700",
-                  textAlign: "right",
-                  width: 92,
-                }}
-                numberOfLines={1}
-              >
-                {formatShortScheduleDate(item.date)}
-              </Text>
-            </View>
-          ) : (
+          ) : null}
+        </View>
+        {showDate ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              flexShrink: 0,
+              gap: 10,
+            }}
+          >
             <Text
               style={{
                 color: colors.muted,
                 fontSize: 13,
-                fontWeight: "700",
-                flexShrink: 0,
+                fontWeight: "600",
+                textAlign: "right",
+                minWidth: 78,
               }}
               numberOfLines={1}
             >
               {item.label}
             </Text>
-          )}
-        </Pressable>
-      </View>
-    </Swipeable>
+            <Text
+              style={{
+                color: colors.muted,
+                fontSize: 13,
+                fontWeight: "700",
+                textAlign: "right",
+                width: 92,
+              }}
+              numberOfLines={1}
+            >
+              {formatShortScheduleDate(item.date)}
+            </Text>
+          </View>
+        ) : (
+          <Text
+            style={{
+              color: colors.muted,
+              fontSize: 13,
+              fontWeight: "700",
+              flexShrink: 0,
+            }}
+            numberOfLines={1}
+          >
+            {item.label}
+          </Text>
+        )}
+      </Pressable>
+    </View>
   );
 }
 
@@ -329,25 +291,6 @@ export default function DashboardScreen() {
     }
   }
 
-  function removeScheduleItem(item: ScheduleItem) {
-    const key = scheduleItemKey(item);
-    if (pendingKey === key) return;
-    setPendingKey(key);
-    try {
-      dismissFollowUp({
-        farmId: item.farmId,
-        flockId: item.flockId,
-        scheduledDate: item.date,
-        label: item.label,
-      });
-      setData(getDashboard());
-    } catch {
-      // keep list; user can retry
-    } finally {
-      setPendingKey(null);
-    }
-  }
-
   if (loading && !data) {
     return (
       <View style={[styles.screen, { alignItems: "center", justifyContent: "center" }]}>
@@ -410,7 +353,6 @@ export default function DashboardScreen() {
                       checked={checked[key] ?? item.completed}
                       busy={pendingKey === key}
                       onToggle={() => toggleScheduleItem(item)}
-                      onRemove={() => removeScheduleItem(item)}
                       onOpenFarm={() =>
                         router.push({
                           pathname: "/(tabs)/farms/[id]",
@@ -462,7 +404,6 @@ export default function DashboardScreen() {
                         checked={checked[key] ?? item.completed}
                         busy={pendingKey === key}
                         onToggle={() => toggleScheduleItem(item)}
-                        onRemove={() => removeScheduleItem(item)}
                         onOpenFarm={() =>
                           router.push({
                             pathname: "/(tabs)/farms/[id]",

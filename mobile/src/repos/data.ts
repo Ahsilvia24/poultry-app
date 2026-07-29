@@ -288,7 +288,11 @@ export function getDashboard() {
     label: string;
     completed_at: string;
     status: string | null;
-  }>("SELECT farm_id, scheduled_date, label, completed_at, status FROM follow_up_completions");
+  }>(
+    `SELECT farm_id, scheduled_date, label, completed_at, status
+     FROM follow_up_completions
+     WHERE COALESCE(status, 'COMPLETED') != 'DISMISSED'`,
+  );
   const completedByFarm = new Map<string, Map<string, CompletionInfo>>();
   for (const c of completionRows) {
     const label = c.label === "Weight Projection" ? "Weight Proj." : c.label;
@@ -300,10 +304,7 @@ export function getDashboard() {
     }
     const completedAt = new Date(c.completed_at);
     if (!Number.isNaN(completedAt.getTime())) {
-      map.set(key, {
-        completedAt,
-        dismissed: (c.status ?? "COMPLETED") === "DISMISSED",
-      });
+      map.set(key, { completedAt });
     }
   }
 
@@ -2685,50 +2686,6 @@ export function toggleFollowUpCompletion(input: {
        completed_at = excluded.completed_at,
        flock_id = excluded.flock_id,
        status = 'COMPLETED'`,
-    [
-      id,
-      input.farmId,
-      input.flockId ?? null,
-      input.scheduledDate,
-      input.label,
-      completedAt,
-    ],
-  );
-  return { success: true as const };
-}
-
-/** Remove a schedule item from the list immediately (not crossed out — gone). */
-export function dismissFollowUp(input: {
-  farmId: string;
-  flockId?: string | null;
-  scheduledDate: string;
-  label: string;
-}) {
-  const db = getDb();
-  const labels =
-    input.label === "Weight Proj." || input.label === "Weight Projection"
-      ? ["Weight Proj.", "Weight Projection"]
-      : [input.label];
-
-  for (const label of labels) {
-    if (label === input.label) continue;
-    db.runSync(
-      `DELETE FROM follow_up_completions
-       WHERE farm_id = ? AND scheduled_date = ? AND label = ?`,
-      [input.farmId, input.scheduledDate, label],
-    );
-  }
-
-  const id = newId("fuc");
-  const completedAt = new Date().toISOString();
-  db.runSync(
-    `INSERT INTO follow_up_completions
-      (id, farm_id, flock_id, scheduled_date, label, completed_at, status)
-     VALUES (?, ?, ?, ?, ?, ?, 'DISMISSED')
-     ON CONFLICT(farm_id, scheduled_date, label) DO UPDATE SET
-       completed_at = excluded.completed_at,
-       flock_id = excluded.flock_id,
-       status = 'DISMISSED'`,
     [
       id,
       input.farmId,
