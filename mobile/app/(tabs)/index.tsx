@@ -433,12 +433,6 @@ export default function DashboardScreen() {
 
                   {open ? (
                     <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
-                      {farm.phoneNumber ? (
-                        <Text style={[styles.muted, { fontSize: 12, marginBottom: 10 }]}>
-                          {farm.phoneNumber}
-                        </Text>
-                      ) : null}
-
                       <View style={styles.row}>
                         <Metric label="Today's Mortality" value={String(farm.todayMortality)} />
                         <Metric

@@ -50,9 +50,6 @@ export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
 
             {open ? (
               <div className="border-t border-stone-100 px-4 pb-4 pt-3">
-                {farm.phoneNumber ? (
-                  <p className="mb-3 text-xs text-stone-500">{farm.phoneNumber}</p>
-                ) : null}
                 <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
                   <div>
                     <p className="text-stone-500">Today&apos;s Mortality</p>
