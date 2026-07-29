@@ -76,8 +76,7 @@ export default async function LfoPage() {
 
   return (
     <div>
-      <PageHeader title="Last Feed Order"
-      />
+      <PageHeader title="Last Feed Order" />
 
       <LfoCreateBar farms={farms} />
 
