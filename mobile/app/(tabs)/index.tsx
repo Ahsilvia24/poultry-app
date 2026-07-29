@@ -143,6 +143,16 @@ export default function DashboardScreen() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [upcomingOpen, setUpcomingOpen] = useState(true);
+  const [expandedFarmIds, setExpandedFarmIds] = useState<Set<string>>(() => new Set());
+
+  function toggleFarmExpanded(farmId: string) {
+    setExpandedFarmIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(farmId)) next.delete(farmId);
+      else next.add(farmId);
+      return next;
+    });
+  }
 
   const load = useCallback(async () => {
     try {
@@ -375,119 +385,135 @@ export default function DashboardScreen() {
             </Card>
 
             <SectionTitle>Active farms</SectionTitle>
-            {data.farmCards.map((farm) => (
-              <Pressable
-                key={farm.id}
-                onPress={() => router.push({ pathname: '/(tabs)/farms/[id]', params: { id: farm.id } })}
-              >
-                <Card>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                        {farm.farmName}
-                        <Text style={{ fontWeight: "600", color: colors.muted }}>
-                          {" "}
-                          ({farm.houseCount})
+            {data.farmCards.map((farm) => {
+              const open = expandedFarmIds.has(farm.id);
+              return (
+                <Card key={farm.id} style={{ padding: 0, overflow: "hidden" }}>
+                  <Pressable
+                    onPress={() => toggleFarmExpanded(farm.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: open }}
+                    accessibilityLabel={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
+                    style={{ padding: 14 }}
+                  >
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                          <Text style={{ fontWeight: "600", color: colors.muted }}>
+                            {open ? "▾ " : "▸ "}
+                          </Text>
+                          {farm.farmName}
+                          <Text style={{ fontWeight: "600", color: colors.muted }}>
+                            {" "}
+                            ({farm.houseCount})
+                          </Text>
+                          {(() => {
+                            const ages =
+                              farm.flockAgesDays?.length
+                                ? farm.flockAgesDays
+                                : farm.flockAgeDays != null
+                                  ? [farm.flockAgeDays]
+                                  : [];
+                            if (!ages.length) return null;
+                            return (
+                              <Text style={{ fontWeight: "600", color: colors.muted }}>
+                                {" "}
+                                · {ages.map((a) => `${a}d`).join(" · ")}
+                              </Text>
+                            );
+                          })()}
                         </Text>
-                        {(() => {
-                          const ages =
-                            farm.flockAgesDays?.length
-                              ? farm.flockAgesDays
-                              : farm.flockAgeDays != null
-                                ? [farm.flockAgeDays]
-                                : [];
-                          if (!ages.length) return null;
-                          return (
-                            <Text style={{ fontWeight: "600", color: colors.muted }}>
-                              {" "}
-                              · {ages.map((a) => `${a}d`).join(" · ")}
-                            </Text>
-                          );
-                        })()}
-                      </Text>
-                      <Text style={styles.muted}>{farm.growerName}</Text>
+                        {farm.growerName ? (
+                          <Text style={[styles.muted, { marginTop: 2 }]}>{farm.growerName}</Text>
+                        ) : null}
+                      </View>
+                      <StatusBadge status={farm.status} />
+                    </View>
+                  </Pressable>
+
+                  {open ? (
+                    <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
                       {farm.phoneNumber ? (
-                        <Text style={[styles.muted, { fontSize: 12, marginTop: 2 }]}>
+                        <Text style={[styles.muted, { fontSize: 12, marginBottom: 10 }]}>
                           {farm.phoneNumber}
                         </Text>
                       ) : null}
-                    </View>
-                    <StatusBadge status={farm.status} />
-                  </View>
 
-                  <View style={[styles.row, { marginTop: 14 }]}>
-                    <Metric label="Today's Mortality" value={String(farm.todayMortality)} />
-                    <Metric
-                      label="Cumulative Mortality"
-                      value={`${farm.cumulativeMortality} (${formatPct(farm.cumulativeMortalityPct)})`}
-                    />
-                    <Metric label="Birds placed" value={formatNumber(farm.birdsPlaced)} />
-                    <Metric
-                      label="Projected Mortality"
-                      value={
-                        farm.projectedMortality != null && farm.birdsPlaced > 0
-                          ? `${formatNumber(farm.projectedMortality)} (${formatPct(
-                              (farm.projectedMortality / farm.birdsPlaced) * 100,
-                            )})`
-                          : formatNumber(farm.projectedMortality)
-                      }
-                    />
-                    <Metric
-                      label="Proj. Head Count"
-                      value={formatNumber(farm.projectedHeadCount)}
-                      hint="150 per house @ catch"
-                    />
-                    <Metric label="Open issues" value={String(farm.openIssues)} />
-                  </View>
+                      <View style={styles.row}>
+                        <Metric label="Today's Mortality" value={String(farm.todayMortality)} />
+                        <Metric
+                          label="Cumulative Mortality"
+                          value={`${farm.cumulativeMortality} (${formatPct(farm.cumulativeMortalityPct)})`}
+                        />
+                        <Metric label="Birds placed" value={formatNumber(farm.birdsPlaced)} />
+                        <Metric
+                          label="Projected Mortality"
+                          value={
+                            farm.projectedMortality != null && farm.birdsPlaced > 0
+                              ? `${formatNumber(farm.projectedMortality)} (${formatPct(
+                                  (farm.projectedMortality / farm.birdsPlaced) * 100,
+                                )})`
+                              : formatNumber(farm.projectedMortality)
+                          }
+                        />
+                        <Metric
+                          label="Proj. Head Count"
+                          value={formatNumber(farm.projectedHeadCount)}
+                          hint="150 per house @ catch"
+                        />
+                        <Metric label="Open issues" value={String(farm.openIssues)} />
+                      </View>
 
-                  {farm.weeklyMortality.length > 0 ? (
-                    <View
-                      style={{
-                        borderTopWidth: 1,
-                        borderTopColor: "#f5f5f4",
-                        paddingTop: 10,
-                        marginTop: 4,
-                      }}
-                    >
-                      <Text
+                      {farm.weeklyMortality.length > 0 ? (
+                        <View
+                          style={{
+                            borderTopWidth: 1,
+                            borderTopColor: "#f5f5f4",
+                            paddingTop: 10,
+                            marginTop: 4,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontWeight: "700",
+                              color: colors.muted,
+                              textTransform: "uppercase",
+                              letterSpacing: 0.4,
+                              marginBottom: 8,
+                            }}
+                          >
+                            Weekly mortality
+                          </Text>
+                          <WeeklyMortalityList weeks={farm.weeklyMortality} />
+                        </View>
+                      ) : null}
+
+                      <View
                         style={{
-                          fontSize: 11,
-                          fontWeight: "700",
-                          color: colors.muted,
-                          textTransform: "uppercase",
-                          letterSpacing: 0.4,
-                          marginBottom: 8,
+                          flexDirection: "row",
+                          flexWrap: "wrap",
+                          gap: 12,
+                          marginTop: 10,
                         }}
                       >
-                        Weekly mortality
-                      </Text>
-                      <WeeklyMortalityList weeks={farm.weeklyMortality} />
+                        <Text style={[styles.muted, { fontSize: 12 }]}>
+                          Last visit:{" "}
+                          {farm.lastVisitDate
+                            ? formatShortScheduleDate(farm.lastVisitDate)
+                            : "—"}
+                        </Text>
+                        {farm.missingTodayMortality ? (
+                          <Text style={{ color: colors.warn, fontWeight: "800", fontSize: 12 }}>
+                            Missing today&apos;s mortality
+                          </Text>
+                        ) : null}
+                      </View>
                     </View>
                   ) : null}
-
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      gap: 12,
-                      marginTop: 10,
-                    }}
-                  >
-                    <Text style={[styles.muted, { fontSize: 12 }]}>
-                      Last visit:{" "}
-                      {farm.lastVisitDate
-                        ? formatShortScheduleDate(farm.lastVisitDate)
-                        : "—"}
-                    </Text>
-                    {farm.missingTodayMortality ? (
-                      <Text style={{ color: colors.warn, fontWeight: "800", fontSize: 12 }}>
-                        Missing today&apos;s mortality
-                      </Text>
-                    ) : null}
-                  </View>
                 </Card>
-              </Pressable>
-            ))}
+              );
+            })}
           </>
         ) : null}
 
