@@ -1,7 +1,6 @@
 /**
- * Build fillable Bachoco PDFs: original form page as background + AcroForm
- * fields (text / checkboxes / radios) so values live in the PDF form, not as
- * drawText overlays.
+ * Build Bachoco service PDFs: original scanned form as the page, values and
+ * X-marks stamped into the printed blanks (no opaque AcroForm widgets).
  */
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
@@ -43,15 +42,6 @@ function box(xPct: number, yPct: number, wPct: number, hPct: number) {
   };
 }
 
-function centerCheck(xPct: number, yPct: number, sizePt = 9) {
-  return {
-    x: (xPct / 100) * W - sizePt / 2,
-    y: H - (yPct / 100) * H - sizePt / 2,
-    width: sizePt,
-    height: sizePt,
-  };
-}
-
 /** Opaque white only when we must cover printed ink (continuation #, /300). */
 function coverRect(page: PDFPage, xPct: number, yPct: number, wPct: number, hPct: number) {
   const r = box(xPct, yPct, wPct, hPct);
@@ -59,26 +49,21 @@ function coverRect(page: PDFPage, xPct: number, yPct: number, wPct: number, hPct
 }
 
 type TextOpts = {
-  /** Skip creating a field when value is blank (keeps form lines clean). */
+  /** Skip when value is blank. */
   skipEmpty?: boolean;
-  /** Paint a tight white cover under the field (continuation house #, timers). */
+  /** Paint a tight white cover under the value (continuation #, /300 timers). */
   cover?: boolean;
 };
 
 /**
- * pdf-lib defaults backgroundColor to white unless the key is present.
- * Pass undefined explicitly so appearances stay transparent over the scan.
+ * Stamp a value onto the scan. Uses drawText (not AcroForm widgets) so pdf-lib
+ * cannot paint opaque white field appearances over grid lines. Values still
+ * live in the PDF content stream on the original form page.
  */
-const TRANSPARENT_WIDGET = {
-  borderWidth: 0,
-  borderColor: undefined,
-  backgroundColor: undefined,
-} as const;
-
 function addText(
-  form: PDFForm,
+  _form: PDFForm,
   page: PDFPage,
-  name: string,
+  _name: string,
   xPct: number,
   yPct: number,
   wPct: number,
@@ -88,24 +73,24 @@ function addText(
   opts: TextOpts = {},
 ) {
   const skipEmpty = opts.skipEmpty !== false;
-  const raw = String(value ?? "");
-  const v = raw.trim();
+  const v = String(value ?? "").trim();
   if (skipEmpty && !v) return null;
+  if (!markFont) return null;
 
   if (opts.cover) coverRect(page, xPct, yPct, wPct, hPct);
 
-  const field = form.createTextField(name);
-  field.addToPage(page, {
-    ...box(xPct, yPct, wPct, hPct),
-    ...TRANSPARENT_WIDGET,
+  // Sit text inside the cell (slightly below the top edge).
+  const x = ((xPct + PAD_X) / 100) * W;
+  const y = H - ((yPct + hPct * 0.72) / 100) * H;
+  page.drawText(v, {
+    x,
+    y,
+    size: fontSize,
+    font: markFont,
+    color: rgb(0, 0, 0),
+    maxWidth: (Math.max(0.5, wPct - PAD_X * 2) / 100) * W,
   });
-  if (v) field.setText(v);
-  try {
-    field.setFontSize(fontSize);
-  } catch {
-    // Some readers pick up size from updateFieldAppearances.
-  }
-  return field;
+  return null;
 }
 
 /** Write comments on the printed rules — no AcroForm box (avoids a giant white widget). */
@@ -149,35 +134,33 @@ function drawCommentLines(
   });
 }
 
+/** Set before building fields — used to stamp X marks without white checkbox widgets. */
+let markFont: PDFFont | null = null;
+
 function addYesNo(
-  form: PDFForm,
+  _form: PDFForm,
   page: PDFPage,
-  name: string,
+  _name: string,
   yesX: number,
   noX: number,
   yPct: number,
   value: YesNo,
 ) {
-  // Only place the selected mark — empty checkbox widgets still paint a box.
-  if (value === "yes") addCheck(form, page, `${name}.yes`, yesX, yPct, true);
-  else if (value === "no") addCheck(form, page, `${name}.no`, noX, yPct, true);
+  if (value === "yes") addCheck(page, yesX, yPct, true);
+  else if (value === "no") addCheck(page, noX, yPct, true);
 }
 
-function addCheck(
-  form: PDFForm,
-  page: PDFPage,
-  name: string,
-  xPct: number,
-  yPct: number,
-  on: boolean,
-) {
-  if (!on) return;
-  const cb = form.createCheckBox(name);
-  cb.addToPage(page, {
-    ...centerCheck(xPct, yPct, 9),
-    ...TRANSPARENT_WIDGET,
+/** Stamp an X (no AcroForm widget — widgets paint opaque white over the scan). */
+function addCheck(page: PDFPage, xPct: number, yPct: number, on: boolean) {
+  if (!on || !markFont) return;
+  const size = 9;
+  page.drawText("X", {
+    x: (xPct / 100) * W - size * 0.35,
+    y: H - (yPct / 100) * H - size * 0.35,
+    size,
+    font: markFont,
+    color: rgb(0, 0, 0),
   });
-  cb.check();
 }
 
 /** Service Report layout — cell left/top edges from form grid lines (top-left %). */
@@ -194,32 +177,39 @@ const SR = {
     binB: 91.18,
   },
   colW: { num: 2.2, age: 5.0, placed: 9.3, temp: 8.6, mort: 8.6, bin: 5.0 },
-  /** Top edge of each house data row. */
-  rows: [11.2, 13.2, 15.25, 17.3, 19.3, 21.3, 23.35, 25.4],
-  rowH: 1.85,
+  rows: [11.35, 13.35, 15.4, 17.45, 19.45, 21.45, 23.5, 25.55],
+  rowH: 1.7,
   ynL: { yes: 39.5, no: 46.5 },
-  ynWater: { yes: 37.8, no: 48.0 },
+  ynWater: { yes: 38.1, no: 45.1 },
   ynR: { yes: 88.7, no: 93.9 },
+  vent: { min: 52.1, power: 59.1, tunnel: 66.2, y: 41.85 },
+  /** Min vent timer row (above cool headers). */
+  minVentY: 47.55,
+  /** Cool-cell Degrees / value row (not the header labels). */
+  coolY: 50.7,
+  /** Max CFM sits in the cool header band (printed N/A cell). */
+  maxCfmY: 49.35,
+  backupY: 71.0,
+  backupX: [61.5, 68.5, 75.5, 82.5, 89.0] as const,
 };
 
 const PL = {
   houses: [37.27, 44.15, 51.03, 57.91, 64.8, 71.68, 78.56, 85.44],
-  houseW: 6.2,
-  litterY: 38.15,
-  ammoniaY: 40.15,
+  litterY: 37.55,
+  ammoniaY: 39.15,
   cellH: 1.45,
   ynL: { yes: 37.0, no: 44.0 },
   ynR: { yes: 71.5, no: 79.0 },
+  ynR2: { yes: 75.5, no: 81.5 },
+  backupX: [61.5, 65.0, 68.5, 75.5, 82.5] as const,
 };
 
 const PB = {
-  yn: { yes: 36.5, no: 43.5 },
-  /** Ammonia PPM cell left edges under houses #1–#8. */
-  ammoniaX: [33.0, 39.94, 46.82, 53.71, 60.59, 67.47, 74.41, 81.29],
-  ammoniaY: 37.05,
-  ammoniaW: 5.5,
-  ammoniaH: 0.95,
-  /** Emergency row centers (block → hours). */
+  yn: { yes: 36.2, no: 43.0 },
+  ammoniaX: [33.3, 40.2, 47.1, 54.0, 60.9, 67.8, 74.7, 81.6],
+  ammoniaY: 37.15,
+  ammoniaW: 6.0,
+  ammoniaH: 1.35,
   emY: {
     blockHeater: 53.5,
     battery: 55.0,
@@ -249,6 +239,7 @@ function buildServiceReportFields(
   housesSlice: ServiceReportForm["houses"],
   opts: { pageIndex: number; continuation: boolean },
 ) {
+  markFont = font;
   const p = `sr.p${opts.pageIndex}`;
   const { yes: yL, no: nL } = SR.ynL;
   const { yes: yR, no: nR } = SR.ynR;
@@ -320,90 +311,91 @@ function buildServiceReportFields(
 
   addYesNo(form, page, `${p}.lightIntensity`, yR, nR, 30.91, data.lightIntensityOk);
   addYesNo(form, page, `${p}.lightsOperational`, yR, nR, 32.52, data.lightsOperationalOk);
-  addText(form, page, `${p}.lightsOn`, 68.0, 33.5, 12, 1.3, data.lightsOnAt, 8);
-  addText(form, page, `${p}.lightsOff`, 88.0, 33.5, 10, 1.3, data.lightsOffAt, 8);
+  addText(form, page, `${p}.lightsOn`, 60.0, 33.55, 8.5, 1.2, data.lightsOnAt, 8);
+  addText(form, page, `${p}.lightsOff`, 78.5, 33.55, 7.0, 1.2, data.lightsOffAt, 8);
 
-  addYesNo(form, page, `${p}.tempTargets`, yL, nL, 37.85, data.tempTargetsOk);
+  addYesNo(form, page, `${p}.tempTargets`, yL, nL, 37.35, data.tempTargetsOk);
   if (data.tempTargetsOk === "no") {
-    addText(form, page, `${p}.actualTarget`, 56.0, 37.2, 12, 1.4, data.actualTempTarget, 8);
-    addText(form, page, `${p}.recoTarget`, 70.0, 37.2, 12, 1.4, data.recommendedTempTarget, 8);
+    addText(form, page, `${p}.actualTarget`, 56.0, 37.0, 12, 1.3, data.actualTempTarget, 8);
+    addText(form, page, `${p}.recoTarget`, 70.0, 37.0, 12, 1.3, data.recommendedTempTarget, 8);
   }
-  addYesNo(form, page, `${p}.ammonia`, yL, nL, 39.25, data.ammoniaOk);
+  addYesNo(form, page, `${p}.ammonia`, yL, nL, 38.9, data.ammoniaOk);
   addText(
     form,
     page,
     `${p}.humidity`,
-    16.0,
-    40.3,
-    10,
-    1.3,
+    35.0,
+    40.0,
+    12.5,
+    1.15,
     data.humidityPct ? `${data.humidityPct}%` : "",
     8,
   );
 
-  addCheck(form, page, `${p}.vent.min`, 56.0, 42.3, data.ventModes.includes("min"));
-  addCheck(form, page, `${p}.vent.power`, 64.0, 42.3, data.ventModes.includes("power"));
-  addCheck(form, page, `${p}.vent.tunnel`, 71.0, 42.3, data.ventModes.includes("tunnel"));
-  addText(form, page, `${p}.tunnelFans`, 92.0, 41.7, 5, 1.3, data.tunnelFanCount, 8);
+  addCheck(page, SR.vent.min, SR.vent.y, data.ventModes.includes("min"));
+  addCheck(page, SR.vent.power, SR.vent.y, data.ventModes.includes("power"));
+  addCheck(page, SR.vent.tunnel, SR.vent.y, data.ventModes.includes("tunnel"),
+  );
+  addText(form, page, `${p}.tunnelFans`, 91.5, 41.5, 4.5, 1.1, data.tunnelFanCount, 8);
 
-  addCheck(form, page, `${p}.door.ceiling`, 24.0, 46.05, data.ventDoorType === "ceiling");
-  addCheck(form, page, `${p}.door.sidewall`, 30.0, 46.05, data.ventDoorType === "sidewall");
-  addText(form, page, `${p}.sp`, 36.0, 45.4, 6, 1.4, data.staticPressure, 8);
-  addText(form, page, `${p}.ventOpen`, 48.5, 45.4, 10, 1.4, data.ventOpeningInches, 8);
+  addCheck(page, 24.0, 45.0, data.ventDoorType === "ceiling");
+  addCheck(page, 31.0, 45.0, data.ventDoorType === "sidewall");
+  addText(form, page, `${p}.sp`, 35.2, 44.5, 5.8, 1.15, data.staticPressure, 8);
+  addText(form, page, `${p}.ventOpen`, 42.2, 44.5, 12.5, 1.15, data.ventOpeningInches, 8);
 
-  addText(form, page, `${p}.cfmMin`, 26.0, 46.9, 12, 1.4, data.cfmPerFt2MinVent, 8);
-  addText(form, page, `${p}.fans`, 56.0, 46.9, 30, 1.4, data.fansSizeAndCount, 8);
+  addText(form, page, `${p}.cfmMin`, 21.0, 46.0, 12.5, 1.15, data.cfmPerFt2MinVent, 8);
+  addText(form, page, `${p}.fans`, 56.5, 46.0, 38.0, 1.15, data.fansSizeAndCount, 8);
 
-  // Cover printed /300 only when we have a timer value.
+  // Timer row 47.32–49.05 — keep short so /300 stays visible.
   addText(
     form,
     page,
     `${p}.minVentActual`,
-    26.0,
-    49.2,
-    16,
-    1.5,
+    22.0,
+    SR.minVentY,
+    8.5,
+    1.15,
     formatMinVentPair(data.minVentActualOn, data.minVentActualOff),
-    7,
+    6,
     { cover: true },
   );
   addText(
     form,
     page,
     `${p}.minVentReco`,
-    60.0,
-    49.2,
-    16,
-    1.5,
+    56.0,
+    SR.minVentY,
+    8.5,
+    1.15,
     formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
-    7,
+    6,
     { cover: true },
   );
 
-  addText(form, page, `${p}.maxCfm`, 20.0, 51.3, 10, 1.4, data.maxCfm, 8);
-  addText(form, page, `${p}.coolOff`, 53.0, 51.3, 8, 1.4, data.coolCellOffTemp, 8);
-  addText(form, page, `${p}.coolOn`, 67.0, 51.3, 8, 1.4, data.coolCellOnTemp, 8);
+  addText(form, page, `${p}.maxCfm`, 22.0, SR.maxCfmY, 10.0, 1.15, data.maxCfm, 8);
+  addText(form, page, `${p}.coolOff`, 49.5, SR.coolY, 10.0, 1.15, data.coolCellOffTemp, 8);
+  addText(form, page, `${p}.coolOn`, 63.5, SR.coolY, 10.5, 1.15, data.coolCellOnTemp, 8);
   addText(
     form,
     page,
     `${p}.coolTimer`,
-    82.0,
-    51.3,
-    10,
-    1.4,
+    78.0,
+    SR.coolY,
+    12.0,
+    1.15,
     data.coolCellTimerOn || data.coolCellTimerOff
       ? `${data.coolCellTimerOn}/${data.coolCellTimerOff}`
       : "",
     8,
   );
 
-  addYesNo(form, page, `${p}.waterLines`, yW, nW, 55.5, data.waterLinesOk);
-  addYesNo(form, page, `${p}.sightTubes`, yW, nW, 57.1, data.sightTubesOk);
-  addYesNo(form, page, `${p}.waterAdditive`, yW, nW, 58.7, data.waterAdditive);
-  addText(form, page, `${p}.psiBefore`, 70.0, 54.9, 8, 1.3, data.psiBefore, 8);
-  addText(form, page, `${p}.psiAfter`, 70.0, 56.5, 8, 1.3, data.psiAfter, 8);
-  addText(form, page, `${p}.waterCol`, 70.0, 58.9, 8, 1.3, data.waterColumnInches, 8);
-  addText(form, page, `${p}.ph`, 88.0, 58.1, 6, 1.3, data.ph, 8);
+  addYesNo(form, page, `${p}.waterLines`, yW, nW, 53.5, data.waterLinesOk);
+  addYesNo(form, page, `${p}.sightTubes`, yW, nW, 55.2, data.sightTubesOk);
+  addYesNo(form, page, `${p}.waterAdditive`, yW, nW, 56.9, data.waterAdditive);
+  addText(form, page, `${p}.psiBefore`, 78.0, 53.4, 7.5, 1.15, data.psiBefore, 8);
+  addText(form, page, `${p}.psiAfter`, 78.0, 55.1, 7.5, 1.15, data.psiAfter, 8);
+  addText(form, page, `${p}.waterCol`, 36.0, 58.7, 10.0, 1.15, data.waterColumnInches, 8);
+  addText(form, page, `${p}.ph`, 68.5, 57.9, 5.5, 1.15, data.ph, 8);
 
   addYesNo(form, page, `${p}.partitioned`, yL, nL, 62.7, data.partitionedOk);
   addYesNo(form, page, `${p}.comfortable`, yL, nL, 64.2, data.comfortableSpreadOk);
@@ -411,18 +403,21 @@ function buildServiceReportFields(
   addYesNo(form, page, `${p}.rodenticide`, yR, nR, 64.2, data.rodenticideOk);
   addYesNo(form, page, `${p}.footBaths`, yR, nR, 65.7, data.footBathsOk);
 
-  addYesNo(form, page, `${p}.generatorAuto`, yW, nW, 69.0, data.generatorAutoOk);
-  addYesNo(form, page, `${p}.dialerOn`, yW, nW, 70.5, data.dialerOnOk);
-  addText(form, page, `${p}.alarmHi`, 69.0, 68.4, 6, 1.3, data.alarmHi, 8);
-  addText(form, page, `${p}.alarmLow`, 77.0, 68.4, 6, 1.3, data.alarmLow, 8);
-  addText(form, page, `${p}.backupHeat`, 54.0, 71.5, 7, 1.3, data.backupHeat, 8);
-  addText(form, page, `${p}.backupCool`, 64.0, 71.5, 7, 1.3, data.backupCool, 8);
-  addText(form, page, `${p}.backupS1`, 74.0, 71.5, 7, 1.3, data.backupStage1, 8);
-  addText(form, page, `${p}.backupS2`, 84.0, 71.5, 7, 1.3, data.backupStage2, 8);
-  addText(form, page, `${p}.backupS3`, 92.0, 71.5, 5, 1.3, data.backupStage3, 8);
+  addYesNo(form, page, `${p}.generatorAuto`, yW, nW, 67.5, data.generatorAutoOk);
+  addYesNo(form, page, `${p}.dialerOn`, yW, nW, 69.1, data.dialerOnOk);
+  addText(form, page, `${p}.alarmHi`, 35.5, 71.3, 5.5, 1.1, data.alarmHi, 8);
+  addText(form, page, `${p}.alarmLow`, 42.5, 71.3, 5.5, 1.1, data.alarmLow, 8);
+
+  const [bH, bC, b1, b2, b3] = SR.backupX;
+  const bY = SR.backupY;
+  addText(form, page, `${p}.backupHeat`, bH, bY, 5.8, 1.1, data.backupHeat, 8);
+  addText(form, page, `${p}.backupCool`, bC, bY, 5.8, 1.1, data.backupCool, 8);
+  addText(form, page, `${p}.backupS1`, b1, bY, 5.8, 1.1, data.backupStage1, 8);
+  addText(form, page, `${p}.backupS2`, b2, bY, 5.8, 1.1, data.backupStage2, 8);
+  addText(form, page, `${p}.backupS3`, b3, bY, 7.5, 1.1, data.backupStage3, 8);
 
   drawCommentLines(page, font, 8.0, 76.0, data.comments, 8, 2.2);
-  addText(form, page, `${p}.tech`, 16.0, 93.8, 40, 1.5, data.serviceTech, 10);
+  addText(form, page, `${p}.tech`, 16.0, 94.2, 40, 1.4, data.serviceTech, 10);
 }
 
 function buildPlacementFields(
@@ -431,54 +426,55 @@ function buildPlacementFields(
   font: PDFFont,
   data: PlacementForm,
 ) {
+  markFont = font;
   const p = "pl";
   const { yes: yL, no: nL } = PL.ynL;
   const { yes: yR, no: nR } = PL.ynR;
+  const { yes: yR2, no: nR2 } = PL.ynR2;
 
-  addText(form, page, `${p}.farmName`, 13.0, 8.5, 24, 1.5, data.farmName, 9);
-  addText(form, page, `${p}.farmNumber`, 39.0, 8.5, 7, 1.5, data.farmNumber, 9);
-  addText(form, page, `${p}.flockNumber`, 47.0, 8.5, 8, 1.5, data.flockNumber, 9);
+  addText(form, page, `${p}.farmName`, 13.0, 9.25, 24, 1.4, data.farmName, 9);
+  addText(form, page, `${p}.farmNumber`, 39.0, 9.25, 7, 1.4, data.farmNumber, 9);
+  addText(form, page, `${p}.flockNumber`, 47.0, 9.25, 8, 1.4, data.flockNumber, 9);
   addText(
     form,
     page,
     `${p}.date`,
     80.0,
-    8.5,
+    9.4,
     14,
-    1.5,
+    1.4,
     formatServiceShortDate(data.date) || data.date,
     9,
   );
 
-  addYesNo(form, page, `${p}.suppLids`, yL, nL, 13.75, data.supplementalLidsOk);
-  addYesNo(form, page, `${p}.feederPaper`, yL, nL, 15.75, data.feederPaperOk);
-  addYesNo(form, page, `${p}.feedTray`, yL, nL, 17.0, data.feedTrayRibsOk);
-  addYesNo(form, page, `${p}.turbo`, yR, nR, 17.0, data.turboFeedersFullOk);
+  addYesNo(form, page, `${p}.suppLids`, yL, nL, 13.6, data.supplementalLidsOk);
+  addYesNo(form, page, `${p}.feederPaper`, yL, nL, 15.2, data.feederPaperOk);
+  addYesNo(form, page, `${p}.feedTray`, yL, nL, 16.7, data.feedTrayRibsOk);
+  addYesNo(form, page, `${p}.turbo`, yR, nR, 16.7, data.turboFeedersFullOk);
 
-  addYesNo(form, page, `${p}.bulbs`, yL, nL, 21.4, data.bulbsReplacedOk);
-  addYesNo(form, page, `${p}.fullIntensity`, yL, nL, 23.5, data.lightsFullIntensityOk);
-  addYesNo(form, page, `${p}.callPan`, yL, nL, 25.5, data.callPanLightsOk);
-  addYesNo(form, page, `${p}.broodLights`, yR, nR, 22.5, data.broodLightsOnOk);
+  addYesNo(form, page, `${p}.bulbs`, yL, nL, 20.3, data.bulbsReplacedOk);
+  addYesNo(form, page, `${p}.fullIntensity`, yL, nL, 21.9, data.lightsFullIntensityOk);
+  addYesNo(form, page, `${p}.callPan`, yL, nL, 23.4, data.callPanLightsOk);
+  addYesNo(form, page, `${p}.broodLights`, yR2, nR2, 21.9, data.broodLightsOnOk);
 
-  addYesNo(form, page, `${p}.tempDay1`, yL, nL, 27.8, data.tempDay1Ok);
-  addYesNo(form, page, `${p}.litterAmend`, yL, nL, 29.6, data.litterAmendmentOk);
-  addCheck(form, page, `${p}.plt`, 48.5, 29.6, data.litterAmendmentType === "PLT");
-  addCheck(form, page, `${p}.pure7`, 56.0, 29.6, data.litterAmendmentType === "Pure7");
-  addYesNo(form, page, `${p}.heaters`, yL, nL, 31.5, data.heatersOk);
-  addYesNo(form, page, `${p}.sensors`, yR, nR, 31.5, data.sensorsBirdLevelOk);
+  addYesNo(form, page, `${p}.tempDay1`, yL, nL, 27.1, data.tempDay1Ok);
+  addYesNo(form, page, `${p}.litterAmend`, yL, nL, 28.6, data.litterAmendmentOk);
+  addCheck(page, 52.5, 28.6, data.litterAmendmentType === "PLT");
+  addCheck(page, 58.5, 28.6, data.litterAmendmentType === "Pure7");
+  addYesNo(form, page, `${p}.heaters`, yL, nL, 30.2, data.heatersOk);
+  addYesNo(form, page, `${p}.sensors`, yR2, nR2, 30.2, data.sensorsBirdLevelOk);
 
-  addCheck(form, page, `${p}.door.ceiling`, 37.5, 33.6, data.ventDoorType === "ceiling");
-  addCheck(form, page, `${p}.door.sidewall`, 44.5, 33.6, data.ventDoorType === "sidewall");
+  addCheck(page, 37.5, 33.6, data.ventDoorType === "ceiling");
+  addCheck(page, 44.5, 33.6, data.ventDoorType === "sidewall");
   addText(form, page, `${p}.sp`, 51.0, 33.1, 5, 1.3, data.staticPressure, 7);
   addText(form, page, `${p}.ventOpen`, 58.0, 33.1, 28, 1.3, data.ventOpeningInches, 7);
-  addText(form, page, `${p}.cfmMin`, 37.0, 34.8, 12, 1.3, data.cfmPerFt2MinVent, 7);
-  addText(form, page, `${p}.fans`, 51.0, 34.8, 36, 1.3, data.fansSizeAndCount, 7);
+  addText(form, page, `${p}.cfmMin`, 37.0, 34.5, 12, 1.35, data.cfmPerFt2MinVent, 7);
+  addText(form, page, `${p}.fans`, 72.0, 34.5, 16, 1.35, data.fansSizeAndCount, 7);
 
   const mvA = formatMinVentPair(data.minVentActualOn, data.minVentActualOff);
   const mvR = formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff);
-  // Actual timer (left block); recommended (right merged block) — keep narrow.
-  addText(form, page, `${p}.mvActual`, 34.5, 36.2, 12, 1.3, mvA, 6, { cover: true });
-  addText(form, page, `${p}.mvReco`, 55.0, 36.2, 14, 1.3, mvR, 6, { cover: true });
+  addText(form, page, `${p}.mvActual`, 34.5, 36.15, 12, 1.35, mvA, 6, { cover: true });
+  addText(form, page, `${p}.mvReco`, 75.0, 36.15, 13, 1.35, mvR, 6, { cover: true });
 
   const sorted = [...data.houses].sort((a, b) => a.houseNumber - b.houseNumber);
   PL.houses.forEach((x, i) => {
@@ -507,14 +503,13 @@ function buildPlacementFields(
     );
   });
 
-  // Water / Space / Sanitation / Emergency are farm-level YES/NO (not per-house).
   addYesNo(form, page, `${p}.sight`, yL, nL, 44.5, data.sightTubesOk);
   addYesNo(form, page, `${p}.proxy`, yL, nL, 46.1, data.proxyTestOk);
   addYesNo(form, page, `${p}.additive`, yL, nL, 47.7, data.waterAdditive);
-  addText(form, page, `${p}.psiBefore`, 36.0, 49.5, 8, 1.3, data.psiBefore, 8);
-  addText(form, page, `${p}.psiAfter`, 36.0, 51.2, 8, 1.3, data.psiAfter, 8);
-  addText(form, page, `${p}.waterCol`, 36.0, 52.9, 8, 1.3, data.waterColumnInches, 8);
-  addText(form, page, `${p}.ph`, 88.0, 52.0, 6, 1.3, data.ph, 8);
+  addText(form, page, `${p}.psiBefore`, 35.0, 49.0, 8, 1.3, data.psiBefore, 8);
+  addText(form, page, `${p}.psiAfter`, 35.0, 50.55, 8, 1.3, data.psiAfter, 8);
+  addText(form, page, `${p}.waterCol`, 35.0, 52.05, 8, 1.3, data.waterColumnInches, 8);
+  addText(form, page, `${p}.ph`, 62.0, 51.95, 5.5, 1.4, data.ph, 8);
 
   addYesNo(form, page, `${p}.partitioned`, yL, nL, 56.0, data.partitionedOk);
   addYesNo(form, page, `${p}.premise`, yL, nL, 59.2, data.premiseCleanOk);
@@ -523,17 +518,18 @@ function buildPlacementFields(
 
   addYesNo(form, page, `${p}.generatorAuto`, yL, nL, 65.2, data.generatorAutoOk);
   addYesNo(form, page, `${p}.dialerOn`, yL, nL, 66.8, data.dialerOnOk);
-  addText(form, page, `${p}.alarmHi`, 36.0, 68.5, 6, 1.3, data.alarmHi, 8);
-  addText(form, page, `${p}.alarmLow`, 44.0, 68.5, 6, 1.3, data.alarmLow, 8);
+  addText(form, page, `${p}.alarmHi`, 34.5, 69.55, 5.5, 1.3, data.alarmHi, 8);
+  addText(form, page, `${p}.alarmLow`, 41.5, 69.55, 5.5, 1.3, data.alarmLow, 8);
 
-  addText(form, page, `${p}.backupHeat`, 54.0, 69.3, 7, 1.3, data.backupHeat, 8);
-  addText(form, page, `${p}.backupCool`, 64.0, 69.3, 7, 1.3, data.backupCool, 8);
-  addText(form, page, `${p}.backupS1`, 74.0, 69.3, 7, 1.3, data.backupStage1, 8);
-  addText(form, page, `${p}.backupS2`, 84.0, 69.3, 7, 1.3, data.backupStage2, 8);
-  addText(form, page, `${p}.backupS3`, 92.0, 69.3, 5, 1.3, data.backupStage3, 8);
+  const [bH, bC, b1, b2, b3] = PL.backupX;
+  addText(form, page, `${p}.backupHeat`, bH, 69.55, 3.2, 1.35, data.backupHeat, 8);
+  addText(form, page, `${p}.backupCool`, bC, 69.55, 3.2, 1.35, data.backupCool, 8);
+  addText(form, page, `${p}.backupS1`, b1, 69.55, 3.2, 1.35, data.backupStage1, 8);
+  addText(form, page, `${p}.backupS2`, b2, 69.55, 5.0, 1.35, data.backupStage2, 8);
+  addText(form, page, `${p}.backupS3`, b3, 69.55, 5.5, 1.35, data.backupStage3, 8);
 
   drawCommentLines(page, font, 8.0, 72.5, data.comments, 8, 2.2);
-  addText(form, page, `${p}.tech`, 16.0, 93.8, 40, 1.5, data.serviceTech, 10);
+  addText(form, page, `${p}.tech`, 16.0, 94.6, 40, 1.4, data.serviceTech, 10);
 }
 
 function buildPrebroodFields(
@@ -542,32 +538,27 @@ function buildPrebroodFields(
   font: PDFFont,
   data: PrebroodForm,
 ) {
+  markFont = font;
   const p = "pb";
   const { yes, no } = PB.yn;
 
-  addText(form, page, `${p}.farmName`, 11.0, 8.6, 24, 1.5, data.farmName, 9);
-  addText(form, page, `${p}.farmNumber`, 36.0, 8.6, 6, 1.5, data.farmNumber, 9);
-  addText(form, page, `${p}.flockNumber`, 43.0, 8.6, 8, 1.5, data.flockNumber, 9);
+  addText(form, page, `${p}.farmName`, 11.0, 9.25, 24, 1.4, data.farmName, 9);
+  addText(form, page, `${p}.farmNumber`, 36.0, 9.25, 6, 1.4, data.farmNumber, 9);
+  addText(form, page, `${p}.flockNumber`, 43.0, 9.25, 8, 1.4, data.flockNumber, 9);
   addText(
     form,
     page,
     `${p}.date`,
     83.0,
-    8.6,
+    9.25,
     12,
-    1.5,
+    1.4,
     formatServiceShortDate(data.date) || data.date,
     9,
   );
 
   if (data.windowHours === "48" || data.windowHours === "72") {
-    addCheck(
-      form,
-      page,
-      `${p}.window`,
-      data.windowHours === "48" ? 57.0 : 65.0,
-      9.3,
-      true,
+    addCheck(page, data.windowHours === "48" ? 56.7 : 63.6, 9.6, true,
     );
   }
 
@@ -579,13 +570,13 @@ function buildPrebroodFields(
 
   addYesNo(form, page, `${p}.moisture`, yes, no, 25.6, data.moistureChartOk);
   addYesNo(form, page, `${p}.litterAmend`, yes, no, 27.2, data.litterAmendmentOk);
-  addCheck(form, page, `${p}.plt`, 52.0, 27.2, data.litterAmendmentType === "PLT");
-  addCheck(form, page, `${p}.pure7`, 58.5, 27.2, data.litterAmendmentType === "Pure7");
+  addCheck(page, 52.0, 27.2, data.litterAmendmentType === "PLT");
+  addCheck(page, 58.5, 27.2, data.litterAmendmentType === "Pure7");
   addYesNo(form, page, `${p}.minVentOn`, yes, no, 28.5, data.minVentOnOk);
   addYesNo(form, page, `${p}.fansClean`, yes, no, 30.1, data.fansCleanOk);
   addYesNo(form, page, `${p}.tempDay1`, yes, no, 31.6, data.tempDay1Ok);
-  addYesNo(form, page, `${p}.cakeOut`, yes, no, 33.4, data.cakeOutOk);
-  addYesNo(form, page, `${p}.cleanOut`, 77.7, 84.6, 33.4, data.cleanOutPadTreatOk);
+  addYesNo(form, page, `${p}.cakeOut`, yes, no, 33.0, data.cakeOutOk);
+  addYesNo(form, page, `${p}.cleanOut`, 77.5, 84.5, 33.0, data.cleanOutPadTreatOk);
   addYesNo(form, page, `${p}.litterDepth`, yes, no, 34.6, data.litterDepthOk);
   addYesNo(form, page, `${p}.heaters`, yes, no, 36.2, data.heatersOk);
 
@@ -608,8 +599,8 @@ function buildPrebroodFields(
   addYesNo(form, page, `${p}.waterSan`, yes, no, 44.4, data.waterLinesSanitizedOk);
   addYesNo(form, page, `${p}.premise`, yes, no, 48.8, data.premiseCleanOk);
   addYesNo(form, page, `${p}.insecticide`, yes, no, 50.0, data.insecticideOk);
-  addCheck(form, page, `${p}.cv`, 49.5, 50.0, data.insecticideType === "CV");
-  addCheck(form, page, `${p}.rvo`, 56.5, 50.0, data.insecticideType === "RVO");
+  addCheck(page, 50.2, 49.95, data.insecticideType === "CV");
+  addCheck(page, 57.1, 49.95, data.insecticideType === "RVO");
 
   const em = PB.emY;
   addYesNo(form, page, `${p}.blockHeater`, yes, no, em.blockHeater, data.blockHeaterOk);
@@ -644,7 +635,7 @@ function buildPrebroodFields(
   );
 
   drawCommentLines(page, font, 8.0, 65.8, data.comments, 8, 2.2);
-  addText(form, page, `${p}.tech`, 16.0, 93.8, 40, 1.5, data.serviceTech, 10);
+  addText(form, page, `${p}.tech`, 16.0, 94.6, 40, 1.4, data.serviceTech, 10);
 }
 
 export async function buildServiceFormPdf(form: AnyServiceForm): Promise<string> {

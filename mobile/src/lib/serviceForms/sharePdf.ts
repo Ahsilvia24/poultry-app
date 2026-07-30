@@ -2,7 +2,7 @@ import * as Sharing from "expo-sharing";
 import type { AnyServiceForm } from "./types";
 import { buildServiceFormPdf } from "./pdfFill";
 
-/** Build a fillable PDF (original Bachoco template + AcroForm fields) and open the share sheet. */
+/** Build a PDF on the original Bachoco form template and open the share sheet. */
 export async function shareServiceFormPdf(form: AnyServiceForm) {
   const uri = await buildServiceFormPdf(form);
   if (await Sharing.isAvailableAsync()) {
