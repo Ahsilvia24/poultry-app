@@ -25,17 +25,25 @@ import { formatMinVentPair, formatServiceShortDate } from "./format";
 const W = 612;
 const H = 792;
 
-/** Convert top-left % box to pdf-lib bottom-left rect. */
+/** Inset so field widgets sit inside cells and don't erase grid lines. */
+const PAD_X = 0.22;
+const PAD_Y = 0.28;
+
+/** Convert top-left % box to pdf-lib bottom-left rect, inset from cell edges. */
 function box(xPct: number, yPct: number, wPct: number, hPct: number) {
+  const x = xPct + PAD_X;
+  const y = yPct + PAD_Y;
+  const w = Math.max(0.4, wPct - PAD_X * 2);
+  const h = Math.max(0.35, hPct - PAD_Y * 2);
   return {
-    x: (xPct / 100) * W,
-    y: H - ((yPct + hPct) / 100) * H,
-    width: (wPct / 100) * W,
-    height: (hPct / 100) * H,
+    x: (x / 100) * W,
+    y: H - ((y + h) / 100) * H,
+    width: (w / 100) * W,
+    height: (h / 100) * H,
   };
 }
 
-function centerCheck(xPct: number, yPct: number, sizePt = 11) {
+function centerCheck(xPct: number, yPct: number, sizePt = 9) {
   return {
     x: (xPct / 100) * W - sizePt / 2,
     y: H - (yPct / 100) * H - sizePt / 2,
@@ -43,6 +51,29 @@ function centerCheck(xPct: number, yPct: number, sizePt = 11) {
     height: sizePt,
   };
 }
+
+/** Opaque white only when we must cover printed ink (continuation #, /300). */
+function coverRect(page: PDFPage, xPct: number, yPct: number, wPct: number, hPct: number) {
+  const r = box(xPct, yPct, wPct, hPct);
+  page.drawRectangle({ ...r, color: rgb(1, 1, 1), borderWidth: 0 });
+}
+
+type TextOpts = {
+  /** Skip creating a field when value is blank (keeps form lines clean). */
+  skipEmpty?: boolean;
+  /** Paint a tight white cover under the field (continuation house #, timers). */
+  cover?: boolean;
+};
+
+/**
+ * pdf-lib defaults backgroundColor to white unless the key is present.
+ * Pass undefined explicitly so appearances stay transparent over the scan.
+ */
+const TRANSPARENT_WIDGET = {
+  borderWidth: 0,
+  borderColor: undefined,
+  backgroundColor: undefined,
+} as const;
 
 function addText(
   form: PDFForm,
@@ -54,16 +85,20 @@ function addText(
   hPct: number,
   value: string,
   fontSize = 8,
+  opts: TextOpts = {},
 ) {
+  const skipEmpty = opts.skipEmpty !== false;
+  const raw = String(value ?? "");
+  const v = raw.trim();
+  if (skipEmpty && !v) return null;
+
+  if (opts.cover) coverRect(page, xPct, yPct, wPct, hPct);
+
   const field = form.createTextField(name);
   field.addToPage(page, {
     ...box(xPct, yPct, wPct, hPct),
-    borderWidth: 0,
-    backgroundColor: rgb(1, 1, 1),
+    ...TRANSPARENT_WIDGET,
   });
-  // Preserve a single space so empty continuation covers still paint.
-  const raw = String(value ?? "");
-  const v = raw.trim() === "" && raw.length > 0 ? " " : raw.trim();
   if (v) field.setText(v);
   try {
     field.setFontSize(fontSize);
@@ -73,20 +108,45 @@ function addText(
   return field;
 }
 
-function addMultiline(
-  form: PDFForm,
+/** Write comments on the printed rules — no AcroForm box (avoids a giant white widget). */
+function drawCommentLines(
   page: PDFPage,
-  name: string,
+  font: PDFFont,
   xPct: number,
   yPct: number,
-  wPct: number,
-  hPct: number,
   value: string,
   fontSize = 8,
+  lineHPct = 2.15,
 ) {
-  const field = addText(form, page, name, xPct, yPct, wPct, hPct, value, fontSize);
-  field.enableMultiline();
-  return field;
+  const lines = String(value ?? "")
+    .split(/\r?\n/)
+    .flatMap((line) => {
+      const t = line.trim();
+      if (!t) return [];
+      // Soft-wrap long lines (~95 chars at this size on letter width).
+      const max = 95;
+      if (t.length <= max) return [t];
+      const out: string[] = [];
+      let rest = t;
+      while (rest.length > max) {
+        let cut = rest.lastIndexOf(" ", max);
+        if (cut < 40) cut = max;
+        out.push(rest.slice(0, cut).trim());
+        rest = rest.slice(cut).trim();
+      }
+      if (rest) out.push(rest);
+      return out;
+    });
+  lines.slice(0, 8).forEach((line, i) => {
+    const yTop = yPct + i * lineHPct;
+    page.drawText(line, {
+      x: (xPct / 100) * W,
+      y: H - (yTop / 100) * H - fontSize * 0.35,
+      size: fontSize,
+      font,
+      color: rgb(0, 0, 0),
+    });
+  });
 }
 
 function addYesNo(
@@ -98,9 +158,9 @@ function addYesNo(
   yPct: number,
   value: YesNo,
 ) {
-  // Checkboxes (checkmark) rather than radio dots — closer to paper X marks.
-  addCheck(form, page, `${name}.yes`, yesX, yPct, value === "yes");
-  addCheck(form, page, `${name}.no`, noX, yPct, value === "no");
+  // Only place the selected mark — empty checkbox widgets still paint a box.
+  if (value === "yes") addCheck(form, page, `${name}.yes`, yesX, yPct, true);
+  else if (value === "no") addCheck(form, page, `${name}.no`, noX, yPct, true);
 }
 
 function addCheck(
@@ -111,14 +171,13 @@ function addCheck(
   yPct: number,
   on: boolean,
 ) {
+  if (!on) return;
   const cb = form.createCheckBox(name);
   cb.addToPage(page, {
-    ...centerCheck(xPct, yPct),
-    borderWidth: 0,
-    backgroundColor: rgb(1, 1, 1),
+    ...centerCheck(xPct, yPct, 9),
+    ...TRANSPARENT_WIDGET,
   });
-  if (on) cb.check();
-  else cb.uncheck();
+  cb.check();
 }
 
 /** Service Report layout — cell left/top edges from form grid lines (top-left %). */
@@ -185,6 +244,7 @@ async function loadTemplate(moduleRef: number) {
 function buildServiceReportFields(
   form: PDFForm,
   page: PDFPage,
+  font: PDFFont,
   data: ServiceReportForm,
   housesSlice: ServiceReportForm["houses"],
   opts: { pageIndex: number; continuation: boolean },
@@ -214,19 +274,21 @@ function buildServiceReportFields(
     const y = SR.rows[i]!;
     const h = housesSlice[i];
     if (opts.continuation) {
-      // Always set text (space if unused) so the white field appearance
-      // covers the printed 1–8 house numbers on continuation pages.
-      addText(
-        form,
-        page,
-        `${p}.h${i}.num`,
-        SR.cols.num,
-        y,
-        SR.colW.num,
-        SR.rowH,
-        h ? String(h.houseNumber) : " ",
-        8,
-      );
+      // Tight white cover only over the printed #, then transparent field text.
+      coverRect(page, SR.cols.num, y, SR.colW.num, SR.rowH);
+      if (h) {
+        addText(
+          form,
+          page,
+          `${p}.h${i}.num`,
+          SR.cols.num,
+          y,
+          SR.colW.num,
+          SR.rowH,
+          String(h.houseNumber),
+          8,
+        );
+      }
     }
     if (!h) continue;
     addText(form, page, `${p}.h${i}.age`, SR.cols.age, y, SR.colW.age, SR.rowH, h.age, 7);
@@ -292,7 +354,7 @@ function buildServiceReportFields(
   addText(form, page, `${p}.cfmMin`, 26.0, 46.9, 12, 1.4, data.cfmPerFt2MinVent, 8);
   addText(form, page, `${p}.fans`, 56.0, 46.9, 30, 1.4, data.fansSizeAndCount, 8);
 
-  // Cover /300 boxes with fillable timer fields
+  // Cover printed /300 only when we have a timer value.
   addText(
     form,
     page,
@@ -303,6 +365,7 @@ function buildServiceReportFields(
     1.5,
     formatMinVentPair(data.minVentActualOn, data.minVentActualOff),
     7,
+    { cover: true },
   );
   addText(
     form,
@@ -314,6 +377,7 @@ function buildServiceReportFields(
     1.5,
     formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
     7,
+    { cover: true },
   );
 
   addText(form, page, `${p}.maxCfm`, 20.0, 51.3, 10, 1.4, data.maxCfm, 8);
@@ -357,11 +421,16 @@ function buildServiceReportFields(
   addText(form, page, `${p}.backupS2`, 84.0, 71.5, 7, 1.3, data.backupStage2, 8);
   addText(form, page, `${p}.backupS3`, 92.0, 71.5, 5, 1.3, data.backupStage3, 8);
 
-  addMultiline(form, page, `${p}.comments`, 7.0, 74.5, 86, 18, data.comments, 8);
+  drawCommentLines(page, font, 8.0, 76.0, data.comments, 8, 2.2);
   addText(form, page, `${p}.tech`, 16.0, 93.8, 40, 1.5, data.serviceTech, 10);
 }
 
-function buildPlacementFields(form: PDFForm, page: PDFPage, data: PlacementForm) {
+function buildPlacementFields(
+  form: PDFForm,
+  page: PDFPage,
+  font: PDFFont,
+  data: PlacementForm,
+) {
   const p = "pl";
   const { yes: yL, no: nL } = PL.ynL;
   const { yes: yR, no: nR } = PL.ynR;
@@ -407,9 +476,9 @@ function buildPlacementFields(form: PDFForm, page: PDFPage, data: PlacementForm)
 
   const mvA = formatMinVentPair(data.minVentActualOn, data.minVentActualOff);
   const mvR = formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff);
-  // Actual timer spans houses 1–2; recommended spans the merged block to the right.
-  addText(form, page, `${p}.mvActual`, 34.5, 36.2, 12, 1.3, mvA, 6);
-  addText(form, page, `${p}.mvReco`, 48.0, 36.2, 38, 1.3, mvR, 6);
+  // Actual timer (left block); recommended (right merged block) — keep narrow.
+  addText(form, page, `${p}.mvActual`, 34.5, 36.2, 12, 1.3, mvA, 6, { cover: true });
+  addText(form, page, `${p}.mvReco`, 55.0, 36.2, 14, 1.3, mvR, 6, { cover: true });
 
   const sorted = [...data.houses].sort((a, b) => a.houseNumber - b.houseNumber);
   PL.houses.forEach((x, i) => {
@@ -463,11 +532,16 @@ function buildPlacementFields(form: PDFForm, page: PDFPage, data: PlacementForm)
   addText(form, page, `${p}.backupS2`, 84.0, 69.3, 7, 1.3, data.backupStage2, 8);
   addText(form, page, `${p}.backupS3`, 92.0, 69.3, 5, 1.3, data.backupStage3, 8);
 
-  addMultiline(form, page, `${p}.comments`, 7.0, 71.0, 86, 20, data.comments, 8);
+  drawCommentLines(page, font, 8.0, 72.5, data.comments, 8, 2.2);
   addText(form, page, `${p}.tech`, 16.0, 93.8, 40, 1.5, data.serviceTech, 10);
 }
 
-function buildPrebroodFields(form: PDFForm, page: PDFPage, data: PrebroodForm) {
+function buildPrebroodFields(
+  form: PDFForm,
+  page: PDFPage,
+  font: PDFFont,
+  data: PrebroodForm,
+) {
   const p = "pb";
   const { yes, no } = PB.yn;
 
@@ -486,18 +560,16 @@ function buildPrebroodFields(form: PDFForm, page: PDFPage, data: PrebroodForm) {
     9,
   );
 
-  const hours = form.createRadioGroup(`${p}.window`);
-  hours.addOptionToPage("48", page, {
-    ...centerCheck(57.0, 9.3),
-    borderWidth: 0,
-    backgroundColor: rgb(1, 1, 1),
-  });
-  hours.addOptionToPage("72", page, {
-    ...centerCheck(65.0, 9.3),
-    borderWidth: 0,
-    backgroundColor: rgb(1, 1, 1),
-  });
-  hours.select(data.windowHours);
+  if (data.windowHours === "48" || data.windowHours === "72") {
+    addCheck(
+      form,
+      page,
+      `${p}.window`,
+      data.windowHours === "48" ? 57.0 : 65.0,
+      9.3,
+      true,
+    );
+  }
 
   addYesNo(form, page, `${p}.feedDelivered`, yes, no, 13.5, data.feedDeliveredOk);
   addYesNo(form, page, `${p}.feedPaper`, yes, no, 15.0, data.feedPaperDeliveredOk);
@@ -571,7 +643,7 @@ function buildPrebroodFields(form: PDFForm, page: PDFPage, data: PrebroodForm) {
     8,
   );
 
-  addMultiline(form, page, `${p}.comments`, 7.0, 64.5, 86, 26, data.comments, 8);
+  drawCommentLines(page, font, 8.0, 65.8, data.comments, 8, 2.2);
   addText(form, page, `${p}.tech`, 16.0, 93.8, 40, 1.5, data.serviceTech, 10);
 }
 
@@ -593,10 +665,14 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const pdfForm = doc.getForm();
 
-  buildServiceReportFields(pdfForm, doc.getPages()[0]!, form, pages[0] ?? [], {
-    pageIndex: 0,
-    continuation: false,
-  });
+  buildServiceReportFields(
+    pdfForm,
+    doc.getPages()[0]!,
+    font,
+    form,
+    pages[0] ?? [],
+    { pageIndex: 0, continuation: false },
+  );
 
   for (let p = 1; p < pages.length; p++) {
     const templateDoc = await loadTemplate(template);
@@ -605,6 +681,7 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
     buildServiceReportFields(
       pdfForm,
       doc.getPages()[doc.getPageCount() - 1]!,
+      font,
       form,
       pages[p]!,
       { pageIndex: p, continuation: true },
@@ -620,7 +697,7 @@ async function buildPlacementPdf(form: PlacementForm) {
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const pdfForm = doc.getForm();
-  buildPlacementFields(pdfForm, doc.getPages()[0]!, form);
+  buildPlacementFields(pdfForm, doc.getPages()[0]!, font, form);
   pdfForm.updateFieldAppearances(font);
   return writePdfToCache(doc, `placement-${Date.now()}.pdf`);
 }
@@ -630,7 +707,7 @@ async function buildPrebroodPdf(form: PrebroodForm) {
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const pdfForm = doc.getForm();
-  buildPrebroodFields(pdfForm, doc.getPages()[0]!, form);
+  buildPrebroodFields(pdfForm, doc.getPages()[0]!, font, form);
   pdfForm.updateFieldAppearances(font);
   return writePdfToCache(doc, `prebrood-${Date.now()}.pdf`);
 }
