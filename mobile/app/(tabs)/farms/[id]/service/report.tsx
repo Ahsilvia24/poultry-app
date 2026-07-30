@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
   type ScrollView as ScrollViewType,
 } from "react-native";
@@ -21,6 +20,8 @@ import {
   TextField,
   YesNoField,
   CommentsField,
+  CompactBackupSettings,
+  CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
 import { TimeScrollPickerField } from "../../../../../src/components/TimeScrollPicker";
 import { Card, PageHeader } from "../../../../../src/components/ui";
@@ -193,57 +194,12 @@ export default function ServiceReportScreen() {
             Prefills from today’s Log Temp on each house tile (resets at midnight). Age, placed,
             and weekly mortality still pull into the PDF automatically.
           </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 8,
-            }}
-          >
-            {form.houses.map((h) => (
-              <View
-                key={h.houseNumber}
-                style={{
-                  flexGrow: 1,
-                  flexShrink: 1,
-                  flexBasis: "30%",
-                  minWidth: 88,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: "800",
-                    color: colors.muted,
-                    marginBottom: 4,
-                  }}
-                >
-                  H{h.houseNumber}
-                </Text>
-                <TextInput
-                  value={h.currentTemp}
-                  onChangeText={(currentTemp) =>
-                    patchHouse(h.houseNumber, { currentTemp })
-                  }
-                  placeholder="°F"
-                  placeholderTextColor="#a8a29e"
-                  keyboardType="decimal-pad"
-                  style={{
-                    minHeight: 40,
-                    borderWidth: 1,
-                    borderColor: "#d6d3d1",
-                    borderRadius: 10,
-                    paddingHorizontal: 10,
-                    fontSize: 16,
-                    fontWeight: "700",
-                    backgroundColor: "#fff",
-                    color: colors.text,
-                    textAlign: "center",
-                  }}
-                />
-              </View>
-            ))}
-          </View>
+          <CompactHouseValueGrid
+            houses={form.houses}
+            getValue={(n) => form.houses.find((h) => h.houseNumber === n)?.currentTemp ?? ""}
+            onChange={(houseNumber, currentTemp) => patchHouse(houseNumber, { currentTemp })}
+            placeholder="°F"
+          />
         </Card>
 
         <Card>
@@ -565,43 +521,13 @@ export default function ServiceReportScreen() {
               />
             }
           />
-          <Text style={{ fontWeight: "700", marginTop: 8, marginBottom: 6 }}>Backup settings</Text>
-          <PairFields
-            left={
-              <TextField
-                label="Heat"
-                value={form.backupHeat}
-                onChange={(backupHeat) => patch({ backupHeat })}
-              />
-            }
-            right={
-              <TextField
-                label="Cool"
-                value={form.backupCool}
-                onChange={(backupCool) => patch({ backupCool })}
-              />
-            }
-          />
-          <PairFields
-            left={
-              <TextField
-                label="Stage 1"
-                value={form.backupStage1}
-                onChange={(backupStage1) => patch({ backupStage1 })}
-              />
-            }
-            right={
-              <TextField
-                label="Stage 2"
-                value={form.backupStage2}
-                onChange={(backupStage2) => patch({ backupStage2 })}
-              />
-            }
-          />
-          <TextField
-            label="Stage 3"
-            value={form.backupStage3}
-            onChange={(backupStage3) => patch({ backupStage3 })}
+          <CompactBackupSettings
+            heat={form.backupHeat}
+            cool={form.backupCool}
+            stage1={form.backupStage1}
+            stage2={form.backupStage2}
+            stage3={form.backupStage3}
+            onChange={patch}
           />
         </Card>
 

@@ -19,6 +19,8 @@ import {
   TextField,
   YesNoField,
   CommentsField,
+  CompactHouseValueGrid,
+  CompactBackupSettings,
 } from "../../../../../src/components/serviceForms/fields";
 import { Card, PageHeader } from "../../../../../src/components/ui";
 import { createPlacementDraft } from "../../../../../src/lib/serviceForms/defaults";
@@ -260,33 +262,31 @@ export default function PlacementChecklistScreen() {
           </Text>
         </Card>
 
-        <SectionTitle title="Litter temp / ammonia by house" />
-        <Text style={[styles.muted, { marginBottom: 8 }]}>
-          Optional — leave blank for houses not being placed.
-        </Text>
-        {form.houses.map((h) => (
-          <Card key={h.houseNumber} style={{ marginBottom: 8 }}>
-            <Text style={{ fontWeight: "800", marginBottom: 6 }}>House {h.houseNumber}</Text>
-            <PairFields
-              left={
-                <TextField
-                  label="Litter temp"
-                  value={h.litterTemp}
-                  onChange={(litterTemp) => patchHouse(h.houseNumber, { litterTemp })}
-                  keyboardType="decimal-pad"
-                />
-              }
-              right={
-                <TextField
-                  label="Ammonia PPM"
-                  value={h.ammoniaPpm}
-                  onChange={(ammoniaPpm) => patchHouse(h.houseNumber, { ammoniaPpm })}
-                  keyboardType="decimal-pad"
-                />
-              }
-            />
-          </Card>
-        ))}
+        <SectionTitle title="Litter temps" />
+        <Card style={{ marginBottom: 10 }}>
+          <Text style={[styles.muted, { marginBottom: 10, lineHeight: 18 }]}>
+            Optional — leave blank for houses not being placed.
+          </Text>
+          <CompactHouseValueGrid
+            houses={form.houses}
+            getValue={(n) => form.houses.find((h) => h.houseNumber === n)?.litterTemp ?? ""}
+            onChange={(houseNumber, litterTemp) => patchHouse(houseNumber, { litterTemp })}
+            placeholder="°F"
+          />
+        </Card>
+
+        <SectionTitle title="Ammonia PPM" />
+        <Card style={{ marginBottom: 10 }}>
+          <Text style={[styles.muted, { marginBottom: 10, lineHeight: 18 }]}>
+            Optional — leave blank for houses not being placed.
+          </Text>
+          <CompactHouseValueGrid
+            houses={form.houses}
+            getValue={(n) => form.houses.find((h) => h.houseNumber === n)?.ammoniaPpm ?? ""}
+            onChange={(houseNumber, ammoniaPpm) => patchHouse(houseNumber, { ammoniaPpm })}
+            placeholder="PPM"
+          />
+        </Card>
 
         <Card>
           <SectionTitle title="Water" />
@@ -320,15 +320,14 @@ export default function PlacementChecklistScreen() {
             left={<TextField label="Alarm HI" value={form.alarmHi} onChange={(alarmHi) => patch({ alarmHi })} keyboardType="number-pad" />}
             right={<TextField label="Alarm LOW" value={form.alarmLow} onChange={(alarmLow) => patch({ alarmLow })} keyboardType="number-pad" />}
           />
-          <PairFields
-            left={<TextField label="Backup heat" value={form.backupHeat} onChange={(backupHeat) => patch({ backupHeat })} />}
-            right={<TextField label="Backup cool" value={form.backupCool} onChange={(backupCool) => patch({ backupCool })} />}
+          <CompactBackupSettings
+            heat={form.backupHeat}
+            cool={form.backupCool}
+            stage1={form.backupStage1}
+            stage2={form.backupStage2}
+            stage3={form.backupStage3}
+            onChange={patch}
           />
-          <PairFields
-            left={<TextField label="Stage 1" value={form.backupStage1} onChange={(backupStage1) => patch({ backupStage1 })} />}
-            right={<TextField label="Stage 2" value={form.backupStage2} onChange={(backupStage2) => patch({ backupStage2 })} />}
-          />
-          <TextField label="Stage 3" value={form.backupStage3} onChange={(backupStage3) => patch({ backupStage3 })} />
         </Card>
 
         <CommentsField
