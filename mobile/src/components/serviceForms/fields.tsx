@@ -1,4 +1,5 @@
-import { Pressable, Text, TextInput, View, type TextInputProps } from "react-native";
+import { Pressable, Text, TextInput, View, type ScrollView, type TextInputProps } from "react-native";
+import { useRef } from "react";
 import { colors, styles } from "../../theme";
 import type { YesNo } from "../../lib/serviceForms/types";
 
@@ -189,6 +190,70 @@ export function PairFields({
     <View style={{ flexDirection: "row", gap: 10 }}>
       <View style={{ flex: 1 }}>{left}</View>
       <View style={{ flex: 1 }}>{right}</View>
+    </View>
+  );
+}
+
+/**
+ * Comments block for service checklists. Keeps the "Comments" heading pinned
+ * to the top of the scroll view when the notes field is focused (instead of
+ * scrollToEnd, which leaves only the bare text box on screen).
+ *
+ * Must be a direct child of the form ScrollView content for layout.y to work.
+ */
+export function CommentsField({
+  value,
+  onChange,
+  scrollRef,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  scrollRef: React.RefObject<ScrollView | null>;
+}) {
+  const sectionY = useRef(0);
+
+  function focusComments() {
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, sectionY.current - 8),
+        animated: true,
+      });
+    }, 300);
+  }
+
+  return (
+    <View
+      onLayout={(e) => {
+        sectionY.current = e.nativeEvent.layout.y;
+      }}
+    >
+      <View
+        style={[
+          styles.card,
+          { marginBottom: 0, paddingTop: 14, paddingBottom: 14 },
+        ]}
+      >
+        <Text
+          style={{
+            fontSize: 17,
+            fontWeight: "800",
+            color: colors.text,
+            marginBottom: 10,
+          }}
+        >
+          Comments
+        </Text>
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          placeholder="Add comments…"
+          placeholderTextColor="#a8a29e"
+          multiline
+          onFocus={focusComments}
+          textAlignVertical="top"
+          style={[styles.input, { minHeight: 110, paddingTop: 10, marginBottom: 0 }]}
+        />
+      </View>
     </View>
   );
 }

@@ -20,6 +20,7 @@ import {
   SectionTitle,
   TextField,
   YesNoField,
+  CommentsField,
 } from "../../../../../src/components/serviceForms/fields";
 import { TimeScrollPickerField } from "../../../../../src/components/TimeScrollPicker";
 import { Card, PageHeader } from "../../../../../src/components/ui";
@@ -129,7 +130,7 @@ export default function ServiceReportScreen() {
       >
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[styles.content, { paddingBottom: 120 }]}
+        contentContainerStyle={[styles.content, { paddingBottom: 280 }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
@@ -602,18 +603,13 @@ export default function ServiceReportScreen() {
             value={form.backupStage3}
             onChange={(backupStage3) => patch({ backupStage3 })}
           />
-
-          <SectionTitle title="Comments" />
-          <TextField
-            label="Notes"
-            value={form.comments}
-            onChange={(comments) => patch({ comments })}
-            multiline
-            onFocus={() => {
-              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
-            }}
-          />
         </Card>
+
+        <CommentsField
+          value={form.comments}
+          onChange={(comments) => patch({ comments })}
+          scrollRef={scrollRef}
+        />
 
         <Pressable
           disabled={saving}
