@@ -569,7 +569,7 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
     }
   }
 
-  return writePdfToCache(doc, `service-report-${Date.now()}.pdf`);
+  return writePdfToCache(doc, pdfFileName("Service-Report", form.farmName, form.date));
 }
 
 async function buildPlacementPdf(form: PlacementForm) {
@@ -578,7 +578,7 @@ async function buildPlacementPdf(form: PlacementForm) {
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   buildPlacementFields({ page: doc.getPages()[0]!, font, map }, form);
-  return writePdfToCache(doc, `placement-${Date.now()}.pdf`);
+  return writePdfToCache(doc, pdfFileName("Placement", form.farmName, form.date));
 }
 
 async function buildPrebroodPdf(form: PrebroodForm) {
@@ -587,7 +587,18 @@ async function buildPrebroodPdf(form: PrebroodForm) {
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   buildPrebroodFields({ page: doc.getPages()[0]!, font, map }, form);
-  return writePdfToCache(doc, `prebrood-${Date.now()}.pdf`);
+  return writePdfToCache(doc, pdfFileName("Prebrood", form.farmName, form.date));
+}
+
+/** Friendly name for Save to Files / AirDrop (e.g. Service-Report-NORTH-RIDGE-2026-07-29.pdf). */
+function pdfFileName(kind: string, farmName: string, date: string) {
+  const farm = String(farmName || "Farm")
+    .trim()
+    .replace(/[^A-Za-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40) || "Farm";
+  const day = String(date || "").trim() || "date";
+  return `${kind}-${farm}-${day}.pdf`;
 }
 
 async function writePdfToCache(doc: PDFDocument, filename: string) {

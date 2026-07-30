@@ -45,16 +45,20 @@ export function useCompleteServiceForm(farmId: string) {
       } catch {
         // Visit is saved even if share sheet fails / is dismissed.
       }
-      Alert.alert("Saved", "Visit logged. PDF is ready to share.", [
-        {
-          text: "Back to farm",
-          onPress: () =>
-            router.replace({
-              pathname: "/(tabs)/farms/[id]",
-              params: { id: farmId },
-            }),
-        },
-      ]);
+      Alert.alert(
+        "Saved",
+        "Visit logged. Use the share sheet to Save to Files, AirDrop, or email the PDF.",
+        [
+          {
+            text: "Back to farm",
+            onPress: () =>
+              router.replace({
+                pathname: "/(tabs)/farms/[id]",
+                params: { id: farmId },
+              }),
+          },
+        ],
+      );
     } catch (e) {
       Alert.alert("Could not save", e instanceof Error ? e.message : "Save failed");
     } finally {
