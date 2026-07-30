@@ -2476,7 +2476,7 @@ export default function FarmDetailScreen() {
                   </View>
                   <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
                     <PrimaryButton
-                      label={farmSaving ? "Saving…" : "Save farm changes"}
+                      label={farmSaving ? "Saving…" : "Save Changes"}
                       onPress={saveFarmEdit}
                       style={{ flex: 1 }}
                     />
