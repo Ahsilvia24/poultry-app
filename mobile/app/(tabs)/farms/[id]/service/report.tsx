@@ -173,8 +173,8 @@ export default function ServiceReportScreen() {
         <SectionTitle title="House temps" />
         <Card style={{ marginBottom: 10 }}>
           <Text style={[styles.muted, { marginBottom: 10, lineHeight: 18 }]}>
-            Prefills from Log Temp on each house tile. Age, placed, and weekly mortality still
-            pull into the PDF automatically.
+            Prefills from today’s Log Temp on each house tile (resets at midnight). Age, placed,
+            and weekly mortality still pull into the PDF automatically.
           </Text>
           <View
             style={{

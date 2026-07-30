@@ -1911,7 +1911,7 @@ export default function FarmDetailScreen() {
                 House {tempHouse?.houseNumber} temperature
               </Text>
               <Text style={{ color: colors.muted, marginTop: 4, marginBottom: 14 }}>
-                Logged temps fill Current Temp on the Service Report.
+                Logged temps fill Current Temp on the Service Report and reset at midnight.
               </Text>
               <NativeNumInput
                 label="Temperature (°F)"

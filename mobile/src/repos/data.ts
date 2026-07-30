@@ -747,6 +747,25 @@ export function getFarmDetail(farmId: string) {
           })
         : null;
 
+    const tempDate =
+      h.logged_temp_at && /^\d{4}-\d{2}-\d{2}$/.test(h.logged_temp_at)
+        ? h.logged_temp_at
+        : h.logged_temp_at
+          ? (() => {
+              const d = new Date(h.logged_temp_at);
+              return Number.isNaN(d.getTime()) ? null : todayKey(d);
+            })()
+          : null;
+    const loggedTempToday =
+      tempDate === today && h.logged_temp?.trim() ? h.logged_temp.trim() : null;
+    // Midnight reset: drop yesterday's temps so the Log Temp button clears.
+    if (h.logged_temp && !loggedTempToday) {
+      db.runSync(
+        "UPDATE houses SET logged_temp = NULL, logged_temp_at = NULL WHERE id = ? AND farm_id = ?",
+        [h.id, farmId],
+      );
+    }
+
     return {
       id: h.id,
       houseNumber: h.house_number,
@@ -757,8 +776,8 @@ export function getFarmDetail(farmId: string) {
         h.total_fan_cfm != null && h.square_footage > 0
           ? h.total_fan_cfm / h.square_footage
           : null,
-      loggedTemp: h.logged_temp?.trim() || null,
-      loggedTempAt: h.logged_temp_at ?? null,
+      loggedTemp: loggedTempToday,
+      loggedTempAt: loggedTempToday ? tempDate : null,
       flockId: hf?.flock_id ?? null,
       houseFlockId: hf?.id ?? null,
       flockNumber: houseFlock?.flock_number ?? null,
@@ -2537,7 +2556,8 @@ export function updateHouseLoggedTemp(
 
   // Keep a clean display value (drop trailing zeros from parse noise)
   const normalized = String(trimmed).replace(/^\s+|\s+$/g, "");
-  const at = new Date().toISOString();
+  // Day key — temps are valid only until local midnight.
+  const at = todayKey();
   db.runSync(
     "UPDATE houses SET logged_temp = ?, logged_temp_at = ? WHERE id = ? AND farm_id = ?",
     [normalized, at, houseId, farmId],
