@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -393,19 +394,62 @@ export default function FarmDetailScreen() {
   });
   const scrollRef = useRef<ScrollViewType>(null);
   const farmEditScrollRef = useRef<ScrollViewType>(null);
-  const farmNotesSectionY = useRef(0);
+  const farmNotesRef = useRef<View>(null);
+  const farmEditScrollY = useRef(0);
+  const farmNotesFocused = useRef(false);
+  const [farmEditKbHeight, setFarmEditKbHeight] = useState(0);
   useTabScrollToTop("farms", scrollRef);
   const sectionY = useRef<Record<string, number>>({});
 
-  function focusFarmNotes() {
-    // Keep the Notes heading + field above the keyboard (same idea as CommentsField).
-    setTimeout(() => {
-      farmEditScrollRef.current?.scrollTo({
-        y: Math.max(0, farmNotesSectionY.current - 8),
-        animated: true,
-      });
-    }, 300);
+  function ensureFarmNotesAboveKeyboard(kbHeight = farmEditKbHeight) {
+    const scroll = farmEditScrollRef.current;
+    const field = farmNotesRef.current;
+    if (!scroll || !field || kbHeight <= 0) return;
+    field.measureInWindow((_x, y, _w, h) => {
+      const winH = Dimensions.get("window").height;
+      // Keep Notes label + top of the box above the keypad.
+      const limit = winH - kbHeight - 16;
+      const targetTop = Math.max(72, winH - kbHeight - Math.min(h + 36, 180));
+      if (y + Math.min(h, 80) > limit || y > targetTop) {
+        const delta = y - targetTop + 8;
+        scroll.scrollTo({
+          y: Math.max(0, farmEditScrollY.current + delta),
+          animated: true,
+        });
+      }
+    });
   }
+
+  function focusFarmNotes() {
+    farmNotesFocused.current = true;
+    // Keyboard animation is ~250ms; measure after the sheet has lifted.
+    setTimeout(() => ensureFarmNotesAboveKeyboard(), 50);
+    setTimeout(() => ensureFarmNotesAboveKeyboard(), 320);
+    setTimeout(() => ensureFarmNotesAboveKeyboard(), 500);
+  }
+
+  useEffect(() => {
+    if (editingFarm == null) {
+      setFarmEditKbHeight(0);
+      farmNotesFocused.current = false;
+      return;
+    }
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvt, (e) => {
+      const h = e.endCoordinates.height;
+      setFarmEditKbHeight(h);
+      if (farmNotesFocused.current) {
+        requestAnimationFrame(() => ensureFarmNotesAboveKeyboard(h));
+        setTimeout(() => ensureFarmNotesAboveKeyboard(h), 280);
+      }
+    });
+    const hideSub = Keyboard.addListener(hideEvt, () => setFarmEditKbHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [editingFarm]);
 
   function scrollToSection(key: string) {
     const y = sectionY.current[key];
@@ -2311,139 +2355,143 @@ export default function FarmDetailScreen() {
         transparent
         onRequestClose={closeFarmEditor}
       >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        {/* Manual keyboard padding — more reliable than KAV inside RN Modals. */}
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+            paddingBottom: farmEditKbHeight,
+          }}
         >
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={() => {
+              Keyboard.dismiss();
+              closeFarmEditor();
+            }}
+          />
           <View
             style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              maxHeight: farmEditKbHeight > 0 ? "58%" : "92%",
+              overflow: "hidden",
             }}
           >
-            <Pressable style={{ flex: 1 }} onPress={closeFarmEditor} />
-            <View
-              style={{
-                backgroundColor: "#fff",
-                borderTopLeftRadius: 16,
-                borderTopRightRadius: 16,
-                maxHeight: "92%",
-                overflow: "hidden",
+            <ScrollView
+              ref={farmEditScrollRef}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              onScroll={(e) => {
+                farmEditScrollY.current = e.nativeEvent.contentOffset.y;
+              }}
+              scrollEventThrottle={16}
+              contentContainerStyle={{
+                padding: 20,
+                paddingBottom: 40,
               }}
             >
-              <ScrollView
-                ref={farmEditScrollRef}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="interactive"
-                contentContainerStyle={{
-                  padding: 20,
-                  paddingBottom: Platform.OS === "ios" ? 280 : 200,
-                }}
-              >
-                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                  Edit farm info
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                Edit farm info
+              </Text>
+              {farmEditError ? (
+                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                  {farmEditError}
                 </Text>
-                {farmEditError ? (
-                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
-                    {farmEditError}
-                  </Text>
-                ) : null}
-                {editingFarm ? (
-                  <>
-                    <View style={{ marginTop: 14 }}>
-                      <Text style={styles.label}>Farm name *</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={editingFarm.farmName}
-                        onChangeText={(v) =>
-                          setEditingFarm((prev) => (prev ? { ...prev, farmName: v } : prev))
-                        }
-                        autoCapitalize="words"
-                      />
-                      <Text style={[styles.label, { marginTop: 8 }]}>Grower name</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={editingFarm.growerName}
-                        onChangeText={(v) =>
-                          setEditingFarm((prev) => (prev ? { ...prev, growerName: v } : prev))
-                        }
-                        autoCapitalize="words"
-                      />
-                      <Text style={[styles.label, { marginTop: 8 }]}>Phone</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={editingFarm.phoneNumber}
-                        onChangeText={(v) =>
-                          setEditingFarm((prev) => (prev ? { ...prev, phoneNumber: v } : prev))
-                        }
-                        keyboardType="phone-pad"
-                        returnKeyType="done"
-                        blurOnSubmit
-                        onSubmitEditing={() => Keyboard.dismiss()}
-                      />
-                      <Text style={[styles.label, { marginTop: 8 }]}>Email</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={editingFarm.email}
-                        onChangeText={(v) =>
-                          setEditingFarm((prev) => (prev ? { ...prev, email: v } : prev))
-                        }
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                      />
-                    </View>
-                    {/* Direct ScrollView child so layout.y is content-relative */}
-                    <View
-                      onLayout={(e) => {
-                        farmNotesSectionY.current = e.nativeEvent.layout.y;
+              ) : null}
+              {editingFarm ? (
+                <>
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={styles.label}>Farm name *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.farmName}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, farmName: v } : prev))
+                      }
+                      autoCapitalize="words"
+                    />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Grower name</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.growerName}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, growerName: v } : prev))
+                      }
+                      autoCapitalize="words"
+                    />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Phone</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.phoneNumber}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, phoneNumber: v } : prev))
+                      }
+                      keyboardType="phone-pad"
+                      returnKeyType="done"
+                      blurOnSubmit
+                      onSubmitEditing={() => Keyboard.dismiss()}
+                    />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Email</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.email}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, email: v } : prev))
+                      }
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+                  <View ref={farmNotesRef} collapsable={false}>
+                    <Text style={styles.label}>Notes</Text>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        {
+                          minHeight: 110,
+                          paddingTop: 12,
+                          paddingBottom: 12,
+                          textAlignVertical: "top",
+                          color: colors.text,
+                          marginBottom: 0,
+                        },
+                      ]}
+                      value={editingFarm.notes}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, notes: v } : prev))
+                      }
+                      multiline
+                      scrollEnabled
+                      onFocus={focusFarmNotes}
+                      onBlur={() => {
+                        farmNotesFocused.current = false;
                       }}
-                    >
-                      <Text style={styles.label}>Notes</Text>
-                      <TextInput
-                        style={[
-                          styles.input,
-                          {
-                            minHeight: 110,
-                            paddingTop: 12,
-                            paddingBottom: 12,
-                            textAlignVertical: "top",
-                            color: colors.text,
-                            marginBottom: 0,
-                          },
-                        ]}
-                        value={editingFarm.notes}
-                        onChangeText={(v) =>
-                          setEditingFarm((prev) => (prev ? { ...prev, notes: v } : prev))
-                        }
-                        multiline
-                        scrollEnabled
-                        onFocus={focusFarmNotes}
-                        placeholder="Notes"
-                        placeholderTextColor={colors.muted}
-                      />
-                    </View>
-                    <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
-                      <PrimaryButton
-                        label={farmSaving ? "Saving…" : "Save farm changes"}
-                        onPress={saveFarmEdit}
-                        style={{ flex: 1 }}
-                      />
-                      <PrimaryButton
-                        label="Cancel"
-                        secondary
-                        onPress={closeFarmEditor}
-                        style={{ flex: 1 }}
-                      />
-                    </View>
-                  </>
-                ) : null}
-              </ScrollView>
-            </View>
+                      placeholder="Notes"
+                      placeholderTextColor={colors.muted}
+                    />
+                  </View>
+                  <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                    <PrimaryButton
+                      label={farmSaving ? "Saving…" : "Save farm changes"}
+                      onPress={saveFarmEdit}
+                      style={{ flex: 1 }}
+                    />
+                    <PrimaryButton
+                      label="Cancel"
+                      secondary
+                      onPress={closeFarmEditor}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                </>
+              ) : null}
+            </ScrollView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       <Modal
