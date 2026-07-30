@@ -1415,6 +1415,51 @@ export function getReports(from: string, to: string, farmId?: string) {
   return { dates, rows };
 }
 
+/** Visits in a date range for one farm or all farms (newest first). */
+export function listVisitsReport(from: string, to: string, farmId?: string) {
+  const db = getDb();
+  const rows = farmId
+    ? db.getAllSync<{
+        id: string;
+        farm_id: string;
+        farm_name: string;
+        visit_date: string;
+        visit_type: string;
+      }>(
+        `SELECT v.id, v.farm_id, f.farm_name, v.visit_date, v.visit_type
+         FROM farm_visits v
+         JOIN farms f ON f.id = v.farm_id
+         WHERE f.deleted_at IS NULL
+           AND v.farm_id = ?
+           AND v.visit_date >= ? AND v.visit_date <= ?
+         ORDER BY v.visit_date DESC, f.farm_name ASC, v.id DESC`,
+        [farmId, from, to],
+      )
+    : db.getAllSync<{
+        id: string;
+        farm_id: string;
+        farm_name: string;
+        visit_date: string;
+        visit_type: string;
+      }>(
+        `SELECT v.id, v.farm_id, f.farm_name, v.visit_date, v.visit_type
+         FROM farm_visits v
+         JOIN farms f ON f.id = v.farm_id
+         WHERE f.deleted_at IS NULL
+           AND v.visit_date >= ? AND v.visit_date <= ?
+         ORDER BY v.visit_date DESC, f.farm_name ASC, v.id DESC`,
+        [from, to],
+      );
+
+  return rows.map((r) => ({
+    id: r.id,
+    farmId: r.farm_id,
+    farmName: r.farm_name,
+    visitDate: r.visit_date,
+    visitType: r.visit_type,
+  }));
+}
+
 export function listLfos() {
   const db = getDb();
   const rows = db.getAllSync<{
