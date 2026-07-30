@@ -269,10 +269,6 @@ export default function PrebroodChecklistScreen() {
           ) : null}
 
           <SectionTitle title="Comments" />
-<<<<<<< HEAD
-          <Text style={[styles.muted, { marginBottom: 6 }]}>
-            If you log generator hours, they’ll be added as the first comment line (editable).
-          </Text>
           <TextField
             label="Notes"
             value={form.comments}
@@ -282,9 +278,6 @@ export default function PrebroodChecklistScreen() {
               setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
             }}
           />
-=======
-          <TextField label="Notes" value={form.comments} onChange={(comments) => patch({ comments })} multiline />
->>>>>>> origin/cursor/prebrood-drop-generator-hours-831e
         </Card>
 
         <Pressable
