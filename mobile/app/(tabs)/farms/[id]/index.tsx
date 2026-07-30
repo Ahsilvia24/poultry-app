@@ -126,21 +126,23 @@ function RowActions({
   onEdit,
   onDelete,
 }: {
-  editLabel: string;
+  editLabel?: string;
   deleteLabel: string;
-  onEdit: () => void;
+  onEdit?: () => void;
   onDelete: () => void;
 }) {
   return (
     <View style={{ flexDirection: "row", gap: 2 }}>
-      <Pressable
-        accessibilityLabel={editLabel}
-        onPress={onEdit}
-        hitSlop={8}
-        style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
-      >
-        <Ionicons name="pencil-outline" size={20} color={colors.muted} />
-      </Pressable>
+      {onEdit ? (
+        <Pressable
+          accessibilityLabel={editLabel ?? "Edit"}
+          onPress={onEdit}
+          hitSlop={8}
+          style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
+        >
+          <Ionicons name="pencil-outline" size={20} color={colors.muted} />
+        </Pressable>
+      ) : null}
       <Pressable
         accessibilityLabel={deleteLabel}
         onPress={onDelete}
@@ -1328,9 +1330,20 @@ export default function FarmDetailScreen() {
                     borderTopColor: "#f5f5f4",
                     flexDirection: "row",
                     gap: 8,
+                    alignItems: "flex-start",
                   }}
                 >
-                  <View style={{ flex: 1, minWidth: 0 }}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/visits/[visitId]",
+                        params: { id: farm.id, visitId: v.id },
+                      })
+                    }
+                    style={{ flex: 1, minWidth: 0 }}
+                  >
                     <Text style={{ fontWeight: "700" }}>
                       {formatShortDate(v.visitDate)} —{" "}
                       {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
@@ -1341,16 +1354,9 @@ export default function FarmDetailScreen() {
                       </Text>
                     ) : null}
                     {v.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text> : null}
-                  </View>
+                  </Pressable>
                   <RowActions
-                    editLabel="Edit visit"
                     deleteLabel="Delete visit"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/visits/[visitId]",
-                        params: { id: farm.id, visitId: v.id },
-                      })
-                    }
                     onDelete={() => confirmDeleteVisit(v.id, v.visitDate)}
                   />
                 </View>
