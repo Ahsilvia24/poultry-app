@@ -18,7 +18,10 @@ import {
 } from "../../../../../src/components/serviceForms/fields";
 import { Card, PageHeader } from "../../../../../src/components/ui";
 import { createPlacementDraft } from "../../../../../src/lib/serviceForms/defaults";
-import { VENT_DOOR_OPTIONS } from "../../../../../src/lib/serviceForms/format";
+import {
+  VENT_DOOR_OPTIONS,
+  WEEK_OPTIONS,
+} from "../../../../../src/lib/serviceForms/format";
 import {
   minVentForWeek,
   prefillHouseRows,
@@ -49,16 +52,32 @@ export default function PlacementChecklistScreen() {
       houses: detail ? prefillHouseRows(detail) : [],
     });
     if (detail) {
-      const minVent = minVentForWeek(detail, 1);
+      const week = draft.minVentRecommendedWeek || 1;
+      const minVent = minVentForWeek(detail, week);
+      draft.minVentRecommendedWeek = week;
       draft.minVentRecommendedOn = minVent?.on ?? "";
       draft.minVentRecommendedOff = minVent?.off ?? "";
     }
     return draft;
   });
   const [ventDoorOpen, setVentDoorOpen] = useState(false);
+  const [weekOpen, setWeekOpen] = useState(false);
 
   function patch(p: Partial<PlacementForm>) {
     setForm((prev) => ({ ...prev, ...p }));
+  }
+
+  function applyRecommendedWeek(week: number) {
+    if (!detail) {
+      patch({ minVentRecommendedWeek: week });
+      return;
+    }
+    const minVent = minVentForWeek(detail, week);
+    patch({
+      minVentRecommendedWeek: week,
+      minVentRecommendedOn: minVent?.on ?? "",
+      minVentRecommendedOff: minVent?.off ?? "",
+    });
   }
 
   function patchHouse(houseNumber: number, p: Partial<PlacementForm["houses"][number]>) {
@@ -182,14 +201,31 @@ export default function PlacementChecklistScreen() {
           <TextField label="Size and number of fans" value={form.fansSizeAndCount} onChange={(fansSizeAndCount) => patch({ fansSizeAndCount })} />
           <PairFields
             left={
-              <TextField label="Min vent actual ON" value={form.minVentActualOn} onChange={(minVentActualOn) => patch({ minVentActualOn })} keyboardType="number-pad" />
+              <TextField
+                label="Min vent actual ON"
+                value={form.minVentActualOn}
+                onChange={(minVentActualOn) => patch({ minVentActualOn })}
+                keyboardType="number-pad"
+                placeholder="30"
+              />
             }
             right={
-              <TextField label="Min vent actual OFF" value={form.minVentActualOff} onChange={(minVentActualOff) => patch({ minVentActualOff })} keyboardType="number-pad" />
+              <TextField
+                label="Min vent actual OFF"
+                value={form.minVentActualOff}
+                onChange={(minVentActualOff) => patch({ minVentActualOff })}
+                keyboardType="number-pad"
+                placeholder="270"
+              />
             }
           />
+          <SelectField
+            label="Recommended min vent week"
+            valueLabel={`Week ${form.minVentRecommendedWeek}`}
+            onPress={() => setWeekOpen(true)}
+          />
           <Text style={[styles.muted, { marginBottom: 8 }]}>
-            Recommended (Week 1):{" "}
+            Recommended:{" "}
             {form.minVentRecommendedOn || form.minVentRecommendedOff
               ? `${form.minVentRecommendedOn} on / ${form.minVentRecommendedOff} off`
               : "—"}
@@ -294,6 +330,14 @@ export default function PlacementChecklistScreen() {
           patch({ ventDoorType: ventDoorType as PlacementForm["ventDoorType"] })
         }
         onClose={() => setVentDoorOpen(false)}
+      />
+      <OptionPicker
+        open={weekOpen}
+        title="Recommended min vent week"
+        options={WEEK_OPTIONS}
+        value={String(form.minVentRecommendedWeek)}
+        onSelect={(v) => applyRecommendedWeek(Number(v))}
+        onClose={() => setWeekOpen(false)}
       />
     </SafeAreaView>
   );

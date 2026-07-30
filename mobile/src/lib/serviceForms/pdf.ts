@@ -234,7 +234,7 @@ export function placementPdfHtml(form: Extract<AnyServiceForm, { kind: "placemen
           <tr><td>C.F.M./Ft2 Min Vent</td><td>${esc(form.cfmPerFt2MinVent)}</td></tr>
           <tr><td>Fans</td><td>${esc(form.fansSizeAndCount)}</td></tr>
           <tr><td>Min Vent Actual</td><td>${esc(formatMinVentPair(form.minVentActualOn, form.minVentActualOff))}</td></tr>
-          <tr><td>Min Vent Recommended (Wk1)</td><td>${esc(formatMinVentPair(form.minVentRecommendedOn, form.minVentRecommendedOff))}</td></tr>
+          <tr><td>Min Vent Recommended (Wk ${esc(String(form.minVentRecommendedWeek))})</td><td>${esc(formatMinVentPair(form.minVentRecommendedOn, form.minVentRecommendedOff))}</td></tr>
         </table>
         <h2>SPACE / SANITATION / EMERGENCY</h2>
         <table>
