@@ -194,6 +194,157 @@ export function PairFields({
   );
 }
 
+const compactInputStyle = {
+  minHeight: 40,
+  borderWidth: 1,
+  borderColor: "#d6d3d1",
+  borderRadius: 10,
+  paddingHorizontal: 10,
+  fontSize: 16,
+  fontWeight: "700" as const,
+  backgroundColor: "#fff",
+  color: colors.text,
+  textAlign: "center" as const,
+};
+
+function CompactCell({
+  label,
+  value,
+  onChange,
+  placeholder,
+  keyboardType = "default",
+  flexBasis = "30%",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  keyboardType?: TextInputProps["keyboardType"];
+  flexBasis?: `${number}%`;
+}) {
+  return (
+    <View
+      style={{
+        flexGrow: 1,
+        flexShrink: 1,
+        flexBasis,
+        minWidth: 72,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 12,
+          fontWeight: "800",
+          color: colors.muted,
+          marginBottom: 4,
+        }}
+      >
+        {label}
+      </Text>
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        placeholder={placeholder}
+        placeholderTextColor="#a8a29e"
+        keyboardType={keyboardType}
+        style={compactInputStyle}
+      />
+    </View>
+  );
+}
+
+/** Dense H1 / H2 / … value grid (same look as Service Report house temps). */
+export function CompactHouseValueGrid({
+  houses,
+  getValue,
+  onChange,
+  placeholder,
+  keyboardType = "decimal-pad",
+}: {
+  houses: Array<{ houseNumber: number }>;
+  getValue: (houseNumber: number) => string;
+  onChange: (houseNumber: number, value: string) => void;
+  placeholder?: string;
+  keyboardType?: TextInputProps["keyboardType"];
+}) {
+  return (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      {houses.map((h) => (
+        <CompactCell
+          key={h.houseNumber}
+          label={`H${h.houseNumber}`}
+          value={getValue(h.houseNumber)}
+          onChange={(v) => onChange(h.houseNumber, v)}
+          placeholder={placeholder}
+          keyboardType={keyboardType}
+        />
+      ))}
+    </View>
+  );
+}
+
+/** Heat/Cool on row 1, Stage 1–3 on row 2 — compact temp-grid style. */
+export function CompactBackupSettings({
+  heat,
+  cool,
+  stage1,
+  stage2,
+  stage3,
+  onChange,
+}: {
+  heat: string;
+  cool: string;
+  stage1: string;
+  stage2: string;
+  stage3: string;
+  onChange: (patch: {
+    backupHeat?: string;
+    backupCool?: string;
+    backupStage1?: string;
+    backupStage2?: string;
+    backupStage3?: string;
+  }) => void;
+}) {
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={{ fontWeight: "700", marginTop: 4, marginBottom: 2, color: colors.text }}>
+        Backup settings
+      </Text>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <CompactCell
+          label="Heat"
+          value={heat}
+          onChange={(backupHeat) => onChange({ backupHeat })}
+          flexBasis="48%"
+        />
+        <CompactCell
+          label="Cool"
+          value={cool}
+          onChange={(backupCool) => onChange({ backupCool })}
+          flexBasis="48%"
+        />
+      </View>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <CompactCell
+          label="Stage 1"
+          value={stage1}
+          onChange={(backupStage1) => onChange({ backupStage1 })}
+        />
+        <CompactCell
+          label="Stage 2"
+          value={stage2}
+          onChange={(backupStage2) => onChange({ backupStage2 })}
+        />
+        <CompactCell
+          label="Stage 3"
+          value={stage3}
+          onChange={(backupStage3) => onChange({ backupStage3 })}
+        />
+      </View>
+    </View>
+  );
+}
+
 /**
  * Comments block for service checklists. Keeps the "Comments" heading pinned
  * to the top of the scroll view when the notes field is focused (instead of

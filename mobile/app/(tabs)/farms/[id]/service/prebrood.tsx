@@ -18,6 +18,7 @@ import {
   TextField,
   YesNoField,
   CommentsField,
+  CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
 import { Card, PageHeader } from "../../../../../src/components/ui";
 import { createPrebroodDraft } from "../../../../../src/lib/serviceForms/defaults";
@@ -201,18 +202,18 @@ export default function PrebroodChecklistScreen() {
           <YesNoField label="All heaters on and operational" value={form.heatersOk} onChange={(heatersOk) => patch({ heatersOk })} />
         </Card>
 
-        <SectionTitle title="Ammonia PPM by house" />
-        <Text style={[styles.muted, { marginBottom: 8 }]}>Optional — blank is fine.</Text>
-        {form.houses.map((h) => (
-          <Card key={h.houseNumber} style={{ marginBottom: 8 }}>
-            <TextField
-              label={`House ${h.houseNumber} ammonia PPM`}
-              value={h.ammoniaPpm}
-              onChange={(ammoniaPpm) => patchHouse(h.houseNumber, { ammoniaPpm })}
-              keyboardType="decimal-pad"
-            />
-          </Card>
-        ))}
+        <SectionTitle title="Ammonia PPM" />
+        <Card style={{ marginBottom: 10 }}>
+          <Text style={[styles.muted, { marginBottom: 10, lineHeight: 18 }]}>
+            Optional — blank is fine.
+          </Text>
+          <CompactHouseValueGrid
+            houses={form.houses}
+            getValue={(n) => form.houses.find((h) => h.houseNumber === n)?.ammoniaPpm ?? ""}
+            onChange={(houseNumber, ammoniaPpm) => patchHouse(houseNumber, { ammoniaPpm })}
+            placeholder="PPM"
+          />
+        </Card>
 
         <Card>
           <SectionTitle title="Water" />
