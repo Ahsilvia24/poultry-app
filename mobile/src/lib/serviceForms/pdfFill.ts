@@ -205,6 +205,24 @@ function hideAllCheckboxes(form: PDFForm) {
   }
 }
 
+/** Pull words into one comment line up to ~92% of that field’s width. */
+function takeCommentLine(
+  words: string[],
+  font: PDFFont,
+  fontSize: number,
+  maxWidth: number,
+): { line: string; rest: string[] } {
+  let cur = "";
+  let i = 0;
+  for (; i < words.length; i++) {
+    const word = words[i]!;
+    const next = cur ? `${cur} ${word}` : word;
+    if (cur && font.widthOfTextAtSize(next, fontSize) > maxWidth) break;
+    cur = next;
+  }
+  return { line: cur, rest: words.slice(i) };
+}
+
 function fillCommentLines(
   form: PDFForm,
   page: PDFPage,
@@ -212,25 +230,29 @@ function fillCommentLines(
   names: string[],
   text: string,
 ) {
-  const lines = String(text ?? "")
-    .split(/\r?\n/)
-    .flatMap((line) => {
-      const t = line.trim();
-      if (!t) return [];
-      const max = 95;
-      if (t.length <= max) return [t];
-      const out: string[] = [];
-      let rest = t;
-      while (rest.length > max) {
-        let cut = rest.lastIndexOf(" ", max);
-        if (cut < 40) cut = max;
-        out.push(rest.slice(0, cut).trim());
-        rest = rest.slice(cut).trim();
-      }
-      if (rest) out.push(rest);
-      return out;
-    });
-  names.forEach((name, i) => setText(form, page, font, name, lines[i] ?? "", 8));
+  const fontSize = 8;
+  let words = String(text ?? "")
+    .split(/\s+/)
+    .filter(Boolean);
+  for (const name of names) {
+    if (words.length === 0) break;
+    let maxWidth = page.getWidth() * 0.9;
+    try {
+      const field = form.getTextField(name);
+      const r = widgetRect(field, page, 0);
+      maxWidth = Math.max(40, r.width * 0.92);
+    } catch {
+      /* missing field width — keep page fallback */
+    }
+    const { line, rest } = takeCommentLine(words, font, fontSize, maxWidth);
+    if (!line) {
+      setText(form, page, font, name, words[0]!, fontSize);
+      words = words.slice(1);
+      continue;
+    }
+    setText(form, page, font, name, line, fontSize);
+    words = rest;
+  }
 }
 
 /** Drop AcroForm widgets so shared PDFs show stamped values without field borders. */
