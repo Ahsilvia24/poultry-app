@@ -17,6 +17,7 @@ import {
   SectionTitle,
   TextField,
   YesNoField,
+  CommentsField,
 } from "../../../../../src/components/serviceForms/fields";
 import { Card, PageHeader } from "../../../../../src/components/ui";
 import { createPrebroodDraft } from "../../../../../src/lib/serviceForms/defaults";
@@ -81,7 +82,7 @@ export default function PrebroodChecklistScreen() {
       >
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[styles.content, { paddingBottom: 120 }]}
+        contentContainerStyle={[styles.content, { paddingBottom: 280 }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
@@ -280,18 +281,13 @@ export default function PrebroodChecklistScreen() {
               />
             </View>
           ) : null}
-
-          <SectionTitle title="Comments" />
-          <TextField
-            label="Notes"
-            value={form.comments}
-            onChange={(comments) => patch({ comments })}
-            multiline
-            onFocus={() => {
-              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
-            }}
-          />
         </Card>
+
+        <CommentsField
+          value={form.comments}
+          onChange={(comments) => patch({ comments })}
+          scrollRef={scrollRef}
+        />
 
         <Pressable
           disabled={saving}
