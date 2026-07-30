@@ -1,10 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Text,
   View,
+  type ScrollView as ScrollViewType,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -76,6 +79,7 @@ export default function ServiceReportScreen() {
   const [humidityOpen, setHumidityOpen] = useState(false);
   const [ventDoorOpen, setVentDoorOpen] = useState(false);
   const [weekOpen, setWeekOpen] = useState(false);
+  const scrollRef = useRef<ScrollViewType>(null);
 
   function patch(p: Partial<ServiceReportForm>) {
     setForm((prev) => ({ ...prev, ...p }));
@@ -105,7 +109,17 @@ export default function ServiceReportScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 }]}>
+      <KeyboardAvoidingView
+        style={styles.screen}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[styles.content, { paddingBottom: 120 }]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+      >
         <Pressable
           onPress={() => {
             if (router.canGoBack()) router.back();
@@ -406,7 +420,7 @@ export default function ServiceReportScreen() {
             label="Inches of water column"
             value={form.waterColumnInches}
             onChange={(waterColumnInches) => patch({ waterColumnInches })}
-            keyboardType="decimal-pad"
+            placeholder="4-6"
           />
           <PairFields
             left={
@@ -536,6 +550,9 @@ export default function ServiceReportScreen() {
             value={form.comments}
             onChange={(comments) => patch({ comments })}
             multiline
+            onFocus={() => {
+              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
+            }}
           />
         </Card>
 
@@ -560,6 +577,7 @@ export default function ServiceReportScreen() {
           )}
         </Pressable>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <OptionPicker
         open={humidityOpen}
