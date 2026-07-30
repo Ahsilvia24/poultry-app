@@ -114,6 +114,7 @@ export type PlacementForm = {
   fansSizeAndCount: string;
   minVentActualOn: string;
   minVentActualOff: string;
+  minVentRecommendedWeek: number;
   minVentRecommendedOn: string;
   minVentRecommendedOff: string;
   houses: ServiceHouseRow[];

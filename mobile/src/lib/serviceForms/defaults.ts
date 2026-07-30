@@ -124,6 +124,7 @@ export function createPlacementDraft(input?: {
     fansSizeAndCount: "",
     minVentActualOn: "",
     minVentActualOff: "",
+    minVentRecommendedWeek: 1,
     minVentRecommendedOn: "",
     minVentRecommendedOff: "",
     houses: input?.houses?.length ? input.houses : [],
