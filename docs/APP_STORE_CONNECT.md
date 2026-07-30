@@ -42,10 +42,14 @@ Temporary tunnel (only while this cloud agent session is up):
 - Privacy: `https://southeast-ate-freeware-length.trycloudflare.com/privacy.html`
 - Support: `https://southeast-ate-freeware-length.trycloudflare.com/support.html`
 
-## Screenshots still needed in ASC
+## Screenshots
 
-- 13" iPad (2064×2752) — capture from Simulator or device and upload under App Preview and Screenshots.
-- iPhone screenshots if not already filled.
+Repo asset for the 13" iPad slot (2064×2752 Service Report UI preview):
+
+- `docs/app-store/ipad-13-service-report.png`
+
+Upload that under App Preview and Screenshots → 13" iPad (or replace with a live device capture if you prefer).
+Also fill iPhone screenshots if not already set.
 
 ## Device QA after build 83 installs
 
