@@ -71,7 +71,6 @@ export default function FarmsScreen() {
           pathname: "/(tabs)/farms/[id]",
           params: {
             id: pendingReturn.farmId,
-            focusHouseFlockId: pendingReturn.houseFlockId ?? "",
           },
         }}
       />

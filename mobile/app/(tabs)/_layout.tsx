@@ -79,13 +79,14 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 // Mortality → Farms: open the selected farm/house.
                 // Do not emit tabPress (nested stacks popToTop on that event).
                 // Do not navigate to farms/index — that was forcing the list.
+                // Open the selected farm, but do not snap to a house —
+                // only Mortality "Back to House" passes focusHouseFlockId.
                 if (!focused && route.name === "farms" && fromMortality && ctx.farmId) {
                   armFarmReturnFromMortality();
                   router.navigate({
                     pathname: "/(tabs)/farms/[id]",
                     params: {
                       id: ctx.farmId,
-                      focusHouseFlockId: ctx.houseFlockId ?? "",
                     },
                   });
                   return;
