@@ -1089,12 +1089,6 @@ export default function FarmDetailScreen() {
                     >
                       <Text style={{ fontSize: 17, fontWeight: "800" }}>
                         House {h.houseNumber}
-                        {h.flockNumber ? (
-                          <Text style={{ fontWeight: "600", color: colors.muted }}>
-                            {" "}
-                            · {h.flockNumber}
-                          </Text>
-                        ) : null}
                         {h.ageDays != null ? (
                           <Text style={{ fontWeight: "600", color: colors.muted }}>
                             {" "}
