@@ -37,7 +37,8 @@ type FieldMap = {
 type StampOpts = {
   widgetIndex?: number;
   xPad?: number;
-  coverPrinted?: "field" | "trailing";
+  /** White-out the whole widget rect (e.g. printed "/" under placement timers). */
+  coverPrinted?: "field";
 };
 
 type Ctx = {
@@ -71,16 +72,6 @@ function setText(
       y: r.y,
       width: r.w,
       height: r.h,
-      color: rgb(1, 1, 1),
-      borderWidth: 0,
-    });
-  } else if (opts?.coverPrinted === "trailing") {
-    const wipeW = Math.max(28, r.w * 0.45);
-    ctx.page.drawRectangle({
-      x: r.x + r.w - wipeW + 2,
-      y: r.y - 0.5,
-      width: wipeW + 14,
-      height: r.h + 1,
       color: rgb(1, 1, 1),
       borderWidth: 0,
     });
@@ -231,19 +222,19 @@ function buildServiceReportFields(
   setText(ctx, "CFM Ft2 Min Vent", data.cfmPerFt2MinVent, 8);
   setText(ctx, "Text51", data.fansSizeAndCount, 8);
 
+  // Do not white-out trailing cells — that wipe spilled past the field and
+  // covered printed form lines to the right of Actual / Recommended.
   setText(
     ctx,
     "Text53",
     formatMinVentPair(data.minVentActualOn, data.minVentActualOff),
     6,
-    { coverPrinted: "trailing" },
   );
   setText(
     ctx,
     "Text52",
     formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
     6,
-    { coverPrinted: "trailing" },
   );
   setText(ctx, "300Max CFM Ft2 Power", data.maxCfm, 8);
   setText(ctx, "Degrees I", data.coolCellOffTemp, 8);
