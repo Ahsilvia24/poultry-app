@@ -664,6 +664,8 @@ export function getFarmDetail(farmId: string) {
     square_footage: number;
     total_fan_cfm: number | null;
     number_of_fans: number | null;
+    logged_temp: string | null;
+    logged_temp_at: string | null;
   }>(
     "SELECT * FROM houses WHERE farm_id = ? AND deleted_at IS NULL ORDER BY house_number ASC",
     [farmId],
@@ -745,6 +747,25 @@ export function getFarmDetail(farmId: string) {
           })
         : null;
 
+    const tempDate =
+      h.logged_temp_at && /^\d{4}-\d{2}-\d{2}$/.test(h.logged_temp_at)
+        ? h.logged_temp_at
+        : h.logged_temp_at
+          ? (() => {
+              const d = new Date(h.logged_temp_at);
+              return Number.isNaN(d.getTime()) ? null : todayKey(d);
+            })()
+          : null;
+    const loggedTempToday =
+      tempDate === today && h.logged_temp?.trim() ? h.logged_temp.trim() : null;
+    // Midnight reset: drop yesterday's temps so the Log Temp button clears.
+    if (h.logged_temp && !loggedTempToday) {
+      db.runSync(
+        "UPDATE houses SET logged_temp = NULL, logged_temp_at = NULL WHERE id = ? AND farm_id = ?",
+        [h.id, farmId],
+      );
+    }
+
     return {
       id: h.id,
       houseNumber: h.house_number,
@@ -755,6 +776,8 @@ export function getFarmDetail(farmId: string) {
         h.total_fan_cfm != null && h.square_footage > 0
           ? h.total_fan_cfm / h.square_footage
           : null,
+      loggedTemp: loggedTempToday,
+      loggedTempAt: loggedTempToday ? tempDate : null,
       flockId: hf?.flock_id ?? null,
       houseFlockId: hf?.id ?? null,
       flockNumber: houseFlock?.flock_number ?? null,
@@ -2505,6 +2528,41 @@ function applyHouseFlockFields(
   }
 
   syncFlockDatesAndPrune(farmId, flock.id);
+}
+
+export function updateHouseLoggedTemp(
+  farmId: string,
+  houseId: string,
+  temp: string | null,
+) {
+  const db = getDb();
+  const house = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM houses WHERE id = ? AND farm_id = ? AND deleted_at IS NULL",
+    [houseId, farmId],
+  );
+  if (!house) throw new Error("House not found");
+
+  const trimmed = temp?.trim() ?? "";
+  if (!trimmed) {
+    db.runSync(
+      "UPDATE houses SET logged_temp = NULL, logged_temp_at = NULL WHERE id = ? AND farm_id = ?",
+      [houseId, farmId],
+    );
+    return { success: true as const, loggedTemp: null };
+  }
+
+  const n = Number(trimmed);
+  if (!Number.isFinite(n)) throw new Error("Enter a valid temperature");
+
+  // Keep a clean display value (drop trailing zeros from parse noise)
+  const normalized = String(trimmed).replace(/^\s+|\s+$/g, "");
+  // Day key — temps are valid only until local midnight.
+  const at = todayKey();
+  db.runSync(
+    "UPDATE houses SET logged_temp = ?, logged_temp_at = ? WHERE id = ? AND farm_id = ?",
+    [normalized, at, houseId, farmId],
+  );
+  return { success: true as const, loggedTemp: normalized };
 }
 
 export function updateHouse(
