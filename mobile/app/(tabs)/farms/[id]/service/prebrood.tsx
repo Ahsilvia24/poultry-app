@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Text,
   View,
+  type ScrollView as ScrollViewType,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -57,6 +60,7 @@ export default function PrebroodChecklistScreen() {
       houses: detail ? prefillHouseRows(detail) : [],
     }),
   );
+  const scrollRef = useRef<ScrollViewType>(null);
 
   function patch(p: Partial<PrebroodForm>) {
     setForm((prev) => ({ ...prev, ...p }));
@@ -73,7 +77,17 @@ export default function PrebroodChecklistScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 }]}>
+      <KeyboardAvoidingView
+        style={styles.screen}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[styles.content, { paddingBottom: 120 }]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+      >
         <Pressable
           onPress={() => {
             if (router.canGoBack()) router.back();
@@ -284,7 +298,15 @@ export default function PrebroodChecklistScreen() {
           <Text style={[styles.muted, { marginBottom: 6 }]}>
             If you log generator hours, they’ll be added as the first comment line (editable).
           </Text>
-          <TextField label="Notes" value={form.comments} onChange={(comments) => patch({ comments })} multiline />
+          <TextField
+            label="Notes"
+            value={form.comments}
+            onChange={(comments) => patch({ comments })}
+            multiline
+            onFocus={() => {
+              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
+            }}
+          />
         </Card>
 
         <Pressable
@@ -318,6 +340,7 @@ export default function PrebroodChecklistScreen() {
           )}
         </Pressable>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

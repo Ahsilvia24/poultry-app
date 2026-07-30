@@ -1,4 +1,4 @@
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View, type TextInputProps } from "react-native";
 import { colors, styles } from "../../theme";
 import type { YesNo } from "../../lib/serviceForms/types";
 
@@ -145,6 +145,7 @@ export function TextField({
   placeholder,
   keyboardType = "default",
   multiline,
+  onFocus,
 }: {
   label: string;
   value: string;
@@ -152,6 +153,7 @@ export function TextField({
   placeholder?: string;
   keyboardType?: "default" | "numeric" | "decimal-pad" | "numbers-and-punctuation" | "number-pad";
   multiline?: boolean;
+  onFocus?: TextInputProps["onFocus"];
 }) {
   return (
     <View style={{ marginBottom: 10 }}>
@@ -165,9 +167,11 @@ export function TextField({
         placeholderTextColor="#a8a29e"
         keyboardType={keyboardType}
         multiline={multiline}
+        onFocus={onFocus}
+        textAlignVertical={multiline ? "top" : "center"}
         style={[
           styles.input,
-          multiline ? { minHeight: 96, textAlignVertical: "top", paddingTop: 10 } : null,
+          multiline ? { minHeight: 96, paddingTop: 10 } : null,
         ]}
       />
     </View>

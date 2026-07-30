@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Text,
   View,
+  type ScrollView as ScrollViewType,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -62,6 +65,7 @@ export default function PlacementChecklistScreen() {
   });
   const [ventDoorOpen, setVentDoorOpen] = useState(false);
   const [weekOpen, setWeekOpen] = useState(false);
+  const scrollRef = useRef<ScrollViewType>(null);
 
   function patch(p: Partial<PlacementForm>) {
     setForm((prev) => ({ ...prev, ...p }));
@@ -91,7 +95,17 @@ export default function PlacementChecklistScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 }]}>
+      <KeyboardAvoidingView
+        style={styles.screen}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[styles.content, { paddingBottom: 120 }]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+      >
         <Pressable
           onPress={() => {
             if (router.canGoBack()) router.back();
@@ -270,7 +284,14 @@ export default function PlacementChecklistScreen() {
             right={<TextField label="PSI after" value={form.psiAfter} onChange={(psiAfter) => patch({ psiAfter })} keyboardType="decimal-pad" />}
           />
           <PairFields
-            left={<TextField label="Water column (in)" value={form.waterColumnInches} onChange={(waterColumnInches) => patch({ waterColumnInches })} keyboardType="decimal-pad" />}
+            left={
+              <TextField
+                label="Water column (in)"
+                value={form.waterColumnInches}
+                onChange={(waterColumnInches) => patch({ waterColumnInches })}
+                placeholder="4-6"
+              />
+            }
             right={<TextField label="P.H. (optional)" value={form.ph} onChange={(ph) => patch({ ph })} keyboardType="decimal-pad" />}
           />
 
@@ -296,7 +317,15 @@ export default function PlacementChecklistScreen() {
           <TextField label="Stage 3" value={form.backupStage3} onChange={(backupStage3) => patch({ backupStage3 })} />
 
           <SectionTitle title="Comments" />
-          <TextField label="Notes" value={form.comments} onChange={(comments) => patch({ comments })} multiline />
+          <TextField
+            label="Notes"
+            value={form.comments}
+            onChange={(comments) => patch({ comments })}
+            multiline
+            onFocus={() => {
+              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
+            }}
+          />
         </Card>
 
         <Pressable
@@ -320,6 +349,7 @@ export default function PlacementChecklistScreen() {
           )}
         </Pressable>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <OptionPicker
         open={ventDoorOpen}
