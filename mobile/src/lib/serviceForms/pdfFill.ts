@@ -1,22 +1,16 @@
 /**
- * Build Bachoco service PDFs from the fillable AcroForm templates.
- * Text values go into named fields; checkmarks are stamped as "X" at each
- * checkbox widget’s center. Checkbox (and text) widget borders/backgrounds
- * are hidden so only the printed form grid remains.
+ * Build Bachoco service PDFs by stamping values onto the original scanned
+ * templates. Field positions come from a fillable AcroForm map (JSON), so the
+ * shared PDF has no widget borders — only the printed form grid + stamped ink.
  */
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
 import {
   PDFDocument,
-  PDFName,
-  PDFNumber,
   StandardFonts,
   rgb,
-  type PDFCheckBox,
   type PDFFont,
-  type PDFForm,
   type PDFPage,
-  type PDFTextField,
 } from "pdf-lib";
 import type {
   AnyServiceForm,
@@ -27,185 +21,108 @@ import type {
 } from "./types";
 import { formatMinVentPair, formatServiceShortDate } from "./format";
 
-/** Hide AcroForm widget chrome (border + fill) so the scan shows through. */
-function stripWidgetChrome(field: { acroField: { getWidgets: () => Array<{
-  setBorderWidth: (n: number) => void;
-  dict: { lookup: (n: unknown) => unknown; set: (n: unknown, v: unknown) => void };
-}> } }, opts?: { hide?: boolean }) {
-  for (const widget of field.acroField.getWidgets()) {
-    try {
-      widget.setBorderWidth(0);
-    } catch {
-      /* ignore */
-    }
-    try {
-      const mk = widget.dict.lookup(PDFName.of("MK")) as
-        | { delete?: (n: unknown) => void }
-        | undefined;
-      mk?.delete?.(PDFName.of("BC"));
-      mk?.delete?.(PDFName.of("BG"));
-    } catch {
-      /* ignore */
-    }
-    if (opts?.hide) {
-      try {
-        const cur = widget.dict.lookup(PDFName.of("F")) as
-          | { asNumber?: () => number }
-          | undefined;
-        const flags = cur?.asNumber?.() ?? 0;
-        // Bit 1 = Hidden — keeps overlay checkbox squares from printing.
-        widget.dict.set(PDFName.of("F"), PDFNumber.of(flags | 2));
-      } catch {
-        /* ignore */
-      }
-    }
-  }
+type FieldWidget = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  samePage?: boolean;
+};
+
+type FieldMap = {
+  page: { width: number; height: number };
+  fields: Record<string, { type: string; widgets: FieldWidget[] }>;
+};
+
+type StampOpts = {
+  widgetIndex?: number;
+  xPad?: number;
+  coverPrinted?: "field" | "trailing";
+};
+
+type Ctx = {
+  page: PDFPage;
+  font: PDFFont;
+  map: FieldMap;
+};
+
+function widgetRect(map: FieldMap, name: string, index = 0): FieldWidget | null {
+  const field = map.fields[name];
+  if (!field?.widgets?.length) return null;
+  const same = field.widgets.filter((w) => w.samePage !== false);
+  const list = same.length ? same : field.widgets;
+  return list[Math.min(index, list.length - 1)] ?? null;
 }
 
-/** Store value on the field (for data) and stamp visible text; hide widget chrome. */
 function setText(
-  form: PDFForm,
-  page: PDFPage,
-  font: PDFFont,
+  ctx: Ctx,
   name: string,
   value: string,
   fontSize = 8,
-  opts?: {
-    /** Prefer this widget index among same-page widgets. */
-    widgetIndex?: number;
-    /** Extra left padding (pts) when stamping. */
-    xPad?: number;
-    /** White-out printed ink under/around the field (e.g. /300, /). */
-    coverPrinted?: "field" | "trailing";
-  },
+  opts?: StampOpts,
 ) {
   const v = String(value ?? "").trim();
   if (!v) return;
-  try {
-    const field = form.getTextField(name);
-    try {
-      field.setText(v);
-    } catch {
-      /* ignore */
-    }
-    stripWidgetChrome(field, { hide: true });
-    const r = widgetRect(field, page, opts?.widgetIndex ?? 0);
-    if (opts?.coverPrinted === "field") {
-      page.drawRectangle({
-        x: r.x,
-        y: r.y,
-        width: r.width,
-        height: r.height,
-        color: rgb(1, 1, 1),
-        borderWidth: 0,
-      });
-    } else if (opts?.coverPrinted === "trailing") {
-      // Wipe printed "/300" (and similar) at the right of the timer cell.
-      const wipeW = Math.max(28, r.width * 0.45);
-      page.drawRectangle({
-        x: r.x + r.width - wipeW + 2,
-        y: r.y - 0.5,
-        width: wipeW + 14,
-        height: r.height + 1,
-        color: rgb(1, 1, 1),
-        borderWidth: 0,
-      });
-    }
-    const size = Math.min(fontSize, Math.max(5, r.height * 0.82));
-    const xPad = opts?.xPad ?? 1.5;
-    page.drawText(v, {
-      x: r.x + xPad,
-      y: r.y + Math.max(0.5, (r.height - size) * 0.35),
-      size,
-      font,
-      color: rgb(0, 0, 0),
-      maxWidth: Math.max(4, r.width - xPad - 2),
+  const r = widgetRect(ctx.map, name, opts?.widgetIndex ?? 0);
+  if (!r) return;
+  if (opts?.coverPrinted === "field") {
+    ctx.page.drawRectangle({
+      x: r.x,
+      y: r.y,
+      width: r.w,
+      height: r.h,
+      color: rgb(1, 1, 1),
+      borderWidth: 0,
     });
-  } catch {
-    /* field missing on this template */
+  } else if (opts?.coverPrinted === "trailing") {
+    const wipeW = Math.max(28, r.w * 0.45);
+    ctx.page.drawRectangle({
+      x: r.x + r.w - wipeW + 2,
+      y: r.y - 0.5,
+      width: wipeW + 14,
+      height: r.h + 1,
+      color: rgb(1, 1, 1),
+      borderWidth: 0,
+    });
   }
+  const size = Math.min(fontSize, Math.max(5, r.h * 0.82));
+  const xPad = opts?.xPad ?? 1.5;
+  ctx.page.drawText(v, {
+    x: r.x + xPad,
+    y: r.y + Math.max(0.5, (r.h - size) * 0.35),
+    size,
+    font: ctx.font,
+    color: rgb(0, 0, 0),
+    maxWidth: Math.max(4, r.w - xPad - 2),
+  });
 }
 
-function widgetRect(
-  field: PDFCheckBox | PDFTextField,
-  page?: PDFPage,
-  index = 0,
-) {
-  const widgets = field.acroField.getWidgets();
-  const onPage = page
-    ? widgets.filter((w) => {
-        try {
-          return w.P() === page.ref;
-        } catch {
-          return false;
-        }
-      })
-    : [];
-  const list = onPage.length > 0 ? onPage : widgets;
-  const w = list[Math.min(index, list.length - 1)]!;
-  return w.getRectangle();
-}
-
-/** Stamp an X at a checkbox widget; hide the widget border. */
-function markCheck(
-  form: PDFForm,
-  page: PDFPage,
-  font: PDFFont,
-  name: string,
-  on: boolean,
-  widgetIndex = 0,
-) {
-  if (!on) {
-    try {
-      stripWidgetChrome(form.getCheckBox(name), { hide: true });
-    } catch {
-      /* ignore */
-    }
-    return;
-  }
-  try {
-    const field = form.getCheckBox(name);
-    stripWidgetChrome(field, { hide: true });
-    const r = widgetRect(field, page, widgetIndex);
-    const size = Math.min(Math.max(r.height * 0.9, 8), 11);
-    page.drawText("X", {
-      x: r.x + r.width / 2 - size * 0.35,
-      y: r.y + r.height / 2 - size * 0.35,
-      size,
-      font,
-      color: rgb(0, 0, 0),
-    });
-  } catch {
-    /* ignore */
-  }
+function markCheck(ctx: Ctx, name: string, on: boolean, widgetIndex = 0) {
+  if (!on) return;
+  const r = widgetRect(ctx.map, name, widgetIndex);
+  if (!r) return;
+  const size = Math.min(Math.max(r.h * 0.9, 8), 11);
+  ctx.page.drawText("X", {
+    x: r.x + r.w / 2 - size * 0.35,
+    y: r.y + r.h / 2 - size * 0.35,
+    size,
+    font: ctx.font,
+    color: rgb(0, 0, 0),
+  });
 }
 
 function markYesNo(
-  form: PDFForm,
-  page: PDFPage,
-  font: PDFFont,
+  ctx: Ctx,
   yesName: string,
   noName: string,
   value: YesNo,
   yesWidget = 0,
   noWidget = 0,
 ) {
-  markCheck(form, page, font, yesName, value === "yes", yesWidget);
-  markCheck(form, page, font, noName, value === "no", noWidget);
+  markCheck(ctx, yesName, value === "yes", yesWidget);
+  markCheck(ctx, noName, value === "no", noWidget);
 }
 
-/** Hide every checkbox widget on the form (printed squares stay). */
-function hideAllCheckboxes(form: PDFForm) {
-  for (const field of form.getFields()) {
-    if (field.constructor.name.includes("Check")) {
-      stripWidgetChrome(field as PDFCheckBox, { hide: true });
-    } else {
-      stripWidgetChrome(field as PDFTextField);
-    }
-  }
-}
-
-/** Pull words into one comment line up to ~92% of that field’s width. */
 function takeCommentLine(
   words: string[],
   font: PDFFont,
@@ -223,51 +140,23 @@ function takeCommentLine(
   return { line: cur, rest: words.slice(i) };
 }
 
-function fillCommentLines(
-  form: PDFForm,
-  page: PDFPage,
-  font: PDFFont,
-  names: string[],
-  text: string,
-) {
+function fillCommentLines(ctx: Ctx, names: string[], text: string) {
   const fontSize = 8;
   let words = String(text ?? "")
     .split(/\s+/)
     .filter(Boolean);
   for (const name of names) {
     if (words.length === 0) break;
-    let maxWidth = page.getWidth() * 0.9;
-    try {
-      const field = form.getTextField(name);
-      const r = widgetRect(field, page, 0);
-      maxWidth = Math.max(40, r.width * 0.92);
-    } catch {
-      /* missing field width — keep page fallback */
-    }
-    const { line, rest } = takeCommentLine(words, font, fontSize, maxWidth);
+    const r = widgetRect(ctx.map, name, 0);
+    const maxWidth = r ? Math.max(40, r.w * 0.92) : ctx.page.getWidth() * 0.9;
+    const { line, rest } = takeCommentLine(words, ctx.font, fontSize, maxWidth);
     if (!line) {
-      setText(form, page, font, name, words[0]!, fontSize);
+      setText(ctx, name, words[0]!, fontSize);
       words = words.slice(1);
       continue;
     }
-    setText(form, page, font, name, line, fontSize);
+    setText(ctx, name, line, fontSize);
     words = rest;
-  }
-}
-
-/** Drop AcroForm widgets so shared PDFs show stamped values without field borders. */
-function stripFormAnnotations(doc: PDFDocument) {
-  for (const page of doc.getPages()) {
-    try {
-      page.node.delete(PDFName.of("Annots"));
-    } catch {
-      /* ignore */
-    }
-  }
-  try {
-    doc.catalog.delete(PDFName.of("AcroForm"));
-  } catch {
-    /* ignore */
   }
 }
 
@@ -283,25 +172,21 @@ async function loadTemplate(moduleRef: number) {
 }
 
 function buildServiceReportFields(
-  form: PDFForm,
-  page: PDFPage,
-  font: PDFFont,
+  ctx: Ctx,
   data: ServiceReportForm,
   housesSlice: ServiceReportForm["houses"],
 ) {
-  hideAllCheckboxes(form);
-
-  setText(form, page, font, "Farm Name", data.farmName, 10);
-  setText(form, page, font, "Date", formatServiceShortDate(data.date) || data.date, 10);
-  setText(form, page, font, "Farm", data.farmNumber ?? "", 9);
-  setText(form, page, font, "Flock", data.flockNumber ?? "", 9);
+  setText(ctx, "Farm Name", data.farmName, 10);
+  setText(ctx, "Date", formatServiceShortDate(data.date) || data.date, 10);
+  setText(ctx, "Farm", data.farmNumber ?? "", 9);
+  setText(ctx, "Flock", data.flockNumber ?? "", 9);
 
   for (let i = 0; i < 8; i++) {
     const h = housesSlice[i];
     if (!h) continue;
     const n = i + 1;
-    setText(form, page, font, `Age${n}`, h.age, 7);
-    setText(form, page, font, `No Placed${n}`, h.placed, 7);
+    setText(ctx, `Age${n}`, h.age, 7);
+    setText(ctx, `No Placed${n}`, h.placed, 7);
     const weekNames = [
       `Wkl${n}`,
       `Wk2${n}`,
@@ -312,69 +197,59 @@ function buildServiceReportFields(
       `Wk7${n}`,
       `WkS${n}_2`,
     ];
-    h.weeks.forEach((wk, wi) => setText(form, page, font, weekNames[wi]!, wk, 6));
-    setText(form, page, font, `Current Temp${n}`, h.currentTemp, 7);
-    setText(form, page, font, `Mortality To Date${n}`, h.mortalityToDate, 7);
-    // Bins intentionally blank per product rules.
+    h.weeks.forEach((wk, wi) => setText(ctx, weekNames[wi]!, wk, 6));
+    setText(ctx, `Current Temp${n}`, h.currentTemp, 7);
+    setText(ctx, `Mortality To Date${n}`, h.mortalityToDate, 7);
   }
 
-  // Feed
-  markYesNo(form, page, font, "Check Box5", "Check Box8", data.feederHeightOk);
-  markYesNo(form, page, font, "Check Box6", "Check Box2", data.feedingEquipmentOk);
-  markYesNo(form, page, font, "Check Box7", "Check Box3", data.feedAvailabilityOk);
+  markYesNo(ctx, "Check Box5", "Check Box8", data.feederHeightOk);
+  markYesNo(ctx, "Check Box6", "Check Box2", data.feedingEquipmentOk);
+  markYesNo(ctx, "Check Box7", "Check Box3", data.feedAvailabilityOk);
 
-  // Light
-  markYesNo(form, page, font, "Check Box13", "Check Box15", data.lightIntensityOk);
-  markYesNo(form, page, font, "Check Box14", "Check Box16", data.lightsOperationalOk);
-  setText(form, page, font, "Text44", data.lightsOnAt, 8);
-  setText(form, page, font, "Text45", data.lightsOffAt, 8);
+  markYesNo(ctx, "Check Box13", "Check Box15", data.lightIntensityOk);
+  markYesNo(ctx, "Check Box14", "Check Box16", data.lightsOperationalOk);
+  setText(ctx, "Text44", data.lightsOnAt, 8);
+  setText(ctx, "Text45", data.lightsOffAt, 8);
 
-  // Air
-  markYesNo(form, page, font, "Check Box9", "Check Box10", data.tempTargetsOk);
+  markYesNo(ctx, "Check Box9", "Check Box10", data.tempTargetsOk);
   if (data.tempTargetsOk === "no") {
-    setText(form, page, font, "Text48", data.actualTempTarget, 8);
-    setText(form, page, font, "Text47", data.recommendedTempTarget, 8);
+    setText(ctx, "Text48", data.actualTempTarget, 8);
+    setText(ctx, "Text47", data.recommendedTempTarget, 8);
   }
-  markYesNo(form, page, font, "Check Box11", "Check Box12", data.ammoniaOk);
-  setText(form, page, font, " Humidity", data.humidityPct ? `${data.humidityPct}%` : "", 8);
+  markYesNo(ctx, "Check Box11", "Check Box12", data.ammoniaOk);
+  setText(ctx, " Humidity", data.humidityPct ? `${data.humidityPct}%` : "", 8);
 
-  markCheck(form, page, font, "Check Box17", data.ventModes.includes("min"));
-  markCheck(form, page, font, "Check Box18", data.ventModes.includes("power"));
-  markCheck(form, page, font, "Check Box19", data.ventModes.includes("tunnel"));
-  setText(form, page, font, "Tunnel Fans", data.tunnelFanCount, 8);
+  markCheck(ctx, "Check Box17", data.ventModes.includes("min"));
+  markCheck(ctx, "Check Box18", data.ventModes.includes("power"));
+  markCheck(ctx, "Check Box19", data.ventModes.includes("tunnel"));
+  setText(ctx, "Tunnel Fans", data.tunnelFanCount, 8);
 
-  markCheck(form, page, font, "Check Box20", data.ventDoorType === "ceiling");
-  markCheck(form, page, font, "Check Box21", data.ventDoorType === "sidewall");
-  setText(form, page, font, "Text49", data.staticPressure, 8);
-  setText(form, page, font, "Text50", data.ventOpeningInches, 8);
-  setText(form, page, font, "CFM Ft2 Min Vent", data.cfmPerFt2MinVent, 8);
-  setText(form, page, font, "Text51", data.fansSizeAndCount, 8);
+  markCheck(ctx, "Check Box20", data.ventDoorType === "ceiling");
+  markCheck(ctx, "Check Box21", data.ventDoorType === "sidewall");
+  setText(ctx, "Text49", data.staticPressure, 8);
+  setText(ctx, "Text50", data.ventOpeningInches, 8);
+  setText(ctx, "CFM Ft2 Min Vent", data.cfmPerFt2MinVent, 8);
+  setText(ctx, "Text51", data.fansSizeAndCount, 8);
 
   setText(
-    form,
-    page,
-    font,
+    ctx,
     "Text53",
     formatMinVentPair(data.minVentActualOn, data.minVentActualOff),
     6,
     { coverPrinted: "trailing" },
   );
   setText(
-    form,
-    page,
-    font,
+    ctx,
     "Text52",
     formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
     6,
     { coverPrinted: "trailing" },
   );
-  setText(form, page, font, "300Max CFM Ft2 Power", data.maxCfm, 8);
-  setText(form, page, font, "Degrees I", data.coolCellOffTemp, 8);
-  setText(form, page, font, "Text54", data.coolCellOnTemp, 8);
+  setText(ctx, "300Max CFM Ft2 Power", data.maxCfm, 8);
+  setText(ctx, "Degrees I", data.coolCellOffTemp, 8);
+  setText(ctx, "Text54", data.coolCellOnTemp, 8);
   setText(
-    form,
-    page,
-    font,
+    ctx,
     "Text55",
     data.coolCellTimerOn || data.coolCellTimerOff
       ? `${data.coolCellTimerOn}/${data.coolCellTimerOff}`
@@ -382,39 +257,32 @@ function buildServiceReportFields(
     8,
   );
 
-  // Water
-  markYesNo(form, page, font, "Check Box22", "Check Box25", data.waterLinesOk);
-  markYesNo(form, page, font, "Check Box23", "Check Box29", data.sightTubesOk);
-  markYesNo(form, page, font, "Check Box24", "Check Box28", data.waterAdditive);
-  setText(form, page, font, "PSI before", data.psiBefore, 8);
-  setText(form, page, font, "PSI after", data.psiAfter, 8);
-  setText(form, page, font, "Text56", data.ph, 8);
-  // Water column — no dedicated named field on template; leave blank if absent.
+  markYesNo(ctx, "Check Box22", "Check Box25", data.waterLinesOk);
+  markYesNo(ctx, "Check Box23", "Check Box29", data.sightTubesOk);
+  markYesNo(ctx, "Check Box24", "Check Box28", data.waterAdditive);
+  setText(ctx, "PSI before", data.psiBefore, 8);
+  setText(ctx, "PSI after", data.psiAfter, 8);
+  setText(ctx, "Text56", data.ph, 8);
 
-  // Space
-  markYesNo(form, page, font, "Check Box30", "Check Box32", data.partitionedOk);
-  markYesNo(form, page, font, "Check Box31", "Check Box33", data.comfortableSpreadOk);
+  markYesNo(ctx, "Check Box30", "Check Box32", data.partitionedOk);
+  markYesNo(ctx, "Check Box31", "Check Box33", data.comfortableSpreadOk);
 
-  // Sanitation (right column)
-  markYesNo(form, page, font, "Check Box38", "Check Box41", data.premiseCleanOk);
-  markYesNo(form, page, font, "Check Box39", "Check Box42", data.rodenticideOk);
-  markYesNo(form, page, font, "Check Box40", "Check Box43", data.footBathsOk);
+  markYesNo(ctx, "Check Box38", "Check Box41", data.premiseCleanOk);
+  markYesNo(ctx, "Check Box39", "Check Box42", data.rodenticideOk);
+  markYesNo(ctx, "Check Box40", "Check Box43", data.footBathsOk);
 
-  // Emergency
-  markYesNo(form, page, font, "Check Box34", "Check Box36", data.generatorAutoOk);
-  markYesNo(form, page, font, "Check Box35", "Check Box37", data.dialerOnOk);
-  setText(form, page, font, "Text57", data.alarmHi, 8);
-  setText(form, page, font, "Text58", data.alarmLow, 8);
-  setText(form, page, font, "Text59", data.backupHeat, 8);
-  setText(form, page, font, "Text60", data.backupCool, 8);
-  setText(form, page, font, "Text61", data.backupStage1, 8);
-  setText(form, page, font, "Text62", data.backupStage2, 8);
-  setText(form, page, font, "Text63", data.backupStage3, 8);
+  markYesNo(ctx, "Check Box34", "Check Box36", data.generatorAutoOk);
+  markYesNo(ctx, "Check Box35", "Check Box37", data.dialerOnOk);
+  setText(ctx, "Text57", data.alarmHi, 8);
+  setText(ctx, "Text58", data.alarmLow, 8);
+  setText(ctx, "Text59", data.backupHeat, 8);
+  setText(ctx, "Text60", data.backupCool, 8);
+  setText(ctx, "Text61", data.backupStage1, 8);
+  setText(ctx, "Text62", data.backupStage2, 8);
+  setText(ctx, "Text63", data.backupStage3, 8);
 
   fillCommentLines(
-    form,
-    page,
-    font,
+    ctx,
     [
       "COMMENTS 1",
       "COMMENTS 2",
@@ -428,64 +296,49 @@ function buildServiceReportFields(
     ],
     data.comments,
   );
-  setText(form, page, font, "Text64", data.serviceTech, 10);
+  setText(ctx, "Text64", data.serviceTech, 10);
 }
 
-function buildPlacementFields(
-  form: PDFForm,
-  page: PDFPage,
-  font: PDFFont,
-  data: PlacementForm,
-) {
-  hideAllCheckboxes(form);
+function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
+  setText(ctx, "Farm Name_2", data.farmName, 9);
+  setText(ctx, "Text65", data.farmNumber, 9);
+  setText(ctx, "Text66", data.flockNumber, 9);
+  setText(ctx, "Text67", formatServiceShortDate(data.date) || data.date, 9);
 
-  setText(form, page, font, "Farm Name_2", data.farmName, 9);
-  setText(form, page, font, "Text65", data.farmNumber, 9);
-  setText(form, page, font, "Text66", data.flockNumber, 9);
-  setText(form, page, font, "Text67", formatServiceShortDate(data.date) || data.date, 9);
+  markYesNo(ctx, "Check Box113", "Check Box116", data.supplementalLidsOk);
+  markYesNo(ctx, "Check Box114", "Check Box117", data.feederPaperOk);
+  markYesNo(ctx, "Check Box115", "Check Box118", data.feedTrayRibsOk, 0, 0);
+  markYesNo(ctx, "Check Box123", "Check Box124", data.turboFeedersFullOk);
 
-  // Feed
-  markYesNo(form, page, font, "Check Box113", "Check Box116", data.supplementalLidsOk);
-  markYesNo(form, page, font, "Check Box114", "Check Box117", data.feederPaperOk);
-  // Check Box118 has 3 widgets: [0]=feed-tray NO, [1]=bulbs YES, [2]=call-pan NO
-  markYesNo(form, page, font, "Check Box115", "Check Box118", data.feedTrayRibsOk, 0, 0);
-  markYesNo(form, page, font, "Check Box123", "Check Box124", data.turboFeedersFullOk);
+  markCheck(ctx, "Check Box118", data.bulbsReplacedOk === "yes", 1);
+  markCheck(ctx, "Check Box121", data.bulbsReplacedOk === "no", 0);
+  markYesNo(ctx, "Check Box119", "Check Box122", data.lightsFullIntensityOk);
+  markCheck(ctx, "Check Box120", data.callPanLightsOk === "yes", 0);
+  markCheck(ctx, "Check Box118", data.callPanLightsOk === "no", 2);
+  markYesNo(ctx, "Check Box125", "Check Box126", data.broodLightsOnOk);
 
-  // Light — Box118 widget 1 is bulbs YES
-  markCheck(form, page, font, "Check Box118", data.bulbsReplacedOk === "yes", 1);
-  markCheck(form, page, font, "Check Box121", data.bulbsReplacedOk === "no", 0);
-  markYesNo(form, page, font, "Check Box119", "Check Box122", data.lightsFullIntensityOk);
-  markCheck(form, page, font, "Check Box120", data.callPanLightsOk === "yes", 0);
-  markCheck(form, page, font, "Check Box118", data.callPanLightsOk === "no", 2);
-  markYesNo(form, page, font, "Check Box125", "Check Box126", data.broodLightsOnOk);
+  markYesNo(ctx, "Check Box131", "Check Box134", data.tempDay1Ok);
+  markYesNo(ctx, "Check Box132", "Check Box135", data.litterAmendmentOk);
+  markCheck(ctx, "Check Box130", data.litterAmendmentType === "PLT");
+  markCheck(ctx, "Check Box129", data.litterAmendmentType === "Pure7");
+  markYesNo(ctx, "Check Box133", "Check Box136", data.heatersOk);
+  markYesNo(ctx, "Check Box127", "Check Box128", data.sensorsBirdLevelOk);
 
-  // Air
-  markYesNo(form, page, font, "Check Box131", "Check Box134", data.tempDay1Ok);
-  markYesNo(form, page, font, "Check Box132", "Check Box135", data.litterAmendmentOk);
-  markCheck(form, page, font, "Check Box130", data.litterAmendmentType === "PLT");
-  markCheck(form, page, font, "Check Box129", data.litterAmendmentType === "Pure7");
-  markYesNo(form, page, font, "Check Box133", "Check Box136", data.heatersOk);
-  markYesNo(form, page, font, "Check Box127", "Check Box128", data.sensorsBirdLevelOk);
-
-  markCheck(form, page, font, "Check Box137", data.ventDoorType === "ceiling");
-  markCheck(form, page, font, "Check Box138", data.ventDoorType === "sidewall");
-  setText(form, page, font, "Text68", data.staticPressure, 7);
-  setText(form, page, font, "Text69", data.ventOpeningInches, 7);
-  setText(form, page, font, "Text70", data.cfmPerFt2MinVent, 7);
-  setText(form, page, font, "Text89", data.fansSizeAndCount, 7);
+  markCheck(ctx, "Check Box137", data.ventDoorType === "ceiling");
+  markCheck(ctx, "Check Box138", data.ventDoorType === "sidewall");
+  setText(ctx, "Text68", data.staticPressure, 7);
+  setText(ctx, "Text69", data.ventOpeningInches, 7);
+  setText(ctx, "Text70", data.cfmPerFt2MinVent, 7);
+  setText(ctx, "Text89", data.fansSizeAndCount, 7);
   setText(
-    form,
-    page,
-    font,
+    ctx,
     "Text71",
     formatMinVentPair(data.minVentActualOn, data.minVentActualOff),
     6,
     { coverPrinted: "field" },
   );
   setText(
-    form,
-    page,
-    font,
+    ctx,
     "Text88",
     formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
     6,
@@ -514,41 +367,37 @@ function buildPlacementFields(
     "Text87",
   ];
   litterFields.forEach((name, i) =>
-    setText(form, page, font, name, sorted[i]?.litterTemp ?? "", 7),
+    setText(ctx, name, sorted[i]?.litterTemp ?? "", 7),
   );
   ammoniaFields.forEach((name, i) =>
-    setText(form, page, font, name, sorted[i]?.ammoniaPpm ?? "", 7),
+    setText(ctx, name, sorted[i]?.ammoniaPpm ?? "", 7),
   );
 
-  // Water
-  markYesNo(form, page, font, "Check Box139", "Check Box142", data.sightTubesOk);
-  markYesNo(form, page, font, "Check Box140", "Check Box143", data.proxyTestOk);
-  markYesNo(form, page, font, "Check Box141", "Check Box144", data.waterAdditive);
-  setText(form, page, font, "Text90", data.psiBefore, 8);
-  setText(form, page, font, "Text91", data.psiAfter, 8);
-  setText(form, page, font, "Text92", data.waterColumnInches, 8);
-  setText(form, page, font, "Text93", data.ph, 8);
+  markYesNo(ctx, "Check Box139", "Check Box142", data.sightTubesOk);
+  markYesNo(ctx, "Check Box140", "Check Box143", data.proxyTestOk);
+  markYesNo(ctx, "Check Box141", "Check Box144", data.waterAdditive);
+  setText(ctx, "Text90", data.psiBefore, 8);
+  setText(ctx, "Text91", data.psiAfter, 8);
+  setText(ctx, "Text92", data.waterColumnInches, 8);
+  setText(ctx, "Text93", data.ph, 8);
 
-  // Space / Sanitation / Emergency
-  markYesNo(form, page, font, "Check Box145", "Check Box146", data.partitionedOk);
-  markYesNo(form, page, font, "Check Box147", "Check Box150", data.premiseCleanOk);
-  markYesNo(form, page, font, "Check Box148", "Check Box151", data.rodenticideOk);
-  markYesNo(form, page, font, "Check Box149", "Check Box152", data.footBathsOk);
-  markYesNo(form, page, font, "Check Box153", "Check Box155", data.generatorAutoOk);
-  markYesNo(form, page, font, "Check Box154", "Check Box156", data.dialerOnOk);
+  markYesNo(ctx, "Check Box145", "Check Box146", data.partitionedOk);
+  markYesNo(ctx, "Check Box147", "Check Box150", data.premiseCleanOk);
+  markYesNo(ctx, "Check Box148", "Check Box151", data.rodenticideOk);
+  markYesNo(ctx, "Check Box149", "Check Box152", data.footBathsOk);
+  markYesNo(ctx, "Check Box153", "Check Box155", data.generatorAutoOk);
+  markYesNo(ctx, "Check Box154", "Check Box156", data.dialerOnOk);
 
-  setText(form, page, font, "HIController Temp Alarm Setting", data.alarmHi, 8);
-  setText(form, page, font, "LOWController Temp Alarm Setting", data.alarmLow, 8);
-  setText(form, page, font, "Text94", data.backupHeat, 8);
-  setText(form, page, font, "Text95", data.backupCool, 8);
-  setText(form, page, font, "Text96", data.backupStage1, 8);
-  setText(form, page, font, "Text97", data.backupStage2, 8);
-  setText(form, page, font, "Text98", data.backupStage3, 8);
+  setText(ctx, "HIController Temp Alarm Setting", data.alarmHi, 8);
+  setText(ctx, "LOWController Temp Alarm Setting", data.alarmLow, 8);
+  setText(ctx, "Text94", data.backupHeat, 8);
+  setText(ctx, "Text95", data.backupCool, 8);
+  setText(ctx, "Text96", data.backupStage1, 8);
+  setText(ctx, "Text97", data.backupStage2, 8);
+  setText(ctx, "Text98", data.backupStage3, 8);
 
   fillCommentLines(
-    form,
-    page,
-    font,
+    ctx,
     [
       "Comments first line",
       "Comments 1",
@@ -563,53 +412,36 @@ function buildPlacementFields(
     ],
     data.comments,
   );
-  setText(form, page, font, "undefined", data.serviceTech, 10);
+  setText(ctx, "undefined", data.serviceTech, 10);
 }
 
-function buildPrebroodFields(
-  form: PDFForm,
-  page: PDFPage,
-  font: PDFFont,
-  data: PrebroodForm,
-) {
-  hideAllCheckboxes(form);
+function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
+  setText(ctx, "Farm Name_3", data.farmName, 9);
+  setText(ctx, "Text100", data.farmNumber, 9);
+  setText(ctx, "Text99", data.flockNumber, 9);
+  setText(ctx, "Text101", formatServiceShortDate(data.date) || data.date, 9);
 
-  setText(form, page, font, "Farm Name_3", data.farmName, 9);
-  setText(form, page, font, "Text100", data.farmNumber, 9);
-  setText(form, page, font, "Text99", data.flockNumber, 9);
-  setText(form, page, font, "Text101", formatServiceShortDate(data.date) || data.date, 9);
+  markCheck(ctx, "Check Box157", data.windowHours === "48");
+  markCheck(ctx, "Check Box158", data.windowHours === "72");
 
-  markCheck(form, page, font, "Check Box157", data.windowHours === "48");
-  markCheck(form, page, font, "Check Box158", data.windowHours === "72");
+  markYesNo(ctx, "Check Box159", "Check Box162", data.feedDeliveredOk);
+  markYesNo(ctx, "Check Box160", "Check Box163", data.feedPaperDeliveredOk);
+  markYesNo(ctx, "Check Box161", "Check Box164", data.supplementalLidsDeliveredOk);
 
-  // Feed
-  markYesNo(form, page, font, "Check Box159", "Check Box162", data.feedDeliveredOk);
-  markYesNo(form, page, font, "Check Box160", "Check Box163", data.feedPaperDeliveredOk);
-  markYesNo(
-    form,
-    page,
-    font,
-    "Check Box161",
-    "Check Box164",
-    data.supplementalLidsDeliveredOk,
-  );
+  markYesNo(ctx, "Check Box165", "Check Box167", data.bulbsReplacedOk);
+  markYesNo(ctx, "Check Box166", "Check Box168", data.lightingProgramOk);
 
-  // Light
-  markYesNo(form, page, font, "Check Box165", "Check Box167", data.bulbsReplacedOk);
-  markYesNo(form, page, font, "Check Box166", "Check Box168", data.lightingProgramOk);
-
-  // Air
-  markYesNo(form, page, font, "Check Box169", "Check Box175", data.moistureChartOk);
-  markYesNo(form, page, font, "Check Box170", "Check Box176", data.litterAmendmentOk);
-  markCheck(form, page, font, "Check Box208", data.litterAmendmentType === "PLT");
-  markCheck(form, page, font, "Check Box209", data.litterAmendmentType === "Pure7");
-  markYesNo(form, page, font, "Check Box171", "Check Box177", data.minVentOnOk);
-  markYesNo(form, page, font, "Check Box172", "Check Box178", data.fansCleanOk);
-  markYesNo(form, page, font, "Check Box173", "Check Box179", data.tempDay1Ok);
-  markYesNo(form, page, font, "Check Box174", "Check Box180", data.cakeOutOk);
-  markYesNo(form, page, font, "Check Box210", "Check Box211", data.cleanOutPadTreatOk);
-  markYesNo(form, page, font, "Check Box181", "Check Box183", data.litterDepthOk);
-  markYesNo(form, page, font, "Check Box182", "Check Box184", data.heatersOk);
+  markYesNo(ctx, "Check Box169", "Check Box175", data.moistureChartOk);
+  markYesNo(ctx, "Check Box170", "Check Box176", data.litterAmendmentOk);
+  markCheck(ctx, "Check Box208", data.litterAmendmentType === "PLT");
+  markCheck(ctx, "Check Box209", data.litterAmendmentType === "Pure7");
+  markYesNo(ctx, "Check Box171", "Check Box177", data.minVentOnOk);
+  markYesNo(ctx, "Check Box172", "Check Box178", data.fansCleanOk);
+  markYesNo(ctx, "Check Box173", "Check Box179", data.tempDay1Ok);
+  markYesNo(ctx, "Check Box174", "Check Box180", data.cakeOutOk);
+  markYesNo(ctx, "Check Box210", "Check Box211", data.cleanOutPadTreatOk);
+  markYesNo(ctx, "Check Box181", "Check Box183", data.litterDepthOk);
+  markYesNo(ctx, "Check Box182", "Check Box184", data.heatersOk);
 
   const sorted = [...data.houses].sort((a, b) => a.houseNumber - b.houseNumber);
   const ammoniaFields = [
@@ -623,29 +455,24 @@ function buildPrebroodFields(
     "Text109",
   ];
   ammoniaFields.forEach((name, i) =>
-    setText(form, page, font, name, sorted[i]?.ammoniaPpm ?? "", 7),
+    setText(ctx, name, sorted[i]?.ammoniaPpm ?? "", 7),
   );
 
-  // Water
-  markYesNo(form, page, font, "Check Box185", "Check Box192", data.sightTubesOk);
-  markYesNo(form, page, font, "Check Box186", "Check Box193", data.waterLinesSanitizedOk);
+  markYesNo(ctx, "Check Box185", "Check Box192", data.sightTubesOk);
+  markYesNo(ctx, "Check Box186", "Check Box193", data.waterLinesSanitizedOk);
 
-  // Sanitation
-  markYesNo(form, page, font, "Check Box187", "Check Box190", data.premiseCleanOk);
-  markYesNo(form, page, font, "Check Box189", "Check Box191", data.insecticideOk);
-  markCheck(form, page, font, "Check Box194", data.insecticideType === "CV");
-  markCheck(form, page, font, "Check Box195", data.insecticideType === "RVO");
+  markYesNo(ctx, "Check Box187", "Check Box190", data.premiseCleanOk);
+  markYesNo(ctx, "Check Box189", "Check Box191", data.insecticideOk);
+  markCheck(ctx, "Check Box194", data.insecticideType === "CV");
+  markCheck(ctx, "Check Box195", data.insecticideType === "RVO");
 
-  // Emergency
-  markYesNo(form, page, font, "Check Box196", "Check Box202", data.blockHeaterOk);
-  markYesNo(form, page, font, "Check Box197", "Check Box203", data.batteryMaintainerOk);
-  markYesNo(form, page, font, "Check Box198", "Check Box204", data.generatorTestOk);
-  markYesNo(form, page, font, "Check Box199", "Check Box205", data.dialerTestOk);
-  markYesNo(form, page, font, "Check Box200", "Check Box206", data.generatorServicedOk);
+  markYesNo(ctx, "Check Box196", "Check Box202", data.blockHeaterOk);
+  markYesNo(ctx, "Check Box197", "Check Box203", data.batteryMaintainerOk);
+  markYesNo(ctx, "Check Box198", "Check Box204", data.generatorTestOk);
+  markYesNo(ctx, "Check Box199", "Check Box205", data.dialerTestOk);
+  markYesNo(ctx, "Check Box200", "Check Box206", data.generatorServicedOk);
   setText(
-    form,
-    page,
-    font,
+    ctx,
     "Text110",
     data.generatorServicedOk === "yes"
       ? formatServiceShortDate(data.generatorServiceDate)
@@ -653,13 +480,10 @@ function buildPrebroodFields(
     8,
     { xPad: 12 },
   );
-  markYesNo(form, page, font, "Check Box201", "Check Box207", data.generatorHoursLoggedOk);
-  // Hours value shares the service-date field area on some scans; put in comments if needed.
+  markYesNo(ctx, "Check Box201", "Check Box207", data.generatorHoursLoggedOk);
 
   fillCommentLines(
-    form,
-    page,
-    font,
+    ctx,
     [
       "Comments first line",
       "Comments 1_2",
@@ -685,7 +509,7 @@ function buildPrebroodFields(
       .filter(Boolean)
       .join("\n"),
   );
-  setText(form, page, font, "Text111", data.serviceTech, 10);
+  setText(ctx, "Text111", data.serviceTech, 10);
 }
 
 export async function buildServiceFormPdf(form: AnyServiceForm): Promise<string> {
@@ -696,6 +520,7 @@ export async function buildServiceFormPdf(form: AnyServiceForm): Promise<string>
 
 async function buildServiceReportPdf(form: ServiceReportForm) {
   const template = require("../../../../assets/service-forms/service-report.pdf");
+  const map = require("../../../../assets/service-forms/service-report-fields.json") as FieldMap;
   const houses = [...form.houses].sort((a, b) => a.houseNumber - b.houseNumber);
   const pages: (typeof houses)[] = [];
   for (let i = 0; i < Math.max(houses.length, 1); i += 8) {
@@ -704,11 +529,9 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
 
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  const pdfForm = doc.getForm();
+  const ctx: Ctx = { page: doc.getPages()[0]!, font, map };
+  buildServiceReportFields(ctx, form, pages[0] ?? []);
 
-  buildServiceReportFields(pdfForm, doc.getPages()[0]!, font, form, pages[0] ?? []);
-
-  // Continuation pages (houses 9+) — copy blank template page and fill house grid only.
   for (let p = 1; p < pages.length; p++) {
     const templateDoc = await loadTemplate(template);
     const [blank] = await doc.copyPages(templateDoc, [0]);
@@ -746,27 +569,24 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
     }
   }
 
-  stripFormAnnotations(doc);
   return writePdfToCache(doc, `service-report-${Date.now()}.pdf`);
 }
 
 async function buildPlacementPdf(form: PlacementForm) {
   const template = require("../../../../assets/service-forms/placement.pdf");
+  const map = require("../../../../assets/service-forms/placement-fields.json") as FieldMap;
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  const pdfForm = doc.getForm();
-  buildPlacementFields(pdfForm, doc.getPages()[0]!, font, form);
-  stripFormAnnotations(doc);
+  buildPlacementFields({ page: doc.getPages()[0]!, font, map }, form);
   return writePdfToCache(doc, `placement-${Date.now()}.pdf`);
 }
 
 async function buildPrebroodPdf(form: PrebroodForm) {
   const template = require("../../../../assets/service-forms/prebrood.pdf");
+  const map = require("../../../../assets/service-forms/prebrood-fields.json") as FieldMap;
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  const pdfForm = doc.getForm();
-  buildPrebroodFields(pdfForm, doc.getPages()[0]!, font, form);
-  stripFormAnnotations(doc);
+  buildPrebroodFields({ page: doc.getPages()[0]!, font, map }, form);
   return writePdfToCache(doc, `prebrood-${Date.now()}.pdf`);
 }
 
