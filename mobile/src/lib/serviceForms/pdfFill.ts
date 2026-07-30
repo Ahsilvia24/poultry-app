@@ -38,14 +38,10 @@ type FieldMap = {
 type StampOpts = {
   widgetIndex?: number;
   xPad?: number;
-<<<<<<< HEAD
-  /** White-out the whole widget rect (e.g. printed "/" under placement timers). */
-  coverPrinted?: "field";
-=======
   /** Extra baseline lift (pts) — positive scoots text up in the box. */
   yNudge?: number;
-  coverPrinted?: "field" | "trailing";
->>>>>>> origin/cursor/form-header-text-nudge-831e
+  /** White-out the whole widget rect (e.g. printed "/" under placement timers). */
+  coverPrinted?: "field";
 };
 
 type Ctx = {
