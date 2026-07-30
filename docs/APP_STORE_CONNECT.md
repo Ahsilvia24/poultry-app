@@ -23,24 +23,15 @@ TestFlight: https://appstoreconnect.apple.com/apps/6794784343/testflight/ios
 
 ## Privacy & Support URLs
 
-Static pages live in this repo:
+| ASC field | URL |
+|-----------|-----|
+| **Privacy Policy URL** | https://www.termsfeed.com/live/1e9fa9a7-3483-4186-88be-3eb0aab6c4c5 |
+| Support URL | Still needed — use `docs/support.html` on a host you control, or email-based support page |
 
-- `docs/privacy.html`
-- `docs/support.html`
+Repo fallbacks (optional):
 
-Also available in the Next.js app at `/privacy` and `/support` (public, no login).
-
-**Recommended for ASC** (use a host you control long-term):
-
-1. Deploy the web app (or just these two HTML files) to your domain / Vercel / Netlify.
-2. Set:
-   - Privacy Policy URL → `https://YOUR_DOMAIN/privacy` (or `/privacy.html`)
-   - Support URL → `https://YOUR_DOMAIN/support` (or `/support.html`)
-
-Temporary tunnel (only while this cloud agent session is up):
-
-- Privacy: `https://southeast-ate-freeware-length.trycloudflare.com/privacy.html`
-- Support: `https://southeast-ate-freeware-length.trycloudflare.com/support.html`
+- `docs/privacy.html` / `docs/support.html`
+- Next.js app routes `/privacy` and `/support` (public, no login)
 
 ## Screenshots
 
