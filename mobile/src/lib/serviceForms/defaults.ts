@@ -193,8 +193,6 @@ export function createPrebroodDraft(input?: {
     dialerTestOk: "yes",
     generatorServicedOk: "yes",
     generatorServiceDate: "",
-    generatorHoursLoggedOk: "yes",
-    generatorHours: "",
     comments: "",
   };
 }

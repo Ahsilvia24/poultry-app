@@ -31,18 +31,6 @@ function paramId(value: string | string[] | undefined) {
   return value ?? "";
 }
 
-function withGeneratorComment(form: PrebroodForm): PrebroodForm {
-  const hours = form.generatorHours.trim();
-  if (form.generatorHoursLoggedOk !== "yes" || !hours) return form;
-  const line = `Generator hours: ${hours}`;
-  const comments = form.comments.trim();
-  if (comments.startsWith("Generator hours:")) return form;
-  return {
-    ...form,
-    comments: comments ? `${line}\n${comments}` : line,
-  };
-}
-
 export default function PrebroodChecklistScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -265,40 +253,15 @@ export default function PrebroodChecklistScreen() {
               />
             </View>
           ) : null}
-          <YesNoField
-            label="Generator hours logged"
-            value={form.generatorHoursLoggedOk}
-            onChange={(generatorHoursLoggedOk) => patch({ generatorHoursLoggedOk })}
-          />
-          {form.generatorHoursLoggedOk === "yes" ? (
-            <TextField
-              label="Generator hours"
-              value={form.generatorHours}
-              onChange={(generatorHours) => patch({ generatorHours })}
-              keyboardType="decimal-pad"
-              placeholder="Hours on meter"
-            />
-          ) : null}
 
           <SectionTitle title="Comments" />
-          <Text style={[styles.muted, { marginBottom: 6 }]}>
-            If you log generator hours, they’ll be added as the first comment line (editable).
-          </Text>
           <TextField label="Notes" value={form.comments} onChange={(comments) => patch({ comments })} multiline />
         </Card>
 
         <Pressable
           disabled={saving}
           onPress={() => {
-            const next = withGeneratorComment(form);
-            const hours =
-              next.generatorHoursLoggedOk === "yes" && next.generatorHours.trim()
-                ? Number(next.generatorHours)
-                : null;
-            void complete({
-              form: next,
-              generatorHours: hours != null && Number.isFinite(hours) ? hours : null,
-            });
+            void complete({ form });
           }}
           style={{
             marginTop: 16,
