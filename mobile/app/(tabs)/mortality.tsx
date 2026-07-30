@@ -465,6 +465,9 @@ export default function MortalityScreen() {
     }
   }, [houseFlockId]);
 
+  const loadGridRef = useRef(loadGrid);
+  loadGridRef.current = loadGrid;
+
   useEffect(() => {
     loadFarms();
   }, [loadFarms]);
@@ -472,6 +475,9 @@ export default function MortalityScreen() {
   // Landing from farm detail / tab focus: always jump to the entry box when a
   // house is selected — including re-entering the same house (houseFlockId
   // unchanged, so the loadGrid effect alone would not re-run).
+  // Important: do NOT depend on loadGrid — its identity changes when the user
+  // taps a house chip, which would re-run loadFarms() and clear the selection
+  // when sticky farmId params are present without houseFlockId.
   useFocusEffect(
     useCallback(() => {
       resetKeypad();
@@ -481,7 +487,7 @@ export default function MortalityScreen() {
       if (houseId) {
         jumpOnLoadRef.current = true;
         jumpTimer = setTimeout(() => {
-          loadGrid({ jump: true, houseFlockId: houseId });
+          loadGridRef.current({ jump: true, houseFlockId: houseId });
         }, 60);
       }
       return () => {
@@ -494,7 +500,7 @@ export default function MortalityScreen() {
         // So Farms tab opens this farm instead of the main list.
         armFarmReturnFromMortality();
       };
-    }, [farmIdParam, houseFlockIdParam, jumpParam, loadFarms, loadGrid, navigation]),
+    }, [farmIdParam, houseFlockIdParam, jumpParam, loadFarms, navigation]),
   );
 
   useEffect(() => {

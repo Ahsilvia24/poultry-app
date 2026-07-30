@@ -48,7 +48,7 @@ export function createServiceReportDraft(input?: {
     recommendedTempTarget: "",
     ammoniaOk: "yes",
     humidityPct: "",
-    ventMode: "",
+    ventModes: [],
     tunnelFanCount: "",
     ventDoorType: "",
     ventOpeningInches: "",

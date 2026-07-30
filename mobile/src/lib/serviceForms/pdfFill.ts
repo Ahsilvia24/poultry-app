@@ -129,12 +129,21 @@ function fillServiceReportPage(
   drawText(page, font, 12.0, 8.55, form.farmNumber ?? "", 9);
   drawText(page, font, 38.0, 8.55, form.flockNumber ?? "", 9);
 
+  // Continuation pages: white out printed 1–8 in the # column before writing 9+.
+  if (opts?.coverHouseNumbers) {
+    for (let i = 0; i < 8; i++) {
+      const y = SR.rows[i]!;
+      cover(page, 3.15, y - 0.9, 2.0, 1.8);
+    }
+  }
+
   housesSlice.forEach((h, i) => {
     if (i >= 8) return;
     const y = SR.rows[i]!;
     if (opts?.coverHouseNumbers) {
-      cover(page, 3.3, y - 0.7, 1.6, 1.4);
-      drawText(page, font, 3.5, y, String(h.houseNumber), 8);
+      const label = String(h.houseNumber);
+      // Two-digit house #s need a hair left so they sit in the erased cell.
+      drawText(page, font, label.length > 1 ? 3.25 : 3.5, y, label, 8);
     }
     drawText(page, font, SR.cols.age, y, h.age, 7);
     drawText(page, font, SR.cols.placed, y, h.placed, 7);
@@ -170,10 +179,12 @@ function fillServiceReportPage(
   markYesNo(page, font, yL, nL, 39.25, form.ammoniaOk);
   if (form.humidityPct) drawText(page, font, 22.0, 40.9, `${form.humidityPct}%`, 8);
 
-  markX(page, font, 56.0, 42.3, form.ventMode === "min");
-  markX(page, font, 64.0, 42.3, form.ventMode === "power");
-  markX(page, font, 71.0, 42.3, form.ventMode === "tunnel");
-  if (form.ventMode === "tunnel") drawText(page, font, 93.5, 42.3, form.tunnelFanCount, 8);
+  markX(page, font, 56.0, 42.3, form.ventModes.includes("min"));
+  markX(page, font, 64.0, 42.3, form.ventModes.includes("power"));
+  markX(page, font, 71.0, 42.3, form.ventModes.includes("tunnel"));
+  if (form.ventModes.includes("tunnel")) {
+    drawText(page, font, 93.5, 42.3, form.tunnelFanCount, 8);
+  }
 
   // Door-type checkbox row sits under Ceiling/Sidewall headers
   markX(page, font, 24.0, 46.05, form.ventDoorType === "ceiling");

@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { DatePickerField } from "../../../../../src/components/DatePickerField";
 import { OptionPicker, SelectField } from "../../../../../src/components/OptionPicker";
 import {
+  MultiToggleField,
   PairFields,
   SectionTitle,
   TextField,
@@ -22,7 +23,6 @@ import { createServiceReportDraft } from "../../../../../src/lib/serviceForms/de
 import {
   HUMIDITY_OPTIONS,
   VENT_DOOR_OPTIONS,
-  VENT_MODE_OPTIONS,
   WEEK_OPTIONS,
 } from "../../../../../src/lib/serviceForms/format";
 import {
@@ -74,7 +74,6 @@ export default function ServiceReportScreen() {
   });
 
   const [humidityOpen, setHumidityOpen] = useState(false);
-  const [ventModeOpen, setVentModeOpen] = useState(false);
   const [ventDoorOpen, setVentDoorOpen] = useState(false);
   const [weekOpen, setWeekOpen] = useState(false);
 
@@ -157,40 +156,18 @@ export default function ServiceReportScreen() {
         </Card>
 
         <SectionTitle title="Houses" />
+        <Text style={[styles.muted, { marginBottom: 8 }]}>
+          Age, placed, and weekly mortality pull into the PDF automatically. Enter current temp
+          only.
+        </Text>
         {form.houses.map((h) => (
           <Card key={h.houseNumber} style={{ marginBottom: 10 }}>
             <Text style={{ fontWeight: "800", marginBottom: 8 }}>House {h.houseNumber}</Text>
-            <Text style={[styles.muted, { marginBottom: 8 }]}>
-              Age {h.age || "—"} · Placed {h.placed || "—"} · Mort to date{" "}
-              {h.mortalityToDate || "—"}
-              {"\n"}
-              Wk{" "}
-              {h.weeks.map((w, i) => (w ? `${i + 1}:${w}` : null)).filter(Boolean).join(" ") ||
-                "—"}
-            </Text>
             <TextField
               label="Current temp"
               value={h.currentTemp}
               onChange={(currentTemp) => patchHouse(h.houseNumber, { currentTemp })}
               keyboardType="decimal-pad"
-            />
-            <PairFields
-              left={
-                <TextField
-                  label="Bin A"
-                  value={h.binA}
-                  onChange={(binA) => patchHouse(h.houseNumber, { binA })}
-                  keyboardType="decimal-pad"
-                />
-              }
-              right={
-                <TextField
-                  label="Bin B"
-                  value={h.binB}
-                  onChange={(binB) => patchHouse(h.houseNumber, { binB })}
-                  keyboardType="decimal-pad"
-                />
-              }
             />
           </Card>
         ))}
@@ -273,14 +250,22 @@ export default function ServiceReportScreen() {
             }
             onPress={() => setHumidityOpen(true)}
           />
-          <SelectField
-            label="Ventilation mode"
-            valueLabel={
-              VENT_MODE_OPTIONS.find((o) => o.value === form.ventMode)?.label ?? "Select"
+          <MultiToggleField
+            label="Current ventilation"
+            options={[
+              { value: "min", label: "Min" },
+              { value: "power", label: "Power" },
+              { value: "tunnel", label: "Tunnel" },
+            ]}
+            value={form.ventModes}
+            onChange={(ventModes) =>
+              patch({
+                ventModes,
+                tunnelFanCount: ventModes.includes("tunnel") ? form.tunnelFanCount : "",
+              })
             }
-            onPress={() => setVentModeOpen(true)}
           />
-          {form.ventMode === "tunnel" ? (
+          {form.ventModes.includes("tunnel") ? (
             <TextField
               label="# of tunnel fans"
               value={form.tunnelFanCount}
@@ -583,19 +568,6 @@ export default function ServiceReportScreen() {
         value={form.humidityPct}
         onSelect={(humidityPct) => patch({ humidityPct })}
         onClose={() => setHumidityOpen(false)}
-      />
-      <OptionPicker
-        open={ventModeOpen}
-        title="Ventilation mode"
-        options={VENT_MODE_OPTIONS}
-        value={form.ventMode}
-        onSelect={(ventMode) =>
-          patch({
-            ventMode: ventMode as ServiceReportForm["ventMode"],
-            tunnelFanCount: ventMode === "tunnel" ? form.tunnelFanCount : "",
-          })
-        }
-        onClose={() => setVentModeOpen(false)}
       />
       <OptionPicker
         open={ventDoorOpen}

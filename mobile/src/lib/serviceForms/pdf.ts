@@ -144,7 +144,7 @@ export function serviceReportPdfHtml(form: Extract<AnyServiceForm, { kind: "serv
           }
           ${checkRow("Ammonia Levels Are < 25 PPM In All Houses", form.ammoniaOk)}
           <tr><td>% Humidity</td><td>${esc(form.humidityPct ? `${form.humidityPct}%` : "")}</td></tr>
-          <tr><td>Ventilation</td><td>${esc(form.ventMode)}${form.ventMode === "tunnel" ? ` · fans ${esc(form.tunnelFanCount)}` : ""}</td></tr>
+          <tr><td>Ventilation</td><td>${esc(form.ventModes.join(", "))}${form.ventModes.includes("tunnel") ? ` · fans ${esc(form.tunnelFanCount)}` : ""}</td></tr>
           <tr><td>Vent Door Type</td><td>${esc(form.ventDoorType)}</td></tr>
           <tr><td>Opening / S.P.</td><td>${esc(form.ventOpeningInches)} / ${esc(form.staticPressure)}</td></tr>
           <tr><td>C.F.M./Ft2 Min Vent</td><td>${esc(form.cfmPerFt2MinVent)}</td></tr>

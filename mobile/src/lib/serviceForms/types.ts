@@ -38,7 +38,8 @@ export type ServiceReportForm = {
   recommendedTempTarget: string;
   ammoniaOk: YesNo;
   humidityPct: string; // "" or "0"…"100"
-  ventMode: "" | "min" | "power" | "tunnel";
+  /** Multi-select: Min / Power / Tunnel (paper form allows more than one). */
+  ventModes: Array<"min" | "power" | "tunnel">;
   tunnelFanCount: string;
   ventDoorType: "" | "ceiling" | "sidewall";
   ventOpeningInches: string;

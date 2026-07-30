@@ -77,6 +77,67 @@ export function YesNoField({
   );
 }
 
+/** Multi-select chip row (same visual language as Yes/No). Tap again to clear. */
+export function MultiToggleField<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { value: T; label: string }[];
+  value: T[];
+  onChange: (next: T[]) => void;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 10,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+      }}
+    >
+      <Text style={{ flex: 1, fontWeight: "600", color: colors.text, fontSize: 14 }}>{label}</Text>
+      <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        {options.map((opt) => {
+          const active = value.includes(opt.value);
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => {
+                if (active) onChange(value.filter((v) => v !== opt.value));
+                else onChange([...value, opt.value]);
+              }}
+              style={{
+                minWidth: 48,
+                paddingVertical: 8,
+                paddingHorizontal: 10,
+                borderRadius: 8,
+                backgroundColor: active ? colors.accentDark : "#f5f5f4",
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  fontWeight: "800",
+                  fontSize: 12,
+                  color: active ? "#fff" : colors.text,
+                }}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export function TextField({
   label,
   value,
