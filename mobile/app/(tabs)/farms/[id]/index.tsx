@@ -426,6 +426,11 @@ export default function FarmDetailScreen() {
   }, [farmId]);
 
   const [focusNonce, setFocusNonce] = useState(0);
+  // One-shot house scroll from Mortality "Back to House" only.
+  // Read via ref so clearing the route param doesn't re-fire focus → top scroll.
+  const focusHouseParamRef = useRef(focusHouseFlockIdParam);
+  focusHouseParamRef.current = focusHouseFlockIdParam;
+  const oneShotHouseScrollRef = useRef<string | null>(null);
 
   const scrollToHouseFlock = useCallback(
     (houseFlockId: string | null | undefined) => {
@@ -454,30 +459,37 @@ export default function FarmDetailScreen() {
       // Clear Mortality→Farms pending so the list doesn't redirect later.
       const pending = consumeFarmReturnFromMortality();
       const ctx = getFarmNavContext();
-      const focusHouse =
-        focusHouseFlockIdParam ||
+      const oneShotHouse = focusHouseParamRef.current || "";
+      // Only Back to House arms a house snap; everything else lands at top.
+      oneShotHouseScrollRef.current = oneShotHouse || null;
+      const houseForCtx =
+        oneShotHouse ||
         pending?.houseFlockId ||
         (ctx.farmId === farmId ? ctx.houseFlockId : null) ||
         null;
-      // Preserve the mortality-selected house when returning to this farm.
       setFarmNavContext({
         farmId,
-        houseFlockId: focusHouse,
+        houseFlockId: houseForCtx,
       });
-      // Bump so the scroll effect re-runs on every return from Mortality.
       setFocusNonce((n) => n + 1);
-    }, [load, farmId, focusHouseFlockIdParam]),
+      // Consume the one-shot param so later Farms visits don't keep snapping.
+      if (oneShotHouse) {
+        router.setParams({ focusHouseFlockId: "" });
+      }
+    }, [load, farmId, router]),
   );
 
-  // Scroll to the house selected on Mortality (e.g. House 4).
+  // Back to House → that house; any other focus → top of page.
   useEffect(() => {
     if (!data || data.farm.id !== farmId || focusNonce === 0) return;
-    const ctx = getFarmNavContext();
-    const target =
-      focusHouseFlockIdParam ||
-      (ctx.farmId === farmId ? ctx.houseFlockId : null);
-    scrollToHouseFlock(target);
-  }, [data, farmId, focusHouseFlockIdParam, focusNonce, scrollToHouseFlock]);
+    const target = oneShotHouseScrollRef.current;
+    oneShotHouseScrollRef.current = null;
+    if (target) {
+      scrollToHouseFlock(target);
+    } else {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }
+  }, [data, farmId, focusNonce, scrollToHouseFlock]);
 
   function openFarmEditor(farm: FarmDetail["farm"]) {
     setFarmEditError(null);
