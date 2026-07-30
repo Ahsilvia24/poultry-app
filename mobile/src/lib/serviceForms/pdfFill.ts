@@ -70,6 +70,14 @@ function setText(
   name: string,
   value: string,
   fontSize = 8,
+  opts?: {
+    /** Prefer this widget index among same-page widgets. */
+    widgetIndex?: number;
+    /** Extra left padding (pts) when stamping. */
+    xPad?: number;
+    /** White-out printed ink under/around the field (e.g. /300, /). */
+    coverPrinted?: "field" | "trailing";
+  },
 ) {
   const v = String(value ?? "").trim();
   if (!v) return;
@@ -81,24 +89,60 @@ function setText(
       /* ignore */
     }
     stripWidgetChrome(field, { hide: true });
-    const r = widgetRect(field);
+    const r = widgetRect(field, page, opts?.widgetIndex ?? 0);
+    if (opts?.coverPrinted === "field") {
+      page.drawRectangle({
+        x: r.x,
+        y: r.y,
+        width: r.width,
+        height: r.height,
+        color: rgb(1, 1, 1),
+        borderWidth: 0,
+      });
+    } else if (opts?.coverPrinted === "trailing") {
+      // Wipe printed "/300" (and similar) at the right of the timer cell.
+      const wipeW = Math.max(28, r.width * 0.45);
+      page.drawRectangle({
+        x: r.x + r.width - wipeW + 2,
+        y: r.y - 0.5,
+        width: wipeW + 14,
+        height: r.height + 1,
+        color: rgb(1, 1, 1),
+        borderWidth: 0,
+      });
+    }
     const size = Math.min(fontSize, Math.max(5, r.height * 0.82));
+    const xPad = opts?.xPad ?? 1.5;
     page.drawText(v, {
-      x: r.x + 1.5,
+      x: r.x + xPad,
       y: r.y + Math.max(0.5, (r.height - size) * 0.35),
       size,
       font,
       color: rgb(0, 0, 0),
-      maxWidth: Math.max(4, r.width - 3),
+      maxWidth: Math.max(4, r.width - xPad - 2),
     });
   } catch {
     /* field missing on this template */
   }
 }
 
-function widgetRect(field: PDFCheckBox | PDFTextField, index = 0) {
+function widgetRect(
+  field: PDFCheckBox | PDFTextField,
+  page?: PDFPage,
+  index = 0,
+) {
   const widgets = field.acroField.getWidgets();
-  const w = widgets[Math.min(index, widgets.length - 1)]!;
+  const onPage = page
+    ? widgets.filter((w) => {
+        try {
+          return w.P() === page.ref;
+        } catch {
+          return false;
+        }
+      })
+    : [];
+  const list = onPage.length > 0 ? onPage : widgets;
+  const w = list[Math.min(index, list.length - 1)]!;
   return w.getRectangle();
 }
 
@@ -122,7 +166,7 @@ function markCheck(
   try {
     const field = form.getCheckBox(name);
     stripWidgetChrome(field, { hide: true });
-    const r = widgetRect(field, widgetIndex);
+    const r = widgetRect(field, page, widgetIndex);
     const size = Math.min(Math.max(r.height * 0.9, 8), 11);
     page.drawText("X", {
       x: r.x + r.width / 2 - size * 0.35,
@@ -291,6 +335,7 @@ function buildServiceReportFields(
     "Text53",
     formatMinVentPair(data.minVentActualOn, data.minVentActualOff),
     6,
+    { coverPrinted: "trailing" },
   );
   setText(
     form,
@@ -299,6 +344,7 @@ function buildServiceReportFields(
     "Text52",
     formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
     6,
+    { coverPrinted: "trailing" },
   );
   setText(form, page, font, "300Max CFM Ft2 Power", data.maxCfm, 8);
   setText(form, page, font, "Degrees I", data.coolCellOffTemp, 8);
@@ -412,6 +458,7 @@ function buildPlacementFields(
     "Text71",
     formatMinVentPair(data.minVentActualOn, data.minVentActualOff),
     6,
+    { coverPrinted: "field" },
   );
   setText(
     form,
@@ -420,6 +467,7 @@ function buildPlacementFields(
     "Text88",
     formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
     6,
+    { coverPrinted: "field" },
   );
 
   const sorted = [...data.houses].sort((a, b) => a.houseNumber - b.houseNumber);
@@ -581,6 +629,7 @@ function buildPrebroodFields(
       ? formatServiceShortDate(data.generatorServiceDate)
       : "",
     8,
+    { xPad: 12 },
   );
   markYesNo(form, page, font, "Check Box201", "Check Box207", data.generatorHoursLoggedOk);
   // Hours value shares the service-date field area on some scans; put in comments if needed.
