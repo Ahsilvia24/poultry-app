@@ -181,8 +181,8 @@ function buildServiceReportFields(
 ) {
   setText(ctx, "Farm Name", data.farmName, 10);
   setText(ctx, "Date", formatServiceShortDate(data.date) || data.date, 10);
-  setText(ctx, "Farm", data.farmNumber ?? "", 9, { yNudge: 1.5 });
-  setText(ctx, "Flock", data.flockNumber ?? "", 9, { yNudge: 1.5 });
+  setText(ctx, "Farm", data.farmNumber ?? "", 9, { yNudge: 2.5 });
+  setText(ctx, "Flock", data.flockNumber ?? "", 9, { yNudge: 2.5 });
 
   for (let i = 0; i < 8; i++) {
     const h = housesSlice[i];
@@ -304,8 +304,8 @@ function buildServiceReportFields(
 
 function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
   setText(ctx, "Farm Name_2", data.farmName, 9);
-  setText(ctx, "Text65", data.farmNumber, 9, { yNudge: 1.5 });
-  setText(ctx, "Text66", data.flockNumber, 9, { yNudge: 1.5 });
+  setText(ctx, "Text65", data.farmNumber, 9, { yNudge: 2.5 });
+  setText(ctx, "Text66", data.flockNumber, 9, { yNudge: 2.5 });
   setText(ctx, "Text67", formatServiceShortDate(data.date) || data.date, 9);
 
   markYesNo(ctx, "Check Box113", "Check Box116", data.supplementalLidsOk);
@@ -420,8 +420,8 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
 
 function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
   setText(ctx, "Farm Name_3", data.farmName, 9);
-  setText(ctx, "Text100", data.farmNumber, 9, { yNudge: 1.5 });
-  setText(ctx, "Text99", data.flockNumber, 9, { yNudge: 1.5 });
+  setText(ctx, "Text100", data.farmNumber, 9, { yNudge: 2.5 });
+  setText(ctx, "Text99", data.flockNumber, 9, { yNudge: 2.5 });
   setText(ctx, "Text101", formatServiceShortDate(data.date) || data.date, 9);
 
   markCheck(ctx, "Check Box157", data.windowHours === "48");
