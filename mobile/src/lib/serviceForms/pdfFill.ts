@@ -42,10 +42,17 @@ function box(xPct: number, yPct: number, wPct: number, hPct: number) {
   };
 }
 
-/** Opaque white only when we must cover printed ink (continuation #, /300). */
+/** Opaque white only when we must cover printed ink (continuation #, /300, N/A). */
 function coverRect(page: PDFPage, xPct: number, yPct: number, wPct: number, hPct: number) {
-  const r = box(xPct, yPct, wPct, hPct);
-  page.drawRectangle({ ...r, color: rgb(1, 1, 1), borderWidth: 0 });
+  // No PAD inset — covers must fully erase printed glyphs at cell edges.
+  page.drawRectangle({
+    x: (xPct / 100) * W,
+    y: H - ((yPct + hPct) / 100) * H,
+    width: (wPct / 100) * W,
+    height: (hPct / 100) * H,
+    color: rgb(1, 1, 1),
+    borderWidth: 0,
+  });
 }
 
 type TextOpts = {
@@ -79,9 +86,9 @@ function addText(
 
   if (opts.cover) coverRect(page, xPct, yPct, wPct, hPct);
 
-  // Sit text inside the cell (slightly below the top edge).
+  // Sit text inside the cell (vertically centered-ish in the box).
   const x = ((xPct + PAD_X) / 100) * W;
-  const y = H - ((yPct + hPct * 0.72) / 100) * H;
+  const y = H - ((yPct + hPct * 0.82) / 100) * H;
   page.drawText(v, {
     x,
     y,
@@ -184,11 +191,11 @@ const SR = {
   ynR: { yes: 88.7, no: 93.9 },
   vent: { min: 52.1, power: 59.1, tunnel: 66.2, y: 41.85 },
   /** Min vent timer row (above cool headers). */
-  minVentY: 47.55,
+  minVentY: 47.7,
   /** Cool-cell Degrees / value row (not the header labels). */
-  coolY: 50.7,
-  /** Max CFM sits in the cool header band (printed N/A cell). */
-  maxCfmY: 49.35,
+  coolY: 51.15,
+  /** Max CFM overwrites the printed N/A cell in the Power/cool header band. */
+  maxCfm: { x: 34.8, y: 49.35, w: 13.5, h: 1.35 },
   backupY: 71.0,
   backupX: [61.5, 68.5, 75.5, 82.5, 89.0] as const,
 };
@@ -201,7 +208,16 @@ const PL = {
   ynL: { yes: 37.0, no: 44.0 },
   ynR: { yes: 71.5, no: 79.0 },
   ynR2: { yes: 75.5, no: 81.5 },
-  backupX: [61.5, 65.0, 68.5, 75.5, 82.5] as const,
+  /** Top of HI/LOW cells (labels sit at the bottom of the same cells). */
+  alarmY: 67.35,
+  alarmHiX: 36.0,
+  alarmLowX: 42.3,
+  /** Backup value cells under Heat / Cool / Stage 1–3. */
+  backupY: 69.2,
+  backupX: [56.5, 63.5, 70.5, 77.5, 84.5] as const,
+  /** Emergency yes/no row centers (below YES/NO header). */
+  genY: 66.1,
+  dialerY: 67.55,
 };
 
 const PB = {
@@ -311,8 +327,8 @@ function buildServiceReportFields(
 
   addYesNo(form, page, `${p}.lightIntensity`, yR, nR, 30.91, data.lightIntensityOk);
   addYesNo(form, page, `${p}.lightsOperational`, yR, nR, 32.52, data.lightsOperationalOk);
-  addText(form, page, `${p}.lightsOn`, 60.0, 33.55, 8.5, 1.2, data.lightsOnAt, 8);
-  addText(form, page, `${p}.lightsOff`, 78.5, 33.55, 7.0, 1.2, data.lightsOffAt, 8);
+  addText(form, page, `${p}.lightsOn`, 63.2, 33.55, 5.5, 1.2, data.lightsOnAt, 8);
+  addText(form, page, `${p}.lightsOff`, 87.2, 33.55, 7.5, 1.2, data.lightsOffAt, 8);
 
   addYesNo(form, page, `${p}.tempTargets`, yL, nL, 37.35, data.tempTargetsOk);
   if (data.tempTargetsOk === "no") {
@@ -338,23 +354,23 @@ function buildServiceReportFields(
   );
   addText(form, page, `${p}.tunnelFans`, 91.5, 41.5, 4.5, 1.1, data.tunnelFanCount, 8);
 
-  addCheck(page, 24.0, 45.0, data.ventDoorType === "ceiling");
-  addCheck(page, 31.0, 45.0, data.ventDoorType === "sidewall");
+  addCheck(page, 22.2, 45.15, data.ventDoorType === "ceiling");
+  addCheck(page, 29.8, 45.15, data.ventDoorType === "sidewall");
   addText(form, page, `${p}.sp`, 35.2, 44.5, 5.8, 1.15, data.staticPressure, 8);
   addText(form, page, `${p}.ventOpen`, 42.2, 44.5, 12.5, 1.15, data.ventOpeningInches, 8);
 
   addText(form, page, `${p}.cfmMin`, 21.0, 46.0, 12.5, 1.15, data.cfmPerFt2MinVent, 8);
   addText(form, page, `${p}.fans`, 56.5, 46.0, 38.0, 1.15, data.fansSizeAndCount, 8);
 
-  // Timer row 47.32–49.05 — keep short so /300 stays visible.
+  // Timer row — cover printed "/300" and stamp "N on / M off".
   addText(
     form,
     page,
     `${p}.minVentActual`,
     22.0,
     SR.minVentY,
-    8.5,
-    1.15,
+    12.2,
+    1.35,
     formatMinVentPair(data.minVentActualOn, data.minVentActualOff),
     6,
     { cover: true },
@@ -363,18 +379,30 @@ function buildServiceReportFields(
     form,
     page,
     `${p}.minVentReco`,
-    56.0,
+    56.5,
     SR.minVentY,
-    8.5,
-    1.15,
+    13.0,
+    1.35,
     formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
     6,
     { cover: true },
   );
 
-  addText(form, page, `${p}.maxCfm`, 22.0, SR.maxCfmY, 10.0, 1.15, data.maxCfm, 8);
-  addText(form, page, `${p}.coolOff`, 49.5, SR.coolY, 10.0, 1.15, data.coolCellOffTemp, 8);
-  addText(form, page, `${p}.coolOn`, 63.5, SR.coolY, 10.5, 1.15, data.coolCellOnTemp, 8);
+  // Max CFM overwrites the printed N/A cell in the Power/cool header band.
+  addText(
+    form,
+    page,
+    `${p}.maxCfm`,
+    SR.maxCfm.x,
+    SR.maxCfm.y,
+    SR.maxCfm.w,
+    SR.maxCfm.h,
+    data.maxCfm,
+    8,
+    { cover: true },
+  );
+  addText(form, page, `${p}.coolOff`, 49.5, SR.coolY, 8.5, 1.15, data.coolCellOffTemp, 8);
+  addText(form, page, `${p}.coolOn`, 63.5, SR.coolY, 8.5, 1.15, data.coolCellOnTemp, 8);
   addText(
     form,
     page,
@@ -389,13 +417,13 @@ function buildServiceReportFields(
     8,
   );
 
-  addYesNo(form, page, `${p}.waterLines`, yW, nW, 53.5, data.waterLinesOk);
-  addYesNo(form, page, `${p}.sightTubes`, yW, nW, 55.2, data.sightTubesOk);
-  addYesNo(form, page, `${p}.waterAdditive`, yW, nW, 56.9, data.waterAdditive);
-  addText(form, page, `${p}.psiBefore`, 78.0, 53.4, 7.5, 1.15, data.psiBefore, 8);
-  addText(form, page, `${p}.psiAfter`, 78.0, 55.1, 7.5, 1.15, data.psiAfter, 8);
-  addText(form, page, `${p}.waterCol`, 36.0, 58.7, 10.0, 1.15, data.waterColumnInches, 8);
-  addText(form, page, `${p}.ph`, 68.5, 57.9, 5.5, 1.15, data.ph, 8);
+  addYesNo(form, page, `${p}.waterLines`, yW, nW, 54.25, data.waterLinesOk);
+  addYesNo(form, page, `${p}.sightTubes`, yW, nW, 55.95, data.sightTubesOk);
+  addYesNo(form, page, `${p}.waterAdditive`, yW, nW, 57.65, data.waterAdditive);
+  addText(form, page, `${p}.psiBefore`, 78.0, 54.15, 7.5, 1.15, data.psiBefore, 8);
+  addText(form, page, `${p}.psiAfter`, 78.0, 55.85, 7.5, 1.15, data.psiAfter, 8);
+  addText(form, page, `${p}.waterCol`, 35.5, 58.9, 5.5, 1.15, data.waterColumnInches, 8);
+  addText(form, page, `${p}.ph`, 64.5, 58.85, 5.5, 1.1, data.ph, 8);
 
   addYesNo(form, page, `${p}.partitioned`, yL, nL, 62.7, data.partitionedOk);
   addYesNo(form, page, `${p}.comfortable`, yL, nL, 64.2, data.comfortableSpreadOk);
@@ -473,8 +501,8 @@ function buildPlacementFields(
 
   const mvA = formatMinVentPair(data.minVentActualOn, data.minVentActualOff);
   const mvR = formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff);
-  addText(form, page, `${p}.mvActual`, 34.5, 36.15, 12, 1.35, mvA, 6, { cover: true });
-  addText(form, page, `${p}.mvReco`, 75.0, 36.15, 13, 1.35, mvR, 6, { cover: true });
+  addText(form, page, `${p}.mvActual`, 34.0, 36.15, 14, 1.35, mvA, 6, { cover: true });
+  addText(form, page, `${p}.mvReco`, 74.0, 36.15, 15, 1.35, mvR, 6, { cover: true });
 
   const sorted = [...data.houses].sort((a, b) => a.houseNumber - b.houseNumber);
   PL.houses.forEach((x, i) => {
@@ -516,17 +544,18 @@ function buildPlacementFields(
   addYesNo(form, page, `${p}.rodenticide`, yL, nL, 60.7, data.rodenticideOk);
   addYesNo(form, page, `${p}.footBaths`, yL, nL, 62.2, data.footBathsOk);
 
-  addYesNo(form, page, `${p}.generatorAuto`, yL, nL, 65.2, data.generatorAutoOk);
-  addYesNo(form, page, `${p}.dialerOn`, yL, nL, 66.8, data.dialerOnOk);
-  addText(form, page, `${p}.alarmHi`, 34.5, 69.55, 5.5, 1.3, data.alarmHi, 8);
-  addText(form, page, `${p}.alarmLow`, 41.5, 69.55, 5.5, 1.3, data.alarmLow, 8);
+  addYesNo(form, page, `${p}.generatorAuto`, yL, nL, PL.genY, data.generatorAutoOk);
+  addYesNo(form, page, `${p}.dialerOn`, yL, nL, PL.dialerY, data.dialerOnOk);
+  addText(form, page, `${p}.alarmHi`, PL.alarmHiX, PL.alarmY, 5.0, 1.15, data.alarmHi, 8);
+  addText(form, page, `${p}.alarmLow`, PL.alarmLowX, PL.alarmY, 5.0, 1.15, data.alarmLow, 8);
 
   const [bH, bC, b1, b2, b3] = PL.backupX;
-  addText(form, page, `${p}.backupHeat`, bH, 69.55, 3.2, 1.35, data.backupHeat, 8);
-  addText(form, page, `${p}.backupCool`, bC, 69.55, 3.2, 1.35, data.backupCool, 8);
-  addText(form, page, `${p}.backupS1`, b1, 69.55, 3.2, 1.35, data.backupStage1, 8);
-  addText(form, page, `${p}.backupS2`, b2, 69.55, 5.0, 1.35, data.backupStage2, 8);
-  addText(form, page, `${p}.backupS3`, b3, 69.55, 5.5, 1.35, data.backupStage3, 8);
+  const bY = PL.backupY;
+  addText(form, page, `${p}.backupHeat`, bH, bY, 5.5, 1.35, data.backupHeat, 8);
+  addText(form, page, `${p}.backupCool`, bC, bY, 5.5, 1.35, data.backupCool, 8);
+  addText(form, page, `${p}.backupS1`, b1, bY, 5.5, 1.35, data.backupStage1, 8);
+  addText(form, page, `${p}.backupS2`, b2, bY, 5.5, 1.35, data.backupStage2, 8);
+  addText(form, page, `${p}.backupS3`, b3, bY, 5.5, 1.35, data.backupStage3, 8);
 
   drawCommentLines(page, font, 8.0, 72.5, data.comments, 8, 2.2);
   addText(form, page, `${p}.tech`, 16.0, 94.6, 40, 1.4, data.serviceTech, 10);
