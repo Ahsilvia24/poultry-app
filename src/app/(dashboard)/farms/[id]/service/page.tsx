@@ -30,9 +30,10 @@ export default async function ServiceFarmPage({ params }: { params: Params }) {
       </Link>
       <PageHeader title="Service Farm" subtitle={farm.farmName} />
       <Card>
-        <p className="font-semibold text-stone-800">Coming soon</p>
+        <p className="font-semibold text-stone-800">Available on mobile</p>
         <p className="mt-2 text-sm text-stone-600">
-          Service visit forms for this farm will live here. Nothing to fill out yet.
+          Service Report, Placement, and Prebrood checklists are in the Expo app.
+          Completing a form logs a visit and can share a PDF. Web forms will follow.
         </p>
       </Card>
     </div>

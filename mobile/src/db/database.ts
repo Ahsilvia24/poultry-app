@@ -176,6 +176,18 @@ export function migrateDb() {
       FOREIGN KEY (farm_id) REFERENCES farms(id)
     );
 
+    CREATE TABLE IF NOT EXISTS service_forms (
+      id TEXT PRIMARY KEY NOT NULL,
+      farm_id TEXT NOT NULL,
+      flock_id TEXT,
+      form_kind TEXT NOT NULL,
+      form_date TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      visit_id TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (farm_id) REFERENCES farms(id)
+    );
+
     CREATE TABLE IF NOT EXISTS feed_deliveries (
       id TEXT PRIMARY KEY NOT NULL,
       flock_id TEXT,
@@ -199,7 +211,29 @@ export function migrateDb() {
     CREATE INDEX IF NOT EXISTS idx_litter_farm ON litter_events(farm_id);
     CREATE INDEX IF NOT EXISTS idx_generator_farm ON generator_logs(farm_id);
     CREATE INDEX IF NOT EXISTS idx_feed_flock ON feed_deliveries(flock_id);
+    CREATE INDEX IF NOT EXISTS idx_service_forms_farm ON service_forms(farm_id);
   `);
+
+  // Older installs may not have service_forms yet.
+  const serviceForms = database.getAllSync<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='service_forms'",
+  );
+  if (serviceForms.length === 0) {
+    database.execSync(`
+      CREATE TABLE IF NOT EXISTS service_forms (
+        id TEXT PRIMARY KEY NOT NULL,
+        farm_id TEXT NOT NULL,
+        flock_id TEXT,
+        form_kind TEXT NOT NULL,
+        form_date TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        visit_id TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (farm_id) REFERENCES farms(id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_service_forms_farm ON service_forms(farm_id);
+    `);
+  }
 
   // Existing installs created houses without deleted_at — add if missing
   const houseCols = database.getAllSync<{ name: string }>("PRAGMA table_info(houses)");

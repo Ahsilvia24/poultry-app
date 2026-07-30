@@ -3303,3 +3303,81 @@ export function deleteFeedDelivery(deliveryId: string) {
   db.runSync("DELETE FROM feed_deliveries WHERE id = ?", [deliveryId]);
   return { success: true as const };
 }
+
+type ServiceFormKind = "service_report" | "placement" | "prebrood";
+
+/** Persist a completed service checklist, log a visit, and optionally generator hours. */
+export function completeServiceForm(input: {
+  farmId: string;
+  formKind: ServiceFormKind;
+  formDate: string;
+  payload: unknown;
+  visitNotes?: string | null;
+  generatorHours?: number | null;
+}) {
+  const db = getDb();
+  const farm = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM farms WHERE id = ? AND deleted_at IS NULL",
+    [input.farmId],
+  );
+  if (!farm) throw new Error("Farm not found");
+
+  const visitType =
+    input.formKind === "service_report"
+      ? "ROUTINE_SERVICE"
+      : input.formKind === "placement"
+        ? "PLACEMENT"
+        : "PREBROOD";
+
+  const visitLabel =
+    input.formKind === "service_report"
+      ? "Service report"
+      : input.formKind === "placement"
+        ? "Placement checklist"
+        : "Prebrood checklist";
+
+  const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n");
+
+  const visit = createVisit({
+    farmId: input.farmId,
+    visitDate: input.formDate,
+    visitType,
+    notes: notes || visitLabel,
+    generalBirdCondition: "Healthy",
+  });
+
+  if (input.generatorHours != null && Number.isFinite(input.generatorHours)) {
+    createGeneratorLog({
+      farmId: input.farmId,
+      logDate: input.formDate,
+      gen1Hours: input.generatorHours,
+      gen2Hours: null,
+      gen3Hours: null,
+      gen4Hours: null,
+    });
+  }
+
+  const id = newId("svcform");
+  db.runSync(
+    `INSERT INTO service_forms
+      (id, farm_id, flock_id, form_kind, form_date, payload_json, visit_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      input.farmId,
+      visit.birdAgeInDays != null
+        ? db.getFirstSync<{ id: string }>(
+            "SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
+            [input.farmId],
+          )?.id ?? null
+        : null,
+      input.formKind,
+      input.formDate,
+      JSON.stringify(input.payload),
+      visit.id,
+      new Date().toISOString(),
+    ],
+  );
+
+  return { id, visitId: visit.id };
+}

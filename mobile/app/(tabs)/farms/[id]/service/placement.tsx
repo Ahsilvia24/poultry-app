@@ -1,0 +1,300 @@
+import { useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { DatePickerField } from "../../../../../src/components/DatePickerField";
+import { OptionPicker, SelectField } from "../../../../../src/components/OptionPicker";
+import {
+  PairFields,
+  SectionTitle,
+  TextField,
+  YesNoField,
+} from "../../../../../src/components/serviceForms/fields";
+import { Card, PageHeader } from "../../../../../src/components/ui";
+import { createPlacementDraft } from "../../../../../src/lib/serviceForms/defaults";
+import { VENT_DOOR_OPTIONS } from "../../../../../src/lib/serviceForms/format";
+import {
+  minVentForWeek,
+  prefillHouseRows,
+} from "../../../../../src/lib/serviceForms/prefill";
+import type { PlacementForm } from "../../../../../src/lib/serviceForms/types";
+import {
+  useCompleteServiceForm,
+  useServiceFarmContext,
+} from "../../../../../src/lib/serviceForms/useServiceFarm";
+import { colors, styles } from "../../../../../src/theme";
+
+function paramId(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
+export default function PlacementChecklistScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const farmId = paramId(params.id);
+  const { detail, farmName, flockNumber } = useServiceFarmContext(farmId);
+  const { complete, saving } = useCompleteServiceForm(farmId);
+
+  const [form, setForm] = useState<PlacementForm>(() => {
+    const draft = createPlacementDraft({
+      farmName,
+      flockNumber,
+      houses: detail ? prefillHouseRows(detail) : [],
+    });
+    if (detail) {
+      const minVent = minVentForWeek(detail, 1);
+      draft.minVentRecommendedOn = minVent?.on ?? "";
+      draft.minVentRecommendedOff = minVent?.off ?? "";
+    }
+    return draft;
+  });
+  const [ventDoorOpen, setVentDoorOpen] = useState(false);
+
+  function patch(p: Partial<PlacementForm>) {
+    setForm((prev) => ({ ...prev, ...p }));
+  }
+
+  function patchHouse(houseNumber: number, p: Partial<PlacementForm["houses"][number]>) {
+    setForm((prev) => ({
+      ...prev,
+      houses: prev.houses.map((h) =>
+        h.houseNumber === houseNumber ? { ...h, ...p } : h,
+      ),
+    }));
+  }
+
+  return (
+    <SafeAreaView style={styles.screen} edges={["top"]}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 }]}>
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else
+              router.replace({
+                pathname: "/(tabs)/farms/[id]/service",
+                params: { id: farmId },
+              });
+          }}
+          style={{ marginBottom: 8 }}
+        >
+          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Checklists</Text>
+        </Pressable>
+        <PageHeader title="Placement Checklist" subtitle={farmName} />
+
+        <Card>
+          <TextField label="Farm name" value={form.farmName} onChange={(farmName) => patch({ farmName })} />
+          <PairFields
+            left={
+              <TextField
+                label="Farm #"
+                value={form.farmNumber}
+                onChange={(farmNumber) => patch({ farmNumber })}
+              />
+            }
+            right={
+              <TextField
+                label="Flock"
+                value={form.flockNumber}
+                onChange={(flockNumber) => patch({ flockNumber })}
+              />
+            }
+          />
+          <DatePickerField label="Date" value={form.date} onChange={(date) => patch({ date })} />
+          <TextField
+            label="Service tech"
+            value={form.serviceTech}
+            onChange={(serviceTech) => patch({ serviceTech })}
+          />
+        </Card>
+
+        <Card style={{ marginTop: 12 }}>
+          <SectionTitle title="Feed" />
+          <YesNoField label="Supplemental feed lids (1 per 1,000)" value={form.supplementalLidsOk} onChange={(supplementalLidsOk) => patch({ supplementalLidsOk })} />
+          <YesNoField label="Feeder paper per program" value={form.feederPaperOk} onChange={(feederPaperOk) => patch({ feederPaperOk })} />
+          <YesNoField label="Feed tray ribs are covered" value={form.feedTrayRibsOk} onChange={(feedTrayRibsOk) => patch({ feedTrayRibsOk })} />
+          <YesNoField label="Turbo feeders full" value={form.turboFeedersFullOk} onChange={(turboFeedersFullOk) => patch({ turboFeedersFullOk })} />
+
+          <SectionTitle title="Light" />
+          <YesNoField label="All burnt bulbs replaced" value={form.bulbsReplacedOk} onChange={(bulbsReplacedOk) => patch({ bulbsReplacedOk })} />
+          <YesNoField label="Lights at full intensity" value={form.lightsFullIntensityOk} onChange={(lightsFullIntensityOk) => patch({ lightsFullIntensityOk })} />
+          <YesNoField label="Call pan lights operational" value={form.callPanLightsOk} onChange={(callPanLightsOk) => patch({ callPanLightsOk })} />
+          <YesNoField label="Brood lights are ON" value={form.broodLightsOnOk} onChange={(broodLightsOnOk) => patch({ broodLightsOnOk })} />
+
+          <SectionTitle title="Air and litter" />
+          <YesNoField label="Temperature set to Day 1 target" value={form.tempDay1Ok} onChange={(tempDay1Ok) => patch({ tempDay1Ok })} />
+          <YesNoField
+            label="Litter amendment has been applied"
+            value={form.litterAmendmentOk}
+            onChange={(litterAmendmentOk) =>
+              patch({
+                litterAmendmentOk,
+                litterAmendmentType: litterAmendmentOk === "yes" ? form.litterAmendmentType : "",
+              })
+            }
+          />
+          {form.litterAmendmentOk === "yes" ? (
+            <View style={{ flexDirection: "row", gap: 8, marginVertical: 8 }}>
+              {(["PLT", "Pure7"] as const).map((opt) => {
+                const active = form.litterAmendmentType === opt;
+                return (
+                  <Pressable
+                    key={opt}
+                    onPress={() => patch({ litterAmendmentType: opt })}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      borderRadius: 10,
+                      backgroundColor: active ? colors.accentDark : "#f5f5f4",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{ fontWeight: "800", color: active ? "#fff" : colors.text }}>
+                      {opt === "Pure7" ? "Pure 7" : opt}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+          <YesNoField label="All heaters on and operational" value={form.heatersOk} onChange={(heatersOk) => patch({ heatersOk })} />
+          <YesNoField label="Sensors at bird level" value={form.sensorsBirdLevelOk} onChange={(sensorsBirdLevelOk) => patch({ sensorsBirdLevelOk })} />
+          <SelectField
+            label="Vent door type"
+            valueLabel={VENT_DOOR_OPTIONS.find((o) => o.value === form.ventDoorType)?.label ?? "Select"}
+            onPress={() => setVentDoorOpen(true)}
+          />
+          <PairFields
+            left={
+              <TextField label="Vent opening (in)" value={form.ventOpeningInches} onChange={(ventOpeningInches) => patch({ ventOpeningInches })} keyboardType="decimal-pad" />
+            }
+            right={
+              <TextField label="S.P." value={form.staticPressure} onChange={(staticPressure) => patch({ staticPressure })} keyboardType="decimal-pad" />
+            }
+          />
+          <TextField label="C.F.M. / Ft² min vent" value={form.cfmPerFt2MinVent} onChange={(cfmPerFt2MinVent) => patch({ cfmPerFt2MinVent })} keyboardType="decimal-pad" />
+          <TextField label="Size and number of fans" value={form.fansSizeAndCount} onChange={(fansSizeAndCount) => patch({ fansSizeAndCount })} />
+          <PairFields
+            left={
+              <TextField label="Min vent actual ON" value={form.minVentActualOn} onChange={(minVentActualOn) => patch({ minVentActualOn })} keyboardType="number-pad" />
+            }
+            right={
+              <TextField label="Min vent actual OFF" value={form.minVentActualOff} onChange={(minVentActualOff) => patch({ minVentActualOff })} keyboardType="number-pad" />
+            }
+          />
+          <Text style={[styles.muted, { marginBottom: 8 }]}>
+            Recommended (Week 1):{" "}
+            {form.minVentRecommendedOn || form.minVentRecommendedOff
+              ? `${form.minVentRecommendedOn} on / ${form.minVentRecommendedOff} off`
+              : "—"}
+          </Text>
+        </Card>
+
+        <SectionTitle title="Litter temp / ammonia by house" />
+        <Text style={[styles.muted, { marginBottom: 8 }]}>
+          Optional — leave blank for houses not being placed.
+        </Text>
+        {form.houses.map((h) => (
+          <Card key={h.houseNumber} style={{ marginBottom: 8 }}>
+            <Text style={{ fontWeight: "800", marginBottom: 6 }}>House {h.houseNumber}</Text>
+            <PairFields
+              left={
+                <TextField
+                  label="Litter temp"
+                  value={h.litterTemp}
+                  onChange={(litterTemp) => patchHouse(h.houseNumber, { litterTemp })}
+                  keyboardType="decimal-pad"
+                />
+              }
+              right={
+                <TextField
+                  label="Ammonia PPM"
+                  value={h.ammoniaPpm}
+                  onChange={(ammoniaPpm) => patchHouse(h.houseNumber, { ammoniaPpm })}
+                  keyboardType="decimal-pad"
+                />
+              }
+            />
+          </Card>
+        ))}
+
+        <Card>
+          <SectionTitle title="Water" />
+          <YesNoField label="Sight tubes clean" value={form.sightTubesOk} onChange={(sightTubesOk) => patch({ sightTubesOk })} />
+          <YesNoField label="Proxy test strip performed" value={form.proxyTestOk} onChange={(proxyTestOk) => patch({ proxyTestOk })} />
+          <YesNoField label="Anything currently added to water" value={form.waterAdditive} onChange={(waterAdditive) => patch({ waterAdditive })} />
+          <PairFields
+            left={<TextField label="PSI before" value={form.psiBefore} onChange={(psiBefore) => patch({ psiBefore })} keyboardType="decimal-pad" />}
+            right={<TextField label="PSI after" value={form.psiAfter} onChange={(psiAfter) => patch({ psiAfter })} keyboardType="decimal-pad" />}
+          />
+          <PairFields
+            left={<TextField label="Water column (in)" value={form.waterColumnInches} onChange={(waterColumnInches) => patch({ waterColumnInches })} keyboardType="decimal-pad" />}
+            right={<TextField label="P.H. (optional)" value={form.ph} onChange={(ph) => patch({ ph })} keyboardType="decimal-pad" />}
+          />
+
+          <SectionTitle title="Space / Sanitation / Emergency" />
+          <YesNoField label="Chicks partitioned properly" value={form.partitionedOk} onChange={(partitionedOk) => patch({ partitionedOk })} />
+          <YesNoField label="Premise is clean" value={form.premiseCleanOk} onChange={(premiseCleanOk) => patch({ premiseCleanOk })} />
+          <YesNoField label="Rodenticide is placed" value={form.rodenticideOk} onChange={(rodenticideOk) => patch({ rodenticideOk })} />
+          <YesNoField label="Foot baths utilized" value={form.footBathsOk} onChange={(footBathsOk) => patch({ footBathsOk })} />
+          <YesNoField label="Generator is in Auto" value={form.generatorAutoOk} onChange={(generatorAutoOk) => patch({ generatorAutoOk })} />
+          <YesNoField label="Dialer alarm is ON" value={form.dialerOnOk} onChange={(dialerOnOk) => patch({ dialerOnOk })} />
+          <PairFields
+            left={<TextField label="Alarm HI" value={form.alarmHi} onChange={(alarmHi) => patch({ alarmHi })} keyboardType="number-pad" />}
+            right={<TextField label="Alarm LOW" value={form.alarmLow} onChange={(alarmLow) => patch({ alarmLow })} keyboardType="number-pad" />}
+          />
+          <PairFields
+            left={<TextField label="Backup heat" value={form.backupHeat} onChange={(backupHeat) => patch({ backupHeat })} />}
+            right={<TextField label="Backup cool" value={form.backupCool} onChange={(backupCool) => patch({ backupCool })} />}
+          />
+          <PairFields
+            left={<TextField label="Stage 1" value={form.backupStage1} onChange={(backupStage1) => patch({ backupStage1 })} />}
+            right={<TextField label="Stage 2" value={form.backupStage2} onChange={(backupStage2) => patch({ backupStage2 })} />}
+          />
+          <TextField label="Stage 3" value={form.backupStage3} onChange={(backupStage3) => patch({ backupStage3 })} />
+
+          <SectionTitle title="Comments" />
+          <TextField label="Notes" value={form.comments} onChange={(comments) => patch({ comments })} multiline />
+        </Card>
+
+        <Pressable
+          disabled={saving}
+          onPress={() => complete({ form })}
+          style={{
+            marginTop: 16,
+            backgroundColor: colors.accentDark,
+            borderRadius: 12,
+            paddingVertical: 16,
+            alignItems: "center",
+            opacity: saving ? 0.7 : 1,
+          }}
+        >
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>
+              Complete · Log visit · Share PDF
+            </Text>
+          )}
+        </Pressable>
+      </ScrollView>
+
+      <OptionPicker
+        open={ventDoorOpen}
+        title="Vent door type"
+        options={VENT_DOOR_OPTIONS}
+        value={form.ventDoorType}
+        onSelect={(ventDoorType) =>
+          patch({ ventDoorType: ventDoorType as PlacementForm["ventDoorType"] })
+        }
+        onClose={() => setVentDoorOpen(false)}
+      />
+    </SafeAreaView>
+  );
+}
