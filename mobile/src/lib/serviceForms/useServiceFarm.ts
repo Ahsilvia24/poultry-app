@@ -14,10 +14,18 @@ export function useServiceFarmContext(farmId: string) {
     }
   }, [farmId]);
 
+  // Placement / Prebrood flock boxes are narrow — only the first active flock.
+  // (activeFlock.flockNumber may join multiples with " · " for other screens.)
+  const firstFlockNumber =
+    detail?.activeFlocks?.[0]?.flockNumber ??
+    detail?.activeFlock?.flockNumber?.split(/\s*·\s*/)[0]?.trim() ??
+    "";
+
   return {
     detail,
     farmName: detail?.farm.farmName ?? "Farm",
     flockNumber: detail?.activeFlock?.flockNumber ?? "",
+    firstFlockNumber,
   };
 }
 
