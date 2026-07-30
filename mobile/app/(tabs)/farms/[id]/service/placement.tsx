@@ -306,7 +306,7 @@ export default function PlacementChecklistScreen() {
                 placeholder="4-6"
               />
             }
-            right={<TextField label="P.H. (optional)" value={form.ph} onChange={(ph) => patch({ ph })} keyboardType="decimal-pad" />}
+            right={<TextField label="P.H." value={form.ph} onChange={(ph) => patch({ ph })} keyboardType="decimal-pad" />}
           />
 
           <SectionTitle title="Space / Sanitation / Emergency" />

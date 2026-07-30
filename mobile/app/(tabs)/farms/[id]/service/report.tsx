@@ -457,7 +457,7 @@ export default function ServiceReportScreen() {
             }
           />
           <TextField
-            label="P.H. (optional)"
+            label="P.H."
             value={form.ph}
             onChange={(ph) => patch({ ph })}
             keyboardType="decimal-pad"
