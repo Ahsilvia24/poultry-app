@@ -283,19 +283,19 @@ export default function ServiceReportScreen() {
           <PairFields
             left={
               <TextField
-                label="Vent opening (in)"
-                value={form.ventOpeningInches}
-                onChange={(ventOpeningInches) => patch({ ventOpeningInches })}
-                keyboardType="decimal-pad"
-              />
-            }
-            right={
-              <TextField
                 label="S.P."
                 value={form.staticPressure}
                 onChange={(staticPressure) => patch({ staticPressure })}
                 keyboardType="decimal-pad"
                 placeholder="0.1"
+              />
+            }
+            right={
+              <TextField
+                label="Vent opening (in)"
+                value={form.ventOpeningInches}
+                onChange={(ventOpeningInches) => patch({ ventOpeningInches })}
+                keyboardType="decimal-pad"
               />
             }
           />

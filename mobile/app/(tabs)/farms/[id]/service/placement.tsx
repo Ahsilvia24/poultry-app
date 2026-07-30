@@ -172,10 +172,10 @@ export default function PlacementChecklistScreen() {
           />
           <PairFields
             left={
-              <TextField label="Vent opening (in)" value={form.ventOpeningInches} onChange={(ventOpeningInches) => patch({ ventOpeningInches })} keyboardType="decimal-pad" />
+              <TextField label="S.P." value={form.staticPressure} onChange={(staticPressure) => patch({ staticPressure })} keyboardType="decimal-pad" />
             }
             right={
-              <TextField label="S.P." value={form.staticPressure} onChange={(staticPressure) => patch({ staticPressure })} keyboardType="decimal-pad" />
+              <TextField label="Vent opening (in)" value={form.ventOpeningInches} onChange={(ventOpeningInches) => patch({ ventOpeningInches })} keyboardType="decimal-pad" />
             }
           />
           <TextField label="C.F.M. / Ft² min vent" value={form.cfmPerFt2MinVent} onChange={(cfmPerFt2MinVent) => patch({ cfmPerFt2MinVent })} keyboardType="decimal-pad" />

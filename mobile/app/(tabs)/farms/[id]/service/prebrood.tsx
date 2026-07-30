@@ -181,7 +181,7 @@ export default function PrebroodChecklistScreen() {
           <YesNoField label="Temperature set to Day 1 target" value={form.tempDay1Ok} onChange={(tempDay1Ok) => patch({ tempDay1Ok })} />
           <YesNoField label="Proper cake out completed" value={form.cakeOutOk} onChange={(cakeOutOk) => patch({ cakeOutOk })} />
           <YesNoField label="Clean out and pad treat" value={form.cleanOutPadTreatOk} onChange={(cleanOutPadTreatOk) => patch({ cleanOutPadTreatOk })} />
-          <YesNoField label="Litter depth adequate (min 4–6&quot;)" value={form.litterDepthOk} onChange={(litterDepthOk) => patch({ litterDepthOk })} />
+          <YesNoField label={'Litter depth adequate (min 4–6")'} value={form.litterDepthOk} onChange={(litterDepthOk) => patch({ litterDepthOk })} />
           <YesNoField label="All heaters on and operational" value={form.heatersOk} onChange={(heatersOk) => patch({ heatersOk })} />
         </Card>
 
