@@ -26,7 +26,7 @@ const FORMS = [
   {
     key: "prebrood",
     title: "Prebrood (48–72 hr)",
-    subtitle: "Prebrood checklist → visit + generator hours + PDF",
+    subtitle: "Prebrood checklist → visit + PDF",
     path: "/(tabs)/farms/[id]/service/prebrood" as const,
   },
 ] as const;

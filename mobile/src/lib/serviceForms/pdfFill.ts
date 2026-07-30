@@ -471,7 +471,6 @@ function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
     8,
     { xPad: 12 },
   );
-  markYesNo(ctx, "Check Box201", "Check Box207", data.generatorHoursLoggedOk);
 
   fillCommentLines(
     ctx,
@@ -491,14 +490,7 @@ function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
       "comments 12",
       "comments 13",
     ],
-    [
-      data.generatorHoursLoggedOk === "yes" && data.generatorHours
-        ? `Generator hours: ${data.generatorHours}`
-        : "",
-      data.comments,
-    ]
-      .filter(Boolean)
-      .join("\n"),
+    data.comments,
   );
   setText(ctx, "Text111", data.serviceTech, 10);
 }

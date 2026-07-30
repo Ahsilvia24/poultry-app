@@ -321,7 +321,6 @@ export function prebroodPdfHtml(form: Extract<AnyServiceForm, { kind: "prebrood"
           ${checkRow("Performed Generator Test", form.generatorTestOk)}
           ${checkRow("Performed Dialer Alarm Test", form.dialerTestOk)}
           <tr><td>Generator Serviced</td><td>${esc(yn(form.generatorServicedOk))}${serviceDate ? ` · ${esc(serviceDate)}` : ""}</td></tr>
-          <tr><td>Generator Hours Logged</td><td>${esc(yn(form.generatorHoursLoggedOk))}${form.generatorHours ? ` · ${esc(form.generatorHours)}` : ""}</td></tr>
         </table>
       </div>
     </div>
