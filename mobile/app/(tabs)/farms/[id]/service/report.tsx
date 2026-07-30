@@ -38,6 +38,8 @@ import {
 import type { ServiceReportForm } from "../../../../../src/lib/serviceForms/types";
 import {
   useCompleteServiceForm,
+  useEditVisitIdParam,
+  useExistingServiceForm,
   useServiceFarmContext,
 } from "../../../../../src/lib/serviceForms/useServiceFarm";
 import { colors, styles } from "../../../../../src/theme";
@@ -52,9 +54,17 @@ export default function ServiceReportScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const farmId = paramId(params.id);
   const { detail, farmName, flockNumber } = useServiceFarmContext(farmId);
-  const { complete, saving } = useCompleteServiceForm(farmId);
+  const existing = useExistingServiceForm(farmId, "service_report");
+  const editVisitId = useEditVisitIdParam();
+  const { complete, saving, editing } = useCompleteServiceForm(farmId, {
+    serviceFormId: existing?.id ?? null,
+    existingVisitId: existing ? null : editVisitId,
+  });
 
   const initial = useMemo(() => {
+    if (existing?.payload && typeof existing.payload === "object") {
+      return existing.payload as ServiceReportForm;
+    }
     if (!detail) return createServiceReportDraft({ farmName, flockNumber });
     return createServiceReportDraft({
       farmName: detail.farm.farmName,
@@ -62,9 +72,12 @@ export default function ServiceReportScreen() {
       houses: prefillHouseRows(detail),
       serviceTech: "",
     });
-  }, [detail, farmName, flockNumber]);
+  }, [detail, farmName, flockNumber, existing]);
 
   const [form, setForm] = useState<ServiceReportForm>(() => {
+    if (existing?.payload && typeof existing.payload === "object") {
+      return existing.payload as ServiceReportForm;
+    }
     if (!detail) return initial;
     const week = currentFlockWeek(detail);
     const minVent = minVentForWeek(detail, week);
@@ -134,7 +147,10 @@ export default function ServiceReportScreen() {
         >
           <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Checklists</Text>
         </Pressable>
-        <PageHeader title="Service Report" subtitle={farmName} />
+        <PageHeader
+          title={editing ? "Edit Service Report" : "Service Report"}
+          subtitle={farmName}
+        />
 
         <Card>
           <TextField
@@ -615,7 +631,7 @@ export default function ServiceReportScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>
-              Complete · Log visit · Share PDF
+              {editing ? "Save changes · Share PDF" : "Complete · Log visit · Share PDF"}
             </Text>
           )}
         </Pressable>
