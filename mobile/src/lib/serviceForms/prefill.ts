@@ -15,6 +15,7 @@ type FarmHouse = {
   weeklyMortality: Array<{ week: number; total: number }>;
   totalFanCFM: number | null;
   numberOfFans: number | null;
+  loggedTemp?: string | null;
 };
 
 type FarmDetailLike = {
@@ -40,6 +41,7 @@ export function prefillHouseRows(detail: FarmDetailLike): ServiceHouseRow[] {
     row.mortalityToDate =
       h.placedBirdCount != null ? String(h.cumulativeMortality) : "";
     row.weeks = weeksFromSummary(h.weeklyMortality ?? []);
+    row.currentTemp = h.loggedTemp?.trim() || "";
     return row;
   });
 }

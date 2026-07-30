@@ -34,6 +34,7 @@ import {
   updateFlockGrowthRate,
   updateGeneratorLog,
   updateHouse,
+  updateHouseLoggedTemp,
 } from "../../../../src/repos/data";
 import {
   consumeFarmReturnFromMortality,
@@ -364,6 +365,13 @@ export default function FarmDetailScreen() {
   const [editingHouse, setEditingHouse] = useState<HouseEditDraft | null>(null);
   const [houseEditError, setHouseEditError] = useState<string | null>(null);
   const [houseSaving, setHouseSaving] = useState(false);
+  const [tempHouse, setTempHouse] = useState<{
+    id: string;
+    houseNumber: number;
+    temp: string;
+  } | null>(null);
+  const [tempSaving, setTempSaving] = useState(false);
+  const [tempError, setTempError] = useState<string | null>(null);
   const [addingHouse, setAddingHouse] = useState<AddHouseDraft | null>(null);
   const [addHouseError, setAddHouseError] = useState<string | null>(null);
   const [addHouseSaving, setAddHouseSaving] = useState(false);
@@ -709,6 +717,42 @@ export default function FarmDetailScreen() {
     if (houseSaving) return;
     setEditingHouse(null);
     setHouseEditError(null);
+  }
+
+  function closeTempModal() {
+    if (tempSaving) return;
+    setTempHouse(null);
+    setTempError(null);
+  }
+
+  function saveHouseTemp() {
+    if (!tempHouse || !farm) return;
+    setTempSaving(true);
+    setTempError(null);
+    try {
+      updateHouseLoggedTemp(farm.id, tempHouse.id, tempHouse.temp);
+      setTempHouse(null);
+      load();
+    } catch (e) {
+      setTempError(e instanceof Error ? e.message : "Could not save temperature");
+    } finally {
+      setTempSaving(false);
+    }
+  }
+
+  function clearHouseTemp() {
+    if (!tempHouse || !farm) return;
+    setTempSaving(true);
+    setTempError(null);
+    try {
+      updateHouseLoggedTemp(farm.id, tempHouse.id, null);
+      setTempHouse(null);
+      load();
+    } catch (e) {
+      setTempError(e instanceof Error ? e.message : "Could not clear temperature");
+    } finally {
+      setTempSaving(false);
+    }
   }
 
   function closeGeneratorModal() {
@@ -1116,6 +1160,73 @@ export default function FarmDetailScreen() {
                             : null}
                         </Text>
                       ) : null}
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        h.loggedTemp
+                          ? `Edit temperature for house ${h.houseNumber}, currently ${h.loggedTemp} degrees`
+                          : `Log temperature for house ${h.houseNumber}`
+                      }
+                      hitSlop={6}
+                      onPress={() => {
+                        setTempError(null);
+                        setTempHouse({
+                          id: h.id,
+                          houseNumber: h.houseNumber,
+                          temp: h.loggedTemp ?? "",
+                        });
+                      }}
+                      style={({ pressed }) => ({
+                        backgroundColor: h.loggedTemp ? "#fff" : "#f5f5f4",
+                        borderWidth: 1.5,
+                        borderColor: h.loggedTemp ? colors.accentDark : colors.border,
+                        paddingHorizontal: 10,
+                        paddingVertical: 10,
+                        borderRadius: 12,
+                        minWidth: 72,
+                        minHeight: 56,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        opacity: pressed ? 0.88 : 1,
+                      })}
+                    >
+                      {h.loggedTemp ? (
+                        <>
+                          <Text
+                            style={{
+                              color: colors.accentDark,
+                              fontWeight: "800",
+                              fontSize: 18,
+                              lineHeight: 22,
+                            }}
+                          >
+                            {h.loggedTemp}°
+                          </Text>
+                          <Text
+                            style={{
+                              color: colors.muted,
+                              fontWeight: "700",
+                              fontSize: 10,
+                              marginTop: 1,
+                            }}
+                          >
+                            Temp
+                          </Text>
+                        </>
+                      ) : (
+                        <Text
+                          style={{
+                            color: colors.text,
+                            fontWeight: "800",
+                            fontSize: 12,
+                            textAlign: "center",
+                            lineHeight: 15,
+                          }}
+                        >
+                          Log{"\n"}Temp
+                        </Text>
+                      )}
                     </Pressable>
                     {h.houseFlockId ? (
                       <Pressable
@@ -1767,6 +1878,74 @@ export default function FarmDetailScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={tempHouse != null}
+        animationType="slide"
+        transparent
+        onRequestClose={closeTempModal}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              justifyContent: "flex-end",
+            }}
+          >
+            <Pressable style={{ flex: 1 }} onPress={closeTempModal} />
+            <View
+              style={{
+                backgroundColor: "#fff",
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                padding: 20,
+                paddingBottom: Platform.OS === "ios" ? 28 : 24,
+              }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                House {tempHouse?.houseNumber} temperature
+              </Text>
+              <Text style={{ color: colors.muted, marginTop: 4, marginBottom: 14 }}>
+                Logged temps fill Current Temp on the Service Report.
+              </Text>
+              <NativeNumInput
+                label="Temperature (°F)"
+                value={tempHouse?.temp ?? ""}
+                onChangeText={(v) =>
+                  setTempHouse((prev) => (prev ? { ...prev, temp: v } : prev))
+                }
+                decimal
+                placeholder="e.g. 78"
+              />
+              {tempError ? (
+                <Text style={{ color: colors.danger, fontWeight: "600", marginBottom: 10 }}>
+                  {tempError}
+                </Text>
+              ) : null}
+              {tempSaving ? (
+                <ActivityIndicator color={colors.accent} />
+              ) : (
+                <View style={{ gap: 10 }}>
+                  <PrimaryButton label="Save temperature" onPress={saveHouseTemp} />
+                  {tempHouse?.temp.trim() ? (
+                    <PrimaryButton
+                      label="Clear temperature"
+                      secondary
+                      onPress={clearHouseTemp}
+                    />
+                  ) : null}
+                  <PrimaryButton label="Cancel" secondary onPress={closeTempModal} />
+                </View>
+              )}
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <Modal
         visible={editingHouse != null}

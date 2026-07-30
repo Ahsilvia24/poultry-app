@@ -664,6 +664,8 @@ export function getFarmDetail(farmId: string) {
     square_footage: number;
     total_fan_cfm: number | null;
     number_of_fans: number | null;
+    logged_temp: string | null;
+    logged_temp_at: string | null;
   }>(
     "SELECT * FROM houses WHERE farm_id = ? AND deleted_at IS NULL ORDER BY house_number ASC",
     [farmId],
@@ -755,6 +757,8 @@ export function getFarmDetail(farmId: string) {
         h.total_fan_cfm != null && h.square_footage > 0
           ? h.total_fan_cfm / h.square_footage
           : null,
+      loggedTemp: h.logged_temp?.trim() || null,
+      loggedTempAt: h.logged_temp_at ?? null,
       flockId: hf?.flock_id ?? null,
       houseFlockId: hf?.id ?? null,
       flockNumber: houseFlock?.flock_number ?? null,
@@ -2505,6 +2509,40 @@ function applyHouseFlockFields(
   }
 
   syncFlockDatesAndPrune(farmId, flock.id);
+}
+
+export function updateHouseLoggedTemp(
+  farmId: string,
+  houseId: string,
+  temp: string | null,
+) {
+  const db = getDb();
+  const house = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM houses WHERE id = ? AND farm_id = ? AND deleted_at IS NULL",
+    [houseId, farmId],
+  );
+  if (!house) throw new Error("House not found");
+
+  const trimmed = temp?.trim() ?? "";
+  if (!trimmed) {
+    db.runSync(
+      "UPDATE houses SET logged_temp = NULL, logged_temp_at = NULL WHERE id = ? AND farm_id = ?",
+      [houseId, farmId],
+    );
+    return { success: true as const, loggedTemp: null };
+  }
+
+  const n = Number(trimmed);
+  if (!Number.isFinite(n)) throw new Error("Enter a valid temperature");
+
+  // Keep a clean display value (drop trailing zeros from parse noise)
+  const normalized = String(trimmed).replace(/^\s+|\s+$/g, "");
+  const at = new Date().toISOString();
+  db.runSync(
+    "UPDATE houses SET logged_temp = ?, logged_temp_at = ? WHERE id = ? AND farm_id = ?",
+    [normalized, at, houseId, farmId],
+  );
+  return { success: true as const, loggedTemp: normalized };
 }
 
 export function updateHouse(
