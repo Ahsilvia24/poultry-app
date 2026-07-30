@@ -23,12 +23,16 @@ export function emptyHouseRow(houseNumber: number): ServiceHouseRow {
 
 export function createServiceReportDraft(input?: {
   farmName?: string;
+  farmNumber?: string;
+  flockNumber?: string;
   serviceTech?: string;
   houses?: ServiceHouseRow[];
 }): ServiceReportForm {
   return {
     kind: "service_report",
     farmName: input?.farmName ?? "",
+    farmNumber: input?.farmNumber ?? "",
+    flockNumber: input?.flockNumber ?? "",
     date: todayKey(),
     serviceTech: input?.serviceTech ?? "",
     houses: input?.houses?.length ? input.houses : [],

@@ -18,6 +18,8 @@ export type ServiceHouseRow = {
 export type ServiceReportForm = {
   kind: "service_report";
   farmName: string;
+  farmNumber?: string;
+  flockNumber?: string;
   date: string; // YYYY-MM-DD
   serviceTech: string;
   houses: ServiceHouseRow[];

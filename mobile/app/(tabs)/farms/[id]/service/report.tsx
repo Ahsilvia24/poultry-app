@@ -47,19 +47,18 @@ export default function ServiceReportScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const farmId = paramId(params.id);
-  const { detail, farmName } = useServiceFarmContext(farmId);
+  const { detail, farmName, flockNumber } = useServiceFarmContext(farmId);
   const { complete, saving } = useCompleteServiceForm(farmId);
 
   const initial = useMemo(() => {
-    if (!detail) return createServiceReportDraft({ farmName });
-    const week = currentFlockWeek(detail);
-    const minVent = minVentForWeek(detail, week);
+    if (!detail) return createServiceReportDraft({ farmName, flockNumber });
     return createServiceReportDraft({
       farmName: detail.farm.farmName,
+      flockNumber: detail.activeFlock?.flockNumber ?? flockNumber,
       houses: prefillHouseRows(detail),
       serviceTech: "",
     });
-  }, [detail, farmName]);
+  }, [detail, farmName, flockNumber]);
 
   const [form, setForm] = useState<ServiceReportForm>(() => {
     if (!detail) return initial;
@@ -129,6 +128,22 @@ export default function ServiceReportScreen() {
             value={form.farmName}
             onChange={(farmName) => patch({ farmName })}
           />
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <TextField
+                label="Farm #"
+                value={form.farmNumber ?? ""}
+                onChange={(farmNumber) => patch({ farmNumber })}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <TextField
+                label="Flock #"
+                value={form.flockNumber ?? ""}
+                onChange={(flockNumber) => patch({ flockNumber })}
+              />
+            </View>
+          </View>
           <DatePickerField
             label="Date"
             value={form.date}

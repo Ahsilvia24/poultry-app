@@ -1,17 +1,16 @@
-import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import type { AnyServiceForm } from "./types";
-import { serviceFormPdfHtml } from "./pdf";
+import { buildServiceFormPdf } from "./pdfFill";
 
+/** Build a PDF stamped on the original Bachoco form template and open the share sheet. */
 export async function shareServiceFormPdf(form: AnyServiceForm) {
-  const html = serviceFormPdfHtml(form);
-  const file = await Print.printToFileAsync({ html });
+  const uri = await buildServiceFormPdf(form);
   if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(file.uri, {
+    await Sharing.shareAsync(uri, {
       mimeType: "application/pdf",
       dialogTitle: "Share service form PDF",
       UTI: "com.adobe.pdf",
     });
   }
-  return file.uri;
+  return uri;
 }
