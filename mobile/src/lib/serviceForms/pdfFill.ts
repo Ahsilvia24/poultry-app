@@ -519,8 +519,8 @@ export async function buildServiceFormPdf(form: AnyServiceForm): Promise<string>
 }
 
 async function buildServiceReportPdf(form: ServiceReportForm) {
-  const template = require("../../../../assets/service-forms/service-report.pdf");
-  const map = require("../../../../assets/service-forms/service-report-fields.json") as FieldMap;
+  const template = require("../../../assets/service-forms/service-report.pdf");
+  const map = require("../../../assets/service-forms/service-report-fields.json") as FieldMap;
   const houses = [...form.houses].sort((a, b) => a.houseNumber - b.houseNumber);
   const pages: (typeof houses)[] = [];
   for (let i = 0; i < Math.max(houses.length, 1); i += 8) {
@@ -573,8 +573,8 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
 }
 
 async function buildPlacementPdf(form: PlacementForm) {
-  const template = require("../../../../assets/service-forms/placement.pdf");
-  const map = require("../../../../assets/service-forms/placement-fields.json") as FieldMap;
+  const template = require("../../../assets/service-forms/placement.pdf");
+  const map = require("../../../assets/service-forms/placement-fields.json") as FieldMap;
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   buildPlacementFields({ page: doc.getPages()[0]!, font, map }, form);
@@ -582,8 +582,8 @@ async function buildPlacementPdf(form: PlacementForm) {
 }
 
 async function buildPrebroodPdf(form: PrebroodForm) {
-  const template = require("../../../../assets/service-forms/prebrood.pdf");
-  const map = require("../../../../assets/service-forms/prebrood-fields.json") as FieldMap;
+  const template = require("../../../assets/service-forms/prebrood.pdf");
+  const map = require("../../../assets/service-forms/prebrood-fields.json") as FieldMap;
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   buildPrebroodFields({ page: doc.getPages()[0]!, font, map }, form);
