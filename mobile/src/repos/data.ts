@@ -664,6 +664,8 @@ export function getFarmDetail(farmId: string) {
     square_footage: number;
     total_fan_cfm: number | null;
     number_of_fans: number | null;
+    logged_temp: string | null;
+    logged_temp_at: string | null;
   }>(
     "SELECT * FROM houses WHERE farm_id = ? AND deleted_at IS NULL ORDER BY house_number ASC",
     [farmId],
@@ -745,6 +747,25 @@ export function getFarmDetail(farmId: string) {
           })
         : null;
 
+    const tempDate =
+      h.logged_temp_at && /^\d{4}-\d{2}-\d{2}$/.test(h.logged_temp_at)
+        ? h.logged_temp_at
+        : h.logged_temp_at
+          ? (() => {
+              const d = new Date(h.logged_temp_at);
+              return Number.isNaN(d.getTime()) ? null : todayKey(d);
+            })()
+          : null;
+    const loggedTempToday =
+      tempDate === today && h.logged_temp?.trim() ? h.logged_temp.trim() : null;
+    // Midnight reset: drop yesterday's temps so the Log Temp button clears.
+    if (h.logged_temp && !loggedTempToday) {
+      db.runSync(
+        "UPDATE houses SET logged_temp = NULL, logged_temp_at = NULL WHERE id = ? AND farm_id = ?",
+        [h.id, farmId],
+      );
+    }
+
     return {
       id: h.id,
       houseNumber: h.house_number,
@@ -755,6 +776,8 @@ export function getFarmDetail(farmId: string) {
         h.total_fan_cfm != null && h.square_footage > 0
           ? h.total_fan_cfm / h.square_footage
           : null,
+      loggedTemp: loggedTempToday,
+      loggedTempAt: loggedTempToday ? tempDate : null,
       flockId: hf?.flock_id ?? null,
       houseFlockId: hf?.id ?? null,
       flockNumber: houseFlock?.flock_number ?? null,
@@ -1873,6 +1896,7 @@ export function deleteVisit(farmId: string, visitId: string) {
     [visitId, farmId],
   );
   if (!existing) throw new Error("Visit not found");
+  db.runSync("DELETE FROM service_forms WHERE visit_id = ? AND farm_id = ?", [visitId, farmId]);
   db.runSync("DELETE FROM farm_visits WHERE id = ? AND farm_id = ?", [visitId, farmId]);
   return { success: true as const };
 }
@@ -2505,6 +2529,41 @@ function applyHouseFlockFields(
   }
 
   syncFlockDatesAndPrune(farmId, flock.id);
+}
+
+export function updateHouseLoggedTemp(
+  farmId: string,
+  houseId: string,
+  temp: string | null,
+) {
+  const db = getDb();
+  const house = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM houses WHERE id = ? AND farm_id = ? AND deleted_at IS NULL",
+    [houseId, farmId],
+  );
+  if (!house) throw new Error("House not found");
+
+  const trimmed = temp?.trim() ?? "";
+  if (!trimmed) {
+    db.runSync(
+      "UPDATE houses SET logged_temp = NULL, logged_temp_at = NULL WHERE id = ? AND farm_id = ?",
+      [houseId, farmId],
+    );
+    return { success: true as const, loggedTemp: null };
+  }
+
+  const n = Number(trimmed);
+  if (!Number.isFinite(n)) throw new Error("Enter a valid temperature");
+
+  // Keep a clean display value (drop trailing zeros from parse noise)
+  const normalized = String(trimmed).replace(/^\s+|\s+$/g, "");
+  // Day key — temps are valid only until local midnight.
+  const at = todayKey();
+  db.runSync(
+    "UPDATE houses SET logged_temp = ?, logged_temp_at = ? WHERE id = ? AND farm_id = ?",
+    [normalized, at, houseId, farmId],
+  );
+  return { success: true as const, loggedTemp: normalized };
 }
 
 export function updateHouse(
@@ -3306,6 +3365,157 @@ export function deleteFeedDelivery(deliveryId: string) {
 
 type ServiceFormKind = "service_report" | "placement" | "prebrood";
 
+export type StoredServiceForm = {
+  id: string;
+  farmId: string;
+  flockId: string | null;
+  formKind: ServiceFormKind;
+  formDate: string;
+  payload: unknown;
+  visitId: string | null;
+  createdAt: string;
+};
+
+function mapServiceFormRow(row: {
+  id: string;
+  farm_id: string;
+  flock_id: string | null;
+  form_kind: string;
+  form_date: string;
+  payload_json: string;
+  visit_id: string | null;
+  created_at: string;
+}): StoredServiceForm {
+  let payload: unknown = null;
+  try {
+    payload = JSON.parse(row.payload_json);
+  } catch {
+    payload = null;
+  }
+  return {
+    id: row.id,
+    farmId: row.farm_id,
+    flockId: row.flock_id,
+    formKind: row.form_kind as ServiceFormKind,
+    formDate: row.form_date,
+    payload,
+    visitId: row.visit_id,
+    createdAt: row.created_at,
+  };
+}
+
+export function getServiceFormById(farmId: string, formId: string): StoredServiceForm | null {
+  const db = getDb();
+  const row = db.getFirstSync<{
+    id: string;
+    farm_id: string;
+    flock_id: string | null;
+    form_kind: string;
+    form_date: string;
+    payload_json: string;
+    visit_id: string | null;
+    created_at: string;
+  }>("SELECT * FROM service_forms WHERE id = ? AND farm_id = ?", [formId, farmId]);
+  return row ? mapServiceFormRow(row) : null;
+}
+
+export function getServiceFormForVisit(
+  farmId: string,
+  visitId: string,
+): StoredServiceForm | null {
+  const db = getDb();
+  const row = db.getFirstSync<{
+    id: string;
+    farm_id: string;
+    flock_id: string | null;
+    form_kind: string;
+    form_date: string;
+    payload_json: string;
+    visit_id: string | null;
+    created_at: string;
+  }>(
+    "SELECT * FROM service_forms WHERE visit_id = ? AND farm_id = ? ORDER BY created_at DESC LIMIT 1",
+    [visitId, farmId],
+  );
+  return row ? mapServiceFormRow(row) : null;
+}
+
+function serviceFormVisitMeta(formKind: ServiceFormKind) {
+  const visitType =
+    formKind === "service_report"
+      ? "ROUTINE_SERVICE"
+      : formKind === "placement"
+        ? "PLACEMENT"
+        : "PREBROOD";
+  const visitLabel =
+    formKind === "service_report"
+      ? "Service report"
+      : formKind === "placement"
+        ? "Placement checklist"
+        : "Prebrood checklist";
+  return { visitType, visitLabel };
+}
+
+/** Update an existing checklist payload and sync the linked visit date/notes. */
+export function updateServiceForm(input: {
+  serviceFormId: string;
+  farmId: string;
+  formKind: ServiceFormKind;
+  formDate: string;
+  payload: unknown;
+  visitNotes?: string | null;
+}) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string; visit_id: string | null }>(
+    "SELECT id, visit_id FROM service_forms WHERE id = ? AND farm_id = ?",
+    [input.serviceFormId, input.farmId],
+  );
+  if (!existing) throw new Error("Service form not found");
+
+  db.runSync(
+    `UPDATE service_forms
+       SET form_kind = ?, form_date = ?, payload_json = ?
+     WHERE id = ? AND farm_id = ?`,
+    [
+      input.formKind,
+      input.formDate,
+      JSON.stringify(input.payload),
+      input.serviceFormId,
+      input.farmId,
+    ],
+  );
+
+  if (existing.visit_id) {
+    const { visitLabel } = serviceFormVisitMeta(input.formKind);
+    const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n");
+    const visit = db.getFirstSync<{
+      id: string;
+      flock_id: string | null;
+      visit_type: string;
+      general_bird_condition: string | null;
+      follow_up_required: number;
+      follow_up_date: string | null;
+    }>("SELECT * FROM farm_visits WHERE id = ? AND farm_id = ?", [
+      existing.visit_id,
+      input.farmId,
+    ]);
+    if (visit) {
+      updateVisit(existing.visit_id, {
+        farmId: input.farmId,
+        flockId: visit.flock_id,
+        visitDate: input.formDate,
+        visitType: visit.visit_type,
+        generalBirdCondition: visit.general_bird_condition,
+        notes: notes || visitLabel,
+        followUpRequired: visit.follow_up_required === 1,
+        followUpDate: visit.follow_up_date,
+      });
+    }
+  }
+
+  return { id: existing.id, visitId: existing.visit_id };
+}
+
 /** Persist a completed service checklist, log a visit, and optionally generator hours. */
 export function completeServiceForm(input: {
   farmId: string;
@@ -3314,6 +3524,10 @@ export function completeServiceForm(input: {
   payload: unknown;
   visitNotes?: string | null;
   generatorHours?: number | null;
+  /** When set, update this form instead of creating a new visit + form. */
+  serviceFormId?: string | null;
+  /** When set (and no serviceFormId), attach a new form to this existing visit. */
+  existingVisitId?: string | null;
 }) {
   const db = getDb();
   const farm = db.getFirstSync<{ id: string }>(
@@ -3322,29 +3536,64 @@ export function completeServiceForm(input: {
   );
   if (!farm) throw new Error("Farm not found");
 
-  const visitType =
-    input.formKind === "service_report"
-      ? "ROUTINE_SERVICE"
-      : input.formKind === "placement"
-        ? "PLACEMENT"
-        : "PREBROOD";
+  if (input.serviceFormId) {
+    return updateServiceForm({
+      serviceFormId: input.serviceFormId,
+      farmId: input.farmId,
+      formKind: input.formKind,
+      formDate: input.formDate,
+      payload: input.payload,
+      visitNotes: input.visitNotes,
+    });
+  }
 
-  const visitLabel =
-    input.formKind === "service_report"
-      ? "Service report"
-      : input.formKind === "placement"
-        ? "Placement checklist"
-        : "Prebrood checklist";
-
+  const { visitType, visitLabel } = serviceFormVisitMeta(input.formKind);
   const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n");
 
-  const visit = createVisit({
-    farmId: input.farmId,
-    visitDate: input.formDate,
-    visitType,
-    notes: notes || visitLabel,
-    generalBirdCondition: "Healthy",
-  });
+  let visitId: string;
+  let flockId: string | null = null;
+
+  if (input.existingVisitId) {
+    const visit = db.getFirstSync<{
+      id: string;
+      flock_id: string | null;
+      general_bird_condition: string | null;
+      follow_up_required: number;
+      follow_up_date: string | null;
+    }>("SELECT id, flock_id, general_bird_condition, follow_up_required, follow_up_date FROM farm_visits WHERE id = ? AND farm_id = ?", [
+      input.existingVisitId,
+      input.farmId,
+    ]);
+    if (!visit) throw new Error("Visit not found");
+    visitId = visit.id;
+    flockId = visit.flock_id;
+    updateVisit(visitId, {
+      farmId: input.farmId,
+      flockId,
+      visitDate: input.formDate,
+      visitType,
+      generalBirdCondition: visit.general_bird_condition ?? "Healthy",
+      notes: notes || visitLabel,
+      followUpRequired: visit.follow_up_required === 1,
+      followUpDate: visit.follow_up_date,
+    });
+  } else {
+    const visit = createVisit({
+      farmId: input.farmId,
+      visitDate: input.formDate,
+      visitType,
+      notes: notes || visitLabel,
+      generalBirdCondition: "Healthy",
+    });
+    visitId = visit.id;
+    flockId =
+      visit.birdAgeInDays != null
+        ? db.getFirstSync<{ id: string }>(
+            "SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
+            [input.farmId],
+          )?.id ?? null
+        : null;
+  }
 
   if (input.generatorHours != null && Number.isFinite(input.generatorHours)) {
     createGeneratorLog({
@@ -3365,19 +3614,14 @@ export function completeServiceForm(input: {
     [
       id,
       input.farmId,
-      visit.birdAgeInDays != null
-        ? db.getFirstSync<{ id: string }>(
-            "SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
-            [input.farmId],
-          )?.id ?? null
-        : null,
+      flockId,
       input.formKind,
       input.formDate,
       JSON.stringify(input.payload),
-      visit.id,
+      visitId,
       new Date().toISOString(),
     ],
   );
 
-  return { id, visitId: visit.id };
+  return { id, visitId };
 }

@@ -47,6 +47,8 @@ export function migrateDb() {
       square_footage REAL NOT NULL DEFAULT 29700,
       total_fan_cfm REAL,
       number_of_fans INTEGER,
+      logged_temp TEXT,
+      logged_temp_at TEXT,
       deleted_at TEXT,
       FOREIGN KEY (farm_id) REFERENCES farms(id)
     );
@@ -239,6 +241,13 @@ export function migrateDb() {
   const houseCols = database.getAllSync<{ name: string }>("PRAGMA table_info(houses)");
   if (!houseCols.some((c) => c.name === "deleted_at")) {
     database.execSync("ALTER TABLE houses ADD COLUMN deleted_at TEXT");
+  }
+  // Logged house temperature for service report prefill (°F as text)
+  if (!houseCols.some((c) => c.name === "logged_temp")) {
+    database.execSync("ALTER TABLE houses ADD COLUMN logged_temp TEXT");
+  }
+  if (!houseCols.some((c) => c.name === "logged_temp_at")) {
+    database.execSync("ALTER TABLE houses ADD COLUMN logged_temp_at TEXT");
   }
 
   // Schedule dismissals: COMPLETED (crossed out until midnight) vs DISMISSED (gone now)

@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
   type ScrollView as ScrollViewType,
 } from "react-native";
@@ -37,6 +38,8 @@ import {
 import type { ServiceReportForm } from "../../../../../src/lib/serviceForms/types";
 import {
   useCompleteServiceForm,
+  useEditVisitIdParam,
+  useExistingServiceForm,
   useServiceFarmContext,
 } from "../../../../../src/lib/serviceForms/useServiceFarm";
 import { colors, styles } from "../../../../../src/theme";
@@ -51,9 +54,17 @@ export default function ServiceReportScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const farmId = paramId(params.id);
   const { detail, farmName, flockNumber } = useServiceFarmContext(farmId);
-  const { complete, saving } = useCompleteServiceForm(farmId);
+  const existing = useExistingServiceForm(farmId, "service_report");
+  const editVisitId = useEditVisitIdParam();
+  const { complete, saving, editing } = useCompleteServiceForm(farmId, {
+    serviceFormId: existing?.id ?? null,
+    existingVisitId: existing ? null : editVisitId,
+  });
 
   const initial = useMemo(() => {
+    if (existing?.payload && typeof existing.payload === "object") {
+      return existing.payload as ServiceReportForm;
+    }
     if (!detail) return createServiceReportDraft({ farmName, flockNumber });
     return createServiceReportDraft({
       farmName: detail.farm.farmName,
@@ -61,9 +72,12 @@ export default function ServiceReportScreen() {
       houses: prefillHouseRows(detail),
       serviceTech: "",
     });
-  }, [detail, farmName, flockNumber]);
+  }, [detail, farmName, flockNumber, existing]);
 
   const [form, setForm] = useState<ServiceReportForm>(() => {
+    if (existing?.payload && typeof existing.payload === "object") {
+      return existing.payload as ServiceReportForm;
+    }
     if (!detail) return initial;
     const week = currentFlockWeek(detail);
     const minVent = minVentForWeek(detail, week);
@@ -133,7 +147,10 @@ export default function ServiceReportScreen() {
         >
           <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Checklists</Text>
         </Pressable>
-        <PageHeader title="Service Report" subtitle={farmName} />
+        <PageHeader
+          title={editing ? "Edit Service Report" : "Service Report"}
+          subtitle={farmName}
+        />
 
         <Card>
           <TextField
@@ -169,22 +186,64 @@ export default function ServiceReportScreen() {
           />
         </Card>
 
-        <SectionTitle title="Houses" />
-        <Text style={[styles.muted, { marginBottom: 8 }]}>
-          Age, placed, and weekly mortality pull into the PDF automatically. Enter current temp
-          only.
-        </Text>
-        {form.houses.map((h) => (
-          <Card key={h.houseNumber} style={{ marginBottom: 10 }}>
-            <Text style={{ fontWeight: "800", marginBottom: 8 }}>House {h.houseNumber}</Text>
-            <TextField
-              label="Current temp"
-              value={h.currentTemp}
-              onChange={(currentTemp) => patchHouse(h.houseNumber, { currentTemp })}
-              keyboardType="decimal-pad"
-            />
-          </Card>
-        ))}
+        <SectionTitle title="House temps" />
+        <Card style={{ marginBottom: 10 }}>
+          <Text style={[styles.muted, { marginBottom: 10, lineHeight: 18 }]}>
+            Prefills from today’s Log Temp on each house tile (resets at midnight). Age, placed,
+            and weekly mortality still pull into the PDF automatically.
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 8,
+            }}
+          >
+            {form.houses.map((h) => (
+              <View
+                key={h.houseNumber}
+                style={{
+                  flexGrow: 1,
+                  flexShrink: 1,
+                  flexBasis: "30%",
+                  minWidth: 88,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "800",
+                    color: colors.muted,
+                    marginBottom: 4,
+                  }}
+                >
+                  H{h.houseNumber}
+                </Text>
+                <TextInput
+                  value={h.currentTemp}
+                  onChangeText={(currentTemp) =>
+                    patchHouse(h.houseNumber, { currentTemp })
+                  }
+                  placeholder="°F"
+                  placeholderTextColor="#a8a29e"
+                  keyboardType="decimal-pad"
+                  style={{
+                    minHeight: 40,
+                    borderWidth: 1,
+                    borderColor: "#d6d3d1",
+                    borderRadius: 10,
+                    paddingHorizontal: 10,
+                    fontSize: 16,
+                    fontWeight: "700",
+                    backgroundColor: "#fff",
+                    color: colors.text,
+                    textAlign: "center",
+                  }}
+                />
+              </View>
+            ))}
+          </View>
+        </Card>
 
         <Card>
           <SectionTitle title="Feed" />
@@ -572,7 +631,7 @@ export default function ServiceReportScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>
-              Complete · Log visit · Share PDF
+              {editing ? "Save changes · Share PDF" : "Complete · Log visit · Share PDF"}
             </Text>
           )}
         </Pressable>
