@@ -45,13 +45,13 @@ export default function PlacementChecklistScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const farmId = paramId(params.id);
-  const { detail, farmName, flockNumber } = useServiceFarmContext(farmId);
+  const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
   const { complete, saving } = useCompleteServiceForm(farmId);
 
   const [form, setForm] = useState<PlacementForm>(() => {
     const draft = createPlacementDraft({
       farmName,
-      flockNumber,
+      flockNumber: firstFlockNumber,
       houses: detail ? prefillHouseRows(detail) : [],
     });
     if (detail) {
