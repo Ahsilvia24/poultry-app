@@ -1,0 +1,43 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Service Farm preview</title><style>
+:root { --bg:#f5f5f4; --card:#fff; --text:#1c1917; --muted:#78716c; --accent:#065f46; --border:#e7e5e4; }
+* { box-sizing: border-box; }
+body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; background: linear-gradient(180deg,#ecfdf5,#f5f5f4 40%); color:var(--text); }
+a { color: var(--accent); }
+.wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 28px; margin: 0 0 8px; }
+.sub { color: var(--muted); margin-bottom: 24px; }
+.grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 14px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: 0 8px 24px rgba(0,0,0,.04); }
+.card h2 { margin:0 0 6px; font-size:18px; }
+.card p { margin:0 0 14px; color:var(--muted); font-size:14px; line-height:1.4; }
+.btn { display:inline-block; background:var(--accent); color:#fff !important; text-decoration:none; font-weight:800; padding:10px 14px; border-radius:10px; font-size:14px; }
+.btn.secondary { background:#fff; color:var(--accent) !important; border:1px solid var(--accent); margin-left:8px; }
+.phone { width: min(390px,100%); margin: 18px auto; background:#111; border-radius: 28px; padding: 12px; }
+.phone-inner { background:#fafaf9; border-radius: 22px; overflow:hidden; min-height: 640px; }
+.bar { background:#fff; border-bottom:1px solid var(--border); padding:14px 16px; font-weight:800; }
+.screen { padding: 14px 16px 28px; }
+.chip { display:block; background:#fff; border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px; text-decoration:none; color:inherit; }
+.chip strong { display:block; font-size:16px; }
+.chip span { color:var(--muted); font-size:13px; }
+.row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); font-size:14px; gap:10px; }
+.yn { display:flex; gap:6px; }
+.yn b { min-width:48px; text-align:center; padding:7px 8px; border-radius:8px; font-size:11px; }
+.yn .yes { background:var(--accent); color:#fff; }
+.yn .no { background:#f5f5f4; }
+.field { margin:10px 0; }
+.field label { display:block; font-size:12px; color:var(--muted); font-weight:700; margin-bottom:4px; }
+.field .box { background:#fff; border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-weight:600; }
+.section { font-weight:800; margin:18px 0 8px; }
+.note { font-size:13px; color:var(--muted); margin-top:18px; }
+</style></head><body><div class="wrap">
+<h1>Service Farm preview</h1>
+<p class="sub">Mobile checklist flow mockups + sample PDF layouts (not the live app — visual reference from the locked blueprints).</p>
+<div class="grid">
+  <div class="card"><h2>1. Form picker</h2><p>Service Farm entry — choose checklist.</p><a class="btn" href="picker.html">Open</a></div>
+  <div class="card"><h2>2. Service Report</h2><p>Fill flow mock + PDF sample.</p><a class="btn" href="report-ui.html">UI</a><a class="btn secondary" href="report-pdf.html">PDF</a></div>
+  <div class="card"><h2>3. Placement</h2><p>Placement checklist mock + PDF sample.</p><a class="btn" href="placement-ui.html">UI</a><a class="btn secondary" href="placement-pdf.html">PDF</a></div>
+  <div class="card"><h2>4. Prebrood</h2><p>Includes generator hours → comments + generator tile.</p><a class="btn" href="prebrood-ui.html">UI</a><a class="btn secondary" href="prebrood-pdf.html">PDF</a></div>
+</div>
+<p class="note">Generated for design review. Completing forms, visits, and share sheet only work in the Expo app build.</p>
+</div></body></html>
