@@ -16,6 +16,7 @@ import type {
   AnyServiceForm,
   PlacementForm,
   PrebroodForm,
+  ServiceHouseRow,
   ServiceReportForm,
   YesNo,
 } from "./types";
@@ -52,6 +53,71 @@ function widgetRect(map: FieldMap, name: string, index = 0): FieldWidget | null 
   const same = field.widgets.filter((w) => w.samePage !== false);
   const list = same.length ? same : field.widgets;
   return list[Math.min(index, list.length - 1)] ?? null;
+}
+
+/** White-out a mapped widget so printed template ink doesn't show through. */
+function coverWidget(ctx: Ctx, name: string, index = 0) {
+  const r = widgetRect(ctx.map, name, index);
+  if (!r) return;
+  ctx.page.drawRectangle({
+    x: r.x,
+    y: r.y,
+    width: r.w,
+    height: r.h,
+    color: rgb(1, 1, 1),
+    borderWidth: 0,
+  });
+}
+
+const HOUSE_WEEK_FIELDS = (n: number) =>
+  [
+    `Wkl${n}`,
+    `Wk2${n}`,
+    `Wk3${n}`,
+    `Wk4${n}`,
+    `WkS${n}`,
+    `Wk6${n}`,
+    `Wk7${n}`,
+    `WkS${n}_2`,
+  ] as const;
+
+/** Stamp one house into template row slot 1–8 (age, placed, weeks, temp, total). */
+function stampServiceReportHouseRow(ctx: Ctx, house: ServiceHouseRow, slot: number) {
+  const n = slot;
+  setText(ctx, `Age${n}`, house.age, 7);
+  setText(ctx, `No Placed${n}`, house.placed, 7);
+  const weekNames = HOUSE_WEEK_FIELDS(n);
+  house.weeks.forEach((wk, wi) => setText(ctx, weekNames[wi]!, wk, 6));
+  setText(ctx, `Current Temp${n}`, house.currentTemp, 7);
+  setText(ctx, `Mortality To Date${n}`, house.mortalityToDate, 7);
+}
+
+/**
+ * Continuation pages reuse the template with houses 1–8 printed.
+ * Cover the # cell and write the real house number (9–16, …).
+ */
+function stampContinuationHouseNumber(ctx: Ctx, houseNumber: number, slot: number) {
+  const ageR = widgetRect(ctx.map, `Age${slot}`);
+  if (!ageR) return;
+  const houseLeft = 12;
+  const houseWidth = Math.max(18, ageR.x - houseLeft - 0.75);
+  ctx.page.drawRectangle({
+    x: houseLeft,
+    y: ageR.y - 3,
+    width: houseWidth,
+    height: ageR.h + 6,
+    color: rgb(1, 1, 1),
+    borderWidth: 0,
+  });
+  const label = String(houseNumber);
+  const size = label.length > 1 ? 7.5 : 8;
+  ctx.page.drawText(label, {
+    x: houseLeft + (label.length > 1 ? 3 : 5),
+    y: ageR.y + Math.max(0.5, (ageR.h - size) * 0.35),
+    size,
+    font: ctx.font,
+    color: rgb(0, 0, 0),
+  });
 }
 
 function setText(
@@ -184,22 +250,7 @@ function buildServiceReportFields(
   for (let i = 0; i < 8; i++) {
     const h = housesSlice[i];
     if (!h) continue;
-    const n = i + 1;
-    setText(ctx, `Age${n}`, h.age, 7);
-    setText(ctx, `No Placed${n}`, h.placed, 7);
-    const weekNames = [
-      `Wkl${n}`,
-      `Wk2${n}`,
-      `Wk3${n}`,
-      `Wk4${n}`,
-      `WkS${n}`,
-      `Wk6${n}`,
-      `Wk7${n}`,
-      `WkS${n}_2`,
-    ];
-    h.weeks.forEach((wk, wi) => setText(ctx, weekNames[wi]!, wk, 6));
-    setText(ctx, `Current Temp${n}`, h.currentTemp, 7);
-    setText(ctx, `Mortality To Date${n}`, h.mortalityToDate, 7);
+    stampServiceReportHouseRow(ctx, h, i + 1);
   }
 
   markYesNo(ctx, "Check Box5", "Check Box8", data.feederHeightOk);
@@ -538,34 +589,28 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
     doc.addPage(blank);
     const page = doc.getPages()[doc.getPageCount() - 1]!;
     const slice = pages[p]!;
+    const extraCtx: Ctx = { page, font, map };
+
+    // Header so the continuation page is identifiable.
+    setText(extraCtx, "Farm Name", form.farmName, 10);
+    setText(extraCtx, "Date", formatServiceShortDate(form.date) || form.date, 10);
+    setText(extraCtx, "Farm", form.farmNumber ?? "", 9);
+    setText(extraCtx, "Flock", form.flockNumber ?? "", 9);
+
     for (let i = 0; i < 8; i++) {
       const h = slice[i];
       if (!h) continue;
-      const yTops = [10.73, 12.79, 14.85, 16.88, 18.88, 20.91, 22.94, 24.91];
-      const y = 792 - ((yTops[i]! + 1.2) / 100) * 792;
-      page.drawRectangle({
-        x: (3.2 / 100) * 612,
-        y: y - 2,
-        width: (2.2 / 100) * 612,
-        height: 12,
-        color: rgb(1, 1, 1),
-        borderWidth: 0,
-      });
-      page.drawText(String(h.houseNumber), {
-        x: (3.5 / 100) * 612,
-        y,
-        size: 8,
-        font,
-        color: rgb(0, 0, 0),
-      });
-      page.drawText(h.age, { x: (6.5 / 100) * 612, y, size: 7, font, color: rgb(0, 0, 0) });
-      page.drawText(h.placed, {
-        x: (12 / 100) * 612,
-        y,
-        size: 7,
-        font,
-        color: rgb(0, 0, 0),
-      });
+      const slot = i + 1;
+      stampContinuationHouseNumber(extraCtx, h.houseNumber, slot);
+      // Clear age / placed cells before fill (template may have guides).
+      coverWidget(extraCtx, `Age${slot}`);
+      coverWidget(extraCtx, `No Placed${slot}`);
+      for (const weekName of HOUSE_WEEK_FIELDS(slot)) {
+        coverWidget(extraCtx, weekName);
+      }
+      coverWidget(extraCtx, `Current Temp${slot}`);
+      coverWidget(extraCtx, `Mortality To Date${slot}`);
+      stampServiceReportHouseRow(extraCtx, h, slot);
     }
   }
 
