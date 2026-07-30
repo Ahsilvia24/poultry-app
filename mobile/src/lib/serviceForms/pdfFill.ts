@@ -54,6 +54,20 @@ function widgetRect(map: FieldMap, name: string, index = 0): FieldWidget | null 
   return list[Math.min(index, list.length - 1)] ?? null;
 }
 
+/** White-out a mapped widget so printed template ink doesn't show through. */
+function coverWidget(ctx: Ctx, name: string, index = 0) {
+  const r = widgetRect(ctx.map, name, index);
+  if (!r) return;
+  ctx.page.drawRectangle({
+    x: r.x,
+    y: r.y,
+    width: r.w,
+    height: r.h,
+    color: rgb(1, 1, 1),
+    borderWidth: 0,
+  });
+}
+
 function setText(
   ctx: Ctx,
   name: string,
@@ -538,34 +552,41 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
     doc.addPage(blank);
     const page = doc.getPages()[doc.getPageCount() - 1]!;
     const slice = pages[p]!;
+    const extraCtx: Ctx = { page, font, map };
     for (let i = 0; i < 8; i++) {
       const h = slice[i];
       if (!h) continue;
-      const yTops = [10.73, 12.79, 14.85, 16.88, 18.88, 20.91, 22.94, 24.91];
-      const y = 792 - ((yTops[i]! + 1.2) / 100) * 792;
+      const n = i + 1;
+      const ageR = widgetRect(map, `Age${n}`);
+      if (!ageR) continue;
+
+      // Template always prints houses 1–8. Cover the whole # cell before
+      // stamping 9–16 / 17–24 / etc. (narrow wipes left digit ghosts).
+      const houseLeft = 12;
+      const houseWidth = Math.max(18, ageR.x - houseLeft - 0.75);
       page.drawRectangle({
-        x: (3.2 / 100) * 612,
-        y: y - 2,
-        width: (2.2 / 100) * 612,
-        height: 12,
+        x: houseLeft,
+        y: ageR.y - 3,
+        width: houseWidth,
+        height: ageR.h + 6,
         color: rgb(1, 1, 1),
         borderWidth: 0,
       });
-      page.drawText(String(h.houseNumber), {
-        x: (3.5 / 100) * 612,
-        y,
-        size: 8,
+      const houseLabel = String(h.houseNumber);
+      const houseSize = houseLabel.length > 1 ? 7.5 : 8;
+      page.drawText(houseLabel, {
+        x: houseLeft + (houseLabel.length > 1 ? 3 : 5),
+        y: ageR.y + Math.max(0.5, (ageR.h - houseSize) * 0.35),
+        size: houseSize,
         font,
         color: rgb(0, 0, 0),
       });
-      page.drawText(h.age, { x: (6.5 / 100) * 612, y, size: 7, font, color: rgb(0, 0, 0) });
-      page.drawText(h.placed, {
-        x: (12 / 100) * 612,
-        y,
-        size: 7,
-        font,
-        color: rgb(0, 0, 0),
-      });
+
+      // White-out age / placed cells so any printed guides don't show through.
+      coverWidget(extraCtx, `Age${n}`);
+      coverWidget(extraCtx, `No Placed${n}`);
+      setText(extraCtx, `Age${n}`, h.age, 7);
+      setText(extraCtx, `No Placed${n}`, h.placed, 7);
     }
   }
 
