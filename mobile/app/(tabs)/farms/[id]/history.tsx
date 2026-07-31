@@ -11,6 +11,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Swipeable } from "react-native-gesture-handler";
 import {
   deleteFlock,
   getFarmHistory,
@@ -36,6 +37,41 @@ function paramId(value: string | string[] | undefined) {
 type HistoryData = ReturnType<typeof getFarmHistory>;
 type HistoryRow = HistoryData["all"][number];
 
+function DeleteSwipeAction({
+  label,
+  onPress,
+}: {
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={{
+        backgroundColor: colors.danger,
+        justifyContent: "center",
+        alignItems: "center",
+        width: 88,
+        borderRadius: 14,
+        marginLeft: 8,
+      }}
+    >
+      <Ionicons name="trash-outline" size={22} color="#fff" />
+      <Text
+        style={{
+          color: "#fff",
+          fontWeight: "800",
+          fontSize: 12,
+          marginTop: 4,
+        }}
+      >
+        Delete
+      </Text>
+    </Pressable>
+  );
+}
+
 function FlockHistoryCard({
   row,
   title,
@@ -48,8 +84,8 @@ function FlockHistoryCard({
   onDelete: (row: HistoryRow) => void;
 }) {
   const canDelete = row.flockStatus !== "ACTIVE";
-  return (
-    <Card>
+  const card = (
+    <Card style={canDelete ? { marginBottom: 0 } : undefined}>
       <View
         style={{
           flexDirection: "row",
@@ -66,31 +102,13 @@ function FlockHistoryCard({
             {formatLongScheduleDate(row.placementDate)}
           </Text>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 }}>
-          {canDelete ? (
-            <Pressable
-              accessibilityLabel={`Delete flock ${row.flockNumber}`}
-              onPress={() => onDelete(row)}
-              hitSlop={8}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 8,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons name="trash-outline" size={20} color={colors.muted} />
-            </Pressable>
-          ) : null}
-          {canDelete ? (
-            <PrimaryButton
-              label="Make active"
-              secondary
-              onPress={() => onReactivate(row)}
-            />
-          ) : null}
-        </View>
+        {canDelete ? (
+          <PrimaryButton
+            label="Make active"
+            secondary
+            onPress={() => onReactivate(row)}
+          />
+        ) : null}
       </View>
       <View style={[styles.row, { marginTop: 12 }]}>
         <Metric label="Birds placed" value={formatNumber(row.birdsPlaced)} />
@@ -121,6 +139,25 @@ function FlockHistoryCard({
         </Text>
       ) : null}
     </Card>
+  );
+
+  if (!canDelete) return card;
+
+  return (
+    <Swipeable
+      overshootRight={false}
+      friction={2}
+      rightThreshold={40}
+      containerStyle={{ marginBottom: 12 }}
+      renderRightActions={() => (
+        <DeleteSwipeAction
+          label={`Delete flock ${row.flockNumber}`}
+          onPress={() => onDelete(row)}
+        />
+      )}
+    >
+      {card}
+    </Swipeable>
   );
 }
 
@@ -271,16 +308,10 @@ export default function FarmHistoryScreen() {
         {data && data.all.length > 0 ? (
           <>
             <SectionTitle>All flocks</SectionTitle>
-            {data.all.map((row) => (
-              <Card key={`all-${row.id}`}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                    gap: 8,
-                  }}
-                >
+            {data.all.map((row) => {
+              const canDelete = row.flockStatus !== "ACTIVE";
+              const card = (
+                <Card style={canDelete ? { marginBottom: 0 } : undefined}>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={{ fontWeight: "800" }}>
                       {row.flockNumber}
@@ -297,25 +328,29 @@ export default function FarmHistoryScreen() {
                       {formatPct(row.mortPct)}
                     </Text>
                   </View>
-                  {row.flockStatus !== "ACTIVE" ? (
-                    <Pressable
-                      accessibilityLabel={`Delete flock ${row.flockNumber}`}
+                </Card>
+              );
+
+              if (!canDelete) return <View key={`all-${row.id}`}>{card}</View>;
+
+              return (
+                <Swipeable
+                  key={`all-${row.id}`}
+                  overshootRight={false}
+                  friction={2}
+                  rightThreshold={40}
+                  containerStyle={{ marginBottom: 12 }}
+                  renderRightActions={() => (
+                    <DeleteSwipeAction
+                      label={`Delete flock ${row.flockNumber}`}
                       onPress={() => onDelete(row)}
-                      hitSlop={8}
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 8,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Ionicons name="trash-outline" size={20} color={colors.muted} />
-                    </Pressable>
-                  ) : null}
-                </View>
-              </Card>
-            ))}
+                    />
+                  )}
+                >
+                  {card}
+                </Swipeable>
+              );
+            })}
           </>
         ) : null}
       </ScrollView>
