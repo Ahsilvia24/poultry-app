@@ -425,12 +425,20 @@ export default function LfoListScreen() {
                     opacity: pressed ? 0.85 : 1,
                   })}
                 >
-                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={{ fontWeight: "800" }} numberOfLines={1}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <View
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        flexDirection: "row",
+                        alignItems: "baseline",
+                        gap: 8,
+                      }}
+                    >
+                      <Text style={{ fontWeight: "800", flexShrink: 1 }} numberOfLines={1}>
                         {l.farmName}
                       </Text>
-                      <Text style={[styles.muted, { marginTop: 2 }]}>
+                      <Text style={[styles.muted, { flexShrink: 0 }]}>
                         {formatLfoDate(l.orderDate)}
                       </Text>
                     </View>
