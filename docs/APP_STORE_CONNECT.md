@@ -8,10 +8,10 @@ TestFlight: https://appstoreconnect.apple.com/apps/6794784343/testflight/ios
 | Field | Value |
 |-------|-------|
 | Version | 1.0.5 |
-| Build | **84** (submitted to ASC 2026-07-31) |
+| Build | **86** (submitted to ASC 2026-07-31) |
 | Status | EAS building → auto-submit to TestFlight when finished |
-| EAS build | https://expo.dev/accounts/poultry-team/projects/poultry-team/builds/35b3931f-75f6-4bb6-9765-9bc32513e5c7 |
-| EAS submit | https://expo.dev/accounts/poultry-team/projects/poultry-team/submissions/3fc759c9-ccc2-44f2-96c8-ff91d5cd718d |
+| EAS build | https://expo.dev/accounts/poultry-team/projects/poultry-team/builds/231e2fcc-0ffe-4862-851f-323c1fcbb017 |
+| EAS submit | https://expo.dev/accounts/poultry-team/projects/poultry-team/submissions/1f43b435-ccf4-41e3-947d-31305d4d417d |
 
 ## Paste into App Store listing
 
