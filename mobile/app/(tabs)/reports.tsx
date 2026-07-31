@@ -180,7 +180,7 @@ export default function ReportsScreen() {
                 }}
               >
                 <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text, flex: 1 }}>
-                  House × date
+                  Mortality
                 </Text>
                 <Pressable
                   onPress={copyResults}
