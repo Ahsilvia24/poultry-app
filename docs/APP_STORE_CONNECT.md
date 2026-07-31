@@ -8,8 +8,10 @@ TestFlight: https://appstoreconnect.apple.com/apps/6794784343/testflight/ios
 | Field | Value |
 |-------|-------|
 | Version | 1.0.5 |
-| Build | **83** (submitted to ASC 2026-07-30) |
-| Status | Processing → install from TestFlight when ready |
+| Build | **84** (submitted to ASC 2026-07-31) |
+| Status | EAS building → auto-submit to TestFlight when finished |
+| EAS build | https://expo.dev/accounts/poultry-team/projects/poultry-team/builds/35b3931f-75f6-4bb6-9765-9bc32513e5c7 |
+| EAS submit | https://expo.dev/accounts/poultry-team/projects/poultry-team/submissions/3fc759c9-ccc2-44f2-96c8-ff91d5cd718d |
 
 ## Paste into App Store listing
 
@@ -42,11 +44,13 @@ Repo asset for the 13" iPad slot (2064×2752 Service Report UI preview):
 Upload that under App Preview and Screenshots → 13" iPad (or replace with a live device capture if you prefer).
 Also fill iPhone screenshots if not already set.
 
-## Device QA after build 83 installs
+## Device QA after build 84 installs
 
-- [ ] Log Temp on house tiles → value shows → Service Report prefills → clears after midnight
-- [ ] Visit tile tap → edit → View/Edit checklist → Save / Share PDF
-- [ ] Comments heading stays visible while typing
-- [ ] Compact litter/ammonia and Heat/Cool grids
+- [ ] Dashboard: farm name only; issues badge (Normal / N issues); no Backup/Export
+- [ ] Farm History: swipe left to delete completed flocks
+- [ ] Placement scroll not stuck at blank bottom; min-vent recommended clear of bottom line
+- [ ] Service Report PDF: water column shows prefilled `4-6`
+- [ ] Log Temp → Service Report prefills → clears after midnight
+- [ ] Visit edit → View/Edit checklist + Share PDF under it
 - [ ] P.H. labels have no “(optional)”
 - [ ] Service Report page 2 mortality / house numbers look correct
