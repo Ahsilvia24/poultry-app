@@ -83,30 +83,34 @@ function stampServiceReportHouseRow(ctx: Ctx, house: ServiceHouseRow, slot: numb
 
 /**
  * Continuation pages reuse the template with houses 1–8 printed.
- * Cover only the # digit (inset so row/column rules stay visible) and write
- * the real house number (9–16, …).
+ * Wipe only the printed digit (not the cell borders) and write 9–16, …
  */
 function stampContinuationHouseNumber(ctx: Ctx, houseNumber: number, slot: number) {
   const ageR = widgetRect(ctx.map, `Age${slot}`);
   if (!ageR) return;
-  // Keep wipe inside the # cell — row gaps are ~1.4pt; expanding past the
-  // Age widget height paints white over the printed horizontal rules.
-  const houseLeft = 13.5;
-  const houseWidth = Math.max(14, ageR.x - houseLeft - 1.5);
-  const insetY = 1.5;
+  const colLeft = 14;
+  const colRight = ageR.x - 1.25;
+  const colW = colRight - colLeft;
+  const colMidY = ageR.y + ageR.h * 0.48;
+  // Printed 1–8 sit slightly left of center; bias the wipe there.
+  // Stay inside the cell so ~1.4pt row gaps / borders are not painted white.
+  const wipeW = Math.min(14, colW - 2);
+  const wipeH = Math.min(11.5, ageR.h - 3);
+  const wipeX = colLeft + 1.25;
   ctx.page.drawRectangle({
-    x: houseLeft,
-    y: ageR.y + insetY,
-    width: houseWidth,
-    height: Math.max(8, ageR.h - insetY * 2),
+    x: wipeX,
+    y: colMidY - wipeH / 2,
+    width: wipeW,
+    height: wipeH,
     color: rgb(1, 1, 1),
     borderWidth: 0,
   });
   const label = String(houseNumber);
   const size = label.length > 1 ? 7.5 : 8;
+  const textWidth = ctx.font.widthOfTextAtSize(label, size);
   ctx.page.drawText(label, {
-    x: houseLeft + (label.length > 1 ? 2 : 4),
-    y: ageR.y + Math.max(0.5, (ageR.h - size) * 0.35),
+    x: colLeft + Math.max(1, (colW - textWidth) / 2),
+    y: colMidY - size * 0.35,
     size,
     font: ctx.font,
     color: rgb(0, 0, 0),
@@ -577,7 +581,7 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
       const h = slice[i];
       if (!h) continue;
       const slot = i + 1;
-      // Only wipe the printed # (1–8). Do not white-out age/week/temp cells —
+      // Only wipe the printed # digit. Do not white-out age/week/temp cells —
       // those full-widget covers erased the house-table grid on page 2.
       stampContinuationHouseNumber(extraCtx, h.houseNumber, slot);
       stampServiceReportHouseRow(extraCtx, h, slot);
