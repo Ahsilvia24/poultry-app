@@ -129,11 +129,13 @@ function setText(
   const r = widgetRect(ctx.map, name, opts?.widgetIndex ?? 0);
   if (!r) return;
   if (opts?.coverPrinted === "field") {
+    // Inset so the wipe clears printed guides without erasing cell rules.
+    const inset = 1.1;
     ctx.page.drawRectangle({
-      x: r.x,
-      y: r.y,
-      width: r.w,
-      height: r.h,
+      x: r.x + 0.5,
+      y: r.y + inset,
+      width: Math.max(2, r.w - 1),
+      height: Math.max(2, r.h - inset * 2),
       color: rgb(1, 1, 1),
       borderWidth: 0,
     });
@@ -381,7 +383,8 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
     "Text88",
     formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
     6,
-    { coverPrinted: "field" },
+    // Lift off the printed bottom rule of the Recommended timer cell.
+    { coverPrinted: "field", yNudge: 2.5 },
   );
 
   const sorted = [...data.houses].sort((a, b) => a.houseNumber - b.houseNumber);
