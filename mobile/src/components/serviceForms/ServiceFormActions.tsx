@@ -1,7 +1,7 @@
 import { ActivityIndicator, Pressable, Text } from "react-native";
 import { colors } from "../../theme";
 
-/** Single bottom action: save/log visit and open the PDF share sheet. */
+/** Bottom action: new forms save+share; edits only save (Share PDF lives on the visit screen). */
 export function ServiceFormActions({
   editing,
   saving,
@@ -28,7 +28,7 @@ export function ServiceFormActions({
         <ActivityIndicator color="#fff" />
       ) : (
         <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>
-          {editing ? "Save changes · Share PDF" : "Complete · Log visit · Share PDF"}
+          {editing ? "Save changes" : "Complete · Log visit · Share PDF"}
         </Text>
       )}
     </Pressable>
