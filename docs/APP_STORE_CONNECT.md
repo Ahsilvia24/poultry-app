@@ -9,7 +9,7 @@ TestFlight: https://appstoreconnect.apple.com/apps/6794784343/testflight/ios
 |-------|-------|
 | Version | 1.0.5 |
 | Build | **86** (submitted to ASC 2026-07-31) |
-| Status | EAS building → auto-submit to TestFlight when finished |
+| Status | Submitted to App Store Connect — processing for TestFlight |
 | EAS build | https://expo.dev/accounts/poultry-team/projects/poultry-team/builds/231e2fcc-0ffe-4862-851f-323c1fcbb017 |
 | EAS submit | https://expo.dev/accounts/poultry-team/projects/poultry-team/submissions/1f43b435-ccf4-41e3-947d-31305d4d417d |
 
