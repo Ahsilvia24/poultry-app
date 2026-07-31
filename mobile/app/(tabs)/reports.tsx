@@ -4,9 +4,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
+import { format } from "date-fns";
 import { getReports, listFarms, listVisitsReport } from "../../src/repos/data";
 import { VISIT_TYPE_LABELS } from "../../src/lib/visits";
-import { addDaysKey, todayKey } from "../../src/lib/ids";
+import { addDaysKey, parseDateKey, todayKey } from "../../src/lib/ids";
 import { colors, styles } from "../../src/theme";
 import {
   Card,
@@ -42,15 +43,13 @@ function formatMdY(dateKey: string) {
   });
 }
 
+/** DDMMMYY — e.g. 31Jul26 */
 function formatVisitDate(dateKey: string) {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  const dt = new Date(y!, (m ?? 1) - 1, d ?? 1, 12);
-  return dt.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  try {
+    return format(parseDateKey(dateKey), "ddMMMyy");
+  } catch {
+    return dateKey;
+  }
 }
 
 function visitTypeLabel(type: string) {
