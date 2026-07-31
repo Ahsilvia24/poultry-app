@@ -19,7 +19,6 @@ import { flockWeekFromAge, formatMinVentCycle } from "../../src/lib/mortality";
 import { colors, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { Card, Chip, PageHeader } from "../../src/components/ui";
-import { ExportDataCard } from "../../src/components/ExportDataCard";
 import {
   CoolCellsChart,
   LightsChart,
@@ -584,9 +583,7 @@ export default function ToolsScreen() {
           )}
         </View>
 
-        <View style={{ marginTop: 8, marginBottom: 24 }}>
-          <ExportDataCard />
-        </View>
+        <View style={{ marginBottom: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
