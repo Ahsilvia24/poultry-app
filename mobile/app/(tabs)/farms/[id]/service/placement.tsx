@@ -21,12 +21,13 @@ import {
   CommentsField,
   CompactHouseValueGrid,
   CompactBackupSettings,
+  MultiToggleField,
 } from "../../../../../src/components/serviceForms/fields";
 import { Card, PageHeader } from "../../../../../src/components/ui";
 import { createPlacementDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
-  VENT_DOOR_OPTIONS,
   WEEK_OPTIONS,
+  normalizeVentDoorTypes,
 } from "../../../../../src/lib/serviceForms/format";
 import {
   minVentForWeek,
@@ -46,6 +47,13 @@ function paramId(value: string | string[] | undefined) {
   return value ?? "";
 }
 
+function normalizePlacement(payload: PlacementForm): PlacementForm {
+  return {
+    ...payload,
+    ventDoorTypes: normalizeVentDoorTypes(payload as { ventDoorTypes?: unknown; ventDoorType?: unknown }),
+  };
+}
+
 export default function PlacementChecklistScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -60,7 +68,7 @@ export default function PlacementChecklistScreen() {
 
   const [form, setForm] = useState<PlacementForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
-      return existing.payload as PlacementForm;
+      return normalizePlacement(existing.payload as PlacementForm);
     }
     const draft = createPlacementDraft({
       farmName,
@@ -76,7 +84,6 @@ export default function PlacementChecklistScreen() {
     }
     return draft;
   });
-  const [ventDoorOpen, setVentDoorOpen] = useState(false);
   const [weekOpen, setWeekOpen] = useState(false);
   const scrollRef = useRef<ScrollViewType>(null);
 
@@ -214,17 +221,31 @@ export default function PlacementChecklistScreen() {
           ) : null}
           <YesNoField label="All heaters on and operational" value={form.heatersOk} onChange={(heatersOk) => patch({ heatersOk })} />
           <YesNoField label="Sensors at bird level" value={form.sensorsBirdLevelOk} onChange={(sensorsBirdLevelOk) => patch({ sensorsBirdLevelOk })} />
-          <SelectField
+          <MultiToggleField
             label="Vent door type"
-            valueLabel={VENT_DOOR_OPTIONS.find((o) => o.value === form.ventDoorType)?.label ?? "Select"}
-            onPress={() => setVentDoorOpen(true)}
+            options={[
+              { value: "ceiling", label: "Ceiling" },
+              { value: "sidewall", label: "Sidewall" },
+            ]}
+            value={form.ventDoorTypes}
+            onChange={(ventDoorTypes) => patch({ ventDoorTypes })}
           />
           <PairFields
             left={
-              <TextField label="S.P." value={form.staticPressure} onChange={(staticPressure) => patch({ staticPressure })} keyboardType="decimal-pad" />
+              <TextField
+                label="Static Pressure"
+                value={form.staticPressure}
+                onChange={(staticPressure) => patch({ staticPressure })}
+                keyboardType="decimal-pad"
+              />
             }
             right={
-              <TextField label="Vent opening (in)" value={form.ventOpeningInches} onChange={(ventOpeningInches) => patch({ ventOpeningInches })} keyboardType="decimal-pad" />
+              <TextField
+                label="Vent opening (in)"
+                value={form.ventOpeningInches}
+                onChange={(ventOpeningInches) => patch({ ventOpeningInches })}
+                placeholder="4-6"
+              />
             }
           />
           <TextField label="C.F.M. / Ft² min vent" value={form.cfmPerFt2MinVent} onChange={(cfmPerFt2MinVent) => patch({ cfmPerFt2MinVent })} keyboardType="decimal-pad" />
@@ -359,16 +380,6 @@ export default function PlacementChecklistScreen() {
       </ScrollView>
       </KeyboardAvoidingView>
 
-      <OptionPicker
-        open={ventDoorOpen}
-        title="Vent door type"
-        options={VENT_DOOR_OPTIONS}
-        value={form.ventDoorType}
-        onSelect={(ventDoorType) =>
-          patch({ ventDoorType: ventDoorType as PlacementForm["ventDoorType"] })
-        }
-        onClose={() => setVentDoorOpen(false)}
-      />
       <OptionPicker
         open={weekOpen}
         title="Recommended min vent week"
