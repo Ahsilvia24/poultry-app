@@ -75,7 +75,7 @@ function mortalityEntered(row: DayRow) {
 
 /**
  * Past/today with no mortality total yet — Loss cell shows !.
- * Day 0 is usually left blank (entry starts on day 1), so it never prompts.
+ * Day 0 is placement (dashes, not entered), so it never prompts.
  * Culls are optional metadata and do not clear the !.
  */
 function needsEntry(row: DayRow, today: string) {
@@ -256,13 +256,15 @@ export default function MortalityScreen() {
       saveHouseMortalitySeries({
         houseFlockId: id,
         entries: snapshot
-          .filter((r) => r.hasEntry)
+          .filter((r) => r.hasEntry && r.age > 0)
           .map((r) => ({
             mortalityDate: r.mortalityDate,
             dailyMortalityCount: Number(r.dailyMortalityCount || 0),
             cullCount: Number(r.cullCount || 0),
           })),
-        clearDates: snapshot.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
+        clearDates: snapshot
+          .filter((r) => !r.hasEntry || r.age === 0)
+          .map((r) => r.mortalityDate),
       });
     } catch {
       // Best-effort when switching context / unmounting
@@ -439,10 +441,11 @@ export default function MortalityScreen() {
         next.push({
           age,
           mortalityDate,
-          // Keep boxes blank until entered; show "0" only after a confirmed entry
-          cullCount: existing ? String(existing.cull_count) : "",
-          dailyMortalityCount: existing ? String(existing.daily_mortality_count) : "",
-          hasEntry: Boolean(existing),
+          // Day 0 is placement — never entered. Keep boxes blank until entered otherwise.
+          cullCount: age === 0 ? "" : existing ? String(existing.cull_count) : "",
+          dailyMortalityCount:
+            age === 0 ? "" : existing ? String(existing.daily_mortality_count) : "",
+          hasEntry: age === 0 ? false : Boolean(existing),
         });
       }
       setRows(next);
@@ -572,17 +575,19 @@ export default function MortalityScreen() {
     setSaveStatus("saving");
     setError(null);
     try {
-      // Persist entered days (0 is valid); remove days the tech cleared
+      // Persist entered days (0 mort is valid); Day 0 placement is never stored
       saveHouseMortalitySeries({
         houseFlockId: id,
         entries: snapshot
-          .filter((r) => r.hasEntry)
+          .filter((r) => r.hasEntry && r.age > 0)
           .map((r) => ({
             mortalityDate: r.mortalityDate,
             dailyMortalityCount: Number(r.dailyMortalityCount || 0),
             cullCount: Number(r.cullCount || 0),
           })),
-        clearDates: snapshot.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
+        clearDates: snapshot
+          .filter((r) => !r.hasEntry || r.age === 0)
+          .map((r) => r.mortalityDate),
       });
       if (gen === saveGenRef.current) setSaveStatus("saved");
       return true;
@@ -605,6 +610,8 @@ export default function MortalityScreen() {
   }
 
   function setFieldValue(kind: FieldKind, age: number, value: string) {
+    // Day 0 is placement — mortality is not entered
+    if (age === 0) return;
     // Integers only — strip everything that isn't 0-9
     const digits = value.replace(/[^0-9]/g, "");
     setRows((prev) => {
@@ -648,6 +655,7 @@ export default function MortalityScreen() {
   }
 
   function onFieldFocus(kind: FieldKind, age: number, value: string) {
+    if (age === 0) return;
     setActiveField({ kind, age });
     if (value && Number(value) !== 0) {
       const len = value.length;
@@ -898,6 +906,32 @@ export default function MortalityScreen() {
                                   {row.age === 0 ? " · placement" : ""}
                                 </Text>
                               </View>
+                              {row.age === 0 ? (
+                                <>
+                                  <Text style={gridDashCell}>—</Text>
+                                  <Text style={gridDashCell}>—</Text>
+                                  <View
+                                    style={{
+                                      width: 68,
+                                      alignItems: "flex-end",
+                                      justifyContent: "center",
+                                      paddingRight: 2,
+                                    }}
+                                  >
+                                    <Text
+                                      style={{
+                                        fontWeight: "700",
+                                        fontSize: 14,
+                                        paddingRight: 4,
+                                        color: colors.muted,
+                                      }}
+                                    >
+                                      —
+                                    </Text>
+                                  </View>
+                                </>
+                              ) : (
+                                <>
                               <TextInput
                                 ref={(r) => {
                                   if (r) inputRefs.current.set(fieldKey("culls", row.age), r);
@@ -959,6 +993,8 @@ export default function MortalityScreen() {
                                   </Text>
                                 ) : null}
                               </View>
+                                </>
+                              )}
                             </View>
                           );
                         })}
@@ -1027,6 +1063,19 @@ const gridInput = {
   fontSize: 16,
   backgroundColor: "#fff",
   color: colors.text,
+};
+
+/** Day 0 is placement — mortality is not entered; show dashes instead of inputs. */
+const gridDashCell = {
+  width: 64,
+  minHeight: 40,
+  marginHorizontal: 4,
+  textAlign: "center" as const,
+  textAlignVertical: "center" as const,
+  fontSize: 16,
+  fontWeight: "700" as const,
+  color: colors.muted,
+  lineHeight: 40,
 };
 
 const gridInputActive = {
