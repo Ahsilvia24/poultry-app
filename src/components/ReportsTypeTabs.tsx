@@ -7,8 +7,6 @@ import { cn } from "@/lib/utils";
 export const REPORT_TYPES = [
   { key: "mortality", label: "Mortality" },
   { key: "placement", label: "Placement" },
-  { key: "feed", label: "Feed" },
-  { key: "performance", label: "Performance" },
 ] as const;
 
 export type ReportTypeKey = (typeof REPORT_TYPES)[number]["key"];
