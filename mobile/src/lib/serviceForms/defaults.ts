@@ -68,7 +68,7 @@ export function createServiceReportDraft(input?: {
     waterLinesOk: "yes",
     sightTubesOk: "yes",
     waterAdditive: "no",
-    waterColumnInches: "",
+    waterColumnInches: "4-6",
     psiBefore: "",
     psiAfter: "",
     ph: "",

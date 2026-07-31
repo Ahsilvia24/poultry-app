@@ -555,7 +555,7 @@ export default function ServiceReportScreen() {
                 label="Alarm HI"
                 value={form.alarmHi}
                 onChange={(alarmHi) => patch({ alarmHi })}
-                keyboardType="number-pad"
+                keyboardType="decimal-pad"
               />
             }
             right={
@@ -563,7 +563,7 @@ export default function ServiceReportScreen() {
                 label="Alarm LOW"
                 value={form.alarmLow}
                 onChange={(alarmLow) => patch({ alarmLow })}
-                keyboardType="number-pad"
+                keyboardType="decimal-pad"
               />
             }
           />

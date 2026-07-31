@@ -338,8 +338,8 @@ export default function PlacementChecklistScreen() {
           <YesNoField label="Generator is in Auto" value={form.generatorAutoOk} onChange={(generatorAutoOk) => patch({ generatorAutoOk })} />
           <YesNoField label="Dialer alarm is ON" value={form.dialerOnOk} onChange={(dialerOnOk) => patch({ dialerOnOk })} />
           <PairFields
-            left={<TextField label="Alarm HI" value={form.alarmHi} onChange={(alarmHi) => patch({ alarmHi })} keyboardType="number-pad" />}
-            right={<TextField label="Alarm LOW" value={form.alarmLow} onChange={(alarmLow) => patch({ alarmLow })} keyboardType="number-pad" />}
+            left={<TextField label="Alarm HI" value={form.alarmHi} onChange={(alarmHi) => patch({ alarmHi })} keyboardType="decimal-pad" />}
+            right={<TextField label="Alarm LOW" value={form.alarmLow} onChange={(alarmLow) => patch({ alarmLow })} keyboardType="decimal-pad" />}
           />
           <CompactBackupSettings
             heat={form.backupHeat}
