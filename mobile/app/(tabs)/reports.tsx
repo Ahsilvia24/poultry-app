@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Clipboard from "expo-clipboard";
 import { getReports, listFarms } from "../../src/repos/data";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import { colors, styles } from "../../src/theme";
@@ -13,6 +12,7 @@ import {
   PrimaryButton,
 } from "../../src/components/ui";
 import { DatePickerField } from "../../src/components/DatePickerField";
+import { ClipboardIconButton } from "../../src/components/ClipboardIconButton";
 
 const REPORT_TYPES = [
   { key: "mortality", label: "Mortality" },
@@ -67,7 +67,6 @@ export default function ReportsScreen() {
   const [matrix, setMatrix] = useState(() =>
     getReports(from, to, (farmIdParam || farms[0]?.id) || undefined),
   );
-  const [copied, setCopied] = useState(false);
 
   const selectedFarmName = useMemo(() => {
     if (!farmId) return null;
@@ -84,22 +83,7 @@ export default function ReportsScreen() {
   }, [farmIdParam, from, to]);
 
   function apply() {
-    setCopied(false);
     setMatrix(getReports(from, to, farmId || undefined));
-  }
-
-  async function copyResults() {
-    if (matrix.rows.length === 0) {
-      Alert.alert("Nothing to copy", "Run a report with data first.");
-      return;
-    }
-    try {
-      await Clipboard.setStringAsync(matrixToTsv(matrix, rowHeaderLabel));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      Alert.alert("Copy failed", "Could not copy results to the clipboard.");
-    }
   }
 
   return (
@@ -192,20 +176,14 @@ export default function ReportsScreen() {
                 <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text, flex: 1 }}>
                   Mortality
                 </Text>
-                <Pressable
-                  onPress={copyResults}
-                  hitSlop={8}
-                  style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
-                    borderRadius: 8,
-                    backgroundColor: "#f5f5f4",
+                <ClipboardIconButton
+                  accessibilityLabel="Copy mortality report"
+                  color={colors.accentDark}
+                  getText={() => {
+                    if (matrix.rows.length === 0) return "";
+                    return matrixToTsv(matrix, rowHeaderLabel);
                   }}
-                >
-                  <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 13 }}>
-                    {copied ? "Copied" : "Copy"}
-                  </Text>
-                </Pressable>
+                />
               </View>
               <ScrollView horizontal>
                 <View>
