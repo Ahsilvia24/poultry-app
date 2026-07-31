@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -20,6 +19,7 @@ import {
   CommentsField,
   CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
+import { ServiceFormActions } from "../../../../../src/components/serviceForms/ServiceFormActions";
 import { Card, PageHeader } from "../../../../../src/components/ui";
 import { createPrebroodDraft } from "../../../../../src/lib/serviceForms/defaults";
 import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/format";
@@ -290,28 +290,11 @@ export default function PrebroodChecklistScreen() {
           scrollRef={scrollRef}
         />
 
-        <Pressable
-          disabled={saving}
-          onPress={() => {
-            void complete({ form });
-          }}
-          style={{
-            marginTop: 16,
-            backgroundColor: colors.accentDark,
-            borderRadius: 12,
-            paddingVertical: 16,
-            alignItems: "center",
-            opacity: saving ? 0.7 : 1,
-          }}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>
-              {editing ? "Save changes · Share PDF" : "Complete · Log visit · Share PDF"}
-            </Text>
-          )}
-        </Pressable>
+        <ServiceFormActions
+          editing={editing}
+          saving={saving}
+          onComplete={() => void complete({ form })}
+        />
       </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

@@ -16,6 +16,7 @@ type FarmHouse = {
   totalFanCFM: number | null;
   numberOfFans: number | null;
   loggedTemp?: string | null;
+  flockNumber?: string | null;
 };
 
 type FarmDetailLike = {
@@ -80,4 +81,11 @@ export function currentFlockWeek(detail: FarmDetailLike): number {
   const withAge = detail.houses.find((h) => h.ageDays != null);
   if (withAge?.ageDays == null) return 1;
   return flockWeekFromAge(Math.max(0, withAge.ageDays));
+}
+
+/** Flock # for Service Report — house 1 only (not joined multi-flock string). */
+export function house1FlockNumber(detail: FarmDetailLike): string {
+  const sorted = [...detail.houses].sort((a, b) => a.houseNumber - b.houseNumber);
+  const h1 = sorted.find((h) => h.houseNumber === 1) ?? sorted[0];
+  return h1?.flockNumber?.trim() || "";
 }

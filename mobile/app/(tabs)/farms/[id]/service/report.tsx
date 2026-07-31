@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -24,19 +23,21 @@ import {
   CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
 import { TimeScrollPickerField } from "../../../../../src/components/TimeScrollPicker";
+import { ServiceFormActions } from "../../../../../src/components/serviceForms/ServiceFormActions";
 import { Card, PageHeader } from "../../../../../src/components/ui";
 import { createServiceReportDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
-  HUMIDITY_OPTIONS,
-  VENT_DOOR_OPTIONS,
-  WEEK_OPTIONS,
-} from "../../../../../src/lib/serviceForms/format";
-import {
   currentFlockWeek,
+  house1FlockNumber,
   house1TotalCfm,
   minVentForWeek,
   prefillHouseRows,
 } from "../../../../../src/lib/serviceForms/prefill";
+import {
+  HUMIDITY_OPTIONS,
+  WEEK_OPTIONS,
+  normalizeVentDoorTypes,
+} from "../../../../../src/lib/serviceForms/format";
 import type { ServiceReportForm } from "../../../../../src/lib/serviceForms/types";
 import {
   useCompleteServiceForm,
@@ -51,11 +52,18 @@ function paramId(value: string | string[] | undefined) {
   return value ?? "";
 }
 
+function normalizeServiceReport(payload: ServiceReportForm): ServiceReportForm {
+  return {
+    ...payload,
+    ventDoorTypes: normalizeVentDoorTypes(payload as { ventDoorTypes?: unknown; ventDoorType?: unknown }),
+  };
+}
+
 export default function ServiceReportScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const farmId = paramId(params.id);
-  const { detail, farmName, flockNumber } = useServiceFarmContext(farmId);
+  const { detail, farmName } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "service_report");
   const editVisitId = useEditVisitIdParam();
   const { complete, saving, editing } = useCompleteServiceForm(farmId, {
@@ -63,22 +71,24 @@ export default function ServiceReportScreen() {
     existingVisitId: existing ? null : editVisitId,
   });
 
+  const house1Flock = detail ? house1FlockNumber(detail) : "";
+
   const initial = useMemo(() => {
     if (existing?.payload && typeof existing.payload === "object") {
-      return existing.payload as ServiceReportForm;
+      return normalizeServiceReport(existing.payload as ServiceReportForm);
     }
-    if (!detail) return createServiceReportDraft({ farmName, flockNumber });
+    if (!detail) return createServiceReportDraft({ farmName, flockNumber: house1Flock });
     return createServiceReportDraft({
       farmName: detail.farm.farmName,
-      flockNumber: detail.activeFlock?.flockNumber ?? flockNumber,
+      flockNumber: house1FlockNumber(detail),
       houses: prefillHouseRows(detail),
       serviceTech: "",
     });
-  }, [detail, farmName, flockNumber, existing]);
+  }, [detail, farmName, house1Flock, existing]);
 
   const [form, setForm] = useState<ServiceReportForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
-      return existing.payload as ServiceReportForm;
+      return normalizeServiceReport(existing.payload as ServiceReportForm);
     }
     if (!detail) return initial;
     const week = currentFlockWeek(detail);
@@ -93,9 +103,9 @@ export default function ServiceReportScreen() {
   });
 
   const [humidityOpen, setHumidityOpen] = useState(false);
-  const [ventDoorOpen, setVentDoorOpen] = useState(false);
   const [weekOpen, setWeekOpen] = useState(false);
   const scrollRef = useRef<ScrollViewType>(null);
+  const lights247 = form.lightsOnAt === "24/7";
 
   function patch(p: Partial<ServiceReportForm>) {
     setForm((prev) => ({ ...prev, ...p }));
@@ -231,16 +241,50 @@ export default function ServiceReportScreen() {
             value={form.lightsOperationalOk}
             onChange={(lightsOperationalOk) => patch({ lightsOperationalOk })}
           />
-          <TimeScrollPickerField
-            label="Lights ON at"
-            value={form.lightsOnAt}
-            onChange={(lightsOnAt) => patch({ lightsOnAt })}
+          <YesNoField
+            label="Lights on 24/7"
+            value={lights247 ? "yes" : "no"}
+            onChange={(v) => {
+              if (v === "yes") {
+                patch({ lightsOnAt: "24/7", lightsOffAt: "" });
+                return;
+              }
+              patch({
+                lightsOnAt: form.lightsOnAt === "24/7" ? "" : form.lightsOnAt,
+              });
+            }}
           />
-          <TimeScrollPickerField
-            label="Lights OFF at"
-            value={form.lightsOffAt}
-            onChange={(lightsOffAt) => patch({ lightsOffAt })}
-          />
+          {lights247 ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                paddingVertical: 10,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+              }}
+            >
+              <Text style={{ flex: 1, fontWeight: "600", color: colors.text, fontSize: 14 }}>
+                Lights ON at
+              </Text>
+              <Text style={{ fontWeight: "800", color: colors.text, fontSize: 16 }}>24/7</Text>
+            </View>
+          ) : (
+            <>
+              <TimeScrollPickerField
+                label="Lights ON at"
+                value={form.lightsOnAt}
+                onChange={(lightsOnAt) => patch({ lightsOnAt })}
+              />
+              <TimeScrollPickerField
+                label="Lights OFF at"
+                value={form.lightsOffAt}
+                onChange={(lightsOffAt) => patch({ lightsOffAt })}
+              />
+            </>
+          )}
 
           <SectionTitle title="Air and litter" />
           <YesNoField
@@ -303,17 +347,19 @@ export default function ServiceReportScreen() {
               keyboardType="number-pad"
             />
           ) : null}
-          <SelectField
+          <MultiToggleField
             label="Vent door type"
-            valueLabel={
-              VENT_DOOR_OPTIONS.find((o) => o.value === form.ventDoorType)?.label ?? "Select"
-            }
-            onPress={() => setVentDoorOpen(true)}
+            options={[
+              { value: "ceiling", label: "Ceiling" },
+              { value: "sidewall", label: "Sidewall" },
+            ]}
+            value={form.ventDoorTypes}
+            onChange={(ventDoorTypes) => patch({ ventDoorTypes })}
           />
           <PairFields
             left={
               <TextField
-                label="S.P."
+                label="Static Pressure"
                 value={form.staticPressure}
                 onChange={(staticPressure) => patch({ staticPressure })}
                 keyboardType="decimal-pad"
@@ -325,7 +371,7 @@ export default function ServiceReportScreen() {
                 label="Vent opening (in)"
                 value={form.ventOpeningInches}
                 onChange={(ventOpeningInches) => patch({ ventOpeningInches })}
-                keyboardType="decimal-pad"
+                placeholder="4-6"
               />
             }
           />
@@ -383,7 +429,7 @@ export default function ServiceReportScreen() {
                 label="Cool cell OFF temp"
                 value={form.coolCellOffTemp}
                 onChange={(coolCellOffTemp) => patch({ coolCellOffTemp })}
-                keyboardType="number-pad"
+                keyboardType="decimal-pad"
               />
             }
             right={
@@ -391,7 +437,7 @@ export default function ServiceReportScreen() {
                 label="Cool cell ON temp"
                 value={form.coolCellOnTemp}
                 onChange={(coolCellOnTemp) => patch({ coolCellOnTemp })}
-                keyboardType="number-pad"
+                keyboardType="decimal-pad"
               />
             }
           />
@@ -436,7 +482,6 @@ export default function ServiceReportScreen() {
             label="Inches of water column"
             value={form.waterColumnInches}
             onChange={(waterColumnInches) => patch({ waterColumnInches })}
-            placeholder="4-6"
           />
           <PairFields
             left={
@@ -509,7 +554,7 @@ export default function ServiceReportScreen() {
                 label="Alarm HI"
                 value={form.alarmHi}
                 onChange={(alarmHi) => patch({ alarmHi })}
-                keyboardType="number-pad"
+                keyboardType="decimal-pad"
               />
             }
             right={
@@ -517,7 +562,7 @@ export default function ServiceReportScreen() {
                 label="Alarm LOW"
                 value={form.alarmLow}
                 onChange={(alarmLow) => patch({ alarmLow })}
-                keyboardType="number-pad"
+                keyboardType="decimal-pad"
               />
             }
           />
@@ -537,26 +582,11 @@ export default function ServiceReportScreen() {
           scrollRef={scrollRef}
         />
 
-        <Pressable
-          disabled={saving}
-          onPress={() => complete({ form })}
-          style={{
-            marginTop: 16,
-            backgroundColor: colors.accentDark,
-            borderRadius: 12,
-            paddingVertical: 16,
-            alignItems: "center",
-            opacity: saving ? 0.7 : 1,
-          }}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>
-              {editing ? "Save changes · Share PDF" : "Complete · Log visit · Share PDF"}
-            </Text>
-          )}
-        </Pressable>
+        <ServiceFormActions
+          editing={editing}
+          saving={saving}
+          onComplete={() => void complete({ form })}
+        />
       </ScrollView>
       </KeyboardAvoidingView>
 
@@ -567,16 +597,6 @@ export default function ServiceReportScreen() {
         value={form.humidityPct}
         onSelect={(humidityPct) => patch({ humidityPct })}
         onClose={() => setHumidityOpen(false)}
-      />
-      <OptionPicker
-        open={ventDoorOpen}
-        title="Vent door type"
-        options={VENT_DOOR_OPTIONS}
-        value={form.ventDoorType}
-        onSelect={(ventDoorType) =>
-          patch({ ventDoorType: ventDoorType as ServiceReportForm["ventDoorType"] })
-        }
-        onClose={() => setVentDoorOpen(false)}
       />
       <OptionPicker
         open={weekOpen}
