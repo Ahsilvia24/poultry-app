@@ -72,6 +72,7 @@ import {
 } from "../../../../src/components/ui";
 import { WeightProjectionTile } from "../../../../src/components/WeightProjectionTile";
 import { DatePickerField } from "../../../../src/components/DatePickerField";
+import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
 
 /** "2026-07-25" → "07-25-2026" */
 function formatUsDate(dateKey: string) {
@@ -1498,10 +1499,12 @@ export default function FarmDetailScreen() {
                   log.gen3Hours != null ||
                   log.gen4Hours != null,
               ) ? (
-                <Pressable
-                  onPress={async () => {
+                <ClipboardIconButton
+                  accessibilityLabel="Copy generator log"
+                  color={colors.accentDark}
+                  getText={() => {
                     const allLogs = data.generatorLogs ?? [];
-                    const text = formatGeneratorChartsCopy(
+                    return formatGeneratorChartsCopy(
                       allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY).map((log) => {
                         const hours: GeneratorHours = {
                           gen1Hours: log.gen1Hours,
@@ -1533,19 +1536,8 @@ export default function FarmDetailScreen() {
                         };
                       }),
                     );
-                    try {
-                      const Clipboard = await import("expo-clipboard");
-                      await Clipboard.setStringAsync(text);
-                      Alert.alert("Copied", "Generator log copied to clipboard.");
-                    } catch {
-                      Alert.alert("Copy failed", "Could not copy on this device.");
-                    }
                   }}
-                  hitSlop={8}
-                  accessibilityLabel="Copy generator log"
-                >
-                  <Ionicons name="copy-outline" size={20} color={colors.accentDark} />
-                </Pressable>
+                />
               ) : null}
             </View>
             {(data.generatorLogs ?? []).every(

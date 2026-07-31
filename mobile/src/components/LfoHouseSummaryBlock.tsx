@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Text, View } from "react-native";
+import { ClipboardIconButton } from "./ClipboardIconButton";
 import { colors } from "../theme";
 
 export function CopyHouseSummaryButton({
@@ -11,46 +10,16 @@ export function CopyHouseSummaryButton({
   /** Prefixed on its own line when copying (e.g. saved LFO tile). */
   farmName?: string;
 }) {
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!copied) return;
-    const t = setTimeout(() => setCopied(false), 1500);
-    return () => clearTimeout(t);
-  }, [copied]);
-
   if (lines.length === 0) return null;
 
   return (
-    <Pressable
-      onPress={async () => {
-        try {
-          const Clipboard = await import("expo-clipboard");
-          const name = farmName?.trim();
-          const text = name ? [name, ...lines].join("\n") : lines.join("\n");
-          await Clipboard.setStringAsync(text);
-          setCopied(true);
-        } catch {
-          Alert.alert("Copy failed", "Could not copy to clipboard on this device.");
-        }
+    <ClipboardIconButton
+      accessibilityLabel="Copy house summary"
+      getText={() => {
+        const name = farmName?.trim();
+        return name ? [name, ...lines].join("\n") : lines.join("\n");
       }}
-      hitSlop={8}
-      accessibilityRole="button"
-      accessibilityLabel={copied ? "Copied" : "Copy house summary"}
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: 8,
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Ionicons
-        name={copied ? "checkmark" : "copy-outline"}
-        size={20}
-        color={copied ? colors.accentDark : colors.muted}
-      />
-    </Pressable>
+    />
   );
 }
 
