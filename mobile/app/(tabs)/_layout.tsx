@@ -114,8 +114,9 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                   }
                   if (route.name === "mortality") {
                     navigation.navigate(route.name, {
-                      farmId: ctx.farmId ?? undefined,
-                      houseFlockId: ctx.houseFlockId ?? undefined,
+                      // Always pass strings so sticky Expo Router params clear when unset.
+                      farmId: ctx.farmId ?? "",
+                      houseFlockId: ctx.houseFlockId ?? "",
                     });
                     requestTabScrollTop("mortality");
                     return;
@@ -131,8 +132,9 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 }
                 if (route.name === "mortality") {
                   navigation.navigate(route.name, {
-                    farmId: ctx.farmId ?? undefined,
-                    houseFlockId: ctx.houseFlockId ?? undefined,
+                    // Always pass strings so sticky Expo Router params clear when unset.
+                    farmId: ctx.farmId ?? "",
+                    houseFlockId: ctx.houseFlockId ?? "",
                   });
                 } else {
                   navigation.navigate(route.name);
