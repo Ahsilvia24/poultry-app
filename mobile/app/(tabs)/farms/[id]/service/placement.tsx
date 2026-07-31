@@ -307,7 +307,6 @@ export default function PlacementChecklistScreen() {
                 label="Water column (in)"
                 value={form.waterColumnInches}
                 onChange={(waterColumnInches) => patch({ waterColumnInches })}
-                placeholder="4-6"
               />
             }
             right={<TextField label="P.H." value={form.ph} onChange={(ph) => patch({ ph })} keyboardType="decimal-pad" />}
