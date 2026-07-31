@@ -27,7 +27,7 @@ type SearchParams = Promise<{
 }>;
 
 function resolveReportType(raw: string | undefined): ReportTypeKey {
-  if (raw === "placement" || raw === "feed" || raw === "performance") return raw;
+  if (raw === "placement") return raw;
   return "mortality";
 }
 
@@ -44,12 +44,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
   const toDate = parseISO(to);
 
   if (reportType !== "mortality") {
-    const title =
-      reportType === "placement"
-        ? "Placement"
-        : reportType === "feed"
-          ? "Feed"
-          : "Performance";
+    const title = "Placement";
     return (
       <div>
         <PageHeader title="Reports" subtitle="Choose a report type, then run filters" />
