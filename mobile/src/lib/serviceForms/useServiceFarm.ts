@@ -98,15 +98,19 @@ export function useCompleteServiceForm(farmId: string, opts?: {
         serviceFormId: opts?.serviceFormId ?? null,
         existingVisitId: opts?.serviceFormId ? null : opts?.existingVisitId ?? null,
       });
-      try {
-        await shareServiceFormPdf(input.form);
-      } catch {
-        // Visit is saved even if share sheet fails / is dismissed.
+      // Share PDF only when completing a new form. When editing a saved report,
+      // Share PDF is on the visit screen under View/Edit.
+      if (!editing) {
+        try {
+          await shareServiceFormPdf(input.form);
+        } catch {
+          // Visit is saved even if share sheet fails / is dismissed.
+        }
       }
       Alert.alert(
         "Saved",
         editing
-          ? "Changes saved. Use the share sheet to Save to Files, AirDrop, or email the PDF."
+          ? "Changes saved."
           : "Visit logged. Use the share sheet to Save to Files, AirDrop, or email the PDF.",
         [
           {
