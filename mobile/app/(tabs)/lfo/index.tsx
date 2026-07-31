@@ -84,19 +84,28 @@ function CalcFieldButton({
 }) {
   const showPlaceholder = !value;
   return (
-    <View ref={fieldRef} collapsable={false} style={{ flex: 1 }}>
-      <Text style={styles.label}>{label}</Text>
+    <View ref={fieldRef} collapsable={false} style={{ flex: 1, minWidth: 0 }}>
+      <Text style={[styles.label, { minHeight: 36 }]} numberOfLines={2}>
+        {label}
+      </Text>
       <Pressable
         onPress={onPress}
-        style={[
-          styles.input,
-          active ? { borderColor: colors.accentDark, borderWidth: 2 } : null,
-        ]}
+        style={{
+          minHeight: 52,
+          borderWidth: 2,
+          borderColor: active ? colors.accentDark : "#d6d3d1",
+          borderRadius: 12,
+          paddingHorizontal: 14,
+          justifyContent: "center",
+          backgroundColor: "#fff",
+          marginBottom: 12,
+        }}
       >
         <Text
           style={{
             fontSize: 18,
             fontWeight: "700",
+            lineHeight: 22,
             color: showPlaceholder ? "rgba(120,113,108,0.55)" : colors.text,
           }}
         >
@@ -311,7 +320,7 @@ export default function LfoListScreen() {
               Daily water (gal) × {LBS_PER_GALLON} = WC → WC ÷ {WATER_TO_FEED_RATIO} = FC → FC ÷ head
               count
             </Text>
-            <View style={styles.row}>
+            <View style={[styles.row, { flexWrap: "nowrap", alignItems: "flex-start" }]}>
               <CalcFieldButton
                 label="Daily water (gal)"
                 value={waterGal}
