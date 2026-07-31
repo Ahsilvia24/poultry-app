@@ -114,10 +114,10 @@ export function SavedLfoRow({
             className="absolute inset-0 z-0 rounded-[inherit]"
             aria-label={`Edit LFO for ${farmName}`}
           />
-          <div className="relative z-10 flex pointer-events-none items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-stone-900">{farmName}</p>
-              <p className="text-sm text-stone-600">{dateLabel}</p>
+          <div className="relative z-10 flex pointer-events-none items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-baseline gap-2">
+              <p className="truncate font-semibold text-stone-900">{farmName}</p>
+              <p className="shrink-0 text-sm text-stone-600">{dateLabel}</p>
             </div>
             {lines.length > 0 ? (
               <CopyHouseSummaryButton lines={lines} farmName={farmName} />
