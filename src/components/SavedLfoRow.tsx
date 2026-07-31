@@ -2,44 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { deleteLastFeedOrderAction } from "@/app/actions/lfo";
+import { ClipboardIconButton } from "@/components/ClipboardIconButton";
 import { Button, Card } from "@/components/ui";
-
-function CopyIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
 
 function CopyHouseSummaryButton({
   lines,
@@ -48,33 +14,17 @@ function CopyHouseSummaryButton({
   lines: string[];
   farmName?: string;
 }) {
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!copied) return;
-    const t = setTimeout(() => setCopied(false), 1500);
-    return () => clearTimeout(t);
-  }, [copied]);
-
   if (lines.length === 0) return null;
 
   return (
-    <button
-      type="button"
-      aria-label={copied ? "Copied" : "Copy house summary"}
-      title={copied ? "Copied" : "Copy"}
-      onClick={async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+    <ClipboardIconButton
+      accessibilityLabel="Copy house summary"
+      className="pointer-events-auto relative z-10"
+      getText={() => {
         const name = farmName?.trim();
-        const text = name ? [name, ...lines].join("\n") : lines.join("\n");
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
+        return name ? [name, ...lines].join("\n") : lines.join("\n");
       }}
-      className="pointer-events-auto relative z-10 inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
-    >
-      {copied ? <CheckIcon className="h-4 w-4 text-emerald-700" /> : <CopyIcon className="h-4 w-4" />}
-    </button>
+    />
   );
 }
 

@@ -5,7 +5,10 @@ import { colors } from "../theme";
 
 /**
  * Standard copy-to-clipboard control for the mobile app.
- * Always use this (Ionicons `copy-outline` → `checkmark`) for new copy actions.
+ * Always use this component for any new copy action — do not invent a
+ * different icon or inline clipboard Pressable.
+ * Icon: Ionicons `copy-outline` → `checkmark` while feedback shows.
+ * Web equivalent: `src/components/ClipboardIconButton.tsx` (same glyph).
  */
 export function ClipboardIconButton({
   getText,

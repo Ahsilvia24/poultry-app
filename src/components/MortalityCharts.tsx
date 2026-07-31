@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Bar,
   BarChart,
@@ -16,6 +15,7 @@ import {
 import { downloadCsv, toCsv } from "@/lib/exports/csv";
 import { downloadMortalityPdf } from "@/lib/exports/pdf";
 import { MORTALITY_CAUSE_LABELS, formatNumber, formatPct } from "@/lib/utils";
+import { ClipboardIconButton } from "@/components/ClipboardIconButton";
 import { Button, Card } from "@/components/ui";
 
 export type CumulativePoint = { birdAgeInDays: number; cumulative: number; label?: string };
@@ -56,8 +56,6 @@ export function MortalityCharts({
   byFarm: FarmRow[];
   filterLabel: string;
 }) {
-  const [copiedHouseByDate, setCopiedHouseByDate] = useState(false);
-
   function houseByDateTsv() {
     const header = ["House", ...byHouseByDate.dates.map(formatDateHeader), "Total"];
     const lines = byHouseByDate.rows.map((row) => {
@@ -66,17 +64,6 @@ export function MortalityCharts({
       return [row.houseLabel, ...values, total].join("\t");
     });
     return [header.join("\t"), ...lines].join("\n");
-  }
-
-  async function copyHouseByDate() {
-    if (byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0) return;
-    try {
-      await navigator.clipboard.writeText(houseByDateTsv());
-      setCopiedHouseByDate(true);
-      window.setTimeout(() => setCopiedHouseByDate(false), 2000);
-    } catch {
-      setCopiedHouseByDate(false);
-    }
   }
 
   function exportCsv() {
@@ -212,14 +199,13 @@ export function MortalityCharts({
               Total daily loss (mortality + culls) for the selected date range.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={copyHouseByDate}
-            disabled={byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0}
-          >
-            {copiedHouseByDate ? "Copied" : "Copy to clipboard"}
-          </Button>
+          {byHouseByDate.rows.length > 0 && byHouseByDate.dates.length > 0 ? (
+            <ClipboardIconButton
+              accessibilityLabel="Copy mortality by house and date"
+              className="text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900"
+              getText={houseByDateTsv}
+            />
+          ) : null}
         </div>
         <div className="mt-3 overflow-x-auto">
           {byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0 ? (

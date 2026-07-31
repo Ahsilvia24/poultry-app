@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { ClipboardIconButton } from "@/components/ClipboardIconButton";
 import { Button, Input, Label, Select } from "@/components/ui";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
@@ -71,27 +72,15 @@ function CopySummaryButton({
   lines: string[];
   farmName?: string;
 }) {
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!copied) return;
-    const t = setTimeout(() => setCopied(false), 1500);
-    return () => clearTimeout(t);
-  }, [copied]);
-
   return (
-    <button
-      type="button"
-      onClick={async () => {
+    <ClipboardIconButton
+      accessibilityLabel="Copy house summary"
+      className="text-emerald-800 hover:bg-emerald-50 hover:text-emerald-900"
+      getText={() => {
         const name = farmName?.trim();
-        const text = name ? [name, ...lines].join("\n") : lines.join("\n");
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
+        return name ? [name, ...lines].join("\n") : lines.join("\n");
       }}
-      className="shrink-0 text-sm font-semibold text-emerald-800 hover:underline"
-    >
-      {copied ? "Copied" : "Copy"}
-    </button>
+    />
   );
 }
 
