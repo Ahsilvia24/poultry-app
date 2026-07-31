@@ -134,17 +134,22 @@ function FieldButton({
       <Text style={styles.label}>{label}</Text>
       <Pressable
         onPress={onPress}
-        style={[
-          styles.input,
-          active
-            ? { borderColor: colors.accentDark, borderWidth: 2 }
-            : null,
-        ]}
+        style={{
+          minHeight: 52,
+          borderWidth: 2,
+          borderColor: active ? colors.accentDark : "#d6d3d1",
+          borderRadius: 12,
+          paddingHorizontal: 14,
+          justifyContent: "center",
+          backgroundColor: "#fff",
+          marginBottom: 12,
+        }}
       >
         <Text
           style={{
             fontSize: 18,
             fontWeight: "700",
+            lineHeight: 22,
             color: value ? colors.text : colors.muted,
           }}
         >
