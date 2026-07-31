@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -205,6 +205,8 @@ function NativeNumInput({
   decimal,
   placeholder,
   style,
+  autoFocus,
+  inputRef,
 }: {
   label: string;
   value: string;
@@ -212,17 +214,21 @@ function NativeNumInput({
   decimal?: boolean;
   placeholder?: string;
   style?: object;
+  autoFocus?: boolean;
+  inputRef?: RefObject<TextInput | null>;
 }) {
   return (
     <View style={[{ marginBottom: 10 }, style]}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
+        ref={inputRef}
         style={[styles.input, { fontSize: 20, fontWeight: "700", color: colors.text }]}
         value={value}
         onChangeText={onChangeText}
         keyboardType={decimal ? "decimal-pad" : "number-pad"}
         placeholder={placeholder}
         placeholderTextColor={colors.muted}
+        autoFocus={autoFocus}
       />
     </View>
   );
@@ -373,6 +379,18 @@ export default function FarmDetailScreen() {
   } | null>(null);
   const [tempSaving, setTempSaving] = useState(false);
   const [tempError, setTempError] = useState<string | null>(null);
+  const tempInputRef = useRef<TextInput>(null);
+
+  // Modal slide animation can steal first focus — nudge the cursor in after open.
+  useEffect(() => {
+    if (!tempHouse) return;
+    const t1 = setTimeout(() => tempInputRef.current?.focus(), 50);
+    const t2 = setTimeout(() => tempInputRef.current?.focus(), 320);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [tempHouse?.id]);
   const [addingHouse, setAddingHouse] = useState<AddHouseDraft | null>(null);
   const [addHouseError, setAddHouseError] = useState<string | null>(null);
   const [addHouseSaving, setAddHouseSaving] = useState(false);
@@ -1977,6 +1995,8 @@ export default function FarmDetailScreen() {
                 }
                 decimal
                 placeholder="e.g. 78"
+                autoFocus
+                inputRef={tempInputRef}
               />
               {tempError ? (
                 <Text style={{ color: colors.danger, fontWeight: "600", marginBottom: 10 }}>
