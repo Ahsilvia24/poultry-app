@@ -1,6 +1,5 @@
 import {
   Keyboard,
-  Platform,
   Pressable,
   Text,
   TextInput,
