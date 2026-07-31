@@ -25,7 +25,6 @@ import {
   formatNumber,
   formatPct,
 } from "../../src/components/ui";
-import { ExportDataCard } from "../../src/components/ExportDataCard";
 
 type Dashboard = ReturnType<typeof getDashboard>;
 type ScheduleItem = Dashboard["todaysSchedule"][number];
@@ -625,10 +624,7 @@ export default function DashboardScreen() {
           </>
         ) : null}
 
-        <View style={{ marginTop: 16, marginBottom: 24 }}>
-          <SectionTitle>Backup</SectionTitle>
-          <ExportDataCard />
-        </View>
+        <View style={{ marginBottom: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );

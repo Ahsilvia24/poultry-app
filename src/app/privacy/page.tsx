@@ -41,8 +41,7 @@ export default function PrivacyPolicyPage() {
               <li>
                 <span className="font-semibold text-stone-900">Device / local data (iOS app)</span> —
                 the mobile app stores your operational data on your device (offline-first) so you
-                can work without a constant internet connection. Backups or exports you choose to
-                create are under your control.
+                can work without a constant internet connection.
               </li>
               <li>
                 <span className="font-semibold text-stone-900">Support communications</span> — if
