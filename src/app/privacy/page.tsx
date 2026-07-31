@@ -144,10 +144,10 @@ export default function PrivacyPolicyPage() {
               Questions about privacy or this policy:
               <br />
               <a
-                href="mailto:alexsilvia24@yahoo.com"
+                href="mailto:talentpro024@gmail.com"
                 className="font-semibold text-emerald-800 underline-offset-2 hover:underline"
               >
-                alexsilvia24@yahoo.com
+                talentpro024@gmail.com
               </a>
             </p>
             <p className="mt-2">

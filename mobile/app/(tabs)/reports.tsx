@@ -17,8 +17,6 @@ import { DatePickerField } from "../../src/components/DatePickerField";
 const REPORT_TYPES = [
   { key: "mortality", label: "Mortality" },
   { key: "placement", label: "Placement" },
-  { key: "feed", label: "Feed" },
-  { key: "performance", label: "Performance" },
 ] as const;
 
 type ReportType = (typeof REPORT_TYPES)[number]["key"];
