@@ -1,6 +1,7 @@
 import { Alert, Pressable, Text } from "react-native";
 import { getFarmDetail } from "../../repos/data";
 import {
+  house1FlockNumber,
   house1TotalCfm,
   mergeLiveHouseRows,
   minVentForWeek,
@@ -13,14 +14,6 @@ import type {
 } from "../../lib/serviceForms/types";
 import { colors } from "../../theme";
 
-function firstFlockNumber(detail: NonNullable<ReturnType<typeof getFarmDetail>>) {
-  return (
-    detail.activeFlocks?.[0]?.flockNumber ??
-    detail.activeFlock?.flockNumber?.split(/\s*·\s*/)[0]?.trim() ??
-    ""
-  );
-}
-
 function pullIntoForm(farmId: string, form: AnyServiceForm): AnyServiceForm | null {
   let detail: ReturnType<typeof getFarmDetail>;
   try {
@@ -30,6 +23,8 @@ function pullIntoForm(farmId: string, form: AnyServiceForm): AnyServiceForm | nu
   }
 
   const houses = mergeLiveHouseRows(detail, form.houses);
+  // Header flock field: house 1 only — never the joined "12 · 13 · 14" list.
+  const flockNumber = house1FlockNumber(detail) || form.flockNumber;
 
   if (form.kind === "service_report") {
     const week = form.minVentRecommendedWeek || 1;
@@ -37,7 +32,7 @@ function pullIntoForm(farmId: string, form: AnyServiceForm): AnyServiceForm | nu
     const next: ServiceReportForm = {
       ...form,
       farmName: detail.farm.farmName || form.farmName,
-      flockNumber: detail.activeFlock?.flockNumber ?? form.flockNumber,
+      flockNumber,
       houses,
       maxCfm: house1TotalCfm(detail) || form.maxCfm,
       minVentRecommendedOn: minVent?.on ?? form.minVentRecommendedOn,
@@ -52,7 +47,7 @@ function pullIntoForm(farmId: string, form: AnyServiceForm): AnyServiceForm | nu
     const next: PlacementForm = {
       ...form,
       farmName: detail.farm.farmName || form.farmName,
-      flockNumber: firstFlockNumber(detail) || form.flockNumber,
+      flockNumber,
       houses,
       minVentRecommendedOn: minVent?.on ?? form.minVentRecommendedOn,
       minVentRecommendedOff: minVent?.off ?? form.minVentRecommendedOff,
@@ -63,7 +58,7 @@ function pullIntoForm(farmId: string, form: AnyServiceForm): AnyServiceForm | nu
   const next: PrebroodForm = {
     ...form,
     farmName: detail.farm.farmName || form.farmName,
-    flockNumber: firstFlockNumber(detail) || form.flockNumber,
+    flockNumber,
     houses,
   };
   return next;

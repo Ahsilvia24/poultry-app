@@ -16,6 +16,7 @@ type FarmHouse = {
   totalFanCFM: number | null;
   numberOfFans: number | null;
   loggedTemp?: string | null;
+  flockNumber?: string | null;
 };
 
 type FarmDetailLike = {
@@ -52,6 +53,13 @@ export function house1TotalCfm(detail: FarmDetailLike): string {
   const h1 = sorted.find((h) => h.houseNumber === 1) ?? sorted[0];
   if (!h1?.totalFanCFM || h1.totalFanCFM <= 0) return "";
   return String(Math.round(h1.totalFanCFM));
+}
+
+/** Flock # for forms — house 1 only (not the joined multi-flock " · " string). */
+export function house1FlockNumber(detail: FarmDetailLike): string {
+  const sorted = [...detail.houses].sort((a, b) => a.houseNumber - b.houseNumber);
+  const h1 = sorted.find((h) => h.houseNumber === 1) ?? sorted[0];
+  return h1?.flockNumber?.trim() || "";
 }
 
 export function minVentForWeek(
