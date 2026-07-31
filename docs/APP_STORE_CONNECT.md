@@ -23,15 +23,21 @@ TestFlight: https://appstoreconnect.apple.com/apps/6794784343/testflight/ios
 
 ## Privacy & Support URLs
 
+Paste these into App Store Connect → App Information:
+
 | ASC field | URL |
 |-----------|-----|
 | **Privacy Policy URL** | https://www.termsfeed.com/live/1e9fa9a7-3483-4186-88be-3eb0aab6c4c5 |
-| Support URL | Still needed — use `docs/support.html` on a host you control, or email-based support page |
+| **Support URL** | https://ahsilvia24.github.io/poultry-app/support/ |
 
-Repo fallbacks (optional):
+Until GitHub Pages is enabled (repo **Settings → Pages → Source: GitHub Actions**), Support also works at:
 
-- `docs/privacy.html` / `docs/support.html`
-- Next.js app routes `/privacy` and `/support` (public, no login)
+https://cdn.jsdelivr.net/gh/Ahsilvia24/poultry-app@main/docs/support.html
+
+Repo sources:
+
+- `docs/privacy.html` / `docs/support.html` (static)
+- Next.js routes `/privacy` and `/support` (public, no login)
 
 ## Screenshots
 
