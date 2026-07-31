@@ -16,6 +16,7 @@ type FarmHouse = {
   totalFanCFM: number | null;
   numberOfFans: number | null;
   loggedTemp?: string | null;
+  flockNumber?: string | null;
 };
 
 type FarmDetailLike = {
@@ -54,6 +55,13 @@ export function house1TotalCfm(detail: FarmDetailLike): string {
   return String(Math.round(h1.totalFanCFM));
 }
 
+/** Flock # for forms — house 1 only (not the joined multi-flock " · " string). */
+export function house1FlockNumber(detail: FarmDetailLike): string {
+  const sorted = [...detail.houses].sort((a, b) => a.houseNumber - b.houseNumber);
+  const h1 = sorted.find((h) => h.houseNumber === 1) ?? sorted[0];
+  return h1?.flockNumber?.trim() || "";
+}
+
 export function minVentForWeek(
   detail: FarmDetailLike,
   week: number,
@@ -80,4 +88,27 @@ export function currentFlockWeek(detail: FarmDetailLike): number {
   const withAge = detail.houses.find((h) => h.ageDays != null);
   if (withAge?.ageDays == null) return 1;
   return flockWeekFromAge(Math.max(0, withAge.ageDays));
+}
+
+/**
+ * Refresh live farm-derived house fields (age, placed, mortality, weeks, temp)
+ * while keeping user-entered litter / ammonia / bin values from the open form.
+ */
+export function mergeLiveHouseRows(
+  detail: FarmDetailLike,
+  existing: ServiceHouseRow[],
+): ServiceHouseRow[] {
+  const live = prefillHouseRows(detail);
+  const byNumber = new Map(existing.map((h) => [h.houseNumber, h]));
+  return live.map((row) => {
+    const prev = byNumber.get(row.houseNumber);
+    if (!prev) return row;
+    return {
+      ...row,
+      binA: prev.binA,
+      binB: prev.binB,
+      litterTemp: prev.litterTemp,
+      ammoniaPpm: prev.ammoniaPpm,
+    };
+  });
 }

@@ -24,6 +24,7 @@ import {
   CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
 import { TimeScrollPickerField } from "../../../../../src/components/TimeScrollPicker";
+import { PullFarmDataButton } from "../../../../../src/components/serviceForms/PullFarmDataButton";
 import { Card, PageHeader } from "../../../../../src/components/ui";
 import { createServiceReportDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
@@ -33,6 +34,7 @@ import {
 } from "../../../../../src/lib/serviceForms/format";
 import {
   currentFlockWeek,
+  house1FlockNumber,
   house1TotalCfm,
   minVentForWeek,
   prefillHouseRows,
@@ -70,7 +72,7 @@ export default function ServiceReportScreen() {
     if (!detail) return createServiceReportDraft({ farmName, flockNumber });
     return createServiceReportDraft({
       farmName: detail.farm.farmName,
-      flockNumber: detail.activeFlock?.flockNumber ?? flockNumber,
+      flockNumber: house1FlockNumber(detail) || flockNumber,
       houses: prefillHouseRows(detail),
       serviceTech: "",
     });
@@ -152,6 +154,15 @@ export default function ServiceReportScreen() {
         <PageHeader
           title={editing ? "Edit Service Report" : "Service Report"}
           subtitle={farmName}
+          actions={
+            editing ? (
+              <PullFarmDataButton
+                farmId={farmId}
+                form={form}
+                onPulled={(next) => setForm(next as ServiceReportForm)}
+              />
+            ) : null
+          }
         />
 
         <Card>
