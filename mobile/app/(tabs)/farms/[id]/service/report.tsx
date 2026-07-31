@@ -34,6 +34,7 @@ import {
 } from "../../../../../src/lib/serviceForms/format";
 import {
   currentFlockWeek,
+  house1FlockNumber,
   house1TotalCfm,
   minVentForWeek,
   prefillHouseRows,
@@ -71,7 +72,7 @@ export default function ServiceReportScreen() {
     if (!detail) return createServiceReportDraft({ farmName, flockNumber });
     return createServiceReportDraft({
       farmName: detail.farm.farmName,
-      flockNumber: detail.activeFlock?.flockNumber ?? flockNumber,
+      flockNumber: house1FlockNumber(detail) || flockNumber,
       houses: prefillHouseRows(detail),
       serviceTech: "",
     });
