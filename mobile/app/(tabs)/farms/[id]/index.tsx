@@ -122,38 +122,38 @@ function RecordLink({ label, onPress }: { label: string; onPress: () => void }) 
   );
 }
 
-function RowActions({
-  editLabel,
-  deleteLabel,
-  onEdit,
-  onDelete,
+function DeleteSwipeAction({
+  label,
+  onPress,
 }: {
-  editLabel?: string;
-  deleteLabel: string;
-  onEdit?: () => void;
-  onDelete: () => void;
+  label: string;
+  onPress: () => void;
 }) {
   return (
-    <View style={{ flexDirection: "row", gap: 2 }}>
-      {onEdit ? (
-        <Pressable
-          accessibilityLabel={editLabel ?? "Edit"}
-          onPress={onEdit}
-          hitSlop={8}
-          style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
-        >
-          <Ionicons name="pencil-outline" size={20} color={colors.muted} />
-        </Pressable>
-      ) : null}
-      <Pressable
-        accessibilityLabel={deleteLabel}
-        onPress={onDelete}
-        hitSlop={8}
-        style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
+    <Pressable
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={{
+        backgroundColor: colors.danger,
+        justifyContent: "center",
+        alignItems: "center",
+        width: 88,
+        borderRadius: 12,
+        marginLeft: 8,
+      }}
+    >
+      <Ionicons name="trash-outline" size={22} color="#fff" />
+      <Text
+        style={{
+          color: "#fff",
+          fontWeight: "800",
+          fontSize: 12,
+          marginTop: 4,
+        }}
       >
-        <Ionicons name="trash-outline" size={20} color={colors.muted} />
-      </Pressable>
-    </View>
+        Delete
+      </Text>
+    </Pressable>
   );
 }
 
@@ -254,102 +254,127 @@ function GeneratorHoursChart({
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
 }) {
-  const showActions = onEdit != null && onDelete != null;
   return (
-    <View style={{ marginTop: 6 }}>
-      <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text, marginBottom: 2 }}>
+    <View style={{ marginTop: 8 }}>
+      <Text style={{ fontWeight: "700", fontSize: 16, color: colors.text, marginBottom: 4 }}>
         {title}
       </Text>
-      <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-        <Text style={{ width: 84, fontSize: 13, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
+      <View style={{ flexDirection: "row", gap: 12, alignItems: "center", marginBottom: 2 }}>
+        <Text
+          style={{
+            width: 96,
+            fontSize: 14,
+            fontWeight: "600",
+            color: colors.muted,
+            lineHeight: 18,
+          }}
+          numberOfLines={1}
+        >
           Date
         </Text>
-        <Text style={{ width: 52, fontSize: 13, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
+        <Text
+          style={{
+            width: 64,
+            fontSize: 14,
+            fontWeight: "600",
+            color: colors.muted,
+            lineHeight: 18,
+          }}
+          numberOfLines={1}
+        >
           Hours
         </Text>
-        <Text style={{ width: 60, fontSize: 13, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
+        <Text
+          style={{
+            flex: 1,
+            fontSize: 14,
+            fontWeight: "600",
+            color: colors.muted,
+            lineHeight: 18,
+          }}
+          numberOfLines={1}
+        >
           Exercised
         </Text>
-        {showActions ? <View style={{ width: 48 }} /> : null}
       </View>
       {rows.length === 0 ? (
-        <Text style={[styles.muted, { fontSize: 14 }]}>None yet</Text>
+        <Text style={[styles.muted, { fontSize: 15 }]}>None yet</Text>
       ) : (
         <View>
-          {rows.map((row) => (
-            <View
-              key={row.id}
-              style={{ flexDirection: "row", gap: 12, alignItems: "center", minHeight: 20 }}
-            >
-              <Text
+          {rows.map((row) => {
+            const content = (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Edit generator log ${row.dateLabel}`}
+                onPress={() => onEdit?.(row.id)}
+                disabled={!onEdit}
                 style={{
-                  width: 84,
-                  fontSize: 14,
-                  lineHeight: 18,
-                  fontWeight: "600",
-                  color: colors.text,
-                  fontVariant: ["tabular-nums"],
-                }}
-                numberOfLines={1}
-              >
-                {row.dateLabel}
-              </Text>
-              <Text
-                style={{
-                  width: 52,
-                  fontSize: 14,
-                  lineHeight: 18,
-                  fontWeight: "600",
-                  color: colors.text,
-                  fontVariant: ["tabular-nums"],
+                  flexDirection: "row",
+                  gap: 12,
+                  alignItems: "center",
+                  minHeight: 40,
+                  paddingVertical: 6,
+                  backgroundColor: "#fff",
                 }}
               >
-                {formatGeneratorHours(row.hours)}
-              </Text>
-              <Text
-                style={{
-                  width: 60,
-                  fontSize: 14,
-                  lineHeight: 18,
-                  fontWeight: "600",
-                  color: colors.text,
-                  fontVariant: ["tabular-nums"],
-                }}
-              >
-                {formatGeneratorHours(row.exercised)}
-              </Text>
-              {showActions ? (
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Pressable
-                    accessibilityLabel="Edit generator log"
-                    onPress={() => onEdit(row.id)}
-                    hitSlop={4}
-                    style={{
-                      width: 24,
-                      height: 20,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons name="pencil-outline" size={15} color={colors.muted} />
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel="Delete generator log"
+                <Text
+                  style={{
+                    width: 96,
+                    fontSize: 16,
+                    lineHeight: 22,
+                    fontWeight: "600",
+                    color: colors.text,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                  numberOfLines={1}
+                >
+                  {row.dateLabel}
+                </Text>
+                <Text
+                  style={{
+                    width: 64,
+                    fontSize: 16,
+                    lineHeight: 22,
+                    fontWeight: "600",
+                    color: colors.text,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {formatGeneratorHours(row.hours)}
+                </Text>
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: 16,
+                    lineHeight: 22,
+                    fontWeight: "600",
+                    color: colors.text,
+                    fontVariant: ["tabular-nums"],
+                  }}
+                  numberOfLines={1}
+                >
+                  {formatGeneratorHours(row.exercised)}
+                </Text>
+              </Pressable>
+            );
+            if (!onDelete) return <View key={row.id}>{content}</View>;
+            return (
+              <Swipeable
+                key={row.id}
+                overshootRight={false}
+                friction={2}
+                rightThreshold={40}
+                renderRightActions={() => (
+                  <DeleteSwipeAction
+                    label="Delete generator log"
                     onPress={() => onDelete(row.id)}
-                    hitSlop={4}
-                    style={{
-                      width: 24,
-                      height: 20,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons name="trash-outline" size={15} color={colors.danger} />
-                  </Pressable>
-                </View>
-              ) : null}
-            </View>
-          ))}
+                  />
+                )}
+              >
+                {content}
+              </Swipeable>
+            );
+          })}
         </View>
       )}
     </View>
@@ -1500,17 +1525,23 @@ export default function FarmDetailScreen() {
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
               data.visits.map((v) => (
-                <View
+                <Swipeable
                   key={v.id}
-                  style={{
+                  overshootRight={false}
+                  friction={2}
+                  rightThreshold={40}
+                  containerStyle={{
                     marginTop: 10,
                     paddingTop: 10,
                     borderTopWidth: 1,
                     borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                    alignItems: "flex-start",
                   }}
+                  renderRightActions={() => (
+                    <DeleteSwipeAction
+                      label="Delete visit"
+                      onPress={() => confirmDeleteVisit(v.id, v.visitDate)}
+                    />
+                  )}
                 >
                   <Pressable
                     accessibilityRole="button"
@@ -1521,7 +1552,7 @@ export default function FarmDetailScreen() {
                         params: { id: farm.id, visitId: v.id },
                       })
                     }
-                    style={{ flex: 1, minWidth: 0 }}
+                    style={{ backgroundColor: "#fff", paddingRight: 4 }}
                   >
                     <Text style={{ fontWeight: "700" }}>
                       {formatShortDate(v.visitDate)} —{" "}
@@ -1534,11 +1565,7 @@ export default function FarmDetailScreen() {
                     ) : null}
                     {v.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text> : null}
                   </Pressable>
-                  <RowActions
-                    deleteLabel="Delete visit"
-                    onDelete={() => confirmDeleteVisit(v.id, v.visitDate)}
-                  />
-                </View>
+                </Swipeable>
               ))
             )}
           </Card>
@@ -1716,18 +1743,54 @@ export default function FarmDetailScreen() {
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
               data.issues.map((issue) => (
-                <View
+                <Swipeable
                   key={issue.id}
-                  style={{
+                  overshootRight={false}
+                  friction={2}
+                  rightThreshold={40}
+                  containerStyle={{
                     marginTop: 10,
                     paddingTop: 10,
                     borderTopWidth: 1,
                     borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
                   }}
+                  renderRightActions={() => (
+                    <DeleteSwipeAction
+                      label="Delete issue"
+                      onPress={() =>
+                        Alert.alert("Delete issue?", "This cannot be undone.", [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Delete",
+                            style: "destructive",
+                            onPress: () => {
+                              try {
+                                deleteIssue(farm.id, issue.id);
+                                load();
+                              } catch (e) {
+                                Alert.alert(
+                                  "Error",
+                                  e instanceof Error ? e.message : "Could not delete",
+                                );
+                              }
+                            },
+                          },
+                        ])
+                      }
+                    />
+                  )}
                 >
-                  <View style={{ flex: 1, minWidth: 0 }}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit issue ${formatShortDate(issue.dateReported)}`}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/issues/[issueId]",
+                        params: { id: farm.id, issueId: issue.id },
+                      })
+                    }
+                    style={{ backgroundColor: "#fff", paddingRight: 4 }}
+                  >
                     <Text style={{ fontWeight: "700" }}>
                       {formatShortDate(issue.dateReported)} · {issue.priority}
                       <Text style={{ fontWeight: "600", color: colors.muted }}>
@@ -1739,38 +1802,8 @@ export default function FarmDetailScreen() {
                       {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}:{" "}
                       {issue.description}
                     </Text>
-                  </View>
-                  <RowActions
-                    editLabel="Edit issue"
-                    deleteLabel="Delete issue"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/issues/[issueId]",
-                        params: { id: farm.id, issueId: issue.id },
-                      })
-                    }
-                    onDelete={() =>
-                      Alert.alert("Delete issue?", "This cannot be undone.", [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => {
-                            try {
-                              deleteIssue(farm.id, issue.id);
-                              load();
-                            } catch (e) {
-                              Alert.alert(
-                                "Error",
-                                e instanceof Error ? e.message : "Could not delete",
-                              );
-                            }
-                          },
-                        },
-                      ])
-                    }
-                  />
-                </View>
+                  </Pressable>
+                </Swipeable>
               ))
             )}
           </Card>
@@ -1793,56 +1826,62 @@ export default function FarmDetailScreen() {
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
               data.litterEvents.map((e) => (
-                <View
+                <Swipeable
                   key={e.id}
-                  style={{
+                  overshootRight={false}
+                  friction={2}
+                  rightThreshold={40}
+                  containerStyle={{
                     marginTop: 10,
                     paddingTop: 10,
                     borderTopWidth: 1,
                     borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
                   }}
+                  renderRightActions={() => (
+                    <DeleteSwipeAction
+                      label="Delete litter event"
+                      onPress={() =>
+                        Alert.alert("Delete litter event?", "This cannot be undone.", [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Delete",
+                            style: "destructive",
+                            onPress: () => {
+                              try {
+                                deleteLitterEvent(farm.id, e.id);
+                                load();
+                              } catch (err) {
+                                Alert.alert(
+                                  "Error",
+                                  err instanceof Error ? err.message : "Could not delete",
+                                );
+                              }
+                            },
+                          },
+                        ])
+                      }
+                    />
+                  )}
                 >
-                  <View style={{ flex: 1, minWidth: 0 }}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit litter event ${formatShortDate(e.eventDate)}`}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/litter/[eventId]",
+                        params: { id: farm.id, eventId: e.id },
+                      })
+                    }
+                    style={{ backgroundColor: "#fff", paddingRight: 4 }}
+                  >
                     <Text style={{ fontWeight: "700" }}>
                       {formatShortDate(e.eventDate)} —{" "}
                       {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
                       {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
                     </Text>
                     {e.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{e.notes}</Text> : null}
-                  </View>
-                  <RowActions
-                    editLabel="Edit litter event"
-                    deleteLabel="Delete litter event"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/litter/[eventId]",
-                        params: { id: farm.id, eventId: e.id },
-                      })
-                    }
-                    onDelete={() =>
-                      Alert.alert("Delete litter event?", "This cannot be undone.", [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => {
-                            try {
-                              deleteLitterEvent(farm.id, e.id);
-                              load();
-                            } catch (err) {
-                              Alert.alert(
-                                "Error",
-                                err instanceof Error ? err.message : "Could not delete",
-                              );
-                            }
-                          },
-                        },
-                      ])
-                    }
-                  />
-                </View>
+                  </Pressable>
+                </Swipeable>
               ))
             )}
           </Card>
@@ -1865,56 +1904,62 @@ export default function FarmDetailScreen() {
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
               data.feedDeliveries.map((d) => (
-                <View
+                <Swipeable
                   key={d.id}
-                  style={{
+                  overshootRight={false}
+                  friction={2}
+                  rightThreshold={40}
+                  containerStyle={{
                     marginTop: 10,
                     paddingTop: 10,
                     borderTopWidth: 1,
                     borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
                   }}
+                  renderRightActions={() => (
+                    <DeleteSwipeAction
+                      label="Delete feed delivery"
+                      onPress={() =>
+                        Alert.alert("Delete feed delivery?", "This cannot be undone.", [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Delete",
+                            style: "destructive",
+                            onPress: () => {
+                              try {
+                                deleteFeedDelivery(d.id);
+                                load();
+                              } catch (err) {
+                                Alert.alert(
+                                  "Error",
+                                  err instanceof Error ? err.message : "Could not delete",
+                                );
+                              }
+                            },
+                          },
+                        ])
+                      }
+                    />
+                  )}
                 >
-                  <View style={{ flex: 1, minWidth: 0 }}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit feed delivery ${formatShortDate(d.deliveryDate)}`}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/feed/[deliveryId]",
+                        params: { id: farm.id, deliveryId: d.id },
+                      })
+                    }
+                    style={{ backgroundColor: "#fff", paddingRight: 4 }}
+                  >
                     <Text style={{ fontWeight: "700" }}>
                       {formatShortDate(d.deliveryDate)} — {formatNumber(d.poundsDelivered)} lbs
                       {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
                       {d.feedType ? ` · ${d.feedType}` : ""}
                       {d.feedMill ? ` · ${d.feedMill}` : ""}
                     </Text>
-                  </View>
-                  <RowActions
-                    editLabel="Edit feed delivery"
-                    deleteLabel="Delete feed delivery"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/feed/[deliveryId]",
-                        params: { id: farm.id, deliveryId: d.id },
-                      })
-                    }
-                    onDelete={() =>
-                      Alert.alert("Delete feed delivery?", "This cannot be undone.", [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => {
-                            try {
-                              deleteFeedDelivery(d.id);
-                              load();
-                            } catch (err) {
-                              Alert.alert(
-                                "Error",
-                                err instanceof Error ? err.message : "Could not delete",
-                              );
-                            }
-                          },
-                        },
-                      ])
-                    }
-                  />
-                </View>
+                  </Pressable>
+                </Swipeable>
               ))
             )}
           </Card>

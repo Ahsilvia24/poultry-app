@@ -1,5 +1,10 @@
 import type { AnyServiceForm, ServiceHouseRow, YesNo } from "./types";
-import { formatMinVentPair, formatServiceShortDate, yesNoLabel } from "./format";
+import {
+  formatMinVentPair,
+  formatServiceShortDate,
+  normalizeVentDoorTypes,
+  yesNoLabel,
+} from "./format";
 
 function esc(s: string) {
   return String(s ?? "")
@@ -145,7 +150,7 @@ export function serviceReportPdfHtml(form: Extract<AnyServiceForm, { kind: "serv
           ${checkRow("Ammonia Levels Are < 25 PPM In All Houses", form.ammoniaOk)}
           <tr><td>% Humidity</td><td>${esc(form.humidityPct ? `${form.humidityPct}%` : "")}</td></tr>
           <tr><td>Ventilation</td><td>${esc(form.ventModes.join(", "))}${form.ventModes.includes("tunnel") ? ` · fans ${esc(form.tunnelFanCount)}` : ""}</td></tr>
-          <tr><td>Vent Door Type</td><td>${esc(form.ventDoorType)}</td></tr>
+          <tr><td>Vent Door Type</td><td>${esc(normalizeVentDoorTypes(form).join(", "))}</td></tr>
           <tr><td>Opening / S.P.</td><td>${esc(form.ventOpeningInches)} / ${esc(form.staticPressure)}</td></tr>
           <tr><td>C.F.M./Ft2 Min Vent</td><td>${esc(form.cfmPerFt2MinVent)}</td></tr>
           <tr><td>Size and Number Of Fans Used</td><td>${esc(form.fansSizeAndCount)}</td></tr>
@@ -229,7 +234,7 @@ export function placementPdfHtml(form: Extract<AnyServiceForm, { kind: "placemen
           <tr><td>Amendment type</td><td>${esc(form.litterAmendmentType === "Pure7" ? "Pure 7" : form.litterAmendmentType)}</td></tr>
           ${checkRow("All Heaters Are On And Operational", form.heatersOk)}
           ${checkRow("Sensors at Bird Level", form.sensorsBirdLevelOk)}
-          <tr><td>Vent Door Type</td><td>${esc(form.ventDoorType)}</td></tr>
+          <tr><td>Vent Door Type</td><td>${esc(normalizeVentDoorTypes(form).join(", "))}</td></tr>
           <tr><td>Opening / S.P.</td><td>${esc(form.ventOpeningInches)} / ${esc(form.staticPressure)}</td></tr>
           <tr><td>C.F.M./Ft2 Min Vent</td><td>${esc(form.cfmPerFt2MinVent)}</td></tr>
           <tr><td>Fans</td><td>${esc(form.fansSizeAndCount)}</td></tr>

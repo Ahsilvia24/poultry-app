@@ -20,7 +20,11 @@ import type {
   ServiceReportForm,
   YesNo,
 } from "./types";
-import { formatMinVentPair, formatServiceShortDate } from "./format";
+import {
+  formatMinVentPair,
+  formatServiceShortDate,
+  normalizeVentDoorTypes,
+} from "./format";
 
 type FieldWidget = {
   x: number;
@@ -283,8 +287,8 @@ function buildServiceReportFields(
   markCheck(ctx, "Check Box19", data.ventModes.includes("tunnel"));
   setText(ctx, "Tunnel Fans", data.tunnelFanCount, 8);
 
-  markCheck(ctx, "Check Box20", data.ventDoorType === "ceiling");
-  markCheck(ctx, "Check Box21", data.ventDoorType === "sidewall");
+  markCheck(ctx, "Check Box20", data.ventDoorTypes.includes("ceiling"));
+  markCheck(ctx, "Check Box21", data.ventDoorTypes.includes("sidewall"));
   setText(ctx, "Text49", data.staticPressure, 8);
   setText(ctx, "Text50", data.ventOpeningInches, 8);
   setText(ctx, "CFM Ft2 Min Vent", data.cfmPerFt2MinVent, 8);
@@ -385,8 +389,8 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
   markYesNo(ctx, "Check Box133", "Check Box136", data.heatersOk);
   markYesNo(ctx, "Check Box127", "Check Box128", data.sensorsBirdLevelOk);
 
-  markCheck(ctx, "Check Box137", data.ventDoorType === "ceiling");
-  markCheck(ctx, "Check Box138", data.ventDoorType === "sidewall");
+  markCheck(ctx, "Check Box137", data.ventDoorTypes.includes("ceiling"));
+  markCheck(ctx, "Check Box138", data.ventDoorTypes.includes("sidewall"));
   setText(ctx, "Text68", data.staticPressure, 7);
   setText(ctx, "Text69", data.ventOpeningInches, 7);
   setText(ctx, "Text70", data.cfmPerFt2MinVent, 7);
@@ -403,8 +407,9 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
     "Text88",
     formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
     6,
-    // Lift off the printed bottom rule of the Recommended timer cell.
-    { coverPrinted: "field", yNudge: 3.5 },
+    // Lift text off the printed bottom rule; no white wipe — the field
+    // widget is taller than the printed cell and would cover the box below.
+    { yNudge: 3.5 },
   );
 
   const sorted = [...data.houses].sort((a, b) => a.houseNumber - b.houseNumber);
@@ -567,8 +572,18 @@ function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
 }
 
 export async function buildServiceFormPdf(form: AnyServiceForm): Promise<string> {
-  if (form.kind === "service_report") return buildServiceReportPdf(form);
-  if (form.kind === "placement") return buildPlacementPdf(form);
+  if (form.kind === "service_report") {
+    return buildServiceReportPdf({
+      ...form,
+      ventDoorTypes: normalizeVentDoorTypes(form),
+    });
+  }
+  if (form.kind === "placement") {
+    return buildPlacementPdf({
+      ...form,
+      ventDoorTypes: normalizeVentDoorTypes(form),
+    });
+  }
   return buildPrebroodPdf(form);
 }
 

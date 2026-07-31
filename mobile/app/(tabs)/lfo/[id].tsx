@@ -399,17 +399,20 @@ export default function EditLfoScreen() {
           {ready ? (
             <>
               <Card>
-                <DatePickerField
-                  label="Order date"
-                  value={orderDate}
-                  onChange={setOrderDate}
-                />
-                <View style={{ marginTop: 12 }}>
+                <View style={styles.row}>
+                  <View style={{ flex: 1 }}>
+                    <DatePickerField
+                      label="Order date"
+                      value={orderDate}
+                      onChange={setOrderDate}
+                    />
+                  </View>
                   <FieldButton
                     label="Consumption rate (lbs/bird/day)"
                     value={consumptionRate}
                     active={activeField?.kind === "rate"}
                     onPress={() => focusField({ kind: "rate" })}
+                    style={{ flex: 1 }}
                     fieldRef={bindFieldRef("rate")}
                   />
                 </View>
@@ -462,27 +465,33 @@ export default function EditLfoScreen() {
                         fieldRef={bindFieldRef(`binB:${house.houseId}`)}
                       />
                     </View>
-                    <View style={{ marginTop: 4 }}>
-                      <DatePickerField
-                        label="Feed up date"
-                        value={house.feedUpDate}
-                        onChange={(date) => updateHouse(house.houseId, { feedUpDate: date })}
-                      />
+                    <View style={[styles.row, { marginTop: 4 }]}>
+                      <View style={{ flex: 1 }}>
+                        <DatePickerField
+                          label="Feed up date"
+                          value={house.feedUpDate}
+                          onChange={(date) => updateHouse(house.houseId, { feedUpDate: date })}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <TimeScrollPickerField
+                          label="Feed up time"
+                          value={house.feedUpTime}
+                          onChange={(time) => updateHouse(house.houseId, { feedUpTime: time })}
+                        />
+                        {house.feedUpTime ? (
+                          <Pressable
+                            onPress={() => updateHouse(house.houseId, { feedUpTime: "" })}
+                            style={{ alignSelf: "flex-start", marginTop: 6 }}
+                            hitSlop={8}
+                          >
+                            <Text style={{ color: colors.muted, fontWeight: "700" }}>
+                              Clear time
+                            </Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
                     </View>
-                    <TimeScrollPickerField
-                      label="Feed up time"
-                      value={house.feedUpTime}
-                      onChange={(time) => updateHouse(house.houseId, { feedUpTime: time })}
-                    />
-                    {house.feedUpTime ? (
-                      <Pressable
-                        onPress={() => updateHouse(house.houseId, { feedUpTime: "" })}
-                        style={{ alignSelf: "flex-start", marginTop: 6 }}
-                        hitSlop={8}
-                      >
-                        <Text style={{ color: colors.muted, fontWeight: "700" }}>Clear time</Text>
-                      </Pressable>
-                    ) : null}
 
                     {result ? (
                       <View style={{ marginTop: 12, gap: 4 }}>

@@ -489,7 +489,7 @@ export default function DashboardScreen() {
                   overshootRight={false}
                   friction={2}
                   rightThreshold={40}
-                  containerStyle={{ marginBottom: 12 }}
+                  containerStyle={{ marginBottom: 6 }}
                   onSwipeableOpen={(direction) => {
                     if (direction === "right") makeInactive(farm.id);
                   }}
@@ -503,7 +503,7 @@ export default function DashboardScreen() {
                         alignItems: "center",
                         width: 100,
                         borderRadius: 14,
-                        marginLeft: 8,
+                        marginLeft: 6,
                       }}
                     >
                       <Ionicons name="pause-circle-outline" size={22} color="#fff" />
