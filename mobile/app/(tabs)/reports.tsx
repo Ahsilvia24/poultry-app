@@ -42,8 +42,11 @@ function paramId(value: string | string[] | undefined) {
   return value ?? "";
 }
 
-function matrixToTsv(matrix: ReturnType<typeof getReports>) {
-  const header = ["House", ...matrix.dates.map(formatDateHeader), "Total"];
+function matrixToTsv(
+  matrix: ReturnType<typeof getReports>,
+  rowHeaderLabel: string,
+) {
+  const header = [rowHeaderLabel, ...matrix.dates.map(formatDateHeader), "Total"];
   const lines = matrix.rows.map((row) => {
     const values = matrix.dates.map((d) => row.byDate[d] ?? 0);
     const total = values.reduce((sum, n) => sum + n, 0);
@@ -66,6 +69,13 @@ export default function ReportsScreen() {
   );
   const [copied, setCopied] = useState(false);
 
+  const selectedFarmName = useMemo(() => {
+    if (!farmId) return null;
+    return farms.find((f) => f.id === farmId)?.farmName ?? null;
+  }, [farmId, farms]);
+
+  const rowHeaderLabel = selectedFarmName || "House";
+
   useEffect(() => {
     if (farmIdParam) {
       setFarmId(farmIdParam);
@@ -84,7 +94,7 @@ export default function ReportsScreen() {
       return;
     }
     try {
-      await Clipboard.setStringAsync(matrixToTsv(matrix));
+      await Clipboard.setStringAsync(matrixToTsv(matrix, rowHeaderLabel));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -208,7 +218,12 @@ export default function ReportsScreen() {
                       paddingBottom: 8,
                     }}
                   >
-                    <Text style={{ width: 110, fontWeight: "800", color: colors.muted }}>House</Text>
+                    <Text
+                      style={{ width: 110, fontWeight: "800", color: colors.muted }}
+                      numberOfLines={1}
+                    >
+                      {rowHeaderLabel}
+                    </Text>
                     {matrix.dates.map((d) => (
                       <Text
                         key={d}
