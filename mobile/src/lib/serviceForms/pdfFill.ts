@@ -58,20 +58,6 @@ function widgetRect(map: FieldMap, name: string, index = 0): FieldWidget | null 
   return list[Math.min(index, list.length - 1)] ?? null;
 }
 
-/** White-out a mapped widget so printed template ink doesn't show through. */
-function coverWidget(ctx: Ctx, name: string, index = 0) {
-  const r = widgetRect(ctx.map, name, index);
-  if (!r) return;
-  ctx.page.drawRectangle({
-    x: r.x,
-    y: r.y,
-    width: r.w,
-    height: r.h,
-    color: rgb(1, 1, 1),
-    borderWidth: 0,
-  });
-}
-
 const HOUSE_WEEK_FIELDS = (n: number) =>
   [
     `Wkl${n}`,
@@ -97,25 +83,29 @@ function stampServiceReportHouseRow(ctx: Ctx, house: ServiceHouseRow, slot: numb
 
 /**
  * Continuation pages reuse the template with houses 1–8 printed.
- * Cover the # cell and write the real house number (9–16, …).
+ * Cover only the # digit (inset so row/column rules stay visible) and write
+ * the real house number (9–16, …).
  */
 function stampContinuationHouseNumber(ctx: Ctx, houseNumber: number, slot: number) {
   const ageR = widgetRect(ctx.map, `Age${slot}`);
   if (!ageR) return;
-  const houseLeft = 12;
-  const houseWidth = Math.max(18, ageR.x - houseLeft - 0.75);
+  // Keep wipe inside the # cell — row gaps are ~1.4pt; expanding past the
+  // Age widget height paints white over the printed horizontal rules.
+  const houseLeft = 13.5;
+  const houseWidth = Math.max(14, ageR.x - houseLeft - 1.5);
+  const insetY = 1.5;
   ctx.page.drawRectangle({
     x: houseLeft,
-    y: ageR.y - 3,
+    y: ageR.y + insetY,
     width: houseWidth,
-    height: ageR.h + 6,
+    height: Math.max(8, ageR.h - insetY * 2),
     color: rgb(1, 1, 1),
     borderWidth: 0,
   });
   const label = String(houseNumber);
   const size = label.length > 1 ? 7.5 : 8;
   ctx.page.drawText(label, {
-    x: houseLeft + (label.length > 1 ? 3 : 5),
+    x: houseLeft + (label.length > 1 ? 2 : 4),
     y: ageR.y + Math.max(0.5, (ageR.h - size) * 0.35),
     size,
     font: ctx.font,
@@ -587,15 +577,9 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
       const h = slice[i];
       if (!h) continue;
       const slot = i + 1;
+      // Only wipe the printed # (1–8). Do not white-out age/week/temp cells —
+      // those full-widget covers erased the house-table grid on page 2.
       stampContinuationHouseNumber(extraCtx, h.houseNumber, slot);
-      // Clear age / placed cells before fill (template may have guides).
-      coverWidget(extraCtx, `Age${slot}`);
-      coverWidget(extraCtx, `No Placed${slot}`);
-      for (const weekName of HOUSE_WEEK_FIELDS(slot)) {
-        coverWidget(extraCtx, weekName);
-      }
-      coverWidget(extraCtx, `Current Temp${slot}`);
-      coverWidget(extraCtx, `Mortality To Date${slot}`);
       stampServiceReportHouseRow(extraCtx, h, slot);
     }
   }
