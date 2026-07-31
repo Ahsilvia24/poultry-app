@@ -1,4 +1,13 @@
-import { Pressable, Text, TextInput, View, type ScrollView, type TextInputProps } from "react-native";
+import {
+  Keyboard,
+  Platform,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+  type ScrollView,
+  type TextInputProps,
+} from "react-native";
 import { useRef } from "react";
 import { colors, styles } from "../../theme";
 import type { YesNo } from "../../lib/serviceForms/types";
@@ -364,12 +373,21 @@ export function CommentsField({
   const sectionY = useRef(0);
 
   function focusComments() {
-    setTimeout(() => {
+    const scrollToComments = () => {
       scrollRef.current?.scrollTo({
         y: Math.max(0, sectionY.current - 8),
         animated: true,
       });
-    }, 300);
+    };
+    // Wait for keyboard insets to settle so we don't overshoot into blank space.
+    const sub = Keyboard.addListener("keyboardDidShow", () => {
+      sub.remove();
+      requestAnimationFrame(scrollToComments);
+    });
+    setTimeout(() => {
+      sub.remove();
+      scrollToComments();
+    }, 450);
   }
 
   return (

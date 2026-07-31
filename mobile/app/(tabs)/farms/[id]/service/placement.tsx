@@ -108,16 +108,20 @@ export default function PlacementChecklistScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
+      {/* iOS: ScrollView keyboard insets only. Pairing that with
+          KeyboardAvoidingView padding left users stuck in blank bottom space. */}
       <KeyboardAvoidingView
         style={styles.screen}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "android" ? "height" : undefined}
+        enabled={Platform.OS === "android"}
       >
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[styles.content, { paddingBottom: 280 }]}
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.content, { paddingBottom: 48 }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
+        automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
       >
         <Pressable
           onPress={() => {
