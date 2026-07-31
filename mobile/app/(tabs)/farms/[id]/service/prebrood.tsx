@@ -275,7 +275,7 @@ export default function PrebroodChecklistScreen() {
           {form.generatorServicedOk === "yes" ? (
             <View style={{ marginBottom: 10 }}>
               <DatePickerField
-                label={`Service date (${formatServiceShortDate(form.generatorServiceDate || form.date) || "dd MMM yy"})`}
+                label="Service date"
                 value={form.generatorServiceDate || form.date}
                 onChange={(generatorServiceDate) => patch({ generatorServiceDate })}
               />
