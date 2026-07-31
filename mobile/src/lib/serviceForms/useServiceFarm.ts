@@ -79,14 +79,13 @@ export function useCompleteServiceForm(farmId: string, opts?: {
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [sharing, setSharing] = useState(false);
   const editing = Boolean(opts?.serviceFormId);
 
   async function complete(input: {
     form: AnyServiceForm;
     generatorHours?: number | null;
   }) {
-    if (saving || sharing) return;
+    if (saving) return;
     setSaving(true);
     try {
       completeServiceForm({
@@ -99,9 +98,16 @@ export function useCompleteServiceForm(farmId: string, opts?: {
         serviceFormId: opts?.serviceFormId ?? null,
         existingVisitId: opts?.serviceFormId ? null : opts?.existingVisitId ?? null,
       });
+      try {
+        await shareServiceFormPdf(input.form);
+      } catch {
+        // Visit is saved even if share sheet fails / is dismissed.
+      }
       Alert.alert(
         "Saved",
-        editing ? "Changes saved." : "Visit logged.",
+        editing
+          ? "Changes saved. Use the share sheet to Save to Files, AirDrop, or email the PDF."
+          : "Visit logged. Use the share sheet to Save to Files, AirDrop, or email the PDF.",
         [
           {
             text: editing || opts?.existingVisitId ? "Done" : "Back to farm",
@@ -130,20 +136,5 @@ export function useCompleteServiceForm(farmId: string, opts?: {
     }
   }
 
-  async function sharePdf(form: AnyServiceForm) {
-    if (saving || sharing) return;
-    setSharing(true);
-    try {
-      await shareServiceFormPdf(form);
-    } catch (e) {
-      Alert.alert(
-        "Could not share PDF",
-        e instanceof Error ? e.message : "PDF share failed",
-      );
-    } finally {
-      setSharing(false);
-    }
-  }
-
-  return { complete, sharePdf, saving, sharing, editing };
+  return { complete, saving, editing };
 }

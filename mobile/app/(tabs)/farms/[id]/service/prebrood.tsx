@@ -45,7 +45,7 @@ export default function PrebroodChecklistScreen() {
   const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "prebrood");
   const editVisitId = useEditVisitIdParam();
-  const { complete, sharePdf, saving, sharing, editing } = useCompleteServiceForm(farmId, {
+  const { complete, saving, editing } = useCompleteServiceForm(farmId, {
     serviceFormId: existing?.id ?? null,
     existingVisitId: existing ? null : editVisitId,
   });
@@ -293,9 +293,7 @@ export default function PrebroodChecklistScreen() {
         <ServiceFormActions
           editing={editing}
           saving={saving}
-          sharing={sharing}
           onComplete={() => void complete({ form })}
-          onSharePdf={() => void sharePdf(form)}
         />
       </ScrollView>
       </KeyboardAvoidingView>

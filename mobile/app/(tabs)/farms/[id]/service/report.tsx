@@ -66,7 +66,7 @@ export default function ServiceReportScreen() {
   const { detail, farmName } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "service_report");
   const editVisitId = useEditVisitIdParam();
-  const { complete, sharePdf, saving, sharing, editing } = useCompleteServiceForm(farmId, {
+  const { complete, saving, editing } = useCompleteServiceForm(farmId, {
     serviceFormId: existing?.id ?? null,
     existingVisitId: existing ? null : editVisitId,
   });
@@ -585,9 +585,7 @@ export default function ServiceReportScreen() {
         <ServiceFormActions
           editing={editing}
           saving={saving}
-          sharing={sharing}
           onComplete={() => void complete({ form })}
-          onSharePdf={() => void sharePdf(form)}
         />
       </ScrollView>
       </KeyboardAvoidingView>
