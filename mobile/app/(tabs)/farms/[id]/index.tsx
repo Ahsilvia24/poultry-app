@@ -1427,45 +1427,75 @@ export default function FarmDetailScreen() {
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
               data.visits.map((v) => (
-                <View
+                <Swipeable
                   key={v.id}
-                  style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
-                    borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/visits/[visitId]",
-                        params: { id: farm.id, visitId: v.id },
-                      })
-                    }
-                    style={{ flex: 1, minWidth: 0 }}
-                  >
-                    <Text style={{ fontWeight: "700" }}>
-                      {formatShortDate(v.visitDate)} —{" "}
-                      {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
-                    </Text>
-                    {v.followUpRequired ? (
-                      <Text style={{ color: "#b45309", fontWeight: "600", marginTop: 2 }}>
-                        Follow-up due
+                  overshootRight={false}
+                  friction={2}
+                  rightThreshold={40}
+                  containerStyle={{ marginTop: 10 }}
+                  renderRightActions={() => (
+                    <Pressable
+                      accessibilityLabel="Delete visit"
+                      onPress={() => confirmDeleteVisit(v.id, v.visitDate)}
+                      style={{
+                        backgroundColor: colors.danger,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        width: 88,
+                        borderRadius: 12,
+                        marginLeft: 8,
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={22} color="#fff" />
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontWeight: "800",
+                          fontSize: 12,
+                          marginTop: 4,
+                        }}
+                      >
+                        Delete
                       </Text>
-                    ) : null}
-                    {v.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text> : null}
-                  </Pressable>
-                  <RowActions
-                    deleteLabel="Delete visit"
-                    onDelete={() => confirmDeleteVisit(v.id, v.visitDate)}
-                  />
-                </View>
+                    </Pressable>
+                  )}
+                >
+                  <View
+                    style={{
+                      paddingTop: 10,
+                      borderTopWidth: 1,
+                      borderTopColor: "#f5f5f4",
+                      backgroundColor: "#fff",
+                    }}
+                  >
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/(tabs)/farms/[id]/visits/[visitId]",
+                          params: { id: farm.id, visitId: v.id },
+                        })
+                      }
+                      style={({ pressed }) => ({
+                        opacity: pressed ? 0.85 : 1,
+                      })}
+                    >
+                      <Text style={{ fontWeight: "700" }}>
+                        {formatShortDate(v.visitDate)} —{" "}
+                        {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
+                      </Text>
+                      {v.followUpRequired ? (
+                        <Text style={{ color: "#b45309", fontWeight: "600", marginTop: 2 }}>
+                          Follow-up due
+                        </Text>
+                      ) : null}
+                      {v.notes ? (
+                        <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text>
+                      ) : null}
+                    </Pressable>
+                  </View>
+                </Swipeable>
               ))
             )}
           </Card>
