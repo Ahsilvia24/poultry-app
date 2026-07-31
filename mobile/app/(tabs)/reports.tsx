@@ -73,7 +73,8 @@ export default function ReportsScreen() {
     return farms.find((f) => f.id === farmId)?.farmName ?? null;
   }, [farmId, farms]);
 
-  const rowHeaderLabel = selectedFarmName || "House";
+  // One farm → farm name; All farms → "Farm" (rows are "FarmName H#").
+  const rowHeaderLabel = selectedFarmName || "Farm";
 
   useEffect(() => {
     if (farmIdParam) {
