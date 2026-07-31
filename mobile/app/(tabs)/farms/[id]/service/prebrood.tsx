@@ -20,6 +20,7 @@ import {
   CommentsField,
   CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
+import { PullFarmDataButton } from "../../../../../src/components/serviceForms/PullFarmDataButton";
 import { Card, PageHeader } from "../../../../../src/components/ui";
 import { createPrebroodDraft } from "../../../../../src/lib/serviceForms/defaults";
 import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/format";
@@ -104,6 +105,15 @@ export default function PrebroodChecklistScreen() {
         <PageHeader
           title={editing ? "Edit Prebrood Checklist" : "Prebrood Checklist"}
           subtitle={farmName}
+          actions={
+            editing ? (
+              <PullFarmDataButton
+                farmId={farmId}
+                form={form}
+                onPulled={(next) => setForm(next as PrebroodForm)}
+              />
+            ) : null
+          }
         />
 
         <Card>
