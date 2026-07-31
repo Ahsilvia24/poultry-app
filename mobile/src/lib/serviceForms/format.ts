@@ -27,7 +27,7 @@ export function yesNoLabel(v: string) {
 export const HUMIDITY_OPTIONS = [
   { value: "", label: "Blank" },
   ...Array.from({ length: 21 }, (_, i) => {
-    const n = i * 5;
+    const n = 100 - i * 5;
     return { value: String(n), label: `${n}%` };
   }),
 ];
