@@ -67,7 +67,7 @@ function mortalityEntered(row: DayRow) {
 
 /**
  * Past/today with no mortality total yet — Loss cell shows !.
- * Day 0 is usually left blank (entry starts on day 1), so it never prompts.
+ * Day 0 is placement (dashes, not entered), so it never prompts.
  * Culls are optional metadata and do not clear the !.
  */
 function needsEntry(row: DayRow, asOfDateKey: string) {
@@ -187,10 +187,10 @@ function buildRows(
     rows.push({
       age,
       mortalityDate,
-      // Blank until entered — don't seed "0" or clearing one cell leaves a phantom zero
-      dailyMortalityCount: existing ? String(existing.dailyMortalityCount) : "",
-      cullCount: existing ? String(existing.cullCount) : "",
-      hasEntry: Boolean(existing),
+      // Day 0 is placement — never entered. Blank until entered otherwise.
+      dailyMortalityCount: age === 0 ? "" : existing ? String(existing.dailyMortalityCount) : "",
+      cullCount: age === 0 ? "" : existing ? String(existing.cullCount) : "",
+      hasEntry: age === 0 ? false : Boolean(existing),
     });
   }
   return rows;
@@ -316,8 +316,10 @@ export function MortalityEntryForm({
     setSaveStatus("saving");
     setError(null);
 
-    const entered = currentRows.filter((r) => r.hasEntry);
-    const clearDates = currentRows.filter((r) => !r.hasEntry).map((r) => r.mortalityDate);
+    const entered = currentRows.filter((r) => r.hasEntry && r.age > 0);
+    const clearDates = currentRows
+      .filter((r) => !r.hasEntry || r.age === 0)
+      .map((r) => r.mortalityDate);
     if (entered.length === 0 && clearDates.length === 0) {
       setSaveStatus("idle");
       return;
@@ -461,6 +463,7 @@ export function MortalityEntryForm({
   }
 
   function updateRow(age: number, patch: Partial<Pick<DayRow, "dailyMortalityCount" | "cullCount">>) {
+    if (age === 0) return;
     setRows((prev) => {
       const next = prev.map((r) => {
         if (r.age !== age) return r;
@@ -660,6 +663,7 @@ export function MortalityEntryForm({
                         <tbody>
                           {group.rows.map((row) => {
                             const loss = Number(row.dailyMortalityCount || 0);
+                            const isDayZero = row.age === 0;
                             return (
                               <tr
                                 key={row.mortalityDate}
@@ -667,11 +671,26 @@ export function MortalityEntryForm({
                                 className="border-b border-stone-100"
                               >
                                 <td className="sticky left-0 z-10 bg-white px-3 py-2 font-semibold text-stone-900">
-                                  {row.age}
+                                  {isDayZero ? "Day 0" : row.age}
                                 </td>
                                 <td className="whitespace-nowrap px-3 py-2 text-stone-600">
                                   {formatDayLabel(row.mortalityDate)}
+                                  {isDayZero ? " · placement" : ""}
                                 </td>
+                                {isDayZero ? (
+                                  <>
+                                    <td className="px-3 py-2 text-center font-semibold text-stone-400">
+                                      —
+                                    </td>
+                                    <td className="px-3 py-2 text-center font-semibold text-stone-400">
+                                      —
+                                    </td>
+                                    <td className="px-3 py-2 text-right font-semibold text-stone-400">
+                                      —
+                                    </td>
+                                  </>
+                                ) : (
+                                  <>
                                 <td className="px-2 py-1.5">
                                   <Input
                                     aria-label={`Culls day ${row.age}`}
@@ -745,6 +764,8 @@ export function MortalityEntryForm({
                                     loss
                                   ) : null}
                                 </td>
+                                  </>
+                                )}
                               </tr>
                             );
                           })}
