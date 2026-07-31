@@ -352,7 +352,7 @@ export default function PlacementChecklistScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>
-              {editing ? "Save changes · Share PDF" : "Complete · Log visit · Share PDF"}
+              {editing ? "Save changes" : "Complete · Log visit · Share PDF"}
             </Text>
           )}
         </Pressable>

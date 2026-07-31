@@ -25,7 +25,8 @@ import {
 import { birdAgeFromPlacement } from "../lib/mortality";
 import { todayKey } from "../lib/ids";
 import { VISIT_TYPE_LABELS, VISIT_TYPE_OPTIONS } from "../lib/visits";
-import type { ServiceFormKind } from "../lib/serviceForms/types";
+import type { AnyServiceForm, ServiceFormKind } from "../lib/serviceForms/types";
+import { shareServiceFormPdf } from "../lib/serviceForms/sharePdf";
 import { colors, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
@@ -131,6 +132,7 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sharingPdf, setSharingPdf] = useState(false);
 
   const birdAge =
     placementDate && visitDate
@@ -362,7 +364,9 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
                 Checklist
               </Text>
               <Text style={{ color: colors.muted, marginBottom: 12, lineHeight: 20 }}>
-                Open the saved checklist to make changes and export a new PDF.
+                {linkedServiceForm
+                  ? "Open the saved checklist to make changes, or share the PDF from here."
+                  : "Open the checklist to fill it in for this visit."}
               </Text>
               <PrimaryButton
                 label={serviceFormCta.label}
@@ -380,6 +384,33 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
                   })
                 }
               />
+              {linkedServiceForm?.payload ? (
+                sharingPdf ? (
+                  <ActivityIndicator color={colors.accent} style={{ marginTop: 10 }} />
+                ) : (
+                  <PrimaryButton
+                    label="Share PDF"
+                    secondary
+                    style={{ marginTop: 10 }}
+                    onPress={async () => {
+                      if (sharingPdf) return;
+                      setSharingPdf(true);
+                      try {
+                        await shareServiceFormPdf(
+                          linkedServiceForm.payload as AnyServiceForm,
+                        );
+                      } catch (e) {
+                        Alert.alert(
+                          "Could not share PDF",
+                          e instanceof Error ? e.message : "Share failed",
+                        );
+                      } finally {
+                        setSharingPdf(false);
+                      }
+                    }}
+                  />
+                )
+              ) : null}
             </Card>
           ) : null}
         </ScrollView>
