@@ -23,10 +23,10 @@ export default function SupportPage() {
           <div>
             <p className="text-sm font-semibold text-stone-500">Email</p>
             <a
-              href="mailto:alexsilvia24@yahoo.com"
+              href="mailto:talentpro024@gmail.com"
               className="font-semibold text-emerald-800 underline-offset-2 hover:underline"
             >
-              alexsilvia24@yahoo.com
+              talentpro024@gmail.com
             </a>
           </div>
           <div>
