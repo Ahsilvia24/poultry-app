@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -23,6 +22,7 @@ import {
   CompactBackupSettings,
   MultiToggleField,
 } from "../../../../../src/components/serviceForms/fields";
+import { ServiceFormActions } from "../../../../../src/components/serviceForms/ServiceFormActions";
 import { Card, PageHeader } from "../../../../../src/components/ui";
 import { createPlacementDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
@@ -61,7 +61,7 @@ export default function PlacementChecklistScreen() {
   const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "placement");
   const editVisitId = useEditVisitIdParam();
-  const { complete, saving, editing } = useCompleteServiceForm(farmId, {
+  const { complete, sharePdf, saving, sharing, editing } = useCompleteServiceForm(farmId, {
     serviceFormId: existing?.id ?? null,
     existingVisitId: existing ? null : editVisitId,
   });
@@ -357,26 +357,13 @@ export default function PlacementChecklistScreen() {
           scrollRef={scrollRef}
         />
 
-        <Pressable
-          disabled={saving}
-          onPress={() => complete({ form })}
-          style={{
-            marginTop: 16,
-            backgroundColor: colors.accentDark,
-            borderRadius: 12,
-            paddingVertical: 16,
-            alignItems: "center",
-            opacity: saving ? 0.7 : 1,
-          }}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>
-              {editing ? "Save changes · Share PDF" : "Complete · Log visit · Share PDF"}
-            </Text>
-          )}
-        </Pressable>
+        <ServiceFormActions
+          editing={editing}
+          saving={saving}
+          sharing={sharing}
+          onComplete={() => void complete({ form })}
+          onSharePdf={() => void sharePdf(form)}
+        />
       </ScrollView>
       </KeyboardAvoidingView>
 
