@@ -315,12 +315,14 @@ export function CompactBackupSettings({
           label="Heat"
           value={heat}
           onChange={(backupHeat) => onChange({ backupHeat })}
+          keyboardType="decimal-pad"
           flexBasis="48%"
         />
         <CompactCell
           label="Cool"
           value={cool}
           onChange={(backupCool) => onChange({ backupCool })}
+          keyboardType="decimal-pad"
           flexBasis="48%"
         />
       </View>
@@ -329,16 +331,19 @@ export function CompactBackupSettings({
           label="Stage 1"
           value={stage1}
           onChange={(backupStage1) => onChange({ backupStage1 })}
+          keyboardType="decimal-pad"
         />
         <CompactCell
           label="Stage 2"
           value={stage2}
           onChange={(backupStage2) => onChange({ backupStage2 })}
+          keyboardType="decimal-pad"
         />
         <CompactCell
           label="Stage 3"
           value={stage3}
           onChange={(backupStage3) => onChange({ backupStage3 })}
+          keyboardType="decimal-pad"
         />
       </View>
     </View>

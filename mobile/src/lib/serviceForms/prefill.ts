@@ -16,6 +16,7 @@ type FarmHouse = {
   totalFanCFM: number | null;
   numberOfFans: number | null;
   loggedTemp?: string | null;
+  flockNumber?: string | null;
 };
 
 type FarmDetailLike = {
@@ -103,4 +104,11 @@ export function mergeLiveHouseRows(
       ammoniaPpm: prev.ammoniaPpm,
     };
   });
+}
+
+/** Flock # for Service Report — house 1 only (not joined multi-flock string). */
+export function house1FlockNumber(detail: FarmDetailLike): string {
+  const sorted = [...detail.houses].sort((a, b) => a.houseNumber - b.houseNumber);
+  const h1 = sorted.find((h) => h.houseNumber === 1) ?? sorted[0];
+  return h1?.flockNumber?.trim() || "";
 }
