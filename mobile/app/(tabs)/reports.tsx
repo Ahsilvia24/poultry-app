@@ -43,10 +43,10 @@ function formatMdY(dateKey: string) {
   });
 }
 
-/** DDMMMYY — e.g. 31Jul26 */
+/** DD MMM YY — e.g. 31 Jul 26 */
 function formatVisitDate(dateKey: string) {
   try {
-    return format(parseDateKey(dateKey), "ddMMMyy");
+    return format(parseDateKey(dateKey), "dd MMM yy");
   } catch {
     return dateKey;
   }
