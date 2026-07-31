@@ -40,8 +40,8 @@ export const PROCESSING_PLANT_OPTIONS = ["Heavener", "Stigler"] as const;
 export const VISIT_TYPE_LABELS: Record<string, string> = {
   ROUTINE_SERVICE: "Routine service visit",
   PLACEMENT: "Placement",
-  SEVEN_DAY: "7-day visit",
-  WEIGH_DAY: "Weigh day",
+  SEVEN_DAY: "Weights",
+  WEIGH_DAY: "Last Feed Order",
   VACCINATION: "Vaccination",
   MEDICATION: "Medication",
   EQUIPMENT_ISSUE: "Equipment issue",
