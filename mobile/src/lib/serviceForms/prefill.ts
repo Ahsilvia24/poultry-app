@@ -81,3 +81,26 @@ export function currentFlockWeek(detail: FarmDetailLike): number {
   if (withAge?.ageDays == null) return 1;
   return flockWeekFromAge(Math.max(0, withAge.ageDays));
 }
+
+/**
+ * Refresh live farm-derived house fields (age, placed, mortality, weeks, temp)
+ * while keeping user-entered litter / ammonia / bin values from the open form.
+ */
+export function mergeLiveHouseRows(
+  detail: FarmDetailLike,
+  existing: ServiceHouseRow[],
+): ServiceHouseRow[] {
+  const live = prefillHouseRows(detail);
+  const byNumber = new Map(existing.map((h) => [h.houseNumber, h]));
+  return live.map((row) => {
+    const prev = byNumber.get(row.houseNumber);
+    if (!prev) return row;
+    return {
+      ...row,
+      binA: prev.binA,
+      binB: prev.binB,
+      litterTemp: prev.litterTemp,
+      ammoniaPpm: prev.ammoniaPpm,
+    };
+  });
+}

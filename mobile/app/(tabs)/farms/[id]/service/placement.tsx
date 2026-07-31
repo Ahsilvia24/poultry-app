@@ -22,6 +22,7 @@ import {
   CompactHouseValueGrid,
   CompactBackupSettings,
 } from "../../../../../src/components/serviceForms/fields";
+import { PullFarmDataButton } from "../../../../../src/components/serviceForms/PullFarmDataButton";
 import { Card, PageHeader } from "../../../../../src/components/ui";
 import { createPlacementDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
@@ -135,6 +136,15 @@ export default function PlacementChecklistScreen() {
         <PageHeader
           title={editing ? "Edit Placement Checklist" : "Placement Checklist"}
           subtitle={farmName}
+          actions={
+            editing ? (
+              <PullFarmDataButton
+                farmId={farmId}
+                form={form}
+                onPulled={(next) => setForm(next as PlacementForm)}
+              />
+            ) : null
+          }
         />
 
         <Card>

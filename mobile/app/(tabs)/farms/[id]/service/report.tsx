@@ -24,6 +24,7 @@ import {
   CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
 import { TimeScrollPickerField } from "../../../../../src/components/TimeScrollPicker";
+import { PullFarmDataButton } from "../../../../../src/components/serviceForms/PullFarmDataButton";
 import { Card, PageHeader } from "../../../../../src/components/ui";
 import { createServiceReportDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
@@ -152,6 +153,15 @@ export default function ServiceReportScreen() {
         <PageHeader
           title={editing ? "Edit Service Report" : "Service Report"}
           subtitle={farmName}
+          actions={
+            editing ? (
+              <PullFarmDataButton
+                farmId={farmId}
+                form={form}
+                onPulled={(next) => setForm(next as ServiceReportForm)}
+              />
+            ) : null
+          }
         />
 
         <Card>
