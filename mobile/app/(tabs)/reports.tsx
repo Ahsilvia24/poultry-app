@@ -179,6 +179,7 @@ export default function ReportsScreen() {
                 <ClipboardIconButton
                   accessibilityLabel="Copy mortality report"
                   color={colors.accentDark}
+                  emptyMessage="Run a report with data first."
                   getText={() => {
                     if (matrix.rows.length === 0) return "";
                     return matrixToTsv(matrix, rowHeaderLabel);

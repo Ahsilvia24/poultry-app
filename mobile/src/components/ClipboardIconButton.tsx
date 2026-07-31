@@ -10,12 +10,14 @@ import { colors } from "../theme";
 export function ClipboardIconButton({
   getText,
   accessibilityLabel = "Copy",
+  emptyMessage = "There is no content to copy yet.",
   color = colors.muted,
   activeColor = colors.accentDark,
   size = 20,
 }: {
   getText: () => string | Promise<string>;
   accessibilityLabel?: string;
+  emptyMessage?: string;
   color?: string;
   activeColor?: string;
   size?: number;
@@ -34,7 +36,7 @@ export function ClipboardIconButton({
         try {
           const text = await getText();
           if (!text.trim()) {
-            Alert.alert("Nothing to copy", "There is no content to copy yet.");
+            Alert.alert("Nothing to copy", emptyMessage);
             return;
           }
           const Clipboard = await import("expo-clipboard");
