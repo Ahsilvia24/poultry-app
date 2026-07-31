@@ -384,7 +384,7 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
     formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
     6,
     // Lift off the printed bottom rule of the Recommended timer cell.
-    { coverPrinted: "field", yNudge: 2.5 },
+    { coverPrinted: "field", yNudge: 3.5 },
   );
 
   const sorted = [...data.houses].sort((a, b) => a.houseNumber - b.houseNumber);
