@@ -482,7 +482,6 @@ export default function ServiceReportScreen() {
             label="Inches of water column"
             value={form.waterColumnInches}
             onChange={(waterColumnInches) => patch({ waterColumnInches })}
-            placeholder="4-6"
           />
           <PairFields
             left={

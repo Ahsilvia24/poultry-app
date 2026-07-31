@@ -133,7 +133,7 @@ export function createPlacementDraft(input?: {
     waterAdditive: "no",
     psiBefore: "",
     psiAfter: "",
-    waterColumnInches: "",
+    waterColumnInches: "4-6",
     ph: "",
     partitionedOk: "yes",
     premiseCleanOk: "yes",
