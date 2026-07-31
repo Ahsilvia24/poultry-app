@@ -27,7 +27,7 @@ Paste these into App Store Connect → App Information:
 
 | ASC field | URL |
 |-----------|-----|
-| **Privacy Policy URL** | https://www.termsfeed.com/live/1e9fa9a7-3483-4186-88be-3eb0aab6c4c5 |
+| **Privacy Policy URL** | https://www.termsfeed.com/live/c019d958-bfad-4ce8-8ab4-afbb983092ab |
 | **Support URL** | https://ahsilvia24.github.io/poultry-app/support/ |
 
 Contact email on both pages should be **talentpro024@gmail.com**.
