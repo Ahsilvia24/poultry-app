@@ -257,35 +257,35 @@ function GeneratorHoursChart({
   const showActions = onEdit != null && onDelete != null;
   return (
     <View style={{ marginTop: 6 }}>
-      <Text style={{ fontWeight: "700", fontSize: 12, color: colors.text, marginBottom: 1 }}>
+      <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text, marginBottom: 2 }}>
         {title}
       </Text>
       <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-        <Text style={{ width: 80, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 84, fontSize: 13, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
           Date
         </Text>
-        <Text style={{ width: 48, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 52, fontSize: 13, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
           Hours
         </Text>
-        <Text style={{ width: 56, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 60, fontSize: 13, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
           Exercised
         </Text>
-        {showActions ? <View style={{ width: 44 }} /> : null}
+        {showActions ? <View style={{ width: 48 }} /> : null}
       </View>
       {rows.length === 0 ? (
-        <Text style={[styles.muted, { fontSize: 12 }]}>None yet</Text>
+        <Text style={[styles.muted, { fontSize: 14 }]}>None yet</Text>
       ) : (
         <View>
           {rows.map((row) => (
             <View
               key={row.id}
-              style={{ flexDirection: "row", gap: 12, alignItems: "center", minHeight: 16 }}
+              style={{ flexDirection: "row", gap: 12, alignItems: "center", minHeight: 20 }}
             >
               <Text
                 style={{
-                  width: 80,
-                  fontSize: 12,
-                  lineHeight: 16,
+                  width: 84,
+                  fontSize: 14,
+                  lineHeight: 18,
                   fontWeight: "600",
                   color: colors.text,
                   fontVariant: ["tabular-nums"],
@@ -296,9 +296,9 @@ function GeneratorHoursChart({
               </Text>
               <Text
                 style={{
-                  width: 48,
-                  fontSize: 12,
-                  lineHeight: 16,
+                  width: 52,
+                  fontSize: 14,
+                  lineHeight: 18,
                   fontWeight: "600",
                   color: colors.text,
                   fontVariant: ["tabular-nums"],
@@ -308,9 +308,9 @@ function GeneratorHoursChart({
               </Text>
               <Text
                 style={{
-                  width: 56,
-                  fontSize: 12,
-                  lineHeight: 16,
+                  width: 60,
+                  fontSize: 14,
+                  lineHeight: 18,
                   fontWeight: "600",
                   color: colors.text,
                   fontVariant: ["tabular-nums"],
@@ -325,26 +325,26 @@ function GeneratorHoursChart({
                     onPress={() => onEdit(row.id)}
                     hitSlop={4}
                     style={{
-                      width: 22,
-                      height: 16,
+                      width: 24,
+                      height: 20,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Ionicons name="pencil-outline" size={13} color={colors.muted} />
+                    <Ionicons name="pencil-outline" size={15} color={colors.muted} />
                   </Pressable>
                   <Pressable
                     accessibilityLabel="Delete generator log"
                     onPress={() => onDelete(row.id)}
                     hitSlop={4}
                     style={{
-                      width: 22,
-                      height: 16,
+                      width: 24,
+                      height: 20,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Ionicons name="trash-outline" size={13} color={colors.danger} />
+                    <Ionicons name="trash-outline" size={15} color={colors.danger} />
                   </Pressable>
                 </View>
               ) : null}
@@ -1564,7 +1564,7 @@ export default function FarmDetailScreen() {
                 gap: 8,
               }}
             >
-              <Text style={{ fontWeight: "800", fontSize: 16 }}>Generator log</Text>
+              <Text style={{ fontWeight: "800", fontSize: 18 }}>Generator log</Text>
               {(data.generatorLogs ?? []).some(
                 (log) =>
                   log.gen1Hours != null ||

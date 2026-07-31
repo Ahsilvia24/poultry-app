@@ -136,3 +136,19 @@ export function statusColor(status: string) {
       return { bg: "#d1fae5", fg: "#065f46" };
   }
 }
+
+/** Badge colors for open-issue priority (highest wins when multiple). */
+export function issuePriorityColor(priority: string | null | undefined) {
+  switch (priority) {
+    case "CRITICAL":
+      return { bg: "#fee2e2", fg: "#991b1b" };
+    case "HIGH":
+      return { bg: "#ffedd5", fg: "#9a3412" };
+    case "MEDIUM":
+      return { bg: "#fef3c7", fg: "#92400e" };
+    case "LOW":
+      return { bg: "#e0f2fe", fg: "#075985" };
+    default:
+      return { bg: "#d1fae5", fg: "#065f46" };
+  }
+}

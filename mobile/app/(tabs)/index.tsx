@@ -18,9 +18,9 @@ import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/sche
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import {
   Card,
+  IssuesBadge,
   Metric,
   SectionTitle,
-  StatusBadge,
   WeeklyMortalityList,
   formatNumber,
   formatPct,
@@ -556,7 +556,10 @@ export default function DashboardScreen() {
                             })()}
                           </Text>
                         </View>
-                        <StatusBadge status={farm.status} />
+                        <IssuesBadge
+                          count={farm.openIssues}
+                          highestPriority={farm.highestOpenIssuePriority}
+                        />
                       </View>
 
                       {open ? (
@@ -625,28 +628,12 @@ export default function DashboardScreen() {
                             </View>
                           ) : null}
 
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              flexWrap: "wrap",
-                              gap: 12,
-                              marginTop: 10,
-                            }}
-                          >
-                            <Text style={[styles.muted, { fontSize: 12 }]}>
-                              Last visit:{" "}
-                              {farm.lastVisitDate
-                                ? formatLastVisitDate(farm.lastVisitDate)
-                                : "—"}
-                            </Text>
-                            <Text style={[styles.muted, { fontSize: 12 }]}>
-                              {farm.openIssues <= 0
-                                ? "No open issues"
-                                : farm.openIssues === 1
-                                  ? "1 open issue"
-                                  : `${farm.openIssues} open issues`}
-                            </Text>
-                          </View>
+                          <Text style={[styles.muted, { fontSize: 12, marginTop: 10 }]}>
+                            Last visit:{" "}
+                            {farm.lastVisitDate
+                              ? formatLastVisitDate(farm.lastVisitDate)
+                              : "—"}
+                          </Text>
                         </View>
                       ) : null}
                     </Pressable>

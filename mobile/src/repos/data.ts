@@ -271,6 +271,36 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
   };
 }
 
+const OPEN_ISSUE_PRIORITY_RANK: Record<string, number> = {
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+  CRITICAL: 4,
+};
+
+/** Count open issues and the highest priority among them (CRITICAL > HIGH > …). */
+function openIssueSummary(farmId: string): {
+  openIssues: number;
+  highestOpenIssuePriority: string | null;
+} {
+  const db = getDb();
+  const rows = db.getAllSync<{ priority: string }>(
+    `SELECT priority FROM farm_issues
+     WHERE farm_id = ? AND status != 'RESOLVED'`,
+    [farmId],
+  );
+  let highestOpenIssuePriority: string | null = null;
+  let bestRank = 0;
+  for (const row of rows) {
+    const rank = OPEN_ISSUE_PRIORITY_RANK[row.priority] ?? 0;
+    if (rank > bestRank) {
+      bestRank = rank;
+      highestOpenIssuePriority = row.priority;
+    }
+  }
+  return { openIssues: rows.length, highestOpenIssuePriority };
+}
+
 export function getDashboard() {
   const db = getDb();
   const today = todayKey();
@@ -341,12 +371,7 @@ export function getDashboard() {
       [farm.id],
     );
     if (flocks.length === 0) {
-      const openIssuesRow = db.getFirstSync<{ c: number }>(
-        `SELECT COUNT(*) as c FROM farm_issues
-         WHERE farm_id = ? AND status != 'RESOLVED'`,
-        [farm.id],
-      );
-      const openIssues = openIssuesRow?.c ?? 0;
+      const { openIssues, highestOpenIssuePriority } = openIssueSummary(farm.id);
       openIssuesTotal += openIssues;
       const highPri = db.getFirstSync<{ c: number }>(
         `SELECT COUNT(*) as c FROM farm_issues
@@ -372,6 +397,7 @@ export function getDashboard() {
         cumulativeMortality: 0,
         cumulativeMortalityPct: 0,
         openIssues,
+        highestOpenIssuePriority,
         status: "Normal",
         missingTodayMortality: false,
         weeklyMortality: [] as Array<{ week: number; total: number }>,
@@ -548,12 +574,7 @@ export function getDashboard() {
         .map((fl) => fl.projected_catch_date ?? addDaysKey(fl.placement_date, 52))
         .sort()[0] ?? null;
 
-    const openIssuesRow = db.getFirstSync<{ c: number }>(
-      `SELECT COUNT(*) as c FROM farm_issues
-       WHERE farm_id = ? AND status != 'RESOLVED'`,
-      [farm.id],
-    );
-    const openIssues = openIssuesRow?.c ?? 0;
+    const { openIssues, highestOpenIssuePriority } = openIssueSummary(farm.id);
     openIssuesTotal += openIssues;
     const highPri = db.getFirstSync<{ c: number }>(
       `SELECT COUNT(*) as c FROM farm_issues
@@ -580,6 +601,7 @@ export function getDashboard() {
       cumulativeMortality: farmCum,
       cumulativeMortalityPct: calcPercentage(farmCum, farmPlaced),
       openIssues,
+      highestOpenIssuePriority,
       status: worst,
       missingTodayMortality: missing,
       weeklyMortality: Array.from(weekTotals.entries())

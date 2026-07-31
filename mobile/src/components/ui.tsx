@@ -1,5 +1,5 @@
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
-import { colors, styles } from "../theme";
+import { colors, issuePriorityColor, styles } from "../theme";
 
 export function PageHeader({
   title,
@@ -40,6 +40,27 @@ export function StatusBadge({ status }: { status: string }) {
           : { bg: "#d1fae5", fg: "#065f46" };
   return (
     <Text style={[styles.badge, { backgroundColor: sc.bg, color: sc.fg }]}>{status}</Text>
+  );
+}
+
+/** Dashboard farm badge: Normal (green) or “N issue(s)” tinted by highest priority. */
+export function IssuesBadge({
+  count,
+  highestPriority,
+}: {
+  count: number;
+  highestPriority?: string | null;
+}) {
+  if (count <= 0) {
+    const sc = issuePriorityColor(null);
+    return (
+      <Text style={[styles.badge, { backgroundColor: sc.bg, color: sc.fg }]}>Normal</Text>
+    );
+  }
+  const label = count === 1 ? "1 issue" : `${count} issues`;
+  const sc = issuePriorityColor(highestPriority);
+  return (
+    <Text style={[styles.badge, { backgroundColor: sc.bg, color: sc.fg }]}>{label}</Text>
   );
 }
 
