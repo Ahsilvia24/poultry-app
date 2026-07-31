@@ -1482,6 +1482,17 @@ export function createLfo(farmId: string, orderDate: string, notes?: string) {
       [newId("lfoi"), id, h.id],
     );
   }
+
+  // Log a farm visit; deleting the LFO later must not remove this visit.
+  createVisit({
+    farmId,
+    flockId: flock?.id ?? null,
+    visitDate: orderDate,
+    visitType: "WEIGH_DAY",
+    generalBirdCondition: "Healthy",
+    notes: notes?.trim() || "Last Feed Order",
+  });
+
   return { id };
 }
 
@@ -1624,6 +1635,7 @@ export function updateLfo(input: {
 
 export function deleteLfo(id: string) {
   const db = getDb();
+  // LFO-only delete — any visit logged at create time is intentionally kept.
   db.runSync("DELETE FROM lfo_house_inventory WHERE lfo_id = ?", [id]);
   db.runSync("DELETE FROM last_feed_orders WHERE id = ?", [id]);
   return { success: true };

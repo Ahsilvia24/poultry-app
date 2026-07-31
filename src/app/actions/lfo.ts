@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
+import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
+import { parseDateKey } from "@/lib/visits/schedule";
 import { lastFeedOrderSchema } from "@/lib/validations";
 
 function emptyToNull(value: FormDataEntryValue | null) {
@@ -77,22 +79,39 @@ export async function createLastFeedOrderAction(farmId: string, formData: FormDa
 
   let createdId: string;
   try {
-    const created = await prisma.lastFeedOrder.create({
-      data: {
-        farmId,
-        flockId: activeFlock.id,
-        orderDate: new Date(parsed.data.orderDate),
-        consumptionRate: parsed.data.consumptionRate,
-        notes: parsed.data.notes,
-        houseInventories: {
-          create: parsed.data.houseInventories.map((h) => ({
-            houseId: h.houseId,
-            binAPounds: h.binAPounds,
-            binBPounds: h.binBPounds,
-            feedUpAt: parseFeedUpDate(h.feedUpAt),
-          })),
+    const orderDate = new Date(parsed.data.orderDate);
+    const birdAgeInDays = birdAgeFromPlacement(activeFlock.placementDate, parseDateKey(parsed.data.orderDate));
+    const created = await prisma.$transaction(async (tx) => {
+      const lfo = await tx.lastFeedOrder.create({
+        data: {
+          farmId,
+          flockId: activeFlock.id,
+          orderDate,
+          consumptionRate: parsed.data.consumptionRate,
+          notes: parsed.data.notes,
+          houseInventories: {
+            create: parsed.data.houseInventories.map((h) => ({
+              houseId: h.houseId,
+              binAPounds: h.binAPounds,
+              binBPounds: h.binBPounds,
+              feedUpAt: parseFeedUpDate(h.feedUpAt),
+            })),
+          },
         },
-      },
+      });
+      // Visit is independent of the LFO row — deleting the LFO must not remove it.
+      await tx.farmVisit.create({
+        data: {
+          farmId,
+          flockId: activeFlock.id,
+          visitDate: orderDate,
+          birdAgeInDays,
+          visitType: "WEIGH_DAY",
+          generalBirdCondition: "Healthy",
+          notes: parsed.data.notes?.trim() || "Last Feed Order",
+        },
+      });
+      return lfo;
     });
     createdId = created.id;
   } catch {
@@ -101,6 +120,7 @@ export async function createLastFeedOrderAction(farmId: string, formData: FormDa
 
   revalidatePath("/lfo");
   revalidatePath(`/lfo/${createdId}`);
+  revalidatePath(`/farms/${farmId}`);
   redirect(`/lfo/${createdId}`);
 }
 
@@ -175,11 +195,13 @@ export async function updateLastFeedOrderAction(lfoId: string, formData: FormDat
 
 export async function deleteLastFeedOrderAction(lfoId: string) {
   const user = await requireUser();
-  await assertLfoAccess(lfoId, user.id!);
+  const existing = await assertLfoAccess(lfoId, user.id!);
 
+  // LFO-only delete — any visit logged at create time is intentionally kept.
   await prisma.lastFeedOrder.delete({ where: { id: lfoId } });
 
   revalidatePath("/lfo");
   revalidatePath(`/lfo/${lfoId}`);
+  revalidatePath(`/farms/${existing.farmId}`);
   return { ok: true as const };
 }
