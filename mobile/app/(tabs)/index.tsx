@@ -535,25 +535,6 @@ export default function DashboardScreen() {
                         <View style={{ flex: 1, minWidth: 0 }}>
                           <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
                             {farm.farmName}
-                            <Text style={{ fontWeight: "600", color: colors.muted }}>
-                              {" "}
-                              ({farm.houseCount})
-                            </Text>
-                            {(() => {
-                              const ages =
-                                farm.flockAgesDays?.length
-                                  ? farm.flockAgesDays
-                                  : farm.flockAgeDays != null
-                                    ? [farm.flockAgeDays]
-                                    : [];
-                              if (!ages.length) return null;
-                              return (
-                                <Text style={{ fontWeight: "600", color: colors.muted }}>
-                                  {" "}
-                                  · {ages.map((a) => `${a}d`).join(" · ")}
-                                </Text>
-                              );
-                            })()}
                           </Text>
                         </View>
                         <IssuesBadge
