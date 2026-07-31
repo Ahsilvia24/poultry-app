@@ -999,7 +999,7 @@ export default function FarmDetailScreen() {
                       setFarmNavContext({ farmId: farm.id, houseFlockId: null });
                       router.navigate({
                         pathname: "/(tabs)/mortality",
-                        params: { farmId: farm.id },
+                        params: { farmId: farm.id, houseFlockId: "" },
                       });
                     },
                   },

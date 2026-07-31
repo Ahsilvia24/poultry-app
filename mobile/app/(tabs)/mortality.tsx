@@ -384,23 +384,14 @@ export default function MortalityScreen() {
 
       let nextHouse = "";
       if (houseFlockIdParam && isValid(houseFlockIdParam)) {
+        // Explicit house from Enter mortality / tab restore via nav context.
         jumpOnLoadRef.current = true;
         nextHouse = houseFlockIdParam;
-      } else if (farmIdParam && !houseFlockIdParam) {
-        // Farm-level entry: pick a house explicitly
-        jumpOnLoadRef.current = false;
-        nextHouse = "";
-      } else if (
-        ctx.houseFlockId &&
-        ctx.farmId === nextId &&
-        isValid(ctx.houseFlockId)
-      ) {
-        jumpOnLoadRef.current = true;
-        nextHouse = ctx.houseFlockId;
       } else {
-        // Do not auto-select a house
-        jumpOnLoadRef.current = false;
+        // Never auto-pick house 1. Keep a house already chosen on this screen
+        // if it still belongs to the selected farm.
         nextHouse = isValid(houseFlockIdRef.current) ? houseFlockIdRef.current : "";
+        jumpOnLoadRef.current = Boolean(nextHouse);
       }
       setHouseFlockId(nextHouse);
       // Sync immediately so Farms-tab return works before the useEffect runs.
