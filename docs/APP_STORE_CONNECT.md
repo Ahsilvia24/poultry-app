@@ -30,14 +30,15 @@ Paste these into App Store Connect → App Information:
 | **Privacy Policy URL** | https://www.termsfeed.com/live/1e9fa9a7-3483-4186-88be-3eb0aab6c4c5 |
 | **Support URL** | https://ahsilvia24.github.io/poultry-app/support/ |
 
-Until GitHub Pages is enabled (repo **Settings → Pages → Source: GitHub Actions**), Support also works at:
+Contact email on both pages should be **talentpro024@gmail.com**.
 
-https://cdn.jsdelivr.net/gh/Ahsilvia24/poultry-app@main/docs/support.html
+### Update the TermsFeed privacy email (one-time)
+1. Open [TermsFeed](https://www.termsfeed.com/) and sign in
+2. Open your PoultryTech Privacy Policy → **Live Editor** / Edit
+3. Change the Contact email from `Alexsilvia24@yahoo.com` to `talentpro024@gmail.com`
+4. Save — the same live URL above will show the new email
 
-Repo sources:
-
-- `docs/privacy.html` / `docs/support.html` (static)
-- Next.js routes `/privacy` and `/support` (public, no login)
+`https://ahsilvia24.github.io/poultry-app/privacy/` redirects to the TermsFeed policy.
 
 ## Screenshots
 
