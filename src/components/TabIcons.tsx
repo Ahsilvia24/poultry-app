@@ -32,12 +32,12 @@ export function MortalityTabIcon({ className }: IconProps) {
   );
 }
 
-/** Feed bin with cone hopper and two legs for LFO */
+/** Feed bin with cone hopper for LFO */
 export function LfoTabIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
-      {/* Flat lid + straight bin body + cone bottom + two legs */}
-      <path d="M7 2h10v2H7V2zm-1.5 2.75h13v7.5h-13v-7.5zM5.5 13.25 12 19.5l6.5-6.25H5.5zM8 19.25h1.75V22H8v-2.75zm6.25 0H16V22h-1.75v-2.75z" />
+      {/* Flat lid + straight bin body + cone bottom */}
+      <path d="M7 2h10v2.25H7V2zm-1.5 3h13v8.5h-13V5zM5.5 14.5 12 22l6.5-7.5H5.5z" />
     </svg>
   );
 }
