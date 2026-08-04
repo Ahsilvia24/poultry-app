@@ -674,9 +674,12 @@ export function MortalityEntryForm({
     focusNextInColumn(activeField.field, activeField.age);
   }
 
-  function onKeypadBackToHouse() {
+  async function onKeypadBackToHouse() {
     if (!farmId || !house) return;
-    flushSave();
+    cancelScheduledSave();
+    if (dirtyRef.current || saveTimerRef.current) {
+      await performSave();
+    }
     setActiveField(null);
     router.push(`/farms/${farmId}`);
   }
