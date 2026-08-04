@@ -103,7 +103,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
                 {farm.flockAges.length > 0 ? (
                   <span className="font-semibold text-stone-500">
                     {" "}
-                    · {farm.flockAges.map((a) => `${a}d`).join(" · ")}
+                    {farm.flockAges.map((a) => `${a}d`).join(" ")}
                   </span>
                 ) : null}
               </p>
