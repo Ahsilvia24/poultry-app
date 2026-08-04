@@ -24,7 +24,7 @@ import {
 } from "../repos/data";
 import { birdAgeFromPlacement } from "../lib/mortality";
 import { todayKey } from "../lib/ids";
-import { VISIT_TYPE_LABELS, visitTypeSelectOptions } from "../lib/visits";
+import { VISIT_TYPE_LABELS, VISIT_TYPE_OPTIONS } from "../lib/visits";
 import type { ServiceFormKind } from "../lib/serviceForms/types";
 import { colors, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
@@ -413,7 +413,7 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
               Visit type
             </Text>
             <ScrollView>
-              {visitTypeSelectOptions(visitType).map((opt) => (
+              {VISIT_TYPE_OPTIONS.map((opt) => (
                 <Pressable
                   key={opt.value}
                   onPress={() => {

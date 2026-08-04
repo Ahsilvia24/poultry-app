@@ -63,7 +63,6 @@ enum LitterEventType {
 enum VisitType {
   ROUTINE_SERVICE
   PLACEMENT
-  SEVEN_DAY
   WEIGH_DAY
   VACCINATION
   MEDICATION

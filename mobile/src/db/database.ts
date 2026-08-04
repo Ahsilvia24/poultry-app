@@ -292,6 +292,11 @@ export function migrateDb() {
     database.execSync("ALTER TABLE house_flocks ADD COLUMN catch_date TEXT");
   }
 
+  // Retired visit type: 7-day → Weight Projection
+  database.execSync(
+    "UPDATE farm_visits SET visit_type = 'WEIGHT_PROJECTION' WHERE visit_type = 'SEVEN_DAY'",
+  );
+
   // Allow clearing a single generator reading without deleting the whole date row.
   const genLogCols = database.getAllSync<{ name: string; notnull: number }>(
     "PRAGMA table_info(generator_logs)",

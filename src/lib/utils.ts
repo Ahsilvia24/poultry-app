@@ -50,11 +50,9 @@ export const VISIT_TYPE_LABELS: Record<string, string> = {
   EQUIPMENT_ISSUE: "Equipment issue",
   MORTALITY_INVESTIGATION: "Mortality investigation",
   OTHER: "Other",
-  /** Kept for historical visits; not offered in the create/edit dropdown. */
-  SEVEN_DAY: "7-day visit",
 };
 
-/** Dropdown order for new/edited visits (excludes retired types like 7-day). */
+/** Dropdown order for create/edit visit forms. */
 export const VISIT_TYPE_OPTIONS = [
   "PRE_CATCH",
   "PLACEMENT",
@@ -69,15 +67,6 @@ export const VISIT_TYPE_OPTIONS = [
   "MORTALITY_INVESTIGATION",
   "OTHER",
 ].map((value) => ({ value, label: VISIT_TYPE_LABELS[value]! }));
-
-/** Options for the visit-type select; keeps a retired current value selectable when editing. */
-export function visitTypeSelectOptions(current?: string | null) {
-  if (!current || VISIT_TYPE_OPTIONS.some((o) => o.value === current)) {
-    return VISIT_TYPE_OPTIONS;
-  }
-  const label = VISIT_TYPE_LABELS[current] ?? current;
-  return [...VISIT_TYPE_OPTIONS, { value: current, label }];
-}
 
 export const ISSUE_CATEGORY_LABELS: Record<string, string> = {
   FEED: "Feed",

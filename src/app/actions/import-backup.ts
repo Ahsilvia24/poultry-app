@@ -392,7 +392,11 @@ export async function importMobileBackupAction(
               flockId: oldFlockId ? flockIds.get(oldFlockId) ?? null : null,
               visitDate,
               birdAgeInDays: num(row.bird_age_in_days) != null ? int(row.bird_age_in_days) : null,
-              visitType: enumOr(row.visit_type, visitTypeValues, VisitType.ROUTINE_SERVICE),
+              visitType: enumOr(
+                row.visit_type === "SEVEN_DAY" ? "WEIGHT_PROJECTION" : row.visit_type,
+                visitTypeValues,
+                VisitType.ROUTINE_SERVICE,
+              ),
               generalBirdCondition: str(row.general_bird_condition),
               notes: str(row.notes),
               followUpRequired: bool(row.follow_up_required),

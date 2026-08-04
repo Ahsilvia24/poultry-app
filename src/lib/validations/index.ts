@@ -182,7 +182,6 @@ export const farmVisitSchema = z.object({
     "EQUIPMENT_ISSUE",
     "MORTALITY_INVESTIGATION",
     "OTHER",
-    "SEVEN_DAY",
   ]),
   generalBirdCondition: z.string().optional().nullable(),
   activityLevel: z.string().optional().nullable(),
