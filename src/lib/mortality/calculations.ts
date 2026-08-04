@@ -37,6 +37,34 @@ export function flockWeekFromAge(birdAgeInDays: number): number {
   return Math.floor((age - 8) / 7) + 2;
 }
 
+/** 0-based day index within the flock week (week 1: 0–7, later weeks: 0–6). */
+export function dayIndexInFlockWeek(birdAgeInDays: number): number {
+  const age = Math.max(0, birdAgeInDays);
+  const week = flockWeekFromAge(age);
+  if (week <= 1) return age;
+  return age - (8 + (week - 2) * 7);
+}
+
+/**
+ * Prefetch the next week once the tech reaches day 5+ of the current week
+ * so the following week is already open before they finish day 7.
+ */
+export function shouldPrefetchNextWeek(birdAgeInDays: number): boolean {
+  const week = flockWeekFromAge(birdAgeInDays);
+  const dayIndex = dayIndexInFlockWeek(birdAgeInDays);
+  return week <= 1 ? dayIndex >= 5 : dayIndex >= 4;
+}
+
+/** Weeks that should stay open while focusing/entering a given age. */
+export function openWeeksForAge(birdAgeInDays: number, maxWeek: number): number[] {
+  const week = flockWeekFromAge(birdAgeInDays);
+  const weeks = [week];
+  if (shouldPrefetchNextWeek(birdAgeInDays) && week + 1 <= maxWeek) {
+    weeks.push(week + 1);
+  }
+  return weeks;
+}
+
 /**
  * Sum total daily loss by flock week (placement-based), through the current week.
  * Weeks with no entries are included as 0 once that week has started.

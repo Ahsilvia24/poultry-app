@@ -7,6 +7,7 @@ import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
 import {
   birdAgeFromPlacement,
   flockWeekFromAge,
+  openWeeksForAge,
 } from "@/lib/mortality/calculations";
 import { formatNumber } from "@/lib/utils";
 import { Card, Input } from "@/components/ui";
@@ -94,10 +95,19 @@ function firstUnfilledAfterLastFilled(rows: DayRow[], asOfDateKey: string): DayR
 function focusMortalityAge(age: number, field: "culls" | "mortality" = "mortality") {
   const el = document.querySelector<HTMLInputElement>(`[data-mort-nav="${field}-${age}"]`);
   if (!el) return false;
-  el.scrollIntoView({ block: "center", behavior: "smooth" });
+  // Center the active cell so days/weeks below stay visible while typing.
+  el.scrollIntoView({ block: "center", behavior: "smooth", inline: "nearest" });
   el.focus();
   el.select();
   return true;
+}
+
+function maxWeekFromRows(list: Array<{ age: number }>) {
+  let max = 1;
+  for (const row of list) {
+    max = Math.max(max, flockWeekFromAge(row.age));
+  }
+  return max;
 }
 
 function digitsOnly(value: string) {
@@ -394,20 +404,22 @@ export function MortalityEntryForm({
     setRows(built);
     const shouldJump = jumpOnHouseLoadRef.current;
     jumpOnHouseLoadRef.current = true;
-    const currentWeek = flockWeekFromAge(
-      birdAgeFromPlacement(parseLocalDate(flock.placementDate), parseLocalDate(asOfDateKey)),
+    const currentAge = birdAgeFromPlacement(
+      parseLocalDate(flock.placementDate),
+      parseLocalDate(asOfDateKey),
     );
+    const maxWeek = maxWeekFromRows(built);
     if (!shouldJump) {
-      setExpandedWeeks(new Set([currentWeek]));
+      setExpandedWeeks(new Set(openWeeksForAge(currentAge, maxWeek)));
       return;
     }
     const jumpTo =
       firstUnfilledAfterLastFilled(built, asOfDateKey) ??
       built.find((r) => r.mortalityDate === asOfDateKey) ??
       null;
-    const openWeek = jumpTo ? flockWeekFromAge(jumpTo.age) : currentWeek;
-    // Exclusive accordion: only the jump target week stays open
-    setExpandedWeeks(new Set([openWeek]));
+    const ageForWeeks = jumpTo?.age ?? currentAge;
+    // Keep the active week open and prefetch the next week near day 5–6.
+    setExpandedWeeks(new Set(openWeeksForAge(ageForWeeks, maxWeek)));
     if (jumpTo) {
       pendingJumpRef.current = { age: jumpTo.age, field: "mortality" };
       setFocusToken((t) => t + 1);
@@ -485,13 +497,16 @@ export function MortalityEntryForm({
     scheduleSave();
   }
 
+  function expandWeeksForAge(age: number) {
+    setExpandedWeeks(new Set(openWeeksForAge(age, maxWeekFromRows(rowsRef.current))));
+  }
+
   function focusNextInColumn(field: "culls" | "mortality", age: number) {
     const nextAge = age + 1;
     if (!rowsRef.current.some((r) => r.age === nextAge)) return;
 
-    // Keep only the week we're moving into open
-    const week = flockWeekFromAge(nextAge);
-    setExpandedWeeks(new Set([week]));
+    // Open the destination week, and prefetch the following week near day 5–6.
+    expandWeeksForAge(nextAge);
     pendingJumpRef.current = { age: nextAge, field };
     setFocusToken((t) => t + 1);
   }
@@ -686,7 +701,14 @@ export function MortalityEntryForm({
                                     className="min-h-11 px-3"
                                     placeholder=""
                                     value={row.cullCount}
-                                    onFocus={(e) => e.target.select()}
+                                    onFocus={(e) => {
+                                      expandWeeksForAge(row.age);
+                                      e.target.select();
+                                      // Re-center after next-week expand adjusts layout.
+                                      requestAnimationFrame(() =>
+                                        focusMortalityAge(row.age, "culls"),
+                                      );
+                                    }}
                                     onBlur={() => flushSave()}
                                     onKeyDown={(e) =>
                                       onMortNumberKeyDown(e, "culls", row.age, onColumnEnter)
@@ -719,7 +741,13 @@ export function MortalityEntryForm({
                                     className="min-h-11 px-3"
                                     placeholder=""
                                     value={row.dailyMortalityCount}
-                                    onFocus={(e) => e.target.select()}
+                                    onFocus={(e) => {
+                                      expandWeeksForAge(row.age);
+                                      e.target.select();
+                                      requestAnimationFrame(() =>
+                                        focusMortalityAge(row.age, "mortality"),
+                                      );
+                                    }}
                                     onBlur={() => flushSave()}
                                     onKeyDown={(e) =>
                                       onMortNumberKeyDown(e, "mortality", row.age, onColumnEnter)

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -16,7 +23,11 @@ import {
   getHouseMortalitySeries,
   saveHouseMortalitySeries,
 } from "../../src/repos/data";
-import { birdAgeFromPlacement, flockWeekFromAge } from "../../src/lib/mortality";
+import {
+  birdAgeFromPlacement,
+  flockWeekFromAge,
+  openWeeksForAge,
+} from "../../src/lib/mortality";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
   armFarmReturnFromMortality,
@@ -129,17 +140,21 @@ function MortalityKeypad({
   onEnter,
   onBackToHouse,
   backToHouseLabel,
+  containerRef,
 }: {
   onDigit: (d: string) => void;
   onBackspace: () => void;
   onEnter: () => void;
   onBackToHouse?: () => void;
   backToHouseLabel?: string;
+  containerRef?: RefObject<View | null>;
 }) {
   const insets = useSafeAreaInsets();
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
   return (
     <View
+      ref={containerRef}
+      collapsable={false}
       style={{
         borderTopWidth: 1,
         borderTopColor: colors.border,
@@ -230,6 +245,7 @@ export default function MortalityScreen() {
   const rowRefs = useRef(new Map<number, View>());
   const scrollRef = useRef<ScrollViewType>(null);
   const scrollHostRef = useRef<View>(null);
+  const keypadRef = useRef<View>(null);
   const scrollOffsetRef = useRef(0);
   useTabScrollToTop("mortality", scrollRef);
   const rowsRef = useRef(rows);
@@ -291,20 +307,48 @@ export default function MortalityScreen() {
     }
   }
 
+  function maxWeekFromRows(list: DayRow[]) {
+    let max = 1;
+    for (const row of list) {
+      max = Math.max(max, flockWeekFromAge(row.age));
+    }
+    return max;
+  }
+
+  function expandWeeksForAge(age: number) {
+    const maxWeek = maxWeekFromRows(rowsRef.current);
+    setExpandedWeeks(new Set(openWeeksForAge(age, maxWeek)));
+  }
+
   function scrollRowIntoView(age: number) {
     const row = rowRefs.current.get(age);
     const scroll = scrollRef.current;
     const host = scrollHostRef.current;
     if (!row || !scroll || !host) return false;
-    row.measureInWindow((_rx: number, rowY: number) => {
-      host.measureInWindow((_sx: number, scrollY: number) => {
-        const delta = rowY - scrollY - 120;
-        scroll.scrollTo({
-          y: Math.max(0, scrollOffsetRef.current + delta),
-          animated: true,
+
+    const place = (keypadHeight: number) => {
+      row.measureInWindow((_rx: number, rowY: number, _rw: number, rowH: number) => {
+        host.measureInWindow((_sx: number, scrollY: number, _sw: number, hostH: number) => {
+          // Keep the active row in the middle of the visible area above the keypad
+          // so the next days/week stay visible without manual scrolling.
+          const visibleH = Math.max(120, hostH - keypadHeight);
+          const rowCenter = rowY + rowH / 2;
+          const targetCenter = scrollY + visibleH * 0.42;
+          const delta = rowCenter - targetCenter;
+          scroll.scrollTo({
+            y: Math.max(0, scrollOffsetRef.current + delta),
+            animated: true,
+          });
         });
       });
-    });
+    };
+
+    const keypad = keypadRef.current;
+    if (keypad) {
+      keypad.measureInWindow((_kx, _ky, _kw, keypadH) => place(keypadH || 260));
+    } else {
+      place(260);
+    }
     return true;
   }
 
@@ -316,15 +360,12 @@ export default function MortalityScreen() {
       nextRows.find((r) => r.mortalityDate === today) ??
       null;
     const todayAge = nextRows.find((r) => r.mortalityDate === today)?.age;
-    const fallbackWeek =
-      todayAge != null
-        ? flockWeekFromAge(todayAge)
-        : nextRows[0]
-          ? flockWeekFromAge(nextRows[0].age)
-          : 1;
-    const openWeek = jumpTo ? flockWeekFromAge(jumpTo.age) : fallbackWeek;
-    // Exclusive accordion: only the jump-target week is open
-    setExpandedWeeks(new Set([openWeek]));
+    const fallbackAge =
+      todayAge ??
+      nextRows[0]?.age ??
+      0;
+    const ageForWeeks = jumpTo?.age ?? fallbackAge;
+    setExpandedWeeks(new Set(openWeeksForAge(ageForWeeks, maxWeekFromRows(nextRows))));
     if (!jumpTo) {
       scrollRef.current?.scrollTo({ y: 0, animated: false });
       return;
@@ -338,6 +379,8 @@ export default function MortalityScreen() {
           setActiveField({ kind: "mort", age });
           setSelection({ start: 0, end: 0 });
           input.focus();
+          // Re-scroll after keypad mounts so the row lands mid-viewport.
+          requestAnimationFrame(() => scrollRowIntoView(age));
           return;
         }
         if (triesLeft > 0) attempt(triesLeft - 1);
@@ -452,13 +495,8 @@ export default function MortalityScreen() {
         resetKeypad();
         const today = todayKey();
         const todayAge = next.find((r) => r.mortalityDate === today)?.age;
-        const week =
-          todayAge != null
-            ? flockWeekFromAge(todayAge)
-            : next[0]
-              ? flockWeekFromAge(next[0].age)
-              : 1;
-        setExpandedWeeks(new Set([week]));
+        const ageForWeeks = todayAge ?? next[0]?.age ?? 0;
+        setExpandedWeeks(new Set(openWeeksForAge(ageForWeeks, maxWeekFromRows(next))));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load grid");
@@ -628,15 +666,15 @@ export default function MortalityScreen() {
   }
 
   function focusField(kind: FieldKind, age: number) {
-    const week = flockWeekFromAge(age);
-    // Exclusive accordion when moving to a field (Enter / jump)
-    setExpandedWeeks(new Set([week]));
+    // Keep current week open, and prefetch the next week near day 5–6.
+    expandWeeksForAge(age);
     const key = fieldKey(kind, age);
     const attempt = (triesLeft: number) => {
       requestAnimationFrame(() => {
         const input = inputRefs.current.get(key);
         if (input) {
           input.focus();
+          scrollRowIntoView(age);
           return;
         }
         if (triesLeft > 0) {
@@ -644,10 +682,11 @@ export default function MortalityScreen() {
         }
       });
     };
-    attempt(3);
+    attempt(4);
   }
 
   function onFieldFocus(kind: FieldKind, age: number, value: string) {
+    expandWeeksForAge(age);
     setActiveField({ kind, age });
     if (value && Number(value) !== 0) {
       const len = value.length;
@@ -656,6 +695,11 @@ export default function MortalityScreen() {
     } else {
       setSelection({ start: 0, end: value.length });
     }
+    // Wait a beat for next-week expand + keypad layout, then pin row mid-screen.
+    requestAnimationFrame(() => {
+      scrollRowIntoView(age);
+      setTimeout(() => scrollRowIntoView(age), 80);
+    });
   }
 
   function onDigit(d: string) {
@@ -973,6 +1017,7 @@ export default function MortalityScreen() {
 
         {activeField ? (
           <MortalityKeypad
+            containerRef={keypadRef}
             onDigit={onDigit}
             onBackspace={onBackspace}
             onEnter={onEnter}
