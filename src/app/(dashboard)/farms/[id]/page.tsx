@@ -198,15 +198,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
   return (
     <div>
-      <Link
-        href="/farms"
-        className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
-      >
-        <span aria-hidden="true" className="text-xl leading-none">
-          ←
-        </span>
-        Farms
-      </Link>
       <FarmInfoEditor
         farm={{
           id: farm.id,
@@ -217,6 +208,17 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           notes: farm.notes,
           numberOfGenerators: farm.numberOfGenerators,
         }}
+        backLink={
+          <Link
+            href="/farms"
+            className="inline-flex min-h-11 flex-col items-start justify-center gap-0.5 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
+          >
+            <span>Farms</span>
+            <span aria-hidden="true" className="text-xl leading-none">
+              ←
+            </span>
+          </Link>
+        }
       />
 
       <div className="mb-6">

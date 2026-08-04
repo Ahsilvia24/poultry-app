@@ -941,44 +941,64 @@ export default function FarmDetailScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         keyboardShouldPersistTaps="handled"
       >
-        <Pressable
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else router.replace("/(tabs)/farms");
-          }}
-          style={{ marginBottom: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="Back to farms"
-        >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
-        </Pressable>
-
         <View style={{ marginBottom: 16 }}>
           <View
             style={{
               flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 12,
             }}
           >
-            <Text style={[styles.title, { flexShrink: 1 }]}>{farm.farmName}</Text>
             <Pressable
-              accessibilityLabel="Edit farm info"
-              onPress={() => openFarmEditor(farm)}
-              hitSlop={8}
+              onPress={() => {
+                if (router.canGoBack()) router.back();
+                else router.replace("/(tabs)/farms");
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Back to farms"
+              style={{ flexShrink: 0, paddingTop: 2 }}
+            >
+              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>Farms</Text>
+              <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 18, marginTop: 2 }}>
+                ←
+              </Text>
+            </Pressable>
+            <View
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 8,
+                flexDirection: "row",
                 alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
+                justifyContent: "flex-end",
+                gap: 8,
+                flexShrink: 1,
+                minWidth: 0,
               }}
             >
-              <Ionicons name="settings-outline" size={22} color={colors.muted} />
-            </Pressable>
+              <Text
+                style={[styles.title, { fontSize: 22, flexShrink: 1, textAlign: "right" }]}
+                numberOfLines={1}
+              >
+                {farm.farmName}
+              </Text>
+              <Pressable
+                accessibilityLabel="Edit farm info"
+                onPress={() => openFarmEditor(farm)}
+                hitSlop={8}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Ionicons name="settings-outline" size={22} color={colors.muted} />
+              </Pressable>
+            </View>
           </View>
-          <Card style={{ marginTop: 12 }}>
+          <Card style={{ marginTop: 0 }}>
             <Text style={{ fontWeight: "800", fontSize: 14, marginBottom: 8 }}>Quick links</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {(

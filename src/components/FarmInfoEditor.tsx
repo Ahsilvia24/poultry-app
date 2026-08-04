@@ -35,36 +35,38 @@ function GearIcon({ className }: { className?: string }) {
 export function FarmInfoEditor({
   farm,
   actions,
+  backLink,
 }: {
   farm: FarmInfo;
   /** @deprecated Grower is edited in the settings form; not shown in the header. */
   subtitle?: string;
   actions?: React.ReactNode;
+  /** Shown on the left of the title row (e.g. ← Farms), aligned with the farm name. */
+  backLink?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
     <div className="mb-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="min-w-0 text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
-              {farm.farmName}
-            </h1>
-            <button
-              type="button"
-              onClick={() => setOpen((v) => !v)}
-              aria-label={open ? "Close farm settings" : "Edit farm info"}
-              aria-expanded={open}
-              title="Edit farm info"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
-            >
-              <GearIcon className="h-5 w-5" />
-            </button>
-          </div>
+      <div className="flex items-start justify-between gap-3">
+        {backLink ? <div className="shrink-0">{backLink}</div> : <div />}
+        <div className="flex min-w-0 items-center justify-end gap-2">
+          <h1 className="min-w-0 truncate text-right text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
+            {farm.farmName}
+          </h1>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label={open ? "Close farm settings" : "Edit farm info"}
+            aria-expanded={open}
+            title="Edit farm info"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
+          >
+            <GearIcon className="h-5 w-5" />
+          </button>
         </div>
-        {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </div>
+      {actions ? <div className="mt-3 flex flex-wrap gap-2">{actions}</div> : null}
 
       {open ? (
         <Card className="mt-4">
