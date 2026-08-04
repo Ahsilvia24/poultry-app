@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type SyntheticEvent,
+} from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format } from "date-fns";
 import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
@@ -12,6 +20,87 @@ import {
 import { formatNumber } from "@/lib/utils";
 import { Card, Input } from "@/components/ui";
 import { cn } from "@/lib/utils";
+
+type ActiveField = { field: "culls" | "mortality"; age: number };
+
+function WebMortalityKeypad({
+  onDigit,
+  onBackspace,
+  onEnter,
+}: {
+  onDigit: (d: string) => void;
+  onBackspace: () => void;
+  onEnter: () => void;
+}) {
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
+
+  function guard(e: SyntheticEvent) {
+    // Keep the focused input from blurring before the key action runs.
+    e.preventDefault();
+  }
+
+  const keyClass =
+    "flex min-h-12 flex-1 items-center justify-center rounded-[10px] bg-white text-xl font-bold text-stone-900 shadow-sm active:bg-stone-100";
+
+  return (
+    <div
+      className="fixed inset-x-0 z-50 border-t border-stone-300 bg-stone-200 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
+      style={{ bottom: "calc(3.75rem + env(safe-area-inset-bottom, 0px))" }}
+      onMouseDown={guard}
+      onPointerDown={guard}
+      onTouchStart={guard}
+    >
+      <div className="mx-auto flex max-w-md flex-col gap-2">
+        {[0, 1, 2].map((row) => (
+          <div key={row} className="flex gap-2">
+            {keys.slice(row * 3, row * 3 + 3).map((d) => (
+              <button
+                key={d}
+                type="button"
+                className={keyClass}
+                onMouseDown={guard}
+                onPointerDown={guard}
+                onClick={() => onDigit(d)}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        ))}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className={cn(keyClass, "bg-stone-100")}
+            onMouseDown={guard}
+            onPointerDown={guard}
+            onClick={onBackspace}
+            aria-label="Backspace"
+          >
+            ⌫
+          </button>
+          <button
+            type="button"
+            className={keyClass}
+            onMouseDown={guard}
+            onPointerDown={guard}
+            onClick={() => onDigit("0")}
+          >
+            0
+          </button>
+          <button
+            type="button"
+            className={cn(keyClass, "bg-emerald-700 text-white active:bg-emerald-800")}
+            onMouseDown={guard}
+            onPointerDown={guard}
+            onClick={onEnter}
+          >
+            Enter
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export type MortalityHousePayload = {
   houseFlockId: string;
@@ -292,11 +381,22 @@ export function MortalityEntryForm({
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [activeField, setActiveField] = useState<ActiveField | null>(null);
+  /** Phone / touch web: use the in-app keypad (with Enter) instead of the OS keyboard. */
+  const [preferCustomKeypad, setPreferCustomKeypad] = useState(false);
   /** Bumps to re-run house load/jump when the same house is re-selected. */
   const [jumpToken, setJumpToken] = useState(0);
   /** Bumps to retry focus after exclusive week expand (Enter / jump). */
   const [focusToken, setFocusToken] = useState(0);
   const pendingJumpRef = useRef<{ age: number; field: "culls" | "mortality" } | null>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px), (pointer: coarse)");
+    const sync = () => setPreferCustomKeypad(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   const rowsRef = useRef(rows);
   const flockRef = useRef(flock);
@@ -503,7 +603,10 @@ export function MortalityEntryForm({
 
   function focusNextInColumn(field: "culls" | "mortality", age: number) {
     const nextAge = age + 1;
-    if (!rowsRef.current.some((r) => r.age === nextAge)) return;
+    if (!rowsRef.current.some((r) => r.age === nextAge)) {
+      setActiveField(null);
+      return;
+    }
 
     // Open the destination week, and prefetch the following week near day 5–6.
     expandWeeksForAge(nextAge);
@@ -520,6 +623,51 @@ export function MortalityEntryForm({
     e.preventDefault();
     flushSave();
     focusNextInColumn(field, age);
+  }
+
+  function activeRowValue() {
+    if (!activeField) return "";
+    const row = rowsRef.current.find((r) => r.age === activeField.age);
+    if (!row) return "";
+    return activeField.field === "culls" ? row.cullCount : row.dailyMortalityCount;
+  }
+
+  function onKeypadDigit(d: string) {
+    if (!activeField || !/^[0-9]$/.test(d)) return;
+    const next = digitsOnly(`${activeRowValue()}${d}`);
+    if (activeField.field === "culls") {
+      updateRow(activeField.age, { cullCount: next });
+    } else {
+      updateRow(activeField.age, { dailyMortalityCount: next });
+    }
+  }
+
+  function onKeypadBackspace() {
+    if (!activeField) return;
+    const current = activeRowValue();
+    const next = current.slice(0, -1);
+    if (activeField.field === "culls") {
+      updateRow(activeField.age, { cullCount: next });
+    } else {
+      updateRow(activeField.age, { dailyMortalityCount: next });
+    }
+  }
+
+  function onKeypadEnter() {
+    if (!activeField) return;
+    flushSave();
+    focusNextInColumn(activeField.field, activeField.age);
+  }
+
+  function focusEntryField(
+    field: "culls" | "mortality",
+    age: number,
+    target: HTMLInputElement,
+  ) {
+    setActiveField({ field, age });
+    expandWeeksForAge(age);
+    target.select();
+    requestAnimationFrame(() => focusMortalityAge(age, field));
   }
 
   function changeFarm(nextFarmId: string) {
@@ -550,8 +698,10 @@ export function MortalityEntryForm({
     router.replace(`/mortality?farmId=${farmId}&houseFlockId=${nextHouseId}`);
   }
 
+  const showKeypad = preferCustomKeypad && activeField != null;
+
   return (
-    <div className="space-y-4">
+    <div className={cn("space-y-4", showKeypad && "pb-72")}>
       <div className="space-y-2">
         <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
           <div className="flex w-max flex-nowrap gap-2">
@@ -692,24 +842,30 @@ export function MortalityEntryForm({
                                     aria-label={`Culls day ${row.age}`}
                                     data-mort-nav={`culls-${row.age}`}
                                     type="text"
-                                    inputMode="numeric"
+                                    inputMode={preferCustomKeypad ? "none" : "numeric"}
+                                    readOnly={preferCustomKeypad}
                                     pattern="[0-9]*"
                                     enterKeyHint="next"
                                     autoComplete="off"
                                     autoCorrect="off"
                                     spellCheck={false}
-                                    className="min-h-11 px-3"
+                                    className={cn(
+                                      "min-h-11 px-3",
+                                      activeField?.field === "culls" &&
+                                        activeField.age === row.age &&
+                                        "border-emerald-700 ring-2 ring-emerald-200",
+                                    )}
                                     placeholder=""
                                     value={row.cullCount}
-                                    onFocus={(e) => {
-                                      expandWeeksForAge(row.age);
-                                      e.target.select();
-                                      // Re-center after next-week expand adjusts layout.
-                                      requestAnimationFrame(() =>
-                                        focusMortalityAge(row.age, "culls"),
-                                      );
+                                    onFocus={(e) => focusEntryField("culls", row.age, e.target)}
+                                    onBlur={() => {
+                                      flushSave();
+                                      // Delay so keypad taps can run before we hide it.
+                                      window.setTimeout(() => {
+                                        const next = document.activeElement as HTMLElement | null;
+                                        if (!next?.dataset?.mortNav) setActiveField(null);
+                                      }, 0);
                                     }}
-                                    onBlur={() => flushSave()}
                                     onKeyDown={(e) =>
                                       onMortNumberKeyDown(e, "culls", row.age, onColumnEnter)
                                     }
@@ -721,6 +877,7 @@ export function MortalityEntryForm({
                                       updateRow(row.age, { cullCount: digits });
                                     }}
                                     onChange={(e) => {
+                                      if (preferCustomKeypad) return;
                                       updateRow(row.age, {
                                         cullCount: digitsOnly(e.target.value),
                                       });
@@ -732,23 +889,31 @@ export function MortalityEntryForm({
                                     aria-label={`Mortality day ${row.age}`}
                                     data-mort-nav={`mortality-${row.age}`}
                                     type="text"
-                                    inputMode="numeric"
+                                    inputMode={preferCustomKeypad ? "none" : "numeric"}
+                                    readOnly={preferCustomKeypad}
                                     pattern="[0-9]*"
                                     enterKeyHint="next"
                                     autoComplete="off"
                                     autoCorrect="off"
                                     spellCheck={false}
-                                    className="min-h-11 px-3"
+                                    className={cn(
+                                      "min-h-11 px-3",
+                                      activeField?.field === "mortality" &&
+                                        activeField.age === row.age &&
+                                        "border-emerald-700 ring-2 ring-emerald-200",
+                                    )}
                                     placeholder=""
                                     value={row.dailyMortalityCount}
-                                    onFocus={(e) => {
-                                      expandWeeksForAge(row.age);
-                                      e.target.select();
-                                      requestAnimationFrame(() =>
-                                        focusMortalityAge(row.age, "mortality"),
-                                      );
+                                    onFocus={(e) =>
+                                      focusEntryField("mortality", row.age, e.target)
+                                    }
+                                    onBlur={() => {
+                                      flushSave();
+                                      window.setTimeout(() => {
+                                        const next = document.activeElement as HTMLElement | null;
+                                        if (!next?.dataset?.mortNav) setActiveField(null);
+                                      }, 0);
                                     }}
-                                    onBlur={() => flushSave()}
                                     onKeyDown={(e) =>
                                       onMortNumberKeyDown(e, "mortality", row.age, onColumnEnter)
                                     }
@@ -760,6 +925,7 @@ export function MortalityEntryForm({
                                       updateRow(row.age, { dailyMortalityCount: digits });
                                     }}
                                     onChange={(e) => {
+                                      if (preferCustomKeypad) return;
                                       updateRow(row.age, {
                                         dailyMortalityCount: digitsOnly(e.target.value),
                                       });
@@ -788,6 +954,14 @@ export function MortalityEntryForm({
       ) : null}
 
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+
+      {showKeypad ? (
+        <WebMortalityKeypad
+          onDigit={onKeypadDigit}
+          onBackspace={onKeypadBackspace}
+          onEnter={onKeypadEnter}
+        />
+      ) : null}
     </div>
   );
 }
