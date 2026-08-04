@@ -487,51 +487,48 @@ export default function DashboardScreen() {
                 <Text style={styles.muted}>No active farms</Text>
               </Card>
             ) : (
-              <Card style={{ padding: 0, overflow: "hidden", borderRadius: 14 }}>
-                {data.farmCards.map((farm, index) => {
-                  const open = expandedFarmIds.has(farm.id);
-                  const isLast = index === data.farmCards.length - 1;
-                  return (
-                    <Swipeable
-                      key={farm.id}
-                      overshootRight={false}
-                      friction={2}
-                      rightThreshold={40}
-                      containerStyle={
-                        isLast
-                          ? undefined
-                          : { borderBottomWidth: 1, borderBottomColor: "#f5f5f4" }
-                      }
-                      onSwipeableOpen={(direction) => {
-                        if (direction === "right") makeInactive(farm.id);
-                      }}
-                      renderRightActions={() => (
-                        <Pressable
-                          accessibilityLabel={`Make ${farm.farmName} inactive`}
-                          onPress={() => makeInactive(farm.id)}
+              data.farmCards.map((farm) => {
+                const open = expandedFarmIds.has(farm.id);
+                return (
+                  <Swipeable
+                    key={farm.id}
+                    overshootRight={false}
+                    friction={2}
+                    rightThreshold={40}
+                    containerStyle={{ marginBottom: 0 }}
+                    onSwipeableOpen={(direction) => {
+                      if (direction === "right") makeInactive(farm.id);
+                    }}
+                    renderRightActions={() => (
+                      <Pressable
+                        accessibilityLabel={`Make ${farm.farmName} inactive`}
+                        onPress={() => makeInactive(farm.id)}
+                        style={{
+                          backgroundColor: "#57534e",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          width: 100,
+                          borderRadius: 14,
+                          marginLeft: 8,
+                        }}
+                      >
+                        <Ionicons name="pause-circle-outline" size={22} color="#fff" />
+                        <Text
                           style={{
-                            backgroundColor: "#57534e",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            width: 100,
+                            color: "#fff",
+                            fontWeight: "800",
+                            fontSize: 11,
+                            marginTop: 4,
+                            textAlign: "center",
+                            paddingHorizontal: 4,
                           }}
                         >
-                          <Ionicons name="pause-circle-outline" size={22} color="#fff" />
-                          <Text
-                            style={{
-                              color: "#fff",
-                              fontWeight: "800",
-                              fontSize: 11,
-                              marginTop: 4,
-                              textAlign: "center",
-                              paddingHorizontal: 4,
-                            }}
-                          >
-                            Make inactive
-                          </Text>
-                        </Pressable>
-                      )}
-                    >
+                          Make inactive
+                        </Text>
+                      </Pressable>
+                    )}
+                  >
+                    <Card style={{ padding: 0, marginBottom: 0, overflow: "hidden" }}>
                       <Pressable
                         onPress={() => toggleFarmExpanded(farm.id)}
                         accessibilityRole="button"
@@ -660,10 +657,10 @@ export default function DashboardScreen() {
                           </View>
                         ) : null}
                       </Pressable>
-                    </Swipeable>
-                  );
-                })}
-              </Card>
+                    </Card>
+                  </Swipeable>
+                );
+              })
             )}
           </>
         ) : null}
