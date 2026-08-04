@@ -27,10 +27,14 @@ function WebMortalityKeypad({
   onDigit,
   onBackspace,
   onEnter,
+  onBackToHouse,
+  backToHouseLabel,
 }: {
   onDigit: (d: string) => void;
   onBackspace: () => void;
   onEnter: () => void;
+  onBackToHouse?: () => void;
+  backToHouseLabel?: string;
 }) {
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 
@@ -51,6 +55,17 @@ function WebMortalityKeypad({
       onTouchStart={guard}
     >
       <div className="mx-auto flex max-w-md flex-col gap-2">
+        {onBackToHouse && backToHouseLabel ? (
+          <button
+            type="button"
+            className="flex min-h-12 w-full items-center justify-center rounded-[10px] bg-emerald-800 px-3 text-base font-extrabold text-white active:bg-emerald-900"
+            onMouseDown={guard}
+            onPointerDown={guard}
+            onClick={onBackToHouse}
+          >
+            {backToHouseLabel}
+          </button>
+        ) : null}
         {[0, 1, 2].map((row) => (
           <div key={row} className="flex gap-2">
             {keys.slice(row * 3, row * 3 + 3).map((d) => (
@@ -659,6 +674,13 @@ export function MortalityEntryForm({
     focusNextInColumn(activeField.field, activeField.age);
   }
 
+  function onKeypadBackToHouse() {
+    if (!farmId || !house) return;
+    flushSave();
+    setActiveField(null);
+    router.push(`/farms/${farmId}`);
+  }
+
   function focusEntryField(
     field: "culls" | "mortality",
     age: number,
@@ -701,7 +723,7 @@ export function MortalityEntryForm({
   const showKeypad = preferCustomKeypad && activeField != null;
 
   return (
-    <div className={cn("space-y-4", showKeypad && "pb-72")}>
+    <div className={cn("space-y-4", showKeypad && "pb-80")}>
       <div className="space-y-2">
         <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
           <div className="flex w-max flex-nowrap gap-2">
@@ -960,6 +982,10 @@ export function MortalityEntryForm({
           onDigit={onKeypadDigit}
           onBackspace={onKeypadBackspace}
           onEnter={onKeypadEnter}
+          backToHouseLabel={
+            house ? `Back to House ${house.houseNumber}` : undefined
+          }
+          onBackToHouse={farmId && house ? onKeypadBackToHouse : undefined}
         />
       ) : null}
     </div>
