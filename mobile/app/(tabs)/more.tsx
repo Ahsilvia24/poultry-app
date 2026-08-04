@@ -54,26 +54,6 @@ export default function MoreScreen() {
         <SectionTitle>Backup & sync</SectionTitle>
         <ExportDataCard />
 
-        <SectionTitle>Coming soon on mobile</SectionTitle>
-        <Card>
-          <Text style={{ fontWeight: "700" }}>Settlement</Text>
-          <Text style={[styles.muted, { marginTop: 4 }]}>
-            Settlement sheet entry is available in the web app for now.
-          </Text>
-        </Card>
-        <Card>
-          <Text style={{ fontWeight: "700" }}>Search</Text>
-          <Text style={[styles.muted, { marginTop: 4 }]}>
-            Global farm/flock search is available in the web app for now.
-          </Text>
-        </Card>
-        <Card>
-          <Text style={{ fontWeight: "700" }}>Settings</Text>
-          <Text style={[styles.muted, { marginTop: 4 }]}>
-            Mortality thresholds and preferences are available in the web app for now.
-          </Text>
-        </Card>
-
         <SectionTitle>Account</SectionTitle>
         <Card>
           <Text style={{ fontWeight: "700" }}>{user?.name ?? "Technician"}</Text>

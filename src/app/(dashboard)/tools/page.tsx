@@ -108,8 +108,6 @@ export default async function ToolsPage() {
         >
           <VentilationLinks farms={farms} />
         </ToolsSectionPanel>
-
-        <ToolsSectionPanel hashId="phone-numbers" title="Phone Numbers" subtitle="Coming soon." />
       </div>
     </div>
   );

@@ -9,7 +9,6 @@ const links = [
   { href: "#max-cooling", label: "Max Cooling" },
   { href: "#lights", label: "Lights" },
   { href: "#ventilation", label: "Ventilation" },
-  { href: "#phone-numbers", label: "Phone Numbers" },
 ] as const;
 
 export function ToolsQuickLinks() {

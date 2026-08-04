@@ -4,10 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-export const REPORT_TYPES = [
-  { key: "mortality", label: "Mortality" },
-  { key: "placement", label: "Placement" },
-] as const;
+export const REPORT_TYPES = [{ key: "mortality", label: "Mortality" }] as const;
 
 export type ReportTypeKey = (typeof REPORT_TYPES)[number]["key"];
 

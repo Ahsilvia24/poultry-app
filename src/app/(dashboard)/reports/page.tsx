@@ -14,7 +14,6 @@ import {
   type HouseBarPoint,
   type HouseByDateMatrix,
 } from "@/components/MortalityCharts";
-import { ReportsTypeTabs, type ReportTypeKey } from "@/components/ReportsTypeTabs";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 
 type SearchParams = Promise<{
@@ -26,41 +25,16 @@ type SearchParams = Promise<{
   type?: string;
 }>;
 
-function resolveReportType(raw: string | undefined): ReportTypeKey {
-  if (raw === "placement") return raw;
-  return "mortality";
-}
-
 export default async function ReportsPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
   const params = await searchParams;
-  const reportType = resolveReportType(params.type);
   const today = new Date();
   const from = params.from ?? format(subDays(today, 42), "yyyy-MM-dd");
   const to = params.to ?? format(today, "yyyy-MM-dd");
   const fromDate = parseISO(from);
   const toDate = parseISO(to);
-
-  if (reportType !== "mortality") {
-    const title = "Placement";
-    return (
-      <div>
-        <PageHeader title="Reports" subtitle="Choose a report type, then run filters" />
-        <Suspense fallback={<div className="mb-4 h-10" />}>
-          <ReportsTypeTabs active={reportType} />
-        </Suspense>
-        <Card>
-          <p className="text-lg font-bold text-stone-900">{title} report</p>
-          <p className="mt-2 text-sm text-stone-600">
-            Placeholder — this report type is coming soon. Use the Mortality tab for house × date
-            results today.
-          </p>
-        </Card>
-      </div>
-    );
-  }
 
   const farms = await prisma.farm.findMany({
     where: { userId: session.user.id, deletedAt: null },
@@ -288,15 +262,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
 
   return (
     <div>
-      <PageHeader title="Reports" subtitle="Choose a report type, then run filters" />
-
-      <Suspense fallback={<div className="mb-4 h-10" />}>
-        <ReportsTypeTabs active="mortality" />
-      </Suspense>
+      <PageHeader title="Reports" subtitle="House × date mortality matrix" />
 
       <Card className="mb-6">
         <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <input type="hidden" name="type" value="mortality" />
           <div>
             <Label htmlFor="farmId">Farm</Label>
             <Select id="farmId" name="farmId" defaultValue={selectedFarmId}>

@@ -14,13 +14,6 @@ import {
 import { DatePickerField } from "../../src/components/DatePickerField";
 import { ClipboardIconButton } from "../../src/components/ClipboardIconButton";
 
-const REPORT_TYPES = [
-  { key: "mortality", label: "Mortality" },
-  { key: "placement", label: "Placement" },
-] as const;
-
-type ReportType = (typeof REPORT_TYPES)[number]["key"];
-
 function formatDateHeader(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   const dt = new Date(y!, (m ?? 1) - 1, d ?? 1);
@@ -60,7 +53,6 @@ export default function ReportsScreen() {
   const params = useLocalSearchParams<{ farmId?: string | string[] }>();
   const farmIdParam = paramId(params.farmId);
   const farms = useMemo(() => listFarms().farms, []);
-  const [reportType, setReportType] = useState<ReportType>("mortality");
   const [farmId, setFarmId] = useState(farmIdParam || farms[0]?.id || "");
   const [from, setFrom] = useState(addDaysKey(todayKey(), -14));
   const [to, setTo] = useState(todayKey());
@@ -111,161 +103,134 @@ export default function ReportsScreen() {
         >
           <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
         </Pressable>
-        <PageHeader title="Reports" subtitle="Choose a report type, then run filters" />
+        <PageHeader title="Reports" subtitle="House × date mortality matrix" />
 
+        <Text style={styles.label}>Farm</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: "row", marginBottom: 12 }}>
-            {REPORT_TYPES.map((t) => (
+          <View style={{ flexDirection: "row", marginBottom: 8 }}>
+            <Chip label="All" active={farmId === ""} onPress={() => setFarmId("")} />
+            {farms.map((f) => (
               <Chip
-                key={t.key}
-                label={t.label}
-                active={reportType === t.key}
-                onPress={() => setReportType(t.key)}
+                key={f.id}
+                label={f.farmName}
+                active={farmId === f.id}
+                onPress={() => setFarmId(f.id)}
               />
             ))}
           </View>
         </ScrollView>
 
-        {reportType !== "mortality" ? (
-          <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>
-              {REPORT_TYPES.find((t) => t.key === reportType)?.label} report
-            </Text>
-            <Text style={[styles.muted, { marginTop: 8 }]}>
-              Placeholder — this report type is coming soon. Use Mortality for house × date results
-              today.
-            </Text>
-          </Card>
-        ) : (
-          <>
-            <Text style={styles.label}>Farm</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: "row", marginBottom: 8 }}>
-                <Chip label="All" active={farmId === ""} onPress={() => setFarmId("")} />
-                {farms.map((f) => (
-                  <Chip
-                    key={f.id}
-                    label={f.farmName}
-                    active={farmId === f.id}
-                    onPress={() => setFarmId(f.id)}
-                  />
-                ))}
-              </View>
-            </ScrollView>
+        <Card>
+          <DatePickerField label="From" value={from} onChange={setFrom} />
+          <View style={{ height: 8 }} />
+          <DatePickerField label="To" value={to} onChange={setTo} />
+          <Text style={[styles.muted, { marginTop: 8, marginBottom: 4 }]}>
+            {formatMdY(from)} – {formatMdY(to)}
+          </Text>
+          <PrimaryButton label="Apply filters" onPress={apply} />
+        </Card>
 
-            <Card>
-              <DatePickerField label="From" value={from} onChange={setFrom} />
-              <View style={{ height: 8 }} />
-              <DatePickerField label="To" value={to} onChange={setTo} />
-              <Text style={[styles.muted, { marginTop: 8, marginBottom: 4 }]}>
-                {formatMdY(from)} – {formatMdY(to)}
-              </Text>
-              <PrimaryButton label="Apply filters" onPress={apply} />
-            </Card>
-
-            <Card style={{ paddingVertical: 12 }}>
+        <Card style={{ paddingVertical: 12 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 10,
+              gap: 8,
+            }}
+          >
+            <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text, flex: 1 }}>
+              Mortality
+            </Text>
+            <ClipboardIconButton
+              accessibilityLabel="Copy mortality report"
+              color={colors.accentDark}
+              emptyMessage="Run a report with data first."
+              getText={() => {
+                if (matrix.rows.length === 0) return "";
+                return matrixToTsv(matrix, rowHeaderLabel);
+              }}
+            />
+          </View>
+          <ScrollView horizontal>
+            <View>
               <View
                 style={{
                   flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 10,
-                  gap: 8,
+                  marginBottom: 8,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.border,
+                  paddingBottom: 8,
                 }}
               >
-                <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text, flex: 1 }}>
-                  Mortality
+                <Text
+                  style={{ width: 110, fontWeight: "800", color: colors.muted }}
+                  numberOfLines={1}
+                >
+                  {rowHeaderLabel}
                 </Text>
-                <ClipboardIconButton
-                  accessibilityLabel="Copy mortality report"
-                  color={colors.accentDark}
-                  emptyMessage="Run a report with data first."
-                  getText={() => {
-                    if (matrix.rows.length === 0) return "";
-                    return matrixToTsv(matrix, rowHeaderLabel);
-                  }}
-                />
-              </View>
-              <ScrollView horizontal>
-                <View>
-                  <View
+                {matrix.dates.map((d) => (
+                  <Text
+                    key={d}
                     style={{
-                      flexDirection: "row",
-                      marginBottom: 8,
-                      borderBottomWidth: 1,
-                      borderBottomColor: colors.border,
-                      paddingBottom: 8,
+                      width: 52,
+                      textAlign: "center",
+                      fontWeight: "700",
+                      fontSize: 12,
+                      color: colors.muted,
                     }}
                   >
-                    <Text
-                      style={{ width: 110, fontWeight: "800", color: colors.muted }}
-                      numberOfLines={1}
-                    >
-                      {rowHeaderLabel}
-                    </Text>
-                    {matrix.dates.map((d) => (
-                      <Text
-                        key={d}
-                        style={{
-                          width: 52,
-                          textAlign: "center",
-                          fontWeight: "700",
-                          fontSize: 12,
-                          color: colors.muted,
-                        }}
-                      >
-                        {formatDateHeader(d)}
+                    {formatDateHeader(d)}
+                  </Text>
+                ))}
+                <Text
+                  style={{
+                    width: 48,
+                    textAlign: "right",
+                    fontWeight: "800",
+                    color: colors.muted,
+                  }}
+                >
+                  Tot
+                </Text>
+              </View>
+              {matrix.rows.length === 0 ? (
+                <Text style={styles.muted}>No data for range</Text>
+              ) : (
+                matrix.rows.map((row) => {
+                  const total = matrix.dates.reduce((s, d) => s + (row.byDate[d] ?? 0), 0);
+                  return (
+                    <View key={row.houseLabel} style={{ flexDirection: "row", marginBottom: 6 }}>
+                      <Text style={{ width: 110, fontWeight: "700" }} numberOfLines={1}>
+                        {row.houseLabel}
                       </Text>
-                    ))}
-                    <Text
-                      style={{
-                        width: 48,
-                        textAlign: "right",
-                        fontWeight: "800",
-                        color: colors.muted,
-                      }}
-                    >
-                      Tot
-                    </Text>
-                  </View>
-                  {matrix.rows.length === 0 ? (
-                    <Text style={styles.muted}>No data for range</Text>
-                  ) : (
-                    matrix.rows.map((row) => {
-                      const total = matrix.dates.reduce((s, d) => s + (row.byDate[d] ?? 0), 0);
-                      return (
-                        <View key={row.houseLabel} style={{ flexDirection: "row", marginBottom: 6 }}>
-                          <Text style={{ width: 110, fontWeight: "700" }} numberOfLines={1}>
-                            {row.houseLabel}
+                      {matrix.dates.map((d) => {
+                        const n = row.byDate[d] ?? 0;
+                        return (
+                          <Text
+                            key={d}
+                            style={{
+                              width: 52,
+                              textAlign: "center",
+                              color: n > 0 ? colors.text : colors.muted,
+                              fontWeight: n > 0 ? "700" : "400",
+                            }}
+                          >
+                            {n}
                           </Text>
-                          {matrix.dates.map((d) => {
-                            const n = row.byDate[d] ?? 0;
-                            return (
-                              <Text
-                                key={d}
-                                style={{
-                                  width: 52,
-                                  textAlign: "center",
-                                  color: n > 0 ? colors.text : colors.muted,
-                                  fontWeight: n > 0 ? "700" : "400",
-                                }}
-                              >
-                                {n}
-                              </Text>
-                            );
-                          })}
-                          <Text style={{ width: 48, textAlign: "right", fontWeight: "800" }}>
-                            {total}
-                          </Text>
-                        </View>
-                      );
-                    })
-                  )}
-                </View>
-              </ScrollView>
-            </Card>
-          </>
-        )}
+                        );
+                      })}
+                      <Text style={{ width: 48, textAlign: "right", fontWeight: "800" }}>
+                        {total}
+                      </Text>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </ScrollView>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );

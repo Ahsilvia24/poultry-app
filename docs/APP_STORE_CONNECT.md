@@ -43,6 +43,23 @@ Repo asset for the 13" iPad slot (2064×2752 Service Report UI preview):
 Upload that under App Preview and Screenshots → 13" iPad (or replace with a live device capture if you prefer).
 Also fill iPhone screenshots if not already set.
 
+## App Review notes (paste into ASC)
+
+```
+PoultryTech is an offline farm-management app for poultry service technicians.
+
+Demo login (also prefilled on the Sign in screen):
+Email: tech@poultry.local
+Password: password123
+
+On first launch the app seeds demo farms/houses automatically. No internet is required after install.
+
+Suggested path for review:
+1. Sign in with the demo account
+2. Open Farms → pick a farm → open a house / Enter mortality
+3. Use Dashboard, LFO, and Tools tabs
+```
+
 ## Device QA after build 83 installs
 
 - [ ] Log Temp on house tiles → value shows → Service Report prefills → clears after midnight

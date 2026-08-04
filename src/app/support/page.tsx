@@ -39,10 +39,24 @@ export default function SupportPage() {
           </div>
         </div>
 
-        <p className="mt-10 text-sm text-stone-500">
-          For App Store review questions about demo access or account setup, email the address
-          above and mention Apple App Review.
-        </p>
+        <div className="mt-10 rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-700">
+          <p className="font-semibold text-stone-900">App Store review demo access</p>
+          <p className="mt-2">
+            Sign in with the prefilled demo account on the login screen, or use:
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>
+              Email: <span className="font-semibold">tech@poultry.local</span>
+            </li>
+            <li>
+              Password: <span className="font-semibold">password123</span>
+            </li>
+          </ul>
+          <p className="mt-2 text-stone-500">
+            Demo farms and houses load automatically on first launch. No internet required after
+            install.
+          </p>
+        </div>
         <p className="mt-4 text-sm text-stone-500">
           <Link
             href="/privacy"

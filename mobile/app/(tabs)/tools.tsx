@@ -27,7 +27,7 @@ import {
   TempCurveChart,
 } from "../../src/components/toolsCharts";
 
-type SectionKey = "temp" | "cool" | "max" | "lights" | "vent" | "phone";
+type SectionKey = "temp" | "cool" | "max" | "lights" | "vent";
 
 const QUICK_LINKS: Array<{ key: SectionKey; label: string }> = [
   { key: "temp", label: "Temp Curve" },
@@ -35,7 +35,6 @@ const QUICK_LINKS: Array<{ key: SectionKey; label: string }> = [
   { key: "max", label: "Max Cooling" },
   { key: "lights", label: "Lights" },
   { key: "vent", label: "Ventilation" },
-  { key: "phone", label: "Phone Numbers" },
 ];
 
 export default function ToolsScreen() {
@@ -48,7 +47,6 @@ export default function ToolsScreen() {
     max: true,
     lights: true,
     vent: true,
-    phone: true,
   });
   const [cfmOpen, setCfmOpen] = useState<"bird" | "fan" | null>(null);
   const [showVentMath, setShowVentMath] = useState(false);
@@ -567,18 +565,6 @@ export default function ToolsScreen() {
                 </View>
               ) : null}
             </>
-          ) : (
-            <SectionAnchor />
-          )}
-        </View>
-
-        <View onLayout={(e) => onSectionLayout("phone", e)} collapsable={false}>
-          {open.phone ? (
-            <SectionPanel
-              title="Phone Numbers"
-              subtitle="Coming soon."
-              onClose={() => setOpen((p) => ({ ...p, phone: false }))}
-            />
           ) : (
             <SectionAnchor />
           )}
