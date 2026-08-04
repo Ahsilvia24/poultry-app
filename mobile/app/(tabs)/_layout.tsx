@@ -2,6 +2,7 @@ import { Tabs, router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { colors } from "../../src/theme";
 import {
   armFarmReturnFromMortality,
@@ -11,11 +12,11 @@ import {
 import { requestTabScrollTop, tabStackIndex } from "../../src/lib/tabScroll";
 
 const TAB_ITEMS = [
-  { name: "index", label: "Dashboard", href: "/" },
-  { name: "farms", label: "Farms" },
-  { name: "mortality", label: "Mortality" },
-  { name: "lfo", label: "LFO" },
-  { name: "tools", label: "Tools" },
+  { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
+  { name: "farms", label: "Farms", icon: "barn" },
+  { name: "mortality", label: "Mortality", icon: "heart-pulse" },
+  { name: "lfo", label: "LFO", icon: "sack" },
+  { name: "tools", label: "Tools", icon: "tools" },
 ] as const;
 
 function WebStyleTabBar({ state, descriptors, navigation }: any) {
@@ -142,13 +143,21 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
               style={{
                 flex: 1,
                 borderRadius: 10,
-                paddingVertical: 12,
+                paddingVertical: 8,
                 paddingHorizontal: 2,
                 alignItems: "center",
                 justifyContent: "center",
+                gap: 2,
                 backgroundColor: focused ? colors.accentDark : "transparent",
               }}
             >
+              {item?.icon ? (
+                <MaterialCommunityIcons
+                  name={item.icon}
+                  size={20}
+                  color={focused ? "#fff" : "#44403c"}
+                />
+              ) : null}
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
