@@ -945,7 +945,7 @@ export default function FarmDetailScreen() {
           <View
             style={{
               flexDirection: "row",
-              alignItems: "flex-start",
+              alignItems: "center",
               justifyContent: "space-between",
               gap: 12,
               marginBottom: 12,
@@ -958,7 +958,7 @@ export default function FarmDetailScreen() {
               }}
               accessibilityRole="button"
               accessibilityLabel="Back to farms"
-              style={{ flexShrink: 0, paddingTop: 2 }}
+              style={{ flexShrink: 0 }}
             >
               <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
             </Pressable>
