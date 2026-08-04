@@ -31,7 +31,6 @@ export async function saveMortalityBatchAction(raw: unknown) {
   if (!flock) return { error: "Flock not found or access denied" };
 
   const mortalityDate = new Date(parsed.data.mortalityDate);
-  const birdAge = birdAgeFromPlacement(flock.placementDate, mortalityDate);
   const hfMap = new Map(flock.houseFlocks.map((hf) => [hf.id, hf]));
 
   for (const entry of parsed.data.entries) {
@@ -54,6 +53,8 @@ export async function saveMortalityBatchAction(raw: unknown) {
 
   const results = [];
   for (const entry of parsed.data.entries) {
+    const hf = hfMap.get(entry.houseFlockId)!;
+    const birdAge = birdAgeFromPlacement(hf.placementDate ?? flock.placementDate, mortalityDate);
     const loss = calcTotalDailyLoss(entry.dailyMortalityCount, entry.cullCount);
     const row = await prisma.dailyMortality.upsert({
       where: {
@@ -92,7 +93,8 @@ export async function saveMortalityBatchAction(raw: unknown) {
   revalidatePath("/mortality");
   revalidatePath(`/farms/${flock.farmId}`);
 
-  return { success: true, count: results.length, birdAgeInDays: birdAge };
+  const maxAge = results.reduce((m, r) => Math.max(m, r.birdAgeInDays), 0);
+  return { success: true, count: results.length, birdAgeInDays: maxAge };
 }
 
 export async function saveMortalityHouseSeriesAction(raw: unknown) {
@@ -166,10 +168,12 @@ export async function saveMortalityHouseSeriesAction(raw: unknown) {
     }
   }
 
+  const placementForAge = hf.placementDate ?? flock.placementDate;
+
   const results = [];
   for (const entry of entries) {
     const mortalityDate = new Date(entry.mortalityDate);
-    const birdAge = birdAgeFromPlacement(flock.placementDate, mortalityDate);
+    const birdAge = birdAgeFromPlacement(placementForAge, mortalityDate);
     const loss = calcTotalDailyLoss(entry.dailyMortalityCount, entry.cullCount);
     const row = await prisma.dailyMortality.upsert({
       where: {

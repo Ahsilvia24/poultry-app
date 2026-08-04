@@ -45,6 +45,7 @@ export function FarmInfoEditor({
   backLink?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="mb-6">
@@ -56,7 +57,10 @@ export function FarmInfoEditor({
           </h1>
           <button
             type="button"
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => {
+              setError(null);
+              setOpen((v) => !v);
+            }}
             aria-label={open ? "Close farm settings" : "Edit farm info"}
             aria-expanded={open}
             title="Edit farm info"
@@ -73,11 +77,21 @@ export function FarmInfoEditor({
           <h2 className="font-bold text-stone-900">Edit farm info</h2>
           <form
             action={async (formData) => {
-              await updateFarmAction(farm.id, formData);
+              setError(null);
+              const result = await updateFarmAction(farm.id, formData);
+              if (result && "error" in result && result.error) {
+                setError(result.error);
+                return;
+              }
               setOpen(false);
             }}
             className="mt-4 space-y-4"
           >
+            {error ? (
+              <p className="text-sm font-semibold text-red-700" role="alert">
+                {error}
+              </p>
+            ) : null}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <Label htmlFor="farmName">Farm name *</Label>

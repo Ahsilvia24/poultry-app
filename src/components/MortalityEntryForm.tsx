@@ -121,6 +121,12 @@ export type MortalityHousePayload = {
   houseFlockId: string;
   houseNumber: number;
   placedBirdCount: number;
+  /** Owning flock — required when a farm has multiple active flocks. */
+  flockId: string;
+  /** House placement override, or flock placement. */
+  placementDate: string;
+  projectedCatchDate: string | null;
+  targetMarketAge: number | null;
   existingEntries: Array<{
     mortalityDate: string;
     dailyMortalityCount: number;
@@ -310,16 +316,16 @@ function buildRows(
   return rows;
 }
 
-function resolveCatchDateKey(flock: {
+function resolveCatchDateKey(house: {
   placementDate: string;
   projectedCatchDate: string | null;
   targetMarketAge: number | null;
 }): string {
-  if (flock.projectedCatchDate) return flock.projectedCatchDate;
-  const placement = parseLocalDate(flock.placementDate);
+  if (house.projectedCatchDate) return house.projectedCatchDate;
+  const placement = parseLocalDate(house.placementDate);
   const age =
-    flock.targetMarketAge != null && flock.targetMarketAge > 0
-      ? flock.targetMarketAge
+    house.targetMarketAge != null && house.targetMarketAge > 0
+      ? house.targetMarketAge
       : 52;
   return format(addDays(placement, age), "yyyy-MM-dd");
 }
@@ -419,6 +425,7 @@ export function MortalityEntryForm({
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveGenRef = useRef(0);
   const dirtyRef = useRef(false);
+  const savePromiseRef = useRef<Promise<boolean> | null>(null);
   rowsRef.current = rows;
   flockRef.current = flock;
   houseRef.current = house;
@@ -430,47 +437,60 @@ export function MortalityEntryForm({
     }
   }
 
-  async function performSave() {
-    const currentFlock = flockRef.current;
-    const currentHouse = houseRef.current;
-    const currentRows = rowsRef.current;
-    if (!currentFlock || !currentHouse || currentRows.length === 0) return;
+  async function performSave(): Promise<boolean> {
+    if (savePromiseRef.current) return savePromiseRef.current;
 
-    const gen = ++saveGenRef.current;
-    dirtyRef.current = false;
-    setSaveStatus("saving");
-    setError(null);
+    const run = (async (): Promise<boolean> => {
+      const currentFlock = flockRef.current;
+      const currentHouse = houseRef.current;
+      const currentRows = rowsRef.current;
+      if (!currentFlock || !currentHouse || currentRows.length === 0) return true;
 
-    const entered = currentRows.filter((r) => r.hasEntry);
-    const clearDates = currentRows.filter((r) => !r.hasEntry).map((r) => r.mortalityDate);
-    if (entered.length === 0 && clearDates.length === 0) {
-      setSaveStatus("idle");
-      return;
+      const gen = ++saveGenRef.current;
+      dirtyRef.current = false;
+      setSaveStatus("saving");
+      setError(null);
+
+      const entered = currentRows.filter((r) => r.hasEntry);
+      const clearDates = currentRows.filter((r) => !r.hasEntry).map((r) => r.mortalityDate);
+      if (entered.length === 0 && clearDates.length === 0) {
+        setSaveStatus("idle");
+        return true;
+      }
+
+      const result = await saveMortalityHouseSeriesAction({
+        flockId: currentHouse.flockId || currentFlock.id,
+        houseFlockId: currentHouse.houseFlockId,
+        mortalityCause: "UNKNOWN",
+        comments: null,
+        isDraft: false,
+        entries: entered.map((r) => ({
+          mortalityDate: r.mortalityDate,
+          dailyMortalityCount: Number(r.dailyMortalityCount || 0),
+          cullCount: Number(r.cullCount || 0),
+        })),
+        clearDates,
+      });
+
+      if (gen !== saveGenRef.current) return true;
+
+      if (result?.error) {
+        dirtyRef.current = true;
+        setError(result.error);
+        setSaveStatus("idle");
+        return false;
+      }
+
+      setSaveStatus("saved");
+      return true;
+    })();
+
+    savePromiseRef.current = run;
+    try {
+      return await run;
+    } finally {
+      if (savePromiseRef.current === run) savePromiseRef.current = null;
     }
-
-    const result = await saveMortalityHouseSeriesAction({
-      flockId: currentFlock.id,
-      houseFlockId: currentHouse.houseFlockId,
-      mortalityCause: "UNKNOWN",
-      comments: null,
-      isDraft: false,
-      entries: entered.map((r) => ({
-        mortalityDate: r.mortalityDate,
-        dailyMortalityCount: Number(r.dailyMortalityCount || 0),
-        cullCount: Number(r.cullCount || 0),
-      })),
-      clearDates,
-    });
-
-    if (gen !== saveGenRef.current) return;
-
-    if (result?.error) {
-      setError(result.error);
-      setSaveStatus("idle");
-      return;
-    }
-
-    setSaveStatus("saved");
   }
 
   function scheduleSave() {
@@ -514,13 +534,18 @@ export function MortalityEntryForm({
       return;
     }
 
-    const catchDate = resolveCatchDateKey(flock);
-    const built = buildRows(flock.placementDate, catchDate, house, asOfDateKey);
+    const placementDate = house.placementDate || flock.placementDate;
+    const catchDate = resolveCatchDateKey({
+      placementDate,
+      projectedCatchDate: house.projectedCatchDate ?? flock.projectedCatchDate,
+      targetMarketAge: house.targetMarketAge ?? flock.targetMarketAge,
+    });
+    const built = buildRows(placementDate, catchDate, house, asOfDateKey);
     setRows(built);
     const shouldJump = jumpOnHouseLoadRef.current;
     jumpOnHouseLoadRef.current = true;
     const currentAge = birdAgeFromPlacement(
-      parseLocalDate(flock.placementDate),
+      parseLocalDate(placementDate),
       parseLocalDate(asOfDateKey),
     );
     const maxWeek = maxWeekFromRows(built);
@@ -546,6 +571,9 @@ export function MortalityEntryForm({
     flock?.projectedCatchDate,
     flock?.targetMarketAge,
     house?.houseFlockId,
+    house?.placementDate,
+    house?.projectedCatchDate,
+    house?.targetMarketAge,
     asOfDateKey,
     jumpToken,
   ]);
@@ -677,11 +705,14 @@ export function MortalityEntryForm({
   async function onKeypadBackToHouse() {
     if (!farmId || !house) return;
     cancelScheduledSave();
-    if (dirtyRef.current || saveTimerRef.current) {
-      await performSave();
+    if (dirtyRef.current || saveTimerRef.current || savePromiseRef.current) {
+      const ok = await performSave();
+      if (!ok) return;
     }
     setActiveField(null);
-    router.push(`/farms/${farmId}`);
+    router.push(
+      `/farms/${farmId}?focusHouseFlockId=${encodeURIComponent(house.houseFlockId)}`,
+    );
   }
 
   function focusEntryField(
@@ -783,7 +814,7 @@ export function MortalityEntryForm({
               {formatNumber(house.placedBirdCount)} ·{" "}
               <span className="font-semibold text-stone-900">
                 {birdAgeFromPlacement(
-                  parseLocalDate(flock.placementDate),
+                  parseLocalDate(house.placementDate || flock.placementDate),
                   parseLocalDate(asOfDateKey),
                 )}
                 d
