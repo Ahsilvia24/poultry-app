@@ -198,7 +198,7 @@ export default function FarmsScreen() {
               overshootRight={false}
               friction={2}
               rightThreshold={40}
-              containerStyle={{ marginBottom: 8 }}
+              containerStyle={{ marginBottom: 0 }}
               renderRightActions={() => (
                 <Pressable
                   accessibilityLabel={`Delete ${farm.farmName} permanently`}
