@@ -32,7 +32,8 @@ export function MortalityTabIcon({ className }: IconProps) {
 export function LfoTabIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
-      <path d="M7 2h10v3H7V2zm1 4h8l3 4v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V10l3-4zm1.5 5.5h5v1.5h-5V11.5zM8 15h8v5H8v-5z" />
+      {/* Lid + cylindrical bin + hopper cone + boots */}
+      <path d="M6.5 3h11v2.5h-11V3zm.5 3.5h10l2.5 3.5H5L7 6.5zm-2 4.5h15v7.5H5V11zm3 8.5h2.5V22H8v-2.5zm5.5 0H16V22h-2.5v-2.5z" />
     </svg>
   );
 }
