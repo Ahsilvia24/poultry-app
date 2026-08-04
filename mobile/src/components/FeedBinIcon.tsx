@@ -1,6 +1,6 @@
 import { View } from "react-native";
 
-/** Compact feed-bin silhouette: straight body + cone hopper. */
+/** Compact feed-bin silhouette: straight body + cone hopper + two legs. */
 export function FeedBinIcon({
   color,
   size = 20,
@@ -9,9 +9,12 @@ export function FeedBinIcon({
   size?: number;
 }) {
   const bodyWidth = size * 0.72;
-  const bodyHeight = size * 0.42;
-  const coneHeight = size * 0.42;
+  const bodyHeight = size * 0.34;
+  const coneHeight = size * 0.3;
   const lidHeight = Math.max(2, size * 0.1);
+  const legWidth = Math.max(2, size * 0.12);
+  const legHeight = size * 0.16;
+  const legInset = bodyWidth * 0.12;
 
   return (
     <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
@@ -43,6 +46,18 @@ export function FeedBinIcon({
           borderTopColor: color,
         }}
       />
+      <View
+        style={{
+          width: bodyWidth,
+          flexDirection: "row",
+          justifyContent: "space-between",
+          paddingHorizontal: legInset,
+          marginTop: -1,
+        }}
+      >
+        <View style={{ width: legWidth, height: legHeight, backgroundColor: color }} />
+        <View style={{ width: legWidth, height: legHeight, backgroundColor: color }} />
+      </View>
     </View>
   );
 }
