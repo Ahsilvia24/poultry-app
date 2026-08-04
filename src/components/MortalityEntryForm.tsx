@@ -664,7 +664,14 @@ export function MortalityEntryForm({
   }
 
   function expandWeeksForAge(age: number) {
-    setExpandedWeeks(new Set(openWeeksForAge(age, maxWeekFromRows(rowsRef.current))));
+    // Merge — never auto-collapse weeks already open (avoids jump on week change).
+    setExpandedWeeks((prev) => {
+      const next = new Set(prev);
+      for (const w of openWeeksForAge(age, maxWeekFromRows(rowsRef.current))) {
+        next.add(w);
+      }
+      return next;
+    });
   }
 
   function focusNextInColumn(field: "culls" | "mortality", age: number) {

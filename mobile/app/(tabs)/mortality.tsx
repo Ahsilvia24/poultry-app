@@ -316,7 +316,14 @@ export default function MortalityScreen() {
 
   function expandWeeksForAge(age: number) {
     const maxWeek = maxWeekFromRows(rowsRef.current);
-    setExpandedWeeks(new Set(openWeeksForAge(age, maxWeek)));
+    // Merge — never auto-collapse weeks already open (avoids jump on week change).
+    setExpandedWeeks((prev) => {
+      const next = new Set(prev);
+      for (const w of openWeeksForAge(age, maxWeek)) {
+        next.add(w);
+      }
+      return next;
+    });
   }
 
   function scrollRowIntoView(age: number) {

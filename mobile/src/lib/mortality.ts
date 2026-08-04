@@ -52,7 +52,11 @@ export function shouldPrefetchNextWeek(birdAgeInDays: number): boolean {
 /** Weeks that should stay open while focusing/entering a given age. */
 export function openWeeksForAge(birdAgeInDays: number, maxWeek: number): number[] {
   const week = flockWeekFromAge(birdAgeInDays);
-  const weeks = [week];
+  const weeks: number[] = [];
+  // Keep the previous week open so advancing week→week doesn't collapse
+  // content above and jump the active entry box to the top.
+  if (week > 1) weeks.push(week - 1);
+  weeks.push(week);
   if (shouldPrefetchNextWeek(birdAgeInDays) && week + 1 <= maxWeek) {
     weeks.push(week + 1);
   }
