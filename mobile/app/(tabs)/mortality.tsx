@@ -729,7 +729,6 @@ export default function MortalityScreen() {
           <Pressable onPress={resetKeypad}>
           <PageHeader
             title="Mortality entry"
-            subtitle="Enter mortality by house and bird age"
           />
 
           <ChipScroller>

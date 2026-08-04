@@ -78,7 +78,6 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
     <div>
       <PageHeader
         title="Mortality entry"
-        subtitle="Enter mortality by house and bird age"
       />
       {farms.length === 0 ? (
         <p className="text-stone-600">Add an active farm with a flock to enter mortality.</p>
