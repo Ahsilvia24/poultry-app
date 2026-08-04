@@ -107,7 +107,7 @@ function DashboardFarmRow({
               <p className="text-lg font-bold text-stone-900">
                 {farm.farmName}
                 {farm.flockAgeDays != null ? (
-                  <span className="font-semibold text-stone-500"> · {farm.flockAgeDays}d</span>
+                  <span className="font-semibold text-stone-500"> {farm.flockAgeDays}d</span>
                 ) : null}
               </p>
             </div>
