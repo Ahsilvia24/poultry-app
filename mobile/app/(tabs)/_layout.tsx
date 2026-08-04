@@ -15,7 +15,7 @@ const TAB_ITEMS = [
   { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
   { name: "farms", label: "Farms", icon: "barn" },
   { name: "mortality", label: "Mortality", icon: "heart-pulse" },
-  { name: "lfo", label: "LFO", icon: "sack" },
+  { name: "lfo", label: "LFO", icon: "silo" },
   { name: "tools", label: "Tools", icon: "tools" },
 ] as const;
 

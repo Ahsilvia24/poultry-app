@@ -28,11 +28,11 @@ export function MortalityTabIcon({ className }: IconProps) {
   );
 }
 
-/** Feed sack silhouette for LFO */
+/** Feed bin / hopper silhouette for LFO */
 export function LfoTabIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
-      <path d="M8 3h8l2 4v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7l2-4zm1.2 2-.8 1.6h7.2L14.8 5H9.2zM9 11h6v2H9v-2zm0 4h6v2H9v-2z" />
+      <path d="M7 2h10v3H7V2zm1 4h8l3 4v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V10l3-4zm1.5 5.5h5v1.5h-5V11.5zM8 15h8v5H8v-5z" />
     </svg>
   );
 }
