@@ -19,11 +19,15 @@ export function FarmsTabIcon({ className }: IconProps) {
   );
 }
 
-/** Pulse / mortality silhouette */
+/** Medical cross in circle for mortality */
 export function MortalityTabIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
-      <path d="M3 13h3.2l1.6-4.5 2.4 9 2.2-6.2L14.2 13H21v-2h-5.8l-1.5-2.3-2.1 5.9-2.2-8.1L6.8 11H3v2z" />
+      <path
+        fillRule="evenodd"
+        d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1.25 5.5h-2.5v3.25H7.5v2.5h3.25V16.5h2.5v-3.25H16.5v-2.5h-3.25V7.5z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
