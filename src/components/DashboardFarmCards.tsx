@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { format, parseISO } from "date-fns";
 import { deactivateFarmAction } from "@/app/actions/farms";
@@ -27,6 +28,13 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
 
   function makeInactive() {
     if (pending || deactivatingRef.current) return;
+    const ok = window.confirm(
+      `Make ${farm.farmName} inactive?\n\nIt will move to Inactive. You can make it active again later.`,
+    );
+    if (!ok) {
+      setSwipeX(0);
+      return;
+    }
     deactivatingRef.current = true;
     setSwipeX(0);
     start(async () => {
@@ -90,23 +98,32 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
         }}
       >
         <Card className="!p-0 overflow-hidden rounded-xl">
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="w-full px-4 py-3 text-left transition hover:bg-stone-50"
-            aria-expanded={open}
-            aria-label={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
-          >
-            <div className="flex w-full items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
+          <div className="w-full px-4 py-3 text-left">
+            <div className="flex w-full items-center justify-between gap-2">
+              <Link
+                href={`/farms/${farm.id}`}
+                className="min-w-0 flex-1 rounded-md hover:bg-stone-50"
+                aria-label={`Open ${farm.farmName}`}
+              >
                 <p className="text-lg font-bold text-stone-900">
                   {farm.farmName}
                   {farm.flockAgeDays != null ? (
                     <span className="font-semibold text-stone-500"> {farm.flockAgeDays}d</span>
                   ) : null}
                 </p>
-              </div>
+              </Link>
               <StatusBadge status={farm.status} />
+              <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-100 hover:text-stone-800"
+                aria-expanded={open}
+                aria-label={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
+              >
+                <span aria-hidden="true" className="text-lg leading-none">
+                  {open ? "▴" : "▾"}
+                </span>
+              </button>
             </div>
 
             {open ? (
@@ -168,7 +185,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
                 </div>
               </div>
             ) : null}
-          </button>
+          </div>
         </Card>
       </div>
     </div>

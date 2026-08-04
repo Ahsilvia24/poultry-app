@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -230,14 +231,26 @@ export default function DashboardScreen() {
     }
   }, []);
 
-  function makeInactive(farmId: string) {
-    deactivateFarm(farmId);
-    setExpandedFarmIds((prev) => {
-      const next = new Set(prev);
-      next.delete(farmId);
-      return next;
-    });
-    load();
+  function confirmMakeInactive(farmId: string, farmName: string) {
+    Alert.alert(
+      "Make farm inactive?",
+      `${farmName} will move to Inactive. You can make it active again later.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Make inactive",
+          onPress: () => {
+            deactivateFarm(farmId);
+            setExpandedFarmIds((prev) => {
+              const next = new Set(prev);
+              next.delete(farmId);
+              return next;
+            });
+            load();
+          },
+        },
+      ],
+    );
   }
 
   useFocusEffect(
@@ -496,13 +509,10 @@ export default function DashboardScreen() {
                     friction={2}
                     rightThreshold={40}
                     containerStyle={{ marginBottom: 0 }}
-                    onSwipeableOpen={(direction) => {
-                      if (direction === "right") makeInactive(farm.id);
-                    }}
                     renderRightActions={() => (
                       <Pressable
                         accessibilityLabel={`Make ${farm.farmName} inactive`}
-                        onPress={() => makeInactive(farm.id)}
+                        onPress={() => confirmMakeInactive(farm.id, farm.farmName)}
                         style={{
                           backgroundColor: "#57534e",
                           justifyContent: "center",
@@ -529,21 +539,26 @@ export default function DashboardScreen() {
                     )}
                   >
                     <Card style={{ padding: 0, marginBottom: 0, overflow: "hidden" }}>
-                      <Pressable
-                        onPress={() => toggleFarmExpanded(farm.id)}
-                        accessibilityRole="button"
-                        accessibilityState={{ expanded: open }}
-                        accessibilityLabel={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
-                        style={{ padding: 14, backgroundColor: colors.card }}
-                      >
+                      <View style={{ padding: 14, backgroundColor: colors.card }}>
                         <View
                           style={{
                             flexDirection: "row",
+                            alignItems: "center",
                             justifyContent: "space-between",
                             gap: 8,
                           }}
                         >
-                          <View style={{ flex: 1, minWidth: 0 }}>
+                          <Pressable
+                            onPress={() =>
+                              router.push({
+                                pathname: "/(tabs)/farms/[id]",
+                                params: { id: farm.id },
+                              })
+                            }
+                            accessibilityRole="button"
+                            accessibilityLabel={`Open ${farm.farmName}`}
+                            style={{ flex: 1, minWidth: 0 }}
+                          >
                             <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
                               {farm.farmName}
                               {(() => {
@@ -562,8 +577,27 @@ export default function DashboardScreen() {
                                 );
                               })()}
                             </Text>
-                          </View>
+                          </Pressable>
                           <StatusBadge status={farm.status} />
+                          <Pressable
+                            onPress={() => toggleFarmExpanded(farm.id)}
+                            accessibilityRole="button"
+                            accessibilityState={{ expanded: open }}
+                            accessibilityLabel={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
+                            hitSlop={8}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Ionicons
+                              name={open ? "chevron-up" : "chevron-down"}
+                              size={20}
+                              color={colors.muted}
+                            />
+                          </Pressable>
                         </View>
 
                         {open ? (
@@ -656,7 +690,7 @@ export default function DashboardScreen() {
                             </View>
                           </View>
                         ) : null}
-                      </Pressable>
+                      </View>
                     </Card>
                   </Swipeable>
                 );
