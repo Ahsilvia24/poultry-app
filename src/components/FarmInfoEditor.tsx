@@ -52,7 +52,7 @@ export function FarmInfoEditor({
       <div className="flex items-center justify-between gap-3">
         {backLink ? <div className="shrink-0">{backLink}</div> : <div />}
         <div className="flex min-w-0 items-center justify-end gap-2">
-          <h1 className="min-w-0 truncate text-right text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
+          <h1 className="min-w-0 truncate text-right text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
             {farm.farmName}
           </h1>
           <button

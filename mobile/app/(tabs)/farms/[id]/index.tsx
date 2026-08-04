@@ -985,7 +985,7 @@ export default function FarmDetailScreen() {
               }}
             >
               <Text
-                style={[styles.title, { fontSize: 22, flexShrink: 1, textAlign: "right" }]}
+                style={[styles.title, { flexShrink: 1, textAlign: "right" }]}
                 numberOfLines={1}
               >
                 {farm.farmName}
