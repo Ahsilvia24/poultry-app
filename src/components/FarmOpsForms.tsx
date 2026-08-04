@@ -21,7 +21,7 @@ import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import {
   ISSUE_CATEGORY_LABELS,
   LITTER_EVENT_LABELS,
-  VISIT_TYPE_LABELS,
+  visitTypeSelectOptions,
 } from "@/lib/utils";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 
@@ -101,9 +101,9 @@ export function FarmVisitForm({
             name="visitType"
             defaultValue={initial?.visitType ?? "ROUTINE_SERVICE"}
           >
-            {Object.entries(VISIT_TYPE_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
+            {visitTypeSelectOptions(initial?.visitType).map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
               </option>
             ))}
           </Select>

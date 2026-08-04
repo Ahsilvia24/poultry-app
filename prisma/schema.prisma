@@ -71,6 +71,9 @@ enum VisitType {
   MORTALITY_INVESTIGATION
   PRE_CATCH
   OTHER
+  WEIGHT_PROJECTION
+  LFO
+  HIGH_MORTALITY
 }
 
 enum IssueCategory {
