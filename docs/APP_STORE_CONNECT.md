@@ -27,12 +27,14 @@ Paste these into App Store Connect → App Information:
 
 | ASC field | URL |
 |-----------|-----|
-| **Privacy Policy URL** | https://www.termsfeed.com/live/c019d958-bfad-4ce8-8ab4-afbb983092ab |
+| **Privacy Policy URL** | Prefer the offline-accurate in-repo policy once published (see note below). Current ASC value: https://www.termsfeed.com/live/c019d958-bfad-4ce8-8ab4-afbb983092ab |
 | **Support URL** | https://ahsilvia24.github.io/poultry-app/support/ |
 
 Contact email on both pages is **talentpro024@gmail.com**.
 
-`https://ahsilvia24.github.io/poultry-app/privacy/` redirects to the TermsFeed policy.
+**Privacy note for App Review:** The mobile app is offline-first and does **not** use camera, photos, contacts, or location. If the TermsFeed page still lists those, update App Privacy answers / the policy URL so they match the binary (or point ASC at a published copy of `src/app/privacy/page.tsx`). Mismatches can trigger Guideline 5.1.1 questions.
+
+`https://ahsilvia24.github.io/poultry-app/privacy/` currently redirects to the TermsFeed policy.
 
 ## Screenshots
 
