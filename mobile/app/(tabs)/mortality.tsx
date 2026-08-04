@@ -328,11 +328,11 @@ export default function MortalityScreen() {
     const place = (keypadHeight: number) => {
       row.measureInWindow((_rx: number, rowY: number, _rw: number, rowH: number) => {
         host.measureInWindow((_sx: number, scrollY: number, _sw: number, hostH: number) => {
-          // Keep the active row in the middle of the visible area above the keypad
-          // so the next days/week stay visible without manual scrolling.
+          // Keep the active row in the upper third of the area above the keypad
+          // so it isn't covered while typing.
           const visibleH = Math.max(120, hostH - keypadHeight);
           const rowCenter = rowY + rowH / 2;
-          const targetCenter = scrollY + visibleH * 0.42;
+          const targetCenter = scrollY + visibleH * 0.28;
           const delta = rowCenter - targetCenter;
           scroll.scrollTo({
             y: Math.max(0, scrollOffsetRef.current + delta),
@@ -692,10 +692,11 @@ export default function MortalityScreen() {
     } else {
       setSelection({ start: 0, end: value.length });
     }
-    // Wait a beat for next-week expand + keypad layout, then pin row mid-screen.
+    // Wait a beat for next-week expand + keypad layout, then pin row above keypad.
     requestAnimationFrame(() => {
       scrollRowIntoView(age);
       setTimeout(() => scrollRowIntoView(age), 80);
+      setTimeout(() => scrollRowIntoView(age), 200);
     });
   }
 

@@ -48,6 +48,7 @@ function WebMortalityKeypad({
 
   return (
     <div
+      data-mortality-keypad
       className="fixed inset-x-0 z-50 border-t border-stone-300 bg-stone-200 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
       style={{ bottom: "calc(3.75rem + env(safe-area-inset-bottom, 0px))" }}
       onMouseDown={guard}
@@ -202,13 +203,35 @@ function firstUnfilledAfterLastFilled(rows: DayRow[], asOfDateKey: string): DayR
   return null;
 }
 
+function scrollMortalityFieldAboveKeypad(el: HTMLElement) {
+  const keypad = document.querySelector<HTMLElement>("[data-mortality-keypad]");
+  const viewportH = window.innerHeight;
+  let obscuredBottom = 0;
+  if (keypad) {
+    obscuredBottom = Math.max(0, viewportH - keypad.getBoundingClientRect().top);
+  } else if (window.matchMedia("(max-width: 767px), (pointer: coarse)").matches) {
+    // Estimate tab bar + keypad before the keypad mounts.
+    obscuredBottom = 360;
+  }
+  const visibleH = Math.max(120, viewportH - obscuredBottom);
+  // Keep the active box in the upper third of the free space above the keypad.
+  const targetY = visibleH * 0.28;
+  const rect = el.getBoundingClientRect();
+  const delta = rect.top + rect.height / 2 - targetY;
+  if (Math.abs(delta) < 4) return;
+  window.scrollBy({ top: delta, behavior: "smooth" });
+}
+
 function focusMortalityAge(age: number, field: "culls" | "mortality" = "mortality") {
   const el = document.querySelector<HTMLInputElement>(`[data-mort-nav="${field}-${age}"]`);
   if (!el) return false;
-  // Center the active cell so days/weeks below stay visible while typing.
-  el.scrollIntoView({ block: "center", behavior: "smooth", inline: "nearest" });
-  el.focus();
+  scrollMortalityFieldAboveKeypad(el);
+  el.focus({ preventScroll: true });
   el.select();
+  // Re-run after keypad/layout settles so the field isn't left under the keyboard.
+  requestAnimationFrame(() => scrollMortalityFieldAboveKeypad(el));
+  window.setTimeout(() => scrollMortalityFieldAboveKeypad(el), 80);
+  window.setTimeout(() => scrollMortalityFieldAboveKeypad(el), 200);
   return true;
 }
 
@@ -757,7 +780,7 @@ export function MortalityEntryForm({
   const showKeypad = preferCustomKeypad && activeField != null;
 
   return (
-    <div className={cn("space-y-4", showKeypad && "pb-80")}>
+    <div className={cn("space-y-4", showKeypad && "pb-[28rem]")}>
       <div className="space-y-2">
         <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
           <div className="flex w-max flex-nowrap gap-2">
