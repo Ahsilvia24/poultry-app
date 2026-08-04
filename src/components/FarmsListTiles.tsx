@@ -110,9 +110,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
               {farm.growerName || farm.phoneNumber ? (
                 <p className="mt-0.5 text-sm leading-snug text-stone-600">
                   {farm.growerName ? <span>{farm.growerName}</span> : null}
-                  {farm.growerName && farm.phoneNumber ? (
-                    <span className="text-stone-400"> · </span>
-                  ) : null}
+                  {farm.growerName && farm.phoneNumber ? " " : null}
                   {farm.phoneNumber ? (
                     <a
                       href={dialHref(farm.phoneNumber)}

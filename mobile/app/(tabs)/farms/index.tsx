@@ -236,44 +236,33 @@ export default function FarmsScreen() {
                         <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
                       </Text>
                       {farm.growerName || farm.phoneNumber ? (
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            flexWrap: "wrap",
-                            alignItems: "baseline",
-                            gap: 6,
-                            marginTop: 1,
-                          }}
-                        >
+                        <Text style={[styles.muted, { marginTop: 1, lineHeight: 16 }]}>
                           {farm.growerName ? (
                             <Text style={[styles.muted, { lineHeight: 16 }]}>
                               {farm.growerName}
                             </Text>
                           ) : null}
+                          {farm.growerName && farm.phoneNumber ? " " : null}
                           {farm.phoneNumber ? (
-                            <Pressable
+                            <Text
                               accessibilityRole="link"
                               accessibilityLabel={`Call ${farm.phoneNumber}`}
                               onPress={(e) => {
                                 e?.stopPropagation?.();
                                 Linking.openURL(dialUrl(farm.phoneNumber!));
                               }}
-                              hitSlop={8}
+                              style={{
+                                color: colors.accentDark,
+                                fontWeight: "700",
+                                fontSize: 13,
+                                lineHeight: 16,
+                                textDecorationLine: "underline",
+                              }}
                             >
-                              <Text
-                                style={{
-                                  color: colors.accentDark,
-                                  fontWeight: "700",
-                                  fontSize: 13,
-                                  lineHeight: 16,
-                                  textDecorationLine: "underline",
-                                }}
-                              >
-                                {farm.phoneNumber}
-                              </Text>
-                            </Pressable>
+                              {farm.phoneNumber}
+                            </Text>
                           ) : null}
-                        </View>
+                        </Text>
                       ) : null}
                     </View>
                     <Pressable
