@@ -1183,7 +1183,7 @@ export default function FarmDetailScreen() {
                             ? `M ${formatNumber(h.cumulativeMortality)}`
                             : null}
                           {h.cumulativeMortality != null && h.projectedHeadCount != null
-                            ? " · "
+                            ? " "
                             : null}
                           {h.projectedHeadCount != null
                             ? `PHC ${formatNumber(h.projectedHeadCount)}`

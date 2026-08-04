@@ -143,9 +143,6 @@ export function HouseCard({
             >
               <p className="text-lg font-bold">
                 House {house.houseNumber}
-                {flockLabel ? (
-                  <span className="font-semibold text-stone-600"> · {flockLabel}</span>
-                ) : null}
                 {birdAgeDays != null ? (
                   <span className="font-semibold text-stone-600"> {birdAgeDays}d</span>
                 ) : null}
@@ -153,7 +150,7 @@ export function HouseCard({
               {metrics || projectedHeadCount != null ? (
                 <p className="mt-0.5 text-sm font-semibold text-stone-600">
                   {metrics ? `M ${formatNumber(metrics.cumulative)}` : null}
-                  {metrics && projectedHeadCount != null ? " · " : null}
+                  {metrics && projectedHeadCount != null ? " " : null}
                   {projectedHeadCount != null
                     ? `PHC ${formatNumber(projectedHeadCount)}`
                     : null}
