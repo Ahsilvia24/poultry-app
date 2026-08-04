@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { PAGE_TITLE_CLASS } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 /** Short chevron + page-title-sized back label (matches farm detail Farms control). */
@@ -27,7 +26,10 @@ export function PageTitleBackLink({
       >
         <path d="M6 2 2 8l4 6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      <h1 className={cn(PAGE_TITLE_CLASS, "text-emerald-800")}>{label}</h1>
+      {/* Inherit link color — PAGE_TITLE_CLASS includes text-stone-900 which would win. */}
+      <h1 className="font-serif text-2xl font-extrabold tracking-tight text-inherit sm:text-3xl">
+        {label}
+      </h1>
     </Link>
   );
 }
