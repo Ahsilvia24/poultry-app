@@ -1007,7 +1007,7 @@ export default function FarmDetailScreen() {
               </Pressable>
             </View>
           </View>
-          <Card style={{ marginTop: 0 }}>
+          <Card style={{ marginTop: 0, marginBottom: 0 }}>
             <Text style={{ fontWeight: "800", fontSize: 14, marginBottom: 8 }}>Quick links</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {(
