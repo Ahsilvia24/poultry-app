@@ -230,6 +230,8 @@ export async function importMobileBackupAction(
             continue;
           }
           const id = newId();
+          const loggedTemp = str(row.logged_temp);
+          const loggedTempAt = dateOnly(row.logged_temp_at);
           await tx.house.create({
             data: {
               id,
@@ -238,6 +240,8 @@ export async function importMobileBackupAction(
               squareFootage: num(row.square_footage) ?? 29700,
               totalFanCFM: num(row.total_fan_cfm),
               numberOfFans: num(row.number_of_fans) != null ? int(row.number_of_fans) : null,
+              loggedTemp: loggedTemp || null,
+              loggedTempAt,
             },
           });
           houseIds.set(oldId, id);

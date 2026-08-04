@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { addDays } from "date-fns";
+import { addDays, format } from "date-fns";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { farmSchema, createFarmSchema, flockSchema, houseSchema } from "@/lib/validations";
@@ -408,6 +408,46 @@ export async function deleteHouseAction(farmId: string, houseId: string) {
   revalidatePath("/farms");
   revalidatePath("/");
   return { success: true };
+}
+
+/** Log / clear today's house temperature (°F). Empty temp clears. Resets at local midnight. */
+export async function updateHouseLoggedTempAction(
+  farmId: string,
+  houseId: string,
+  formData: FormData,
+) {
+  const user = await requireUser();
+  await assertFarmAccess(farmId, user.id!);
+
+  const house = await prisma.house.findFirst({
+    where: { id: houseId, farmId, deletedAt: null },
+  });
+  if (!house) return { error: "House not found" };
+
+  const trimmed = String(formData.get("temp") ?? "").trim();
+  if (!trimmed) {
+    await prisma.house.update({
+      where: { id: houseId },
+      data: { loggedTemp: null, loggedTempAt: null },
+    });
+    revalidatePath(`/farms/${farmId}`);
+    return { success: true as const, loggedTemp: null };
+  }
+
+  if (!Number.isFinite(Number(trimmed))) {
+    return { error: "Enter a valid temperature" };
+  }
+
+  const today = parseDateKey(format(new Date(), "yyyy-MM-dd"));
+  if (!today) return { error: "Could not resolve today's date" };
+
+  await prisma.house.update({
+    where: { id: houseId },
+    data: { loggedTemp: trimmed, loggedTempAt: today },
+  });
+
+  revalidatePath(`/farms/${farmId}`);
+  return { success: true as const, loggedTemp: trimmed };
 }
 
 export async function createFlockAction(farmId: string, formData: FormData) {

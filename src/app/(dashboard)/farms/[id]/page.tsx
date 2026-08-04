@@ -68,6 +68,28 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
   if (!farm) notFound();
 
   const farmId = farm.id;
+  const todayKey = format(today, "yyyy-MM-dd");
+  // Midnight reset: drop yesterday's house temps so Log Temp clears (matches mobile).
+  const staleTempIds = farm.houses
+    .filter((h) => {
+      if (!h.loggedTemp?.trim()) return false;
+      if (!h.loggedTempAt) return true;
+      return format(h.loggedTempAt, "yyyy-MM-dd") !== todayKey;
+    })
+    .map((h) => h.id);
+  if (staleTempIds.length > 0) {
+    await prisma.house.updateMany({
+      where: { id: { in: staleTempIds }, farmId },
+      data: { loggedTemp: null, loggedTempAt: null },
+    });
+    for (const h of farm.houses) {
+      if (staleTempIds.includes(h.id)) {
+        h.loggedTemp = null;
+        h.loggedTempAt = null;
+      }
+    }
+  }
+
   const thresholds = await getUserThresholds(session.user.id);
   const activeFlocks = farm.flocks
     .filter((f) => f.flockStatus === "ACTIVE")
@@ -262,6 +284,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             placementDateKey={placementDateKey}
             catchDateKey={catchDateKey}
             birdAgeDays={birdAgeDays}
+            loggedTemp={house.loggedTemp?.trim() || null}
           />
         ),
         )}

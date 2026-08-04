@@ -196,6 +196,9 @@ model House {
   fanCycleOnSeconds        Int?
   fanCycleOffSeconds       Int?
   notes                    String?
+  /** House temp (°F) for Service Report prefill; valid for loggedTempAt day only. */
+  loggedTemp               String?
+  loggedTempAt             DateTime? @db.Date
   deletedAt                DateTime?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt

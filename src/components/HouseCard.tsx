@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { HouseCardActions } from "@/components/HouseCardActions";
+import { HouseLogTempButton } from "@/components/HouseLogTempButton";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Card } from "@/components/ui";
@@ -48,6 +49,7 @@ export function HouseCard({
   placementDateKey = null,
   catchDateKey = null,
   birdAgeDays = null,
+  loggedTemp = null,
 }: {
   farmId: string;
   house: HouseData;
@@ -63,6 +65,7 @@ export function HouseCard({
   placementDateKey?: string | null;
   catchDateKey?: string | null;
   birdAgeDays?: number | null;
+  loggedTemp?: string | null;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [mode, setMode] = useState<"idle" | "edit" | "delete">("idle");
@@ -157,17 +160,25 @@ export function HouseCard({
                 </p>
               ) : null}
             </button>
-            {hasFlock && houseFlockId ? (
-              <a
-                href={`/mortality?farmId=${encodeURIComponent(farmId)}&houseFlockId=${encodeURIComponent(houseFlockId)}`}
-                className="inline-flex min-h-14 min-w-24 shrink-0 items-center justify-center rounded-xl bg-emerald-800 px-3 py-3 text-center text-sm font-extrabold leading-tight text-white hover:bg-emerald-900"
-                aria-label={`Enter mortality for house ${house.houseNumber}`}
-              >
-                Enter
-                <br />
-                mortality
-              </a>
-            ) : null}
+            <div className="flex shrink-0 items-start gap-2">
+              <HouseLogTempButton
+                farmId={farmId}
+                houseId={house.id}
+                houseNumber={house.houseNumber}
+                loggedTemp={loggedTemp}
+              />
+              {hasFlock && houseFlockId ? (
+                <a
+                  href={`/mortality?farmId=${encodeURIComponent(farmId)}&houseFlockId=${encodeURIComponent(houseFlockId)}`}
+                  className="inline-flex min-h-14 min-w-24 shrink-0 items-center justify-center rounded-xl bg-emerald-800 px-3 py-3 text-center text-sm font-extrabold leading-tight text-white hover:bg-emerald-900"
+                  aria-label={`Enter mortality for house ${house.houseNumber}`}
+                >
+                  Enter
+                  <br />
+                  mortality
+                </a>
+              ) : null}
+            </div>
           </div>
 
           <button
