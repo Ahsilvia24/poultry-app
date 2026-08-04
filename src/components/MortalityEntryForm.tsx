@@ -39,8 +39,8 @@ function WebMortalityKeypad({
     e.preventDefault();
   }
 
-  const keyClass =
-    "flex min-h-12 flex-1 items-center justify-center rounded-[10px] bg-white text-xl font-bold text-stone-900 shadow-sm active:bg-stone-100";
+  const keyBase =
+    "flex min-h-12 flex-1 items-center justify-center rounded-[10px] text-xl font-bold shadow-sm";
 
   return (
     <div
@@ -57,7 +57,7 @@ function WebMortalityKeypad({
               <button
                 key={d}
                 type="button"
-                className={keyClass}
+                className={cn(keyBase, "bg-white text-stone-900 active:bg-stone-100")}
                 onMouseDown={guard}
                 onPointerDown={guard}
                 onClick={() => onDigit(d)}
@@ -70,7 +70,7 @@ function WebMortalityKeypad({
         <div className="flex gap-2">
           <button
             type="button"
-            className={cn(keyClass, "bg-stone-100")}
+            className={cn(keyBase, "bg-stone-300 text-stone-900 active:bg-stone-400")}
             onMouseDown={guard}
             onPointerDown={guard}
             onClick={onBackspace}
@@ -80,7 +80,7 @@ function WebMortalityKeypad({
           </button>
           <button
             type="button"
-            className={keyClass}
+            className={cn(keyBase, "bg-white text-stone-900 active:bg-stone-100")}
             onMouseDown={guard}
             onPointerDown={guard}
             onClick={() => onDigit("0")}
@@ -89,7 +89,7 @@ function WebMortalityKeypad({
           </button>
           <button
             type="button"
-            className={cn(keyClass, "bg-emerald-700 text-white active:bg-emerald-800")}
+            className={cn(keyBase, "bg-emerald-800 text-white active:bg-emerald-900")}
             onMouseDown={guard}
             onPointerDown={guard}
             onClick={onEnter}
