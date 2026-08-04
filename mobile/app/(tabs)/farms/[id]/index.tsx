@@ -947,7 +947,7 @@ export default function FarmDetailScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ marginBottom: 16 }}>
+        <View style={{ marginBottom: 12 }}>
           <View
             style={{
               flexDirection: "row",

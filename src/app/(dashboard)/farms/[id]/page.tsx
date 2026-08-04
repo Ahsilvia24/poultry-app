@@ -225,7 +225,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         }
       />
 
-      <div className="mb-6">
+      <div className="mb-3">
         <FarmQuickLinks
           farmId={farm.id}
           hasActiveFlock={activeFlocks.length > 0}
@@ -237,7 +237,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         />
       </div>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         {houseCards.map(
           ({
             house,
