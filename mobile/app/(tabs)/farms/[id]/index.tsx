@@ -547,8 +547,13 @@ export default function FarmDetailScreen() {
               gap: 2,
             }}
           >
-            <Ionicons name="chevron-back" size={22} color={colors.text} style={{ marginRight: -4 }} />
-            <Text style={styles.title}>Farms</Text>
+            <Ionicons
+              name="chevron-back"
+              size={22}
+              color={colors.accentDark}
+              style={{ marginRight: -4 }}
+            />
+            <Text style={[styles.title, { color: colors.accentDark }]}>Farms</Text>
           </Pressable>
           <Text style={{ color: colors.danger }}>{error ?? "Farm not found"}</Text>
         </View>
@@ -971,8 +976,13 @@ export default function FarmDetailScreen() {
                 gap: 2,
               }}
             >
-              <Ionicons name="chevron-back" size={22} color={colors.text} style={{ marginRight: -4 }} />
-              <Text style={styles.title}>Farms</Text>
+              <Ionicons
+                name="chevron-back"
+                size={22}
+                color={colors.accentDark}
+                style={{ marginRight: -4 }}
+              />
+              <Text style={[styles.title, { color: colors.accentDark }]}>Farms</Text>
             </Pressable>
             <View
               style={{
