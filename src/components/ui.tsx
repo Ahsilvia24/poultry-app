@@ -96,7 +96,7 @@ export function StatusBadge({ status }: { status: string }) {
 
 /** Shared page-title look — use for every top-level screen heading. */
 export const PAGE_TITLE_CLASS =
-  "text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl";
+  "font-serif text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl";
 
 export function PageHeader({
   title,

@@ -24,7 +24,7 @@ export function PageTitleBackLink({
       >
         <path d="M6 2 2 8l4 6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      <span className={PAGE_TITLE_CLASS}>{label}</span>
+      <h1 className={PAGE_TITLE_CLASS}>{label}</h1>
     </Link>
   );
 }
