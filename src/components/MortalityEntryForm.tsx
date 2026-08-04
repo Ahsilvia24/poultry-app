@@ -613,11 +613,11 @@ export function MortalityEntryForm({
       </div>
 
       {house && rows.length > 0 ? (
-        <div className="space-y-2">
+        <div className="space-y-0">
           {weekGroups.map((group) => {
             const open = expandedWeeks.has(group.week);
             return (
-              <Card key={group.week} className="!p-0 overflow-hidden">
+              <Card key={group.week} className="!p-0 overflow-hidden rounded-xl">
                 <button
                   type="button"
                   onClick={() => toggleWeek(group.week)}

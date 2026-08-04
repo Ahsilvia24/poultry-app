@@ -822,7 +822,7 @@ export default function MortalityScreen() {
               {weekGroups.map((group) => {
                 const open = expandedWeeks.has(group.week);
                 return (
-                  <Card key={group.week} style={{ padding: 0, overflow: "hidden" }}>
+                  <Card key={group.week} style={{ padding: 0, overflow: "hidden", marginBottom: 0 }}>
                     <Pressable
                       onPress={() =>
                         setExpandedWeeks((prev) => {
