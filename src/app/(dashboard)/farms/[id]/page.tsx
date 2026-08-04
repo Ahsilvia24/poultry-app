@@ -17,6 +17,7 @@ import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
 import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
 import { createFlockAction } from "@/app/actions/farms";
 import { HouseCard } from "@/components/HouseCard";
+import { FocusHouseOnMount } from "@/components/FocusHouseOnMount";
 import { AddFlockSection } from "@/components/AddFlockSection";
 import { AddHouseForm } from "@/components/AddHouseForm";
 import { FarmInfoEditor } from "@/components/FarmInfoEditor";
@@ -29,6 +30,7 @@ import { FarmVisitsSection } from "@/components/FarmVisitsSection";
 import { WeightProjectionTile } from "@/components/WeightProjectionTile";
 import { Card } from "@/components/ui";
 import { PageTitleBackLink } from "@/components/PageTitleBackLink";
+import { Suspense } from "react";
 
 type Params = Promise<{ id: string }>;
 
@@ -70,11 +72,12 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
   const farmId = farm.id;
   const todayKey = format(today, "yyyy-MM-dd");
   // Midnight reset: drop yesterday's house temps so Log Temp clears (matches mobile).
+  // Use dateKeyFromDb for @db.Date — format() is local TZ and can shift the day west of UTC.
   const staleTempIds = farm.houses
     .filter((h) => {
       if (!h.loggedTemp?.trim()) return false;
       if (!h.loggedTempAt) return true;
-      return format(h.loggedTempAt, "yyyy-MM-dd") !== todayKey;
+      return dateKeyFromDb(h.loggedTempAt) !== todayKey;
     })
     .map((h) => h.id);
   if (staleTempIds.length > 0) {
@@ -246,6 +249,15 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         />
       </div>
 
+      <Suspense fallback={null}>
+        <FocusHouseOnMount
+          houseIdByFlockId={Object.fromEntries(
+            houseCards
+              .filter((c) => c.hf?.id)
+              .map((c) => [c.hf!.id, c.house.id] as const),
+          )}
+        />
+      </Suspense>
       <div className="grid gap-3 md:grid-cols-2">
         {houseCards.map(
           ({

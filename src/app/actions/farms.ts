@@ -6,6 +6,7 @@ import { addDays, format } from "date-fns";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { farmSchema, createFarmSchema, flockSchema, houseSchema } from "@/lib/validations";
+import { parseDateKey as parseDateKeyUtc } from "@/lib/visits/schedule";
 
 function emptyToNull(value: FormDataEntryValue | null) {
   const s = String(value ?? "").trim();
@@ -438,8 +439,8 @@ export async function updateHouseLoggedTempAction(
     return { error: "Enter a valid temperature" };
   }
 
-  const today = parseDateKey(format(new Date(), "yyyy-MM-dd"));
-  if (!today) return { error: "Could not resolve today's date" };
+  // Store as UTC @db.Date for the local calendar day (matches dateKeyFromDb reads).
+  const today = parseDateKeyUtc(format(new Date(), "yyyy-MM-dd"));
 
   await prisma.house.update({
     where: { id: houseId },

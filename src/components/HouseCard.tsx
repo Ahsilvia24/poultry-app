@@ -107,7 +107,7 @@ export function HouseCard({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl">
+    <div id={`house-${house.id}`} className="relative scroll-mt-4 overflow-hidden rounded-xl">
       <div
         className="absolute inset-y-0 right-0 flex w-[88px] items-center justify-center rounded-xl bg-red-700"
         aria-hidden={swipeX > -40}
