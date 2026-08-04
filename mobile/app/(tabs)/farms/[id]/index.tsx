@@ -540,9 +540,15 @@ export default function FarmDetailScreen() {
               if (router.canGoBack()) router.back();
               else router.replace("/(tabs)/farms");
             }}
-            style={{ marginBottom: 12 }}
+            style={{
+              marginBottom: 12,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 2,
+            }}
           >
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
+            <Ionicons name="chevron-back" size={22} color={colors.text} style={{ marginRight: -4 }} />
+            <Text style={styles.title}>Farms</Text>
           </Pressable>
           <Text style={{ color: colors.danger }}>{error ?? "Farm not found"}</Text>
         </View>
@@ -958,9 +964,15 @@ export default function FarmDetailScreen() {
               }}
               accessibilityRole="button"
               accessibilityLabel="Back to farms"
-              style={{ flexShrink: 0 }}
+              style={{
+                flexShrink: 0,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 2,
+              }}
             >
-              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
+              <Ionicons name="chevron-back" size={22} color={colors.text} style={{ marginRight: -4 }} />
+              <Text style={styles.title}>Farms</Text>
             </Pressable>
             <View
               style={{
