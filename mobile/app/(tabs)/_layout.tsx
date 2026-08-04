@@ -7,7 +7,6 @@ import type { ComponentProps } from "react";
 import { colors } from "../../src/theme";
 import { FeedBinIcon } from "../../src/components/FeedBinIcon";
 import {
-  armFarmReturnFromMortality,
   clearFarmReturnFromMortality,
   getFarmNavContext,
 } from "../../src/lib/farmNavContext";
@@ -84,21 +83,15 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
               accessibilityState={focused ? { selected: true } : {}}
               onPress={() => {
                 const ctx = getFarmNavContext();
-                const fromMortality = focusedRoute?.name === "mortality";
 
-                // Mortality → Farms: open the selected farm/house.
-                // Do not emit tabPress (nested stacks popToTop on that event).
-                // Do not navigate to farms/index — that was forcing the list.
-                // Open the selected farm, but do not snap to a house —
-                // only Mortality "Back to House" passes focusHouseFlockId.
-                if (!focused && route.name === "farms" && fromMortality && ctx.farmId) {
-                  armFarmReturnFromMortality();
-                  router.navigate({
-                    pathname: "/(tabs)/farms/[id]",
-                    params: {
-                      id: ctx.farmId,
-                    },
-                  });
+                // Farms tab always opens the main list — never the last farm detail
+                // from Mortality history. Use "Back to House" for that farm.
+                if (route.name === "farms") {
+                  clearFarmReturnFromMortality();
+                  navigation.navigate("farms", { screen: "index" });
+                  popNestedToRoot(tabRoute);
+                  router.replace("/(tabs)/farms");
+                  requestTabScrollTop("farms");
                   return;
                 }
 
@@ -110,13 +103,7 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 if (event.defaultPrevented) return;
 
                 if (focused) {
-                  // Re-tap Farms/LFO while already on that tab → root list.
-                  if (route.name === "farms") {
-                    clearFarmReturnFromMortality();
-                    popNestedToRoot(tabRoute);
-                    requestTabScrollTop("farms");
-                    return;
-                  }
+                  // Re-tap LFO while already on that tab → root list.
                   if (route.name === "lfo") {
                     popNestedToRoot(tabRoute);
                     requestTabScrollTop("lfo");
@@ -134,11 +121,6 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                   return;
                 }
 
-                // Switching tabs — restore last screen (never force Farms → list).
-                if (route.name === "farms") {
-                  navigation.navigate("farms");
-                  return;
-                }
                 if (route.name === "mortality") {
                   navigation.navigate(route.name, {
                     farmId: ctx.farmId ?? undefined,

@@ -9,7 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { Redirect, useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
@@ -19,7 +19,7 @@ import {
   listFarms,
   reactivateFarm,
 } from "../../../src/repos/data";
-import { peekFarmReturnFromMortality } from "../../../src/lib/farmNavContext";
+import { clearFarmReturnFromMortality } from "../../../src/lib/farmNavContext";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, styles } from "../../../src/theme";
 import { Card, Chip, PageHeader } from "../../../src/components/ui";
@@ -39,8 +39,6 @@ export default function FarmsScreen() {
   const [data, setData] = useState<ReturnType<typeof listFarms> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Re-read on focus so Mortality → Farms pending redirect is picked up.
-  const [pendingReturn, setPendingReturn] = useState(() => peekFarmReturnFromMortality());
 
   const load = useCallback(async () => {
     try {
@@ -55,27 +53,12 @@ export default function FarmsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const pending = peekFarmReturnFromMortality();
-      setPendingReturn(pending);
-      if (pending?.farmId) return;
+      // Farms tab/list should never bounce into a prior mortality farm.
+      clearFarmReturnFromMortality();
       setLoading(true);
       load();
     }, [load]),
   );
-
-  // If Mortality armed a return target and we landed on the list, bounce to that farm.
-  if (pendingReturn?.farmId) {
-    return (
-      <Redirect
-        href={{
-          pathname: "/(tabs)/farms/[id]",
-          params: {
-            id: pendingReturn.farmId,
-          },
-        }}
-      />
-    );
-  }
 
   function confirmMakeInactive(farmId: string, farmName: string) {
     Alert.alert(

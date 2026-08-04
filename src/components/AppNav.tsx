@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   DashboardTabIcon,
@@ -23,8 +23,13 @@ const nav = [
   { href: "/settings", label: "Settings" },
 ];
 
+function isNavActive(pathname: string, href: string) {
+  return pathname === href || (href !== "/" && pathname.startsWith(href));
+}
+
 export function AppNav() {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <>
@@ -35,9 +40,11 @@ export function AppNav() {
               <Link
                 key={item.href}
                 href={item.href}
+                // Farms always lands on the main list, not a prior farm detail in history.
+                replace={item.href === "/farms"}
                 className={cn(
                   "rounded-lg px-3 py-2 text-base font-semibold",
-                  pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
+                  isNavActive(pathname, item.href)
                     ? "bg-emerald-700 text-white"
                     : "text-stone-700 hover:bg-stone-200",
                 )}
@@ -53,15 +60,30 @@ export function AppNav() {
         <div className="grid grid-cols-5 gap-1 px-1 py-2">
           {nav.slice(0, 5).map((item) => {
             const Icon = "Icon" in item ? item.Icon : undefined;
+            const active = isNavActive(pathname, item.href);
+            if (item.href === "/farms") {
+              return (
+                <button
+                  key={item.href}
+                  type="button"
+                  onClick={() => router.replace("/farms")}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2 text-center text-[11px] font-bold leading-tight sm:text-xs",
+                    active ? "bg-emerald-700 text-white" : "text-stone-700",
+                  )}
+                >
+                  {Icon ? <Icon className="h-5 w-5 shrink-0" /> : null}
+                  {item.label}
+                </button>
+              );
+            }
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2 text-center text-[11px] font-bold leading-tight sm:text-xs",
-                  pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href))
-                    ? "bg-emerald-700 text-white"
-                    : "text-stone-700",
+                  active ? "bg-emerald-700 text-white" : "text-stone-700",
                 )}
               >
                 {Icon ? <Icon className="h-5 w-5 shrink-0" /> : null}
