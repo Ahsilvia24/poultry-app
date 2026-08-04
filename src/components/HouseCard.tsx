@@ -147,7 +147,7 @@ export function HouseCard({
                   <span className="font-semibold text-stone-600"> · {flockLabel}</span>
                 ) : null}
                 {birdAgeDays != null ? (
-                  <span className="font-semibold text-stone-600"> · {birdAgeDays}d</span>
+                  <span className="font-semibold text-stone-600"> {birdAgeDays}d</span>
                 ) : null}
               </p>
               {metrics || projectedHeadCount != null ? (

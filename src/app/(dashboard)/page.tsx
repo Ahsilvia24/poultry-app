@@ -67,7 +67,7 @@ export default async function DashboardPage() {
                 >
                   <span className="font-semibold text-stone-900">
                     {c.farmName}
-                    <span className="font-normal text-stone-500"> · {c.flockAgeDays}d</span>
+                    <span className="font-normal text-stone-500"> {c.flockAgeDays}d</span>
                   </span>
                   <span className="shrink-0 text-stone-600">
                     {format(parseISO(c.date), "EEE, MMM d, yyyy")}

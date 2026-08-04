@@ -1137,7 +1137,7 @@ export default function FarmDetailScreen() {
                         {h.ageDays != null ? (
                           <Text style={{ fontWeight: "600", color: colors.muted }}>
                             {" "}
-                            · {h.ageDays}d
+                            {h.ageDays}d
                           </Text>
                         ) : null}
                       </Text>
