@@ -14,7 +14,7 @@ import { requestTabScrollTop, tabStackIndex } from "../../src/lib/tabScroll";
 const TAB_ITEMS = [
   { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
   { name: "farms", label: "Farms", icon: "barn" },
-  { name: "mortality", label: "Mortality", icon: "medical-bag" },
+  { name: "mortality", label: "Mortality", icon: "plus-circle" },
   { name: "lfo", label: "LFO", icon: "silo" },
   { name: "tools", label: "Tools", icon: "tools" },
 ] as const;
