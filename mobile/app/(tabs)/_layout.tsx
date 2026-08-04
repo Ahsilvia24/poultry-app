@@ -3,7 +3,9 @@ import { Pressable, Text, View } from "react-native";
 import { StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import type { ComponentProps } from "react";
 import { colors } from "../../src/theme";
+import { FeedBinIcon } from "../../src/components/FeedBinIcon";
 import {
   armFarmReturnFromMortality,
   clearFarmReturnFromMortality,
@@ -11,13 +13,20 @@ import {
 } from "../../src/lib/farmNavContext";
 import { requestTabScrollTop, tabStackIndex } from "../../src/lib/tabScroll";
 
-const TAB_ITEMS = [
+type MciName = ComponentProps<typeof MaterialCommunityIcons>["name"];
+
+const TAB_ITEMS: {
+  name: string;
+  label: string;
+  icon?: MciName;
+  customIcon?: "feed-bin";
+}[] = [
   { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
   { name: "farms", label: "Farms", icon: "barn" },
   { name: "mortality", label: "Mortality", icon: "plus-circle" },
-  { name: "lfo", label: "LFO", icon: "silo" },
+  { name: "lfo", label: "LFO", customIcon: "feed-bin" },
   { name: "tools", label: "Tools", icon: "tools" },
-] as const;
+];
 
 function WebStyleTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -151,7 +160,9 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 backgroundColor: focused ? colors.accentDark : "transparent",
               }}
             >
-              {item?.icon ? (
+              {item?.customIcon === "feed-bin" ? (
+                <FeedBinIcon color={focused ? "#fff" : "#44403c"} size={20} />
+              ) : item?.icon ? (
                 <MaterialCommunityIcons
                   name={item.icon}
                   size={20}
