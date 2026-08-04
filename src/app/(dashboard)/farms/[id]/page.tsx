@@ -211,12 +211,16 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         backLink={
           <Link
             href="/farms"
-            className="inline-flex min-h-11 flex-col items-start justify-center gap-0.5 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
+            className="inline-flex min-h-11 items-center gap-0.5 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
           >
-            <span>Farms</span>
-            <span aria-hidden="true" className="text-xl leading-none">
-              ←
-            </span>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 8 16"
+              className="h-4 w-2 shrink-0 fill-none stroke-current stroke-2"
+            >
+              <path d="M6 2 2 8l4 6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Farms
           </Link>
         }
       />
