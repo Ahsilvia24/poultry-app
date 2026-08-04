@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
 import { eachDayOfInterval, format, parseISO, subDays } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
