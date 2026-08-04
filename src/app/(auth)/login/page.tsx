@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { loginAction } from "@/app/actions/auth";
-import { Button, Input, Label } from "@/components/ui";
+import { Button, Input, Label, PAGE_TITLE_CLASS } from "@/components/ui";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +17,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-semibold text-stone-800">Sign in</h1>
+        <h1 className={PAGE_TITLE_CLASS}>Sign in</h1>
         <p className="mt-1 text-sm text-stone-600">Service technician farm management</p>
         <form action={onSubmit} className="mt-6 space-y-4">
           <div>

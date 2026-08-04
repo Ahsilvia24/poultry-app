@@ -1,7 +1,7 @@
 import { format, parseISO } from "date-fns";
 import { auth } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard";
-import { Card } from "@/components/ui";
+import { Card, PAGE_TITLE_CLASS } from "@/components/ui";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { DashboardFarmCards } from "@/components/DashboardFarmCards";
@@ -18,7 +18,7 @@ export default async function DashboardPage() {
     <div>
       <div className="mb-6">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
+          <h1 className={PAGE_TITLE_CLASS}>
             Dashboard
           </h1>
           <form action={signOutAction}>

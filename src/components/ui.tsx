@@ -94,6 +94,10 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
+/** Shared page-title look — use for every top-level screen heading. */
+export const PAGE_TITLE_CLASS =
+  "text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl";
+
 export function PageHeader({
   title,
   subtitle,
@@ -106,7 +110,7 @@ export function PageHeader({
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">{title}</h1>
+        <h1 className={PAGE_TITLE_CLASS}>{title}</h1>
         {subtitle ? <p className="mt-1 text-stone-600">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}

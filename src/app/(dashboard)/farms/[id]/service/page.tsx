@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Card, PageHeader } from "@/components/ui";
+import { PageTitleBackLink } from "@/components/PageTitleBackLink";
+import { Card, PAGE_TITLE_CLASS } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 type Params = Promise<{ id: string }>;
 
@@ -19,16 +20,10 @@ export default async function ServiceFarmPage({ params }: { params: Params }) {
 
   return (
     <div>
-      <Link
-        href={`/farms/${farm.id}`}
-        className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
-      >
-        <span aria-hidden="true" className="text-xl leading-none">
-          ←
-        </span>
-        {farm.farmName}
-      </Link>
-      <PageHeader title="Service Farm" subtitle={farm.farmName} />
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <PageTitleBackLink href={`/farms/${farm.id}`} label={farm.farmName} />
+        <h1 className={cn(PAGE_TITLE_CLASS, "min-w-0 truncate text-right")}>Service Farm</h1>
+      </div>
       <Card>
         <p className="font-semibold text-stone-800">Available on mobile</p>
         <p className="mt-2 text-sm text-stone-600">

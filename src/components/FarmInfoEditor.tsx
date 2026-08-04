@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { updateFarmAction } from "@/app/actions/farms";
-import { Button, Card, Input, Label, Textarea } from "@/components/ui";
+import { Button, Card, Input, Label, PAGE_TITLE_CLASS, Textarea } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 type FarmInfo = {
   id: string;
@@ -52,7 +53,7 @@ export function FarmInfoEditor({
       <div className="flex items-center justify-between gap-3">
         {backLink ? <div className="shrink-0">{backLink}</div> : <div />}
         <div className="flex min-w-0 items-center justify-end gap-2">
-          <h1 className="min-w-0 truncate text-right text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
+          <h1 className={cn(PAGE_TITLE_CLASS, "min-w-0 truncate text-right")}>
             {farm.farmName}
           </h1>
           <button

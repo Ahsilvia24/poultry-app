@@ -28,6 +28,7 @@ import { FarmLitterSection } from "@/components/FarmLitterSection";
 import { FarmVisitsSection } from "@/components/FarmVisitsSection";
 import { WeightProjectionTile } from "@/components/WeightProjectionTile";
 import { Card } from "@/components/ui";
+import { PageTitleBackLink } from "@/components/PageTitleBackLink";
 
 type Params = Promise<{ id: string }>;
 
@@ -208,21 +209,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           notes: farm.notes,
           numberOfGenerators: farm.numberOfGenerators,
         }}
-        backLink={
-          <Link
-            href="/farms"
-            className="inline-flex items-center gap-1 rounded-lg hover:bg-stone-100"
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 8 16"
-              className="h-5 w-2.5 shrink-0 fill-none stroke-current stroke-[2.5] text-stone-900 sm:h-6 sm:w-3"
-            >
-              <path d="M6 2 2 8l4 6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">Farms</h1>
-          </Link>
-        }
+        backLink={<PageTitleBackLink href="/farms" label="Farms" />}
       />
 
       <div className="mb-3">

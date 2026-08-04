@@ -357,25 +357,37 @@ export default function EditLfoScreen() {
           }}
           scrollEventThrottle={16}
         >
-          <Pressable
-            onPress={() => router.back()}
+          <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 6,
-              marginBottom: 8,
-              alignSelf: "flex-start",
-              paddingVertical: 6,
-              paddingRight: 8,
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 4,
             }}
-            accessibilityRole="button"
-            accessibilityLabel="Back to LFOs"
           >
-            <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
-            <Text style={{ fontWeight: "800", color: colors.accentDark, fontSize: 16 }}>LFOs</Text>
-          </Pressable>
-
-          <PageHeader title={farmName || "LFO"} subtitle="Edit last feed order" />
+            <Pressable
+              onPress={() => router.back()}
+              style={{
+                flexShrink: 0,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 2,
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Back to LFOs"
+            >
+              <Ionicons name="chevron-back" size={22} color={colors.text} style={{ marginRight: -4 }} />
+              <Text style={styles.title}>LFOs</Text>
+            </Pressable>
+            <Text
+              style={[styles.title, { flexShrink: 1, textAlign: "right" }]}
+              numberOfLines={1}
+            >
+              {farmName || "LFO"}
+            </Text>
+          </View>
+          <Text style={[styles.subtitle, { marginBottom: 16 }]}>Edit last feed order</Text>
 
           {error ? (
             <Card>

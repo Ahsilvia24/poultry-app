@@ -1,9 +1,10 @@
 import { Pressable, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { getFarmDetail } from "../../../../../src/repos/data";
 import { colors, styles } from "../../../../../src/theme";
-import { Card, PageHeader } from "../../../../../src/components/ui";
+import { Card } from "../../../../../src/components/ui";
 
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -46,22 +47,42 @@ export default function ServiceFarmPickerScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={[styles.content, { flex: 1 }]}>
-        <Pressable
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else
-              router.replace({
-                pathname: "/(tabs)/farms/[id]",
-                params: { id: farmId },
-              });
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 4,
           }}
-          style={{ marginBottom: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="Back to farm"
         >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← {farmName}</Text>
-        </Pressable>
-        <PageHeader title="Service Farm" subtitle="Choose a checklist" />
+          <Pressable
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else
+                router.replace({
+                  pathname: "/(tabs)/farms/[id]",
+                  params: { id: farmId },
+                });
+            }}
+            style={{
+              flexShrink: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 2,
+              minWidth: 0,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to farm"
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.text} style={{ marginRight: -4 }} />
+            <Text style={[styles.title, { flexShrink: 1 }]} numberOfLines={1}>
+              {farmName}
+            </Text>
+          </Pressable>
+          <Text style={[styles.title, { flexShrink: 0, textAlign: "right" }]}>Service</Text>
+        </View>
+        <Text style={[styles.subtitle, { marginBottom: 16 }]}>Choose a checklist</Text>
         <View style={{ gap: 10 }}>
           {FORMS.map((form) => (
             <Pressable

@@ -1,8 +1,10 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Card, PageHeader } from "@/components/ui";
+import { PageTitleBackLink } from "@/components/PageTitleBackLink";
+import { Card, PAGE_TITLE_CLASS } from "@/components/ui";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export default async function NewLfoFarmSelectPage() {
   const session = await auth();
@@ -28,16 +30,11 @@ export default async function NewLfoFarmSelectPage() {
 
   return (
     <div>
-      <Link
-        href="/lfo"
-        className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
-      >
-        <span aria-hidden="true" className="text-xl leading-none">
-          ←
-        </span>
-        LFOs
-      </Link>
-      <PageHeader title="New LFO" subtitle="Select the farm for this last feed order" />
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <PageTitleBackLink href="/lfo" label="LFOs" />
+        <h1 className={cn(PAGE_TITLE_CLASS, "min-w-0 truncate text-right")}>New LFO</h1>
+      </div>
+      <p className="mb-6 text-stone-600">Select the farm for this last feed order</p>
 
       {eligible.length === 0 ? (
         <Card>

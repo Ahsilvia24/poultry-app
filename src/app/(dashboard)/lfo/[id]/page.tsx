@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { format } from "date-fns";
 import { auth } from "@/lib/auth";
@@ -8,7 +7,9 @@ import {
   updateLastFeedOrderAction,
 } from "@/app/actions/lfo";
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
-import { Card, PageHeader } from "@/components/ui";
+import { PageTitleBackLink } from "@/components/PageTitleBackLink";
+import { Card, PAGE_TITLE_CLASS } from "@/components/ui";
+import { cn } from "@/lib/utils";
 import { getFlockHouseHeadCounts } from "@/lib/lfo/head-counts";
 
 type Params = Promise<{ id: string }>;
@@ -72,19 +73,15 @@ export default async function EditLfoPage({ params }: { params: Params }) {
 
   return (
     <div>
-      <Link
-        href="/lfo"
-        className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
-      >
-        <span aria-hidden="true" className="text-xl leading-none">
-          ←
-        </span>
-        LFOs
-      </Link>
-      <PageHeader
-        title={lfo.farm.farmName}
-        subtitle={`Flock ${lfo.flock.flockNumber} — edit last feed order`}
-      />
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <PageTitleBackLink href="/lfo" label="LFOs" />
+        <h1 className={cn(PAGE_TITLE_CLASS, "min-w-0 truncate text-right")}>
+          {lfo.farm.farmName}
+        </h1>
+      </div>
+      <p className="mb-6 text-stone-600">
+        Flock {lfo.flock.flockNumber} — edit last feed order
+      </p>
 
       <Card>
         <LfoInventoryForm

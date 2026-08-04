@@ -21,7 +21,6 @@ import { colors, styles } from "../../../../src/theme";
 import {
   Card,
   Metric,
-  PageHeader,
   PrimaryButton,
   SectionTitle,
   formatNumber,
@@ -215,20 +214,40 @@ export default function FarmHistoryScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       >
-        <Pressable
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else router.replace({ pathname: "/(tabs)/farms/[id]", params: { id: farmId } });
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 4,
           }}
-          style={{ marginBottom: 8 }}
         >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back to farm</Text>
-        </Pressable>
-
-        <PageHeader
-          title={`History — ${data?.farm.farmName ?? "Farm"}`}
-          subtitle="Previous flocks and performance comparison"
-        />
+          <Pressable
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace({ pathname: "/(tabs)/farms/[id]", params: { id: farmId } });
+            }}
+            style={{
+              flexShrink: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 2,
+              minWidth: 0,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to farm"
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.text} style={{ marginRight: -4 }} />
+            <Text style={[styles.title, { flexShrink: 1 }]} numberOfLines={1}>
+              {data?.farm.farmName ?? "Farm"}
+            </Text>
+          </Pressable>
+          <Text style={[styles.title, { flexShrink: 0, textAlign: "right" }]}>History</Text>
+        </View>
+        <Text style={[styles.subtitle, { marginBottom: 16 }]}>
+          Previous flocks and performance comparison
+        </Text>
 
         {error ? (
           <Text style={{ color: colors.danger, marginBottom: 12 }}>{error}</Text>

@@ -11,10 +11,11 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { createFlock, getFarmDetail } from "../../../../src/repos/data";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { colors, styles } from "../../../../src/theme";
-import { Card, PageHeader, PrimaryButton } from "../../../../src/components/ui";
+import { Card, PrimaryButton } from "../../../../src/components/ui";
 import { DatePickerField } from "../../../../src/components/DatePickerField";
 
 function paramId(value: string | string[] | undefined) {
@@ -129,8 +130,12 @@ export default function AddFlockScreen() {
     return (
       <SafeAreaView style={styles.screen} edges={["top"]}>
         <View style={styles.content}>
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 12 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
+          <Pressable
+            onPress={() => router.back()}
+            style={{ flexDirection: "row", alignItems: "center", gap: 2, marginBottom: 12 }}
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.text} style={{ marginRight: -4 }} />
+            <Text style={styles.title}>Farms</Text>
           </Pressable>
           <Text style={{ color: colors.danger }}>Farm not found</Text>
         </View>
@@ -149,11 +154,29 @@ export default function AddFlockScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-          </Pressable>
-
-          <PageHeader title="Add flock" subtitle={detail.farm.farmName} />
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 4,
+            }}
+          >
+            <Pressable
+              onPress={() => router.back()}
+              style={{ flexShrink: 0, flexDirection: "row", alignItems: "center", gap: 2 }}
+              accessibilityRole="button"
+              accessibilityLabel="Back to farm"
+            >
+              <Ionicons name="chevron-back" size={22} color={colors.text} style={{ marginRight: -4 }} />
+              <Text style={styles.title}>Farms</Text>
+            </Pressable>
+            <Text style={[styles.title, { flexShrink: 1, textAlign: "right" }]} numberOfLines={1}>
+              Add flock
+            </Text>
+          </View>
+          <Text style={[styles.subtitle, { marginBottom: 16 }]}>{detail.farm.farmName}</Text>
 
           {houses.length === 0 ? (
             <Card>

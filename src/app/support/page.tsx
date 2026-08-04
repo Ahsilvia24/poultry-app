@@ -13,7 +13,9 @@ export default function SupportPage() {
         <p className="text-sm font-semibold uppercase tracking-wide text-emerald-800">
           PoultryTech
         </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Support</h1>
+        <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+          Support
+        </h1>
         <p className="mt-3 text-base leading-relaxed text-stone-600">
           Need help with the PoultryTech app for farm management, mortality entry, LFO, or
           reports? Contact us and we&apos;ll get back to you as soon as we can.

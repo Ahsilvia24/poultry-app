@@ -7,8 +7,9 @@ import {
   buildMortalitySummaries,
   calcPercentage,
 } from "@/lib/mortality/calculations";
-import { formatNumber, formatPct } from "@/lib/utils";
-import { Button, Card, PageHeader } from "@/components/ui";
+import { cn, formatNumber, formatPct } from "@/lib/utils";
+import { Card, PAGE_TITLE_CLASS } from "@/components/ui";
+import { PageTitleBackLink } from "@/components/PageTitleBackLink";
 import { DeleteFlockButton, ReactivateFlockButton } from "@/components/FarmOpsForms";
 import { SettlementForm } from "@/components/SettlementForm";
 
@@ -131,15 +132,11 @@ export default async function FarmHistoryPage({ params }: { params: Params }) {
 
   return (
     <div>
-      <PageHeader
-        title={`History — ${farm.farmName}`}
-        subtitle="Previous flocks and performance comparison"
-        actions={
-          <Link href={`/farms/${farm.id}`}>
-            <Button variant="secondary">Back to farm</Button>
-          </Link>
-        }
-      />
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <PageTitleBackLink href={`/farms/${farm.id}`} label={farm.farmName} />
+        <h1 className={cn(PAGE_TITLE_CLASS, "min-w-0 truncate text-right")}>History</h1>
+      </div>
+      <p className="mb-6 text-stone-600">Previous flocks and performance comparison</p>
 
       {current ? (
         <Card className="mb-6">

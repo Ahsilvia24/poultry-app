@@ -13,7 +13,9 @@ export default function PrivacyPolicyPage() {
         <p className="text-sm font-semibold uppercase tracking-wide text-emerald-800">
           PoultryTech
         </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">Privacy Policy</h1>
+        <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 sm:text-3xl">
+          Privacy Policy
+        </h1>
         <p className="mt-2 text-sm text-stone-500">Last updated: July 29, 2026</p>
 
         <div className="mt-8 space-y-6 text-base leading-relaxed text-stone-700">

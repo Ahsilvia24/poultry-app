@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { DatePickerField } from "../../../../../src/components/DatePickerField";
 import {
   PairFields,
@@ -20,7 +21,7 @@ import {
   CommentsField,
   CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
-import { Card, PageHeader } from "../../../../../src/components/ui";
+import { Card } from "../../../../../src/components/ui";
 import { createPrebroodDraft } from "../../../../../src/lib/serviceForms/defaults";
 import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/format";
 import { prefillHouseRows } from "../../../../../src/lib/serviceForms/prefill";
@@ -97,14 +98,23 @@ export default function PrebroodChecklistScreen() {
                 params: { id: farmId },
               });
           }}
-          style={{ marginBottom: 8 }}
+          style={{
+            flexShrink: 0,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 2,
+            marginBottom: 4,
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Back to checklists"
         >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Checklists</Text>
+          <Ionicons name="chevron-back" size={22} color={colors.text} style={{ marginRight: -4 }} />
+          <Text style={styles.title}>Service</Text>
         </Pressable>
-        <PageHeader
-          title={editing ? "Edit Prebrood Checklist" : "Prebrood Checklist"}
-          subtitle={farmName}
-        />
+        <Text style={[styles.title, { marginBottom: 4 }]}>
+          {editing ? "Edit Prebrood Checklist" : "Prebrood Checklist"}
+        </Text>
+        <Text style={[styles.subtitle, { marginBottom: 16 }]}>{farmName}</Text>
 
         <Card>
           <TextField label="Farm name" value={form.farmName} onChange={(farmName) => patch({ farmName })} />
