@@ -82,7 +82,7 @@ export function DeleteRecordButton({
 
   if (confirming) {
     return (
-      <span className="flex shrink-0 flex-wrap items-center gap-2 text-xs">
+      <span className="flex shrink-0 flex-wrap items-center gap-2 text-sm">
         <span className="text-stone-600">Delete?</span>
         <button
           type="button"
