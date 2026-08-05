@@ -2,16 +2,17 @@ export const VISIT_TYPE_LABELS: Record<string, string> = {
   ROUTINE_SERVICE: "Routine Service",
   PREBROOD: "Prebrood",
   PLACEMENT: "Placement",
-  PRE_CATCH: "Pre-catch visit",
   WEIGHT_PROJECTION: "Weight Projection",
   LFO: "LFO",
+  PRE_CATCH: "Pre-catch visit",
   HIGH_MORTALITY: "High mortality",
-  WEIGH_DAY: "Weigh day",
   VACCINATION: "Vaccination",
   MEDICATION: "Medication",
   EQUIPMENT_ISSUE: "Equipment issue",
   MORTALITY_INVESTIGATION: "Mortality investigation",
   OTHER: "Other",
+  /** Kept for historical visits; not offered in the create/edit dropdown. */
+  WEIGH_DAY: "Weigh day",
 };
 
 /** Dropdown order for create/edit visit forms. */
@@ -19,11 +20,10 @@ export const VISIT_TYPE_OPTIONS = [
   "ROUTINE_SERVICE",
   "PREBROOD",
   "PLACEMENT",
-  "PRE_CATCH",
   "WEIGHT_PROJECTION",
   "LFO",
+  "PRE_CATCH",
   "HIGH_MORTALITY",
-  "WEIGH_DAY",
   "VACCINATION",
   "MEDICATION",
   "EQUIPMENT_ISSUE",
