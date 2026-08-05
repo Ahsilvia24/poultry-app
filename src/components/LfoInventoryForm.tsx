@@ -254,22 +254,24 @@ export function LfoInventoryForm({
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <Label htmlFor={`feedUpDate-${house.houseId}`}>Feed up date</Label>
                     <DateInput
                       id={`feedUpDate-${house.houseId}`}
                       value={house.feedUpDate}
                       onChange={(e) => updateRow(house.houseId, { feedUpDate: e.target.value })}
-                      className="mt-1"
+                      className="mt-1 w-full"
+                      style={{ width: "100%" }}
                     />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <Label htmlFor={`feedUpTime-${house.houseId}`}>Feed up time</Label>
                     <Select
                       id={`feedUpTime-${house.houseId}`}
                       value={house.feedUpTime}
                       onChange={(e) => updateRow(house.houseId, { feedUpTime: e.target.value })}
-                      className="mt-1"
+                      className="mt-1 box-border w-full px-1.5 text-base leading-none !min-h-0"
+                      style={{ height: 44 }}
                     >
                       <option value="">Select time</option>
                       {FEED_UP_TIME_OPTIONS.map((opt) => (

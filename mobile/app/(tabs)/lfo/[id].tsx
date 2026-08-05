@@ -475,19 +475,30 @@ export default function EditLfoScreen() {
                         fieldRef={bindFieldRef(`binB:${house.houseId}`)}
                       />
                     </View>
-                    <View style={{ marginTop: 4 }}>
-                      <DatePickerField
-                        label="Feed up date"
-                        value={house.feedUpDate}
-                        onChange={(date) => updateHouse(house.houseId, { feedUpDate: date })}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        marginTop: 4,
+                      }}
+                    >
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <DatePickerField
+                          label="Feed up date"
+                          value={house.feedUpDate}
+                          onChange={(date) => updateHouse(house.houseId, { feedUpDate: date })}
+                          compact
+                          fullWidth
+                        />
+                      </View>
+                      <TimeScrollPickerField
+                        label="Feed up time"
+                        value={house.feedUpTime}
+                        onChange={(time) => updateHouse(house.houseId, { feedUpTime: time })}
                         compact
                       />
                     </View>
-                    <TimeScrollPickerField
-                      label="Feed up time"
-                      value={house.feedUpTime}
-                      onChange={(time) => updateHouse(house.houseId, { feedUpTime: time })}
-                    />
                     {house.feedUpTime ? (
                       <Pressable
                         onPress={() => updateHouse(house.houseId, { feedUpTime: "" })}

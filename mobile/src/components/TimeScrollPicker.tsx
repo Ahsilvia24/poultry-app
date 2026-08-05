@@ -53,10 +53,13 @@ export function TimeScrollPickerField({
   label,
   value,
   onChange,
+  compact = false,
 }: {
   label: string;
   value: string;
   onChange: (time: string) => void;
+  /** Match compact DatePickerField height when paired beside a date. */
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseTime(value || "06:00"));
@@ -79,8 +82,8 @@ export function TimeScrollPickerField({
   const pickerValue = safePickerDate(draft);
 
   return (
-    <View style={{ minWidth: 0, flexShrink: 1 }}>
-      <Text style={[styles.label, { marginTop: 4 }]} numberOfLines={1}>
+    <View style={{ minWidth: 0, flex: 1, flexShrink: 1 }}>
+      <Text style={styles.label} numberOfLines={1}>
         {label}
       </Text>
       <Pressable
@@ -93,7 +96,9 @@ export function TimeScrollPickerField({
             justifyContent: "space-between",
             gap: 6,
             minWidth: 0,
-            paddingHorizontal: 10,
+            minHeight: compact ? 44 : 52,
+            marginBottom: 0,
+            paddingHorizontal: compact ? 8 : 10,
           },
         ]}
       >
@@ -104,12 +109,12 @@ export function TimeScrollPickerField({
             minWidth: 0,
             fontWeight: "700",
             color: value ? colors.text : colors.muted,
-            fontSize: 15,
+            fontSize: compact ? 14 : 15,
           }}
         >
           {value ? timeLabel(value) : "Select"}
         </Text>
-        <Ionicons name="time-outline" size={18} color={colors.muted} />
+        <Ionicons name="time-outline" size={compact ? 16 : 18} color={colors.muted} />
       </Pressable>
 
       {Platform.OS === "android" && open ? (
