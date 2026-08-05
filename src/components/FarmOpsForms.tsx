@@ -309,8 +309,8 @@ export function LitterEventForm({
       }}
     >
       <input type="hidden" name="farmId" value={farmId} />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
+      <div className="flex items-start gap-3">
+        <div className="shrink-0">
           <Label htmlFor={fid("eventDate")}>Event date</Label>
           <DateInput
             id={fid("eventDate")}
@@ -319,26 +319,14 @@ export function LitterEventForm({
             defaultValue={initial?.eventDate ?? new Date().toISOString().slice(0, 10)}
           />
         </div>
-        <div>
-          <Label htmlFor={fid("eventType")}>Event type</Label>
-          <Select
-            id={fid("eventType")}
-            name="eventType"
-            defaultValue={initial?.eventType ?? "FULL_LITTER_CLEANOUT"}
-          >
-            {Object.entries(LITTER_EVENT_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <Label htmlFor={fid("litterHouseId")}>House (optional)</Label>
           <Select
             id={fid("litterHouseId")}
             name="houseId"
             defaultValue={initial?.houseId ?? ""}
+            className="text-base !min-h-0"
+            style={{ height: 44 }}
           >
             <option value="">Entire farm</option>
             {houses.map((h) => (
@@ -348,6 +336,22 @@ export function LitterEventForm({
             ))}
           </Select>
         </div>
+      </div>
+      <div>
+        <Label htmlFor={fid("eventType")}>Event type</Label>
+        <Select
+          id={fid("eventType")}
+          name="eventType"
+          defaultValue={initial?.eventType ?? "FULL_LITTER_CLEANOUT"}
+        >
+          {Object.entries(LITTER_EVENT_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label htmlFor={fid("contractor")}>Contractor</Label>
           <Input
@@ -364,17 +368,6 @@ export function LitterEventForm({
             type="number"
             step="any"
             defaultValue={initial?.litterDepth ?? undefined}
-          />
-        </div>
-        <div>
-          <Label htmlFor={fid("cost")}>Cost</Label>
-          <Input
-            id={fid("cost")}
-            name="cost"
-            type="number"
-            step="any"
-            min={0}
-            defaultValue={initial?.cost ?? undefined}
           />
         </div>
       </div>

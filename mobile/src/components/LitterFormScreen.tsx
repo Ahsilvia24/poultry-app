@@ -53,7 +53,6 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
   const [litterDepth, setLitterDepth] = useState(
     initial?.litterDepth != null ? String(initial.litterDepth) : "",
   );
-  const [cost, setCost] = useState(initial?.cost != null ? String(initial.cost) : "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [picker, setPicker] = useState<"house" | "type" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,9 +74,7 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
     try {
       const depth =
         litterDepth.trim() === "" ? null : Number(litterDepth);
-      const costNum = cost.trim() === "" ? null : Number(cost);
       if (depth != null && !Number.isFinite(depth)) throw new Error("Litter depth is invalid");
-      if (costNum != null && !Number.isFinite(costNum)) throw new Error("Cost is invalid");
       const payload = {
         farmId,
         houseId: houseId || null,
@@ -85,7 +82,7 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
         eventType,
         contractor,
         litterDepth: depth,
-        cost: costNum,
+        cost: initial?.cost ?? null,
         notes,
       };
       if (eventId) updateLitterEvent(eventId, payload);
@@ -121,18 +118,32 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
             subtitle={detail?.farm.farmName ?? "Farm"}
           />
           <Card>
-            <DatePickerField
-              label="Event date"
-              value={eventDate}
-              onChange={setEventDate}
-              compact
-            />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                gap: 10,
+              }}
+            >
+              <DatePickerField
+                label="Event date"
+                value={eventDate}
+                onChange={setEventDate}
+                compact
+              />
+              <SelectField
+                label="House"
+                valueLabel={houseLabel}
+                onPress={() => setPicker("house")}
+                compact
+                style={{ flex: 1, minWidth: 0 }}
+              />
+            </View>
             <SelectField
               label="Event type"
               valueLabel={LITTER_EVENT_LABELS[eventType] ?? eventType}
               onPress={() => setPicker("type")}
             />
-            <SelectField label="House" valueLabel={houseLabel} onPress={() => setPicker("house")} />
             <Text style={[styles.label, { marginTop: 8 }]}>Contractor</Text>
             <TextInput style={styles.input} value={contractor} onChangeText={setContractor} />
             <Text style={[styles.label, { marginTop: 8 }]}>Litter depth</Text>
@@ -140,13 +151,6 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
               style={styles.input}
               value={litterDepth}
               onChangeText={setLitterDepth}
-              keyboardType="decimal-pad"
-            />
-            <Text style={[styles.label, { marginTop: 8 }]}>Cost</Text>
-            <TextInput
-              style={styles.input}
-              value={cost}
-              onChangeText={setCost}
               keyboardType="decimal-pad"
             />
             <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
