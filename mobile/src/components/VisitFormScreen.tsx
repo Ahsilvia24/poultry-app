@@ -252,7 +252,12 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
                   ]}
                 >
                   <Text
-                    style={{ color: colors.text, fontWeight: "600", flexShrink: 1 }}
+                    style={{
+                      color: colors.text,
+                      fontWeight: "600",
+                      fontSize: 17,
+                      flexShrink: 1,
+                    }}
                     numberOfLines={1}
                   >
                     {VISIT_TYPE_LABELS[visitType] ?? visitType}

@@ -112,16 +112,17 @@ export function DatePickerField({
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            paddingHorizontal: compact ? 8 : 10,
+            minHeight: 52,
+            paddingHorizontal: compact ? 8 : 14,
           },
         ]}
       >
         <Text
           numberOfLines={1}
           style={{
-            fontWeight: "700",
+            fontWeight: "600",
             color: value ? colors.text : colors.muted,
-            fontSize: compact ? 15 : 16,
+            fontSize: 17,
             flexShrink: 1,
             marginRight: 6,
           }}

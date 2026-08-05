@@ -82,7 +82,7 @@ export function FarmVisitForm({
             required
             value={visitDate}
             onChange={(e) => setVisitDate(e.target.value)}
-            className="box-border px-1.5 text-sm"
+            className="box-border h-12 px-1.5 text-lg leading-none"
             style={{ width: "8.75rem" }}
           />
         </div>
@@ -92,6 +92,7 @@ export function FarmVisitForm({
             id={fid("visitType")}
             name="visitType"
             defaultValue={initial?.visitType ?? "ROUTINE_SERVICE"}
+            className="h-12"
           >
             {VISIT_TYPE_OPTIONS.map(({ value, label }) => (
               <option key={value} value={value}>
@@ -134,7 +135,7 @@ export function FarmVisitForm({
           name="followUpDate"
           type="date"
           defaultValue={initial?.followUpDate ?? undefined}
-          className="box-border px-1.5 text-sm"
+          className="box-border h-12 px-1.5 text-lg leading-none"
           style={{ width: "8.75rem" }}
         />
       </div>
