@@ -169,17 +169,23 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     };
   });
 
+  const houseNumberByHouseFlockId = new Map(
+    activeFlocks.flatMap((flock) =>
+      flock.houseFlocks.map((hf) => [hf.id, hf.house.houseNumber] as const),
+    ),
+  );
   const allFeedDeliveries = activeFlocks
     .flatMap((flock) => [
       ...flock.feedDeliveries,
-      ...flock.houseFlocks.flatMap((hf) =>
-        hf.feedDeliveries.map((d) => ({
-          ...d,
-          houseNumber: hf.house.houseNumber,
-        })),
-      ),
+      ...flock.houseFlocks.flatMap((hf) => hf.feedDeliveries),
     ])
     .filter((d, i, arr) => arr.findIndex((x) => x.id === d.id) === i)
+    .map((d) => ({
+      ...d,
+      houseNumber: d.houseFlockId
+        ? (houseNumberByHouseFlockId.get(d.houseFlockId) ?? null)
+        : null,
+    }))
     .sort((a, b) => b.deliveryDate.getTime() - a.deliveryDate.getTime())
     .slice(0, 8);
 
@@ -375,7 +381,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             poundsDelivered: d.poundsDelivered,
             flockId: d.flockId,
             houseFlockId: d.houseFlockId,
-            houseNumber: "houseNumber" in d ? (d.houseNumber as number | null) : null,
+            houseNumber: d.houseNumber,
             feedType: d.feedType,
             feedMill: d.feedMill,
             ticketNumber: d.ticketNumber,

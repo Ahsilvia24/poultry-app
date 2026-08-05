@@ -1840,7 +1840,7 @@ export default function FarmDetailScreen() {
                   >
                     <Text style={{ fontWeight: "700" }}>
                       {formatShortDate(d.deliveryDate)} —{" "}
-                      {d.houseNumber != null ? `House ${d.houseNumber} · ` : ""}
+                      {d.houseNumber != null ? `H${d.houseNumber} · ` : ""}
                       {formatPoundsK(d.poundsDelivered)} lbs
                       {d.feedType ? ` · ${d.feedType}` : ""}
                       {d.feedMill ? ` · ${d.feedMill}` : ""}

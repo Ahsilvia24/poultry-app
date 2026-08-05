@@ -104,7 +104,7 @@ export function FarmFeedSection({
                     {format(new Date(d.deliveryDate + "T12:00:00"), "MMM d, yyyy")}
                   </span>
                   {" — "}
-                  {d.houseNumber != null ? `House ${d.houseNumber} · ` : ""}
+                  {d.houseNumber != null ? `H${d.houseNumber} · ` : ""}
                   {formatPoundsK(d.poundsDelivered)} lbs
                   {d.feedType ? ` · ${d.feedType}` : ""}
                   {d.feedMill ? ` · ${d.feedMill}` : ""}
