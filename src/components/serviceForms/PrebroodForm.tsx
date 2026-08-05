@@ -222,7 +222,6 @@ export function PrebroodForm({
 
       <SectionTitle title="Ammonia PPM" />
       <Card>
-        <p className="mb-2.5 text-sm text-stone-500">Optional — blank is fine.</p>
         <CompactHouseValueGrid
           houses={form.houses}
           getValue={(n) =>

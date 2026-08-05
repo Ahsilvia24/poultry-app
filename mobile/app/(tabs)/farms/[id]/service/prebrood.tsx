@@ -223,9 +223,6 @@ export default function PrebroodChecklistScreen() {
 
         <SectionTitle title="Ammonia PPM" />
         <Card style={{ marginBottom: 10 }}>
-          <Text style={[styles.muted, { marginBottom: 10, lineHeight: 18 }]}>
-            Optional — blank is fine.
-          </Text>
           <CompactHouseValueGrid
             houses={form.houses}
             getValue={(n) => form.houses.find((h) => h.houseNumber === n)?.ammoniaPpm ?? ""}
