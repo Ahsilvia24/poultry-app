@@ -73,11 +73,11 @@ export function FarmVisitsSection({
     <div id="visits" className="scroll-mt-24">
       <Card>
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-lg font-bold">Recent visits</h3>
+          <h3 className="font-bold">Recent visits</h3>
           <button
             type="button"
             onClick={closeSection}
-            className="text-base font-semibold text-stone-500 hover:text-stone-800"
+            className="text-sm font-semibold text-stone-500 hover:text-stone-800"
           >
             Close
           </button>

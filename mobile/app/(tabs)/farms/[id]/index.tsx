@@ -1461,9 +1461,9 @@ export default function FarmDetailScreen() {
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 18 }}>Recent visits</Text>
+            <Text style={{ fontWeight: "800", fontSize: 16 }}>Recent visits</Text>
             {data.visits.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10, fontSize: 16 }]}>None yet</Text>
+              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
               data.visits.map((v) => (
                 <View
