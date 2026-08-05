@@ -1,6 +1,5 @@
 "use client";
 
-import { DateInput, Label } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { LIGHT_TIME_OPTIONS } from "@/lib/serviceForms/format";
 import type { YesNo } from "@/lib/serviceForms/types";
@@ -148,6 +147,15 @@ export function PairFields({
   );
 }
 
+/** Same chrome as TextField — avoids the native date control’s split/centered look. */
+const serviceDateInputClass =
+  "box-border min-h-11 w-full min-w-0 max-w-full rounded-lg border border-stone-300 bg-white px-2.5 text-base font-semibold text-stone-900 outline-none " +
+  "appearance-none [-webkit-appearance:none] " +
+  "[&::-webkit-datetime-edit]:m-0 [&::-webkit-datetime-edit]:p-0 " +
+  "[&::-webkit-date-and-time-value]:min-h-[2.75rem] [&::-webkit-date-and-time-value]:leading-[2.75rem] " +
+  "[&::-webkit-date-and-time-value]:text-left " +
+  "focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200";
+
 /** Farm name (left ~60%) + date (right ~40%) for Service Farm checklist headers. */
 export function FarmNameDateRow({
   farmName,
@@ -172,14 +180,19 @@ export function FarmNameDateRow({
           className="mb-0"
         />
       </div>
-      <div className="min-w-0 flex-[2_1_0%] overflow-hidden">
-        <Label htmlFor={dateId}>Date</Label>
-        <DateInput
+      <div className="mb-0 min-w-0 flex-[2_1_0%]">
+        <label
+          htmlFor={dateId}
+          className="mb-1 block text-[13px] font-bold text-stone-500"
+        >
+          Date
+        </label>
+        <input
           id={dateId}
+          type="date"
           value={date}
           onChange={(e) => onDateChange(e.target.value)}
-          className="!h-11 !w-full box-border px-1 text-sm"
-          style={{ width: "100%", minWidth: 0, maxWidth: "100%" }}
+          className={serviceDateInputClass}
         />
       </div>
     </div>
