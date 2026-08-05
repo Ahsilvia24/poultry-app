@@ -46,14 +46,14 @@ export function AddFlockSection({
             <button
               type="button"
               onClick={() => {
-                setOpen(false);
+                window.scrollTo({ top: 0, behavior: "smooth" });
                 if (window.location.hash === "#add-flock") {
                   history.replaceState(null, "", window.location.pathname + window.location.search);
                 }
               }}
               className="text-sm font-semibold text-stone-500 hover:text-stone-800"
             >
-              Close
+              Top
             </button>
           </div>
           {houses.length === 0 ? (

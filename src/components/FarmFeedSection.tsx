@@ -48,10 +48,8 @@ export function FarmFeedSection({
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  function closeSection() {
-    setOpen(false);
-    setFormOpen(false);
-    setEditingId(null);
+  function goToTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     if (feedHashActive()) {
       history.replaceState(null, "", window.location.pathname + window.location.search);
     }
@@ -79,10 +77,10 @@ export function FarmFeedSection({
           <h3 className="font-bold">Feed deliveries</h3>
           <button
             type="button"
-            onClick={closeSection}
+            onClick={goToTop}
             className="text-sm font-semibold text-stone-500 hover:text-stone-800"
           >
-            Close
+            Top
           </button>
         </div>
         <ul className="mt-3 space-y-2 text-sm">

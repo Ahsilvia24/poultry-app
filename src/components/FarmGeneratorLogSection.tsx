@@ -431,11 +431,8 @@ export function FarmGeneratorLogSection({
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  function closeSection() {
-    setOpen(false);
-    setFormOpen(false);
-    setEditingId(null);
-    setEditingGen(null);
+  function goToTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     if (generatorsHashActive()) {
       history.replaceState(null, "", window.location.pathname + window.location.search);
     }
@@ -491,10 +488,10 @@ export function FarmGeneratorLogSection({
             {chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
             <button
               type="button"
-              onClick={closeSection}
+              onClick={goToTop}
               className="text-sm font-semibold text-stone-500 hover:text-stone-800"
             >
-              Close
+              Top
             </button>
           </div>
         </div>
