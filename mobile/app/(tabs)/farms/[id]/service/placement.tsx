@@ -54,10 +54,14 @@ export default function PlacementChecklistScreen() {
   const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "placement");
   const editVisitId = useEditVisitIdParam();
-  const { complete, saving, editing } = useCompleteServiceForm(farmId, {
-    serviceFormId: existing?.id ?? null,
-    existingVisitId: existing ? null : editVisitId,
-  });
+  const { complete, saving, editing } = useCompleteServiceForm(
+    farmId,
+    "placement",
+    {
+      serviceFormId: existing?.id ?? null,
+      existingVisitId: existing ? null : editVisitId,
+    },
+  );
 
   const [form, setForm] = useState<PlacementForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {

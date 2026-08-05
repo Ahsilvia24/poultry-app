@@ -3440,6 +3440,7 @@ export function getServiceFormForVisit(
   return row ? mapServiceFormRow(row) : null;
 }
 
+/** Service Report → Routine Service, Placement → Placement, Prebrood → Prebrood. */
 function serviceFormVisitMeta(formKind: ServiceFormKind) {
   const visitType =
     formKind === "service_report"
@@ -3449,10 +3450,10 @@ function serviceFormVisitMeta(formKind: ServiceFormKind) {
         : "PREBROOD";
   const visitLabel =
     formKind === "service_report"
-      ? "Service report"
+      ? "Routine Service"
       : formKind === "placement"
-        ? "Placement checklist"
-        : "Prebrood checklist";
+        ? "Placement"
+        : "Prebrood";
   return { visitType, visitLabel };
 }
 
@@ -3486,12 +3487,11 @@ export function updateServiceForm(input: {
   );
 
   if (existing.visit_id) {
-    const { visitLabel } = serviceFormVisitMeta(input.formKind);
+    const { visitType, visitLabel } = serviceFormVisitMeta(input.formKind);
     const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n");
     const visit = db.getFirstSync<{
       id: string;
       flock_id: string | null;
-      visit_type: string;
       general_bird_condition: string | null;
       follow_up_required: number;
       follow_up_date: string | null;
@@ -3504,7 +3504,7 @@ export function updateServiceForm(input: {
         farmId: input.farmId,
         flockId: visit.flock_id,
         visitDate: input.formDate,
-        visitType: visit.visit_type,
+        visitType,
         generalBirdCondition: visit.general_bird_condition,
         notes: notes || visitLabel,
         followUpRequired: visit.follow_up_required === 1,

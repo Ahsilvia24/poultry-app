@@ -73,10 +73,14 @@ export function useEditVisitIdParam(): string | null {
   return visitId || null;
 }
 
-export function useCompleteServiceForm(farmId: string, opts?: {
-  serviceFormId?: string | null;
-  existingVisitId?: string | null;
-}) {
+export function useCompleteServiceForm(
+  farmId: string,
+  formKind: ServiceFormKind,
+  opts?: {
+    serviceFormId?: string | null;
+    existingVisitId?: string | null;
+  },
+) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const editing = Boolean(opts?.serviceFormId);
@@ -88,18 +92,21 @@ export function useCompleteServiceForm(farmId: string, opts?: {
     if (saving) return;
     setSaving(true);
     try {
+      // Force kind from the screen so the visit is always logged as
+      // Routine Service / Placement / Prebrood for that checklist.
+      const form = { ...input.form, kind: formKind } as AnyServiceForm;
       completeServiceForm({
         farmId,
-        formKind: input.form.kind,
-        formDate: input.form.date,
-        payload: input.form,
-        visitNotes: input.form.comments?.trim() || null,
+        formKind,
+        formDate: form.date,
+        payload: form,
+        visitNotes: form.comments?.trim() || null,
         generatorHours: input.generatorHours ?? null,
         serviceFormId: opts?.serviceFormId ?? null,
         existingVisitId: opts?.serviceFormId ? null : opts?.existingVisitId ?? null,
       });
       try {
-        await shareServiceFormPdf(input.form);
+        await shareServiceFormPdf(form);
       } catch {
         // Visit is saved even if share sheet fails / is dismissed.
       }

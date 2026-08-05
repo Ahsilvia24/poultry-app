@@ -59,10 +59,14 @@ export default function ServiceReportScreen() {
   const { detail, farmName, flockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "service_report");
   const editVisitId = useEditVisitIdParam();
-  const { complete, saving, editing } = useCompleteServiceForm(farmId, {
-    serviceFormId: existing?.id ?? null,
-    existingVisitId: existing ? null : editVisitId,
-  });
+  const { complete, saving, editing } = useCompleteServiceForm(
+    farmId,
+    "service_report",
+    {
+      serviceFormId: existing?.id ?? null,
+      existingVisitId: existing ? null : editVisitId,
+    },
+  );
 
   const initial = useMemo(() => {
     if (existing?.payload && typeof existing.payload === "object") {

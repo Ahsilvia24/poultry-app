@@ -41,10 +41,14 @@ export function ServiceReportForm({
   serviceFormId?: string | null;
   existingVisitId?: string | null;
 }) {
-  const { complete, saving, editing, error } = useCompleteServiceForm(farmId, {
-    serviceFormId,
-    existingVisitId,
-  });
+  const { complete, saving, editing, error } = useCompleteServiceForm(
+    farmId,
+    "service_report",
+    {
+      serviceFormId,
+      existingVisitId,
+    },
+  );
 
   const [form, setForm] = useState<ServiceReportFormData>(() => {
     if (initialPayload) return initialPayload;

@@ -11,6 +11,7 @@ import type { AnyServiceForm } from "@/lib/serviceForms/types";
 
 export function useCompleteServiceForm(
   farmId: string,
+  formKind: AnyServiceForm["kind"],
   opts?: {
     serviceFormId?: string | null;
     existingVisitId?: string | null;
@@ -29,12 +30,15 @@ export function useCompleteServiceForm(
     setSaving(true);
     setError(null);
     try {
+      // Force kind from the screen (service_report / placement / prebrood)
+      // so the visit is always logged as Routine Service / Placement / Prebrood.
+      const form = { ...input.form, kind: formKind } as AnyServiceForm;
       const result = await completeServiceFormAction({
         farmId,
-        formKind: input.form.kind,
-        formDate: input.form.date,
-        payload: input.form,
-        visitNotes: input.form.comments?.trim() || null,
+        formKind,
+        formDate: form.date,
+        payload: form,
+        visitNotes: form.comments?.trim() || null,
         generatorHours: input.generatorHours ?? null,
         serviceFormId: opts?.serviceFormId ?? null,
         existingVisitId: opts?.serviceFormId ? null : opts?.existingVisitId ?? null,
@@ -44,7 +48,7 @@ export function useCompleteServiceForm(
         return;
       }
       try {
-        const pdf = await buildServiceFormPdf(input.form);
+        const pdf = await buildServiceFormPdf(form);
         downloadServiceFormPdf(pdf);
       } catch {
         // Visit is saved even if PDF download fails.

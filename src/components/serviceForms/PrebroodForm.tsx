@@ -33,10 +33,14 @@ export function PrebroodForm({
   serviceFormId?: string | null;
   existingVisitId?: string | null;
 }) {
-  const { complete, saving, editing, error } = useCompleteServiceForm(farmId, {
-    serviceFormId,
-    existingVisitId,
-  });
+  const { complete, saving, editing, error } = useCompleteServiceForm(
+    farmId,
+    "prebrood",
+    {
+      serviceFormId,
+      existingVisitId,
+    },
+  );
 
   const firstFlockNumber =
     detail.activeFlocks?.[0]?.flockNumber ??

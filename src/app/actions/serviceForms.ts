@@ -8,20 +8,18 @@ import { prisma } from "@/lib/prisma";
 import type { AnyServiceForm, ServiceFormKind } from "@/lib/serviceForms/types";
 import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
 
+/**
+ * Service Report → Routine Service, Placement → Placement, Prebrood → Prebrood.
+ * These VisitType values are what appear in Recent visits.
+ */
 function serviceFormVisitMeta(formKind: ServiceFormKind) {
-  const visitType: VisitType =
-    formKind === "service_report"
-      ? "ROUTINE_SERVICE"
-      : formKind === "placement"
-        ? "PLACEMENT"
-        : "PREBROOD";
-  const visitLabel =
-    formKind === "service_report"
-      ? "Service report"
-      : formKind === "placement"
-        ? "Placement checklist"
-        : "Prebrood checklist";
-  return { visitType, visitLabel };
+  if (formKind === "service_report") {
+    return { visitType: "ROUTINE_SERVICE" as const, visitLabel: "Routine Service" };
+  }
+  if (formKind === "placement") {
+    return { visitType: "PLACEMENT" as const, visitLabel: "Placement" };
+  }
+  return { visitType: "PREBROOD" as const, visitLabel: "Prebrood" };
 }
 
 function isServiceFormKind(v: string): v is ServiceFormKind {
@@ -83,7 +81,7 @@ export async function updateServiceFormAction(input: {
   });
 
   if (existing.visitId) {
-    const { visitLabel } = serviceFormVisitMeta(input.formKind);
+    const { visitType, visitLabel } = serviceFormVisitMeta(input.formKind);
     const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n");
     const visit = await prisma.farmVisit.findFirst({
       where: { id: existing.visitId, farmId: input.farmId },
@@ -98,6 +96,7 @@ export async function updateServiceFormAction(input: {
         data: {
           visitDate: parseDateKey(input.formDate),
           birdAgeInDays,
+          visitType,
           notes: notes || visitLabel,
         },
       });
