@@ -168,15 +168,19 @@ export function WeightProjectionTile({
               placeholder="e.g. 42"
             />
           </div>
-          <div className="rounded-lg bg-stone-50 px-3 py-2">
-            <p className="text-sm text-stone-500">Projected weight</p>
-            <p className="text-lg font-bold text-stone-900">
-              {ageWeight != null ? `${ageWeight.toFixed(2)} lb` : "—"}
-            </p>
-            <p className="text-sm text-stone-400">
-              {ageWeight != null ? `${ageDays} days of age` : "Enter age to calculate"}
-            </p>
-          </div>
+          {ageProjections ? (
+            <div className="grid grid-cols-3 gap-2 text-lg">
+              {ageProjections.map((p) => (
+                <div key={p.offset} className="rounded-lg bg-stone-50 px-3 py-2">
+                  <p className="text-sm text-stone-500">{p.label}</p>
+                  <p className="font-bold text-stone-900">{p.weightLbs.toFixed(2)} lb</p>
+                  <p className="text-sm text-stone-400">{p.ageDays}d</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-stone-500">Enter age to calculate</p>
+          )}
         </div>
       ) : groups.length > 0 ? (
         groups.map((group) => (

@@ -191,22 +191,34 @@ export function WeightProjectionTile({
               placeholderTextColor={colors.muted}
             />
           </View>
-          <View
-            style={{
-              backgroundColor: "#fafaf9",
-              borderRadius: 10,
-              paddingHorizontal: 10,
-              paddingVertical: 10,
-            }}
-          >
-            <Text style={{ fontSize: 12, color: colors.muted }}>Projected weight</Text>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text, marginTop: 2 }}>
-              {ageWeight != null ? `${ageWeight.toFixed(2)} lb` : "—"}
-            </Text>
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-              {ageWeight != null ? `${ageDays} days of age` : "Enter age to calculate"}
-            </Text>
-          </View>
+          {ageProjections ? (
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {ageProjections.map((p) => (
+                <View
+                  key={p.offset}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#fafaf9",
+                    borderRadius: 10,
+                    paddingHorizontal: 10,
+                    paddingVertical: 10,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, color: colors.muted }}>{p.label}</Text>
+                  <Text
+                    style={{ fontSize: 16, fontWeight: "800", color: colors.text, marginTop: 2 }}
+                  >
+                    {p.weightLbs.toFixed(2)} lb
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+                    {p.ageDays}d
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={[styles.muted, { fontSize: 13 }]}>Enter age to calculate</Text>
+          )}
         </View>
       ) : groups.length > 0 ? (
         groups.map((group) => (
