@@ -203,22 +203,24 @@ export function ServiceReportForm({
             <span className="text-base font-extrabold text-stone-900">24/7</span>
           </div>
         ) : (
-          <div className="mb-1 flex flex-wrap gap-3">
-            <TextField
-              label="Lights ON at"
-              value={form.lightsOnAt}
-              onChange={(lightsOnAt) => patch({ lightsOnAt })}
-              type="time"
-              className="mb-2.5 w-[9.25rem]"
-            />
-            <TextField
-              label="Lights OFF at"
-              value={form.lightsOffAt}
-              onChange={(lightsOffAt) => patch({ lightsOffAt })}
-              type="time"
-              className="mb-2.5 w-[9.25rem]"
-            />
-          </div>
+          <PairFields
+            left={
+              <TextField
+                label="Lights ON at"
+                value={form.lightsOnAt}
+                onChange={(lightsOnAt) => patch({ lightsOnAt })}
+                type="time"
+              />
+            }
+            right={
+              <TextField
+                label="Lights OFF at"
+                value={form.lightsOffAt}
+                onChange={(lightsOffAt) => patch({ lightsOffAt })}
+                type="time"
+              />
+            }
+          />
         )}
 
         <SectionTitle title="Air and litter" />
