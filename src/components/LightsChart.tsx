@@ -2,8 +2,7 @@ import { BIG_BIRD_LIGHTING_PROGRAM } from "@/lib/tools/lights";
 
 export function LightsChart() {
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-stone-500">Big Bird lighting program</p>
+    <div>
       <div className="overflow-x-auto rounded-lg border border-stone-200">
         <table className="w-full min-w-[28rem] border-collapse text-left text-sm">
           <thead className="bg-stone-100 text-stone-700">

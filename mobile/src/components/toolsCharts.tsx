@@ -412,8 +412,7 @@ function LegendSwatch({
 
 export function LightsChart() {
   return (
-    <View style={{ gap: 8 }}>
-      <Text style={{ fontSize: 12, color: colors.muted }}>Big Bird lighting program</Text>
+    <View>
       <TableShell minWidth={448}>
         <View style={{ flexDirection: "row" }}>
           <HeaderCell width={88}>Age (days)</HeaderCell>
