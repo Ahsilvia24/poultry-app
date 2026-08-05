@@ -73,32 +73,36 @@ export function FarmVisitsSection({
     <div id="visits" className="scroll-mt-24">
       <Card>
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold">Recent visits</h3>
+          <h3 className="text-lg font-bold">Recent visits</h3>
           <button
             type="button"
             onClick={closeSection}
-            className="text-sm font-semibold text-stone-500 hover:text-stone-800"
+            className="text-base font-semibold text-stone-500 hover:text-stone-800"
           >
             Close
           </button>
         </div>
-        <ul className="mt-3 space-y-2 text-sm">
+        <ul className="mt-3 space-y-3 text-base">
           {visits.length === 0 ? <li className="text-stone-500">None yet</li> : null}
           {visits.map((v) => (
-            <li key={v.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
+            <li key={v.id} className="border-b border-stone-100 pb-3 last:border-0 last:pb-0">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <span className="font-semibold">
-                    {format(new Date(v.visitDate + "T12:00:00"), "MMM d, yyyy")}
-                  </span>
-                  {" — "}
-                  {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
-                  {v.followUpRequired ? (
-                    <span className="ml-2 text-amber-700">Follow-up due</span>
-                  ) : null}
-                  {v.notes ? <p className="text-stone-600">{v.notes}</p> : null}
+                  <p className="leading-snug">
+                    <span className="font-bold">
+                      {format(new Date(v.visitDate + "T12:00:00"), "MMM d, yyyy")}
+                    </span>
+                    {" — "}
+                    <span className="font-semibold text-stone-800">
+                      {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
+                    </span>
+                    {v.followUpRequired ? (
+                      <span className="ml-2 font-semibold text-amber-700">Follow-up due</span>
+                    ) : null}
+                  </p>
+                  {v.notes ? <p className="mt-1 text-[15px] text-stone-600">{v.notes}</p> : null}
                 </div>
-                <div className="flex shrink-0 items-center gap-0.5">
+                <div className="flex shrink-0 items-center gap-1">
                   <EditRecordButton
                     label="Edit visit"
                     active={editingId === v.id}
@@ -135,7 +139,7 @@ export function FarmVisitsSection({
             setEditingId(null);
             setLogOpen(true);
           }}
-          className="mt-3 text-sm text-emerald-800 hover:underline"
+          className="mt-3 text-base font-semibold text-emerald-800 hover:underline"
         >
           Log visit
         </button>
@@ -144,7 +148,7 @@ export function FarmVisitsSection({
           <button
             type="button"
             onClick={() => setLogOpen(false)}
-            className="text-sm text-emerald-800 hover:underline"
+            className="text-base font-semibold text-emerald-800 hover:underline"
           >
             Log visit
           </button>

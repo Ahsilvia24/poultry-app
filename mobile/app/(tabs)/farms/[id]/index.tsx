@@ -117,7 +117,7 @@ function formatShortDate(dateKey: string) {
 function RecordLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={{ marginTop: 4, marginBottom: 16 }}>
-      <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>{label}</Text>
+      <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 16 }}>{label}</Text>
     </Pressable>
   );
 }
@@ -140,18 +140,18 @@ function RowActions({
           accessibilityLabel={editLabel ?? "Edit"}
           onPress={onEdit}
           hitSlop={8}
-          style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
+          style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
         >
-          <Ionicons name="pencil-outline" size={20} color={colors.muted} />
+          <Ionicons name="pencil-outline" size={24} color={colors.muted} />
         </Pressable>
       ) : null}
       <Pressable
         accessibilityLabel={deleteLabel}
         onPress={onDelete}
         hitSlop={8}
-        style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
+        style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
       >
-        <Ionicons name="trash-outline" size={20} color={colors.muted} />
+        <Ionicons name="trash-outline" size={24} color={colors.muted} />
       </Pressable>
     </View>
   );
@@ -1461,16 +1461,16 @@ export default function FarmDetailScreen() {
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>Recent visits</Text>
+            <Text style={{ fontWeight: "800", fontSize: 18 }}>Recent visits</Text>
             {data.visits.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
+              <Text style={[styles.muted, { marginTop: 10, fontSize: 16 }]}>None yet</Text>
             ) : (
               data.visits.map((v) => (
                 <View
                   key={v.id}
                   style={{
-                    marginTop: 10,
-                    paddingTop: 10,
+                    marginTop: 12,
+                    paddingTop: 12,
                     borderTopWidth: 1,
                     borderTopColor: "#f5f5f4",
                     flexDirection: "row",
@@ -1489,16 +1489,25 @@ export default function FarmDetailScreen() {
                     }
                     style={{ flex: 1, minWidth: 0 }}
                   >
-                    <Text style={{ fontWeight: "700" }}>
+                    <Text style={{ fontWeight: "700", fontSize: 17, lineHeight: 22 }}>
                       {formatShortDate(v.visitDate)} —{" "}
                       {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
                     </Text>
                     {v.followUpRequired ? (
-                      <Text style={{ color: "#b45309", fontWeight: "600", marginTop: 2 }}>
+                      <Text
+                        style={{
+                          color: "#b45309",
+                          fontWeight: "700",
+                          marginTop: 3,
+                          fontSize: 15,
+                        }}
+                      >
                         Follow-up due
                       </Text>
                     ) : null}
-                    {v.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text> : null}
+                    {v.notes ? (
+                      <Text style={[styles.muted, { marginTop: 3, fontSize: 15 }]}>{v.notes}</Text>
+                    ) : null}
                   </Pressable>
                   <RowActions
                     deleteLabel="Delete visit"

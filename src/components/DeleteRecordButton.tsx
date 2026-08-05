@@ -54,14 +54,14 @@ export function EditRecordButton({
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 rounded-lg p-1.5 hover:bg-stone-100 ${
+      className={`shrink-0 rounded-lg p-2 hover:bg-stone-100 ${
         active ? "text-emerald-800" : "text-stone-400 hover:text-stone-700"
       }`}
       aria-label={label}
       title={label}
       aria-pressed={active}
     >
-      <GearIcon className="h-4 w-4" />
+      <GearIcon className="h-5 w-5" />
     </button>
   );
 }
@@ -123,13 +123,13 @@ export function DeleteRecordButton({
     <button
       type="button"
       onClick={() => setConfirming(true)}
-      className={`shrink-0 rounded text-stone-400 hover:bg-stone-100 hover:text-red-700 ${
-        compact ? "rounded p-0.5" : "rounded-lg p-1.5"
+      className={`shrink-0 text-stone-400 hover:bg-stone-100 hover:text-red-700 ${
+        compact ? "rounded p-0.5" : "rounded-lg p-2"
       }`}
       aria-label={label}
       title={label}
     >
-      <TrashIcon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+      <TrashIcon className={compact ? "h-3.5 w-3.5" : "h-5 w-5"} />
     </button>
   );
 }
