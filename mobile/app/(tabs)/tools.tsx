@@ -376,7 +376,6 @@ export default function ToolsScreen() {
                 title="Ventilation"
                 onClose={() => setOpen((p) => ({ ...p, vent: false }))}
               >
-                <Text style={styles.label}>Farm</Text>
                 <ChipScroller style={{ marginBottom: 6 }}>
                   {farms.map((f) => (
                     <Chip
