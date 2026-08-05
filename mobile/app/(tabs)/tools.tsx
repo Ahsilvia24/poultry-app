@@ -252,7 +252,7 @@ export default function ToolsScreen() {
               onClose={() => setOpen((p) => ({ ...p, weight: false }))}
             >
               <Text style={styles.label}>Farm</Text>
-              <ChipScroller>
+              <ChipScroller style={{ marginBottom: 6 }}>
                 {farms.map((f) => (
                   <Chip
                     key={f.id}
@@ -266,7 +266,6 @@ export default function ToolsScreen() {
                 ))}
               </ChipScroller>
 
-              <Text style={styles.label}>House</Text>
               <ChipScroller>
                 {houses.map((h) => (
                   <Chip
@@ -739,12 +738,18 @@ function MetricTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ChipScroller({ children }: { children: React.ReactNode }) {
+function ChipScroller({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: object;
+}) {
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={{ marginBottom: 10 }}
+      style={[{ marginBottom: 10 }, style]}
       contentContainerStyle={{
         flexDirection: "row",
         alignItems: "center",
