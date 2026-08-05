@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { FlockScheduleFields } from "@/components/FlockScheduleFields";
-import { Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
+import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { PROCESSING_PLANT_OPTIONS } from "@/lib/utils";
 
 type HouseOption = {
