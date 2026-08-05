@@ -106,7 +106,6 @@ export function DatePickerField({
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            overflow: "hidden",
             paddingHorizontal: 10,
           },
         ]}
