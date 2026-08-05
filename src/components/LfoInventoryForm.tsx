@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Button, DateInput, Input, Label, Select } from "@/components/ui";
+import { Button, DateInput, Input, Label } from "@/components/ui";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
@@ -18,6 +18,15 @@ export type LfoHouseRow = {
   feedUpAt: string | null;
   headCount: number;
 };
+
+/** Shared chrome so feed-up date + time read as one matched pair. */
+const FEED_UP_CONTROL_CLASS =
+  "mt-1 box-border h-11 w-full min-w-0 rounded-lg border border-stone-300 bg-white px-2.5 text-base font-semibold leading-none text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200";
+
+const FEED_UP_DATE_CLASS =
+  `${FEED_UP_CONTROL_CLASS} appearance-none [-webkit-appearance:none] ` +
+  "[&::-webkit-date-and-time-value]:min-h-[2.75rem] [&::-webkit-date-and-time-value]:leading-[2.75rem] " +
+  "[&::-webkit-date-and-time-value]:text-left";
 
 /** Half-hour slots: top (:00) and bottom (:30) of each hour. */
 const FEED_UP_TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
@@ -253,25 +262,24 @@ export function LfoInventoryForm({
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 items-end gap-3">
                   <div className="min-w-0">
                     <Label htmlFor={`feedUpDate-${house.houseId}`}>Feed up date</Label>
-                    <DateInput
+                    <input
                       id={`feedUpDate-${house.houseId}`}
+                      type="date"
                       value={house.feedUpDate}
                       onChange={(e) => updateRow(house.houseId, { feedUpDate: e.target.value })}
-                      className="mt-1 w-full"
-                      style={{ width: "100%" }}
+                      className={FEED_UP_DATE_CLASS}
                     />
                   </div>
                   <div className="min-w-0">
                     <Label htmlFor={`feedUpTime-${house.houseId}`}>Feed up time</Label>
-                    <Select
+                    <select
                       id={`feedUpTime-${house.houseId}`}
                       value={house.feedUpTime}
                       onChange={(e) => updateRow(house.houseId, { feedUpTime: e.target.value })}
-                      className="mt-1 box-border w-full px-1.5 text-base leading-none !min-h-0"
-                      style={{ height: 44 }}
+                      className={FEED_UP_CONTROL_CLASS}
                     >
                       <option value="">Select time</option>
                       {FEED_UP_TIME_OPTIONS.map((opt) => (
@@ -279,7 +287,7 @@ export function LfoInventoryForm({
                           {opt.label}
                         </option>
                       ))}
-                    </Select>
+                    </select>
                   </div>
                 </div>
                 {result ? (
