@@ -56,7 +56,6 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
   const [category, setCategory] = useState(initial?.category ?? "OTHER");
   const [priority, setPriority] = useState(initial?.priority ?? "MEDIUM");
   const [status, setStatus] = useState(initial?.status ?? "OPEN");
-  const [assignedTo, setAssignedTo] = useState(initial?.assignedTo ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [correctiveAction, setCorrectiveAction] = useState(initial?.correctiveAction ?? "");
   const [picker, setPicker] = useState<"house" | "category" | "priority" | "status" | null>(null);
@@ -85,7 +84,7 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
         category,
         priority,
         status,
-        assignedTo,
+        assignedTo: initial?.assignedTo ?? null,
         description,
         correctiveAction,
       };
@@ -143,23 +142,33 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
                 style={{ flex: 1, minWidth: 0 }}
               />
             </View>
-            <SelectField
-              label="Category"
-              valueLabel={ISSUE_CATEGORY_LABELS[category] ?? category}
-              onPress={() => setPicker("category")}
-            />
-            <SelectField
-              label="Priority"
-              valueLabel={ISSUE_PRIORITY_OPTIONS.find((o) => o.value === priority)?.label ?? priority}
-              onPress={() => setPicker("priority")}
-            />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                gap: 10,
+              }}
+            >
+              <SelectField
+                label="Category"
+                valueLabel={ISSUE_CATEGORY_LABELS[category] ?? category}
+                onPress={() => setPicker("category")}
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              <SelectField
+                label="Priority"
+                valueLabel={
+                  ISSUE_PRIORITY_OPTIONS.find((o) => o.value === priority)?.label ?? priority
+                }
+                onPress={() => setPicker("priority")}
+                style={{ flex: 1, minWidth: 0 }}
+              />
+            </View>
             <SelectField
               label="Status"
               valueLabel={ISSUE_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status}
               onPress={() => setPicker("status")}
             />
-            <Text style={[styles.label, { marginTop: 8 }]}>Assigned to</Text>
-            <TextInput style={styles.input} value={assignedTo} onChangeText={setAssignedTo} />
             <Text style={[styles.label, { marginTop: 8 }]}>Description *</Text>
             <TextInput
               style={[styles.input, { minHeight: 72, textAlignVertical: "top" }]}

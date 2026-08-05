@@ -213,8 +213,8 @@ export function FarmIssueForm({
           </Select>
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
           <Label htmlFor={fid("category")}>Category</Label>
           <Select id={fid("category")} name="category" defaultValue={initial?.category ?? "OTHER"}>
             {Object.entries(ISSUE_CATEGORY_LABELS).map(([k, v]) => (
@@ -224,7 +224,7 @@ export function FarmIssueForm({
             ))}
           </Select>
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <Label htmlFor={fid("priority")}>Priority</Label>
           <Select id={fid("priority")} name="priority" defaultValue={initial?.priority ?? "MEDIUM"}>
             <option value="LOW">Low</option>
@@ -233,23 +233,15 @@ export function FarmIssueForm({
             <option value="CRITICAL">Critical</option>
           </Select>
         </div>
-        <div>
-          <Label htmlFor={fid("status")}>Status</Label>
-          <Select id={fid("status")} name="status" defaultValue={initial?.status ?? "OPEN"}>
-            <option value="OPEN">Open</option>
-            <option value="MONITORING">Monitoring</option>
-            <option value="SCHEDULED">Scheduled</option>
-            <option value="RESOLVED">Resolved</option>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor={fid("assignedTo")}>Assigned to</Label>
-          <Input
-            id={fid("assignedTo")}
-            name="assignedTo"
-            defaultValue={initial?.assignedTo ?? undefined}
-          />
-        </div>
+      </div>
+      <div>
+        <Label htmlFor={fid("status")}>Status</Label>
+        <Select id={fid("status")} name="status" defaultValue={initial?.status ?? "OPEN"}>
+          <option value="OPEN">Open</option>
+          <option value="MONITORING">Monitoring</option>
+          <option value="SCHEDULED">Scheduled</option>
+          <option value="RESOLVED">Resolved</option>
+        </Select>
       </div>
       <div>
         <Label htmlFor={fid("description")}>Description</Label>
