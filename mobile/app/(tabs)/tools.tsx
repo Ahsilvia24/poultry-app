@@ -260,7 +260,6 @@ export default function ToolsScreen() {
             >
               {!useAgeOfBird ? (
                 <>
-                  <Text style={styles.label}>Farm</Text>
                   <ChipScroller style={{ marginBottom: 6 }}>
                     {farms.map((f) => (
                       <Chip

@@ -71,7 +71,6 @@ export function ToolsWeightProjections({
         <div>
           {farms.length > 0 ? (
             <>
-              <p className="mb-2 text-sm font-semibold text-stone-700">Farm</p>
               <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
                 {farms.map((f) => {
                   const active = f.id === (farm?.id ?? farmId);
