@@ -8,6 +8,7 @@ const links = [
   { href: "#cool-cells", label: "Cool Cells" },
   { href: "#max-cooling", label: "Max Cooling" },
   { href: "#lights", label: "Lights" },
+  { href: "#weight-projections", label: "Weight Proj." },
   { href: "#ventilation", label: "Ventilation" },
 ] as const;
 

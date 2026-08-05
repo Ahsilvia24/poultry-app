@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   LayoutChangeEvent,
   Pressable,
@@ -6,8 +6,13 @@ import {
   Text,
   View,
 } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { listFarms, getFarmDetail } from "../../src/repos/data";
+import {
+  listFarms,
+  getFarmDetail,
+  updateFlockGrowthRate,
+} from "../../src/repos/data";
 import {
   CFM_BY_FAN_SIZE,
   CFM_PER_BIRD,
@@ -16,10 +21,15 @@ import {
   recommendedMinVent,
 } from "../../src/lib/tools";
 import { flockWeekFromAge, formatMinVentCycle } from "../../src/lib/mortality";
+import {
+  catchWeightProjections,
+  resolveGrowthRate,
+} from "../../src/lib/weight/projections";
 import { colors, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { Card, Chip, PageHeader } from "../../src/components/ui";
 import { ExportDataCard } from "../../src/components/ExportDataCard";
+import { WeightProjectionTile } from "../../src/components/WeightProjectionTile";
 import {
   CoolCellsChart,
   LightsChart,
@@ -27,17 +37,30 @@ import {
   TempCurveChart,
 } from "../../src/components/toolsCharts";
 
-type SectionKey = "temp" | "cool" | "max" | "lights" | "vent";
+type SectionKey = "temp" | "cool" | "max" | "lights" | "weight" | "vent";
 
 const QUICK_LINKS: Array<{ key: SectionKey; label: string }> = [
   { key: "temp", label: "Temp Curve" },
   { key: "cool", label: "Cool Cells" },
   { key: "max", label: "Max Cooling" },
   { key: "lights", label: "Lights" },
+  { key: "weight", label: "Weight Proj." },
   { key: "vent", label: "Ventilation" },
 ];
 
+function paramValue(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
 export default function ToolsScreen() {
+  const params = useLocalSearchParams<{
+    farmId?: string | string[];
+    section?: string | string[];
+  }>();
+  const paramFarmId = paramValue(params.farmId);
+  const paramSection = paramValue(params.section) as SectionKey | "";
+
   const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("tools", scrollRef);
   const sectionY = useRef<Partial<Record<SectionKey, number>>>({});
@@ -46,14 +69,23 @@ export default function ToolsScreen() {
     cool: true,
     max: true,
     lights: true,
+    weight: true,
     vent: true,
   });
   const [cfmOpen, setCfmOpen] = useState<"bird" | "fan" | null>(null);
   const [showVentMath, setShowVentMath] = useState(false);
+  const [detailVersion, setDetailVersion] = useState(0);
 
   const farms = useMemo(() => listFarms().farms, []);
-  const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
+  const [farmId, setFarmId] = useState(() => paramFarmId || farms[0]?.id || "");
   const [houseId, setHouseId] = useState("");
+
+  useEffect(() => {
+    if (paramFarmId && farms.some((f) => f.id === paramFarmId)) {
+      setFarmId(paramFarmId);
+      setHouseId("");
+    }
+  }, [paramFarmId, farms]);
 
   const detail = useMemo(() => {
     if (!farmId) return null;
@@ -62,7 +94,9 @@ export default function ToolsScreen() {
     } catch {
       return null;
     }
-  }, [farmId]);
+    // detailVersion forces refresh after saving growth rate
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [farmId, detailVersion]);
 
   const houses = detail?.houses ?? [];
   const selectedHouse = houses.find((h) => h.id === houseId) ?? houses[0] ?? null;
@@ -94,6 +128,54 @@ export default function ToolsScreen() {
         })
       : [];
 
+  const activeFlocks = detail?.activeFlocks ?? [];
+  const catchLabel =
+    detail?.activeFlock?.catchDates?.[0] ??
+    detail?.activeFlock?.projectedCatchDate ??
+    detail?.activeFlock?.resolvedCatchDate ??
+    null;
+  const growthRate = (() => {
+    const fromHouse = detail?.houses.find((h) => h.growthRateLbsPerDay != null)?.growthRateLbsPerDay;
+    if (fromHouse != null) return resolveGrowthRate(fromHouse);
+    return detail?.activeFlock
+      ? resolveGrowthRate(detail.activeFlock.growthRateLbsPerDay)
+      : null;
+  })();
+
+  /** Unique catch dates → Catch day / +1 / +2, soonest catch first. */
+  const weightProjectionGroups = (() => {
+    if (!detail || activeFlocks.length === 0 || growthRate == null) return [];
+    const byCatch = new Map<string, { placement: string; rate: number }>();
+    for (const h of detail.houses) {
+      if (h.placedBirdCount == null) continue;
+      const catchDate = h.catchDate ?? catchLabel;
+      if (!catchDate) continue;
+      const placement = h.placementDate ?? detail.activeFlock?.placementDate;
+      if (!placement) continue;
+      const rate = resolveGrowthRate(h.growthRateLbsPerDay);
+      const existing = byCatch.get(catchDate);
+      if (!existing || placement < existing.placement) {
+        byCatch.set(catchDate, { placement, rate });
+      }
+    }
+    if (byCatch.size === 0 && catchLabel && detail.activeFlock) {
+      byCatch.set(catchLabel, {
+        placement: detail.activeFlock.placementDate,
+        rate: growthRate,
+      });
+    }
+    return Array.from(byCatch.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([catchDate, { placement, rate }]) => ({
+        catchDateKey: catchDate,
+        projections: catchWeightProjections({
+          placementDate: placement,
+          catchDate,
+          growthRateLbsPerDay: rate,
+        }),
+      }));
+  })();
+
   function onSectionLayout(key: SectionKey, e: LayoutChangeEvent) {
     sectionY.current[key] = e.nativeEvent.layout.y;
   }
@@ -107,6 +189,20 @@ export default function ToolsScreen() {
       }
     });
   }
+
+  useEffect(() => {
+    if (
+      paramSection === "temp" ||
+      paramSection === "cool" ||
+      paramSection === "max" ||
+      paramSection === "lights" ||
+      paramSection === "weight" ||
+      paramSection === "vent"
+    ) {
+      const t = setTimeout(() => openAndScroll(paramSection), 50);
+      return () => clearTimeout(t);
+    }
+  }, [paramSection, paramFarmId]);
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -211,6 +307,53 @@ export default function ToolsScreen() {
               onClose={() => setOpen((p) => ({ ...p, lights: false }))}
             >
               <LightsChart />
+            </SectionPanel>
+          ) : (
+            <SectionAnchor />
+          )}
+        </View>
+
+        <View onLayout={(e) => onSectionLayout("weight", e)} collapsable={false}>
+          {open.weight ? (
+            <SectionPanel
+              title="Weight projections"
+              subtitle="Age at kill × growth rate"
+              onClose={() => setOpen((p) => ({ ...p, weight: false }))}
+            >
+              <Text style={styles.label}>Farm</Text>
+              <ChipScroller>
+                {farms.map((f) => (
+                  <Chip
+                    key={f.id}
+                    label={f.farmName}
+                    active={farmId === f.id}
+                    onPress={() => {
+                      setFarmId(f.id);
+                      setHouseId("");
+                    }}
+                  />
+                ))}
+              </ChipScroller>
+
+              {growthRate != null && weightProjectionGroups.length > 0 ? (
+                <WeightProjectionTile
+                  groups={weightProjectionGroups}
+                  growthRateLbsPerDay={growthRate}
+                  embedded
+                  onSaveGrowthRate={(rate) => {
+                    for (const fl of activeFlocks) {
+                      updateFlockGrowthRate(fl.id, rate);
+                    }
+                    setDetailVersion((v) => v + 1);
+                  }}
+                />
+              ) : (
+                <Text style={[styles.muted, { marginTop: 4 }]}>
+                  {farms.length === 0
+                    ? "Add an active farm with a flock to see weight projections."
+                    : "Add an active flock with a catch date to see weight projections."}
+                </Text>
+              )}
             </SectionPanel>
           ) : (
             <SectionAnchor />

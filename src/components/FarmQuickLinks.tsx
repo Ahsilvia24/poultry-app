@@ -24,7 +24,12 @@ export function FarmQuickLinks({
     { key: "service", href: `/farms/${farmId}/service`, label: "Service Farm", external: true },
     { key: "mortality", href: `/mortality?farmId=${farmId}`, label: "Mortality", external: true },
     { key: "lfo", href: lfoHref, label: "LFO", external: true },
-    { key: "weight", href: "#weight-projections", label: "Weight Proj." },
+    {
+      key: "weight",
+      href: `/tools?farmId=${farmId}#weight-projections`,
+      label: "Weight Proj.",
+      external: true,
+    },
     { key: "generators", href: "#generators", label: "Generator Log" },
     { key: "visits", href: "#visits", label: "Visits" },
     { key: "issues", href: "#issues", label: "Issues" },

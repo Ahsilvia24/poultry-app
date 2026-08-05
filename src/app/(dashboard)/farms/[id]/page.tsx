@@ -14,7 +14,6 @@ import {
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
 import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
-import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
 import { createFlockAction } from "@/app/actions/farms";
 import { HouseCard } from "@/components/HouseCard";
 import { FocusHouseOnMount } from "@/components/FocusHouseOnMount";
@@ -27,7 +26,6 @@ import { FarmGeneratorLogSection } from "@/components/FarmGeneratorLogSection";
 import { FarmIssuesSection } from "@/components/FarmIssuesSection";
 import { FarmLitterSection } from "@/components/FarmLitterSection";
 import { FarmVisitsSection } from "@/components/FarmVisitsSection";
-import { WeightProjectionTile } from "@/components/WeightProjectionTile";
 import { Card } from "@/components/ui";
 import { PageTitleBackLink } from "@/components/PageTitleBackLink";
 import { Suspense } from "react";
@@ -191,37 +189,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
     return result;
   }
 
-  const growthRate = activeFlock
-    ? resolveGrowthRate(activeFlock.growthRateLbsPerDay)
-    : null;
-  const weightProjectionGroups =
-    growthRate != null
-      ? activeFlocks
-          .map((flock) => {
-            const catchDate = resolveCatchDate(flock);
-            return {
-              catchDateKey: format(catchDate, "yyyy-MM-dd"),
-              projections: catchWeightProjections({
-                placementDate: flock.placementDate,
-                catchDate,
-                growthRateLbsPerDay: resolveGrowthRate(flock.growthRateLbsPerDay),
-              }).map((p) => ({
-                offsetDays: p.offsetDays,
-                dateKey: format(p.date, "yyyy-MM-dd"),
-                label:
-                  p.offsetDays === 0
-                    ? "Catch day"
-                    : p.offsetDays === 1
-                      ? "Catch +1"
-                      : "Catch +2",
-                ageDays: p.ageDays,
-                weightLbs: p.weightLbs,
-              })),
-            };
-          })
-          .sort((a, b) => a.catchDateKey.localeCompare(b.catchDateKey))
-      : [];
-
   return (
     <div>
       <FarmInfoEditor
@@ -351,18 +318,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             gen4Hours: log.gen4Hours,
           }))}
         />
-
-        {weightProjectionGroups.length > 0 && activeFlock ? (
-          <div id="weight-projections" className="scroll-mt-24 lg:col-span-2">
-            <WeightProjectionTile
-              flockId={activeFlock.id}
-              growthRateLbsPerDay={growthRate ?? resolveGrowthRate(null)}
-              groups={weightProjectionGroups}
-            />
-          </div>
-        ) : (
-          <div id="weight-projections" className="scroll-mt-24 lg:col-span-2" />
-        )}
 
         <FarmIssuesSection
           farmId={farm.id}

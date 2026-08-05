@@ -32,10 +32,13 @@ export function WeightProjectionTile({
   flockId,
   groups,
   growthRateLbsPerDay,
+  embedded = false,
 }: {
   flockId: string;
   groups: WeightProjectionGroup[];
   growthRateLbsPerDay: number;
+  /** When true, skip the outer card chrome and section title (used inside Tools). */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -59,56 +62,66 @@ export function WeightProjectionTile({
     });
   }
 
-  return (
-    <div>
-      <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-2">
+  const body = (
+    <>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        {embedded ? null : (
           <div>
             <p className="text-base font-semibold text-stone-500">Weight projections</p>
             <p className="mt-0.5 text-sm text-stone-400">Age at kill × growth rate</p>
           </div>
-          <p className="text-base text-stone-600">
-            Using{" "}
-            <span className="font-semibold text-stone-900">
-              {growthRateLbsPerDay.toFixed(3)} lb/day
-            </span>
-          </p>
-        </div>
+        )}
+        <p className={`text-base text-stone-600 ${embedded ? "ml-auto" : ""}`}>
+          Using{" "}
+          <span className="font-semibold text-stone-900">
+            {growthRateLbsPerDay.toFixed(3)} lb/day
+          </span>
+        </p>
+      </div>
 
-        {groups.map((group) => (
-          <div key={group.catchDateKey} className="mt-3">
-            {groups.length > 1 ? (
-              <p className="mb-2 text-sm font-semibold text-stone-700">
-                Catch {formatCatchShort(group.catchDateKey)}
-              </p>
-            ) : null}
-            <div className="grid grid-cols-3 gap-2 text-lg">
-              {group.projections.map((p) => (
-                <div
-                  key={`${group.catchDateKey}-${p.offsetDays}`}
-                  className="rounded-lg bg-stone-50 px-3 py-2"
-                >
-                  <p className="text-sm text-stone-500">{p.label}</p>
-                  <p className="font-bold text-stone-900">{p.weightLbs.toFixed(2)} lb</p>
-                  <p className="text-sm text-stone-400">
-                    {p.ageDays}d · {formatCatchShort(p.dateKey)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {groups.length > 1 ? (
-          <div className="mt-3 space-y-0.5">
-            {catchDatesSorted.map((dateKey) => (
-              <p key={dateKey} className="text-sm text-stone-500">
-                Catch {formatCatchShort(dateKey)}
-              </p>
+      {groups.map((group) => (
+        <div key={group.catchDateKey} className="mt-3">
+          {groups.length > 1 ? (
+            <p className="mb-2 text-sm font-semibold text-stone-700">
+              Catch {formatCatchShort(group.catchDateKey)}
+            </p>
+          ) : null}
+          <div className="grid grid-cols-3 gap-2 text-lg">
+            {group.projections.map((p) => (
+              <div
+                key={`${group.catchDateKey}-${p.offsetDays}`}
+                className="rounded-lg bg-stone-50 px-3 py-2"
+              >
+                <p className="text-sm text-stone-500">{p.label}</p>
+                <p className="font-bold text-stone-900">{p.weightLbs.toFixed(2)} lb</p>
+                <p className="text-sm text-stone-400">
+                  {p.ageDays}d · {formatCatchShort(p.dateKey)}
+                </p>
+              </div>
             ))}
           </div>
-        ) : null}
-      </div>
+        </div>
+      ))}
+
+      {groups.length > 1 ? (
+        <div className="mt-3 space-y-0.5">
+          {catchDatesSorted.map((dateKey) => (
+            <p key={dateKey} className="text-sm text-stone-500">
+              Catch {formatCatchShort(dateKey)}
+            </p>
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+
+  return (
+    <div>
+      {embedded ? (
+        body
+      ) : (
+        <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">{body}</div>
+      )}
 
       {!editing ? (
         <button

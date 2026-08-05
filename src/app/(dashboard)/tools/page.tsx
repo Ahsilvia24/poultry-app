@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -5,6 +6,8 @@ import {
   birdAgeFromPlacement,
   flockWeekFromAge,
 } from "@/lib/mortality/calculations";
+import { resolveCatchDate } from "@/lib/visits/schedule";
+import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
 import { CoolCellsChart } from "@/components/CoolCellsChart";
 import { LightsChart } from "@/components/LightsChart";
 import { MaxCoolingChart } from "@/components/MaxCoolingChart";
@@ -12,16 +15,27 @@ import { TempCurveChart } from "@/components/TempCurveChart";
 import { ToolsQuickLinks } from "@/components/ToolsQuickLinks";
 import { ToolsSectionPanel } from "@/components/ToolsSectionPanel";
 import {
+  ToolsWeightProjections,
+  type WeightFarmPayload,
+} from "@/components/ToolsWeightProjections";
+import {
   VentilationCfmCharts,
   VentilationLinks,
   type VentilationFarmPayload,
 } from "@/components/VentilationLinks";
 import { PageHeader } from "@/components/ui";
 
-export default async function ToolsPage() {
+type SearchParams = Promise<{ farmId?: string }>;
+
+export default async function ToolsPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
+  const sp = searchParams ? await searchParams : {};
   const today = new Date();
   const farmsRaw = await prisma.farm.findMany({
     where: { userId: session.user.id, deletedAt: null, isActive: true },
@@ -33,7 +47,7 @@ export default async function ToolsPage() {
       },
       flocks: {
         where: { flockStatus: "ACTIVE", deletedAt: null },
-        take: 1,
+        orderBy: { placementDate: "asc" },
         include: {
           houseFlocks: {
             select: { houseId: true, placedBirdCount: true },
@@ -68,6 +82,47 @@ export default async function ToolsPage() {
     };
   });
 
+  const weightFarms: WeightFarmPayload[] = farmsRaw.map((farm) => {
+    const activeFlocks = farm.flocks;
+    const primary = activeFlocks[0] ?? null;
+    const growthRateLbsPerDay = resolveGrowthRate(primary?.growthRateLbsPerDay);
+    const groups =
+      primary == null
+        ? []
+        : activeFlocks
+            .map((flock) => {
+              const catchDate = resolveCatchDate(flock);
+              return {
+                catchDateKey: format(catchDate, "yyyy-MM-dd"),
+                projections: catchWeightProjections({
+                  placementDate: flock.placementDate,
+                  catchDate,
+                  growthRateLbsPerDay: resolveGrowthRate(flock.growthRateLbsPerDay),
+                }).map((p) => ({
+                  offsetDays: p.offsetDays,
+                  dateKey: format(p.date, "yyyy-MM-dd"),
+                  label:
+                    p.offsetDays === 0
+                      ? "Catch day"
+                      : p.offsetDays === 1
+                        ? "Catch +1"
+                        : "Catch +2",
+                  ageDays: p.ageDays,
+                  weightLbs: p.weightLbs,
+                })),
+              };
+            })
+            .sort((a, b) => a.catchDateKey.localeCompare(b.catchDateKey));
+
+    return {
+      id: farm.id,
+      farmName: farm.farmName,
+      flockId: primary?.id ?? null,
+      growthRateLbsPerDay,
+      groups,
+    };
+  });
+
   return (
     <div>
       <PageHeader title="Tools" subtitle="Calculators and helpers for field work" />
@@ -99,6 +154,17 @@ export default async function ToolsPage() {
 
         <ToolsSectionPanel hashId="lights" title="Lights">
           <LightsChart />
+        </ToolsSectionPanel>
+
+        <ToolsSectionPanel
+          hashId="weight-projections"
+          title="Weight projections"
+          subtitle="Age at kill × growth rate"
+        >
+          <ToolsWeightProjections
+            farms={weightFarms}
+            initialFarmId={sp.farmId ?? null}
+          />
         </ToolsSectionPanel>
 
         <ToolsSectionPanel
