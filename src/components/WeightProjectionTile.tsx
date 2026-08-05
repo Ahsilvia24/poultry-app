@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateFlockWeightProjectionAction } from "@/app/actions/farms";
-import { DEFAULT_GROWTH_RATE_LBS_PER_DAY } from "@/lib/weight/projections";
+import {
+  DEFAULT_GROWTH_RATE_LBS_PER_DAY,
+  weightFromAgeDays,
+} from "@/lib/weight/projections";
 import { Button, Card, Input, Label } from "@/components/ui";
 
 const DAY_2 = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
@@ -33,19 +36,34 @@ export function WeightProjectionTile({
   groups,
   growthRateLbsPerDay,
   embedded = false,
+  useAgeOfBird = false,
+  onUseAgeOfBirdChange,
+  ageDaysText = "",
+  onAgeDaysChange,
+  onGrowthRateChange,
 }: {
-  flockId: string;
+  flockId?: string | null;
   groups: WeightProjectionGroup[];
   growthRateLbsPerDay: number;
   /** When true, skip the outer card chrome and section title (used inside Tools). */
   embedded?: boolean;
+  useAgeOfBird?: boolean;
+  onUseAgeOfBirdChange?: (next: boolean) => void;
+  ageDaysText?: string;
+  onAgeDaysChange?: (next: string) => void;
+  /** Called after a successful growth-rate save (or for local-only rate when no flock). */
+  onGrowthRateChange?: (rate: number) => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
 
-  if (groups.length === 0) return null;
+  const ageDays = Number(ageDaysText);
+  const ageWeight =
+    Number.isFinite(ageDays) && ageDays >= 0
+      ? weightFromAgeDays(ageDays, growthRateLbsPerDay)
+      : null;
 
   function toggleEdit() {
     if (pending) return;
@@ -60,12 +78,25 @@ export function WeightProjectionTile({
 
   function onSave(formData: FormData) {
     setError(null);
+    const raw = Number(formData.get("growthRateLbsPerDay"));
+    if (!Number.isFinite(raw) || raw < 0) {
+      setError("Enter a valid growth rate (0 or greater).");
+      return;
+    }
+
+    if (!flockId) {
+      onGrowthRateChange?.(raw);
+      setEditing(false);
+      return;
+    }
+
     startTransition(async () => {
       const result = await updateFlockWeightProjectionAction(flockId, formData);
       if (result?.error) {
         setError(result.error);
         return;
       }
+      onGrowthRateChange?.(raw);
       setEditing(false);
       router.refresh();
     });
@@ -76,7 +107,7 @@ export function WeightProjectionTile({
       type="button"
       onClick={toggleEdit}
       disabled={pending}
-      className={`text-left text-base text-stone-600 hover:text-emerald-800 ${embedded ? "ml-auto" : ""}`}
+      className="text-left text-base text-stone-600 hover:text-emerald-800"
       aria-expanded={editing}
       aria-label="Edit growth rate"
     >
@@ -87,38 +118,85 @@ export function WeightProjectionTile({
     </button>
   );
 
+  const ageToggle =
+    onUseAgeOfBirdChange != null ? (
+      <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-stone-700">
+        <input
+          type="checkbox"
+          checked={useAgeOfBird}
+          onChange={(e) => onUseAgeOfBirdChange(e.target.checked)}
+          className="size-4 rounded border-stone-300 text-emerald-800 focus:ring-emerald-700"
+        />
+        Use Age of Bird
+      </label>
+    ) : null;
+
   const body = (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        {embedded ? null : (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {embedded ? (
+          ageToggle
+        ) : (
           <div>
             <p className="text-base font-semibold text-stone-500">Weight projections</p>
+            {ageToggle ? <div className="mt-2">{ageToggle}</div> : null}
           </div>
         )}
         {growthRateControl}
       </div>
 
-      {groups.map((group) => (
-        <div key={group.catchDateKey} className="mt-3">
-          <p className="mb-2 text-sm font-semibold text-stone-700">
-            Catch {formatCatchShort(group.catchDateKey)}
-          </p>
-          <div className="grid grid-cols-3 gap-2 text-lg">
-            {group.projections.map((p) => (
-              <div
-                key={`${group.catchDateKey}-${p.offsetDays}`}
-                className="rounded-lg bg-stone-50 px-3 py-2"
-              >
-                <p className="text-sm text-stone-500">{p.label}</p>
-                <p className="font-bold text-stone-900">{p.weightLbs.toFixed(2)} lb</p>
-                <p className="text-sm text-stone-400">
-                  {p.ageDays}d · {formatCatchShort(p.dateKey)}
-                </p>
-              </div>
-            ))}
+      {useAgeOfBird ? (
+        <div className="mt-3 space-y-3">
+          <div className="max-w-[10rem]">
+            <Label htmlFor="birdAgeDays">Age of bird (days)</Label>
+            <Input
+              id="birdAgeDays"
+              type="number"
+              min={0}
+              step={1}
+              inputMode="numeric"
+              value={ageDaysText}
+              onChange={(e) => onAgeDaysChange?.(e.target.value)}
+              placeholder="e.g. 42"
+            />
+          </div>
+          <div className="rounded-lg bg-stone-50 px-3 py-2">
+            <p className="text-sm text-stone-500">Projected weight</p>
+            <p className="text-lg font-bold text-stone-900">
+              {ageWeight != null ? `${ageWeight.toFixed(2)} lb` : "—"}
+            </p>
+            <p className="text-sm text-stone-400">
+              {ageWeight != null ? `${ageDays} days of age` : "Enter age to calculate"}
+            </p>
           </div>
         </div>
-      ))}
+      ) : groups.length > 0 ? (
+        groups.map((group) => (
+          <div key={group.catchDateKey} className="mt-3">
+            <p className="mb-2 text-sm font-semibold text-stone-700">
+              Catch {formatCatchShort(group.catchDateKey)}
+            </p>
+            <div className="grid grid-cols-3 gap-2 text-lg">
+              {group.projections.map((p) => (
+                <div
+                  key={`${group.catchDateKey}-${p.offsetDays}`}
+                  className="rounded-lg bg-stone-50 px-3 py-2"
+                >
+                  <p className="text-sm text-stone-500">{p.label}</p>
+                  <p className="font-bold text-stone-900">{p.weightLbs.toFixed(2)} lb</p>
+                  <p className="text-sm text-stone-400">
+                    {p.ageDays}d · {formatCatchShort(p.dateKey)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))
+      ) : (
+        <p className="mt-3 text-sm text-stone-600">
+          Add an active flock with a catch date to see weight projections.
+        </p>
+      )}
     </>
   );
 

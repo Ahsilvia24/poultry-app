@@ -23,6 +23,7 @@ import {
 import { flockWeekFromAge, formatMinVentCycle } from "../../src/lib/mortality";
 import {
   catchWeightProjections,
+  DEFAULT_GROWTH_RATE_LBS_PER_DAY,
   resolveGrowthRate,
 } from "../../src/lib/weight/projections";
 import { colors, styles } from "../../src/theme";
@@ -79,6 +80,9 @@ export default function ToolsScreen() {
   const farms = useMemo(() => listFarms().farms, []);
   const [farmId, setFarmId] = useState(() => paramFarmId || farms[0]?.id || "");
   const [houseId, setHouseId] = useState("");
+  const [useAgeOfBird, setUseAgeOfBird] = useState(false);
+  const [ageDaysText, setAgeDaysText] = useState("");
+  const [localGrowthRate, setLocalGrowthRate] = useState<number | null>(null);
 
   useEffect(() => {
     if (paramFarmId && farms.some((f) => f.id === paramFarmId)) {
@@ -130,13 +134,19 @@ export default function ToolsScreen() {
 
   const activeFlocks = detail?.activeFlocks ?? [];
   const growthRate = (() => {
+    if (localGrowthRate != null) return resolveGrowthRate(localGrowthRate);
     if (selectedHouse?.growthRateLbsPerDay != null) {
       return resolveGrowthRate(selectedHouse.growthRateLbsPerDay);
     }
-    return detail?.activeFlock
-      ? resolveGrowthRate(detail.activeFlock.growthRateLbsPerDay)
-      : null;
+    if (detail?.activeFlock) {
+      return resolveGrowthRate(detail.activeFlock.growthRateLbsPerDay);
+    }
+    return DEFAULT_GROWTH_RATE_LBS_PER_DAY;
   })();
+
+  useEffect(() => {
+    setLocalGrowthRate(null);
+  }, [selectedHouse?.id]);
 
   /** Selected house → Catch day / +1 / +2 from that house’s catch (or flock). */
   const weightProjectionGroups = (() => {
@@ -251,59 +261,59 @@ export default function ToolsScreen() {
               title="Weight projections"
               onClose={() => setOpen((p) => ({ ...p, weight: false }))}
             >
-              <Text style={styles.label}>Farm</Text>
-              <ChipScroller style={{ marginBottom: 6 }}>
-                {farms.map((f) => (
-                  <Chip
-                    key={f.id}
-                    label={f.farmName}
-                    active={farmId === f.id}
-                    onPress={() => {
-                      setFarmId(f.id);
-                      setHouseId("");
-                    }}
-                  />
-                ))}
-              </ChipScroller>
+              {!useAgeOfBird ? (
+                <>
+                  <Text style={styles.label}>Farm</Text>
+                  <ChipScroller style={{ marginBottom: 6 }}>
+                    {farms.map((f) => (
+                      <Chip
+                        key={f.id}
+                        label={f.farmName}
+                        active={farmId === f.id}
+                        onPress={() => {
+                          setFarmId(f.id);
+                          setHouseId("");
+                        }}
+                      />
+                    ))}
+                  </ChipScroller>
 
-              <ChipScroller>
-                {houses.map((h) => (
-                  <Chip
-                    key={h.id}
-                    label={`House ${h.houseNumber}`}
-                    active={(selectedHouse?.id ?? "") === h.id}
-                    onPress={() => setHouseId(h.id)}
-                  />
-                ))}
-              </ChipScroller>
+                  <ChipScroller style={{ marginBottom: 8 }}>
+                    {houses.map((h) => (
+                      <Chip
+                        key={h.id}
+                        label={`House ${h.houseNumber}`}
+                        active={(selectedHouse?.id ?? "") === h.id}
+                        onPress={() => setHouseId(h.id)}
+                      />
+                    ))}
+                  </ChipScroller>
+                </>
+              ) : null}
 
-              {growthRate != null && weightProjectionGroups.length > 0 ? (
-                <WeightProjectionTile
-                  groups={weightProjectionGroups}
-                  growthRateLbsPerDay={growthRate}
-                  embedded
-                  onSaveGrowthRate={(rate) => {
-                    const flockId =
-                      selectedHouse?.flockId ?? detail?.activeFlock?.id ?? null;
-                    if (flockId) {
-                      updateFlockGrowthRate(flockId, rate);
-                    } else {
-                      for (const fl of activeFlocks) {
-                        updateFlockGrowthRate(fl.id, rate);
-                      }
+              <WeightProjectionTile
+                groups={weightProjectionGroups}
+                growthRateLbsPerDay={growthRate}
+                embedded
+                useAgeOfBird={useAgeOfBird}
+                onUseAgeOfBirdChange={setUseAgeOfBird}
+                ageDaysText={ageDaysText}
+                onAgeDaysChange={setAgeDaysText}
+                onSaveGrowthRate={(rate) => {
+                  setLocalGrowthRate(rate);
+                  const flockId =
+                    selectedHouse?.flockId ?? detail?.activeFlock?.id ?? null;
+                  if (flockId) {
+                    updateFlockGrowthRate(flockId, rate);
+                    setDetailVersion((v) => v + 1);
+                  } else if (activeFlocks.length > 0) {
+                    for (const fl of activeFlocks) {
+                      updateFlockGrowthRate(fl.id, rate);
                     }
                     setDetailVersion((v) => v + 1);
-                  }}
-                />
-              ) : (
-                <Text style={[styles.muted, { marginTop: 4 }]}>
-                  {farms.length === 0
-                    ? "Add an active farm with a flock to see weight projections."
-                    : houses.length === 0
-                      ? "This farm has no houses."
-                      : "Add an active flock with a catch date to see weight projections."}
-                </Text>
-              )}
+                  }
+                }}
+              />
             </SectionPanel>
           ) : (
             <SectionAnchor />

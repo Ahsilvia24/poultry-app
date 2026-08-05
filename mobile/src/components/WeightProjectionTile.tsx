@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { DEFAULT_GROWTH_RATE_LBS_PER_DAY } from "../lib/weight/projections";
+import {
+  DEFAULT_GROWTH_RATE_LBS_PER_DAY,
+  weightFromAgeDays,
+} from "../lib/weight/projections";
 import { colors, styles } from "../theme";
 import { Card, PrimaryButton } from "./ui";
 
@@ -33,19 +36,31 @@ export function WeightProjectionTile({
   growthRateLbsPerDay,
   onSaveGrowthRate,
   embedded = false,
+  useAgeOfBird = false,
+  onUseAgeOfBirdChange,
+  ageDaysText = "",
+  onAgeDaysChange,
 }: {
   groups: WeightProjectionGroup[];
   growthRateLbsPerDay: number;
   onSaveGrowthRate: (rate: number) => void;
   /** When true, skip the outer card chrome and section title (used inside Tools). */
   embedded?: boolean;
+  useAgeOfBird?: boolean;
+  onUseAgeOfBirdChange?: (next: boolean) => void;
+  ageDaysText?: string;
+  onAgeDaysChange?: (next: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(growthRateLbsPerDay));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  if (groups.length === 0) return null;
+  const ageDays = Number(ageDaysText);
+  const ageWeight =
+    Number.isFinite(ageDays) && ageDays >= 0
+      ? weightFromAgeDays(ageDays, growthRateLbsPerDay)
+      : null;
 
   function startEdit() {
     if (saving) return;
@@ -83,7 +98,6 @@ export function WeightProjectionTile({
       accessibilityRole="button"
       accessibilityLabel="Edit growth rate"
       accessibilityState={{ expanded: editing }}
-      style={{ marginLeft: embedded ? "auto" : 0 }}
     >
       <Text style={{ fontSize: 14, color: colors.text }}>
         Using{" "}
@@ -100,62 +114,136 @@ export function WeightProjectionTile({
     </Pressable>
   );
 
+  const ageToggle =
+    onUseAgeOfBirdChange != null ? (
+      <Pressable
+        onPress={() => onUseAgeOfBirdChange(!useAgeOfBird)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: useAgeOfBird }}
+        style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}
+      >
+        <View
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 4,
+            borderWidth: 1.5,
+            borderColor: useAgeOfBird ? colors.accentDark : colors.border,
+            backgroundColor: useAgeOfBird ? colors.accentDark : "#fff",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {useAgeOfBird ? (
+            <Text style={{ color: "#fff", fontSize: 12, fontWeight: "800", lineHeight: 14 }}>
+              ✓
+            </Text>
+          ) : null}
+        </View>
+        <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
+          Use Age of Bird
+        </Text>
+      </Pressable>
+    ) : null;
+
   const body = (
     <>
       <View
         style={{
           flexDirection: "row",
           flexWrap: "wrap",
+          alignItems: "center",
           justifyContent: "space-between",
           gap: 8,
         }}
       >
-        {embedded ? null : (
+        {embedded ? (
+          ageToggle
+        ) : (
           <View style={{ flex: 1, minWidth: 160 }}>
             <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight projections</Text>
+            {ageToggle ? <View style={{ marginTop: 8 }}>{ageToggle}</View> : null}
           </View>
         )}
         {growthRateControl}
       </View>
 
-      {groups.map((group) => (
-        <View key={group.catchDateKey} style={{ marginTop: 12 }}>
-          <Text
+      {useAgeOfBird ? (
+        <View style={{ marginTop: 12, gap: 10 }}>
+          <View>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
+              Age of bird (days)
+            </Text>
+            <TextInput
+              value={ageDaysText}
+              onChangeText={(t) => onAgeDaysChange?.(t)}
+              keyboardType="number-pad"
+              style={[styles.input, { maxWidth: 140 }]}
+              placeholder="e.g. 42"
+              placeholderTextColor={colors.muted}
+            />
+          </View>
+          <View
             style={{
-              fontSize: 13,
-              fontWeight: "700",
-              color: colors.text,
-              marginBottom: 8,
+              backgroundColor: "#fafaf9",
+              borderRadius: 10,
+              paddingHorizontal: 10,
+              paddingVertical: 10,
             }}
           >
-            Catch {formatCatchShort(group.catchDateKey)}
-          </Text>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {group.projections.map((p) => (
-              <View
-                key={`${group.catchDateKey}-${p.offsetDays}`}
-                style={{
-                  flex: 1,
-                  backgroundColor: "#fafaf9",
-                  borderRadius: 10,
-                  paddingHorizontal: 10,
-                  paddingVertical: 10,
-                }}
-              >
-                <Text style={{ fontSize: 12, color: colors.muted }}>{p.label}</Text>
-                <Text
-                  style={{ fontSize: 16, fontWeight: "800", color: colors.text, marginTop: 2 }}
-                >
-                  {p.weightLbs.toFixed(2)} lb
-                </Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-                  {p.ageDays}d · {formatCatchShort(p.dateKey)}
-                </Text>
-              </View>
-            ))}
+            <Text style={{ fontSize: 12, color: colors.muted }}>Projected weight</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text, marginTop: 2 }}>
+              {ageWeight != null ? `${ageWeight.toFixed(2)} lb` : "—"}
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+              {ageWeight != null ? `${ageDays} days of age` : "Enter age to calculate"}
+            </Text>
           </View>
         </View>
-      ))}
+      ) : groups.length > 0 ? (
+        groups.map((group) => (
+          <View key={group.catchDateKey} style={{ marginTop: 12 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "700",
+                color: colors.text,
+                marginBottom: 8,
+              }}
+            >
+              Catch {formatCatchShort(group.catchDateKey)}
+            </Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {group.projections.map((p) => (
+                <View
+                  key={`${group.catchDateKey}-${p.offsetDays}`}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#fafaf9",
+                    borderRadius: 10,
+                    paddingHorizontal: 10,
+                    paddingVertical: 10,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, color: colors.muted }}>{p.label}</Text>
+                  <Text
+                    style={{ fontSize: 16, fontWeight: "800", color: colors.text, marginTop: 2 }}
+                  >
+                    {p.weightLbs.toFixed(2)} lb
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+                    {p.ageDays}d · {formatCatchShort(p.dateKey)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ))
+      ) : (
+        <Text style={[styles.muted, { marginTop: 12 }]}>
+          Add an active flock with a catch date to see weight projections.
+        </Text>
+      )}
     </>
   );
 
