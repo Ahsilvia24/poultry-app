@@ -5,14 +5,14 @@ export const VISIT_TYPE_LABELS: Record<string, string> = {
   WEIGHT_PROJECTION: "Weight Projection",
   LFO: "LFO",
   PRE_CATCH: "Pre-catch visit",
-  HIGH_MORTALITY: "High mortality",
+  MORTALITY_INVESTIGATION: "Mortality investigation",
   VACCINATION: "Vaccination",
   MEDICATION: "Medication",
   EQUIPMENT_ISSUE: "Equipment issue",
-  MORTALITY_INVESTIGATION: "Mortality investigation",
   OTHER: "Other",
   /** Kept for historical visits; not offered in the create/edit dropdown. */
   WEIGH_DAY: "Weigh day",
+  HIGH_MORTALITY: "High mortality",
 };
 
 /** Dropdown order for create/edit visit forms. */
@@ -23,10 +23,9 @@ export const VISIT_TYPE_OPTIONS = [
   "WEIGHT_PROJECTION",
   "LFO",
   "PRE_CATCH",
-  "HIGH_MORTALITY",
+  "MORTALITY_INVESTIGATION",
   "VACCINATION",
   "MEDICATION",
   "EQUIPMENT_ISSUE",
-  "MORTALITY_INVESTIGATION",
   "OTHER",
 ].map((value) => ({ value, label: VISIT_TYPE_LABELS[value]! }));
