@@ -252,8 +252,7 @@ function GeneratorLogForm({
                   placeholder="Optional"
                   onFocus={(e) => e.target.select()}
                   onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ""))}
-                  className="placeholder:text-stone-400/70"
-                  style={{ height: 44, minHeight: 0 }}
+                  className="h-11 !min-h-0 placeholder:text-stone-400/70"
                 />
                 <p className="mt-1 text-xs text-stone-500">
                   Time exercised: {formatGeneratorHours(delta)}
