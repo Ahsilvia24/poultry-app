@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
+import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
 import { lastFeedOrderSchema } from "@/lib/validations";
+import { parseDateKey } from "@/lib/visits/schedule";
 
 function emptyToNull(value: FormDataEntryValue | null) {
   if (value == null) return null;
@@ -77,22 +79,42 @@ export async function createLastFeedOrderAction(farmId: string, formData: FormDa
 
   let createdId: string;
   try {
-    const created = await prisma.lastFeedOrder.create({
-      data: {
-        farmId,
-        flockId: activeFlock.id,
-        orderDate: new Date(parsed.data.orderDate),
-        consumptionRate: parsed.data.consumptionRate,
-        notes: parsed.data.notes,
-        houseInventories: {
-          create: parsed.data.houseInventories.map((h) => ({
-            houseId: h.houseId,
-            binAPounds: h.binAPounds,
-            binBPounds: h.binBPounds,
-            feedUpAt: parseFeedUpDate(h.feedUpAt),
-          })),
+    const orderDate = parseDateKey(parsed.data.orderDate);
+    const birdAgeInDays = birdAgeFromPlacement(
+      activeFlock.placementDate,
+      orderDate,
+    );
+    const created = await prisma.$transaction(async (tx) => {
+      const lfo = await tx.lastFeedOrder.create({
+        data: {
+          farmId,
+          flockId: activeFlock.id,
+          orderDate,
+          consumptionRate: parsed.data.consumptionRate,
+          notes: parsed.data.notes,
+          houseInventories: {
+            create: parsed.data.houseInventories.map((h) => ({
+              houseId: h.houseId,
+              binAPounds: h.binAPounds,
+              binBPounds: h.binBPounds,
+              feedUpAt: parseFeedUpDate(h.feedUpAt),
+            })),
+          },
         },
-      },
+      });
+      // Log on the same farm so Recent visits shows LFO.
+      await tx.farmVisit.create({
+        data: {
+          farmId,
+          flockId: activeFlock.id,
+          visitDate: orderDate,
+          birdAgeInDays,
+          visitType: "LFO",
+          generalBirdCondition: "Healthy",
+          notes: "LFO",
+        },
+      });
+      return lfo;
     });
     createdId = created.id;
   } catch {
@@ -101,6 +123,8 @@ export async function createLastFeedOrderAction(farmId: string, formData: FormDa
 
   revalidatePath("/lfo");
   revalidatePath(`/lfo/${createdId}`);
+  revalidatePath(`/farms/${farmId}`);
+  revalidatePath("/");
   redirect(`/lfo/${createdId}`);
 }
 

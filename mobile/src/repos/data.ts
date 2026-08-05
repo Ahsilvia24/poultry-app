@@ -1482,6 +1482,15 @@ export function createLfo(farmId: string, orderDate: string, notes?: string) {
       [newId("lfoi"), id, h.id],
     );
   }
+  // Log on the same farm so Recent visits shows LFO.
+  createVisit({
+    farmId,
+    flockId: flock?.id ?? null,
+    visitDate: orderDate,
+    visitType: "LFO",
+    notes: "LFO",
+    generalBirdCondition: "Healthy",
+  });
   return { id };
 }
 
