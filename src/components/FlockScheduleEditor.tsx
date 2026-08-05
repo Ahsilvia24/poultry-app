@@ -61,16 +61,14 @@ export function FlockScheduleEditor({
               await action(formData);
               setOpen(false);
             }}
-            className="mt-4 grid gap-3 sm:grid-cols-2"
+            className="mt-4 space-y-3"
           >
             <FlockScheduleFields
               initialPlacement={initialPlacement}
               initialMarketAge={initialMarketAge}
               initialCatchDate={initialCatchDate}
             />
-            <div className="sm:col-span-2">
-              <Button type="submit">Save schedule</Button>
-            </div>
+            <Button type="submit">Save schedule</Button>
           </form>
         </Card>
       ) : null}

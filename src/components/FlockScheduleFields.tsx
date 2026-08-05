@@ -60,28 +60,30 @@ export function FlockScheduleFields({
   }
 
   return (
-    <>
-      <div>
-        <Label htmlFor="placementDate">Placement date</Label>
-        <DateInput
-          id="placementDate"
-          name="placementDate"
-          required
-          value={placementDate}
-          onChange={(e) => onPlacementChange(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="targetMarketAge">Market age (days)</Label>
-        <Input
-          id="targetMarketAge"
-          name="targetMarketAge"
-          type="number"
-          min={0}
-          required
-          value={marketAge}
-          onChange={(e) => onMarketAgeChange(e.target.value)}
-        />
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="shrink-0">
+          <Label htmlFor="placementDate">Placement date</Label>
+          <DateInput
+            id="placementDate"
+            name="placementDate"
+            required
+            value={placementDate}
+            onChange={(e) => onPlacementChange(e.target.value)}
+          />
+        </div>
+        <div className="w-28 shrink-0">
+          <Label htmlFor="targetMarketAge">Days</Label>
+          <Input
+            id="targetMarketAge"
+            name="targetMarketAge"
+            type="number"
+            min={0}
+            required
+            value={marketAge}
+            onChange={(e) => onMarketAgeChange(e.target.value)}
+          />
+        </div>
       </div>
       <div>
         <Label htmlFor="projectedCatchDate">Projected catch</Label>
@@ -93,9 +95,10 @@ export function FlockScheduleFields({
           onChange={(e) => onCatchChange(e.target.value)}
         />
         <p className="mt-1 text-xs text-stone-500">
-          Defaults to {DEFAULT_MARKET_AGE} days after placement. Market age and catch date stay linked.
+          Defaults to {DEFAULT_MARKET_AGE} days after placement. Market age and catch date stay
+          linked.
         </p>
       </div>
-    </>
+    </div>
   );
 }

@@ -79,13 +79,11 @@ export function AddFlockSection({
                   placement date — leave others at 0.
                 </p>
               ) : null}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="flockNumber">Flock number</Label>
-                  <Input id="flockNumber" name="flockNumber" required />
-                </div>
-                <FlockScheduleFields initialPlacement={initialPlacement} />
+              <div>
+                <Label htmlFor="flockNumber">Flock number</Label>
+                <Input id="flockNumber" name="flockNumber" required className="max-w-xs" />
               </div>
+              <FlockScheduleFields initialPlacement={initialPlacement} />
               <input type="hidden" name="flockStatus" value="ACTIVE" />
               <input type="hidden" name="sex" value="STRAIGHT_RUN" />
               <input type="hidden" name="initialBirdCount" value="1" />

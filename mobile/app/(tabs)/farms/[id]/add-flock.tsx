@@ -202,26 +202,34 @@ export default function AddFlockScreen() {
                 placeholderTextColor={colors.muted}
               />
 
-              <View style={{ marginTop: 8 }}>
+              <View
+                style={{
+                  marginTop: 8,
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: 10,
+                }}
+              >
                 <DatePickerField
                   label="Placement date"
                   value={placementDate}
                   onChange={onPlacementChange}
                   compact
                 />
+                <View style={{ width: 88 }}>
+                  <Text style={styles.label}>Days</Text>
+                  <TextInput
+                    style={[styles.input, { minHeight: 44, paddingHorizontal: 8 }]}
+                    value={marketAge}
+                    onChangeText={onMarketAgeChange}
+                    keyboardType="number-pad"
+                  />
+                </View>
               </View>
-
-              <Text style={[styles.label, { marginTop: 8 }]}>Market age (days)</Text>
-              <TextInput
-                style={styles.input}
-                value={marketAge}
-                onChangeText={onMarketAgeChange}
-                keyboardType="number-pad"
-              />
 
               <View style={{ marginTop: 8 }}>
                 <DatePickerField
-                  label="Catch date"
+                  label="Projected catch"
                   value={catchDate}
                   onChange={onCatchChange}
                   compact
