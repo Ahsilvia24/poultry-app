@@ -98,3 +98,8 @@ export function formatNumber(value: number, digits = 0): string {
     maximumFractionDigits: digits,
   });
 }
+
+/** e.g. 24000 → "24.0k" */
+export function formatPoundsK(value: number): string {
+  return `${(value / 1000).toFixed(1)}k`;
+}

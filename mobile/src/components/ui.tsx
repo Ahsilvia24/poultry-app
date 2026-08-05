@@ -253,6 +253,12 @@ export function formatNumber(n: number | null | undefined) {
   return n.toLocaleString();
 }
 
+/** e.g. 24000 → "24.0k" */
+export function formatPoundsK(n: number | null | undefined) {
+  if (n == null || Number.isNaN(n)) return "—";
+  return `${(n / 1000).toFixed(1)}k`;
+}
+
 export function formatPct(n: number | null | undefined) {
   if (n == null || Number.isNaN(n)) return "—";
   return `${n.toFixed(2)}%`;

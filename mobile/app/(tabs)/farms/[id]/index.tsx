@@ -64,6 +64,7 @@ import {
   WeeklyMortalityList,
   formatNumber,
   formatPct,
+  formatPoundsK,
 } from "../../../../src/components/ui";
 import { DatePickerField } from "../../../../src/components/DatePickerField";
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
@@ -1838,8 +1839,9 @@ export default function FarmDetailScreen() {
                     })}
                   >
                     <Text style={{ fontWeight: "700" }}>
-                      {formatShortDate(d.deliveryDate)} — {formatNumber(d.poundsDelivered)} lbs
-                      {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
+                      {formatShortDate(d.deliveryDate)} —{" "}
+                      {d.houseNumber != null ? `House ${d.houseNumber} · ` : ""}
+                      {formatPoundsK(d.poundsDelivered)} lbs
                       {d.feedType ? ` · ${d.feedType}` : ""}
                       {d.feedMill ? ` · ${d.feedMill}` : ""}
                     </Text>

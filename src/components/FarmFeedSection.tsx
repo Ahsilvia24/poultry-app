@@ -10,7 +10,7 @@ import {
 } from "@/components/FeedDeliveryForm";
 import { SwipeToDeleteRow } from "@/components/SwipeToDeleteRow";
 import { Card } from "@/components/ui";
-import { formatNumber } from "@/lib/utils";
+import { formatPoundsK } from "@/lib/utils";
 
 type DeliveryRow = FeedDeliveryFormValues & {
   id: string;
@@ -104,8 +104,8 @@ export function FarmFeedSection({
                     {format(new Date(d.deliveryDate + "T12:00:00"), "MMM d, yyyy")}
                   </span>
                   {" — "}
-                  {formatNumber(d.poundsDelivered)} lbs
-                  {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
+                  {d.houseNumber != null ? `House ${d.houseNumber} · ` : ""}
+                  {formatPoundsK(d.poundsDelivered)} lbs
                   {d.feedType ? ` · ${d.feedType}` : ""}
                   {d.feedMill ? ` · ${d.feedMill}` : ""}
                 </div>
