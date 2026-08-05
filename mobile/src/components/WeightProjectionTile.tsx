@@ -57,10 +57,18 @@ export function WeightProjectionTile({
   const [saving, setSaving] = useState(false);
 
   const ageDays = Number(ageDaysText);
-  const ageWeight =
-    Number.isFinite(ageDays) && ageDays >= 0
-      ? weightFromAgeDays(ageDays, growthRateLbsPerDay)
-      : null;
+  const ageValid = Number.isFinite(ageDays) && ageDays >= 0 && ageDaysText.trim() !== "";
+  const ageProjections = ageValid
+    ? [0, 1, 2].map((offset) => {
+        const days = ageDays + offset;
+        return {
+          offset,
+          ageDays: days,
+          label: offset === 0 ? "Age day" : offset === 1 ? "Age +1" : "Age +2",
+          weightLbs: weightFromAgeDays(days, growthRateLbsPerDay),
+        };
+      })
+    : null;
 
   function startEdit() {
     if (saving) return;
