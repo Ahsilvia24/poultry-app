@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, DateInput, Label, Select } from "@/components/ui";
+import { Button, Card, Label, Select } from "@/components/ui";
 import { createPlacementDraft } from "@/lib/serviceForms/defaults";
 import { normalizeVentDoorTypes, WEEK_OPTIONS } from "@/lib/serviceForms/format";
 import {
