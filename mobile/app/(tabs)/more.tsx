@@ -24,8 +24,8 @@ const LINKS = [
   },
   {
     href: "/(tabs)/tools",
-    title: "Tools",
-    subtitle: "Temp curve, cool cells, ventilation",
+    title: "Weight Proj.",
+    subtitle: "Weight projections and field calculators",
   },
 ] as const;
 

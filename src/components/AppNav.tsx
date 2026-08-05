@@ -16,7 +16,7 @@ const nav = [
   { href: "/farms", label: "Farms", Icon: FarmsTabIcon },
   { href: "/mortality", label: "Mortality", Icon: MortalityTabIcon },
   { href: "/lfo", label: "LFO", Icon: LfoTabIcon },
-  { href: "/tools", label: "Tools", Icon: ToolsTabIcon },
+  { href: "/tools", label: "Weight Proj.", Icon: ToolsTabIcon },
   { href: "/settlement", label: "Settlement" },
   { href: "/reports", label: "Reports" },
   { href: "/search", label: "Search" },

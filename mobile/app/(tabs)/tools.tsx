@@ -40,11 +40,11 @@ import {
 type SectionKey = "temp" | "cool" | "max" | "lights" | "weight" | "vent";
 
 const QUICK_LINKS: Array<{ key: SectionKey; label: string }> = [
+  { key: "weight", label: "Weight Proj." },
   { key: "temp", label: "Temp Curve" },
   { key: "cool", label: "Cool Cells" },
   { key: "max", label: "Max Cooling" },
   { key: "lights", label: "Lights" },
-  { key: "weight", label: "Weight Proj." },
   { key: "vent", label: "Ventilation" },
 ];
 
@@ -191,17 +191,17 @@ export default function ToolsScreen() {
   }
 
   useEffect(() => {
-    if (
+    const section: SectionKey =
       paramSection === "temp" ||
       paramSection === "cool" ||
       paramSection === "max" ||
       paramSection === "lights" ||
       paramSection === "weight" ||
       paramSection === "vent"
-    ) {
-      const t = setTimeout(() => openAndScroll(paramSection), 50);
-      return () => clearTimeout(t);
-    }
+        ? paramSection
+        : "weight";
+    const t = setTimeout(() => openAndScroll(section), 50);
+    return () => clearTimeout(t);
   }, [paramSection, paramFarmId]);
 
   return (
@@ -212,8 +212,8 @@ export default function ToolsScreen() {
         contentContainerStyle={styles.content}
       >
         <PageHeader
-          title="Tools"
-          subtitle="Calculators and helpers for field work"
+          title="Weight projections"
+          subtitle="Age at kill × growth rate — plus field calculators"
         />
 
         <Card style={{ marginBottom: 12 }}>
@@ -258,6 +258,53 @@ export default function ToolsScreen() {
             ))}
           </View>
         </Card>
+
+        <View onLayout={(e) => onSectionLayout("weight", e)} collapsable={false}>
+          {open.weight ? (
+            <SectionPanel
+              title="Weight projections"
+              subtitle="Age at kill × growth rate"
+              onClose={() => setOpen((p) => ({ ...p, weight: false }))}
+            >
+              <Text style={styles.label}>Farm</Text>
+              <ChipScroller>
+                {farms.map((f) => (
+                  <Chip
+                    key={f.id}
+                    label={f.farmName}
+                    active={farmId === f.id}
+                    onPress={() => {
+                      setFarmId(f.id);
+                      setHouseId("");
+                    }}
+                  />
+                ))}
+              </ChipScroller>
+
+              {growthRate != null && weightProjectionGroups.length > 0 ? (
+                <WeightProjectionTile
+                  groups={weightProjectionGroups}
+                  growthRateLbsPerDay={growthRate}
+                  embedded
+                  onSaveGrowthRate={(rate) => {
+                    for (const fl of activeFlocks) {
+                      updateFlockGrowthRate(fl.id, rate);
+                    }
+                    setDetailVersion((v) => v + 1);
+                  }}
+                />
+              ) : (
+                <Text style={[styles.muted, { marginTop: 4 }]}>
+                  {farms.length === 0
+                    ? "Add an active farm with a flock to see weight projections."
+                    : "Add an active flock with a catch date to see weight projections."}
+                </Text>
+              )}
+            </SectionPanel>
+          ) : (
+            <SectionAnchor />
+          )}
+        </View>
 
         <View onLayout={(e) => onSectionLayout("temp", e)} collapsable={false}>
           {open.temp ? (
@@ -307,53 +354,6 @@ export default function ToolsScreen() {
               onClose={() => setOpen((p) => ({ ...p, lights: false }))}
             >
               <LightsChart />
-            </SectionPanel>
-          ) : (
-            <SectionAnchor />
-          )}
-        </View>
-
-        <View onLayout={(e) => onSectionLayout("weight", e)} collapsable={false}>
-          {open.weight ? (
-            <SectionPanel
-              title="Weight projections"
-              subtitle="Age at kill × growth rate"
-              onClose={() => setOpen((p) => ({ ...p, weight: false }))}
-            >
-              <Text style={styles.label}>Farm</Text>
-              <ChipScroller>
-                {farms.map((f) => (
-                  <Chip
-                    key={f.id}
-                    label={f.farmName}
-                    active={farmId === f.id}
-                    onPress={() => {
-                      setFarmId(f.id);
-                      setHouseId("");
-                    }}
-                  />
-                ))}
-              </ChipScroller>
-
-              {growthRate != null && weightProjectionGroups.length > 0 ? (
-                <WeightProjectionTile
-                  groups={weightProjectionGroups}
-                  growthRateLbsPerDay={growthRate}
-                  embedded
-                  onSaveGrowthRate={(rate) => {
-                    for (const fl of activeFlocks) {
-                      updateFlockGrowthRate(fl.id, rate);
-                    }
-                    setDetailVersion((v) => v + 1);
-                  }}
-                />
-              ) : (
-                <Text style={[styles.muted, { marginTop: 4 }]}>
-                  {farms.length === 0
-                    ? "Add an active farm with a flock to see weight projections."
-                    : "Add an active flock with a catch date to see weight projections."}
-                </Text>
-              )}
             </SectionPanel>
           ) : (
             <SectionAnchor />

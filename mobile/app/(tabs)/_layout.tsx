@@ -24,7 +24,7 @@ const TAB_ITEMS: {
   { name: "farms", label: "Farms", icon: "barn" },
   { name: "mortality", label: "Mortality", icon: "plus-circle" },
   { name: "lfo", label: "LFO", customIcon: "feed-bin" },
-  { name: "tools", label: "Tools", icon: "tools" },
+  { name: "tools", label: "Weight Proj.", icon: "scale-bathroom" },
 ];
 
 function WebStyleTabBar({ state, descriptors, navigation }: any) {
@@ -219,7 +219,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="tools"
         options={{
-          title: "Tools",
+          title: "Weight Proj.",
           headerShown: false,
         }}
       />

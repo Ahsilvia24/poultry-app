@@ -125,7 +125,10 @@ export default async function ToolsPage({
 
   return (
     <div>
-      <PageHeader title="Tools" subtitle="Calculators and helpers for field work" />
+      <PageHeader
+        title="Weight projections"
+        subtitle="Age at kill × growth rate — plus field calculators"
+      />
 
       <div className="mb-6">
         <ToolsQuickLinks />
