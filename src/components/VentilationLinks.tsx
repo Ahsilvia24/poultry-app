@@ -116,12 +116,9 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                 );
               })}
             </div>
-          </div>
 
-          {houses.length > 0 ? (
-            <div>
-              <p className="mb-2 text-sm font-semibold text-stone-700">House</p>
-              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            {houses.length > 0 ? (
+              <div className="-mx-1 mt-1.5 flex gap-2 overflow-x-auto px-1 pb-1">
                 {houses.map((h) => {
                   const active = h.id === (house?.id ?? "");
                   return (
@@ -141,10 +138,10 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                   );
                 })}
               </div>
-            </div>
-          ) : (
-            <p className="text-sm text-stone-600">This farm has no houses.</p>
-          )}
+            ) : (
+              <p className="mt-1.5 text-sm text-stone-600">This farm has no houses.</p>
+            )}
+          </div>
 
           {house ? (
             <div className="rounded-lg border border-stone-200 bg-white px-2.5 py-2.5 text-sm text-stone-700">

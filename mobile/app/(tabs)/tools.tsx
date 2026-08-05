@@ -381,7 +381,7 @@ export default function ToolsScreen() {
                 onClose={() => setOpen((p) => ({ ...p, vent: false }))}
               >
                 <Text style={styles.label}>Farm</Text>
-                <ChipScroller>
+                <ChipScroller style={{ marginBottom: 6 }}>
                   {farms.map((f) => (
                     <Chip
                       key={f.id}
@@ -395,7 +395,6 @@ export default function ToolsScreen() {
                   ))}
                 </ChipScroller>
 
-                <Text style={styles.label}>House</Text>
                 <ChipScroller>
                   {houses.map((h) => (
                     <Chip
