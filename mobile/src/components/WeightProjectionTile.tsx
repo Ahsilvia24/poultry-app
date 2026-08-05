@@ -174,7 +174,7 @@ export function WeightProjectionTile({
   );
 
   return (
-    <View style={{ marginBottom: editing ? 16 : 0 }}>
+    <View style={{ marginBottom: 16 }}>
       {embedded ? body : <Card>{body}</Card>}
 
       {editing ? (
