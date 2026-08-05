@@ -59,6 +59,7 @@ export function DatePickerField({
   presentation = "modal",
   onOpen,
   compact = false,
+  fullWidth = false,
 }: {
   label: string;
   value: string;
@@ -69,6 +70,8 @@ export function DatePickerField({
   onOpen?: () => void;
   /** Shorter date text for narrow fields (e.g. Log visit). */
   compact?: boolean;
+  /** Fill parent width (e.g. side-by-side with farm name). */
+  fullWidth?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseDateKey(value));
@@ -99,7 +102,14 @@ export function DatePickerField({
   const pickerValue = safePickerDate(draft);
 
   return (
-    <View style={{ width: compact ? 122 : "100%", alignSelf: compact ? "flex-start" : undefined }}>
+    <View
+      style={{
+        width: fullWidth ? "100%" : compact ? 122 : "100%",
+        alignSelf: compact && !fullWidth ? "flex-start" : undefined,
+        minWidth: 0,
+        flexShrink: 1,
+      }}
+    >
       <Text style={styles.label}>{label}</Text>
       <Pressable
         onPress={openPicker}

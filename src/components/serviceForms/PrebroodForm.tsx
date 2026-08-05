@@ -13,6 +13,7 @@ import {
   ChoiceToggle,
   CommentsField,
   CompactHouseValueGrid,
+  FarmNameDateRow,
   PairFields,
   SectionTitle,
   TextField,
@@ -76,10 +77,12 @@ export function PrebroodForm({
   return (
     <div className="space-y-3 pb-24">
       <Card>
-        <TextField
-          label="Farm name"
-          value={form.farmName}
-          onChange={(farmName) => patch({ farmName })}
+        <FarmNameDateRow
+          farmName={form.farmName}
+          onFarmNameChange={(farmName) => patch({ farmName })}
+          date={form.date}
+          onDateChange={(date) => patch({ date })}
+          dateId="prebrood-date"
         />
         <PairFields
           left={
@@ -97,14 +100,6 @@ export function PrebroodForm({
             />
           }
         />
-        <div className="mb-2.5">
-          <Label htmlFor="prebrood-date">Date</Label>
-          <DateInput
-            id="prebrood-date"
-            value={form.date}
-            onChange={(e) => patch({ date: e.target.value })}
-          />
-        </div>
         <p className="mb-1.5 font-bold text-stone-800">Window</p>
         <ChoiceToggle
           options={[

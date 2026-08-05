@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput, Label } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { LIGHT_TIME_OPTIONS } from "@/lib/serviceForms/format";
 import type { YesNo } from "@/lib/serviceForms/types";
@@ -143,6 +144,42 @@ export function PairFields({
     <div className="grid grid-cols-2 gap-3">
       <div className="min-w-0">{left}</div>
       <div className="min-w-0">{right}</div>
+    </div>
+  );
+}
+
+/** Farm name (left ~60%) + date (right ~40%) for Service Farm checklist headers. */
+export function FarmNameDateRow({
+  farmName,
+  onFarmNameChange,
+  date,
+  onDateChange,
+  dateId,
+}: {
+  farmName: string;
+  onFarmNameChange: (v: string) => void;
+  date: string;
+  onDateChange: (v: string) => void;
+  dateId: string;
+}) {
+  return (
+    <div className="mb-2.5 grid grid-cols-[3fr_2fr] gap-3">
+      <TextField
+        label="Farm name"
+        value={farmName}
+        onChange={onFarmNameChange}
+        className="mb-0"
+      />
+      <div className="min-w-0">
+        <Label htmlFor={dateId}>Date</Label>
+        <DateInput
+          id={dateId}
+          value={date}
+          onChange={(e) => onDateChange(e.target.value)}
+          className="!w-full max-w-none"
+          style={{ width: "100%" }}
+        />
+      </div>
     </div>
   );
 }

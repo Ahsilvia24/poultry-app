@@ -12,7 +12,6 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { DatePickerField } from "../../../../../src/components/DatePickerField";
 import { OptionPicker, SelectField } from "../../../../../src/components/OptionPicker";
 import {
   PairFields,
@@ -23,6 +22,7 @@ import {
   CompactHouseValueGrid,
   CompactBackupSettings,
   MultiToggleField,
+  FarmNameDateRow,
 } from "../../../../../src/components/serviceForms/fields";
 import { Card } from "../../../../../src/components/ui";
 import { createPlacementDraft } from "../../../../../src/lib/serviceForms/defaults";
@@ -156,7 +156,12 @@ export default function PlacementChecklistScreen() {
         <Text style={[styles.subtitle, { marginBottom: 16 }]}>{farmName}</Text>
 
         <Card>
-          <TextField label="Farm name" value={form.farmName} onChange={(farmName) => patch({ farmName })} />
+          <FarmNameDateRow
+            farmName={form.farmName}
+            onFarmNameChange={(farmName) => patch({ farmName })}
+            date={form.date}
+            onDateChange={(date) => patch({ date })}
+          />
           <PairFields
             left={
               <TextField
@@ -172,12 +177,6 @@ export default function PlacementChecklistScreen() {
                 onChange={(flockNumber) => patch({ flockNumber })}
               />
             }
-          />
-          <DatePickerField
-            label="Date"
-            value={form.date}
-            onChange={(date) => patch({ date })}
-            compact
           />
           <TextField
             label="Service tech"

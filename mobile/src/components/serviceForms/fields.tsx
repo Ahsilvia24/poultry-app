@@ -1,5 +1,6 @@
 import { Pressable, Text, TextInput, View, type ScrollView, type TextInputProps } from "react-native";
 import { useRef } from "react";
+import { DatePickerField } from "../DatePickerField";
 import { colors, styles } from "../../theme";
 import type { YesNo } from "../../lib/serviceForms/types";
 
@@ -190,6 +191,36 @@ export function PairFields({
     <View style={{ flexDirection: "row", gap: 10 }}>
       <View style={{ flex: 1 }}>{left}</View>
       <View style={{ flex: 1 }}>{right}</View>
+    </View>
+  );
+}
+
+/** Farm name (left ~60%) + date (right ~40%) for Service Farm checklist headers. */
+export function FarmNameDateRow({
+  farmName,
+  onFarmNameChange,
+  date,
+  onDateChange,
+}: {
+  farmName: string;
+  onFarmNameChange: (v: string) => void;
+  date: string;
+  onDateChange: (v: string) => void;
+}) {
+  return (
+    <View style={{ flexDirection: "row", gap: 10 }}>
+      <View style={{ flex: 3, minWidth: 0 }}>
+        <TextField label="Farm name" value={farmName} onChange={onFarmNameChange} />
+      </View>
+      <View style={{ flex: 2, minWidth: 0 }}>
+        <DatePickerField
+          label="Date"
+          value={date}
+          onChange={onDateChange}
+          compact
+          fullWidth
+        />
+      </View>
     </View>
   );
 }

@@ -15,6 +15,7 @@ import {
   CommentsField,
   CompactBackupSettings,
   CompactHouseValueGrid,
+  FarmNameDateRow,
   MultiToggleField,
   PairFields,
   SectionTitle,
@@ -99,10 +100,12 @@ export function PlacementForm({
   return (
     <div className="space-y-3 pb-24">
       <Card>
-        <TextField
-          label="Farm name"
-          value={form.farmName}
-          onChange={(farmName) => patch({ farmName })}
+        <FarmNameDateRow
+          farmName={form.farmName}
+          onFarmNameChange={(farmName) => patch({ farmName })}
+          date={form.date}
+          onDateChange={(date) => patch({ date })}
+          dateId="placement-date"
         />
         <PairFields
           left={
@@ -120,14 +123,6 @@ export function PlacementForm({
             />
           }
         />
-        <div className="mb-2.5">
-          <Label htmlFor="placement-date">Date</Label>
-          <DateInput
-            id="placement-date"
-            value={form.date}
-            onChange={(e) => patch({ date: e.target.value })}
-          />
-        </div>
         <TextField
           label="Service tech"
           value={form.serviceTech}

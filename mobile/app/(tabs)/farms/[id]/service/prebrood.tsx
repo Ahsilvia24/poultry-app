@@ -20,6 +20,7 @@ import {
   YesNoField,
   CommentsField,
   CompactHouseValueGrid,
+  FarmNameDateRow,
 } from "../../../../../src/components/serviceForms/fields";
 import { Card } from "../../../../../src/components/ui";
 import { createPrebroodDraft } from "../../../../../src/lib/serviceForms/defaults";
@@ -121,7 +122,12 @@ export default function PrebroodChecklistScreen() {
         <Text style={[styles.subtitle, { marginBottom: 16 }]}>{farmName}</Text>
 
         <Card>
-          <TextField label="Farm name" value={form.farmName} onChange={(farmName) => patch({ farmName })} />
+          <FarmNameDateRow
+            farmName={form.farmName}
+            onFarmNameChange={(farmName) => patch({ farmName })}
+            date={form.date}
+            onDateChange={(date) => patch({ date })}
+          />
           <PairFields
             left={
               <TextField label="Farm #" value={form.farmNumber} onChange={(farmNumber) => patch({ farmNumber })} />
@@ -129,12 +135,6 @@ export default function PrebroodChecklistScreen() {
             right={
               <TextField label="Flock" value={form.flockNumber} onChange={(flockNumber) => patch({ flockNumber })} />
             }
-          />
-          <DatePickerField
-            label="Date"
-            value={form.date}
-            onChange={(date) => patch({ date })}
-            compact
           />
           <Text style={{ fontWeight: "700", marginBottom: 6 }}>Window</Text>
           <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>

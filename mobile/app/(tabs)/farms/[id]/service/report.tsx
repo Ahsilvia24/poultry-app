@@ -12,7 +12,6 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { DatePickerField } from "../../../../../src/components/DatePickerField";
 import { OptionPicker, SelectField } from "../../../../../src/components/OptionPicker";
 import {
   MultiToggleField,
@@ -23,6 +22,7 @@ import {
   CommentsField,
   CompactBackupSettings,
   CompactHouseValueGrid,
+  FarmNameDateRow,
 } from "../../../../../src/components/serviceForms/fields";
 import { TimeScrollPickerField } from "../../../../../src/components/TimeScrollPicker";
 import { Card } from "../../../../../src/components/ui";
@@ -177,10 +177,11 @@ export default function ServiceReportScreen() {
         <Text style={[styles.subtitle, { marginBottom: 16 }]}>{farmName}</Text>
 
         <Card>
-          <TextField
-            label="Farm name"
-            value={form.farmName}
-            onChange={(farmName) => patch({ farmName })}
+          <FarmNameDateRow
+            farmName={form.farmName}
+            onFarmNameChange={(farmName) => patch({ farmName })}
+            date={form.date}
+            onDateChange={(date) => patch({ date })}
           />
           <View style={{ flexDirection: "row", gap: 10 }}>
             <View style={{ flex: 1 }}>
@@ -198,12 +199,6 @@ export default function ServiceReportScreen() {
               />
             </View>
           </View>
-          <DatePickerField
-            label="Date"
-            value={form.date}
-            onChange={(date) => patch({ date })}
-            compact
-          />
           <TextField
             label="Service tech"
             value={form.serviceTech}
