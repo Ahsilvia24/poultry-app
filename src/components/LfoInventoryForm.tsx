@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Button, DateInput, Input, Label } from "@/components/ui";
@@ -19,14 +19,42 @@ export type LfoHouseRow = {
   headCount: number;
 };
 
-/** Shared chrome so feed-up date + time read as one matched pair. */
-const FEED_UP_CONTROL_CLASS =
-  "mt-1 box-border h-11 w-full min-w-0 rounded-lg border border-stone-300 bg-white px-2.5 text-base font-semibold leading-none text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200";
+/** Fill the shared shell edge-to-edge so native date/select can’t resize the box. */
+const FEED_UP_INNER_CLASS =
+  "absolute inset-0 box-border h-full w-full min-w-0 border-0 bg-transparent px-3 text-base font-semibold leading-[3rem] text-stone-900 outline-none " +
+  "appearance-none [-webkit-appearance:none] " +
+  "[&::-webkit-calendar-picker-indicator]:opacity-60 " +
+  "[&::-webkit-date-and-time-value]:w-full [&::-webkit-date-and-time-value]:text-left";
 
-const FEED_UP_DATE_CLASS =
-  `${FEED_UP_CONTROL_CLASS} appearance-none [-webkit-appearance:none] ` +
-  "[&::-webkit-date-and-time-value]:min-h-[2.75rem] [&::-webkit-date-and-time-value]:leading-[2.75rem] " +
-  "[&::-webkit-date-and-time-value]:text-left";
+function FeedUpFieldShell({
+  children,
+  withChevron = false,
+}: {
+  children: ReactNode;
+  withChevron?: boolean;
+}) {
+  return (
+    <div className="relative mt-1 h-12 w-full shrink-0 rounded-lg border border-stone-300 bg-white focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-200">
+      {children}
+      {withChevron ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-2.5 z-10 flex items-center text-stone-500"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path
+              d="M3 4.5 L6 7.5 L9 4.5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 /** Half-hour slots: top (:00) and bottom (:30) of each hour. */
 const FEED_UP_TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
@@ -265,29 +293,33 @@ export function LfoInventoryForm({
                 <div className="grid grid-cols-2 items-end gap-3">
                   <div className="min-w-0">
                     <Label htmlFor={`feedUpDate-${house.houseId}`}>Feed up date</Label>
-                    <input
-                      id={`feedUpDate-${house.houseId}`}
-                      type="date"
-                      value={house.feedUpDate}
-                      onChange={(e) => updateRow(house.houseId, { feedUpDate: e.target.value })}
-                      className={FEED_UP_DATE_CLASS}
-                    />
+                    <FeedUpFieldShell>
+                      <input
+                        id={`feedUpDate-${house.houseId}`}
+                        type="date"
+                        value={house.feedUpDate}
+                        onChange={(e) => updateRow(house.houseId, { feedUpDate: e.target.value })}
+                        className={FEED_UP_INNER_CLASS}
+                      />
+                    </FeedUpFieldShell>
                   </div>
                   <div className="min-w-0">
                     <Label htmlFor={`feedUpTime-${house.houseId}`}>Feed up time</Label>
-                    <select
-                      id={`feedUpTime-${house.houseId}`}
-                      value={house.feedUpTime}
-                      onChange={(e) => updateRow(house.houseId, { feedUpTime: e.target.value })}
-                      className={FEED_UP_CONTROL_CLASS}
-                    >
-                      <option value="">Select time</option>
-                      {FEED_UP_TIME_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
+                    <FeedUpFieldShell withChevron>
+                      <select
+                        id={`feedUpTime-${house.houseId}`}
+                        value={house.feedUpTime}
+                        onChange={(e) => updateRow(house.houseId, { feedUpTime: e.target.value })}
+                        className={`${FEED_UP_INNER_CLASS} pr-8`}
+                      >
+                        <option value="">Select time</option>
+                        {FEED_UP_TIME_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </FeedUpFieldShell>
                   </div>
                 </div>
                 {result ? (
