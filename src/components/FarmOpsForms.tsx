@@ -73,7 +73,7 @@ export function FarmVisitForm({
       <input type="hidden" name="farmId" value={farmId} />
       {flockId ? <input type="hidden" name="flockId" value={flockId} /> : null}
       <div className="flex items-start gap-3">
-        <div className="shrink-0">
+        <div className="w-[11rem] shrink-0 overflow-hidden">
           <Label htmlFor={fid("visitDate")}>Date</Label>
           <Input
             id={fid("visitDate")}
@@ -82,7 +82,7 @@ export function FarmVisitForm({
             required
             value={visitDate}
             onChange={(e) => setVisitDate(e.target.value)}
-            className="w-[9.75rem] px-2.5 text-base"
+            className="max-w-full px-2 text-base"
           />
         </div>
         <div className="min-w-0 flex-1 overflow-hidden">
@@ -91,7 +91,6 @@ export function FarmVisitForm({
             id={fid("visitType")}
             name="visitType"
             defaultValue={initial?.visitType ?? "ROUTINE_SERVICE"}
-            className="w-full min-w-0"
           >
             {VISIT_TYPE_OPTIONS.map(({ value, label }) => (
               <option key={value} value={value}>
@@ -127,14 +126,14 @@ export function FarmVisitForm({
         />
         Follow-up required
       </label>
-      <div className="shrink-0">
+      <div className="w-[11rem] overflow-hidden">
         <Label htmlFor={fid("followUpDate")}>Follow-up date</Label>
         <Input
           id={fid("followUpDate")}
           name="followUpDate"
           type="date"
           defaultValue={initial?.followUpDate ?? undefined}
-          className="w-[9.75rem] px-2.5 text-base"
+          className="max-w-full px-2 text-base"
         />
       </div>
       <Button type="submit" disabled={pending}>
