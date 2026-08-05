@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { deleteIssueAction } from "@/app/actions/ops";
-import { DeleteRecordButton, EditRecordButton } from "@/components/DeleteRecordButton";
 import { FarmIssueForm, type IssueFormValues } from "@/components/FarmOpsForms";
+import { SwipeToDeleteRow } from "@/components/SwipeToDeleteRow";
 import { Card } from "@/components/ui";
 import { ISSUE_CATEGORY_LABELS } from "@/lib/utils";
 
@@ -86,8 +86,17 @@ export function FarmIssuesSection({
           {issues.length === 0 ? <li className="text-stone-500">None yet</li> : null}
           {issues.map((issue) => (
             <li key={issue.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+              <SwipeToDeleteRow
+                deleteLabel="Delete issue"
+                editLabel="Edit issue"
+                confirmMessage="Delete this issue? This cannot be undone."
+                onEdit={() => {
+                  setFormOpen(false);
+                  setEditingId((id) => (id === issue.id ? null : issue.id));
+                }}
+                onDelete={() => deleteIssueAction(farmId, issue.id)}
+              >
+                <div className="min-w-0 py-0.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">
                       {format(new Date(issue.dateReported + "T12:00:00"), "MMM d, yyyy")}
@@ -101,21 +110,7 @@ export function FarmIssuesSection({
                     {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}: {issue.description}
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-0.5">
-                  <EditRecordButton
-                    label="Edit issue"
-                    active={editingId === issue.id}
-                    onClick={() => {
-                      setFormOpen(false);
-                      setEditingId((id) => (id === issue.id ? null : issue.id));
-                    }}
-                  />
-                  <DeleteRecordButton
-                    label="Delete issue"
-                    onDelete={() => deleteIssueAction(farmId, issue.id)}
-                  />
-                </div>
-              </div>
+              </SwipeToDeleteRow>
               {editingId === issue.id ? (
                 <FarmIssueForm
                   farmId={farmId}

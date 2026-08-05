@@ -7,7 +7,7 @@ import {
   deleteGeneratorLogAction,
   updateGeneratorLogAction,
 } from "@/app/actions/ops";
-import { DeleteRecordButton } from "@/components/DeleteRecordButton";
+import { SwipeToDeleteRow } from "@/components/SwipeToDeleteRow";
 import { Button, Card, DateInput, Input, Label } from "@/components/ui";
 import {
   formatGeneratorChartsCopy,
@@ -118,7 +118,7 @@ function GeneratorHoursChart({
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => Promise<{ error?: string } | void>;
 }) {
-  const showActions = onEdit != null && onDelete != null;
+  const interactive = onEdit != null && onDelete != null;
   return (
     <div className="text-xs leading-tight">
       <h4 className="mb-0.5 font-bold text-stone-900">{title}</h4>
@@ -126,56 +126,39 @@ function GeneratorHoursChart({
         <span className="w-20 shrink-0 font-semibold">Date</span>
         <span className="w-12 shrink-0 font-semibold">Hours</span>
         <span className="w-14 shrink-0 font-semibold">Exercised</span>
-        {showActions ? <span className="w-12 shrink-0" aria-hidden /> : null}
       </div>
       {rows.length === 0 ? (
         <p className="text-stone-500">None yet</p>
       ) : (
         <div>
-          {rows.map((row) => (
-            <div
-              key={row.id}
-              className="flex items-center gap-3 py-px leading-none tabular-nums text-stone-800"
-            >
-              <span className="w-20 shrink-0 whitespace-nowrap font-medium">{row.dateLabel}</span>
-              <span className="w-12 shrink-0 font-medium">
-                {formatGeneratorHours(row.hours)}
-              </span>
-              <span className="w-14 shrink-0 font-medium">
-                {formatGeneratorHours(row.exercised)}
-              </span>
-              {showActions ? (
-                <span className="flex shrink-0 items-center">
-                  <button
-                    type="button"
-                    onClick={() => onEdit(row.id)}
-                    className="rounded p-0.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
-                    aria-label="Edit generator entry"
-                    title="Edit generator entry"
-                  >
-                    <svg
-                      className="h-3.5 w-3.5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                    </svg>
-                  </button>
-                  <DeleteRecordButton
-                    label="Delete generator entry"
-                    compact
-                    onDelete={() => onDelete(row.id)}
-                  />
+          {rows.map((row) => {
+            const content = (
+              <div className="flex items-center gap-3 py-0.5 leading-none tabular-nums text-stone-800">
+                <span className="w-20 shrink-0 whitespace-nowrap font-medium">{row.dateLabel}</span>
+                <span className="w-12 shrink-0 font-medium">
+                  {formatGeneratorHours(row.hours)}
                 </span>
-              ) : null}
-            </div>
-          ))}
+                <span className="w-14 shrink-0 font-medium">
+                  {formatGeneratorHours(row.exercised)}
+                </span>
+              </div>
+            );
+            if (!interactive) {
+              return <div key={row.id}>{content}</div>;
+            }
+            return (
+              <SwipeToDeleteRow
+                key={row.id}
+                deleteLabel="Delete generator entry"
+                editLabel="Edit generator entry"
+                confirmMessage="Delete this generator reading? Other generators on this date stay."
+                onEdit={() => onEdit(row.id)}
+                onDelete={() => onDelete(row.id)}
+              >
+                {content}
+              </SwipeToDeleteRow>
+            );
+          })}
         </div>
       )}
     </div>

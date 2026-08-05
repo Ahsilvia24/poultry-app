@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { deleteFeedDeliveryAction } from "@/app/actions/ops";
-import { DeleteRecordButton, EditRecordButton } from "@/components/DeleteRecordButton";
 import {
   FeedDeliveryForm,
   type FeedDeliveryFormValues,
   type FeedFarmOption,
 } from "@/components/FeedDeliveryForm";
+import { SwipeToDeleteRow } from "@/components/SwipeToDeleteRow";
 import { Card } from "@/components/ui";
 import { formatNumber } from "@/lib/utils";
 
@@ -89,8 +89,17 @@ export function FarmFeedSection({
           {deliveries.length === 0 ? <li className="text-stone-500">None yet</li> : null}
           {deliveries.map((d) => (
             <li key={d.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+              <SwipeToDeleteRow
+                deleteLabel="Delete feed delivery"
+                editLabel="Edit feed delivery"
+                confirmMessage="Delete this feed delivery? This cannot be undone."
+                onEdit={() => {
+                  setFormOpen(false);
+                  setEditingId((id) => (id === d.id ? null : d.id));
+                }}
+                onDelete={() => deleteFeedDeliveryAction(d.id)}
+              >
+                <div className="min-w-0 py-0.5">
                   <span className="font-semibold">
                     {format(new Date(d.deliveryDate + "T12:00:00"), "MMM d, yyyy")}
                   </span>
@@ -100,21 +109,7 @@ export function FarmFeedSection({
                   {d.feedType ? ` · ${d.feedType}` : ""}
                   {d.feedMill ? ` · ${d.feedMill}` : ""}
                 </div>
-                <div className="flex shrink-0 items-center gap-0.5">
-                  <EditRecordButton
-                    label="Edit feed delivery"
-                    active={editingId === d.id}
-                    onClick={() => {
-                      setFormOpen(false);
-                      setEditingId((id) => (id === d.id ? null : d.id));
-                    }}
-                  />
-                  <DeleteRecordButton
-                    label="Delete feed delivery"
-                    onDelete={() => deleteFeedDeliveryAction(d.id)}
-                  />
-                </div>
-              </div>
+              </SwipeToDeleteRow>
               {editingId === d.id ? (
                 <FeedDeliveryForm
                   lockedFarmId={farmId}

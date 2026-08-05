@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { deleteVisitAction } from "@/app/actions/ops";
-import { DeleteRecordButton, EditRecordButton } from "@/components/DeleteRecordButton";
 import { FarmVisitForm, type VisitFormValues } from "@/components/FarmOpsForms";
+import { SwipeToDeleteRow } from "@/components/SwipeToDeleteRow";
 import { Card } from "@/components/ui";
 import { VISIT_TYPE_LABELS } from "@/lib/utils";
 
@@ -86,8 +86,19 @@ export function FarmVisitsSection({
           {visits.length === 0 ? <li className="text-stone-500">None yet</li> : null}
           {visits.map((v) => (
             <li key={v.id} className="border-b border-stone-100 pb-3 last:border-0 last:pb-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+              <SwipeToDeleteRow
+                deleteLabel="Delete visit"
+                editLabel="Edit visit"
+                confirmMessage="Delete this visit? This cannot be undone."
+                onEdit={() => {
+                  setLogOpen(false);
+                  setEditingId((id) => (id === v.id ? null : v.id));
+                }}
+                onDelete={() => deleteVisitAction(farmId, v.id)}
+              >
+                <div
+                  className={`min-w-0 py-0.5 ${editingId === v.id ? "text-emerald-900" : ""}`}
+                >
                   <p className="leading-snug">
                     <span className="font-bold">
                       {format(new Date(v.visitDate + "T12:00:00"), "MMM d, yyyy")}
@@ -102,21 +113,7 @@ export function FarmVisitsSection({
                   </p>
                   {v.notes ? <p className="mt-1 text-[15px] text-stone-600">{v.notes}</p> : null}
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <EditRecordButton
-                    label="Edit visit"
-                    active={editingId === v.id}
-                    onClick={() => {
-                      setLogOpen(false);
-                      setEditingId((id) => (id === v.id ? null : v.id));
-                    }}
-                  />
-                  <DeleteRecordButton
-                    label="Delete visit"
-                    onDelete={() => deleteVisitAction(farmId, v.id)}
-                  />
-                </div>
-              </div>
+              </SwipeToDeleteRow>
               {editingId === v.id ? (
                 <FarmVisitForm
                   farmId={farmId}

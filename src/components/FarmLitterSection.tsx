@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { deleteLitterEventAction } from "@/app/actions/ops";
-import { DeleteRecordButton, EditRecordButton } from "@/components/DeleteRecordButton";
 import { LitterEventForm, type LitterFormValues } from "@/components/FarmOpsForms";
+import { SwipeToDeleteRow } from "@/components/SwipeToDeleteRow";
 import { Card } from "@/components/ui";
 import { LITTER_EVENT_LABELS } from "@/lib/utils";
 
@@ -85,8 +85,17 @@ export function FarmLitterSection({
           {events.length === 0 ? <li className="text-stone-500">None yet</li> : null}
           {events.map((e) => (
             <li key={e.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+              <SwipeToDeleteRow
+                deleteLabel="Delete litter event"
+                editLabel="Edit litter event"
+                confirmMessage="Delete this litter event? This cannot be undone."
+                onEdit={() => {
+                  setFormOpen(false);
+                  setEditingId((id) => (id === e.id ? null : e.id));
+                }}
+                onDelete={() => deleteLitterEventAction(farmId, e.id)}
+              >
+                <div className="min-w-0 py-0.5">
                   <span className="font-semibold">
                     {format(new Date(e.eventDate + "T12:00:00"), "MMM d, yyyy")}
                   </span>
@@ -95,21 +104,7 @@ export function FarmLitterSection({
                   {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
                   {e.notes ? <p className="text-stone-600">{e.notes}</p> : null}
                 </div>
-                <div className="flex shrink-0 items-center gap-0.5">
-                  <EditRecordButton
-                    label="Edit litter event"
-                    active={editingId === e.id}
-                    onClick={() => {
-                      setFormOpen(false);
-                      setEditingId((id) => (id === e.id ? null : e.id));
-                    }}
-                  />
-                  <DeleteRecordButton
-                    label="Delete litter event"
-                    onDelete={() => deleteLitterEventAction(farmId, e.id)}
-                  />
-                </div>
-              </div>
+              </SwipeToDeleteRow>
               {editingId === e.id ? (
                 <LitterEventForm
                   farmId={farmId}
