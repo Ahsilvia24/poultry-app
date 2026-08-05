@@ -179,13 +179,13 @@ export function LfoInventoryForm({
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
+      <div className="flex items-start gap-3">
+        <div className="shrink-0">
           <Label htmlFor="orderDate">Order date</Label>
           <DateInput id="orderDate" name="orderDate" required defaultValue={orderDate} />
         </div>
-        <div>
-          <Label htmlFor="consumptionRate">Consumption rate (lbs/bird/day)</Label>
+        <div className="min-w-0 flex-1">
+          <Label htmlFor="consumptionRate">Consumption rate</Label>
           <Input
             id="consumptionRate"
             name="consumptionRate"
@@ -196,6 +196,9 @@ export function LfoInventoryForm({
             required
             value={consumptionRate}
             onChange={(e) => setConsumptionRate(e.target.value)}
+            className="text-base !min-h-0"
+            style={{ height: 44 }}
+            placeholder="lbs/bird/day"
           />
         </div>
       </div>

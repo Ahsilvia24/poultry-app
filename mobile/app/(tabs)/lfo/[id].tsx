@@ -411,19 +411,20 @@ export default function EditLfoScreen() {
           {ready ? (
             <>
               <Card>
-                <DatePickerField
-                  label="Order date"
-                  value={orderDate}
-                  onChange={setOrderDate}
-                  compact
-                />
-                <View style={{ marginTop: 12 }}>
+                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                  <DatePickerField
+                    label="Order date"
+                    value={orderDate}
+                    onChange={setOrderDate}
+                    compact
+                  />
                   <FieldButton
-                    label="Consumption rate (lbs/bird/day)"
+                    label="Consumption rate"
                     value={consumptionRate}
                     active={activeField?.kind === "rate"}
                     onPress={() => focusField({ kind: "rate" })}
                     fieldRef={bindFieldRef("rate")}
+                    style={{ flex: 1, minWidth: 0 }}
                   />
                 </View>
               </Card>
