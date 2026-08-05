@@ -245,6 +245,7 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
                     styles.input,
                     {
                       width: "100%",
+                      minHeight: 44,
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "space-between",
@@ -255,7 +256,7 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
                     style={{
                       color: colors.text,
                       fontWeight: "600",
-                      fontSize: 17,
+                      fontSize: 16,
                       flexShrink: 1,
                     }}
                     numberOfLines={1}

@@ -112,7 +112,7 @@ export function DatePickerField({
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            minHeight: 52,
+            minHeight: compact ? 44 : 52,
             paddingHorizontal: compact ? 8 : 14,
           },
         ]}
@@ -122,7 +122,7 @@ export function DatePickerField({
           style={{
             fontWeight: "600",
             color: value ? colors.text : colors.muted,
-            fontSize: 17,
+            fontSize: compact ? 16 : 17,
             flexShrink: 1,
             marginRight: 6,
           }}
