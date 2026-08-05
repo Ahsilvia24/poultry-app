@@ -7,7 +7,7 @@ TestFlight: https://appstoreconnect.apple.com/apps/6794784343/testflight/ios
 
 | Field | Value |
 |-------|-------|
-| Version | 1.0.1 |
+| Version | 1.0.6 |
 | Build | **84** (pending EAS build → TestFlight) |
 | Status | Waiting on Expo auth / EAS build |
 
