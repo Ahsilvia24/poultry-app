@@ -135,45 +135,31 @@ export default function ToolsScreen() {
     detail?.activeFlock?.resolvedCatchDate ??
     null;
   const growthRate = (() => {
-    const fromHouse = detail?.houses.find((h) => h.growthRateLbsPerDay != null)?.growthRateLbsPerDay;
-    if (fromHouse != null) return resolveGrowthRate(fromHouse);
+    if (selectedHouse?.growthRateLbsPerDay != null) {
+      return resolveGrowthRate(selectedHouse.growthRateLbsPerDay);
+    }
     return detail?.activeFlock
       ? resolveGrowthRate(detail.activeFlock.growthRateLbsPerDay)
       : null;
   })();
 
-  /** Unique catch dates → Catch day / +1 / +2, soonest catch first. */
+  /** Selected house → Catch day / +1 / +2. */
   const weightProjectionGroups = (() => {
-    if (!detail || activeFlocks.length === 0 || growthRate == null) return [];
-    const byCatch = new Map<string, { placement: string; rate: number }>();
-    for (const h of detail.houses) {
-      if (h.placedBirdCount == null) continue;
-      const catchDate = h.catchDate ?? catchLabel;
-      if (!catchDate) continue;
-      const placement = h.placementDate ?? detail.activeFlock?.placementDate;
-      if (!placement) continue;
-      const rate = resolveGrowthRate(h.growthRateLbsPerDay);
-      const existing = byCatch.get(catchDate);
-      if (!existing || placement < existing.placement) {
-        byCatch.set(catchDate, { placement, rate });
-      }
-    }
-    if (byCatch.size === 0 && catchLabel && detail.activeFlock) {
-      byCatch.set(catchLabel, {
-        placement: detail.activeFlock.placementDate,
-        rate: growthRate,
-      });
-    }
-    return Array.from(byCatch.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([catchDate, { placement, rate }]) => ({
+    if (!detail || growthRate == null || !selectedHouse) return [];
+    const catchDate = selectedHouse.catchDate ?? catchLabel;
+    const placement =
+      selectedHouse.placementDate ?? detail.activeFlock?.placementDate ?? null;
+    if (!catchDate || !placement) return [];
+    return [
+      {
         catchDateKey: catchDate,
         projections: catchWeightProjections({
           placementDate: placement,
           catchDate,
-          growthRateLbsPerDay: rate,
+          growthRateLbsPerDay: growthRate,
         }),
-      }));
+      },
+    ];
   })();
 
   function onSectionLayout(key: SectionKey, e: LayoutChangeEvent) {
@@ -263,7 +249,6 @@ export default function ToolsScreen() {
           {open.weight ? (
             <SectionPanel
               title="Weight projections"
-              subtitle="Age at kill × growth rate"
               onClose={() => setOpen((p) => ({ ...p, weight: false }))}
             >
               <Text style={styles.label}>Farm</Text>
@@ -281,14 +266,32 @@ export default function ToolsScreen() {
                 ))}
               </ChipScroller>
 
+              <Text style={styles.label}>House</Text>
+              <ChipScroller>
+                {houses.map((h) => (
+                  <Chip
+                    key={h.id}
+                    label={`House ${h.houseNumber}`}
+                    active={(selectedHouse?.id ?? "") === h.id}
+                    onPress={() => setHouseId(h.id)}
+                  />
+                ))}
+              </ChipScroller>
+
               {growthRate != null && weightProjectionGroups.length > 0 ? (
                 <WeightProjectionTile
                   groups={weightProjectionGroups}
                   growthRateLbsPerDay={growthRate}
                   embedded
                   onSaveGrowthRate={(rate) => {
-                    for (const fl of activeFlocks) {
-                      updateFlockGrowthRate(fl.id, rate);
+                    const flockId =
+                      selectedHouse?.flockId ?? detail?.activeFlock?.id ?? null;
+                    if (flockId) {
+                      updateFlockGrowthRate(flockId, rate);
+                    } else {
+                      for (const fl of activeFlocks) {
+                        updateFlockGrowthRate(fl.id, rate);
+                      }
                     }
                     setDetailVersion((v) => v + 1);
                   }}
@@ -297,7 +300,9 @@ export default function ToolsScreen() {
                 <Text style={[styles.muted, { marginTop: 4 }]}>
                   {farms.length === 0
                     ? "Add an active farm with a flock to see weight projections."
-                    : "Add an active flock with a catch date to see weight projections."}
+                    : houses.length === 0
+                      ? "This farm has no houses."
+                      : "Add an active flock with a catch date to see weight projections."}
                 </Text>
               )}
             </SectionPanel>

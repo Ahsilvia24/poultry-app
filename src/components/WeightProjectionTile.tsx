@@ -68,7 +68,6 @@ export function WeightProjectionTile({
         {embedded ? null : (
           <div>
             <p className="text-base font-semibold text-stone-500">Weight projections</p>
-            <p className="mt-0.5 text-sm text-stone-400">Age at kill × growth rate</p>
           </div>
         )}
         <p className={`text-base text-stone-600 ${embedded ? "ml-auto" : ""}`}>
@@ -158,7 +157,7 @@ export function WeightProjectionTile({
                   defaultValue={growthRateLbsPerDay || DEFAULT_GROWTH_RATE_LBS_PER_DAY}
                 />
                 <p className="mt-1 text-xs text-stone-500">
-                  Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY} · Weight = days of age × GR
+                  Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY}
                 </p>
               </div>
               {error ? <p className="text-sm text-red-700">{error}</p> : null}

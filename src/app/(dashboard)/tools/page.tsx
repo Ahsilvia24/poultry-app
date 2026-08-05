@@ -50,7 +50,12 @@ export default async function ToolsPage({
         orderBy: { placementDate: "asc" },
         include: {
           houseFlocks: {
-            select: { houseId: true, placedBirdCount: true },
+            select: {
+              houseId: true,
+              placedBirdCount: true,
+              placementDate: true,
+              catchDate: true,
+            },
           },
         },
       },
@@ -84,20 +89,49 @@ export default async function ToolsPage({
 
   const weightFarms: WeightFarmPayload[] = farmsRaw.map((farm) => {
     const activeFlocks = farm.flocks;
-    const primary = activeFlocks[0] ?? null;
-    const growthRateLbsPerDay = resolveGrowthRate(primary?.growthRateLbsPerDay);
-    const groups =
-      primary == null
-        ? []
-        : activeFlocks
-            .map((flock) => {
-              const catchDate = resolveCatchDate(flock);
-              return {
+    const hfByHouseId = new Map<
+      string,
+      {
+        flock: (typeof activeFlocks)[number];
+        hf: (typeof activeFlocks)[number]["houseFlocks"][number];
+      }
+    >();
+    for (const flock of activeFlocks) {
+      for (const hf of flock.houseFlocks) {
+        if (!hfByHouseId.has(hf.houseId)) {
+          hfByHouseId.set(hf.houseId, { flock, hf });
+        }
+      }
+    }
+
+    const houses = farm.houses.map((house) => {
+      const matched = hfByHouseId.get(house.id) ?? null;
+      const hf = matched?.hf ?? null;
+      const flock = matched?.flock ?? null;
+      const growthRateLbsPerDay = resolveGrowthRate(flock?.growthRateLbsPerDay);
+      const placementDate = hf?.placementDate ?? flock?.placementDate ?? null;
+      const catchDate = hf?.catchDate
+        ? hf.catchDate
+        : flock && placementDate
+          ? resolveCatchDate({
+              placementDate,
+              projectedCatchDate: flock.projectedCatchDate,
+              actualCatchDate: flock.actualCatchDate,
+              targetMarketAge: flock.targetMarketAge,
+            })
+          : flock
+            ? resolveCatchDate(flock)
+            : null;
+
+      const groups =
+        flock && placementDate && catchDate
+          ? [
+              {
                 catchDateKey: format(catchDate, "yyyy-MM-dd"),
                 projections: catchWeightProjections({
-                  placementDate: flock.placementDate,
+                  placementDate,
                   catchDate,
-                  growthRateLbsPerDay: resolveGrowthRate(flock.growthRateLbsPerDay),
+                  growthRateLbsPerDay,
                 }).map((p) => ({
                   offsetDays: p.offsetDays,
                   dateKey: format(p.date, "yyyy-MM-dd"),
@@ -110,16 +144,23 @@ export default async function ToolsPage({
                   ageDays: p.ageDays,
                   weightLbs: p.weightLbs,
                 })),
-              };
-            })
-            .sort((a, b) => a.catchDateKey.localeCompare(b.catchDateKey));
+              },
+            ]
+          : [];
+
+      return {
+        id: house.id,
+        houseNumber: house.houseNumber,
+        flockId: flock?.id ?? null,
+        growthRateLbsPerDay,
+        groups,
+      };
+    });
 
     return {
       id: farm.id,
       farmName: farm.farmName,
-      flockId: primary?.id ?? null,
-      growthRateLbsPerDay,
-      groups,
+      houses,
     };
   });
 
@@ -132,11 +173,7 @@ export default async function ToolsPage({
       </div>
 
       <div className="space-y-4">
-        <ToolsSectionPanel
-          hashId="weight-projections"
-          title="Weight projections"
-          subtitle="Age at kill × growth rate"
-        >
+        <ToolsSectionPanel hashId="weight-projections" title="Weight projections">
           <ToolsWeightProjections
             farms={weightFarms}
             initialFarmId={sp.farmId ?? null}

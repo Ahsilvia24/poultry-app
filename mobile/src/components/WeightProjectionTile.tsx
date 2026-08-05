@@ -86,9 +86,6 @@ export function WeightProjectionTile({
         {embedded ? null : (
           <View style={{ flex: 1, minWidth: 160 }}>
             <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight projections</Text>
-            <Text style={[styles.muted, { marginTop: 2, fontSize: 13 }]}>
-              Age at kill × growth rate
-            </Text>
           </View>
         )}
         <Text style={{ fontSize: 14, color: colors.text, marginLeft: embedded ? "auto" : 0 }}>
@@ -186,7 +183,7 @@ export function WeightProjectionTile({
               placeholderTextColor={colors.muted}
             />
             <Text style={[styles.muted, { fontSize: 12 }]}>
-              Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY} · Weight = days of age × GR
+              Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY}
             </Text>
             {error ? <Text style={{ color: colors.danger, fontSize: 13 }}>{error}</Text> : null}
             <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
