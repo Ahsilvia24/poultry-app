@@ -1,9 +1,8 @@
 # iPhone 6.5" App Store assets
 
-Pixel size: **1284 × 2778** (portrait) — accepted for App Store Connect iPhone 6.5"/6.7" slots  
-(also valid alternatives: 1242×2688, 2688×1242, 2778×1284).
+## Screenshots (10) — **1284 × 2778** PNG
 
-## Screenshots (10)
+Upload under App Store Connect → App Preview and Screenshots → **iPhone 6.5" Display**.
 
 | # | File | Screen |
 |---|------|--------|
@@ -18,7 +17,20 @@ Pixel size: **1284 × 2778** (portrait) — accepted for App Store Connect iPhon
 | 9 | `screenshots/09-history.png` | Farm history |
 | 10 | `screenshots/10-settings.png` | Settings |
 
-## App Previews (3)
+Also valid screenshot sizes for this slot: 1242×2688, 2688×1242, 2778×1284.
+
+## App Previews (3) — **886 × 1920** MP4
+
+Apple’s accepted **preview** size for 6.5"/6.9" is **886×1920**, not the screenshot size.
+
+| Spec | Value |
+|------|--------|
+| Resolution | 886 × 1920 (portrait), SAR 1:1 |
+| Codec | H.264 High Profile Level 4.0 |
+| Bitrate | ~10 Mbps (Apple target 10–12) |
+| Audio | Stereo AAC 44.1 kHz |
+| Length | 15–30 seconds |
+| Container | `.mp4` |
 
 | # | File | Length | Flow |
 |---|------|--------|------|
@@ -26,14 +38,17 @@ Pixel size: **1284 × 2778** (portrait) — accepted for App Store Connect iPhon
 | 2 | `previews/preview-02-mortality-logging.mp4` | ~16s | Farms → mortality entry |
 | 3 | `previews/preview-03-tools-reports.mp4` | ~16s | Tools → reports → LFO |
 
-Format: H.264 MP4, 30 fps, no audio, 1284×2778.
+### Why earlier uploads failed
+
+App Store Connect rejects preview videos encoded at screenshot dimensions (e.g. 1284×2778) or with non‑1 sample aspect ratio / High@L5.x. Re-upload these 886×1920 files. If ASC shows a vague “network … try again” toast, wait a minute and retry — that message is often a failed validation, not an actual network drop.
 
 ## Regenerate
 
 With Postgres + `npm run dev` running and seed data loaded:
 
 ```bash
+npx playwright install chromium   # once
 node scripts/capture-app-store-assets.mjs
 ```
 
-Requires Playwright Chromium (`npx playwright install chromium`) and `ffmpeg`.
+Requires `ffmpeg`.

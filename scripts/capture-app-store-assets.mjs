@@ -1,5 +1,7 @@
 /**
- * Capture App Store screenshots (10) + app previews (3) at 1284×2778.
+ * Capture App Store screenshots (10) + app previews (3).
+ * Screenshots: 1284×2778 PNG
+ * App Previews: 886×1920 MP4 (Apple's accepted preview size — NOT screenshot size)
  * Run while `npm run dev` is serving http://localhost:3000
  */
 import { chromium } from "playwright";
@@ -9,13 +11,19 @@ import { execSync } from "child_process";
 
 const BASE = process.env.APP_BASE_URL || "http://localhost:3000";
 const OUT = join(process.cwd(), "docs/app-store/iphone-6.5");
-/** Final App Store pixel size (iPhone 6.5" / 6.7" portrait). */
-const OUT_W = 1284;
-const OUT_H = 2778;
-/** CSS viewport — iPhone 14 Pro Max logical points so mobile breakpoints apply. */
+/** Screenshot pixel size (iPhone 6.5" portrait). */
+const SHOT_W = 1284;
+const SHOT_H = 2778;
+/**
+ * App Preview pixel size — Apple accepts 886×1920 for 6.5"/6.9" portrait,
+ * NOT the screenshot sizes (1284×2778). See ASC App Preview specifications.
+ */
+const PREV_W = 886;
+const PREV_H = 1920;
+/** CSS viewport — iPhone logical points so mobile breakpoints apply. */
 const VIEW_W = 430;
 const VIEW_H = 926;
-const SCALE = 3; // 430×3=1290 ≈ 1284; we crop/scale to exact OUT_* after capture
+const SCALE = 3; // 430×3=1290 ≈ 1284; we crop/scale to exact SHOT_* after capture
 const FARM_ACTIVE = "cmsfp6zyg00vpjswbainssppr"; // River Bend — active flock
 const FARM_SCHEDULE = "cmsfp6zji0004jswbrptk18nw"; // Oak Hollow — prebrood
 
@@ -85,28 +93,52 @@ function ensureDir(p) {
 }
 
 function encodePreview(rawWebm, outMp4) {
-  // Exact App Store 6.5" portrait size, H.264, 15–30s clips.
+  // Apple App Preview: 886×1920, H.264 High@L4.0, ~10–12 Mbps, stereo AAC, SAR=1.
   execSync(
     [
       "ffmpeg",
       "-y",
       "-i",
       JSON.stringify(rawWebm),
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=channel_layout=stereo:sample_rate=44100",
       "-vf",
-      `"scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=decrease,pad=${OUT_W}:${OUT_H}:(ow-iw)/2:(oh-ih)/2:black,fps=30"`,
+      `"scale=${PREV_W}:${PREV_H}:force_original_aspect_ratio=decrease,pad=${PREV_W}:${PREV_H}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,fps=30"`,
       "-c:v",
       "libx264",
       "-profile:v",
       "high",
       "-level",
-      "5.1",
+      "4.0",
       "-pix_fmt",
       "yuv420p",
       "-r",
       "30",
+      "-g",
+      "30",
+      "-x264-params",
+      "nal-hrd=cbr:force-cfr=1",
+      "-b:v",
+      "10M",
+      "-minrate",
+      "10M",
+      "-maxrate",
+      "10M",
+      "-bufsize",
+      "10M",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "256k",
+      "-ar",
+      "44100",
+      "-ac",
+      "2",
+      "-shortest",
       "-movflags",
       "+faststart",
-      "-an",
       JSON.stringify(outMp4),
     ].join(" "),
     { stdio: "inherit", shell: "/bin/bash" },
@@ -121,7 +153,11 @@ function fitToAppStoreSize(srcPng, destPng) {
       "-i",
       JSON.stringify(srcPng),
       "-vf",
-      `"scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=increase,crop=${OUT_W}:${OUT_H}"`,
+      `"scale=${SHOT_W}:${SHOT_H}:force_original_aspect_ratio=increase,crop=${SHOT_W}:${SHOT_H},setsar=1"`,
+      "-frames:v",
+      "1",
+      "-update",
+      "1",
       JSON.stringify(destPng),
     ].join(" "),
     { stdio: "inherit", shell: "/bin/bash" },

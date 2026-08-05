@@ -36,12 +36,16 @@ Contact email on both pages is **talentpro024@gmail.com**.
 
 ## Screenshots & App Previews
 
-### iPhone 6.5" / 6.7" (1284×2778)
+### iPhone 6.5" / 6.7"
 
 Upload from `docs/app-store/iphone-6.5/`:
 
-**Screenshots (10)** — `screenshots/01-dashboard.png` … `10-settings.png`  
-**App Previews (3)** — `previews/preview-01-today-schedule.mp4`, `preview-02-mortality-logging.mp4`, `preview-03-tools-reports.mp4`
+| Asset | Size | Files |
+|-------|------|--------|
+| **Screenshots (10)** | **1284×2778** PNG | `screenshots/01-dashboard.png` … `10-settings.png` |
+| **App Previews (3)** | **886×1920** MP4 | `previews/preview-01-…mp4` … `preview-03-…mp4` |
+
+> App Previews must be **886×1920**, not 1284×2778. Screenshot size ≠ preview size (Apple ASC specs).
 
 See `docs/app-store/iphone-6.5/README.md` for the full list and how to regenerate.
 
