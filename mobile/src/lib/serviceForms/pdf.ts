@@ -128,7 +128,7 @@ export function serviceReportPdfHtml(form: Extract<AnyServiceForm, { kind: "serv
           ${checkRow("Lines Are Adjusted Properly For Age Of Birds", form.waterLinesOk)}
           ${checkRow("Sight Tubes Are Clean", form.sightTubesOk)}
           ${checkRow("Anything Currently Added to Water", form.waterAdditive)}
-          <tr><td>Inches of Water Column</td><td>${esc(form.waterColumnInches)}</td></tr>
+          <tr><td>Inches of Water Column</td><td>${esc(form.waterColumnInches.trim() || "4-6")}</td></tr>
           <tr><td>P.S.I Before / After</td><td>${esc(form.psiBefore)} / ${esc(form.psiAfter)}</td></tr>
           <tr><td>P.H.</td><td>${esc(form.ph)}</td></tr>
         </table>
@@ -218,7 +218,7 @@ export function placementPdfHtml(form: Extract<AnyServiceForm, { kind: "placemen
           ${checkRow("Proxy Test Strip Test Performed", form.proxyTestOk)}
           ${checkRow("Anything Currently Added to Water", form.waterAdditive)}
           <tr><td>P.S.I Before / After</td><td>${esc(form.psiBefore)} / ${esc(form.psiAfter)}</td></tr>
-          <tr><td>Inches Water Column / P.H.</td><td>${esc(form.waterColumnInches)} / ${esc(form.ph)}</td></tr>
+          <tr><td>Inches Water Column / P.H.</td><td>${esc(form.waterColumnInches.trim() || "4-6")} / ${esc(form.ph)}</td></tr>
         </table>
       </div>
       <div>

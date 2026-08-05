@@ -24,6 +24,7 @@ import {
   formatMinVentPair,
   formatServiceShortDate,
   normalizeVentDoorTypes,
+  resolveWaterColumnInches,
 } from "./format";
 
 type FieldWidget = {
@@ -87,6 +88,23 @@ const HOUSE_WEEK_FIELDS = (n: number) =>
     `Wk7${n}`,
     `WkS${n}_2`,
   ] as const;
+
+/**
+ * Bachoco Service Report has no named field for “Inches of Water Column”.
+ * Place the value in the blank before the printed “Inches” label.
+ */
+function stampServiceReportWaterColumn(ctx: Ctx, value: string) {
+  const v = resolveWaterColumnInches(value);
+  const size = 8;
+  ctx.page.drawText(v, {
+    x: 258,
+    y: 320.5,
+    size,
+    font: ctx.font,
+    color: rgb(0, 0, 0),
+    maxWidth: 72,
+  });
+}
 
 /** Stamp one house into template row slot 1–8 (age, placed, weeks, temp, total). */
 function stampServiceReportHouseRow(ctx: Ctx, house: ServiceHouseRow, slot: number) {
@@ -309,6 +327,8 @@ function buildServiceReportFields(
   markYesNo(ctx, "Check Box22", "Check Box25", data.waterLinesOk);
   markYesNo(ctx, "Check Box23", "Check Box29", data.sightTubesOk);
   markYesNo(ctx, "Check Box24", "Check Box28", data.waterAdditive);
+  // No AcroForm widget for water column on the Bachoco template — stamp by page coords.
+  stampServiceReportWaterColumn(ctx, data.waterColumnInches);
   setText(ctx, "PSI before", data.psiBefore, 8);
   setText(ctx, "PSI after", data.psiAfter, 8);
   setText(ctx, "Text56", data.ph, 8);
@@ -427,7 +447,7 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
   markYesNo(ctx, "Check Box141", "Check Box144", data.waterAdditive);
   setText(ctx, "Text90", data.psiBefore, 8);
   setText(ctx, "Text91", data.psiAfter, 8);
-  setText(ctx, "Text92", data.waterColumnInches, 8);
+  setText(ctx, "Text92", resolveWaterColumnInches(data.waterColumnInches), 8);
   setText(ctx, "Text93", data.ph, 8);
 
   markYesNo(ctx, "Check Box145", "Check Box146", data.partitionedOk);

@@ -125,7 +125,7 @@ export function TextField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="min-h-11 w-full rounded-lg border border-stone-300 bg-white px-3 text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+          className="min-h-11 w-full rounded-lg border border-stone-300 bg-white px-3 text-base font-semibold text-stone-900 outline-none placeholder:font-semibold placeholder:text-stone-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
         />
       )}
     </div>

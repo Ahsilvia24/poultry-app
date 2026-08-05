@@ -23,6 +23,14 @@ export function yesNoLabel(v: string) {
   return "";
 }
 
+/** Default inches of water column when the field is left blank. */
+export const DEFAULT_WATER_COLUMN_INCHES = "4-6";
+
+export function resolveWaterColumnInches(value: string | null | undefined) {
+  const v = String(value ?? "").trim();
+  return v || DEFAULT_WATER_COLUMN_INCHES;
+}
+
 export const HUMIDITY_OPTIONS = [
   { value: "", label: "Blank" },
   ...Array.from({ length: 21 }, (_, i) => {
