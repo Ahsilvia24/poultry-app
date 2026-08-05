@@ -38,12 +38,12 @@ export const FEED_MILL_OPTIONS = ["Heavener", "Fort Smith"] as const;
 export const PROCESSING_PLANT_OPTIONS = ["Heavener", "Stigler"] as const;
 
 export const VISIT_TYPE_LABELS: Record<string, string> = {
+  ROUTINE_SERVICE: "Routine service visit",
   PRE_CATCH: "Pre-catch visit",
   PLACEMENT: "Placement",
   WEIGHT_PROJECTION: "Weight Projection",
   LFO: "LFO",
   HIGH_MORTALITY: "High mortality",
-  ROUTINE_SERVICE: "Routine service visit",
   WEIGH_DAY: "Weigh day",
   VACCINATION: "Vaccination",
   MEDICATION: "Medication",
@@ -54,12 +54,12 @@ export const VISIT_TYPE_LABELS: Record<string, string> = {
 
 /** Dropdown order for create/edit visit forms. */
 export const VISIT_TYPE_OPTIONS = [
+  "ROUTINE_SERVICE",
   "PRE_CATCH",
   "PLACEMENT",
   "WEIGHT_PROJECTION",
   "LFO",
   "HIGH_MORTALITY",
-  "ROUTINE_SERVICE",
   "WEIGH_DAY",
   "VACCINATION",
   "MEDICATION",

@@ -17,7 +17,6 @@ import {
   reactivateFlockAction,
   deleteFlockAction,
 } from "@/app/actions/farms";
-import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import {
   ISSUE_CATEGORY_LABELS,
   LITTER_EVENT_LABELS,
@@ -35,21 +34,17 @@ export type VisitFormValues = {
   followUpDate?: string | null;
 };
 
-function parseVisitDateKey(dateKey: string) {
-  return new Date(`${dateKey}T12:00:00`);
-}
-
 export function FarmVisitForm({
   farmId,
   flockId,
-  placementDate,
+  placementDate: _placementDate,
   onSuccess,
   recordId,
   initial,
 }: {
   farmId: string;
   flockId?: string | null;
-  /** Active flock placement date (`yyyy-MM-dd`) for auto bird age. */
+  /** @deprecated Bird age is resolved on save; kept for call-site compat. */
   placementDate?: string | null;
   onSuccess?: () => void;
   recordId?: string;
@@ -60,11 +55,6 @@ export function FarmVisitForm({
     initial?.visitDate ?? new Date().toISOString().slice(0, 10),
   );
   const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
-
-  const birdAgeInDays =
-    placementDate != null && visitDate
-      ? birdAgeFromPlacement(parseVisitDateKey(placementDate), parseVisitDateKey(visitDate))
-      : null;
 
   return (
     <form
@@ -82,9 +72,9 @@ export function FarmVisitForm({
     >
       <input type="hidden" name="farmId" value={farmId} />
       {flockId ? <input type="hidden" name="flockId" value={flockId} /> : null}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <Label htmlFor={fid("visitDate")}>Visit date</Label>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="min-w-0">
+          <Label htmlFor={fid("visitDate")}>Date</Label>
           <Input
             id={fid("visitDate")}
             name="visitDate"
@@ -94,8 +84,8 @@ export function FarmVisitForm({
             onChange={(e) => setVisitDate(e.target.value)}
           />
         </div>
-        <div>
-          <Label htmlFor={fid("visitType")}>Visit type</Label>
+        <div className="min-w-0">
+          <Label htmlFor={fid("visitType")}>Type</Label>
           <Select
             id={fid("visitType")}
             name="visitType"
@@ -108,24 +98,14 @@ export function FarmVisitForm({
             ))}
           </Select>
         </div>
-        <div>
-          <Label htmlFor={fid("birdAgeInDays")}>Bird age (days)</Label>
-          <Input
-            id={fid("birdAgeInDays")}
-            type="text"
-            readOnly
-            value={birdAgeInDays != null ? String(birdAgeInDays) : "—"}
-            className="bg-stone-50 text-stone-700"
-          />
-        </div>
-        <div>
-          <Label htmlFor={fid("generalBirdCondition")}>Bird condition</Label>
-          <Input
-            id={fid("generalBirdCondition")}
-            name="generalBirdCondition"
-            defaultValue={initial?.generalBirdCondition ?? "Healthy"}
-          />
-        </div>
+      </div>
+      <div>
+        <Label htmlFor={fid("generalBirdCondition")}>Bird condition</Label>
+        <Input
+          id={fid("generalBirdCondition")}
+          name="generalBirdCondition"
+          defaultValue={initial?.generalBirdCondition ?? "Healthy"}
+        />
       </div>
       <div>
         <Label htmlFor={fid("visitNotes")}>Notes</Label>

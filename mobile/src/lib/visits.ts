@@ -1,10 +1,10 @@
 export const VISIT_TYPE_LABELS: Record<string, string> = {
+  ROUTINE_SERVICE: "Routine service visit",
   PRE_CATCH: "Pre-catch visit",
   PLACEMENT: "Placement",
   WEIGHT_PROJECTION: "Weight Projection",
   LFO: "LFO",
   HIGH_MORTALITY: "High mortality",
-  ROUTINE_SERVICE: "Routine service visit",
   PREBROOD: "Prebrood",
   WEIGH_DAY: "Weigh day",
   VACCINATION: "Vaccination",
@@ -16,12 +16,12 @@ export const VISIT_TYPE_LABELS: Record<string, string> = {
 
 /** Dropdown order for create/edit visit forms. */
 export const VISIT_TYPE_OPTIONS = [
+  "ROUTINE_SERVICE",
   "PRE_CATCH",
   "PLACEMENT",
   "WEIGHT_PROJECTION",
   "LFO",
   "HIGH_MORTALITY",
-  "ROUTINE_SERVICE",
   "PREBROOD",
   "WEIGH_DAY",
   "VACCINATION",

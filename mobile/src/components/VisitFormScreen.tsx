@@ -22,7 +22,6 @@ import {
   getVisit,
   updateVisit,
 } from "../repos/data";
-import { birdAgeFromPlacement } from "../lib/mortality";
 import { todayKey } from "../lib/ids";
 import { VISIT_TYPE_LABELS, VISIT_TYPE_OPTIONS } from "../lib/visits";
 import type { ServiceFormKind } from "../lib/serviceForms/types";
@@ -119,7 +118,6 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
     }
   }, [farmId, visitId]);
 
-  const placementDate = farmDetail?.activeFlock?.placementDate ?? null;
   const flockId = farmDetail?.activeFlock?.id ?? initial?.flockId ?? null;
 
   const [visitDate, setVisitDate] = useState(initial?.visitDate ?? todayKey());
@@ -131,11 +129,6 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  const birdAge =
-    placementDate && visitDate
-      ? birdAgeFromPlacement(placementDate, visitDate)
-      : (initial?.birdAgeInDays ?? null);
 
   const serviceFormCta = useMemo(() => {
     if (!editing || !visitId) return null;
@@ -235,40 +228,36 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
           />
 
           <Card>
-            <DatePickerField
-              label="Visit date"
-              value={visitDate}
-              onChange={setVisitDate}
-            />
-
-            <Text style={[styles.label, { marginTop: 8 }]}>Visit type</Text>
-            <Pressable
-              onPress={() => setTypePickerOpen(true)}
-              style={[
-                styles.input,
-                {
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                },
-              ]}
-            >
-              <Text style={{ color: colors.text, fontWeight: "600" }}>
-                {VISIT_TYPE_LABELS[visitType] ?? visitType}
-              </Text>
-              <Ionicons name="chevron-down" size={18} color={colors.muted} />
-            </Pressable>
-
-            <Text style={[styles.label, { marginTop: 8 }]}>Bird age (days)</Text>
-            <View
-              style={[
-                styles.input,
-                { backgroundColor: "#f5f5f4", justifyContent: "center" },
-              ]}
-            >
-              <Text style={{ color: colors.muted, fontWeight: "600" }}>
-                {birdAge != null ? String(birdAge) : "—"}
-              </Text>
+            <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <DatePickerField
+                  label="Date"
+                  value={visitDate}
+                  onChange={setVisitDate}
+                />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.label}>Type</Text>
+                <Pressable
+                  onPress={() => setTypePickerOpen(true)}
+                  style={[
+                    styles.input,
+                    {
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{ color: colors.text, fontWeight: "600", flexShrink: 1 }}
+                    numberOfLines={1}
+                  >
+                    {VISIT_TYPE_LABELS[visitType] ?? visitType}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.muted} />
+                </Pressable>
+              </View>
             </View>
 
             <Text style={[styles.label, { marginTop: 8 }]}>Bird condition</Text>
