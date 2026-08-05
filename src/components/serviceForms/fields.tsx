@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { LIGHT_TIME_OPTIONS } from "@/lib/serviceForms/format";
 import type { YesNo } from "@/lib/serviceForms/types";
 
 export function SectionTitle({ title }: { title: string }) {
@@ -139,9 +140,42 @@ export function PairFields({
   right: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2.5">
-      <div>{left}</div>
-      <div>{right}</div>
+    <div className="grid grid-cols-2 gap-3">
+      <div className="min-w-0">{left}</div>
+      <div className="min-w-0">{right}</div>
+    </div>
+  );
+}
+
+/** Full-width half-hour time select — fills PairFields columns evenly. */
+export function TimeSelectField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const known = !value || LIGHT_TIME_OPTIONS.some((o) => o.value === value);
+  return (
+    <div className="mb-2.5 min-w-0">
+      <label className="mb-1 block text-[13px] font-bold text-stone-500">{label}</label>
+      <select
+        value={value === "24/7" ? "" : value}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-h-11 w-full min-w-0 rounded-lg border border-stone-300 bg-white px-2.5 text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+      >
+        <option value="">Select time</option>
+        {!known && value !== "24/7" ? (
+          <option value={value}>{value}</option>
+        ) : null}
+        {LIGHT_TIME_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

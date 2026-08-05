@@ -46,3 +46,15 @@ export const WEEK_OPTIONS = Array.from({ length: 8 }, (_, i) => ({
   value: String(i + 1),
   label: `Week ${i + 1}`,
 }));
+
+/** Half-hour light schedule slots (HH:mm), labeled in 12-hour form. */
+export const LIGHT_TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+  const minutes = i * 30;
+  const hour24 = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  const value = `${String(hour24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  const ampm = hour24 < 12 ? "AM" : "PM";
+  const label = `${hour12}:${String(minute).padStart(2, "0")} ${ampm}`;
+  return { value, label };
+});

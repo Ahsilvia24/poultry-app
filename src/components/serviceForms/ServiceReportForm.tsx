@@ -24,6 +24,7 @@ import {
   PairFields,
   SectionTitle,
   TextField,
+  TimeSelectField,
   YesNoField,
 } from "./fields";
 import { useCompleteServiceForm } from "./useCompleteServiceForm";
@@ -205,19 +206,17 @@ export function ServiceReportForm({
         ) : (
           <PairFields
             left={
-              <TextField
+              <TimeSelectField
                 label="Lights ON at"
                 value={form.lightsOnAt}
                 onChange={(lightsOnAt) => patch({ lightsOnAt })}
-                type="time"
               />
             }
             right={
-              <TextField
+              <TimeSelectField
                 label="Lights OFF at"
                 value={form.lightsOffAt}
                 onChange={(lightsOffAt) => patch({ lightsOffAt })}
-                type="time"
               />
             }
           />
