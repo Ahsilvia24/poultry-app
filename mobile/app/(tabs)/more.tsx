@@ -25,7 +25,6 @@ const LINKS = [
   {
     href: "/(tabs)/tools",
     title: "Tools",
-    subtitle: "Weight projections and field calculators",
   },
 ] as const;
 

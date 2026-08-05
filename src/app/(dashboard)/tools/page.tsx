@@ -181,7 +181,7 @@ export default async function ToolsPage({
 
   return (
     <div>
-      <PageHeader title="Tools" subtitle="Weight projections and field calculators" />
+      <PageHeader title="Tools" />
 
       <div className="mb-6">
         <ToolsQuickLinks />

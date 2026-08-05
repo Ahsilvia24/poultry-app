@@ -207,10 +207,7 @@ export default function ToolsScreen() {
         style={styles.screen}
         contentContainerStyle={styles.content}
       >
-        <PageHeader
-          title="Tools"
-          subtitle="Weight projections and field calculators"
-        />
+        <PageHeader title="Tools" />
 
         <Card style={{ marginBottom: 12 }}>
           <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text }}>
