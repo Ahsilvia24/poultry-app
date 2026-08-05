@@ -50,3 +50,12 @@ export const LITTER_EVENT_OPTIONS = Object.entries(LITTER_EVENT_LABELS).map(([va
 
 export const FEED_TYPE_OPTIONS = ["Pre-started", "Starter", "Grower", "Finisher"] as const;
 export const FEED_MILL_OPTIONS = ["Heavener", "Fort Smith"] as const;
+
+/** Short labels for feed mill list rows: Heavener → HV, Fort Smith → FS. */
+export function formatFeedMillShort(mill: string | null | undefined): string {
+  if (!mill) return "";
+  const key = mill.trim().toLowerCase();
+  if (key === "heavener") return "HV";
+  if (key === "fort smith") return "FS";
+  return mill;
+}
