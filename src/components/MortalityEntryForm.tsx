@@ -203,35 +203,47 @@ function firstUnfilledAfterLastFilled(rows: DayRow[], asOfDateKey: string): DayR
   return null;
 }
 
-function scrollMortalityFieldAboveKeypad(el: HTMLElement) {
+/** Tab bar + Back-to-House keypad before the keypad node mounts. */
+const MORTALITY_KEYPAD_ESTIMATE_PX = 440;
+
+function scrollMortalityFieldAboveKeypad(
+  el: HTMLElement,
+  behavior: ScrollBehavior = "auto",
+) {
   const keypad = document.querySelector<HTMLElement>("[data-mortality-keypad]");
   const viewportH = window.innerHeight;
-  let obscuredBottom = 0;
+  let keypadTop = viewportH;
   if (keypad) {
-    obscuredBottom = Math.max(0, viewportH - keypad.getBoundingClientRect().top);
+    keypadTop = keypad.getBoundingClientRect().top;
   } else if (window.matchMedia("(max-width: 767px), (pointer: coarse)").matches) {
-    // Estimate tab bar + keypad before the keypad mounts.
-    obscuredBottom = 360;
+    keypadTop = viewportH - MORTALITY_KEYPAD_ESTIMATE_PX;
   }
-  const visibleH = Math.max(120, viewportH - obscuredBottom);
+  const visibleH = Math.max(120, keypadTop);
   // Keep the active box in the upper third of the free space above the keypad.
   const targetY = visibleH * 0.28;
   const rect = el.getBoundingClientRect();
-  const delta = rect.top + rect.height / 2 - targetY;
+  const fieldCenter = rect.top + rect.height / 2;
+  let delta = fieldCenter - targetY;
+  // Hard guarantee: never leave the box under / intersecting the keypad.
+  const minClearance = 12;
+  if (rect.bottom > keypadTop - minClearance) {
+    delta = Math.max(delta, rect.bottom - (keypadTop - minClearance));
+  }
   if (Math.abs(delta) < 4) return;
-  window.scrollBy({ top: delta, behavior: "smooth" });
+  window.scrollBy({ top: delta, behavior });
 }
 
 function focusMortalityAge(age: number, field: "culls" | "mortality" = "mortality") {
   const el = document.querySelector<HTMLInputElement>(`[data-mort-nav="${field}-${age}"]`);
   if (!el) return false;
-  scrollMortalityFieldAboveKeypad(el);
   el.focus({ preventScroll: true });
   el.select();
-  // Re-run after keypad/layout settles so the field isn't left under the keyboard.
-  requestAnimationFrame(() => scrollMortalityFieldAboveKeypad(el));
-  window.setTimeout(() => scrollMortalityFieldAboveKeypad(el), 80);
-  window.setTimeout(() => scrollMortalityFieldAboveKeypad(el), 200);
+  scrollMortalityFieldAboveKeypad(el, "auto");
+  // Re-run after keypad mounts / week expand settles (house pick is the common case).
+  requestAnimationFrame(() => scrollMortalityFieldAboveKeypad(el, "auto"));
+  for (const ms of [50, 120, 220, 400]) {
+    window.setTimeout(() => scrollMortalityFieldAboveKeypad(el, "auto"), ms);
+  }
   return true;
 }
 
@@ -605,20 +617,19 @@ export function MortalityEntryForm({
     const pending = pendingJumpRef.current;
     if (!pending) return;
     const { age, field } = pending;
+    // Mount keypad first so scroll math uses the real (taller) Back-to-House height.
+    setActiveField({ field, age });
     const tryFocus = () => focusMortalityAge(age, field);
-    if (tryFocus()) {
-      pendingJumpRef.current = null;
-      return;
-    }
-    // Week panel may need one frame after exclusive expand
+    // Wait a paint for the keypad + expanded week rows before focusing/scrolling.
     const id = window.setTimeout(() => {
-      if (tryFocus()) pendingJumpRef.current = null;
-      else {
-        window.setTimeout(() => {
-          tryFocus();
-          pendingJumpRef.current = null;
-        }, 120);
+      if (tryFocus()) {
+        pendingJumpRef.current = null;
+        return;
       }
+      window.setTimeout(() => {
+        tryFocus();
+        pendingJumpRef.current = null;
+      }, 120);
     }, 40);
     return () => window.clearTimeout(id);
   }, [rows, expandedWeeks, houseFlockId, focusToken]);
@@ -761,6 +772,7 @@ export function MortalityEntryForm({
     setFarmId(nextFarmId);
     setSaveStatus("idle");
     setError(null);
+    setActiveField(null);
     jumpOnHouseLoadRef.current = false;
     pendingJumpRef.current = null;
     setHouseFlockId("");
@@ -774,6 +786,7 @@ export function MortalityEntryForm({
     jumpOnHouseLoadRef.current = true;
     setSaveStatus("idle");
     setError(null);
+    setActiveField(null);
     // Collapse immediately so only the jump week re-opens after load
     setExpandedWeeks(new Set());
     if (nextHouseId === houseFlockId) {

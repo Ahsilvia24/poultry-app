@@ -326,24 +326,34 @@ export default function MortalityScreen() {
     });
   }
 
-  function scrollRowIntoView(age: number) {
+  function scrollRowIntoView(age: number, animated = true) {
     const row = rowRefs.current.get(age);
     const scroll = scrollRef.current;
     const host = scrollHostRef.current;
     if (!row || !scroll || !host) return false;
 
+    // Back-to-House + digit pad is taller than the old 260 estimate.
+    const FALLBACK_KEYPAD_H = 340;
+
     const place = (keypadHeight: number) => {
       row.measureInWindow((_rx: number, rowY: number, _rw: number, rowH: number) => {
         host.measureInWindow((_sx: number, scrollY: number, _sw: number, hostH: number) => {
-          // Keep the active row in the upper third of the area above the keypad
-          // so it isn't covered while typing.
-          const visibleH = Math.max(120, hostH - keypadHeight);
+          const keypadH = Math.max(keypadHeight, 1);
+          const visibleH = Math.max(120, hostH - keypadH);
           const rowCenter = rowY + rowH / 2;
+          // Keep the active row in the upper third of the area above the keypad.
           const targetCenter = scrollY + visibleH * 0.28;
-          const delta = rowCenter - targetCenter;
+          let delta = rowCenter - targetCenter;
+          // Hard guarantee: row bottom must sit above the keypad.
+          const keypadTop = scrollY + hostH - keypadH;
+          const rowBottom = rowY + rowH;
+          const minClearance = 12;
+          if (rowBottom > keypadTop - minClearance) {
+            delta = Math.max(delta, rowBottom - (keypadTop - minClearance));
+          }
           scroll.scrollTo({
             y: Math.max(0, scrollOffsetRef.current + delta),
-            animated: true,
+            animated,
           });
         });
       });
@@ -351,11 +361,21 @@ export default function MortalityScreen() {
 
     const keypad = keypadRef.current;
     if (keypad) {
-      keypad.measureInWindow((_kx, _ky, _kw, keypadH) => place(keypadH || 260));
+      keypad.measureInWindow((_kx, _ky, _kw, keypadH) =>
+        place(keypadH || FALLBACK_KEYPAD_H),
+      );
     } else {
-      place(260);
+      place(FALLBACK_KEYPAD_H);
     }
     return true;
+  }
+
+  function pinRowAboveKeypad(age: number) {
+    scrollRowIntoView(age, false);
+    requestAnimationFrame(() => scrollRowIntoView(age, false));
+    for (const ms of [50, 120, 220, 400]) {
+      setTimeout(() => scrollRowIntoView(age, false), ms);
+    }
   }
 
   function jumpToFirstUnfilled(nextRows: DayRow[]) {
@@ -379,16 +399,16 @@ export default function MortalityScreen() {
     const age = jumpTo.age;
     const attempt = (triesLeft: number) => {
       jumpTimerRef.current = setTimeout(() => {
-        scrollRowIntoView(age);
         const input = inputRefs.current.get(fieldKey("mort", age));
         if (input) {
+          // Mount keypad first, then focus + pin row above it after layout.
           setActiveField({ kind: "mort", age });
           setSelection({ start: 0, end: 0 });
           input.focus();
-          // Re-scroll after keypad mounts so the row lands mid-viewport.
-          requestAnimationFrame(() => scrollRowIntoView(age));
+          pinRowAboveKeypad(age);
           return;
         }
+        scrollRowIntoView(age, false);
         if (triesLeft > 0) attempt(triesLeft - 1);
       }, triesLeft >= 6 ? 50 : 100);
     };
@@ -678,7 +698,7 @@ export default function MortalityScreen() {
         const input = inputRefs.current.get(key);
         if (input) {
           input.focus();
-          scrollRowIntoView(age);
+          pinRowAboveKeypad(age);
           return;
         }
         if (triesLeft > 0) {
@@ -699,12 +719,8 @@ export default function MortalityScreen() {
     } else {
       setSelection({ start: 0, end: value.length });
     }
-    // Wait a beat for next-week expand + keypad layout, then pin row above keypad.
-    requestAnimationFrame(() => {
-      scrollRowIntoView(age);
-      setTimeout(() => scrollRowIntoView(age), 80);
-      setTimeout(() => scrollRowIntoView(age), 200);
-    });
+    // Wait for next-week expand + keypad layout, then pin row above keypad.
+    pinRowAboveKeypad(age);
   }
 
   function onDigit(d: string) {
