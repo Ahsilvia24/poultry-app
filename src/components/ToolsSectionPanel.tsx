@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Card } from "@/components/ui";
 
 export function ToolsSectionPanel({
@@ -9,7 +9,6 @@ export function ToolsSectionPanel({
   subtitle,
   children,
   footer,
-  defaultOpen = true,
 }: {
   hashId: string;
   title: string;
@@ -17,29 +16,24 @@ export function ToolsSectionPanel({
   children?: React.ReactNode;
   /** Rendered below the section card (e.g. green action links). */
   footer?: React.ReactNode;
-  /** When false, section stays hidden until opened via quick link. */
+  /** @deprecated Sections stay open; kept for call-site compatibility. */
   defaultOpen?: boolean;
 }) {
   const hash = `#${hashId}`;
-  const [open, setOpen] = useState(defaultOpen);
 
   useEffect(() => {
-    function syncFromHash() {
-      if (window.location.hash === hash) setOpen(true);
+    // Ensure hash targets land on this section if navigated with a hash.
+    if (window.location.hash === hash) {
+      document.getElementById(hashId)?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    syncFromHash();
-    window.addEventListener("hashchange", syncFromHash);
-    return () => window.removeEventListener("hashchange", syncFromHash);
-  }, [hash]);
+  }, [hash, hashId]);
 
-  function closeSection() {
-    setOpen(false);
+  function goToTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" });
     if (window.location.hash === hash) {
       history.replaceState(null, "", window.location.pathname + window.location.search);
     }
   }
-
-  if (!open) return <div id={hashId} className="scroll-mt-24" />;
 
   return (
     <div id={hashId} className="scroll-mt-24">
@@ -51,10 +45,10 @@ export function ToolsSectionPanel({
           </div>
           <button
             type="button"
-            onClick={closeSection}
+            onClick={goToTop}
             className="shrink-0 text-sm font-semibold text-stone-500 hover:text-stone-800"
           >
-            Close
+            Top
           </button>
         </div>
         {children ? <div className="mt-4">{children}</div> : null}

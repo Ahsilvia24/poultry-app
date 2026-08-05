@@ -186,6 +186,10 @@ export default function ToolsScreen() {
     });
   }
 
+  function scrollToTop() {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }
+
   useEffect(() => {
     const section: SectionKey =
       paramSection === "temp" ||
@@ -254,10 +258,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("weight", e)} collapsable={false}>
           {open.weight ? (
-            <SectionPanel
-              title="Weight projections"
-              onClose={() => setOpen((p) => ({ ...p, weight: false }))}
-            >
+            <SectionPanel title="Weight projections" onTop={scrollToTop}>
               {!useAgeOfBird ? (
                 <>
                   <ChipScroller style={{ marginBottom: 6 }}>
@@ -318,10 +319,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("temp", e)} collapsable={false}>
           {open.temp ? (
-            <SectionPanel
-              title="Temp Curve"
-              onClose={() => setOpen((p) => ({ ...p, temp: false }))}
-            >
+            <SectionPanel title="Temp Curve" onTop={scrollToTop}>
               <TempCurveChart />
             </SectionPanel>
           ) : (
@@ -331,10 +329,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("cool", e)} collapsable={false}>
           {open.cool ? (
-            <SectionPanel
-              title="Cool Cells"
-              onClose={() => setOpen((p) => ({ ...p, cool: false }))}
-            >
+            <SectionPanel title="Cool Cells" onTop={scrollToTop}>
               <CoolCellsChart />
             </SectionPanel>
           ) : (
@@ -347,7 +342,7 @@ export default function ToolsScreen() {
             <SectionPanel
               title="Max Cooling"
               subtitle="By relative humidity and outside temperature (°F)"
-              onClose={() => setOpen((p) => ({ ...p, max: false }))}
+              onTop={scrollToTop}
             >
               <MaxCoolingChart />
             </SectionPanel>
@@ -358,10 +353,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("lights", e)} collapsable={false}>
           {open.lights ? (
-            <SectionPanel
-              title="Lights"
-              onClose={() => setOpen((p) => ({ ...p, lights: false }))}
-            >
+            <SectionPanel title="Lights" onTop={scrollToTop}>
               <LightsChart />
             </SectionPanel>
           ) : (
@@ -372,10 +364,7 @@ export default function ToolsScreen() {
         <View onLayout={(e) => onSectionLayout("vent", e)} collapsable={false}>
           {open.vent ? (
             <>
-              <SectionPanel
-                title="Ventilation"
-                onClose={() => setOpen((p) => ({ ...p, vent: false }))}
-              >
+              <SectionPanel title="Ventilation" onTop={scrollToTop}>
                 <ChipScroller style={{ marginBottom: 6 }}>
                   {farms.map((f) => (
                     <Chip
@@ -771,12 +760,12 @@ function SectionAnchor() {
 function SectionPanel({
   title,
   subtitle,
-  onClose,
+  onTop,
   children,
 }: {
   title: string;
   subtitle?: string;
-  onClose: () => void;
+  onTop: () => void;
   children?: React.ReactNode;
 }) {
   return (
@@ -795,8 +784,8 @@ function SectionPanel({
             <Text style={[styles.muted, { marginTop: 4 }]}>{subtitle}</Text>
           ) : null}
         </View>
-        <Pressable onPress={onClose} hitSlop={8}>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Close</Text>
+        <Pressable onPress={onTop} hitSlop={8}>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Top</Text>
         </Pressable>
       </View>
       {children ? <View style={{ marginTop: 12 }}>{children}</View> : null}
