@@ -139,7 +139,7 @@ export function FarmVisitsSection({
             setEditingId(null);
             setLogOpen(true);
           }}
-          className="mt-3 text-base font-semibold text-emerald-800 hover:underline"
+          className="mt-3 text-sm text-emerald-800 hover:underline"
         >
           Log visit
         </button>
@@ -148,7 +148,7 @@ export function FarmVisitsSection({
           <button
             type="button"
             onClick={() => setLogOpen(false)}
-            className="text-base font-semibold text-emerald-800 hover:underline"
+            className="text-sm text-emerald-800 hover:underline"
           >
             Log visit
           </button>

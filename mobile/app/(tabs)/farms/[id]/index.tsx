@@ -117,7 +117,7 @@ function formatShortDate(dateKey: string) {
 function RecordLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={{ marginTop: 4, marginBottom: 16 }}>
-      <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 16 }}>{label}</Text>
+      <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>{label}</Text>
     </Pressable>
   );
 }
