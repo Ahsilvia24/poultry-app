@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import * as SecureStore from "expo-secure-store";
 import { initOfflineDb } from "./db";
 import { getDb } from "./db/database";
+import { deleteSessionItem, getSessionItem, setSessionItem } from "./sessionStore";
 
 type User = { id: string; name: string; email: string };
 
@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         await initOfflineDb();
-        const session = await SecureStore.getItemAsync(SESSION_KEY);
+        const session = await getSessionItem(SESSION_KEY);
         if (!session) {
           setUser(null);
           return;
@@ -58,17 +58,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Invalid email or password");
       }
       const next = { id: row2.id, name: row2.name, email: row2.email };
-      await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(next));
+      await setSessionItem(SESSION_KEY, JSON.stringify(next));
       setUser(next);
       return;
     }
     const next = { id: row.id, name: row.name, email: row.email };
-    await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(next));
+    await setSessionItem(SESSION_KEY, JSON.stringify(next));
     setUser(next);
   }, []);
 
   const signOut = useCallback(async () => {
-    await SecureStore.deleteItemAsync(SESSION_KEY);
+    await deleteSessionItem(SESSION_KEY);
     setUser(null);
   }, []);
 

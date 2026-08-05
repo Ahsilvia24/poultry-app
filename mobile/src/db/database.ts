@@ -1,8 +1,15 @@
+import { Platform } from "react-native";
 import * as SQLite from "expo-sqlite";
+import { getWebDb } from "./webSql";
 
 let db: SQLite.SQLiteDatabase | null = null;
 
-export function getDb(): SQLite.SQLiteDatabase {
+type AnyDb = SQLite.SQLiteDatabase | ReturnType<typeof getWebDb>;
+
+export function getDb(): AnyDb {
+  if (Platform.OS === "web") {
+    return getWebDb();
+  }
   if (!db) {
     db = SQLite.openDatabaseSync("poultrytech_offline.db");
   }
