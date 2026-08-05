@@ -120,12 +120,12 @@ function GeneratorHoursChart({
 }) {
   const interactive = onEdit != null && onDelete != null;
   return (
-    <div className="text-xs leading-tight">
-      <h4 className="mb-0.5 font-bold text-stone-900">{title}</h4>
-      <div className="flex gap-3 text-[11px] leading-none text-stone-500">
-        <span className="w-20 shrink-0 font-semibold">Date</span>
-        <span className="w-12 shrink-0 font-semibold">Hours</span>
-        <span className="w-14 shrink-0 font-semibold">Exercised</span>
+    <div className="text-sm leading-snug">
+      <h4 className="mb-1 text-base font-bold text-stone-900">{title}</h4>
+      <div className="flex gap-3 text-sm leading-none text-stone-500">
+        <span className="w-24 shrink-0 font-semibold">Date</span>
+        <span className="w-14 shrink-0 font-semibold">Hours</span>
+        <span className="w-16 shrink-0 font-semibold">Exercised</span>
       </div>
       {rows.length === 0 ? (
         <p className="text-stone-500">None yet</p>
@@ -133,12 +133,12 @@ function GeneratorHoursChart({
         <div>
           {rows.map((row) => {
             const content = (
-              <div className="flex items-center gap-3 py-0.5 leading-none tabular-nums text-stone-800">
-                <span className="w-20 shrink-0 whitespace-nowrap font-medium">{row.dateLabel}</span>
-                <span className="w-12 shrink-0 font-medium">
+              <div className="flex items-center gap-3 py-1 leading-snug tabular-nums text-stone-800">
+                <span className="w-24 shrink-0 whitespace-nowrap font-semibold">{row.dateLabel}</span>
+                <span className="w-14 shrink-0 font-semibold">
                   {formatGeneratorHours(row.hours)}
                 </span>
-                <span className="w-14 shrink-0 font-medium">
+                <span className="w-16 shrink-0 font-semibold">
                   {formatGeneratorHours(row.exercised)}
                 </span>
               </div>

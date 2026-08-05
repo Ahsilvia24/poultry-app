@@ -252,23 +252,23 @@ function GeneratorHoursChart({
 }) {
   const interactive = onEdit != null && onDelete != null;
   return (
-    <View style={{ marginTop: 6 }}>
-      <Text style={{ fontWeight: "700", fontSize: 12, color: colors.text, marginBottom: 1 }}>
+    <View style={{ marginTop: 8 }}>
+      <Text style={{ fontWeight: "700", fontSize: 15, color: colors.text, marginBottom: 2 }}>
         {title}
       </Text>
       <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-        <Text style={{ width: 80, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 96, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Date
         </Text>
-        <Text style={{ width: 48, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 56, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Hours
         </Text>
-        <Text style={{ width: 56, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 72, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Exercised
         </Text>
       </View>
       {rows.length === 0 ? (
-        <Text style={[styles.muted, { fontSize: 12 }]}>None yet</Text>
+        <Text style={[styles.muted, { fontSize: 14 }]}>None yet</Text>
       ) : (
         <View>
           {rows.map((row) => {
@@ -278,15 +278,15 @@ function GeneratorHoursChart({
                   flexDirection: "row",
                   gap: 12,
                   alignItems: "center",
-                  minHeight: 22,
+                  minHeight: 28,
                   backgroundColor: colors.card,
                 }}
               >
                 <Text
                   style={{
-                    width: 80,
-                    fontSize: 12,
-                    lineHeight: 16,
+                    width: 96,
+                    fontSize: 15,
+                    lineHeight: 20,
                     fontWeight: "600",
                     color: colors.text,
                     fontVariant: ["tabular-nums"],
@@ -297,9 +297,9 @@ function GeneratorHoursChart({
                 </Text>
                 <Text
                   style={{
-                    width: 48,
-                    fontSize: 12,
-                    lineHeight: 16,
+                    width: 56,
+                    fontSize: 15,
+                    lineHeight: 20,
                     fontWeight: "600",
                     color: colors.text,
                     fontVariant: ["tabular-nums"],
@@ -309,9 +309,9 @@ function GeneratorHoursChart({
                 </Text>
                 <Text
                   style={{
-                    width: 56,
-                    fontSize: 12,
-                    lineHeight: 16,
+                    width: 72,
+                    fontSize: 15,
+                    lineHeight: 20,
                     fontWeight: "600",
                     color: colors.text,
                     fontVariant: ["tabular-nums"],
