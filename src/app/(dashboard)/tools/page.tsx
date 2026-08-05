@@ -195,11 +195,7 @@ export default async function ToolsPage({
           />
         </ToolsSectionPanel>
 
-        <ToolsSectionPanel
-          hashId="temp-curve"
-          title="Temp Curve"
-          subtitle="Target house temperature (°F) by bird age — summer vs winter"
-        >
+        <ToolsSectionPanel hashId="temp-curve" title="Temp Curve">
           <TempCurveChart />
         </ToolsSectionPanel>
 

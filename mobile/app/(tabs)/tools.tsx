@@ -324,7 +324,6 @@ export default function ToolsScreen() {
           {open.temp ? (
             <SectionPanel
               title="Temp Curve"
-              subtitle="Target house temperature (°F) by bird age — summer vs winter"
               onClose={() => setOpen((p) => ({ ...p, temp: false }))}
             >
               <TempCurveChart />

@@ -215,9 +215,6 @@ export function CoolCellsChart() {
   return (
     <View style={{ gap: 20 }}>
       <View style={{ gap: 6 }}>
-        <Text style={{ fontSize: 12, color: colors.muted }}>
-          Big Bird cool cell settings by bird age
-        </Text>
         <CoolCellSettingsTable rows={BIG_BIRD_COOL_CELLS} diffLabel="Temp diff" />
         <Text style={{ fontSize: 12, color: colors.muted }}>{SCHEDULE_NOTE}</Text>
       </View>
@@ -226,16 +223,12 @@ export function CoolCellsChart() {
         <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>
           Tunnel Diff Cool Cells
         </Text>
-        <Text style={{ fontSize: 12, color: colors.muted }}>
-          Big Bird cool cell settings by bird age
-        </Text>
         <CoolCellSettingsTable rows={MIST_AND_COOL_CELLS} diffLabel="Tunnel diff" />
         <Text style={{ fontSize: 12, color: colors.muted }}>{SCHEDULE_NOTE}</Text>
       </View>
 
       <View style={{ gap: 6 }}>
         <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>Chore Time</Text>
-        <Text style={{ fontSize: 12, color: colors.muted }}>Cool pad settings</Text>
         <View
           style={{
             borderWidth: 1,
