@@ -10,7 +10,7 @@ import {
 } from "@/components/FeedDeliveryForm";
 import { SwipeToDeleteRow } from "@/components/SwipeToDeleteRow";
 import { Card } from "@/components/ui";
-import { formatPoundsK } from "@/lib/utils";
+import { formatFeedMillShort, formatPoundsK } from "@/lib/utils";
 
 type DeliveryRow = FeedDeliveryFormValues & {
   id: string;
@@ -107,7 +107,7 @@ export function FarmFeedSection({
                   {d.houseNumber != null ? `H${d.houseNumber} · ` : ""}
                   {formatPoundsK(d.poundsDelivered)} lbs
                   {d.feedType ? ` · ${d.feedType}` : ""}
-                  {d.feedMill ? ` · ${d.feedMill}` : ""}
+                  {d.feedMill ? ` · ${formatFeedMillShort(d.feedMill)}` : ""}
                 </div>
               </SwipeToDeleteRow>
               {editingId === d.id ? (

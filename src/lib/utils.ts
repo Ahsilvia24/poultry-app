@@ -35,6 +35,15 @@ export const FEED_TYPE_OPTIONS = ["Pre-started", "Starter", "Grower", "Finisher"
 
 export const FEED_MILL_OPTIONS = ["Heavener", "Fort Smith"] as const;
 
+/** Short labels for feed mill list rows: Heavener → HV, Fort Smith → FS. */
+export function formatFeedMillShort(mill: string | null | undefined): string {
+  if (!mill) return "";
+  const key = mill.trim().toLowerCase();
+  if (key === "heavener") return "HV";
+  if (key === "fort smith") return "FS";
+  return mill;
+}
+
 export const PROCESSING_PLANT_OPTIONS = ["Heavener", "Stigler"] as const;
 
 export const VISIT_TYPE_LABELS: Record<string, string> = {

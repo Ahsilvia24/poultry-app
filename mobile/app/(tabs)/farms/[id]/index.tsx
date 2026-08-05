@@ -66,6 +66,7 @@ import {
   formatPct,
   formatPoundsK,
 } from "../../../../src/components/ui";
+import { formatFeedMillShort } from "../../../../src/lib/opsLabels";
 import { DatePickerField } from "../../../../src/components/DatePickerField";
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
 
@@ -1843,7 +1844,7 @@ export default function FarmDetailScreen() {
                       {d.houseNumber != null ? `H${d.houseNumber} · ` : ""}
                       {formatPoundsK(d.poundsDelivered)} lbs
                       {d.feedType ? ` · ${d.feedType}` : ""}
-                      {d.feedMill ? ` · ${d.feedMill}` : ""}
+                      {d.feedMill ? ` · ${formatFeedMillShort(d.feedMill)}` : ""}
                     </Text>
                   </Pressable>
                 </Swipeable>
