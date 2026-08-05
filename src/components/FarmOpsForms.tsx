@@ -309,6 +309,9 @@ export function LitterEventForm({
       }}
     >
       <input type="hidden" name="farmId" value={farmId} />
+      {initial?.cost != null ? (
+        <input type="hidden" name="cost" value={String(initial.cost)} />
+      ) : null}
       <div className="flex items-start gap-3">
         <div className="shrink-0">
           <Label htmlFor={fid("eventDate")}>Event date</Label>
