@@ -312,6 +312,9 @@ export function LitterEventForm({
       {initial?.cost != null ? (
         <input type="hidden" name="cost" value={String(initial.cost)} />
       ) : null}
+      {initial?.litterDepth != null ? (
+        <input type="hidden" name="litterDepth" value={String(initial.litterDepth)} />
+      ) : null}
       <div className="flex items-start gap-3">
         <div className="shrink-0">
           <Label htmlFor={fid("eventDate")}>Event date</Label>
@@ -354,25 +357,13 @@ export function LitterEventForm({
           ))}
         </Select>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <Label htmlFor={fid("contractor")}>Contractor</Label>
-          <Input
-            id={fid("contractor")}
-            name="contractor"
-            defaultValue={initial?.contractor ?? undefined}
-          />
-        </div>
-        <div>
-          <Label htmlFor={fid("litterDepth")}>Litter depth</Label>
-          <Input
-            id={fid("litterDepth")}
-            name="litterDepth"
-            type="number"
-            step="any"
-            defaultValue={initial?.litterDepth ?? undefined}
-          />
-        </div>
+      <div>
+        <Label htmlFor={fid("contractor")}>Contractor</Label>
+        <Input
+          id={fid("contractor")}
+          name="contractor"
+          defaultValue={initial?.contractor ?? undefined}
+        />
       </div>
       <div>
         <Label htmlFor={fid("litterNotes")}>Notes</Label>

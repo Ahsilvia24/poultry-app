@@ -50,9 +50,6 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
   const [eventType, setEventType] = useState(initial?.eventType ?? "FULL_LITTER_CLEANOUT");
   const [houseId, setHouseId] = useState(initial?.houseId ?? "");
   const [contractor, setContractor] = useState(initial?.contractor ?? "");
-  const [litterDepth, setLitterDepth] = useState(
-    initial?.litterDepth != null ? String(initial.litterDepth) : "",
-  );
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [picker, setPicker] = useState<"house" | "type" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,16 +69,13 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
     setBusy(true);
     setError(null);
     try {
-      const depth =
-        litterDepth.trim() === "" ? null : Number(litterDepth);
-      if (depth != null && !Number.isFinite(depth)) throw new Error("Litter depth is invalid");
       const payload = {
         farmId,
         houseId: houseId || null,
         eventDate: eventDate.trim(),
         eventType,
         contractor,
-        litterDepth: depth,
+        litterDepth: initial?.litterDepth ?? null,
         cost: initial?.cost ?? null,
         notes,
       };
@@ -146,13 +140,6 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
             />
             <Text style={[styles.label, { marginTop: 8 }]}>Contractor</Text>
             <TextInput style={styles.input} value={contractor} onChangeText={setContractor} />
-            <Text style={[styles.label, { marginTop: 8 }]}>Litter depth</Text>
-            <TextInput
-              style={styles.input}
-              value={litterDepth}
-              onChangeText={setLitterDepth}
-              keyboardType="decimal-pad"
-            />
             <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
             <TextInput
               style={[styles.input, { minHeight: 64, textAlignVertical: "top" }]}
