@@ -229,20 +229,21 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
 
           <Card>
             <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
-              <View style={{ width: 168 }}>
+              <View style={{ width: 148, flexShrink: 0, overflow: "hidden" }}>
                 <DatePickerField
                   label="Date"
                   value={visitDate}
                   onChange={setVisitDate}
                 />
               </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
+              <View style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                 <Text style={styles.label}>Type</Text>
                 <Pressable
                   onPress={() => setTypePickerOpen(true)}
                   style={[
                     styles.input,
                     {
+                      width: "100%",
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "space-between",
@@ -311,7 +312,7 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
             </Pressable>
 
             {followUpRequired ? (
-              <View style={{ marginTop: 4, width: 168 }}>
+              <View style={{ marginTop: 4, width: 148, overflow: "hidden" }}>
                 <DatePickerField
                   label="Follow-up date"
                   value={followUpDate}

@@ -93,7 +93,7 @@ export function DatePickerField({
   const pickerValue = safePickerDate(draft);
 
   return (
-    <View>
+    <View style={{ width: "100%" }}>
       <Text style={styles.label}>{label}</Text>
       <Pressable
         onPress={openPicker}
@@ -102,9 +102,12 @@ export function DatePickerField({
         style={[
           styles.input,
           {
+            width: "100%",
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
+            overflow: "hidden",
+            paddingHorizontal: 10,
           },
         ]}
       >
