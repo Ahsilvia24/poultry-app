@@ -7,14 +7,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
 import { todayKey } from "../lib/ids";
 
-/** "2026-07-26" → "July 26, 2026" */
+/** "2026-07-26" → "Jul 26, 2026" */
 export function formatDisplayDate(dateKey: string) {
   if (!dateKey) return "Select date";
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
   const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
   return dt.toLocaleDateString(undefined, {
-    month: "long",
+    month: "short",
     day: "numeric",
     year: "numeric",
   });
@@ -109,10 +109,13 @@ export function DatePickerField({
         ]}
       >
         <Text
+          numberOfLines={1}
           style={{
             fontWeight: "700",
             color: value ? colors.text : colors.muted,
             fontSize: 16,
+            flexShrink: 1,
+            marginRight: 6,
           }}
         >
           {formatDisplayDate(value)}

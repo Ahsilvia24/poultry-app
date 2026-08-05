@@ -72,8 +72,8 @@ export function FarmVisitForm({
     >
       <input type="hidden" name="farmId" value={farmId} />
       {flockId ? <input type="hidden" name="flockId" value={flockId} /> : null}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="min-w-0">
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="w-[10.5rem] shrink-0">
           <Label htmlFor={fid("visitDate")}>Date</Label>
           <Input
             id={fid("visitDate")}
@@ -84,7 +84,7 @@ export function FarmVisitForm({
             onChange={(e) => setVisitDate(e.target.value)}
           />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 basis-40">
           <Label htmlFor={fid("visitType")}>Type</Label>
           <Select
             id={fid("visitType")}
@@ -125,7 +125,7 @@ export function FarmVisitForm({
         />
         Follow-up required
       </label>
-      <div>
+      <div className="w-[10.5rem]">
         <Label htmlFor={fid("followUpDate")}>Follow-up date</Label>
         <Input
           id={fid("followUpDate")}
