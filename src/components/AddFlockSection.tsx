@@ -150,10 +150,6 @@ export function AddFlockSection({
                   })}
                 </div>
               </div>
-              <div>
-                <Label htmlFor="flockNotes">Notes</Label>
-                <Textarea id="flockNotes" name="notes" rows={2} />
-              </div>
               <Button type="submit" disabled={pending}>
                 {pending ? "Creating…" : "Create flock"}
               </Button>
