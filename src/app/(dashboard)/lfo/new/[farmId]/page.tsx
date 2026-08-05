@@ -29,7 +29,7 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
         where: { flockStatus: "ACTIVE", deletedAt: null },
         orderBy: { placementDate: "desc" },
         take: 1,
-        select: { id: true, flockNumber: true },
+        select: { id: true },
       },
     },
   });
@@ -51,15 +51,12 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
 
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between gap-3">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <PageTitleBackLink href="/lfo/new" label="LFOs" />
         <h1 className={cn(PAGE_TITLE_CLASS, "min-w-0 truncate text-right")}>
           {farm.farmName}
         </h1>
       </div>
-      <p className="mb-6 text-stone-600">
-        Flock {flock.flockNumber} — inventory, feed up, and consumption
-      </p>
 
       <Card>
         <LfoInventoryForm
