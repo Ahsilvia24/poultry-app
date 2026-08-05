@@ -2474,32 +2474,68 @@ export default function FarmDetailScreen() {
                     {generatorError}
                   </Text>
                 ) : null}
-                <View style={{ marginTop: 14, marginBottom: 10 }}>
-                  <DatePickerField
-                    label="Date logged"
-                    value={generatorDraft.logDate}
-                    presentation="inline"
-                    compact
-                    onChange={(date) =>
-                      setGeneratorDraft((prev) => ({ ...prev, logDate: date }))
-                    }
-                  />
-                </View>
-                {(generatorEditingGen
-                  ? GENERATOR_FIELD_DEFS.filter((f) => f.hourKey === generatorEditingGen)
-                  : GENERATOR_FIELD_DEFS
-                ).map((f) => (
-                  <NativeNumInput
-                    key={f.hourKey}
-                    label={`${f.label} hours`}
-                    value={generatorDraft[f.hourKey]}
-                    decimal
-                    placeholder="Optional"
-                    onChangeText={(v) =>
-                      setGeneratorDraft((prev) => ({ ...prev, [f.hourKey]: v }))
-                    }
-                  />
-                ))}
+                {generatorEditingGen ? (
+                  <View
+                    style={{
+                      marginTop: 14,
+                      marginBottom: 10,
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      gap: 10,
+                    }}
+                  >
+                    <DatePickerField
+                      label="Date logged"
+                      value={generatorDraft.logDate}
+                      presentation="inline"
+                      compact
+                      onChange={(date) =>
+                        setGeneratorDraft((prev) => ({ ...prev, logDate: date }))
+                      }
+                    />
+                    {GENERATOR_FIELD_DEFS.filter(
+                      (f) => f.hourKey === generatorEditingGen,
+                    ).map((f) => (
+                      <NativeNumInput
+                        key={f.hourKey}
+                        label={`${f.label} hours`}
+                        value={generatorDraft[f.hourKey]}
+                        decimal
+                        placeholder="Optional"
+                        onChangeText={(v) =>
+                          setGeneratorDraft((prev) => ({ ...prev, [f.hourKey]: v }))
+                        }
+                        style={{ flex: 1, marginBottom: 0 }}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <>
+                    <View style={{ marginTop: 14, marginBottom: 10 }}>
+                      <DatePickerField
+                        label="Date logged"
+                        value={generatorDraft.logDate}
+                        presentation="inline"
+                        compact
+                        onChange={(date) =>
+                          setGeneratorDraft((prev) => ({ ...prev, logDate: date }))
+                        }
+                      />
+                    </View>
+                    {GENERATOR_FIELD_DEFS.map((f) => (
+                      <NativeNumInput
+                        key={f.hourKey}
+                        label={`${f.label} hours`}
+                        value={generatorDraft[f.hourKey]}
+                        decimal
+                        placeholder="Optional"
+                        onChangeText={(v) =>
+                          setGeneratorDraft((prev) => ({ ...prev, [f.hourKey]: v }))
+                        }
+                      />
+                    ))}
+                  </>
+                )}
                 <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
                   <PrimaryButton
                     label={generatorSaving ? "Saving…" : "Save"}

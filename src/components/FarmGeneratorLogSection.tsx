@@ -222,44 +222,88 @@ function GeneratorLogForm({
     >
       <input type="hidden" name="farmId" value={farmId} />
       {onlyGen ? <input type="hidden" name="onlyGen" value={onlyGen} /> : null}
-      <div>
-        <Label htmlFor="gen-logDate">Date logged</Label>
-        <DateInput
-          id="gen-logDate"
-          name="logDate"
-          required
-          value={logDate}
-          onChange={(e) => setLogDate(e.target.value)}
-        />
-      </div>
-      <div className={`grid gap-3 ${onlyGen ? "grid-cols-1" : "grid-cols-2"}`}>
-        {visibleFields.map((field) => {
-          const [value, setValue] = fieldState[field.hourKey];
-          const delta = hoursDelta(
-            value.trim() === "" ? null : Number(value),
-            previousByGen?.[field.hourKey] ?? null,
-          );
-          return (
-            <div key={field.hourKey}>
-              <Label htmlFor={`gen-${field.hourKey}`}>{field.label} hours</Label>
-              <Input
-                id={`gen-${field.hourKey}`}
-                name={field.hourKey}
-                type="text"
-                inputMode="decimal"
-                value={value}
-                placeholder="Optional"
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ""))}
-                className="placeholder:text-stone-400/70"
-              />
-              <p className="mt-1 text-xs text-stone-500">
-                Time exercised: {formatGeneratorHours(delta)}
-              </p>
-            </div>
-          );
-        })}
-      </div>
+      {onlyGen ? (
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="shrink-0">
+            <Label htmlFor="gen-logDate">Date logged</Label>
+            <DateInput
+              id="gen-logDate"
+              name="logDate"
+              required
+              value={logDate}
+              onChange={(e) => setLogDate(e.target.value)}
+            />
+          </div>
+          {visibleFields.map((field) => {
+            const [value, setValue] = fieldState[field.hourKey];
+            const delta = hoursDelta(
+              value.trim() === "" ? null : Number(value),
+              previousByGen?.[field.hourKey] ?? null,
+            );
+            return (
+              <div key={field.hourKey} className="min-w-[7rem] flex-1">
+                <Label htmlFor={`gen-${field.hourKey}`}>{field.label} hours</Label>
+                <Input
+                  id={`gen-${field.hourKey}`}
+                  name={field.hourKey}
+                  type="text"
+                  inputMode="decimal"
+                  value={value}
+                  placeholder="Optional"
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ""))}
+                  className="placeholder:text-stone-400/70"
+                  style={{ height: 44, minHeight: 0 }}
+                />
+                <p className="mt-1 text-xs text-stone-500">
+                  Time exercised: {formatGeneratorHours(delta)}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <>
+          <div>
+            <Label htmlFor="gen-logDate">Date logged</Label>
+            <DateInput
+              id="gen-logDate"
+              name="logDate"
+              required
+              value={logDate}
+              onChange={(e) => setLogDate(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {visibleFields.map((field) => {
+              const [value, setValue] = fieldState[field.hourKey];
+              const delta = hoursDelta(
+                value.trim() === "" ? null : Number(value),
+                previousByGen?.[field.hourKey] ?? null,
+              );
+              return (
+                <div key={field.hourKey}>
+                  <Label htmlFor={`gen-${field.hourKey}`}>{field.label} hours</Label>
+                  <Input
+                    id={`gen-${field.hourKey}`}
+                    name={field.hourKey}
+                    type="text"
+                    inputMode="decimal"
+                    value={value}
+                    placeholder="Optional"
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ""))}
+                    className="placeholder:text-stone-400/70"
+                  />
+                  <p className="mt-1 text-xs text-stone-500">
+                    Time exercised: {formatGeneratorHours(delta)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={pending}>
