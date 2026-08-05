@@ -126,6 +126,7 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
               label="Date reported"
               value={dateReported}
               onChange={setDateReported}
+              compact
             />
             <SelectField label="House" valueLabel={houseLabel} onPress={() => setPicker("house")} />
             <SelectField

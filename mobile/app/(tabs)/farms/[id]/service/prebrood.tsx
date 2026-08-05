@@ -126,7 +126,12 @@ export default function PrebroodChecklistScreen() {
               <TextField label="Flock" value={form.flockNumber} onChange={(flockNumber) => patch({ flockNumber })} />
             }
           />
-          <DatePickerField label="Date" value={form.date} onChange={(date) => patch({ date })} />
+          <DatePickerField
+            label="Date"
+            value={form.date}
+            onChange={(date) => patch({ date })}
+            compact
+          />
           <Text style={{ fontWeight: "700", marginBottom: 6 }}>Window</Text>
           <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
             {(["48", "72"] as const).map((opt) => {
@@ -289,6 +294,7 @@ export default function PrebroodChecklistScreen() {
                 label={`Service date (${formatServiceShortDate(form.generatorServiceDate || form.date) || "dd MMM yy"})`}
                 value={form.generatorServiceDate || form.date}
                 onChange={(generatorServiceDate) => patch({ generatorServiceDate })}
+                compact
               />
             </View>
           ) : null}

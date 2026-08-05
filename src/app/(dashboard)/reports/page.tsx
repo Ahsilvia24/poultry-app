@@ -13,7 +13,7 @@ import {
   type HouseBarPoint,
   type HouseByDateMatrix,
 } from "@/components/MortalityCharts";
-import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import { Button, Card, DateInput, Label, PageHeader, Select } from "@/components/ui";
 
 type SearchParams = Promise<{
   farmId?: string;
@@ -294,12 +294,12 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           </div>
           <div>
             <Label htmlFor="from">From</Label>
-            <Input id="from" name="from" type="date" defaultValue={from} />
+            <DateInput id="from" name="from" defaultValue={from} />
             <p className="mt-1 text-xs text-stone-500">{format(fromDate, "MMMM d, yyyy")}</p>
           </div>
           <div>
             <Label htmlFor="to">To</Label>
-            <Input id="to" name="to" type="date" defaultValue={to} />
+            <DateInput id="to" name="to" defaultValue={to} />
             <p className="mt-1 text-xs text-stone-500">{format(toDate, "MMMM d, yyyy")}</p>
           </div>
           <div>

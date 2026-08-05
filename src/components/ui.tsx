@@ -38,6 +38,22 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   );
 }
 
+/** Compact date control — same size as Log visit / Generator log date fields. */
+export function DateInput({
+  className,
+  style,
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
+  return (
+    <Input
+      type="date"
+      className={cn("box-border px-1.5 text-base leading-none !min-h-0", className)}
+      style={{ width: "8.75rem", height: 44, ...style }}
+      {...props}
+    />
+  );
+}
+
 export function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select

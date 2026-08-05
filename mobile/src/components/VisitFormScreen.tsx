@@ -229,7 +229,7 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
 
           <Card>
             <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
-              <View style={{ width: 122, flexShrink: 0 }}>
+              <View style={{ flexShrink: 0 }}>
                 <DatePickerField
                   label="Date"
                   value={visitDate}
@@ -319,7 +319,7 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
             </Pressable>
 
             {followUpRequired ? (
-              <View style={{ marginTop: 4, width: 122 }}>
+              <View style={{ marginTop: 4 }}>
                 <DatePickerField
                   label="Follow-up date"
                   value={followUpDate}

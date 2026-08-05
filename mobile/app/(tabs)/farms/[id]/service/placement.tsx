@@ -165,7 +165,12 @@ export default function PlacementChecklistScreen() {
               />
             }
           />
-          <DatePickerField label="Date" value={form.date} onChange={(date) => patch({ date })} />
+          <DatePickerField
+            label="Date"
+            value={form.date}
+            onChange={(date) => patch({ date })}
+            compact
+          />
           <TextField
             label="Service tech"
             value={form.serviceTech}

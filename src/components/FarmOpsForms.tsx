@@ -22,7 +22,7 @@ import {
   LITTER_EVENT_LABELS,
   VISIT_TYPE_OPTIONS,
 } from "@/lib/utils";
-import { Button, Input, Label, Select, Textarea } from "@/components/ui";
+import { Button, DateInput, Input, Label, Select, Textarea } from "@/components/ui";
 
 export type VisitFormValues = {
   visitDate: string;
@@ -75,15 +75,12 @@ export function FarmVisitForm({
       <div className="flex items-start gap-3">
         <div className="shrink-0">
           <Label htmlFor={fid("visitDate")}>Date</Label>
-          <Input
+          <DateInput
             id={fid("visitDate")}
             name="visitDate"
-            type="date"
             required
             value={visitDate}
             onChange={(e) => setVisitDate(e.target.value)}
-            className="box-border px-1.5 text-base leading-none !min-h-0"
-            style={{ width: "8.75rem", height: 44 }}
           />
         </div>
         <div className="min-w-0 flex-1">
@@ -131,13 +128,10 @@ export function FarmVisitForm({
       </label>
       <div className="shrink-0">
         <Label htmlFor={fid("followUpDate")}>Follow-up date</Label>
-        <Input
+        <DateInput
           id={fid("followUpDate")}
           name="followUpDate"
-          type="date"
           defaultValue={initial?.followUpDate ?? undefined}
-          className="box-border px-1.5 text-base leading-none !min-h-0"
-          style={{ width: "8.75rem", height: 44 }}
         />
       </div>
       <Button type="submit" disabled={pending}>
@@ -194,10 +188,9 @@ export function FarmIssueForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label htmlFor={fid("dateReported")}>Date reported</Label>
-          <Input
+          <DateInput
             id={fid("dateReported")}
             name="dateReported"
-            type="date"
             required
             defaultValue={initial?.dateReported ?? new Date().toISOString().slice(0, 10)}
           />
@@ -319,10 +312,9 @@ export function LitterEventForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label htmlFor={fid("eventDate")}>Event date</Label>
-          <Input
+          <DateInput
             id={fid("eventDate")}
             name="eventDate"
-            type="date"
             required
             defaultValue={initial?.eventDate ?? new Date().toISOString().slice(0, 10)}
           />

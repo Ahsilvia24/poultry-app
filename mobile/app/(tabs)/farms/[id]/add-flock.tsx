@@ -207,6 +207,7 @@ export default function AddFlockScreen() {
                   label="Placement date"
                   value={placementDate}
                   onChange={onPlacementChange}
+                  compact
                 />
               </View>
 
@@ -223,6 +224,7 @@ export default function AddFlockScreen() {
                   label="Catch date"
                   value={catchDate}
                   onChange={onCatchChange}
+                  compact
                 />
               </View>
 

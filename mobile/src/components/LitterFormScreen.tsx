@@ -121,7 +121,12 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
             subtitle={detail?.farm.farmName ?? "Farm"}
           />
           <Card>
-            <DatePickerField label="Event date" value={eventDate} onChange={setEventDate} />
+            <DatePickerField
+              label="Event date"
+              value={eventDate}
+              onChange={setEventDate}
+              compact
+            />
             <SelectField
               label="Event type"
               valueLabel={LITTER_EVENT_LABELS[eventType] ?? eventType}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
-import { Input, Label } from "@/components/ui";
+import { DateInput, Input, Label } from "@/components/ui";
 
 const DEFAULT_MARKET_AGE = 52;
 
@@ -63,10 +63,9 @@ export function FlockScheduleFields({
     <>
       <div>
         <Label htmlFor="placementDate">Placement date</Label>
-        <Input
+        <DateInput
           id="placementDate"
           name="placementDate"
-          type="date"
           required
           value={placementDate}
           onChange={(e) => onPlacementChange(e.target.value)}
@@ -86,10 +85,9 @@ export function FlockScheduleFields({
       </div>
       <div>
         <Label htmlFor="projectedCatchDate">Projected catch</Label>
-        <Input
+        <DateInput
           id="projectedCatchDate"
           name="projectedCatchDate"
-          type="date"
           required
           value={catchDate}
           onChange={(e) => onCatchChange(e.target.value)}

@@ -99,7 +99,7 @@ export function DatePickerField({
   const pickerValue = safePickerDate(draft);
 
   return (
-    <View style={{ width: "100%" }}>
+    <View style={{ width: compact ? 122 : "100%", alignSelf: compact ? "flex-start" : undefined }}>
       <Text style={styles.label}>{label}</Text>
       <Pressable
         onPress={openPicker}

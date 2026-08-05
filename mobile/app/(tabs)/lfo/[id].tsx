@@ -415,6 +415,7 @@ export default function EditLfoScreen() {
                   label="Order date"
                   value={orderDate}
                   onChange={setOrderDate}
+                  compact
                 />
                 <View style={{ marginTop: 12 }}>
                   <FieldButton
@@ -479,6 +480,7 @@ export default function EditLfoScreen() {
                         label="Feed up date"
                         value={house.feedUpDate}
                         onChange={(date) => updateHouse(house.houseId, { feedUpDate: date })}
+                        compact
                       />
                     </View>
                     <TimeScrollPickerField

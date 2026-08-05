@@ -121,9 +121,9 @@ export default function ReportsScreen() {
         </ScrollView>
 
         <Card>
-          <DatePickerField label="From" value={from} onChange={setFrom} />
+          <DatePickerField label="From" value={from} onChange={setFrom} compact />
           <View style={{ height: 8 }} />
-          <DatePickerField label="To" value={to} onChange={setTo} />
+          <DatePickerField label="To" value={to} onChange={setTo} compact />
           <Text style={[styles.muted, { marginTop: 8, marginBottom: 4 }]}>
             {formatMdY(from)} – {formatMdY(to)}
           </Text>

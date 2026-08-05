@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Button, Input, Label, Select } from "@/components/ui";
+import { Button, DateInput, Input, Label, Select } from "@/components/ui";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
@@ -182,7 +182,7 @@ export function LfoInventoryForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label htmlFor="orderDate">Order date</Label>
-          <Input id="orderDate" name="orderDate" type="date" required defaultValue={orderDate} />
+          <DateInput id="orderDate" name="orderDate" required defaultValue={orderDate} />
         </div>
         <div>
           <Label htmlFor="consumptionRate">Consumption rate (lbs/bird/day)</Label>
@@ -256,9 +256,8 @@ export function LfoInventoryForm({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor={`feedUpDate-${house.houseId}`}>Feed up date</Label>
-                    <Input
+                    <DateInput
                       id={`feedUpDate-${house.houseId}`}
-                      type="date"
                       value={house.feedUpDate}
                       onChange={(e) => updateRow(house.houseId, { feedUpDate: e.target.value })}
                       className="mt-1"

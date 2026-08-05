@@ -8,7 +8,7 @@ import {
   updateGeneratorLogAction,
 } from "@/app/actions/ops";
 import { DeleteRecordButton } from "@/components/DeleteRecordButton";
-import { Button, Card, Input, Label } from "@/components/ui";
+import { Button, Card, DateInput, Input, Label } from "@/components/ui";
 import {
   formatGeneratorChartsCopy,
   formatGeneratorHours,
@@ -241,10 +241,9 @@ function GeneratorLogForm({
       {onlyGen ? <input type="hidden" name="onlyGen" value={onlyGen} /> : null}
       <div>
         <Label htmlFor="gen-logDate">Date logged</Label>
-        <Input
+        <DateInput
           id="gen-logDate"
           name="logDate"
-          type="date"
           required
           value={logDate}
           onChange={(e) => setLogDate(e.target.value)}

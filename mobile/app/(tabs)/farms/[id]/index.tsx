@@ -2061,6 +2061,7 @@ export default function FarmDetailScreen() {
                             label="Placement date"
                             value={editingHouse.placementDate}
                             presentation="inline"
+                            compact
                             onChange={(date) =>
                               setEditingHouse((prev) => {
                                 if (!prev) return prev;
@@ -2085,6 +2086,7 @@ export default function FarmDetailScreen() {
                             label="Catch date"
                             value={editingHouse.catchDate}
                             presentation="inline"
+                            compact
                             onChange={(date) =>
                               setEditingHouse((prev) =>
                                 prev ? { ...prev, catchDate: date } : prev,
@@ -2504,6 +2506,7 @@ export default function FarmDetailScreen() {
                     label="Date logged"
                     value={generatorDraft.logDate}
                     presentation="inline"
+                    compact
                     onChange={(date) =>
                       setGeneratorDraft((prev) => ({ ...prev, logDate: date }))
                     }

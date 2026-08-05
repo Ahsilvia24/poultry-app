@@ -123,6 +123,7 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
               label="Delivery date"
               value={deliveryDate}
               onChange={setDeliveryDate}
+              compact
             />
             <SelectField
               label="Flock"

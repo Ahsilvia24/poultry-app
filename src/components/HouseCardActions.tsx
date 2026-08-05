@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { deleteHouseAction, updateHouseAction } from "@/app/actions/farms";
-import { Button, Input, Label, Textarea } from "@/components/ui";
+import { Button, DateInput, Input, Label, Textarea } from "@/components/ui";
 
 export type HouseEditValues = {
   id: string;
@@ -168,20 +168,18 @@ export function HouseCardActions({
                   </div>
                   <div>
                     <Label htmlFor={`edit-placementDate-${house.id}`}>Placement date</Label>
-                    <Input
+                    <DateInput
                       id={`edit-placementDate-${house.id}`}
                       name="placementDate"
-                      type="date"
                       value={placementDate}
                       onChange={(e) => onPlacementChange(e.target.value)}
                     />
                   </div>
                   <div>
                     <Label htmlFor={`edit-catchDate-${house.id}`}>Catch date</Label>
-                    <Input
+                    <DateInput
                       id={`edit-catchDate-${house.id}`}
                       name="catchDate"
-                      type="date"
                       value={catchDate}
                       onChange={(e) => setCatchDate(e.target.value)}
                     />

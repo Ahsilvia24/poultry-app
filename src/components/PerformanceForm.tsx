@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { upsertPerformanceAction } from "@/app/actions/ops";
-import { Button, Input, Label, Select, Textarea } from "@/components/ui";
+import { Button, DateInput, Input, Label, Select, Textarea } from "@/components/ui";
 
 export function PerformanceForm({
   houseFlocks,
@@ -62,7 +62,7 @@ export function PerformanceForm({
         </div>
         <div>
           <Label htmlFor="settlementDate">Settlement date</Label>
-          <Input id="settlementDate" name="settlementDate" type="date" />
+          <DateInput id="settlementDate" name="settlementDate" />
         </div>
       </div>
       <div>

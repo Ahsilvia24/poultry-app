@@ -190,6 +190,7 @@ export default function ServiceReportScreen() {
             label="Date"
             value={form.date}
             onChange={(date) => patch({ date })}
+            compact
           />
           <TextField
             label="Service tech"
