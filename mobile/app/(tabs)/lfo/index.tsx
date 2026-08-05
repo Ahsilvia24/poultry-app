@@ -304,12 +304,8 @@ export default function LfoListScreen() {
           ) : null}
 
           <Card style={{ marginTop: 8 }}>
-            <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>
+            <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
               Consumption rate calculator
-            </Text>
-            <Text style={[styles.muted, { marginTop: 4, marginBottom: 12 }]}>
-              Daily water (gal) × {LBS_PER_GALLON} = WC → WC ÷ {WATER_TO_FEED_RATIO} = FC → FC ÷ head
-              count
             </Text>
             <View style={styles.row}>
               <CalcFieldButton
