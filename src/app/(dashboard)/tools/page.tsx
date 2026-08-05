@@ -136,6 +136,17 @@ export default async function ToolsPage({
 
       <div className="space-y-4">
         <ToolsSectionPanel
+          hashId="weight-projections"
+          title="Weight projections"
+          subtitle="Age at kill × growth rate"
+        >
+          <ToolsWeightProjections
+            farms={weightFarms}
+            initialFarmId={sp.farmId ?? null}
+          />
+        </ToolsSectionPanel>
+
+        <ToolsSectionPanel
           hashId="temp-curve"
           title="Temp Curve"
           subtitle="Target house temperature (°F) by bird age — summer vs winter"
@@ -157,17 +168,6 @@ export default async function ToolsPage({
 
         <ToolsSectionPanel hashId="lights" title="Lights">
           <LightsChart />
-        </ToolsSectionPanel>
-
-        <ToolsSectionPanel
-          hashId="weight-projections"
-          title="Weight projections"
-          subtitle="Age at kill × growth rate"
-        >
-          <ToolsWeightProjections
-            farms={weightFarms}
-            initialFarmId={sp.farmId ?? null}
-          />
         </ToolsSectionPanel>
 
         <ToolsSectionPanel
