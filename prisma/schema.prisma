@@ -173,6 +173,7 @@ model Farm {
   generatorLogs GeneratorLog[]
   followUpCompletions FollowUpCompletion[]
   lastFeedOrders LastFeedOrder[]
+  serviceForms ServiceForm[]
 
   @@index([userId])
   @@index([farmName])
@@ -259,6 +260,7 @@ model Flock {
   issues         FarmIssue[]
   followUpCompletions FollowUpCompletion[]
   lastFeedOrders LastFeedOrder[]
+  serviceForms   ServiceForm[]
 
   @@index([farmId])
   @@index([flockStatus])
@@ -443,11 +445,32 @@ model FarmVisit {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  farm  Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  flock Flock? @relation(fields: [flockId], references: [id], onDelete: SetNull)
+  farm         Farm          @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  flock        Flock?        @relation(fields: [flockId], references: [id], onDelete: SetNull)
+  serviceForms ServiceForm[]
 
   @@index([farmId])
   @@index([visitDate])
+}
+
+/** Completed Service Report / Placement / Prebrood checklist payload + linked visit. */
+model ServiceForm {
+  id        String   @id @default(cuid())
+  farmId    String
+  flockId   String?
+  formKind  String   // service_report | placement | prebrood
+  formDate  DateTime @db.Date
+  payload   Json
+  visitId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm  Farm       @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  flock Flock?     @relation(fields: [flockId], references: [id], onDelete: SetNull)
+  visit FarmVisit? @relation(fields: [visitId], references: [id], onDelete: SetNull)
+
+  @@index([farmId])
+  @@index([visitId])
 }
 
 model FollowUpCompletion {

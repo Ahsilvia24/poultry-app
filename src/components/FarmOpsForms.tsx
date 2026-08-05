@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import {
   createIssueAction,
@@ -23,6 +24,24 @@ import {
   VISIT_TYPE_OPTIONS,
 } from "@/lib/utils";
 import { Button, DateInput, Input, Label, Select, Textarea } from "@/components/ui";
+
+const VISIT_SERVICE_FORM: Record<
+  string,
+  { label: string; path: "report" | "placement" | "prebrood" }
+> = {
+  ROUTINE_SERVICE: {
+    label: "View/Edit Service Report",
+    path: "report",
+  },
+  PLACEMENT: {
+    label: "View/Edit Placement",
+    path: "placement",
+  },
+  PREBROOD: {
+    label: "View/Edit Prebrood",
+    path: "prebrood",
+  },
+};
 
 export type VisitFormValues = {
   visitDate: string;
@@ -54,90 +73,114 @@ export function FarmVisitForm({
   const [visitDate, setVisitDate] = useState(
     initial?.visitDate ?? new Date().toISOString().slice(0, 10),
   );
+  const [visitType, setVisitType] = useState(
+    initial?.visitType ?? "ROUTINE_SERVICE",
+  );
   const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
+  const serviceCta =
+    recordId && VISIT_SERVICE_FORM[visitType]
+      ? VISIT_SERVICE_FORM[visitType]
+      : null;
 
   return (
-    <form
-      className="mt-4 space-y-3"
-      action={(fd) => {
-        start(async () => {
-          const result = recordId
-            ? await updateVisitAction(recordId, fd)
-            : await createVisitAction(fd);
-          if (!result || !("error" in result) || !result.error) {
-            onSuccess?.();
-          }
-        });
-      }}
-    >
-      <input type="hidden" name="farmId" value={farmId} />
-      {flockId ? <input type="hidden" name="flockId" value={flockId} /> : null}
-      <div className="flex items-start gap-3">
-        <div className="shrink-0">
-          <Label htmlFor={fid("visitDate")}>Date</Label>
-          <DateInput
-            id={fid("visitDate")}
-            name="visitDate"
-            required
-            value={visitDate}
-            onChange={(e) => setVisitDate(e.target.value)}
+    <div className="mt-4 space-y-3">
+      {serviceCta ? (
+        <div className="rounded-xl border border-stone-200 bg-stone-50 p-3">
+          <p className="text-base font-extrabold text-stone-900">Checklist</p>
+          <p className="mt-1 text-sm text-stone-600">
+            Open the saved checklist to make changes and download a new PDF.
+          </p>
+          <Link
+            href={`/farms/${farmId}/service/${serviceCta.path}?visitId=${recordId}`}
+            className="mt-2 inline-flex min-h-11 items-center justify-center rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800"
+          >
+            {serviceCta.label}
+          </Link>
+        </div>
+      ) : null}
+      <form
+        className="space-y-3"
+        action={(fd) => {
+          start(async () => {
+            const result = recordId
+              ? await updateVisitAction(recordId, fd)
+              : await createVisitAction(fd);
+            if (!result || !("error" in result) || !result.error) {
+              onSuccess?.();
+            }
+          });
+        }}
+      >
+        <input type="hidden" name="farmId" value={farmId} />
+        {flockId ? <input type="hidden" name="flockId" value={flockId} /> : null}
+        <div className="flex items-start gap-3">
+          <div className="shrink-0">
+            <Label htmlFor={fid("visitDate")}>Date</Label>
+            <DateInput
+              id={fid("visitDate")}
+              name="visitDate"
+              required
+              value={visitDate}
+              onChange={(e) => setVisitDate(e.target.value)}
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <Label htmlFor={fid("visitType")}>Type</Label>
+            <Select
+              id={fid("visitType")}
+              name="visitType"
+              value={visitType}
+              onChange={(e) => setVisitType(e.target.value)}
+              className="text-base !min-h-0"
+              style={{ height: 44 }}
+            >
+              {VISIT_TYPE_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <div>
+          <Label htmlFor={fid("generalBirdCondition")}>Bird condition</Label>
+          <Input
+            id={fid("generalBirdCondition")}
+            name="generalBirdCondition"
+            defaultValue={initial?.generalBirdCondition ?? "Healthy"}
           />
         </div>
-        <div className="min-w-0 flex-1">
-          <Label htmlFor={fid("visitType")}>Type</Label>
-          <Select
-            id={fid("visitType")}
-            name="visitType"
-            defaultValue={initial?.visitType ?? "ROUTINE_SERVICE"}
-            className="text-base !min-h-0"
-            style={{ height: 44 }}
-          >
-            {VISIT_TYPE_OPTIONS.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
+        <div>
+          <Label htmlFor={fid("visitNotes")}>Notes</Label>
+          <Textarea
+            id={fid("visitNotes")}
+            name="notes"
+            rows={2}
+            defaultValue={initial?.notes ?? undefined}
+          />
         </div>
-      </div>
-      <div>
-        <Label htmlFor={fid("generalBirdCondition")}>Bird condition</Label>
-        <Input
-          id={fid("generalBirdCondition")}
-          name="generalBirdCondition"
-          defaultValue={initial?.generalBirdCondition ?? "Healthy"}
-        />
-      </div>
-      <div>
-        <Label htmlFor={fid("visitNotes")}>Notes</Label>
-        <Textarea
-          id={fid("visitNotes")}
-          name="notes"
-          rows={2}
-          defaultValue={initial?.notes ?? undefined}
-        />
-      </div>
-      <label className="flex items-center gap-2 text-sm font-semibold">
-        <input
-          type="checkbox"
-          name="followUpRequired"
-          className="h-5 w-5"
-          defaultChecked={initial?.followUpRequired ?? false}
-        />
-        Follow-up required
-      </label>
-      <div className="shrink-0">
-        <Label htmlFor={fid("followUpDate")}>Follow-up date</Label>
-        <DateInput
-          id={fid("followUpDate")}
-          name="followUpDate"
-          defaultValue={initial?.followUpDate ?? undefined}
-        />
-      </div>
-      <Button type="submit" disabled={pending}>
-        {pending ? "Saving…" : recordId ? "Save changes" : "Save visit"}
-      </Button>
-    </form>
+        <label className="flex items-center gap-2 text-sm font-semibold">
+          <input
+            type="checkbox"
+            name="followUpRequired"
+            className="h-5 w-5"
+            defaultChecked={initial?.followUpRequired ?? false}
+          />
+          Follow-up required
+        </label>
+        <div className="shrink-0">
+          <Label htmlFor={fid("followUpDate")}>Follow-up date</Label>
+          <DateInput
+            id={fid("followUpDate")}
+            name="followUpDate"
+            defaultValue={initial?.followUpDate ?? undefined}
+          />
+        </div>
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : recordId ? "Save changes" : "Save visit"}
+        </Button>
+      </form>
+    </div>
   );
 }
 
