@@ -85,7 +85,25 @@ export function FeedDeliveryForm({
 
   const farm = useMemo(() => farms.find((f) => f.id === farmId) ?? null, [farms, farmId]);
   const flocks = farm?.flocks ?? [];
-  const flock = flocks.find((f) => f.id === flockId) ?? flocks[0] ?? null;
+  const houseOptions = useMemo(
+    () =>
+      flocks.flatMap((f) =>
+        f.houses.map((h) => ({
+          houseFlockId: h.houseFlockId,
+          houseNumber: h.houseNumber,
+          flockId: f.id,
+          flockNumber: f.flockNumber,
+        })),
+      ),
+    [flocks],
+  );
+  const houseNumbersDuplicated = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const h of houseOptions) {
+      counts.set(h.houseNumber, (counts.get(h.houseNumber) ?? 0) + 1);
+    }
+    return [...counts.values()].some((n) => n > 1);
+  }, [houseOptions]);
   const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
 
   function onFarmChange(id: string) {
@@ -96,10 +114,10 @@ export function FeedDeliveryForm({
     setHouseFlockId(nextFlock?.houses[0]?.houseFlockId ?? "");
   }
 
-  function onFlockChange(id: string) {
-    setFlockId(id);
-    const nextFlock = flocks.find((f) => f.id === id);
-    setHouseFlockId(nextFlock?.houses[0]?.houseFlockId ?? "");
+  function onHouseChange(id: string) {
+    setHouseFlockId(id);
+    const opt = houseOptions.find((h) => h.houseFlockId === id);
+    if (opt) setFlockId(opt.flockId);
   }
 
   function onSubmit(formData: FormData) {
@@ -136,60 +154,29 @@ export function FeedDeliveryForm({
 
   return (
     <form action={onSubmit} className="mt-4 space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {lockedFarmId ? (
-          <input type="hidden" name="farmId" value={lockedFarmId} />
-        ) : (
-          <div>
-            <Label htmlFor={fid("farmSelect")}>Farm</Label>
-            <Select
-              id={fid("farmSelect")}
-              value={farmId}
-              onChange={(e) => onFarmChange(e.target.value)}
-            >
-              {farms.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.farmName}
-                </option>
-              ))}
-            </Select>
-          </div>
-        )}
+      {lockedFarmId ? (
+        <input type="hidden" name="farmId" value={lockedFarmId} />
+      ) : (
         <div>
-          <Label htmlFor={fid("flockSelect")}>Flock</Label>
+          <Label htmlFor={fid("farmSelect")}>Farm</Label>
           <Select
-            id={fid("flockSelect")}
-            value={flock?.id ?? ""}
-            onChange={(e) => onFlockChange(e.target.value)}
-            required
+            id={fid("farmSelect")}
+            value={farmId}
+            onChange={(e) => onFarmChange(e.target.value)}
           >
-            {flocks.length === 0 ? <option value="">No flocks</option> : null}
-            {flocks.map((f) => (
+            {farms.map((f) => (
               <option key={f.id} value={f.id}>
-                {f.flockNumber} ({f.status})
+                {f.farmName}
               </option>
             ))}
           </Select>
         </div>
-        <div>
-          <Label htmlFor={fid("houseSelect")}>House</Label>
-          <Select
-            id={fid("houseSelect")}
-            value={houseFlockId}
-            onChange={(e) => setHouseFlockId(e.target.value)}
-            required
-          >
-            {(flock?.houses ?? []).length === 0 ? (
-              <option value="">No houses</option>
-            ) : null}
-            {(flock?.houses ?? []).map((h) => (
-              <option key={h.houseFlockId} value={h.houseFlockId}>
-                House {h.houseNumber}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div>
+      )}
+      {initial?.ticketNumber ? (
+        <input type="hidden" name="ticketNumber" value={initial.ticketNumber} />
+      ) : null}
+      <div className="flex items-start gap-3">
+        <div className="shrink-0">
           <Label htmlFor={fid("deliveryDate")}>Delivery date</Label>
           <DateInput
             id={fid("deliveryDate")}
@@ -198,6 +185,28 @@ export function FeedDeliveryForm({
             defaultValue={initial?.deliveryDate ?? new Date().toISOString().slice(0, 10)}
           />
         </div>
+        <div className="min-w-0 flex-1">
+          <Label htmlFor={fid("houseSelect")}>House</Label>
+          <Select
+            id={fid("houseSelect")}
+            value={houseFlockId}
+            onChange={(e) => onHouseChange(e.target.value)}
+            required
+            className="text-base !min-h-0"
+            style={{ height: 44 }}
+          >
+            {houseOptions.length === 0 ? <option value="">No houses</option> : null}
+            {houseOptions.map((h) => (
+              <option key={h.houseFlockId} value={h.houseFlockId}>
+                {houseNumbersDuplicated
+                  ? `House ${h.houseNumber} (${h.flockNumber})`
+                  : `House ${h.houseNumber}`}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label htmlFor={fid("poundsDelivered")}>Pounds delivered</Label>
           <Input
@@ -230,14 +239,6 @@ export function FeedDeliveryForm({
             ))}
           </Select>
         </div>
-        <div>
-          <Label htmlFor={fid("ticketNumber")}>Ticket number</Label>
-          <Input
-            id={fid("ticketNumber")}
-            name="ticketNumber"
-            defaultValue={initial?.ticketNumber ?? undefined}
-          />
-        </div>
         <div className="sm:col-span-2">
           <Label htmlFor={fid("notes")}>Notes</Label>
           <Textarea
@@ -249,7 +250,7 @@ export function FeedDeliveryForm({
         </div>
       </div>
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
-      <Button type="submit" disabled={pending || !flock || !houseFlockId}>
+      <Button type="submit" disabled={pending || !houseFlockId}>
         {pending ? "Saving…" : recordId ? "Save changes" : "Save delivery"}
       </Button>
     </form>
