@@ -204,9 +204,6 @@ export function LfoInventoryForm({
       </div>
 
       <div>
-        <p className="mb-2 text-sm font-semibold text-stone-700">
-          Bin inventory &amp; feed up (lbs)
-        </p>
         <div className="space-y-4">
           {rows.map((house) => {
             const result = calc.houses.find((h) => h.houseId === house.houseId);

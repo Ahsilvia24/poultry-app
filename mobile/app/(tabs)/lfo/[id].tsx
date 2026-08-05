@@ -429,7 +429,6 @@ export default function EditLfoScreen() {
                 </View>
               </Card>
 
-              <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>
               {houses.length === 0 ? (
                 <Card>
                   <Text style={styles.muted}>
