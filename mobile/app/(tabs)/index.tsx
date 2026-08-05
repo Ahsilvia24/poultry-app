@@ -342,7 +342,6 @@ export default function DashboardScreen() {
               </Text>
             </Pressable>
           </View>
-          <Text style={styles.subtitle}>{"Today's Schedule, Upcoming, & Active Farms"}</Text>
         </View>
 
         {error ? <Text style={{ color: colors.danger, marginBottom: 12 }}>{error}</Text> : null}
@@ -539,7 +538,13 @@ export default function DashboardScreen() {
                     )}
                   >
                     <Card style={{ padding: 0, marginBottom: 0, overflow: "hidden" }}>
-                      <View style={{ padding: 14, backgroundColor: colors.card }}>
+                      <Pressable
+                        onPress={() => toggleFarmExpanded(farm.id)}
+                        accessibilityRole="button"
+                        accessibilityState={{ expanded: open }}
+                        accessibilityLabel={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
+                        style={{ padding: 14, backgroundColor: colors.card }}
+                      >
                         <View
                           style={{
                             flexDirection: "row",
@@ -548,56 +553,33 @@ export default function DashboardScreen() {
                             gap: 8,
                           }}
                         >
-                          <Pressable
-                            onPress={() =>
-                              router.push({
-                                pathname: "/(tabs)/farms/[id]",
-                                params: { id: farm.id },
-                              })
-                            }
-                            accessibilityRole="button"
-                            accessibilityLabel={`Open ${farm.farmName}`}
-                            style={{ flex: 1, minWidth: 0 }}
-                          >
-                            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                              {farm.farmName}
-                              {(() => {
-                                const ages =
-                                  farm.flockAgesDays?.length
-                                    ? farm.flockAgesDays
-                                    : farm.flockAgeDays != null
-                                      ? [farm.flockAgeDays]
-                                      : [];
-                                if (!ages.length) return null;
-                                return (
-                                  <Text style={{ fontWeight: "600", color: colors.muted }}>
-                                    {" "}
-                                    {ages.map((a) => `${a}d`).join(" ")}
-                                  </Text>
-                                );
-                              })()}
-                            </Text>
-                          </Pressable>
-                          <StatusBadge status={farm.status} />
-                          <Pressable
-                            onPress={() => toggleFarmExpanded(farm.id)}
-                            accessibilityRole="button"
-                            accessibilityState={{ expanded: open }}
-                            accessibilityLabel={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
-                            hitSlop={8}
+                          <Text
                             style={{
-                              width: 36,
-                              height: 36,
-                              alignItems: "center",
-                              justifyContent: "center",
+                              flex: 1,
+                              minWidth: 0,
+                              fontSize: 18,
+                              fontWeight: "800",
+                              color: colors.text,
                             }}
                           >
-                            <Ionicons
-                              name={open ? "chevron-up" : "chevron-down"}
-                              size={20}
-                              color={colors.muted}
-                            />
-                          </Pressable>
+                            {farm.farmName}
+                            {(() => {
+                              const ages =
+                                farm.flockAgesDays?.length
+                                  ? farm.flockAgesDays
+                                  : farm.flockAgeDays != null
+                                    ? [farm.flockAgeDays]
+                                    : [];
+                              if (!ages.length) return null;
+                              return (
+                                <Text style={{ fontWeight: "600", color: colors.muted }}>
+                                  {" "}
+                                  {ages.map((a) => `${a}d`).join(" ")}
+                                </Text>
+                              );
+                            })()}
+                          </Text>
+                          <StatusBadge status={farm.status} />
                         </View>
 
                         {open ? (
@@ -690,7 +672,7 @@ export default function DashboardScreen() {
                             </View>
                           </View>
                         ) : null}
-                      </View>
+                      </Pressable>
                     </Card>
                   </Swipeable>
                 );

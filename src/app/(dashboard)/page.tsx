@@ -30,7 +30,6 @@ export default async function DashboardPage() {
             </button>
           </form>
         </div>
-        <p className="mt-1 text-stone-600">Today&apos;s Schedule, Upcoming, &amp; Active Farms</p>
       </div>
 
       <div className="space-y-3">
