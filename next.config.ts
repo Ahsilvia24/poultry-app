@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
     "*.loca.lt",
     "*.trycloudflare.com",
   ],
+  // Hide the Next.js dev indicator from App Store screenshot captures
+  devIndicators: false,
 };
 
 export default nextConfig;

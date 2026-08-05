@@ -34,14 +34,24 @@ Contact email on both pages is **talentpro024@gmail.com**.
 
 `https://ahsilvia24.github.io/poultry-app/privacy/` redirects to the TermsFeed policy.
 
-## Screenshots
+## Screenshots & App Previews
+
+### iPhone 6.5" / 6.7" (1284×2778)
+
+Upload from `docs/app-store/iphone-6.5/`:
+
+**Screenshots (10)** — `screenshots/01-dashboard.png` … `10-settings.png`  
+**App Previews (3)** — `previews/preview-01-today-schedule.mp4`, `preview-02-mortality-logging.mp4`, `preview-03-tools-reports.mp4`
+
+See `docs/app-store/iphone-6.5/README.md` for the full list and how to regenerate.
+
+### 13" iPad
 
 Repo asset for the 13" iPad slot (2064×2752 Service Report UI preview):
 
 - `docs/app-store/ipad-13-service-report.png`
 
 Upload that under App Preview and Screenshots → 13" iPad (or replace with a live device capture if you prefer).
-Also fill iPhone screenshots if not already set.
 
 ## Device QA after build 83 installs
 
