@@ -7,11 +7,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
 import { todayKey } from "../lib/ids";
 
-/** "2026-07-26" → "Jul 26, 2026" */
-export function formatDisplayDate(dateKey: string) {
+/** "2026-07-26" → "Jul 26, 2026" (or compact "7/26/26"). */
+export function formatDisplayDate(dateKey: string, compact = false) {
   if (!dateKey) return "Select date";
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
+  if (compact) {
+    return `${m}/${d}/${String(y).slice(-2)}`;
+  }
   const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
   return dt.toLocaleDateString(undefined, {
     month: "short",
@@ -55,6 +58,7 @@ export function DatePickerField({
   onChange,
   presentation = "modal",
   onOpen,
+  compact = false,
 }: {
   label: string;
   value: string;
@@ -63,6 +67,8 @@ export function DatePickerField({
   presentation?: "modal" | "inline";
   /** Fired when the calendar is opened (e.g. to dismiss a keypad). */
   onOpen?: () => void;
+  /** Shorter date text for narrow fields (e.g. Log visit). */
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseDateKey(value));
@@ -98,7 +104,7 @@ export function DatePickerField({
       <Pressable
         onPress={openPicker}
         accessibilityRole="button"
-        accessibilityLabel={`${label}, ${formatDisplayDate(value)}. Opens calendar`}
+        accessibilityLabel={`${label}, ${formatDisplayDate(value, compact)}. Opens calendar`}
         style={[
           styles.input,
           {
@@ -106,7 +112,7 @@ export function DatePickerField({
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            paddingHorizontal: 10,
+            paddingHorizontal: compact ? 8 : 10,
           },
         ]}
       >
@@ -115,12 +121,12 @@ export function DatePickerField({
           style={{
             fontWeight: "700",
             color: value ? colors.text : colors.muted,
-            fontSize: 16,
+            fontSize: compact ? 15 : 16,
             flexShrink: 1,
             marginRight: 6,
           }}
         >
-          {formatDisplayDate(value)}
+          {formatDisplayDate(value, compact)}
         </Text>
         <Ionicons name="calendar-outline" size={20} color={colors.muted} />
       </Pressable>

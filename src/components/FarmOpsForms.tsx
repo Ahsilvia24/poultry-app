@@ -82,8 +82,8 @@ export function FarmVisitForm({
             required
             value={visitDate}
             onChange={(e) => setVisitDate(e.target.value)}
-            className="box-border px-2 text-base"
-            style={{ width: "11rem" }}
+            className="box-border px-1.5 text-sm"
+            style={{ width: "8.75rem" }}
           />
         </div>
         <div className="min-w-0 flex-1">
@@ -134,8 +134,8 @@ export function FarmVisitForm({
           name="followUpDate"
           type="date"
           defaultValue={initial?.followUpDate ?? undefined}
-          className="box-border px-2 text-base"
-          style={{ width: "11rem" }}
+          className="box-border px-1.5 text-sm"
+          style={{ width: "8.75rem" }}
         />
       </div>
       <Button type="submit" disabled={pending}>

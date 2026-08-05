@@ -73,6 +73,7 @@ enum VisitType {
   WEIGHT_PROJECTION
   LFO
   HIGH_MORTALITY
+  PREBROOD
 }
 
 enum IssueCategory {
