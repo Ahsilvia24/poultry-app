@@ -38,9 +38,27 @@ export const VENT_MODE_OPTIONS = [
 ];
 
 export const VENT_DOOR_OPTIONS = [
-  { value: "ceiling", label: "Ceiling" },
-  { value: "sidewall", label: "Sidewall" },
+  { value: "ceiling" as const, label: "Ceiling" },
+  { value: "sidewall" as const, label: "Sidewall" },
 ];
+
+/** Normalize legacy single `ventDoorType` into multi-select `ventDoorTypes`. */
+export function normalizeVentDoorTypes(
+  payload: {
+    ventDoorTypes?: unknown;
+    ventDoorType?: unknown;
+  },
+): Array<"ceiling" | "sidewall"> {
+  if (Array.isArray(payload.ventDoorTypes)) {
+    return payload.ventDoorTypes.filter(
+      (v): v is "ceiling" | "sidewall" => v === "ceiling" || v === "sidewall",
+    );
+  }
+  if (payload.ventDoorType === "ceiling" || payload.ventDoorType === "sidewall") {
+    return [payload.ventDoorType];
+  }
+  return [];
+}
 
 export const WEEK_OPTIONS = Array.from({ length: 8 }, (_, i) => ({
   value: String(i + 1),

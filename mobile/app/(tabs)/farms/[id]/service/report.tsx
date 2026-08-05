@@ -29,7 +29,7 @@ import { Card } from "../../../../../src/components/ui";
 import { createServiceReportDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
   HUMIDITY_OPTIONS,
-  VENT_DOOR_OPTIONS,
+  normalizeVentDoorTypes,
   WEEK_OPTIONS,
 } from "../../../../../src/lib/serviceForms/format";
 import {
@@ -70,7 +70,11 @@ export default function ServiceReportScreen() {
 
   const initial = useMemo(() => {
     if (existing?.payload && typeof existing.payload === "object") {
-      return existing.payload as ServiceReportForm;
+      const payload = existing.payload as ServiceReportForm;
+      return {
+        ...payload,
+        ventDoorTypes: normalizeVentDoorTypes(payload),
+      };
     }
     if (!detail) return createServiceReportDraft({ farmName, flockNumber });
     return createServiceReportDraft({
@@ -83,7 +87,11 @@ export default function ServiceReportScreen() {
 
   const [form, setForm] = useState<ServiceReportForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
-      return existing.payload as ServiceReportForm;
+      const payload = existing.payload as ServiceReportForm;
+      return {
+        ...payload,
+        ventDoorTypes: normalizeVentDoorTypes(payload),
+      };
     }
     if (!detail) return initial;
     const week = currentFlockWeek(detail);
@@ -98,7 +106,6 @@ export default function ServiceReportScreen() {
   });
 
   const [humidityOpen, setHumidityOpen] = useState(false);
-  const [ventDoorOpen, setVentDoorOpen] = useState(false);
   const [weekOpen, setWeekOpen] = useState(false);
   const scrollRef = useRef<ScrollViewType>(null);
   const lights247 = form.lightsOnAt === "24/7";
@@ -357,12 +364,14 @@ export default function ServiceReportScreen() {
               keyboardType="number-pad"
             />
           ) : null}
-          <SelectField
+          <MultiToggleField
             label="Vent door type"
-            valueLabel={
-              VENT_DOOR_OPTIONS.find((o) => o.value === form.ventDoorType)?.label ?? "Select"
-            }
-            onPress={() => setVentDoorOpen(true)}
+            options={[
+              { value: "ceiling", label: "Ceiling" },
+              { value: "sidewall", label: "Sidewall" },
+            ]}
+            value={form.ventDoorTypes}
+            onChange={(ventDoorTypes) => patch({ ventDoorTypes })}
           />
           <PairFields
             left={
@@ -621,16 +630,6 @@ export default function ServiceReportScreen() {
         value={form.humidityPct}
         onSelect={(humidityPct) => patch({ humidityPct })}
         onClose={() => setHumidityOpen(false)}
-      />
-      <OptionPicker
-        open={ventDoorOpen}
-        title="Vent door type"
-        options={VENT_DOOR_OPTIONS}
-        value={form.ventDoorType}
-        onSelect={(ventDoorType) =>
-          patch({ ventDoorType: ventDoorType as ServiceReportForm["ventDoorType"] })
-        }
-        onClose={() => setVentDoorOpen(false)}
       />
       <OptionPicker
         open={weekOpen}

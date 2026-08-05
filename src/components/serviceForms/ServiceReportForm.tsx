@@ -5,7 +5,7 @@ import { Button, Card, DateInput, Label, Select } from "@/components/ui";
 import { createServiceReportDraft } from "@/lib/serviceForms/defaults";
 import {
   HUMIDITY_OPTIONS,
-  VENT_DOOR_OPTIONS,
+  normalizeVentDoorTypes,
   WEEK_OPTIONS,
 } from "@/lib/serviceForms/format";
 import {
@@ -52,7 +52,12 @@ export function ServiceReportForm({
   );
 
   const [form, setForm] = useState<ServiceReportFormData>(() => {
-    if (initialPayload) return initialPayload;
+    if (initialPayload) {
+      return {
+        ...initialPayload,
+        ventDoorTypes: normalizeVentDoorTypes(initialPayload),
+      };
+    }
     const week = currentFlockWeek(detail);
     const minVent = minVentForWeek(detail, week);
     const draft = createServiceReportDraft({
@@ -291,25 +296,15 @@ export function ServiceReportForm({
             onChange={(tunnelFanCount) => patch({ tunnelFanCount })}
           />
         ) : null}
-        <div className="mb-2.5">
-          <Label htmlFor="ventDoorType">Vent door type</Label>
-          <Select
-            id="ventDoorType"
-            value={form.ventDoorType}
-            onChange={(e) =>
-              patch({
-                ventDoorType: e.target.value as ServiceReportFormData["ventDoorType"],
-              })
-            }
-          >
-            <option value="">Select</option>
-            {VENT_DOOR_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-        </div>
+        <MultiToggleField
+          label="Vent door type"
+          options={[
+            { value: "ceiling", label: "Ceiling" },
+            { value: "sidewall", label: "Sidewall" },
+          ]}
+          value={form.ventDoorTypes}
+          onChange={(ventDoorTypes) => patch({ ventDoorTypes })}
+        />
         <PairFields
           left={
             <TextField

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button, Card, DateInput, Label, Select } from "@/components/ui";
 import { createPlacementDraft } from "@/lib/serviceForms/defaults";
-import { VENT_DOOR_OPTIONS, WEEK_OPTIONS } from "@/lib/serviceForms/format";
+import { normalizeVentDoorTypes, WEEK_OPTIONS } from "@/lib/serviceForms/format";
 import {
   minVentForWeek,
   prefillHouseRows,
@@ -15,6 +15,7 @@ import {
   CommentsField,
   CompactBackupSettings,
   CompactHouseValueGrid,
+  MultiToggleField,
   PairFields,
   SectionTitle,
   TextField,
@@ -50,7 +51,12 @@ export function PlacementForm({
     "";
 
   const [form, setForm] = useState<PlacementFormData>(() => {
-    if (initialPayload) return initialPayload;
+    if (initialPayload) {
+      return {
+        ...initialPayload,
+        ventDoorTypes: normalizeVentDoorTypes(initialPayload),
+      };
+    }
     const draft = createPlacementDraft({
       farmName: detail.farm.farmName,
       farmNumber: detail.farm.farmNumber ?? "",
@@ -217,25 +223,15 @@ export function PlacementForm({
           value={form.sensorsBirdLevelOk}
           onChange={(sensorsBirdLevelOk) => patch({ sensorsBirdLevelOk })}
         />
-        <div className="mb-2.5">
-          <Label htmlFor="placement-ventDoor">Vent door type</Label>
-          <Select
-            id="placement-ventDoor"
-            value={form.ventDoorType}
-            onChange={(e) =>
-              patch({
-                ventDoorType: e.target.value as PlacementFormData["ventDoorType"],
-              })
-            }
-          >
-            <option value="">Select</option>
-            {VENT_DOOR_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-        </div>
+        <MultiToggleField
+          label="Vent door type"
+          options={[
+            { value: "ceiling", label: "Ceiling" },
+            { value: "sidewall", label: "Sidewall" },
+          ]}
+          value={form.ventDoorTypes}
+          onChange={(ventDoorTypes) => patch({ ventDoorTypes })}
+        />
         <PairFields
           left={
             <TextField
