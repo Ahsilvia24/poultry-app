@@ -79,8 +79,10 @@ export function TimeScrollPickerField({
   const pickerValue = safePickerDate(draft);
 
   return (
-    <View>
-      <Text style={[styles.label, { marginTop: 4 }]}>{label}</Text>
+    <View style={{ minWidth: 0, flexShrink: 1 }}>
+      <Text style={[styles.label, { marginTop: 4 }]} numberOfLines={1}>
+        {label}
+      </Text>
       <Pressable
         onPress={openPicker}
         style={[
@@ -89,19 +91,25 @@ export function TimeScrollPickerField({
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: 6,
+            minWidth: 0,
+            paddingHorizontal: 10,
           },
         ]}
       >
         <Text
+          numberOfLines={1}
           style={{
+            flex: 1,
+            minWidth: 0,
             fontWeight: "700",
             color: value ? colors.text : colors.muted,
-            fontSize: 16,
+            fontSize: 15,
           }}
         >
-          {value ? timeLabel(value) : "Select time"}
+          {value ? timeLabel(value) : "Select"}
         </Text>
-        <Ionicons name="time-outline" size={20} color={colors.muted} />
+        <Ionicons name="time-outline" size={18} color={colors.muted} />
       </Pressable>
 
       {Platform.OS === "android" && open ? (
