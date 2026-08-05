@@ -185,8 +185,8 @@ export function FarmIssueForm({
     >
       <input type="hidden" name="farmId" value={farmId} />
       {flockId ? <input type="hidden" name="flockId" value={flockId} /> : null}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
+      <div className="flex items-start gap-3">
+        <div className="shrink-0">
           <Label htmlFor={fid("dateReported")}>Date reported</Label>
           <DateInput
             id={fid("dateReported")}
@@ -195,9 +195,15 @@ export function FarmIssueForm({
             defaultValue={initial?.dateReported ?? new Date().toISOString().slice(0, 10)}
           />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <Label htmlFor={fid("houseId")}>House (optional)</Label>
-          <Select id={fid("houseId")} name="houseId" defaultValue={initial?.houseId ?? ""}>
+          <Select
+            id={fid("houseId")}
+            name="houseId"
+            defaultValue={initial?.houseId ?? ""}
+            className="text-base !min-h-0"
+            style={{ height: 44 }}
+          >
             <option value="">Entire farm</option>
             {houses.map((h) => (
               <option key={h.id} value={h.id}>
@@ -206,6 +212,8 @@ export function FarmIssueForm({
             ))}
           </Select>
         </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label htmlFor={fid("category")}>Category</Label>
           <Select id={fid("category")} name="category" defaultValue={initial?.category ?? "OTHER"}>

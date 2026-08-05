@@ -122,13 +122,27 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
             subtitle={detail?.farm.farmName ?? "Farm"}
           />
           <Card>
-            <DatePickerField
-              label="Date reported"
-              value={dateReported}
-              onChange={setDateReported}
-              compact
-            />
-            <SelectField label="House" valueLabel={houseLabel} onPress={() => setPicker("house")} />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                gap: 10,
+              }}
+            >
+              <DatePickerField
+                label="Date reported"
+                value={dateReported}
+                onChange={setDateReported}
+                compact
+              />
+              <SelectField
+                label="House"
+                valueLabel={houseLabel}
+                onPress={() => setPicker("house")}
+                compact
+                style={{ flex: 1, minWidth: 0 }}
+              />
+            </View>
             <SelectField
               label="Category"
               valueLabel={ISSUE_CATEGORY_LABELS[category] ?? category}

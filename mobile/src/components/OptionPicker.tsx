@@ -79,14 +79,18 @@ export function SelectField({
   label,
   valueLabel,
   onPress,
+  compact,
+  style,
 }: {
   label: string;
   valueLabel: string;
   onPress: () => void;
+  compact?: boolean;
+  style?: object;
 }) {
   return (
-    <>
-      <Text style={[styles.label, { marginTop: 8 }]}>{label}</Text>
+    <View style={[{ marginTop: compact ? 0 : 8 }, style]}>
+      <Text style={styles.label}>{label}</Text>
       <Pressable
         onPress={onPress}
         style={[
@@ -95,12 +99,18 @@ export function SelectField({
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
+            minHeight: compact ? 44 : 52,
           },
         ]}
       >
-        <Text style={{ color: colors.text, fontWeight: "600" }}>{valueLabel}</Text>
+        <Text
+          style={{ color: colors.text, fontWeight: "600", flexShrink: 1 }}
+          numberOfLines={1}
+        >
+          {valueLabel}
+        </Text>
         <Ionicons name="chevron-down" size={18} color={colors.muted} />
       </Pressable>
-    </>
+    </View>
   );
 }
