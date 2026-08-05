@@ -163,20 +163,22 @@ export function FarmNameDateRow({
   dateId: string;
 }) {
   return (
-    <div className="mb-2.5 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-3">
-      <TextField
-        label="Farm name"
-        value={farmName}
-        onChange={onFarmNameChange}
-        className="mb-0 min-w-0"
-      />
-      <div className="min-w-0 overflow-hidden">
+    <div className="mb-2.5 flex gap-3">
+      <div className="min-w-0 flex-[3_1_0%]">
+        <TextField
+          label="Farm name"
+          value={farmName}
+          onChange={onFarmNameChange}
+          className="mb-0"
+        />
+      </div>
+      <div className="min-w-0 flex-[2_1_0%] overflow-hidden">
         <Label htmlFor={dateId}>Date</Label>
         <DateInput
           id={dateId}
           value={date}
           onChange={(e) => onDateChange(e.target.value)}
-          className="!h-11 !w-full !min-w-0 !max-w-full box-border px-1 text-sm"
+          className="!h-11 !w-full box-border px-1 text-sm"
           style={{ width: "100%", minWidth: 0, maxWidth: "100%" }}
         />
       </div>

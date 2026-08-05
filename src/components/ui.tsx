@@ -47,8 +47,11 @@ export function DateInput({
   return (
     <Input
       type="date"
-      className={cn("box-border px-1.5 text-base leading-none !min-h-0", className)}
-      style={{ width: "8.75rem", height: 44, ...style }}
+      className={cn(
+        "box-border min-w-0 max-w-full px-1.5 text-base leading-none !min-h-0",
+        className,
+      )}
+      style={{ width: "8.75rem", height: 44, maxWidth: "100%", ...style }}
       {...props}
     />
   );
