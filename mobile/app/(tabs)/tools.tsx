@@ -191,7 +191,9 @@ export default function ToolsScreen() {
   }
 
   useEffect(() => {
-    const section: SectionKey =
+    // Only auto-scroll for deep links (section and/or farmId). Plain Tools
+    // tab opens should stay at the top with Quick links visible.
+    const section: SectionKey | null =
       paramSection === "temp" ||
       paramSection === "cool" ||
       paramSection === "max" ||
@@ -199,7 +201,10 @@ export default function ToolsScreen() {
       paramSection === "weight" ||
       paramSection === "vent"
         ? paramSection
-        : "weight";
+        : paramFarmId
+          ? "weight"
+          : null;
+    if (!section) return;
     const t = setTimeout(() => openAndScroll(section), 50);
     return () => clearTimeout(t);
   }, [paramSection, paramFarmId]);
