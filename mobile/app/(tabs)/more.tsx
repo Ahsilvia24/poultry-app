@@ -45,7 +45,9 @@ export default function MoreScreen() {
           <Pressable key={link.href} onPress={() => router.push(link.href as any)}>
             <Card>
               <Text style={{ fontWeight: "800", fontSize: 16 }}>{link.title}</Text>
-              <Text style={[styles.muted, { marginTop: 4 }]}>{link.subtitle}</Text>
+              {"subtitle" in link && link.subtitle ? (
+                <Text style={[styles.muted, { marginTop: 4 }]}>{link.subtitle}</Text>
+              ) : null}
             </Card>
           </Pressable>
         ))}
