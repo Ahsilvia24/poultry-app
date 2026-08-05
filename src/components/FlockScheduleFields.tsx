@@ -72,7 +72,7 @@ export function FlockScheduleFields({
             onChange={(e) => onPlacementChange(e.target.value)}
           />
         </div>
-        <div className="w-28 shrink-0">
+        <div className="w-24 shrink-0">
           <Label htmlFor="targetMarketAge">Days</Label>
           <Input
             id="targetMarketAge"
@@ -82,6 +82,8 @@ export function FlockScheduleFields({
             required
             value={marketAge}
             onChange={(e) => onMarketAgeChange(e.target.value)}
+            className="!min-h-0 px-2 text-base"
+            style={{ height: 44 }}
           />
         </div>
       </div>
