@@ -49,6 +49,17 @@ export function WeightProjectionTile({
 
   const catchDatesSorted = groups.map((g) => g.catchDateKey);
 
+  function toggleEdit() {
+    if (pending) return;
+    if (editing) {
+      setEditing(false);
+      setError(null);
+      return;
+    }
+    setEditing(true);
+    setError(null);
+  }
+
   function onSave(formData: FormData) {
     setError(null);
     startTransition(async () => {
@@ -62,6 +73,22 @@ export function WeightProjectionTile({
     });
   }
 
+  const growthRateControl = (
+    <button
+      type="button"
+      onClick={toggleEdit}
+      disabled={pending}
+      className={`text-left text-base text-stone-600 hover:text-emerald-800 ${embedded ? "ml-auto" : ""}`}
+      aria-expanded={editing}
+      aria-label="Edit growth rate"
+    >
+      Using{" "}
+      <span className="font-semibold text-stone-900 underline decoration-stone-300 underline-offset-2 hover:text-emerald-800 hover:decoration-emerald-700">
+        {growthRateLbsPerDay.toFixed(3)} lb/day
+      </span>
+    </button>
+  );
+
   const body = (
     <>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -70,12 +97,7 @@ export function WeightProjectionTile({
             <p className="text-base font-semibold text-stone-500">Weight projections</p>
           </div>
         )}
-        <p className={`text-base text-stone-600 ${embedded ? "ml-auto" : ""}`}>
-          Using{" "}
-          <span className="font-semibold text-stone-900">
-            {growthRateLbsPerDay.toFixed(3)} lb/day
-          </span>
-        </p>
+        {growthRateControl}
       </div>
 
       {groups.map((group) => (
@@ -122,65 +144,44 @@ export function WeightProjectionTile({
         <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">{body}</div>
       )}
 
-      {!editing ? (
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          className="mt-3 text-sm text-emerald-800 hover:underline"
-        >
-          Edit growth rate
-        </button>
-      ) : (
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => {
-              if (pending) return;
-              setEditing(false);
-              setError(null);
-            }}
-            className="text-sm text-emerald-800 hover:underline"
-          >
-            Edit growth rate
-          </button>
-          <Card className="mt-3">
-            <form action={onSave} className="space-y-3">
-              <div className="max-w-xs">
-                <Label htmlFor="growthRateLbsPerDay">Growth rate (lb/day)</Label>
-                <Input
-                  id="growthRateLbsPerDay"
-                  name="growthRateLbsPerDay"
-                  type="number"
-                  min={0}
-                  step="0.001"
-                  required
-                  defaultValue={growthRateLbsPerDay || DEFAULT_GROWTH_RATE_LBS_PER_DAY}
-                />
-                <p className="mt-1 text-xs text-stone-500">
-                  Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY}
-                </p>
-              </div>
-              {error ? <p className="text-sm text-red-700">{error}</p> : null}
-              <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={pending}>
-                  {pending ? "Saving…" : "Save"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={pending}
-                  onClick={() => {
-                    setEditing(false);
-                    setError(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
+      {editing ? (
+        <Card className="mt-3">
+          <form action={onSave} className="space-y-3">
+            <div className="max-w-xs">
+              <Label htmlFor="growthRateLbsPerDay">Growth rate (lb/day)</Label>
+              <Input
+                id="growthRateLbsPerDay"
+                name="growthRateLbsPerDay"
+                type="number"
+                min={0}
+                step="0.001"
+                required
+                defaultValue={growthRateLbsPerDay || DEFAULT_GROWTH_RATE_LBS_PER_DAY}
+              />
+              <p className="mt-1 text-xs text-stone-500">
+                Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY}
+              </p>
+            </div>
+            {error ? <p className="text-sm text-red-700">{error}</p> : null}
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={pending}>
+                {pending ? "Saving…" : "Save"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={pending}
+                onClick={() => {
+                  setEditing(false);
+                  setError(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </Card>
+      ) : null}
     </div>
   );
 }

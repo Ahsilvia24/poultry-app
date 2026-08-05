@@ -50,6 +50,12 @@ export function WeightProjectionTile({
   const catchDatesSorted = groups.map((g) => g.catchDateKey);
 
   function startEdit() {
+    if (saving) return;
+    if (editing) {
+      setEditing(false);
+      setError(null);
+      return;
+    }
     setDraft(String(growthRateLbsPerDay || DEFAULT_GROWTH_RATE_LBS_PER_DAY));
     setError(null);
     setEditing(true);
@@ -73,6 +79,29 @@ export function WeightProjectionTile({
     }
   }
 
+  const growthRateControl = (
+    <Pressable
+      onPress={startEdit}
+      accessibilityRole="button"
+      accessibilityLabel="Edit growth rate"
+      accessibilityState={{ expanded: editing }}
+      style={{ marginLeft: embedded ? "auto" : 0 }}
+    >
+      <Text style={{ fontSize: 14, color: colors.text }}>
+        Using{" "}
+        <Text
+          style={{
+            fontWeight: "800",
+            color: colors.accentDark,
+            textDecorationLine: "underline",
+          }}
+        >
+          {growthRateLbsPerDay.toFixed(3)} lb/day
+        </Text>
+      </Text>
+    </Pressable>
+  );
+
   const body = (
     <>
       <View
@@ -88,10 +117,7 @@ export function WeightProjectionTile({
             <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight projections</Text>
           </View>
         )}
-        <Text style={{ fontSize: 14, color: colors.text, marginLeft: embedded ? "auto" : 0 }}>
-          Using{" "}
-          <Text style={{ fontWeight: "800" }}>{growthRateLbsPerDay.toFixed(3)} lb/day</Text>
-        </Text>
+        {growthRateControl}
       </View>
 
       {groups.map((group) => (
@@ -148,66 +174,47 @@ export function WeightProjectionTile({
   );
 
   return (
-    <View>
+    <View style={{ marginBottom: editing ? 16 : 0 }}>
       {embedded ? body : <Card>{body}</Card>}
 
-      {!editing ? (
-        <Pressable onPress={startEdit} style={{ marginTop: 4, marginBottom: 16 }}>
-          <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
-            Edit growth rate
+      {editing ? (
+        <Card style={{ marginTop: 12 }}>
+          <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
+            Growth rate (lb/day)
           </Text>
-        </Pressable>
-      ) : (
-        <View style={{ marginTop: 4, marginBottom: 16 }}>
-          <Pressable
-            onPress={() => {
-              if (saving) return;
-              setEditing(false);
-              setError(null);
-            }}
-          >
-            <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
-              Edit growth rate
-            </Text>
-          </Pressable>
-          <Card style={{ marginTop: 12 }}>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
-              Growth rate (lb/day)
-            </Text>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              keyboardType="decimal-pad"
-              style={styles.input}
-              placeholder={String(DEFAULT_GROWTH_RATE_LBS_PER_DAY)}
-              placeholderTextColor={colors.muted}
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            keyboardType="decimal-pad"
+            style={styles.input}
+            placeholder={String(DEFAULT_GROWTH_RATE_LBS_PER_DAY)}
+            placeholderTextColor={colors.muted}
+          />
+          <Text style={[styles.muted, { fontSize: 12 }]}>
+            Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY}
+          </Text>
+          {error ? <Text style={{ color: colors.danger, fontSize: 13 }}>{error}</Text> : null}
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+            <PrimaryButton
+              label={saving ? "Saving…" : "Save"}
+              onPress={() => {
+                if (!saving) save();
+              }}
+              style={{ flex: 1 }}
             />
-            <Text style={[styles.muted, { fontSize: 12 }]}>
-              Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY}
-            </Text>
-            {error ? <Text style={{ color: colors.danger, fontSize: 13 }}>{error}</Text> : null}
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
-              <PrimaryButton
-                label={saving ? "Saving…" : "Save"}
-                onPress={() => {
-                  if (!saving) save();
-                }}
-                style={{ flex: 1 }}
-              />
-              <PrimaryButton
-                label="Cancel"
-                secondary
-                onPress={() => {
-                  if (saving) return;
-                  setEditing(false);
-                  setError(null);
-                }}
-                style={{ flex: 1 }}
-              />
-            </View>
-          </Card>
-        </View>
-      )}
+            <PrimaryButton
+              label="Cancel"
+              secondary
+              onPress={() => {
+                if (saving) return;
+                setEditing(false);
+                setError(null);
+              }}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </Card>
+      ) : null}
     </View>
   );
 }
