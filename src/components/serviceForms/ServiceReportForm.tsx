@@ -73,6 +73,8 @@ export function ServiceReportForm({
     setForm((prev) => ({ ...prev, ...p }));
   }
 
+  const lights247 = form.lightsOnAt === "24/7";
+
   function patchHouse(
     houseNumber: number,
     p: Partial<ServiceReportFormData["houses"][number]>,
@@ -180,24 +182,44 @@ export function ServiceReportForm({
           value={form.lightsOperationalOk}
           onChange={(lightsOperationalOk) => patch({ lightsOperationalOk })}
         />
-        <PairFields
-          left={
+        <YesNoField
+          label="Lights on 24/7"
+          value={lights247 ? "yes" : "no"}
+          onChange={(v) => {
+            if (v === "yes") {
+              patch({ lightsOnAt: "24/7", lightsOffAt: "" });
+              return;
+            }
+            patch({
+              lightsOnAt: form.lightsOnAt === "24/7" ? "" : form.lightsOnAt,
+            });
+          }}
+        />
+        {lights247 ? (
+          <div className="flex items-center justify-between gap-3 border-b border-stone-200 py-2.5">
+            <span className="flex-1 text-sm font-semibold text-stone-800">
+              Lights ON at
+            </span>
+            <span className="text-base font-extrabold text-stone-900">24/7</span>
+          </div>
+        ) : (
+          <div className="mb-1 flex flex-wrap gap-3">
             <TextField
               label="Lights ON at"
               value={form.lightsOnAt}
               onChange={(lightsOnAt) => patch({ lightsOnAt })}
               type="time"
+              className="mb-2.5 w-[9.25rem]"
             />
-          }
-          right={
             <TextField
               label="Lights OFF at"
               value={form.lightsOffAt}
               onChange={(lightsOffAt) => patch({ lightsOffAt })}
               type="time"
+              className="mb-2.5 w-[9.25rem]"
             />
-          }
-        />
+          </div>
+        )}
 
         <SectionTitle title="Air and litter" />
         <YesNoField

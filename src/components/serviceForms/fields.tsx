@@ -96,6 +96,7 @@ export function TextField({
   placeholder,
   type = "text",
   multiline,
+  className,
 }: {
   label: string;
   value: string;
@@ -103,9 +104,11 @@ export function TextField({
   placeholder?: string;
   type?: "text" | "number" | "time";
   multiline?: boolean;
+  /** Optional wrapper class (e.g. narrow time fields). */
+  className?: string;
 }) {
   return (
-    <div className="mb-2.5">
+    <div className={cn("mb-2.5", className)}>
       <label className="mb-1 block text-[13px] font-bold text-stone-500">{label}</label>
       {multiline ? (
         <textarea

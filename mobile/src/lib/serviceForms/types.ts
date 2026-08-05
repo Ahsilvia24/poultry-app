@@ -30,7 +30,8 @@ export type ServiceReportForm = {
   // Light
   lightIntensityOk: YesNo;
   lightsOperationalOk: YesNo;
-  lightsOnAt: string; // HH:mm
+  /** HH:mm, or "24/7" when lights stay on. */
+  lightsOnAt: string;
   lightsOffAt: string;
   // Air
   tempTargetsOk: YesNo;
