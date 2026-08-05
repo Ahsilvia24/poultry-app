@@ -47,8 +47,6 @@ export function WeightProjectionTile({
 
   if (groups.length === 0) return null;
 
-  const catchDatesSorted = groups.map((g) => g.catchDateKey);
-
   function startEdit() {
     if (saving) return;
     if (editing) {
@@ -122,18 +120,16 @@ export function WeightProjectionTile({
 
       {groups.map((group) => (
         <View key={group.catchDateKey} style={{ marginTop: 12 }}>
-          {groups.length > 1 ? (
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "700",
-                color: colors.text,
-                marginBottom: 8,
-              }}
-            >
-              Catch {formatCatchShort(group.catchDateKey)}
-            </Text>
-          ) : null}
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "700",
+              color: colors.text,
+              marginBottom: 8,
+            }}
+          >
+            Catch {formatCatchShort(group.catchDateKey)}
+          </Text>
           <View style={{ flexDirection: "row", gap: 8 }}>
             {group.projections.map((p) => (
               <View
@@ -160,16 +156,6 @@ export function WeightProjectionTile({
           </View>
         </View>
       ))}
-
-      {groups.length > 1 ? (
-        <View style={{ marginTop: 12, gap: 2 }}>
-          {catchDatesSorted.map((dateKey) => (
-            <Text key={dateKey} style={[styles.muted, { fontSize: 13 }]}>
-              Catch {formatCatchShort(dateKey)}
-            </Text>
-          ))}
-        </View>
-      ) : null}
     </>
   );
 

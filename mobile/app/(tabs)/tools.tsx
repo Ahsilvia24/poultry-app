@@ -129,11 +129,6 @@ export default function ToolsScreen() {
       : [];
 
   const activeFlocks = detail?.activeFlocks ?? [];
-  const catchLabel =
-    detail?.activeFlock?.catchDates?.[0] ??
-    detail?.activeFlock?.projectedCatchDate ??
-    detail?.activeFlock?.resolvedCatchDate ??
-    null;
   const growthRate = (() => {
     if (selectedHouse?.growthRateLbsPerDay != null) {
       return resolveGrowthRate(selectedHouse.growthRateLbsPerDay);
@@ -143,10 +138,15 @@ export default function ToolsScreen() {
       : null;
   })();
 
-  /** Selected house → Catch day / +1 / +2. */
+  /** Selected house → Catch day / +1 / +2 from that house’s catch (or flock). */
   const weightProjectionGroups = (() => {
     if (!detail || growthRate == null || !selectedHouse) return [];
-    const catchDate = selectedHouse.catchDate ?? catchLabel;
+    const catchDate =
+      selectedHouse.catchDate ??
+      detail.activeFlock?.projectedCatchDate ??
+      detail.activeFlock?.resolvedCatchDate ??
+      detail.activeFlock?.catchDates?.[0] ??
+      null;
     const placement =
       selectedHouse.placementDate ?? detail.activeFlock?.placementDate ?? null;
     if (!catchDate || !placement) return [];

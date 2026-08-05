@@ -695,10 +695,11 @@ export function getFarmDetail(farmId: string) {
     const housePlacementDate = hf
       ? hf.placement_date?.trim() || houseFlock?.placement_date || null
       : null;
-    // Default catch = house placement + 52 days (editable per house).
+    // House catch override → flock projected catch → placement + 52.
     const houseCatchDate = hf
       ? hf.catch_date?.trim() ||
-        (housePlacementDate ? addDaysKey(housePlacementDate, 52) : flockResolvedCatch)
+        flockResolvedCatch ||
+        (housePlacementDate ? addDaysKey(housePlacementDate, 52) : null)
       : null;
     const houseAgeDays =
       housePlacementDate != null

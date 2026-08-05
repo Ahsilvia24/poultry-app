@@ -115,6 +115,7 @@ export function ToolsWeightProjections({
 
       {house && house.flockId && house.groups.length > 0 ? (
         <WeightProjectionTile
+          key={house.id}
           flockId={house.flockId}
           groups={house.groups}
           growthRateLbsPerDay={house.growthRateLbsPerDay}

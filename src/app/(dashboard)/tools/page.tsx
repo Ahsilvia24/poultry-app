@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { addDays, format } from "date-fns";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -6,8 +6,14 @@ import {
   birdAgeFromPlacement,
   flockWeekFromAge,
 } from "@/lib/mortality/calculations";
-import { resolveCatchDate } from "@/lib/visits/schedule";
+import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
 import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
+
+/** Local noon from yyyy-MM-dd — safe for startOfDay / calendar math. */
+function localNoonFromKey(dateKey: string) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return new Date(y!, m! - 1, d!, 12, 0, 0, 0);
+}
 import { CoolCellsChart } from "@/components/CoolCellsChart";
 import { LightsChart } from "@/components/LightsChart";
 import { MaxCoolingChart } from "@/components/MaxCoolingChart";
@@ -89,6 +95,7 @@ export default async function ToolsPage({
 
   const weightFarms: WeightFarmPayload[] = farmsRaw.map((farm) => {
     const activeFlocks = farm.flocks;
+    const primary = activeFlocks[0] ?? null;
     const hfByHouseId = new Map<
       string,
       {
@@ -107,30 +114,38 @@ export default async function ToolsPage({
     const houses = farm.houses.map((house) => {
       const matched = hfByHouseId.get(house.id) ?? null;
       const hf = matched?.hf ?? null;
-      const flock = matched?.flock ?? null;
+      const flock = matched?.flock ?? primary;
       const growthRateLbsPerDay = resolveGrowthRate(flock?.growthRateLbsPerDay);
-      const placementDate = hf?.placementDate ?? flock?.placementDate ?? null;
-      const catchDate = hf?.catchDate
-        ? hf.catchDate
-        : flock && placementDate
-          ? resolveCatchDate({
-              placementDate,
-              projectedCatchDate: flock.projectedCatchDate,
-              actualCatchDate: flock.actualCatchDate,
-              targetMarketAge: flock.targetMarketAge,
-            })
-          : flock
-            ? resolveCatchDate(flock)
-            : null;
+
+      const placementKey = hf?.placementDate
+        ? dateKeyFromDb(hf.placementDate)
+        : flock?.placementDate
+          ? dateKeyFromDb(flock.placementDate)
+          : null;
+
+      let catchKey: string | null = null;
+      if (hf?.catchDate) {
+        catchKey = dateKeyFromDb(hf.catchDate);
+      } else if (flock?.actualCatchDate) {
+        catchKey = dateKeyFromDb(flock.actualCatchDate);
+      } else if (flock?.projectedCatchDate) {
+        catchKey = dateKeyFromDb(flock.projectedCatchDate);
+      } else if (placementKey) {
+        const age =
+          flock?.targetMarketAge != null && flock.targetMarketAge > 0
+            ? flock.targetMarketAge
+            : 52;
+        catchKey = dateKeyFromDb(addDays(parseDateKey(placementKey), age));
+      }
 
       const groups =
-        flock && placementDate && catchDate
+        flock && placementKey && catchKey
           ? [
               {
-                catchDateKey: format(catchDate, "yyyy-MM-dd"),
+                catchDateKey: catchKey,
                 projections: catchWeightProjections({
-                  placementDate,
-                  catchDate,
+                  placementDate: localNoonFromKey(placementKey),
+                  catchDate: localNoonFromKey(catchKey),
                   growthRateLbsPerDay,
                 }).map((p) => ({
                   offsetDays: p.offsetDays,

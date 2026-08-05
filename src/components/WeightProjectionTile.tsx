@@ -47,8 +47,6 @@ export function WeightProjectionTile({
 
   if (groups.length === 0) return null;
 
-  const catchDatesSorted = groups.map((g) => g.catchDateKey);
-
   function toggleEdit() {
     if (pending) return;
     if (editing) {
@@ -102,11 +100,9 @@ export function WeightProjectionTile({
 
       {groups.map((group) => (
         <div key={group.catchDateKey} className="mt-3">
-          {groups.length > 1 ? (
-            <p className="mb-2 text-sm font-semibold text-stone-700">
-              Catch {formatCatchShort(group.catchDateKey)}
-            </p>
-          ) : null}
+          <p className="mb-2 text-sm font-semibold text-stone-700">
+            Catch {formatCatchShort(group.catchDateKey)}
+          </p>
           <div className="grid grid-cols-3 gap-2 text-lg">
             {group.projections.map((p) => (
               <div
@@ -123,16 +119,6 @@ export function WeightProjectionTile({
           </div>
         </div>
       ))}
-
-      {groups.length > 1 ? (
-        <div className="mt-3 space-y-0.5">
-          {catchDatesSorted.map((dateKey) => (
-            <p key={dateKey} className="text-sm text-stone-500">
-              Catch {formatCatchShort(dateKey)}
-            </p>
-          ))}
-        </div>
-      ) : null}
     </>
   );
 
