@@ -212,8 +212,8 @@ export default function ToolsScreen() {
         contentContainerStyle={styles.content}
       >
         <PageHeader
-          title="Weight projections"
-          subtitle="Age at kill × growth rate — plus field calculators"
+          title="Tools"
+          subtitle="Weight projections and field calculators"
         />
 
         <Card style={{ marginBottom: 12 }}>
