@@ -278,18 +278,22 @@ export default function ServiceReportScreen() {
               <Text style={{ fontWeight: "800", color: colors.text, fontSize: 16 }}>24/7</Text>
             </View>
           ) : (
-            <>
-              <TimeScrollPickerField
-                label="Lights ON at"
-                value={form.lightsOnAt}
-                onChange={(lightsOnAt) => patch({ lightsOnAt })}
-              />
-              <TimeScrollPickerField
-                label="Lights OFF at"
-                value={form.lightsOffAt}
-                onChange={(lightsOffAt) => patch({ lightsOffAt })}
-              />
-            </>
+            <PairFields
+              left={
+                <TimeScrollPickerField
+                  label="Lights ON at"
+                  value={form.lightsOnAt}
+                  onChange={(lightsOnAt) => patch({ lightsOnAt })}
+                />
+              }
+              right={
+                <TimeScrollPickerField
+                  label="Lights OFF at"
+                  value={form.lightsOffAt}
+                  onChange={(lightsOffAt) => patch({ lightsOffAt })}
+                />
+              }
+            />
           )}
 
           <SectionTitle title="Air and litter" />
