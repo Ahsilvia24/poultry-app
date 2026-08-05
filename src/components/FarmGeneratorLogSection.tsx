@@ -172,7 +172,6 @@ function GeneratorLogForm({
   previousByGen,
   onlyGen,
   onSuccess,
-  onCancel,
 }: {
   farmId: string;
   recordId?: string;
@@ -180,7 +179,6 @@ function GeneratorLogForm({
   previousByGen?: Partial<Record<GenHourKey, number | null>>;
   onlyGen?: GenHourKey;
   onSuccess?: () => void;
-  onCancel?: () => void;
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -304,20 +302,9 @@ function GeneratorLogForm({
         </>
       )}
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={pending}>
-          {pending
-            ? "Saving…"
-            : recordId
-              ? "Save"
-              : "Log generators"}
-        </Button>
-        {onCancel ? (
-          <Button type="button" variant="secondary" disabled={pending} onClick={onCancel}>
-            Cancel
-          </Button>
-        ) : null}
-      </div>
+      <Button type="submit" disabled={pending}>
+        {pending ? "Saving…" : recordId ? "Save changes" : "Save generators"}
+      </Button>
     </form>
   );
 }
@@ -504,10 +491,6 @@ export function FarmGeneratorLogSection({
             onlyGen={editingGen}
             previousByGen={editPreviousByGen}
             onSuccess={afterSaved}
-            onCancel={() => {
-              setEditingId(null);
-              setEditingGen(null);
-            }}
           />
         ) : null}
 
@@ -524,8 +507,13 @@ export function FarmGeneratorLogSection({
                 rows={gen.rows}
                 onEdit={(id) => {
                   setFormOpen(false);
-                  setEditingId(id);
-                  setEditingGen(gen.hourKey);
+                  if (editingId === id && editingGen === gen.hourKey) {
+                    setEditingId(null);
+                    setEditingGen(null);
+                  } else {
+                    setEditingId(id);
+                    setEditingGen(gen.hourKey);
+                  }
                 }}
                 onDelete={async (id) => {
                   await deleteGeneratorLogAction(id, gen.hourKey);
@@ -549,14 +537,22 @@ export function FarmGeneratorLogSection({
           Log generators
         </button>
       ) : (
-        <Card className="mt-3">
-          <GeneratorLogForm
-            farmId={farmId}
-            previousByGen={createPreviousByGen}
-            onSuccess={afterSaved}
-            onCancel={() => setFormOpen(false)}
-          />
-        </Card>
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setFormOpen(false)}
+            className="text-sm text-emerald-800 hover:underline"
+          >
+            Log generators
+          </button>
+          <Card className="mt-3">
+            <GeneratorLogForm
+              farmId={farmId}
+              previousByGen={createPreviousByGen}
+              onSuccess={afterSaved}
+            />
+          </Card>
+        </div>
       )}
     </div>
   );

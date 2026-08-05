@@ -1608,9 +1608,13 @@ export default function FarmDetailScreen() {
               </>
             )}
           </Card>
-          {!generatorModalOpen ? (
-            <RecordLink label="Log generators" onPress={() => openGeneratorEditor()} />
-          ) : null}
+          <RecordLink
+            label="Log generators"
+            onPress={() => {
+              if (generatorModalOpen) closeGeneratorModal();
+              else openGeneratorEditor();
+            }}
+          />
         </View>
 
         {/* ── Issues ── */}
@@ -2465,13 +2469,20 @@ export default function FarmDetailScreen() {
                   paddingBottom: Platform.OS === "ios" ? 28 : 24,
                 }}
               >
-                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                  {generatorEditingId
-                    ? generatorEditingGen
-                      ? `Edit ${GENERATOR_FIELD_DEFS.find((f) => f.hourKey === generatorEditingGen)?.label ?? "generator"}`
-                      : "Edit generators"
-                    : "Log generators"}
-                </Text>
+                <Pressable
+                  onPress={closeGeneratorModal}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel generator log"
+                >
+                  <Text style={{ fontSize: 18, fontWeight: "800", color: colors.accentDark }}>
+                    {generatorEditingId
+                      ? generatorEditingGen
+                        ? `Edit ${GENERATOR_FIELD_DEFS.find((f) => f.hourKey === generatorEditingGen)?.label ?? "generator"}`
+                        : "Edit generators"
+                      : "Log generators"}
+                  </Text>
+                </Pressable>
                 {generatorError ? (
                   <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
                     {generatorError}
@@ -2539,7 +2550,7 @@ export default function FarmDetailScreen() {
                     ))}
                   </>
                 )}
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+                <View style={{ marginTop: 8 }}>
                   <PrimaryButton
                     label={generatorSaving ? "Saving…" : "Save"}
                     onPress={() => {
@@ -2585,13 +2596,6 @@ export default function FarmDetailScreen() {
                         setGeneratorSaving(false);
                       }
                     }}
-                    style={{ flex: 1 }}
-                  />
-                  <PrimaryButton
-                    label="Cancel"
-                    secondary
-                    onPress={closeGeneratorModal}
-                    style={{ flex: 1 }}
                   />
                 </View>
               </ScrollView>
