@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -387,8 +388,63 @@ export default function FarmDetailScreen() {
     gen4Hours: "",
   });
   const scrollRef = useRef<ScrollViewType>(null);
+  const farmEditScrollRef = useRef<ScrollViewType>(null);
+  const farmNotesRef = useRef<View>(null);
+  const farmEditScrollY = useRef(0);
+  const farmNotesFocused = useRef(false);
+  const [farmEditKbHeight, setFarmEditKbHeight] = useState(0);
   useTabScrollToTop("farms", scrollRef);
   const sectionY = useRef<Record<string, number>>({});
+
+  function ensureFarmNotesAboveKeyboard(kbHeight = farmEditKbHeight) {
+    const scroll = farmEditScrollRef.current;
+    const field = farmNotesRef.current;
+    if (!scroll || !field || kbHeight <= 0) return;
+    field.measureInWindow((_x, y, _w, h) => {
+      const winH = Dimensions.get("window").height;
+      // Keep Notes label + top of the box above the keypad.
+      const limit = winH - kbHeight - 16;
+      const targetTop = Math.max(72, winH - kbHeight - Math.min(h + 36, 180));
+      if (y + Math.min(h, 80) > limit || y > targetTop) {
+        const delta = y - targetTop + 8;
+        scroll.scrollTo({
+          y: Math.max(0, farmEditScrollY.current + delta),
+          animated: true,
+        });
+      }
+    });
+  }
+
+  function focusFarmNotes() {
+    farmNotesFocused.current = true;
+    // Keyboard animation is ~250ms; measure after the sheet has lifted.
+    setTimeout(() => ensureFarmNotesAboveKeyboard(), 50);
+    setTimeout(() => ensureFarmNotesAboveKeyboard(), 320);
+    setTimeout(() => ensureFarmNotesAboveKeyboard(), 500);
+  }
+
+  useEffect(() => {
+    if (editingFarm == null) {
+      setFarmEditKbHeight(0);
+      farmNotesFocused.current = false;
+      return;
+    }
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvt, (e) => {
+      const h = e.endCoordinates.height;
+      setFarmEditKbHeight(h);
+      if (farmNotesFocused.current) {
+        requestAnimationFrame(() => ensureFarmNotesAboveKeyboard(h));
+        setTimeout(() => ensureFarmNotesAboveKeyboard(h), 280);
+      }
+    });
+    const hideSub = Keyboard.addListener(hideEvt, () => setFarmEditKbHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [editingFarm]);
 
   function scrollToSection(key: string) {
     const y = sectionY.current[key];
@@ -2236,45 +2292,55 @@ export default function FarmDetailScreen() {
         transparent
         onRequestClose={closeFarmEditor}
       >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        {/* Manual keyboard padding — more reliable than KAV inside RN Modals. */}
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+            paddingBottom: farmEditKbHeight,
+          }}
         >
           <Pressable
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
+            style={{ flex: 1 }}
+            onPress={() => {
+              Keyboard.dismiss();
+              closeFarmEditor();
             }}
-            onPress={closeFarmEditor}
+          />
+          <View
+            style={{
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              maxHeight: farmEditKbHeight > 0 ? "58%" : "92%",
+              overflow: "hidden",
+            }}
           >
-            <Pressable
-              onPress={(e) => e.stopPropagation()}
-              style={{
-                backgroundColor: "#fff",
-                borderTopLeftRadius: 16,
-                borderTopRightRadius: 16,
+            <ScrollView
+              ref={farmEditScrollRef}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              onScroll={(e) => {
+                farmEditScrollY.current = e.nativeEvent.contentOffset.y;
+              }}
+              scrollEventThrottle={16}
+              contentContainerStyle={{
                 padding: 20,
-                paddingBottom: Platform.OS === "ios" ? 28 : 20,
-                maxHeight: "90%",
+                paddingBottom: 40,
               }}
             >
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="interactive"
-                contentContainerStyle={{ paddingBottom: 24 }}
-              >
-                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                  Edit farm info
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                Edit farm info
+              </Text>
+              {farmEditError ? (
+                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                  {farmEditError}
                 </Text>
-                {farmEditError ? (
-                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
-                    {farmEditError}
-                  </Text>
-                ) : null}
-                {editingFarm ? (
-                  <View style={{ marginTop: 14, gap: 4 }}>
+              ) : null}
+              {editingFarm ? (
+                <>
+                  <View style={{ marginTop: 14 }}>
                     <Text style={styles.label}>Farm name *</Text>
                     <TextInput
                       style={styles.input}
@@ -2316,7 +2382,9 @@ export default function FarmDetailScreen() {
                       autoCapitalize="none"
                       autoCorrect={false}
                     />
-                    <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
+                  </View>
+                  <View ref={farmNotesRef} collapsable={false}>
+                    <Text style={styles.label}>Notes</Text>
                     <TextInput
                       style={[
                         styles.input,
@@ -2326,6 +2394,7 @@ export default function FarmDetailScreen() {
                           paddingBottom: 12,
                           textAlignVertical: "top",
                           color: colors.text,
+                          marginBottom: 0,
                         },
                       ]}
                       value={editingFarm.notes}
@@ -2334,28 +2403,32 @@ export default function FarmDetailScreen() {
                       }
                       multiline
                       scrollEnabled
+                      onFocus={focusFarmNotes}
+                      onBlur={() => {
+                        farmNotesFocused.current = false;
+                      }}
                       placeholder="Notes"
                       placeholderTextColor={colors.muted}
                     />
-                    <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
-                      <PrimaryButton
-                        label={farmSaving ? "Saving…" : "Save farm changes"}
-                        onPress={saveFarmEdit}
-                        style={{ flex: 1 }}
-                      />
-                      <PrimaryButton
-                        label="Cancel"
-                        secondary
-                        onPress={closeFarmEditor}
-                        style={{ flex: 1 }}
-                      />
-                    </View>
                   </View>
-                ) : null}
-              </ScrollView>
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
+                  <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                    <PrimaryButton
+                      label={farmSaving ? "Saving…" : "Save Changes"}
+                      onPress={saveFarmEdit}
+                      style={{ flex: 1 }}
+                    />
+                    <PrimaryButton
+                      label="Cancel"
+                      secondary
+                      onPress={closeFarmEditor}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                </>
+              ) : null}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
 
       <Modal
