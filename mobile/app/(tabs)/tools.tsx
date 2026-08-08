@@ -427,7 +427,7 @@ export default function ToolsScreen() {
                       >
                         {flockWeek != null
                           ? `· Flock week ${flockWeek}${
-                              selectedHouse.ageDays != null ? ` · ${selectedHouse.ageDays}d` : ""
+                              selectedHouse.ageDays != null ? ` ${selectedHouse.ageDays}d` : ""
                             }`
                           : "· No active flock"}
                       </Text>

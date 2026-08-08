@@ -153,7 +153,7 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                 {flockWeek != null ? (
                   <p className="text-[13px] text-stone-600">
                     · Flock week {flockWeek}
-                    {farm?.birdAgeDays != null ? ` · ${farm.birdAgeDays}d` : ""}
+                    {farm?.birdAgeDays != null ? ` ${farm.birdAgeDays}d` : ""}
                   </p>
                 ) : (
                   <p className="text-[13px] text-amber-800">· No active flock</p>
