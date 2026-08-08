@@ -82,7 +82,7 @@ export function ConsumptionRateCalculator() {
 
   return (
     <Card>
-      <h2 className="text-base font-bold text-stone-900">Consumption rate calculator</h2>
+      <h2 className="text-base font-bold text-stone-900">Consumption Rate Calculator</h2>
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div>
           <Label htmlFor="calcWater">Daily water (gal)</Label>
