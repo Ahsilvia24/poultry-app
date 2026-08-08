@@ -39,7 +39,7 @@ export function ConfirmDialog({
         }}
       >
         <Pressable
-          onPress={(e) => e.stopPropagation?.()}
+          onPress={() => {}}
           style={{
             backgroundColor: "#fff",
             borderRadius: 14,
