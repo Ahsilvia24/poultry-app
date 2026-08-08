@@ -5,6 +5,7 @@ import { Card } from "@/components/ui";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { DashboardFarmCards } from "@/components/DashboardFarmCards";
+import { ScrollableFarmList } from "@/components/ScrollableFarmList";
 import { signOutAction } from "@/app/actions/auth";
 import { redirect } from "next/navigation";
 
@@ -41,7 +42,7 @@ export default async function DashboardPage() {
           </Card>
           <CollapsibleCard
             title="Upcoming Visits"
-            defaultOpen={false}
+            defaultOpen
             count={data.upcomingSchedule.length}
           >
             {data.upcomingSchedule.length === 0 ? (
@@ -56,27 +57,29 @@ export default async function DashboardPage() {
           defaultOpen={false}
           count={data.upcomingCatches.length}
         >
-          <ul className="mt-2 space-y-1.5 text-sm">
-            {data.upcomingCatches.length === 0 ? (
-              <li className="text-stone-500">None</li>
-            ) : (
-              data.upcomingCatches.map((c) => (
-                <li
-                  key={`${c.farmName}-${c.date}-${c.flockNumber}`}
-                  className="flex items-baseline justify-between gap-3"
-                >
-                  <span className="font-semibold text-stone-900">
-                    {c.farmName}
-                    <span className="font-normal text-stone-500"> · {c.flockAgeDays}d</span>
-                  </span>
-                  <span className="shrink-0 text-stone-600">
-                    {format(parseISO(c.date), "EEE, MMM d, yyyy")}
-                    {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
-                  </span>
-                </li>
-              ))
-            )}
-          </ul>
+          {data.upcomingCatches.length === 0 ? (
+            <p className="mt-2 text-sm text-stone-500">None</p>
+          ) : (
+            <ScrollableFarmList className="mt-2">
+              <ul className="space-y-1.5 text-sm">
+                {data.upcomingCatches.map((c) => (
+                  <li
+                    key={`${c.farmName}-${c.date}-${c.flockNumber}`}
+                    className="flex h-5 items-baseline justify-between gap-3"
+                  >
+                    <span className="font-semibold text-stone-900">
+                      {c.farmName}
+                      <span className="font-normal text-stone-500"> · {c.flockAgeDays}d</span>
+                    </span>
+                    <span className="shrink-0 text-stone-600">
+                      {format(parseISO(c.date), "EEE, MMM d, yyyy")}
+                      {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </ScrollableFarmList>
+          )}
         </CollapsibleCard>
       </div>
 
