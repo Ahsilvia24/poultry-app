@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, Platform, Pressable, Text, View } from "react-native";
+import { Alert, Pressable, Text, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as XLSX from "xlsx";
@@ -7,8 +7,6 @@ import { colors, styles } from "../theme";
 import { Card, Chip, PrimaryButton } from "./ui";
 import {
   groupPlacementFarms,
-  parsePlacementLayoutText,
-  parsePlacementScrambledText,
   parsePlacementSheetRows,
   type PlacementRow,
 } from "../lib/placementImport/parse";
@@ -71,25 +69,11 @@ async function rowsFromPickedFile(asset: DocumentPicker.DocumentPickerAsset): Pr
   }
 
   if (name.endsWith(".pdf") || asset.mimeType?.includes("pdf")) {
-    if (Platform.OS !== "web") {
-      throw new Error(
-        "PDF placement import on phone needs a CSV/XLSX export, or use the web Import with this PDF.",
-      );
-    }
-    const b64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    // Prefer layout-like scrambled parser from browser pdf.js via pdf-parse when available.
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: bytes });
-    const result = await parser.getText();
-    const text = result.text ?? "";
-    const layout = parsePlacementLayoutText(text);
-    if (layout.length > 0) return layout;
-    return parsePlacementScrambledText(text);
+    // pdf-parse/pdf.js is not bundled for Expo web/native; use CSV/XLSX here
+    // or run PDF import from the Next.js web app.
+    throw new Error(
+      "PDF placement import needs a CSV/XLSX export on mobile, or use the web Import with this PDF.",
+    );
   }
 
   throw new Error("Use a Weekly Chick Placement PDF or spreadsheet (.csv / .xlsx).");
