@@ -203,20 +203,52 @@ export function ScheduleImportCard() {
 
   return (
     <Card>
-      <View style={[styles.row, { marginBottom: 4, flexWrap: "wrap" }]}>
-        {TYPE_OPTIONS.map((type) => (
-          <Chip
-            key={type.id}
-            label={type.label}
-            active={importType === type.id}
-            onPress={() => {
-              setImportType(type.id);
-              setNote(null);
-              setFarms([]);
-              setRows([]);
-            }}
-          />
-        ))}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "stretch",
+          gap: 6,
+          marginBottom: 12,
+        }}
+      >
+        {TYPE_OPTIONS.map((type) => {
+          const active = importType === type.id;
+          return (
+            <Pressable
+              key={type.id}
+              onPress={() => {
+                setImportType(type.id);
+                setNote(null);
+                setFarms([]);
+                setRows([]);
+              }}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                borderRadius: 10,
+                paddingVertical: 10,
+                paddingHorizontal: 4,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: active ? colors.accentDark : "#e7e5e4",
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+                style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: active ? "#fff" : colors.text,
+                  textAlign: "center",
+                }}
+              >
+                {type.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {importType !== "placement" ? (
