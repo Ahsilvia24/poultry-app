@@ -280,6 +280,14 @@ export function HouseCardActions({
                 <Button type="button" variant="secondary" disabled={pending} onClick={close}>
                   Cancel
                 </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  disabled={pending}
+                  onClick={() => onModeChange("delete")}
+                >
+                  Delete House
+                </Button>
               </div>
             </form>
           </>
