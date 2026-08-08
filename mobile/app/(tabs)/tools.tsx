@@ -96,6 +96,10 @@ export default function ToolsScreen() {
         })
       : [];
 
+  function snapToTop() {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }
+
   function onSectionLayout(key: SectionKey, e: LayoutChangeEvent) {
     sectionY.current[key] = e.nativeEvent.layout.y;
   }
@@ -170,7 +174,7 @@ export default function ToolsScreen() {
             <SectionPanel
               title="Temp Curve"
               subtitle="Target house temperature (°F) by bird age — summer vs winter"
-              onClose={() => setOpen((p) => ({ ...p, temp: false }))}
+              onTop={snapToTop}
             >
               <TempCurveChart />
             </SectionPanel>
@@ -183,7 +187,7 @@ export default function ToolsScreen() {
           {open.cool ? (
             <SectionPanel
               title="Cool Cells"
-              onClose={() => setOpen((p) => ({ ...p, cool: false }))}
+              onTop={snapToTop}
             >
               <CoolCellsChart />
             </SectionPanel>
@@ -197,7 +201,7 @@ export default function ToolsScreen() {
             <SectionPanel
               title="Max Cooling"
               subtitle="By relative humidity and outside temperature (°F)"
-              onClose={() => setOpen((p) => ({ ...p, max: false }))}
+              onTop={snapToTop}
             >
               <MaxCoolingChart />
             </SectionPanel>
@@ -210,7 +214,7 @@ export default function ToolsScreen() {
           {open.lights ? (
             <SectionPanel
               title="Lights"
-              onClose={() => setOpen((p) => ({ ...p, lights: false }))}
+              onTop={snapToTop}
             >
               <LightsChart />
             </SectionPanel>
@@ -224,7 +228,7 @@ export default function ToolsScreen() {
             <>
               <SectionPanel
                 title="Ventilation"
-                onClose={() => setOpen((p) => ({ ...p, vent: false }))}
+                onTop={snapToTop}
               >
                 <Text style={styles.label}>Farm</Text>
                 <ChipScroller>
@@ -577,7 +581,7 @@ export default function ToolsScreen() {
             <SectionPanel
               title="Phone Numbers"
               subtitle="Coming soon."
-              onClose={() => setOpen((p) => ({ ...p, phone: false }))}
+              onTop={snapToTop}
             />
           ) : (
             <SectionAnchor />
@@ -629,12 +633,12 @@ function SectionAnchor() {
 function SectionPanel({
   title,
   subtitle,
-  onClose,
+  onTop,
   children,
 }: {
   title: string;
   subtitle?: string;
-  onClose: () => void;
+  onTop: () => void;
   children?: React.ReactNode;
 }) {
   return (
@@ -653,8 +657,8 @@ function SectionPanel({
             <Text style={[styles.muted, { marginTop: 4 }]}>{subtitle}</Text>
           ) : null}
         </View>
-        <Pressable onPress={onClose} hitSlop={8}>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Close</Text>
+        <Pressable onPress={onTop} hitSlop={8}>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Top</Text>
         </Pressable>
       </View>
       {children ? <View style={{ marginTop: 12 }}>{children}</View> : null}

@@ -32,11 +32,8 @@ export function ToolsSectionPanel({
     return () => window.removeEventListener("hashchange", syncFromHash);
   }, [hash]);
 
-  function closeSection() {
-    setOpen(false);
-    if (window.location.hash === hash) {
-      history.replaceState(null, "", window.location.pathname + window.location.search);
-    }
+  function snapToTop() {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }
 
   if (!open) return <div id={hashId} className="scroll-mt-24" />;
@@ -51,10 +48,10 @@ export function ToolsSectionPanel({
           </div>
           <button
             type="button"
-            onClick={closeSection}
+            onClick={snapToTop}
             className="shrink-0 text-sm font-semibold text-stone-500 hover:text-stone-800"
           >
-            Close
+            Top
           </button>
         </div>
         {children ? <div className="mt-4">{children}</div> : null}
