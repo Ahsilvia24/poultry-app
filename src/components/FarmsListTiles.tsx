@@ -59,8 +59,11 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
     setSwipeX(0);
   }
 
+  const subtitle =
+    [farm.growerName, farm.phoneNumber].filter(Boolean).join(" · ") || "\u00a0";
+
   return (
-    <div className="relative overflow-hidden rounded-xl">
+    <div className="relative h-full overflow-hidden rounded-xl">
       <div
         className="absolute inset-y-0 right-0 flex w-[88px] items-stretch"
         aria-hidden={swipeX > -40}
@@ -79,7 +82,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
       </div>
 
       <div
-        className="relative transition-transform duration-150 ease-out"
+        className="relative h-full transition-transform duration-150 ease-out"
         style={{ transform: `translateX(${swipeX}px)` }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -89,7 +92,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
           setSwipeX(0);
         }}
       >
-        <Card className="relative flex h-full min-h-[4.5rem] items-center p-3 transition hover:border-emerald-400">
+        <Card className="relative flex h-full min-h-[4.75rem] items-center p-3 transition hover:border-emerald-400">
           <Link
             href={`/farms/${farm.id}`}
             className="absolute inset-0 z-0 rounded-[inherit]"
@@ -97,7 +100,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
           />
           <div className="relative z-10 flex w-full pointer-events-none items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-base font-bold leading-snug text-stone-900">
+              <p className="truncate text-base font-bold leading-snug text-stone-900">
                 {farm.farmName}
                 <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
                 {farm.flockAges.length > 0 ? (
@@ -107,27 +110,26 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
                   </span>
                 ) : null}
               </p>
-              <p className="mt-0.5 min-h-5 text-sm leading-snug text-stone-600">
-                {farm.growerName ? <span>{farm.growerName}</span> : null}
-                {farm.growerName && farm.phoneNumber ? (
-                  <span className="text-stone-400"> · </span>
-                ) : null}
+              <p className="mt-0.5 h-5 truncate text-sm leading-5 text-stone-600">
                 {farm.phoneNumber ? (
-                  <a
-                    href={dialHref(farm.phoneNumber)}
-                    className="pointer-events-auto relative z-10 font-semibold text-emerald-800 underline-offset-2 hover:underline"
-                  >
-                    {farm.phoneNumber}
-                  </a>
-                ) : null}
-                {!farm.growerName && !farm.phoneNumber ? (
-                  <span className="invisible" aria-hidden>
-                    —
-                  </span>
-                ) : null}
+                  <>
+                    {farm.growerName ? <span>{farm.growerName}</span> : null}
+                    {farm.growerName ? (
+                      <span className="text-stone-400"> · </span>
+                    ) : null}
+                    <a
+                      href={dialHref(farm.phoneNumber)}
+                      className="pointer-events-auto relative z-10 font-semibold text-emerald-800 underline-offset-2 hover:underline"
+                    >
+                      {farm.phoneNumber}
+                    </a>
+                  </>
+                ) : (
+                  <span>{subtitle}</span>
+                )}
               </p>
             </div>
-            <div className="pointer-events-auto relative z-10 flex shrink-0 items-center gap-1.5">
+            <div className="pointer-events-auto relative z-10 flex h-8 shrink-0 items-center gap-1.5">
               <button
                 type="button"
                 className={
