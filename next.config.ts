@@ -8,6 +8,12 @@ const nextConfig: NextConfig = {
     "*.loca.lt",
     "*.trycloudflare.com",
   ],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "20mb",
+      allowedOrigins: ["*.trycloudflare.com", "*.loca.lt"],
+    },
+  },
 };
 
 export default nextConfig;
