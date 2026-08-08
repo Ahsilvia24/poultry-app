@@ -138,23 +138,27 @@ function ScheduleCheckRow({
               fontWeight: "700",
               color: colors.text,
               flexShrink: 1,
+              minWidth: 0,
               textDecorationLine: checked ? "line-through" : "none",
             }}
             numberOfLines={1}
           >
             {item.farmName}
-            {item.flockAgeDays != null ? (
-              <Text
-                style={{
-                  fontWeight: "400",
-                  color: colors.muted,
-                  textDecorationLine: checked ? "line-through" : "none",
-                }}
-              >
-                {` ${item.flockAgeDays}d`}
-              </Text>
-            ) : null}
           </Text>
+          {item.flockAgeDays != null ? (
+            <Text
+              style={{
+                fontWeight: "400",
+                color: colors.muted,
+                flexShrink: 0,
+                marginLeft: 4,
+                textDecorationLine: checked ? "line-through" : "none",
+              }}
+              numberOfLines={1}
+            >
+              {item.flockAgeDays}d
+            </Text>
+          ) : null}
         </View>
         {showDate ? (
           <View
@@ -486,22 +490,47 @@ export default function DashboardScreen() {
                         }
                         style={{
                           flexDirection: "row",
+                          alignItems: "baseline",
                           justifyContent: "space-between",
                           gap: 8,
                           marginTop: 10,
                           minHeight: 22,
                         }}
                       >
-                        <Text style={{ fontWeight: "700", color: colors.text, flex: 1 }}>
-                          {c.farmName}
+                        <View
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            flexDirection: "row",
+                            alignItems: "baseline",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontWeight: "700",
+                              color: colors.text,
+                              flexShrink: 1,
+                              minWidth: 0,
+                            }}
+                            numberOfLines={1}
+                          >
+                            {c.farmName}
+                          </Text>
                           {c.flockAgeDays != null ? (
-                            <Text style={{ fontWeight: "400", color: colors.muted }}>
-                              {" "}
+                            <Text
+                              style={{
+                                fontWeight: "400",
+                                color: colors.muted,
+                                flexShrink: 0,
+                                marginLeft: 4,
+                              }}
+                              numberOfLines={1}
+                            >
                               {c.flockAgeDays}d
                             </Text>
                           ) : null}
-                        </Text>
-                        <Text style={{ color: colors.muted, fontSize: 13 }}>
+                        </View>
+                        <Text style={{ color: colors.muted, fontSize: 13, flexShrink: 0 }}>
                           {formatCatchDate(c.date)}
                           {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
                         </Text>
