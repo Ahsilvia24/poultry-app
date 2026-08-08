@@ -131,29 +131,19 @@ export function HouseCardActions({
             </h3>
             {error ? <p className="mt-2 text-sm text-red-700">{error}</p> : null}
             <form action={onSave} className="mt-4 space-y-3">
-              <div>
-                <Label htmlFor={`edit-houseNumber-${house.id}`}>House number</Label>
-                <Input
-                  id={`edit-houseNumber-${house.id}`}
-                  name="houseNumber"
-                  type="number"
-                  min={1}
-                  required
-                  defaultValue={house.houseNumber}
-                />
-              </div>
-              {hasActiveFlock ? (
-                <>
-                  <div>
-                    <Label htmlFor={`edit-flockNumber-${house.id}`}>Flock ID</Label>
-                    <Input
-                      id={`edit-flockNumber-${house.id}`}
-                      name="flockNumber"
-                      defaultValue={house.flockNumber ?? ""}
-                      placeholder="e.g. 26-07"
-                      autoCapitalize="characters"
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor={`edit-houseNumber-${house.id}`}>House number</Label>
+                  <Input
+                    id={`edit-houseNumber-${house.id}`}
+                    name="houseNumber"
+                    type="number"
+                    min={1}
+                    required
+                    defaultValue={house.houseNumber}
+                  />
+                </div>
+                {hasActiveFlock ? (
                   <div>
                     <Label htmlFor={`edit-placedBirdCount-${house.id}`}>Birds placed</Label>
                     <Input
@@ -166,28 +156,46 @@ export function HouseCardActions({
                       placeholder="e.g. 29700"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor={`edit-placementDate-${house.id}`}>Placement date</Label>
-                    <Input
-                      id={`edit-placementDate-${house.id}`}
-                      name="placementDate"
-                      type="date"
-                      value={placementDate}
-                      onChange={(e) => onPlacementChange(e.target.value)}
-                    />
+                ) : (
+                  <div />
+                )}
+              </div>
+              {hasActiveFlock ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor={`edit-placementDate-${house.id}`}>Placement date</Label>
+                      <Input
+                        id={`edit-placementDate-${house.id}`}
+                        name="placementDate"
+                        type="date"
+                        value={placementDate}
+                        onChange={(e) => onPlacementChange(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`edit-catchDate-${house.id}`}>Catch date</Label>
+                      <Input
+                        id={`edit-catchDate-${house.id}`}
+                        name="catchDate"
+                        type="date"
+                        value={catchDate}
+                        onChange={(e) => setCatchDate(e.target.value)}
+                      />
+                      <p className="mt-1 text-xs text-stone-500">
+                        Defaults to 52 days after placement; change anytime.
+                      </p>
+                    </div>
                   </div>
                   <div>
-                    <Label htmlFor={`edit-catchDate-${house.id}`}>Catch date</Label>
+                    <Label htmlFor={`edit-flockNumber-${house.id}`}>Flock ID</Label>
                     <Input
-                      id={`edit-catchDate-${house.id}`}
-                      name="catchDate"
-                      type="date"
-                      value={catchDate}
-                      onChange={(e) => setCatchDate(e.target.value)}
+                      id={`edit-flockNumber-${house.id}`}
+                      name="flockNumber"
+                      defaultValue={house.flockNumber ?? ""}
+                      placeholder="e.g. 26-07"
+                      autoCapitalize="characters"
                     />
-                    <p className="mt-1 text-xs text-stone-500">
-                      Defaults to 52 days after placement; change anytime.
-                    </p>
                   </div>
                   <label className="flex cursor-pointer items-start gap-2.5">
                     <input
@@ -210,7 +218,7 @@ export function HouseCardActions({
                   </label>
                 </>
               ) : null}
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor={`edit-squareFootage-${house.id}`}>Square footage</Label>
                   <Input
@@ -234,6 +242,8 @@ export function HouseCardActions({
                     defaultValue={house.totalFanCFM ?? ""}
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor={`edit-numberOfFans-${house.id}`}>Number of fans</Label>
                   <Input

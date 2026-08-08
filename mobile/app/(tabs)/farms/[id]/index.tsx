@@ -1981,15 +1981,71 @@ export default function FarmDetailScreen() {
                 ) : null}
                 {editingHouse ? (
                   <View style={{ marginTop: 14 }}>
-                    <NativeNumInput
-                      label="House number"
-                      value={editingHouse.houseNumber}
-                      onChangeText={(v) =>
-                        setEditingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
-                      }
-                    />
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <NativeNumInput
+                        label="House number"
+                        value={editingHouse.houseNumber}
+                        style={{ flex: 1 }}
+                        onChangeText={(v) =>
+                          setEditingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
+                        }
+                      />
+                      {data.activeFlock ? (
+                        <NativeNumInput
+                          label="Birds placed"
+                          value={editingHouse.placedBirdCount}
+                          placeholder={editingHouse.placedBirdCountPlaceholder}
+                          style={{ flex: 1 }}
+                          onChangeText={(v) =>
+                            setEditingHouse((prev) =>
+                              prev ? { ...prev, placedBirdCount: v } : prev,
+                            )
+                          }
+                        />
+                      ) : (
+                        <View style={{ flex: 1 }} />
+                      )}
+                    </View>
                     {data.activeFlock ? (
                       <>
+                        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+                          <View style={{ flex: 1 }}>
+                            <DatePickerField
+                              label="Placement date"
+                              value={editingHouse.placementDate}
+                              presentation="inline"
+                              onChange={(date) =>
+                                setEditingHouse((prev) => {
+                                  if (!prev) return prev;
+                                  const oldDefault = prev.placementDate
+                                    ? addDaysKey(prev.placementDate, 52)
+                                    : "";
+                                  const catchWasDefault =
+                                    !prev.catchDate || prev.catchDate === oldDefault;
+                                  return {
+                                    ...prev,
+                                    placementDate: date,
+                                    catchDate: catchWasDefault
+                                      ? addDaysKey(date, 52)
+                                      : prev.catchDate,
+                                  };
+                                })
+                              }
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <DatePickerField
+                              label="Catch date"
+                              value={editingHouse.catchDate}
+                              presentation="inline"
+                              onChange={(date) =>
+                                setEditingHouse((prev) =>
+                                  prev ? { ...prev, catchDate: date } : prev,
+                                )
+                              }
+                            />
+                          </View>
+                        </View>
                         <Text style={[styles.label, { marginTop: 2 }]}>Flock ID</Text>
                         <TextInput
                           style={[
@@ -2007,52 +2063,6 @@ export default function FarmDetailScreen() {
                           placeholder="e.g. 26-07"
                           placeholderTextColor={colors.muted}
                         />
-                        <NativeNumInput
-                          label="Birds placed"
-                          value={editingHouse.placedBirdCount}
-                          placeholder={editingHouse.placedBirdCountPlaceholder}
-                          onChangeText={(v) =>
-                            setEditingHouse((prev) =>
-                              prev ? { ...prev, placedBirdCount: v } : prev,
-                            )
-                          }
-                        />
-                        <View style={{ marginBottom: 10 }}>
-                          <DatePickerField
-                            label="Placement date"
-                            value={editingHouse.placementDate}
-                            presentation="inline"
-                            onChange={(date) =>
-                              setEditingHouse((prev) => {
-                                if (!prev) return prev;
-                                const oldDefault = prev.placementDate
-                                  ? addDaysKey(prev.placementDate, 52)
-                                  : "";
-                                const catchWasDefault =
-                                  !prev.catchDate || prev.catchDate === oldDefault;
-                                return {
-                                  ...prev,
-                                  placementDate: date,
-                                  catchDate: catchWasDefault
-                                    ? addDaysKey(date, 52)
-                                    : prev.catchDate,
-                                };
-                              })
-                            }
-                          />
-                        </View>
-                        <View style={{ marginBottom: 10 }}>
-                          <DatePickerField
-                            label="Catch date"
-                            value={editingHouse.catchDate}
-                            presentation="inline"
-                            onChange={(date) =>
-                              setEditingHouse((prev) =>
-                                prev ? { ...prev, catchDate: date } : prev,
-                              )
-                            }
-                          />
-                        </View>
                         <Pressable
                           onPress={() =>
                             setEditingHouse((prev) =>
@@ -2102,29 +2112,37 @@ export default function FarmDetailScreen() {
                         </Pressable>
                       </>
                     ) : null}
-                    <NativeNumInput
-                      label="Square footage"
-                      value={editingHouse.squareFootage}
-                      decimal
-                      onChangeText={(v) =>
-                        setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
-                      }
-                    />
-                    <NativeNumInput
-                      label="Total fan CFM"
-                      value={editingHouse.totalFanCFM}
-                      decimal
-                      onChangeText={(v) =>
-                        setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
-                      }
-                    />
-                    <NativeNumInput
-                      label="Number of fans"
-                      value={editingHouse.numberOfFans}
-                      onChangeText={(v) =>
-                        setEditingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
-                      }
-                    />
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <NativeNumInput
+                        label="Square footage"
+                        value={editingHouse.squareFootage}
+                        decimal
+                        style={{ flex: 1 }}
+                        onChangeText={(v) =>
+                          setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
+                        }
+                      />
+                      <NativeNumInput
+                        label="Total fan CFM"
+                        value={editingHouse.totalFanCFM}
+                        decimal
+                        style={{ flex: 1 }}
+                        onChangeText={(v) =>
+                          setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
+                        }
+                      />
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <NativeNumInput
+                        label="Number of fans"
+                        value={editingHouse.numberOfFans}
+                        style={{ flex: 1 }}
+                        onChangeText={(v) =>
+                          setEditingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
+                        }
+                      />
+                      <View style={{ flex: 1 }} />
+                    </View>
                     <Pressable
                       onPress={() =>
                         setEditingHouse((prev) =>
