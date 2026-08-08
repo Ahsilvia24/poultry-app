@@ -584,7 +584,7 @@ export default function DashboardScreen() {
                               return (
                                 <Text style={{ fontWeight: "600", color: colors.muted }}>
                                   {" "}
-                                  {ages.map((a) => `${a}d`).join(" · ")}
+                                  {ages.map((a) => `${a}d`).join(" ")}
                                 </Text>
                               );
                             })()}

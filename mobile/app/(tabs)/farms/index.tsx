@@ -187,7 +187,7 @@ export default function FarmsScreen() {
             : farm.flockAgeDays != null
               ? [farm.flockAgeDays]
               : [];
-          const ageLabel = ages.length > 0 ? ages.map((a) => `${a}d`).join(" · ") : null;
+          const ageLabel = ages.length > 0 ? ages.map((a) => `${a}d`).join(" ") : null;
           const titleMeta = ageLabel
             ? ` (${houseCount}) ${ageLabel}`
             : ` (${houseCount})`;
