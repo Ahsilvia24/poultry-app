@@ -357,7 +357,6 @@ export default function DashboardScreen() {
               </Text>
             </Pressable>
           </View>
-          <Text style={styles.subtitle}>Active farms, mortality, and follow-ups</Text>
         </View>
 
         {error ? <Text style={{ color: colors.danger, marginBottom: 12 }}>{error}</Text> : null}
@@ -585,7 +584,7 @@ export default function DashboardScreen() {
                               return (
                                 <Text style={{ fontWeight: "600", color: colors.muted }}>
                                   {" "}
-                                  · {ages.map((a) => `${a}d`).join(" · ")}
+                                  {ages.map((a) => `${a}d`).join(" ")}
                                 </Text>
                               );
                             })()}

@@ -89,7 +89,7 @@ export default async function TriplePlacePreviewPage() {
                 {flockAges.length > 0 ? (
                   <span className="font-semibold text-stone-500">
                     {" "}
-                    · {flockAges.map((a) => `${a}d`).join(" · ")}
+                    {flockAges.map((a) => `${a}d`).join(" ")}
                   </span>
                 ) : null}
               </p>
@@ -163,7 +163,7 @@ export default async function TriplePlacePreviewPage() {
                 (fl) =>
                   `${fl.flockNumber} (${differenceInCalendarDays(today, fl.placementDate)}d)`,
               )
-              .join(" · ")}
+              .join(" ")}
           </div>
         </Card>
       </div>
