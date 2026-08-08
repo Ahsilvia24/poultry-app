@@ -88,17 +88,25 @@ function CalcFieldButton({
       <Text style={styles.label}>{label}</Text>
       <Pressable
         onPress={onPress}
-        style={[
-          styles.input,
-          active ? { borderColor: colors.accentDark, borderWidth: 2 } : null,
-        ]}
+        style={{
+          minHeight: 48,
+          borderWidth: active ? 2 : 1,
+          borderColor: active ? colors.accentDark : "#d6d3d1",
+          borderRadius: 12,
+          paddingHorizontal: 14,
+          backgroundColor: "#fff",
+          marginBottom: 12,
+          justifyContent: "center",
+        }}
       >
         <Text
           style={{
-            fontSize: 18,
-            fontWeight: "700",
+            fontSize: 16,
+            lineHeight: 20,
+            fontWeight: "600",
             color: showPlaceholder ? "rgba(120,113,108,0.55)" : colors.text,
           }}
+          numberOfLines={1}
         >
           {showPlaceholder ? placeholder : value}
         </Text>
@@ -117,12 +125,9 @@ export default function LfoListScreen() {
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ farmId?: string | string[] }>();
   const routeFarmId = paramId(params.farmId);
-  const [lfos, setLfos] = useState(listLfos());
-  const [farms] = useState(listFarms().farms);
-  const [farmId, setFarmId] = useState(() => {
-    if (routeFarmId && farms.some((f) => f.id === routeFarmId)) return routeFarmId;
-    return farms[0]?.id ?? "";
-  });
+  const [lfos, setLfos] = useState<ReturnType<typeof listLfos>>([]);
+  const [farms, setFarms] = useState<ReturnType<typeof listFarms>["farms"]>([]);
+  const [farmId, setFarmId] = useState(routeFarmId || "");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [waterGal, setWaterGal] = useState("");
@@ -137,8 +142,15 @@ export default function LfoListScreen() {
   const headRef = useRef<ViewType>(null);
 
   const load = useCallback(() => {
+    const nextFarms = listFarms().farms;
+    setFarms(nextFarms);
     setLfos(listLfos());
-  }, []);
+    setFarmId((prev) => {
+      if (prev && nextFarms.some((f) => f.id === prev)) return prev;
+      if (routeFarmId && nextFarms.some((f) => f.id === routeFarmId)) return routeFarmId;
+      return nextFarms[0]?.id ?? "";
+    });
+  }, [routeFarmId]);
 
   useFocusEffect(
     useCallback(() => {
