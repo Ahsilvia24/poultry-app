@@ -213,7 +213,7 @@ export function LfoInventoryForm({
                 <input type="hidden" name="houseId" value={house.houseId} />
                 <input type="hidden" name="feedUpAt" value={feedUpAt} />
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm font-semibold text-stone-800">
+                  <p className="text-[calc(0.875rem+2pt)] font-bold text-stone-800">
                     House {house.houseNumber}
                   </p>
                   <p className="text-xs text-stone-500">
