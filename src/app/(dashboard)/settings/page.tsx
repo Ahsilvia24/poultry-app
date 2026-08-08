@@ -146,7 +146,8 @@ export default async function SettingsPage() {
         </form>
       </Card>
 
-      <div className="mt-6">
+      <h2 className="mt-8 text-xl font-bold">Backup</h2>
+      <div className="mt-3 max-w-2xl">
         <ImportPhoneBackupForm />
       </div>
     </div>

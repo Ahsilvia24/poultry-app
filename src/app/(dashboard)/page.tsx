@@ -5,7 +5,6 @@ import { Card } from "@/components/ui";
 import { DashboardScheduleImport } from "@/components/DashboardScheduleImport";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { DashboardFarmCards } from "@/components/DashboardFarmCards";
-import { ImportPhoneBackupForm } from "@/components/ImportPhoneBackupForm";
 import { ScrollableFarmList } from "@/components/ScrollableFarmList";
 import { listScheduleImports } from "@/lib/schedule-imports";
 import { signOutAction } from "@/app/actions/auth";
@@ -87,11 +86,6 @@ export default async function DashboardPage() {
       <h2 className="mt-8 text-xl font-bold">Import</h2>
       <div className="mt-3">
         <DashboardScheduleImport imports={scheduleImports} />
-      </div>
-
-      <h2 className="mt-8 text-xl font-bold">Backup</h2>
-      <div className="mt-3">
-        <ImportPhoneBackupForm />
       </div>
     </div>
   );
