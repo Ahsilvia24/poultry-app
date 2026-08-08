@@ -237,6 +237,8 @@ export default function DashboardScreen() {
   const [upcomingOpen, setUpcomingOpen] = useState(false);
   const [catchesOpen, setCatchesOpen] = useState(false);
   const [expandedFarmIds, setExpandedFarmIds] = useState<Set<string>>(() => new Set());
+  /** Avoid mounting tall swipe actions until open — on web they stretch short tiles. */
+  const [swipingFarmId, setSwipingFarmId] = useState<string | null>(null);
 
   function toggleFarmExpanded(farmId: string) {
     setExpandedFarmIds((prev) => {
@@ -550,38 +552,45 @@ export default function DashboardScreen() {
                   overshootRight={false}
                   friction={2}
                   rightThreshold={40}
-                  containerStyle={{ marginBottom: 8 }}
+                  containerStyle={{ marginBottom: 8, overflow: "hidden" }}
+                  onSwipeableWillOpen={() => setSwipingFarmId(farm.id)}
+                  onSwipeableClose={() =>
+                    setSwipingFarmId((id) => (id === farm.id ? null : id))
+                  }
                   onSwipeableOpen={(direction) => {
                     if (direction === "right") makeInactive(farm.id);
                   }}
-                  renderRightActions={() => (
-                    <Pressable
-                      accessibilityLabel={`Make ${farm.farmName} inactive`}
-                      onPress={() => makeInactive(farm.id)}
-                      style={{
-                        backgroundColor: "#57534e",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        width: 100,
-                        borderRadius: 14,
-                        marginLeft: 8,
-                      }}
-                    >
-                      <Ionicons name="pause-circle-outline" size={22} color="#fff" />
-                      <Text
+                  renderRightActions={() =>
+                    swipingFarmId === farm.id ? (
+                      <Pressable
+                        accessibilityLabel={`Make ${farm.farmName} inactive`}
+                        onPress={() => makeInactive(farm.id)}
                         style={{
-                          color: "#fff",
-                          fontWeight: "800",
-                          fontSize: 11,
-                          marginTop: 4,
-                          textAlign: "center",
-                          paddingHorizontal: 4,
+                          backgroundColor: "#57534e",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          width: 88,
+                          marginLeft: 8,
+                          borderRadius: 14,
+                          alignSelf: "stretch",
                         }}
                       >
-                        Make inactive
-                      </Text>
-                    </Pressable>
-                  )}
+                        <Text
+                          style={{
+                            color: "#fff",
+                            fontWeight: "800",
+                            fontSize: 12,
+                            textAlign: "center",
+                            paddingHorizontal: 4,
+                          }}
+                        >
+                          Inactive
+                        </Text>
+                      </Pressable>
+                    ) : (
+                      <View style={{ width: 88, marginLeft: 8 }} />
+                    )
+                  }
                 >
                   <Card style={{ padding: 0, overflow: "hidden", marginBottom: 0 }}>
                     <Pressable
