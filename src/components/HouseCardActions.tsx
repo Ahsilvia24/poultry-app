@@ -245,7 +245,7 @@ export function HouseCardActions({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor={`edit-numberOfFans-${house.id}`}>Number of fans</Label>
+                  <Label htmlFor={`edit-numberOfFans-${house.id}`}>Number of Tunnel Fans</Label>
                   <Input
                     id={`edit-numberOfFans-${house.id}`}
                     name="numberOfFans"
@@ -269,8 +269,8 @@ export function HouseCardActions({
                     Apply to all remaining houses
                   </span>
                   <span className="mt-0.5 block text-xs text-stone-500">
-                    Square footage, fan CFM, and number of fans for houses after this one. Earlier
-                    houses stay unchanged.
+                    Square footage, fan CFM, and number of tunnel fans for houses after this one.
+                    Earlier houses stay unchanged.
                   </span>
                 </span>
               </label>

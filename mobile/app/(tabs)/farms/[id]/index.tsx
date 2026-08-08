@@ -672,7 +672,7 @@ export default function FarmDetailScreen() {
           : Math.floor(Number(addingHouse.numberOfFans));
       if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
       if (fans != null && (!Number.isFinite(fans) || fans < 0)) {
-        throw new Error("Number of fans is invalid");
+        throw new Error("Number of Tunnel Fans is invalid");
       }
       createHouse(data.farm.id, {
         houseNumber: Number(addingHouse.houseNumber),
@@ -855,7 +855,7 @@ export default function FarmDetailScreen() {
       const placed =
         placedRaw === "" ? null : Math.floor(Number(placedRaw));
       if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
-      if (fans != null && !Number.isFinite(fans)) throw new Error("Number of fans is invalid");
+      if (fans != null && !Number.isFinite(fans)) throw new Error("Number of Tunnel Fans is invalid");
       if (
         data?.activeFlock &&
         placedRaw !== "" &&
@@ -2134,7 +2134,7 @@ export default function FarmDetailScreen() {
                     </View>
                     <View style={{ flexDirection: "row", gap: 10 }}>
                       <NativeNumInput
-                        label="Number of fans"
+                        label="Number of Tunnel Fans"
                         value={editingHouse.numberOfFans}
                         style={{ flex: 1 }}
                         onChangeText={(v) =>
@@ -2188,8 +2188,8 @@ export default function FarmDetailScreen() {
                           Apply to all remaining houses
                         </Text>
                         <Text style={[styles.muted, { marginTop: 2 }]}>
-                          Square footage, fan CFM, and number of fans for houses after this one.
-                          Earlier houses stay unchanged.
+                          Square footage, fan CFM, and number of tunnel fans for houses after this
+                          one. Earlier houses stay unchanged.
                         </Text>
                       </View>
                     </Pressable>
@@ -2277,7 +2277,7 @@ export default function FarmDetailScreen() {
                     }
                   />
                   <NativeNumInput
-                    label="Number of fans"
+                    label="Number of Tunnel Fans"
                     value={addingHouse.numberOfFans}
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
