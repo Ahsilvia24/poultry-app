@@ -124,27 +124,44 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
                 </p>
               ) : null}
             </div>
-            <button
-              type="button"
-              className={
-                farm.isActive
-                  ? "pointer-events-auto relative z-10 inline-flex shrink-0 rounded-md bg-emerald-100 px-2.5 py-1 text-sm font-bold text-emerald-900 hover:bg-emerald-200"
-                  : "pointer-events-auto relative z-10 inline-flex shrink-0 rounded-md bg-stone-100 px-2.5 py-1 text-sm font-bold text-stone-700 hover:bg-stone-200"
-              }
-              aria-label={
-                farm.isActive
-                  ? `Make ${farm.farmName} inactive`
-                  : `Make ${farm.farmName} active`
-              }
-              title={farm.isActive ? "Make inactive" : "Make active"}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setConfirm(farm.isActive ? "inactive" : "active");
-              }}
-            >
-              {farm.isActive ? "Active" : "Inactive"}
-            </button>
+            <div className="pointer-events-auto relative z-10 flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                className={
+                  farm.isActive
+                    ? "inline-flex rounded-md bg-emerald-100 px-2.5 py-1 text-sm font-bold text-emerald-900 hover:bg-emerald-200"
+                    : "inline-flex rounded-md bg-stone-100 px-2.5 py-1 text-sm font-bold text-stone-700 hover:bg-stone-200"
+                }
+                aria-label={
+                  farm.isActive
+                    ? `Make ${farm.farmName} inactive`
+                    : `Make ${farm.farmName} active`
+                }
+                title={farm.isActive ? "Make inactive" : "Make active"}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setConfirm(farm.isActive ? "inactive" : "active");
+                }}
+              >
+                {farm.isActive ? "Active" : "Inactive"}
+              </button>
+              {!farm.isActive ? (
+                <button
+                  type="button"
+                  className="inline-flex rounded-md bg-red-100 px-2.5 py-1 text-sm font-bold text-red-800 hover:bg-red-200"
+                  aria-label={`Delete ${farm.farmName} permanently`}
+                  title="Delete"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setConfirm("delete");
+                  }}
+                >
+                  Delete
+                </button>
+              ) : null}
+            </div>
           </div>
         </Card>
       </div>
