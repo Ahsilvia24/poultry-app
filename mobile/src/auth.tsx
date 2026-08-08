@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
-import { initOfflineDb } from "./db";
+import { initOfflineDb, isDbReady } from "./db";
 import { getDb } from "./db/database";
 
 type User = { id: string; name: string; email: string };
@@ -8,6 +8,8 @@ type User = { id: string; name: string; email: string };
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
+  dbReady: boolean;
+  dbError: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -18,11 +20,15 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dbReady, setDbReady] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         await initOfflineDb();
+        setDbReady(true);
+        setDbError(null);
         const session = await SecureStore.getItemAsync(SESSION_KEY);
         if (!session) {
           setUser(null);
@@ -34,8 +40,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           [parsed.id],
         );
         setUser(row ? { id: row.id, name: row.name, email: row.email } : null);
-      } catch {
+      } catch (e) {
         setUser(null);
+        setDbReady(isDbReady());
+        setDbError(e instanceof Error ? e.message : "Could not open local database");
       } finally {
         setLoading(false);
       }
@@ -73,8 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, signIn, signOut }),
-    [user, loading, signIn, signOut],
+    () => ({ user, loading, dbReady, dbError, signIn, signOut }),
+    [user, loading, dbReady, dbError, signIn, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

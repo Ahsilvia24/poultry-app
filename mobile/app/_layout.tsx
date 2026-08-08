@@ -1,24 +1,54 @@
 import "react-native-gesture-handler";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { AuthProvider, useAuth } from "../src/auth";
 import { colors } from "../src/theme";
 import { StatusBar } from "expo-status-bar";
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, dbReady, dbError } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const inAuth = segments[0] === "login";
 
   useEffect(() => {
     if (loading) return;
-    const inAuth = segments[0] === "login";
     if (!user && !inAuth) router.replace("/login");
     if (user && inAuth) router.replace("/");
-  }, [user, loading, segments, router]);
+  }, [user, loading, inAuth, router]);
 
   if (loading) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg }}>
+        <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    );
+  }
+
+  if (dbError && !dbReady) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.bg,
+          padding: 24,
+        }}
+      >
+        <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text, textAlign: "center" }}>
+          Mobile web preview unavailable
+        </Text>
+        <Text style={{ marginTop: 10, fontSize: 14, color: colors.muted, textAlign: "center" }}>
+          {dbError}
+        </Text>
+      </View>
+    );
+  }
+
+  // Don't mount tab screens while redirecting — they call getDb() during render.
+  if ((!user && !inAuth) || (user && inAuth)) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg }}>
         <ActivityIndicator size="large" color={colors.accent} />

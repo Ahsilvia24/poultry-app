@@ -6,14 +6,33 @@ const DB_NAME = "poultrytech_offline.db";
 let db: SQLite.SQLiteDatabase | null = null;
 let opening: Promise<SQLite.SQLiteDatabase> | null = null;
 
-/** Prefer async open (required on web — sync open times out while the worker boots). */
+function assertWebSqliteSupported() {
+  if (Platform.OS !== "web") return;
+  if (typeof SharedArrayBuffer === "undefined") {
+    throw new Error(
+      "This browser can’t run the mobile web preview (SharedArrayBuffer unavailable). Try Chrome/Edge on desktop, or use the native app.",
+    );
+  }
+}
+
+/** Prefer async open on web so the sqlite worker can finish booting. */
 export async function openDb(): Promise<SQLite.SQLiteDatabase> {
   if (db) return db;
+  assertWebSqliteSupported();
   if (!opening) {
     opening = SQLite.openDatabaseAsync(DB_NAME)
       .then((opened) => {
         db = opened;
         return opened;
+      })
+      .catch((err) => {
+        // Last resort: sync open (works after WorkerChannel timeout patch).
+        try {
+          db = SQLite.openDatabaseSync(DB_NAME);
+          return db;
+        } catch {
+          throw err instanceof Error ? err : new Error(String(err));
+        }
       })
       .finally(() => {
         opening = null;
@@ -24,9 +43,7 @@ export async function openDb(): Promise<SQLite.SQLiteDatabase> {
 
 export function getDb(): SQLite.SQLiteDatabase {
   if (db) return db;
-  if (Platform.OS === "web") {
-    throw new Error("Database not ready. Call initOfflineDb() first.");
-  }
+  assertWebSqliteSupported();
   db = SQLite.openDatabaseSync(DB_NAME);
   return db;
 }
