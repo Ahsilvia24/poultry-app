@@ -109,11 +109,11 @@ export function FollowUpsDueList({
                   </button>
                   <Link
                     href={`/farms/${f.farmId}`}
-                    className={`flex min-w-0 items-baseline gap-1 font-semibold text-stone-900 hover:underline ${
+                    className={`flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden font-semibold text-stone-900 hover:underline ${
                       isDone ? "line-through" : ""
                     }`}
                   >
-                    <span className="truncate">{f.farmName}</span>
+                    <span className="min-w-0 truncate">{f.farmName}</span>
                     {f.flockAgeDays != null ? (
                       <span className="shrink-0 font-normal text-stone-500">
                         {f.flockAgeDays}d

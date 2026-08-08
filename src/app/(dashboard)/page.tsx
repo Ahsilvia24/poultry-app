@@ -61,9 +61,13 @@ export default async function DashboardPage() {
                     key={`${c.farmName}-${c.date}-${c.flockNumber}`}
                     className="flex h-5 items-baseline justify-between gap-3"
                   >
-                    <span className="truncate font-semibold text-stone-900">
-                      {c.farmName}
-                      <span className="font-normal text-stone-500"> {c.flockAgeDays}d</span>
+                    <span className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden font-semibold text-stone-900">
+                      <span className="min-w-0 truncate">{c.farmName}</span>
+                      {c.flockAgeDays != null ? (
+                        <span className="shrink-0 font-normal text-stone-500">
+                          {c.flockAgeDays}d
+                        </span>
+                      ) : null}
                     </span>
                     <span className="shrink-0 text-stone-600">
                       {format(parseISO(c.date), "EEE, MMM d")}
