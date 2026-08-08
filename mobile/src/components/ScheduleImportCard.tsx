@@ -1,23 +1,36 @@
-import { useCallback, useEffect, useState } from "react";
-import { Alert, Text, View } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useMemo, useState } from "react";
+import { Alert, Platform, Pressable, Text, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import * as XLSX from "xlsx";
 import { colors, styles } from "../theme";
 import { Card, Chip, PrimaryButton } from "./ui";
-
-const STORAGE_KEY = "poultry.dashboard.scheduleImports";
+import {
+  groupPlacementFarms,
+  parsePlacementLayoutText,
+  parsePlacementScrambledText,
+  parsePlacementSheetRows,
+  type PlacementRow,
+} from "../lib/placementImport/parse";
+import { matchPlacementFarm } from "../lib/placementImport/match";
+import {
+  importPlacementRows,
+  listFarmsForPlacementMatch,
+} from "../repos/data";
 
 type ImportType = "placement" | "catch" | "settlement";
 
-type StoredImport = {
-  id: string;
-  importType: ImportType;
-  originalName: string;
-  uri: string;
-  mimeType: string | null;
-  sizeBytes: number | null;
-  uploadedAt: string;
+type FarmPreview = {
+  key: string;
+  farmCode: string;
+  farmName: string;
+  rowCount: number;
+  houseNumbers: number[];
+  flockIds: string[];
+  isMyFarm: boolean;
+  matchName: string | null;
+  nameDiffers: boolean;
+  matchKind: string;
 };
 
 const TYPE_OPTIONS: Array<{ id: ImportType; label: string }> = [
@@ -30,39 +43,102 @@ function typeLabel(type: ImportType) {
   return TYPE_OPTIONS.find((t) => t.id === type)?.label ?? type;
 }
 
-function formatBytes(n: number | null) {
-  if (n == null) return "—";
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-}
+async function rowsFromPickedFile(asset: DocumentPicker.DocumentPickerAsset): Promise<PlacementRow[]> {
+  const name = (asset.name || "").toLowerCase();
+  const uri = asset.uri;
 
-async function readStored(): Promise<StoredImport[]> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as StoredImport[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+  if (name.endsWith(".csv") || asset.mimeType?.includes("csv")) {
+    const text = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
+    const sheet = text.split(/\r?\n/).map((line) => line.split(",").map((c) => c.replace(/^"|"$/g, "")));
+    return parsePlacementSheetRows(sheet);
   }
+
+  if (name.endsWith(".xlsx") || name.endsWith(".xls") || asset.mimeType?.includes("sheet") || asset.mimeType?.includes("excel")) {
+    const b64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const workbook = XLSX.read(b64, { type: "base64", cellDates: true });
+    const first = workbook.SheetNames[0];
+    if (!first) return [];
+    const sheet = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets[first]!, {
+      header: 1,
+      raw: false,
+      defval: "",
+    });
+    return parsePlacementSheetRows(sheet as string[][]);
+  }
+
+  if (name.endsWith(".pdf") || asset.mimeType?.includes("pdf")) {
+    if (Platform.OS !== "web") {
+      throw new Error(
+        "PDF placement import on phone needs a CSV/XLSX export, or use the web Import with this PDF.",
+      );
+    }
+    const b64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    // Prefer layout-like scrambled parser from browser pdf.js via pdf-parse when available.
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const { PDFParse } = await import("pdf-parse");
+    const parser = new PDFParse({ data: bytes });
+    const result = await parser.getText();
+    const text = result.text ?? "";
+    const layout = parsePlacementLayoutText(text);
+    if (layout.length > 0) return layout;
+    return parsePlacementScrambledText(text);
+  }
+
+  throw new Error("Use a Weekly Chick Placement PDF or spreadsheet (.csv / .xlsx).");
 }
 
 export function ScheduleImportCard() {
   const [importType, setImportType] = useState<ImportType>("placement");
-  const [items, setItems] = useState<StoredImport[]>([]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [rows, setRows] = useState<PlacementRow[]>([]);
+  const [farms, setFarms] = useState<FarmPreview[]>([]);
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [rename, setRename] = useState<Record<string, boolean>>({});
+  const [onlyMyFarms, setOnlyMyFarms] = useState(false);
 
-  const reload = useCallback(async () => {
-    setItems(await readStored());
-  }, []);
+  const selectedCount = useMemo(
+    () => Object.values(selected).filter(Boolean).length,
+    [selected],
+  );
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  const shown = items.filter((item) => item.importType === importType);
+  function buildPreview(parsed: PlacementRow[]) {
+    const existing = listFarmsForPlacementMatch();
+    const groups = groupPlacementFarms(parsed).map((g) => {
+      const match = matchPlacementFarm(g.farmName, g.farmCode, existing);
+      return {
+        key: g.key,
+        farmCode: g.farmCode,
+        farmName: g.farmName,
+        rowCount: g.rowCount,
+        houseNumbers: g.houseNumbers,
+        flockIds: g.flockIds,
+        isMyFarm: match.kind !== "none",
+        matchName: match.farm?.farmName ?? null,
+        nameDiffers: match.nameDiffers,
+        matchKind: match.kind,
+      } satisfies FarmPreview;
+    });
+    setRows(parsed);
+    setFarms(groups);
+    const nextSelected: Record<string, boolean> = {};
+    const nextRename: Record<string, boolean> = {};
+    for (const farm of groups) {
+      nextSelected[farm.key] = farm.isMyFarm;
+      nextRename[farm.key] = false;
+    }
+    setSelected(nextSelected);
+    setRename(nextRename);
+    setOnlyMyFarms(true);
+  }
 
   async function onUpload() {
     if (busy) return;
@@ -82,44 +158,60 @@ export function ScheduleImportCard() {
         multiple: false,
         type: [
           "application/pdf",
-          "image/*",
-          "text/*",
           "text/csv",
+          "text/plain",
           "application/vnd.ms-excel",
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           "*/*",
         ],
       });
       if (picked.canceled || !picked.assets?.[0]) return;
-
-      const asset = picked.assets[0];
-      const id = `imp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-      const ext = asset.name?.includes(".")
-        ? asset.name.slice(asset.name.lastIndexOf("."))
-        : "";
-      const dir = `${FileSystem.documentDirectory ?? FileSystem.cacheDirectory}schedule-imports/`;
-      if (!dir) throw new Error("No storage directory available");
-      await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-      const dest = `${dir}${id}${ext}`;
-      await FileSystem.copyAsync({ from: asset.uri, to: dest });
-
-      const next: StoredImport = {
-        id,
-        importType,
-        originalName: asset.name || "placement-import",
-        uri: dest,
-        mimeType: asset.mimeType ?? null,
-        sizeBytes: asset.size ?? null,
-        uploadedAt: new Date().toISOString(),
-      };
-      const all = [next, ...(await readStored())];
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-      setItems(all);
-      setNote(
-        `Saved ${next.originalName}. Tell me how you want the Placement fields mapped next.`,
-      );
+      const parsed = await rowsFromPickedFile(picked.assets[0]);
+      if (parsed.length === 0) {
+        throw new Error(
+          "Could not read placement rows. Need Date Placed, Farm Code, Farm Name, Flock Code, House No, Number Sent.",
+        );
+      }
+      buildPreview(parsed);
+      setNote(`Read ${parsed.length} rows from ${picked.assets[0].name}.`);
     } catch (e) {
-      Alert.alert("Upload failed", e instanceof Error ? e.message : "Could not save file");
+      Alert.alert("Upload failed", e instanceof Error ? e.message : "Could not read file");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function onToggleOnlyMine(checked: boolean) {
+    setOnlyMyFarms(checked);
+    if (!checked) return;
+    const next: Record<string, boolean> = {};
+    for (const farm of farms) next[farm.key] = farm.isMyFarm;
+    setSelected(next);
+  }
+
+  function onImport() {
+    if (busy || selectedCount === 0) return;
+    setBusy(true);
+    try {
+      const result = importPlacementRows({
+        rows,
+        selections: farms.map((farm) => ({
+          key: farm.key,
+          selected: Boolean(selected[farm.key]),
+          renameToImportedName: Boolean(rename[farm.key]),
+        })),
+      });
+      setNote(
+        `Imported ${selectedCount} farm(s): ${result.createdFarms} created, ${result.updatedNames} renamed, ${result.createdFlocks} flocks, ${result.createdHouses} houses.`,
+      );
+      if (result.warnings.length) {
+        Alert.alert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+      }
+      setFarms([]);
+      setRows([]);
+      setOnlyMyFarms(false);
+    } catch (e) {
+      Alert.alert("Import failed", e instanceof Error ? e.message : "Could not import");
     } finally {
       setBusy(false);
     }
@@ -128,8 +220,8 @@ export function ScheduleImportCard() {
   return (
     <Card>
       <Text style={[styles.muted, { lineHeight: 20 }]}>
-        Import Placement, Catch Schedule, or Settlements. Start with a Placement file —
-        next you’ll tell us which fields to pull.
+        Import Placement, Catch Schedule, or Settlements. Placement reads Date Placed, Farm
+        Code, Farm Name, Flock ID, House No, and Number Sent.
       </Text>
 
       <View style={[styles.row, { marginTop: 12, marginBottom: 4, flexWrap: "wrap" }]}>
@@ -141,6 +233,8 @@ export function ScheduleImportCard() {
             onPress={() => {
               setImportType(type.id);
               setNote(null);
+              setFarms([]);
+              setRows([]);
             }}
           />
         ))}
@@ -152,14 +246,11 @@ export function ScheduleImportCard() {
         </Text>
       ) : (
         <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
-          PDF, photo, or spreadsheet is fine for now.
+          PDF works on web; phone can use CSV/XLSX (or the same PDF in Expo web).
         </Text>
       )}
 
-      <PrimaryButton
-        label={busy ? "Uploading…" : "Upload for import"}
-        onPress={onUpload}
-      />
+      <PrimaryButton label={busy ? "Working…" : "Upload & read"} onPress={onUpload} />
 
       {note ? (
         <Text style={[styles.muted, { marginTop: 10, lineHeight: 18, color: colors.text }]}>
@@ -167,19 +258,143 @@ export function ScheduleImportCard() {
         </Text>
       ) : null}
 
-      {shown.length > 0 ? (
+      {farms.length > 0 ? (
         <View style={{ marginTop: 14, borderTopWidth: 1, borderTopColor: "#e7e5e4", paddingTop: 12 }}>
-          <Text style={{ fontWeight: "800", color: colors.text, marginBottom: 6 }}>
-            Uploaded {typeLabel(importType).toLowerCase()}
-          </Text>
-          {shown.map((item) => (
-            <View key={item.id} style={{ marginBottom: 8 }}>
-              <Text style={{ fontWeight: "700", color: colors.text }}>{item.originalName}</Text>
-              <Text style={[styles.muted, { fontSize: 12 }]}>
-                {formatBytes(item.sizeBytes)} · {new Date(item.uploadedAt).toLocaleString()}
+          <View style={[styles.row, { justifyContent: "space-between", alignItems: "center" }]}>
+            <Text style={{ fontWeight: "800", color: colors.text }}>Choose farms to import</Text>
+            <Pressable
+              onPress={() => onToggleOnlyMine(!onlyMyFarms)}
+              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            >
+              <View
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: 4,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: onlyMyFarms ? colors.accentDark : "#fff",
+                }}
+              />
+              <Text style={{ fontWeight: "700", color: colors.text, fontSize: 12 }}>
+                Only my farms
               </Text>
-            </View>
-          ))}
+            </Pressable>
+          </View>
+
+          {farms.map((farm) => {
+            const checked = Boolean(selected[farm.key]);
+            return (
+              <View
+                key={farm.key}
+                style={{
+                  marginTop: 8,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 10,
+                  padding: 10,
+                  backgroundColor: "#fafaf9",
+                }}
+              >
+                <Pressable
+                  onPress={() => {
+                    const value = !checked;
+                    setSelected((prev) => ({ ...prev, [farm.key]: value }));
+                    if (onlyMyFarms && value && !farm.isMyFarm) setOnlyMyFarms(false);
+                  }}
+                  style={{ flexDirection: "row", gap: 8 }}
+                >
+                  <View
+                    style={{
+                      width: 18,
+                      height: 18,
+                      marginTop: 2,
+                      borderRadius: 4,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      backgroundColor: checked ? colors.accentDark : "#fff",
+                    }}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: "800", color: colors.text }}>
+                      {farm.farmName}{" "}
+                      <Text style={{ fontWeight: "600", color: colors.muted }}>{farm.farmCode}</Text>
+                    </Text>
+                    <Text style={[styles.muted, { fontSize: 11 }]}>
+                      {farm.rowCount} rows · houses {farm.houseNumbers.join(", ")}
+                    </Text>
+                    <Text
+                      style={{
+                        marginTop: 2,
+                        fontSize: 11,
+                        fontWeight: "700",
+                        color: farm.isMyFarm ? colors.accentDark : "#92400e",
+                      }}
+                    >
+                      {farm.isMyFarm
+                        ? `Matches your farm${farm.matchName ? `: ${farm.matchName}` : ""}${
+                            farm.matchKind === "fuzzy" ? " (similar name)" : ""
+                          }`
+                        : "New farm will be created"}
+                    </Text>
+                  </View>
+                </Pressable>
+
+                {checked && farm.nameDiffers && farm.matchName ? (
+                  <Pressable
+                    onPress={() =>
+                      setRename((prev) => ({ ...prev, [farm.key]: !prev[farm.key] }))
+                    }
+                    style={{
+                      marginTop: 8,
+                      paddingTop: 8,
+                      borderTopWidth: 1,
+                      borderTopColor: "#e7e5e4",
+                      flexDirection: "row",
+                      gap: 8,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 16,
+                        height: 16,
+                        marginTop: 2,
+                        borderRadius: 3,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        backgroundColor: rename[farm.key] ? colors.accentDark : "#fff",
+                      }}
+                    />
+                    <Text style={{ flex: 1, fontSize: 12, color: colors.text, lineHeight: 16 }}>
+                      Update farm name from {farm.matchName} to {farm.farmName}? Keeps grower,
+                      phone, houses, and other saved info.
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            );
+          })}
+
+          <View style={{ marginTop: 12 }}>
+            <PrimaryButton
+              label={
+                busy
+                  ? "Importing…"
+                  : `Import ${selectedCount} farm${selectedCount === 1 ? "" : "s"}`
+              }
+              onPress={onImport}
+            />
+            <Pressable
+              onPress={() => {
+                setFarms([]);
+                setRows([]);
+                setOnlyMyFarms(false);
+              }}
+              style={{ marginTop: 10, alignSelf: "center" }}
+            >
+              <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
     </Card>
