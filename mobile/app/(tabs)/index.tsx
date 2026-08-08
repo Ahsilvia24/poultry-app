@@ -16,7 +16,6 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
 import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
 import { useAuth } from "../../src/auth";
@@ -366,7 +365,7 @@ export default function DashboardScreen() {
 
         {data ? (
           <>
-            <Card>
+            <Card style={{ marginBottom: 8 }}>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
                 Today&apos;s schedule
               </Text>
@@ -397,7 +396,7 @@ export default function DashboardScreen() {
               )}
             </Card>
 
-            <Card>
+            <Card style={{ marginBottom: 8 }}>
               <Pressable
                 onPress={() => setUpcomingOpen((v) => !v)}
                 accessibilityRole="button"
@@ -451,7 +450,7 @@ export default function DashboardScreen() {
               ) : null}
             </Card>
 
-            <Card>
+            <Card style={{ marginBottom: 8 }}>
               <Pressable
                 onPress={() => setCatchesOpen((v) => !v)}
                 accessibilityRole="button"
