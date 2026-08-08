@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard";
 import { Card } from "@/components/ui";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
-import { CollapsibleCard } from "@/components/CollapsibleCard";
 import { DashboardFarmCards } from "@/components/DashboardFarmCards";
 import { ScrollableFarmList } from "@/components/ScrollableFarmList";
 import { signOutAction } from "@/app/actions/auth";
@@ -33,42 +32,37 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Card>
-            <p className="text-sm font-semibold text-stone-500">Today&apos;s schedule</p>
-            <FollowUpsDueList items={data.todaysSchedule} showDate />
-          </Card>
-          <Card>
-            <p className="text-sm font-semibold text-stone-500">Upcoming Visits</p>
-            {data.upcomingSchedule.length === 0 ? (
-              <p className="mt-2 text-sm text-stone-500">None in the next 10 days</p>
-            ) : (
-              <FollowUpsDueList items={data.upcomingSchedule} showDate />
-            )}
-          </Card>
-        </div>
-        <CollapsibleCard
-          title="Upcoming catches"
-          defaultOpen={false}
-          count={data.upcomingCatches.length}
-        >
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <Card>
+          <p className="text-sm font-semibold text-stone-500">Today&apos;s schedule</p>
+          <FollowUpsDueList items={data.todaysSchedule} showDate />
+        </Card>
+        <Card>
+          <p className="text-sm font-semibold text-stone-500">Upcoming Visits</p>
+          {data.upcomingSchedule.length === 0 ? (
+            <p className="mt-2 text-sm text-stone-500">None in the next 10 days</p>
+          ) : (
+            <FollowUpsDueList items={data.upcomingSchedule} showDate />
+          )}
+        </Card>
+        <Card>
+          <p className="text-sm font-semibold text-stone-500">Upcoming catches</p>
           {data.upcomingCatches.length === 0 ? (
             <p className="mt-2 text-sm text-stone-500">None</p>
           ) : (
-            <ScrollableFarmList className="mt-2">
+            <ScrollableFarmList className="mt-2 pr-2">
               <ul className="space-y-1.5 text-sm">
                 {data.upcomingCatches.map((c) => (
                   <li
                     key={`${c.farmName}-${c.date}-${c.flockNumber}`}
                     className="flex h-5 items-baseline justify-between gap-3"
                   >
-                    <span className="font-semibold text-stone-900">
+                    <span className="truncate font-semibold text-stone-900">
                       {c.farmName}
                       <span className="font-normal text-stone-500"> · {c.flockAgeDays}d</span>
                     </span>
                     <span className="shrink-0 text-stone-600">
-                      {format(parseISO(c.date), "EEE, MMM d, yyyy")}
+                      {format(parseISO(c.date), "EEE, MMM d")}
                       {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
                     </span>
                   </li>
@@ -76,7 +70,7 @@ export default async function DashboardPage() {
               </ul>
             </ScrollableFarmList>
           )}
-        </CollapsibleCard>
+        </Card>
       </div>
 
       <h2 className="mt-8 text-xl font-bold">Active farms</h2>
