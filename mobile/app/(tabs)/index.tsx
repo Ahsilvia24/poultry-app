@@ -357,7 +357,6 @@ export default function DashboardScreen() {
               </Text>
             </Pressable>
           </View>
-          <Text style={styles.subtitle}>Active farms, mortality, and follow-ups</Text>
         </View>
 
         {error ? <Text style={{ color: colors.danger, marginBottom: 12 }}>{error}</Text> : null}
