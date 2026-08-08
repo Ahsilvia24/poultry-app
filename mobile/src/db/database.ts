@@ -1,11 +1,33 @@
+import { Platform } from "react-native";
 import * as SQLite from "expo-sqlite";
 
+const DB_NAME = "poultrytech_offline.db";
+
 let db: SQLite.SQLiteDatabase | null = null;
+let opening: Promise<SQLite.SQLiteDatabase> | null = null;
+
+/** Prefer async open (required on web — sync open times out while the worker boots). */
+export async function openDb(): Promise<SQLite.SQLiteDatabase> {
+  if (db) return db;
+  if (!opening) {
+    opening = SQLite.openDatabaseAsync(DB_NAME)
+      .then((opened) => {
+        db = opened;
+        return opened;
+      })
+      .finally(() => {
+        opening = null;
+      });
+  }
+  return opening;
+}
 
 export function getDb(): SQLite.SQLiteDatabase {
-  if (!db) {
-    db = SQLite.openDatabaseSync("poultrytech_offline.db");
+  if (db) return db;
+  if (Platform.OS === "web") {
+    throw new Error("Database not ready. Call initOfflineDb() first.");
   }
+  db = SQLite.openDatabaseSync(DB_NAME);
   return db;
 }
 
