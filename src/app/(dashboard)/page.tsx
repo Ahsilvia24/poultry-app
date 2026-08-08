@@ -86,7 +86,9 @@ export default async function DashboardPage() {
       </div>
 
       <h2 className="mt-8 text-xl font-bold">Backup</h2>
-      <ImportPhoneBackupForm />
+      <div className="mt-3">
+        <ImportPhoneBackupForm />
+      </div>
     </div>
   );
 }

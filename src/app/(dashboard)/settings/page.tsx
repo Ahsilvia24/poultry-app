@@ -166,7 +166,9 @@ export default async function SettingsPage() {
         </form>
       </Card>
 
-      <ImportPhoneBackupForm />
+      <div className="mt-6">
+        <ImportPhoneBackupForm />
+      </div>
     </div>
   );
 }
