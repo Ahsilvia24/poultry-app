@@ -83,10 +83,6 @@ export function ConsumptionRateCalculator() {
   return (
     <Card>
       <h2 className="text-base font-bold text-stone-900">Consumption rate calculator</h2>
-      <p className="mt-1 text-sm text-stone-500">
-        Daily water (gal) × {LBS_PER_GALLON} = WC → WC ÷ {WATER_TO_FEED_RATIO} = FC → FC ÷ head
-        count
-      </p>
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div>
           <Label htmlFor="calcWater">Daily water (gal)</Label>
