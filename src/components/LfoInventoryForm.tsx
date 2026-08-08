@@ -277,7 +277,7 @@ export function LfoInventoryForm({
                   </div>
                 </div>
                 {result ? (
-                  <dl className="grid gap-1 text-sm text-stone-600 sm:grid-cols-2">
+                  <dl className="grid grid-cols-1 gap-3 text-sm text-stone-600 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="flex justify-between gap-2 sm:block">
                       <dt className="text-stone-500">Feed off (−6h)</dt>
                       <dd className="font-medium text-stone-800">
@@ -323,7 +323,7 @@ export function LfoInventoryForm({
                         </dd>
                       </div>
                     ) : null}
-                    <div className="flex justify-between gap-2 sm:col-span-2 sm:block">
+                    <div className="flex justify-between gap-2 sm:block">
                       <dt className="text-stone-500">
                         {result.orderLbs != null && result.orderLbs > 0
                           ? "LFO (rounded)"
