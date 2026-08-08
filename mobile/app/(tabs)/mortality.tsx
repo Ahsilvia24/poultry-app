@@ -727,10 +727,7 @@ export default function MortalityScreen() {
           scrollEventThrottle={16}
         >
           <Pressable onPress={resetKeypad}>
-          <PageHeader
-            title="Mortality entry"
-            subtitle="Enter mortality by house and bird age"
-          />
+          <PageHeader title="Mortality entry" />
 
           <ChipScroller>
             {payload?.farms.map((f) => (

@@ -37,7 +37,7 @@ export default async function NewLfoFarmSelectPage() {
         </span>
         LFOs
       </Link>
-      <PageHeader title="New LFO" subtitle="Select the farm for this last feed order" />
+      <PageHeader title="New LFO" />
 
       {eligible.length === 0 ? (
         <Card>

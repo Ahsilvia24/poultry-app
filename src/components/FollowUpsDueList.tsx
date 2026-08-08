@@ -115,7 +115,9 @@ export function FollowUpsDueList({
                   >
                     <span className="truncate">{f.farmName}</span>
                     {f.flockAgeDays != null ? (
-                      <span className="shrink-0 font-normal text-stone-500">· {f.flockAgeDays}d</span>
+                      <span className="shrink-0 font-normal text-stone-500">
+                        {f.flockAgeDays}d
+                      </span>
                     ) : null}
                   </Link>
                 </div>

@@ -24,7 +24,7 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Profile and mortality alert thresholds" />
+      <PageHeader title="Settings" />
 
       <Card className="max-w-2xl">
         <form action={submitSettings} className="space-y-5">

@@ -138,13 +138,7 @@ export function DashboardScheduleImport({
 
   return (
     <Card>
-      <p className="text-sm text-stone-600">
-        Import Placement, Catch Schedule, or Settlements. Placement reads the sheet, lets you
-        pick farms, then creates farms/houses/flocks from Date Placed, Farm Code, Farm Name,
-        Flock ID, House No, and Number Sent.
-      </p>
-
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         {SCHEDULE_IMPORT_TYPES.map((type) => {
           const active = importType === type.id;
           return (
