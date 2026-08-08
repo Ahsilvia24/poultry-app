@@ -204,7 +204,7 @@ export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
   }
 
   return (
-    <div className="mt-3 grid items-start gap-2 lg:grid-cols-3">
+    <div className="mt-3 grid items-start gap-1 lg:grid-cols-3">
       {farms.map((farm, index) => {
         const row = Math.floor(index / FARMS_PER_ROW);
         return (
