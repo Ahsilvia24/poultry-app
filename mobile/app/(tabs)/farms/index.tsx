@@ -189,7 +189,7 @@ export default function FarmsScreen() {
               : [];
           const ageLabel = ages.length > 0 ? ages.map((a) => `${a}d`).join(" · ") : null;
           const titleMeta = ageLabel
-            ? ` (${houseCount}) · ${ageLabel}`
+            ? ` (${houseCount}) ${ageLabel}`
             : ` (${houseCount})`;
 
           return (
