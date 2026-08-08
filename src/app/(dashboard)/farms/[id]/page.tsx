@@ -198,26 +198,28 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
   return (
     <div>
-      <Link
-        href="/farms"
-        className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
-      >
-        <span aria-hidden="true" className="text-xl leading-none">
-          ←
-        </span>
-        Farms
-      </Link>
-      <FarmInfoEditor
-        farm={{
-          id: farm.id,
-          farmName: farm.farmName,
-          growerName: farm.growerName,
-          phoneNumber: farm.phoneNumber,
-          email: farm.email,
-          notes: farm.notes,
-          numberOfGenerators: farm.numberOfGenerators,
-        }}
-      />
+      <div className="mb-6 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-3">
+        <Link
+          href="/farms"
+          className="inline-flex min-h-11 items-center gap-2 justify-self-start rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
+        >
+          <span aria-hidden="true" className="text-xl leading-none">
+            ←
+          </span>
+          Farms
+        </Link>
+        <FarmInfoEditor
+          farm={{
+            id: farm.id,
+            farmName: farm.farmName,
+            growerName: farm.growerName,
+            phoneNumber: farm.phoneNumber,
+            email: farm.email,
+            notes: farm.notes,
+            numberOfGenerators: farm.numberOfGenerators,
+          }}
+        />
+      </div>
 
       <div className="mb-6">
         <FarmQuickLinks
@@ -231,7 +233,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         />
       </div>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
+      <div className="mt-3 grid items-start gap-3 md:grid-cols-2">
         {houseCards.map(
           ({
             house,

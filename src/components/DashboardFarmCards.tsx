@@ -8,6 +8,9 @@ import { Card, StatusBadge } from "@/components/ui";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import type { FarmCardSummary } from "@/types";
 
+/** Matches `lg:grid-cols-3` — expand/collapse applies to the whole visual row. */
+const FARMS_PER_ROW = 3;
+
 function formatLastVisitDate(dateKey: string) {
   return format(parseISO(dateKey), "EEE, d MMM yy");
 }
@@ -18,8 +21,15 @@ function openIssuesLabel(count: number) {
   return `${count} open issues`;
 }
 
-function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
-  const [open, setOpen] = useState(false);
+function DashboardFarmCard({
+  farm,
+  open,
+  onToggle,
+}: {
+  farm: FarmCardSummary;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const [swipeX, setSwipeX] = useState(0);
   const [pending, start] = useTransition();
   const touchStartX = useRef<number | null>(null);
@@ -61,22 +71,27 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
     touchStartX.current = null;
   }
 
+  const swipeOpen = swipeX < -8;
+
   return (
-    <div className="relative overflow-hidden rounded-xl">
-      <div
-        className="absolute inset-y-0 right-0 flex w-[100px] items-center justify-center rounded-xl bg-stone-600"
-        aria-hidden={swipeX > -40}
-      >
-        <button
-          type="button"
-          disabled={pending}
-          onClick={makeInactive}
-          className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-xs font-bold text-white disabled:opacity-60"
-          aria-label={`Make ${farm.farmName} inactive`}
+    <div className="relative overflow-hidden rounded-xl self-start">
+      {/* Only mount while swiping so a stretched grid row can't reveal it under a short tile */}
+      {swipeOpen ? (
+        <div
+          className="absolute inset-y-0 right-0 flex w-[100px] items-center justify-center rounded-xl bg-stone-600"
+          aria-hidden={swipeX > -40}
         >
-          {pending ? "Working…" : "Make inactive"}
-        </button>
-      </div>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={makeInactive}
+            className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-xs font-bold text-white disabled:opacity-60"
+            aria-label={`Make ${farm.farmName} inactive`}
+          >
+            {pending ? "Working…" : "Make inactive"}
+          </button>
+        </div>
+      ) : null}
 
       <div
         className="relative transition-transform duration-150 ease-out"
@@ -92,7 +107,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
         <Card className="!p-0 overflow-hidden">
           <button
             type="button"
-            onClick={() => setOpen((v) => !v)}
+            onClick={onToggle}
             className="w-full px-4 py-3 text-left transition hover:bg-stone-50"
             aria-expanded={open}
             aria-label={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
@@ -103,7 +118,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
                   {farm.farmName}
                   <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
                   {farm.flockAgeDays != null ? (
-                    <span className="font-semibold text-stone-500"> · {farm.flockAgeDays}d</span>
+                    <span className="font-semibold text-stone-500"> {farm.flockAgeDays}d</span>
                   ) : null}
                 </p>
               </div>
@@ -177,11 +192,31 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
 }
 
 export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(() => new Set());
+
+  function toggleRow(farmIndex: number) {
+    const row = Math.floor(farmIndex / FARMS_PER_ROW);
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(row)) next.delete(row);
+      else next.add(row);
+      return next;
+    });
+  }
+
   return (
-    <div className="mt-3 grid gap-3 md:grid-cols-2">
-      {farms.map((farm) => (
-        <DashboardFarmCard key={farm.id} farm={farm} />
-      ))}
+    <div className="mt-3 grid items-start gap-3 lg:grid-cols-3">
+      {farms.map((farm, index) => {
+        const row = Math.floor(index / FARMS_PER_ROW);
+        return (
+          <DashboardFarmCard
+            key={farm.id}
+            farm={farm}
+            open={expandedRows.has(row)}
+            onToggle={() => toggleRow(index)}
+          />
+        );
+      })}
     </div>
   );
 }

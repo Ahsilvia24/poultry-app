@@ -223,9 +223,11 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
   });
   if (conflict) return { error: `House ${parsed.data.houseNumber} already exists on this farm` };
 
+  // Notes are no longer edited in the house form — keep any existing value.
+  const { notes: _notes, ...houseFields } = parsed.data;
   await prisma.house.update({
     where: { id: houseId },
-    data: parsed.data,
+    data: houseFields,
   });
 
   const applySpecsToRemaining =
