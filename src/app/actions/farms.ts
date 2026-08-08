@@ -657,8 +657,12 @@ export async function updateFlockWeightProjectionAction(flockId: string, formDat
   }
 
   try {
-    await prisma.flock.update({
-      where: { id: flockId },
+    await prisma.flock.updateMany({
+      where: {
+        farmId: flock.farmId,
+        flockStatus: "ACTIVE",
+        deletedAt: null,
+      },
       data: { growthRateLbsPerDay },
     });
   } catch (e) {
@@ -667,5 +671,6 @@ export async function updateFlockWeightProjectionAction(flockId: string, formDat
   }
 
   revalidatePath(`/farms/${flock.farmId}`);
+  revalidatePath("/tools");
   return { success: true };
 }

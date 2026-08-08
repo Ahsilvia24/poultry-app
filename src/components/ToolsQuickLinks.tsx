@@ -4,12 +4,12 @@ const linkClass =
   "flex min-h-10 items-center justify-center rounded-lg border border-emerald-800/20 bg-emerald-700 px-2.5 text-center text-sm font-semibold text-white shadow-sm transition active:scale-[0.98] hover:bg-emerald-800";
 
 const links = [
+  { href: "#weight-projections", label: "Weight Proj." },
   { href: "#temp-curve", label: "Temp Curve" },
   { href: "#cool-cells", label: "Cool Cells" },
   { href: "#max-cooling", label: "Max Cooling" },
   { href: "#lights", label: "Lights" },
   { href: "#ventilation", label: "Ventilation" },
-  { href: "#phone-numbers", label: "Phone Numbers" },
 ] as const;
 
 export function ToolsQuickLinks() {

@@ -31,7 +31,6 @@ import {
   deleteVisit,
   getFarmDetail,
   updateFarm,
-  updateFlockGrowthRate,
   updateGeneratorLog,
   updateHouse,
   updateHouseLoggedTemp,
@@ -55,10 +54,6 @@ import {
   type GenHourKey,
   type GeneratorHours,
 } from "../../../../src/lib/generator";
-import {
-  catchWeightProjections,
-  resolveGrowthRate,
-} from "../../../../src/lib/weight/projections";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { colors, styles } from "../../../../src/theme";
 import {
@@ -70,7 +65,6 @@ import {
   formatNumber,
   formatPct,
 } from "../../../../src/components/ui";
-import { WeightProjectionTile } from "../../../../src/components/WeightProjectionTile";
 import { DatePickerField } from "../../../../src/components/DatePickerField";
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
 
@@ -552,54 +546,6 @@ export default function FarmDetailScreen() {
 
   const { farm } = data;
   const activeFlocks = data.activeFlocks ?? [];
-  const catchLabel =
-    data.activeFlock?.catchDates?.[0] ??
-    data.activeFlock?.projectedCatchDate ??
-    data.activeFlock?.resolvedCatchDate ??
-    null;
-  const growthRate = (() => {
-    const fromHouse = data.houses.find((h) => h.growthRateLbsPerDay != null)?.growthRateLbsPerDay;
-    if (fromHouse != null) return resolveGrowthRate(fromHouse);
-    return data.activeFlock
-      ? resolveGrowthRate(data.activeFlock.growthRateLbsPerDay)
-      : null;
-  })();
-
-  /** Unique catch dates → Catch day / +1 / +2, soonest catch first. */
-  const weightProjectionGroups = (() => {
-    if (activeFlocks.length === 0 || growthRate == null) return [];
-    const byCatch = new Map<string, { placement: string; rate: number }>();
-    for (const h of data.houses) {
-      if (h.placedBirdCount == null) continue;
-      const catchDate = h.catchDate ?? catchLabel;
-      if (!catchDate) continue;
-      const placement = h.placementDate ?? data.activeFlock?.placementDate;
-      if (!placement) continue;
-      const rate = resolveGrowthRate(h.growthRateLbsPerDay);
-      const existing = byCatch.get(catchDate);
-      // Prefer earliest placement for a shared catch (older birds → higher weight).
-      if (!existing || placement < existing.placement) {
-        byCatch.set(catchDate, { placement, rate });
-      }
-    }
-    if (byCatch.size === 0 && catchLabel && data.activeFlock) {
-      byCatch.set(catchLabel, {
-        placement: data.activeFlock.placementDate,
-        rate: growthRate,
-      });
-    }
-    return Array.from(byCatch.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([catchDate, { placement, rate }]) => ({
-        catchDateKey: catchDate,
-        projections: catchWeightProjections({
-          placementDate: placement,
-          catchDate,
-          growthRateLbsPerDay: rate,
-        }),
-      }));
-  })();
-
   function confirmCompleteFlock(flockId: string, flockNumber: string) {
     Alert.alert(
       "Complete flock?",
@@ -1015,7 +961,11 @@ export default function FarmDetailScreen() {
                   {
                     key: "weight",
                     label: "Weight Proj.",
-                    onPress: () => scrollToSection("weight"),
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/tools",
+                        params: { farmId: farm.id, section: "weight" },
+                      }),
                   },
                   {
                     key: "generators",
@@ -1601,29 +1551,6 @@ export default function FarmDetailScreen() {
           {!generatorModalOpen ? (
             <RecordLink label="Log generators" onPress={() => openGeneratorEditor()} />
           ) : null}
-        </View>
-
-        {/* ── Weight projections ── */}
-        <View onLayout={onSectionLayout("weight")}>
-          {growthRate != null && weightProjectionGroups.length > 0 ? (
-            <WeightProjectionTile
-              groups={weightProjectionGroups}
-              growthRateLbsPerDay={growthRate}
-              onSaveGrowthRate={(rate) => {
-                for (const fl of activeFlocks) {
-                  updateFlockGrowthRate(fl.id, rate);
-                }
-                load();
-              }}
-            />
-          ) : (
-            <Card>
-              <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight projections</Text>
-              <Text style={[styles.muted, { marginTop: 8 }]}>
-                Add an active flock with a catch date to see weight projections.
-              </Text>
-            </Card>
-          )}
         </View>
 
         {/* ── Issues ── */}
