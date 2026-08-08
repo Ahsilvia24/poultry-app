@@ -116,7 +116,6 @@ function DashboardFarmCard({
               <div className="min-w-0 flex-1">
                 <p className="text-lg font-bold text-stone-900">
                   {farm.farmName}
-                  <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
                   {farm.flockAgeDays != null ? (
                     <span className="font-semibold text-stone-500"> {farm.flockAgeDays}d</span>
                   ) : null}
