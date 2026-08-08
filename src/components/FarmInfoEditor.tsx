@@ -44,30 +44,26 @@ export function FarmInfoEditor({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="mb-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="min-w-0 text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
-              {farm.farmName}
-            </h1>
-            <button
-              type="button"
-              onClick={() => setOpen((v) => !v)}
-              aria-label={open ? "Close farm settings" : "Edit farm info"}
-              aria-expanded={open}
-              title="Edit farm info"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
-            >
-              <GearIcon className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
+    <div className="contents">
+      <div className="flex min-w-0 items-center justify-end gap-2 justify-self-end">
+        <h1 className="min-w-0 truncate text-right text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
+          {farm.farmName}
+        </h1>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={open ? "Close farm settings" : "Edit farm info"}
+          aria-expanded={open}
+          title="Edit farm info"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
+        >
+          <GearIcon className="h-5 w-5" />
+        </button>
         {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </div>
 
       {open ? (
-        <Card className="mt-4">
+        <Card className="col-span-2 text-left">
           <h2 className="font-bold text-stone-900">Edit farm info</h2>
           <form
             action={async (formData) => {
