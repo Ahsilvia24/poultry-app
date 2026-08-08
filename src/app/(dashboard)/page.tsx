@@ -35,13 +35,9 @@ export default async function DashboardPage() {
 
       <div className="space-y-3">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Card>
-            <p className="text-sm font-semibold text-stone-500">Today&apos;s schedule</p>
-            <FollowUpsDueList items={data.todaysSchedule} showDate />
-          </Card>
           <CollapsibleCard
             title="Upcoming Visits"
-            defaultOpen={false}
+            defaultOpen
             count={data.upcomingSchedule.length}
           >
             {data.upcomingSchedule.length === 0 ? (
@@ -50,6 +46,10 @@ export default async function DashboardPage() {
               <FollowUpsDueList items={data.upcomingSchedule} showDate />
             )}
           </CollapsibleCard>
+          <Card>
+            <p className="text-sm font-semibold text-stone-500">Today&apos;s schedule</p>
+            <FollowUpsDueList items={data.todaysSchedule} showDate />
+          </Card>
         </div>
         <CollapsibleCard
           title="Upcoming catches"
