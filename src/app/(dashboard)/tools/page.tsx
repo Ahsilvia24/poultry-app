@@ -1,3 +1,4 @@
+import { addDays, format } from "date-fns";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -5,6 +6,8 @@ import {
   birdAgeFromPlacement,
   flockWeekFromAge,
 } from "@/lib/mortality/calculations";
+import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
+import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
 import { CoolCellsChart } from "@/components/CoolCellsChart";
 import { LightsChart } from "@/components/LightsChart";
 import { MaxCoolingChart } from "@/components/MaxCoolingChart";
@@ -12,16 +15,33 @@ import { TempCurveChart } from "@/components/TempCurveChart";
 import { ToolsQuickLinks } from "@/components/ToolsQuickLinks";
 import { ToolsSectionPanel } from "@/components/ToolsSectionPanel";
 import {
+  ToolsWeightProjections,
+  type WeightFarmPayload,
+} from "@/components/ToolsWeightProjections";
+import {
   VentilationCfmCharts,
   VentilationLinks,
   type VentilationFarmPayload,
 } from "@/components/VentilationLinks";
 import { PageHeader } from "@/components/ui";
 
-export default async function ToolsPage() {
+/** Local noon from yyyy-MM-dd — safe for startOfDay / calendar math. */
+function localNoonFromKey(dateKey: string) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return new Date(y!, m! - 1, d!, 12, 0, 0, 0);
+}
+
+type SearchParams = Promise<{ farmId?: string }>;
+
+export default async function ToolsPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
+  const sp = searchParams ? await searchParams : {};
   const today = new Date();
   const farmsRaw = await prisma.farm.findMany({
     where: { userId: session.user.id, deletedAt: null, isActive: true },
@@ -33,10 +53,15 @@ export default async function ToolsPage() {
       },
       flocks: {
         where: { flockStatus: "ACTIVE", deletedAt: null },
-        take: 1,
+        orderBy: { placementDate: "asc" },
         include: {
           houseFlocks: {
-            select: { houseId: true, placedBirdCount: true },
+            select: {
+              houseId: true,
+              placedBirdCount: true,
+              placementDate: true,
+              catchDate: true,
+            },
           },
         },
       },
@@ -68,20 +93,109 @@ export default async function ToolsPage() {
     };
   });
 
+  const weightFarms: WeightFarmPayload[] = farmsRaw.map((farm) => {
+    const activeFlocks = farm.flocks;
+    const primary = activeFlocks[0] ?? null;
+    const hfByHouseId = new Map<
+      string,
+      {
+        flock: (typeof activeFlocks)[number];
+        hf: (typeof activeFlocks)[number]["houseFlocks"][number];
+      }
+    >();
+    for (const flock of activeFlocks) {
+      for (const hf of flock.houseFlocks) {
+        if (!hfByHouseId.has(hf.houseId)) {
+          hfByHouseId.set(hf.houseId, { flock, hf });
+        }
+      }
+    }
+
+    const houses = farm.houses.map((house) => {
+      const matched = hfByHouseId.get(house.id) ?? null;
+      const hf = matched?.hf ?? null;
+      const flock = matched?.flock ?? primary;
+      const growthRateLbsPerDay = resolveGrowthRate(flock?.growthRateLbsPerDay);
+
+      const placementKey = hf?.placementDate
+        ? dateKeyFromDb(hf.placementDate)
+        : flock?.placementDate
+          ? dateKeyFromDb(flock.placementDate)
+          : null;
+
+      let catchKey: string | null = null;
+      if (hf?.catchDate) {
+        catchKey = dateKeyFromDb(hf.catchDate);
+      } else if (flock?.actualCatchDate) {
+        catchKey = dateKeyFromDb(flock.actualCatchDate);
+      } else if (flock?.projectedCatchDate) {
+        catchKey = dateKeyFromDb(flock.projectedCatchDate);
+      } else if (placementKey) {
+        const age =
+          flock?.targetMarketAge != null && flock.targetMarketAge > 0
+            ? flock.targetMarketAge
+            : 52;
+        catchKey = dateKeyFromDb(addDays(parseDateKey(placementKey), age));
+      }
+
+      const groups =
+        flock && placementKey && catchKey
+          ? [
+              {
+                catchDateKey: catchKey,
+                projections: catchWeightProjections({
+                  placementDate: localNoonFromKey(placementKey),
+                  catchDate: localNoonFromKey(catchKey),
+                  growthRateLbsPerDay,
+                }).map((p) => ({
+                  offsetDays: p.offsetDays,
+                  dateKey: format(p.date, "yyyy-MM-dd"),
+                  label:
+                    p.offsetDays === 0
+                      ? "Catch day"
+                      : p.offsetDays === 1
+                        ? "Catch +1"
+                        : "Catch +2",
+                  ageDays: p.ageDays,
+                  weightLbs: p.weightLbs,
+                })),
+              },
+            ]
+          : [];
+
+      return {
+        id: house.id,
+        houseNumber: house.houseNumber,
+        flockId: flock?.id ?? null,
+        growthRateLbsPerDay,
+        groups,
+      };
+    });
+
+    return {
+      id: farm.id,
+      farmName: farm.farmName,
+      houses,
+    };
+  });
+
   return (
     <div>
-      <PageHeader title="Tools" subtitle="Calculators and helpers for field work" />
+      <PageHeader title="Tools" />
 
       <div className="mb-6">
         <ToolsQuickLinks />
       </div>
 
       <div className="space-y-4">
-        <ToolsSectionPanel
-          hashId="temp-curve"
-          title="Temp Curve"
-          subtitle="Target house temperature (°F) by bird age — summer vs winter"
-        >
+        <ToolsSectionPanel hashId="weight-projections" title="Weight projections">
+          <ToolsWeightProjections
+            farms={weightFarms}
+            initialFarmId={sp.farmId ?? null}
+          />
+        </ToolsSectionPanel>
+
+        <ToolsSectionPanel hashId="temp-curve" title="Temp Curve">
           <TempCurveChart />
         </ToolsSectionPanel>
 
@@ -108,8 +222,6 @@ export default async function ToolsPage() {
         >
           <VentilationLinks farms={farms} />
         </ToolsSectionPanel>
-
-        <ToolsSectionPanel hashId="phone-numbers" title="Phone Numbers" subtitle="Coming soon." />
       </div>
     </div>
   );

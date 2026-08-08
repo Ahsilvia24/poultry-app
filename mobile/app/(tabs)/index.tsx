@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -26,12 +33,33 @@ import {
   formatPct,
 } from "../../src/components/ui";
 import { ExportDataCard } from "../../src/components/ExportDataCard";
+import { ScheduleImportCard } from "../../src/components/ScheduleImportCard";
 
 type Dashboard = ReturnType<typeof getDashboard>;
 type ScheduleItem = Dashboard["todaysSchedule"][number];
 
+/** Visible farm rows before the list scrolls inside the tile. */
+const VISIBLE_SCHEDULE_ROWS = 8;
+/** marginTop 10 + ~22px row content (checkbox / single-line text). */
+const SCHEDULE_ROW_STEP = 32;
+const SCHEDULE_LIST_MAX_HEIGHT = VISIBLE_SCHEDULE_ROWS * SCHEDULE_ROW_STEP;
+
 function scheduleItemKey(item: Pick<ScheduleItem, "farmId" | "date" | "label">) {
   return `${item.farmId}-${item.date}-${item.label}`;
+}
+
+/** One-finger scroll inside a dashboard schedule tile when there are more than 8 farms. */
+function ScrollableScheduleList({ children }: { children: ReactNode }) {
+  return (
+    <ScrollView
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator
+      style={{ maxHeight: SCHEDULE_LIST_MAX_HEIGHT }}
+    >
+      {children}
+    </ScrollView>
+  );
 }
 
 function ScheduleCheckRow({
@@ -343,25 +371,27 @@ export default function DashboardScreen() {
               {data.todaysSchedule.length === 0 ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>Nothing due today</Text>
               ) : (
-                data.todaysSchedule.map((item) => {
-                  const key = scheduleItemKey(item);
-                  return (
-                    <ScheduleCheckRow
-                      key={key}
-                      item={item}
-                      showDate
-                      checked={checked[key] ?? item.completed}
-                      busy={pendingKey === key}
-                      onToggle={() => toggleScheduleItem(item)}
-                      onOpenFarm={() =>
-                        router.push({
-                          pathname: "/(tabs)/farms/[id]",
-                          params: { id: item.farmId },
-                        })
-                      }
-                    />
-                  );
-                })
+                <ScrollableScheduleList>
+                  {data.todaysSchedule.map((item) => {
+                    const key = scheduleItemKey(item);
+                    return (
+                      <ScheduleCheckRow
+                        key={key}
+                        item={item}
+                        showDate
+                        checked={checked[key] ?? item.completed}
+                        busy={pendingKey === key}
+                        onToggle={() => toggleScheduleItem(item)}
+                        onOpenFarm={() =>
+                          router.push({
+                            pathname: "/(tabs)/farms/[id]",
+                            params: { id: item.farmId },
+                          })
+                        }
+                      />
+                    );
+                  })}
+                </ScrollableScheduleList>
               )}
             </Card>
 
@@ -394,25 +424,27 @@ export default function DashboardScreen() {
                 data.upcomingSchedule.length === 0 ? (
                   <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 10 days</Text>
                 ) : (
-                  data.upcomingSchedule.slice(0, 20).map((item) => {
-                    const key = scheduleItemKey(item);
-                    return (
-                      <ScheduleCheckRow
-                        key={key}
-                        item={item}
-                        showDate
-                        checked={checked[key] ?? item.completed}
-                        busy={pendingKey === key}
-                        onToggle={() => toggleScheduleItem(item)}
-                        onOpenFarm={() =>
-                          router.push({
-                            pathname: "/(tabs)/farms/[id]",
-                            params: { id: item.farmId },
-                          })
-                        }
-                      />
-                    );
-                  })
+                  <ScrollableScheduleList>
+                    {data.upcomingSchedule.map((item) => {
+                      const key = scheduleItemKey(item);
+                      return (
+                        <ScheduleCheckRow
+                          key={key}
+                          item={item}
+                          showDate
+                          checked={checked[key] ?? item.completed}
+                          busy={pendingKey === key}
+                          onToggle={() => toggleScheduleItem(item)}
+                          onOpenFarm={() =>
+                            router.push({
+                              pathname: "/(tabs)/farms/[id]",
+                              params: { id: item.farmId },
+                            })
+                          }
+                        />
+                      );
+                    })}
+                  </ScrollableScheduleList>
                 )
               ) : null}
             </Card>
@@ -446,37 +478,40 @@ export default function DashboardScreen() {
                 data.upcomingCatches.length === 0 ? (
                   <Text style={[styles.muted, { marginTop: 8 }]}>None</Text>
                 ) : (
-                  data.upcomingCatches.map((c) => (
-                    <Pressable
-                      key={`${c.farmId}-${c.date}`}
-                      onPress={() =>
-                        router.push({
-                          pathname: "/(tabs)/farms/[id]",
-                          params: { id: c.farmId },
-                        })
-                      }
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        gap: 8,
-                        marginTop: 10,
-                      }}
-                    >
-                      <Text style={{ fontWeight: "700", color: colors.text, flex: 1 }}>
-                        {c.farmName}
-                        {c.flockAgeDays != null ? (
-                          <Text style={{ fontWeight: "400", color: colors.muted }}>
-                            {" "}
-                            · {c.flockAgeDays}d
-                          </Text>
-                        ) : null}
-                      </Text>
-                      <Text style={{ color: colors.muted, fontSize: 13 }}>
-                        {formatCatchDate(c.date)}
-                        {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
-                      </Text>
-                    </Pressable>
-                  ))
+                  <ScrollableScheduleList>
+                    {data.upcomingCatches.map((c) => (
+                      <Pressable
+                        key={`${c.farmId}-${c.date}`}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/(tabs)/farms/[id]",
+                            params: { id: c.farmId },
+                          })
+                        }
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          marginTop: 10,
+                          minHeight: 22,
+                        }}
+                      >
+                        <Text style={{ fontWeight: "700", color: colors.text, flex: 1 }}>
+                          {c.farmName}
+                          {c.flockAgeDays != null ? (
+                            <Text style={{ fontWeight: "400", color: colors.muted }}>
+                              {" "}
+                              · {c.flockAgeDays}d
+                            </Text>
+                          ) : null}
+                        </Text>
+                        <Text style={{ color: colors.muted, fontSize: 13 }}>
+                          {formatCatchDate(c.date)}
+                          {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollableScheduleList>
                 )
               ) : null}
             </Card>
@@ -656,6 +691,11 @@ export default function DashboardScreen() {
             })}
           </>
         ) : null}
+
+        <View style={{ marginTop: 16 }}>
+          <SectionTitle>Import</SectionTitle>
+          <ScheduleImportCard />
+        </View>
 
         <View style={{ marginTop: 16, marginBottom: 24 }}>
           <SectionTitle>Backup</SectionTitle>

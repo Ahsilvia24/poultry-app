@@ -12,7 +12,6 @@ const nav = [
   { href: "/tools", label: "Tools" },
   { href: "/settlement", label: "Settlement" },
   { href: "/reports", label: "Reports" },
-  { href: "/search", label: "Search" },
   { href: "/settings", label: "Settings" },
 ];
 

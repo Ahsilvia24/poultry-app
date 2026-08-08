@@ -142,7 +142,7 @@ export default function FarmsScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       >
-        <PageHeader title="Farms" subtitle="Manage grower farms and houses" />
+        <PageHeader title="Farms" />
 
         <View style={[styles.row, { marginBottom: 8, alignItems: "center" }]}>
           <Pressable

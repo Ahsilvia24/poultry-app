@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createFarmAction } from "@/app/actions/farms";
-import { Button, Card, Input, Label, PageHeader, Select, Textarea } from "@/components/ui";
+import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 
 async function submitCreateFarm(formData: FormData) {
   "use server";
@@ -61,10 +61,6 @@ export default function NewFarmPage() {
             <div className="sm:col-span-2">
               <Label htmlFor="phoneNumber">Phone</Label>
               <Input id="phoneNumber" name="phoneNumber" type="tel" />
-            </div>
-            <div className="sm:col-span-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" name="notes" rows={3} />
             </div>
           </div>
           <Button type="submit" className="w-full sm:w-auto">

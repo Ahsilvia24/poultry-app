@@ -331,15 +331,15 @@ export default function LfoListScreen() {
             </View>
             {calcResult ? (
               <View style={{ gap: 6 }}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 12 }}>
                   <Text style={styles.muted}>WC (water lbs)</Text>
                   <Text style={{ fontWeight: "600" }}>{formatNum(calcResult.wc, 1)} lbs</Text>
                 </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 12 }}>
                   <Text style={styles.muted}>FC (feed / day)</Text>
                   <Text style={{ fontWeight: "600" }}>{formatNum(calcResult.fc, 1)} lbs</Text>
                 </View>
-                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 12 }}>
                   <Text style={styles.muted}>Consumption rate</Text>
                   <Text style={{ fontWeight: "800" }}>
                     {formatNum(calcResult.rate, 3)} lbs/bird/day

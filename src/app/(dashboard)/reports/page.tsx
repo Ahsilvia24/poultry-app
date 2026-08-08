@@ -19,7 +19,6 @@ import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui"
 
 type SearchParams = Promise<{
   farmId?: string;
-  flockId?: string;
   from?: string;
   to?: string;
   cause?: string;
@@ -47,7 +46,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
     const title = "Placement";
     return (
       <div>
-        <PageHeader title="Reports" subtitle="Choose a report type, then run filters" />
+        <PageHeader title="Reports" />
         <Suspense fallback={<div className="mb-4 h-10" />}>
           <ReportsTypeTabs active={reportType} />
         </Suspense>
@@ -65,39 +64,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
   const farms = await prisma.farm.findMany({
     where: { userId: session.user.id, deletedAt: null },
     orderBy: { farmName: "asc" },
-    include: {
-      flocks: {
-        where: { deletedAt: null },
-        orderBy: { placementDate: "desc" },
-        select: { id: true, flockNumber: true, farmId: true, flockStatus: true },
-      },
-    },
+    select: { id: true, farmName: true },
   });
 
   const selectedFarmId = params.farmId || "";
   const selectedCause = params.cause || "";
-
-  const flockOptions = farms
-    .filter((f) => !selectedFarmId || f.id === selectedFarmId)
-    .flatMap((f) =>
-      f.flocks.map((fl) => ({
-        ...fl,
-        farmName: f.farmName,
-      })),
-    );
-  const activeFlocks = flockOptions.filter((f) => f.flockStatus === "ACTIVE");
-  const oldFlocks = flockOptions.filter((f) => f.flockStatus !== "ACTIVE");
-  const defaultActiveFlockId = activeFlocks[0]?.id ?? "";
-
-  const flockParam = params.flockId;
-  const selectedFlockId =
-    flockParam === undefined
-      ? defaultActiveFlockId
-      : flockParam === "" || flockParam === "all"
-        ? ""
-        : flockParam;
-
-  const selectedFlockSelectValue = selectedFlockId === "" ? "all" : selectedFlockId;
 
   const mortalities = await prisma.dailyMortality.findMany({
     where: {
@@ -106,7 +77,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       ...(selectedCause ? { mortalityCause: selectedCause as never } : {}),
       houseFlock: {
         flock: {
-          ...(selectedFlockId ? { id: selectedFlockId } : {}),
           farm: {
             userId: session.user.id,
             deletedAt: null,
@@ -177,30 +147,21 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
     row.byDate[dateKey] = (row.byDate[dateKey] ?? 0) + m.dailyMortalityCount;
     houseDateMap.set(sortKey, row);
   }
-  if (selectedFarmId || selectedFlockId) {
+  if (selectedFarmId) {
     const housesInScope = await prisma.house.findMany({
       where: {
         deletedAt: null,
         farm: {
           userId: session.user.id,
           deletedAt: null,
-          ...(selectedFarmId ? { id: selectedFarmId } : {}),
+          id: selectedFarmId,
         },
-        ...(selectedFlockId
-          ? {
-              houseFlocks: {
-                some: { flockId: selectedFlockId },
-              },
-            }
-          : {}),
       },
       include: { farm: { select: { farmName: true } } },
       orderBy: [{ farm: { farmName: "asc" } }, { houseNumber: "asc" }],
     });
     for (const h of housesInScope) {
-      const houseLabel = selectedFarmId
-        ? `House ${h.houseNumber}`
-        : `${h.farm.farmName} H${h.houseNumber}`;
+      const houseLabel = `House ${h.houseNumber}`;
       const sortKey = `${h.farm.farmName}\0${String(h.houseNumber).padStart(4, "0")}`;
       if (!houseDateMap.has(sortKey)) {
         houseDateMap.set(sortKey, {
@@ -239,7 +200,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       where: {
         flock: {
           farmId: { in: farmIdsInData },
-          ...(selectedFlockId ? { id: selectedFlockId } : {}),
           farm: { userId: session.user.id },
         },
       },
@@ -279,23 +239,20 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
     selectedFarmId
       ? `Farm: ${farms.find((f) => f.id === selectedFarmId)?.farmName ?? selectedFarmId}`
       : "All farms",
-    selectedFlockId
-      ? `Flock: ${flockOptions.find((f) => f.id === selectedFlockId)?.flockNumber ?? selectedFlockId}`
-      : "All flocks",
     `${format(fromDate, "MMMM d, yyyy")} to ${format(toDate, "MMMM d, yyyy")}`,
     selectedCause ? `Cause: ${MORTALITY_CAUSE_LABELS[selectedCause] ?? selectedCause}` : "All causes",
   ].join(" · ");
 
   return (
     <div>
-      <PageHeader title="Reports" subtitle="Choose a report type, then run filters" />
+      <PageHeader title="Reports" />
 
       <Suspense fallback={<div className="mb-4 h-10" />}>
         <ReportsTypeTabs active="mortality" />
       </Suspense>
 
       <Card className="mb-6">
-        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <input type="hidden" name="type" value="mortality" />
           <div>
             <Label htmlFor="farmId">Farm</Label>
@@ -306,22 +263,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
                   {f.farmName}
                 </option>
               ))}
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="flockId">Flock</Label>
-            <Select id="flockId" name="flockId" defaultValue={selectedFlockSelectValue}>
-              {activeFlocks.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {selectedFarmId ? f.flockNumber : `${f.farmName} — ${f.flockNumber}`} (active)
-                </option>
-              ))}
-              {oldFlocks.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {selectedFarmId ? f.flockNumber : `${f.farmName} — ${f.flockNumber}`}
-                </option>
-              ))}
-              <option value="all">All flocks</option>
             </Select>
           </div>
           <div>
@@ -345,7 +286,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
               ))}
             </Select>
           </div>
-          <div className="sm:col-span-2 lg:col-span-5">
+          <div className="sm:col-span-2 lg:col-span-4">
             <Button type="submit">Apply filters</Button>
           </div>
         </form>

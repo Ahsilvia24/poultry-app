@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
-import { DEFAULT_GROWTH_RATE_LBS_PER_DAY } from "../lib/weight/projections";
+import {
+  DEFAULT_GROWTH_RATE_LBS_PER_DAY,
+  weightFromAgeDays,
+} from "../lib/weight/projections";
 import { colors, styles } from "../theme";
 import { Card, PrimaryButton } from "./ui";
 
@@ -32,21 +35,48 @@ export function WeightProjectionTile({
   groups,
   growthRateLbsPerDay,
   onSaveGrowthRate,
+  embedded = false,
+  useAgeOfBird = false,
+  onUseAgeOfBirdChange,
+  ageDaysText = "",
+  onAgeDaysChange,
 }: {
   groups: WeightProjectionGroup[];
   growthRateLbsPerDay: number;
   onSaveGrowthRate: (rate: number) => void;
+  /** When true, skip the outer card chrome and section title (used inside Tools). */
+  embedded?: boolean;
+  useAgeOfBird?: boolean;
+  onUseAgeOfBirdChange?: (next: boolean) => void;
+  ageDaysText?: string;
+  onAgeDaysChange?: (next: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(growthRateLbsPerDay));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  if (groups.length === 0) return null;
-
-  const catchDatesSorted = groups.map((g) => g.catchDateKey);
+  const ageDays = Number(ageDaysText);
+  const ageValid = Number.isFinite(ageDays) && ageDays >= 0 && ageDaysText.trim() !== "";
+  const ageProjections = ageValid
+    ? [0, 1, 2].map((offset) => {
+        const days = ageDays + offset;
+        return {
+          offset,
+          ageDays: days,
+          label: offset === 0 ? "Age day" : offset === 1 ? "Age +1" : "Age +2",
+          weightLbs: weightFromAgeDays(days, growthRateLbsPerDay),
+        };
+      })
+    : null;
 
   function startEdit() {
+    if (saving) return;
+    if (editing) {
+      setEditing(false);
+      setError(null);
+      return;
+    }
     setDraft(String(growthRateLbsPerDay || DEFAULT_GROWTH_RATE_LBS_PER_DAY));
     setError(null);
     setEditing(true);
@@ -70,43 +100,139 @@ export function WeightProjectionTile({
     }
   }
 
-  return (
-    <View>
-      <Card>
-        <View
+  const growthRateControl = (
+    <Pressable
+      onPress={startEdit}
+      accessibilityRole="button"
+      accessibilityLabel="Edit growth rate"
+      accessibilityState={{ expanded: editing }}
+    >
+      <Text style={{ fontSize: 14, color: colors.text }}>
+        Using{" "}
+        <Text
           style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-            gap: 8,
+            fontWeight: "800",
+            color: colors.accentDark,
+            textDecorationLine: "underline",
           }}
         >
+          {growthRateLbsPerDay.toFixed(3)} lb/day
+        </Text>
+      </Text>
+    </Pressable>
+  );
+
+  const ageToggle =
+    onUseAgeOfBirdChange != null ? (
+      <Pressable
+        onPress={() => onUseAgeOfBirdChange(!useAgeOfBird)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: useAgeOfBird }}
+        style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 }}
+      >
+        <View
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 4,
+            borderWidth: 1.5,
+            borderColor: useAgeOfBird ? colors.accentDark : colors.border,
+            backgroundColor: useAgeOfBird ? colors.accentDark : "#fff",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {useAgeOfBird ? (
+            <Text style={{ color: "#fff", fontSize: 12, fontWeight: "800", lineHeight: 14 }}>
+              ✓
+            </Text>
+          ) : null}
+        </View>
+        <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
+          Use Age of Bird
+        </Text>
+      </Pressable>
+    ) : null;
+
+  const body = (
+    <>
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+        }}
+      >
+        {embedded ? (
+          ageToggle
+        ) : (
           <View style={{ flex: 1, minWidth: 160 }}>
             <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight projections</Text>
-            <Text style={[styles.muted, { marginTop: 2, fontSize: 13 }]}>
-              Age at kill × growth rate
-            </Text>
+            {ageToggle ? <View style={{ marginTop: 8 }}>{ageToggle}</View> : null}
           </View>
-          <Text style={{ fontSize: 14, color: colors.text }}>
-            Using{" "}
-            <Text style={{ fontWeight: "800" }}>{growthRateLbsPerDay.toFixed(3)} lb/day</Text>
-          </Text>
-        </View>
+        )}
+        {growthRateControl}
+      </View>
 
-        {groups.map((group) => (
+      {useAgeOfBird ? (
+        <View style={{ marginTop: 12, gap: 10 }}>
+          <View>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
+              Age of bird (days)
+            </Text>
+            <TextInput
+              value={ageDaysText}
+              onChangeText={(t) => onAgeDaysChange?.(t)}
+              keyboardType="number-pad"
+              style={[styles.input, { maxWidth: 140 }]}
+              placeholder="e.g. 42"
+              placeholderTextColor={colors.muted}
+            />
+          </View>
+          {ageProjections ? (
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {ageProjections.map((p) => (
+                <View
+                  key={p.offset}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#fafaf9",
+                    borderRadius: 10,
+                    paddingHorizontal: 10,
+                    paddingVertical: 10,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, color: colors.muted }}>{p.label}</Text>
+                  <Text
+                    style={{ fontSize: 16, fontWeight: "800", color: colors.text, marginTop: 2 }}
+                  >
+                    {p.weightLbs.toFixed(2)} lb
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+                    {p.ageDays}d
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={[styles.muted, { fontSize: 13 }]}>Enter age to calculate</Text>
+          )}
+        </View>
+      ) : groups.length > 0 ? (
+        groups.map((group) => (
           <View key={group.catchDateKey} style={{ marginTop: 12 }}>
-            {groups.length > 1 ? (
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "700",
-                  color: colors.text,
-                  marginBottom: 8,
-                }}
-              >
-                Catch {formatCatchShort(group.catchDateKey)}
-              </Text>
-            ) : null}
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "700",
+                color: colors.text,
+                marginBottom: 8,
+              }}
+            >
+              Catch {formatCatchShort(group.catchDateKey)}
+            </Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {group.projections.map((p) => (
                 <View
@@ -132,76 +258,57 @@ export function WeightProjectionTile({
               ))}
             </View>
           </View>
-        ))}
-
-        {groups.length > 1 ? (
-          <View style={{ marginTop: 12, gap: 2 }}>
-            {catchDatesSorted.map((dateKey) => (
-              <Text key={dateKey} style={[styles.muted, { fontSize: 13 }]}>
-                Catch {formatCatchShort(dateKey)}
-              </Text>
-            ))}
-          </View>
-        ) : null}
-      </Card>
-
-      {!editing ? (
-        <Pressable onPress={startEdit} style={{ marginTop: 4, marginBottom: 16 }}>
-          <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
-            Edit growth rate
-          </Text>
-        </Pressable>
+        ))
       ) : (
-        <View style={{ marginTop: 4, marginBottom: 16 }}>
-          <Pressable
-            onPress={() => {
-              if (saving) return;
-              setEditing(false);
-              setError(null);
-            }}
-          >
-            <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
-              Edit growth rate
-            </Text>
-          </Pressable>
-          <Card style={{ marginTop: 12 }}>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
-              Growth rate (lb/day)
-            </Text>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              keyboardType="decimal-pad"
-              style={styles.input}
-              placeholder={String(DEFAULT_GROWTH_RATE_LBS_PER_DAY)}
-              placeholderTextColor={colors.muted}
-            />
-            <Text style={[styles.muted, { fontSize: 12 }]}>
-              Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY} · Weight = days of age × GR
-            </Text>
-            {error ? <Text style={{ color: colors.danger, fontSize: 13 }}>{error}</Text> : null}
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
-              <PrimaryButton
-                label={saving ? "Saving…" : "Save"}
-                onPress={() => {
-                  if (!saving) save();
-                }}
-                style={{ flex: 1 }}
-              />
-              <PrimaryButton
-                label="Cancel"
-                secondary
-                onPress={() => {
-                  if (saving) return;
-                  setEditing(false);
-                  setError(null);
-                }}
-                style={{ flex: 1 }}
-              />
-            </View>
-          </Card>
-        </View>
+        <Text style={[styles.muted, { marginTop: 12 }]}>
+          Add an active flock with a catch date to see weight projections.
+        </Text>
       )}
+    </>
+  );
+
+  return (
+    <View style={{ marginBottom: 16 }}>
+      {embedded ? body : <Card>{body}</Card>}
+
+      {editing ? (
+        <Card style={{ marginTop: 12 }}>
+          <Text style={{ fontSize: 13, fontWeight: "600", color: colors.text }}>
+            Growth rate (lb/day)
+          </Text>
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            keyboardType="decimal-pad"
+            style={styles.input}
+            placeholder={String(DEFAULT_GROWTH_RATE_LBS_PER_DAY)}
+            placeholderTextColor={colors.muted}
+          />
+          <Text style={[styles.muted, { fontSize: 12 }]}>
+            Default {DEFAULT_GROWTH_RATE_LBS_PER_DAY}
+          </Text>
+          {error ? <Text style={{ color: colors.danger, fontSize: 13 }}>{error}</Text> : null}
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+            <PrimaryButton
+              label={saving ? "Saving…" : "Save"}
+              onPress={() => {
+                if (!saving) save();
+              }}
+              style={{ flex: 1 }}
+            />
+            <PrimaryButton
+              label="Cancel"
+              secondary
+              onPress={() => {
+                if (saving) return;
+                setEditing(false);
+                setError(null);
+              }}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </Card>
+      ) : null}
     </View>
   );
 }

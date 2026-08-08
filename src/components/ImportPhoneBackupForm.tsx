@@ -39,7 +39,7 @@ export function ImportPhoneBackupForm() {
   }
 
   return (
-    <Card className="mt-6 max-w-2xl">
+    <Card className="max-w-2xl">
       <h2 className="font-bold text-stone-900">Import phone backup</h2>
       <p className="mt-2 text-sm text-stone-600 leading-relaxed">
         Upload a JSON file exported from the PoultryTech mobile app (Dashboard or Tools →

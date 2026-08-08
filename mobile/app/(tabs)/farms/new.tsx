@@ -21,7 +21,6 @@ export default function NewFarmScreen() {
   const [farmName, setFarmName] = useState("");
   const [growerName, setGrowerName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [notes, setNotes] = useState("");
   const [numberOfHouses, setNumberOfHouses] = useState("4");
   const [numberOfGenerators, setNumberOfGenerators] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +34,6 @@ export default function NewFarmScreen() {
         farmName,
         growerName,
         phoneNumber,
-        notes,
         numberOfHouses: Number(numberOfHouses) || 0,
         numberOfGenerators,
       });
@@ -122,14 +120,6 @@ export default function NewFarmScreen() {
               returnKeyType="done"
               blurOnSubmit
               onSubmitEditing={() => Keyboard.dismiss()}
-            />
-
-            <Text style={styles.label}>Notes</Text>
-            <TextInput
-              style={[styles.input, { minHeight: 72, textAlignVertical: "top" }]}
-              value={notes}
-              onChangeText={setNotes}
-              multiline
             />
 
             {error ? (

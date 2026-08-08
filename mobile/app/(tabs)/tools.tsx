@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   LayoutChangeEvent,
   Pressable,
@@ -6,8 +6,13 @@ import {
   Text,
   View,
 } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { listFarms, getFarmDetail } from "../../src/repos/data";
+import {
+  listFarms,
+  getFarmDetail,
+  updateFlockGrowthRate,
+} from "../../src/repos/data";
 import {
   CFM_BY_FAN_SIZE,
   CFM_PER_BIRD,
@@ -16,10 +21,16 @@ import {
   recommendedMinVent,
 } from "../../src/lib/tools";
 import { flockWeekFromAge, formatMinVentCycle } from "../../src/lib/mortality";
+import {
+  catchWeightProjections,
+  DEFAULT_GROWTH_RATE_LBS_PER_DAY,
+  resolveGrowthRate,
+} from "../../src/lib/weight/projections";
 import { colors, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { Card, Chip, PageHeader } from "../../src/components/ui";
 import { ExportDataCard } from "../../src/components/ExportDataCard";
+import { WeightProjectionTile } from "../../src/components/WeightProjectionTile";
 import {
   CoolCellsChart,
   LightsChart,
@@ -27,18 +38,30 @@ import {
   TempCurveChart,
 } from "../../src/components/toolsCharts";
 
-type SectionKey = "temp" | "cool" | "max" | "lights" | "vent" | "phone";
+type SectionKey = "temp" | "cool" | "max" | "lights" | "weight" | "vent";
 
 const QUICK_LINKS: Array<{ key: SectionKey; label: string }> = [
+  { key: "weight", label: "Weight Proj." },
   { key: "temp", label: "Temp Curve" },
   { key: "cool", label: "Cool Cells" },
   { key: "max", label: "Max Cooling" },
   { key: "lights", label: "Lights" },
   { key: "vent", label: "Ventilation" },
-  { key: "phone", label: "Phone Numbers" },
 ];
 
+function paramValue(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
 export default function ToolsScreen() {
+  const params = useLocalSearchParams<{
+    farmId?: string | string[];
+    section?: string | string[];
+  }>();
+  const paramFarmId = paramValue(params.farmId);
+  const paramSection = paramValue(params.section) as SectionKey | "";
+
   const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("tools", scrollRef);
   const sectionY = useRef<Partial<Record<SectionKey, number>>>({});
@@ -47,15 +70,26 @@ export default function ToolsScreen() {
     cool: true,
     max: true,
     lights: true,
+    weight: true,
     vent: true,
-    phone: true,
   });
   const [cfmOpen, setCfmOpen] = useState<"bird" | "fan" | null>(null);
   const [showVentMath, setShowVentMath] = useState(false);
+  const [detailVersion, setDetailVersion] = useState(0);
 
   const farms = useMemo(() => listFarms().farms, []);
-  const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
+  const [farmId, setFarmId] = useState(() => paramFarmId || farms[0]?.id || "");
   const [houseId, setHouseId] = useState("");
+  const [useAgeOfBird, setUseAgeOfBird] = useState(false);
+  const [ageDaysText, setAgeDaysText] = useState("");
+  const [localGrowthRate, setLocalGrowthRate] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (paramFarmId && farms.some((f) => f.id === paramFarmId)) {
+      setFarmId(paramFarmId);
+      setHouseId("");
+    }
+  }, [paramFarmId, farms]);
 
   const detail = useMemo(() => {
     if (!farmId) return null;
@@ -64,7 +98,9 @@ export default function ToolsScreen() {
     } catch {
       return null;
     }
-  }, [farmId]);
+    // detailVersion forces refresh after saving growth rate
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [farmId, detailVersion]);
 
   const houses = detail?.houses ?? [];
   const selectedHouse = houses.find((h) => h.id === houseId) ?? houses[0] ?? null;
@@ -96,6 +132,46 @@ export default function ToolsScreen() {
         })
       : [];
 
+  const activeFlocks = detail?.activeFlocks ?? [];
+  const growthRate = (() => {
+    if (localGrowthRate != null) return resolveGrowthRate(localGrowthRate);
+    if (selectedHouse?.growthRateLbsPerDay != null) {
+      return resolveGrowthRate(selectedHouse.growthRateLbsPerDay);
+    }
+    if (detail?.activeFlock) {
+      return resolveGrowthRate(detail.activeFlock.growthRateLbsPerDay);
+    }
+    return DEFAULT_GROWTH_RATE_LBS_PER_DAY;
+  })();
+
+  useEffect(() => {
+    setLocalGrowthRate(null);
+  }, [selectedHouse?.id]);
+
+  /** Selected house → Catch day / +1 / +2 from that house’s catch (or flock). */
+  const weightProjectionGroups = (() => {
+    if (!detail || growthRate == null || !selectedHouse) return [];
+    const catchDate =
+      selectedHouse.catchDate ??
+      detail.activeFlock?.projectedCatchDate ??
+      detail.activeFlock?.resolvedCatchDate ??
+      detail.activeFlock?.catchDates?.[0] ??
+      null;
+    const placement =
+      selectedHouse.placementDate ?? detail.activeFlock?.placementDate ?? null;
+    if (!catchDate || !placement) return [];
+    return [
+      {
+        catchDateKey: catchDate,
+        projections: catchWeightProjections({
+          placementDate: placement,
+          catchDate,
+          growthRateLbsPerDay: growthRate,
+        }),
+      },
+    ];
+  })();
+
   function onSectionLayout(key: SectionKey, e: LayoutChangeEvent) {
     sectionY.current[key] = e.nativeEvent.layout.y;
   }
@@ -110,6 +186,29 @@ export default function ToolsScreen() {
     });
   }
 
+  function scrollToTop() {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }
+
+  useEffect(() => {
+    // Only auto-scroll for deep links (section and/or farmId). Plain Tools
+    // tab opens should stay at the top with Quick links visible.
+    const section: SectionKey | null =
+      paramSection === "temp" ||
+      paramSection === "cool" ||
+      paramSection === "max" ||
+      paramSection === "lights" ||
+      paramSection === "weight" ||
+      paramSection === "vent"
+        ? paramSection
+        : paramFarmId
+          ? "weight"
+          : null;
+    if (!section) return;
+    const t = setTimeout(() => openAndScroll(section), 50);
+    return () => clearTimeout(t);
+  }, [paramSection, paramFarmId]);
+
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <ScrollView
@@ -117,10 +216,7 @@ export default function ToolsScreen() {
         style={styles.screen}
         contentContainerStyle={styles.content}
       >
-        <PageHeader
-          title="Tools"
-          subtitle="Calculators and helpers for field work"
-        />
+        <PageHeader title="Tools" />
 
         <Card style={{ marginBottom: 12 }}>
           <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text }}>
@@ -165,13 +261,70 @@ export default function ToolsScreen() {
           </View>
         </Card>
 
+        <View onLayout={(e) => onSectionLayout("weight", e)} collapsable={false}>
+          {open.weight ? (
+            <SectionPanel title="Weight projections" onTop={scrollToTop}>
+              {!useAgeOfBird ? (
+                <>
+                  <ChipScroller style={{ marginBottom: 6 }}>
+                    {farms.map((f) => (
+                      <Chip
+                        key={f.id}
+                        label={f.farmName}
+                        active={farmId === f.id}
+                        onPress={() => {
+                          setFarmId(f.id);
+                          setHouseId("");
+                        }}
+                      />
+                    ))}
+                  </ChipScroller>
+
+                  <ChipScroller style={{ marginBottom: 8 }}>
+                    {houses.map((h) => (
+                      <Chip
+                        key={h.id}
+                        label={`House ${h.houseNumber}`}
+                        active={(selectedHouse?.id ?? "") === h.id}
+                        onPress={() => setHouseId(h.id)}
+                      />
+                    ))}
+                  </ChipScroller>
+                </>
+              ) : null}
+
+              <WeightProjectionTile
+                groups={weightProjectionGroups}
+                growthRateLbsPerDay={growthRate}
+                embedded
+                useAgeOfBird={useAgeOfBird}
+                onUseAgeOfBirdChange={setUseAgeOfBird}
+                ageDaysText={ageDaysText}
+                onAgeDaysChange={setAgeDaysText}
+                onSaveGrowthRate={(rate) => {
+                  setLocalGrowthRate(rate);
+                  const flockId =
+                    selectedHouse?.flockId ?? detail?.activeFlock?.id ?? null;
+                  if (flockId) {
+                    updateFlockGrowthRate(flockId, rate);
+                    setDetailVersion((v) => v + 1);
+                  } else if (activeFlocks.length > 0) {
+                    for (const fl of activeFlocks) {
+                      updateFlockGrowthRate(fl.id, rate);
+                    }
+                    setDetailVersion((v) => v + 1);
+                  }
+                }}
+              />
+            </SectionPanel>
+          ) : (
+            <SectionAnchor />
+          )}
+        </View>
+
         <View onLayout={(e) => onSectionLayout("temp", e)} collapsable={false}>
           {open.temp ? (
-            <SectionPanel
-              title="Temp Curve"
-              subtitle="Target house temperature (°F) by bird age — summer vs winter"
-              onClose={() => setOpen((p) => ({ ...p, temp: false }))}
-            >
+            <SectionPanel title="Temp Curve" onTop={scrollToTop}>
               <TempCurveChart />
             </SectionPanel>
           ) : (
@@ -181,10 +334,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("cool", e)} collapsable={false}>
           {open.cool ? (
-            <SectionPanel
-              title="Cool Cells"
-              onClose={() => setOpen((p) => ({ ...p, cool: false }))}
-            >
+            <SectionPanel title="Cool Cells" onTop={scrollToTop}>
               <CoolCellsChart />
             </SectionPanel>
           ) : (
@@ -197,7 +347,7 @@ export default function ToolsScreen() {
             <SectionPanel
               title="Max Cooling"
               subtitle="By relative humidity and outside temperature (°F)"
-              onClose={() => setOpen((p) => ({ ...p, max: false }))}
+              onTop={scrollToTop}
             >
               <MaxCoolingChart />
             </SectionPanel>
@@ -208,10 +358,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("lights", e)} collapsable={false}>
           {open.lights ? (
-            <SectionPanel
-              title="Lights"
-              onClose={() => setOpen((p) => ({ ...p, lights: false }))}
-            >
+            <SectionPanel title="Lights" onTop={scrollToTop}>
               <LightsChart />
             </SectionPanel>
           ) : (
@@ -222,12 +369,8 @@ export default function ToolsScreen() {
         <View onLayout={(e) => onSectionLayout("vent", e)} collapsable={false}>
           {open.vent ? (
             <>
-              <SectionPanel
-                title="Ventilation"
-                onClose={() => setOpen((p) => ({ ...p, vent: false }))}
-              >
-                <Text style={styles.label}>Farm</Text>
-                <ChipScroller>
+              <SectionPanel title="Ventilation" onTop={scrollToTop}>
+                <ChipScroller style={{ marginBottom: 6 }}>
                   {farms.map((f) => (
                     <Chip
                       key={f.id}
@@ -241,7 +384,6 @@ export default function ToolsScreen() {
                   ))}
                 </ChipScroller>
 
-                <Text style={styles.label}>House</Text>
                 <ChipScroller>
                   {houses.map((h) => (
                     <Chip
@@ -572,18 +714,6 @@ export default function ToolsScreen() {
           )}
         </View>
 
-        <View onLayout={(e) => onSectionLayout("phone", e)} collapsable={false}>
-          {open.phone ? (
-            <SectionPanel
-              title="Phone Numbers"
-              subtitle="Coming soon."
-              onClose={() => setOpen((p) => ({ ...p, phone: false }))}
-            />
-          ) : (
-            <SectionAnchor />
-          )}
-        </View>
-
         <View style={{ marginTop: 8, marginBottom: 24 }}>
           <ExportDataCard />
         </View>
@@ -605,12 +735,18 @@ function MetricTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ChipScroller({ children }: { children: React.ReactNode }) {
+function ChipScroller({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: object;
+}) {
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={{ marginBottom: 10 }}
+      style={[{ marginBottom: 10 }, style]}
       contentContainerStyle={{
         flexDirection: "row",
         alignItems: "center",
@@ -629,12 +765,12 @@ function SectionAnchor() {
 function SectionPanel({
   title,
   subtitle,
-  onClose,
+  onTop,
   children,
 }: {
   title: string;
   subtitle?: string;
-  onClose: () => void;
+  onTop: () => void;
   children?: React.ReactNode;
 }) {
   return (
@@ -653,8 +789,8 @@ function SectionPanel({
             <Text style={[styles.muted, { marginTop: 4 }]}>{subtitle}</Text>
           ) : null}
         </View>
-        <Pressable onPress={onClose} hitSlop={8}>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Close</Text>
+        <Pressable onPress={onTop} hitSlop={8}>
+          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Top</Text>
         </Pressable>
       </View>
       {children ? <View style={{ marginTop: 12 }}>{children}</View> : null}

@@ -31,6 +31,7 @@ export function migrateDb() {
       id TEXT PRIMARY KEY NOT NULL,
       farm_name TEXT NOT NULL,
       grower_name TEXT NOT NULL,
+      farm_number TEXT,
       phone_number TEXT,
       email TEXT,
       notes TEXT,
@@ -272,6 +273,9 @@ export function migrateDb() {
     database.execSync(
       "ALTER TABLE farms ADD COLUMN number_of_generators INTEGER",
     );
+  }
+  if (!farmCols.some((c) => c.name === "farm_number")) {
+    database.execSync("ALTER TABLE farms ADD COLUMN farm_number TEXT");
   }
 
   // Existing installs may lack newer flock columns

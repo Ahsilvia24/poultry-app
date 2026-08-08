@@ -31,7 +31,6 @@ import {
   deleteVisit,
   getFarmDetail,
   updateFarm,
-  updateFlockGrowthRate,
   updateGeneratorLog,
   updateHouse,
   updateHouseLoggedTemp,
@@ -55,10 +54,6 @@ import {
   type GenHourKey,
   type GeneratorHours,
 } from "../../../../src/lib/generator";
-import {
-  catchWeightProjections,
-  resolveGrowthRate,
-} from "../../../../src/lib/weight/projections";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { colors, styles } from "../../../../src/theme";
 import {
@@ -70,7 +65,6 @@ import {
   formatNumber,
   formatPct,
 } from "../../../../src/components/ui";
-import { WeightProjectionTile } from "../../../../src/components/WeightProjectionTile";
 import { DatePickerField } from "../../../../src/components/DatePickerField";
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
 
@@ -552,54 +546,6 @@ export default function FarmDetailScreen() {
 
   const { farm } = data;
   const activeFlocks = data.activeFlocks ?? [];
-  const catchLabel =
-    data.activeFlock?.catchDates?.[0] ??
-    data.activeFlock?.projectedCatchDate ??
-    data.activeFlock?.resolvedCatchDate ??
-    null;
-  const growthRate = (() => {
-    const fromHouse = data.houses.find((h) => h.growthRateLbsPerDay != null)?.growthRateLbsPerDay;
-    if (fromHouse != null) return resolveGrowthRate(fromHouse);
-    return data.activeFlock
-      ? resolveGrowthRate(data.activeFlock.growthRateLbsPerDay)
-      : null;
-  })();
-
-  /** Unique catch dates → Catch day / +1 / +2, soonest catch first. */
-  const weightProjectionGroups = (() => {
-    if (activeFlocks.length === 0 || growthRate == null) return [];
-    const byCatch = new Map<string, { placement: string; rate: number }>();
-    for (const h of data.houses) {
-      if (h.placedBirdCount == null) continue;
-      const catchDate = h.catchDate ?? catchLabel;
-      if (!catchDate) continue;
-      const placement = h.placementDate ?? data.activeFlock?.placementDate;
-      if (!placement) continue;
-      const rate = resolveGrowthRate(h.growthRateLbsPerDay);
-      const existing = byCatch.get(catchDate);
-      // Prefer earliest placement for a shared catch (older birds → higher weight).
-      if (!existing || placement < existing.placement) {
-        byCatch.set(catchDate, { placement, rate });
-      }
-    }
-    if (byCatch.size === 0 && catchLabel && data.activeFlock) {
-      byCatch.set(catchLabel, {
-        placement: data.activeFlock.placementDate,
-        rate: growthRate,
-      });
-    }
-    return Array.from(byCatch.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([catchDate, { placement, rate }]) => ({
-        catchDateKey: catchDate,
-        projections: catchWeightProjections({
-          placementDate: placement,
-          catchDate,
-          growthRateLbsPerDay: rate,
-        }),
-      }));
-  })();
-
   function confirmCompleteFlock(flockId: string, flockNumber: string) {
     Alert.alert(
       "Complete flock?",
@@ -672,7 +618,7 @@ export default function FarmDetailScreen() {
           : Math.floor(Number(addingHouse.numberOfFans));
       if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
       if (fans != null && (!Number.isFinite(fans) || fans < 0)) {
-        throw new Error("Number of fans is invalid");
+        throw new Error("Number of Tunnel Fans is invalid");
       }
       createHouse(data.farm.id, {
         houseNumber: Number(addingHouse.houseNumber),
@@ -855,7 +801,7 @@ export default function FarmDetailScreen() {
       const placed =
         placedRaw === "" ? null : Math.floor(Number(placedRaw));
       if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
-      if (fans != null && !Number.isFinite(fans)) throw new Error("Number of fans is invalid");
+      if (fans != null && !Number.isFinite(fans)) throw new Error("Number of Tunnel Fans is invalid");
       if (
         data?.activeFlock &&
         placedRaw !== "" &&
@@ -1015,7 +961,11 @@ export default function FarmDetailScreen() {
                   {
                     key: "weight",
                     label: "Weight Proj.",
-                    onPress: () => scrollToSection("weight"),
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/tools",
+                        params: { farmId: farm.id, section: "weight" },
+                      }),
                   },
                   {
                     key: "generators",
@@ -1603,29 +1553,6 @@ export default function FarmDetailScreen() {
           ) : null}
         </View>
 
-        {/* ── Weight projections ── */}
-        <View onLayout={onSectionLayout("weight")}>
-          {growthRate != null && weightProjectionGroups.length > 0 ? (
-            <WeightProjectionTile
-              groups={weightProjectionGroups}
-              growthRateLbsPerDay={growthRate}
-              onSaveGrowthRate={(rate) => {
-                for (const fl of activeFlocks) {
-                  updateFlockGrowthRate(fl.id, rate);
-                }
-                load();
-              }}
-            />
-          ) : (
-            <Card>
-              <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight projections</Text>
-              <Text style={[styles.muted, { marginTop: 8 }]}>
-                Add an active flock with a catch date to see weight projections.
-              </Text>
-            </Card>
-          )}
-        </View>
-
         {/* ── Issues ── */}
         <View onLayout={onSectionLayout("issues")}>
           <Card>
@@ -1981,15 +1908,71 @@ export default function FarmDetailScreen() {
                 ) : null}
                 {editingHouse ? (
                   <View style={{ marginTop: 14 }}>
-                    <NativeNumInput
-                      label="House number"
-                      value={editingHouse.houseNumber}
-                      onChangeText={(v) =>
-                        setEditingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
-                      }
-                    />
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <NativeNumInput
+                        label="House number"
+                        value={editingHouse.houseNumber}
+                        style={{ flex: 1 }}
+                        onChangeText={(v) =>
+                          setEditingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
+                        }
+                      />
+                      {data.activeFlock ? (
+                        <NativeNumInput
+                          label="Birds placed"
+                          value={editingHouse.placedBirdCount}
+                          placeholder={editingHouse.placedBirdCountPlaceholder}
+                          style={{ flex: 1 }}
+                          onChangeText={(v) =>
+                            setEditingHouse((prev) =>
+                              prev ? { ...prev, placedBirdCount: v } : prev,
+                            )
+                          }
+                        />
+                      ) : (
+                        <View style={{ flex: 1 }} />
+                      )}
+                    </View>
                     {data.activeFlock ? (
                       <>
+                        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+                          <View style={{ flex: 1 }}>
+                            <DatePickerField
+                              label="Placement date"
+                              value={editingHouse.placementDate}
+                              presentation="inline"
+                              onChange={(date) =>
+                                setEditingHouse((prev) => {
+                                  if (!prev) return prev;
+                                  const oldDefault = prev.placementDate
+                                    ? addDaysKey(prev.placementDate, 52)
+                                    : "";
+                                  const catchWasDefault =
+                                    !prev.catchDate || prev.catchDate === oldDefault;
+                                  return {
+                                    ...prev,
+                                    placementDate: date,
+                                    catchDate: catchWasDefault
+                                      ? addDaysKey(date, 52)
+                                      : prev.catchDate,
+                                  };
+                                })
+                              }
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <DatePickerField
+                              label="Catch date"
+                              value={editingHouse.catchDate}
+                              presentation="inline"
+                              onChange={(date) =>
+                                setEditingHouse((prev) =>
+                                  prev ? { ...prev, catchDate: date } : prev,
+                                )
+                              }
+                            />
+                          </View>
+                        </View>
                         <Text style={[styles.label, { marginTop: 2 }]}>Flock ID</Text>
                         <TextInput
                           style={[
@@ -2007,52 +1990,6 @@ export default function FarmDetailScreen() {
                           placeholder="e.g. 26-07"
                           placeholderTextColor={colors.muted}
                         />
-                        <NativeNumInput
-                          label="Birds placed"
-                          value={editingHouse.placedBirdCount}
-                          placeholder={editingHouse.placedBirdCountPlaceholder}
-                          onChangeText={(v) =>
-                            setEditingHouse((prev) =>
-                              prev ? { ...prev, placedBirdCount: v } : prev,
-                            )
-                          }
-                        />
-                        <View style={{ marginBottom: 10 }}>
-                          <DatePickerField
-                            label="Placement date"
-                            value={editingHouse.placementDate}
-                            presentation="inline"
-                            onChange={(date) =>
-                              setEditingHouse((prev) => {
-                                if (!prev) return prev;
-                                const oldDefault = prev.placementDate
-                                  ? addDaysKey(prev.placementDate, 52)
-                                  : "";
-                                const catchWasDefault =
-                                  !prev.catchDate || prev.catchDate === oldDefault;
-                                return {
-                                  ...prev,
-                                  placementDate: date,
-                                  catchDate: catchWasDefault
-                                    ? addDaysKey(date, 52)
-                                    : prev.catchDate,
-                                };
-                              })
-                            }
-                          />
-                        </View>
-                        <View style={{ marginBottom: 10 }}>
-                          <DatePickerField
-                            label="Catch date"
-                            value={editingHouse.catchDate}
-                            presentation="inline"
-                            onChange={(date) =>
-                              setEditingHouse((prev) =>
-                                prev ? { ...prev, catchDate: date } : prev,
-                              )
-                            }
-                          />
-                        </View>
                         <Pressable
                           onPress={() =>
                             setEditingHouse((prev) =>
@@ -2102,29 +2039,37 @@ export default function FarmDetailScreen() {
                         </Pressable>
                       </>
                     ) : null}
-                    <NativeNumInput
-                      label="Square footage"
-                      value={editingHouse.squareFootage}
-                      decimal
-                      onChangeText={(v) =>
-                        setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
-                      }
-                    />
-                    <NativeNumInput
-                      label="Total fan CFM"
-                      value={editingHouse.totalFanCFM}
-                      decimal
-                      onChangeText={(v) =>
-                        setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
-                      }
-                    />
-                    <NativeNumInput
-                      label="Number of fans"
-                      value={editingHouse.numberOfFans}
-                      onChangeText={(v) =>
-                        setEditingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
-                      }
-                    />
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <NativeNumInput
+                        label="Square footage"
+                        value={editingHouse.squareFootage}
+                        decimal
+                        style={{ flex: 1 }}
+                        onChangeText={(v) =>
+                          setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
+                        }
+                      />
+                      <NativeNumInput
+                        label="Total fan CFM"
+                        value={editingHouse.totalFanCFM}
+                        decimal
+                        style={{ flex: 1 }}
+                        onChangeText={(v) =>
+                          setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
+                        }
+                      />
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <NativeNumInput
+                        label="Number of Tunnel Fans"
+                        value={editingHouse.numberOfFans}
+                        style={{ flex: 1 }}
+                        onChangeText={(v) =>
+                          setEditingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
+                        }
+                      />
+                      <View style={{ flex: 1 }} />
+                    </View>
                     <Pressable
                       onPress={() =>
                         setEditingHouse((prev) =>
@@ -2170,8 +2115,8 @@ export default function FarmDetailScreen() {
                           Apply to all remaining houses
                         </Text>
                         <Text style={[styles.muted, { marginTop: 2 }]}>
-                          Square footage, fan CFM, and number of fans for houses after this one.
-                          Earlier houses stay unchanged.
+                          Square footage, fan CFM, and number of tunnel fans for houses after this
+                          one. Earlier houses stay unchanged.
                         </Text>
                       </View>
                     </Pressable>
@@ -2259,7 +2204,7 @@ export default function FarmDetailScreen() {
                     }
                   />
                   <NativeNumInput
-                    label="Number of fans"
+                    label="Number of Tunnel Fans"
                     value={addingHouse.numberOfFans}
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
