@@ -62,12 +62,6 @@ export default function MoreScreen() {
           </Text>
         </Card>
         <Card>
-          <Text style={{ fontWeight: "700" }}>Search</Text>
-          <Text style={[styles.muted, { marginTop: 4 }]}>
-            Global farm/flock search is available in the web app for now.
-          </Text>
-        </Card>
-        <Card>
           <Text style={{ fontWeight: "700" }}>Settings</Text>
           <Text style={[styles.muted, { marginTop: 4 }]}>
             Mortality thresholds and preferences are available in the web app for now.
