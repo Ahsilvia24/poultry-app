@@ -344,7 +344,9 @@ export function ScheduleImportCard() {
                     >
                       {farm.isMyFarm
                         ? `Matches your farm${farm.matchName ? `: ${farm.matchName}` : ""}${
-                            farm.matchKind === "fuzzy" ? " (similar name)" : ""
+                            farm.matchKind === "fuzzy" || farm.nameDiffers
+                              ? " (similar name)"
+                              : ""
                           }`
                         : "New farm will be created"}
                     </Text>
@@ -359,8 +361,12 @@ export function ScheduleImportCard() {
                     style={{
                       marginTop: 8,
                       paddingTop: 8,
-                      borderTopWidth: 1,
-                      borderTopColor: "#e7e5e4",
+                      paddingHorizontal: 8,
+                      paddingBottom: 8,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: "#fde68a",
+                      backgroundColor: "#fffbeb",
                       flexDirection: "row",
                       gap: 8,
                     }}
@@ -376,10 +382,14 @@ export function ScheduleImportCard() {
                         backgroundColor: rename[farm.key] ? colors.accentDark : "#fff",
                       }}
                     />
-                    <Text style={{ flex: 1, fontSize: 12, color: colors.text, lineHeight: 16 }}>
-                      Update farm name from {farm.matchName} to {farm.farmName}? Keeps grower,
-                      phone, houses, and other saved info.
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "800", color: colors.text, lineHeight: 16 }}>
+                        Accept new name and overwrite “{farm.matchName}” with “{farm.farmName}”
+                      </Text>
+                      <Text style={{ marginTop: 2, fontSize: 11, color: colors.muted, lineHeight: 14 }}>
+                        Keeps grower, phone, houses, and other saved info.
+                      </Text>
+                    </View>
                   </Pressable>
                 ) : null}
               </View>

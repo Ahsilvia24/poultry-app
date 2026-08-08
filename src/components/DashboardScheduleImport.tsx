@@ -267,7 +267,9 @@ export function DashboardScheduleImport({
                         <span className="mt-1 inline-block text-xs font-semibold text-emerald-800">
                           Matches your farm
                           {farm.match.farm ? `: ${farm.match.farm.farmName}` : ""}
-                          {farm.match.kind === "fuzzy" ? " (similar name)" : ""}
+                          {farm.match.kind === "fuzzy" || farm.match.nameDiffers
+                            ? " (similar name)"
+                            : ""}
                         </span>
                       ) : (
                         <span className="mt-1 inline-block text-xs font-semibold text-amber-800">
@@ -278,7 +280,7 @@ export function DashboardScheduleImport({
                   </label>
 
                   {checked && farm.match.nameDiffers && farm.match.farm ? (
-                    <label className="mt-2 flex items-start gap-2 border-t border-stone-200 pt-2 text-sm text-stone-700">
+                    <label className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-sm text-stone-800">
                       <input
                         type="checkbox"
                         className="mt-0.5 h-4 w-4"
@@ -288,10 +290,14 @@ export function DashboardScheduleImport({
                         }
                       />
                       <span>
-                        Update farm name from{" "}
-                        <span className="font-semibold">{farm.match.farm.farmName}</span> to{" "}
-                        <span className="font-semibold">{farm.farmName}</span>? Keeps grower,
-                        phone, houses, and other saved info.
+                        <span className="font-bold text-stone-900">
+                          Accept new name and overwrite{" "}
+                          <span className="font-semibold">“{farm.match.farm.farmName}”</span> with{" "}
+                          <span className="font-semibold">“{farm.farmName}”</span>
+                        </span>
+                        <span className="mt-0.5 block text-xs text-stone-600">
+                          Keeps grower, phone, houses, and other saved info.
+                        </span>
                       </span>
                     </label>
                   ) : null}
