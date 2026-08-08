@@ -134,8 +134,15 @@ export default function LfoListScreen() {
   const headRef = useRef<ViewType>(null);
 
   const load = useCallback(() => {
+    const nextFarms = listFarms().farms;
+    setFarms(nextFarms);
     setLfos(listLfos());
-  }, []);
+    setFarmId((prev) => {
+      if (prev && nextFarms.some((f) => f.id === prev)) return prev;
+      if (routeFarmId && nextFarms.some((f) => f.id === routeFarmId)) return routeFarmId;
+      return nextFarms[0]?.id ?? "";
+    });
+  }, [routeFarmId]);
 
   useFocusEffect(
     useCallback(() => {
