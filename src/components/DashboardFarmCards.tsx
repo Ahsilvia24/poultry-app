@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { format, parseISO } from "date-fns";
 import { deactivateFarmAction } from "@/app/actions/farms";
 import { formatNumber, formatPct } from "@/lib/utils";
-import { Button, Card, StatusBadge } from "@/components/ui";
+import { Card, StatusBadge } from "@/components/ui";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import type { FarmCardSummary } from "@/types";
 
@@ -20,7 +20,6 @@ function openIssuesLabel(count: number) {
 
 function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
   const [open, setOpen] = useState(false);
-  const [confirmInactive, setConfirmInactive] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
   const [pending, start] = useTransition();
   const touchStartX = useRef<number | null>(null);
@@ -33,7 +32,6 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
     start(async () => {
       try {
         await deactivateFarmAction(farm.id, { skipRedirect: true });
-        setConfirmInactive(false);
       } finally {
         deactivatingRef.current = false;
       }
@@ -63,167 +61,117 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
     touchStartX.current = null;
   }
 
-  function toggleOpen() {
-    setOpen((v) => {
-      const next = !v;
-      if (!next) setConfirmInactive(false);
-      return next;
-    });
-  }
-
   return (
-    <div className="relative">
-      <div className="relative overflow-hidden rounded-xl">
-        <div
-          className="absolute inset-y-0 right-0 flex w-[100px] items-center justify-center rounded-xl bg-stone-600"
-          aria-hidden={swipeX > -40}
+    <div className="relative overflow-hidden rounded-xl">
+      <div
+        className="absolute inset-y-0 right-0 flex w-[100px] items-center justify-center rounded-xl bg-stone-600"
+        aria-hidden={swipeX > -40}
+      >
+        <button
+          type="button"
+          disabled={pending}
+          onClick={makeInactive}
+          className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-xs font-bold text-white disabled:opacity-60"
+          aria-label={`Make ${farm.farmName} inactive`}
         >
-          <button
-            type="button"
-            disabled={pending}
-            onClick={makeInactive}
-            className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-xs font-bold text-white disabled:opacity-60"
-            aria-label={`Make ${farm.farmName} inactive`}
-          >
-            {pending ? "Working…" : "Make inactive"}
-          </button>
-        </div>
-
-        <div
-          className="relative transition-transform duration-150 ease-out"
-          style={{ transform: `translateX(${swipeX}px)` }}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-          onTouchCancel={() => {
-            touchStartX.current = null;
-            setSwipeX(0);
-          }}
-        >
-          <Card className="!p-0 overflow-hidden">
-            <div className="w-full px-4 py-3 text-left">
-              <button
-                type="button"
-                onClick={toggleOpen}
-                className="flex w-full items-start justify-between gap-2 rounded-lg text-left transition hover:bg-stone-50"
-                aria-expanded={open}
-                aria-label={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-lg font-bold text-stone-900">
-                    {farm.farmName}
-                    <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
-                    {farm.flockAgeDays != null ? (
-                      <span className="font-semibold text-stone-500"> · {farm.flockAgeDays}d</span>
-                    ) : null}
-                  </p>
-                </div>
-                <StatusBadge status={farm.status} />
-              </button>
-
-              {open ? (
-                <div className="mt-3 border-t border-stone-100 pt-3">
-                  <div className="grid grid-cols-3 gap-2 text-sm">
-                    <div>
-                      <p className="text-stone-500">Birds placed</p>
-                      <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
-                    </div>
-                    <div>
-                      <p className="text-stone-500">Birds remaining</p>
-                      <p className="font-semibold">{formatNumber(farm.birdsRemaining)}</p>
-                    </div>
-                    <div>
-                      <p className="text-stone-500">Proj. Head Count</p>
-                      <p className="font-semibold">
-                        {farm.projectedHeadCount != null
-                          ? formatNumber(farm.projectedHeadCount)
-                          : "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-stone-500">Today&apos;s Mortality</p>
-                      <p className="font-semibold">{farm.todayMortality}</p>
-                    </div>
-                    <div>
-                      <p className="text-stone-500">Total Mortality</p>
-                      <p className="font-semibold">
-                        {farm.cumulativeMortality} ({formatPct(farm.cumulativeMortalityPct)})
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-stone-500">Projected Mortality</p>
-                      <p className="font-semibold">
-                        {farm.projectedMortality != null
-                          ? `${formatNumber(farm.projectedMortality)} (${formatPct(
-                              farm.totalBirdsPlaced > 0
-                                ? (farm.projectedMortality / farm.totalBirdsPlaced) * 100
-                                : 0,
-                            )})`
-                          : "—"}
-                      </p>
-                    </div>
-                  </div>
-                  {farm.weeklyMortality.length > 0 ? (
-                    <div className="mt-3 border-t border-stone-100 pt-3">
-                      <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-                        Weekly mortality
-                      </p>
-                      <WeeklyMortalityList weeks={farm.weeklyMortality} />
-                    </div>
-                  ) : null}
-                  <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
-                    <span>
-                      Last visit:{" "}
-                      {farm.lastVisitDate ? formatLastVisitDate(farm.lastVisitDate) : "—"}
-                    </span>
-                    <span>{openIssuesLabel(farm.openIssues)}</span>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </Card>
-        </div>
+          {pending ? "Working…" : "Make inactive"}
+        </button>
       </div>
 
-      {open ? (
-        <div className="mt-2 flex justify-end">
-          {confirmInactive ? (
-            <div
-              role="dialog"
-              aria-label={`Make ${farm.farmName} inactive`}
-              className="w-full max-w-sm rounded-xl border border-stone-200 bg-white p-4 shadow-sm"
-            >
-              <p className="text-sm font-bold text-stone-900">Make this farm inactive?</p>
-              <p className="mt-1 text-xs text-stone-600">
-                {farm.farmName} will move to Inactive. You can make it active again later.
-              </p>
-              <div className="mt-3 flex flex-wrap justify-end gap-2">
-                <Button type="button" disabled={pending} onClick={makeInactive}>
-                  {pending ? "Working…" : "Make inactive"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={pending}
-                  onClick={() => setConfirmInactive(false)}
-                >
-                  Cancel
-                </Button>
+      <div
+        className="relative transition-transform duration-150 ease-out"
+        style={{ transform: `translateX(${swipeX}px)` }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={() => {
+          touchStartX.current = null;
+          setSwipeX(0);
+        }}
+      >
+        <Card className="!p-0 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="w-full px-4 py-3 text-left transition hover:bg-stone-50"
+            aria-expanded={open}
+            aria-label={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
+          >
+            <div className="flex w-full items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-lg font-bold text-stone-900">
+                  {farm.farmName}
+                  <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
+                  {farm.flockAgeDays != null ? (
+                    <span className="font-semibold text-stone-500"> · {farm.flockAgeDays}d</span>
+                  ) : null}
+                </p>
               </div>
+              <StatusBadge status={farm.status} />
             </div>
-          ) : (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => setConfirmInactive(true)}
-              className="rounded-md bg-stone-100 px-2.5 py-1 text-sm font-bold text-stone-700 hover:bg-stone-200 disabled:opacity-60"
-              aria-label={`Make ${farm.farmName} inactive`}
-            >
-              Make inactive
-            </button>
-          )}
-        </div>
-      ) : null}
+
+            {open ? (
+              <div className="mt-3 border-t border-stone-100 pt-3">
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <p className="text-stone-500">Birds placed</p>
+                    <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
+                  </div>
+                  <div>
+                    <p className="text-stone-500">Birds remaining</p>
+                    <p className="font-semibold">{formatNumber(farm.birdsRemaining)}</p>
+                  </div>
+                  <div>
+                    <p className="text-stone-500">Proj. Head Count</p>
+                    <p className="font-semibold">
+                      {farm.projectedHeadCount != null
+                        ? formatNumber(farm.projectedHeadCount)
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-stone-500">Today&apos;s Mortality</p>
+                    <p className="font-semibold">{farm.todayMortality}</p>
+                  </div>
+                  <div>
+                    <p className="text-stone-500">Total Mortality</p>
+                    <p className="font-semibold">
+                      {farm.cumulativeMortality} ({formatPct(farm.cumulativeMortalityPct)})
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-stone-500">Projected Mortality</p>
+                    <p className="font-semibold">
+                      {farm.projectedMortality != null
+                        ? `${formatNumber(farm.projectedMortality)} (${formatPct(
+                            farm.totalBirdsPlaced > 0
+                              ? (farm.projectedMortality / farm.totalBirdsPlaced) * 100
+                              : 0,
+                          )})`
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+                {farm.weeklyMortality.length > 0 ? (
+                  <div className="mt-3 border-t border-stone-100 pt-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                      Weekly mortality
+                    </p>
+                    <WeeklyMortalityList weeks={farm.weeklyMortality} />
+                  </div>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
+                  <span>
+                    Last visit:{" "}
+                    {farm.lastVisitDate ? formatLastVisitDate(farm.lastVisitDate) : "—"}
+                  </span>
+                  <span>{openIssuesLabel(farm.openIssues)}</span>
+                </div>
+              </div>
+            ) : null}
+          </button>
+        </Card>
+      </div>
     </div>
   );
 }
