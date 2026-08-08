@@ -88,17 +88,25 @@ function CalcFieldButton({
       <Text style={styles.label}>{label}</Text>
       <Pressable
         onPress={onPress}
-        style={[
-          styles.input,
-          active ? { borderColor: colors.accentDark, borderWidth: 2 } : null,
-        ]}
+        style={{
+          minHeight: 48,
+          borderWidth: active ? 2 : 1,
+          borderColor: active ? colors.accentDark : "#d6d3d1",
+          borderRadius: 12,
+          paddingHorizontal: 14,
+          backgroundColor: "#fff",
+          marginBottom: 12,
+          justifyContent: "center",
+        }}
       >
         <Text
           style={{
-            fontSize: 18,
-            fontWeight: "700",
+            fontSize: 16,
+            lineHeight: 20,
+            fontWeight: "600",
             color: showPlaceholder ? "rgba(120,113,108,0.55)" : colors.text,
           }}
+          numberOfLines={1}
         >
           {showPlaceholder ? placeholder : value}
         </Text>
