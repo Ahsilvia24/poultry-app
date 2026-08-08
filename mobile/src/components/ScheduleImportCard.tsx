@@ -69,7 +69,7 @@ export function ScheduleImportCard() {
     if (importType !== "placement") {
       Alert.alert(
         "Coming next",
-        `${typeLabel(importType)} import comes next. Start with Placements.`,
+        `${typeLabel(importType)} import comes next. Start with Placement.`,
       );
       return;
     }
