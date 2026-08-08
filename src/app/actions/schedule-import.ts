@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import path from "path";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth-helpers";
+import { scheduleImportTypeLabel } from "@/lib/schedule-import-types";
 import {
   formatBytes,
   isScheduleImportType,
@@ -41,7 +42,7 @@ export async function uploadScheduleImportAction(
 
   const typeRaw = String(formData.get("importType") ?? "");
   if (!isScheduleImportType(typeRaw)) {
-    return { ok: false, error: "Choose Placements, Kill schedules, or Catch dates." };
+    return { ok: false, error: "Choose Placement, Catch Schedule, or Settlements." };
   }
   const importType: ScheduleImportType = typeRaw;
 
@@ -49,13 +50,13 @@ export async function uploadScheduleImportAction(
   if (importType !== "placement") {
     return {
       ok: false,
-      error: `${importType === "kill" ? "Kill schedules" : "Catch dates"} import comes next. Start with Placements.`,
+      error: `${scheduleImportTypeLabel(importType)} import comes next. Start with Placement.`,
     };
   }
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    return { ok: false, error: "Choose a placement file to upload." };
+    return { ok: false, error: "Choose a Placement file to upload." };
   }
   if (file.size > MAX_BYTES) {
     return { ok: false, error: `File is too large (max ${formatBytes(MAX_BYTES)}).` };

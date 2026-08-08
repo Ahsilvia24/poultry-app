@@ -57,7 +57,7 @@ export function DashboardScheduleImport({
   return (
     <Card>
       <p className="text-sm text-stone-600">
-        Import placements, kill schedules, or catch dates. Start with a placement
+        Import Placement, Catch Schedule, or Settlements. Start with a Placement
         file — next you’ll tell us which fields to pull.
       </p>
 
@@ -105,7 +105,7 @@ export function DashboardScheduleImport({
           {importType !== "placement" ? (
             <p className="mt-2 text-sm text-stone-500">
               {scheduleImportTypeLabel(importType)} mapping comes next. Upload
-              Placements first.
+              Placement first.
             </p>
           ) : (
             <p className="mt-2 text-sm text-stone-500">
@@ -128,7 +128,7 @@ export function DashboardScheduleImport({
       {result?.ok ? (
         <p className="mt-3 text-sm font-semibold text-emerald-800">
           Saved {result.example.originalName} ({result.sizeLabel}). Tell me how
-          you want the placement fields mapped next.
+          you want the Placement fields mapped next.
         </p>
       ) : null}
 

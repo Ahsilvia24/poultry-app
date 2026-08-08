@@ -8,7 +8,7 @@ import { Card, Chip, PrimaryButton } from "./ui";
 
 const STORAGE_KEY = "poultry.dashboard.scheduleImports";
 
-type ImportType = "placement" | "kill" | "catch";
+type ImportType = "placement" | "catch" | "settlement";
 
 type StoredImport = {
   id: string;
@@ -21,9 +21,9 @@ type StoredImport = {
 };
 
 const TYPE_OPTIONS: Array<{ id: ImportType; label: string }> = [
-  { id: "placement", label: "Placements" },
-  { id: "kill", label: "Kill schedules" },
-  { id: "catch", label: "Catch dates" },
+  { id: "placement", label: "Placement" },
+  { id: "catch", label: "Catch Schedule" },
+  { id: "settlement", label: "Settlements" },
 ];
 
 function typeLabel(type: ImportType) {
@@ -116,7 +116,7 @@ export function ScheduleImportCard() {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(all));
       setItems(all);
       setNote(
-        `Saved ${next.originalName}. Tell me how you want the placement fields mapped next.`,
+        `Saved ${next.originalName}. Tell me how you want the Placement fields mapped next.`,
       );
     } catch (e) {
       Alert.alert("Upload failed", e instanceof Error ? e.message : "Could not save file");
@@ -128,7 +128,7 @@ export function ScheduleImportCard() {
   return (
     <Card>
       <Text style={[styles.muted, { lineHeight: 20 }]}>
-        Import placements, kill schedules, or catch dates. Start with a placement file —
+        Import Placement, Catch Schedule, or Settlements. Start with a Placement file —
         next you’ll tell us which fields to pull.
       </Text>
 
@@ -148,7 +148,7 @@ export function ScheduleImportCard() {
 
       {importType !== "placement" ? (
         <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
-          {typeLabel(importType)} mapping comes next. Upload Placements first.
+          {typeLabel(importType)} mapping comes next. Upload Placement first.
         </Text>
       ) : (
         <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>

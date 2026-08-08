@@ -1,7 +1,7 @@
 export const SCHEDULE_IMPORT_TYPES = [
-  { id: "placement", label: "Placements" },
-  { id: "kill", label: "Kill schedules" },
-  { id: "catch", label: "Catch dates" },
+  { id: "placement", label: "Placement" },
+  { id: "catch", label: "Catch Schedule" },
+  { id: "settlement", label: "Settlements" },
 ] as const;
 
 export type ScheduleImportType = (typeof SCHEDULE_IMPORT_TYPES)[number]["id"];
