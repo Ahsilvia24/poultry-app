@@ -551,7 +551,7 @@ export default function DashboardScreen() {
                   overshootRight={false}
                   friction={2}
                   rightThreshold={40}
-                  containerStyle={{ marginBottom: 8, overflow: "hidden" }}
+                  containerStyle={{ marginBottom: 4, overflow: "hidden" }}
                   onSwipeableWillOpen={() => setSwipingFarmId(farm.id)}
                   onSwipeableClose={() =>
                     setSwipingFarmId((id) => (id === farm.id ? null : id))
