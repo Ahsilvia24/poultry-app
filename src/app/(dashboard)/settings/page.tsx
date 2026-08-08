@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateSettingsAction } from "@/app/actions/ops";
 import { ImportPhoneBackupForm } from "@/components/ImportPhoneBackupForm";
-import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import { Button, Card, Input, Label, PageHeader } from "@/components/ui";
 
 async function submitSettings(formData: FormData) {
   "use server";
@@ -108,26 +108,6 @@ export default async function SettingsPage() {
           <div>
             <h2 className="font-bold text-stone-900">Preferences</h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="missingMortalityAlertTime">Missing mortality alert time</Label>
-                <Input
-                  id="missingMortalityAlertTime"
-                  name="missingMortalityAlertTime"
-                  type="time"
-                  defaultValue={s?.missingMortalityAlertTime ?? "14:00"}
-                />
-              </div>
-              <div>
-                <Label htmlFor="preferredUnits">Units</Label>
-                <Select
-                  id="preferredUnits"
-                  name="preferredUnits"
-                  defaultValue={s?.preferredUnits ?? "IMPERIAL"}
-                >
-                  <option value="IMPERIAL">Imperial</option>
-                  <option value="METRIC">Metric</option>
-                </Select>
-              </div>
               <div>
                 <Label htmlFor="defaultMarketAgeDays">Default market age (days)</Label>
                 <Input
