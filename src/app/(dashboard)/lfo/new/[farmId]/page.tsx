@@ -59,10 +59,7 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
         </span>
         Choose farm
       </Link>
-      <PageHeader
-        title={farm.farmName}
-        subtitle={`Flock ${flock.flockNumber} — inventory, feed up, and consumption`}
-      />
+      <PageHeader title={farm.farmName} />
 
       <Card>
         <LfoInventoryForm

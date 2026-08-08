@@ -201,9 +201,6 @@ export function LfoInventoryForm({
       </div>
 
       <div>
-        <p className="mb-2 text-sm font-semibold text-stone-700">
-          Bin inventory &amp; feed up (lbs)
-        </p>
         <div className="space-y-4">
           {rows.map((house) => {
             const result = calc.houses.find((h) => h.houseId === house.houseId);
@@ -216,16 +213,16 @@ export function LfoInventoryForm({
                 <input type="hidden" name="houseId" value={house.houseId} />
                 <input type="hidden" name="feedUpAt" value={feedUpAt} />
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm font-semibold text-stone-800">
+                  <p className="text-[calc(0.875rem+2pt)] font-bold text-stone-800">
                     House {house.houseNumber}
                   </p>
                   <p className="text-xs text-stone-500">
                     Head count {house.headCount.toLocaleString()}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div>
-                    <Label htmlFor={`binA-${house.houseId}`}>Bin A (lbs)</Label>
+                    <Label htmlFor={`binA-${house.houseId}`}>Bin A Inventory (lbs)</Label>
                     <Input
                       id={`binA-${house.houseId}`}
                       name="binAPounds"
@@ -239,7 +236,7 @@ export function LfoInventoryForm({
                     />
                   </div>
                   <div>
-                    <Label htmlFor={`binB-${house.houseId}`}>Bin B (lbs)</Label>
+                    <Label htmlFor={`binB-${house.houseId}`}>Bin B Inventory (lbs)</Label>
                     <Input
                       id={`binB-${house.houseId}`}
                       name="binBPounds"
@@ -252,8 +249,6 @@ export function LfoInventoryForm({
                       className="mt-1"
                     />
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor={`feedUpDate-${house.houseId}`}>Feed up date</Label>
                     <Input
@@ -282,7 +277,7 @@ export function LfoInventoryForm({
                   </div>
                 </div>
                 {result ? (
-                  <dl className="grid gap-1 text-sm text-stone-600 sm:grid-cols-2">
+                  <dl className="grid grid-cols-1 gap-3 text-sm text-stone-600 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="flex justify-between gap-2 sm:block">
                       <dt className="text-stone-500">Feed off (−6h)</dt>
                       <dd className="font-medium text-stone-800">
@@ -328,7 +323,7 @@ export function LfoInventoryForm({
                         </dd>
                       </div>
                     ) : null}
-                    <div className="flex justify-between gap-2 sm:col-span-2 sm:block">
+                    <div className="flex justify-between gap-2 sm:block">
                       <dt className="text-stone-500">
                         {result.orderLbs != null && result.orderLbs > 0
                           ? "LFO (rounded)"

@@ -54,7 +54,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
 
   return (
     <div>
-      <PageHeader title="Farms" subtitle="Manage grower farms and houses" />
+      <PageHeader title="Farms" />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Link
