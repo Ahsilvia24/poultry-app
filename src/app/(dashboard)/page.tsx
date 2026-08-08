@@ -40,17 +40,14 @@ export default async function DashboardPage() {
             <p className="text-sm font-semibold text-stone-500">Today&apos;s schedule</p>
             <FollowUpsDueList items={data.todaysSchedule} showDate />
           </Card>
-          <CollapsibleCard
-            title="Upcoming Visits"
-            defaultOpen
-            count={data.upcomingSchedule.length}
-          >
+          <Card>
+            <p className="text-sm font-semibold text-stone-500">Upcoming Visits</p>
             {data.upcomingSchedule.length === 0 ? (
               <p className="mt-2 text-sm text-stone-500">None in the next 10 days</p>
             ) : (
               <FollowUpsDueList items={data.upcomingSchedule} showDate />
             )}
-          </CollapsibleCard>
+          </Card>
         </div>
         <CollapsibleCard
           title="Upcoming catches"
