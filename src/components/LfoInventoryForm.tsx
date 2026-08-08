@@ -220,7 +220,7 @@ export function LfoInventoryForm({
                     Head count {house.headCount.toLocaleString()}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div>
                     <Label htmlFor={`binA-${house.houseId}`}>Bin A Inventory (lbs)</Label>
                     <Input
@@ -249,8 +249,6 @@ export function LfoInventoryForm({
                       className="mt-1"
                     />
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor={`feedUpDate-${house.houseId}`}>Feed up date</Label>
                     <Input
