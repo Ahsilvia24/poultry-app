@@ -375,7 +375,7 @@ export default function EditLfoScreen() {
             <Text style={{ fontWeight: "800", color: colors.accentDark, fontSize: 16 }}>LFOs</Text>
           </Pressable>
 
-          <PageHeader title={farmName || "LFO"} subtitle="Edit last feed order" />
+          <PageHeader title={farmName || "LFO"} />
 
           {error ? (
             <Card>

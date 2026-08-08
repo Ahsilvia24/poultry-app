@@ -203,12 +203,7 @@ export function ScheduleImportCard() {
 
   return (
     <Card>
-      <Text style={[styles.muted, { lineHeight: 20 }]}>
-        Import Placement, Catch Schedule, or Settlements. Placement reads Date Placed, Farm
-        Code, Farm Name, Flock ID, House No, and Number Sent.
-      </Text>
-
-      <View style={[styles.row, { marginTop: 12, marginBottom: 4, flexWrap: "wrap" }]}>
+      <View style={[styles.row, { marginBottom: 4, flexWrap: "wrap" }]}>
         {TYPE_OPTIONS.map((type) => (
           <Chip
             key={type.id}

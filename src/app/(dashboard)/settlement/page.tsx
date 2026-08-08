@@ -69,10 +69,7 @@ export default async function SettlementPage({
 
   return (
     <div>
-      <PageHeader
-        title="Settlement"
-        subtitle="Enter settlement sheet info by farm and flock"
-      />
+      <PageHeader title="Settlement" />
       <SettlementExampleUpload examples={examples} />
       <SettlementForm farms={farmOptions} lockedFarmId={lockedFarmId} />
     </div>

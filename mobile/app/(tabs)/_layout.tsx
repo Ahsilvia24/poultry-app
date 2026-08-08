@@ -1,8 +1,11 @@
 import { Tabs, router } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import type { ComponentProps } from "react";
 import { colors } from "../../src/theme";
+import { FeedBinIcon } from "../../src/components/FeedBinIcon";
 import {
   armFarmReturnFromMortality,
   clearFarmReturnFromMortality,
@@ -10,13 +13,20 @@ import {
 } from "../../src/lib/farmNavContext";
 import { requestTabScrollTop, tabStackIndex } from "../../src/lib/tabScroll";
 
-const TAB_ITEMS = [
-  { name: "index", label: "Dashboard", href: "/" },
-  { name: "farms", label: "Farms" },
-  { name: "mortality", label: "Mortality" },
-  { name: "lfo", label: "LFO" },
-  { name: "tools", label: "Tools" },
-] as const;
+type MciName = ComponentProps<typeof MaterialCommunityIcons>["name"];
+
+const TAB_ITEMS: {
+  name: string;
+  label: string;
+  icon?: MciName;
+  customIcon?: "feed-bin";
+}[] = [
+  { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
+  { name: "farms", label: "Farms", icon: "barn" },
+  { name: "mortality", label: "Mortality", icon: "plus-circle" },
+  { name: "lfo", label: "LFO", customIcon: "feed-bin" },
+  { name: "tools", label: "Tools", icon: "tools" },
+];
 
 function WebStyleTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -142,13 +152,23 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
               style={{
                 flex: 1,
                 borderRadius: 10,
-                paddingVertical: 12,
+                paddingVertical: 8,
                 paddingHorizontal: 2,
                 alignItems: "center",
                 justifyContent: "center",
+                gap: 2,
                 backgroundColor: focused ? colors.accentDark : "transparent",
               }}
             >
+              {item?.customIcon === "feed-bin" ? (
+                <FeedBinIcon color={focused ? "#fff" : "#44403c"} size={20} />
+              ) : item?.icon ? (
+                <MaterialCommunityIcons
+                  name={item.icon}
+                  size={20}
+                  color={focused ? "#fff" : "#44403c"}
+                />
+              ) : null}
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
@@ -174,8 +194,9 @@ export default function TabsLayout() {
     <Tabs
       tabBar={(props) => <WebStyleTabBar {...props} />}
       screenOptions={{
-        // Mount all tabs up front so the first visit to each tab isn't a janky remount.
-        lazy: false,
+        // Native: mount all tabs for snappy switches. Web/sqlite sync is flaky when
+        // every tab calls getAllSync during the first paint, so keep tabs lazy there.
+        lazy: Platform.OS === "web",
         headerStyle: { backgroundColor: colors.headerBg },
         headerShadowVisible: false,
         headerTitleStyle: {

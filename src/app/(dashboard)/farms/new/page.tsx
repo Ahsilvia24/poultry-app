@@ -12,7 +12,6 @@ export default function NewFarmPage() {
     <div>
       <PageHeader
         title="New farm"
-        subtitle="Farm name and house count get you started — add other details anytime"
         actions={
           <Link href="/farms">
             <Button variant="secondary">Cancel</Button>

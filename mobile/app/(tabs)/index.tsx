@@ -155,7 +155,7 @@ function ScheduleCheckRow({
               numberOfLines={1}
             >
               {" "}
-              · {item.flockAgeDays}d
+              {item.flockAgeDays}d
             </Text>
           ) : null}
         </View>
@@ -500,7 +500,7 @@ export default function DashboardScreen() {
                           {c.flockAgeDays != null ? (
                             <Text style={{ fontWeight: "400", color: colors.muted }}>
                               {" "}
-                              · {c.flockAgeDays}d
+                              {c.flockAgeDays}d
                             </Text>
                           ) : null}
                         </Text>
