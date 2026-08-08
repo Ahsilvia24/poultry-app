@@ -143,21 +143,18 @@ function ScheduleCheckRow({
             numberOfLines={1}
           >
             {item.farmName}
+            {item.flockAgeDays != null ? (
+              <Text
+                style={{
+                  fontWeight: "400",
+                  color: colors.muted,
+                  textDecorationLine: checked ? "line-through" : "none",
+                }}
+              >
+                {` ${item.flockAgeDays}d`}
+              </Text>
+            ) : null}
           </Text>
-          {item.flockAgeDays != null ? (
-            <Text
-              style={{
-                fontWeight: "400",
-                color: colors.muted,
-                flexShrink: 0,
-                textDecorationLine: checked ? "line-through" : "none",
-              }}
-              numberOfLines={1}
-            >
-              {" "}
-              {item.flockAgeDays}d
-            </Text>
-          ) : null}
         </View>
         {showDate ? (
           <View
