@@ -108,13 +108,13 @@ function DashboardFarmCard({
           <button
             type="button"
             onClick={onToggle}
-            className="w-full px-4 py-3 text-left transition hover:bg-stone-50"
+            className="w-full px-3 py-2.5 text-left transition hover:bg-stone-50"
             aria-expanded={open}
             aria-label={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
           >
             <div className="flex w-full items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <p className="text-lg font-bold text-stone-900">
+                <p className="text-base font-bold text-stone-900">
                   {farm.farmName}
                   {farm.flockAgeDays != null ? (
                     <span className="font-semibold text-stone-500"> {farm.flockAgeDays}d</span>
@@ -204,7 +204,7 @@ export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
   }
 
   return (
-    <div className="mt-3 grid items-start gap-3 lg:grid-cols-3">
+    <div className="mt-3 grid items-start gap-2 lg:grid-cols-3">
       {farms.map((farm, index) => {
         const row = Math.floor(index / FARMS_PER_ROW);
         return (

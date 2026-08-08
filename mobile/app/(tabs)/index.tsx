@@ -550,7 +550,7 @@ export default function DashboardScreen() {
                   overshootRight={false}
                   friction={2}
                   rightThreshold={40}
-                  containerStyle={{ marginBottom: 12 }}
+                  containerStyle={{ marginBottom: 8 }}
                   onSwipeableOpen={(direction) => {
                     if (direction === "right") makeInactive(farm.id);
                   }}
@@ -589,11 +589,11 @@ export default function DashboardScreen() {
                       accessibilityRole="button"
                       accessibilityState={{ expanded: open }}
                       accessibilityLabel={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
-                      style={{ padding: 14 }}
+                      style={{ paddingVertical: 10, paddingHorizontal: 12 }}
                     >
                       <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
                         <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                          <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>
                             {farm.farmName}
                             {(() => {
                               const ages =
