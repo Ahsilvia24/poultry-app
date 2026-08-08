@@ -38,17 +38,17 @@ import { ScheduleImportCard } from "../../src/components/ScheduleImportCard";
 type Dashboard = ReturnType<typeof getDashboard>;
 type ScheduleItem = Dashboard["todaysSchedule"][number];
 
-/** Visible item tiles before the list scrolls (matches Active farms spacing). */
+/** Visible farm rows before the list scrolls inside the tile. */
 const VISIBLE_SCHEDULE_ROWS = 8;
-/** Compact tile content (~46) + marginBottom 12 between tiles. */
-const SCHEDULE_TILE_STEP = 58;
-const SCHEDULE_LIST_MAX_HEIGHT = VISIBLE_SCHEDULE_ROWS * SCHEDULE_TILE_STEP;
+/** marginTop 10 + ~22px row content (checkbox / single-line text). */
+const SCHEDULE_ROW_STEP = 32;
+const SCHEDULE_LIST_MAX_HEIGHT = VISIBLE_SCHEDULE_ROWS * SCHEDULE_ROW_STEP;
 
 function scheduleItemKey(item: Pick<ScheduleItem, "farmId" | "date" | "label">) {
   return `${item.farmId}-${item.date}-${item.label}`;
 }
 
-/** One-finger scroll when there are more than 8 schedule/catch tiles. */
+/** One-finger scroll inside a dashboard schedule tile when there are more than 8 farms. */
 function ScrollableScheduleList({ children }: { children: ReactNode }) {
   return (
     <ScrollView
@@ -59,15 +59,6 @@ function ScrollableScheduleList({ children }: { children: ReactNode }) {
     >
       {children}
     </ScrollView>
-  );
-}
-
-/** Same outer spacing as Active farms tiles. */
-function ScheduleTile({ children }: { children: ReactNode }) {
-  return (
-    <Card style={{ paddingVertical: 12, paddingHorizontal: 14, marginBottom: 12 }}>
-      {children}
-    </Card>
   );
 }
 
@@ -92,6 +83,7 @@ function ScheduleCheckRow({
         flexDirection: "row",
         alignItems: "center",
         gap: 10,
+        marginTop: 10,
         opacity: checked ? 0.5 : 1,
       }}
     >
@@ -372,18 +364,19 @@ export default function DashboardScreen() {
 
         {data ? (
           <>
-            <Text style={[styles.sectionTitle, { marginTop: 0 }]}>Today&apos;s schedule</Text>
-            {data.todaysSchedule.length === 0 ? (
-              <ScheduleTile>
-                <Text style={styles.muted}>Nothing due today</Text>
-              </ScheduleTile>
-            ) : (
-              <ScrollableScheduleList>
-                {data.todaysSchedule.map((item) => {
-                  const key = scheduleItemKey(item);
-                  return (
-                    <ScheduleTile key={key}>
+            <Card>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
+                Today&apos;s schedule
+              </Text>
+              {data.todaysSchedule.length === 0 ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>Nothing due today</Text>
+              ) : (
+                <ScrollableScheduleList>
+                  {data.todaysSchedule.map((item) => {
+                    const key = scheduleItemKey(item);
+                    return (
                       <ScheduleCheckRow
+                        key={key}
                         item={item}
                         showDate
                         checked={checked[key] ?? item.completed}
@@ -396,54 +389,47 @@ export default function DashboardScreen() {
                           })
                         }
                       />
-                    </ScheduleTile>
-                  );
-                })}
-              </ScrollableScheduleList>
-            )}
+                    );
+                  })}
+                </ScrollableScheduleList>
+              )}
+            </Card>
 
-            <View
-              style={{
-                marginTop: 20,
-                marginBottom: 10,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 8,
-              }}
-            >
-              <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0, flex: 1 }]}>
-                Upcoming Visits
-                {!upcomingOpen ? (
-                  <Text style={{ fontWeight: "500", color: colors.muted }}>
-                    {" "}
-                    · {data.upcomingSchedule.length}
-                  </Text>
-                ) : null}
-              </Text>
+            <Card>
               <Pressable
                 onPress={() => setUpcomingOpen((v) => !v)}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: upcomingOpen }}
-                hitSlop={8}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                }}
               >
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted, flex: 1 }}>
+                  Upcoming Visits
+                  {!upcomingOpen ? (
+                    <Text style={{ fontWeight: "500", color: colors.muted }}>
+                      {" "}
+                      · {data.upcomingSchedule.length}
+                    </Text>
+                  ) : null}
+                </Text>
                 <Text style={{ fontSize: 13, fontWeight: "700", color: colors.accentDark }}>
                   {upcomingOpen ? "Hide" : "Show"}
                 </Text>
               </Pressable>
-            </View>
-            {upcomingOpen ? (
-              data.upcomingSchedule.length === 0 ? (
-                <ScheduleTile>
-                  <Text style={styles.muted}>None in the next 10 days</Text>
-                </ScheduleTile>
-              ) : (
-                <ScrollableScheduleList>
-                  {data.upcomingSchedule.map((item) => {
-                    const key = scheduleItemKey(item);
-                    return (
-                      <ScheduleTile key={key}>
+              {upcomingOpen ? (
+                data.upcomingSchedule.length === 0 ? (
+                  <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 10 days</Text>
+                ) : (
+                  <ScrollableScheduleList>
+                    {data.upcomingSchedule.map((item) => {
+                      const key = scheduleItemKey(item);
+                      return (
                         <ScheduleCheckRow
+                          key={key}
                           item={item}
                           showDate
                           checked={checked[key] ?? item.completed}
@@ -456,53 +442,46 @@ export default function DashboardScreen() {
                             })
                           }
                         />
-                      </ScheduleTile>
-                    );
-                  })}
-                </ScrollableScheduleList>
-              )
-            ) : null}
+                      );
+                    })}
+                  </ScrollableScheduleList>
+                )
+              ) : null}
+            </Card>
 
-            <View
-              style={{
-                marginTop: 20,
-                marginBottom: 10,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 8,
-              }}
-            >
-              <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0, flex: 1 }]}>
-                Upcoming catches
-                {!catchesOpen ? (
-                  <Text style={{ fontWeight: "500", color: colors.muted }}>
-                    {" "}
-                    · {data.upcomingCatches.length}
-                  </Text>
-                ) : null}
-              </Text>
+            <Card>
               <Pressable
                 onPress={() => setCatchesOpen((v) => !v)}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: catchesOpen }}
-                hitSlop={8}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                }}
               >
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted, flex: 1 }}>
+                  Upcoming catches
+                  {!catchesOpen ? (
+                    <Text style={{ fontWeight: "500", color: colors.muted }}>
+                      {" "}
+                      · {data.upcomingCatches.length}
+                    </Text>
+                  ) : null}
+                </Text>
                 <Text style={{ fontSize: 13, fontWeight: "700", color: colors.accentDark }}>
                   {catchesOpen ? "Hide" : "Show"}
                 </Text>
               </Pressable>
-            </View>
-            {catchesOpen ? (
-              data.upcomingCatches.length === 0 ? (
-                <ScheduleTile>
-                  <Text style={styles.muted}>None</Text>
-                </ScheduleTile>
-              ) : (
-                <ScrollableScheduleList>
-                  {data.upcomingCatches.map((c) => (
-                    <ScheduleTile key={`${c.farmId}-${c.date}`}>
+              {catchesOpen ? (
+                data.upcomingCatches.length === 0 ? (
+                  <Text style={[styles.muted, { marginTop: 8 }]}>None</Text>
+                ) : (
+                  <ScrollableScheduleList>
+                    {data.upcomingCatches.map((c) => (
                       <Pressable
+                        key={`${c.farmId}-${c.date}`}
                         onPress={() =>
                           router.push({
                             pathname: "/(tabs)/farms/[id]",
@@ -514,6 +493,7 @@ export default function DashboardScreen() {
                           alignItems: "baseline",
                           justifyContent: "space-between",
                           gap: 8,
+                          marginTop: 10,
                           minHeight: 22,
                         }}
                       >
@@ -555,11 +535,11 @@ export default function DashboardScreen() {
                           {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
                         </Text>
                       </Pressable>
-                    </ScheduleTile>
-                  ))}
-                </ScrollableScheduleList>
-              )
-            ) : null}
+                    ))}
+                  </ScrollableScheduleList>
+                )
+              ) : null}
+            </Card>
 
             <SectionTitle>Active farms</SectionTitle>
             {data.farmCards.map((farm) => {
