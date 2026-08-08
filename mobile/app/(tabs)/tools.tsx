@@ -121,9 +121,7 @@ export default function ToolsScreen() {
         style={styles.screen}
         contentContainerStyle={styles.content}
       >
-        <PageHeader
-          title="Tools"
-        />
+        <PageHeader title="Tools" />
 
         <Card style={{ marginBottom: 12 }}>
           <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text }}>
