@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { deleteHouseAction, updateHouseAction } from "@/app/actions/farms";
-import { Button, Input, Label, Textarea } from "@/components/ui";
+import { Button, Input, Label } from "@/components/ui";
 
 export type HouseEditValues = {
   id: string;
@@ -274,15 +274,6 @@ export function HouseCardActions({
                   </span>
                 </span>
               </label>
-              <div>
-                <Label htmlFor={`edit-notes-${house.id}`}>Notes</Label>
-                <Textarea
-                  id={`edit-notes-${house.id}`}
-                  name="notes"
-                  rows={2}
-                  defaultValue={house.notes ?? ""}
-                />
-              </div>
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={pending}>
                   {pending ? "Saving…" : "Save"}
