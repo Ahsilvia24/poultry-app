@@ -4,7 +4,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as XLSX from "xlsx";
 import { colors, styles } from "../theme";
-import { Card, Chip, PrimaryButton } from "./ui";
+import { Card, PrimaryButton } from "./ui";
 import {
   groupPlacementFarms,
   parsePlacementSheetRows,
