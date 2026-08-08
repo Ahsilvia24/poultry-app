@@ -247,9 +247,11 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
 
 export function FarmsListTiles({ farms }: { farms: FarmsListTileFarm[] }) {
   return (
-    <div className="grid items-stretch gap-2 lg:grid-cols-3">
+    <div className="grid auto-rows-fr items-stretch gap-2 lg:grid-cols-3">
       {farms.map((farm) => (
-        <FarmsListTile key={farm.id} farm={farm} />
+        <div key={farm.id} className="h-full min-h-[4.75rem]">
+          <FarmsListTile farm={farm} />
+        </div>
       ))}
     </div>
   );
