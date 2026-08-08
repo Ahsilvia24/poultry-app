@@ -77,7 +77,7 @@ export function FollowUpsDueList({
   return (
     <div className="mt-2">
       {error ? <p className="mb-2 text-sm text-red-700">{error}</p> : null}
-      <ScrollableFarmList>
+      <ScrollableFarmList className="pr-2">
         <ul className="space-y-1.5 text-sm">
           {items.map((f) => {
             const key = itemKey(f);
