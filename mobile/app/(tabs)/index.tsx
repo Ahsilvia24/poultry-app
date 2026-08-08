@@ -16,7 +16,6 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
 import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
 import { useAuth } from "../../src/auth";
@@ -237,6 +236,8 @@ export default function DashboardScreen() {
   const [upcomingOpen, setUpcomingOpen] = useState(false);
   const [catchesOpen, setCatchesOpen] = useState(false);
   const [expandedFarmIds, setExpandedFarmIds] = useState<Set<string>>(() => new Set());
+  /** Avoid mounting tall swipe actions until open — on web they stretch short tiles. */
+  const [swipingFarmId, setSwipingFarmId] = useState<string | null>(null);
 
   function toggleFarmExpanded(farmId: string) {
     setExpandedFarmIds((prev) => {
@@ -364,7 +365,7 @@ export default function DashboardScreen() {
 
         {data ? (
           <>
-            <Card>
+            <Card style={{ marginBottom: 8 }}>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
                 Today&apos;s schedule
               </Text>
@@ -395,7 +396,7 @@ export default function DashboardScreen() {
               )}
             </Card>
 
-            <Card>
+            <Card style={{ marginBottom: 8 }}>
               <Pressable
                 onPress={() => setUpcomingOpen((v) => !v)}
                 accessibilityRole="button"
@@ -449,7 +450,7 @@ export default function DashboardScreen() {
               ) : null}
             </Card>
 
-            <Card>
+            <Card style={{ marginBottom: 8 }}>
               <Pressable
                 onPress={() => setCatchesOpen((v) => !v)}
                 accessibilityRole="button"
@@ -550,38 +551,45 @@ export default function DashboardScreen() {
                   overshootRight={false}
                   friction={2}
                   rightThreshold={40}
-                  containerStyle={{ marginBottom: 8 }}
+                  containerStyle={{ marginBottom: 8, overflow: "hidden" }}
+                  onSwipeableWillOpen={() => setSwipingFarmId(farm.id)}
+                  onSwipeableClose={() =>
+                    setSwipingFarmId((id) => (id === farm.id ? null : id))
+                  }
                   onSwipeableOpen={(direction) => {
                     if (direction === "right") makeInactive(farm.id);
                   }}
-                  renderRightActions={() => (
-                    <Pressable
-                      accessibilityLabel={`Make ${farm.farmName} inactive`}
-                      onPress={() => makeInactive(farm.id)}
-                      style={{
-                        backgroundColor: "#57534e",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        width: 100,
-                        borderRadius: 14,
-                        marginLeft: 8,
-                      }}
-                    >
-                      <Ionicons name="pause-circle-outline" size={22} color="#fff" />
-                      <Text
+                  renderRightActions={() =>
+                    swipingFarmId === farm.id ? (
+                      <Pressable
+                        accessibilityLabel={`Make ${farm.farmName} inactive`}
+                        onPress={() => makeInactive(farm.id)}
                         style={{
-                          color: "#fff",
-                          fontWeight: "800",
-                          fontSize: 11,
-                          marginTop: 4,
-                          textAlign: "center",
-                          paddingHorizontal: 4,
+                          backgroundColor: "#57534e",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          width: 88,
+                          marginLeft: 8,
+                          borderRadius: 14,
+                          alignSelf: "stretch",
                         }}
                       >
-                        Make inactive
-                      </Text>
-                    </Pressable>
-                  )}
+                        <Text
+                          style={{
+                            color: "#fff",
+                            fontWeight: "800",
+                            fontSize: 12,
+                            textAlign: "center",
+                            paddingHorizontal: 4,
+                          }}
+                        >
+                          Inactive
+                        </Text>
+                      </Pressable>
+                    ) : (
+                      <View style={{ width: 88, marginLeft: 8 }} />
+                    )
+                  }
                 >
                   <Card style={{ padding: 0, overflow: "hidden", marginBottom: 0 }}>
                     <Pressable
