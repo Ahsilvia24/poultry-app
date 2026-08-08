@@ -534,9 +534,27 @@ export default function FarmDetailScreen() {
               if (router.canGoBack()) router.back();
               else router.replace("/(tabs)/farms");
             }}
-            style={{ marginBottom: 12 }}
+            style={{
+              marginBottom: 12,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 2,
+              minHeight: 44,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to farms"
           >
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
+            <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
+            <Text
+              style={{
+                color: colors.accentDark,
+                fontWeight: "700",
+                fontSize: 17,
+                fontFamily: styles.title.fontFamily,
+              }}
+            >
+              Farms
+            </Text>
           </Pressable>
           <Text style={{ color: colors.danger }}>{error ?? "Farm not found"}</Text>
         </View>
@@ -887,27 +905,59 @@ export default function FarmDetailScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         keyboardShouldPersistTaps="handled"
       >
-        <Pressable
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else router.replace("/(tabs)/farms");
+        <View
+          style={{
+            marginBottom: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
           }}
-          style={{ marginBottom: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="Back to farms"
         >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
-        </Pressable>
-
-        <View style={{ marginBottom: 16 }}>
+          <Pressable
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace("/(tabs)/farms");
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to farms"
+            hitSlop={8}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 2,
+              flexShrink: 0,
+              minHeight: 44,
+            }}
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
+            <Text
+              style={{
+                color: colors.accentDark,
+                fontWeight: "700",
+                fontSize: 17,
+                fontFamily: styles.title.fontFamily,
+              }}
+            >
+              Farms
+            </Text>
+          </Pressable>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
+              justifyContent: "flex-end",
+              gap: 6,
+              flex: 1,
+              minWidth: 0,
             }}
           >
-            <Text style={[styles.title, { flexShrink: 1 }]}>{farm.farmName}</Text>
+            <Text
+              style={[styles.title, { flexShrink: 1, textAlign: "right", fontSize: 24 }]}
+              numberOfLines={1}
+            >
+              {farm.farmName}
+            </Text>
             <Pressable
               accessibilityLabel="Edit farm info"
               onPress={() => openFarmEditor(farm)}
@@ -924,7 +974,10 @@ export default function FarmDetailScreen() {
               <Ionicons name="settings-outline" size={22} color={colors.muted} />
             </Pressable>
           </View>
-          <Card style={{ marginTop: 12 }}>
+        </View>
+
+        <View style={{ marginBottom: 16 }}>
+          <Card>
             <Text style={{ fontWeight: "800", fontSize: 14, marginBottom: 8 }}>Quick links</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {(
@@ -1087,7 +1140,7 @@ export default function FarmDetailScreen() {
                         {h.ageDays != null ? (
                           <Text style={{ fontWeight: "600", color: colors.muted }}>
                             {" "}
-                            · {h.ageDays}d
+                            {h.ageDays}d
                           </Text>
                         ) : null}
                       </Text>
