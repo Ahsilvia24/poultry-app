@@ -103,24 +103,29 @@ export function HouseCard({
     touchStartX.current = null;
   }
 
+  const swipeOpen = swipeX < -8;
+
   return (
-    <div className="relative overflow-hidden rounded-xl">
-      <div
-        className="absolute inset-y-0 right-0 flex w-[88px] items-center justify-center rounded-xl bg-red-700"
-        aria-hidden={swipeX > -40}
-      >
-        <button
-          type="button"
-          onClick={() => {
-            setSwipeX(0);
-            setMode("delete");
-          }}
-          className="flex h-full w-full flex-col items-center justify-center gap-1 text-sm font-bold text-white"
-          aria-label={`Delete house ${house.houseNumber}`}
+    <div className="relative overflow-hidden rounded-xl self-start">
+      {/* Only mount while swiping so a stretched grid row can't reveal it under a short tile */}
+      {swipeOpen ? (
+        <div
+          className="absolute inset-y-0 right-0 flex w-[88px] items-center justify-center rounded-xl bg-red-700"
+          aria-hidden={swipeX > -40}
         >
-          Delete
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSwipeX(0);
+              setMode("delete");
+            }}
+            className="flex h-full w-full flex-col items-center justify-center gap-1 text-sm font-bold text-white"
+            aria-label={`Delete house ${house.houseNumber}`}
+          >
+            Delete
+          </button>
+        </div>
+      ) : null}
 
       <div
         className="relative transition-transform duration-150 ease-out"

@@ -233,7 +233,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         />
       </div>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
+      <div className="mt-3 grid items-start gap-3 md:grid-cols-2">
         {houseCards.map(
           ({
             house,
