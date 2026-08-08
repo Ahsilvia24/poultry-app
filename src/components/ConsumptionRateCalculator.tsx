@@ -85,7 +85,7 @@ export function ConsumptionRateCalculator() {
       <h2 className="text-base font-bold text-stone-900">Consumption Rate Calculator</h2>
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="calcWater">Daily water (gal)</Label>
+          <Label htmlFor="calcWater">Daily Water (gal)</Label>
           <Input
             id="calcWater"
             type="text"
@@ -98,7 +98,7 @@ export function ConsumptionRateCalculator() {
           />
         </div>
         <div>
-          <Label htmlFor="calcHeadCount">Current head count</Label>
+          <Label htmlFor="calcHeadCount">Current Head Count</Label>
           <Input
             id="calcHeadCount"
             type="text"
