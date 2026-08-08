@@ -201,9 +201,6 @@ export function LfoInventoryForm({
       </div>
 
       <div>
-        <p className="mb-2 text-sm font-semibold text-stone-700">
-          Bin inventory &amp; feed up (lbs)
-        </p>
         <div className="space-y-4">
           {rows.map((house) => {
             const result = calc.houses.find((h) => h.houseId === house.houseId);
@@ -225,7 +222,7 @@ export function LfoInventoryForm({
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor={`binA-${house.houseId}`}>Bin A (lbs)</Label>
+                    <Label htmlFor={`binA-${house.houseId}`}>Bin A Inventory (lbs)</Label>
                     <Input
                       id={`binA-${house.houseId}`}
                       name="binAPounds"
@@ -239,7 +236,7 @@ export function LfoInventoryForm({
                     />
                   </div>
                   <div>
-                    <Label htmlFor={`binB-${house.houseId}`}>Bin B (lbs)</Label>
+                    <Label htmlFor={`binB-${house.houseId}`}>Bin B Inventory (lbs)</Label>
                     <Input
                       id={`binB-${house.houseId}`}
                       name="binBPounds"
