@@ -118,7 +118,7 @@ function DashboardFarmCard({
                   {farm.farmName}
                   <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
                   {farm.flockAgeDays != null ? (
-                    <span className="font-semibold text-stone-500"> · {farm.flockAgeDays}d</span>
+                    <span className="font-semibold text-stone-500"> {farm.flockAgeDays}d</span>
                   ) : null}
                 </p>
               </div>
