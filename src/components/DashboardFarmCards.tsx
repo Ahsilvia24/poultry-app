@@ -61,22 +61,27 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
     touchStartX.current = null;
   }
 
+  const swipeOpen = swipeX < -8;
+
   return (
-    <div className="relative overflow-hidden rounded-xl">
-      <div
-        className="absolute inset-y-0 right-0 flex w-[100px] items-center justify-center rounded-xl bg-stone-600"
-        aria-hidden={swipeX > -40}
-      >
-        <button
-          type="button"
-          disabled={pending}
-          onClick={makeInactive}
-          className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-xs font-bold text-white disabled:opacity-60"
-          aria-label={`Make ${farm.farmName} inactive`}
+    <div className="relative overflow-hidden rounded-xl self-start">
+      {/* Only mount while swiping so a stretched grid row can't reveal it under a short tile */}
+      {swipeOpen ? (
+        <div
+          className="absolute inset-y-0 right-0 flex w-[100px] items-center justify-center rounded-xl bg-stone-600"
+          aria-hidden={swipeX > -40}
         >
-          {pending ? "Working…" : "Make inactive"}
-        </button>
-      </div>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={makeInactive}
+            className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-xs font-bold text-white disabled:opacity-60"
+            aria-label={`Make ${farm.farmName} inactive`}
+          >
+            {pending ? "Working…" : "Make inactive"}
+          </button>
+        </div>
+      ) : null}
 
       <div
         className="relative transition-transform duration-150 ease-out"
@@ -178,7 +183,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
 
 export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
   return (
-    <div className="mt-3 grid gap-3 md:grid-cols-2">
+    <div className="mt-3 grid items-start gap-3 lg:grid-cols-3">
       {farms.map((farm) => (
         <DashboardFarmCard key={farm.id} farm={farm} />
       ))}
