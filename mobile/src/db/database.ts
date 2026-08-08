@@ -48,10 +48,13 @@ export function getDb(): SQLite.SQLiteDatabase {
   return db;
 }
 
-export function migrateDb() {
-  const database = getDb();
-  database.execSync(`
-    PRAGMA journal_mode = WAL;
+export async function migrateDb() {
+  const database = await openDb();
+  // WAL is unreliable in expo-sqlite's web worker and can yield empty sync
+  // results ("Unexpected end of JSON input"). Use DELETE on web.
+  const journalMode = Platform.OS === "web" ? "DELETE" : "WAL";
+  await database.execAsync(`
+    PRAGMA journal_mode = ${journalMode};
     PRAGMA foreign_keys = ON;
 
     CREATE TABLE IF NOT EXISTS meta (
@@ -257,11 +260,11 @@ export function migrateDb() {
   `);
 
   // Older installs may not have service_forms yet.
-  const serviceForms = database.getAllSync<{ name: string }>(
+  const serviceForms = await database.getAllAsync<{ name: string }>(
     "SELECT name FROM sqlite_master WHERE type='table' AND name='service_forms'",
   );
   if (serviceForms.length === 0) {
-    database.execSync(`
+    await database.execAsync(`
       CREATE TABLE IF NOT EXISTS service_forms (
         id TEXT PRIMARY KEY NOT NULL,
         farm_id TEXT NOT NULL,
@@ -278,65 +281,65 @@ export function migrateDb() {
   }
 
   // Existing installs created houses without deleted_at — add if missing
-  const houseCols = database.getAllSync<{ name: string }>("PRAGMA table_info(houses)");
+  const houseCols = await database.getAllAsync<{ name: string }>("PRAGMA table_info(houses)");
   if (!houseCols.some((c) => c.name === "deleted_at")) {
-    database.execSync("ALTER TABLE houses ADD COLUMN deleted_at TEXT");
+    await database.execAsync("ALTER TABLE houses ADD COLUMN deleted_at TEXT");
   }
   // Logged house temperature for service report prefill (°F as text)
   if (!houseCols.some((c) => c.name === "logged_temp")) {
-    database.execSync("ALTER TABLE houses ADD COLUMN logged_temp TEXT");
+    await database.execAsync("ALTER TABLE houses ADD COLUMN logged_temp TEXT");
   }
   if (!houseCols.some((c) => c.name === "logged_temp_at")) {
-    database.execSync("ALTER TABLE houses ADD COLUMN logged_temp_at TEXT");
+    await database.execAsync("ALTER TABLE houses ADD COLUMN logged_temp_at TEXT");
   }
 
   // Schedule dismissals: COMPLETED (crossed out until midnight) vs DISMISSED (gone now)
-  const fucCols = database.getAllSync<{ name: string }>(
+  const fucCols = await database.getAllAsync<{ name: string }>(
     "PRAGMA table_info(follow_up_completions)",
   );
   if (fucCols.length > 0 && !fucCols.some((c) => c.name === "status")) {
-    database.execSync(
+    await database.execAsync(
       "ALTER TABLE follow_up_completions ADD COLUMN status TEXT NOT NULL DEFAULT 'COMPLETED'",
     );
   }
 
   // Soft-delete farms (permanent remove from all lists)
-  const farmCols = database.getAllSync<{ name: string }>("PRAGMA table_info(farms)");
+  const farmCols = await database.getAllAsync<{ name: string }>("PRAGMA table_info(farms)");
   if (!farmCols.some((c) => c.name === "deleted_at")) {
-    database.execSync("ALTER TABLE farms ADD COLUMN deleted_at TEXT");
+    await database.execAsync("ALTER TABLE farms ADD COLUMN deleted_at TEXT");
   }
   if (!farmCols.some((c) => c.name === "email")) {
-    database.execSync("ALTER TABLE farms ADD COLUMN email TEXT");
+    await database.execAsync("ALTER TABLE farms ADD COLUMN email TEXT");
   }
   if (!farmCols.some((c) => c.name === "number_of_generators")) {
-    database.execSync(
+    await database.execAsync(
       "ALTER TABLE farms ADD COLUMN number_of_generators INTEGER",
     );
   }
   if (!farmCols.some((c) => c.name === "farm_number")) {
-    database.execSync("ALTER TABLE farms ADD COLUMN farm_number TEXT");
+    await database.execAsync("ALTER TABLE farms ADD COLUMN farm_number TEXT");
   }
 
   // Existing installs may lack newer flock columns
-  const flockCols = database.getAllSync<{ name: string }>("PRAGMA table_info(flocks)");
+  const flockCols = await database.getAllAsync<{ name: string }>("PRAGMA table_info(flocks)");
   if (!flockCols.some((c) => c.name === "actual_catch_date")) {
-    database.execSync("ALTER TABLE flocks ADD COLUMN actual_catch_date TEXT");
+    await database.execAsync("ALTER TABLE flocks ADD COLUMN actual_catch_date TEXT");
   }
   if (!flockCols.some((c) => c.name === "growth_rate_lbs_per_day")) {
-    database.execSync("ALTER TABLE flocks ADD COLUMN growth_rate_lbs_per_day REAL");
+    await database.execAsync("ALTER TABLE flocks ADD COLUMN growth_rate_lbs_per_day REAL");
   }
 
   // Per-house placement / catch dates (staggered within one flock)
-  const hfCols = database.getAllSync<{ name: string }>("PRAGMA table_info(house_flocks)");
+  const hfCols = await database.getAllAsync<{ name: string }>("PRAGMA table_info(house_flocks)");
   if (!hfCols.some((c) => c.name === "placement_date")) {
-    database.execSync("ALTER TABLE house_flocks ADD COLUMN placement_date TEXT");
+    await database.execAsync("ALTER TABLE house_flocks ADD COLUMN placement_date TEXT");
   }
   if (!hfCols.some((c) => c.name === "catch_date")) {
-    database.execSync("ALTER TABLE house_flocks ADD COLUMN catch_date TEXT");
+    await database.execAsync("ALTER TABLE house_flocks ADD COLUMN catch_date TEXT");
   }
 
   // Allow clearing a single generator reading without deleting the whole date row.
-  const genLogCols = database.getAllSync<{ name: string; notnull: number }>(
+  const genLogCols = await database.getAllAsync<{ name: string; notnull: number }>(
     "PRAGMA table_info(generator_logs)",
   );
   if (
@@ -350,9 +353,9 @@ export function migrateDb() {
         c.notnull === 1,
     )
   ) {
-    database.execSync("BEGIN");
+    await database.execAsync("BEGIN");
     try {
-      database.execSync(`
+      await database.execAsync(`
         CREATE TABLE generator_logs_nullable (
           id TEXT PRIMARY KEY NOT NULL,
           farm_id TEXT NOT NULL,
@@ -372,28 +375,28 @@ export function migrateDb() {
         ALTER TABLE generator_logs_nullable RENAME TO generator_logs;
         CREATE INDEX IF NOT EXISTS idx_generator_farm ON generator_logs(farm_id);
       `);
-      database.execSync("COMMIT");
+      await database.execAsync("COMMIT");
     } catch (e) {
-      database.execSync("ROLLBACK");
+      await database.execAsync("ROLLBACK");
       throw e;
     }
   }
 
   // Recover if a prior migration left an orphan nullable table.
-  const orphan = database.getAllSync<{ name: string }>(
+  const orphan = await database.getAllAsync<{ name: string }>(
     "SELECT name FROM sqlite_master WHERE type='table' AND name='generator_logs_nullable'",
   );
   if (orphan.length > 0) {
-    const main = database.getAllSync<{ name: string }>(
+    const main = await database.getAllAsync<{ name: string }>(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='generator_logs'",
     );
     if (main.length === 0) {
-      database.execSync(`
+      await database.execAsync(`
         ALTER TABLE generator_logs_nullable RENAME TO generator_logs;
         CREATE INDEX IF NOT EXISTS idx_generator_farm ON generator_logs(farm_id);
       `);
     } else {
-      database.execSync("DROP TABLE generator_logs_nullable");
+      await database.execAsync("DROP TABLE generator_logs_nullable");
     }
   }
 }

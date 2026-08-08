@@ -117,12 +117,9 @@ export default function LfoListScreen() {
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ farmId?: string | string[] }>();
   const routeFarmId = paramId(params.farmId);
-  const [lfos, setLfos] = useState(listLfos());
-  const [farms] = useState(listFarms().farms);
-  const [farmId, setFarmId] = useState(() => {
-    if (routeFarmId && farms.some((f) => f.id === routeFarmId)) return routeFarmId;
-    return farms[0]?.id ?? "";
-  });
+  const [lfos, setLfos] = useState<ReturnType<typeof listLfos>>([]);
+  const [farms, setFarms] = useState<ReturnType<typeof listFarms>["farms"]>([]);
+  const [farmId, setFarmId] = useState(routeFarmId || "");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [waterGal, setWaterGal] = useState("");

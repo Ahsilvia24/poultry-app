@@ -1,5 +1,5 @@
 import { Tabs, router } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../src/theme";
@@ -174,8 +174,9 @@ export default function TabsLayout() {
     <Tabs
       tabBar={(props) => <WebStyleTabBar {...props} />}
       screenOptions={{
-        // Mount all tabs up front so the first visit to each tab isn't a janky remount.
-        lazy: false,
+        // Native: mount all tabs for snappy switches. Web/sqlite sync is flaky when
+        // every tab calls getAllSync during the first paint, so keep tabs lazy there.
+        lazy: Platform.OS === "web",
         headerStyle: { backgroundColor: colors.headerBg },
         headerShadowVisible: false,
         headerTitleStyle: {
