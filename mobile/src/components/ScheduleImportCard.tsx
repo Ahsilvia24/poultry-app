@@ -4,7 +4,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as XLSX from "xlsx";
 import { colors, styles } from "../theme";
-import { Card, PrimaryButton } from "./ui";
+import { Card, Chip, PrimaryButton } from "./ui";
 import {
   groupPlacementFarms,
   parsePlacementSheetRows,
@@ -203,52 +203,20 @@ export function ScheduleImportCard() {
 
   return (
     <Card>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "stretch",
-          gap: 6,
-          marginBottom: 12,
-        }}
-      >
-        {TYPE_OPTIONS.map((type) => {
-          const active = importType === type.id;
-          return (
-            <Pressable
-              key={type.id}
-              onPress={() => {
-                setImportType(type.id);
-                setNote(null);
-                setFarms([]);
-                setRows([]);
-              }}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                borderRadius: 10,
-                paddingVertical: 10,
-                paddingHorizontal: 4,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: active ? colors.accentDark : "#e7e5e4",
-              }}
-            >
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.75}
-                style={{
-                  fontSize: 13,
-                  fontWeight: "700",
-                  color: active ? "#fff" : colors.text,
-                  textAlign: "center",
-                }}
-              >
-                {type.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+      <View style={[styles.row, { marginBottom: 4, flexWrap: "wrap" }]}>
+        {TYPE_OPTIONS.map((type) => (
+          <Chip
+            key={type.id}
+            label={type.label}
+            active={importType === type.id}
+            onPress={() => {
+              setImportType(type.id);
+              setNote(null);
+              setFarms([]);
+              setRows([]);
+            }}
+          />
+        ))}
       </View>
 
       {importType !== "placement" ? (
