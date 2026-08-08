@@ -46,7 +46,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
     const title = "Placement";
     return (
       <div>
-        <PageHeader title="Reports" subtitle="Choose a report type, then run filters" />
+        <PageHeader title="Reports" />
         <Suspense fallback={<div className="mb-4 h-10" />}>
           <ReportsTypeTabs active={reportType} />
         </Suspense>
