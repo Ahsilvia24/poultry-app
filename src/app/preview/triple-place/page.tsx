@@ -163,7 +163,7 @@ export default async function TriplePlacePreviewPage() {
                 (fl) =>
                   `${fl.flockNumber} (${differenceInCalendarDays(today, fl.placementDate)}d)`,
               )
-              .join(" · ")}
+              .join(" ")}
           </div>
         </Card>
       </div>
