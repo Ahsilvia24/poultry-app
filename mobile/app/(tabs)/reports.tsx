@@ -27,16 +27,6 @@ function formatDateHeader(dateKey: string) {
   return dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function formatMdY(dateKey: string) {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  const dt = new Date(y!, (m ?? 1) - 1, d ?? 1, 12);
-  return dt.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
   return value ?? "";
@@ -73,7 +63,7 @@ export default function ReportsScreen() {
     return farms.find((f) => f.id === farmId)?.farmName ?? null;
   }, [farmId, farms]);
 
-  const rowHeaderLabel = selectedFarmName || "House";
+  const rowHeaderLabel = selectedFarmName || "Farm Name";
 
   useEffect(() => {
     if (farmIdParam) {
@@ -154,12 +144,14 @@ export default function ReportsScreen() {
             </ScrollView>
 
             <Card>
-              <DatePickerField label="From" value={from} onChange={setFrom} />
-              <View style={{ height: 8 }} />
-              <DatePickerField label="To" value={to} onChange={setTo} />
-              <Text style={[styles.muted, { marginTop: 8, marginBottom: 4 }]}>
-                {formatMdY(from)} – {formatMdY(to)}
-              </Text>
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <DatePickerField label="From" value={from} onChange={setFrom} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <DatePickerField label="To" value={to} onChange={setTo} />
+                </View>
+              </View>
               <PrimaryButton label="Apply filters" onPress={apply} />
             </Card>
 
