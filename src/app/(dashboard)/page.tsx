@@ -2,9 +2,12 @@ import { format, parseISO } from "date-fns";
 import { auth } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard";
 import { Card } from "@/components/ui";
+import { DashboardScheduleImport } from "@/components/DashboardScheduleImport";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { DashboardFarmCards } from "@/components/DashboardFarmCards";
+import { ImportPhoneBackupForm } from "@/components/ImportPhoneBackupForm";
 import { ScrollableFarmList } from "@/components/ScrollableFarmList";
+import { listScheduleImports } from "@/lib/schedule-imports";
 import { signOutAction } from "@/app/actions/auth";
 import { redirect } from "next/navigation";
 
@@ -13,6 +16,7 @@ export default async function DashboardPage() {
   if (!session?.user?.id) redirect("/login");
 
   const data = await getDashboardData(session.user.id);
+  const scheduleImports = await listScheduleImports();
 
   return (
     <div>
@@ -75,6 +79,14 @@ export default async function DashboardPage() {
 
       <h2 className="mt-8 text-xl font-bold">Active farms</h2>
       <DashboardFarmCards farms={data.farmCards} />
+
+      <h2 className="mt-8 text-xl font-bold">Import</h2>
+      <div className="mt-3">
+        <DashboardScheduleImport imports={scheduleImports} />
+      </div>
+
+      <h2 className="mt-8 text-xl font-bold">Backup</h2>
+      <ImportPhoneBackupForm />
     </div>
   );
 }
