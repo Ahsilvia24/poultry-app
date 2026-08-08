@@ -168,7 +168,11 @@ export async function applyPlacementImportAction(input: {
     if (match.farm) {
       farmId = match.farm.id;
       const data: { farmName?: string; farmNumber?: string | null } = {};
-      if (renameKeys.has(key) && match.nameDiffers) {
+      if (
+        renameKeys.has(key) &&
+        match.farm &&
+        match.farm.farmName.trim() !== sample.farmName.trim()
+      ) {
         data.farmName = sample.farmName;
         updatedNames += 1;
       }

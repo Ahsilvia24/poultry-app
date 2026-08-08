@@ -10,12 +10,27 @@ export type PlacementFarmMatch = {
   nameDiffers: boolean;
 };
 
+/** Spaced, uppercased tokens for readable compare. */
 export function normalizeFarmName(name: string) {
   return name
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, " ")
     .trim()
     .replace(/\s+/g, " ");
+}
+
+/** Letters/digits only — so "goldstar" and "GOLD STAR" compare equal. */
+export function compactFarmName(name: string) {
+  return name.toUpperCase().replace(/[^A-Z0-9]+/g, "");
+}
+
+const TRAILING_NOISE =
+  /\b(FARMS?|LLC|INC|INCORPORATED|CO|COMPANY|POULTRY|BROILERS?)\b/g;
+
+/** Core name with common business suffixes removed. */
+export function coreFarmName(name: string) {
+  const normalized = normalizeFarmName(name).replace(TRAILING_NOISE, " ").replace(/\s+/g, " ").trim();
+  return compactFarmName(normalized || name);
 }
 
 function levenshtein(a: string, b: string): number {
@@ -44,10 +59,40 @@ export function nameSimilarity(a: string, b: string): number {
   const nb = normalizeFarmName(b);
   if (!na || !nb) return 0;
   if (na === nb) return 1;
-  if (na.includes(nb) || nb.includes(na)) {
-    return Math.min(na.length, nb.length) / Math.max(na.length, nb.length);
+
+  const ca = compactFarmName(a);
+  const cb = compactFarmName(b);
+  if (ca && ca === cb) return 0.99;
+
+  const coreA = coreFarmName(a);
+  const coreB = coreFarmName(b);
+  if (coreA && coreA === coreB) return 0.97;
+
+  if (ca.includes(cb) || cb.includes(ca)) {
+    const shorter = Math.min(ca.length, cb.length);
+    const longer = Math.max(ca.length, cb.length);
+    if (longer > 0 && shorter / longer >= 0.75) return shorter / longer;
   }
-  return 1 - levenshtein(na, nb) / Math.max(na.length, nb.length);
+
+  if (na.includes(nb) || nb.includes(na)) {
+    const shorter = Math.min(na.length, nb.length);
+    const longer = Math.max(na.length, nb.length);
+    return shorter / longer;
+  }
+
+  const compactDist = levenshtein(ca, cb);
+  const compactLonger = Math.max(ca.length, cb.length) || 1;
+  const compactScore = 1 - compactDist / compactLonger;
+
+  const dist = levenshtein(na, nb);
+  const longer = Math.max(na.length, nb.length);
+  const spacedScore = 1 - dist / longer;
+
+  return Math.max(compactScore, spacedScore);
+}
+
+function displayNameDiffers(existingName: string, importedName: string) {
+  return existingName.trim() !== importedName.trim();
 }
 
 export function matchPlacementFarm(
@@ -63,13 +108,42 @@ export function matchPlacementFarm(
     return {
       kind: "code",
       farm: byCode,
-      nameDiffers: normalizeFarmName(byCode.farmName) !== normalizeFarmName(farmName),
+      nameDiffers: displayNameDiffers(byCode.farmName, farmName),
     };
   }
+
   const exact = existing.find(
     (f) => normalizeFarmName(f.farmName) === normalizeFarmName(farmName),
   );
-  if (exact) return { kind: "exact", farm: exact, nameDiffers: false };
+  if (exact) {
+    return {
+      kind: "exact",
+      farm: exact,
+      nameDiffers: displayNameDiffers(exact.farmName, farmName),
+    };
+  }
+
+  const compactHit = existing.find(
+    (f) => compactFarmName(f.farmName) === compactFarmName(farmName) && compactFarmName(farmName),
+  );
+  if (compactHit) {
+    return {
+      kind: "fuzzy",
+      farm: compactHit,
+      nameDiffers: displayNameDiffers(compactHit.farmName, farmName),
+    };
+  }
+
+  const coreHit = existing.find(
+    (f) => coreFarmName(f.farmName) === coreFarmName(farmName) && coreFarmName(farmName),
+  );
+  if (coreHit) {
+    return {
+      kind: "fuzzy",
+      farm: coreHit,
+      nameDiffers: displayNameDiffers(coreHit.farmName, farmName),
+    };
+  }
 
   let best: ExistingFarmRef | null = null;
   let bestScore = 0;
@@ -80,12 +154,14 @@ export function matchPlacementFarm(
       best = farm;
     }
   }
-  if (best && bestScore >= 0.78) {
+
+  if (best && bestScore >= 0.72) {
     return {
       kind: "fuzzy",
       farm: best,
-      nameDiffers: normalizeFarmName(best.farmName) !== normalizeFarmName(farmName),
+      nameDiffers: displayNameDiffers(best.farmName, farmName),
     };
   }
+
   return { kind: "none", farm: null, nameDiffers: false };
 }

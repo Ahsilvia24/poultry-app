@@ -2105,7 +2105,11 @@ export function importPlacementRows(input: {
 
     if (match.farm) {
       farmId = match.farm.id;
-      if (renameKeys.has(key) && match.nameDiffers) {
+      if (
+        renameKeys.has(key) &&
+        match.farm &&
+        match.farm.farmName.trim() !== sample.farmName.trim()
+      ) {
         renameFarmOnly(farmId, sample.farmName);
         updatedNames += 1;
       }
