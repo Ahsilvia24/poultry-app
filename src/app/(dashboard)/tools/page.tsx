@@ -70,7 +70,7 @@ export default async function ToolsPage() {
 
   return (
     <div>
-      <PageHeader title="Tools" subtitle="Calculators and helpers for field work" />
+      <PageHeader title="Tools" />
 
       <div className="mb-6">
         <ToolsQuickLinks />

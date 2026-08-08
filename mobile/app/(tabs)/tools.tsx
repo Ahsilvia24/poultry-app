@@ -123,7 +123,6 @@ export default function ToolsScreen() {
       >
         <PageHeader
           title="Tools"
-          subtitle="Calculators and helpers for field work"
         />
 
         <Card style={{ marginBottom: 12 }}>
