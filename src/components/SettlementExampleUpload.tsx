@@ -7,6 +7,7 @@ import {
 } from "@/app/actions/settlement-upload";
 import {
   formatBytes,
+  formatUploadedAt,
   type SettlementExampleMeta,
 } from "@/lib/settlement-example-types";
 import { Button, Card } from "@/components/ui";
@@ -107,8 +108,7 @@ export function SettlementExampleUpload({
                   {ex.originalName}
                 </a>
                 <span className="text-stone-500">
-                  {formatBytes(ex.sizeBytes)} ·{" "}
-                  {new Date(ex.uploadedAt).toLocaleString()}
+                  {formatBytes(ex.sizeBytes)} · {formatUploadedAt(ex.uploadedAt)}
                 </span>
               </li>
             ))}
