@@ -63,6 +63,10 @@ checkFixture(
     "utf8",
   ),
 );
+checkFixture(
+  "device-sample",
+  readFileSync(join(fixturesDir, "weekly-chick-placement-device-sample.txt"), "utf8"),
+);
 
 // Fewer farms: first ~6 PROJECTED blocks from the device extract still parse cleanly.
 const pdfkit = readFileSync(
