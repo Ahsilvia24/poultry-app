@@ -4,6 +4,17 @@ import {
   normalizePlacementRow,
   type PlacementRow,
 } from "./parse";
+import {
+  buildLessonFromCorrection,
+  lessonsPromptTips,
+  normalizeCorrectedRows,
+  savePlacementLesson,
+} from "./learn";
+import {
+  deleteSessionItem,
+  getSessionItem,
+  setSessionItem,
+} from "../sessionStore";
 
 export type PlacementAiFixRequest = {
   note: string;
@@ -18,9 +29,42 @@ export type PlacementAiFixResult = {
   rows: PlacementRow[];
   summary: string;
   source: "openai" | "server" | "local";
+  learned?: boolean;
 };
 
 export { applyLocalPlacementInstructions };
+
+const AI_KEY_STORE = "placement_openai_api_key";
+let cachedOpenAiKey = "";
+
+export async function loadPlacementAiKey(): Promise<string> {
+  try {
+    const fromEnv = readEnv("EXPO_PUBLIC_OPENAI_API_KEY");
+    if (fromEnv) {
+      cachedOpenAiKey = fromEnv;
+      return fromEnv;
+    }
+    const saved = (await getSessionItem(AI_KEY_STORE))?.trim() ?? "";
+    cachedOpenAiKey = saved;
+    return saved;
+  } catch {
+    return cachedOpenAiKey;
+  }
+}
+
+export async function savePlacementAiKey(key: string): Promise<void> {
+  const trimmed = key.trim();
+  cachedOpenAiKey = trimmed;
+  if (!trimmed) {
+    await deleteSessionItem(AI_KEY_STORE);
+    return;
+  }
+  await setSessionItem(AI_KEY_STORE, trimmed);
+}
+
+export function getCachedPlacementAiKey(): string {
+  return cachedOpenAiKey || readEnv("EXPO_PUBLIC_OPENAI_API_KEY");
+}
 
 function expoExtra(): Record<string, unknown> {
   const extra =
@@ -40,9 +84,13 @@ function readEnv(name: string): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
-/** True when an online AI path is configured (direct OpenAI key or server URL). */
+/** True when an online AI path is configured (saved key, env key, or server URL). */
 export function canUseOnlinePlacementAi(): boolean {
-  return Boolean(readEnv("EXPO_PUBLIC_OPENAI_API_KEY") || readEnv("EXPO_PUBLIC_PLACEMENT_AI_URL"));
+  return Boolean(
+    getCachedPlacementAiKey() ||
+      readEnv("EXPO_PUBLIC_OPENAI_API_KEY") ||
+      readEnv("EXPO_PUBLIC_PLACEMENT_AI_URL"),
+  );
 }
 
 function sanitizeRows(raw: unknown): PlacementRow[] {
@@ -61,7 +109,7 @@ function sanitizeRows(raw: unknown): PlacementRow[] {
     });
     if (row && row.numberSent > 0 && row.farmName) out.push(row);
   }
-  return out;
+  return normalizeCorrectedRows(out);
 }
 
 function buildPrompt(input: PlacementAiFixRequest): string {
@@ -70,11 +118,14 @@ function buildPrompt(input: PlacementAiFixRequest): string {
     rowCount: input.rows.length,
     expectedRows: input.expectedRows ?? null,
   };
+  const learned = lessonsPromptTips();
   return [
     "You fix Weekly Chick Placement import rows for a poultry app.",
     "Keep only: farmName, farmCode (code LEFT of farm name, e.g. 3821FS), houseNo, datePlaced (YYYY-MM-DD), numberSent.",
     "IGNORE Complex (2601HV), sheet Flock Code (FS26045), mortality, in-transit, and far-right day counts.",
+    "IGNORE header crumbs like Ref. / FSP1 / Wk No. — never use those as farm names.",
     "flockId must equal farmCode.",
+    learned,
     "User issue chips: " + (input.chips.join(", ") || "(none)"),
     "User note: " + (input.note.trim() || "(none)"),
     "Current summary: " + JSON.stringify(summary),
@@ -102,7 +153,7 @@ async function callOpenAi(prompt: string, apiKey: string): Promise<PlacementAiFi
         {
           role: "system",
           content:
-            "You are a careful data cleaner for Weekly Chick Placement PDFs. Return valid JSON only.",
+            "You are a careful data cleaner for Weekly Chick Placement PDFs. Return valid JSON only. Never invent header text (Ref/FSP1/Wk No) as farm names.",
         },
         { role: "user", content: prompt },
       ],
@@ -135,7 +186,10 @@ async function callServer(input: PlacementAiFixRequest, url: string): Promise<Pl
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      ...input,
+      learnedTips: lessonsPromptTips(),
+    }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -151,6 +205,17 @@ async function callServer(input: PlacementAiFixRequest, url: string): Promise<Pl
   };
 }
 
+async function rememberCorrection(
+  before: PlacementRow[],
+  after: PlacementRow[],
+  note: string,
+): Promise<boolean> {
+  const lesson = buildLessonFromCorrection({ before, after, note });
+  if (!lesson) return false;
+  await savePlacementLesson(lesson);
+  return true;
+}
+
 /** Online AI fix when configured; otherwise tries local typed instructions. */
 export async function requestPlacementAiFix(
   input: PlacementAiFixRequest,
@@ -160,13 +225,17 @@ export async function requestPlacementAiFix(
     throw new Error("Type what’s wrong, or tap an issue chip, then try again.");
   }
 
+  await loadPlacementAiKey();
   const serverUrl = readEnv("EXPO_PUBLIC_PLACEMENT_AI_URL");
-  const openAiKey = readEnv("EXPO_PUBLIC_OPENAI_API_KEY");
+  const openAiKey = getCachedPlacementAiKey();
   const prompt = buildPrompt(input);
+  const before = input.rows;
 
   if (serverUrl) {
     try {
-      return await callServer(input, serverUrl);
+      const result = await callServer(input, serverUrl);
+      result.learned = await rememberCorrection(before, result.rows, note);
+      return result;
     } catch (e) {
       if (!openAiKey) throw e;
     }
@@ -174,18 +243,28 @@ export async function requestPlacementAiFix(
 
   if (openAiKey) {
     try {
-      return await callOpenAi(prompt, openAiKey);
+      const result = await callOpenAi(prompt, openAiKey);
+      result.learned = await rememberCorrection(before, result.rows, note);
+      return result;
     } catch (e) {
       const local = applyLocalPlacementInstructions(input.rows, note);
-      if (local) return local;
+      if (local) {
+        const rows = normalizeCorrectedRows(local.rows);
+        const learned = await rememberCorrection(before, rows, note);
+        return { ...local, rows, learned };
+      }
       throw e;
     }
   }
 
   const local = applyLocalPlacementInstructions(input.rows, note);
-  if (local) return local;
+  if (local) {
+    const rows = normalizeCorrectedRows(local.rows);
+    const learned = await rememberCorrection(before, rows, note);
+    return { ...local, rows, learned };
+  }
 
   throw new Error(
-    "Online AI isn’t configured on this build. Edit rows manually below, or use short commands like: remove farm MERCY FARM · BLACKJACK MTN house 3 birds 22200 · set BLACKJACK MTN code to 3821FS",
+    "Add your OpenAI API key below (saved on this phone), then tap Ask AI. Or use short offline commands like: remove farm MERCY FARM",
   );
 }

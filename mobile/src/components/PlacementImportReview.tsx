@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { colors, styles } from "../theme";
 import { farmGroupKey, summarizePlacementRows, type PlacementRow } from "../lib/placementImport/parse";
@@ -14,7 +14,13 @@ import {
   type PlacementExtractHint,
   type PlacementFixChipId,
 } from "../lib/placementImport/review";
-import { canUseOnlinePlacementAi, requestPlacementAiFix } from "../lib/placementImport/aiFix";
+import {
+  canUseOnlinePlacementAi,
+  getCachedPlacementAiKey,
+  loadPlacementAiKey,
+  requestPlacementAiFix,
+  savePlacementAiKey,
+} from "../lib/placementImport/aiFix";
 
 type Props = {
   rows: PlacementRow[];
@@ -86,11 +92,20 @@ export function PlacementImportReview({
   const [editCode, setEditCode] = useState(farmCode);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState("");
+  const [keyReady, setKeyReady] = useState(false);
+
+  useEffect(() => {
+    void loadPlacementAiKey().then((k) => {
+      setApiKey(k ? "••••••••" : "");
+      setKeyReady(Boolean(k || getCachedPlacementAiKey()));
+    });
+  }, []);
 
   const issues = useMemo(() => buildPlacementReviewIssues(rows, stats), [rows, stats]);
   const summary = useMemo(() => summarizePlacementRows(rows), [rows]);
   const farmRows = useMemo(() => rowsForFarm(rows, farmKey), [rows, farmKey]);
-  const onlineAiReady = canUseOnlinePlacementAi();
+  const onlineAiReady = keyReady || canUseOnlinePlacementAi();
 
   const activeChipIds = Object.entries(chips)
     .filter(([, on]) => on)
@@ -104,11 +119,24 @@ export function PlacementImportReview({
     onChangeRows(renamePlacementFarm(rows, farmKey, editName, editCode));
   }
 
+  async function onSaveKey() {
+    const value = apiKey.includes("•") ? getCachedPlacementAiKey() : apiKey.trim();
+    await savePlacementAiKey(value);
+    setKeyReady(Boolean(value));
+    setApiKey(value ? "••••••••" : "");
+    setAiMessage(value ? "OpenAI key saved on this phone." : "OpenAI key cleared.");
+  }
+
   async function onAskAi() {
     if (aiBusy) return;
     setAiBusy(true);
     setAiMessage(null);
     try {
+      if (!apiKey.includes("•") && apiKey.trim()) {
+        await savePlacementAiKey(apiKey.trim());
+        setKeyReady(true);
+        setApiKey("••••••••");
+      }
       const result = await requestPlacementAiFix({
         note,
         chips: activeChipIds,
@@ -118,7 +146,9 @@ export function PlacementImportReview({
       });
       onChangeRows(result.rows);
       setAiMessage(
-        `${result.source === "local" ? "Applied locally" : "AI updated rows"}: ${result.summary}`,
+        `${result.source === "local" ? "Applied locally" : "AI updated rows"}: ${result.summary}${
+          result.learned ? " · saved to teach offline parser" : ""
+        }`,
       );
     } catch (e) {
       setAiMessage(e instanceof Error ? e.message : "Could not apply fix");
@@ -150,9 +180,38 @@ export function PlacementImportReview({
       <Text style={[styles.muted, { marginTop: 6, fontSize: 12, lineHeight: 17 }]}>
         Review {summary.farmCount} farms · {summary.houseCount} houses ·{" "}
         {summary.birdsSent.toLocaleString()} birds
-        {stats?.expectedRows ? ` (PDF hint ~${stats.expectedRows})` : ""}. Offline edit always
-        works; online AI can apply a typed fix when configured.
+        {stats?.expectedRows ? ` (PDF hint ~${stats.expectedRows})` : ""}. Paste an OpenAI key
+        once to use Ask AI; each AI fix also teaches the offline reader on this phone.
       </Text>
+
+      <Text style={{ marginTop: 10, fontWeight: "800", color: colors.text, fontSize: 12 }}>
+        OpenAI API key (saved on phone)
+      </Text>
+      <View style={{ flexDirection: "row", gap: 8, marginTop: 6, alignItems: "center" }}>
+        <TextInput
+          value={apiKey}
+          onChangeText={setApiKey}
+          placeholder="sk-..."
+          placeholderTextColor={colors.muted}
+          autoCapitalize="none"
+          autoCorrect={false}
+          secureTextEntry={apiKey.includes("•")}
+          style={{
+            flex: 1,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 8,
+            fontSize: 13,
+            color: colors.text,
+            backgroundColor: "#fff",
+          }}
+        />
+        <Pressable onPress={() => void onSaveKey()}>
+          <Text style={{ fontWeight: "800", color: colors.accentDark, fontSize: 12 }}>Save</Text>
+        </Pressable>
+      </View>
 
       {issues.length > 0 ? (
         <View style={{ marginTop: 8, gap: 6 }}>

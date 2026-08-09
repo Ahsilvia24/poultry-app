@@ -158,6 +158,21 @@ if (markers.length >= 8) {
   }
 }
 
+// Header crumbs must never become a farm name (device PDFKit glue).
+{
+  const junk = parsePlacementPdfText(
+    "PROJECTED 2601HV Ref. FSP1 Wk No. 08/03/2026 72944 3821FS 22,200 FS26045 3 22,200 0 12 PROJECTED 2601HV BLACKJACK MTN 08/03/2026 72944 3821FS 24,300 FS26045 4 24,300",
+  );
+  const farms = groupPlacementFarms(junk);
+  if (farms.some((f) => /FSP1|Ref\.|Wk\s*No/i.test(f.farmName))) {
+    fail(`header junk farm name leaked: ${farms.map((f) => f.farmName).join(", ")}`);
+  } else if (!farms.some((f) => f.farmName === "BLACKJACK MTN" && f.farmCode === "3821FS")) {
+    fail("header junk case lost BLACKJACK MTN");
+  } else {
+    ok("header junk Ref/FSP1/Wk No rejected");
+  }
+}
+
 // Offline review helpers: flag partial reads and allow local edits.
 {
   const sample = [

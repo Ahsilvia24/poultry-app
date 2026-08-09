@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Platform, Pressable, Text, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
@@ -19,6 +19,8 @@ import {
   buildPlacementReviewIssues,
   type PlacementExtractHint,
 } from "../lib/placementImport/review";
+import { applyPlacementLessonsToRows, loadPlacementLessons } from "../lib/placementImport/learn";
+import { loadPlacementAiKey } from "../lib/placementImport/aiFix";
 import {
   groupCatchFarms,
   parseCatchPdfText,
@@ -150,6 +152,11 @@ export function ScheduleImportCard() {
   const [pdfExtractText, setPdfExtractText] = useState<string | null>(null);
   const [fixFarmKey, setFixFarmKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    void loadPlacementLessons();
+    void loadPlacementAiKey();
+  }, []);
 
   const selectedCount = useMemo(
     () => Object.values(selected).filter(Boolean).length,
@@ -283,7 +290,7 @@ export function ScheduleImportCard() {
       return;
     }
 
-    const parsed = parsePlacementSheetRows(sheet);
+    const parsed = applyPlacementLessonsToRows(parsePlacementSheetRows(sheet));
     if (parsed.length === 0) {
       throw new Error(
         "Could not read placement rows. Need at least Farm Name or Farm Code (Date, Flock, House, and birds can be blank).",
@@ -314,7 +321,7 @@ export function ScheduleImportCard() {
 
     const stats = placementPdfExtractStats(text);
     const statsLine = `${stats.chars} chars · ${stats.projected} PROJECTED · ${stats.anchors}+${stats.complexAnchors} anchors · expect ~${stats.expectedRows}`;
-    const parsed = parsePlacementPdfText(text);
+    const parsed = applyPlacementLessonsToRows(parsePlacementPdfText(text));
     if (parsed.length === 0) {
       const sample = placementPdfDebugSample(text);
       // Keep extract on clipboard so we can fix the real device stream shape.

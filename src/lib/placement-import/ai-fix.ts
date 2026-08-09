@@ -13,6 +13,7 @@ export type PlacementAiFixBody = {
   rows?: PlacementAiRow[];
   pdfSample?: string | null;
   expectedRows?: number | null;
+  learnedTips?: string | null;
 };
 
 function normalizeRow(r: Partial<PlacementAiRow>): PlacementAiRow | null {
@@ -58,7 +59,9 @@ export function buildPlacementAiPrompt(input: PlacementAiFixBody): string {
     "You fix Weekly Chick Placement import rows for a poultry app.",
     "Keep only: farmName, farmCode (code LEFT of farm name, e.g. 3821FS), houseNo, datePlaced (YYYY-MM-DD), numberSent.",
     "IGNORE Complex (2601HV), sheet Flock Code (FS26045), mortality, in-transit, and far-right day counts.",
+    "IGNORE header crumbs like Ref. / FSP1 / Wk No. — never use those as farm names.",
     "flockId must equal farmCode.",
+    input.learnedTips ? String(input.learnedTips) : "",
     "User issue chips: " + (chips.join(", ") || "(none)"),
     "User note: " + (String(input.note ?? "").trim() || "(none)"),
     "Expected houses hint: " + String(input.expectedRows ?? "unknown"),

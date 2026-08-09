@@ -98,6 +98,13 @@ function normalizePlacementPdfText(text: string): string {
     // 12PROJECTED → 12 PROJECTED (day-count glued to marker)
     .replace(/(\d)PROJECTED/gi, "$1 PROJECTED")
     .replace(/PROJECTED(?=\S)/gi, "PROJECTED ")
+    // Header crumbs that PDFKit glues into the first "farm name":
+    //   Ref. FSP1 Wk No. 2601HV …
+    .replace(/\bRef\.?\s*(?:Address\s*1|Address1)?\b/gi, " ")
+    .replace(/\b(?:FSP1|HVPP)\b/gi, " ")
+    .replace(/\b\d{1,2}\s*Wk\b/gi, " ")
+    .replace(/\bWk\s*No\.?\b/gi, " ")
+    .replace(/\b(?:City|State|Zip)\b/gi, " ")
     // BLACKJACK MTN08/03/2026 or (SAM FORST)08/03/2026
     .replace(/([A-Za-z.)])(\d{1,2}\/\d{1,2}\/\d{2,4})/g, "$1 $2")
     // FARM 908/04/2026 → FARM 9 08/04/2026 (house digit glued into date)
@@ -124,7 +131,11 @@ export function stripPlacementAddressFromName(raw: string): string {
   let s = cleanPlacementFarmName(raw);
   if (!s) return s;
   // Page/header crumbs PDFKit leaves ahead of the first farm on a page.
-  s = s.replace(/^(?:No\.?|Page|Wk|WE|FSP1|HVPP|Out|Placed)\s+/i, "").trim();
+  s = s
+    .replace(/^(?:No\.?|Page|Wk|WE|FSP1|HVPP|Out|Placed|Ref\.?)\s+/i, "")
+    .replace(/\b(?:FSP1|HVPP|Ref\.?|Address1|Wk\s*No\.?)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   s = s.replace(/^\d{3,5}(?:FS|HV)\s+/i, "").trim();
   // Cut at first 3+ digit street number.
   const streetIdx = s.search(/\s+\d{3,6}(?:\s|$)/);
@@ -254,8 +265,8 @@ export function normalizePlacementRow(partial: {
  */
 const FARM_NAME_RE = "([A-Za-z][A-Za-z0-9 .'/()&/-]{0,48}?|[0-9][A-Za-z]{1,3})";
 
-/** True farm names — not a date, entity code, Complex, or address fragment. */
-function isPlausibleFarmName(name: string): boolean {
+/** True farm names — not a date, entity code, Complex, header, or address fragment. */
+export function isPlausibleFarmName(name: string): boolean {
   const farmName = stripPlacementAddressFromName(name);
   if (farmName.length < 2 || farmName.length > 50) return false;
   if (/^\d{3,5}[A-Z]{2}$/i.test(farmName)) return false;
@@ -264,6 +275,9 @@ function isPlausibleFarmName(name: string): boolean {
   if (/farm\s*name|date\s*placed|number\s*sent|projected|address|weekly/i.test(farmName)) {
     return false;
   }
+  // Crystal header crumbs: "Ref. FSP1 Wk No."
+  if (/\b(?:FSP1|HVPP|Ref\.?|Address1|Wk\s*No\.?|Complex)\b/i.test(farmName)) return false;
+  if (/^(?:No\.?|WE|Wk|Out|Placed|Page|Ref\.?)$/i.test(farmName)) return false;
   if (/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(farmName)) return false;
   if (/\b\d{3,6}\b/.test(farmName)) return false;
   if (
@@ -283,6 +297,16 @@ function isPlausibleFarmName(name: string): boolean {
   if (/,/.test(farmName.replace(/\([^)]*\)/g, ""))) return false;
   if (farmName.split(/\s+/).length > 6) return false;
   return true;
+}
+
+/** Drop header/Complex junk rows that slipped through a strategy. */
+export function rejectJunkPlacementRows(rows: PlacementRow[]): PlacementRow[] {
+  return rows.filter((row) => {
+    if (!isValidPlacementRow(row)) return false;
+    if (row.farmCode.toUpperCase() === "2601HV") return false;
+    if (!isPlausibleFarmName(row.farmName)) return false;
+    return true;
+  });
 }
 
 /**
@@ -1275,10 +1299,13 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
     console.warn("pickBestPlacementRows failed; using merged/device", e);
     best = merged;
   }
+  best = rejectJunkPlacementRows(best);
   if (best.length > 0) return best;
 
-  const deviceOnly = dedupePlacementRows(
-    safeParse("device-fallback", () => parseWeeklyChickPlacementDeviceText(text)),
+  const deviceOnly = rejectJunkPlacementRows(
+    dedupePlacementRows(
+      safeParse("device-fallback", () => parseWeeklyChickPlacementDeviceText(text)),
+    ),
   );
   if (deviceOnly.length > 0) return deviceOnly;
 
@@ -1286,10 +1313,12 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
     return [];
   }
 
-  const layout = dedupePlacementRows(parsePlacementLayoutText(text));
+  const layout = rejectJunkPlacementRows(dedupePlacementRows(parsePlacementLayoutText(text)));
   if (layout.length > 0) return layout;
 
-  return dedupePlacementRows(parsePlacementSheetRows(sheetFromLayoutText(text)));
+  return rejectJunkPlacementRows(
+    dedupePlacementRows(parsePlacementSheetRows(sheetFromLayoutText(text))),
+  );
 }
 
 export function parsePlacementSheetRows(sheet: string[][]): PlacementRow[] {
