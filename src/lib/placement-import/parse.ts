@@ -118,6 +118,55 @@ export function parseWeeklyChickPlacementText(text: string): PlacementRow[] {
   return rows;
 }
 
+/**
+ * PDFKit / pdftotext -raw scramble Weekly Chick Placement into blocks:
+ *   3821FS 22,200
+ *   2601HV FS26045 3 22,200 0 … PROJECTED
+ *   BLACKJACK MTN
+ *   08/03/2026 72944
+ */
+export function parseWeeklyChickPlacementScrambledText(text: string): PlacementRow[] {
+  const normalized = normalizePlacementPdfText(text);
+  const rows: PlacementRow[] = [];
+
+  const lineBlock =
+    /(?:^|\n)(\d{3,5}[A-Z]{2})\s+([\d,]+)\s*\n(\d{3,5}[A-Z]{2})\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\s+\d+\s+[\s\S]*?PROJECTED\s*\n([^\n]+)\n(\d{1,2}\/\d{1,2}\/\d{2,4})\s+\d{5}/gi;
+
+  let m: RegExpExecArray | null;
+  while ((m = lineBlock.exec(normalized))) {
+    const farmName = m[7]!.trim().replace(/\s+/g, " ");
+    if (!farmName || /farm\s*name|address|projected|weekly/i.test(farmName)) continue;
+    const row = normalizePlacementRow({
+      datePlaced: toIsoDate(m[8]!),
+      farmCode: m[1],
+      farmName,
+      flockId: m[4],
+      houseNo: Number(m[5]),
+      numberSent: parseNumberSent(m[2]!),
+    });
+    if (row && row.numberSent > 0) rows.push(row);
+  }
+  if (rows.length > 0) return rows;
+
+  const flat =
+    /(\d{3,5}[A-Z]{2})\s+([\d,]+)\s+(\d{3,5}[A-Z]{2})\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\s+\d+\s+[\s\S]*?PROJECTED\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+\d{5}/gi;
+  while ((m = flat.exec(normalized))) {
+    const farmName = m[7]!.trim().replace(/\s+/g, " ");
+    if (!farmName || /farm\s*name|address|projected|weekly/i.test(farmName)) continue;
+    if (/^\d{3,5}[A-Z]{2}$/i.test(farmName)) continue;
+    const row = normalizePlacementRow({
+      datePlaced: toIsoDate(m[8]!),
+      farmCode: m[1],
+      farmName,
+      flockId: m[4],
+      houseNo: Number(m[5]),
+      numberSent: parseNumberSent(m[2]!),
+    });
+    if (row && row.numberSent > 0) rows.push(row);
+  }
+  return rows;
+}
+
 /** Older simple layout (no complex prefix). */
 export function parsePlacementLayoutText(text: string): PlacementRow[] {
   const normalized = normalizePlacementPdfText(text);
@@ -145,8 +194,9 @@ export function parsePlacementLayoutText(text: string): PlacementRow[] {
 }
 
 export function parsePlacementScrambledText(text: string): PlacementRow[] {
-  // Prefer weekly parser on normalized text — scrambled legacy path is unreliable.
-  return parseWeeklyChickPlacementText(text);
+  const weekly = parseWeeklyChickPlacementText(text);
+  if (weekly.length > 0) return weekly;
+  return parseWeeklyChickPlacementScrambledText(text);
 }
 
 function headerIndex(headers: string[], candidates: string[]) {
@@ -176,9 +226,13 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
   const weekly = parseWeeklyChickPlacementText(text);
   if (weekly.length > 0) return weekly;
 
+  // iOS PDFKit (and pdftotext -raw) scramble Crystal Reports columns.
+  const scrambled = parseWeeklyChickPlacementScrambledText(text);
+  if (scrambled.length > 0) return scrambled;
+
   if (looksLikeWeeklyChickPlacement(text)) {
     // Don't fall back to loose parsers that invent junk rows for this format.
-    return weekly;
+    return [];
   }
 
   const layout = parsePlacementLayoutText(text);
