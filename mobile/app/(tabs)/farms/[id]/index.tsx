@@ -67,6 +67,7 @@ import {
 } from "../../../../src/components/ui";
 import { DatePickerField } from "../../../../src/components/DatePickerField";
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
+import { ConfirmDialog } from "../../../../src/components/ConfirmDialog";
 
 /** "2026-07-25" → "07-25-2026" */
 function formatUsDate(dateKey: string) {
@@ -379,6 +380,12 @@ export default function FarmDetailScreen() {
   const [generatorError, setGeneratorError] = useState<string | null>(null);
   const [generatorEditingId, setGeneratorEditingId] = useState<string | null>(null);
   const [generatorEditingGen, setGeneratorEditingGen] = useState<GenHourKey | null>(null);
+  const [completeConfirm, setCompleteConfirm] = useState<{
+    flockId: string;
+    flockNumber: string;
+  } | null>(null);
+  const [completePickerOpen, setCompletePickerOpen] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
   const [generatorDraft, setGeneratorDraft] = useState({
     logDate: todayKey(),
     gen1Hours: "",
@@ -564,43 +571,35 @@ export default function FarmDetailScreen() {
 
   const { farm } = data;
   const activeFlocks = data.activeFlocks ?? [];
-  function confirmCompleteFlock(flockId: string, flockNumber: string) {
-    Alert.alert(
-      "Complete flock?",
-      `Mark flock ${flockNumber} as completed? You can reactivate it later from Farm History.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Complete",
-          onPress: () => {
-            try {
-              completeFlock(flockId);
-              load();
-            } catch (e) {
-              Alert.alert(
-                "Error",
-                e instanceof Error ? e.message : "Could not complete flock",
-              );
-            }
-          },
-        },
-      ],
-    );
+
+  function askCompleteFlock(flockId: string, flockNumber: string) {
+    setCompleteError(null);
+    setCompletePickerOpen(false);
+    setCompleteConfirm({ flockId, flockNumber });
+  }
+
+  function runCompleteFlock() {
+    if (!completeConfirm) return;
+    try {
+      completeFlock(completeConfirm.flockId);
+      setCompleteConfirm(null);
+      setCompleteError(null);
+      load();
+    } catch (e) {
+      setCompleteConfirm(null);
+      setCompleteError(e instanceof Error ? e.message : "Could not complete flock");
+    }
   }
 
   function promptCompleteFlock() {
     if (activeFlocks.length === 0) return;
     if (activeFlocks.length === 1) {
-      confirmCompleteFlock(activeFlocks[0]!.id, activeFlocks[0]!.flockNumber);
+      askCompleteFlock(activeFlocks[0]!.id, activeFlocks[0]!.flockNumber);
       return;
     }
-    Alert.alert("Complete flock", "Which flock do you want to complete?", [
-      ...activeFlocks.map((fl) => ({
-        text: `${fl.flockNumber} (${fl.flockAgeDays}d)`,
-        onPress: () => confirmCompleteFlock(fl.id, fl.flockNumber),
-      })),
-      { text: "Cancel", style: "cancel" as const },
-    ]);
+    // RN Web Alert.alert is a no-op — use an in-app picker instead.
+    setCompleteError(null);
+    setCompletePickerOpen(true);
   }
 
   function openAddHouse() {
@@ -2539,6 +2538,103 @@ export default function FarmDetailScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <ConfirmDialog
+        visible={completeConfirm != null}
+        title="Complete flock?"
+        message={
+          completeConfirm
+            ? `Mark flock ${completeConfirm.flockNumber} as completed? You can reactivate it later from Farm History.`
+            : ""
+        }
+        confirmLabel="Complete"
+        onConfirm={runCompleteFlock}
+        onCancel={() => setCompleteConfirm(null)}
+      />
+
+      <ConfirmDialog
+        visible={completeError != null}
+        title="Error"
+        message={completeError ?? ""}
+        confirmLabel="OK"
+        cancelLabel="Dismiss"
+        onConfirm={() => setCompleteError(null)}
+        onCancel={() => setCompleteError(null)}
+      />
+
+      <Modal
+        visible={completePickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCompletePickerOpen(false)}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
+          onPress={() => setCompletePickerOpen(false)}
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <Pressable
+            onPress={() => {}}
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: 20,
+              maxWidth: 420,
+              width: "100%",
+              alignSelf: "center",
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+              Complete flock
+            </Text>
+            <Text style={{ marginTop: 8, fontSize: 14, lineHeight: 20, color: colors.muted }}>
+              Which flock do you want to complete?
+            </Text>
+            <View style={{ marginTop: 16, gap: 8 }}>
+              {activeFlocks.map((fl) => (
+                <Pressable
+                  key={fl.id}
+                  accessibilityRole="button"
+                  onPress={() => askCompleteFlock(fl.id, fl.flockNumber)}
+                  style={{
+                    borderRadius: 10,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    backgroundColor: colors.accentDark,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>
+                    {fl.flockNumber} ({fl.flockAgeDays}d)
+                  </Text>
+                </Pressable>
+              ))}
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setCompletePickerOpen(false)}
+                style={{
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 15 }}>
+                  Cancel
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
