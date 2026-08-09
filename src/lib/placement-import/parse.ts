@@ -306,14 +306,29 @@ export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
   const readNameDateBeforeFarmCode = (
     farmCodeIndex: number,
   ): { farmName: string; dateRaw: string } | null => {
-    // … [PROJECTED] [Complex] Name Date Zip FarmCode
-    if (farmCodeIndex < 3) return null;
-    if (!isZipToken(tokens[farmCodeIndex - 1]!) || !isDateToken(tokens[farmCodeIndex - 2]!)) {
-      return null;
+    // … Name Date [Zip]? FarmCode   (zip often present on iOS, but not required)
+    if (farmCodeIndex < 2) return null;
+    let dateIdx = -1;
+    if (isDateToken(tokens[farmCodeIndex - 1]!)) {
+      dateIdx = farmCodeIndex - 1;
+    } else if (
+      farmCodeIndex >= 2 &&
+      isZipToken(tokens[farmCodeIndex - 1]!) &&
+      isDateToken(tokens[farmCodeIndex - 2]!)
+    ) {
+      dateIdx = farmCodeIndex - 2;
+    } else {
+      for (let j = farmCodeIndex - 1; j >= Math.max(0, farmCodeIndex - 5); j--) {
+        if (isDateToken(tokens[j]!)) {
+          dateIdx = j;
+          break;
+        }
+      }
     }
-    const dateRaw = tokens[farmCodeIndex - 2]!;
+    if (dateIdx < 1) return null;
+    const dateRaw = tokens[dateIdx]!;
     const nameParts: string[] = [];
-    let k = farmCodeIndex - 3;
+    let k = dateIdx - 1;
     while (k >= 0 && nameParts.length < 8) {
       const tok = tokens[k]!;
       if (
@@ -322,10 +337,14 @@ export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
         isDateToken(tok) ||
         isBirdCountToken(tok) ||
         isZipToken(tok) ||
-        /^PROJECTED$/i.test(tok) ||
-        /^\d{1,2}$/.test(tok)
+        /^PROJECTED$/i.test(tok)
       ) {
         break;
+      }
+      // Skip stray day-count / week nums immediately before the name
+      if (/^\d{1,2}$/.test(tok) && nameParts.length === 0) {
+        k--;
+        continue;
       }
       nameParts.unshift(tok);
       k--;
@@ -432,59 +451,91 @@ export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
 export function parseWeeklyChickPlacementPdfKitText(text: string): PlacementRow[] {
   const flat = flattenPlacementPdfText(text);
   const rows: PlacementRow[] = [];
-  // Groups: 1 complex(ignored), 2 name, 3 date, 4 zip(ignored), 5 farmCode, 6 count, 7 sheetFlock, 8 house, 9 sent
+  const seen = new Set<string>();
+  const push = (partial: {
+    datePlaced: string | null;
+    farmCode: string;
+    farmName: string;
+    flockId: string;
+    houseNo: number;
+    numberSent: number | null;
+  }) => {
+    const row = normalizePlacementRow(partial);
+    if (!row || row.numberSent <= 0) return;
+    const key = `${row.farmCode}|${row.houseNo}|${row.datePlaced}|${row.numberSent}|${row.flockId}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push(row);
+  };
+
+  // Zip optional — device extracts sometimes omit it or glue other digits there.
+  // Groups: 1 complex, 2 name, 3 date, 4 farmCode, 5 count, 6 sheetFlock, 7 house, 8 sent
   const re = new RegExp(
-    `PROJECTED\\s+(\\d{3,5}[A-Z]{2})\\s+${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(\\d{5})\\s+(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
+    `PROJECTED\\s+(\\d{3,5}[A-Z]{2})\\s+${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(?:\\d{5}\\s+)?(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
     "gi",
   );
   let m: RegExpExecArray | null;
   while ((m = re.exec(flat))) {
     const complex = m[1]!;
     const farmName = m[2]!.trim().replace(/\s+/g, " ");
-    const farmCode = m[5]!; // code for this farm (left of name on the printed sheet)
+    const farmCode = m[4]!;
     if (!isPlausibleFarmName(farmName)) continue;
     if (farmCode.toUpperCase() === complex.toUpperCase()) continue;
-    const row = normalizePlacementRow({
+    push({
       datePlaced: toIsoDate(m[3]!),
       farmCode,
       farmName,
-      flockId: m[7],
-      houseNo: Number(m[8]),
-      numberSent: parseNumberSent(m[9]!),
+      flockId: m[6]!,
+      houseNo: Number(m[7]),
+      numberSent: parseNumberSent(m[8]!),
     });
-    if (row && row.numberSent > 0) rows.push(row);
   }
 
-  // Same core fields when PROJECTED/Complex prefix is missing:
-  // FarmName Date Zip FarmCode Count SheetFlock House Sent
+  // Core row without PROJECTED/Complex: Name Date [Zip]? FarmCode Count Flock House Sent
+  // Groups: 1 name, 2 date, 3 farmCode, 4 count, 5 sheetFlock, 6 house, 7 sent
   const re2 = new RegExp(
-    `${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(\\d{5})\\s+(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
+    `${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(?:\\d{5}\\s+)?(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
     "gi",
   );
   while ((m = re2.exec(flat))) {
     const farmName = m[1]!.trim().replace(/\s+/g, " ");
-    const farmCode = m[4]!;
+    const farmCode = m[3]!;
     if (!isPlausibleFarmName(farmName)) continue;
     if (!/^\d{3,5}[A-Z]{2}$/i.test(farmCode)) continue;
-    if (
-      rows.some(
-        (r) =>
-          r.farmCode === farmCode.toUpperCase() &&
-          r.houseNo === Number(m![7]) &&
-          r.datePlaced === (toIsoDate(m![2]!) ?? ""),
-      )
-    ) {
-      continue;
-    }
-    const row = normalizePlacementRow({
+    push({
       datePlaced: toIsoDate(m[2]!),
       farmCode,
       farmName,
-      flockId: m[6],
-      houseNo: Number(m[7]),
-      numberSent: parseNumberSent(m[8]!),
+      flockId: m[5]!,
+      houseNo: Number(m[6]),
+      numberSent: parseNumberSent(m[7]!),
     });
-    if (row && row.numberSent > 0) rows.push(row);
+  }
+
+  // Anchor on FarmCode + birds + sheet flock + house + birds (most stable on iOS).
+  // Groups: 1 farmCode, 2 count, 3 sheetFlock, 4 house, 5 sent — name/date from nearby left text.
+  const re3 =
+    /(\d{3,5}[A-Z]{2})\s+([\d,]+)\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)/gi;
+  while ((m = re3.exec(flat))) {
+    const farmCode = m[1]!;
+    const before = flat.slice(Math.max(0, m.index - 120), m.index);
+    const named = before.match(
+      new RegExp(
+        `${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})(?:\\s+\\d{5})?\\s*$`,
+        "i",
+      ),
+    );
+    if (!named) continue;
+    const farmName = named[1]!.trim().replace(/\s+/g, " ");
+    if (!isPlausibleFarmName(farmName)) continue;
+    push({
+      datePlaced: toIsoDate(named[2]!),
+      farmCode,
+      farmName,
+      flockId: m[3]!,
+      houseNo: Number(m[4]),
+      numberSent: parseNumberSent(m[5]!) ?? parseNumberSent(m[2]!),
+    });
   }
   return rows;
 }
@@ -596,40 +647,43 @@ function sheetFromLayoutText(text: string): string[][] {
     });
 }
 
+/** Prefer the parse that recovered the most placement rows (partial matches must not win). */
+function pickBestPlacementRows(candidates: PlacementRow[][]): PlacementRow[] {
+  let best: PlacementRow[] = [];
+  let bestFarms = 0;
+  for (const rows of candidates) {
+    if (rows.length === 0) continue;
+    const farms = groupPlacementFarms(rows).length;
+    if (rows.length > best.length || (rows.length === best.length && farms > bestFarms)) {
+      best = rows;
+      bestFarms = farms;
+    }
+  }
+  return best;
+}
+
 /** PDF / text → placement rows. Weekly Chick Placement layout is preferred. */
 export function parsePlacementPdfText(text: string): PlacementRow[] {
-  // iOS PDFKit page.string order from TestFlight device samples.
-  const pdfkit = parseWeeklyChickPlacementPdfKitText(text);
-  if (pdfkit.length > 0) return pdfkit;
-
-  // Token scanner — covers PDFKit + layout + older scrambled shapes.
-  const tokens = parseWeeklyChickPlacementTokens(text);
-  if (tokens.length > 0) return tokens;
-
-  // Flattened weekly match — PDFKit often inserts newlines between cells.
-  const weeklyFlat = parseWeeklyChickPlacementText(flattenPlacementPdfText(text));
-  if (weeklyFlat.length > 0) return weeklyFlat;
-
-  const weekly = parseWeeklyChickPlacementText(text);
-  if (weekly.length > 0) return weekly;
-
-  // iOS PDFKit (and pdftotext -raw) scramble Crystal Reports columns.
-  const scrambled = parseWeeklyChickPlacementScrambledText(text);
-  if (scrambled.length > 0) return scrambled;
-
-  const loose = parseWeeklyChickPlacementLooseText(text);
-  if (loose.length > 0) return loose;
+  // Run all strategies and keep the richest result. A partial PDFKit match
+  // (e.g. 6 farms) must not hide a full scrambled/layout parse (~21 farms).
+  const best = pickBestPlacementRows([
+    parseWeeklyChickPlacementPdfKitText(text),
+    parseWeeklyChickPlacementTokens(text),
+    parseWeeklyChickPlacementText(flattenPlacementPdfText(text)),
+    parseWeeklyChickPlacementText(text),
+    parseWeeklyChickPlacementScrambledText(text),
+    parseWeeklyChickPlacementLooseText(text),
+  ]);
+  if (best.length > 0) return best;
 
   if (looksLikeWeeklyChickPlacement(text)) {
-    // Don't fall back to sheet parsers that invent junk rows for this format.
     return [];
   }
 
   const layout = parsePlacementLayoutText(text);
   if (layout.length > 0) return layout;
 
-  const sheet = parsePlacementSheetRows(sheetFromLayoutText(text));
-  return sheet;
+  return parsePlacementSheetRows(sheetFromLayoutText(text));
 }
 
 export function parsePlacementSheetRows(sheet: string[][]): PlacementRow[] {
