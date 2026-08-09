@@ -113,8 +113,12 @@ function normalizePlacementPdfText(text: string): string {
       /(\d{1,3},\d{3})((?:FS|HV)\d{5})(\d{1,2}?)(\d{2},\d{3})/gi,
       "$1 $2 $3 $4",
     )
+    // Count+flock+house with birds after a space: 22,200FS260453 22,200
+    .replace(/(\d{1,3},\d{3})((?:FS|HV)\d{5})(\d{1,2})\b/gi, "$1 $2 $3")
     // Count glued to bare flock: 17,800FS26045 → 17,800 FS26045
     .replace(/(\d{1,3}(?:,\d{3})+)((?:FS|HV)\d{5}\b)/gi, "$1 $2")
+    // Letter-run glued onto street number: BLACKJACKMTN6501BLACKJACK → …MTN 6501 BLACKJACK
+    .replace(/([A-Za-z.])(\d{3,6})(?=[A-Za-z])/g, "$1 $2 ")
     // Letters/name glued to farm code: ROAD3821FS / MTN3821FS
     .replace(/([A-Za-z.])(\d{4,5}[A-Z]{2}\b)/g, "$1 $2")
     // Flock+house+comma-birds glued: FS26045617,800 → FS26045 6 17,800
@@ -178,7 +182,10 @@ function normalizePlacementPdfText(text: string): string {
 export function cleanPlacementFarmName(name: string): string {
   let farmName = name.trim().replace(/\s+/g, " ");
   farmName = farmName.replace(/^(?:HV|FS)(?:\s+|$)/i, "").trim();
+  // Glued Complex/entity prefix: HVFARM9 / FSVCS → FARM9 / VCS
+  farmName = farmName.replace(/^(?:HV|FS)(?=[A-Za-z0-9])/i, "").trim();
   farmName = farmName.replace(/^\d{3,5}(?:HV|FS)\s+/i, "").trim();
+  farmName = farmName.replace(/^\d{3,5}(?:HV|FS)(?=[A-Za-z])/i, "").trim();
   return farmName;
 }
 
@@ -199,7 +206,12 @@ export function stripPlacementAddressFromName(raw: string): string {
   s = s.replace(/^\d{3,5}(?:FS|HV)\s+/i, "").trim();
   // Cut at first 3+ digit street number BEFORE city cleanup so we don't
   // swallow last names ("ARCHEY MICHAEL CAMERON OKLA 27906" → keep MICHAEL).
-  const streetIdx = s.search(/\s+\d{3,6}(?:\s|$)/);
+  // Also handle glued PDFKit forms: BLACKJACKMTN6501… (no lookbehind — Hermes).
+  let streetIdx = s.search(/\s+\d{3,6}(?:\s|$)/);
+  if (streetIdx < 0) {
+    const gluedStreet = s.match(/[A-Za-z](\d{3,6})(?:[A-Za-z.\s]|$)/);
+    if (gluedStreet && gluedStreet.index != null) streetIdx = gluedStreet.index + 1;
+  }
   if (streetIdx > 0) {
     const head = s.slice(0, streetIdx).trim();
     if (head.length >= 2) s = head;
@@ -225,6 +237,8 @@ export function stripPlacementAddressFromName(raw: string): string {
       "",
     )
     .replace(/\s+\b(?:HWY|HIGHWAY|ROAD|RD\.?|STREET|AVE|DRIVE|OKLA|ARKA)\b.*$/i, "")
+    // Glued: "MTN. ROADABBOTTARKA" / "FARM9 470195E 670RDWESTVILLEOK"
+    .replace(/[.\s]*(?:HWY|HIGHWAY|ROAD|RD\.?|STREET|AVE|DRIVE|OKLA|ARKA)[A-Z0-9].*$/i, "")
     .trim();
   return cleanPlacementFarmName(s);
 }
@@ -358,6 +372,11 @@ export function isPlausibleFarmName(name: string): boolean {
   if (
     /\b(?:HWY|HIGHWAY|ROAD|RD|STREET|AVE|DRIVE|DR|LN|LANE|BLVD|OKLA|ARKA)\b/i.test(farmName)
   ) {
+    return false;
+  }
+  // Glued PDFKit address crumbs with no word boundaries: ROADABBOTT / HWY252.
+  // Avoid bare "ROAD" substring (would false-positive BROADWAY).
+  if (/(?:ROAD|HWY|HIGHWAY|STREET|DRIVE)[A-Z0-9]|OKLA|ARKA/i.test(farmName)) {
     return false;
   }
   // Reject calendar crumbs ("Saturday, August 8, 2026 BLACKJACK MTN")
