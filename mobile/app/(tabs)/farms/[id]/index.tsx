@@ -1988,43 +1988,39 @@ export default function FarmDetailScreen() {
                     </View>
                     {data.activeFlock ? (
                       <>
-                        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
-                          <View style={{ flex: 1 }}>
-                            <DatePickerField
-                              label="Placement date"
-                              value={editingHouse.placementDate}
-                              presentation="inline"
-                              onChange={(date) =>
-                                setEditingHouse((prev) => {
-                                  if (!prev) return prev;
-                                  const oldDefault = prev.placementDate
-                                    ? addDaysKey(prev.placementDate, 52)
-                                    : "";
-                                  const catchWasDefault =
-                                    !prev.catchDate || prev.catchDate === oldDefault;
-                                  return {
-                                    ...prev,
-                                    placementDate: date,
-                                    catchDate: catchWasDefault
-                                      ? addDaysKey(date, 52)
-                                      : prev.catchDate,
-                                  };
-                                })
-                              }
-                            />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <DatePickerField
-                              label="Catch date"
-                              value={editingHouse.catchDate}
-                              presentation="inline"
-                              onChange={(date) =>
-                                setEditingHouse((prev) =>
-                                  prev ? { ...prev, catchDate: date } : prev,
-                                )
-                              }
-                            />
-                          </View>
+                        <View style={{ marginBottom: 10, gap: 4 }}>
+                          <DatePickerField
+                            label="Placement date"
+                            value={editingHouse.placementDate}
+                            presentation="inline"
+                            onChange={(date) =>
+                              setEditingHouse((prev) => {
+                                if (!prev) return prev;
+                                const oldDefault = prev.placementDate
+                                  ? addDaysKey(prev.placementDate, 52)
+                                  : "";
+                                const catchWasDefault =
+                                  !prev.catchDate || prev.catchDate === oldDefault;
+                                return {
+                                  ...prev,
+                                  placementDate: date,
+                                  catchDate: catchWasDefault
+                                    ? addDaysKey(date, 52)
+                                    : prev.catchDate,
+                                };
+                              })
+                            }
+                          />
+                          <DatePickerField
+                            label="Catch date"
+                            value={editingHouse.catchDate}
+                            presentation="inline"
+                            onChange={(date) =>
+                              setEditingHouse((prev) =>
+                                prev ? { ...prev, catchDate: date } : prev,
+                              )
+                            }
+                          />
                         </View>
                         <Text style={[styles.label, { marginTop: 2 }]}>Flock ID</Text>
                         <TextInput
