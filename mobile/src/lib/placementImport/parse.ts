@@ -50,16 +50,33 @@ function parseNumberSent(raw: string): number | null {
  */
 function normalizePlacementPdfText(text: string): string {
   return text
+    .replace(/\u0000/g, "")
+    .replace(/[\u2000-\u200b\u202f\u205f\u3000\ufeff]/g, " ")
     .replace(/\u00a0/g, " ")
     .replace(/(\d{1,2}\/\d{1,2}\/\d{4})(\d{3,5}[A-Z]{2})/gi, "$1 $2")
     .replace(/(\d{1,2}\/\d{1,2}\/\d{2})(\d{3,5}[A-Z]{2})/gi, "$1 $2")
     // 22,2002601HV (comma bird count glued to complex/farm code)
     .replace(/(\d{1,3}(?:,\d{3})+)(\d{3,5}[A-Z]{2}\b)/gi, "$1 $2")
+    // 222002601HV (no-comma bird count glued to complex)
+    .replace(/(\b\d{4,6})(\d{3,5}[A-Z]{2}\b)/gi, "$1 $2")
     .replace(/PROJECTED(?=\S)/gi, "PROJECTED ")
     // BLACKJACK MTN08/03/2026 or (SAM FORST)08/03/2026
     .replace(/([A-Za-z.)])(\d{1,2}\/\d{1,2}\/\d{2,4})/g, "$1 $2")
     // FARM 908/04/2026 → FARM 9 08/04/2026 (house digit glued into date)
     .replace(/(\d)(\d{2}\/\d{1,2}\/\d{2,4})/g, "$1 $2");
+}
+
+/** Flatten whitespace for resilient matching across PDFKit line breaks. */
+function flattenPlacementPdfText(text: string): string {
+  return normalizePlacementPdfText(text).replace(/\s+/g, " ").trim();
+}
+
+/** Short sample for TestFlight error messages when parse fails. */
+export function placementPdfDebugSample(text: string, max = 180): string {
+  const flat = flattenPlacementPdfText(text);
+  if (!flat) return "(empty)";
+  const sample = flat.slice(0, max).replace(/\s+/g, " ");
+  return sample.length < flat.length ? `${sample}…` : sample;
 }
 
 function looksLikeWeeklyChickPlacement(text: string): boolean {
@@ -169,19 +186,118 @@ export function parseWeeklyChickPlacementScrambledText(text: string): PlacementR
     if (row && row.numberSent > 0) rows.push(row);
   };
 
-  // PDFKit single-line (most common on iOS): fields run together on one line.
+  // Prefer flattened text so PDFKit newlines between fields still match.
+  const flat = flattenPlacementPdfText(text);
   const glued =
-    /(\d{3,5}[A-Z]{2})\s+([\d,]+)\s+(\d{3,5}[A-Z]{2})\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\s+\d+\s+.+?PROJECTED\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+\d{5}/gi;
+    /(\d{3,5}[A-Z]{2})\s+([\d,]+)\s+(\d{3,5}[A-Z]{2})\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\s+\d+\s+[\s\S]*?PROJECTED\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s+\d{5})?/gi;
   let m: RegExpExecArray | null;
-  while ((m = glued.exec(normalized))) {
+  while ((m = glued.exec(flat))) {
     pushMatch(m[1]!, m[2]!, m[4]!, m[5]!, m[7]!, m[8]!);
   }
   if (rows.length > 0) return rows;
 
   const lineBlock =
-    /(?:^|\n)(\d{3,5}[A-Z]{2})\s+([\d,]+)\s*\n(\d{3,5}[A-Z]{2})\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\s+\d+\s+[\s\S]*?PROJECTED\s*\n([^\n]+)\n(\d{1,2}\/\d{1,2}\/\d{2,4})\s+\d{5}/gi;
+    /(?:^|\n)(\d{3,5}[A-Z]{2})\s+([\d,]+)\s*\n(\d{3,5}[A-Z]{2})\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\s+\d+\s+[\s\S]*?PROJECTED\s*\n([^\n]+)\n(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s+\d{5})?/gi;
   while ((m = lineBlock.exec(normalized))) {
     pushMatch(m[1]!, m[2]!, m[4]!, m[5]!, m[7]!, m[8]!);
+  }
+  return rows;
+}
+
+/**
+ * Last-resort parser: anchor on Flock Code + House + Number Sent, then pull
+ * Farm Code / Name / Date from a nearby window. Survives odd PDFKit ordering.
+ */
+export function parseWeeklyChickPlacementLooseText(text: string): PlacementRow[] {
+  const flat = flattenPlacementPdfText(text);
+  if (!flat) return [];
+  const rows: PlacementRow[] = [];
+  const re = /\b((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\b/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(flat))) {
+    const flockId = m[1]!;
+    const houseNo = Number(m[2]);
+    const numberSent = parseNumberSent(m[3]!);
+    if (!numberSent || numberSent < 100) continue; // placement rows are large counts
+    if (!Number.isFinite(houseNo) || houseNo < 1 || houseNo > 40) continue;
+
+    const before = flat.slice(Math.max(0, m.index - 180), m.index);
+    const after = flat.slice(m.index + m[0].length, m.index + m[0].length + 240);
+
+    // Layout order: Complex Date FarmCode FarmName <flock>
+    const layout = before.match(
+      /(\d{3,5}[A-Z]{2})\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{3,5}[A-Z]{2})\s+(.+)$/i,
+    );
+    if (layout) {
+      const farmName = layout[4]!.trim().replace(/\s+/g, " ");
+      if (farmName && !/farm\s*name|projected|address/i.test(farmName)) {
+        const row = normalizePlacementRow({
+          datePlaced: toIsoDate(layout[2]!),
+          farmCode: layout[3],
+          farmName,
+          flockId,
+          houseNo,
+          numberSent,
+        });
+        if (row && row.numberSent > 0) rows.push(row);
+        continue;
+      }
+    }
+
+    // Scrambled: FarmCode Count Complex <flock> … PROJECTED Name Date
+    const scrambledHead = before.match(/(\d{3,5}[A-Z]{2})\s+([\d,]+)\s+(\d{3,5}[A-Z]{2})\s*$/i);
+    const projected = after.match(
+      /PROJECTED\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s+\d{5})?/i,
+    );
+    if (scrambledHead && projected) {
+      const farmName = projected[1]!.trim().replace(/\s+/g, " ");
+      if (farmName && !/farm\s*name|address|projected/i.test(farmName)) {
+        const row = normalizePlacementRow({
+          datePlaced: toIsoDate(projected[2]!),
+          farmCode: scrambledHead[1],
+          farmName,
+          flockId,
+          houseNo,
+          numberSent,
+        });
+        if (row && row.numberSent > 0) rows.push(row);
+        continue;
+      }
+    }
+
+    // Minimal: any farm code near the flock + PROJECTED name/date after
+    const anyCode = before.match(/(\d{3,5}[A-Z]{2})(?:\s+[\d,]+)?\s*$/i);
+    if (anyCode && projected) {
+      const farmName = projected[1]!.trim().replace(/\s+/g, " ");
+      const row = normalizePlacementRow({
+        datePlaced: toIsoDate(projected[2]!),
+        farmCode: anyCode[1],
+        farmName,
+        flockId,
+        houseNo,
+        numberSent,
+      });
+      if (row && row.numberSent > 0) rows.push(row);
+      continue;
+    }
+
+    // Spatial PDFKit line without PROJECTED nearby: … FarmCode FarmName <flock> … Date
+    const spatial = before.match(/(\d{3,5}[A-Z]{2})\s+([A-Za-z0-9][A-Za-z0-9 .'/()&-]{1,60})$/);
+    const dateAfter = after.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+    if (spatial && dateAfter) {
+      const farmName = spatial[2]!.trim().replace(/\s+/g, " ");
+      if (farmName && !/farm\s*name|projected|address/i.test(farmName)) {
+        const row = normalizePlacementRow({
+          datePlaced: toIsoDate(dateAfter[1]!),
+          farmCode: spatial[1],
+          farmName,
+          flockId,
+          houseNo,
+          numberSent,
+        });
+        if (row && row.numberSent > 0) rows.push(row);
+      }
+    }
   }
   return rows;
 }
@@ -242,6 +358,10 @@ function sheetFromLayoutText(text: string): string[][] {
 
 /** PDF / text → placement rows. Weekly Chick Placement layout is preferred. */
 export function parsePlacementPdfText(text: string): PlacementRow[] {
+  // Flattened weekly match first — PDFKit often inserts newlines between cells.
+  const weeklyFlat = parseWeeklyChickPlacementText(flattenPlacementPdfText(text));
+  if (weeklyFlat.length > 0) return weeklyFlat;
+
   const weekly = parseWeeklyChickPlacementText(text);
   if (weekly.length > 0) return weekly;
 
@@ -249,8 +369,11 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
   const scrambled = parseWeeklyChickPlacementScrambledText(text);
   if (scrambled.length > 0) return scrambled;
 
+  const loose = parseWeeklyChickPlacementLooseText(text);
+  if (loose.length > 0) return loose;
+
   if (looksLikeWeeklyChickPlacement(text)) {
-    // Don't fall back to loose parsers that invent junk rows for this format.
+    // Don't fall back to sheet parsers that invent junk rows for this format.
     return [];
   }
 

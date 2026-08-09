@@ -9,6 +9,7 @@ import {
   groupPlacementFarms,
   parsePlacementPdfText,
   parsePlacementSheetRows,
+  placementPdfDebugSample,
   type PlacementRow,
 } from "../lib/placementImport/parse";
 import {
@@ -249,8 +250,9 @@ export function ScheduleImportCard() {
 
     const parsed = parsePlacementPdfText(text);
     if (parsed.length === 0) {
+      const sample = placementPdfDebugSample(text);
       throw new Error(
-        "Could not read placement rows from PDF. Need at least a Farm Name or Farm Code (other fields can be blank).",
+        `Could not read placement rows from PDF (${text.length} chars). Need Farm Name or Farm Code. Sample: ${sample}`,
       );
     }
     buildPlacementPreview(parsed);
