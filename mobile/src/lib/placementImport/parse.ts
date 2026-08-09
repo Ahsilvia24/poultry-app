@@ -1367,3 +1367,199 @@ export function groupPlacementFarms(rows: PlacementRow[]): PlacementFarmGroup[] 
     }))
     .sort((a, b) => a.farmName.localeCompare(b.farmName));
 }
+
+/** Offline review: PDF extract hints shown beside the parsed sheet. */
+export type PlacementExtractHint = {
+  chars: number;
+  projected: number;
+  anchors: number;
+  complexAnchors: number;
+  expectedRows: number;
+};
+
+export type PlacementReviewIssue = {
+  id: string;
+  severity: "warn" | "info";
+  message: string;
+};
+
+/** Common offline “what’s wrong” chips the grower can tap. */
+export const PLACEMENT_FIX_CHIPS = [
+  { id: "missing_farms", label: "Missing farms" },
+  { id: "wrong_codes", label: "Wrong farm codes" },
+  { id: "wrong_houses", label: "Wrong houses / birds" },
+  { id: "wrong_dates", label: "Wrong dates" },
+  { id: "junk_rows", label: "Extra / junk rows" },
+  { id: "wrong_names", label: "Wrong farm names" },
+] as const;
+
+export type PlacementFixChipId = (typeof PLACEMENT_FIX_CHIPS)[number]["id"];
+
+export function buildPlacementReviewIssues(
+  rows: PlacementRow[],
+  stats?: PlacementExtractHint | null,
+): PlacementReviewIssue[] {
+  const issues: PlacementReviewIssue[] = [];
+  const summary = summarizePlacementRows(rows);
+  const farms = groupPlacementFarms(rows);
+
+  if (stats && stats.expectedRows >= 20 && summary.rowCount < stats.expectedRows * 0.5) {
+    issues.push({
+      id: "partial_sheet",
+      severity: "warn",
+      message: `Read ${summary.rowCount} houses but the PDF looks like ~${stats.expectedRows}. Some farms may be missing — fix below or re-upload.`,
+    });
+  } else if (stats && stats.expectedRows >= 10 && summary.rowCount < stats.expectedRows) {
+    issues.push({
+      id: "short_sheet",
+      severity: "info",
+      message: `Read ${summary.rowCount} of ~${stats.expectedRows} expected houses. Check the list before importing.`,
+    });
+  }
+
+  if (farms.some((f) => f.farmCode.toUpperCase() === "2601HV")) {
+    issues.push({
+      id: "complex_as_code",
+      severity: "warn",
+      message:
+        "Complex code 2601HV showed up as a farm code — change it to the code left of the farm name (e.g. 3821FS).",
+    });
+  }
+
+  const zeroBirds = rows.filter((r) => !(r.numberSent > 0)).length;
+  if (zeroBirds > 0) {
+    issues.push({
+      id: "zero_birds",
+      severity: "warn",
+      message: `${zeroBirds} house${zeroBirds === 1 ? "" : "s"} have 0 birds — fill in birds sent or remove those rows.`,
+    });
+  }
+
+  if (summary.farmCount === 0) {
+    issues.push({
+      id: "empty",
+      severity: "warn",
+      message: "No farms to import yet. Add rows below or re-upload the PDF.",
+    });
+  }
+
+  return issues;
+}
+
+export function rowsForFarm(
+  rows: PlacementRow[],
+  farmKey: string,
+): Array<{ index: number; row: PlacementRow }> {
+  const out: Array<{ index: number; row: PlacementRow }> = [];
+  rows.forEach((row, index) => {
+    if (farmGroupKey(row.farmCode, row.farmName) === farmKey) {
+      out.push({ index, row });
+    }
+  });
+  return out;
+}
+
+export function patchPlacementRowAt(
+  rows: PlacementRow[],
+  index: number,
+  patch: Partial<PlacementRow>,
+): PlacementRow[] {
+  if (index < 0 || index >= rows.length) return rows;
+  const next = rows.slice();
+  const cur = next[index]!;
+  next[index] = {
+    ...cur,
+    ...patch,
+    farmCode: (patch.farmCode ?? cur.farmCode).trim().toUpperCase(),
+    farmName: (patch.farmName ?? cur.farmName).trim().replace(/\s+/g, " "),
+    flockId: (patch.flockId ?? cur.flockId).trim().toUpperCase(),
+    datePlaced: (patch.datePlaced ?? cur.datePlaced).trim(),
+    houseNo:
+      patch.houseNo != null && Number.isFinite(patch.houseNo)
+        ? Math.max(1, Math.floor(patch.houseNo))
+        : cur.houseNo,
+    numberSent:
+      patch.numberSent != null && Number.isFinite(patch.numberSent)
+        ? Math.max(0, Math.floor(patch.numberSent))
+        : cur.numberSent,
+  };
+  return next;
+}
+
+export function removePlacementRowAt(rows: PlacementRow[], index: number): PlacementRow[] {
+  if (index < 0 || index >= rows.length) return rows;
+  return rows.filter((_, i) => i !== index);
+}
+
+export function renamePlacementFarm(
+  rows: PlacementRow[],
+  farmKey: string,
+  farmName: string,
+  farmCode: string,
+): PlacementRow[] {
+  const name = farmName.trim().replace(/\s+/g, " ");
+  const code = farmCode.trim().toUpperCase();
+  return rows.map((row) => {
+    if (farmGroupKey(row.farmCode, row.farmName) !== farmKey) return row;
+    return {
+      ...row,
+      farmName: name || row.farmName,
+      farmCode: code || row.farmCode,
+    };
+  });
+}
+
+export function addPlacementHouseRow(
+  rows: PlacementRow[],
+  template: {
+    farmCode: string;
+    farmName: string;
+    flockId?: string;
+    datePlaced?: string;
+    houseNo?: number;
+    numberSent?: number;
+  },
+): PlacementRow[] {
+  const farmRows = rows.filter(
+    (r) =>
+      farmGroupKey(r.farmCode, r.farmName) ===
+      farmGroupKey(template.farmCode, template.farmName),
+  );
+  const usedHouses = new Set(farmRows.map((r) => r.houseNo));
+  let houseNo = template.houseNo ?? 1;
+  while (usedHouses.has(houseNo) && houseNo < 40) houseNo += 1;
+  const datePlaced =
+    template.datePlaced ||
+    farmRows[0]?.datePlaced ||
+    new Date().toISOString().slice(0, 10);
+  const flockId = (
+    template.flockId ||
+    farmRows[0]?.flockId ||
+    `${template.farmCode}-H${houseNo}`
+  ).toUpperCase();
+  return [
+    ...rows,
+    {
+      farmCode: template.farmCode.trim().toUpperCase(),
+      farmName: template.farmName.trim().replace(/\s+/g, " "),
+      flockId,
+      datePlaced,
+      houseNo,
+      numberSent: template.numberSent ?? 0,
+    },
+  ];
+}
+
+export function addBlankPlacementFarm(rows: PlacementRow[]): PlacementRow[] {
+  return [
+    ...rows,
+    {
+      farmCode: "0000FS",
+      farmName: "NEW FARM",
+      flockId: "NEW-H1",
+      datePlaced: new Date().toISOString().slice(0, 10),
+      houseNo: 1,
+      numberSent: 0,
+    },
+  ];
+}

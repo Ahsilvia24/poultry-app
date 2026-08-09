@@ -5,6 +5,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as XLSX from "xlsx";
 import { colors, styles } from "../theme";
 import { Card, PrimaryButton } from "./ui";
+import { PlacementImportReview } from "./PlacementImportReview";
 import {
   groupPlacementFarms,
   parsePlacementPdfText,
@@ -14,6 +15,10 @@ import {
   summarizePlacementRows,
   type PlacementRow,
 } from "../lib/placementImport/parse";
+import {
+  buildPlacementReviewIssues,
+  type PlacementExtractHint,
+} from "../lib/placementImport/review";
 import {
   groupCatchFarms,
   parseCatchPdfText,
@@ -141,6 +146,8 @@ export function ScheduleImportCard() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [rename, setRename] = useState<Record<string, boolean>>({});
   const [onlyMyFarms, setOnlyMyFarms] = useState(false);
+  const [extractHint, setExtractHint] = useState<PlacementExtractHint | null>(null);
+  const [fixFarmKey, setFixFarmKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedCount = useMemo(
@@ -148,8 +155,40 @@ export function ScheduleImportCard() {
     [selected],
   );
 
-  function setPreviewFromGroups(groups: FarmPreview[]) {
+  const reviewIssues = useMemo(
+    () =>
+      importType === "placement" && placementRows.length > 0
+        ? buildPlacementReviewIssues(placementRows, extractHint)
+        : [],
+    [importType, placementRows, extractHint],
+  );
+
+  function clearPreview() {
+    setFarms([]);
+    setPlacementRows([]);
+    setCatchRows([]);
+    setOnlyMyFarms(false);
+    setExtractHint(null);
+    setFixFarmKey(null);
+  }
+
+  function setPreviewFromGroups(groups: FarmPreview[], preserveSelection = false) {
     setFarms(groups);
+    if (preserveSelection) {
+      setSelected((prev) => {
+        const next: Record<string, boolean> = {};
+        for (const farm of groups) {
+          next[farm.key] = prev[farm.key] ?? farm.isMyFarm;
+        }
+        return next;
+      });
+      setRename((prev) => {
+        const next: Record<string, boolean> = {};
+        for (const farm of groups) next[farm.key] = prev[farm.key] ?? false;
+        return next;
+      });
+      return;
+    }
     const nextSelected: Record<string, boolean> = {};
     const nextRename: Record<string, boolean> = {};
     for (const farm of groups) {
@@ -161,7 +200,15 @@ export function ScheduleImportCard() {
     setOnlyMyFarms(true);
   }
 
-  function buildPlacementPreview(parsed: PlacementRow[], statsLine?: string | null) {
+  function buildPlacementPreview(
+    parsed: PlacementRow[],
+    opts?: {
+      statsLine?: string | null;
+      hint?: PlacementExtractHint | null;
+      preserveSelection?: boolean;
+      edited?: boolean;
+    },
+  ) {
     const existing = listFarmsForPlacementMatch();
     const grouped = groupPlacementFarms(parsed);
     const matches = matchPlacementFarmGroups(grouped, existing);
@@ -182,13 +229,18 @@ export function ScheduleImportCard() {
     });
     setPlacementRows(parsed);
     setCatchRows([]);
-    setPreviewFromGroups(groups);
+    if (opts?.hint !== undefined) setExtractHint(opts.hint);
+    setPreviewFromGroups(groups, Boolean(opts?.preserveSelection));
     const summary = summarizePlacementRows(parsed);
     const matched = groups.filter((g) => g.isMyFarm).length;
-    const statsSuffix = statsLine ? ` · ${statsLine}` : "";
+    const statsSuffix = opts?.statsLine ? ` · ${opts.statsLine}` : "";
+    const editedSuffix = opts?.edited ? " · edited offline" : "";
     setNote(
-      `Read ${summary.farmCount} farm${summary.farmCount === 1 ? "" : "s"} · ${summary.houseCount} house${summary.houseCount === 1 ? "" : "s"} · ${summary.birdsSent.toLocaleString()} birds (${matched} match your farms)${statsSuffix}.`,
+      `Read ${summary.farmCount} farm${summary.farmCount === 1 ? "" : "s"} · ${summary.houseCount} house${summary.houseCount === 1 ? "" : "s"} · ${summary.birdsSent.toLocaleString()} birds (${matched} match your farms)${statsSuffix}${editedSuffix}.`,
     );
+    if (opts?.preserveSelection && fixFarmKey && !groups.some((g) => g.key === fixFarmKey)) {
+      setFixFarmKey(groups[0]?.key ?? null);
+    }
   }
 
   function buildCatchPreview(parsed: CatchRow[]) {
@@ -235,6 +287,8 @@ export function ScheduleImportCard() {
         "Could not read placement rows. Need at least Farm Name or Farm Code (Date, Flock, House, and birds can be blank).",
       );
     }
+    setExtractHint(null);
+    setFixFarmKey(null);
     buildPlacementPreview(parsed);
   }
 
@@ -271,7 +325,15 @@ export function ScheduleImportCard() {
         `Could not read placement rows from PDF (${stats.chars} chars, ${stats.projected} PROJECTED, ${stats.expectedRows} expected). Need Farm Name or Farm Code. Sample: ${sample}`,
       );
     }
-    buildPlacementPreview(parsed, statsLine);
+    const hint: PlacementExtractHint = {
+      chars: stats.chars,
+      projected: stats.projected,
+      anchors: stats.anchors,
+      complexAnchors: stats.complexAnchors,
+      expectedRows: stats.expectedRows,
+    };
+    setFixFarmKey(null);
+    buildPlacementPreview(parsed, { statsLine, hint });
     const summary = summarizePlacementRows(parsed);
     if (stats.expectedRows >= 20 && summary.rowCount < stats.expectedRows * 0.5) {
       try {
@@ -438,10 +500,7 @@ export function ScheduleImportCard() {
           showAlert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
         }
       }
-      setFarms([]);
-      setPlacementRows([]);
-      setCatchRows([]);
-      setOnlyMyFarms(false);
+      clearPreview();
     } catch (e) {
       showAlert("Import failed", e instanceof Error ? e.message : "Could not import");
     } finally {
@@ -452,8 +511,8 @@ export function ScheduleImportCard() {
   const helperText =
     importType === "placement"
       ? Platform.OS === "web"
-        ? "Weekly Chick Placement: farm name, code left of the name, house, date placed, birds sent. Farm list can change each week. Scanned PDFs OK (OCR)."
-        : "Weekly Chick Placement: farm name, code left of the name (e.g. 3821FS), house, date placed, birds sent. Farm list can change each week. Text PDFs on iPhone; scans need CSV/XLSX."
+        ? "Weekly Chick Placement: farm name, code left of the name, house, date placed, birds sent. Review the list and fix anything offline before import. Scanned PDFs OK (OCR)."
+        : "Weekly Chick Placement: farm name, code left of the name (e.g. 3821FS), house, date placed, birds sent. Review & fix offline before import. Text PDFs on iPhone; scans need CSV/XLSX."
       : importType === "catch"
         ? Platform.OS === "web"
           ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (scanned PDFs OK). Ending Kill Date or Catch Date, Farm Name, House."
@@ -491,9 +550,7 @@ export function ScheduleImportCard() {
               onPress={() => {
                 setImportType(type.id);
                 setNote(null);
-                setFarms([]);
-                setPlacementRows([]);
-                setCatchRows([]);
+                clearPreview();
               }}
               style={{
                 flex: 1,
@@ -541,7 +598,7 @@ export function ScheduleImportCard() {
         <View style={{ marginTop: 14, borderTopWidth: 1, borderTopColor: "#e7e5e4", paddingTop: 12 }}>
           <View style={[styles.row, { justifyContent: "space-between", alignItems: "center" }]}>
             <Text style={{ fontWeight: "800", color: colors.text }}>
-              {importType === "catch" ? "Choose farms to update" : "Choose farms to import"}
+              {importType === "catch" ? "Choose farms to update" : "Review & choose farms"}
             </Text>
             <Pressable
               onPress={() => onToggleOnlyMine(!onlyMyFarms)}
@@ -562,8 +619,45 @@ export function ScheduleImportCard() {
               </Text>
             </Pressable>
           </View>
+
+          {importType === "placement" && reviewIssues.length > 0 ? (
+            <View
+              style={{
+                marginTop: 10,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: "#fde68a",
+                backgroundColor: "#fffbeb",
+                padding: 10,
+              }}
+            >
+              {reviewIssues.slice(0, 3).map((issue) => (
+                <Text
+                  key={issue.id}
+                  style={{
+                    fontSize: 12,
+                    lineHeight: 16,
+                    fontWeight: "600",
+                    color: issue.severity === "warn" ? colors.warn : colors.text,
+                    marginBottom: 4,
+                  }}
+                >
+                  {issue.message}
+                </Text>
+              ))}
+              <Pressable
+                onPress={() => setFixFarmKey((prev) => prev ?? farms[0]?.key ?? null)}
+                style={{ marginTop: 4 }}
+              >
+                <Text style={{ fontWeight: "800", color: colors.accentDark, fontSize: 12 }}>
+                  Fix what’s wrong
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           {importType === "placement" ? (
-            <View style={[styles.row, { marginTop: 8, gap: 14 }]}>
+            <View style={[styles.row, { marginTop: 8, gap: 14, flexWrap: "wrap" }]}>
               <Pressable
                 onPress={() => {
                   const next: Record<string, boolean> = {};
@@ -588,18 +682,57 @@ export function ScheduleImportCard() {
                   Clear
                 </Text>
               </Pressable>
+              <Pressable
+                onPress={() => setFixFarmKey((prev) => prev ?? farms[0]?.key ?? null)}
+              >
+                <Text style={{ fontWeight: "700", color: colors.accentDark, fontSize: 12 }}>
+                  {fixFarmKey ? "Editing…" : "Something looks wrong"}
+                </Text>
+              </Pressable>
             </View>
           ) : null}
 
+          {importType === "placement" && fixFarmKey
+            ? (() => {
+                const farm = farms.find((f) => f.key === fixFarmKey) ?? farms[0];
+                if (!farm) return null;
+                return (
+                  <PlacementImportReview
+                    key={farm.key}
+                    rows={placementRows}
+                    farmKey={farm.key}
+                    farmName={farm.farmName}
+                    farmCode={farm.farmCode}
+                    farmOptions={farms.map((f) => ({
+                      key: f.key,
+                      farmName: f.farmName,
+                      farmCode: f.farmCode,
+                    }))}
+                    stats={extractHint}
+                    onChangeRows={(next) =>
+                      buildPlacementPreview(next, {
+                        hint: extractHint,
+                        preserveSelection: true,
+                        edited: true,
+                      })
+                    }
+                    onSelectFarm={setFixFarmKey}
+                    onClose={() => setFixFarmKey(null)}
+                  />
+                );
+              })()
+            : null}
+
           {farms.map((farm) => {
             const checked = Boolean(selected[farm.key]);
+            const fixing = fixFarmKey === farm.key;
             return (
               <View
                 key={farm.key}
                 style={{
                   marginTop: 8,
                   borderWidth: 1,
-                  borderColor: colors.border,
+                  borderColor: fixing ? colors.accentDark : colors.border,
                   borderRadius: 10,
                   padding: 10,
                   backgroundColor: "#fafaf9",
@@ -654,6 +787,17 @@ export function ScheduleImportCard() {
                   </View>
                 </Pressable>
 
+                {importType === "placement" ? (
+                  <Pressable
+                    onPress={() => setFixFarmKey(fixing ? null : farm.key)}
+                    style={{ marginTop: 8 }}
+                  >
+                    <Text style={{ fontWeight: "700", color: colors.accentDark, fontSize: 12 }}>
+                      {fixing ? "Hide edits" : "Edit / fix this farm"}
+                    </Text>
+                  </Pressable>
+                ) : null}
+
                 {checked && farm.nameDiffers && farm.matchName ? (
                   <Pressable
                     onPress={() =>
@@ -706,15 +850,7 @@ export function ScheduleImportCard() {
               }
               onPress={onImport}
             />
-            <Pressable
-              onPress={() => {
-                setFarms([]);
-                setPlacementRows([]);
-                setCatchRows([]);
-                setOnlyMyFarms(false);
-              }}
-              style={{ marginTop: 10, alignSelf: "center" }}
-            >
+            <Pressable onPress={clearPreview} style={{ marginTop: 10, alignSelf: "center" }}>
               <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
             </Pressable>
           </View>

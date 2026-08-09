@@ -13,6 +13,10 @@ const {
   groupPlacementFarms,
   summarizePlacementRows,
   assertWeeklyChickPlacementShape,
+  buildPlacementReviewIssues,
+  renamePlacementFarm,
+  patchPlacementRowAt,
+  farmGroupKey,
 } = await import(parseUrl);
 
 function fail(msg) {
@@ -141,6 +145,47 @@ if (markers.length >= 8) {
       ok(
         `build-109 regression: expectedRows=${stats.expectedRows} → ${summary.farmCount} farms / ${summary.rowCount} rows`,
       );
+    }
+  }
+}
+
+// Offline review helpers: flag partial reads and allow local edits.
+{
+  const sample = [
+    {
+      farmCode: "3821FS",
+      farmName: "BLACKJACK MTN",
+      flockId: "FS26045",
+      datePlaced: "2026-08-03",
+      houseNo: 1,
+      numberSent: 22200,
+    },
+    {
+      farmCode: "3821FS",
+      farmName: "BLACKJACK MTN",
+      flockId: "FS26045",
+      datePlaced: "2026-08-03",
+      houseNo: 2,
+      numberSent: 22200,
+    },
+  ];
+  const issues = buildPlacementReviewIssues(sample, {
+    chars: 1000,
+    projected: 96,
+    anchors: 17,
+    complexAnchors: 0,
+    expectedRows: 96,
+  });
+  if (!issues.some((i) => i.id === "partial_sheet")) {
+    fail("offline review: expected partial_sheet issue");
+  } else {
+    const key = farmGroupKey("3821FS", "BLACKJACK MTN");
+    const renamed = renamePlacementFarm(sample, key, "BLACK JACK", "3821FS");
+    const patched = patchPlacementRowAt(renamed, 0, { numberSent: 24000 });
+    if (patched[0].farmName !== "BLACK JACK" || patched[0].numberSent !== 24000) {
+      fail("offline review: edit helpers failed");
+    } else {
+      ok("offline review: partial flag + local edit helpers");
     }
   }
 }
