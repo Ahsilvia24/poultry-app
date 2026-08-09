@@ -6,7 +6,7 @@ type PdfJsModule = {
     promise: Promise<{
       numPages: number;
       getPage: (n: number) => Promise<{
-        getTextContent: () => Promise<{ items: Array<{ str?: string; transform?: number[] }> }>;
+        getTextContent: () => Promise<{ items: Array<{ str?: string; transform?: number[]; width?: number }> }>;
       }>;
     }>;
   };
@@ -42,9 +42,44 @@ function loadPdfJs(): Promise<PdfJsModule> {
   return pdfjsPromise;
 }
 
+type TextSpan = { str: string; x: number; y: number };
+
+function spansToLines(spans: TextSpan[]): string[] {
+  if (spans.length === 0) return [];
+  // PDF y often increases upward; sort top-to-bottom then left-to-right.
+  const sorted = [...spans].sort((a, b) => b.y - a.y || a.x - b.x);
+  const lines: Array<{ y: number; parts: TextSpan[] }> = [];
+
+  for (const span of sorted) {
+    const line = lines.find((l) => Math.abs(l.y - span.y) <= 3.5);
+    if (line) {
+      line.parts.push(span);
+      line.y = (line.y * (line.parts.length - 1) + span.y) / line.parts.length;
+    } else {
+      lines.push({ y: span.y, parts: [span] });
+    }
+  }
+
+  return lines.map((line) => {
+    const parts = [...line.parts].sort((a, b) => a.x - b.x);
+    let out = "";
+    let lastRight = -Infinity;
+    for (const part of parts) {
+      const gap = part.x - lastRight;
+      if (out) {
+        if (gap > 14) out += "\t";
+        else if (gap > 2.5 && !/\s$/.test(out) && !/^\s/.test(part.str)) out += " ";
+      }
+      out += part.str;
+      lastRight = part.x + Math.max(part.str.length * 4.5, 4);
+    }
+    return out.trimEnd();
+  });
+}
+
 /**
  * Extract plain text from a PDF via pdfjs-dist (browser ESM from /public).
- * Used for Placement and Catch Schedule PDF imports on Expo web.
+ * Keeps row/column spacing so Placement / Catch parsers can read tables.
  */
 export async function extractPdfTextFromBytes(bytes: ArrayBuffer | Uint8Array): Promise<string> {
   const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
@@ -61,28 +96,22 @@ export async function extractPdfTextFromBytes(bytes: ArrayBuffer | Uint8Array): 
   for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
     const page = await pdf.getPage(pageNo);
     const content = await page.getTextContent();
-    let line = "";
-    let lastY: number | null = null;
+    const spans: TextSpan[] = [];
 
     for (const item of content.items) {
       if (!item || typeof item !== "object") continue;
       const str = String(item.str ?? "");
-      if (!str) continue;
-      const y = Array.isArray(item.transform) ? Number(item.transform[5]) : null;
-
-      if (lastY != null && y != null && Math.abs(lastY - y) > 2.5) {
-        parts.push(line.trimEnd());
-        line = "";
-      }
-
-      if (line && !/\s$/.test(line) && !/^\s/.test(str)) {
-        line += " ";
-      }
-      line += str;
-      lastY = y ?? lastY;
+      if (!str.trim()) continue;
+      const transform = item.transform;
+      if (!Array.isArray(transform)) continue;
+      spans.push({
+        str,
+        x: Number(transform[4]) || 0,
+        y: Number(transform[5]) || 0,
+      });
     }
 
-    if (line.trim()) parts.push(line.trimEnd());
+    parts.push(...spansToLines(spans));
     parts.push("");
   }
 

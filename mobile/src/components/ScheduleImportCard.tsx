@@ -226,7 +226,7 @@ export function ScheduleImportCard() {
     const parsed = parsePlacementSheetRows(sheet);
     if (parsed.length === 0) {
       throw new Error(
-        "Could not read placement rows. Need Date Placed, Farm Code, Farm Name, Flock Code, House No, Number Sent.",
+        "Could not read placement rows. Need at least Farm Name or Farm Code (Date, Flock, House, and birds can be blank).",
       );
     }
     buildPlacementPreview(parsed);
@@ -254,7 +254,7 @@ export function ScheduleImportCard() {
     const parsed = parsePlacementPdfText(text);
     if (parsed.length === 0) {
       throw new Error(
-        "Could not read placement rows from PDF. Need Date Placed, Farm Code, Farm Name, Flock, House, Number Sent.",
+        "Could not read placement rows from PDF. Need at least a Farm Name or Farm Code (other fields can be blank). If this is a scanned image PDF, export CSV/XLSX instead.",
       );
     }
     buildPlacementPreview(parsed);
