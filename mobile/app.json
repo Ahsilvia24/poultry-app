@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.poultrytech.app",
-      "buildNumber": "120",
+      "buildNumber": "121",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {
