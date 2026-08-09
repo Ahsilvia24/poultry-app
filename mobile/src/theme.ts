@@ -14,8 +14,16 @@ export const colors = {
   headerBg: "#f7f4ef",
 };
 
-const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
-const sans = Platform.select({ ios: "System", android: "sans-serif", default: "System" });
+const serif = Platform.select({ ios: "Georgia", android: "serif", default: "Georgia, serif" });
+/** Explicit sans stack — Safari/WebKit can fall back to serif for bold Text without this. */
+const sans = Platform.select({
+  ios: "System",
+  android: "sans-serif",
+  web: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  default: "System",
+});
+
+export const fonts = { serif, sans };
 
 export const styles = StyleSheet.create({
   screen: {
@@ -67,12 +75,14 @@ export const styles = StyleSheet.create({
     elevation: 1,
   },
   label: {
+    fontFamily: sans,
     fontSize: 14,
     fontWeight: "700",
     color: colors.text,
     marginBottom: 6,
   },
   input: {
+    fontFamily: sans,
     minHeight: 52,
     borderWidth: 1,
     borderColor: "#d6d3d1",
@@ -110,6 +120,7 @@ export const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   muted: {
+    fontFamily: sans,
     color: colors.muted,
     fontSize: 13,
   },

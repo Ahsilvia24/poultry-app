@@ -19,7 +19,7 @@ import { createLfo, deleteLfo, listFarms, listLfos } from "../../../src/repos/da
 import { todayKey } from "../../../src/lib/ids";
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
-import { colors, styles } from "../../../src/theme";
+import { colors, fonts, styles } from "../../../src/theme";
 import {
   Card,
   Chip,
@@ -101,6 +101,7 @@ function CalcFieldButton({
       >
         <Text
           style={{
+            fontFamily: fonts.sans,
             fontSize: 16,
             lineHeight: 20,
             fontWeight: "600",
