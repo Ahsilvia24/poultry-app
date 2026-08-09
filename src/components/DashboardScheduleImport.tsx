@@ -286,11 +286,11 @@ export function DashboardScheduleImport({
           />
           {importType === "placement" ? (
             <p className="mt-2 text-sm text-stone-500">
-              Weekly Chick Placement PDF or spreadsheet.
+              Weekly Chick Placement PDF (including scanned) or spreadsheet.
             </p>
           ) : importType === "catch" ? (
             <p className="mt-2 text-sm text-stone-500">
-              Kill / Catch Schedule PDF or spreadsheet (Ending Kill Date or Catch Date, Farm Name,
+              Kill / Catch Schedule PDF (including scanned) or spreadsheet (Ending Kill Date or Catch Date, Farm Name,
               House — Farm-Entity / Farm Code when available). Side-by-side Fort Smith / Heavener
               sheets supported.
             </p>

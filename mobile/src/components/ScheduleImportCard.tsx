@@ -234,16 +234,17 @@ export function ScheduleImportCard() {
   }
 
   async function processPdfBytes(bytes: ArrayBuffer | Uint8Array, fileName: string) {
+    setNote(`Reading ${fileName} (scanned PDFs use OCR and may take a minute)…`);
     const text = await extractPdfTextFromBytes(bytes);
     if (!text.trim()) {
-      throw new Error("Could not read text from that PDF. Try exporting as CSV/XLSX.");
+      throw new Error("Could not read text from that PDF, even with OCR. Try a clearer scan or CSV/XLSX.");
     }
 
     if (importType === "catch") {
       const parsed = parseCatchPdfText(text);
       if (parsed.length === 0) {
         throw new Error(
-          "Could not read catch rows from PDF. Need Catch Date / Ending Kill Date, Farm Name, and House.",
+          "Could not read catch rows from PDF/OCR. Need Catch Date / Ending Kill Date, Farm Name, and House (partial rows OK).",
         );
       }
       buildCatchPreview(parsed);
@@ -254,7 +255,7 @@ export function ScheduleImportCard() {
     const parsed = parsePlacementPdfText(text);
     if (parsed.length === 0) {
       throw new Error(
-        "Could not read placement rows from PDF. Need at least a Farm Name or Farm Code (other fields can be blank). If this is a scanned image PDF, export CSV/XLSX instead.",
+        "Could not read placement rows from PDF/OCR. Need at least a Farm Name or Farm Code (other fields can be blank).",
       );
     }
     buildPlacementPreview(parsed);
@@ -412,9 +413,9 @@ export function ScheduleImportCard() {
 
   const helperText =
     importType === "placement"
-      ? "Choose a Placement PDF/CSV/XLSX, then review farms to import."
+      ? "Choose a Placement PDF/CSV/XLSX (scanned image PDFs OK — OCR runs automatically), then review farms."
       : importType === "catch"
-        ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (Ending Kill Date or Catch Date, Farm Name, House)."
+        ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (scanned PDFs OK). Ending Kill Date or Catch Date, Farm Name, House."
         : `${typeLabel(importType)} mapping comes next.`;
 
   return (
