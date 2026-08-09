@@ -10,8 +10,14 @@ import {
   parsePlacementSheetRows,
   type PlacementRow,
 } from "../lib/placementImport/parse";
+import {
+  groupCatchFarms,
+  parseCatchSheetRows,
+  type CatchRow,
+} from "../lib/catchImport/parse";
 import { matchPlacementFarm } from "../lib/placementImport/match";
 import {
+  importCatchRows,
   importPlacementRows,
   listFarmsForPlacementMatch,
 } from "../repos/data";
@@ -25,6 +31,7 @@ type FarmPreview = {
   rowCount: number;
   houseNumbers: number[];
   flockIds: string[];
+  catchDates?: string[];
   isMyFarm: boolean;
   matchName: string | null;
   nameDiffers: boolean;
@@ -41,7 +48,13 @@ function typeLabel(type: ImportType) {
   return TYPE_OPTIONS.find((t) => t.id === type)?.label ?? type;
 }
 
-async function rowsFromPickedFile(asset: DocumentPicker.DocumentPickerAsset): Promise<PlacementRow[]> {
+function canUpload(type: ImportType) {
+  return type === "placement" || type === "catch";
+}
+
+async function sheetFromPickedFile(
+  asset: DocumentPicker.DocumentPickerAsset,
+): Promise<string[][]> {
   const name = (asset.name || "").toLowerCase();
   const uri = asset.uri;
 
@@ -49,11 +62,15 @@ async function rowsFromPickedFile(asset: DocumentPicker.DocumentPickerAsset): Pr
     const text = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.UTF8,
     });
-    const sheet = text.split(/\r?\n/).map((line) => line.split(",").map((c) => c.replace(/^"|"$/g, "")));
-    return parsePlacementSheetRows(sheet);
+    return text.split(/\r?\n/).map((line) => line.split(",").map((c) => c.replace(/^"|"$/g, "")));
   }
 
-  if (name.endsWith(".xlsx") || name.endsWith(".xls") || asset.mimeType?.includes("sheet") || asset.mimeType?.includes("excel")) {
+  if (
+    name.endsWith(".xlsx") ||
+    name.endsWith(".xls") ||
+    asset.mimeType?.includes("sheet") ||
+    asset.mimeType?.includes("excel")
+  ) {
     const b64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
@@ -65,25 +82,24 @@ async function rowsFromPickedFile(asset: DocumentPicker.DocumentPickerAsset): Pr
       raw: false,
       defval: "",
     });
-    return parsePlacementSheetRows(sheet as string[][]);
+    return sheet as string[][];
   }
 
   if (name.endsWith(".pdf") || asset.mimeType?.includes("pdf")) {
-    // pdf-parse/pdf.js is not bundled for Expo web/native; use CSV/XLSX here
-    // or run PDF import from the Next.js web app.
     throw new Error(
-      "PDF placement import needs a CSV/XLSX export on mobile, or use the web Import with this PDF.",
+      "PDF import needs a CSV/XLSX export on mobile, or use the web Import with this PDF.",
     );
   }
 
-  throw new Error("Use a Weekly Chick Placement PDF or spreadsheet (.csv / .xlsx).");
+  throw new Error("Use a PDF or spreadsheet (.csv / .xlsx).");
 }
 
 export function ScheduleImportCard() {
   const [importType, setImportType] = useState<ImportType>("placement");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const [rows, setRows] = useState<PlacementRow[]>([]);
+  const [placementRows, setPlacementRows] = useState<PlacementRow[]>([]);
+  const [catchRows, setCatchRows] = useState<CatchRow[]>([]);
   const [farms, setFarms] = useState<FarmPreview[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [rename, setRename] = useState<Record<string, boolean>>({});
@@ -94,7 +110,20 @@ export function ScheduleImportCard() {
     [selected],
   );
 
-  function buildPreview(parsed: PlacementRow[]) {
+  function setPreviewFromGroups(groups: FarmPreview[]) {
+    setFarms(groups);
+    const nextSelected: Record<string, boolean> = {};
+    const nextRename: Record<string, boolean> = {};
+    for (const farm of groups) {
+      nextSelected[farm.key] = farm.isMyFarm;
+      nextRename[farm.key] = false;
+    }
+    setSelected(nextSelected);
+    setRename(nextRename);
+    setOnlyMyFarms(true);
+  }
+
+  function buildPlacementPreview(parsed: PlacementRow[]) {
     const existing = listFarmsForPlacementMatch();
     const groups = groupPlacementFarms(parsed).map((g) => {
       const match = matchPlacementFarm(g.farmName, g.farmCode, existing);
@@ -111,26 +140,38 @@ export function ScheduleImportCard() {
         matchKind: match.kind,
       } satisfies FarmPreview;
     });
-    setRows(parsed);
-    setFarms(groups);
-    const nextSelected: Record<string, boolean> = {};
-    const nextRename: Record<string, boolean> = {};
-    for (const farm of groups) {
-      nextSelected[farm.key] = farm.isMyFarm;
-      nextRename[farm.key] = false;
-    }
-    setSelected(nextSelected);
-    setRename(nextRename);
-    setOnlyMyFarms(true);
+    setPlacementRows(parsed);
+    setCatchRows([]);
+    setPreviewFromGroups(groups);
+  }
+
+  function buildCatchPreview(parsed: CatchRow[]) {
+    const existing = listFarmsForPlacementMatch();
+    const groups = groupCatchFarms(parsed).map((g) => {
+      const match = matchPlacementFarm(g.farmName, g.farmCode, existing);
+      return {
+        key: g.key,
+        farmCode: g.farmCode,
+        farmName: g.farmName,
+        rowCount: g.rowCount,
+        houseNumbers: g.houseNumbers,
+        flockIds: g.flockIds,
+        catchDates: g.catchDates,
+        isMyFarm: match.kind !== "none",
+        matchName: match.farm?.farmName ?? null,
+        nameDiffers: match.nameDiffers,
+        matchKind: match.kind,
+      } satisfies FarmPreview;
+    });
+    setCatchRows(parsed);
+    setPlacementRows([]);
+    setPreviewFromGroups(groups);
   }
 
   async function onUpload() {
     if (busy) return;
-    if (importType !== "placement") {
-      Alert.alert(
-        "Coming next",
-        `${typeLabel(importType)} import comes next. Start with Placement.`,
-      );
+    if (!canUpload(importType)) {
+      Alert.alert("Coming next", `${typeLabel(importType)} import comes next.`);
       return;
     }
 
@@ -150,14 +191,27 @@ export function ScheduleImportCard() {
         ],
       });
       if (picked.canceled || !picked.assets?.[0]) return;
-      const parsed = await rowsFromPickedFile(picked.assets[0]);
-      if (parsed.length === 0) {
-        throw new Error(
-          "Could not read placement rows. Need Date Placed, Farm Code, Farm Name, Flock Code, House No, Number Sent.",
-        );
+      const sheet = await sheetFromPickedFile(picked.assets[0]);
+
+      if (importType === "catch") {
+        const parsed = parseCatchSheetRows(sheet);
+        if (parsed.length === 0) {
+          throw new Error(
+            "Could not read catch rows. Need Catch Date, Farm Name, and House (Farm Code / Flock when available).",
+          );
+        }
+        buildCatchPreview(parsed);
+        setNote(`Read ${parsed.length} rows from ${picked.assets[0].name}.`);
+      } else {
+        const parsed = parsePlacementSheetRows(sheet);
+        if (parsed.length === 0) {
+          throw new Error(
+            "Could not read placement rows. Need Date Placed, Farm Code, Farm Name, Flock Code, House No, Number Sent.",
+          );
+        }
+        buildPlacementPreview(parsed);
+        setNote(`Read ${parsed.length} rows from ${picked.assets[0].name}.`);
       }
-      buildPreview(parsed);
-      setNote(`Read ${parsed.length} rows from ${picked.assets[0].name}.`);
     } catch (e) {
       Alert.alert("Upload failed", e instanceof Error ? e.message : "Could not read file");
     } finally {
@@ -177,22 +231,35 @@ export function ScheduleImportCard() {
     if (busy || selectedCount === 0) return;
     setBusy(true);
     try {
-      const result = importPlacementRows({
-        rows,
-        selections: farms.map((farm) => ({
-          key: farm.key,
-          selected: Boolean(selected[farm.key]),
-          renameToImportedName: Boolean(rename[farm.key]),
-        })),
-      });
-      setNote(
-        `Imported ${selectedCount} farm(s): ${result.createdFarms} created, ${result.updatedNames} renamed, ${result.createdFlocks} flocks, ${result.createdHouses} houses.`,
-      );
-      if (result.warnings.length) {
-        Alert.alert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+      const selections = farms.map((farm) => ({
+        key: farm.key,
+        selected: Boolean(selected[farm.key]),
+        renameToImportedName: Boolean(rename[farm.key]),
+      }));
+
+      if (importType === "catch") {
+        const result = importCatchRows({ rows: catchRows, selections });
+        setNote(
+          `Updated ${selectedCount} farm(s): ${result.updatedHouses} house catch dates, ${result.updatedFlocks} flock dates, ${result.updatedNames} renamed.`,
+        );
+        if (result.warnings.length) {
+          Alert.alert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+        }
+      } else {
+        const result = importPlacementRows({
+          rows: placementRows,
+          selections,
+        });
+        setNote(
+          `Imported ${selectedCount} farm(s): ${result.createdFarms} created, ${result.updatedNames} renamed, ${result.createdFlocks} flocks, ${result.createdHouses} houses.`,
+        );
+        if (result.warnings.length) {
+          Alert.alert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+        }
       }
       setFarms([]);
-      setRows([]);
+      setPlacementRows([]);
+      setCatchRows([]);
       setOnlyMyFarms(false);
     } catch (e) {
       Alert.alert("Import failed", e instanceof Error ? e.message : "Could not import");
@@ -200,6 +267,13 @@ export function ScheduleImportCard() {
       setBusy(false);
     }
   }
+
+  const helperText =
+    importType === "placement"
+      ? "PDF works on web; phone can use CSV/XLSX (or the same PDF in Expo web)."
+      : importType === "catch"
+        ? "Catch Schedule spreadsheet (Catch Date, Farm Name, House). PDF on web; CSV/XLSX on phone."
+        : `${typeLabel(importType)} mapping comes next.`;
 
   return (
     <Card>
@@ -220,7 +294,8 @@ export function ScheduleImportCard() {
                 setImportType(type.id);
                 setNote(null);
                 setFarms([]);
-                setRows([]);
+                setPlacementRows([]);
+                setCatchRows([]);
               }}
               style={{
                 flex: 1,
@@ -251,17 +326,12 @@ export function ScheduleImportCard() {
         })}
       </View>
 
-      {importType !== "placement" ? (
-        <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
-          {typeLabel(importType)} mapping comes next. Upload Placement first.
-        </Text>
-      ) : (
-        <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
-          PDF works on web; phone can use CSV/XLSX (or the same PDF in Expo web).
-        </Text>
-      )}
+      <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>{helperText}</Text>
 
-      <PrimaryButton label={busy ? "Working…" : "Upload & read"} onPress={onUpload} />
+      <PrimaryButton
+        label={busy ? "Working…" : "Upload & read"}
+        onPress={onUpload}
+      />
 
       {note ? (
         <Text style={[styles.muted, { marginTop: 10, lineHeight: 18, color: colors.text }]}>
@@ -272,7 +342,9 @@ export function ScheduleImportCard() {
       {farms.length > 0 ? (
         <View style={{ marginTop: 14, borderTopWidth: 1, borderTopColor: "#e7e5e4", paddingTop: 12 }}>
           <View style={[styles.row, { justifyContent: "space-between", alignItems: "center" }]}>
-            <Text style={{ fontWeight: "800", color: colors.text }}>Choose farms to import</Text>
+            <Text style={{ fontWeight: "800", color: colors.text }}>
+              {importType === "catch" ? "Choose farms to update" : "Choose farms to import"}
+            </Text>
             <Pressable
               onPress={() => onToggleOnlyMine(!onlyMyFarms)}
               style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
@@ -333,6 +405,7 @@ export function ScheduleImportCard() {
                     </Text>
                     <Text style={[styles.muted, { fontSize: 11 }]}>
                       {farm.rowCount} rows · houses {farm.houseNumbers.join(", ")}
+                      {farm.catchDates?.length ? ` · catch ${farm.catchDates.join(", ")}` : ""}
                     </Text>
                     <Text
                       style={{
@@ -348,7 +421,9 @@ export function ScheduleImportCard() {
                               ? " (similar name)"
                               : ""
                           }`
-                        : "New farm will be created"}
+                        : importType === "catch"
+                          ? "No matching farm — will be skipped"
+                          : "New farm will be created"}
                     </Text>
                   </View>
                 </Pressable>
@@ -408,7 +483,8 @@ export function ScheduleImportCard() {
             <Pressable
               onPress={() => {
                 setFarms([]);
-                setRows([]);
+                setPlacementRows([]);
+                setCatchRows([]);
                 setOnlyMyFarms(false);
               }}
               style={{ marginTop: 10, alignSelf: "center" }}
