@@ -7,11 +7,20 @@ const nextConfig: NextConfig = {
     "localhost",
     "*.loca.lt",
     "*.trycloudflare.com",
+    "*.agent.cvm.dev",
+    "*.cursorapi.com",
+    "*.cursor.sh",
   ],
   experimental: {
     serverActions: {
       bodySizeLimit: "20mb",
-      allowedOrigins: ["*.trycloudflare.com", "*.loca.lt"],
+      allowedOrigins: [
+        "*.trycloudflare.com",
+        "*.loca.lt",
+        "*.agent.cvm.dev",
+        "*.cursorapi.com",
+        "*.cursor.sh",
+      ],
     },
   },
 };
