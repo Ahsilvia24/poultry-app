@@ -64,6 +64,10 @@ checkFixture(
   ),
 );
 checkFixture(
+  "pdfkit-sim",
+  readFileSync(join(fixturesDir, "weekly-chick-placement-pdfkit-sim.txt"), "utf8"),
+);
+checkFixture(
   "device-sample",
   readFileSync(join(fixturesDir, "weekly-chick-placement-device-sample.txt"), "utf8"),
 );

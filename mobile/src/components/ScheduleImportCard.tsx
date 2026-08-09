@@ -260,11 +260,31 @@ export function ScheduleImportCard() {
     const parsed = parsePlacementPdfText(text);
     if (parsed.length === 0) {
       const sample = placementPdfDebugSample(text);
+      // Keep extract on clipboard so we can fix the real device stream shape.
+      try {
+        const Clipboard = await import("expo-clipboard");
+        await Clipboard.setStringAsync(text.slice(0, 12000));
+      } catch {
+        // ignore
+      }
       throw new Error(
         `Could not read placement rows from PDF (${stats.chars} chars, ${stats.projected} PROJECTED, ${stats.expectedRows} expected). Need Farm Name or Farm Code. Sample: ${sample}`,
       );
     }
     buildPlacementPreview(parsed, statsLine);
+    const summary = summarizePlacementRows(parsed);
+    if (stats.expectedRows >= 20 && summary.rowCount < stats.expectedRows * 0.5) {
+      try {
+        const Clipboard = await import("expo-clipboard");
+        await Clipboard.setStringAsync(text.slice(0, 12000));
+        setNote(
+          (prev) =>
+            `${prev ?? ""} Copied PDF text to clipboard (partial read ${summary.rowCount}/${stats.expectedRows}).`,
+        );
+      } catch {
+        // ignore
+      }
+    }
   }
 
   async function processPdfBytes(bytes: ArrayBuffer | Uint8Array, fileName: string) {

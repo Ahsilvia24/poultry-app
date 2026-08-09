@@ -518,13 +518,14 @@ export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
 }
 
 /**
- * Primary iOS PDFKit parser for the exact Weekly Chick Placement stream seen
- * on TestFlight (build 109/110 sample):
- *   BLACKJACK MTN 08/03/2026 72944 3821FS 22,200 FS26045 3 22,200
- *   PROJECTED 2601HV BLACKJACK MTN 08/03/2026 72944 3821FS 24,300 FS26045 4 24,300
+ * Primary iOS PDFKit parser for Weekly Chick Placement streams seen on device:
  *
- * Requires the zip between date and farm code — that is present on every real
- * row and keeps the regex Hermes-simple (no matchAll / lookbehind / wild names).
+ * A) Zip order (build 109/110 sample):
+ *    BLACKJACK MTN 08/03/2026 72944 3821FS 22,200 FS26045 3 22,200
+ *    PROJECTED 2601HV BLACKJACK MTN 08/03/2026 72944 3821FS 24,300 FS26045 4 24,300
+ *
+ * B) No-zip Crystal order (page.string / pdfkit-sim):
+ *    2601HV 08/03/2026 3821FS BLACKJACK MTN FS26045 3 22,200
  */
 export function parseWeeklyChickPlacementDeviceText(text: string): PlacementRow[] {
   const flat = flattenPlacementPdfText(text);
@@ -560,34 +561,58 @@ export function parseWeeklyChickPlacementDeviceText(text: string): PlacementRow[
     rows.push(row);
   };
 
-  // Up to 6 name tokens (letters/digits/&/'/()/.-), no commas — zip anchors the row.
+  // Up to 6 name tokens (letters/digits/&/'/()/.-), no commas.
   const name =
     "((?:[A-Za-z0-9][A-Za-z0-9'/()&./-]*\\s+){0,5}[A-Za-z0-9][A-Za-z0-9'/()&./-]*)";
   const date = "(\\d{1,2}/\\d{1,2}/\\d{2,4})";
   const zip = "(\\d{5})";
-  const farmCode = "(\\d{3,5}[A-Z]{2})";
+  const code = "(\\d{3,5}[A-Z]{2})";
   const birds = "([\\d,]+)";
   const flock = "((?:FS|HV)\\d{4,8})";
   const house = "(\\d{1,2})";
 
-  // After PROJECTED + Complex (device sample)
-  const withProjected = new RegExp(
-    `PROJECTED\\s+\\d{3,5}[A-Z]{2}\\s+${name}\\s+${date}\\s+${zip}\\s+${farmCode}\\s+${birds}\\s+${flock}\\s+${house}\\s+${birds}`,
+  let m: RegExpExecArray | null;
+
+  // A1) PROJECTED Complex Name Date Zip FarmCode Count Flock House Sent
+  const withProjectedZip = new RegExp(
+    `PROJECTED\\s+\\d{3,5}[A-Z]{2}\\s+${name}\\s+${date}\\s+${zip}\\s+${code}\\s+${birds}\\s+${flock}\\s+${house}\\s+${birds}`,
     "gi",
   );
-  let m: RegExpExecArray | null;
-  while ((m = withProjected.exec(flat))) {
-    // groups: 1 name, 2 date, 3 zip, 4 farmCode, 5 count, 6 flock, 7 house, 8 sent
+  while ((m = withProjectedZip.exec(flat))) {
     push(m[1]!, m[2]!, m[4]!, m[6]!, m[7]!, m[8]!);
   }
 
-  // Bare row (zip required): Name Date Zip FarmCode Count Flock House Sent
-  const bare = new RegExp(
-    `(?:^|\\s)${name}\\s+${date}\\s+${zip}\\s+${farmCode}\\s+${birds}\\s+${flock}\\s+${house}\\s+${birds}`,
+  // A2) Name Date Zip FarmCode Count Flock House Sent
+  const bareZip = new RegExp(
+    `(?:^|\\s)${name}\\s+${date}\\s+${zip}\\s+${code}\\s+${birds}\\s+${flock}\\s+${house}\\s+${birds}`,
     "gi",
   );
-  while ((m = bare.exec(flat))) {
+  while ((m = bareZip.exec(flat))) {
     push(m[1]!, m[2]!, m[4]!, m[6]!, m[7]!, m[8]!);
+  }
+
+  // B1) Complex Date FarmCode Name Flock House Sent  (no zip between date & code)
+  const layoutNoZip = new RegExp(
+    `(\\d{3,5}[A-Z]{2})\\s+${date}\\s+${code}\\s+${name}\\s+${flock}\\s+${house}\\s+${birds}`,
+    "gi",
+  );
+  while ((m = layoutNoZip.exec(flat))) {
+    const complex = m[1]!.toUpperCase();
+    const farmCode = m[3]!.toUpperCase();
+    if (complex === farmCode) continue;
+    push(m[4]!, m[2]!, farmCode, m[5]!, m[6]!, m[7]!);
+  }
+
+  // B2) PROJECTED Complex Date FarmCode Name Flock House Sent
+  const projectedLayout = new RegExp(
+    `PROJECTED\\s+(\\d{3,5}[A-Z]{2})\\s+${date}\\s+${code}\\s+${name}\\s+${flock}\\s+${house}\\s+${birds}`,
+    "gi",
+  );
+  while ((m = projectedLayout.exec(flat))) {
+    const complex = m[1]!.toUpperCase();
+    const farmCode = m[3]!.toUpperCase();
+    if (complex === farmCode) continue;
+    push(m[4]!, m[2]!, farmCode, m[5]!, m[6]!, m[7]!);
   }
 
   return rows;
@@ -904,11 +929,25 @@ function sheetFromLayoutText(text: string): string[][] {
     });
 }
 
-/** Drop duplicate house placements from overlapping parse strategies. */
+function isValidPlacementRow(row: unknown): row is PlacementRow {
+  if (!row || typeof row !== "object") return false;
+  const r = row as PlacementRow;
+  return (
+    typeof r.farmCode === "string" &&
+    typeof r.farmName === "string" &&
+    typeof r.flockId === "string" &&
+    typeof r.datePlaced === "string" &&
+    typeof r.houseNo === "number" &&
+    typeof r.numberSent === "number"
+  );
+}
+
+/** Drop duplicate / invalid house placements from overlapping parse strategies. */
 export function dedupePlacementRows(rows: PlacementRow[]): PlacementRow[] {
   const seen = new Set<string>();
   const out: PlacementRow[] = [];
   for (const row of rows) {
+    if (!isValidPlacementRow(row)) continue;
     const key = `${row.farmCode}|${row.farmName}|${row.houseNo}|${row.datePlaced}|${row.numberSent}|${row.flockId}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -1043,70 +1082,74 @@ function safeParse(label: string, fn: () => PlacementRow[]): PlacementRow[] {
 
 /** PDF / text → placement rows. Weekly Chick Placement format (any farm count). */
 export function parsePlacementPdfText(text: string): PlacementRow[] {
-  try {
-    // Run strategies independently (try/catch each — one Hermes regex failure
-    // must not wipe the whole import). Score picks the fullest clean sheet.
-    const chunks = text.includes("\n\n---PAGE---\n\n")
-      ? text.split(/\n\n---PAGE---\n\n/)
-      : [text];
-    const extractStats = placementPdfExtractStats(text);
-    const expectedRows = extractStats.expectedRows;
+  // Run strategies independently (try/catch each — one Hermes regex failure
+  // must not wipe the whole import). Score picks the fullest clean sheet.
+  // IMPORTANT: never wrap the whole function in a catch that discards richer
+  // strategy results for a tiny device-only fallback (build 111 bug).
+  const chunks = text.includes("\n\n---PAGE---\n\n")
+    ? text.split(/\n\n---PAGE---\n\n/)
+    : [text];
+  const extractStats = placementPdfExtractStats(text);
+  const expectedRows = extractStats.expectedRows;
 
-    const strategies: PlacementRow[][] = [];
-    const runAll = (chunk: string) => {
-      // Device zip-anchored parser first — matches TestFlight PDFKit sample order.
-      strategies.push(safeParse("device", () => parseWeeklyChickPlacementDeviceText(chunk)));
-      strategies.push(safeParse("anchors", () => parseWeeklyChickPlacementAnchors(chunk)));
-      strategies.push(safeParse("pdfkit", () => parseWeeklyChickPlacementPdfKitText(chunk)));
-      strategies.push(safeParse("tokens", () => parseWeeklyChickPlacementTokens(chunk)));
-      strategies.push(
-        safeParse("weeklyFlat", () =>
+  const strategies: PlacementRow[][] = [];
+  const runAll = (chunk: string) => {
+    strategies.push(safeParse("device", () => parseWeeklyChickPlacementDeviceText(chunk)));
+    strategies.push(safeParse("anchors", () => parseWeeklyChickPlacementAnchors(chunk)));
+    strategies.push(safeParse("pdfkit", () => parseWeeklyChickPlacementPdfKitText(chunk)));
+    strategies.push(safeParse("tokens", () => parseWeeklyChickPlacementTokens(chunk)));
+    strategies.push(
+      safeParse("weeklyFlat", () =>
+        parseWeeklyChickPlacementText(flattenPlacementPdfText(chunk)),
+      ),
+    );
+    strategies.push(safeParse("weekly", () => parseWeeklyChickPlacementText(chunk)));
+    strategies.push(
+      safeParse("scrambled", () => parseWeeklyChickPlacementScrambledText(chunk)),
+    );
+    strategies.push(safeParse("loose", () => parseWeeklyChickPlacementLooseText(chunk)));
+  };
+
+  runAll(text);
+  if (chunks.length > 1) {
+    const perPage: PlacementRow[] = [];
+    for (const chunk of chunks) {
+      const pageRows = [
+        ...safeParse("device-page", () => parseWeeklyChickPlacementDeviceText(chunk)),
+        ...safeParse("tokens-page", () => parseWeeklyChickPlacementTokens(chunk)),
+        ...safeParse("weekly-page", () =>
           parseWeeklyChickPlacementText(flattenPlacementPdfText(chunk)),
         ),
-      );
-      strategies.push(safeParse("weekly", () => parseWeeklyChickPlacementText(chunk)));
-      strategies.push(
-        safeParse("scrambled", () => parseWeeklyChickPlacementScrambledText(chunk)),
-      );
-      strategies.push(safeParse("loose", () => parseWeeklyChickPlacementLooseText(chunk)));
-    };
-
-    runAll(text);
-    if (chunks.length > 1) {
-      // Page-local device/token parses only (avoid exploding strategy count on Hermes).
-      const perPage: PlacementRow[] = [];
-      for (const chunk of chunks) {
-        perPage.push(...safeParse("device-page", () => parseWeeklyChickPlacementDeviceText(chunk)));
-        perPage.push(...safeParse("tokens-page", () => parseWeeklyChickPlacementTokens(chunk)));
-        perPage.push(
-          safeParse("scrambled-page", () => parseWeeklyChickPlacementScrambledText(chunk)),
-        );
-      }
-      strategies.push(dedupePlacementRows(perPage));
+        ...safeParse("scrambled-page", () => parseWeeklyChickPlacementScrambledText(chunk)),
+      ].filter(isValidPlacementRow);
+      perPage.push(...pageRows);
     }
-
-    const merged = dedupePlacementRows(strategies.flat());
-    const best = pickBestPlacementRows([...strategies, merged], expectedRows);
-    if (best.length > 0) return best;
-
-    // Last resort: device parser alone (ignores scoring).
-    const deviceOnly = safeParse("device-fallback", () =>
-      parseWeeklyChickPlacementDeviceText(text),
-    );
-    if (deviceOnly.length > 0) return dedupePlacementRows(deviceOnly);
-
-    if (looksLikeWeeklyChickPlacement(text)) {
-      return [];
-    }
-
-    const layout = dedupePlacementRows(parsePlacementLayoutText(text));
-    if (layout.length > 0) return layout;
-
-    return dedupePlacementRows(parsePlacementSheetRows(sheetFromLayoutText(text)));
-  } catch (e) {
-    console.warn("parsePlacementPdfText failed", e);
-    return safeParse("device-emergency", () => parseWeeklyChickPlacementDeviceText(text));
+    strategies.push(dedupePlacementRows(perPage));
   }
+
+  const merged = dedupePlacementRows(strategies.flat().filter(isValidPlacementRow));
+  let best: PlacementRow[] = [];
+  try {
+    best = pickBestPlacementRows([...strategies, merged], expectedRows);
+  } catch (e) {
+    console.warn("pickBestPlacementRows failed; using merged/device", e);
+    best = merged;
+  }
+  if (best.length > 0) return best;
+
+  const deviceOnly = dedupePlacementRows(
+    safeParse("device-fallback", () => parseWeeklyChickPlacementDeviceText(text)),
+  );
+  if (deviceOnly.length > 0) return deviceOnly;
+
+  if (looksLikeWeeklyChickPlacement(text)) {
+    return [];
+  }
+
+  const layout = dedupePlacementRows(parsePlacementLayoutText(text));
+  if (layout.length > 0) return layout;
+
+  return dedupePlacementRows(parsePlacementSheetRows(sheetFromLayoutText(text)));
 }
 
 export function parsePlacementSheetRows(sheet: string[][]): PlacementRow[] {
@@ -1153,12 +1196,17 @@ export function parsePlacementSheetRows(sheet: string[][]): PlacementRow[] {
 }
 
 export function farmGroupKey(farmCode: string, farmName: string) {
-  return `${farmCode.trim().toUpperCase()}::${farmName.trim().toUpperCase()}`;
+  return `${String(farmCode ?? "")
+    .trim()
+    .toUpperCase()}::${String(farmName ?? "")
+    .trim()
+    .toUpperCase()}`;
 }
 
 export function groupPlacementFarms(rows: PlacementRow[]): PlacementFarmGroup[] {
   const map = new Map<string, PlacementFarmGroup>();
   for (const row of rows) {
+    if (!isValidPlacementRow(row)) continue;
     const key = farmGroupKey(row.farmCode, row.farmName);
     const existing = map.get(key);
     if (!existing) {
