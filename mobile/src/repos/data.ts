@@ -2162,7 +2162,7 @@ export function importPlacementRows(input: {
 
       const existingFlock = getDb().getFirstSync<{ id: string }>(
         `SELECT id FROM flocks
-         WHERE farm_id = ? AND flock_number = ? AND flock_status = 'ACTIVE' AND deleted_at IS NULL
+         WHERE farm_id = ? AND flock_number = ? AND flock_status = 'ACTIVE'
          LIMIT 1`,
         [farmId, flockId],
       );
