@@ -367,7 +367,7 @@ export function ScheduleImportCard() {
     importType === "placement"
       ? "Choose a Placement PDF/CSV/XLSX, then review farms to import."
       : importType === "catch"
-        ? "Choose a Catch Schedule CSV/XLSX (Catch Date, Farm Name, House)."
+        ? "Choose a Kill/Catch Schedule CSV/XLSX (Ending Kill Date or Catch Date, Farm Name, House)."
         : `${typeLabel(importType)} mapping comes next.`;
 
   return (
