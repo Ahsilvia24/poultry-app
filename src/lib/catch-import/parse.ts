@@ -184,31 +184,72 @@ export function parseCatchSheetRows(sheet: string[][]): CatchRow[] {
   return rows;
 }
 
+/** Turn pdftotext/pdf.js layout text into spreadsheet-like rows. */
+export function sheetFromLayoutText(text: string): string[][] {
+  return text.split(/\r?\n/).map((line) => {
+    const trimmed = line.replace(/\u00a0/g, " ").trimEnd();
+    if (!trimmed.trim()) return [];
+    // Prefer tab / 2+ space column breaks (layout mode); fall back to single spaces.
+    if (/\t/.test(trimmed) || /\s{2,}/.test(trimmed)) {
+      return trimmed.split(/\t+|\s{2,}/).map((c) => c.trim());
+    }
+    return trimmed.trim().split(/\s+/);
+  });
+}
+
 /**
- * Best-effort PDF text parse for catch schedules.
- * Tuned once a real Catch Schedule PDF sample is available.
+ * Line-oriented catch/kill PDF parse.
+ * Covers Kill Schedule style rows: DATE  FARMCODE  FARM NAME  [FLOCK]  HOUSE  [HEAD]
+ * Dual plant columns on one line are scanned repeatedly.
  */
 export function parseCatchLayoutText(text: string): CatchRow[] {
   const rows: CatchRow[] = [];
-  // Generic: DATE  FARMCODE  FARM NAME ... HOUSE  HEAD?
   const re =
-    /(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{4}[A-Z]{2})\s+(.+?)\s+((?:FS|HV)\d+)?\s*(\d{1,2})\s+([\d,]+)?/;
+    /(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{3,4}[A-Z]{2})\s+([A-Za-z0-9][A-Za-z0-9 .'&/-]*?)\s+(?:((?:FS|HV)\d+)\s+)?(\d{1,2})(?:\s+([\d,]+))?/g;
+
   for (const line of text.split(/\r?\n/)) {
-    const m = line.trim().match(re);
-    if (!m) continue;
-    const catchDate = toIsoDate(m[1]!);
-    const houseNo = parsePositiveInt(m[5]!);
-    if (!catchDate || houseNo == null) continue;
-    rows.push({
-      catchDate,
-      farmCode: m[2]!.trim().toUpperCase(),
-      farmName: m[3]!.trim().replace(/\s+/g, " "),
-      flockId: (m[4] ?? "").trim().toUpperCase(),
-      houseNo,
-      headCount: m[6] ? parsePositiveInt(m[6]) : null,
-    });
+    const trimmed = line.replace(/\u00a0/g, " ").trim();
+    if (!trimmed || /ending\s*kill\s*date|catch\s*date|farm\s*name/i.test(trimmed)) {
+      continue;
+    }
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(trimmed))) {
+      const catchDate = toIsoDate(m[1]!);
+      const houseNo = parsePositiveInt(m[5]!);
+      const farmName = m[3]!.trim().replace(/\s+/g, " ");
+      if (!catchDate || houseNo == null || !farmName) continue;
+      rows.push({
+        catchDate,
+        farmCode: m[2]!.trim().toUpperCase(),
+        farmName,
+        flockId: (m[4] ?? "").trim().toUpperCase(),
+        houseNo,
+        headCount: m[6] ? parsePositiveInt(m[6]) : null,
+      });
+    }
   }
   return rows;
+}
+
+/** PDF text → catch rows (layout regex, then sheet reconstruction). */
+export function parseCatchPdfText(text: string): CatchRow[] {
+  const fromLayout = parseCatchLayoutText(text);
+  if (fromLayout.length > 0) return fromLayout;
+
+  const sheet = sheetFromLayoutText(text);
+  const fromSheet = parseCatchSheetRows(sheet);
+  if (fromSheet.length > 0) return fromSheet;
+
+  // Some PDF extractors collapse columns to single spaces — rebuild denser rows.
+  const denseSheet = text.split(/\r?\n/).map((line) =>
+    line
+      .replace(/\u00a0/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean),
+  );
+  return parseCatchSheetRows(denseSheet);
 }
 
 export function groupCatchFarms(rows: CatchRow[]): CatchFarmGroup[] {

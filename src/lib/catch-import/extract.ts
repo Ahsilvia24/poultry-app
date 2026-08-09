@@ -4,7 +4,7 @@ import { mkdtemp, writeFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
 import * as XLSX from "xlsx";
-import { parseCatchLayoutText, parseCatchSheetRows } from "@/lib/catch-import/parse";
+import { parseCatchPdfText, parseCatchSheetRows } from "@/lib/catch-import/parse";
 import type { CatchRow } from "@/lib/catch-import/types";
 
 const execFileAsync = promisify(execFile);
@@ -75,5 +75,5 @@ export async function extractCatchRows(input: {
   }
 
   const text = await extractPdfText(input.bytes);
-  return parseCatchLayoutText(text);
+  return parseCatchPdfText(text);
 }

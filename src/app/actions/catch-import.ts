@@ -73,7 +73,7 @@ export async function previewCatchImportAction(
       return {
         ok: false,
         error:
-          "Could not read catch rows yet. Use a spreadsheet with Catch Date, Farm Name, and House — or share a sample file so we can map this layout.",
+          "Could not read catch rows yet. Use a Kill/Catch Schedule PDF or spreadsheet with Catch Date / Ending Kill Date, Farm Name, and House.",
       };
     }
     await writeFile(parsedPath(importId), JSON.stringify(rows), "utf8");

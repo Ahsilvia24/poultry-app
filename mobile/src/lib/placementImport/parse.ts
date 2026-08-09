@@ -72,6 +72,13 @@ export function parsePlacementScrambledText(text: string): PlacementRow[] {
   return rows;
 }
 
+/** PDF text → placement rows (layout first, then scrambled pdf.js output). */
+export function parsePlacementPdfText(text: string): PlacementRow[] {
+  const layoutRows = parsePlacementLayoutText(text);
+  if (layoutRows.length > 0) return layoutRows;
+  return parsePlacementScrambledText(text);
+}
+
 function headerIndex(headers: string[], candidates: string[]) {
   const normalized = headers.map((h) => h.trim().toLowerCase().replace(/[^a-z0-9]+/g, " "));
   for (const candidate of candidates) {
