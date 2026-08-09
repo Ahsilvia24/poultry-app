@@ -62,27 +62,39 @@ export function nameSimilarity(a: string, b: string): number {
   const coreB = coreFarmName(b);
   if (coreA && coreA === coreB) return 0.97;
 
+  let score = 0;
+
   if (ca.includes(cb) || cb.includes(ca)) {
     const shorter = Math.min(ca.length, cb.length);
     const longer = Math.max(ca.length, cb.length);
-    if (longer > 0 && shorter / longer >= 0.75) return shorter / longer;
+    if (longer > 0 && shorter / longer >= 0.75) score = Math.max(score, shorter / longer);
   }
 
   if (na.includes(nb) || nb.includes(na)) {
     const shorter = Math.min(na.length, nb.length);
     const longer = Math.max(na.length, nb.length);
-    return shorter / longer;
+    score = Math.max(score, shorter / longer);
   }
 
   const compactDist = levenshtein(ca, cb);
   const compactLonger = Math.max(ca.length, cb.length) || 1;
-  const compactScore = 1 - compactDist / compactLonger;
+  score = Math.max(score, 1 - compactDist / compactLonger);
 
   const dist = levenshtein(na, nb);
   const longer = Math.max(na.length, nb.length);
-  const spacedScore = 1 - dist / longer;
+  score = Math.max(score, 1 - dist / longer);
 
-  return Math.max(compactScore, spacedScore);
+  // Shared suffixes (FARMS / POULTRY) must not make short distinct names
+  // look alike — e.g. "DMD Farms" vs "RED Farms".
+  if (coreA && coreB && coreA !== coreB) {
+    const coreLonger = Math.max(coreA.length, coreB.length) || 1;
+    const coreScore = 1 - levenshtein(coreA, coreB) / coreLonger;
+    if (Math.min(coreA.length, coreB.length) <= 4) {
+      score = Math.min(score, coreScore);
+    }
+  }
+
+  return score;
 }
 
 function displayNameDiffers(existingName: string, importedName: string) {
