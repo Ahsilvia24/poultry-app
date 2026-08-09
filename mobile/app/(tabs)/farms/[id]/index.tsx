@@ -117,6 +117,47 @@ function RecordLink({ label, onPress }: { label: string; onPress: () => void }) 
   );
 }
 
+/** Matches Tools section tiles — scroll the farm page back to the top. */
+function TopLink({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Scroll to top"
+    >
+      <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Top</Text>
+    </Pressable>
+  );
+}
+
+function SectionHeading({
+  title,
+  onTop,
+  right,
+}: {
+  title: string;
+  onTop: () => void;
+  right?: React.ReactNode;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+      }}
+    >
+      <Text style={{ fontWeight: "800", fontSize: 16, flex: 1, minWidth: 0 }}>{title}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        {right}
+        <TopLink onPress={onTop} />
+      </View>
+    </View>
+  );
+}
+
 function RowActions({
   editLabel,
   deleteLabel,
@@ -401,6 +442,10 @@ export default function FarmDetailScreen() {
     const y = sectionY.current[key];
     if (y == null) return;
     scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
+  }
+
+  function scrollPageToTop() {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
   }
 
   function onSectionLayout(key: string) {
@@ -1279,6 +1324,7 @@ export default function FarmDetailScreen() {
                         </Text>
                       </Pressable>
                     ) : null}
+                    <TopLink onPress={scrollPageToTop} />
                   </View>
 
                   <Pressable
@@ -1424,7 +1470,7 @@ export default function FarmDetailScreen() {
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>Recent visits</Text>
+            <SectionHeading title="Recent visits" onTop={scrollPageToTop} />
             {data.visits.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -1485,63 +1531,59 @@ export default function FarmDetailScreen() {
         {/* ── Generator log ── */}
         <View onLayout={onSectionLayout("generators")}>
           <Card>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 8,
-              }}
-            >
-              <Text style={{ fontWeight: "800", fontSize: 16 }}>Generator log</Text>
-              {(data.generatorLogs ?? []).some(
-                (log) =>
-                  log.gen1Hours != null ||
-                  log.gen2Hours != null ||
-                  log.gen3Hours != null ||
-                  log.gen4Hours != null,
-              ) ? (
-                <ClipboardIconButton
-                  accessibilityLabel="Copy generator log"
-                  color={colors.accentDark}
-                  getText={() => {
-                    const allLogs = data.generatorLogs ?? [];
-                    return formatGeneratorChartsCopy(
-                      allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY).map((log) => {
-                        const hours: GeneratorHours = {
-                          gen1Hours: log.gen1Hours,
-                          gen2Hours: log.gen2Hours,
-                          gen3Hours: log.gen3Hours,
-                          gen4Hours: log.gen4Hours,
-                        };
-                        const priorFor = (hourKey: GenHourKey) => {
-                          let seen = false;
-                          for (const candidate of allLogs) {
-                            if (!seen) {
-                              if (candidate.id === log.id) seen = true;
-                              continue;
+            <SectionHeading
+              title="Generator log"
+              onTop={scrollPageToTop}
+              right={
+                (data.generatorLogs ?? []).some(
+                  (log) =>
+                    log.gen1Hours != null ||
+                    log.gen2Hours != null ||
+                    log.gen3Hours != null ||
+                    log.gen4Hours != null,
+                ) ? (
+                  <ClipboardIconButton
+                    accessibilityLabel="Copy generator log"
+                    color={colors.accentDark}
+                    getText={() => {
+                      const allLogs = data.generatorLogs ?? [];
+                      return formatGeneratorChartsCopy(
+                        allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY).map((log) => {
+                          const hours: GeneratorHours = {
+                            gen1Hours: log.gen1Hours,
+                            gen2Hours: log.gen2Hours,
+                            gen3Hours: log.gen3Hours,
+                            gen4Hours: log.gen4Hours,
+                          };
+                          const priorFor = (hourKey: GenHourKey) => {
+                            let seen = false;
+                            for (const candidate of allLogs) {
+                              if (!seen) {
+                                if (candidate.id === log.id) seen = true;
+                                continue;
+                              }
+                              if (candidate[hourKey] != null) return candidate[hourKey];
                             }
-                            if (candidate[hourKey] != null) return candidate[hourKey];
-                          }
-                          return null;
-                        };
-                        const [y, m, d] = log.logDate.split("-").map(Number);
-                        return {
-                          dateLabel: `${m}-${d}-${y}`,
-                          hours,
-                          deltas: {
-                            gen1: hoursDelta(log.gen1Hours, priorFor("gen1Hours")),
-                            gen2: hoursDelta(log.gen2Hours, priorFor("gen2Hours")),
-                            gen3: hoursDelta(log.gen3Hours, priorFor("gen3Hours")),
-                            gen4: hoursDelta(log.gen4Hours, priorFor("gen4Hours")),
-                          },
-                        };
-                      }),
-                    );
-                  }}
-                />
-              ) : null}
-            </View>
+                            return null;
+                          };
+                          const [y, m, d] = log.logDate.split("-").map(Number);
+                          return {
+                            dateLabel: `${m}-${d}-${y}`,
+                            hours,
+                            deltas: {
+                              gen1: hoursDelta(log.gen1Hours, priorFor("gen1Hours")),
+                              gen2: hoursDelta(log.gen2Hours, priorFor("gen2Hours")),
+                              gen3: hoursDelta(log.gen3Hours, priorFor("gen3Hours")),
+                              gen4: hoursDelta(log.gen4Hours, priorFor("gen4Hours")),
+                            },
+                          };
+                        }),
+                      );
+                    }}
+                  />
+                ) : null
+              }
+            />
             {(data.generatorLogs ?? []).every(
               (log) =>
                 log.gen1Hours == null &&
@@ -1608,7 +1650,7 @@ export default function FarmDetailScreen() {
         {/* ── Issues ── */}
         <View onLayout={onSectionLayout("issues")}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>Recent issues</Text>
+            <SectionHeading title="Recent issues" onTop={scrollPageToTop} />
             {data.issues.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -1685,7 +1727,7 @@ export default function FarmDetailScreen() {
         {/* ── Litter ── */}
         <View onLayout={onSectionLayout("litter")}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>Litter events</Text>
+            <SectionHeading title="Litter events" onTop={scrollPageToTop} />
             {data.litterEvents.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -1757,7 +1799,7 @@ export default function FarmDetailScreen() {
         {/* ── Feed ── */}
         <View onLayout={onSectionLayout("feed")}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>Feed deliveries</Text>
+            <SectionHeading title="Feed deliveries" onTop={scrollPageToTop} />
             {data.feedDeliveries.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
