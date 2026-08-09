@@ -501,22 +501,39 @@ export default function EditLfoScreen() {
                         fieldRef={bindFieldRef(`binB:${house.houseId}`)}
                       />
                     </View>
-                    <View style={{ marginTop: 4 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        marginTop: 4,
+                      }}
+                    >
                       <DatePickerField
                         label="Feed up date"
                         value={house.feedUpDate}
-                        onChange={(date) => updateHouse(house.houseId, { feedUpDate: date })}
+                        onChange={(date) => {
+                          setActiveField(null);
+                          updateHouse(house.houseId, { feedUpDate: date });
+                        }}
+                        onOpen={() => setActiveField(null)}
+                        style={{ flex: 1, minWidth: 0 }}
+                      />
+                      <TimeScrollPickerField
+                        label="Feed up time"
+                        value={house.feedUpTime}
+                        onChange={(time) => {
+                          setActiveField(null);
+                          updateHouse(house.houseId, { feedUpTime: time });
+                        }}
+                        onOpen={() => setActiveField(null)}
+                        style={{ flex: 1, minWidth: 0 }}
                       />
                     </View>
-                    <TimeScrollPickerField
-                      label="Feed up time"
-                      value={house.feedUpTime}
-                      onChange={(time) => updateHouse(house.houseId, { feedUpTime: time })}
-                    />
                     {house.feedUpTime ? (
                       <Pressable
                         onPress={() => updateHouse(house.houseId, { feedUpTime: "" })}
-                        style={{ alignSelf: "flex-start", marginTop: 6 }}
+                        style={{ alignSelf: "flex-end", marginTop: 6 }}
                         hitSlop={8}
                       >
                         <Text style={{ color: colors.muted, fontWeight: "700" }}>Clear time</Text>
