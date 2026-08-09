@@ -36,10 +36,22 @@ function bytesToBase64(bytes: Uint8Array): string {
 async function writeBytesToCache(bytes: Uint8Array): Promise<string> {
   const dir = FileSystem.cacheDirectory;
   if (!dir) throw new Error("No cache directory available for PDF import.");
-  const uri = `${dir}import-${Date.now()}.pdf`;
+  // ASCII-only name — PDFKit URL(string:) is fragile with spaces / encoding.
+  const uri = `${dir}placement-import-${Date.now()}.pdf`;
   await FileSystem.writeAsStringAsync(uri, bytesToBase64(bytes), {
     encoding: FileSystem.EncodingType.Base64,
   });
+  return uri;
+}
+
+function toFilesystemPath(uri: string): string {
+  if (uri.startsWith("file://")) {
+    try {
+      return decodeURIComponent(uri.replace(/^file:\/\//, ""));
+    } catch {
+      return uri.replace(/^file:\/\//, "");
+    }
+  }
   return uri;
 }
 
@@ -49,7 +61,18 @@ async function extractFromUri(uri: string): Promise<string> {
       "PDF import needs a native build (TestFlight). Reinstall the latest build, or use CSV/XLSX.",
     );
   }
-  const text = await extractText(uri);
+
+  // Prefer a plain filesystem path — more reliable than file:// for PDFKit.
+  const path = toFilesystemPath(uri);
+  let text = "";
+  try {
+    text = await extractText(path);
+  } catch {
+    // Fall back to original URI (some Android content:// paths need it).
+    text = await extractText(uri);
+  }
+
+  text = text.replace(/\u0000/g, "");
   if (!text.trim()) {
     throw new Error(
       "No readable text in this PDF (likely a scan). On iPhone use a text PDF, or export CSV/XLSX. OCR for scans is available in Expo web.",
@@ -58,9 +81,23 @@ async function extractFromUri(uri: string): Promise<string> {
   return text;
 }
 
-/** Preferred native entry — DocumentPicker already gives a file URI. */
+/**
+ * Copy the picker URI into an ASCII cache file, then extract.
+ * Avoids PDFKit failures on DocumentPicker names with spaces.
+ */
 export async function extractPdfTextFromUri(uri: string): Promise<string> {
-  return extractFromUri(uri);
+  const dir = FileSystem.cacheDirectory;
+  if (!dir) return extractFromUri(uri);
+
+  const safeUri = `${dir}placement-import-${Date.now()}.pdf`;
+  try {
+    await FileSystem.copyAsync({ from: uri, to: safeUri });
+    return await extractFromUri(safeUri);
+  } catch {
+    return extractFromUri(uri);
+  } finally {
+    await FileSystem.deleteAsync(safeUri, { idempotent: true }).catch(() => undefined);
+  }
 }
 
 /** Fallback when only bytes are available. */
