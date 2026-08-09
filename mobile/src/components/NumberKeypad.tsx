@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../theme";
+import { colors, fonts } from "../theme";
 
 const keyStyle = {
   flex: 1,
@@ -12,6 +12,7 @@ const keyStyle = {
 };
 
 const keyText = {
+  fontFamily: fonts.sans,
   fontSize: 22,
   fontWeight: "700" as const,
   color: colors.text,
