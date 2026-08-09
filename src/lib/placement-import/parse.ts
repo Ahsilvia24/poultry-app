@@ -792,11 +792,15 @@ export function parseWeeklyChickPlacementPdfKitText(text: string): PlacementRow[
   }
 
   // Prefer the Hermes-safe anchor pass as part of this strategy too.
-  for (const row of parseWeeklyChickPlacementAnchors(text)) {
-    const key = `${row.farmCode}|${row.houseNo}|${row.datePlaced}|${row.numberSent}|${row.flockId}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    rows.push(row);
+  try {
+    for (const row of parseWeeklyChickPlacementAnchors(text)) {
+      const key = `${row.farmCode}|${row.houseNo}|${row.datePlaced}|${row.numberSent}|${row.flockId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push(row);
+    }
+  } catch {
+    // Anchor pass is optional — device/pdfkit regex rows above still count.
   }
   return rows;
 }
