@@ -1,3 +1,4 @@
+/** Core fields: farmName, houseNo, datePlaced, numberSent, farmCode (code left of name). */
 export type PlacementRow = {
   datePlaced: string; // YYYY-MM-DD
   farmCode: string;

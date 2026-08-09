@@ -344,11 +344,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("max", e)} collapsable={false}>
           {open.max ? (
-            <SectionPanel
-              title="Max Cooling"
-              subtitle="By relative humidity and outside temperature (°F)"
-              onTop={scrollToTop}
-            >
+            <SectionPanel title="Max Cooling" onTop={scrollToTop}>
               <MaxCoolingChart />
             </SectionPanel>
           ) : (
@@ -427,7 +423,7 @@ export default function ToolsScreen() {
                       >
                         {flockWeek != null
                           ? `· Flock week ${flockWeek}${
-                              selectedHouse.ageDays != null ? ` · ${selectedHouse.ageDays}d` : ""
+                              selectedHouse.ageDays != null ? ` ${selectedHouse.ageDays}d` : ""
                             }`
                           : "· No active flock"}
                       </Text>

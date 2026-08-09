@@ -9,9 +9,14 @@ import {
   applyPlacementImportAction,
   previewPlacementImportAction,
   type PlacementApplyResult,
-  type PlacementPreviewResult,
   type PlacementSelection,
 } from "@/app/actions/placement-import";
+import {
+  applyCatchImportAction,
+  previewCatchImportAction,
+  type CatchApplyResult,
+  type CatchSelection,
+} from "@/app/actions/catch-import";
 import {
   SCHEDULE_IMPORT_TYPES,
   formatBytes,
@@ -20,9 +25,37 @@ import {
   type ScheduleImportMeta,
   type ScheduleImportType,
 } from "@/lib/schedule-import-types";
-import type { PlacementFarmPreview } from "@/lib/placement-import/types";
+import type { PlacementFarmMatch } from "@/lib/placement-import/types";
 import { Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
+
+type PreviewFarm = {
+  key: string;
+  farmCode: string;
+  farmName: string;
+  rowCount: number;
+  houseNumbers: number[];
+  flockIds: string[];
+  catchDates?: string[];
+  isMyFarm: boolean;
+  match: PlacementFarmMatch;
+};
+
+type PreviewState = {
+  kind: "placement" | "catch";
+  importId: string;
+  totalRows: number;
+  farms: PreviewFarm[];
+};
+
+type ApplyState =
+  | ({ kind: "placement" } & Extract<PlacementApplyResult, { ok: true }>)
+  | ({ kind: "catch" } & Extract<CatchApplyResult, { ok: true }>)
+  | { ok: false; error: string };
+
+function canUpload(type: ScheduleImportType) {
+  return type === "placement" || type === "catch";
+}
 
 export function DashboardScheduleImport({
   imports,
@@ -33,13 +66,11 @@ export function DashboardScheduleImport({
   const [pending, startTransition] = useTransition();
   const [uploadResult, setUploadResult] = useState<UploadScheduleImportResult | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<Extract<PlacementPreviewResult, { ok: true }> | null>(
-    null,
-  );
+  const [preview, setPreview] = useState<PreviewState | null>(null);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [rename, setRename] = useState<Record<string, boolean>>({});
   const [onlyMyFarms, setOnlyMyFarms] = useState(false);
-  const [applyResult, setApplyResult] = useState<PlacementApplyResult | null>(null);
+  const [applyResult, setApplyResult] = useState<ApplyState | null>(null);
 
   const shownUploads = imports.filter((item) => item.importType === importType);
 
@@ -49,7 +80,7 @@ export function DashboardScheduleImport({
     [farms],
   );
 
-  function applyOnlyMyFarms(checked: boolean, list: PlacementFarmPreview[]) {
+  function applyOnlyMyFarms(checked: boolean, list: PreviewFarm[]) {
     setOnlyMyFarms(checked);
     if (!checked) return;
     const next: Record<string, boolean> = {};
@@ -57,17 +88,66 @@ export function DashboardScheduleImport({
     setSelected(next);
   }
 
-  function loadPreview(importId: string) {
+  function loadPreview(importId: string, kind: "placement" | "catch" = importType === "catch" ? "catch" : "placement") {
     startTransition(async () => {
       setLocalError(null);
       setApplyResult(null);
+      if (kind === "catch") {
+        const res = await previewCatchImportAction(importId);
+        if (!res.ok) {
+          setLocalError(res.error);
+          setPreview(null);
+          return;
+        }
+        setPreview({
+          kind: "catch",
+          importId: res.importId,
+          totalRows: res.totalRows,
+          farms: res.farms.map((f) => ({
+            key: f.key,
+            farmCode: f.farmCode,
+            farmName: f.farmName,
+            rowCount: f.rowCount,
+            houseNumbers: f.houseNumbers,
+            flockIds: f.flockIds,
+            catchDates: f.catchDates,
+            isMyFarm: f.isMyFarm,
+            match: f.match,
+          })),
+        });
+        const nextSelected: Record<string, boolean> = {};
+        const nextRename: Record<string, boolean> = {};
+        for (const farm of res.farms) {
+          nextSelected[farm.key] = farm.isMyFarm;
+          nextRename[farm.key] = false;
+        }
+        setSelected(nextSelected);
+        setRename(nextRename);
+        setOnlyMyFarms(true);
+        return;
+      }
+
       const res = await previewPlacementImportAction(importId);
       if (!res.ok) {
         setLocalError(res.error);
         setPreview(null);
         return;
       }
-      setPreview(res);
+      setPreview({
+        kind: "placement",
+        importId: res.importId,
+        totalRows: res.totalRows,
+        farms: res.farms.map((f) => ({
+          key: f.key,
+          farmCode: f.farmCode,
+          farmName: f.farmName,
+          rowCount: f.rowCount,
+          houseNumbers: f.houseNumbers,
+          flockIds: f.flockIds,
+          isMyFarm: f.isMyFarm,
+          match: f.match,
+        })),
+      });
       const nextSelected: Record<string, boolean> = {};
       const nextRename: Record<string, boolean> = {};
       for (const farm of res.farms) {
@@ -87,6 +167,11 @@ export function DashboardScheduleImport({
     setApplyResult(null);
     setPreview(null);
 
+    if (!canUpload(importType)) {
+      setLocalError(`${scheduleImportTypeLabel(importType)} import comes next.`);
+      return;
+    }
+
     const form = e.currentTarget;
     const input = form.elements.namedItem("file") as HTMLInputElement | null;
     if (!input?.files?.[0]) {
@@ -103,8 +188,8 @@ export function DashboardScheduleImport({
         setUploadResult(res);
         if (!res.ok) return;
         form.reset();
-        if (importType === "placement") {
-          loadPreview(res.example.id);
+        if (importType === "placement" || importType === "catch") {
+          loadPreview(res.example.id, importType);
         }
       } catch (err) {
         setLocalError(err instanceof Error ? err.message : "Upload failed");
@@ -114,7 +199,7 @@ export function DashboardScheduleImport({
 
   function onImportSelected() {
     if (!preview) return;
-    const selections: PlacementSelection[] = preview.farms.map((farm) => ({
+    const selections: Array<PlacementSelection | CatchSelection> = preview.farms.map((farm) => ({
       key: farm.key,
       selected: Boolean(selected[farm.key]),
       renameToImportedName: Boolean(rename[farm.key]),
@@ -122,29 +207,41 @@ export function DashboardScheduleImport({
 
     startTransition(async () => {
       setLocalError(null);
-      const res = await applyPlacementImportAction({
-        importId: preview.importId,
-        selections,
-      });
-      setApplyResult(res);
-      if (res.ok) {
+      if (preview.kind === "catch") {
+        const res = await applyCatchImportAction({
+          importId: preview.importId,
+          selections: selections as CatchSelection[],
+        });
+        if (!res.ok) {
+          setApplyResult(res);
+          return;
+        }
+        setApplyResult({ kind: "catch", ...res });
         setPreview(null);
         setOnlyMyFarms(false);
+        return;
       }
+
+      const res = await applyPlacementImportAction({
+        importId: preview.importId,
+        selections: selections as PlacementSelection[],
+      });
+      if (!res.ok) {
+        setApplyResult(res);
+        return;
+      }
+      setApplyResult({ kind: "placement", ...res });
+      setPreview(null);
+      setOnlyMyFarms(false);
     });
   }
 
   const selectedCount = Object.values(selected).filter(Boolean).length;
+  const uploadEnabled = canUpload(importType);
 
   return (
     <Card>
-      <p className="text-sm text-stone-600">
-        Import Placement, Catch Schedule, or Settlements. Placement reads the sheet, lets you
-        pick farms, then creates farms/houses/flocks from Date Placed, Farm Code, Farm Name,
-        Flock ID, House No, and Number Sent.
-      </p>
-
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         {SCHEDULE_IMPORT_TYPES.map((type) => {
           const active = importType === type.id;
           return (
@@ -185,20 +282,26 @@ export function DashboardScheduleImport({
             type="file"
             accept=".pdf,.png,.jpg,.jpeg,.webp,.csv,.xls,.xlsx,.txt,application/pdf,image/*,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-emerald-800"
-            disabled={pending || importType !== "placement"}
+            disabled={pending || !uploadEnabled}
           />
-          {importType !== "placement" ? (
+          {importType === "placement" ? (
             <p className="mt-2 text-sm text-stone-500">
-              {scheduleImportTypeLabel(importType)} mapping comes next. Upload Placement first.
+              Weekly Chick Placement PDF (including scanned) or spreadsheet.
+            </p>
+          ) : importType === "catch" ? (
+            <p className="mt-2 text-sm text-stone-500">
+              Kill / Catch Schedule PDF (including scanned) or spreadsheet (Ending Kill Date or Catch Date, Farm Name,
+              House — Farm-Entity / Farm Code when available). Side-by-side Fort Smith / Heavener
+              sheets supported.
             </p>
           ) : (
             <p className="mt-2 text-sm text-stone-500">
-              Weekly Chick Placement PDF or spreadsheet.
+              {scheduleImportTypeLabel(importType)} mapping comes next.
             </p>
           )}
         </div>
 
-        <Button type="submit" disabled={pending || importType !== "placement"}>
+        <Button type="submit" disabled={pending || !uploadEnabled}>
           {pending ? "Working…" : "Upload & read"}
         </Button>
       </form>
@@ -219,7 +322,9 @@ export function DashboardScheduleImport({
         <div className="mt-5 border-t border-stone-200 pt-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-bold text-stone-900">Choose farms to import</h3>
+              <h3 className="text-sm font-bold text-stone-900">
+                {preview.kind === "catch" ? "Choose farms to update catch dates" : "Choose farms to import"}
+              </h3>
               <p className="text-sm text-stone-500">
                 {preview.totalRows} rows · {preview.farms.length} farms in file
               </p>
@@ -251,11 +356,7 @@ export function DashboardScheduleImport({
                       onChange={(e) => {
                         const value = e.target.checked;
                         setSelected((prev) => ({ ...prev, [farm.key]: value }));
-                        if (
-                          onlyMyFarms &&
-                          value &&
-                          !myFarmKeys.has(farm.key)
-                        ) {
+                        if (onlyMyFarms && value && !myFarmKeys.has(farm.key)) {
                           setOnlyMyFarms(false);
                         }
                       }}
@@ -266,25 +367,32 @@ export function DashboardScheduleImport({
                         <span className="ml-2 font-medium text-stone-500">{farm.farmCode}</span>
                       </span>
                       <span className="block text-xs text-stone-500">
-                        {farm.rowCount} rows · houses {farm.houseNumbers.join(", ")} · flocks{" "}
-                        {farm.flockIds.join(", ")}
+                        {farm.rowCount} rows · houses {farm.houseNumbers.join(", ")}
+                        {farm.flockIds.length > 0 ? ` · flocks ${farm.flockIds.join(", ")}` : ""}
+                        {farm.catchDates?.length
+                          ? ` · catch ${farm.catchDates.join(", ")}`
+                          : ""}
                       </span>
                       {farm.isMyFarm ? (
                         <span className="mt-1 inline-block text-xs font-semibold text-emerald-800">
                           Matches your farm
                           {farm.match.farm ? `: ${farm.match.farm.farmName}` : ""}
-                          {farm.match.kind === "fuzzy" ? " (similar name)" : ""}
+                          {farm.match.kind === "fuzzy" || farm.match.nameDiffers
+                            ? " (similar name)"
+                            : ""}
                         </span>
                       ) : (
                         <span className="mt-1 inline-block text-xs font-semibold text-amber-800">
-                          New farm will be created
+                          {preview.kind === "catch"
+                            ? "No matching farm — will be skipped"
+                            : "New farm will be created"}
                         </span>
                       )}
                     </span>
                   </label>
 
                   {checked && farm.match.nameDiffers && farm.match.farm ? (
-                    <label className="mt-2 flex items-start gap-2 border-t border-stone-200 pt-2 text-sm text-stone-700">
+                    <label className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-sm text-stone-800">
                       <input
                         type="checkbox"
                         className="mt-0.5 h-4 w-4"
@@ -294,10 +402,14 @@ export function DashboardScheduleImport({
                         }
                       />
                       <span>
-                        Update farm name from{" "}
-                        <span className="font-semibold">{farm.match.farm.farmName}</span> to{" "}
-                        <span className="font-semibold">{farm.farmName}</span>? Keeps grower,
-                        phone, houses, and other saved info.
+                        <span className="font-bold text-stone-900">
+                          Accept new name and overwrite{" "}
+                          <span className="font-semibold">“{farm.match.farm.farmName}”</span> with{" "}
+                          <span className="font-semibold">“{farm.farmName}”</span>
+                        </span>
+                        <span className="mt-0.5 block text-xs text-stone-600">
+                          Keeps grower, phone, houses, and other saved info.
+                        </span>
                       </span>
                     </label>
                   ) : null}
@@ -308,7 +420,9 @@ export function DashboardScheduleImport({
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Button type="button" disabled={pending || selectedCount === 0} onClick={onImportSelected}>
-              {pending ? "Importing…" : `Import ${selectedCount} farm${selectedCount === 1 ? "" : "s"}`}
+              {pending
+                ? "Importing…"
+                : `Import ${selectedCount} farm${selectedCount === 1 ? "" : "s"}`}
             </Button>
             <Button
               type="button"
@@ -325,14 +439,26 @@ export function DashboardScheduleImport({
         </div>
       ) : null}
 
-      {applyResult?.ok ? (
+      {applyResult && "kind" in applyResult && applyResult.ok ? (
         <div className="mt-4 rounded-lg bg-emerald-50 px-3 py-3 text-sm text-emerald-950">
-          <p className="font-bold">Placement import complete</p>
+          <p className="font-bold">
+            {applyResult.kind === "catch" ? "Catch Schedule import complete" : "Placement import complete"}
+          </p>
           <ul className="mt-2 space-y-1">
-            <li>Farms created: {applyResult.createdFarms}</li>
-            <li>Farm names updated: {applyResult.updatedNames}</li>
-            <li>Houses created: {applyResult.createdHouses}</li>
-            <li>Flocks created: {applyResult.createdFlocks}</li>
+            {applyResult.kind === "placement" ? (
+              <>
+                <li>Farms created: {applyResult.createdFarms}</li>
+                <li>Farm names updated: {applyResult.updatedNames}</li>
+                <li>Houses created: {applyResult.createdHouses}</li>
+                <li>Flocks created: {applyResult.createdFlocks}</li>
+              </>
+            ) : (
+              <>
+                <li>House catch dates updated: {applyResult.updatedHouses}</li>
+                <li>Flock catch dates updated: {applyResult.updatedFlocks}</li>
+                <li>Farm names updated: {applyResult.updatedNames}</li>
+              </>
+            )}
           </ul>
           {applyResult.warnings.length > 0 ? (
             <div className="mt-2">
@@ -371,11 +497,16 @@ export function DashboardScheduleImport({
                 </a>
                 <span className="flex items-center gap-3 text-stone-500">
                   {formatBytes(item.sizeBytes)} · {formatUploadedAt(item.uploadedAt)}
-                  {importType === "placement" ? (
+                  {canUpload(item.importType) ? (
                     <button
                       type="button"
                       className="font-semibold text-emerald-800 underline-offset-2 hover:underline"
-                      onClick={() => loadPreview(item.id)}
+                      onClick={() =>
+                        loadPreview(
+                          item.id,
+                          item.importType === "catch" ? "catch" : "placement",
+                        )
+                      }
                       disabled={pending}
                     >
                       Review farms

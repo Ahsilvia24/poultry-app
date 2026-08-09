@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
 import { ClipboardIconButton } from "./ClipboardIconButton";
-import { colors } from "../theme";
+import { colors, fonts } from "../theme";
 
 export function CopyHouseSummaryButton({
   lines,
@@ -42,7 +42,7 @@ export function LfoHouseSummaryBlock({
           {lines.map((line) => (
             <Text
               key={line}
-              style={{ fontWeight: "700", color: colors.text, fontSize }}
+              style={{ fontFamily: fonts.sans, fontWeight: "700", color: colors.text, fontSize }}
             >
               {line}
             </Text>

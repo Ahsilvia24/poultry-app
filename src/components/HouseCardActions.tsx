@@ -152,8 +152,8 @@ export function HouseCardActions({
                       type="number"
                       min={1}
                       step={1}
-                      defaultValue={house.placedBirdCount ?? ""}
-                      placeholder="e.g. 29700"
+                      defaultValue={house.placedBirdCount ?? 29700}
+                      placeholder="29700"
                     />
                   </div>
                 ) : (
@@ -228,7 +228,8 @@ export function HouseCardActions({
                     min={1}
                     step="any"
                     required
-                    defaultValue={house.squareFootage}
+                    defaultValue={house.squareFootage ?? 29700}
+                    placeholder="29700"
                   />
                 </div>
                 <div>

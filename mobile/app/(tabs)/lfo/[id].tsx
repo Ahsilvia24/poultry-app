@@ -21,8 +21,8 @@ import {
 } from "../../../src/lib/lfo/calculate";
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
-import { colors, styles } from "../../../src/theme";
-import { Card, PageHeader, PrimaryButton } from "../../../src/components/ui";
+import { colors, fonts, styles } from "../../../src/theme";
+import { Card, PrimaryButton } from "../../../src/components/ui";
 import { DatePickerField } from "../../../src/components/DatePickerField";
 import { TimeScrollPickerField } from "../../../src/components/TimeScrollPicker";
 import {
@@ -136,15 +136,23 @@ function FieldButton({
         onPress={onPress}
         style={[
           styles.input,
+          {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "flex-start",
+          },
           active
             ? { borderColor: colors.accentDark, borderWidth: 2 }
             : null,
         ]}
       >
         <Text
+          numberOfLines={1}
           style={{
-            fontSize: 18,
+            fontFamily: fonts.sans,
+            fontSize: 16,
             fontWeight: "700",
+            lineHeight: 22,
             color: value ? colors.text : colors.muted,
           }}
         >
@@ -288,9 +296,11 @@ export default function EditLfoScreen() {
 
   function onDigit(d: string) {
     const current = getActiveValue();
+    const allowDecimal = activeField?.kind === "rate";
+    // Fresh typing replaces the field; 000 / decimal still append to a cleared base.
     const base = replaceOnType && d !== "." ? "" : current;
     setReplaceOnType(false);
-    setActiveValue(appendKeypadDigit(base, d, true));
+    setActiveValue(appendKeypadDigit(base, d, allowDecimal));
   }
 
   function onBackspace() {
@@ -357,25 +367,49 @@ export default function EditLfoScreen() {
           }}
           scrollEventThrottle={16}
         >
-          <Pressable
-            onPress={() => router.back()}
+          <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 6,
-              marginBottom: 8,
-              alignSelf: "flex-start",
-              paddingVertical: 6,
-              paddingRight: 8,
+              justifyContent: "space-between",
+              gap: 10,
+              marginBottom: 16,
             }}
-            accessibilityRole="button"
-            accessibilityLabel="Back to LFOs"
           >
-            <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
-            <Text style={{ fontWeight: "800", color: colors.accentDark, fontSize: 16 }}>LFOs</Text>
-          </Pressable>
-
-          <PageHeader title={farmName || "LFO"} subtitle="Edit last feed order" />
+            <Pressable
+              onPress={() => router.back()}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                flexShrink: 0,
+                paddingVertical: 6,
+                paddingRight: 4,
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Back to LFOs"
+            >
+              <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
+              <Text style={{ fontWeight: "800", color: colors.accentDark, fontSize: 16 }}>
+                LFOs
+              </Text>
+            </Pressable>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                textAlign: "right",
+                fontSize: 22,
+                fontWeight: "800",
+                color: colors.text,
+              }}
+            >
+              {farmName || "LFO"}
+            </Text>
+          </View>
 
           {error ? (
             <Card>
@@ -399,20 +433,35 @@ export default function EditLfoScreen() {
           {ready ? (
             <>
               <Card>
-                <DatePickerField
-                  label="Order date"
-                  value={orderDate}
-                  onChange={setOrderDate}
-                />
-                <View style={{ marginTop: 12 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: 10,
+                  }}
+                >
+                  <DatePickerField
+                    label="Order date"
+                    value={orderDate}
+                    onChange={(date) => {
+                      setActiveField(null);
+                      setOrderDate(date);
+                    }}
+                    onOpen={() => setActiveField(null)}
+                    style={{ flex: 1, minWidth: 0 }}
+                  />
                   <FieldButton
-                    label="Consumption rate (lbs/bird/day)"
+                    label="Consumption rate"
                     value={consumptionRate}
                     active={activeField?.kind === "rate"}
                     onPress={() => focusField({ kind: "rate" })}
                     fieldRef={bindFieldRef("rate")}
+                    style={{ flex: 1, minWidth: 0 }}
                   />
                 </View>
+                <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
+                  Consumption rate in lbs/bird/day
+                </Text>
               </Card>
 
               <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>
@@ -462,22 +511,39 @@ export default function EditLfoScreen() {
                         fieldRef={bindFieldRef(`binB:${house.houseId}`)}
                       />
                     </View>
-                    <View style={{ marginTop: 4 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        marginTop: 4,
+                      }}
+                    >
                       <DatePickerField
                         label="Feed up date"
                         value={house.feedUpDate}
-                        onChange={(date) => updateHouse(house.houseId, { feedUpDate: date })}
+                        onChange={(date) => {
+                          setActiveField(null);
+                          updateHouse(house.houseId, { feedUpDate: date });
+                        }}
+                        onOpen={() => setActiveField(null)}
+                        style={{ flex: 1, minWidth: 0 }}
+                      />
+                      <TimeScrollPickerField
+                        label="Feed up time"
+                        value={house.feedUpTime}
+                        onChange={(time) => {
+                          setActiveField(null);
+                          updateHouse(house.houseId, { feedUpTime: time });
+                        }}
+                        onOpen={() => setActiveField(null)}
+                        style={{ flex: 1, minWidth: 0 }}
                       />
                     </View>
-                    <TimeScrollPickerField
-                      label="Feed up time"
-                      value={house.feedUpTime}
-                      onChange={(time) => updateHouse(house.houseId, { feedUpTime: time })}
-                    />
                     {house.feedUpTime ? (
                       <Pressable
                         onPress={() => updateHouse(house.houseId, { feedUpTime: "" })}
-                        style={{ alignSelf: "flex-start", marginTop: 6 }}
+                        style={{ alignSelf: "flex-end", marginTop: 6 }}
                         hitSlop={8}
                       >
                         <Text style={{ color: colors.muted, fontWeight: "700" }}>Clear time</Text>
@@ -488,13 +554,13 @@ export default function EditLfoScreen() {
                       <View style={{ marginTop: 12, gap: 4 }}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                           <Text style={styles.muted}>Feed off (−6h)</Text>
-                          <Text style={{ fontWeight: "600" }}>
+                          <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
                             {formatFeedStamp(result.feedOffAt)}
                           </Text>
                         </View>
                         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                           <Text style={styles.muted}>Hours until feed off</Text>
-                          <Text style={{ fontWeight: "600" }}>
+                          <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
                             {result.hoursUntilFeedOff == null
                               ? "—"
                               : formatHours(result.hoursUntilFeedOff)}
@@ -502,13 +568,13 @@ export default function EditLfoScreen() {
                         </View>
                         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                           <Text style={styles.muted}>Hourly consumption</Text>
-                          <Text style={{ fontWeight: "600" }}>
+                          <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
                             {formatLbs(result.hourlyConsumptionLbs)} lbs/hr
                           </Text>
                         </View>
                         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                           <Text style={styles.muted}>Feed used until off</Text>
-                          <Text style={{ fontWeight: "600" }}>
+                          <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
                             {result.feedConsumedUntilOffLbs == null
                               ? "—"
                               : `${formatLbs(result.feedConsumedUntilOffLbs)} lbs`}
@@ -517,14 +583,14 @@ export default function EditLfoScreen() {
                         {result.rawOrderLbs != null && result.rawOrderLbs > 0 ? (
                           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                             <Text style={styles.muted}>LFO</Text>
-                            <Text style={{ fontWeight: "600" }}>
+                            <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
                               {formatLbs(result.rawOrderLbs)} lbs
                             </Text>
                           </View>
                         ) : result.rawReclaimLbs != null && result.rawReclaimLbs > 0 ? (
                           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                             <Text style={styles.muted}>Reclaim</Text>
-                            <Text style={{ fontWeight: "600" }}>
+                            <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
                               {formatLbs(result.rawReclaimLbs)} lbs
                             </Text>
                           </View>
@@ -537,7 +603,7 @@ export default function EditLfoScreen() {
                                 ? "Reclaim (rounded)"
                                 : "LFO / reclaim (rounded)"}
                           </Text>
-                          <Text style={{ fontWeight: "800" }}>
+                          <Text style={{ fontFamily: fonts.sans, fontWeight: "800" }}>
                             {result.balanceLbs == null
                               ? "—"
                               : result.orderLbs != null && result.orderLbs > 0
@@ -580,7 +646,8 @@ export default function EditLfoScreen() {
 
         {activeField ? (
           <NumberKeypad
-            allowDecimal
+            allowDecimal={activeField.kind === "rate"}
+            allowTripleZero={activeField.kind === "binA" || activeField.kind === "binB"}
             onDigit={onDigit}
             onBackspace={onBackspace}
             onEnter={onEnter}

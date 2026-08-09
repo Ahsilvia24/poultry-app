@@ -56,10 +56,7 @@ export default function NewFarmScreen() {
               Cancel
             </Text>
           </Pressable>
-          <PageHeader
-            title="Add Farm"
-            subtitle="Farm name and house count get you started — add other details anytime"
-          />
+          <PageHeader title="Add Farm" />
 
           <Card>
             <Text style={styles.label}>Farm name *</Text>

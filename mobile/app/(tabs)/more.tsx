@@ -7,25 +7,10 @@ import { Card, PageHeader, SectionTitle } from "../../src/components/ui";
 import { ExportDataCard } from "../../src/components/ExportDataCard";
 
 const LINKS = [
-  {
-    href: "/(tabs)/reports",
-    title: "Reports",
-  },
-  {
-    href: "/(tabs)/mortality",
-    title: "Mortality entry",
-    subtitle: "Age grid and by-date entry",
-  },
-  {
-    href: "/(tabs)/lfo",
-    title: "LFO",
-    subtitle: "Last feed order and consumption",
-  },
-  {
-    href: "/(tabs)/tools",
-    title: "Tools",
-    subtitle: "Temp curve, cool cells, ventilation",
-  },
+  { href: "/(tabs)/reports", title: "Reports" },
+  { href: "/(tabs)/mortality", title: "Mortality entry" },
+  { href: "/(tabs)/lfo", title: "LFO" },
+  { href: "/(tabs)/tools", title: "Tools" },
 ] as const;
 
 export default function MoreScreen() {
@@ -38,16 +23,13 @@ export default function MoreScreen() {
         <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
           <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
         </Pressable>
-        <PageHeader title="More" subtitle="Reports and account" />
+        <PageHeader title="More" />
 
         <SectionTitle>Navigate</SectionTitle>
         {LINKS.map((link) => (
           <Pressable key={link.href} onPress={() => router.push(link.href as any)}>
             <Card>
               <Text style={{ fontWeight: "800", fontSize: 16 }}>{link.title}</Text>
-              {"subtitle" in link && link.subtitle ? (
-                <Text style={[styles.muted, { marginTop: 4 }]}>{link.subtitle}</Text>
-              ) : null}
             </Card>
           </Pressable>
         ))}

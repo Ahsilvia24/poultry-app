@@ -5,13 +5,13 @@ import { tmpdir } from "os";
 import path from "path";
 import * as XLSX from "xlsx";
 import { ocrPdfToText, pdfTextNeedsOcr } from "@/lib/pdf-ocr";
-import { parsePlacementPdfText, parsePlacementSheetRows } from "@/lib/placement-import/parse";
-import type { PlacementRow } from "@/lib/placement-import/types";
+import { parseCatchPdfText, parseCatchSheetRows } from "@/lib/catch-import/parse";
+import type { CatchRow } from "@/lib/catch-import/types";
 
 const execFileAsync = promisify(execFile);
 
 async function extractPdfText(bytes: Buffer): Promise<string> {
-  const dir = await mkdtemp(path.join(tmpdir(), "placement-pdf-"));
+  const dir = await mkdtemp(path.join(tmpdir(), "catch-pdf-"));
   const pdfPath = path.join(dir, "input.pdf");
   try {
     await writeFile(pdfPath, bytes);
@@ -24,7 +24,7 @@ async function extractPdfText(bytes: Buffer): Promise<string> {
       );
       text = stdout ?? "";
     } catch {
-      // fall through to pdf-parse
+      // fall through
     }
 
     if (!text.trim()) {
@@ -48,11 +48,11 @@ async function extractPdfText(bytes: Buffer): Promise<string> {
   }
 }
 
-export async function extractPlacementRows(input: {
+export async function extractCatchRows(input: {
   bytes: Buffer;
   fileName: string;
   mimeType?: string;
-}): Promise<PlacementRow[]> {
+}): Promise<CatchRow[]> {
   const name = input.fileName.toLowerCase();
   const mime = (input.mimeType ?? "").toLowerCase();
 
@@ -61,7 +61,7 @@ export async function extractPlacementRows(input: {
     const sheet = text
       .split(/\r?\n/)
       .map((line) => line.split(",").map((c) => c.replace(/^"|"$/g, "")));
-    return parsePlacementSheetRows(sheet);
+    return parseCatchSheetRows(sheet);
   }
 
   if (
@@ -73,15 +73,21 @@ export async function extractPlacementRows(input: {
     const workbook = XLSX.read(input.bytes, { type: "buffer", cellDates: true });
     const first = workbook.SheetNames[0];
     if (!first) return [];
-    const sheet = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets[first]!, {
-      header: 1,
-      raw: false,
-      defval: "",
-    });
-    return parsePlacementSheetRows(sheet as string[][]);
+    const sheet = XLSX.utils.sheet_to_json<(string | number | Date | null)[]>(
+      workbook.Sheets[first]!,
+      {
+        header: 1,
+        raw: false,
+        defval: "",
+      },
+    );
+    return parseCatchSheetRows(
+      sheet.map((row: (string | number | Date | null)[]) =>
+        row.map((c: string | number | Date | null) => String(c ?? "")),
+      ),
+    );
   }
 
-  // PDF (default for Weekly Chick Placement exports)
   const text = await extractPdfText(input.bytes);
-  return parsePlacementPdfText(text);
+  return parseCatchPdfText(text);
 }

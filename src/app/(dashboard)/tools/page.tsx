@@ -203,11 +203,7 @@ export default async function ToolsPage({
           <CoolCellsChart />
         </ToolsSectionPanel>
 
-        <ToolsSectionPanel
-          hashId="max-cooling"
-          title="Max Cooling"
-          subtitle="By relative humidity and outside temperature (°F)"
-        >
+        <ToolsSectionPanel hashId="max-cooling" title="Max Cooling">
           <MaxCoolingChart />
         </ToolsSectionPanel>
 
