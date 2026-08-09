@@ -13,10 +13,7 @@ const {
   groupPlacementFarms,
   summarizePlacementRows,
   assertWeeklyChickPlacementShape,
-  buildPlacementReviewIssues,
-  renamePlacementFarm,
-  patchPlacementRowAt,
-  farmGroupKey,
+  placementPdfExtractStats,
 } = await import(parseUrl);
 
 function fail(msg) {
@@ -164,7 +161,7 @@ if (markers.length >= 8) {
     "PROJECTED 2601HV Ref. FSP1 Wk No. 08/03/2026 72944 3821FS 22,200 FS26045 3 22,200 0 12 PROJECTED 2601HV BLACKJACK MTN 08/03/2026 72944 3821FS 24,300 FS26045 4 24,300",
   );
   const farms = groupPlacementFarms(junk);
-  if (farms.some((f) => /FSP1|Ref\.|Wk\s*No/i.test(f.farmName))) {
+  if (farms.some((f) => /FSP1|Ref\.|Wk\s*No|HVPP|Saturday/i.test(f.farmName))) {
     fail(`header junk farm name leaked: ${farms.map((f) => f.farmName).join(", ")}`);
   } else if (!farms.some((f) => f.farmName === "BLACKJACK MTN" && f.farmCode === "3821FS")) {
     fail("header junk case lost BLACKJACK MTN");
@@ -173,85 +170,43 @@ if (markers.length >= 8) {
   }
 }
 
-// Offline review helpers: flag partial reads and allow local edits.
+// Full FSP1 / HVPP week banners are junk — ignore them entirely.
 {
-  const sample = [
-    {
-      farmCode: "3821FS",
-      farmName: "BLACKJACK MTN",
-      flockId: "3821FS",
-      datePlaced: "2026-08-03",
-      houseNo: 1,
-      numberSent: 22200,
-    },
-    {
-      farmCode: "3821FS",
-      farmName: "BLACKJACK MTN",
-      flockId: "3821FS",
-      datePlaced: "2026-08-03",
-      houseNo: 2,
-      numberSent: 22200,
-    },
-  ];
-  const issues = buildPlacementReviewIssues(sample, {
-    chars: 1000,
-    projected: 96,
-    anchors: 17,
-    complexAnchors: 0,
-    expectedRows: 96,
-  });
-  if (!issues.some((i) => i.id === "partial_sheet")) {
-    fail("offline review: expected partial_sheet issue");
+  const banner =
+    "FSP1 Wk No. 31 WE Saturday, August 8, 2026 2601HV BLACKJACK MTN 08/03/2026 72944 3821FS 22,200 FS26045 3 22,200 0 12 PROJECTED " +
+    "HVPP Wk 31 WE No. Saturday, August 8, 2026 2601HV MERCY FARM 08/03/2026 72830 3807FS 28,700 FS26045 4 28,700 0 13 PROJECTED";
+  const farms = groupPlacementFarms(parsePlacementPdfText(banner));
+  if (farms.some((f) => /FSP1|HVPP|Saturday|Wk|WE\b|No\./i.test(f.farmName))) {
+    fail(`week banner leaked into farm name: ${farms.map((f) => f.farmName).join(", ")}`);
+  } else if (
+    !farms.some((f) => f.farmName === "BLACKJACK MTN") ||
+    !farms.some((f) => f.farmName === "MERCY FARM")
+  ) {
+    fail(`week banner strip lost farms: ${farms.map((f) => f.farmName).join(", ")}`);
   } else {
-    const key = farmGroupKey("3821FS", "BLACKJACK MTN");
-    const renamed = renamePlacementFarm(sample, key, "BLACK JACK", "3821FS");
-    const patched = patchPlacementRowAt(renamed, 0, { numberSent: 24000 });
-    if (
-      patched[0].farmName !== "BLACK JACK" ||
-      patched[0].numberSent !== 24000 ||
-      patched[0].flockId !== "3821FS"
-    ) {
-      fail("offline review: edit helpers failed");
-    } else {
-      ok("offline review: partial flag + local edit helpers");
-    }
+    ok("FSP1/HVPP week banners ignored");
   }
 }
 
-// Typed offline fix commands (no network).
+// Spatial PDFKit column order (City/State before street; zip after birds).
 {
-  const { applyLocalPlacementInstructions } = await import(parseUrl);
-  const rows = [
-    {
-      farmCode: "3821FS",
-      farmName: "BLACKJACK MTN",
-      flockId: "3821FS",
-      datePlaced: "2026-08-03",
-      houseNo: 1,
-      numberSent: 22200,
-    },
-    {
-      farmCode: "3807FS",
-      farmName: "MERCY FARM",
-      flockId: "3807FS",
-      datePlaced: "2026-08-03",
-      houseNo: 1,
-      numberSent: 44000,
-    },
-  ];
-  const removed = applyLocalPlacementInstructions(rows, "remove farm MERCY FARM");
-  if (!removed || removed.rows.length !== 1 || removed.rows[0].farmName !== "BLACKJACK MTN") {
-    fail("local AI instruction: remove farm failed");
-  } else {
-    const birds = applyLocalPlacementInstructions(
-      removed.rows,
-      "BLACKJACK MTN house 1 birds 24000",
+  const spatial = readFileSync(
+    join(__dirname, "fixtures/weekly-chick-placement-pdfkit-spatial.txt"),
+    "utf8",
+  );
+  checkFixture("pdfkit-spatial", spatial);
+  const summary = summarizePlacementRows(parsePlacementPdfText(spatial));
+  const stats = placementPdfExtractStats(spatial);
+  if (stats.projected < 90) {
+    fail(`pdfkit-spatial: expected ~96 PROJECTED, got ${stats.projected}`);
+  } else if (summary.farmCount < 18 || summary.rowCount < 80) {
+    fail(
+      `pdfkit-spatial: expected near-full sheet, got ${summary.farmCount} farms / ${summary.rowCount} rows`,
     );
-    if (!birds || birds.rows[0].numberSent !== 24000) {
-      fail("local AI instruction: birds update failed");
-    } else {
-      ok("local typed fix commands (offline)");
-    }
+  } else {
+    ok(
+      `pdfkit-spatial full-sheet: ${summary.farmCount} farms / ${summary.rowCount} rows (PROJECTED=${stats.projected})`,
+    );
   }
 }
 

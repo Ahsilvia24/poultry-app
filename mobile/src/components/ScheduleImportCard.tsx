@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Alert, Platform, Pressable, Text, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as XLSX from "xlsx";
 import { colors, styles } from "../theme";
 import { Card, PrimaryButton } from "./ui";
-import { PlacementImportReview } from "./PlacementImportReview";
 import {
   groupPlacementFarms,
   parsePlacementPdfText,
@@ -15,12 +14,6 @@ import {
   summarizePlacementRows,
   type PlacementRow,
 } from "../lib/placementImport/parse";
-import {
-  buildPlacementReviewIssues,
-  type PlacementExtractHint,
-} from "../lib/placementImport/review";
-import { applyPlacementLessonsToRows, loadPlacementLessons } from "../lib/placementImport/learn";
-import { loadPlacementAiKey } from "../lib/placementImport/aiFix";
 import {
   groupCatchFarms,
   parseCatchPdfText,
@@ -76,7 +69,9 @@ function isPdfFile(fileName: string, mimeType?: string | null) {
 function sheetFromWorkbookBytes(bytes: ArrayBuffer | Uint8Array, fileName: string): string[][] {
   const name = fileName.toLowerCase();
   if (name.endsWith(".csv") || name.endsWith(".txt")) {
-    const text = new TextDecoder().decode(bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes);
+    const text = new TextDecoder().decode(
+      bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes,
+    );
     return text.split(/\r?\n/).map((line) => line.split(",").map((c) => c.replace(/^"|"$/g, "")));
   }
   if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
@@ -131,7 +126,6 @@ async function sheetFromPickedFile(
 
 function showAlert(title: string, message: string) {
   if (Platform.OS === "web") {
-    // RN Web Alert.alert is a no-op — surface errors in the browser.
     window.alert(`${title}\n\n${message}`);
     return;
   }
@@ -148,27 +142,11 @@ export function ScheduleImportCard() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [rename, setRename] = useState<Record<string, boolean>>({});
   const [onlyMyFarms, setOnlyMyFarms] = useState(false);
-  const [extractHint, setExtractHint] = useState<PlacementExtractHint | null>(null);
-  const [pdfExtractText, setPdfExtractText] = useState<string | null>(null);
-  const [fixFarmKey, setFixFarmKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    void loadPlacementLessons();
-    void loadPlacementAiKey();
-  }, []);
 
   const selectedCount = useMemo(
     () => Object.values(selected).filter(Boolean).length,
     [selected],
-  );
-
-  const reviewIssues = useMemo(
-    () =>
-      importType === "placement" && placementRows.length > 0
-        ? buildPlacementReviewIssues(placementRows, extractHint)
-        : [],
-    [importType, placementRows, extractHint],
   );
 
   function clearPreview() {
@@ -176,48 +154,23 @@ export function ScheduleImportCard() {
     setPlacementRows([]);
     setCatchRows([]);
     setOnlyMyFarms(false);
-    setExtractHint(null);
-    setPdfExtractText(null);
-    setFixFarmKey(null);
   }
 
-  function setPreviewFromGroups(groups: FarmPreview[], preserveSelection = false) {
+  function setPreviewFromGroups(groups: FarmPreview[]) {
     setFarms(groups);
-    if (preserveSelection) {
-      setSelected((prev) => {
-        const next: Record<string, boolean> = {};
-        for (const farm of groups) {
-          next[farm.key] = prev[farm.key] ?? farm.isMyFarm;
-        }
-        return next;
-      });
-      setRename((prev) => {
-        const next: Record<string, boolean> = {};
-        for (const farm of groups) next[farm.key] = prev[farm.key] ?? false;
-        return next;
-      });
-      return;
-    }
     const nextSelected: Record<string, boolean> = {};
     const nextRename: Record<string, boolean> = {};
     for (const farm of groups) {
-      nextSelected[farm.key] = farm.isMyFarm;
+      // Default: select everything so growers see the full sheet, not only matches.
+      nextSelected[farm.key] = true;
       nextRename[farm.key] = false;
     }
     setSelected(nextSelected);
     setRename(nextRename);
-    setOnlyMyFarms(true);
+    setOnlyMyFarms(false);
   }
 
-  function buildPlacementPreview(
-    parsed: PlacementRow[],
-    opts?: {
-      statsLine?: string | null;
-      hint?: PlacementExtractHint | null;
-      preserveSelection?: boolean;
-      edited?: boolean;
-    },
-  ) {
+  function buildPlacementPreview(parsed: PlacementRow[], statsLine?: string | null) {
     const existing = listFarmsForPlacementMatch();
     const grouped = groupPlacementFarms(parsed);
     const matches = matchPlacementFarmGroups(grouped, existing);
@@ -238,18 +191,13 @@ export function ScheduleImportCard() {
     });
     setPlacementRows(parsed);
     setCatchRows([]);
-    if (opts?.hint !== undefined) setExtractHint(opts.hint);
-    setPreviewFromGroups(groups, Boolean(opts?.preserveSelection));
+    setPreviewFromGroups(groups);
     const summary = summarizePlacementRows(parsed);
     const matched = groups.filter((g) => g.isMyFarm).length;
-    const statsSuffix = opts?.statsLine ? ` · ${opts.statsLine}` : "";
-    const editedSuffix = opts?.edited ? " · edited offline" : "";
+    const statsSuffix = statsLine ? ` · ${statsLine}` : "";
     setNote(
-      `Read ${summary.farmCount} farm${summary.farmCount === 1 ? "" : "s"} · ${summary.houseCount} house${summary.houseCount === 1 ? "" : "s"} · ${summary.birdsSent.toLocaleString()} birds (${matched} match your farms)${statsSuffix}${editedSuffix}.`,
+      `Read ${summary.farmCount} farm${summary.farmCount === 1 ? "" : "s"} · ${summary.houseCount} house${summary.houseCount === 1 ? "" : "s"} · ${summary.birdsSent.toLocaleString()} birds (${matched} match your farms)${statsSuffix}.`,
     );
-    if (opts?.preserveSelection && fixFarmKey && !groups.some((g) => g.key === fixFarmKey)) {
-      setFixFarmKey(groups[0]?.key ?? null);
-    }
   }
 
   function buildCatchPreview(parsed: CatchRow[]) {
@@ -290,15 +238,12 @@ export function ScheduleImportCard() {
       return;
     }
 
-    const parsed = applyPlacementLessonsToRows(parsePlacementSheetRows(sheet));
+    const parsed = parsePlacementSheetRows(sheet);
     if (parsed.length === 0) {
       throw new Error(
-        "Could not read placement rows. Need at least Farm Name or Farm Code (Date, Flock, House, and birds can be blank).",
+        "Could not read placement rows. Need at least Farm Name or Farm Code (Date, House, and birds can be blank).",
       );
     }
-    setExtractHint(null);
-    setPdfExtractText(null);
-    setFixFarmKey(null);
     buildPlacementPreview(parsed);
   }
 
@@ -321,10 +266,9 @@ export function ScheduleImportCard() {
 
     const stats = placementPdfExtractStats(text);
     const statsLine = `${stats.chars} chars · ${stats.projected} PROJECTED · ${stats.anchors}+${stats.complexAnchors} anchors · expect ~${stats.expectedRows}`;
-    const parsed = applyPlacementLessonsToRows(parsePlacementPdfText(text));
+    const parsed = parsePlacementPdfText(text);
     if (parsed.length === 0) {
       const sample = placementPdfDebugSample(text);
-      // Keep extract on clipboard so we can fix the real device stream shape.
       try {
         const Clipboard = await import("expo-clipboard");
         await Clipboard.setStringAsync(text.slice(0, 12000));
@@ -335,16 +279,7 @@ export function ScheduleImportCard() {
         `Could not read placement rows from PDF (${stats.chars} chars, ${stats.projected} PROJECTED, ${stats.expectedRows} expected). Need Farm Name or Farm Code. Sample: ${sample}`,
       );
     }
-    const hint: PlacementExtractHint = {
-      chars: stats.chars,
-      projected: stats.projected,
-      anchors: stats.anchors,
-      complexAnchors: stats.complexAnchors,
-      expectedRows: stats.expectedRows,
-    };
-    setFixFarmKey(null);
-    setPdfExtractText(text);
-    buildPlacementPreview(parsed, { statsLine, hint });
+    buildPlacementPreview(parsed, statsLine);
     const summary = summarizePlacementRows(parsed);
     if (stats.expectedRows >= 20 && summary.rowCount < stats.expectedRows * 0.5) {
       try {
@@ -397,7 +332,6 @@ export function ScheduleImportCard() {
     }
   }
 
-  /** Expo web: DocumentPicker + hidden refs are flaky on tunnel hosts — open a real picker. */
   function pickWebFile(): Promise<File | null> {
     return new Promise((resolve) => {
       const input = document.createElement("input");
@@ -434,7 +368,6 @@ export function ScheduleImportCard() {
         if (!file) return;
         await onWebFileSelected(file);
       } catch {
-        // Fallback to hidden input if createElement path is blocked.
         fileInputRef.current?.click();
       }
       return;
@@ -522,8 +455,8 @@ export function ScheduleImportCard() {
   const helperText =
     importType === "placement"
       ? Platform.OS === "web"
-        ? "Weekly Chick Placement: name, code left of name, house, date, birds. Ignores Complex, flock-code column, and far-right mortality. Review/fix offline; Ask AI online when configured."
-        : "Weekly Chick Placement: name, code left of name (e.g. 3821FS), house, date, birds. Ignores Complex, flock-code column, far-right columns. Offline pull + edit always; Ask AI online when configured."
+        ? "Weekly Chick Placement: farm name, code left of the name, house, date placed, birds sent. Ignores Complex / flock-code / mortality columns."
+        : "Weekly Chick Placement: farm name, code left of the name (e.g. 3821FS), house, date placed, birds sent. Ignores Complex, flock-code column, and far-right columns. Text PDFs on iPhone; scans need CSV/XLSX."
       : importType === "catch"
         ? Platform.OS === "web"
           ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (scanned PDFs OK). Ending Kill Date or Catch Date, Farm Name, House."
@@ -594,10 +527,7 @@ export function ScheduleImportCard() {
 
       <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>{helperText}</Text>
 
-      <PrimaryButton
-        label={busy ? "Working…" : "Upload & read"}
-        onPress={onUpload}
-      />
+      <PrimaryButton label={busy ? "Working…" : "Upload & read"} onPress={onUpload} />
 
       {note ? (
         <Text style={[styles.muted, { marginTop: 10, lineHeight: 18, color: colors.text }]}>
@@ -609,7 +539,7 @@ export function ScheduleImportCard() {
         <View style={{ marginTop: 14, borderTopWidth: 1, borderTopColor: "#e7e5e4", paddingTop: 12 }}>
           <View style={[styles.row, { justifyContent: "space-between", alignItems: "center" }]}>
             <Text style={{ fontWeight: "800", color: colors.text }}>
-              {importType === "catch" ? "Choose farms to update" : "Review & choose farms"}
+              {importType === "catch" ? "Choose farms to update" : "Choose farms to import"}
             </Text>
             <Pressable
               onPress={() => onToggleOnlyMine(!onlyMyFarms)}
@@ -631,44 +561,8 @@ export function ScheduleImportCard() {
             </Pressable>
           </View>
 
-          {importType === "placement" && reviewIssues.length > 0 ? (
-            <View
-              style={{
-                marginTop: 10,
-                borderRadius: 10,
-                borderWidth: 1,
-                borderColor: "#fde68a",
-                backgroundColor: "#fffbeb",
-                padding: 10,
-              }}
-            >
-              {reviewIssues.slice(0, 3).map((issue) => (
-                <Text
-                  key={issue.id}
-                  style={{
-                    fontSize: 12,
-                    lineHeight: 16,
-                    fontWeight: "600",
-                    color: issue.severity === "warn" ? colors.warn : colors.text,
-                    marginBottom: 4,
-                  }}
-                >
-                  {issue.message}
-                </Text>
-              ))}
-              <Pressable
-                onPress={() => setFixFarmKey((prev) => prev ?? farms[0]?.key ?? null)}
-                style={{ marginTop: 4 }}
-              >
-                <Text style={{ fontWeight: "800", color: colors.accentDark, fontSize: 12 }}>
-                  Fix what’s wrong
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
-
           {importType === "placement" ? (
-            <View style={[styles.row, { marginTop: 8, gap: 14, flexWrap: "wrap" }]}>
+            <View style={[styles.row, { marginTop: 8, gap: 14 }]}>
               <Pressable
                 onPress={() => {
                   const next: Record<string, boolean> = {};
@@ -693,58 +587,18 @@ export function ScheduleImportCard() {
                   Clear
                 </Text>
               </Pressable>
-              <Pressable
-                onPress={() => setFixFarmKey((prev) => prev ?? farms[0]?.key ?? null)}
-              >
-                <Text style={{ fontWeight: "700", color: colors.accentDark, fontSize: 12 }}>
-                  {fixFarmKey ? "Editing…" : "Something looks wrong"}
-                </Text>
-              </Pressable>
             </View>
           ) : null}
 
-          {importType === "placement" && fixFarmKey
-            ? (() => {
-                const farm = farms.find((f) => f.key === fixFarmKey) ?? farms[0];
-                if (!farm) return null;
-                return (
-                  <PlacementImportReview
-                    key={farm.key}
-                    rows={placementRows}
-                    farmKey={farm.key}
-                    farmName={farm.farmName}
-                    farmCode={farm.farmCode}
-                    farmOptions={farms.map((f) => ({
-                      key: f.key,
-                      farmName: f.farmName,
-                      farmCode: f.farmCode,
-                    }))}
-                    stats={extractHint}
-                    pdfSample={pdfExtractText}
-                    onChangeRows={(next) =>
-                      buildPlacementPreview(next, {
-                        hint: extractHint,
-                        preserveSelection: true,
-                        edited: true,
-                      })
-                    }
-                    onSelectFarm={setFixFarmKey}
-                    onClose={() => setFixFarmKey(null)}
-                  />
-                );
-              })()
-            : null}
-
           {farms.map((farm) => {
             const checked = Boolean(selected[farm.key]);
-            const fixing = fixFarmKey === farm.key;
             return (
               <View
                 key={farm.key}
                 style={{
                   marginTop: 8,
                   borderWidth: 1,
-                  borderColor: fixing ? colors.accentDark : colors.border,
+                  borderColor: colors.border,
                   borderRadius: 10,
                   padding: 10,
                   backgroundColor: "#fafaf9",
@@ -799,17 +653,6 @@ export function ScheduleImportCard() {
                   </View>
                 </Pressable>
 
-                {importType === "placement" ? (
-                  <Pressable
-                    onPress={() => setFixFarmKey(fixing ? null : farm.key)}
-                    style={{ marginTop: 8 }}
-                  >
-                    <Text style={{ fontWeight: "700", color: colors.accentDark, fontSize: 12 }}>
-                      {fixing ? "Hide edits" : "Edit / fix this farm"}
-                    </Text>
-                  </Pressable>
-                ) : null}
-
                 {checked && farm.nameDiffers && farm.matchName ? (
                   <Pressable
                     onPress={() =>
@@ -840,10 +683,24 @@ export function ScheduleImportCard() {
                       }}
                     />
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 12, fontWeight: "800", color: colors.text, lineHeight: 16 }}>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: "800",
+                          color: colors.text,
+                          lineHeight: 16,
+                        }}
+                      >
                         Accept new name and overwrite “{farm.matchName}” with “{farm.farmName}”
                       </Text>
-                      <Text style={{ marginTop: 2, fontSize: 11, color: colors.muted, lineHeight: 14 }}>
+                      <Text
+                        style={{
+                          marginTop: 2,
+                          fontSize: 11,
+                          color: colors.muted,
+                          lineHeight: 14,
+                        }}
+                      >
                         Keeps grower, phone, houses, and other saved info.
                       </Text>
                     </View>
