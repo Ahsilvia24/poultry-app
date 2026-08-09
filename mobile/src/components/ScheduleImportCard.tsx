@@ -424,8 +424,8 @@ export function ScheduleImportCard() {
   const helperText =
     importType === "placement"
       ? Platform.OS === "web"
-        ? "Choose a Placement PDF/CSV/XLSX (scanned image PDFs OK — OCR runs automatically), then review farms."
-        : "Choose a Placement PDF/CSV/XLSX, then review farms. Text PDFs work on iPhone; scanned image PDFs need CSV/XLSX."
+        ? "Reads farm name, code left of the name, house, date placed, and birds sent. Scanned PDFs OK (OCR)."
+        : "Reads farm name, code left of the name (e.g. 3821FS), house, date placed, and birds sent. Text PDFs on iPhone; scans need CSV/XLSX."
       : importType === "catch"
         ? Platform.OS === "web"
           ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (scanned PDFs OK). Ending Kill Date or Catch Date, Farm Name, House."
