@@ -56,6 +56,13 @@ checkFixture(
   "layout",
   readFileSync(join(fixturesDir, "weekly-chick-placement-layout.txt"), "utf8"),
 );
+checkFixture(
+  "pdfkit-spaced-complex",
+  readFileSync(
+    join(fixturesDir, "weekly-chick-placement-pdfkit-spaced-complex.txt"),
+    "utf8",
+  ),
+);
 
 // Fewer farms: first ~6 PROJECTED blocks from the device extract still parse cleanly.
 const pdfkit = readFileSync(

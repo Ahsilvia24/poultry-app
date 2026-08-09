@@ -185,7 +185,7 @@ export function ScheduleImportCard() {
     const summary = summarizePlacementRows(parsed);
     const matched = groups.filter((g) => g.isMyFarm).length;
     setNote(
-      `Read ${summary.farmCount} farm${summary.farmCount === 1 ? "" : "s"} · ${summary.houseCount} house${summary.houseCount === 1 ? "" : "s"} · ${summary.birdsSent.toLocaleString()} birds (${matched} match your farms). Farm count varies by week.`,
+      `Read ${summary.farmCount} farm${summary.farmCount === 1 ? "" : "s"} · ${summary.houseCount} house${summary.houseCount === 1 ? "" : "s"} · ${summary.birdsSent.toLocaleString()} birds (${matched} match your farms).`,
     );
   }
 
