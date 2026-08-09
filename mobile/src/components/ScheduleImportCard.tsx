@@ -18,7 +18,7 @@ import {
   type CatchRow,
 } from "../lib/catchImport/parse";
 import { matchPlacementFarmGroups } from "../lib/placementImport/match";
-import { extractPdfTextFromBytes } from "../lib/pdfText";
+import { extractPdfTextFromBytes, extractPdfTextFromUri } from "../lib/pdfText";
 import {
   importCatchRows,
   importPlacementRows,
@@ -117,13 +117,6 @@ async function sheetFromPickedFile(
   }
 
   throw new Error("Use a PDF or spreadsheet (.csv / .xlsx).");
-}
-
-function base64ToUint8Array(b64: string): Uint8Array {
-  const binary = globalThis.atob(b64);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out;
 }
 
 function showAlert(title: string, message: string) {
@@ -237,18 +230,16 @@ export function ScheduleImportCard() {
     setNote(`Read ${parsed.length} rows from ${fileName}.`);
   }
 
-  async function processPdfBytes(bytes: ArrayBuffer | Uint8Array, fileName: string) {
-    setNote(`Reading ${fileName} (scanned PDFs use OCR and may take a minute)…`);
-    const text = await extractPdfTextFromBytes(bytes);
+  async function processPdfText(text: string, fileName: string) {
     if (!text.trim()) {
-      throw new Error("Could not read text from that PDF, even with OCR. Try a clearer scan or CSV/XLSX.");
+      throw new Error("Could not read text from that PDF. Try a clearer file or CSV/XLSX.");
     }
 
     if (importType === "catch") {
       const parsed = parseCatchPdfText(text);
       if (parsed.length === 0) {
         throw new Error(
-          "Could not read catch rows from PDF/OCR. Need Catch Date / Ending Kill Date, Farm Name, and House (partial rows OK).",
+          "Could not read catch rows from PDF. Need Catch Date / Ending Kill Date, Farm Name, and House (partial rows OK).",
         );
       }
       buildCatchPreview(parsed);
@@ -259,11 +250,27 @@ export function ScheduleImportCard() {
     const parsed = parsePlacementPdfText(text);
     if (parsed.length === 0) {
       throw new Error(
-        "Could not read placement rows from PDF/OCR. Need at least a Farm Name or Farm Code (other fields can be blank).",
+        "Could not read placement rows from PDF. Need at least a Farm Name or Farm Code (other fields can be blank).",
       );
     }
     buildPlacementPreview(parsed);
     setNote(`Read ${parsed.length} rows from ${fileName}.`);
+  }
+
+  async function processPdfBytes(bytes: ArrayBuffer | Uint8Array, fileName: string) {
+    setNote(
+      Platform.OS === "web"
+        ? `Reading ${fileName} (scanned PDFs use OCR and may take a minute)…`
+        : `Reading ${fileName}…`,
+    );
+    const text = await extractPdfTextFromBytes(bytes);
+    await processPdfText(text, fileName);
+  }
+
+  async function processPdfUri(uri: string, fileName: string) {
+    setNote(`Reading ${fileName}…`);
+    const text = await extractPdfTextFromUri(uri);
+    await processPdfText(text, fileName);
   }
 
   async function onWebFileSelected(file: File) {
@@ -349,10 +356,7 @@ export function ScheduleImportCard() {
       const asset = picked.assets[0];
       const fileName = asset.name || "import.pdf";
       if (isPdfFile(fileName, asset.mimeType)) {
-        const b64 = await FileSystem.readAsStringAsync(asset.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        await processPdfBytes(base64ToUint8Array(b64), fileName);
+        await processPdfUri(asset.uri, fileName);
       } else {
         const sheet = await sheetFromPickedFile(asset);
         await processSheet(sheet, fileName);
@@ -417,9 +421,13 @@ export function ScheduleImportCard() {
 
   const helperText =
     importType === "placement"
-      ? "Choose a Placement PDF/CSV/XLSX (scanned image PDFs OK — OCR runs automatically), then review farms."
+      ? Platform.OS === "web"
+        ? "Choose a Placement PDF/CSV/XLSX (scanned image PDFs OK — OCR runs automatically), then review farms."
+        : "Choose a Placement PDF/CSV/XLSX, then review farms. Text PDFs work on iPhone; scanned image PDFs need CSV/XLSX."
       : importType === "catch"
-        ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (scanned PDFs OK). Ending Kill Date or Catch Date, Farm Name, House."
+        ? Platform.OS === "web"
+          ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (scanned PDFs OK). Ending Kill Date or Catch Date, Farm Name, House."
+          : "Choose a Kill/Catch Schedule PDF/CSV/XLSX. Ending Kill Date or Catch Date, Farm Name, House. Scanned PDFs need CSV/XLSX on iPhone."
         : `${typeLabel(importType)} mapping comes next.`;
 
   return (
