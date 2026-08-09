@@ -4,11 +4,7 @@ import { mkdtemp, writeFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
 import * as XLSX from "xlsx";
-import {
-  parsePlacementLayoutText,
-  parsePlacementScrambledText,
-  parsePlacementSheetRows,
-} from "@/lib/placement-import/parse";
+import { parsePlacementPdfText, parsePlacementSheetRows } from "@/lib/placement-import/parse";
 import type { PlacementRow } from "@/lib/placement-import/types";
 
 const execFileAsync = promisify(execFile);
@@ -73,7 +69,5 @@ export async function extractPlacementRows(input: {
 
   // PDF (default for Weekly Chick Placement exports)
   const text = await extractPdfText(input.bytes);
-  const layoutRows = parsePlacementLayoutText(text);
-  if (layoutRows.length > 0) return layoutRows;
-  return parsePlacementScrambledText(text);
+  return parsePlacementPdfText(text);
 }

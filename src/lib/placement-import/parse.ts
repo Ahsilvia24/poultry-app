@@ -1,40 +1,126 @@
 import type { PlacementFarmGroup, PlacementRow } from "@/lib/placement-import/types";
 
-function toIsoDate(mmddyyyy: string): string | null {
-  const m = mmddyyyy.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!m) return null;
-  const mm = m[1]!.padStart(2, "0");
-  const dd = m[2]!.padStart(2, "0");
-  const yyyy = m[3]!;
-  return `${yyyy}-${mm}-${dd}`;
+function todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function toIsoDate(raw: string): string | null {
+  const s = raw.trim();
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) {
+    return `${mdy[3]}-${mdy[1]!.padStart(2, "0")}-${mdy[2]!.padStart(2, "0")}`;
+  }
+  const mdy2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if (mdy2) {
+    const yy = Number(mdy2[3]);
+    const year = yy >= 70 ? 1900 + yy : 2000 + yy;
+    return `${year}-${mdy2[1]!.padStart(2, "0")}-${mdy2[2]!.padStart(2, "0")}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const n = Number(s);
+  if (Number.isFinite(n) && n > 20000 && n < 80000) {
+    const utc = new Date(Math.round((n - 25569) * 86400 * 1000));
+    if (Number.isFinite(utc.getTime())) return utc.toISOString().slice(0, 10);
+  }
+  return null;
 }
 
 function parseNumberSent(raw: string): number | null {
   const n = Number(String(raw).replace(/,/g, "").trim());
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
+}
+
+function isFarmCode(token: string) {
+  return /^\d{3,5}[A-Z]{2}$/i.test(token.trim());
+}
+
+function isFlockId(token: string) {
+  return /^(?:FS|HV)\d+$/i.test(token.trim());
+}
+
+function isDateToken(token: string) {
+  return toIsoDate(token) != null;
+}
+
+function isHouseToken(token: string) {
+  const n = Number(token);
+  return Number.isInteger(n) && n >= 1 && n <= 40;
+}
+
+function isBirdsToken(token: string) {
+  const cleaned = token.replace(/,/g, "");
+  if (!/^\d+$/.test(cleaned)) return false;
+  const n = Number(cleaned);
+  return Number.isFinite(n) && n >= 0 && (n >= 50 || token.includes(","));
+}
+
+/** Fill missing placement fields so partial PDF/sheet rows can still import. */
+export function normalizePlacementRow(partial: {
+  datePlaced?: string | null;
+  farmCode?: string | null;
+  farmName?: string | null;
+  flockId?: string | null;
+  houseNo?: number | null;
+  numberSent?: number | null;
+}): PlacementRow | null {
+  const farmCode = (partial.farmCode ?? "").trim().toUpperCase();
+  const farmName = (partial.farmName ?? "").trim().replace(/\s+/g, " ");
+  if (!farmCode && !farmName) return null;
+
+  const datePlaced = partial.datePlaced && toIsoDate(partial.datePlaced)
+    ? toIsoDate(partial.datePlaced)!
+    : partial.datePlaced && /^\d{4}-\d{2}-\d{2}/.test(partial.datePlaced)
+      ? partial.datePlaced.slice(0, 10)
+      : todayIso();
+
+  const houseNo =
+    partial.houseNo != null && Number.isFinite(partial.houseNo) && partial.houseNo > 0
+      ? Math.floor(partial.houseNo)
+      : 1;
+
+  const flockRaw = (partial.flockId ?? "").trim().toUpperCase();
+  const flockId =
+    flockRaw ||
+    (farmCode ? `${farmCode}-H${houseNo}` : `H${houseNo}-${datePlaced.replace(/-/g, "")}`);
+
+  const numberSent =
+    partial.numberSent != null && Number.isFinite(partial.numberSent) && partial.numberSent >= 0
+      ? Math.floor(partial.numberSent)
+      : 0;
+
+  return {
+    datePlaced,
+    farmCode,
+    farmName: farmName || farmCode,
+    flockId,
+    houseNo,
+    numberSent,
+  };
 }
 
 /** Parse Weekly Chick Placement rows from pdftotext -layout style text. */
 export function parsePlacementLayoutText(text: string): PlacementRow[] {
   const rows: PlacementRow[] = [];
   const re =
-    /^(\S+)\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{4}[A-Z]{2})\s+(.+?)\s+((?:FS|HV)\d+)\s+(\d+)\s+([\d,]+)/;
+    /(?:^|\s)(?:\S+\s+)?(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{3,5}[A-Z]{2})\s+(.+?)\s+((?:FS|HV)\d+)\s+(\d{1,2})\s+([\d,]+)/gi;
 
   for (const line of text.split(/\r?\n/)) {
-    const m = line.trim().match(re);
-    if (!m) continue;
-    const datePlaced = toIsoDate(m[2]!);
-    const numberSent = parseNumberSent(m[7]!);
-    const houseNo = Number(m[6]);
-    if (!datePlaced || numberSent == null || !Number.isFinite(houseNo) || houseNo <= 0) continue;
-    rows.push({
-      datePlaced,
-      farmCode: m[3]!.trim().toUpperCase(),
-      farmName: m[4]!.trim().replace(/\s+/g, " "),
-      flockId: m[5]!.trim().toUpperCase(),
-      houseNo: Math.floor(houseNo),
-      numberSent,
-    });
+    const trimmed = line.replace(/\u00a0/g, " ").trim();
+    if (!trimmed || /farm\s*name|date\s*placed|number\s*sent/i.test(trimmed)) continue;
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(trimmed))) {
+      const row = normalizePlacementRow({
+        datePlaced: toIsoDate(m[1]!),
+        farmCode: m[2],
+        farmName: m[3],
+        flockId: m[4],
+        houseNo: Number(m[5]),
+        numberSent: parseNumberSent(m[6]!),
+      });
+      if (row) rows.push(row);
+    }
   }
   return rows;
 }
@@ -46,24 +132,176 @@ export function parsePlacementLayoutText(text: string): PlacementRow[] {
 export function parsePlacementScrambledText(text: string): PlacementRow[] {
   const rows: PlacementRow[] = [];
   const re =
-    /(\d{4}(?:FS|HV))\s+([\d,]+)\s+\S+\s+((?:FS|HV)\d+)\s+(\d+)\s+([\d,]+)\s+\d+\s+[\s\S]*?\t([^\t\n]+)\t(\d{1,2}\/\d{1,2}\/\d{4})/g;
-
+    /(\d{3,5}(?:FS|HV))\s+([\d,]+)\s+\S+\s+((?:FS|HV)\d+)\s+(\d+)\s+([\d,]+)\s+\d+\s+[\s\S]*?\t([^\t\n]+)\t(\d{1,2}\/\d{1,2}\/\d{2,4})/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
-    const datePlaced = toIsoDate(m[7]!);
-    const numberSent = parseNumberSent(m[2]!);
-    const houseNo = Number(m[4]);
-    if (!datePlaced || numberSent == null || !Number.isFinite(houseNo) || houseNo <= 0) continue;
-    rows.push({
-      datePlaced,
-      farmCode: m[1]!.trim().toUpperCase(),
-      farmName: m[6]!.trim().replace(/\s+/g, " "),
-      flockId: m[3]!.trim().toUpperCase(),
-      houseNo: Math.floor(houseNo),
-      numberSent,
+    const row = normalizePlacementRow({
+      datePlaced: toIsoDate(m[7]!),
+      farmCode: m[1],
+      farmName: m[6],
+      flockId: m[3],
+      houseNo: Number(m[4]),
+      numberSent: parseNumberSent(m[2]!),
     });
+    if (row) rows.push(row);
   }
   return rows;
+}
+
+/** Walk tokens — handles pdf.js one-cell-per-line output; partial rows allowed. */
+export function parsePlacementTokenStream(text: string): PlacementRow[] {
+  const tokens = text
+    .replace(/\u00a0/g, " ")
+    .split(/[\s\t]+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  const rows: PlacementRow[] = [];
+  let i = 0;
+
+  while (i < tokens.length) {
+    if (!isDateToken(tokens[i]!) && !isFarmCode(tokens[i]!)) {
+      i += 1;
+      continue;
+    }
+
+    let datePlaced: string | null = null;
+    if (isDateToken(tokens[i]!)) {
+      datePlaced = toIsoDate(tokens[i]!);
+      i += 1;
+    }
+
+    while (
+      i < tokens.length &&
+      !isFarmCode(tokens[i]!) &&
+      !isDateToken(tokens[i]!) &&
+      tokens[i]!.length <= 12 &&
+      /^[A-Z./-]{2,}$/.test(tokens[i]!)
+    ) {
+      i += 1;
+    }
+
+    if (i >= tokens.length) break;
+
+    let farmCode = "";
+    if (isFarmCode(tokens[i]!)) {
+      farmCode = tokens[i]!.toUpperCase();
+      i += 1;
+    } else if (!datePlaced) {
+      continue;
+    }
+
+    const nameParts: string[] = [];
+    while (
+      i < tokens.length &&
+      !isFlockId(tokens[i]!) &&
+      !isFarmCode(tokens[i]!) &&
+      !(isHouseToken(tokens[i]!) && nameParts.length > 0) &&
+      !(isBirdsToken(tokens[i]!) && nameParts.length > 0) &&
+      !isDateToken(tokens[i]!)
+    ) {
+      // Stop on header-ish tokens, but not bare "farm" (common in farm names).
+      if (
+        nameParts.length > 0 &&
+        /^(date|placed|flock|house|number|sent|complex|entity|code|name)$/i.test(tokens[i]!)
+      ) {
+        break;
+      }
+      nameParts.push(tokens[i]!);
+      i += 1;
+      if (nameParts.length >= 8) break;
+    }
+
+    let flockId = "";
+    if (i < tokens.length && isFlockId(tokens[i]!)) {
+      flockId = tokens[i]!.toUpperCase();
+      i += 1;
+    }
+
+    let houseNo: number | null = null;
+    if (i < tokens.length && isHouseToken(tokens[i]!)) {
+      houseNo = Number(tokens[i]!);
+      i += 1;
+    }
+
+    let numberSent: number | null = null;
+    if (i < tokens.length && (isBirdsToken(tokens[i]!) || /^\d+$/.test(tokens[i]!.replace(/,/g, "")))) {
+      const n = parseNumberSent(tokens[i]!);
+      if (n != null) {
+        numberSent = n;
+        i += 1;
+      }
+    }
+
+    const farmName = nameParts.join(" ").replace(/\s+/g, " ").trim();
+    const row = normalizePlacementRow({
+      datePlaced,
+      farmCode,
+      farmName,
+      flockId,
+      houseNo,
+      numberSent,
+    });
+    if (row) rows.push(row);
+    if (!farmCode && !farmName) i += 1;
+  }
+
+  return rows;
+}
+
+function sheetFromLayoutText(text: string): string[][] {
+  return text.split(/\r?\n/).map((line) => {
+    const trimmed = line.replace(/\u00a0/g, " ").trimEnd();
+    if (!trimmed.trim()) return [];
+    if (/\t/.test(trimmed) || /\s{2,}/.test(trimmed)) {
+      return trimmed.split(/\t+|\s{2,}/).map((c) => c.trim());
+    }
+    return trimmed.trim().split(/\s+/);
+  });
+}
+
+export function parsePlacementPartialLines(text: string): PlacementRow[] {
+  const rows: PlacementRow[] = [];
+  const re =
+    /(\d{1,2}\/\d{1,2}\/\d{2,4})?\s*(\d{3,5}[A-Z]{2})\s+([A-Za-z0-9][A-Za-z0-9 .'&/-]*?)(?:\s+((?:FS|HV)\d+))?(?:\s+(\d{1,2}))?(?:\s+([\d,]+))?/gi;
+
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.replace(/\u00a0/g, " ").trim();
+    if (!trimmed || /farm\s*name|date\s*placed|number\s*sent/i.test(trimmed)) continue;
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(trimmed))) {
+      const row = normalizePlacementRow({
+        datePlaced: m[1] ? toIsoDate(m[1]) : null,
+        farmCode: m[2],
+        farmName: m[3],
+        flockId: m[4] ?? "",
+        houseNo: m[5] ? Number(m[5]) : null,
+        numberSent: m[6] ? parseNumberSent(m[6]) : null,
+      });
+      if (row) rows.push(row);
+    }
+  }
+  return rows;
+}
+
+/** PDF text → placement rows (several strategies; partial rows allowed). */
+export function parsePlacementPdfText(text: string): PlacementRow[] {
+  const strategies = [
+    parsePlacementLayoutText,
+    parsePlacementScrambledText,
+    parsePlacementTokenStream,
+    parsePlacementPartialLines,
+    (t: string) => parsePlacementSheetRows(sheetFromLayoutText(t)),
+  ];
+
+  let best: PlacementRow[] = [];
+  for (const fn of strategies) {
+    const rows = fn(text);
+    if (rows.length > best.length) best = rows;
+    if (rows.length >= 5) return rows;
+  }
+  return best;
 }
 
 function headerIndex(headers: string[], candidates: string[]) {
@@ -75,52 +313,46 @@ function headerIndex(headers: string[], candidates: string[]) {
   return -1;
 }
 
-/** Parse spreadsheet rows (CSV/XLSX already converted to string[][]). */
+/** Parse spreadsheet rows (CSV/XLSX already converted to string[][]). Partial columns allowed. */
 export function parsePlacementSheetRows(sheet: string[][]): PlacementRow[] {
   if (sheet.length < 2) return [];
   const headerRowIdx = sheet.findIndex((row) =>
-    row.some((cell) => /farm\s*name/i.test(String(cell ?? ""))),
+    row.some((cell) => {
+      const t = String(cell ?? "").toLowerCase();
+      return /farm\s*name/.test(t) || /farm\s*code/.test(t) || /date\s*placed/.test(t);
+    }),
   );
   if (headerRowIdx < 0) return [];
 
   const headers = sheet[headerRowIdx]!.map((c) => String(c ?? ""));
   const iDate = headerIndex(headers, ["date placed", "placement date", "date"]);
-  const iCode = headerIndex(headers, ["farm code", "farmcode"]);
-  const iName = headerIndex(headers, ["farm name", "farmname"]);
+  const iCode = headerIndex(headers, ["farm code", "farmcode", "farm entity", "grower code"]);
+  const iName = headerIndex(headers, ["farm name", "farmname", "grower name", "grower"]);
   const iFlock = headerIndex(headers, ["flock code", "flock id", "flock"]);
   const iHouse = headerIndex(headers, ["house no", "house number", "house"]);
-  const iSent = headerIndex(headers, ["number sent", "birds placed", "sent"]);
+  const iSent = headerIndex(headers, ["number sent", "birds placed", "sent", "head", "birds"]);
 
-  if (iDate < 0 || iCode < 0 || iName < 0 || iFlock < 0 || iHouse < 0 || iSent < 0) {
-    return [];
-  }
+  if (iName < 0 && iCode < 0) return [];
 
   const rows: PlacementRow[] = [];
   for (const raw of sheet.slice(headerRowIdx + 1)) {
-    const dateRaw = String(raw[iDate] ?? "").trim();
-    let datePlaced = toIsoDate(dateRaw);
-    if (!datePlaced && /^\d{4}-\d{2}-\d{2}/.test(dateRaw)) {
-      datePlaced = dateRaw.slice(0, 10);
-    }
-    // Excel serial date
-    if (!datePlaced && /^\d+(\.\d+)?$/.test(dateRaw)) {
-      const serial = Number(dateRaw);
-      if (serial > 20000 && serial < 80000) {
-        const epoch = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
-        datePlaced = epoch.toISOString().slice(0, 10);
-      }
-    }
+    const dateRaw = iDate >= 0 ? String(raw[iDate] ?? "").trim() : "";
+    const farmCode = iCode >= 0 ? String(raw[iCode] ?? "").trim().toUpperCase() : "";
+    const farmName = iName >= 0 ? String(raw[iName] ?? "").trim().replace(/\s+/g, " ") : "";
+    const flockId = iFlock >= 0 ? String(raw[iFlock] ?? "").trim().toUpperCase() : "";
+    const houseRaw = iHouse >= 0 ? String(raw[iHouse] ?? "").replace(/[^\d]/g, "") : "";
+    const houseNo = houseRaw ? Number(houseRaw) : null;
+    const numberSent = iSent >= 0 ? parseNumberSent(String(raw[iSent] ?? "")) : null;
 
-    const farmCode = String(raw[iCode] ?? "").trim().toUpperCase();
-    const farmName = String(raw[iName] ?? "").trim().replace(/\s+/g, " ");
-    const flockId = String(raw[iFlock] ?? "").trim().toUpperCase();
-    const houseNo = Number(String(raw[iHouse] ?? "").replace(/[^\d]/g, ""));
-    const numberSent = parseNumberSent(String(raw[iSent] ?? ""));
-
-    if (!datePlaced || !farmCode || !farmName || !flockId || !houseNo || numberSent == null) {
-      continue;
-    }
-    rows.push({ datePlaced, farmCode, farmName, flockId, houseNo, numberSent });
+    const row = normalizePlacementRow({
+      datePlaced: dateRaw ? toIsoDate(dateRaw) ?? dateRaw : null,
+      farmCode,
+      farmName,
+      flockId,
+      houseNo,
+      numberSent,
+    });
+    if (row) rows.push(row);
   }
   return rows;
 }
@@ -141,13 +373,13 @@ export function groupPlacementFarms(rows: PlacementRow[]): PlacementFarmGroup[] 
         farmName: row.farmName,
         rowCount: 1,
         houseNumbers: [row.houseNo],
-        flockIds: [row.flockId],
+        flockIds: row.flockId ? [row.flockId] : [],
       });
       continue;
     }
     existing.rowCount += 1;
     if (!existing.houseNumbers.includes(row.houseNo)) existing.houseNumbers.push(row.houseNo);
-    if (!existing.flockIds.includes(row.flockId)) existing.flockIds.push(row.flockId);
+    if (row.flockId && !existing.flockIds.includes(row.flockId)) existing.flockIds.push(row.flockId);
   }
   return Array.from(map.values())
     .map((g) => ({
