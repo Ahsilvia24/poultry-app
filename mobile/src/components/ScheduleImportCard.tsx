@@ -10,6 +10,7 @@ import {
   parsePlacementPdfText,
   parsePlacementSheetRows,
   placementPdfDebugSample,
+  placementPdfExtractStats,
   summarizePlacementRows,
   type PlacementRow,
 } from "../lib/placementImport/parse";
@@ -160,7 +161,7 @@ export function ScheduleImportCard() {
     setOnlyMyFarms(true);
   }
 
-  function buildPlacementPreview(parsed: PlacementRow[]) {
+  function buildPlacementPreview(parsed: PlacementRow[], statsLine?: string | null) {
     const existing = listFarmsForPlacementMatch();
     const grouped = groupPlacementFarms(parsed);
     const matches = matchPlacementFarmGroups(grouped, existing);
@@ -184,8 +185,9 @@ export function ScheduleImportCard() {
     setPreviewFromGroups(groups);
     const summary = summarizePlacementRows(parsed);
     const matched = groups.filter((g) => g.isMyFarm).length;
+    const statsSuffix = statsLine ? ` · ${statsLine}` : "";
     setNote(
-      `Read ${summary.farmCount} farm${summary.farmCount === 1 ? "" : "s"} · ${summary.houseCount} house${summary.houseCount === 1 ? "" : "s"} · ${summary.birdsSent.toLocaleString()} birds (${matched} match your farms).`,
+      `Read ${summary.farmCount} farm${summary.farmCount === 1 ? "" : "s"} · ${summary.houseCount} house${summary.houseCount === 1 ? "" : "s"} · ${summary.birdsSent.toLocaleString()} birds (${matched} match your farms)${statsSuffix}.`,
     );
   }
 
@@ -253,14 +255,16 @@ export function ScheduleImportCard() {
       return;
     }
 
+    const stats = placementPdfExtractStats(text);
+    const statsLine = `${stats.chars} chars · ${stats.projected} PROJECTED · ${stats.anchors} row anchors`;
     const parsed = parsePlacementPdfText(text);
     if (parsed.length === 0) {
       const sample = placementPdfDebugSample(text);
       throw new Error(
-        `Could not read placement rows from PDF (${text.length} chars). Need Farm Name or Farm Code. Sample: ${sample}`,
+        `Could not read placement rows from PDF (${stats.chars} chars, ${stats.projected} PROJECTED, ${stats.anchors} anchors). Need Farm Name or Farm Code. Sample: ${sample}`,
       );
     }
-    buildPlacementPreview(parsed);
+    buildPlacementPreview(parsed, statsLine);
   }
 
   async function processPdfBytes(bytes: ArrayBuffer | Uint8Array, fileName: string) {

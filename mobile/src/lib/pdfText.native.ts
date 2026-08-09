@@ -5,7 +5,12 @@
  */
 
 import * as FileSystem from "expo-file-system/legacy";
-import { extractText, isAvailable } from "expo-pdf-text-extract";
+import {
+  extractText,
+  extractTextFromPage,
+  getPageCount,
+  isAvailable,
+} from "expo-pdf-text-extract";
 
 const BASE64_ALPHABET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -55,6 +60,29 @@ function toFilesystemPath(uri: string): string {
   return uri;
 }
 
+/**
+ * Prefer page-by-page extract with clear separators so page-boundary glue
+ * cannot hide rows from the Weekly Chick Placement parser.
+ */
+async function extractPagedText(pathOrUri: string): Promise<string> {
+  try {
+    const pages = await getPageCount(pathOrUri);
+    if (pages > 1) {
+      const parts: string[] = [];
+      for (let page = 1; page <= pages; page++) {
+        const pageText = await extractTextFromPage(pathOrUri, page);
+        if (pageText?.trim()) parts.push(pageText.replace(/\u0000/g, ""));
+      }
+      if (parts.length > 0) {
+        return parts.join("\n\n---PAGE---\n\n");
+      }
+    }
+  } catch {
+    // Fall through to whole-document extract.
+  }
+  return (await extractText(pathOrUri)).replace(/\u0000/g, "");
+}
+
 async function extractFromUri(uri: string): Promise<string> {
   if (!isAvailable()) {
     throw new Error(
@@ -66,13 +94,12 @@ async function extractFromUri(uri: string): Promise<string> {
   const path = toFilesystemPath(uri);
   let text = "";
   try {
-    text = await extractText(path);
+    text = await extractPagedText(path);
   } catch {
     // Fall back to original URI (some Android content:// paths need it).
-    text = await extractText(uri);
+    text = await extractPagedText(uri);
   }
 
-  text = text.replace(/\u0000/g, "");
   if (!text.trim()) {
     throw new Error(
       "No readable text in this PDF (likely a scan). On iPhone use a text PDF, or export CSV/XLSX. OCR for scans is available in Expo web.",
