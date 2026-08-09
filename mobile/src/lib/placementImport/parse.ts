@@ -289,7 +289,7 @@ export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
   const rows: PlacementRow[] = [];
 
   const readProjectedNameDate = (from: number): { farmName: string; dateRaw: string } | null => {
-    for (let j = from; j < Math.min(tokens.length - 1, from + 48); j++) {
+    for (let j = from; j < Math.min(tokens.length - 1, from + 80); j++) {
       if (!/^PROJECTED$/i.test(tokens[j]!)) continue;
       const nameParts: string[] = [];
       let k = j + 1;
