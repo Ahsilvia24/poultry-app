@@ -149,25 +149,27 @@ export function stripPlacementAddressFromName(raw: string): string {
     .replace(/\s+/g, " ")
     .trim();
   s = s.replace(/^\d{3,5}(?:FS|HV)\s+/i, "").trim();
-  // Spatial PDFKit order puts City State before the street number:
-  //   BLACKJACK MTN ABBOTT ARKA 6501 BLACKJACK MTN. ROAD
-  //   FARM 9 WESTVILLE OK 470195 E 670 RD
-  //   VCS FARM ARKA 143 E BROWNTOWN RD
-  s = s
-    .replace(/\s+[A-Za-z][A-Za-z .'-]{0,24}\s+(?:OKLA|ARKA|AR|OK)\s+\d{1,6}\b.*$/i, "")
-    .replace(/\s+(?:OKLA|ARKA)\s+\d{1,6}\b.*$/i, "")
-    .trim();
-  // Cut at first 3+ digit street number.
+  // Cut at first 3+ digit street number BEFORE city cleanup so we don't
+  // swallow last names ("ARCHEY MICHAEL CAMERON OKLA 27906" → keep MICHAEL).
   const streetIdx = s.search(/\s+\d{3,6}(?:\s|$)/);
   if (streetIdx > 0) {
     const head = s.slice(0, streetIdx).trim();
     if (head.length >= 2) s = head;
   }
-  // Trailing city/state left after street cut (GOLD STAR FARM KEOTA OKLA).
+  // Trailing City / State after street cut (spatial PDFKit).
+  // Keep farm keywords (FARM/MTN/LLC) when they sit before a bare state:
+  //   VCS FARM ARKA → VCS FARM (not VCS)
+  //   ARCHEY MICHAEL CAMERON OKLA → ARCHEY MICHAEL
   s = s
-    .replace(/\s+[A-Za-z][A-Za-z .'-]{0,24}\s+(?:OKLA|ARKA|AR|OK)\b.*$/i, "")
+    .replace(
+      /\s+([A-Za-z][A-Za-z'/.-]{1,24})\s+(OKLA|ARKA|OK|AR)\b.*$/i,
+      (_m, city: string) =>
+        /^(FARM|FARMS|MTN|MOUNTAIN|LLC|POULTRY|BOTTOMS)$/i.test(city) ? ` ${city}` : "",
+    )
     .replace(/\s+(?:OKLA|ARKA)\b.*$/i, "")
     .trim();
+  // Two-word cities left a leftover ("4J SHADY POINT OK" → "4J SHADY").
+  s = s.replace(/\s+SHADY$/i, "").trim();
   // Road / city crumbs when the street number was missing or odd.
   s = s
     .replace(
@@ -807,11 +809,162 @@ export function parseWeeklyChickPlacementProjectedBlocks(text: string): Placemen
 }
 
 /**
+ * Hermes-safe token parser for one Weekly Chick Placement row chunk.
+ * Handles both common device orders without backtracking regex:
+ *   A) Complex Date FarmCode Name [Flock] House Sent …
+ *   B) Complex Name City State Street Date FarmCode [Flock] House Sent … (spatial)
+ *   C) Name Date Zip FarmCode Count [Flock] House Sent …
+ */
+function parseProjectedRowTokens(chunk: string): PlacementRow | null {
+  const tokens = chunk.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  if (tokens.length < 5) return null;
+
+  const dateIdxs: number[] = [];
+  const entityIdxs: number[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    if (isDateToken(tokens[i]!)) dateIdxs.push(i);
+    if (isEntityCodeToken(tokens[i]!)) entityIdxs.push(i);
+  }
+  if (!dateIdxs.length || entityIdxs.length < 1) return null;
+
+  // Prefer the last date in the chunk (row date, not week From/To in headers).
+  const dateIdx = dateIdxs[dateIdxs.length - 1]!;
+  const dateRaw = tokens[dateIdx]!;
+
+  // Find House + birds near the end (ignore trailing zip / day-count crumbs).
+  let houseIdx = -1;
+  let sentIdx = -1;
+  for (let i = tokens.length - 2; i >= 0; i--) {
+    if (isHouseToken(tokens[i]!) && isBirdCountToken(tokens[i + 1]!)) {
+      const birds = parseNumberSent(tokens[i + 1]!) ?? 0;
+      if (birds >= 100) {
+        houseIdx = i;
+        sentIdx = i + 1;
+        break;
+      }
+    }
+  }
+  if (houseIdx < 0 || sentIdx < 0) return null;
+
+  // Optional flock immediately before house.
+  let cursor = houseIdx;
+  if (cursor > 0 && isFlockCodeToken(tokens[cursor - 1]!)) cursor -= 1;
+
+  // Farm code: prefer entity immediately before flock/house, else after date.
+  let farmCodeIdx = -1;
+  if (cursor > 0 && isEntityCodeToken(tokens[cursor - 1]!)) {
+    farmCodeIdx = cursor - 1;
+    cursor -= 1;
+  } else {
+    for (let i = dateIdx + 1; i < houseIdx; i++) {
+      if (isEntityCodeToken(tokens[i]!) && tokens[i]!.toUpperCase() !== "2601HV") {
+        farmCodeIdx = i;
+        break;
+      }
+    }
+  }
+  if (farmCodeIdx < 0) return null;
+  const farmCode = tokens[farmCodeIdx]!.toUpperCase();
+  if (farmCode === "2601HV") return null;
+
+  // Optional count token just before flock (zip-order sheets).
+  if (farmCodeIdx + 1 < cursor && isBirdCountToken(tokens[farmCodeIdx + 1]!)) {
+    // ignore sheet "Number Sent" preview count
+  }
+
+  // Complex is usually the other entity (often first).
+  let complexIdx = -1;
+  for (const idx of entityIdxs) {
+    if (idx !== farmCodeIdx && tokens[idx]!.toUpperCase() === "2601HV") {
+      complexIdx = idx;
+      break;
+    }
+  }
+  if (complexIdx < 0) {
+    for (const idx of entityIdxs) {
+      if (idx !== farmCodeIdx) {
+        complexIdx = idx;
+        break;
+      }
+    }
+  }
+
+  // Name tokens:
+  //   spatial/zip: between Complex and Date (may include city/street — stripped later)
+  //   layout: between FarmCode and Flock/House (Complex Date Code Name …)
+  let nameParts: string[] = [];
+  if (complexIdx >= 0 && complexIdx < dateIdx) {
+    nameParts = tokens.slice(complexIdx + 1, dateIdx);
+  }
+  const cleanedEarly = nameParts.filter(
+    (t) => !isZipToken(t) && !isDateToken(t) && !isFlockCodeToken(t) && !isEntityCodeToken(t),
+  );
+  if (!stripPlacementAddressFromName(cleanedEarly.join(" ")) || cleanedEarly.length === 0) {
+    if (farmCodeIdx >= 0 && farmCodeIdx < cursor) {
+      nameParts = tokens.slice(farmCodeIdx + 1, cursor);
+      if (nameParts.length && isBirdCountToken(nameParts[0]!)) nameParts = nameParts.slice(1);
+    } else if (dateIdx > 0) {
+      let start = 0;
+      while (
+        start < dateIdx &&
+        (isEntityCodeToken(tokens[start]!) || /^PROJECTED$/i.test(tokens[start]!))
+      ) {
+        start++;
+      }
+      nameParts = tokens.slice(start, dateIdx);
+    }
+  }
+
+  // Drop zip / pure number crumbs from the name window.
+  nameParts = nameParts.filter(
+    (t) => !isZipToken(t) && !isDateToken(t) && !isFlockCodeToken(t) && !isEntityCodeToken(t),
+  );
+  const farmName = stripPlacementAddressFromName(nameParts.join(" "));
+  if (!isPlausibleFarmName(farmName)) return null;
+
+  return normalizePlacementRow({
+    datePlaced: toIsoDate(dateRaw),
+    farmCode,
+    farmName,
+    flockId: farmCode,
+    houseNo: Number(tokens[houseIdx]!),
+    numberSent: parseNumberSent(tokens[sentIdx]!),
+  });
+}
+
+/**
+ * Split the extract on PROJECTED and parse every row chunk with tokens.
+ * PROJECTED usually ends each Crystal row; also parse the leading page chunk.
+ * Hermes-safe — no [\s\S] backtracking.
+ */
+export function parseWeeklyChickPlacementProjectedRows(text: string): PlacementRow[] {
+  const flat = flattenPlacementPdfText(text);
+  if (!flat || !/\bPROJECTED\b/i.test(flat)) return [];
+  const parts = flat.split(/\bPROJECTED\b/i);
+  const rows: PlacementRow[] = [];
+  const seen = new Set<string>();
+
+  for (const part of parts) {
+    const row = parseProjectedRowTokens(part);
+    if (!row || row.numberSent <= 0) continue;
+    const key = `${row.farmCode}|${row.houseNo}|${row.datePlaced}|${row.numberSent}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push(row);
+  }
+  return rows;
+}
+
+/**
  * PDFKit visual/column reading order seen on device extracts:
  *   Complex FarmName City State Street Date FarmCode [Flock] House Sent … Zip Days PROJECTED
  * Zip sits after birds (not between name and code). FSP1/HVPP week banners are stripped upstream.
  */
 export function parseWeeklyChickPlacementSpatialText(text: string): PlacementRow[] {
+  // Prefer the token row splitter — same spatial order, Hermes-safe.
+  const tokenRows = parseWeeklyChickPlacementProjectedRows(text);
+  if (tokenRows.length > 0) return tokenRows;
+
   const flat = flattenPlacementPdfText(text);
   if (!flat) return [];
   const rows: PlacementRow[] = [];
@@ -843,25 +996,16 @@ export function parseWeeklyChickPlacementSpatialText(text: string): PlacementRow
     rows.push(row);
   };
 
-  // PROJECTED ends each row; the next block starts with Complex + name/place + Date + code…
+  // Include parts[0] (first row / page-lead before the first PROJECTED).
   if (/\bPROJECTED\b/i.test(flat)) {
     const blockRe =
-      /^\s*(\d{3,5}[A-Z]{2})\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{3,5}[A-Z]{2})(?:\s+(?:FS|HV)\d{4,8})?\s+(\d{1,2})\s+([\d,]+)/i;
-    for (const block of flat.split(/\bPROJECTED\b/i).slice(1)) {
+      /(\d{3,5}[A-Z]{2})\s+([A-Za-z0-9(&][A-Za-z0-9 .'/()&/-]{0,60}?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{3,5}[A-Z]{2})(?:\s+(?:FS|HV)\d{4,8})?\s+(\d{1,2})\s+([\d,]+)/i;
+    for (const block of flat.split(/\bPROJECTED\b/i)) {
       const bm = block.match(blockRe);
       if (!bm) continue;
       if (bm[1]!.toUpperCase() === bm[4]!.toUpperCase()) continue;
       push(bm[2]!, bm[3]!, bm[4]!, bm[5]!, bm[6]!);
     }
-  }
-
-  // Global scan for page-lead rows (banner junk already removed).
-  const global =
-    /(?:^|\s)(\d{3,5}[A-Z]{2})\s+([A-Za-z0-9(&][\s\S]{0,90}?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{3,5}[A-Z]{2})(?:\s+(?:FS|HV)\d{4,8})?\s+(\d{1,2})\s+([\d,]+)/gi;
-  let m: RegExpExecArray | null;
-  while ((m = global.exec(flat))) {
-    if (m[1]!.toUpperCase() === m[4]!.toUpperCase()) continue;
-    push(m[2]!, m[3]!, m[4]!, m[5]!, m[6]!);
   }
 
   return rows;
@@ -1267,7 +1411,9 @@ function scorePlacementRows(rows: PlacementRow[], expectedRows = 0): number {
     if (count > 1) bad += count;
   }
 
-  let score = unique.length * 8 + farms.length * 10 - bad * 25;
+  // Prefer one clean name per farm code (anchors often invent truncated duplicates).
+  const uniqueCodes = byCode.size;
+  let score = unique.length * 8 + uniqueCodes * 14 + farms.length * 4 - bad * 30;
   if (expectedRows > 0) {
     if (unique.length > expectedRows) {
       // Overshoot past PROJECTED/anchors is usually junk unions.
@@ -1279,7 +1425,10 @@ function scorePlacementRows(rows: PlacementRow[], expectedRows = 0): number {
     }
     // Hard reject keeping a tiny slice when the extract clearly has a full sheet.
     if (expectedRows >= 20 && unique.length < expectedRows * 0.5) {
-      score -= 500;
+      score -= 800;
+    }
+    if (expectedRows >= 20 && uniqueCodes < 8 && unique.length < expectedRows * 0.35) {
+      score -= 1000;
     }
   }
   return score;
@@ -1381,6 +1530,10 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
 
   const strategies: PlacementRow[][] = [];
   const runAll = (chunk: string) => {
+    // Token PROJECTED-row splitter first — Hermes-safe, covers spatial + layout.
+    strategies.push(
+      safeParse("projectedRows", () => parseWeeklyChickPlacementProjectedRows(chunk)),
+    );
     strategies.push(
       safeParse("projectedBlocks", () => parseWeeklyChickPlacementProjectedBlocks(chunk)),
     );
@@ -1406,6 +1559,7 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
     const perPage: PlacementRow[] = [];
     for (const chunk of chunks) {
       const pageRows = [
+        ...safeParse("projected-rows-page", () => parseWeeklyChickPlacementProjectedRows(chunk)),
         ...safeParse("projected-page", () => parseWeeklyChickPlacementProjectedBlocks(chunk)),
         ...safeParse("spatial-page", () => parseWeeklyChickPlacementSpatialText(chunk)),
         ...safeParse("device-page", () => parseWeeklyChickPlacementDeviceText(chunk)),
