@@ -1,20 +1,54 @@
 import { Platform } from "react-native";
 
+type PdfJsModule = {
+  GlobalWorkerOptions: { workerSrc: string };
+  getDocument: (src: { data: Uint8Array; useSystemFonts?: boolean; isEvalSupported?: boolean }) => {
+    promise: Promise<{
+      numPages: number;
+      getPage: (n: number) => Promise<{
+        getTextContent: () => Promise<{ items: Array<{ str?: string; transform?: number[] }> }>;
+      }>;
+    }>;
+  };
+};
+
+let pdfjsPromise: Promise<PdfJsModule> | null = null;
+
 /**
- * Extract plain text from a PDF via pdfjs-dist.
- * Used for Placement and Catch Schedule PDF imports on Expo web/native.
+ * Load pdf.js as a native browser ESM from /public.
+ * Avoids Metro bundling (pdf.js uses import.meta, which crashes Expo web).
+ */
+function loadPdfJs(): Promise<PdfJsModule> {
+  if (pdfjsPromise) return pdfjsPromise;
+
+  if (Platform.OS !== "web" || typeof window === "undefined") {
+    return Promise.reject(
+      new Error("PDF text extract runs in the browser. Use CSV/XLSX on native, or open Expo web."),
+    );
+  }
+
+  const origin = window.location.origin;
+  const moduleUrl = `${origin}/pdf.min.mjs`;
+  const workerUrl = `${origin}/pdf.worker.min.mjs`;
+
+  // new Function keeps Metro from rewriting this into a static bundle import.
+  pdfjsPromise = (new Function("url", "return import(url)") as (url: string) => Promise<PdfJsModule>)(
+    moduleUrl,
+  ).then((pdfjs) => {
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+    return pdfjs;
+  });
+
+  return pdfjsPromise;
+}
+
+/**
+ * Extract plain text from a PDF via pdfjs-dist (browser ESM from /public).
+ * Used for Placement and Catch Schedule PDF imports on Expo web.
  */
 export async function extractPdfTextFromBytes(bytes: ArrayBuffer | Uint8Array): Promise<string> {
   const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-
-  // Same-origin worker (copied to mobile/public) avoids COEP/CDN issues on Expo web.
-  const version = (pdfjs as { version?: string }).version || "4.10.38";
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
-  } else if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/legacy/build/pdf.worker.min.mjs`;
-  }
+  const pdfjs = await loadPdfJs();
 
   const loadingTask = pdfjs.getDocument({
     data,
@@ -31,11 +65,10 @@ export async function extractPdfTextFromBytes(bytes: ArrayBuffer | Uint8Array): 
     let lastY: number | null = null;
 
     for (const item of content.items) {
-      if (!item || typeof item !== "object" || !("str" in item)) continue;
-      const str = String((item as { str?: string }).str ?? "");
+      if (!item || typeof item !== "object") continue;
+      const str = String(item.str ?? "");
       if (!str) continue;
-      const transform = (item as { transform?: number[] }).transform;
-      const y = Array.isArray(transform) ? Number(transform[5]) : null;
+      const y = Array.isArray(item.transform) ? Number(item.transform[5]) : null;
 
       if (lastY != null && y != null && Math.abs(lastY - y) > 2.5) {
         parts.push(line.trimEnd());
