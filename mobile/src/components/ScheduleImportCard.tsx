@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { Alert, Platform, Pressable, Text, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as XLSX from "xlsx";
@@ -52,6 +52,31 @@ function canUpload(type: ImportType) {
   return type === "placement" || type === "catch";
 }
 
+function sheetFromWorkbookBytes(bytes: ArrayBuffer | Uint8Array, fileName: string): string[][] {
+  const name = fileName.toLowerCase();
+  if (name.endsWith(".csv") || name.endsWith(".txt")) {
+    const text = new TextDecoder().decode(bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes);
+    return text.split(/\r?\n/).map((line) => line.split(",").map((c) => c.replace(/^"|"$/g, "")));
+  }
+  if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+    const workbook = XLSX.read(bytes, { type: "array", cellDates: true });
+    const first = workbook.SheetNames[0];
+    if (!first) return [];
+    const sheet = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets[first]!, {
+      header: 1,
+      raw: false,
+      defval: "",
+    });
+    return sheet as string[][];
+  }
+  if (name.endsWith(".pdf")) {
+    throw new Error(
+      "PDF import on phone needs CSV/XLSX, or use the Next.js web Import (localhost:3000) for PDFs.",
+    );
+  }
+  throw new Error("Use a spreadsheet (.csv / .xlsx) or PDF.");
+}
+
 async function sheetFromPickedFile(
   asset: DocumentPicker.DocumentPickerAsset,
 ): Promise<string[][]> {
@@ -94,6 +119,15 @@ async function sheetFromPickedFile(
   throw new Error("Use a PDF or spreadsheet (.csv / .xlsx).");
 }
 
+function showAlert(title: string, message: string) {
+  if (Platform.OS === "web") {
+    // RN Web Alert.alert is a no-op — surface errors in the browser.
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message);
+}
+
 export function ScheduleImportCard() {
   const [importType, setImportType] = useState<ImportType>("placement");
   const [busy, setBusy] = useState(false);
@@ -104,6 +138,7 @@ export function ScheduleImportCard() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [rename, setRename] = useState<Record<string, boolean>>({});
   const [onlyMyFarms, setOnlyMyFarms] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedCount = useMemo(
     () => Object.values(selected).filter(Boolean).length,
@@ -168,10 +203,87 @@ export function ScheduleImportCard() {
     setPreviewFromGroups(groups);
   }
 
+  async function processSheet(sheet: string[][], fileName: string) {
+    if (importType === "catch") {
+      const parsed = parseCatchSheetRows(sheet);
+      if (parsed.length === 0) {
+        throw new Error(
+          "Could not read catch rows. Need Catch Date, Farm Name, and House (Farm Code / Flock when available).",
+        );
+      }
+      buildCatchPreview(parsed);
+      setNote(`Read ${parsed.length} rows from ${fileName}.`);
+      return;
+    }
+
+    const parsed = parsePlacementSheetRows(sheet);
+    if (parsed.length === 0) {
+      throw new Error(
+        "Could not read placement rows. Need Date Placed, Farm Code, Farm Name, Flock Code, House No, Number Sent.",
+      );
+    }
+    buildPlacementPreview(parsed);
+    setNote(`Read ${parsed.length} rows from ${fileName}.`);
+  }
+
+  async function onWebFileSelected(file: File) {
+    setBusy(true);
+    setNote(null);
+    try {
+      const bytes = await file.arrayBuffer();
+      const sheet = sheetFromWorkbookBytes(bytes, file.name);
+      await processSheet(sheet, file.name);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not read file";
+      setNote(msg);
+      showAlert("Upload failed", msg);
+    } finally {
+      setBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  /** Expo web: DocumentPicker + hidden refs are flaky on tunnel hosts — open a real picker. */
+  function pickWebFile(): Promise<File | null> {
+    return new Promise((resolve) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept =
+        ".csv,.xls,.xlsx,.txt,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      input.style.display = "none";
+      const cleanup = () => {
+        input.remove();
+      };
+      input.addEventListener("change", () => {
+        const file = input.files?.[0] ?? null;
+        cleanup();
+        resolve(file);
+      });
+      input.addEventListener("cancel", () => {
+        cleanup();
+        resolve(null);
+      });
+      document.body.appendChild(input);
+      input.click();
+    });
+  }
+
   async function onUpload() {
     if (busy) return;
     if (!canUpload(importType)) {
-      Alert.alert("Coming next", `${typeLabel(importType)} import comes next.`);
+      showAlert("Coming next", `${typeLabel(importType)} import comes next.`);
+      return;
+    }
+
+    if (Platform.OS === "web") {
+      try {
+        const file = await pickWebFile();
+        if (!file) return;
+        await onWebFileSelected(file);
+      } catch {
+        // Fallback to hidden input if createElement path is blocked.
+        fileInputRef.current?.click();
+      }
       return;
     }
 
@@ -192,28 +304,11 @@ export function ScheduleImportCard() {
       });
       if (picked.canceled || !picked.assets?.[0]) return;
       const sheet = await sheetFromPickedFile(picked.assets[0]);
-
-      if (importType === "catch") {
-        const parsed = parseCatchSheetRows(sheet);
-        if (parsed.length === 0) {
-          throw new Error(
-            "Could not read catch rows. Need Catch Date, Farm Name, and House (Farm Code / Flock when available).",
-          );
-        }
-        buildCatchPreview(parsed);
-        setNote(`Read ${parsed.length} rows from ${picked.assets[0].name}.`);
-      } else {
-        const parsed = parsePlacementSheetRows(sheet);
-        if (parsed.length === 0) {
-          throw new Error(
-            "Could not read placement rows. Need Date Placed, Farm Code, Farm Name, Flock Code, House No, Number Sent.",
-          );
-        }
-        buildPlacementPreview(parsed);
-        setNote(`Read ${parsed.length} rows from ${picked.assets[0].name}.`);
-      }
+      await processSheet(sheet, picked.assets[0].name || "import.xlsx");
     } catch (e) {
-      Alert.alert("Upload failed", e instanceof Error ? e.message : "Could not read file");
+      const msg = e instanceof Error ? e.message : "Could not read file";
+      setNote(msg);
+      showAlert("Upload failed", msg);
     } finally {
       setBusy(false);
     }
@@ -243,7 +338,7 @@ export function ScheduleImportCard() {
           `Updated ${selectedCount} farm(s): ${result.updatedHouses} house catch dates, ${result.updatedFlocks} flock dates, ${result.updatedNames} renamed.`,
         );
         if (result.warnings.length) {
-          Alert.alert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+          showAlert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
         }
       } else {
         const result = importPlacementRows({
@@ -254,7 +349,7 @@ export function ScheduleImportCard() {
           `Imported ${selectedCount} farm(s): ${result.createdFarms} created, ${result.updatedNames} renamed, ${result.createdFlocks} flocks, ${result.createdHouses} houses.`,
         );
         if (result.warnings.length) {
-          Alert.alert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+          showAlert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
         }
       }
       setFarms([]);
@@ -262,7 +357,7 @@ export function ScheduleImportCard() {
       setCatchRows([]);
       setOnlyMyFarms(false);
     } catch (e) {
-      Alert.alert("Import failed", e instanceof Error ? e.message : "Could not import");
+      showAlert("Import failed", e instanceof Error ? e.message : "Could not import");
     } finally {
       setBusy(false);
     }
@@ -270,13 +365,26 @@ export function ScheduleImportCard() {
 
   const helperText =
     importType === "placement"
-      ? "PDF works on web; phone can use CSV/XLSX (or the same PDF in Expo web)."
+      ? "Choose a Placement PDF/CSV/XLSX, then review farms to import."
       : importType === "catch"
-        ? "Catch Schedule spreadsheet (Catch Date, Farm Name, House). PDF on web; CSV/XLSX on phone."
+        ? "Choose a Catch Schedule CSV/XLSX (Catch Date, Farm Name, House)."
         : `${typeLabel(importType)} mapping comes next.`;
 
   return (
     <Card>
+      {Platform.OS === "web" ? (
+        // @ts-expect-error web-only native input
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv,.xls,.xlsx,.txt,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+          style={{ display: "none" }}
+          onChange={(e: { target: { files?: FileList | null } }) => {
+            const file = e.target.files?.[0];
+            if (file) void onWebFileSelected(file);
+          }}
+        />
+      ) : null}
       <View
         style={{
           flexDirection: "row",
