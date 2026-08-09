@@ -662,14 +662,14 @@ export default function FarmDetailScreen() {
     setEditingHouse({
       id: h.id,
       houseNumber: String(h.houseNumber),
-      squareFootage: String(h.squareFootage ?? ""),
+      squareFootage: String(h.squareFootage ?? 29700),
       totalFanCFM: h.totalFanCFM != null ? String(h.totalFanCFM) : "",
       numberOfFans: h.numberOfFans != null ? String(h.numberOfFans) : "",
-      // Leave blank so the tech can type a new count without deleting first.
-      // Placeholder shows the current value; empty on save keeps it.
-      placedBirdCount: "",
+      // Prefill 29700 when unset. If a count already exists, leave blank so the
+      // tech can type a new number without deleting first (placeholder shows it).
+      placedBirdCount: h.placedBirdCount != null ? "" : "29700",
       placedBirdCountPlaceholder:
-        h.placedBirdCount != null ? String(h.placedBirdCount) : "Type birds placed",
+        h.placedBirdCount != null ? String(h.placedBirdCount) : "29700",
       placementDate,
       catchDate,
       flockNumber: h.flockNumber ?? "",
@@ -2092,6 +2092,7 @@ export default function FarmDetailScreen() {
                       <NativeNumInput
                         label="Square footage"
                         value={editingHouse.squareFootage}
+                        placeholder="29700"
                         decimal
                         style={{ flex: 1 }}
                         onChangeText={(v) =>
