@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { matchPlacementFarm } from "@/lib/placement-import/match";
+import { matchPlacementFarmGroups } from "@/lib/placement-import/match";
 import { extractPlacementRows } from "@/lib/placement-import/extract";
 import { farmGroupKey, groupPlacementFarms } from "@/lib/placement-import/parse";
 import type {
@@ -92,8 +92,10 @@ export async function previewPlacementImportAction(
     select: { id: true, farmName: true, farmNumber: true },
   });
 
-  const farms: PlacementFarmPreview[] = groupPlacementFarms(rows).map((group) => {
-    const match = matchPlacementFarm(group.farmName, group.farmCode, existing);
+  const grouped = groupPlacementFarms(rows);
+  const matches = matchPlacementFarmGroups(grouped, existing);
+  const farms: PlacementFarmPreview[] = grouped.map((group, i) => {
+    const match = matches[i]!;
     return {
       ...group,
       match,
@@ -152,13 +154,19 @@ export async function applyPlacementImportAction(input: {
     byFarm.set(key, list);
   }
 
-  for (const [key, farmRows] of byFarm) {
+  const farmEntries = Array.from(byFarm.entries());
+  const farmMatches = matchPlacementFarmGroups(
+    farmEntries.map(([, farmRows]) => ({
+      farmName: farmRows[0]!.farmName,
+      farmCode: farmRows[0]!.farmCode,
+    })),
+    existing.map((f) => ({ id: f.id, farmName: f.farmName, farmNumber: f.farmNumber })),
+  );
+
+  for (let farmIndex = 0; farmIndex < farmEntries.length; farmIndex++) {
+    const [key, farmRows] = farmEntries[farmIndex]!;
     const sample = farmRows[0]!;
-    const match = matchPlacementFarm(
-      sample.farmName,
-      sample.farmCode,
-      existing.map((f) => ({ id: f.id, farmName: f.farmName, farmNumber: f.farmNumber })),
-    );
+    const match = farmMatches[farmIndex]!;
 
     let farmId: string;
     let houses = match.farm

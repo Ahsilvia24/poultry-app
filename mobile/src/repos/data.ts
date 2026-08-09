@@ -23,7 +23,7 @@ import {
   type CompletionInfo,
   type ScheduledVisit,
 } from "../lib/schedule";
-import { matchPlacementFarm } from "../lib/placementImport/match";
+import { matchPlacementFarmGroups } from "../lib/placementImport/match";
 import { farmGroupKey } from "../lib/placementImport/parse";
 import {
   farmGroupKey as catchFarmGroupKey,
@@ -2006,7 +2006,15 @@ export function setFarmNumberIfEmpty(farmId: string, farmNumber: string) {
   );
   if (!farm) throw new Error("Farm not found");
   if (farm.farm_number?.trim()) return { success: true as const };
-  db.runSync("UPDATE farms SET farm_number = ? WHERE id = ?", [farmNumber.trim(), farmId]);
+  const code = farmNumber.trim();
+  if (!code) return { success: true as const };
+  // Don't reuse another farm's number — that made Catch treat DMD and RED as one.
+  const taken = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM farms WHERE id != ? AND deleted_at IS NULL AND upper(trim(farm_number)) = upper(?)",
+    [farmId, code],
+  );
+  if (taken) return { success: true as const };
+  db.runSync("UPDATE farms SET farm_number = ? WHERE id = ?", [code, farmId]);
   return { success: true as const };
 }
 
@@ -2101,9 +2109,19 @@ export function importPlacementRows(input: {
     byFarm.set(key, list);
   }
 
-  for (const [key, farmRows] of byFarm) {
+  const farmEntries = Array.from(byFarm.entries());
+  const farmMatches = matchPlacementFarmGroups(
+    farmEntries.map(([, rows]) => ({
+      farmName: rows[0]!.farmName,
+      farmCode: rows[0]!.farmCode,
+    })),
+    existing,
+  );
+
+  for (let farmIndex = 0; farmIndex < farmEntries.length; farmIndex++) {
+    const [key, farmRows] = farmEntries[farmIndex]!;
     const sample = farmRows[0]!;
-    const match = matchPlacementFarm(sample.farmName, sample.farmCode, existing);
+    const match = farmMatches[farmIndex]!;
     let farmId: string;
     let createdNewFarm = false;
 
@@ -2256,11 +2274,21 @@ export function importCatchRows(input: {
     byFarm.set(key, list);
   }
 
+  const farmEntries = Array.from(byFarm.entries());
+  const farmMatches = matchPlacementFarmGroups(
+    farmEntries.map(([, rows]) => ({
+      farmName: rows[0]!.farmName,
+      farmCode: rows[0]!.farmCode,
+    })),
+    existing,
+  );
+
   const db = getDb();
 
-  for (const [key, farmRows] of byFarm) {
+  for (let farmIndex = 0; farmIndex < farmEntries.length; farmIndex++) {
+    const [key, farmRows] = farmEntries[farmIndex]!;
     const sample = farmRows[0]!;
-    const match = matchPlacementFarm(sample.farmName, sample.farmCode, existing);
+    const match = farmMatches[farmIndex]!;
     if (!match.farm) {
       warnings.push(
         `${sample.farmName}: no matching farm — skipped (import Placement first or rename to match).`,
