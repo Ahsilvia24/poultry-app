@@ -38,6 +38,41 @@ async function extractPdfText(bytes: Buffer): Promise<string> {
   }
 }
 
+function sheetCellToString(cell: unknown): string {
+  if (cell == null) return "";
+  if (cell instanceof Date) {
+    if (Number.isNaN(cell.getTime())) return "";
+    // Date-only Excel values are usually midnight UTC; otherwise use local calendar day.
+    const utcMidnight =
+      cell.getUTCHours() === 0 &&
+      cell.getUTCMinutes() === 0 &&
+      cell.getUTCSeconds() === 0 &&
+      cell.getUTCMilliseconds() === 0;
+    if (utcMidnight) return cell.toISOString().slice(0, 10);
+    const y = cell.getFullYear();
+    const m = String(cell.getMonth() + 1).padStart(2, "0");
+    const d = String(cell.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  if (typeof cell === "number") return String(cell);
+  return String(cell);
+}
+
+function workbookToStringSheet(bytes: Buffer): string[][] {
+  // Keep Excel dates as serial numbers (not Date objects) to avoid TZ day-shifts.
+  const workbook = XLSX.read(bytes, { type: "buffer", cellDates: false });
+  const first = workbook.SheetNames[0];
+  if (!first) return [];
+  const sheet = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[first]!, {
+    header: 1,
+    raw: true,
+    defval: "",
+  });
+  return sheet.map((row) =>
+    (Array.isArray(row) ? row : []).map((cell) => sheetCellToString(cell)),
+  );
+}
+
 export async function extractPlacementRows(input: {
   bytes: Buffer;
   fileName: string;
@@ -60,15 +95,7 @@ export async function extractPlacementRows(input: {
     mime.includes("spreadsheet") ||
     mime.includes("excel")
   ) {
-    const workbook = XLSX.read(input.bytes, { type: "buffer", cellDates: true });
-    const first = workbook.SheetNames[0];
-    if (!first) return [];
-    const sheet = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets[first]!, {
-      header: 1,
-      raw: false,
-      defval: "",
-    });
-    return parsePlacementSheetRows(sheet as string[][]);
+    return parsePlacementSheetRows(workbookToStringSheet(input.bytes));
   }
 
   // PDF (default for Weekly Chick Placement exports)

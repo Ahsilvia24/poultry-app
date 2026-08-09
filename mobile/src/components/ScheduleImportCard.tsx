@@ -57,15 +57,34 @@ async function rowsFromPickedFile(asset: DocumentPicker.DocumentPickerAsset): Pr
     const b64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
-    const workbook = XLSX.read(b64, { type: "base64", cellDates: true });
+    // Keep Excel dates as serial numbers so m/d/yy formatting can't drop rows.
+    const workbook = XLSX.read(b64, { type: "base64", cellDates: false });
     const first = workbook.SheetNames[0];
     if (!first) return [];
-    const sheet = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets[first]!, {
+    const sheet = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[first]!, {
       header: 1,
-      raw: false,
+      raw: true,
       defval: "",
     });
-    return parsePlacementSheetRows(sheet as string[][]);
+    const asStrings = sheet.map((row) =>
+      (Array.isArray(row) ? row : []).map((cell) => {
+        if (cell instanceof Date && !Number.isNaN(cell.getTime())) {
+          const utcMidnight =
+            cell.getUTCHours() === 0 &&
+            cell.getUTCMinutes() === 0 &&
+            cell.getUTCSeconds() === 0 &&
+            cell.getUTCMilliseconds() === 0;
+          if (utcMidnight) return cell.toISOString().slice(0, 10);
+          const y = cell.getFullYear();
+          const m = String(cell.getMonth() + 1).padStart(2, "0");
+          const d = String(cell.getDate()).padStart(2, "0");
+          return `${y}-${m}-${d}`;
+        }
+        if (cell == null) return "";
+        return String(cell);
+      }),
+    );
+    return parsePlacementSheetRows(asStrings);
   }
 
   if (name.endsWith(".pdf") || asset.mimeType?.includes("pdf")) {

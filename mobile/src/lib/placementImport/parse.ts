@@ -16,10 +16,39 @@ export type PlacementFarmGroup = {
   flockIds: string[];
 };
 
-function toIsoDate(mmddyyyy: string): string | null {
-  const m = mmddyyyy.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!m) return null;
-  return `${m[3]}-${m[1]!.padStart(2, "0")}-${m[2]!.padStart(2, "0")}`;
+/** Normalize spreadsheet/PDF date text to yyyy-MM-dd. */
+export function toIsoDate(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
+  }
+
+  // Prefer explicit numeric dates before loose parsing (avoids TZ day-shifts).
+  const slashOrDash = value.match(
+    /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/,
+  );
+  if (slashOrDash) {
+    const mm = slashOrDash[1]!.padStart(2, "0");
+    const dd = slashOrDash[2]!.padStart(2, "0");
+    let yyyy = slashOrDash[3]!;
+    if (yyyy.length === 2) {
+      // Excel default date format is often m/d/yy.
+      yyyy = `20${yyyy}`;
+    }
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  if (/^\d+(\.\d+)?$/.test(value)) {
+    const serial = Number(value);
+    if (serial > 20000 && serial < 80000) {
+      const epoch = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+      return epoch.toISOString().slice(0, 10);
+    }
+  }
+
+  return null;
 }
 
 function parseNumberSent(raw: string): number | null {
@@ -98,9 +127,7 @@ export function parsePlacementSheetRows(sheet: string[][]): PlacementRow[] {
 
   const rows: PlacementRow[] = [];
   for (const raw of sheet.slice(headerRowIdx + 1)) {
-    const dateRaw = String(raw[iDate] ?? "").trim();
-    let datePlaced = toIsoDate(dateRaw);
-    if (!datePlaced && /^\d{4}-\d{2}-\d{2}/.test(dateRaw)) datePlaced = dateRaw.slice(0, 10);
+    const datePlaced = toIsoDate(String(raw[iDate] ?? ""));
     const farmCode = String(raw[iCode] ?? "").trim().toUpperCase();
     const farmName = String(raw[iName] ?? "").trim().replace(/\s+/g, " ");
     const flockId = String(raw[iFlock] ?? "").trim().toUpperCase();
