@@ -1999,23 +1999,39 @@ export function renameFarmOnly(farmId: string, farmName: string) {
 }
 
 export function setFarmNumberIfEmpty(farmId: string, farmNumber: string) {
+  return setFarmNumberFromPlacement(farmId, farmNumber, { onlyIfEmpty: true });
+}
+
+/**
+ * Placement PDF is authoritative for the code left of the farm name.
+ * Fill empty numbers, or correct a stale/wrong code when the new one is free.
+ */
+export function setFarmNumberFromPlacement(
+  farmId: string,
+  farmNumber: string,
+  opts?: { onlyIfEmpty?: boolean },
+) {
   const db = getDb();
   const farm = db.getFirstSync<{ farm_number: string | null }>(
     "SELECT farm_number FROM farms WHERE id = ? AND deleted_at IS NULL",
     [farmId],
   );
   if (!farm) throw new Error("Farm not found");
-  if (farm.farm_number?.trim()) return { success: true as const };
   const code = farmNumber.trim();
-  if (!code) return { success: true as const };
+  if (!code) return { success: true as const, updated: false as const };
+  const current = farm.farm_number?.trim() ?? "";
+  if (current && opts?.onlyIfEmpty) return { success: true as const, updated: false as const };
+  if (current.toUpperCase() === code.toUpperCase()) {
+    return { success: true as const, updated: false as const };
+  }
   // Don't reuse another farm's number — that made Catch treat DMD and RED as one.
   const taken = db.getFirstSync<{ id: string }>(
     "SELECT id FROM farms WHERE id != ? AND deleted_at IS NULL AND upper(trim(farm_number)) = upper(?)",
     [farmId, code],
   );
-  if (taken) return { success: true as const };
+  if (taken) return { success: true as const, updated: false as const };
   db.runSync("UPDATE farms SET farm_number = ? WHERE id = ?", [code, farmId]);
-  return { success: true as const };
+  return { success: true as const, updated: true as const };
 }
 
 function ensureHouseOnFarm(farmId: string, houseNumber: number): string {
@@ -2135,7 +2151,7 @@ export function importPlacementRows(input: {
         renameFarmOnly(farmId, sample.farmName);
         updatedNames += 1;
       }
-      setFarmNumberIfEmpty(farmId, sample.farmCode);
+      setFarmNumberFromPlacement(farmId, sample.farmCode);
     } else {
       const maxHouse = Math.max(...farmRows.map((r) => r.houseNo), 1);
       const created = createFarm({
@@ -2184,12 +2200,6 @@ export function importPlacementRows(input: {
          LIMIT 1`,
         [farmId, flockId],
       );
-      if (existingFlock) {
-        warnings.push(
-          `${sample.farmName} already has active flock ${flockId} — skipped creating another.`,
-        );
-        continue;
-      }
 
       const placements: Array<{
         houseId: string;
@@ -2200,14 +2210,30 @@ export function importPlacementRows(input: {
       for (const row of unique) {
         const houseId = houseIds.get(row.houseNo);
         if (!houseId) continue;
-        const occupied = getDb().getFirstSync<{ flock_number: string }>(
-          `SELECT f.flock_number FROM house_flocks hf
+        const occupied = getDb().getFirstSync<{
+          flock_id: string;
+          flock_number: string;
+          house_flock_id: string;
+        }>(
+          `SELECT f.id as flock_id, f.flock_number, hf.id as house_flock_id
+           FROM house_flocks hf
            JOIN flocks f ON f.id = hf.flock_id
            WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
            LIMIT 1`,
           [houseId, farmId],
         );
         if (occupied) {
+          // Same sheet flock already on this house — refresh birds/date from PDF.
+          if (existingFlock && occupied.flock_id === existingFlock.id) {
+            const catchDate = addDaysKey(row.datePlaced, 52);
+            getDb().runSync(
+              `UPDATE house_flocks
+               SET placed_bird_count = ?, placement_date = ?, catch_date = ?
+               WHERE id = ?`,
+              [row.numberSent, row.datePlaced, catchDate, occupied.house_flock_id],
+            );
+            continue;
+          }
           warnings.push(
             `${sample.farmName} house ${row.houseNo} already on active flock ${occupied.flock_number} — skipped.`,
           );
@@ -2220,7 +2246,32 @@ export function importPlacementRows(input: {
         });
       }
 
-      if (placements.length === 0) continue;
+      if (placements.length === 0) {
+        if (existingFlock) syncFlockDatesAndPrune(farmId, existingFlock.id);
+        continue;
+      }
+
+      if (existingFlock) {
+        // Merge missing houses into the active flock for this sheet week.
+        for (const hp of placements) {
+          const catchDate = addDaysKey(hp.placementDate, 52);
+          getDb().runSync(
+            `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+              newId("hf"),
+              existingFlock.id,
+              hp.houseId,
+              Math.floor(hp.placedBirdCount),
+              hp.placementDate,
+              catchDate,
+            ],
+          );
+        }
+        syncFlockDatesAndPrune(farmId, existingFlock.id);
+        continue;
+      }
+
       const minDate = placements.map((p) => p.placementDate).sort()[0]!;
       createFlock({
         farmId,

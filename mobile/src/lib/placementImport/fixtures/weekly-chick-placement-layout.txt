@@ -1,0 +1,149 @@
+                                                                                   Weekly Chick Placement                                                                                                 03-Aug-26
+
+
+
+                                                               From   08/03/2026                                      To    08/08/2026
+
+         Date         Farm        Farm Name                               Flock      House          Number     Mortality     Number                  Address1             City     State    Zip    Days        Ref.
+         Placed       Code                                                Code         No.            Sent     In Transit     Placed                                                                Out
+
+
+              FSP1
+Wk       31                  WE   Saturday, August 8, 2026
+No.
+2601HV   08/03/2026   3821FS      BLACKJACK MTN                         FS26045          3            22,200           0       22,2006501 BLACKJACK MTN. ROAD        ABBOTT        ARKA    72944     12 PROJECTED
+2601HV   08/03/2026   3821FS      BLACKJACK MTN                         FS26045          4            24,300           0       24,3006501 BLACKJACK MTN. ROAD        ABBOTT        ARKA    72944     12 PROJECTED
+2601HV   08/03/2026   3821FS      BLACKJACK MTN                         FS26045          1            22,200           0       22,2006501 BLACKJACK MTN. ROAD        ABBOTT        ARKA    72944     12 PROJECTED
+2601HV   08/03/2026   3821FS      BLACKJACK MTN                         FS26045          2            22,200           0       22,2006501 BLACKJACK MTN. ROAD        ABBOTT        ARKA    72944     12 PROJECTED
+2601HV   08/03/2026   3806FS      FORST FARMS (SAM FORST)               FS26045          1            22,200           0       22,200 2376 GREASY VALLEY ROAD            PARIS     ARKA    72855     14 PROJECTED
+2601HV   08/03/2026   3806FS      FORST FARMS (SAM FORST)               FS26045          2            22,200           0       22,200 2376 GREASY VALLEY ROAD            PARIS     ARKA    72855     14 PROJECTED
+2601HV   08/03/2026   3807FS      MERCY FARM                            FS26045          4            28,700           0       28,700         11754 Highway 164      Clarksville     AR    72830     13 PROJECTED
+2601HV   08/03/2026   3807FS      MERCY FARM                            FS26045          1            44,000           0       44,000         11754 Highway 164      Clarksville     AR    72830     13 PROJECTED
+2601HV   08/03/2026   3807FS      MERCY FARM                            FS26045          3            28,700           0       28,700         11754 Highway 164      Clarksville     AR    72830     13 PROJECTED
+2601HV   08/03/2026   3807FS      MERCY FARM                            FS26045          2            44,000           0       44,000         11754 Highway 164      Clarksville     AR    72830     13 PROJECTED
+2601HV   08/03/2026   3952FS      VCS FARM                              FS26045          2            33,000           0       33,000    143 E BROWNTOWN RD HUNGTINGTON            ARKA    72940     11 PROJECTED
+2601HV   08/03/2026   3952FS      VCS FARM                              FS26045          3            33,000           0       33,000    143 E BROWNTOWN RD HUNGTINGTON            ARKA    72940     11 PROJECTED
+2601HV   08/03/2026   3952FS      VCS FARM                              FS26045          4            33,000           0       33,000    143 E BROWNTOWN RD HUNGTINGTON            ARKA    72940     11 PROJECTED
+2601HV   08/03/2026   3952FS      VCS FARM                              FS26045          1            33,000           0       33,000    143 E BROWNTOWN RD HUNGTINGTON            ARKA    72940     11 PROJECTED
+2601HV   08/04/2026   3902FS      E & Z FARM                            FS26045          1            33,000           0       33,000            6189 HWY 378     BOONEVILLE       ARKA    72927     11 PROJECTED
+2601HV   08/04/2026   3946FS      FARM 9                                FS26045          3            17,800           0       17,800           470195 E 670 RD    WESTVILLE         OK    74965     13 PROJECTED
+2601HV   08/04/2026   3946FS      FARM 9                                FS26045          9            17,800           0       17,800           470195 E 670 RD    WESTVILLE         OK    74965     13 PROJECTED
+2601HV   08/04/2026   3946FS      FARM 9                                FS26045          6            17,800           0       17,800           470195 E 670 RD    WESTVILLE         OK    74965     13 PROJECTED
+2601HV   08/04/2026   3946FS      FARM 9                                FS26045         10            17,800           0       17,800           470195 E 670 RD    WESTVILLE         OK    74965     13 PROJECTED
+2601HV   08/04/2026   3946FS      FARM 9                                FS26045          7            17,800           0       17,800           470195 E 670 RD    WESTVILLE         OK    74965     13 PROJECTED
+2601HV   08/04/2026   3946FS      FARM 9                                FS26045          4            17,800           0       17,800           470195 E 670 RD    WESTVILLE         OK    74965     13 PROJECTED
+2601HV   08/04/2026   3946FS      FARM 9                                FS26045          1            17,800           0       17,800           470195 E 670 RD    WESTVILLE         OK    74965     13 PROJECTED
+2601HV   08/04/2026   3946FS      FARM 9                                FS26045          5            17,800           0       17,800           470195 E 670 RD    WESTVILLE         OK    74965     13 PROJECTED
+2601HV   08/04/2026   3946FS      FARM 9                                FS26045          2            17,800           0       17,800           470195 E 670 RD    WESTVILLE         OK    74965     13 PROJECTED
+2601HV   08/04/2026   3946FS      FARM 9                                FS26045          8            17,800           0       17,800           470195 E 670 RD    WESTVILLE         OK    74965     13 PROJECTED
+2601HV   08/04/2026   3855FS      MARTIN FARMS                          FS26045          2            30,600           0       30,600            9700 HWY 252         LAVACA         AR    72941     12 PROJECTED
+2601HV   08/04/2026   3855FS      MARTIN FARMS                          FS26045          3            30,600           0       30,600            9700 HWY 252         LAVACA         AR    72941     12 PROJECTED
+2601HV   08/04/2026   3855FS      MARTIN FARMS                          FS26045          1            30,600           0       30,600            9700 HWY 252         LAVACA         AR    72941     12 PROJECTED
+2601HV   08/04/2026   3822FS      SPUR BRAND (ALLEN HALE JR)            FS26045          2            24,300           0       24,300            13633 HWY. 41       BRANCH        ARKA    72928     12 PROJECTED
+2601HV   08/04/2026   3822FS      SPUR BRAND (ALLEN HALE JR)            FS26045          3            24,300           0       24,300            13633 HWY. 41       BRANCH        ARKA    72928     12 PROJECTED
+2601HV   08/04/2026   3822FS      SPUR BRAND (ALLEN HALE JR)            FS26045          1            24,300           0       24,300            13633 HWY. 41       BRANCH        ARKA    72928     12 PROJECTED
+2601HV   08/04/2026   3952FS      VCS FARM                              FS26045          5            33,000           0       33,000    143 E BROWNTOWN RD HUNGTINGTON            ARKA    72940     11 PROJECTED
+2601HV   08/04/2026   3952FS      VCS FARM                              FS26045          6            33,000           0       33,000    143 E BROWNTOWN RD HUNGTINGTON            ARKA    72940     11 PROJECTED
+2601HV   08/06/2026   3901HV      ARCHEY MICHAEL                       HV26045           4            22,200           0       22,200      27906 ARCHEY ROAD        CAMERON        OKLA    74932     13 PROJECTED
+
+
+
+                                                                                             Page 1 of 3
+                                                                                      Weekly Chick Placement                                                                                                03-Aug-26
+
+
+
+                                                                  From   08/03/2026                                       To    08/08/2026
+
+         Date         Farm        Farm Name                                  Flock      House           Number     Mortality     Number                    Address1           City   State    Zip    Days        Ref.
+         Placed       Code                                                   Code         No.             Sent     In Transit     Placed                                                              Out
+
+2601HV   08/06/2026   3901HV      ARCHEY MICHAEL                          HV26045            1            22,200           0       22,200       27906 ARCHEY ROAD         CAMERON    OKLA    74932     13 PROJECTED
+2601HV   08/06/2026   3901HV      ARCHEY MICHAEL                          HV26045            2            22,200           0       22,200       27906 ARCHEY ROAD         CAMERON    OKLA    74932     13 PROJECTED
+2601HV   08/06/2026   3901HV      ARCHEY MICHAEL                          HV26045            3            22,200           0       22,200       27906 ARCHEY ROAD         CAMERON    OKLA    74932     13 PROJECTED
+2601HV   08/06/2026   3902FS      E & Z FARM                               FS26045           8            33,000           0       33,000              6189 HWY 378     BOONEVILLE   ARKA    72927     11 PROJECTED
+2601HV   08/06/2026   3902FS      E & Z FARM                               FS26045           6            33,000           0       33,000              6189 HWY 378     BOONEVILLE   ARKA    72927     11 PROJECTED
+2601HV   08/06/2026   3902FS      E & Z FARM                               FS26045           3            33,000           0       33,000              6189 HWY 378     BOONEVILLE   ARKA    72927     11 PROJECTED
+2601HV   08/06/2026   3902FS      E & Z FARM                               FS26045           2            33,000           0       33,000              6189 HWY 378     BOONEVILLE   ARKA    72927     11 PROJECTED
+2601HV   08/06/2026   3902FS      E & Z FARM                               FS26045           5            33,000           0       33,000              6189 HWY 378     BOONEVILLE   ARKA    72927     11 PROJECTED
+2601HV   08/06/2026   3902FS      E & Z FARM                               FS26045           4            33,000           0       33,000              6189 HWY 378     BOONEVILLE   ARKA    72927     11 PROJECTED
+2601HV   08/06/2026   3902FS      E & Z FARM                               FS26045           7            33,000           0       33,000              6189 HWY 378     BOONEVILLE   ARKA    72927     11 PROJECTED
+2601HV   08/06/2026   3833FS      Mola Farm                                FS26035           1            24,300           0       24,300        1319 BLYTHE ROAD       BOONEVILLE   ARKA    72927     10 PROJECTED
+2601HV   08/06/2026   3833FS      Mola Farm                                FS26035           2            24,300           0       24,300        1319 BLYTHE ROAD       BOONEVILLE   ARKA    72927     10 PROJECTED
+2601HV   08/07/2026   3933FS      GROOM WEYLIN                             FS26045           1            22,000           0       22,000      17568 MIDWAY DRIVE           POTEAU     OK    74953     11 PROJECTED
+2601HV   08/07/2026   3933FS      GROOM WEYLIN                             FS26045           4            22,200           0       22,200      17568 MIDWAY DRIVE           POTEAU     OK    74953     11 PROJECTED
+2601HV   08/07/2026   3933FS      GROOM WEYLIN                             FS26045           2            24,300           0       24,300      17568 MIDWAY DRIVE           POTEAU     OK    74953     11 PROJECTED
+2601HV   08/07/2026   3933FS      GROOM WEYLIN                             FS26045           3            22,200           0       22,200      17568 MIDWAY DRIVE           POTEAU     OK    74953     11 PROJECTED
+2601HV   08/07/2026   3846FS      KNO Farm                                 FS26045           3            24,300           0       24,300    711 HOGEYE BEND ROAD            PARIS   ARKA    72855     11 PROJECTED
+2601HV   08/07/2026   3846FS      KNO Farm                                 FS26045           1            24,300           0       24,300    711 HOGEYE BEND ROAD            PARIS   ARKA    72855     11 PROJECTED
+2601HV   08/07/2026   3846FS      KNO Farm                                 FS26045           2            24,300           0       24,300    711 HOGEYE BEND ROAD            PARIS   ARKA    72855     11 PROJECTED
+2601HV   08/07/2026   3833FS      Mola Farm                                FS26035           3            24,300           0       24,300        1319 BLYTHE ROAD       BOONEVILLE   ARKA    72927     10 PROJECTED
+2601HV   08/07/2026   3833FS      Mola Farm                                FS26035           6            24,300           0       24,300        1319 BLYTHE ROAD       BOONEVILLE   ARKA    72927     10 PROJECTED
+2601HV   08/07/2026   3833FS      Mola Farm                                FS26035           4            24,300           0       24,300        1319 BLYTHE ROAD       BOONEVILLE   ARKA    72927     10 PROJECTED
+2601HV   08/07/2026   3833FS      Mola Farm                                FS26035           5            24,300           0       24,300        1319 BLYTHE ROAD       BOONEVILLE   ARKA    72927     10 PROJECTED
+2601HV   08/07/2026   3818FS      SOGGY BOTTOMS/CLINTON BOTTOMS            FS26045           1            28,100           0       28,100         9449 Nth st. HWY 23    MAGAZINE    ARKA    72943     15 PROJECTED
+2601HV   08/07/2026   3818FS      SOGGY BOTTOMS/CLINTON BOTTOMS            FS26045           2            28,100           0       28,100         9449 Nth st. HWY 23    MAGAZINE    ARKA    72943     15 PROJECTED
+2601HV   08/07/2026   3818FS      SOGGY BOTTOMS/CLINTON BOTTOMS            FS26045           3            28,100           0       28,100         9449 Nth st. HWY 23    MAGAZINE    ARKA    72943     15 PROJECTED
+2601HV   08/07/2026   3902HV      SOUTH VESTA FARMS LLC                   HV26045            1            44,000           0       44,000           8181 JETTON RD.     CHARLESTON   ARKA    72933     10 PROJECTED
+                                                                                                       1,611,900           0     1,611,900
+                                                                                      FSP1             1,611,900           0     1,611,900
+
+              HVPP
+Wk       31                  WE   Saturday, August 8, 2026
+No.
+2601HV   08/03/2026   3803HV      CRABTREE KENNETH                        HV26045            2            20,000           0       20,000           21302 JOB ROAD           HOWE    OKLA    74940      9 PROJECTED
+2601HV   08/03/2026   3861HV      OAK POULTRY                             HV26045            3            29,700           0       29,700        16837 RABBIT ROAD        CAMERON    OKLA    74932     11 PROJECTED
+2601HV   08/03/2026   3861HV      OAK POULTRY                             HV26045            1            29,700           0       29,700        16837 RABBIT ROAD        CAMERON    OKLA    74932     11 PROJECTED
+2601HV   08/03/2026   3861HV      OAK POULTRY                             HV26045            5            29,700           0       29,700        16837 RABBIT ROAD        CAMERON    OKLA    74932     11 PROJECTED
+2601HV   08/03/2026   3861HV      OAK POULTRY                             HV26045            2            29,700           0       29,700        16837 RABBIT ROAD        CAMERON    OKLA    74932     11 PROJECTED
+2601HV   08/03/2026   3861HV      OAK POULTRY                             HV26045            4            29,700           0       29,700        16837 RABBIT ROAD        CAMERON    OKLA    74932     11 PROJECTED
+
+
+                                                                                                 Page 2 of 3
+                                                                        Weekly Chick Placement                                                                                                  03-Aug-26
+
+
+
+                                                   From   08/03/2026                                         To    08/08/2026
+
+         Date         Farm     Farm Name                      Flock        House           Number     Mortality     Number                    Address1            City   State    Zip    Days        Ref.
+         Placed       Code                                    Code           No.             Sent     In Transit     Placed                                                               Out
+
+2601HV   08/03/2026   3935FS   REBEL CREEK                  FS26035             1            21,900           0       21,900         2101 HWY 248 EAST       WALDRON     ARKA    72958     40 PROJECTED
+2601HV   08/03/2026   3935FS   REBEL CREEK                  FS26035             2            21,900           0       21,900         2101 HWY 248 EAST       WALDRON     ARKA    72958     40 PROJECTED
+2601HV   08/04/2026   3817HV   4J                          HV26045              2            21,900           0       21,900    34590 LATHAN RIDGE RD      SHADY POINT     OK    74956     11 PROJECTED
+2601HV   08/04/2026   3817HV   4J                          HV26045              1            21,900           0       21,900    34590 LATHAN RIDGE RD      SHADY POINT     OK    74956     11 PROJECTED
+2601HV   08/04/2026   3861HV   OAK POULTRY                 HV26045              8            29,700           0       29,700        16837 RABBIT ROAD        CAMERON     OKLA    74932     11 PROJECTED
+2601HV   08/04/2026   3861HV   OAK POULTRY                 HV26045              7            29,700           0       29,700        16837 RABBIT ROAD        CAMERON     OKLA    74932     11 PROJECTED
+2601HV   08/04/2026   3811HV   PRASAYASITH JERRI           HV26045              3            20,000           0       20,000    19500 KNOTHOLE ROAD          CAMERON     OKLA    74932     11 PROJECTED
+2601HV   08/04/2026   3811HV   PRASAYASITH JERRI           HV26045              1            20,000           0       20,000    19500 KNOTHOLE ROAD          CAMERON     OKLA    74932     11 PROJECTED
+2601HV   08/04/2026   3811HV   PRASAYASITH JERRI           HV26045              2            20,000           0       20,000    19500 KNOTHOLE ROAD          CAMERON     OKLA    74932     11 PROJECTED
+2601HV   08/04/2026   3811HV   PRASAYASITH JERRI           HV26045              4            20,000           0       20,000    19500 KNOTHOLE ROAD          CAMERON     OKLA    74932     11 PROJECTED
+2601HV   08/06/2026   3817HV   4J                          HV26045              8            21,900           0       21,900    34590 LATHAN RIDGE RD      SHADY POINT     OK    74956     11 PROJECTED
+2601HV   08/06/2026   3817HV   4J                          HV26045              5            21,900           0       21,900    34590 LATHAN RIDGE RD      SHADY POINT     OK    74956     11 PROJECTED
+2601HV   08/06/2026   3817HV   4J                          HV26045              3            21,900           0       21,900    34590 LATHAN RIDGE RD      SHADY POINT     OK    74956     11 PROJECTED
+2601HV   08/06/2026   3817HV   4J                          HV26045              6            21,900           0       21,900    34590 LATHAN RIDGE RD      SHADY POINT     OK    74956     11 PROJECTED
+2601HV   08/06/2026   3817HV   4J                          HV26045              4            21,900           0       21,900    34590 LATHAN RIDGE RD      SHADY POINT     OK    74956     11 PROJECTED
+2601HV   08/06/2026   3817HV   4J                          HV26045              7            21,900           0       21,900    34590 LATHAN RIDGE RD      SHADY POINT     OK    74956     11 PROJECTED
+2601HV   08/06/2026   3861HV   OAK POULTRY                 HV26045              6            29,700           0       29,700        16837 RABBIT ROAD        CAMERON     OKLA    74932     11 PROJECTED
+2601HV   08/06/2026   3934FS   TROZZI MAVRICK               FS26035             4            21,900           0       21,900         2101 HWY 248 EAST       WALDRON     ARKA    72958     49 PROJECTED
+2601HV   08/06/2026   3934FS   TROZZI MAVRICK               FS26035             1            21,900           0       21,900         2101 HWY 248 EAST       WALDRON     ARKA    72958     49 PROJECTED
+2601HV   08/06/2026   3934FS   TROZZI MAVRICK               FS26035             2            21,900           0       21,900         2101 HWY 248 EAST       WALDRON     ARKA    72958     49 PROJECTED
+2601HV   08/06/2026   3934FS   TROZZI MAVRICK               FS26035             3            21,900           0       21,900         2101 HWY 248 EAST       WALDRON     ARKA    72958     49 PROJECTED
+2601HV   08/07/2026   3864HV   GOLD STAR FARM              HV26045              6            29,700           0       29,700     21304 E Comfy Road 1200        KEOTA    OKLA    74941     10 PROJECTED
+2601HV   08/07/2026   3864HV   GOLD STAR FARM              HV26045              3            29,700           0       29,700     21304 E Comfy Road 1200        KEOTA    OKLA    74941     10 PROJECTED
+2601HV   08/07/2026   3864HV   GOLD STAR FARM              HV26045              1            29,700           0       29,700     21304 E Comfy Road 1200        KEOTA    OKLA    74941     10 PROJECTED
+2601HV   08/07/2026   3864HV   GOLD STAR FARM              HV26045              7            29,700           0       29,700     21304 E Comfy Road 1200        KEOTA    OKLA    74941     10 PROJECTED
+2601HV   08/07/2026   3864HV   GOLD STAR FARM              HV26045              4            29,700           0       29,700     21304 E Comfy Road 1200        KEOTA    OKLA    74941     10 PROJECTED
+2601HV   08/07/2026   3864HV   GOLD STAR FARM              HV26045              5            29,700           0       29,700     21304 E Comfy Road 1200        KEOTA    OKLA    74941     10 PROJECTED
+2601HV   08/07/2026   3864HV   GOLD STAR FARM              HV26045              8            29,700           0       29,700     21304 E Comfy Road 1200        KEOTA    OKLA    74941     10 PROJECTED
+2601HV   08/07/2026   3864HV   GOLD STAR FARM              HV26045              2            29,700           0       29,700     21304 E Comfy Road 1200        KEOTA    OKLA    74941     10 PROJECTED
+                                                                                            881,800           0      881,800
+                                                                         HVPP               881,800           0      881,800
+                                                                       TOTAL:             2,493,700           0    2,493,700
+
+
+
+
+                                                                                    Page 3 of 3
+

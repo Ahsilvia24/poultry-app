@@ -10,6 +10,7 @@ import {
   parsePlacementPdfText,
   parsePlacementSheetRows,
   placementPdfDebugSample,
+  summarizePlacementRows,
   type PlacementRow,
 } from "../lib/placementImport/parse";
 import {
@@ -181,6 +182,11 @@ export function ScheduleImportCard() {
     setPlacementRows(parsed);
     setCatchRows([]);
     setPreviewFromGroups(groups);
+    const summary = summarizePlacementRows(parsed);
+    const matched = groups.filter((g) => g.isMyFarm).length;
+    setNote(
+      `Read ${summary.farmCount} farm${summary.farmCount === 1 ? "" : "s"} · ${summary.houseCount} house${summary.houseCount === 1 ? "" : "s"} · ${summary.birdsSent.toLocaleString()} birds (${matched} match your farms). Farm count varies by week.`,
+    );
   }
 
   function buildCatchPreview(parsed: CatchRow[]) {
@@ -228,7 +234,6 @@ export function ScheduleImportCard() {
       );
     }
     buildPlacementPreview(parsed);
-    setNote(`Read ${parsed.length} rows from ${fileName}.`);
   }
 
   async function processPdfText(text: string, fileName: string) {
@@ -256,7 +261,6 @@ export function ScheduleImportCard() {
       );
     }
     buildPlacementPreview(parsed);
-    setNote(`Read ${parsed.length} rows from ${fileName}.`);
   }
 
   async function processPdfBytes(bytes: ArrayBuffer | Uint8Array, fileName: string) {
@@ -424,8 +428,8 @@ export function ScheduleImportCard() {
   const helperText =
     importType === "placement"
       ? Platform.OS === "web"
-        ? "Reads farm name, code left of the name, house, date placed, and birds sent. Scanned PDFs OK (OCR)."
-        : "Reads farm name, code left of the name (e.g. 3821FS), house, date placed, and birds sent. Text PDFs on iPhone; scans need CSV/XLSX."
+        ? "Weekly Chick Placement: farm name, code left of the name, house, date placed, birds sent. Farm list can change each week. Scanned PDFs OK (OCR)."
+        : "Weekly Chick Placement: farm name, code left of the name (e.g. 3821FS), house, date placed, birds sent. Farm list can change each week. Text PDFs on iPhone; scans need CSV/XLSX."
       : importType === "catch"
         ? Platform.OS === "web"
           ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (scanned PDFs OK). Ending Kill Date or Catch Date, Farm Name, House."
@@ -534,6 +538,34 @@ export function ScheduleImportCard() {
               </Text>
             </Pressable>
           </View>
+          {importType === "placement" ? (
+            <View style={[styles.row, { marginTop: 8, gap: 14 }]}>
+              <Pressable
+                onPress={() => {
+                  const next: Record<string, boolean> = {};
+                  for (const farm of farms) next[farm.key] = true;
+                  setSelected(next);
+                  setOnlyMyFarms(false);
+                }}
+              >
+                <Text style={{ fontWeight: "700", color: colors.accentDark, fontSize: 12 }}>
+                  Select all
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  const next: Record<string, boolean> = {};
+                  for (const farm of farms) next[farm.key] = false;
+                  setSelected(next);
+                  setOnlyMyFarms(false);
+                }}
+              >
+                <Text style={{ fontWeight: "700", color: colors.muted, fontSize: 12 }}>
+                  Clear
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           {farms.map((farm) => {
             const checked = Boolean(selected[farm.key]);

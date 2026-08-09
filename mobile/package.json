@@ -50,6 +50,7 @@
     "web": "expo start --web",
     "build:android": "eas build --platform android --profile preview",
     "build:ios": "eas build --platform ios --profile preview",
+    "test:placement-format": "node --experimental-strip-types ./src/lib/placementImport/parse.format.test.mjs",
     "postinstall": "patch-package && node scripts/copy-pdf-worker.mjs"
   },
   "private": true

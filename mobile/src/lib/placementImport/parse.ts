@@ -673,25 +673,97 @@ function sheetFromLayoutText(text: string): string[][] {
     });
 }
 
-/** Prefer the parse that recovered the most placement rows (partial matches must not win). */
+/** Drop duplicate house placements from overlapping parse strategies. */
+export function dedupePlacementRows(rows: PlacementRow[]): PlacementRow[] {
+  const seen = new Set<string>();
+  const out: PlacementRow[] = [];
+  for (const row of rows) {
+    const key = `${row.farmCode}|${row.farmName}|${row.houseNo}|${row.datePlaced}|${row.numberSent}|${row.flockId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
+  }
+  return out;
+}
+
+/**
+ * Prefer the parse that recovered the most placement rows.
+ * Farm/house counts vary by week — never short-circuit on a partial match.
+ */
 function pickBestPlacementRows(candidates: PlacementRow[][]): PlacementRow[] {
   let best: PlacementRow[] = [];
   let bestFarms = 0;
   for (const rows of candidates) {
-    if (rows.length === 0) continue;
-    const farms = groupPlacementFarms(rows).length;
-    if (rows.length > best.length || (rows.length === best.length && farms > bestFarms)) {
-      best = rows;
+    const unique = dedupePlacementRows(rows);
+    if (unique.length === 0) continue;
+    const farms = groupPlacementFarms(unique).length;
+    if (unique.length > best.length || (unique.length === best.length && farms > bestFarms)) {
+      best = unique;
       bestFarms = farms;
     }
   }
   return best;
 }
 
-/** PDF / text → placement rows. Weekly Chick Placement layout is preferred. */
+export type PlacementParseSummary = {
+  rowCount: number;
+  farmCount: number;
+  houseCount: number;
+  birdsSent: number;
+};
+
+/** Totals for whatever the sheet contained this week. */
+export function summarizePlacementRows(rows: PlacementRow[]): PlacementParseSummary {
+  const farms = groupPlacementFarms(rows);
+  const houseKeys = new Set(rows.map((r) => `${r.farmCode}|${r.farmName}|${r.houseNo}`));
+  return {
+    rowCount: rows.length,
+    farmCount: farms.length,
+    houseCount: houseKeys.size,
+    birdsSent: rows.reduce((sum, r) => sum + (r.numberSent || 0), 0),
+  };
+}
+
+/**
+ * Format invariants for Weekly Chick Placement (count may vary week to week):
+ * - every row has name, code left of name, house, date, birds
+ * - farm codes are not a single shared Complex for every farm
+ */
+export function assertWeeklyChickPlacementShape(rows: PlacementRow[]): string[] {
+  const errors: string[] = [];
+  if (rows.length === 0) {
+    errors.push("no placement rows");
+    return errors;
+  }
+  for (const row of rows) {
+    if (!row.farmName?.trim()) errors.push("row missing farm name");
+    if (!/^\d{3,5}[A-Z]{2}$/i.test(row.farmCode)) {
+      errors.push(`bad farm code "${row.farmCode}" for ${row.farmName}`);
+    }
+    if (!(row.houseNo >= 1 && row.houseNo <= 40)) {
+      errors.push(`bad house ${row.houseNo} for ${row.farmName}`);
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(row.datePlaced)) {
+      errors.push(`bad date ${row.datePlaced} for ${row.farmName}`);
+    }
+    if (!(row.numberSent > 0)) {
+      errors.push(`missing birds for ${row.farmName} H${row.houseNo}`);
+    }
+  }
+  const farms = groupPlacementFarms(rows);
+  const codes = new Set(farms.map((f) => f.farmCode.toUpperCase()));
+  if (farms.length >= 2 && codes.size === 1) {
+    errors.push(
+      `all ${farms.length} farms share one code ${[...codes][0]} — likely Complex, not code left of name`,
+    );
+  }
+  return [...new Set(errors)];
+}
+
+/** PDF / text → placement rows. Weekly Chick Placement format (any farm count). */
 export function parsePlacementPdfText(text: string): PlacementRow[] {
   // Run all strategies and keep the richest result. A partial PDFKit match
-  // (e.g. 6 farms) must not hide a full scrambled/layout parse (~21 farms).
+  // must not hide a fuller scrambled/layout parse for the same sheet.
   const best = pickBestPlacementRows([
     parseWeeklyChickPlacementPdfKitText(text),
     parseWeeklyChickPlacementTokens(text),
@@ -706,10 +778,10 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
     return [];
   }
 
-  const layout = parsePlacementLayoutText(text);
+  const layout = dedupePlacementRows(parsePlacementLayoutText(text));
   if (layout.length > 0) return layout;
 
-  return parsePlacementSheetRows(sheetFromLayoutText(text));
+  return dedupePlacementRows(parsePlacementSheetRows(sheetFromLayoutText(text)));
 }
 
 export function parsePlacementSheetRows(sheet: string[][]): PlacementRow[] {
