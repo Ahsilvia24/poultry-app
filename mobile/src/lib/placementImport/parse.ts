@@ -110,6 +110,34 @@ export function cleanPlacementFarmName(name: string): string {
   return farmName;
 }
 
+/**
+ * PDFKit often inserts Address1 City State between farm name and Date/Zip:
+ *   BLACKJACK MTN 6501 BLACKJACK MTN. ROAD ABBOTT ARKA 08/03/2026 72944
+ * Street numbers are typically 3–6 digits (keeps single-digit suffixes like "FARM 9").
+ */
+export function stripPlacementAddressFromName(raw: string): string {
+  let s = cleanPlacementFarmName(raw);
+  if (!s) return s;
+  // Page/header crumbs PDFKit leaves ahead of the first farm on a page.
+  s = s.replace(/^(?:No\.?|Page|Wk|WE|FSP1|HVPP|Out|Placed)\s+/i, "").trim();
+  s = s.replace(/^\d{3,5}(?:FS|HV)\s+/i, "").trim();
+  // Cut at first 3+ digit street number.
+  const streetIdx = s.search(/\s+\d{3,6}(?:\s|$)/);
+  if (streetIdx > 0) {
+    const head = s.slice(0, streetIdx).trim();
+    if (head.length >= 2) s = head;
+  }
+  // Road / city crumbs when the street number was missing or odd.
+  s = s
+    .replace(
+      /\s+\d{1,6}\s+(?:[NSEW]\.?\s+)?(?:HWY|HIGHWAY|ROAD|RD\.?|STREET|ST\.?|AVE|DR\.?|DRIVE|LN|LANE|BLVD|WAY)\b.*$/i,
+      "",
+    )
+    .replace(/\s+\b(?:HWY|HIGHWAY|ROAD|RD\.?|STREET|AVE|DRIVE|OKLA|ARKA)\b.*$/i, "")
+    .trim();
+  return cleanPlacementFarmName(s);
+}
+
 /** Flatten whitespace for resilient matching across PDFKit line breaks. */
 function flattenPlacementPdfText(text: string): string {
   return normalizePlacementPdfText(text).replace(/\s+/g, " ").trim();
@@ -180,7 +208,7 @@ export function normalizePlacementRow(partial: {
   numberSent?: number | null;
 }): PlacementRow | null {
   const farmCode = (partial.farmCode ?? "").trim().toUpperCase();
-  const farmName = cleanPlacementFarmName(partial.farmName ?? "");
+  const farmName = stripPlacementAddressFromName(partial.farmName ?? "");
   if (!farmCode && !farmName) return null;
   if (/^(to|from|date|farm|projected|page|wk|no\.?|hv|fs)$/i.test(farmName)) return null;
 
@@ -223,7 +251,7 @@ const FARM_NAME_RE = "([A-Za-z][A-Za-z0-9 .'/()&/-]{0,48}?|[0-9][A-Za-z]{1,3})";
 
 /** True farm names — not a date, entity code, Complex, or address fragment. */
 function isPlausibleFarmName(name: string): boolean {
-  const farmName = cleanPlacementFarmName(name);
+  const farmName = stripPlacementAddressFromName(name);
   if (farmName.length < 2 || farmName.length > 50) return false;
   if (/^\d{3,5}[A-Z]{2}$/i.test(farmName)) return false;
   if (/^(HV|FS)$/i.test(farmName)) return false;
@@ -232,7 +260,12 @@ function isPlausibleFarmName(name: string): boolean {
     return false;
   }
   if (/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(farmName)) return false;
-  if (/\b(?:HWY|ROAD|RD|STREET|AVE|OKLA|ARKA)\b/i.test(farmName)) return false;
+  if (/\b\d{3,6}\b/.test(farmName)) return false;
+  if (
+    /\b(?:HWY|HIGHWAY|ROAD|RD|STREET|AVE|DRIVE|DR|LN|LANE|BLVD|OKLA|ARKA)\b/i.test(farmName)
+  ) {
+    return false;
+  }
   // Reject calendar crumbs ("Saturday, August 8, 2026 BLACKJACK MTN")
   if (
     /\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|January|February|March|April|May|June|July|August|September|October|November|December)\b/i.test(
@@ -550,6 +583,9 @@ export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
  *    BLACKJACK MTN 08/03/2026 72944 3821FS 22,200 FS26045 3 22,200
  *    PROJECTED 2601HV BLACKJACK MTN 08/03/2026 72944 3821FS 24,300 FS26045 4 24,300
  *
+ * A+) Same with Address1 City State between name and date (build 111 device):
+ *    PROJECTED 2601HV BLACKJACK MTN 6501 BLACKJACK MTN. ROAD ABBOTT ARKA 08/03/2026 72944 3821FS …
+ *
  * B) No-zip Crystal order (page.string / pdfkit-sim):
  *    2601HV 08/03/2026 3821FS BLACKJACK MTN FS26045 3 22,200
  */
@@ -567,7 +603,7 @@ export function parseWeeklyChickPlacementDeviceText(text: string): PlacementRow[
     houseNo: string,
     numberSentRaw: string,
   ) => {
-    const farmName = cleanPlacementFarmName(farmNameRaw);
+    const farmName = stripPlacementAddressFromName(farmNameRaw);
     const code = farmCode.toUpperCase();
     if (!isPlausibleFarmName(farmName)) return;
     if (code === "2601HV") return;
@@ -590,6 +626,8 @@ export function parseWeeklyChickPlacementDeviceText(text: string): PlacementRow[
   // Up to 6 name tokens (letters/digits/&/'/()/.-), no commas.
   const name =
     "((?:[A-Za-z0-9][A-Za-z0-9'/()&./-]*\\s+){0,5}[A-Za-z0-9][A-Za-z0-9'/()&./-]*)";
+  // Optional Address1 City State between name and date (street # … before MM/DD/YYYY).
+  const addr = "(?:\\s+\\d{1,6}\\s+[A-Za-z0-9][\\s\\S]{0,80}?)?";
   const date = "(\\d{1,2}/\\d{1,2}/\\d{2,4})";
   const zip = "(\\d{5})";
   const code = "(\\d{3,5}[A-Z]{2})";
@@ -599,18 +637,18 @@ export function parseWeeklyChickPlacementDeviceText(text: string): PlacementRow[
 
   let m: RegExpExecArray | null;
 
-  // A1) PROJECTED Complex Name Date Zip FarmCode Count Flock House Sent
+  // A1) PROJECTED Complex Name [Address] Date Zip FarmCode Count Flock House Sent
   const withProjectedZip = new RegExp(
-    `PROJECTED\\s+\\d{3,5}[A-Z]{2}\\s+${name}\\s+${date}\\s+${zip}\\s+${code}\\s+${birds}\\s+${flock}\\s+${house}\\s+${birds}`,
+    `PROJECTED\\s+\\d{3,5}[A-Z]{2}\\s+${name}${addr}\\s+${date}\\s+${zip}\\s+${code}\\s+${birds}\\s+${flock}\\s+${house}\\s+${birds}`,
     "gi",
   );
   while ((m = withProjectedZip.exec(flat))) {
     push(m[1]!, m[2]!, m[4]!, m[6]!, m[7]!, m[8]!);
   }
 
-  // A2) Name Date Zip FarmCode Count Flock House Sent
+  // A2) Name [Address] Date Zip FarmCode Count Flock House Sent
   const bareZip = new RegExp(
-    `(?:^|\\s)${name}\\s+${date}\\s+${zip}\\s+${code}\\s+${birds}\\s+${flock}\\s+${house}\\s+${birds}`,
+    `(?:^|\\s)${name}${addr}\\s+${date}\\s+${zip}\\s+${code}\\s+${birds}\\s+${flock}\\s+${house}\\s+${birds}`,
     "gi",
   );
   while ((m = bareZip.exec(flat))) {
@@ -641,6 +679,56 @@ export function parseWeeklyChickPlacementDeviceText(text: string): PlacementRow[
     push(m[4]!, m[2]!, farmCode, m[5]!, m[6]!, m[7]!);
   }
 
+  return rows;
+}
+
+/**
+ * Build-111 fix: PDFKit column extract puts Address between Name and Date/Zip.
+ * Read every:
+ *   Complex  Name  [Address]  Date  Zip  FarmCode  Count  Flock  House  Sent
+ * including page-lead rows that omit the PROJECTED marker.
+ */
+export function parseWeeklyChickPlacementProjectedBlocks(text: string): PlacementRow[] {
+  const flat = flattenPlacementPdfText(text);
+  if (!flat) return [];
+  const rows: PlacementRow[] = [];
+  const seen = new Set<string>();
+
+  const push = (
+    complex: string,
+    farmNameRaw: string,
+    dateRaw: string,
+    farmCode: string,
+    flockId: string,
+    houseNo: string,
+    numberSentRaw: string,
+  ) => {
+    const code = farmCode.toUpperCase();
+    if (complex.toUpperCase() === code || code === "2601HV") return;
+    const farmName = stripPlacementAddressFromName(farmNameRaw);
+    if (!isPlausibleFarmName(farmName)) return;
+    const row = normalizePlacementRow({
+      datePlaced: toIsoDate(dateRaw),
+      farmCode: code,
+      farmName,
+      flockId,
+      houseNo: Number(houseNo),
+      numberSent: parseNumberSent(numberSentRaw),
+    });
+    if (!row || row.numberSent <= 0) return;
+    const key = `${row.farmCode}|${row.houseNo}|${row.datePlaced}|${row.numberSent}|${row.flockId}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push(row);
+  };
+
+  // Global scan — covers PROJECTED rows and bare page-start Complex rows.
+  const re =
+    /(?:^|\s)(\d{3,5}[A-Z]{2})\s+([A-Za-z0-9][\s\S]{0,90}?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{5})\s+(\d{3,5}[A-Z]{2})\s+([\d,]+)\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(flat))) {
+    push(m[1]!, m[2]!, m[3]!, m[5]!, m[7]!, m[8]!, m[9]!);
+  }
   return rows;
 }
 
@@ -675,7 +763,7 @@ export function parseWeeklyChickPlacementAnchors(text: string): PlacementRow[] {
     houseNo: number,
     numberSent: number | null,
   ) => {
-    const farmName = cleanPlacementFarmName(farmNameRaw);
+    const farmName = stripPlacementAddressFromName(farmNameRaw);
     if (!isPlausibleFarmName(farmName)) return;
     if (farmCode.toUpperCase() === "2601HV") return;
     const row = normalizePlacementRow({
@@ -694,19 +782,32 @@ export function parseWeeklyChickPlacementAnchors(text: string): PlacementRow[] {
   };
 
   const nameFromBefore = (before: string): { farmName: string; dateRaw: string } | null => {
-    const projectedMatches = execAll(
-      /PROJECTED\s+(\d{3,5}(?:FS|HV))\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s+\d{5})?/gi,
-      before,
+    // Prefer the Complex/Name/Date/Zip glued to this farm-code anchor. A prior
+    // PROJECTED row in the lookback window must not steal the name (CRABTREE bug).
+    const immediateComplex = before.match(
+      /(?:^|\s)(\d{3,5}(?:FS|HV))\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{5})\s*$/i,
     );
-    if (projectedMatches.length) {
-      const last = projectedMatches[projectedMatches.length - 1]!;
-      return { farmName: last[2]!, dateRaw: last[3]! };
+    if (immediateComplex) {
+      return {
+        farmName: stripPlacementAddressFromName(immediateComplex[2]!),
+        dateRaw: immediateComplex[3]!,
+      };
     }
-    // Zip-required bare form immediately before the farm-code anchor.
-    const bare = before.match(
-      /([A-Za-z0-9][A-Za-z0-9 .'/()&/-]{0,48}?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+\d{5}\s*$/i,
+    const projectedAtEnd = before.match(
+      /PROJECTED\s+(\d{3,5}(?:FS|HV))\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s+(\d{5}))?\s*$/i,
     );
-    if (bare) return { farmName: bare[1]!, dateRaw: bare[2]! };
+    if (projectedAtEnd) {
+      return {
+        farmName: stripPlacementAddressFromName(projectedAtEnd[2]!),
+        dateRaw: projectedAtEnd[3]!,
+      };
+    }
+    const bare = before.match(
+      /(?:^|\s)(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+\d{5}\s*$/i,
+    );
+    if (bare) {
+      return { farmName: stripPlacementAddressFromName(bare[1]!), dateRaw: bare[2]! };
+    }
 
     const dateMatches = execAll(/\b(\d{1,2}\/\d{1,2}\/\d{2,4})\b/g, before);
     if (!dateMatches.length) return null;
@@ -714,9 +815,10 @@ export function parseWeeklyChickPlacementAnchors(text: string): PlacementRow[] {
     const dateRaw = lastDate[1]!;
     const dateIdx = lastDate.index ?? before.lastIndexOf(dateRaw);
     let head = before.slice(0, dateIdx).trim();
+    // Keep only the tail after the last Complex / PROJECTED marker.
     head = head.replace(/^.*\bPROJECTED\b/i, "").trim();
-    head = head.replace(/^\d{3,5}(?:FS|HV)\s+/i, "").trim();
-    head = head.replace(/^.*\b(?:ADDRESS|CITY|ST|ROAD|RD|OKLA|ARKA)\b\s*/i, "").trim();
+    head = head.replace(/^.*\b(\d{3,5}(?:FS|HV))\s+/i, "").trim();
+    head = stripPlacementAddressFromName(head);
     if (!head) return null;
     return { farmName: head, dateRaw };
   };
@@ -725,7 +827,7 @@ export function parseWeeklyChickPlacementAnchors(text: string): PlacementRow[] {
     const m = after.match(
       /PROJECTED\s+(\d{3,5}(?:FS|HV))\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s+\d{5})?/i,
     );
-    if (m) return { farmName: m[2]!, dateRaw: m[3]! };
+    if (m) return { farmName: stripPlacementAddressFromName(m[2]!), dateRaw: m[3]! };
     return null;
   };
 
@@ -734,8 +836,9 @@ export function parseWeeklyChickPlacementAnchors(text: string): PlacementRow[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(flat))) {
     const farmCode = m[1]!;
-    const before = flat.slice(Math.max(0, m.index - 180), m.index);
-    const after = flat.slice(m.index + m[0].length, m.index + m[0].length + 200);
+    // Address between name and date needs a wider lookback than 180 chars.
+    const before = flat.slice(Math.max(0, m.index - 320), m.index);
+    const after = flat.slice(m.index + m[0].length, m.index + m[0].length + 220);
     const named = nameFromBefore(before) ?? nameFromAfter(after);
     if (!named) continue;
     push(
@@ -755,7 +858,7 @@ export function parseWeeklyChickPlacementAnchors(text: string): PlacementRow[] {
     const complex = m[3]!;
     if (farmCode.toUpperCase() === complex.toUpperCase()) continue;
     const after = flat.slice(m.index + m[0].length, m.index + m[0].length + 220);
-    const before = flat.slice(Math.max(0, m.index - 180), m.index);
+    const before = flat.slice(Math.max(0, m.index - 320), m.index);
     const named = nameFromAfter(after) ?? nameFromBefore(before);
     if (!named) continue;
     push(
@@ -789,7 +892,7 @@ export function parseWeeklyChickPlacementPdfKitText(text: string): PlacementRow[
   }) => {
     const row = normalizePlacementRow({
       ...partial,
-      farmName: cleanPlacementFarmName(partial.farmName),
+      farmName: stripPlacementAddressFromName(partial.farmName),
     });
     if (!row || row.numberSent <= 0) return;
     if (row.farmCode.toUpperCase() === "2601HV") return;
@@ -799,14 +902,16 @@ export function parseWeeklyChickPlacementPdfKitText(text: string): PlacementRow[
     rows.push(row);
   };
 
+  // Optional Address1 City State between farm name and date (device PDFKit columns).
+  const addr = "(?:\\s+\\d{1,6}\\s+[A-Za-z0-9][\\s\\S]{0,80}?)?";
   const re = new RegExp(
-    `PROJECTED\\s+(\\d{3,5}[A-Z]{2})\\s+${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(?:\\d{5}\\s+)?(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
+    `PROJECTED\\s+(\\d{3,5}[A-Z]{2})\\s+${FARM_NAME_RE}${addr}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(?:\\d{5}\\s+)?(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
     "gi",
   );
   let m: RegExpExecArray | null;
   while ((m = re.exec(flat))) {
     const complex = m[1]!;
-    const farmName = cleanPlacementFarmName(m[2]!);
+    const farmName = stripPlacementAddressFromName(m[2]!);
     const farmCode = m[4]!;
     if (!isPlausibleFarmName(farmName)) continue;
     if (farmCode.toUpperCase() === complex.toUpperCase()) continue;
@@ -821,11 +926,11 @@ export function parseWeeklyChickPlacementPdfKitText(text: string): PlacementRow[
   }
 
   const re2 = new RegExp(
-    `${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(?:\\d{5}\\s+)?(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
+    `${FARM_NAME_RE}${addr}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(?:\\d{5}\\s+)?(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
     "gi",
   );
   while ((m = re2.exec(flat))) {
-    const farmName = cleanPlacementFarmName(m[1]!);
+    const farmName = stripPlacementAddressFromName(m[1]!);
     const farmCode = m[3]!;
     if (!isPlausibleFarmName(farmName)) continue;
     if (!/^\d{3,5}[A-Z]{2}$/i.test(farmCode)) continue;
@@ -1120,6 +1225,9 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
 
   const strategies: PlacementRow[][] = [];
   const runAll = (chunk: string) => {
+    strategies.push(
+      safeParse("projectedBlocks", () => parseWeeklyChickPlacementProjectedBlocks(chunk)),
+    );
     strategies.push(safeParse("device", () => parseWeeklyChickPlacementDeviceText(chunk)));
     strategies.push(safeParse("anchors", () => parseWeeklyChickPlacementAnchors(chunk)));
     strategies.push(safeParse("pdfkit", () => parseWeeklyChickPlacementPdfKitText(chunk)));
@@ -1141,6 +1249,7 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
     const perPage: PlacementRow[] = [];
     for (const chunk of chunks) {
       const pageRows = [
+        ...safeParse("projected-page", () => parseWeeklyChickPlacementProjectedBlocks(chunk)),
         ...safeParse("device-page", () => parseWeeklyChickPlacementDeviceText(chunk)),
         ...safeParse("tokens-page", () => parseWeeklyChickPlacementTokens(chunk)),
         ...safeParse("weekly-page", () =>

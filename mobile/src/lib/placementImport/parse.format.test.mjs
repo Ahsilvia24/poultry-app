@@ -71,6 +71,32 @@ checkFixture(
   "device-sample",
   readFileSync(join(fixturesDir, "weekly-chick-placement-device-sample.txt"), "utf8"),
 );
+checkFixture(
+  "pdfkit-address",
+  readFileSync(join(fixturesDir, "weekly-chick-placement-pdfkit-address.txt"), "utf8"),
+);
+
+// Build 111 regression: Address between Name and Date/Zip must still yield ~full sheet.
+{
+  const addressText = readFileSync(
+    join(fixturesDir, "weekly-chick-placement-pdfkit-address.txt"),
+    "utf8",
+  );
+  const rows = parsePlacementPdfText(addressText);
+  const summary = summarizePlacementRows(rows);
+  const farms = groupPlacementFarms(rows);
+  if (summary.rowCount < 90) {
+    fail(
+      `build-111 address regression: expected ~96 rows, got ${summary.rowCount} (${summary.farmCount} farms)`,
+    );
+  } else if (farms.some((f) => /\b(?:ROAD|HWY|DRIVE|Highway)\b/i.test(f.farmName))) {
+    fail("build-111 address regression: farm name still contains address crumbs");
+  } else {
+    ok(
+      `build-111 address regression: ${summary.farmCount} farms / ${summary.rowCount} rows (address stripped)`,
+    );
+  }
+}
 
 // Fewer farms: first ~6 PROJECTED blocks from the device extract still parse cleanly.
 const pdfkit = readFileSync(
