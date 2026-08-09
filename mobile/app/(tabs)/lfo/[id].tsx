@@ -289,9 +289,11 @@ export default function EditLfoScreen() {
 
   function onDigit(d: string) {
     const current = getActiveValue();
+    const allowDecimal = activeField?.kind === "rate";
+    // Fresh typing replaces the field; 000 / decimal still append to a cleared base.
     const base = replaceOnType && d !== "." ? "" : current;
     setReplaceOnType(false);
-    setActiveValue(appendKeypadDigit(base, d, true));
+    setActiveValue(appendKeypadDigit(base, d, allowDecimal));
   }
 
   function onBackspace() {
@@ -637,7 +639,8 @@ export default function EditLfoScreen() {
 
         {activeField ? (
           <NumberKeypad
-            allowDecimal
+            allowDecimal={activeField.kind === "rate"}
+            allowTripleZero={activeField.kind === "binA" || activeField.kind === "binB"}
             onDigit={onDigit}
             onBackspace={onBackspace}
             onEnter={onEnter}
