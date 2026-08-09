@@ -1,4 +1,4 @@
-import { ScrollView, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import {
   BIG_BIRD_COOL_CELLS,
   BIG_BIRD_LIGHTING_PROGRAM,
@@ -25,39 +25,39 @@ const ZONE_STYLE: Record<
   danger: { backgroundColor: "#dc2626", color: "#fff" },
 };
 
-function TableShell({ children, minWidth }: { children: React.ReactNode; minWidth?: number }) {
+/** Full-width bordered table shell — matches Chore Time (no horizontal scroll). */
+function TableShell({ children }: { children: React.ReactNode }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-      <View
-        style={{
-          minWidth: minWidth ?? 280,
-          borderWidth: 1,
-          borderColor: colors.border,
-          borderRadius: 10,
-          overflow: "hidden",
-          backgroundColor: "#fff",
-        }}
-      >
-        {children}
-      </View>
-    </ScrollView>
+    <View
+      style={{
+        alignSelf: "stretch",
+        width: "100%",
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 10,
+        overflow: "hidden",
+        backgroundColor: "#fff",
+      }}
+    >
+      {children}
+    </View>
   );
 }
 
 function HeaderCell({
   children,
-  flex,
-  width,
+  flex = 1,
   align = "left",
   style,
-  numberOfLines,
+  numberOfLines = 1,
+  padH = 4,
 }: {
   children: React.ReactNode;
   flex?: number;
-  width?: number;
   align?: "left" | "center" | "right";
   style?: object;
   numberOfLines?: number;
+  padH?: number;
 }) {
   return (
     <Text
@@ -65,10 +65,10 @@ function HeaderCell({
       style={[
         {
           flex,
-          width,
-          paddingHorizontal: 10,
+          minWidth: 0,
+          paddingHorizontal: padH,
           paddingVertical: 8,
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: "800",
           color: "#44403c",
           backgroundColor: "#f5f5f4",
@@ -84,28 +84,29 @@ function HeaderCell({
 
 function Cell({
   children,
-  flex,
-  width,
+  flex = 1,
   bold,
   align = "left",
   style,
+  padH = 4,
 }: {
   children: React.ReactNode;
   flex?: number;
-  width?: number;
   bold?: boolean;
   align?: "left" | "center" | "right";
   style?: object;
+  padH?: number;
 }) {
   return (
     <Text
+      numberOfLines={1}
       style={[
         {
           flex,
-          width,
-          paddingHorizontal: 10,
+          minWidth: 0,
+          paddingHorizontal: padH,
           paddingVertical: 7,
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: bold ? "700" : "500",
           color: colors.text,
           textAlign: align,
@@ -133,6 +134,7 @@ function Row({
         {
           flexDirection: "row",
           alignItems: "stretch",
+          width: "100%",
           borderTopWidth: thickTop ? 2 : 1,
           borderTopColor: thickTop ? "#d6d3d1" : "#f5f5f4",
         },
@@ -146,23 +148,29 @@ function Row({
 
 export function TempCurveChart() {
   return (
-    <TableShell minWidth={260}>
-      <View style={{ flexDirection: "row" }}>
-        <HeaderCell flex={1}>Day</HeaderCell>
-        <HeaderCell flex={1} style={{ backgroundColor: "#fef3c7", color: "#78350f" }}>
+    <TableShell>
+      <View style={{ flexDirection: "row", width: "100%" }}>
+        <HeaderCell flex={1} padH={8}>
+          Day
+        </HeaderCell>
+        <HeaderCell flex={1} padH={8} style={{ backgroundColor: "#fef3c7", color: "#78350f" }}>
           Summer
         </HeaderCell>
-        <HeaderCell flex={1}>Winter</HeaderCell>
+        <HeaderCell flex={1} padH={8}>
+          Winter
+        </HeaderCell>
       </View>
       {TEMP_CURVE.map((row) => (
         <Row key={row.day}>
-          <Cell flex={1} bold>
+          <Cell flex={1} bold padH={8}>
             {row.day}
           </Cell>
-          <Cell flex={1} style={{ backgroundColor: "#fffbeb", color: "#451a03" }}>
+          <Cell flex={1} padH={8} style={{ backgroundColor: "#fffbeb", color: "#451a03" }}>
             {row.summerF}°F
           </Cell>
-          <Cell flex={1}>{row.winterF}°F</Cell>
+          <Cell flex={1} padH={8}>
+            {row.winterF}°F
+          </Cell>
         </Row>
       ))}
     </TableShell>
@@ -177,31 +185,39 @@ function CoolCellSettingsTable({
   diffLabel: string;
 }) {
   return (
-    <TableShell minWidth={360}>
-      <View style={{ flexDirection: "row" }}>
-        <HeaderCell width={52}>Day</HeaderCell>
-        <HeaderCell width={72}>{diffLabel}</HeaderCell>
-        <HeaderCell width={52}>On</HeaderCell>
-        <HeaderCell width={52}>Off</HeaderCell>
-        <HeaderCell width={72}>On temp</HeaderCell>
+    <TableShell>
+      <View style={{ flexDirection: "row", width: "100%" }}>
+        <HeaderCell flex={0.7}>Day</HeaderCell>
+        <HeaderCell flex={1.15}>{diffLabel}</HeaderCell>
+        <HeaderCell flex={0.7} align="center">
+          On
+        </HeaderCell>
+        <HeaderCell flex={0.7} align="center">
+          Off
+        </HeaderCell>
+        <HeaderCell flex={0.95}>On temp</HeaderCell>
       </View>
       {rows.map((row, i) => {
         const prev = rows[i - 1];
         const showDay = !prev || prev.day !== row.day;
         return (
           <Row key={`${row.day}-${row.diff}-${row.onSec}`} thickTop={showDay && i > 0}>
-            <Cell width={52} bold>
+            <Cell flex={0.7} bold>
               {showDay ? String(row.day) : ""}
             </Cell>
-            <Cell width={72}>
+            <Cell flex={1.15}>
               {row.diff.toLocaleString(undefined, {
                 minimumFractionDigits: 1,
                 maximumFractionDigits: 1,
               })}
             </Cell>
-            <Cell width={52}>{String(row.onSec)}</Cell>
-            <Cell width={52}>{String(row.offSec)}</Cell>
-            <Cell width={72} bold>
+            <Cell flex={0.7} align="center">
+              {String(row.onSec)}
+            </Cell>
+            <Cell flex={0.7} align="center">
+              {String(row.offSec)}
+            </Cell>
+            <Cell flex={0.95} bold>
               {row.onTemp != null ? String(row.onTemp) : ""}
             </Cell>
           </Row>
@@ -238,6 +254,8 @@ export function CoolCellsChart() {
         <Text style={{ fontSize: 12, color: colors.muted }}>Cool pad settings</Text>
         <View
           style={{
+            alignSelf: "stretch",
+            width: "100%",
             borderWidth: 1,
             borderColor: colors.border,
             borderRadius: 10,
@@ -271,117 +289,112 @@ export function CoolCellsChart() {
 }
 
 export function MaxCoolingChart() {
-  const cellW = 36;
-  const rhW = 34;
+  const tempCount = MAX_COOLING_OUTSIDE_TEMPS_F.length;
   return (
-    <View style={{ gap: 10 }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator>
-        <View
-          style={{
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 10,
-            overflow: "hidden",
-            backgroundColor: "#fff",
-          }}
-        >
-          <View style={{ flexDirection: "row", backgroundColor: "#f5f5f4" }}>
+    <View style={{ gap: 10, alignSelf: "stretch", width: "100%" }}>
+      <TableShell>
+        <View style={{ flexDirection: "row", width: "100%", backgroundColor: "#f5f5f4" }}>
+          <Text
+            style={{
+              flex: 0.9,
+              minWidth: 0,
+              paddingVertical: 6,
+              textAlign: "center",
+              fontSize: 10,
+              fontWeight: "800",
+              color: "#57534e",
+              borderRightWidth: 1,
+              borderRightColor: "#e7e5e4",
+            }}
+          >
+            RH%
+          </Text>
+          <Text
+            style={{
+              flex: tempCount,
+              minWidth: 0,
+              paddingVertical: 6,
+              textAlign: "center",
+              fontSize: 10,
+              fontWeight: "800",
+              color: "#57534e",
+            }}
+          >
+            Outside temperature
+          </Text>
+        </View>
+        <View style={{ flexDirection: "row", width: "100%", backgroundColor: "#fafaf9" }}>
+          <View
+            style={{
+              flex: 0.9,
+              minWidth: 0,
+              borderRightWidth: 1,
+              borderRightColor: "#e7e5e4",
+              borderBottomWidth: 1,
+              borderBottomColor: "#e7e5e4",
+            }}
+          />
+          {MAX_COOLING_OUTSIDE_TEMPS_F.map((t) => (
             <Text
+              key={t}
               style={{
-                width: rhW,
-                paddingVertical: 6,
+                flex: 1,
+                minWidth: 0,
+                paddingVertical: 5,
                 textAlign: "center",
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: "800",
-                color: "#57534e",
-                borderRightWidth: 1,
-                borderRightColor: "#e7e5e4",
-              }}
-            >
-              RH%
-            </Text>
-            <Text
-              style={{
-                width: cellW * MAX_COOLING_OUTSIDE_TEMPS_F.length,
-                paddingVertical: 6,
-                textAlign: "center",
-                fontSize: 10,
-                fontWeight: "800",
-                color: "#57534e",
-              }}
-            >
-              Outside temperature
-            </Text>
-          </View>
-          <View style={{ flexDirection: "row", backgroundColor: "#fafaf9" }}>
-            <View
-              style={{
-                width: rhW,
-                borderRightWidth: 1,
-                borderRightColor: "#e7e5e4",
+                color: "#44403c",
                 borderBottomWidth: 1,
                 borderBottomColor: "#e7e5e4",
               }}
-            />
-            {MAX_COOLING_OUTSIDE_TEMPS_F.map((t) => (
-              <Text
-                key={t}
-                style={{
-                  width: cellW,
-                  paddingVertical: 5,
-                  textAlign: "center",
-                  fontSize: 11,
-                  fontWeight: "800",
-                  color: "#44403c",
-                  borderBottomWidth: 1,
-                  borderBottomColor: "#e7e5e4",
-                }}
-              >
-                {t}°
-              </Text>
-            ))}
-          </View>
-          {MAX_COOLING_APPARENT_TEMPS.map((row) => (
-            <View key={row.humidityPct} style={{ flexDirection: "row" }}>
-              <Text
-                style={{
-                  width: rhW,
-                  paddingVertical: 5,
-                  textAlign: "center",
-                  fontSize: 11,
-                  fontWeight: "800",
-                  color: colors.text,
-                  backgroundColor: "#fafaf9",
-                  borderRightWidth: 1,
-                  borderRightColor: "#f5f5f4",
-                }}
-              >
-                {row.humidityPct}
-              </Text>
-              {row.tempsF.map((temp, i) => {
-                const zone = maxCoolingZone(temp);
-                return (
-                  <Text
-                    key={`${row.humidityPct}-${MAX_COOLING_OUTSIDE_TEMPS_F[i]}`}
-                    style={{
-                      width: cellW,
-                      paddingVertical: 5,
-                      textAlign: "center",
-                      fontSize: 11,
-                      fontWeight: "700",
-                      borderWidth: 0.5,
-                      borderColor: "#f5f5f4",
-                      ...ZONE_STYLE[zone],
-                    }}
-                  >
-                    {temp}
-                  </Text>
-                );
-              })}
-            </View>
+            >
+              {t}°
+            </Text>
           ))}
         </View>
-      </ScrollView>
+        {MAX_COOLING_APPARENT_TEMPS.map((row) => (
+          <View key={row.humidityPct} style={{ flexDirection: "row", width: "100%" }}>
+            <Text
+              style={{
+                flex: 0.9,
+                minWidth: 0,
+                paddingVertical: 5,
+                textAlign: "center",
+                fontSize: 11,
+                fontWeight: "800",
+                color: colors.text,
+                backgroundColor: "#fafaf9",
+                borderRightWidth: 1,
+                borderRightColor: "#f5f5f4",
+              }}
+            >
+              {row.humidityPct}
+            </Text>
+            {row.tempsF.map((temp, i) => {
+              const zone = maxCoolingZone(temp);
+              return (
+                <Text
+                  key={`${row.humidityPct}-${MAX_COOLING_OUTSIDE_TEMPS_F[i]}`}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    paddingVertical: 5,
+                    textAlign: "center",
+                    fontSize: 11,
+                    fontWeight: "700",
+                    borderWidth: 0.5,
+                    borderColor: "#f5f5f4",
+                    ...ZONE_STYLE[zone],
+                  }}
+                >
+                  {temp}
+                </Text>
+              );
+            })}
+          </View>
+        ))}
+      </TableShell>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
         <LegendSwatch color="#fff" border label="Normal" />
         <LegendSwatch color="#fde68a" label="Caution (86–89°F)" />
@@ -419,27 +432,41 @@ function LegendSwatch({
 
 export function LightsChart() {
   return (
-    <View style={{ gap: 8 }}>
+    <View style={{ gap: 8, alignSelf: "stretch", width: "100%" }}>
       <Text style={{ fontSize: 12, color: colors.muted }}>Big Bird lighting program</Text>
-      <TableShell minWidth={448}>
-        <View style={{ flexDirection: "row" }}>
-          <HeaderCell width={88}>Age (days)</HeaderCell>
-          <HeaderCell width={72}>Hours light</HeaderCell>
-          <HeaderCell width={72}>Hours dark</HeaderCell>
-          <HeaderCell width={80}>Center lights</HeaderCell>
-          <HeaderCell width={96} numberOfLines={1}>
+      <TableShell>
+        <View style={{ flexDirection: "row", width: "100%" }}>
+          <HeaderCell flex={1.05} padH={3}>
+            Age (days)
+          </HeaderCell>
+          <HeaderCell flex={0.95} padH={3} align="center">
+            Hrs light
+          </HeaderCell>
+          <HeaderCell flex={0.95} padH={3} align="center">
+            Hrs dark
+          </HeaderCell>
+          <HeaderCell flex={1.05} padH={3} align="center">
+            Center
+          </HeaderCell>
+          <HeaderCell flex={0.95} padH={3} align="center">
             Intensity
           </HeaderCell>
         </View>
         {BIG_BIRD_LIGHTING_PROGRAM.map((row) => (
           <Row key={row.ageLabel}>
-            <Cell width={88} bold>
+            <Cell flex={1.05} bold padH={3}>
               {row.ageLabel}
             </Cell>
-            <Cell width={72}>{String(row.hoursLight)}</Cell>
-            <Cell width={72}>{String(row.hoursDark)}</Cell>
-            <Cell width={80}>{row.centerLights}</Cell>
-            <Cell width={96} bold>
+            <Cell flex={0.95} padH={3} align="center">
+              {String(row.hoursLight)}
+            </Cell>
+            <Cell flex={0.95} padH={3} align="center">
+              {String(row.hoursDark)}
+            </Cell>
+            <Cell flex={1.05} padH={3} align="center">
+              {row.centerLights}
+            </Cell>
+            <Cell flex={0.95} bold padH={3} align="center">
               {row.intensity}
             </Cell>
           </Row>
