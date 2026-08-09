@@ -247,6 +247,19 @@ assertNearFullSheet(
   ),
 );
 
+// PDFKit sometimes drops spaces around digits: date+zip+code and birds+0+days.
+{
+  const glued = readFileSync(
+    join(fixturesDir, "weekly-chick-placement-17-anchors-glued.txt"),
+    "utf8",
+  );
+  const digitPacked = glued
+    .replace(/\s{2,}/g, " ")
+    .replace(/ (?=\d)/g, "")
+    .replace(/(?<=\d) /g, "");
+  assertNearFullSheet("build-123 digit-space-stripped", digitPacked);
+}
+
 // Unglue must not treat bird-count tails ("800FS") as farm codes.
 {
   const glued =

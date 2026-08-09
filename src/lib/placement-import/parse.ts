@@ -80,10 +80,23 @@ function normalizePlacementPdfText(text: string): string {
     .replace(/(\d),(\s+)(\d{3}\b)/g, "$1,$3")
     .replace(/(\d{1,2}\/\d{1,2}\/\d{4})(\d{3,5}[A-Z]{2})/gi, "$1 $2")
     .replace(/(\d{1,2}\/\d{1,2}\/\d{2})(\d{3,5}[A-Z]{2})/gi, "$1 $2")
+    // Date + zip + farm code jammed: 08/03/2026729443821FS → 08/03/2026 72944 3821FS
+    .replace(
+      /(\d{1,2}\/\d{1,2}\/\d{4})(\d{5})(\d{4,5}[A-Z]{2})/gi,
+      "$1 $2 $3",
+    )
+    .replace(
+      /(\d{1,2}\/\d{1,2}\/\d{2})(\d{5})(\d{4,5}[A-Z]{2})/gi,
+      "$1 $2 $3",
+    )
     // Date glued directly to following digits/codes with no farm-code letters:
     //   08/03/202622200 → 08/03/2026 22200
     .replace(/(\d{1,2}\/\d{1,2}\/\d{4})(\d{3,6}\b)/g, "$1 $2")
     .replace(/(\d{1,2}\/\d{1,2}\/\d{2})(\d{3,6}\b)/g, "$1 $2")
+    // Zip glued onto farm code: 729443821FS → 72944 3821FS
+    .replace(/(\b\d{5})(\d{4,5}[A-Z]{2}\b)/gi, "$1 $2")
+    // Complex glued onto farm name: 2601HVBLACKJACK / 2601HVFARM
+    .replace(/\b(2601HV)(?=[A-Za-z])/gi, "$1 ")
     // Farm code glued to following digits. Use 4–5 digit codes only — NEVER \d{3,5}
     // here: bird tails like "800FS" in "17,800FS26045…" would split the flock id.
     //   3821FS22,200 / 3946FS17,800FS26045617,800
@@ -117,8 +130,12 @@ function normalizePlacementPdfText(text: string): string {
     .replace(/((?:FS|HV)\d{5}|\d{4,5}[A-Z]{2})\s+(\d{1,2})([1-9]\d,\d{3})\b/gi, "$1 $2 $3")
     // Birds glued to mortality 0: 22,2000 → 22,200 0
     .replace(/\b(\d{1,3},\d{3})0\b/g, "$1 0")
+    // Birds + mortality 0 + days glued: 22,200012 → 22,200 0 12
+    .replace(/\b(\d{1,3},\d{3})0(\d{1,2})(?=\s|$|[A-Z])/gi, "$1 0 $2")
     // Birds glued to zip: 22,20072944 → 22,200 72944
     .replace(/\b(\d{1,3},\d{3})(\d{5})\b/g, "$1 $2")
+    // FARM9 → FARM 9 (house/name digit packed after letter farm token)
+    .replace(/\bFARM(\d{1,2})\b/gi, "FARM $1")
     // PDFKit often splits entity codes: "2601 HV" / "3933 FS" / flock "FS 26045"
     // Rejoin flock first so "22200 FS 26045" does not become "22200FS".
     .replace(/\b(FS|HV)\s+(\d{4,8})\b/gi, "$1$2")
@@ -363,6 +380,10 @@ export function rejectJunkPlacementRows(rows: PlacementRow[]): PlacementRow[] {
     if (!isValidPlacementRow(row)) return false;
     if (row.farmCode.toUpperCase() === "2601HV") return false;
     if (!isPlausibleFarmName(row.farmName)) return false;
+    // House bird counts on Crystal sheets are ~1k–120k. Reject glue blow-ups
+    // like 22,200012 → 22,200,012 before they poison totals / pickBest.
+    if (!(row.numberSent >= 1000 && row.numberSent <= 120000)) return false;
+    if (!(row.houseNo >= 1 && row.houseNo <= 40)) return false;
     return true;
   });
 }
