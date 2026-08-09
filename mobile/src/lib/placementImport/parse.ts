@@ -5,8 +5,13 @@
  * - datePlaced (date sent / date placed)
  * - numberSent (birds placed)
  * - farmCode — the code to the left of the farm name on the sheet (e.g. 3821FS).
- *   Not Complex (2601HV). `flockId` may also carry the sheet flock code (FS26045)
- *   when present; otherwise it is derived from farmCode + house.
+ *
+ * Ignored sheet columns (never used as identity):
+ * - far-left Complex (2601HV)
+ * - Flock Code column (FS26045 / HV26045) — irrelevant
+ * - far-right mortality / in-transit / day-count crumbs
+ *
+ * `flockId` in app data is always the farm code left of the name (not the sheet flock column).
  */
 export type PlacementRow = {
   datePlaced: string;
@@ -223,10 +228,10 @@ export function normalizePlacementRow(partial: {
       ? Math.floor(partial.houseNo)
       : 1;
 
-  const flockRaw = (partial.flockId ?? "").trim().toUpperCase();
+  // Sheet "Flock Code" (FS26045) is ignored. App flock id = farm code left of name.
   const flockId =
-    flockRaw ||
-    (farmCode ? `${farmCode}-H${houseNo}` : `H${houseNo}-${datePlaced.replace(/-/g, "")}`);
+    farmCode ||
+    `H${houseNo}-${datePlaced.replace(/-/g, "")}`;
 
   const numberSent =
     partial.numberSent != null && Number.isFinite(partial.numberSent) && partial.numberSent >= 0
@@ -1467,12 +1472,14 @@ export function patchPlacementRowAt(
   if (index < 0 || index >= rows.length) return rows;
   const next = rows.slice();
   const cur = next[index]!;
+  const farmCode = (patch.farmCode ?? cur.farmCode).trim().toUpperCase();
   next[index] = {
     ...cur,
     ...patch,
-    farmCode: (patch.farmCode ?? cur.farmCode).trim().toUpperCase(),
+    farmCode,
     farmName: (patch.farmName ?? cur.farmName).trim().replace(/\s+/g, " "),
-    flockId: (patch.flockId ?? cur.flockId).trim().toUpperCase(),
+    // Never keep sheet flock codes — flock id is always the farm code.
+    flockId: farmCode || cur.flockId,
     datePlaced: (patch.datePlaced ?? cur.datePlaced).trim(),
     houseNo:
       patch.houseNo != null && Number.isFinite(patch.houseNo)
@@ -1532,17 +1539,13 @@ export function addPlacementHouseRow(
     template.datePlaced ||
     farmRows[0]?.datePlaced ||
     new Date().toISOString().slice(0, 10);
-  const flockId = (
-    template.flockId ||
-    farmRows[0]?.flockId ||
-    `${template.farmCode}-H${houseNo}`
-  ).toUpperCase();
+  const farmCode = template.farmCode.trim().toUpperCase();
   return [
     ...rows,
     {
-      farmCode: template.farmCode.trim().toUpperCase(),
+      farmCode,
       farmName: template.farmName.trim().replace(/\s+/g, " "),
-      flockId,
+      flockId: farmCode,
       datePlaced,
       houseNo,
       numberSent: template.numberSent ?? 0,
@@ -1556,10 +1559,90 @@ export function addBlankPlacementFarm(rows: PlacementRow[]): PlacementRow[] {
     {
       farmCode: "0000FS",
       farmName: "NEW FARM",
-      flockId: "NEW-H1",
+      flockId: "0000FS",
       datePlaced: new Date().toISOString().slice(0, 10),
       houseNo: 1,
       numberSent: 0,
     },
   ];
+}
+
+/** Offline typed-instruction fixer for common grower notes (no network). */
+export function applyLocalPlacementInstructions(
+  rows: PlacementRow[],
+  note: string,
+): { rows: PlacementRow[]; summary: string; source: "local" } | null {
+  const text = note.trim();
+  if (!text) return null;
+  let next = rows.slice();
+  let changed = false;
+  const summaryParts: string[] = [];
+
+  const remove = text.match(/^(?:remove|delete)\s+farm\s+(.+)$/i);
+  if (remove) {
+    const name = remove[1]!.trim().toUpperCase();
+    const before = next.length;
+    next = next.filter(
+      (r) => r.farmName.toUpperCase() !== name && r.farmCode.toUpperCase() !== name,
+    );
+    if (next.length !== before) {
+      changed = true;
+      summaryParts.push(`Removed farm ${remove[1]!.trim()}`);
+    }
+  }
+
+  const rename = text.match(/^rename\s+(.+?)\s+to\s+(.+)$/i);
+  if (rename) {
+    const from = rename[1]!.trim().toUpperCase();
+    const to = rename[2]!.trim();
+    next = next.map((r) => {
+      if (r.farmName.toUpperCase() === from || r.farmCode.toUpperCase() === from) {
+        changed = true;
+        return { ...r, farmName: to };
+      }
+      return r;
+    });
+    if (changed) summaryParts.push(`Renamed to ${to}`);
+  }
+
+  const code = text.match(/^(?:set\s+)?(.+?)\s+code\s+to\s+(\d{3,5}[A-Za-z]{2})$/i);
+  if (code) {
+    const farm = code[1]!.trim().toUpperCase();
+    const farmCode = code[2]!.toUpperCase();
+    next = next.map((r) => {
+      if (r.farmName.toUpperCase() === farm || r.farmCode.toUpperCase() === farm) {
+        changed = true;
+        return { ...r, farmCode, flockId: farmCode };
+      }
+      return r;
+    });
+    if (changed) summaryParts.push(`Set code ${farmCode}`);
+  }
+
+  const birds = text.match(/^(.+?)\s+house\s+(\d{1,2})\s+(?:birds?|sent)\s+([\d,]+)$/i);
+  if (birds) {
+    const farm = birds[1]!.trim().toUpperCase();
+    const houseNo = Number(birds[2]);
+    const numberSent = Number(birds[3]!.replace(/,/g, ""));
+    next = next.map((r) => {
+      if (
+        (r.farmName.toUpperCase() === farm || r.farmCode.toUpperCase() === farm) &&
+        r.houseNo === houseNo
+      ) {
+        changed = true;
+        return { ...r, numberSent };
+      }
+      return r;
+    });
+    if (changed) summaryParts.push(`Set house ${houseNo} to ${numberSent} birds`);
+  }
+
+  if (!changed) return null;
+  return {
+    rows: next
+      .map((r) => normalizePlacementRow(r))
+      .filter((r): r is PlacementRow => Boolean(r)),
+    summary: summaryParts.join("; "),
+    source: "local",
+  };
 }

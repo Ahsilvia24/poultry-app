@@ -147,6 +147,7 @@ export function ScheduleImportCard() {
   const [rename, setRename] = useState<Record<string, boolean>>({});
   const [onlyMyFarms, setOnlyMyFarms] = useState(false);
   const [extractHint, setExtractHint] = useState<PlacementExtractHint | null>(null);
+  const [pdfExtractText, setPdfExtractText] = useState<string | null>(null);
   const [fixFarmKey, setFixFarmKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -169,6 +170,7 @@ export function ScheduleImportCard() {
     setCatchRows([]);
     setOnlyMyFarms(false);
     setExtractHint(null);
+    setPdfExtractText(null);
     setFixFarmKey(null);
   }
 
@@ -288,6 +290,7 @@ export function ScheduleImportCard() {
       );
     }
     setExtractHint(null);
+    setPdfExtractText(null);
     setFixFarmKey(null);
     buildPlacementPreview(parsed);
   }
@@ -333,6 +336,7 @@ export function ScheduleImportCard() {
       expectedRows: stats.expectedRows,
     };
     setFixFarmKey(null);
+    setPdfExtractText(text);
     buildPlacementPreview(parsed, { statsLine, hint });
     const summary = summarizePlacementRows(parsed);
     if (stats.expectedRows >= 20 && summary.rowCount < stats.expectedRows * 0.5) {
@@ -511,8 +515,8 @@ export function ScheduleImportCard() {
   const helperText =
     importType === "placement"
       ? Platform.OS === "web"
-        ? "Weekly Chick Placement: farm name, code left of the name, house, date placed, birds sent. Review the list and fix anything offline before import. Scanned PDFs OK (OCR)."
-        : "Weekly Chick Placement: farm name, code left of the name (e.g. 3821FS), house, date placed, birds sent. Review & fix offline before import. Text PDFs on iPhone; scans need CSV/XLSX."
+        ? "Weekly Chick Placement: name, code left of name, house, date, birds. Ignores Complex, flock-code column, and far-right mortality. Review/fix offline; Ask AI online when configured."
+        : "Weekly Chick Placement: name, code left of name (e.g. 3821FS), house, date, birds. Ignores Complex, flock-code column, far-right columns. Offline pull + edit always; Ask AI online when configured."
       : importType === "catch"
         ? Platform.OS === "web"
           ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (scanned PDFs OK). Ending Kill Date or Catch Date, Farm Name, House."
@@ -709,6 +713,7 @@ export function ScheduleImportCard() {
                       farmCode: f.farmCode,
                     }))}
                     stats={extractHint}
+                    pdfSample={pdfExtractText}
                     onChangeRows={(next) =>
                       buildPlacementPreview(next, {
                         hint: extractHint,

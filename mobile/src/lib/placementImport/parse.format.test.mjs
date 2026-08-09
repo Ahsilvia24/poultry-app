@@ -42,6 +42,15 @@ function checkFixture(label, text) {
     fail(`${label}: Complex 2601HV used as farm code`);
     return;
   }
+  // Sheet flock column (FS26045) is ignored — flock id is the farm code.
+  if (rows.some((r) => r.flockId !== r.farmCode)) {
+    fail(`${label}: flockId should equal farmCode (ignore sheet flock column)`);
+    return;
+  }
+  if (rows.some((r) => /^[A-Z]{2}\d{4,8}$/i.test(r.flockId))) {
+    fail(`${label}: sheet flock code leaked into flockId`);
+    return;
+  }
   if (summary.farmCount < 1 || summary.rowCount < 1) {
     fail(`${label}: empty parse`);
     return;
@@ -155,7 +164,7 @@ if (markers.length >= 8) {
     {
       farmCode: "3821FS",
       farmName: "BLACKJACK MTN",
-      flockId: "FS26045",
+      flockId: "3821FS",
       datePlaced: "2026-08-03",
       houseNo: 1,
       numberSent: 22200,
@@ -163,7 +172,7 @@ if (markers.length >= 8) {
     {
       farmCode: "3821FS",
       farmName: "BLACKJACK MTN",
-      flockId: "FS26045",
+      flockId: "3821FS",
       datePlaced: "2026-08-03",
       houseNo: 2,
       numberSent: 22200,
@@ -182,10 +191,51 @@ if (markers.length >= 8) {
     const key = farmGroupKey("3821FS", "BLACKJACK MTN");
     const renamed = renamePlacementFarm(sample, key, "BLACK JACK", "3821FS");
     const patched = patchPlacementRowAt(renamed, 0, { numberSent: 24000 });
-    if (patched[0].farmName !== "BLACK JACK" || patched[0].numberSent !== 24000) {
+    if (
+      patched[0].farmName !== "BLACK JACK" ||
+      patched[0].numberSent !== 24000 ||
+      patched[0].flockId !== "3821FS"
+    ) {
       fail("offline review: edit helpers failed");
     } else {
       ok("offline review: partial flag + local edit helpers");
+    }
+  }
+}
+
+// Typed offline fix commands (no network).
+{
+  const { applyLocalPlacementInstructions } = await import(parseUrl);
+  const rows = [
+    {
+      farmCode: "3821FS",
+      farmName: "BLACKJACK MTN",
+      flockId: "3821FS",
+      datePlaced: "2026-08-03",
+      houseNo: 1,
+      numberSent: 22200,
+    },
+    {
+      farmCode: "3807FS",
+      farmName: "MERCY FARM",
+      flockId: "3807FS",
+      datePlaced: "2026-08-03",
+      houseNo: 1,
+      numberSent: 44000,
+    },
+  ];
+  const removed = applyLocalPlacementInstructions(rows, "remove farm MERCY FARM");
+  if (!removed || removed.rows.length !== 1 || removed.rows[0].farmName !== "BLACKJACK MTN") {
+    fail("local AI instruction: remove farm failed");
+  } else {
+    const birds = applyLocalPlacementInstructions(
+      removed.rows,
+      "BLACKJACK MTN house 1 birds 24000",
+    );
+    if (!birds || birds.rows[0].numberSent !== 24000) {
+      fail("local AI instruction: birds update failed");
+    } else {
+      ok("local typed fix commands (offline)");
     }
   }
 }

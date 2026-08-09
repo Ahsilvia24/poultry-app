@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { colors, styles } from "../theme";
 import { farmGroupKey, summarizePlacementRows, type PlacementRow } from "../lib/placementImport/parse";
 import {
@@ -14,6 +14,7 @@ import {
   type PlacementExtractHint,
   type PlacementFixChipId,
 } from "../lib/placementImport/review";
+import { canUseOnlinePlacementAi, requestPlacementAiFix } from "../lib/placementImport/aiFix";
 
 type Props = {
   rows: PlacementRow[];
@@ -22,6 +23,7 @@ type Props = {
   farmCode: string;
   farmOptions: Array<{ key: string; farmName: string; farmCode: string }>;
   stats: PlacementExtractHint | null;
+  pdfSample?: string | null;
   onChangeRows: (rows: PlacementRow[]) => void;
   onSelectFarm: (farmKey: string) => void;
   onClose: () => void;
@@ -73,6 +75,7 @@ export function PlacementImportReview({
   farmCode,
   farmOptions,
   stats,
+  pdfSample,
   onChangeRows,
   onSelectFarm,
   onClose,
@@ -81,10 +84,13 @@ export function PlacementImportReview({
   const [note, setNote] = useState("");
   const [editName, setEditName] = useState(farmName);
   const [editCode, setEditCode] = useState(farmCode);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
 
   const issues = useMemo(() => buildPlacementReviewIssues(rows, stats), [rows, stats]);
   const summary = useMemo(() => summarizePlacementRows(rows), [rows]);
   const farmRows = useMemo(() => rowsForFarm(rows, farmKey), [rows, farmKey]);
+  const onlineAiReady = canUseOnlinePlacementAi();
 
   const activeChipIds = Object.entries(chips)
     .filter(([, on]) => on)
@@ -96,6 +102,29 @@ export function PlacementImportReview({
 
   function applyFarmIdentity() {
     onChangeRows(renamePlacementFarm(rows, farmKey, editName, editCode));
+  }
+
+  async function onAskAi() {
+    if (aiBusy) return;
+    setAiBusy(true);
+    setAiMessage(null);
+    try {
+      const result = await requestPlacementAiFix({
+        note,
+        chips: activeChipIds,
+        rows,
+        pdfSample,
+        expectedRows: stats?.expectedRows ?? null,
+      });
+      onChangeRows(result.rows);
+      setAiMessage(
+        `${result.source === "local" ? "Applied locally" : "AI updated rows"}: ${result.summary}`,
+      );
+    } catch (e) {
+      setAiMessage(e instanceof Error ? e.message : "Could not apply fix");
+    } finally {
+      setAiBusy(false);
+    }
   }
 
   return (
@@ -111,7 +140,7 @@ export function PlacementImportReview({
     >
       <View style={[styles.row, { justifyContent: "space-between", alignItems: "center" }]}>
         <Text style={{ fontWeight: "800", color: colors.text, fontSize: 14 }}>
-          Fix what’s wrong (offline)
+          Fix what’s wrong
         </Text>
         <Pressable onPress={onClose}>
           <Text style={{ fontWeight: "700", color: colors.muted, fontSize: 12 }}>Done</Text>
@@ -121,8 +150,8 @@ export function PlacementImportReview({
       <Text style={[styles.muted, { marginTop: 6, fontSize: 12, lineHeight: 17 }]}>
         Review {summary.farmCount} farms · {summary.houseCount} houses ·{" "}
         {summary.birdsSent.toLocaleString()} birds
-        {stats?.expectedRows ? ` (PDF hint ~${stats.expectedRows})` : ""}. Edit below — no
-        internet needed.
+        {stats?.expectedRows ? ` (PDF hint ~${stats.expectedRows})` : ""}. Offline edit always
+        works; online AI can apply a typed fix when configured.
       </Text>
 
       {issues.length > 0 ? (
@@ -184,7 +213,11 @@ export function PlacementImportReview({
       <TextInput
         value={note}
         onChangeText={setNote}
-        placeholder="Optional: describe the mistake (kept on this screen only)"
+        placeholder={
+          onlineAiReady
+            ? "Type what’s wrong (AI can fix online), e.g. missing GROOM houses 1–4"
+            : "Type a fix, e.g. remove farm MERCY FARM · BLACKJACK MTN house 3 birds 22200"
+        }
         placeholderTextColor={colors.muted}
         multiline
         style={{
@@ -201,6 +234,51 @@ export function PlacementImportReview({
           textAlignVertical: "top",
         }}
       />
+
+      <Pressable
+        onPress={() => void onAskAi()}
+        disabled={aiBusy}
+        style={{
+          marginTop: 10,
+          borderRadius: 10,
+          paddingVertical: 11,
+          paddingHorizontal: 12,
+          backgroundColor: aiBusy ? "#a8a29e" : colors.accentDark,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+        }}
+      >
+        {aiBusy ? <ActivityIndicator color="#fff" /> : null}
+        <Text style={{ color: "#fff", fontWeight: "800", fontSize: 13 }}>
+          {aiBusy
+            ? "Fixing…"
+            : onlineAiReady
+              ? "Ask AI to fix (online)"
+              : "Apply typed fix"}
+        </Text>
+      </Pressable>
+      {aiMessage ? (
+        <Text
+          style={{
+            marginTop: 8,
+            fontSize: 12,
+            lineHeight: 16,
+            fontWeight: "600",
+            color: /could not|failed|isn’t configured/i.test(aiMessage)
+              ? colors.warn
+              : colors.accentDark,
+          }}
+        >
+          {aiMessage}
+        </Text>
+      ) : (
+        <Text style={{ marginTop: 6, fontSize: 11, color: colors.muted, lineHeight: 15 }}>
+          Sheet flock codes (FS26045), Complex (2601HV), and far-right mortality columns are
+          ignored. Flock id in the app is the farm code left of the name.
+        </Text>
+      )}
 
       {activeChipIds.includes("missing_farms") ? (
         <Pressable
@@ -312,15 +390,9 @@ export function PlacementImportReview({
                 flex={0.9}
               />
             </View>
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-              <Field
-                label="Flock"
-                value={row.flockId}
-                onChangeText={(t) =>
-                  onChangeRows(patchPlacementRowAt(rows, index, { flockId: t }))
-                }
-              />
-            </View>
+            <Text style={{ marginTop: 8, fontSize: 11, color: colors.muted }}>
+              Flock id = farm code {row.farmCode} (sheet flock column ignored)
+            </Text>
             <Pressable
               onPress={() => onChangeRows(removePlacementRowAt(rows, index))}
               style={{ marginTop: 8, alignSelf: "flex-start" }}

@@ -6,6 +6,7 @@ export {
   PLACEMENT_FIX_CHIPS,
   addBlankPlacementFarm,
   addPlacementHouseRow,
+  applyLocalPlacementInstructions,
   buildPlacementReviewIssues,
   patchPlacementRowAt,
   removePlacementRowAt,
