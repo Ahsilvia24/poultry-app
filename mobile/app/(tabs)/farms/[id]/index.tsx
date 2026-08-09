@@ -1324,7 +1324,6 @@ export default function FarmDetailScreen() {
                         </Text>
                       </Pressable>
                     ) : null}
-                    <TopLink onPress={scrollPageToTop} />
                   </View>
 
                   <Pressable
