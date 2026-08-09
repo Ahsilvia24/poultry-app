@@ -261,10 +261,18 @@ function isHouseToken(t: string): boolean {
   return n >= 1 && n <= 40;
 }
 
+function isZipToken(t: string): boolean {
+  return /^\d{5}$/.test(t);
+}
+
 /**
  * Token scanner for PDFKit page.string output.
- * Farm code = entity code immediately before the farm name (or before count+complex+flock
- * in scrambled order) — never Complex sitting beside the flock id.
+ *
+ * iOS PDFKit Weekly Chick Placement order (from device sample):
+ *   PROJECTED Complex FarmName Date Zip FarmCode Count Flock House Sent …
+ * e.g. PROJECTED 2601HV BLACKJACK MTN 08/03/2026 72944 3821FS 22,200 FS26045 3 22,200
+ *
+ * Farm code is 3821FS (with the count/flock), NOT Complex 2601HV.
  */
 export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
   const flat = flattenPlacementPdfText(text);
@@ -275,12 +283,14 @@ export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
   const readProjectedNameDate = (from: number): { farmName: string; dateRaw: string } | null => {
     for (let j = from; j < Math.min(tokens.length - 1, from + 80); j++) {
       if (!/^PROJECTED$/i.test(tokens[j]!)) continue;
-      const nameParts: string[] = [];
       let k = j + 1;
+      // Optional Complex right after PROJECTED
+      if (k < tokens.length && isEntityCodeToken(tokens[k]!)) k++;
+      const nameParts: string[] = [];
       while (k < tokens.length && !isDateToken(tokens[k]!) && nameParts.length < 8) {
         const tok = tokens[k]!;
         if (isEntityCodeToken(tok) || isFlockCodeToken(tok) || /^PROJECTED$/i.test(tok)) break;
-        if (/^\d{5}$/.test(tok)) break; // zip
+        if (isZipToken(tok)) break;
         nameParts.push(tok);
         k++;
       }
@@ -292,16 +302,72 @@ export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
     return null;
   };
 
-  for (let i = 0; i < tokens.length - 5; i++) {
+  const readNameDateBeforeFarmCode = (
+    farmCodeIndex: number,
+  ): { farmName: string; dateRaw: string } | null => {
+    // … [PROJECTED] [Complex] Name Date Zip FarmCode
+    if (farmCodeIndex < 3) return null;
+    if (!isZipToken(tokens[farmCodeIndex - 1]!) || !isDateToken(tokens[farmCodeIndex - 2]!)) {
+      return null;
+    }
+    const dateRaw = tokens[farmCodeIndex - 2]!;
+    const nameParts: string[] = [];
+    let k = farmCodeIndex - 3;
+    while (k >= 0 && nameParts.length < 8) {
+      const tok = tokens[k]!;
+      if (
+        isEntityCodeToken(tok) ||
+        isFlockCodeToken(tok) ||
+        isDateToken(tok) ||
+        isBirdCountToken(tok) ||
+        isZipToken(tok) ||
+        /^PROJECTED$/i.test(tok) ||
+        /^\d{1,2}$/.test(tok)
+      ) {
+        break;
+      }
+      nameParts.unshift(tok);
+      k--;
+    }
+    const farmName = nameParts.join(" ");
+    if (!isPlausibleFarmName(farmName)) return null;
+    return { farmName, dateRaw };
+  };
+
+  for (let i = 0; i < tokens.length - 4; i++) {
     const a = tokens[i]!;
     const b = tokens[i + 1]!;
     const c = tokens[i + 2]!;
     const d = tokens[i + 3]!;
     const e = tokens[i + 4]!;
-    const f = tokens[i + 5]!;
+    const f = tokens[i + 5];
 
-    // Scrambled: FarmCode Count Complex Flock House Sent
+    // Device PDFKit: FarmCode Count Flock House Sent  (Complex is NOT between count and flock)
     if (
+      isEntityCodeToken(a) &&
+      isBirdCountToken(b) &&
+      isFlockCodeToken(c) &&
+      isHouseToken(d) &&
+      isBirdCountToken(e)
+    ) {
+      const named = readNameDateBeforeFarmCode(i) ?? readProjectedNameDate(i + 5);
+      if (named) {
+        const row = normalizePlacementRow({
+          datePlaced: toIsoDate(named.dateRaw),
+          farmCode: a,
+          farmName: named.farmName,
+          flockId: c,
+          houseNo: Number(d),
+          numberSent: parseNumberSent(e) ?? parseNumberSent(b),
+        });
+        if (row && row.numberSent > 0) rows.push(row);
+        continue;
+      }
+    }
+
+    // Older scrambled: FarmCode Count Complex Flock House Sent
+    if (
+      f &&
       isEntityCodeToken(a) &&
       isBirdCountToken(b) &&
       isEntityCodeToken(c) &&
@@ -311,15 +377,15 @@ export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
     ) {
       if (a.toUpperCase() === c.toUpperCase()) continue;
       const projected = readProjectedNameDate(i + 6);
-      if (!projected) continue;
-      const numberSent = parseNumberSent(f) ?? parseNumberSent(b);
+      const named = projected ?? readNameDateBeforeFarmCode(i);
+      if (!named) continue;
       const row = normalizePlacementRow({
-        datePlaced: toIsoDate(projected.dateRaw),
-        farmCode: a, // left of count; NOT complex (c) beside flock
-        farmName: projected.farmName,
+        datePlaced: toIsoDate(named.dateRaw),
+        farmCode: a,
+        farmName: named.farmName,
         flockId: d,
         houseNo: Number(e),
-        numberSent,
+        numberSent: parseNumberSent(f) ?? parseNumberSent(b),
       });
       if (row && row.numberSent > 0) rows.push(row);
       continue;
@@ -342,7 +408,7 @@ export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
       if (!isPlausibleFarmName(farmName)) continue;
       const row = normalizePlacementRow({
         datePlaced: toIsoDate(b),
-        farmCode: c, // immediately left of farm name
+        farmCode: c, // left of farm name in layout order
         farmName,
         flockId: tokens[k],
         houseNo: Number(tokens[k + 1]),
@@ -350,6 +416,73 @@ export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
       });
       if (row && row.numberSent > 0) rows.push(row);
     }
+  }
+  return rows;
+}
+
+/**
+ * iOS PDFKit row shape from TestFlight samples:
+ * PROJECTED Complex FarmName Date Zip FarmCode Count Flock House Sent
+ */
+export function parseWeeklyChickPlacementPdfKitText(text: string): PlacementRow[] {
+  const flat = flattenPlacementPdfText(text);
+  const rows: PlacementRow[] = [];
+  // Groups: 1 complex, 2 name, 3 date, 4 zip, 5 farmCode, 6 count, 7 flock, 8 house, 9 sent
+  const re = new RegExp(
+    `PROJECTED\\s+(\\d{3,5}[A-Z]{2})\\s+${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(\\d{5})\\s+(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
+    "gi",
+  );
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(flat))) {
+    const complex = m[1]!;
+    const farmName = m[2]!.trim().replace(/\s+/g, " ");
+    const farmCode = m[5]!;
+    if (!isPlausibleFarmName(farmName)) continue;
+    if (farmCode.toUpperCase() === complex.toUpperCase()) continue;
+    const row = normalizePlacementRow({
+      datePlaced: toIsoDate(m[3]!),
+      farmCode,
+      farmName,
+      flockId: m[7],
+      houseNo: Number(m[8]),
+      numberSent: parseNumberSent(m[9]!),
+    });
+    if (row && row.numberSent > 0) rows.push(row);
+  }
+
+  // Same fields when a row omits PROJECTED/Complex prefix:
+  // FarmName Date Zip FarmCode Count Flock House Sent
+  // Groups: 1 name, 2 date, 3 zip, 4 farmCode, 5 count, 6 flock, 7 house, 8 sent
+  const re2 = new RegExp(
+    `${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(\\d{5})\\s+(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
+    "gi",
+  );
+  while ((m = re2.exec(flat))) {
+    const farmName = m[1]!.trim().replace(/\s+/g, " ");
+    const farmCode = m[4]!;
+    if (!isPlausibleFarmName(farmName)) continue;
+    if (!/^\d{3,5}[A-Z]{2}$/i.test(farmCode)) continue;
+    // Skip duplicates already captured via PROJECTED form
+    if (
+      rows.some(
+        (r) =>
+          r.farmCode === farmCode.toUpperCase() &&
+          r.houseNo === Number(m![7]) &&
+          r.flockId === m![6]!.toUpperCase() &&
+          r.datePlaced === (toIsoDate(m![2]!) ?? ""),
+      )
+    ) {
+      continue;
+    }
+    const row = normalizePlacementRow({
+      datePlaced: toIsoDate(m[2]!),
+      farmCode,
+      farmName,
+      flockId: m[6],
+      houseNo: Number(m[7]),
+      numberSent: parseNumberSent(m[8]!),
+    });
+    if (row && row.numberSent > 0) rows.push(row);
   }
   return rows;
 }
@@ -463,7 +596,11 @@ function sheetFromLayoutText(text: string): string[][] {
 
 /** PDF / text → placement rows. Weekly Chick Placement layout is preferred. */
 export function parsePlacementPdfText(text: string): PlacementRow[] {
-  // Token scanner first — most reliable for PDFKit page.string ordering.
+  // iOS PDFKit page.string order from TestFlight device samples.
+  const pdfkit = parseWeeklyChickPlacementPdfKitText(text);
+  if (pdfkit.length > 0) return pdfkit;
+
+  // Token scanner — covers PDFKit + layout + older scrambled shapes.
   const tokens = parseWeeklyChickPlacementTokens(text);
   if (tokens.length > 0) return tokens;
 
