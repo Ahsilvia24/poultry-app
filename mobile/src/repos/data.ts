@@ -25,6 +25,10 @@ import {
 } from "../lib/schedule";
 import { matchPlacementFarm } from "../lib/placementImport/match";
 import { farmGroupKey } from "../lib/placementImport/parse";
+import {
+  farmGroupKey as catchFarmGroupKey,
+  type CatchRow,
+} from "../lib/catchImport/parse";
 
 type MortRow = {
   mortality_date: string;
@@ -2211,6 +2215,129 @@ export function importPlacementRows(input: {
   }
 
   return { createdFarms, updatedNames, createdFlocks, createdHouses, warnings };
+}
+
+export function importCatchRows(input: {
+  rows: CatchRow[];
+  selections: Array<{
+    key: string;
+    selected: boolean;
+    renameToImportedName?: boolean;
+  }>;
+}): {
+  updatedHouses: number;
+  updatedFlocks: number;
+  updatedNames: number;
+  warnings: string[];
+} {
+  const selectedKeys = new Set(input.selections.filter((s) => s.selected).map((s) => s.key));
+  if (selectedKeys.size === 0) throw new Error("Select at least one farm to import.");
+
+  const renameKeys = new Set(
+    input.selections.filter((s) => s.selected && s.renameToImportedName).map((s) => s.key),
+  );
+
+  let updatedHouses = 0;
+  let updatedFlocks = 0;
+  let updatedNames = 0;
+  const warnings: string[] = [];
+  const touchedFlocks = new Set<string>();
+
+  const existing = listFarmsForPlacementMatch();
+  const selectedRows = input.rows.filter((r) =>
+    selectedKeys.has(catchFarmGroupKey(r.farmCode, r.farmName)),
+  );
+
+  const byFarm = new Map<string, CatchRow[]>();
+  for (const row of selectedRows) {
+    const key = catchFarmGroupKey(row.farmCode, row.farmName);
+    const list = byFarm.get(key) ?? [];
+    list.push(row);
+    byFarm.set(key, list);
+  }
+
+  const db = getDb();
+
+  for (const [key, farmRows] of byFarm) {
+    const sample = farmRows[0]!;
+    const match = matchPlacementFarm(sample.farmName, sample.farmCode, existing);
+    if (!match.farm) {
+      warnings.push(
+        `${sample.farmName}: no matching farm — skipped (import Placement first or rename to match).`,
+      );
+      continue;
+    }
+
+    const farmId = match.farm.id;
+    if (
+      renameKeys.has(key) &&
+      match.farm.farmName.trim() !== sample.farmName.trim()
+    ) {
+      renameFarmOnly(farmId, sample.farmName);
+      updatedNames += 1;
+    }
+    setFarmNumberIfEmpty(farmId, sample.farmCode);
+
+    const houses = db.getAllSync<{ id: string; house_number: number }>(
+      "SELECT id, house_number FROM houses WHERE farm_id = ? AND deleted_at IS NULL",
+      [farmId],
+    );
+    const houseByNumber = new Map(houses.map((h) => [h.house_number, h.id]));
+
+    const byHouse = new Map<number, CatchRow>();
+    for (const row of farmRows) byHouse.set(row.houseNo, row);
+
+    for (const row of byHouse.values()) {
+      const houseId = houseByNumber.get(row.houseNo);
+      if (!houseId) {
+        warnings.push(`${sample.farmName} house ${row.houseNo} not found — skipped.`);
+        continue;
+      }
+
+      const activeHf = db.getFirstSync<{
+        id: string;
+        flock_id: string;
+        flock_number: string;
+      }>(
+        `SELECT hf.id, hf.flock_id, f.flock_number
+         FROM house_flocks hf
+         JOIN flocks f ON f.id = hf.flock_id
+         WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
+         LIMIT 1`,
+        [houseId, farmId],
+      );
+      if (!activeHf) {
+        warnings.push(
+          `${sample.farmName} house ${row.houseNo}: no active flock — skipped.`,
+        );
+        continue;
+      }
+
+      db.runSync("UPDATE house_flocks SET catch_date = ? WHERE id = ?", [
+        row.catchDate,
+        activeHf.id,
+      ]);
+      updatedHouses += 1;
+      touchedFlocks.add(activeHf.flock_id);
+    }
+  }
+
+  for (const flockId of touchedFlocks) {
+    const latest = db.getFirstSync<{ catch_date: string }>(
+      `SELECT catch_date FROM house_flocks
+       WHERE flock_id = ? AND catch_date IS NOT NULL AND TRIM(catch_date) != ''
+       ORDER BY catch_date DESC LIMIT 1`,
+      [flockId],
+    );
+    if (!latest?.catch_date) continue;
+    db.runSync("UPDATE flocks SET projected_catch_date = ? WHERE id = ?", [
+      latest.catch_date,
+      flockId,
+    ]);
+    updatedFlocks += 1;
+  }
+
+  return { updatedHouses, updatedFlocks, updatedNames, warnings };
 }
 
 export function completeFlock(flockId: string) {
