@@ -23,11 +23,14 @@ export function NumberKeypad({
   onBackspace,
   onEnter,
   allowDecimal = false,
+  allowTripleZero = false,
 }: {
   onDigit: (d: string) => void;
   onBackspace: () => void;
   onEnter: () => void;
   allowDecimal?: boolean;
+  /** When true (and decimal is off), show a 000 key instead of a blank slot. */
+  allowTripleZero?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
@@ -67,6 +70,10 @@ export function NumberKeypad({
           <Pressable onPress={() => onDigit(".")} style={keyStyle}>
             <Text style={keyText}>.</Text>
           </Pressable>
+        ) : allowTripleZero ? (
+          <Pressable onPress={() => onDigit("000")} style={keyStyle}>
+            <Text style={[keyText, { fontSize: 18 }]}>000</Text>
+          </Pressable>
         ) : null}
         <Pressable
           onPress={onEnter}
@@ -79,14 +86,18 @@ export function NumberKeypad({
   );
 }
 
-/** Append a digit/decimal to a numeric string field (custom keypad). */
+/** Append a digit/decimal/000 to a numeric string field (custom keypad). */
 export function appendKeypadDigit(current: string, digit: string, allowDecimal: boolean) {
   if (digit === ".") {
     if (!allowDecimal || current.includes(".")) return current;
     return current === "" ? "0." : `${current}.`;
   }
+  if (digit === "000") {
+    if (current === "" || current === "0") return "000";
+    return `${current}000`;
+  }
   // Fresh entry replaces a lone "0"
-  if (current === "0" && digit !== ".") return digit;
+  if (current === "0") return digit;
   return `${current}${digit}`;
 }
 
