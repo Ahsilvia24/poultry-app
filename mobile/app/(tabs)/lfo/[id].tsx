@@ -136,16 +136,23 @@ function FieldButton({
         onPress={onPress}
         style={[
           styles.input,
+          {
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "flex-start",
+          },
           active
             ? { borderColor: colors.accentDark, borderWidth: 2 }
             : null,
         ]}
       >
         <Text
+          numberOfLines={1}
           style={{
             fontFamily: fonts.sans,
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: "700",
+            lineHeight: 22,
             color: value ? colors.text : colors.muted,
           }}
         >
