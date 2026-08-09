@@ -148,11 +148,12 @@ function isPlausibleFarmName(name: string): boolean {
 }
 
 /**
- * Weekly Chick Placement (Crystal Reports) rows:
- * Complex  DatePlaced  FarmCode  FarmName  FlockCode  HouseNo  NumberSent  ...
+ * Weekly Chick Placement layout order:
+ *   Complex  Date  [code left of name]  FarmName  FlockCode  House  BirdsSent
  * Example: 2601HV  08/03/2026  3821FS  BLACKJACK MTN  FS26045  3  22,200
  *
- * Farm Code is the code immediately left of the farm name (3821FS), NOT Complex (2601HV).
+ * We keep: name, house, date, birds sent, and the code left of the name (3821FS).
+ * Ignore Complex (2601HV), address, zip, mortality, PROJECTED, etc.
  */
 export function parseWeeklyChickPlacementText(text: string): PlacementRow[] {
   const normalized = normalizePlacementPdfText(text);
@@ -421,13 +422,17 @@ export function parseWeeklyChickPlacementTokens(text: string): PlacementRow[] {
 }
 
 /**
- * iOS PDFKit row shape from TestFlight samples:
- * PROJECTED Complex FarmName Date Zip FarmCode Count Flock House Sent
+ * iOS PDFKit page.string order (TestFlight):
+ *   … PROJECTED 2601HV BLACKJACK MTN 08/03/2026 72944 3821FS 22,200 FS26045 3 22,200 …
+ *
+ * Core fields we keep:
+ *   farmName=BLACKJACK MTN, date=08/03/2026, farmCode=3821FS (sheet code for that farm),
+ *   house=3, numberSent=22,200. Everything else is ignored for identity.
  */
 export function parseWeeklyChickPlacementPdfKitText(text: string): PlacementRow[] {
   const flat = flattenPlacementPdfText(text);
   const rows: PlacementRow[] = [];
-  // Groups: 1 complex, 2 name, 3 date, 4 zip, 5 farmCode, 6 count, 7 flock, 8 house, 9 sent
+  // Groups: 1 complex(ignored), 2 name, 3 date, 4 zip(ignored), 5 farmCode, 6 count, 7 sheetFlock, 8 house, 9 sent
   const re = new RegExp(
     `PROJECTED\\s+(\\d{3,5}[A-Z]{2})\\s+${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(\\d{5})\\s+(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
     "gi",
@@ -436,7 +441,7 @@ export function parseWeeklyChickPlacementPdfKitText(text: string): PlacementRow[
   while ((m = re.exec(flat))) {
     const complex = m[1]!;
     const farmName = m[2]!.trim().replace(/\s+/g, " ");
-    const farmCode = m[5]!;
+    const farmCode = m[5]!; // code for this farm (left of name on the printed sheet)
     if (!isPlausibleFarmName(farmName)) continue;
     if (farmCode.toUpperCase() === complex.toUpperCase()) continue;
     const row = normalizePlacementRow({
@@ -450,9 +455,8 @@ export function parseWeeklyChickPlacementPdfKitText(text: string): PlacementRow[
     if (row && row.numberSent > 0) rows.push(row);
   }
 
-  // Same fields when a row omits PROJECTED/Complex prefix:
-  // FarmName Date Zip FarmCode Count Flock House Sent
-  // Groups: 1 name, 2 date, 3 zip, 4 farmCode, 5 count, 6 flock, 7 house, 8 sent
+  // Same core fields when PROJECTED/Complex prefix is missing:
+  // FarmName Date Zip FarmCode Count SheetFlock House Sent
   const re2 = new RegExp(
     `${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(\\d{5})\\s+(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
     "gi",
@@ -462,13 +466,11 @@ export function parseWeeklyChickPlacementPdfKitText(text: string): PlacementRow[
     const farmCode = m[4]!;
     if (!isPlausibleFarmName(farmName)) continue;
     if (!/^\d{3,5}[A-Z]{2}$/i.test(farmCode)) continue;
-    // Skip duplicates already captured via PROJECTED form
     if (
       rows.some(
         (r) =>
           r.farmCode === farmCode.toUpperCase() &&
           r.houseNo === Number(m![7]) &&
-          r.flockId === m![6]!.toUpperCase() &&
           r.datePlaced === (toIsoDate(m![2]!) ?? ""),
       )
     ) {
