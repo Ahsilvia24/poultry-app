@@ -67,7 +67,11 @@ export async function extractCatchRows(input: {
         defval: "",
       },
     );
-    return parseCatchSheetRows(sheet.map((row) => row.map((c) => String(c ?? ""))));
+    return parseCatchSheetRows(
+      sheet.map((row: (string | number | Date | null)[]) =>
+        row.map((c: string | number | Date | null) => String(c ?? "")),
+      ),
+    );
   }
 
   const text = await extractPdfText(input.bytes);
