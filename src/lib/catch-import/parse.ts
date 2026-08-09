@@ -27,52 +27,114 @@ export function parseCatchScheduleText(text: string): CatchRow[] {
   return dedupeCatchRows(rows);
 }
 
-function headerIndex(headers: string[], candidates: string[]) {
-  const normalized = headers.map((h) =>
-    h.trim().toLowerCase().replace(/[^a-z0-9]+/g, " "),
-  );
-  for (const candidate of candidates) {
-    const idx = normalized.findIndex((h) => h === candidate || h.includes(candidate));
-    if (idx >= 0) return idx;
-  }
-  return -1;
+function cellText(cell: unknown): string {
+  return String(cell ?? "").trim().replace(/\s+/g, " ");
 }
 
-/** Parse catch schedule spreadsheet rows — only name, house, catch date required. */
-export function parseCatchSheetRows(sheet: string[][]): CatchRow[] {
-  if (sheet.length < 2) return [];
-  const headerRowIdx = sheet.findIndex((row) =>
-    row.some((cell) => /farm\s*name/i.test(String(cell ?? ""))),
-  );
-  if (headerRowIdx < 0) return [];
+function isFarmEntityCode(value: string): boolean {
+  return /^\d{3,5}(?:FS|HV)$/i.test(value.trim());
+}
 
-  const headers = sheet[headerRowIdx]!.map((c) => String(c ?? ""));
-  const iDate = headerIndex(headers, [
-    "ending kill date",
-    "kill date",
-    "catch date",
-    "date",
-  ]);
-  const iName = headerIndex(headers, ["farm name", "farmname"]);
-  const iHouse = headerIndex(headers, ["house no", "house number", "house"]);
-  const iCode = headerIndex(headers, ["farm entity", "farm code", "farmentity", "entity"]);
+function isHouseNo(value: string): number | null {
+  const t = value.trim();
+  // Whole number only — skips ages like 53.00 and head counts like 24,300.
+  if (!/^\d{1,2}$/.test(t)) return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 1 || n > 40) return null;
+  return n;
+}
 
-  if (iDate < 0 || iName < 0 || iHouse < 0) return [];
+function looksLikeFarmName(value: string): boolean {
+  const t = value.trim().replace(/\s+/g, " ");
+  if (t.length < 3 || t.length > 60) return false;
+  if (!/[A-Za-z]{2,}/.test(t)) return false;
+  if (toIsoDate(t)) return false;
+  if (/^\d+(\.\d+)?$/.test(t)) return false;
+  if (/^\d{1,2}$/.test(t)) return false;
+  if (isFarmEntityCode(t)) return false;
+  if (/^[A-Z]{2}$/.test(t)) return false;
+  if (
+    /^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|fort smith|heavener|total|grand total|complex)$/i.test(
+      t,
+    )
+  ) {
+    return false;
+  }
+  if (
+    /farm\s*name|kill\s*date|catch\s*date|head\s*placed|projected|farm[-\s]*entity|house\s*(no|number)?$|^age$|^state$|^weight$/i.test(
+      t,
+    )
+  ) {
+    return false;
+  }
+  return true;
+}
 
-  const rows: CatchRow[] = [];
-  for (const raw of sheet.slice(headerRowIdx + 1)) {
-    const catchDate = toIsoDate(String(raw[iDate] ?? ""));
-    const farmName = String(raw[iName] ?? "").trim().replace(/\s+/g, " ");
-    const houseNo = Number(String(raw[iHouse] ?? "").replace(/[^\d]/g, ""));
-    if (!catchDate || !farmName || !houseNo) continue;
-    const farmCode =
-      iCode >= 0 ? String(raw[iCode] ?? "").trim().toUpperCase() || null : null;
-    rows.push({
+function dateLeftOf(cells: string[], farmIdx: number): string | null {
+  for (let i = farmIdx - 1; i >= 0; i--) {
+    const text = cells[i] ?? "";
+    if (!text) continue;
+    // Skip farm-entity-like junk; keep scanning left for a date.
+    if (isFarmEntityCode(text) || isHouseNo(text) != null) continue;
+    return toIsoDate(text);
+  }
+  return null;
+}
+
+function houseRightOf(
+  cells: string[],
+  farmIdx: number,
+): { houseNo: number; farmCode: string | null } | null {
+  let farmCode: string | null = null;
+  for (let i = farmIdx + 1; i < cells.length; i++) {
+    const text = cells[i] ?? "";
+    if (!text) continue;
+    if (isFarmEntityCode(text)) {
+      farmCode = text.toUpperCase();
+      continue;
+    }
+    const houseNo = isHouseNo(text);
+    if (houseNo != null) return { houseNo, farmCode };
+    // Stop if we hit another date or another farm name — not this farm's house.
+    if (toIsoDate(text) || looksLikeFarmName(text)) break;
+  }
+  return null;
+}
+
+/** Find date ← farm name → house triples anywhere in a spreadsheet row. */
+export function parseCatchRowByPosition(rawRow: unknown[]): CatchRow[] {
+  const cells = rawRow.map((c) => cellText(c));
+  if (cells.every((c) => !c)) return [];
+
+  const found: CatchRow[] = [];
+  for (let i = 0; i < cells.length; i++) {
+    const farmName = cells[i]!;
+    if (!looksLikeFarmName(farmName)) continue;
+    const catchDate = dateLeftOf(cells, i);
+    if (!catchDate) continue;
+    const right = houseRightOf(cells, i);
+    if (!right) continue;
+    found.push({
       catchDate,
       farmName,
-      houseNo: Math.floor(houseNo),
-      farmCode,
+      houseNo: right.houseNo,
+      farmCode: right.farmCode,
     });
+  }
+  return found;
+}
+
+/**
+ * Parse catch schedule spreadsheet rows without requiring matching headers.
+ * For each row, take date left of farm name and house to the right of farm name.
+ * Extra columns (age, head, weight, state, dual complexes) are ignored.
+ */
+export function parseCatchSheetRows(sheet: string[][]): CatchRow[] {
+  if (!sheet.length) return [];
+  const rows: CatchRow[] = [];
+  for (const raw of sheet) {
+    if (!Array.isArray(raw)) continue;
+    rows.push(...parseCatchRowByPosition(raw));
   }
   return dedupeCatchRows(rows);
 }

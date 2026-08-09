@@ -248,8 +248,8 @@ export function DashboardScheduleImport({
             </p>
           ) : importType === "catch" ? (
             <p className="mt-2 text-sm text-stone-500">
-              Fort Smith / Heavener Catch Schedule PDF or spreadsheet. Uses farm name, house, and
-              kill/catch date only.
+              PDF or Excel. Reads date left of farm name and house to the right — extra columns are
+              ignored.
             </p>
           ) : (
             <p className="mt-2 text-sm text-stone-500">

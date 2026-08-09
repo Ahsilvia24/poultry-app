@@ -62,18 +62,18 @@ function sheetCellToString(cell: unknown): string {
   return String(cell);
 }
 
-function workbookToStringSheet(bytes: Buffer): string[][] {
+function workbookToStringSheets(bytes: Buffer): string[][][] {
   const workbook = XLSX.read(bytes, { type: "buffer", cellDates: false });
-  const first = workbook.SheetNames[0];
-  if (!first) return [];
-  const sheet = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[first]!, {
-    header: 1,
-    raw: true,
-    defval: "",
+  return workbook.SheetNames.map((name) => {
+    const sheet = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[name]!, {
+      header: 1,
+      raw: true,
+      defval: "",
+    });
+    return sheet.map((row) =>
+      (Array.isArray(row) ? row : []).map((cell) => sheetCellToString(cell)),
+    );
   });
-  return sheet.map((row) =>
-    (Array.isArray(row) ? row : []).map((cell) => sheetCellToString(cell)),
-  );
 }
 
 export async function extractCatchRows(input: {
@@ -98,7 +98,10 @@ export async function extractCatchRows(input: {
     mime.includes("spreadsheet") ||
     mime.includes("excel")
   ) {
-    return parseCatchSheetRows(workbookToStringSheet(input.bytes));
+    const sheets = workbookToStringSheets(input.bytes);
+    const rows: CatchRow[] = [];
+    for (const sheet of sheets) rows.push(...parseCatchSheetRows(sheet));
+    return rows;
   }
 
   const text = await extractPdfText(input.bytes);
