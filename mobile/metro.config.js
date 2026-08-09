@@ -19,6 +19,17 @@ const ALIASES = {
 };
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // sql.js pulls in node:fs — keep it out of native iOS/Android bundles.
+  if (
+    platform !== "web" &&
+    (moduleName === "sql.js" ||
+      moduleName.startsWith("sql.js/") ||
+      moduleName === "node:fs" ||
+      moduleName === "fs")
+  ) {
+    return { type: "empty" };
+  }
+
   return context.resolveRequest(
     context,
     ALIASES[moduleName] ?? moduleName,
