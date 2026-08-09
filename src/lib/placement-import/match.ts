@@ -101,6 +101,34 @@ function displayNameDiffers(existingName: string, importedName: string) {
   return existingName.trim() !== importedName.trim();
 }
 
+/** True when short acronym-style cores clearly disagree (DMD vs RED). */
+export function shortCoresConflict(a: string, b: string): boolean {
+  const coreA = coreFarmName(a);
+  const coreB = coreFarmName(b);
+  if (!coreA || !coreB || coreA === coreB) return false;
+  if (Math.min(coreA.length, coreB.length) > 4) return false;
+  const coreLonger = Math.max(coreA.length, coreB.length) || 1;
+  const coreScore = 1 - levenshtein(coreA, coreB) / coreLonger;
+  return coreScore < 0.8;
+}
+
+function matchRank(
+  farmName: string,
+  farmCode: string,
+  match: PlacementFarmMatch,
+): number {
+  if (!match.farm) return 0;
+  const sim = nameSimilarity(match.farm.farmName, farmName);
+  if (match.kind === "exact") return 300 + sim;
+  if (match.kind === "code") {
+    const code = farmCode.trim().toUpperCase();
+    const existingCode = (match.farm.farmNumber ?? "").trim().toUpperCase();
+    return 200 + sim + (code && code === existingCode ? 0.5 : 0);
+  }
+  if (match.kind === "fuzzy") return 100 + sim;
+  return 0;
+}
+
 export function matchPlacementFarm(
   farmName: string,
   farmCode: string,
@@ -110,7 +138,9 @@ export function matchPlacementFarm(
   const byCode = code
     ? existing.find((f) => (f.farmNumber ?? "").trim().toUpperCase() === code)
     : undefined;
-  if (byCode) {
+  // Farm numbers can be stale/wrong — never let a code override clearly
+  // different short names like DMD vs RED.
+  if (byCode && !shortCoresConflict(byCode.farmName, farmName)) {
     return {
       kind: "code",
       farm: byCode,
@@ -170,4 +200,40 @@ export function matchPlacementFarm(
   }
 
   return { kind: "none" satisfies FarmMatchKind, farm: null, nameDiffers: false };
+}
+
+/**
+ * Match imported farm groups to existing farms with a 1:1 assignment.
+ * Prevents two imports (e.g. DMD and RED) from claiming the same farm.
+ */
+export function matchPlacementFarmGroups(
+  groups: Array<{ farmName: string; farmCode: string }>,
+  existing: ExistingFarmRef[],
+): PlacementFarmMatch[] {
+  const results: PlacementFarmMatch[] = groups.map(() => ({
+    kind: "none" as FarmMatchKind,
+    farm: null,
+    nameDiffers: false,
+  }));
+  const claimed = new Set<string>();
+  const assigned = new Set<number>();
+
+  while (true) {
+    let best: { index: number; match: PlacementFarmMatch; rank: number } | null = null;
+    for (let i = 0; i < groups.length; i++) {
+      if (assigned.has(i)) continue;
+      const group = groups[i]!;
+      const available = existing.filter((f) => !claimed.has(f.id));
+      const match = matchPlacementFarm(group.farmName, group.farmCode, available);
+      if (!match.farm) continue;
+      const rank = matchRank(group.farmName, group.farmCode, match);
+      if (!best || rank > best.rank) best = { index: i, match, rank };
+    }
+    if (!best?.match.farm) break;
+    results[best.index] = best.match;
+    assigned.add(best.index);
+    claimed.add(best.match.farm.id);
+  }
+
+  return results;
 }

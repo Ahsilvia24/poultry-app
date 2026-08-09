@@ -17,7 +17,7 @@ import {
   parseCatchSheetRows,
   type CatchRow,
 } from "../lib/catchImport/parse";
-import { matchPlacementFarm } from "../lib/placementImport/match";
+import { matchPlacementFarmGroups } from "../lib/placementImport/match";
 import { extractPdfTextFromBytes } from "../lib/pdfText";
 import {
   importCatchRows,
@@ -167,8 +167,10 @@ export function ScheduleImportCard() {
 
   function buildPlacementPreview(parsed: PlacementRow[]) {
     const existing = listFarmsForPlacementMatch();
-    const groups = groupPlacementFarms(parsed).map((g) => {
-      const match = matchPlacementFarm(g.farmName, g.farmCode, existing);
+    const grouped = groupPlacementFarms(parsed);
+    const matches = matchPlacementFarmGroups(grouped, existing);
+    const groups = grouped.map((g, i) => {
+      const match = matches[i]!;
       return {
         key: g.key,
         farmCode: g.farmCode,
@@ -189,8 +191,10 @@ export function ScheduleImportCard() {
 
   function buildCatchPreview(parsed: CatchRow[]) {
     const existing = listFarmsForPlacementMatch();
-    const groups = groupCatchFarms(parsed).map((g) => {
-      const match = matchPlacementFarm(g.farmName, g.farmCode, existing);
+    const grouped = groupCatchFarms(parsed);
+    const matches = matchPlacementFarmGroups(grouped, existing);
+    const groups = grouped.map((g, i) => {
+      const match = matches[i]!;
       return {
         key: g.key,
         farmCode: g.farmCode,
