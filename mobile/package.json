@@ -48,7 +48,7 @@
     "web": "expo start --web",
     "build:android": "eas build --platform android --profile preview",
     "build:ios": "eas build --platform ios --profile preview",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package && node scripts/copy-pdf-worker.mjs"
   },
   "private": true
 }

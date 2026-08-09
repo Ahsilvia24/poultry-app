@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 /**
  * Extract plain text from a PDF via pdfjs-dist.
  * Used for Placement and Catch Schedule PDF imports on Expo web/native.
@@ -6,9 +8,11 @@ export async function extractPdfTextFromBytes(bytes: ArrayBuffer | Uint8Array): 
   const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
-  // pdf.js requires a workerSrc; CDN matches the installed package version.
+  // Same-origin worker (copied to mobile/public) avoids COEP/CDN issues on Expo web.
   const version = (pdfjs as { version?: string }).version || "4.10.38";
-  if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+  } else if (!pdfjs.GlobalWorkerOptions.workerSrc) {
     pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${version}/legacy/build/pdf.worker.min.mjs`;
   }
 
