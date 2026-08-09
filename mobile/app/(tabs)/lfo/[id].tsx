@@ -22,7 +22,7 @@ import {
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, styles } from "../../../src/theme";
-import { Card, PageHeader, PrimaryButton } from "../../../src/components/ui";
+import { Card, PrimaryButton } from "../../../src/components/ui";
 import { DatePickerField } from "../../../src/components/DatePickerField";
 import { TimeScrollPickerField } from "../../../src/components/TimeScrollPicker";
 import {
@@ -357,25 +357,49 @@ export default function EditLfoScreen() {
           }}
           scrollEventThrottle={16}
         >
-          <Pressable
-            onPress={() => router.back()}
+          <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 6,
-              marginBottom: 8,
-              alignSelf: "flex-start",
-              paddingVertical: 6,
-              paddingRight: 8,
+              justifyContent: "space-between",
+              gap: 10,
+              marginBottom: 16,
             }}
-            accessibilityRole="button"
-            accessibilityLabel="Back to LFOs"
           >
-            <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
-            <Text style={{ fontWeight: "800", color: colors.accentDark, fontSize: 16 }}>LFOs</Text>
-          </Pressable>
-
-          <PageHeader title={farmName || "LFO"} />
+            <Pressable
+              onPress={() => router.back()}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                flexShrink: 0,
+                paddingVertical: 6,
+                paddingRight: 4,
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Back to LFOs"
+            >
+              <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
+              <Text style={{ fontWeight: "800", color: colors.accentDark, fontSize: 16 }}>
+                LFOs
+              </Text>
+            </Pressable>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                textAlign: "right",
+                fontSize: 22,
+                fontWeight: "800",
+                color: colors.text,
+              }}
+            >
+              {farmName || "LFO"}
+            </Text>
+          </View>
 
           {error ? (
             <Card>
@@ -399,20 +423,35 @@ export default function EditLfoScreen() {
           {ready ? (
             <>
               <Card>
-                <DatePickerField
-                  label="Order date"
-                  value={orderDate}
-                  onChange={setOrderDate}
-                />
-                <View style={{ marginTop: 12 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: 10,
+                  }}
+                >
+                  <DatePickerField
+                    label="Order date"
+                    value={orderDate}
+                    onChange={(date) => {
+                      setActiveField(null);
+                      setOrderDate(date);
+                    }}
+                    onOpen={() => setActiveField(null)}
+                    style={{ flex: 1, minWidth: 0 }}
+                  />
                   <FieldButton
-                    label="Consumption rate (lbs/bird/day)"
+                    label="Consumption rate"
                     value={consumptionRate}
                     active={activeField?.kind === "rate"}
                     onPress={() => focusField({ kind: "rate" })}
                     fieldRef={bindFieldRef("rate")}
+                    style={{ flex: 1, minWidth: 0 }}
                   />
                 </View>
+                <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
+                  Consumption rate in lbs/bird/day
+                </Text>
               </Card>
 
               <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>
