@@ -57,15 +57,34 @@ async function rowsFromPickedFile(asset: DocumentPicker.DocumentPickerAsset): Pr
     const b64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
-    const workbook = XLSX.read(b64, { type: "base64", cellDates: true });
+    // Keep Excel dates as serial numbers so m/d/yy formatting can't drop rows.
+    const workbook = XLSX.read(b64, { type: "base64", cellDates: false });
     const first = workbook.SheetNames[0];
     if (!first) return [];
-    const sheet = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets[first]!, {
+    const sheet = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[first]!, {
       header: 1,
-      raw: false,
+      raw: true,
       defval: "",
     });
-    return parsePlacementSheetRows(sheet as string[][]);
+    const asStrings = sheet.map((row) =>
+      (Array.isArray(row) ? row : []).map((cell) => {
+        if (cell instanceof Date && !Number.isNaN(cell.getTime())) {
+          const utcMidnight =
+            cell.getUTCHours() === 0 &&
+            cell.getUTCMinutes() === 0 &&
+            cell.getUTCSeconds() === 0 &&
+            cell.getUTCMilliseconds() === 0;
+          if (utcMidnight) return cell.toISOString().slice(0, 10);
+          const y = cell.getFullYear();
+          const m = String(cell.getMonth() + 1).padStart(2, "0");
+          const d = String(cell.getDate()).padStart(2, "0");
+          return `${y}-${m}-${d}`;
+        }
+        if (cell == null) return "";
+        return String(cell);
+      }),
+    );
+    return parsePlacementSheetRows(asStrings);
   }
 
   if (name.endsWith(".pdf") || asset.mimeType?.includes("pdf")) {
@@ -126,10 +145,17 @@ export function ScheduleImportCard() {
 
   async function onUpload() {
     if (busy) return;
-    if (importType !== "placement") {
+    if (importType === "settlement") {
       Alert.alert(
         "Coming next",
-        `${typeLabel(importType)} import comes next. Start with Placement.`,
+        "Settlements import comes next. Use Placement or Catch Schedule on web.",
+      );
+      return;
+    }
+    if (importType === "catch") {
+      Alert.alert(
+        "Use web for Catch Schedule PDF",
+        "Catch Schedule PDF import (farm name, house, kill date) runs on the web Import card. Phone can still do Placement CSV/XLSX here.",
       );
       return;
     }
@@ -204,8 +230,8 @@ export function ScheduleImportCard() {
   return (
     <Card>
       <Text style={[styles.muted, { lineHeight: 20 }]}>
-        Import Placement, Catch Schedule, or Settlements. Placement reads Date Placed, Farm
-        Code, Farm Name, Flock ID, House No, and Number Sent.
+        Import Placement, Catch Schedule, or Settlements. Catch Schedule uses farm name, house,
+        and catch/kill date only (web PDF).
       </Text>
 
       <View style={[styles.row, { marginTop: 12, marginBottom: 4, flexWrap: "wrap" }]}>
@@ -224,9 +250,13 @@ export function ScheduleImportCard() {
         ))}
       </View>
 
-      {importType !== "placement" ? (
+      {importType === "settlement" ? (
         <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
-          {typeLabel(importType)} mapping comes next. Upload Placement first.
+          Settlements mapping comes next.
+        </Text>
+      ) : importType === "catch" ? (
+        <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
+          Upload the Catch Schedule PDF on web — only farm name, house, and kill date are used.
         </Text>
       ) : (
         <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>

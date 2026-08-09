@@ -1,12 +1,39 @@
 import type { PlacementFarmGroup, PlacementRow } from "@/lib/placement-import/types";
 
-function toIsoDate(mmddyyyy: string): string | null {
-  const m = mmddyyyy.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!m) return null;
-  const mm = m[1]!.padStart(2, "0");
-  const dd = m[2]!.padStart(2, "0");
-  const yyyy = m[3]!;
-  return `${yyyy}-${mm}-${dd}`;
+/** Normalize spreadsheet/PDF date text to yyyy-MM-dd. */
+export function toIsoDate(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
+  }
+
+  // Prefer explicit numeric dates before Date.parse (avoids TZ day-shifts on M/D/YYYY).
+  const slashOrDash = value.match(
+    /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/,
+  );
+  if (slashOrDash) {
+    const mm = slashOrDash[1]!.padStart(2, "0");
+    const dd = slashOrDash[2]!.padStart(2, "0");
+    let yyyy = slashOrDash[3]!;
+    if (yyyy.length === 2) {
+      // Excel default date format is often m/d/yy — poultry placements are current-century.
+      yyyy = `20${yyyy}`;
+    }
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  // Excel serial date (days since 1899-12-30)
+  if (/^\d+(\.\d+)?$/.test(value)) {
+    const serial = Number(value);
+    if (serial > 20000 && serial < 80000) {
+      const epoch = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+      return epoch.toISOString().slice(0, 10);
+    }
+  }
+
+  return null;
 }
 
 function parseNumberSent(raw: string): number | null {
@@ -97,20 +124,7 @@ export function parsePlacementSheetRows(sheet: string[][]): PlacementRow[] {
 
   const rows: PlacementRow[] = [];
   for (const raw of sheet.slice(headerRowIdx + 1)) {
-    const dateRaw = String(raw[iDate] ?? "").trim();
-    let datePlaced = toIsoDate(dateRaw);
-    if (!datePlaced && /^\d{4}-\d{2}-\d{2}/.test(dateRaw)) {
-      datePlaced = dateRaw.slice(0, 10);
-    }
-    // Excel serial date
-    if (!datePlaced && /^\d+(\.\d+)?$/.test(dateRaw)) {
-      const serial = Number(dateRaw);
-      if (serial > 20000 && serial < 80000) {
-        const epoch = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
-        datePlaced = epoch.toISOString().slice(0, 10);
-      }
-    }
-
+    const datePlaced = toIsoDate(String(raw[iDate] ?? ""));
     const farmCode = String(raw[iCode] ?? "").trim().toUpperCase();
     const farmName = String(raw[iName] ?? "").trim().replace(/\s+/g, " ");
     const flockId = String(raw[iFlock] ?? "").trim().toUpperCase();

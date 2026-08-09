@@ -46,17 +46,20 @@ export async function uploadScheduleImportAction(
   }
   const importType: ScheduleImportType = typeRaw;
 
-  // Placement first — other types are wired in the UI but not parsed yet.
-  if (importType !== "placement") {
+  // Settlements mapping comes next; Placement + Catch Schedule are live.
+  if (importType === "settlement") {
     return {
       ok: false,
-      error: `${scheduleImportTypeLabel(importType)} import comes next. Start with Placement.`,
+      error: `${scheduleImportTypeLabel(importType)} import comes next. Use Placement or Catch Schedule.`,
     };
   }
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    return { ok: false, error: "Choose a Placement file to upload." };
+    return {
+      ok: false,
+      error: `Choose a ${scheduleImportTypeLabel(importType)} file to upload.`,
+    };
   }
   if (file.size > MAX_BYTES) {
     return { ok: false, error: `File is too large (max ${formatBytes(MAX_BYTES)}).` };

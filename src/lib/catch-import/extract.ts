@@ -5,34 +5,39 @@ import { tmpdir } from "os";
 import path from "path";
 import * as XLSX from "xlsx";
 import {
-  parsePlacementLayoutText,
-  parsePlacementScrambledText,
-  parsePlacementSheetRows,
-} from "@/lib/placement-import/parse";
-import type { PlacementRow } from "@/lib/placement-import/types";
+  parseCatchScheduleText,
+  parseCatchSheetRows,
+} from "@/lib/catch-import/parse";
+import type { CatchRow } from "@/lib/catch-import/types";
 
 const execFileAsync = promisify(execFile);
 
 async function extractPdfText(bytes: Buffer): Promise<string> {
-  const dir = await mkdtemp(path.join(tmpdir(), "placement-pdf-"));
+  const dir = await mkdtemp(path.join(tmpdir(), "catch-pdf-"));
   const pdfPath = path.join(dir, "input.pdf");
   try {
     await writeFile(pdfPath, bytes);
+    // pdf-parse preserves dual Fort Smith / Heavener columns on one line better
+    // for this schedule than pdftotext -layout.
+    try {
+      const { PDFParse } = await import("pdf-parse");
+      const parser = new PDFParse({ data: bytes });
+      const result = await parser.getText();
+      if (result.text?.trim()) return result.text;
+    } catch {
+      // fall through
+    }
+
     try {
       const { stdout } = await execFileAsync(
         "pdftotext",
         ["-layout", pdfPath, "-"],
         { maxBuffer: 20 * 1024 * 1024, encoding: "utf8", timeout: 20000 },
       );
-      if (stdout.trim()) return stdout;
+      return stdout;
     } catch {
-      // fall through to pdf-parse
+      return "";
     }
-
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: bytes });
-    const result = await parser.getText();
-    return result.text ?? "";
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => undefined);
   }
@@ -42,7 +47,6 @@ function sheetCellToString(cell: unknown): string {
   if (cell == null) return "";
   if (cell instanceof Date) {
     if (Number.isNaN(cell.getTime())) return "";
-    // Date-only Excel values are usually midnight UTC; otherwise use local calendar day.
     const utcMidnight =
       cell.getUTCHours() === 0 &&
       cell.getUTCMinutes() === 0 &&
@@ -58,26 +62,25 @@ function sheetCellToString(cell: unknown): string {
   return String(cell);
 }
 
-function workbookToStringSheet(bytes: Buffer): string[][] {
-  // Keep Excel dates as serial numbers (not Date objects) to avoid TZ day-shifts.
+function workbookToStringSheets(bytes: Buffer): string[][][] {
   const workbook = XLSX.read(bytes, { type: "buffer", cellDates: false });
-  const first = workbook.SheetNames[0];
-  if (!first) return [];
-  const sheet = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[first]!, {
-    header: 1,
-    raw: true,
-    defval: "",
+  return workbook.SheetNames.map((name) => {
+    const sheet = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[name]!, {
+      header: 1,
+      raw: true,
+      defval: "",
+    });
+    return sheet.map((row) =>
+      (Array.isArray(row) ? row : []).map((cell) => sheetCellToString(cell)),
+    );
   });
-  return sheet.map((row) =>
-    (Array.isArray(row) ? row : []).map((cell) => sheetCellToString(cell)),
-  );
 }
 
-export async function extractPlacementRows(input: {
+export async function extractCatchRows(input: {
   bytes: Buffer;
   fileName: string;
   mimeType?: string;
-}): Promise<PlacementRow[]> {
+}): Promise<CatchRow[]> {
   const name = input.fileName.toLowerCase();
   const mime = (input.mimeType ?? "").toLowerCase();
 
@@ -86,7 +89,7 @@ export async function extractPlacementRows(input: {
     const sheet = text
       .split(/\r?\n/)
       .map((line) => line.split(",").map((c) => c.replace(/^"|"$/g, "")));
-    return parsePlacementSheetRows(sheet);
+    return parseCatchSheetRows(sheet);
   }
 
   if (
@@ -95,12 +98,12 @@ export async function extractPlacementRows(input: {
     mime.includes("spreadsheet") ||
     mime.includes("excel")
   ) {
-    return parsePlacementSheetRows(workbookToStringSheet(input.bytes));
+    const sheets = workbookToStringSheets(input.bytes);
+    const rows: CatchRow[] = [];
+    for (const sheet of sheets) rows.push(...parseCatchSheetRows(sheet));
+    return rows;
   }
 
-  // PDF (default for Weekly Chick Placement exports)
   const text = await extractPdfText(input.bytes);
-  const layoutRows = parsePlacementLayoutText(text);
-  if (layoutRows.length > 0) return layoutRows;
-  return parsePlacementScrambledText(text);
+  return parseCatchScheduleText(text);
 }
