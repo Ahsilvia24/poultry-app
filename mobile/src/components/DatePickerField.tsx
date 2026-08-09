@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Modal, Platform, Pressable, Text, View } from "react-native";
 import DateTimePicker, {
   type DateTimePickerEvent,
@@ -44,6 +44,159 @@ function toDateKey(d: Date) {
   return `${safe.getFullYear()}-${String(safe.getMonth() + 1).padStart(2, "0")}-${String(safe.getDate()).padStart(2, "0")}`;
 }
 
+const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+/**
+ * @react-native-community/datetimepicker is a no-op on web, so Expo web
+ * needs this month grid for place/catch (and other) date fields.
+ */
+function WebMonthCalendar({
+  value,
+  onSelect,
+}: {
+  value: Date;
+  onSelect: (date: Date) => void;
+}) {
+  const selected = safePickerDate(value);
+  const [cursor, setCursor] = useState(
+    () => new Date(selected.getFullYear(), selected.getMonth(), 1),
+  );
+
+  const cells = useMemo(() => {
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth();
+    const firstDow = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const out: Array<{ key: string; day: number | null; date?: Date }> = [];
+    for (let i = 0; i < firstDow; i++) {
+      out.push({ key: `pad-${i}`, day: null });
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      out.push({
+        key: `${year}-${month}-${day}`,
+        day,
+        date: new Date(year, month, day, 12, 0, 0, 0),
+      });
+    }
+    return out;
+  }, [cursor]);
+
+  const monthLabel = cursor.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+
+  const selectedKey = toDateKey(selected);
+  const today = todayKey();
+
+  return (
+    <View style={{ paddingHorizontal: 8, paddingTop: 4, paddingBottom: 8 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 8,
+          paddingHorizontal: 4,
+        }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Previous month"
+          onPress={() =>
+            setCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+          }
+          hitSlop={8}
+          style={{ padding: 8 }}
+        >
+          <Ionicons name="chevron-back" size={20} color={colors.text} />
+        </Pressable>
+        <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>{monthLabel}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Next month"
+          onPress={() =>
+            setCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+          }
+          hitSlop={8}
+          style={{ padding: 8 }}
+        >
+          <Ionicons name="chevron-forward" size={20} color={colors.text} />
+        </Pressable>
+      </View>
+
+      <View style={{ flexDirection: "row", marginBottom: 4 }}>
+        {WEEKDAYS.map((d) => (
+          <Text
+            key={d}
+            style={{
+              flex: 1,
+              textAlign: "center",
+              fontSize: 12,
+              fontWeight: "700",
+              color: colors.muted,
+              paddingVertical: 4,
+            }}
+          >
+            {d}
+          </Text>
+        ))}
+      </View>
+
+      <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+        {cells.map((cell) => {
+          if (cell.day == null || !cell.date) {
+            return <View key={cell.key} style={{ width: "14.2857%", aspectRatio: 1 }} />;
+          }
+          const key = toDateKey(cell.date);
+          const isSelected = key === selectedKey;
+          const isToday = key === today;
+          return (
+            <Pressable
+              key={cell.key}
+              accessibilityRole="button"
+              accessibilityLabel={formatDisplayDate(key)}
+              onPress={() => {
+                setCursor(new Date(cell.date!.getFullYear(), cell.date!.getMonth(), 1));
+                onSelect(cell.date!);
+              }}
+              style={{
+                width: "14.2857%",
+                aspectRatio: 1,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <View
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: isSelected ? colors.accentDark : "transparent",
+                  borderWidth: isToday && !isSelected ? 1 : 0,
+                  borderColor: colors.accentDark,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: isSelected || isToday ? "800" : "600",
+                    color: isSelected ? "#fff" : colors.text,
+                  }}
+                >
+                  {cell.day}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 /**
  * Calendar date field.
  * Use `presentation="inline"` when nested inside another Modal (iOS nested
@@ -66,7 +219,8 @@ export function DatePickerField({
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseDateKey(value));
-  const useInline = presentation === "inline" || Platform.OS === "android";
+  const isWeb = Platform.OS === "web";
+  const useInline = presentation === "inline" || Platform.OS === "android" || isWeb;
 
   function openPicker() {
     onOpen?.();
@@ -89,8 +243,26 @@ export function DatePickerField({
     }
   }
 
+  function selectWebDate(selected: Date) {
+    setDraft(selected);
+    onChange(toDateKey(selected));
+    if (useInline) setOpen(false);
+  }
+
   const draftKey = toDateKey(draft);
   const pickerValue = safePickerDate(draft);
+
+  const calendarBody = isWeb ? (
+    <WebMonthCalendar value={pickerValue} onSelect={selectWebDate} />
+  ) : (
+    <DateTimePicker
+      value={pickerValue}
+      mode="date"
+      display={Platform.OS === "ios" ? "inline" : "default"}
+      onChange={onPickerChange}
+      style={{ alignSelf: "center" }}
+    />
+  );
 
   return (
     <View>
@@ -159,13 +331,7 @@ export function DatePickerField({
               <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
             </Pressable>
           </View>
-          <DateTimePicker
-            value={pickerValue}
-            mode="date"
-            display={Platform.OS === "ios" ? "inline" : "default"}
-            onChange={onPickerChange}
-            style={{ alignSelf: "center" }}
-          />
+          {calendarBody}
         </View>
       ) : null}
 
@@ -186,7 +352,7 @@ export function DatePickerField({
             onPress={() => setOpen(false)}
           >
             <Pressable
-              onPress={(e) => e.stopPropagation()}
+              onPress={() => {}}
               style={{
                 backgroundColor: "#fff",
                 borderTopLeftRadius: 16,
@@ -226,13 +392,7 @@ export function DatePickerField({
                   {formatDisplayDate(draftKey)}
                 </Text>
               </View>
-              <DateTimePicker
-                value={pickerValue}
-                mode="date"
-                display={Platform.OS === "ios" ? "inline" : "default"}
-                onChange={onPickerChange}
-                style={{ alignSelf: "center" }}
-              />
+              {calendarBody}
             </Pressable>
           </Pressable>
         </Modal>
