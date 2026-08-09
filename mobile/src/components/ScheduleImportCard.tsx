@@ -473,7 +473,7 @@ export function ScheduleImportCard() {
           selections,
         });
         setNote(
-          `Imported ${selectedCount} farm(s): ${result.createdFarms} created, ${result.updatedNames} renamed, ${result.createdFlocks} flocks, ${result.createdHouses} houses.`,
+          `Imported ${selectedCount} farm(s): ${result.createdFarms} created, ${result.updatedNames} renamed, ${result.updatedPlacements} house placements updated, ${result.createdFlocks} new flocks, ${result.createdHouses} houses.`,
         );
         if (result.warnings.length) {
           showAlert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
@@ -726,7 +726,7 @@ export function ScheduleImportCard() {
                           lineHeight: 16,
                         }}
                       >
-                        Accept new name and overwrite “{farm.matchName}” with “{farm.farmName}”
+                        Will overwrite “{farm.matchName}” → “{farm.farmName}” (name, dates, birds)
                       </Text>
                       <Text
                         style={{
