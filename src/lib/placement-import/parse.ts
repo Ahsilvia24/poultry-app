@@ -101,17 +101,31 @@ export function placementPdfExtractStats(text: string): {
   chars: number;
   projected: number;
   anchors: number;
+  complexAnchors: number;
   entityCodes: number;
+  /** Best row-count hint for scoring (never prefer a tiny anchor subset over PROJECTED). */
+  expectedRows: number;
 } {
   const flat = flattenPlacementPdfText(text);
   const projected = (flat.match(/\bPROJECTED\b/gi) || []).length;
+  // PDFKit device order: FarmCode Count Flock House Sent
   const anchors = (
     flat.match(
       /\b\d{3,5}(?:FS|HV)\s+[\d,]+\s+(?:FS|HV)\d{4,8}\s+\d{1,2}\s+[\d,]+/gi,
     ) || []
   ).length;
+  // Raw/scrambled order: FarmCode Count Complex Flock House Sent
+  const complexAnchors = (
+    flat.match(
+      /\b\d{3,5}(?:FS|HV)\s+[\d,]+\s+\d{3,5}(?:FS|HV)\s+(?:FS|HV)\d{4,8}\s+\d{1,2}\s+[\d,]+/gi,
+    ) || []
+  ).length;
   const entityCodes = (flat.match(/\b\d{3,5}(?:FS|HV)\b/gi) || []).length;
-  return { chars: text.length, projected, anchors, entityCodes };
+  // Build 109 bug: 17 simple anchors + 96 PROJECTED made scoring keep the
+  // 17-row partial and discard the full scrambled parse. Always aim at the
+  // richest signal present in the extract.
+  const expectedRows = Math.max(projected, anchors, complexAnchors);
+  return { chars: text.length, projected, anchors, complexAnchors, entityCodes, expectedRows };
 }
 
 function looksLikeWeeklyChickPlacement(text: string): boolean {
@@ -793,11 +807,11 @@ export function dedupePlacementRows(rows: PlacementRow[]): PlacementRow[] {
 }
 
 /**
- * Score a parse. Prefer fuller sheets, but punish junk names and large
- * overshoots past the number of FarmCode/flock anchors found in the text.
- * (Unbounded "most rows wins" was keeping bad unions of 120+ phantom rows.)
+ * Score a parse. Prefer fuller sheets near the extract's expected row count
+ * (PROJECTED / anchors). Punish junk names and large overshoots — but never
+ * treat a small partial anchor count as the ceiling when PROJECTED is higher.
  */
-function scorePlacementRows(rows: PlacementRow[], hintAnchors = 0): number {
+function scorePlacementRows(rows: PlacementRow[], expectedRows = 0): number {
   const unique = dedupePlacementRows(rows);
   if (unique.length === 0) return -1;
   const farms = groupPlacementFarms(unique);
@@ -816,15 +830,19 @@ function scorePlacementRows(rows: PlacementRow[], hintAnchors = 0): number {
     if (count > 1) bad += count;
   }
 
-  let score = unique.length * 5 + farms.length * 12 - bad * 25;
-  if (hintAnchors > 0) {
-    if (unique.length > hintAnchors) {
-      // Overshoot is usually junk unions — punish hard.
-      score -= (unique.length - hintAnchors) * 14;
+  let score = unique.length * 8 + farms.length * 10 - bad * 25;
+  if (expectedRows > 0) {
+    if (unique.length > expectedRows) {
+      // Overshoot past PROJECTED/anchors is usually junk unions.
+      score -= (unique.length - expectedRows) * 14;
     } else {
-      // Undershoot: prefer recovering more real rows.
-      score -= (hintAnchors - unique.length) * 6;
-      score += unique.length;
+      // Undershoot: prefer recovering more of the sheet.
+      score -= (expectedRows - unique.length) * 10;
+      score += unique.length * 2;
+    }
+    // Hard reject keeping a tiny slice when the extract clearly has a full sheet.
+    if (expectedRows >= 20 && unique.length < expectedRows * 0.5) {
+      score -= 500;
     }
   }
   return score;
@@ -833,13 +851,13 @@ function scorePlacementRows(rows: PlacementRow[], hintAnchors = 0): number {
 /** Prefer the highest-scoring parse (full sheet, not junk overcount). */
 function pickBestPlacementRows(
   candidates: PlacementRow[][],
-  hintAnchors = 0,
+  expectedRows = 0,
 ): PlacementRow[] {
   let best: PlacementRow[] = [];
   let bestScore = -1;
   for (const rows of candidates) {
     const unique = dedupePlacementRows(rows);
-    const score = scorePlacementRows(unique, hintAnchors);
+    const score = scorePlacementRows(unique, expectedRows);
     if (score > bestScore) {
       best = unique;
       bestScore = score;
@@ -920,9 +938,7 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
     ? text.split(/\n\n---PAGE---\n\n/)
     : [text];
   const extractStats = placementPdfExtractStats(text);
-  // PDFKit order exposes FarmCode anchors; layout/raw often only expose PROJECTED.
-  const hintAnchors =
-    extractStats.anchors > 0 ? extractStats.anchors : extractStats.projected;
+  const expectedRows = extractStats.expectedRows;
 
   const strategies: PlacementRow[][] = [];
   const runAll = (chunk: string) => {
@@ -954,7 +970,7 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
   }
 
   const merged = dedupePlacementRows(strategies.flat());
-  const best = pickBestPlacementRows([...strategies, merged], hintAnchors);
+  const best = pickBestPlacementRows([...strategies, merged], expectedRows);
   if (best.length > 0) return best;
 
   if (looksLikeWeeklyChickPlacement(text)) {

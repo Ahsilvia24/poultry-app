@@ -83,4 +83,32 @@ if (markers.length >= 8) {
   fail("partial-week: fixture too short to slice");
 }
 
+// Build 109 regression: many PROJECTED rows + few simple anchors must NOT
+// keep the tiny partial parse. expectedRows follows PROJECTED/complex anchors.
+{
+  const pdfkit = readFileSync(
+    join(fixturesDir, "weekly-chick-placement-pdfkit.txt"),
+    "utf8",
+  );
+  const { placementPdfExtractStats } = await import(parseUrl);
+  // Pretend device saw only ~17 simple anchors by checking expectedRows logic
+  // on a hybrid: full pdfkit text should still expect ~96 and parse ~96.
+  const stats = placementPdfExtractStats(pdfkit);
+  if (stats.expectedRows < 90) {
+    fail(`expectedRows too low: ${stats.expectedRows}`);
+  } else {
+    const rows = parsePlacementPdfText(pdfkit);
+    const summary = summarizePlacementRows(rows);
+    if (summary.rowCount < 90) {
+      fail(
+        `build-109 regression: expected ~full sheet, got ${summary.rowCount} rows (expectedRows=${stats.expectedRows}, anchors=${stats.anchors})`,
+      );
+    } else {
+      ok(
+        `build-109 regression: expectedRows=${stats.expectedRows} → ${summary.farmCount} farms / ${summary.rowCount} rows`,
+      );
+    }
+  }
+}
+
 if (!process.exitCode) console.log("All placement format checks passed.");

@@ -256,12 +256,12 @@ export function ScheduleImportCard() {
     }
 
     const stats = placementPdfExtractStats(text);
-    const statsLine = `${stats.chars} chars · ${stats.projected} PROJECTED · ${stats.anchors} row anchors`;
+    const statsLine = `${stats.chars} chars · ${stats.projected} PROJECTED · ${stats.anchors}+${stats.complexAnchors} anchors · expect ~${stats.expectedRows}`;
     const parsed = parsePlacementPdfText(text);
     if (parsed.length === 0) {
       const sample = placementPdfDebugSample(text);
       throw new Error(
-        `Could not read placement rows from PDF (${stats.chars} chars, ${stats.projected} PROJECTED, ${stats.anchors} anchors). Need Farm Name or Farm Code. Sample: ${sample}`,
+        `Could not read placement rows from PDF (${stats.chars} chars, ${stats.projected} PROJECTED, ${stats.expectedRows} expected). Need Farm Name or Farm Code. Sample: ${sample}`,
       );
     }
     buildPlacementPreview(parsed, statsLine);
