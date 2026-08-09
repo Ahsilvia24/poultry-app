@@ -208,6 +208,7 @@ export function DatePickerField({
   onChange,
   presentation = "modal",
   onOpen,
+  style,
 }: {
   label: string;
   value: string;
@@ -216,11 +217,14 @@ export function DatePickerField({
   presentation?: "modal" | "inline";
   /** Fired when the calendar is opened (e.g. to dismiss a keypad). */
   onOpen?: () => void;
+  style?: object;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseDateKey(value));
   const isWeb = Platform.OS === "web";
-  const useInline = presentation === "inline" || Platform.OS === "android" || isWeb;
+  // Web can use the modal sheet too (needed when the field sits in a tight row).
+  // Pass presentation="inline" to expand under the field (e.g. nested modals).
+  const useInline = presentation === "inline" || Platform.OS === "android";
 
   function openPicker() {
     onOpen?.();
@@ -246,7 +250,7 @@ export function DatePickerField({
   function selectWebDate(selected: Date) {
     setDraft(selected);
     onChange(toDateKey(selected));
-    if (useInline) setOpen(false);
+    setOpen(false);
   }
 
   const draftKey = toDateKey(draft);
@@ -265,8 +269,10 @@ export function DatePickerField({
   );
 
   return (
-    <View>
-      <Text style={styles.label}>{label}</Text>
+    <View style={style}>
+      <Text style={styles.label} numberOfLines={2}>
+        {label}
+      </Text>
       <Pressable
         onPress={openPicker}
         accessibilityRole="button"
@@ -277,11 +283,17 @@ export function DatePickerField({
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: 6,
           },
         ]}
       >
         <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
           style={{
+            flex: 1,
+            minWidth: 0,
             fontWeight: "700",
             color: value ? colors.text : colors.muted,
             fontSize: 16,
