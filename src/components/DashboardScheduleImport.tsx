@@ -290,9 +290,9 @@ export function DashboardScheduleImport({
             </p>
           ) : importType === "catch" ? (
             <p className="mt-2 text-sm text-stone-500">
-              Kill / Catch Schedule spreadsheet (Ending Kill Date or Catch Date, Farm Name, House —
-              Farm-Entity / Farm Code when available). Side-by-side Fort Smith / Heavener sheets
-              supported.
+              Kill / Catch Schedule PDF or spreadsheet (Ending Kill Date or Catch Date, Farm Name,
+              House — Farm-Entity / Farm Code when available). Side-by-side Fort Smith / Heavener
+              sheets supported.
             </p>
           ) : (
             <p className="mt-2 text-sm text-stone-500">

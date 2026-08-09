@@ -7,20 +7,26 @@ import { colors, styles } from "../theme";
 import { Card, PrimaryButton } from "./ui";
 import {
   groupPlacementFarms,
+  parsePlacementPdfText,
   parsePlacementSheetRows,
   type PlacementRow,
 } from "../lib/placementImport/parse";
 import {
   groupCatchFarms,
+  parseCatchPdfText,
   parseCatchSheetRows,
   type CatchRow,
 } from "../lib/catchImport/parse";
 import { matchPlacementFarm } from "../lib/placementImport/match";
+import { extractPdfTextFromBytes } from "../lib/pdfText";
 import {
   importCatchRows,
   importPlacementRows,
   listFarmsForPlacementMatch,
 } from "../repos/data";
+
+const FILE_ACCEPT =
+  ".pdf,.csv,.xls,.xlsx,.txt,application/pdf,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 type ImportType = "placement" | "catch" | "settlement";
 
@@ -52,6 +58,11 @@ function canUpload(type: ImportType) {
   return type === "placement" || type === "catch";
 }
 
+function isPdfFile(fileName: string, mimeType?: string | null) {
+  const name = fileName.toLowerCase();
+  return name.endsWith(".pdf") || Boolean(mimeType?.toLowerCase().includes("pdf"));
+}
+
 function sheetFromWorkbookBytes(bytes: ArrayBuffer | Uint8Array, fileName: string): string[][] {
   const name = fileName.toLowerCase();
   if (name.endsWith(".csv") || name.endsWith(".txt")) {
@@ -68,11 +79,6 @@ function sheetFromWorkbookBytes(bytes: ArrayBuffer | Uint8Array, fileName: strin
       defval: "",
     });
     return sheet as string[][];
-  }
-  if (name.endsWith(".pdf")) {
-    throw new Error(
-      "PDF import on phone needs CSV/XLSX, or use the Next.js web Import (localhost:3000) for PDFs.",
-    );
   }
   throw new Error("Use a spreadsheet (.csv / .xlsx) or PDF.");
 }
@@ -110,13 +116,14 @@ async function sheetFromPickedFile(
     return sheet as string[][];
   }
 
-  if (name.endsWith(".pdf") || asset.mimeType?.includes("pdf")) {
-    throw new Error(
-      "PDF import needs a CSV/XLSX export on mobile, or use the web Import with this PDF.",
-    );
-  }
-
   throw new Error("Use a PDF or spreadsheet (.csv / .xlsx).");
+}
+
+function base64ToUint8Array(b64: string): Uint8Array {
+  const binary = globalThis.atob(b64);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
 }
 
 function showAlert(title: string, message: string) {
@@ -226,13 +233,45 @@ export function ScheduleImportCard() {
     setNote(`Read ${parsed.length} rows from ${fileName}.`);
   }
 
+  async function processPdfBytes(bytes: ArrayBuffer | Uint8Array, fileName: string) {
+    const text = await extractPdfTextFromBytes(bytes);
+    if (!text.trim()) {
+      throw new Error("Could not read text from that PDF. Try exporting as CSV/XLSX.");
+    }
+
+    if (importType === "catch") {
+      const parsed = parseCatchPdfText(text);
+      if (parsed.length === 0) {
+        throw new Error(
+          "Could not read catch rows from PDF. Need Catch Date / Ending Kill Date, Farm Name, and House.",
+        );
+      }
+      buildCatchPreview(parsed);
+      setNote(`Read ${parsed.length} rows from ${fileName}.`);
+      return;
+    }
+
+    const parsed = parsePlacementPdfText(text);
+    if (parsed.length === 0) {
+      throw new Error(
+        "Could not read placement rows from PDF. Need Date Placed, Farm Code, Farm Name, Flock, House, Number Sent.",
+      );
+    }
+    buildPlacementPreview(parsed);
+    setNote(`Read ${parsed.length} rows from ${fileName}.`);
+  }
+
   async function onWebFileSelected(file: File) {
     setBusy(true);
     setNote(null);
     try {
       const bytes = await file.arrayBuffer();
-      const sheet = sheetFromWorkbookBytes(bytes, file.name);
-      await processSheet(sheet, file.name);
+      if (isPdfFile(file.name, file.type)) {
+        await processPdfBytes(bytes, file.name);
+      } else {
+        const sheet = sheetFromWorkbookBytes(bytes, file.name);
+        await processSheet(sheet, file.name);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not read file";
       setNote(msg);
@@ -248,8 +287,7 @@ export function ScheduleImportCard() {
     return new Promise((resolve) => {
       const input = document.createElement("input");
       input.type = "file";
-      input.accept =
-        ".csv,.xls,.xlsx,.txt,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      input.accept = FILE_ACCEPT;
       input.style.display = "none";
       const cleanup = () => {
         input.remove();
@@ -303,8 +341,17 @@ export function ScheduleImportCard() {
         ],
       });
       if (picked.canceled || !picked.assets?.[0]) return;
-      const sheet = await sheetFromPickedFile(picked.assets[0]);
-      await processSheet(sheet, picked.assets[0].name || "import.xlsx");
+      const asset = picked.assets[0];
+      const fileName = asset.name || "import.pdf";
+      if (isPdfFile(fileName, asset.mimeType)) {
+        const b64 = await FileSystem.readAsStringAsync(asset.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await processPdfBytes(base64ToUint8Array(b64), fileName);
+      } else {
+        const sheet = await sheetFromPickedFile(asset);
+        await processSheet(sheet, fileName);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not read file";
       setNote(msg);
@@ -367,7 +414,7 @@ export function ScheduleImportCard() {
     importType === "placement"
       ? "Choose a Placement PDF/CSV/XLSX, then review farms to import."
       : importType === "catch"
-        ? "Choose a Kill/Catch Schedule CSV/XLSX (Ending Kill Date or Catch Date, Farm Name, House)."
+        ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (Ending Kill Date or Catch Date, Farm Name, House)."
         : `${typeLabel(importType)} mapping comes next.`;
 
   return (
@@ -377,7 +424,7 @@ export function ScheduleImportCard() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv,.xls,.xlsx,.txt,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+          accept={FILE_ACCEPT}
           style={{ display: "none" }}
           onChange={(e: { target: { files?: FileList | null } }) => {
             const file = e.target.files?.[0];
