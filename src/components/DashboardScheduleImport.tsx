@@ -248,8 +248,8 @@ export function DashboardScheduleImport({
             </p>
           ) : importType === "catch" ? (
             <p className="mt-2 text-sm text-stone-500">
-              PDF or Excel. Reads date left of farm name and house to the right — extra columns are
-              ignored.
+              PDF or Excel. Reads date left of farm name and the House column (usually two cells
+              right of the name). Extra columns are ignored.
             </p>
           ) : (
             <p className="mt-2 text-sm text-stone-500">

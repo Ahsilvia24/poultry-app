@@ -108,7 +108,7 @@ export async function previewCatchImportAction(
       return {
         ok: false,
         error:
-          "Could not read any catch rows. In each row, need a date left of the farm name and a house number to the right of the farm name.",
+          "Could not read any catch rows. Need a date left of the farm name and a house number in the House column (usually two cells right of the name).",
       };
     }
     await writeFile(parsedPath(importId), JSON.stringify(rows), "utf8");

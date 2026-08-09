@@ -81,28 +81,101 @@ function dateLeftOf(cells: string[], farmIdx: number): string | null {
   return null;
 }
 
-function houseRightOf(
-  cells: string[],
-  farmIdx: number,
-): { houseNo: number; farmCode: string | null } | null {
-  let farmCode: string | null = null;
-  for (let i = farmIdx + 1; i < cells.length; i++) {
+function farmCodeBeside(cells: string[], farmIdx: number): string | null {
+  // Farm-Entity usually sits one column right of Farm Name.
+  for (let i = farmIdx + 1; i <= farmIdx + 2 && i < cells.length; i++) {
     const text = cells[i] ?? "";
     if (!text) continue;
-    if (isFarmEntityCode(text)) {
-      farmCode = text.toUpperCase();
-      continue;
-    }
-    const houseNo = isHouseNo(text);
-    if (houseNo != null) return { houseNo, farmCode };
-    // Stop if we hit another date or another farm name — not this farm's house.
-    if (toIsoDate(text) || looksLikeFarmName(text)) break;
+    if (isFarmEntityCode(text)) return text.toUpperCase();
+    break;
   }
   return null;
 }
 
+/**
+ * House is in the House column — typically two columns right of Farm Name
+ * (Date | Farm Name | Farm-Entity | House | …). Prefer that offset; if a
+ * House header offset is known, use it instead.
+ */
+function houseForFarm(
+  cells: string[],
+  farmIdx: number,
+  houseOffsetFromFarm: number | null,
+): number | null {
+  const offsets: number[] = [];
+  if (houseOffsetFromFarm != null && houseOffsetFromFarm > 0) {
+    offsets.push(houseOffsetFromFarm);
+  }
+  // Common layout: house is two to the right of farm name.
+  offsets.push(2);
+  // Fallback: one to the right when Farm-Entity is missing.
+  offsets.push(1);
+
+  const tried = new Set<number>();
+  for (const offset of offsets) {
+    if (tried.has(offset)) continue;
+    tried.add(offset);
+    const idx = farmIdx + offset;
+    if (idx < 0 || idx >= cells.length) continue;
+    const houseNo = isHouseNo(cells[idx] ?? "");
+    if (houseNo != null) return houseNo;
+  }
+  return null;
+}
+
+function normalizeHeader(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+type CatchColumnPair = { farmIdx: number; houseIdx: number };
+
+/** Pair each Farm Name header with the House column to its right (dual tables OK). */
+function catchColumnPairsFromHeaderRow(cells: string[]): CatchColumnPair[] | null {
+  const farmIdxs: number[] = [];
+  const houseIdxs: number[] = [];
+  for (let i = 0; i < cells.length; i++) {
+    const h = normalizeHeader(cells[i] ?? "");
+    if (!h) continue;
+    if (h === "farm name" || h === "farmname" || h === "grower") farmIdxs.push(i);
+    if (h === "house" || h === "house no" || h === "house number" || h === "barn") {
+      houseIdxs.push(i);
+    }
+  }
+  if (!farmIdxs.length || !houseIdxs.length) return null;
+
+  const pairs: CatchColumnPair[] = [];
+  for (const farmIdx of farmIdxs) {
+    const houseIdx = houseIdxs.find((h) => h > farmIdx);
+    if (houseIdx == null) continue;
+    pairs.push({ farmIdx, houseIdx });
+  }
+  return pairs.length ? pairs : null;
+}
+
+function rowFromFixedColumns(
+  cells: string[],
+  farmIdx: number,
+  houseIdx: number,
+): CatchRow | null {
+  const farmName = cells[farmIdx] ?? "";
+  if (!looksLikeFarmName(farmName)) return null;
+  const catchDate = dateLeftOf(cells, farmIdx);
+  if (!catchDate) return null;
+  const houseNo = isHouseNo(cells[houseIdx] ?? "");
+  if (houseNo == null) return null;
+  return {
+    catchDate,
+    farmName,
+    houseNo,
+    farmCode: farmCodeBeside(cells, farmIdx),
+  };
+}
+
 /** Find date ← farm name → house triples anywhere in a spreadsheet row. */
-export function parseCatchRowByPosition(rawRow: unknown[]): CatchRow[] {
+export function parseCatchRowByPosition(
+  rawRow: unknown[],
+  houseOffsetFromFarm: number | null = null,
+): CatchRow[] {
   const cells = rawRow.map((c) => cellText(c));
   if (cells.every((c) => !c)) return [];
 
@@ -112,29 +185,57 @@ export function parseCatchRowByPosition(rawRow: unknown[]): CatchRow[] {
     if (!looksLikeFarmName(farmName)) continue;
     const catchDate = dateLeftOf(cells, i);
     if (!catchDate) continue;
-    const right = houseRightOf(cells, i);
-    if (!right) continue;
+    const houseNo = houseForFarm(cells, i, houseOffsetFromFarm);
+    if (houseNo == null) continue;
     found.push({
       catchDate,
       farmName,
-      houseNo: right.houseNo,
-      farmCode: right.farmCode,
+      houseNo,
+      farmCode: farmCodeBeside(cells, i),
     });
   }
   return found;
 }
 
 /**
- * Parse catch schedule spreadsheet rows without requiring matching headers.
- * For each row, take date left of farm name and house to the right of farm name.
- * Extra columns (age, head, weight, state, dual complexes) are ignored.
+ * Parse catch schedule spreadsheet rows.
+ * Prefers the House column when a header exists (usually two right of Farm Name).
+ * Without headers, assumes house is ~2 columns right of the farm name.
+ * Extra columns are ignored.
  */
 export function parseCatchSheetRows(sheet: string[][]): CatchRow[] {
   if (!sheet.length) return [];
+
+  let columnPairs: CatchColumnPair[] | null = null;
+  let headerRowIdx = -1;
+  for (let r = 0; r < Math.min(sheet.length, 15); r++) {
+    const pairs = catchColumnPairsFromHeaderRow((sheet[r] ?? []).map((c) => cellText(c)));
+    if (pairs?.length) {
+      columnPairs = pairs;
+      headerRowIdx = r;
+      break;
+    }
+  }
+
   const rows: CatchRow[] = [];
-  for (const raw of sheet) {
+  for (let r = 0; r < sheet.length; r++) {
+    if (r === headerRowIdx) continue;
+    const raw = sheet[r];
     if (!Array.isArray(raw)) continue;
-    rows.push(...parseCatchRowByPosition(raw));
+    const cells = raw.map((c) => cellText(c));
+
+    if (columnPairs?.length) {
+      const before = rows.length;
+      for (const pair of columnPairs) {
+        const row = rowFromFixedColumns(cells, pair.farmIdx, pair.houseIdx);
+        if (row) rows.push(row);
+      }
+      if (rows.length > before) continue;
+    }
+
+    // No usable headers / fixed columns missed this row — positional fallback.
+    // House is usually two to the right of farm name (Farm-Entity in between).
+    rows.push(...parseCatchRowByPosition(raw, 2));
   }
   return dedupeCatchRows(rows);
 }
