@@ -138,7 +138,7 @@ function SectionHeading({
 }: {
   title: string;
   onTop: () => void;
-  right?: React.ReactNode;
+  right?: ReactNode;
 }) {
   return (
     <View
