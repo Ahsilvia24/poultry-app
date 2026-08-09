@@ -185,7 +185,16 @@ export async function applyPlacementImportAction(input: {
         updatedNames += 1;
       }
       if (!match.farm.farmNumber && sample.farmCode) {
-        data.farmNumber = sample.farmCode;
+        const taken = await prisma.farm.findFirst({
+          where: {
+            userId: user.id,
+            deletedAt: null,
+            id: { not: farmId },
+            farmNumber: sample.farmCode,
+          },
+          select: { id: true },
+        });
+        if (!taken) data.farmNumber = sample.farmCode;
       }
       if (Object.keys(data).length > 0) {
         await prisma.farm.update({ where: { id: farmId }, data });
