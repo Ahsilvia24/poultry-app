@@ -80,14 +80,45 @@ function normalizePlacementPdfText(text: string): string {
     .replace(/(\d),(\s+)(\d{3}\b)/g, "$1,$3")
     .replace(/(\d{1,2}\/\d{1,2}\/\d{4})(\d{3,5}[A-Z]{2})/gi, "$1 $2")
     .replace(/(\d{1,2}\/\d{1,2}\/\d{2})(\d{3,5}[A-Z]{2})/gi, "$1 $2")
-    // 3821FS22,200 / 22,2002601HV / 2601HVFS26045 / FS260453 (not FS26045 alone)
-    .replace(/(\b\d{3,5}[A-Z]{2})(?=\d)/gi, "$1 ")
-    .replace(/(\d{1,3}(?:,\d{3})+)(\d{3,5}[A-Z]{2}\b)/gi, "$1 $2")
-    .replace(/(\b\d{4,6})(\d{3,5}[A-Z]{2}\b)/gi, "$1 $2")
-    .replace(/(\b\d{3,5}[A-Z]{2})((?:FS|HV)\d{4,8}\b)/gi, "$1 $2")
+    // Date glued directly to following digits/codes with no farm-code letters:
+    //   08/03/202622200 → 08/03/2026 22200
+    .replace(/(\d{1,2}\/\d{1,2}\/\d{4})(\d{3,6}\b)/g, "$1 $2")
+    .replace(/(\d{1,2}\/\d{1,2}\/\d{2})(\d{3,6}\b)/g, "$1 $2")
+    // Farm code glued to following digits. Use 4–5 digit codes only — NEVER \d{3,5}
+    // here: bird tails like "800FS" in "17,800FS26045…" would split the flock id.
+    //   3821FS22,200 / 3946FS17,800FS26045617,800
+    .replace(/(\b\d{4,5}[A-Z]{2})(?=\d)/gi, "$1 ")
+    .replace(/(\d{1,3}(?:,\d{3})+)(\d{4,5}[A-Z]{2}\b)/gi, "$1 $2")
+    .replace(/(\b\d{4,6})(\d{4,5}[A-Z]{2}\b)/gi, "$1 $2")
+    // Farm+flock glued (house digit may follow — do not require \b after flock):
+    //   3946FSFS260453 → 3946FS FS260453 → later FS26045 3
+    .replace(/(\b\d{4,5}[A-Z]{2})((?:FS|HV)\d{5})(?=\d|\s|$)/gi, "$1 $2")
+    // Fully glued row tail: 17,800FS26045617,800 / 22,200HV26045422,200
+    // House is non-greedy so house 1 + 17,800 wins over house 11 + 7,800;
+    // house 10 + 17,800 still wins because \d{2},\d{3} won't match 017,800.
+    .replace(
+      /(\d{1,3},\d{3})((?:FS|HV)\d{5})(\d{1,2}?)(\d{2},\d{3})/gi,
+      "$1 $2 $3 $4",
+    )
+    // Count glued to bare flock: 17,800FS26045 → 17,800 FS26045
+    .replace(/(\d{1,3}(?:,\d{3})+)((?:FS|HV)\d{5}\b)/gi, "$1 $2")
+    // Letters/name glued to farm code: ROAD3821FS / MTN3821FS
+    .replace(/([A-Za-z.])(\d{4,5}[A-Z]{2}\b)/g, "$1 $2")
+    // Flock+house+comma-birds glued: FS26045617,800 → FS26045 6 17,800
+    .replace(/\b((?:FS|HV)\d{5})(\d{1,2}?)(\d{2},\d{3})\b/gi, "$1 $2 $3")
     // Only split flock+house when an extra house digit is glued (FS260453 → FS26045 3).
     // Do NOT use \d{4,8} here — it backtracks and turns FS26045 into FS2604 5.
     .replace(/\b((?:FS|HV)\d{5})(\d{1,2})\b/gi, "$1 $2")
+    // Flock+house+plain-birds glued: FS26045322200 → FS26045 3 22200
+    .replace(/\b((?:FS|HV)\d{5})(\d{1,2})([1-9]\d{3,5})\b/gi, "$1 $2 $3")
+    // FarmCode+house+comma-birds (no flock): 3821FS322,200 → 3821FS 3 22,200
+    .replace(/\b(\d{4,5}[A-Z]{2})(\d{1,2})([1-9]\d,\d{3})\b/gi, "$1 $2 $3")
+    // House glued to comma-birds after flock/code: "FS26045 322,200" → "FS26045 3 22,200"
+    .replace(/((?:FS|HV)\d{5}|\d{4,5}[A-Z]{2})\s+(\d{1,2})([1-9]\d,\d{3})\b/gi, "$1 $2 $3")
+    // Birds glued to mortality 0: 22,2000 → 22,200 0
+    .replace(/\b(\d{1,3},\d{3})0\b/g, "$1 0")
+    // Birds glued to zip: 22,20072944 → 22,200 72944
+    .replace(/\b(\d{1,3},\d{3})(\d{5})\b/g, "$1 $2")
     // PDFKit often splits entity codes: "2601 HV" / "3933 FS" / flock "FS 26045"
     // Rejoin flock first so "22200 FS 26045" does not become "22200FS".
     .replace(/\b(FS|HV)\s+(\d{4,8})\b/gi, "$1$2")
@@ -956,6 +987,101 @@ export function parseWeeklyChickPlacementProjectedRows(text: string): PlacementR
 }
 
 /**
+ * Glue-tolerant sweep: find every non-Complex farm code and pull house/birds/date/name
+ * from a tight window. Recovers rows when PROJECTED-chunk token parsing only catches
+ * the clean zip-order farms (BLACKJACK/MERCY/MARTIN/GROOM device bug).
+ */
+export function parseWeeklyChickPlacementCodeSweep(text: string): PlacementRow[] {
+  const flat = flattenPlacementPdfText(text);
+  if (!flat) return [];
+  const rows: PlacementRow[] = [];
+  const seen = new Set<string>();
+
+  const codeRe = /\b(\d{3,5}(?:FS|HV))\b/gi;
+  for (const m of execAll(codeRe, flat)) {
+    const farmCode = m[1]!.toUpperCase();
+    if (farmCode === "2601HV") continue;
+    const at = m.index ?? 0;
+    const after = flat.slice(at + m[0].length, at + m[0].length + 100);
+    const before = flat.slice(Math.max(0, at - 240), at);
+
+    // After code: [count] [flock] house birds — prefer comma bird counts in real range.
+    let houseNo = 0;
+    let numberSent: number | null = null;
+    const tail =
+      after.match(
+        /^\s*([\d,]+)?\s*((?:FS|HV)\d{4,8})?\s+([1-9]|[1-3]\d)\s+(\d{1,3},\d{3})\b/i,
+      ) ||
+      after.match(/^\s*((?:FS|HV)\d{4,8})\s+([1-9]|[1-3]\d)\s+(\d{1,3},\d{3})\b/i) ||
+      after.match(/^\s+([1-9]|[1-3]\d)\s+(\d{1,3},\d{3})\b/) ||
+      after.match(
+        /^\s*([\d,]+)?\s*((?:FS|HV)\d{4,8})?\s+([1-9]|[1-3]\d)\s+([\d,]{3,7})\b/i,
+      );
+    if (!tail) continue;
+    if (tail.length >= 5 && tail[3] != null && tail[4] != null) {
+      houseNo = Number(tail[3]);
+      numberSent = parseNumberSent(tail[4]!);
+    } else if (tail.length >= 4 && /^(?:FS|HV)/i.test(String(tail[1] || ""))) {
+      houseNo = Number(tail[2]);
+      numberSent = parseNumberSent(tail[3]!);
+    } else {
+      houseNo = Number(tail[1]);
+      numberSent = parseNumberSent(tail[2]!);
+    }
+    // Reject glued mortality/zip blow-ups (22,2000 → 222000) and tiny crumbs.
+    if (
+      !(houseNo >= 1 && houseNo <= 40) ||
+      !(numberSent != null && numberSent >= 1000 && numberSent <= 120000)
+    ) {
+      continue;
+    }
+
+    const dateMatches = execAll(/\b(\d{1,2}\/\d{1,2}\/\d{2,4})\b/g, before);
+    if (!dateMatches.length) continue;
+    const lastDate = dateMatches[dateMatches.length - 1]!;
+    const dateRaw = lastDate[1]!;
+    const dateAt = lastDate.index ?? before.lastIndexOf(dateRaw);
+
+    let nameRaw = before.slice(0, dateAt).trim();
+    // Keep only the tail after the last Complex / PROJECTED.
+    nameRaw = nameRaw.replace(/^.*\bPROJECTED\b/i, " ").trim();
+    nameRaw = nameRaw.replace(/^.*\b(\d{3,5}(?:FS|HV))\s+/i, " ").trim();
+    const farmName = stripPlacementAddressFromName(nameRaw);
+    if (!isPlausibleFarmName(farmName)) continue;
+
+    const row = normalizePlacementRow({
+      datePlaced: toIsoDate(dateRaw),
+      farmCode,
+      farmName,
+      flockId: farmCode,
+      houseNo,
+      numberSent,
+    });
+    if (!row || row.numberSent <= 0) continue;
+    const key = `${row.farmCode}|${row.houseNo}|${row.datePlaced}|${row.numberSent}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push(row);
+  }
+  return rows;
+}
+
+/** Prefer the longest plausible name per farm code (collapse GROOM vs GROOM WEYLIN splits). */
+export function consolidatePlacementFarmNames(rows: PlacementRow[]): PlacementRow[] {
+  const bestName = new Map<string, string>();
+  for (const row of rows) {
+    if (!isPlausibleFarmName(row.farmName)) continue;
+    const code = row.farmCode.toUpperCase();
+    const prev = bestName.get(code);
+    if (!prev || row.farmName.length > prev.length) bestName.set(code, row.farmName);
+  }
+  return rows.map((row) => {
+    const name = bestName.get(row.farmCode.toUpperCase());
+    return name && name !== row.farmName ? { ...row, farmName: name } : row;
+  });
+}
+
+/**
  * PDFKit visual/column reading order seen on device extracts:
  *   Complex FarmName City State Street Date FarmCode [Flock] House Sent … Zip Days PROJECTED
  * Zip sits after birds (not between name and code). FSP1/HVPP week banners are stripped upstream.
@@ -1439,15 +1565,32 @@ function pickBestPlacementRows(
   candidates: PlacementRow[][],
   expectedRows = 0,
 ): PlacementRow[] {
+  const cleaned = candidates.map((rows) =>
+    consolidatePlacementFarmNames(
+      rejectJunkPlacementRows(dedupePlacementRows(rows)),
+    ),
+  );
+
   let best: PlacementRow[] = [];
   let bestScore = -1;
-  for (const rows of candidates) {
-    const unique = dedupePlacementRows(rows);
+  for (const unique of cleaned) {
     const score = scorePlacementRows(unique, expectedRows);
     if (score > bestScore) {
       best = unique;
       bestScore = score;
     }
+  }
+
+  // Hard floor: never keep the classic 4-farm / ~14-house slice when another
+  // candidate recovered most of a ~96 PROJECTED sheet.
+  if (expectedRows >= 20 && best.length < expectedRows * 0.5) {
+    let fullest: PlacementRow[] = best;
+    for (const unique of cleaned) {
+      if (unique.length > fullest.length && unique.length <= expectedRows * 1.35) {
+        fullest = unique;
+      }
+    }
+    if (fullest.length > best.length) return fullest;
   }
   return best;
 }
@@ -1535,6 +1678,9 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
       safeParse("projectedRows", () => parseWeeklyChickPlacementProjectedRows(chunk)),
     );
     strategies.push(
+      safeParse("codeSweep", () => parseWeeklyChickPlacementCodeSweep(chunk)),
+    );
+    strategies.push(
       safeParse("projectedBlocks", () => parseWeeklyChickPlacementProjectedBlocks(chunk)),
     );
     strategies.push(safeParse("spatial", () => parseWeeklyChickPlacementSpatialText(chunk)));
@@ -1560,6 +1706,7 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
     for (const chunk of chunks) {
       const pageRows = [
         ...safeParse("projected-rows-page", () => parseWeeklyChickPlacementProjectedRows(chunk)),
+        ...safeParse("code-sweep-page", () => parseWeeklyChickPlacementCodeSweep(chunk)),
         ...safeParse("projected-page", () => parseWeeklyChickPlacementProjectedBlocks(chunk)),
         ...safeParse("spatial-page", () => parseWeeklyChickPlacementSpatialText(chunk)),
         ...safeParse("device-page", () => parseWeeklyChickPlacementDeviceText(chunk)),
@@ -1574,7 +1721,11 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
     strategies.push(dedupePlacementRows(perPage));
   }
 
-  const merged = dedupePlacementRows(strategies.flat().filter(isValidPlacementRow));
+  const merged = consolidatePlacementFarmNames(
+    rejectJunkPlacementRows(
+      dedupePlacementRows(strategies.flat().filter(isValidPlacementRow)),
+    ),
+  );
   let best: PlacementRow[] = [];
   try {
     best = pickBestPlacementRows([...strategies, merged], expectedRows);
@@ -1582,7 +1733,15 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
     console.warn("pickBestPlacementRows failed; using merged/device", e);
     best = merged;
   }
-  best = rejectJunkPlacementRows(best);
+  best = consolidatePlacementFarmNames(rejectJunkPlacementRows(best));
+  // Final safety: if we still undershoot badly, keep the merged union.
+  if (
+    expectedRows >= 20 &&
+    best.length < expectedRows * 0.5 &&
+    merged.length > best.length
+  ) {
+    best = merged;
+  }
   if (best.length > 0) return best;
 
   const deviceOnly = rejectJunkPlacementRows(

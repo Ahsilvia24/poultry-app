@@ -210,4 +210,61 @@ if (markers.length >= 8) {
   }
 }
 
+// Build 123 device bug: PDFKit stream with most rows fully glued must NOT
+// collapse to the classic 4-farm / ~15-house BLACKJACK/MERCY/MARTIN/GROOM slice.
+function assertNearFullSheet(label, text) {
+  const rows = parsePlacementPdfText(text);
+  const summary = summarizePlacementRows(rows);
+  const farms = groupPlacementFarms(rows);
+  const shapeErrors = assertWeeklyChickPlacementShape(rows);
+  if (shapeErrors.length) {
+    fail(`${label}: shape — ${shapeErrors.join("; ")}`);
+  } else if (summary.farmCount < 18 || summary.rowCount < 90 || summary.birdsSent < 2_400_000) {
+    fail(
+      `${label}: expected ~21/96/~2.49M, got ${summary.farmCount} farms / ${summary.rowCount} rows / ${summary.birdsSent} birds`,
+    );
+  } else if (farms.some((f) => f.farmCode.toUpperCase() === "2601HV")) {
+    fail(`${label}: Complex 2601HV used as farm code`);
+  } else {
+    ok(
+      `${label}: ${summary.farmCount} farms / ${summary.rowCount} rows / ${summary.birdsSent} birds`,
+    );
+  }
+}
+
+assertNearFullSheet(
+  "build-123 glued-partial",
+  readFileSync(
+    join(fixturesDir, "weekly-chick-placement-pdfkit-glued-partial.txt"),
+    "utf8",
+  ),
+);
+assertNearFullSheet(
+  "build-123 17-anchors-glued",
+  readFileSync(
+    join(fixturesDir, "weekly-chick-placement-17-anchors-glued.txt"),
+    "utf8",
+  ),
+);
+
+// Unglue must not treat bird-count tails ("800FS") as farm codes.
+{
+  const glued =
+    "2601HV FARM 9 08/04/2026 74965 3946FS17,800FS26045617,800 0 13 PROJECTED " +
+    "2601HV MARTIN FARMS 08/04/2026 72941 3855FS30,600FS26045230,600 0 12 PROJECTED " +
+    "2601HV ARCHEY MICHAEL 08/06/2026 74932 3901HV22,200HV26045422,200 0 13 PROJECTED";
+  const rows = parsePlacementPdfText(glued);
+  const summary = summarizePlacementRows(rows);
+  const codes = new Set(rows.map((r) => r.farmCode.toUpperCase()));
+  if (summary.rowCount < 3 || !codes.has("3946FS") || !codes.has("3855FS") || !codes.has("3901HV")) {
+    fail(
+      `count+flock unglue: got ${summary.rowCount} rows codes=${[...codes].join(",")}`,
+    );
+  } else if (rows.some((r) => r.numberSent < 1000 || r.numberSent > 120000)) {
+    fail(`count+flock unglue: bird blow-up ${rows.map((r) => r.numberSent).join(",")}`);
+  } else {
+    ok(`count+flock unglue: ${summary.farmCount} farms / ${summary.rowCount} rows`);
+  }
+}
+
 if (!process.exitCode) console.log("All placement format checks passed.");
