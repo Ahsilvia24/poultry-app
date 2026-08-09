@@ -186,6 +186,17 @@ export function cleanPlacementFarmName(name: string): string {
   farmName = farmName.replace(/^(?:HV|FS)(?=[A-Za-z0-9])/i, "").trim();
   farmName = farmName.replace(/^\d{3,5}(?:HV|FS)\s+/i, "").trim();
   farmName = farmName.replace(/^\d{3,5}(?:HV|FS)(?=[A-Za-z])/i, "").trim();
+  // PDFKit page-header crumbs glued ahead of the real name.
+  // Do NOT strip a lone leading "Farm" — real names include "FARM 9".
+  farmName = farmName
+    .replace(/\bFarm\s*Code\b\.?/gi, " ")
+    .replace(
+      /^(?:In\s*Transit|Placed|Out|Sent|Mortality|Number|Days|House|Flock|Ref\.?|Address1|Name)(?:\s+(?:In\s*Transit|Placed|Out|Sent|Mortality|Number|Days|House|Flock|Ref\.?|Address1|Name))*\s+/i,
+      "",
+    )
+    .replace(/^[.\s]+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
   return farmName;
 }
 
@@ -362,6 +373,9 @@ export function isPlausibleFarmName(name: string): boolean {
   if (/^(HV|FS)$/i.test(farmName)) return false;
   if (!/^[A-Za-z]/.test(farmName) && !/^[0-9][A-Za-z]{1,3}$/.test(farmName)) return false;
   if (/farm\s*name|date\s*placed|number\s*sent|projected|address|weekly/i.test(farmName)) {
+    return false;
+  }
+  if (/^(?:In\s*Transit|Placed|Out|Mortality|Name)\b/i.test(farmName)) {
     return false;
   }
   // Crystal header crumbs: "Ref. FSP1 Wk No."
@@ -960,38 +974,55 @@ function parseProjectedRowTokens(chunk: string): PlacementRow | null {
     }
   }
 
-  // Name tokens:
-  //   spatial/zip: between Complex and Date (may include city/street — stripped later)
-  //   layout: between FarmCode and Flock/House (Complex Date Code Name …)
-  let nameParts: string[] = [];
+  // Name tokens — try several device orders and keep the first plausible one:
+  //   A) Complex … Name … Date (spatial)
+  //   B) Date [Zip] Name FarmCode (FORST device share: date then name then code)
+  //   C) FarmCode Name … Flock/House
+  //   D) Name … Date (page-lead BLACKJACK without Complex)
+  const nameCandidates: string[][] = [];
   if (complexIdx >= 0 && complexIdx < dateIdx) {
-    nameParts = tokens.slice(complexIdx + 1, dateIdx);
+    nameCandidates.push(tokens.slice(complexIdx + 1, dateIdx));
   }
-  const cleanedEarly = nameParts.filter(
-    (t) => !isZipToken(t) && !isDateToken(t) && !isFlockCodeToken(t) && !isEntityCodeToken(t),
-  );
-  if (!stripPlacementAddressFromName(cleanedEarly.join(" ")) || cleanedEarly.length === 0) {
-    if (farmCodeIdx >= 0 && farmCodeIdx < cursor) {
-      nameParts = tokens.slice(farmCodeIdx + 1, cursor);
-      if (nameParts.length && isBirdCountToken(nameParts[0]!)) nameParts = nameParts.slice(1);
-    } else if (dateIdx > 0) {
-      let start = 0;
-      while (
-        start < dateIdx &&
-        (isEntityCodeToken(tokens[start]!) || /^PROJECTED$/i.test(tokens[start]!))
-      ) {
-        start++;
-      }
-      nameParts = tokens.slice(start, dateIdx);
+  if (farmCodeIdx > dateIdx) {
+    nameCandidates.push(tokens.slice(dateIdx + 1, farmCodeIdx));
+  }
+  if (farmCodeIdx >= 0 && farmCodeIdx < cursor) {
+    const between = tokens.slice(farmCodeIdx + 1, cursor);
+    nameCandidates.push(
+      between.length && isBirdCountToken(between[0]!) ? between.slice(1) : between,
+    );
+  }
+  if (dateIdx > 0) {
+    let start = 0;
+    while (
+      start < dateIdx &&
+      (isEntityCodeToken(tokens[start]!) ||
+        /^PROJECTED$/i.test(tokens[start]!) ||
+        /^(?:FSP1|HVPP|Ref\.?|Wk|WE|No\.?|Page|Out|Placed)$/i.test(tokens[start]!))
+    ) {
+      start++;
     }
+    nameCandidates.push(tokens.slice(start, dateIdx));
   }
 
-  // Drop zip / pure number crumbs from the name window.
-  nameParts = nameParts.filter(
-    (t) => !isZipToken(t) && !isDateToken(t) && !isFlockCodeToken(t) && !isEntityCodeToken(t),
-  );
-  const farmName = stripPlacementAddressFromName(nameParts.join(" "));
-  if (!isPlausibleFarmName(farmName)) return null;
+  let farmName = "";
+  for (const parts of nameCandidates) {
+    const cleaned = parts.filter(
+      (t) =>
+        !isZipToken(t) &&
+        !isDateToken(t) &&
+        !isFlockCodeToken(t) &&
+        !isEntityCodeToken(t) &&
+        !isBirdCountToken(t) &&
+        !/^(?:FSP1|HVPP|Ref\.?|Wk|WE|No\.?|Page|Out|Placed|TOTAL)$/i.test(t),
+    );
+    const cand = stripPlacementAddressFromName(cleaned.join(" "));
+    if (isPlausibleFarmName(cand)) {
+      farmName = cand;
+      break;
+    }
+  }
+  if (!farmName) return null;
 
   return normalizePlacementRow({
     datePlaced: toIsoDate(dateRaw),
@@ -1088,6 +1119,119 @@ export function parseWeeklyChickPlacementCodeSweep(text: string): PlacementRow[]
     nameRaw = nameRaw.replace(/^.*\b(\d{3,5}(?:FS|HV))\s+/i, " ").trim();
     const farmName = stripPlacementAddressFromName(nameRaw);
     if (!isPlausibleFarmName(farmName)) continue;
+
+    const row = normalizePlacementRow({
+      datePlaced: toIsoDate(dateRaw),
+      farmCode,
+      farmName,
+      flockId: farmCode,
+      houseNo,
+      numberSent,
+    });
+    if (!row || row.numberSent <= 0) continue;
+    const key = `${row.farmCode}|${row.houseNo}|${row.datePlaced}|${row.numberSent}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push(row);
+  }
+  return rows;
+}
+
+/**
+ * Pull a farm name out of a noisy device-share window that may include page
+ * totals, FSP1/HVPP crumbs, and prior trailing farm codes.
+ */
+function extractDeviceShareFarmName(raw: string): string {
+  let s = raw.replace(/\s+/g, " ").trim();
+  s = s.replace(/^.*\bPROJECTED\b/i, " ").trim();
+  s = s.replace(/\b(?:FSP1|HVPP|Ref\.?|Address1|TOTAL|Page|Wk|WE|No\.?)\b/gi, " ");
+  s = s.replace(/\bFarm\s*Code\b\.?/gi, " ");
+  // Header crumbs only — do NOT strip bare "Farm" (FARM 9 / MERCY FARM).
+  s = s.replace(/\bIn\s*Transit\b/gi, " ");
+  s = s.replace(/\b(?:Placed|Out|Sent|Mortality|Days|House|Flock|Name)\b/gi, " ");
+  s = s.replace(/\b2601HV\b/gi, " ");
+  s = s.replace(/\b\d{4,5}(?:FS|HV)\b/gi, " ");
+  s = s.replace(/\b\d{1,3}(?:,\d{3})+\b/g, " ");
+  s = s.replace(/\b\d{5}\b/g, " ");
+  s = s.replace(/\s+/g, " ").trim();
+  const tokens = s.split(" ").filter(Boolean);
+  // Prefer the shortest plausible trailing name (avoids header crumbs).
+  let best = "";
+  for (let n = 1; n <= Math.min(6, tokens.length); n++) {
+    const cand = stripPlacementAddressFromName(tokens.slice(-n).join(" "));
+    if (isPlausibleFarmName(cand)) best = cand;
+  }
+  return best || stripPlacementAddressFromName(s);
+}
+
+/**
+ * Device PDFKit Share-text order (build 125): farm code trails AFTER PROJECTED.
+ *
+ *   VCS FARM
+ *   08/03/2026 72940
+ *   2601HV FS26045 2 33,000 0 143 E BROWNTOWN RD … 11PROJECTED
+ *   3952FS 33,000
+ *
+ * Classic BLACKJACK/MERCY rows keep code before flock and are handled elsewhere.
+ */
+export function parseWeeklyChickPlacementTrailingCodeRows(text: string): PlacementRow[] {
+  const flat = flattenPlacementPdfText(text);
+  if (!flat || !/\bPROJECTED\b/i.test(flat)) return [];
+  const rows: PlacementRow[] = [];
+  const seen = new Set<string>();
+
+  const re =
+    /\bPROJECTED\s+(\d{4,5}(?:FS|HV))\s+(\d{1,3},\d{3})\b/gi;
+  for (const m of execAll(re, flat)) {
+    const farmCode = m[1]!.toUpperCase();
+    if (farmCode === "2601HV") continue;
+    const numberSent = parseNumberSent(m[2]!);
+    if (!(numberSent != null && numberSent >= 1000 && numberSent <= 120000)) continue;
+
+    const at = m.index ?? 0;
+    const before = flat.slice(Math.max(0, at - 320), at);
+
+    const flockHits = execAll(
+      /((?:FS|HV)\d{5})\s+([1-9]|[1-3]\d)\s+(\d{1,3},\d{3})\s+0\b/gi,
+      before,
+    );
+    if (!flockHits.length) continue;
+    const fh = flockHits[flockHits.length - 1]!;
+    const houseNo = Number(fh[2]);
+    if (!(houseNo >= 1 && houseNo <= 40)) continue;
+    // Flock/house must belong to this row (no earlier PROJECTED between flock and match).
+    const fhEnd = (fh.index ?? 0) + fh[0].length;
+    if (/\bPROJECTED\b/i.test(before.slice(fhEnd))) continue;
+
+    const dateZipHits = execAll(
+      /\b(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{5})\b/g,
+      before,
+    );
+    const dateHits = dateZipHits.length
+      ? dateZipHits
+      : execAll(/\b(\d{1,2}\/\d{1,2}\/\d{2,4})\b/g, before);
+    if (!dateHits.length) continue;
+    const lastDate = dateHits[dateHits.length - 1]!;
+    const dateRaw = lastDate[1]!;
+    const dateAt = lastDate.index ?? 0;
+    const dateEnd = dateAt + lastDate[0].length;
+
+    // Name may be before the date (VCS/FARM 9) or between date+zip and Complex (SPUR).
+    // Page totals / FSP1 / HVPP banners often sit between the prior PROJECTED and the name.
+    const afterName = extractDeviceShareFarmName(
+      before.slice(dateEnd, fh.index ?? dateEnd),
+    );
+    const beforeName = extractDeviceShareFarmName(before.slice(0, dateAt));
+    let farmName = "";
+    if (isPlausibleFarmName(afterName) && isPlausibleFarmName(beforeName)) {
+      farmName = afterName.length >= beforeName.length ? afterName : beforeName;
+    } else if (isPlausibleFarmName(afterName)) {
+      farmName = afterName;
+    } else if (isPlausibleFarmName(beforeName)) {
+      farmName = beforeName;
+    } else {
+      continue;
+    }
 
     const row = normalizePlacementRow({
       datePlaced: toIsoDate(dateRaw),
@@ -1545,7 +1689,8 @@ export function dedupePlacementRows(rows: PlacementRow[]): PlacementRow[] {
   const out: PlacementRow[] = [];
   for (const row of rows) {
     if (!isValidPlacementRow(row)) continue;
-    const key = `${row.farmCode}|${row.farmName}|${row.houseNo}|${row.datePlaced}|${row.numberSent}|${row.flockId}`;
+    // Key without farmName so "ARCHEY" vs header-polluted variants collapse.
+    const key = `${row.farmCode.toUpperCase()}|${row.houseNo}|${row.datePlaced}|${row.numberSent}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(row);
@@ -1718,6 +1863,9 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
       safeParse("projectedRows", () => parseWeeklyChickPlacementProjectedRows(chunk)),
     );
     strategies.push(
+      safeParse("trailingCode", () => parseWeeklyChickPlacementTrailingCodeRows(chunk)),
+    );
+    strategies.push(
       safeParse("codeSweep", () => parseWeeklyChickPlacementCodeSweep(chunk)),
     );
     strategies.push(
@@ -1746,6 +1894,7 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
     for (const chunk of chunks) {
       const pageRows = [
         ...safeParse("projected-rows-page", () => parseWeeklyChickPlacementProjectedRows(chunk)),
+        ...safeParse("trailing-code-page", () => parseWeeklyChickPlacementTrailingCodeRows(chunk)),
         ...safeParse("code-sweep-page", () => parseWeeklyChickPlacementCodeSweep(chunk)),
         ...safeParse("projected-page", () => parseWeeklyChickPlacementProjectedBlocks(chunk)),
         ...safeParse("spatial-page", () => parseWeeklyChickPlacementSpatialText(chunk)),
@@ -1773,14 +1922,16 @@ export function parsePlacementPdfText(text: string): PlacementRow[] {
     console.warn("pickBestPlacementRows failed; using merged/device", e);
     best = merged;
   }
-  best = consolidatePlacementFarmNames(rejectJunkPlacementRows(best));
+  best = dedupePlacementRows(
+    consolidatePlacementFarmNames(rejectJunkPlacementRows(best)),
+  );
   // Final safety: if we still undershoot badly, keep the merged union.
   if (
     expectedRows >= 20 &&
     best.length < expectedRows * 0.5 &&
     merged.length > best.length
   ) {
-    best = merged;
+    best = dedupePlacementRows(merged);
   }
   if (best.length > 0) return best;
 

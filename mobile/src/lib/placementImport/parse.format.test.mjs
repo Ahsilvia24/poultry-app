@@ -247,6 +247,31 @@ assertNearFullSheet(
   ),
 );
 
+// Real iOS Share PDF text from TestFlight build 125 (column-scrambled PDFKit).
+{
+  const deviceShare = readFileSync(
+    join(fixturesDir, "weekly-chick-placement-device-share-125.txt"),
+    "utf8",
+  );
+  assertNearFullSheet("build-125 device-share", deviceShare);
+  const farms = groupPlacementFarms(parsePlacementPdfText(deviceShare));
+  if (
+    farms.some((f) =>
+      /In\s*Transit|Farm\s*Code|FSP1|HVPP|Placed|Saturday/i.test(f.farmName),
+    )
+  ) {
+    fail(
+      `build-125 device-share: header crumbs in names: ${farms.map((f) => f.farmName).join(", ")}`,
+    );
+  } else if (!farms.some((f) => f.farmCode === "3946FS" && f.farmName === "FARM 9")) {
+    fail("build-125 device-share: missing FARM 9");
+  } else if (!farms.some((f) => f.farmCode === "3806FS" && /FORST/i.test(f.farmName))) {
+    fail("build-125 device-share: missing FORST FARMS");
+  } else {
+    ok("build-125 device-share names clean (FARM 9 / FORST present)");
+  }
+}
+
 // PDFKit sometimes drops spaces around digits: date+zip+code and birds+0+days.
 {
   const glued = readFileSync(
