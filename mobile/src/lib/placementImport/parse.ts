@@ -133,23 +133,45 @@ export function normalizePlacementRow(partial: {
   };
 }
 
+/** Farm-name token: letter-leading, or short nicknames like "4J". */
+const FARM_NAME_RE = "([A-Za-z][A-Za-z0-9 .'/()&/-]{0,48}?|[0-9][A-Za-z]{1,3})";
+
+/** True farm names — not a date, entity code, Complex, or address fragment. */
+function isPlausibleFarmName(name: string): boolean {
+  const farmName = name.trim().replace(/\s+/g, " ");
+  if (farmName.length < 2 || farmName.length > 50) return false;
+  if (/^\d{3,5}[A-Z]{2}$/i.test(farmName)) return false;
+  if (!/^[A-Za-z]/.test(farmName) && !/^[0-9][A-Za-z]{1,3}$/.test(farmName)) return false;
+  if (/farm\s*name|date\s*placed|number\s*sent|projected|address|weekly/i.test(farmName)) {
+    return false;
+  }
+  if (/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(farmName)) return false;
+  if (/\b(?:HWY|ROAD|RD|STREET|AVE|OKLA|ARKA)\b/i.test(farmName)) return false;
+  return true;
+}
+
 /**
  * Weekly Chick Placement (Crystal Reports) rows:
  * Complex  DatePlaced  FarmCode  FarmName  FlockCode  HouseNo  NumberSent  ...
  * Example: 2601HV  08/03/2026  3821FS  BLACKJACK MTN  FS26045  3  22,200
+ *
+ * Farm Code is the code immediately left of the farm name (3821FS), NOT Complex (2601HV).
  */
 export function parseWeeklyChickPlacementText(text: string): PlacementRow[] {
   const normalized = normalizePlacementPdfText(text);
   const rows: PlacementRow[] = [];
-  const re =
-    /(\d{3,5}[A-Z]{2})\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{3,5}[A-Z]{2})\s+(.+?)\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)/gi;
+  // Farm name must not swallow Complex/dates; Farm Code is the code left of the name.
+  const re = new RegExp(
+    `(\\d{3,5}[A-Z]{2})\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(\\d{3,5}[A-Z]{2})\\s+${FARM_NAME_RE}\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
+    "gi",
+  );
 
   let m: RegExpExecArray | null;
   while ((m = re.exec(normalized))) {
     const farmName = m[4]!.trim().replace(/\s+/g, " ");
-    if (!farmName || /farm\s*name|date\s*placed|number\s*sent|projected/i.test(farmName)) {
-      continue;
-    }
+    if (!isPlausibleFarmName(farmName)) continue;
+    // Farm code = code left of name (group 3). Complex is group 1 — never use it as farmCode.
+    if (m[3]!.toUpperCase() === m[1]!.toUpperCase()) continue;
     const row = normalizePlacementRow({
       datePlaced: toIsoDate(m[2]!),
       farmCode: m[3],
@@ -167,14 +189,25 @@ export function parseWeeklyChickPlacementText(text: string): PlacementRow[] {
  * Scrambled Weekly Chick Placement (PDFKit / pdftotext -raw / pypdf):
  *   3821FS 22,2002601HV FS26045 3 22,200 0 … PROJECTEDBLACKJACK MTN08/03/2026 72944
  * or multiline raw blocks with the same fields.
+ *
+ * Farm Code is group 1 (left of counts / left of name via PROJECTED) — never Complex (group 3).
  */
 export function parseWeeklyChickPlacementScrambledText(text: string): PlacementRow[] {
   const normalized = normalizePlacementPdfText(text);
   const rows: PlacementRow[] = [];
-  const pushMatch = (farmCode: string, numberSent: string, flockId: string, houseNo: string, farmNameRaw: string, dateRaw: string) => {
+  const pushMatch = (
+    farmCode: string,
+    numberSent: string,
+    complex: string,
+    flockId: string,
+    houseNo: string,
+    farmNameRaw: string,
+    dateRaw: string,
+  ) => {
     const farmName = farmNameRaw.trim().replace(/\s+/g, " ");
-    if (!farmName || /farm\s*name|address|projected|weekly|date\s*placed/i.test(farmName)) return;
-    if (/^\d{3,5}[A-Z]{2}$/i.test(farmName)) return;
+    if (!isPlausibleFarmName(farmName)) return;
+    // Complex sits beside the flock (2601HV FS26045). Never treat it as farm code.
+    if (farmCode.toUpperCase() === complex.toUpperCase()) return;
     const row = normalizePlacementRow({
       datePlaced: toIsoDate(dateRaw),
       farmCode,
@@ -188,116 +221,73 @@ export function parseWeeklyChickPlacementScrambledText(text: string): PlacementR
 
   // Prefer flattened text so PDFKit newlines between fields still match.
   const flat = flattenPlacementPdfText(text);
-  const glued =
-    /(\d{3,5}[A-Z]{2})\s+([\d,]+)\s+(\d{3,5}[A-Z]{2})\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\s+\d+\s+[\s\S]*?PROJECTED\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s+\d{5})?/gi;
+  const glued = new RegExp(
+    `(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+(\\d{3,5}[A-Z]{2})\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)\\s+\\d+\\s+[\\s\\S]{0,160}?PROJECTED\\s+${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})(?:\\s+\\d{5})?`,
+    "gi",
+  );
   let m: RegExpExecArray | null;
   while ((m = glued.exec(flat))) {
-    pushMatch(m[1]!, m[2]!, m[4]!, m[5]!, m[7]!, m[8]!);
+    pushMatch(m[1]!, m[2]!, m[3]!, m[4]!, m[5]!, m[7]!, m[8]!);
   }
   if (rows.length > 0) return rows;
 
   const lineBlock =
     /(?:^|\n)(\d{3,5}[A-Z]{2})\s+([\d,]+)\s*\n(\d{3,5}[A-Z]{2})\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\s+\d+\s+[\s\S]*?PROJECTED\s*\n([^\n]+)\n(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s+\d{5})?/gi;
   while ((m = lineBlock.exec(normalized))) {
-    pushMatch(m[1]!, m[2]!, m[4]!, m[5]!, m[7]!, m[8]!);
+    pushMatch(m[1]!, m[2]!, m[3]!, m[4]!, m[5]!, m[7]!, m[8]!);
   }
   return rows;
 }
 
 /**
- * Last-resort parser: anchor on Flock Code + House + Number Sent, then pull
- * Farm Code / Name / Date from a nearby window. Survives odd PDFKit ordering.
+ * Strict fallback: only accept rows where Farm Code is immediately left of a
+ * letter-starting farm name (never Complex beside the flock id).
  */
 export function parseWeeklyChickPlacementLooseText(text: string): PlacementRow[] {
   const flat = flattenPlacementPdfText(text);
   if (!flat) return [];
   const rows: PlacementRow[] = [];
-  const re = /\b((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\b/gi;
+
+  // Layout: Complex Date FarmCode Name Flock House Sent
+  const layout = new RegExp(
+    `(\\d{3,5}[A-Z]{2})\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})\\s+(\\d{3,5}[A-Z]{2})\\s+${FARM_NAME_RE}\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)`,
+    "gi",
+  );
   let m: RegExpExecArray | null;
-  while ((m = re.exec(flat))) {
-    const flockId = m[1]!;
-    const houseNo = Number(m[2]);
-    const numberSent = parseNumberSent(m[3]!);
-    if (!numberSent || numberSent < 100) continue; // placement rows are large counts
-    if (!Number.isFinite(houseNo) || houseNo < 1 || houseNo > 40) continue;
+  while ((m = layout.exec(flat))) {
+    const farmName = m[4]!.trim().replace(/\s+/g, " ");
+    if (!isPlausibleFarmName(farmName)) continue;
+    if (m[3]!.toUpperCase() === m[1]!.toUpperCase()) continue;
+    const row = normalizePlacementRow({
+      datePlaced: toIsoDate(m[2]!),
+      farmCode: m[3], // left of farm name
+      farmName,
+      flockId: m[5],
+      houseNo: Number(m[6]),
+      numberSent: parseNumberSent(m[7]!),
+    });
+    if (row && row.numberSent > 0) rows.push(row);
+  }
+  if (rows.length > 0) return rows;
 
-    const before = flat.slice(Math.max(0, m.index - 180), m.index);
-    const after = flat.slice(m.index + m[0].length, m.index + m[0].length + 240);
-
-    // Layout order: Complex Date FarmCode FarmName <flock>
-    const layout = before.match(
-      /(\d{3,5}[A-Z]{2})\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{3,5}[A-Z]{2})\s+(.+)$/i,
-    );
-    if (layout) {
-      const farmName = layout[4]!.trim().replace(/\s+/g, " ");
-      if (farmName && !/farm\s*name|projected|address/i.test(farmName)) {
-        const row = normalizePlacementRow({
-          datePlaced: toIsoDate(layout[2]!),
-          farmCode: layout[3],
-          farmName,
-          flockId,
-          houseNo,
-          numberSent,
-        });
-        if (row && row.numberSent > 0) rows.push(row);
-        continue;
-      }
-    }
-
-    // Scrambled: FarmCode Count Complex <flock> … PROJECTED Name Date
-    const scrambledHead = before.match(/(\d{3,5}[A-Z]{2})\s+([\d,]+)\s+(\d{3,5}[A-Z]{2})\s*$/i);
-    const projected = after.match(
-      /PROJECTED\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s+\d{5})?/i,
-    );
-    if (scrambledHead && projected) {
-      const farmName = projected[1]!.trim().replace(/\s+/g, " ");
-      if (farmName && !/farm\s*name|address|projected/i.test(farmName)) {
-        const row = normalizePlacementRow({
-          datePlaced: toIsoDate(projected[2]!),
-          farmCode: scrambledHead[1],
-          farmName,
-          flockId,
-          houseNo,
-          numberSent,
-        });
-        if (row && row.numberSent > 0) rows.push(row);
-        continue;
-      }
-    }
-
-    // Minimal: any farm code near the flock + PROJECTED name/date after
-    const anyCode = before.match(/(\d{3,5}[A-Z]{2})(?:\s+[\d,]+)?\s*$/i);
-    if (anyCode && projected) {
-      const farmName = projected[1]!.trim().replace(/\s+/g, " ");
-      const row = normalizePlacementRow({
-        datePlaced: toIsoDate(projected[2]!),
-        farmCode: anyCode[1],
-        farmName,
-        flockId,
-        houseNo,
-        numberSent,
-      });
-      if (row && row.numberSent > 0) rows.push(row);
-      continue;
-    }
-
-    // Spatial PDFKit line without PROJECTED nearby: … FarmCode FarmName <flock> … Date
-    const spatial = before.match(/(\d{3,5}[A-Z]{2})\s+([A-Za-z0-9][A-Za-z0-9 .'/()&-]{1,60})$/);
-    const dateAfter = after.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
-    if (spatial && dateAfter) {
-      const farmName = spatial[2]!.trim().replace(/\s+/g, " ");
-      if (farmName && !/farm\s*name|projected|address/i.test(farmName)) {
-        const row = normalizePlacementRow({
-          datePlaced: toIsoDate(dateAfter[1]!),
-          farmCode: spatial[1],
-          farmName,
-          flockId,
-          houseNo,
-          numberSent,
-        });
-        if (row && row.numberSent > 0) rows.push(row);
-      }
-    }
+  // Scrambled: FarmCode Count Complex Flock House Sent … PROJECTED Name Date
+  const scrambled = new RegExp(
+    `(\\d{3,5}[A-Z]{2})\\s+([\\d,]+)\\s+(\\d{3,5}[A-Z]{2})\\s+((?:FS|HV)\\d{4,8})\\s+(\\d{1,2})\\s+([\\d,]+)\\s+\\d+[\\s\\S]{0,160}?PROJECTED\\s+${FARM_NAME_RE}\\s+(\\d{1,2}/\\d{1,2}/\\d{2,4})`,
+    "gi",
+  );
+  while ((m = scrambled.exec(flat))) {
+    const farmName = m[7]!.trim().replace(/\s+/g, " ");
+    if (!isPlausibleFarmName(farmName)) continue;
+    if (m[1]!.toUpperCase() === m[3]!.toUpperCase()) continue;
+    const row = normalizePlacementRow({
+      datePlaced: toIsoDate(m[8]!),
+      farmCode: m[1], // left of count / not the complex beside flock
+      farmName,
+      flockId: m[4],
+      houseNo: Number(m[5]),
+      numberSent: parseNumberSent(m[2]!),
+    });
+    if (row && row.numberSent > 0) rows.push(row);
   }
   return rows;
 }
@@ -312,7 +302,7 @@ export function parsePlacementLayoutText(text: string): PlacementRow[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(normalized))) {
     const farmName = m[3]!.trim().replace(/\s+/g, " ");
-    if (!farmName || /farm\s*name|projected/i.test(farmName)) continue;
+    if (!isPlausibleFarmName(farmName)) continue;
     // Skip if this is actually Complex+Date+Code (handled by weekly parser)
     if (/^\d{3,5}[A-Z]{2}$/i.test(farmName.split(/\s+/)[0] ?? "")) continue;
     const row = normalizePlacementRow({
