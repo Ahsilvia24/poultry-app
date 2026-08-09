@@ -145,10 +145,17 @@ export function ScheduleImportCard() {
 
   async function onUpload() {
     if (busy) return;
-    if (importType !== "placement") {
+    if (importType === "settlement") {
       Alert.alert(
         "Coming next",
-        `${typeLabel(importType)} import comes next. Start with Placement.`,
+        "Settlements import comes next. Use Placement or Catch Schedule on web.",
+      );
+      return;
+    }
+    if (importType === "catch") {
+      Alert.alert(
+        "Use web for Catch Schedule PDF",
+        "Catch Schedule PDF import (farm name, house, kill date) runs on the web Import card. Phone can still do Placement CSV/XLSX here.",
       );
       return;
     }
@@ -223,8 +230,8 @@ export function ScheduleImportCard() {
   return (
     <Card>
       <Text style={[styles.muted, { lineHeight: 20 }]}>
-        Import Placement, Catch Schedule, or Settlements. Placement reads Date Placed, Farm
-        Code, Farm Name, Flock ID, House No, and Number Sent.
+        Import Placement, Catch Schedule, or Settlements. Catch Schedule uses farm name, house,
+        and catch/kill date only (web PDF).
       </Text>
 
       <View style={[styles.row, { marginTop: 12, marginBottom: 4, flexWrap: "wrap" }]}>
@@ -243,9 +250,13 @@ export function ScheduleImportCard() {
         ))}
       </View>
 
-      {importType !== "placement" ? (
+      {importType === "settlement" ? (
         <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
-          {typeLabel(importType)} mapping comes next. Upload Placement first.
+          Settlements mapping comes next.
+        </Text>
+      ) : importType === "catch" ? (
+        <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
+          Upload the Catch Schedule PDF on web — only farm name, house, and kill date are used.
         </Text>
       ) : (
         <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
