@@ -42,12 +42,24 @@ function parseNumberSent(raw: string): number | null {
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
 }
 
-/** pdf.js often glues Date Placed + Farm Code: 08/03/20263821FS */
+/**
+ * Normalize PDF extract quirks:
+ * - pdf.js: Date+FarmCode → 08/03/20263821FS
+ * - PDFKit/pypdf: bird count+complex, PROJECTED+name, name+date all glued
+ *   e.g. 22,2002601HV … PROJECTEDBLACKJACK MTN08/03/2026
+ */
 function normalizePlacementPdfText(text: string): string {
   return text
     .replace(/\u00a0/g, " ")
     .replace(/(\d{1,2}\/\d{1,2}\/\d{4})(\d{3,5}[A-Z]{2})/gi, "$1 $2")
-    .replace(/(\d{1,2}\/\d{1,2}\/\d{2})(\d{3,5}[A-Z]{2})/gi, "$1 $2");
+    .replace(/(\d{1,2}\/\d{1,2}\/\d{2})(\d{3,5}[A-Z]{2})/gi, "$1 $2")
+    // 22,2002601HV (comma bird count glued to complex/farm code)
+    .replace(/(\d{1,3}(?:,\d{3})+)(\d{3,5}[A-Z]{2}\b)/gi, "$1 $2")
+    .replace(/PROJECTED(?=\S)/gi, "PROJECTED ")
+    // BLACKJACK MTN08/03/2026 or (SAM FORST)08/03/2026
+    .replace(/([A-Za-z.)])(\d{1,2}\/\d{1,2}\/\d{2,4})/g, "$1 $2")
+    // FARM 908/04/2026 → FARM 9 08/04/2026 (house digit glued into date)
+    .replace(/(\d)(\d{2}\/\d{1,2}\/\d{2,4})/g, "$1 $2");
 }
 
 function looksLikeWeeklyChickPlacement(text: string): boolean {
@@ -135,51 +147,41 @@ export function parseWeeklyChickPlacementText(text: string): PlacementRow[] {
 }
 
 /**
- * PDFKit / pdftotext -raw scramble Weekly Chick Placement into blocks:
- *   3821FS 22,200
- *   2601HV FS26045 3 22,200 0 … PROJECTED
- *   BLACKJACK MTN
- *   08/03/2026 72944
+ * Scrambled Weekly Chick Placement (PDFKit / pdftotext -raw / pypdf):
+ *   3821FS 22,2002601HV FS26045 3 22,200 0 … PROJECTEDBLACKJACK MTN08/03/2026 72944
+ * or multiline raw blocks with the same fields.
  */
 export function parseWeeklyChickPlacementScrambledText(text: string): PlacementRow[] {
   const normalized = normalizePlacementPdfText(text);
   const rows: PlacementRow[] = [];
-
-  const lineBlock =
-    /(?:^|\n)(\d{3,5}[A-Z]{2})\s+([\d,]+)\s*\n(\d{3,5}[A-Z]{2})\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\s+\d+\s+[\s\S]*?PROJECTED\s*\n([^\n]+)\n(\d{1,2}\/\d{1,2}\/\d{2,4})\s+\d{5}/gi;
-
-  let m: RegExpExecArray | null;
-  while ((m = lineBlock.exec(normalized))) {
-    const farmName = m[7]!.trim().replace(/\s+/g, " ");
-    if (!farmName || /farm\s*name|address|projected|weekly/i.test(farmName)) continue;
+  const pushMatch = (farmCode: string, numberSent: string, flockId: string, houseNo: string, farmNameRaw: string, dateRaw: string) => {
+    const farmName = farmNameRaw.trim().replace(/\s+/g, " ");
+    if (!farmName || /farm\s*name|address|projected|weekly|date\s*placed/i.test(farmName)) return;
+    if (/^\d{3,5}[A-Z]{2}$/i.test(farmName)) return;
     const row = normalizePlacementRow({
-      datePlaced: toIsoDate(m[8]!),
-      farmCode: m[1],
+      datePlaced: toIsoDate(dateRaw),
+      farmCode,
       farmName,
-      flockId: m[4],
-      houseNo: Number(m[5]),
-      numberSent: parseNumberSent(m[2]!),
+      flockId,
+      houseNo: Number(houseNo),
+      numberSent: parseNumberSent(numberSent),
     });
     if (row && row.numberSent > 0) rows.push(row);
+  };
+
+  // PDFKit single-line (most common on iOS): fields run together on one line.
+  const glued =
+    /(\d{3,5}[A-Z]{2})\s+([\d,]+)\s+(\d{3,5}[A-Z]{2})\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\s+\d+\s+.+?PROJECTED\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+\d{5}/gi;
+  let m: RegExpExecArray | null;
+  while ((m = glued.exec(normalized))) {
+    pushMatch(m[1]!, m[2]!, m[4]!, m[5]!, m[7]!, m[8]!);
   }
   if (rows.length > 0) return rows;
 
-  // Same fields when newlines were flattened to spaces.
-  const flat =
-    /(\d{3,5}[A-Z]{2})\s+([\d,]+)\s+(\d{3,5}[A-Z]{2})\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\s+\d+\s+[\s\S]*?PROJECTED\s+(.+?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+\d{5}/gi;
-  while ((m = flat.exec(normalized))) {
-    const farmName = m[7]!.trim().replace(/\s+/g, " ");
-    if (!farmName || /farm\s*name|address|projected|weekly/i.test(farmName)) continue;
-    if (/^\d{3,5}[A-Z]{2}$/i.test(farmName)) continue;
-    const row = normalizePlacementRow({
-      datePlaced: toIsoDate(m[8]!),
-      farmCode: m[1],
-      farmName,
-      flockId: m[4],
-      houseNo: Number(m[5]),
-      numberSent: parseNumberSent(m[2]!),
-    });
-    if (row && row.numberSent > 0) rows.push(row);
+  const lineBlock =
+    /(?:^|\n)(\d{3,5}[A-Z]{2})\s+([\d,]+)\s*\n(\d{3,5}[A-Z]{2})\s+((?:FS|HV)\d{4,8})\s+(\d{1,2})\s+([\d,]+)\s+\d+\s+[\s\S]*?PROJECTED\s*\n([^\n]+)\n(\d{1,2}\/\d{1,2}\/\d{2,4})\s+\d{5}/gi;
+  while ((m = lineBlock.exec(normalized))) {
+    pushMatch(m[1]!, m[2]!, m[4]!, m[5]!, m[7]!, m[8]!);
   }
   return rows;
 }
