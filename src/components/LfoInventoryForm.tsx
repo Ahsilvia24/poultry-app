@@ -279,7 +279,7 @@ export function LfoInventoryForm({
                 {result ? (
                   <dl className="grid grid-cols-1 gap-3 text-sm text-stone-600 sm:grid-cols-2 lg:grid-cols-3">
                     <div className="flex justify-between gap-2 sm:block">
-                      <dt className="text-stone-500">Feed off (−6h)</dt>
+                      <dt className="text-stone-500">Feed off (−5h)</dt>
                       <dd className="font-medium text-stone-800">
                         {result.feedOffAt
                           ? format(result.feedOffAt, "MMM d, h:mm a")

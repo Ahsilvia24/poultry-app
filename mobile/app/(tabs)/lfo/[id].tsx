@@ -488,7 +488,7 @@ export default function EditLfoScreen() {
                     {result ? (
                       <View style={{ marginTop: 12, gap: 4 }}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                          <Text style={styles.muted}>Feed off (−6h)</Text>
+                          <Text style={styles.muted}>Feed off (−5h)</Text>
                           <Text style={{ fontWeight: "600" }}>
                             {formatFeedStamp(result.feedOffAt)}
                           </Text>

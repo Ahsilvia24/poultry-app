@@ -1,5 +1,5 @@
 export const DEFAULT_LFO_CONSUMPTION_RATE = 0.45;
-export const FEED_OFF_HOURS_BEFORE_UP = 6;
+export const FEED_OFF_HOURS_BEFORE_UP = 5;
 
 export type LfoHouseInventoryInput = {
   houseId: string;

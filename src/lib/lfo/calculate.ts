@@ -1,5 +1,5 @@
 export const DEFAULT_LFO_CONSUMPTION_RATE = 0.45;
-export const FEED_OFF_HOURS_BEFORE_UP = 6;
+export const FEED_OFF_HOURS_BEFORE_UP = 5;
 
 export type LfoHouseInventoryInput = {
   houseId: string;
@@ -95,7 +95,7 @@ export function roundReclaimLbs(rawLbs: number): number {
 /**
  * Last feed order calculation from bin inventory, feed-up times, and head count.
  *
- * feedOff = feedUp − 6h
+ * feedOff = feedUp − 5h
  * hoursConsumed = max(0, now → feedOff)
  * hourlyRate = (headCount × consumptionRate) / 24
  * feedConsumed = hoursConsumed × hourlyRate
