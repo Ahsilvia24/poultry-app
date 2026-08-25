@@ -310,9 +310,6 @@ export default function LfoListScreen() {
                 setMsg("Select a farm first");
                 return;
               }
-                setMsg("Select a farm first");
-                return;
-              }
               setLoading(true);
               try {
                 const { id } = createLfo(farmId, todayKey());
