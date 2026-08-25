@@ -738,11 +738,6 @@ export default function DashboardScreen() {
           </>
         ) : null}
 
-        <View style={{ marginTop: 16 }}>
-          <SectionTitle>Import</SectionTitle>
-          <ScheduleImportCard />
-        </View>
-
         <View style={{ marginTop: 16, marginBottom: 24 }}>
           <SectionTitle>Import</SectionTitle>
           <ScheduleImportCard />
