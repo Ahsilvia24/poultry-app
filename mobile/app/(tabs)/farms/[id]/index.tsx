@@ -2183,7 +2183,7 @@ export default function FarmDetailScreen() {
                         }
                       />
                       <NativeNumInput
-                        label="Total fan CFM"
+                        label="Total CFM (Min Vent)"
                         value={editingHouse.totalFanCFM}
                         decimal
                         style={{ flex: 1 }}
@@ -2318,7 +2318,7 @@ export default function FarmDetailScreen() {
                     }
                   />
                   <NativeNumInput
-                    label="Total fan CFM"
+                    label="Total CFM (Min Vent)"
                     value={addingHouse.totalFanCFM}
                     decimal
                     onChangeText={(v) =>

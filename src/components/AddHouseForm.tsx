@@ -68,7 +68,7 @@ export function AddHouseForm({ farmId }: { farmId: string }) {
               />
             </div>
             <div>
-              <Label htmlFor="totalFanCFM">Total fan CFM</Label>
+              <Label htmlFor="totalFanCFM">Total CFM (Min Vent)</Label>
               <Input id="totalFanCFM" name="totalFanCFM" type="number" min={0} step="any" />
             </div>
           </div>

@@ -325,7 +325,7 @@ export function HouseCardActions({
                   />
                 </div>
                 <div>
-                  <Label htmlFor={`edit-totalFanCFM-${house.id}`}>Total fan CFM</Label>
+                  <Label htmlFor={`edit-totalFanCFM-${house.id}`}>Total CFM (Min Vent)</Label>
                   <Input
                     id={`edit-totalFanCFM-${house.id}`}
                     name="totalFanCFM"
