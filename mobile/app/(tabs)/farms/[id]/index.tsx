@@ -1482,25 +1482,70 @@ export default function FarmDetailScreen() {
                         />
                       </View>
                       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                        <Metric
-                          columns={3}
-                          label="Placed/Catch"
-                          value={
-                            [
-                              h.placementDate ? formatHouseDetailDate(h.placementDate) : null,
-                              h.catchDate
-                                ? [
-                                    formatHouseDetailDate(h.catchDate),
-                                    h.catchTime ? compactCatchTimeLabel(h.catchTime) : null,
-                                  ]
-                                    .filter(Boolean)
-                                    .join(" ")
-                                : null,
-                            ]
-                              .filter(Boolean)
-                              .join("\n") || "—"
-                          }
-                        />
+                        <View style={{ width: "33.333%", paddingRight: 8, marginBottom: 10 }}>
+                          <Text style={{ fontSize: 13, color: colors.muted }}>Placed/Catch</Text>
+                          {h.placementDate ? (
+                            <Text
+                              style={{
+                                fontSize: 13,
+                                fontWeight: "700",
+                                color: colors.text,
+                                marginTop: 2,
+                                lineHeight: 18,
+                              }}
+                            >
+                              {formatHouseDetailDate(h.placementDate)}
+                            </Text>
+                          ) : (
+                            <Text
+                              style={{
+                                fontSize: 13,
+                                fontWeight: "700",
+                                color: colors.text,
+                                marginTop: 2,
+                              }}
+                            >
+                              —
+                            </Text>
+                          )}
+                          {h.catchDate ? (
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "baseline",
+                                marginTop: 2,
+                              }}
+                            >
+                              <Text
+                                numberOfLines={1}
+                                style={{
+                                  flexShrink: 1,
+                                  minWidth: 0,
+                                  fontSize: 13,
+                                  fontWeight: "700",
+                                  color: colors.text,
+                                  lineHeight: 18,
+                                }}
+                              >
+                                {formatHouseDetailDate(h.catchDate)}
+                              </Text>
+                              {h.catchTime ? (
+                                <Text
+                                  style={{
+                                    flexShrink: 0,
+                                    marginLeft: 6,
+                                    fontSize: 13,
+                                    fontWeight: "700",
+                                    color: colors.text,
+                                    lineHeight: 18,
+                                  }}
+                                >
+                                  {compactCatchTimeLabel(h.catchTime)}
+                                </Text>
+                              ) : null}
+                            </View>
+                          ) : null}
+                        </View>
                         <Metric
                           columns={3}
                           label="Mortality"
