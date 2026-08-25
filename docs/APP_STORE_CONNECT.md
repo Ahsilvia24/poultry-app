@@ -8,8 +8,8 @@ TestFlight: https://appstoreconnect.apple.com/apps/6794784343/testflight/ios
 | Field | Value |
 |-------|-------|
 | Version | 1.0.9 |
-| Build | **132** (131 plus this session: Propagate checkbox, house catch time under date, LFO keypad, Manual LFO, dashboard catch date/time, one dashboard Import, Export off Tools/More) |
-| Status | Code ready — run Expo **Build iOS only**, then Submit to App Store Connect |
+| Build | **133** (EAS auto-increment from 132; this session’s UI: Propagate, house catch time, LFO keypad/Manual, dashboard catch date/time, one Import, Export off Tools/More) |
+| Status | EAS production iOS build + ASC submit in progress |
 
 ## Paste into App Store listing
 
@@ -43,7 +43,7 @@ Repo asset for the 13" iPad slot (2064×2752 Service Report UI preview):
 Upload that under App Preview and Screenshots → 13" iPad (or replace with a live device capture if you prefer).
 Also fill iPhone screenshots if not already set.
 
-## Device QA after build 132 installs
+## Device QA after build 133 installs
 
 - [ ] Log Temp on house tiles → value shows → Service Report prefills → clears after midnight
 - [ ] Visit tile tap → edit → View/Edit checklist → Save / Share PDF
