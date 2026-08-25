@@ -3,18 +3,9 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { REPORT_TYPES, type ReportTypeKey } from "@/lib/reports/types";
 
-export const REPORT_TYPES = [
-  { key: "mortality", label: "Mortality" },
-  { key: "field-log", label: "Field Log" },
-] as const;
-
-export type ReportTypeKey = (typeof REPORT_TYPES)[number]["key"];
-
-export function resolveReportType(raw: string | undefined): ReportTypeKey {
-  if (raw === "field-log" || raw === "placement") return "field-log";
-  return "mortality";
-}
+export type { ReportTypeKey };
 
 export function ReportsTypeTabs({ active }: { active: ReportTypeKey }) {
   const searchParams = useSearchParams();

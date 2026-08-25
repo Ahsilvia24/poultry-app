@@ -14,13 +14,14 @@ import {
   type HouseBarPoint,
   type HouseByDateMatrix,
 } from "@/components/MortalityCharts";
-import { ReportsTypeTabs, resolveReportType } from "@/components/ReportsTypeTabs";
+import { ReportsTypeTabs } from "@/components/ReportsTypeTabs";
 import { FieldLogReport } from "@/components/FieldLogReport";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 import {
   buildFieldLogWeeks,
   defaultFieldLogRange,
 } from "@/lib/reports/field-log";
+import { resolveReportType } from "@/lib/reports/types";
 
 type SearchParams = Promise<{
   farmId?: string;
