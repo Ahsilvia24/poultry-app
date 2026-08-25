@@ -289,7 +289,7 @@ export async function applyPlacementImportAction(input: {
             where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
             orderBy: { placementDate: "asc" },
           });
-          reclaimId = anyActive?.id;
+          if (anyActive) reclaimId = anyActive.id;
         }
         if (reclaimId) {
           targetFlock = await prisma.flock.update({
