@@ -624,7 +624,7 @@ export default function DashboardScreen() {
                             />
                             <Metric
                               columns={3}
-                              label="Projected Mortality"
+                              label="Proj. Mortality"
                               value={
                                 farm.projectedMortality != null && farm.birdsPlaced > 0
                                   ? `${formatNumber(farm.projectedMortality)} (${formatPct(

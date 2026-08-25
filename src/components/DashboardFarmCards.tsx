@@ -155,7 +155,7 @@ function DashboardFarmCard({
                     </p>
                   </div>
                   <div>
-                    <p className="text-stone-500">Projected Mortality</p>
+                    <p className="text-stone-500">Proj. Mortality</p>
                     <p className="font-semibold">
                       {farm.projectedMortality != null
                         ? `${formatNumber(farm.projectedMortality)} (${formatPct(
