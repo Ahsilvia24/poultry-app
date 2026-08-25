@@ -9,7 +9,7 @@ import {
 } from "@/app/actions/lfo";
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
 import { Card, PageHeader } from "@/components/ui";
-import { getFlockHouseHeadCounts } from "@/lib/lfo/head-counts";
+import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 
 type Params = Promise<{ id: string }>;
 
@@ -28,7 +28,6 @@ export default async function EditLfoPage({ params }: { params: Params }) {
     where: { id, farm: { userId: session.user.id, deletedAt: null } },
     include: {
       farm: { select: { id: true, farmName: true } },
-      flock: { select: { id: true, flockNumber: true } },
       houseInventories: true,
     },
   });
@@ -40,7 +39,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
       where: { farmId: lfo.farm.id, deletedAt: null },
       orderBy: { houseNumber: "asc" },
     }),
-    getFlockHouseHeadCounts(lfo.flock.id),
+    getFarmHouseHeadCounts(lfo.farm.id),
   ]);
 
   const invByHouse = new Map(
@@ -83,7 +82,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
       </Link>
       <PageHeader
         title={lfo.farm.farmName}
-        subtitle={`Flock ${lfo.flock.flockNumber} — edit last feed order`}
+        subtitle="Edit last feed order"
       />
 
       <Card>

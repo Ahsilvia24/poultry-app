@@ -147,6 +147,7 @@ async function main() {
   await prisma.flockPerformance.deleteMany();
   await prisma.feedDelivery.deleteMany();
   await prisma.followUpCompletion.deleteMany();
+  await prisma.lastFeedOrder.deleteMany();
   await prisma.houseFlock.deleteMany();
   await prisma.farmIssue.deleteMany();
   await prisma.farmVisit.deleteMany();
@@ -370,7 +371,38 @@ async function main() {
     }
   }
 
-  console.log(`Seed complete — ${demos.length} demo farms relative to ${format(today, "yyyy-MM-dd")}.`);
+  // Multi-flock farm: 3 concurrent placements (houses 1–2, 3–4, 5–6).
+  // LFO / mortality must pull remaining birds from every house, not just flock 1.
+  const triplePlaceHouses = 6;
+  const tripleFarm = await prisma.farm.create({
+    data: {
+      userId: user.id,
+      farmName: "Triple Place Demo",
+      growerName: "Alex Silvia",
+      phoneNumber: "410-555-0199",
+      numberOfHouses: triplePlaceHouses,
+      notes: "Demo farm with 3 active flocks / place / catch dates",
+    },
+  });
+  const tripleHouses = await createHouses(tripleFarm.id, triplePlaceHouses, 2020);
+  const tripleFlocks = [
+    { flockNumber: "26-01", ageDays: 28, houseIndexes: [0, 1] },
+    { flockNumber: "26-02", ageDays: 14, houseIndexes: [2, 3] },
+    { flockNumber: "26-03", ageDays: 3, houseIndexes: [4, 5] },
+  ];
+  for (const spec of tripleFlocks) {
+    const placementDate = subDays(today, spec.ageDays);
+    await createActiveFlock({
+      userId: user.id,
+      farmId: tripleFarm.id,
+      houseIds: spec.houseIndexes.map((i) => tripleHouses[i]!.id),
+      flockNumber: spec.flockNumber,
+      placementDate,
+      projectedCatchDate: addDays(placementDate, 52),
+    });
+  }
+
+  console.log(`Seed complete — ${demos.length + 1} demo farms relative to ${format(today, "yyyy-MM-dd")}.`);
   console.log("Re-run npm run db:seed after midnight so Today's schedule stays populated.");
   console.log("Login: tech@poultry.local / password123");
   for (const d of demos) {
@@ -378,6 +410,7 @@ async function main() {
       `- ${d.farmName}: place ${format(d.placementDate, "EEE MMM d")} → catch ${format(d.projectedCatchDate, "EEE MMM d")} (${d.note})`,
     );
   }
+  console.log("- Triple Place Demo: 6 houses / 3 active flocks (26-01 H1–2, 26-02 H3–4, 26-03 H5–6)");
 }
 
 main()

@@ -314,6 +314,7 @@ export default function EditLfoScreen() {
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         houses: houses.map((h) => ({
           id: h.id,
+          houseId: h.houseId,
           binAPounds: Number(h.binAPounds) || 0,
           binBPounds: Number(h.binBPounds) || 0,
           feedUpAt: joinFeedUp(h.feedUpDate, h.feedUpTime),

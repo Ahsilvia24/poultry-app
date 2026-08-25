@@ -9,7 +9,7 @@ import {
   calculateLastFeedOrder,
   formatHouseLfoSummary,
 } from "@/lib/lfo/calculate";
-import { getFlockHouseHeadCounts } from "@/lib/lfo/head-counts";
+import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 
 /** Date-only → "7-26-2026" (no leading zeros). */
 function formatLfoDate(d: Date) {
@@ -44,15 +44,15 @@ export default async function LfoPage() {
     }),
   ]);
 
-  const headCountByFlock = new Map<string, Map<string, number>>();
+  const headCountByFarm = new Map<string, Map<string, number>>();
   await Promise.all(
-    [...new Set(savedLfos.map((l) => l.flockId))].map(async (flockId) => {
-      headCountByFlock.set(flockId, await getFlockHouseHeadCounts(flockId));
+    [...new Set(savedLfos.map((l) => l.farmId))].map(async (farmId) => {
+      headCountByFarm.set(farmId, await getFarmHouseHeadCounts(farmId));
     }),
   );
 
   const savedWithSummary = savedLfos.map((lfo) => {
-    const heads = headCountByFlock.get(lfo.flockId) ?? new Map();
+    const heads = headCountByFarm.get(lfo.farmId) ?? new Map();
     const orderDateKey = lfo.orderDate.toISOString().slice(0, 10);
     const calc = calculateLastFeedOrder({
       orderDate: orderDateKey,

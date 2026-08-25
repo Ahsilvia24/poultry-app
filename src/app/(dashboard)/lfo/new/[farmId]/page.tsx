@@ -7,7 +7,7 @@ import { createLastFeedOrderAction } from "@/app/actions/lfo";
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
 import { Card, PageHeader } from "@/components/ui";
 import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
-import { getFlockHouseHeadCounts } from "@/lib/lfo/head-counts";
+import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 
 type Params = Promise<{ farmId: string }>;
 
@@ -27,7 +27,6 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
       flocks: {
         where: { flockStatus: "ACTIVE", deletedAt: null },
         orderBy: { placementDate: "desc" },
-        take: 1,
         select: { id: true, flockNumber: true },
       },
     },
@@ -38,8 +37,7 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
     redirect("/lfo/new");
   }
 
-  const flock = farm.flocks[0]!;
-  const headCounts = await getFlockHouseHeadCounts(flock.id);
+  const headCounts = await getFarmHouseHeadCounts(farm.id);
 
   async function submit(formData: FormData) {
     "use server";
