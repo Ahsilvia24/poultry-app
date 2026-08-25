@@ -51,3 +51,9 @@ Also fill iPhone screenshots if not already set.
 - [ ] Compact litter/ammonia and Heat/Cool grids
 - [ ] P.H. labels have no “(optional)”
 - [ ] Service Report page 2 mortality / house numbers look correct
+- [ ] Dashboard has one Import card; Tools and More have no Export data
+- [ ] Upcoming catches: date without year, catch time immediately to the right
+- [ ] Expanded house tile: catch time under catch date
+- [ ] Propagate checkbox is left of the label
+- [ ] LFO Manual tab: type bird count, save, newest LFO on top
+- [ ] LFO Daily water / Head count opens integer keypad (no decimal)
