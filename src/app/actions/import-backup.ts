@@ -309,6 +309,7 @@ export async function importMobileBackupAction(
               flockId,
               houseId,
               placedBirdCount: int(row.placed_bird_count, 0),
+              catchTime: str(row.catch_time),
             },
           });
           houseFlockIds.set(oldId, id);

@@ -73,6 +73,7 @@ export function migrateDb() {
       placed_bird_count INTEGER NOT NULL,
       placement_date TEXT,
       catch_date TEXT,
+      catch_time TEXT,
       FOREIGN KEY (flock_id) REFERENCES flocks(id),
       FOREIGN KEY (house_id) REFERENCES houses(id)
     );
@@ -296,6 +297,9 @@ export function migrateDb() {
   }
   if (!hfCols.some((c) => c.name === "catch_date")) {
     database.execSync("ALTER TABLE house_flocks ADD COLUMN catch_date TEXT");
+  }
+  if (!hfCols.some((c) => c.name === "catch_time")) {
+    database.execSync("ALTER TABLE house_flocks ADD COLUMN catch_time TEXT");
   }
 
   const lfoCols = database.getAllSync<{ name: string }>("PRAGMA table_info(last_feed_orders)");

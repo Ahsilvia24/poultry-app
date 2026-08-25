@@ -71,10 +71,6 @@ export function AddHouseForm({ farmId }: { farmId: string }) {
               <Label htmlFor="totalFanCFM">Total fan CFM</Label>
               <Input id="totalFanCFM" name="totalFanCFM" type="number" min={0} step="any" />
             </div>
-            <div>
-              <Label htmlFor="numberOfFans">Number of Tunnel Fans</Label>
-              <Input id="numberOfFans" name="numberOfFans" type="number" min={0} />
-            </div>
           </div>
           <div>
             <Label htmlFor="houseNotes">Notes</Label>

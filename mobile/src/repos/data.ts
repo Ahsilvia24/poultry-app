@@ -13,8 +13,11 @@ import {
 import { recommendedMinVent } from "../lib/tools";
 import {
   calculateLastFeedOrder,
+  feedUpFromCatch,
   formatHouseLfoSummary,
+  formatLocalDateTime,
 } from "../lib/lfo/calculate";
+import { normalizeHalfHourTime } from "../lib/time-slots";
 import {
   buildFlockVisitSchedule,
   completionKey,
@@ -680,8 +683,9 @@ export function getFarmDetail(farmId: string) {
       placed_bird_count: number;
       placement_date: string | null;
       catch_date: string | null;
+      catch_time: string | null;
     }>(
-      `SELECT hf.id, hf.flock_id, hf.placed_bird_count, hf.placement_date, hf.catch_date
+      `SELECT hf.id, hf.flock_id, hf.placed_bird_count, hf.placement_date, hf.catch_date, hf.catch_time
        FROM house_flocks hf
        JOIN flocks f ON f.id = hf.flock_id
        WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
@@ -787,6 +791,7 @@ export function getFarmDetail(farmId: string) {
       placedBirdCount: hf?.placed_bird_count ?? null,
       placementDate: housePlacementDate,
       catchDate: houseCatchDate,
+      catchTime: hf?.catch_time?.trim() || null,
       ageDays: houseAgeDays,
       todayMortality: summary.today,
       sevenDayMortality: summary.sevenDay,
@@ -1501,10 +1506,26 @@ export function createLfo(farmId: string, orderDate: string, notes?: string) {
     [farmId],
   );
   for (const h of houses) {
+    const hf = db.getFirstSync<{
+      catch_date: string | null;
+      catch_time: string | null;
+      flock_catch: string | null;
+    }>(
+      `SELECT hf.catch_date, hf.catch_time, f.projected_catch_date as flock_catch
+       FROM house_flocks hf
+       JOIN flocks f ON f.id = hf.flock_id
+       WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
+       ORDER BY f.placement_date DESC, f.id DESC
+       LIMIT 1`,
+      [h.id, farmId],
+    );
+    const catchTime = hf?.catch_time?.trim() || null;
+    const catchDate = hf?.catch_date?.trim() || hf?.flock_catch?.trim() || null;
+    const feedUp = catchTime && catchDate ? feedUpFromCatch(catchDate, catchTime) : null;
     db.runSync(
-      `INSERT INTO lfo_house_inventory (id, lfo_id, house_id, bin_a_pounds, bin_b_pounds, consumption_rate)
-       VALUES (?, ?, ?, 0, 0, 0.45)`,
-      [newId("lfoi"), id, h.id],
+      `INSERT INTO lfo_house_inventory (id, lfo_id, house_id, bin_a_pounds, bin_b_pounds, feed_up_at, consumption_rate)
+       VALUES (?, ?, ?, 0, 0, ?, 0.45)`,
+      [newId("lfoi"), id, h.id, feedUp ? formatLocalDateTime(feedUp) : null],
     );
   }
   return { id };
@@ -2733,6 +2754,7 @@ function applyHouseFlockFields(
     placedBirdCount?: number | null;
     placementDate?: string | null;
     catchDate?: string | null;
+    catchTime?: string | null;
     flockNumber?: string | null;
   },
 ) {
@@ -2744,10 +2766,11 @@ function applyHouseFlockFields(
     placed_bird_count: number;
     placement_date: string | null;
     catch_date: string | null;
+    catch_time: string | null;
     flock_placement: string;
     flock_catch: string | null;
   }>(
-    `SELECT hf.id, hf.flock_id, hf.placed_bird_count, hf.placement_date, hf.catch_date,
+    `SELECT hf.id, hf.flock_id, hf.placed_bird_count, hf.placement_date, hf.catch_date, hf.catch_time,
             f.placement_date as flock_placement, f.projected_catch_date as flock_catch
      FROM house_flocks hf
      JOIN flocks f ON f.id = hf.flock_id
@@ -2768,6 +2791,7 @@ function applyHouseFlockFields(
       input.placedBirdCount != null ||
       input.placementDate ||
       input.catchDate ||
+      input.catchTime ||
       input.flockNumber
     ) {
       throw new Error("Add an active flock before setting birds placed / dates");
@@ -2809,6 +2833,11 @@ function applyHouseFlockFields(
     nextCatch = prevCatch ?? defaultCatch;
   }
 
+  const nextCatchTime =
+    input.catchTime === undefined
+      ? (currentHf?.catch_time ?? null)
+      : normalizeHalfHourTime(input.catchTime);
+
   const flock = resolveActiveFlockForPlacement(
     farmId,
     nextPlacement,
@@ -2824,9 +2853,9 @@ function applyHouseFlockFields(
     const prevFlockId = currentHf.flock_id;
     db.runSync(
       `UPDATE house_flocks
-       SET flock_id = ?, placed_bird_count = ?, placement_date = ?, catch_date = ?
+       SET flock_id = ?, placed_bird_count = ?, placement_date = ?, catch_date = ?, catch_time = ?
        WHERE id = ?`,
-      [flock.id, nextPlaced ?? currentHf.placed_bird_count, nextPlacement, nextCatch, currentHf.id],
+      [flock.id, nextPlaced ?? currentHf.placed_bird_count, nextPlacement, nextCatch, nextCatchTime, currentHf.id],
     );
     realignMortalityForHouseFlock(currentHf.id, prevPlacement, nextPlacement);
     if (prevFlockId !== flock.id) {
@@ -2835,9 +2864,9 @@ function applyHouseFlockFields(
   } else if (nextPlaced != null) {
     const hfId = newId("hf");
     db.runSync(
-      `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [hfId, flock.id, houseId, nextPlaced, nextPlacement, nextCatch],
+      `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date, catch_time)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [hfId, flock.id, houseId, nextPlaced, nextPlacement, nextCatch, nextCatchTime],
     );
   } else {
     return;
@@ -2905,15 +2934,23 @@ export function updateHouse(
     placementDate?: string | null;
     /** Per-house catch date (yyyy-MM-dd) for staggered catch. */
     catchDate?: string | null;
+    /** Catch clock time `HH:mm` (:00 or :30). Feed up is 5 hours before. */
+    catchTime?: string | null;
     /** Edit flock ID for the flock this house ends up on. */
     flockNumber?: string | null;
+    applyBirdsToRemainingHouses?: boolean;
+    applyPlacementToRemainingHouses?: boolean;
+    applyCatchDateToRemainingHouses?: boolean;
+    applyCatchTimeToRemainingHouses?: boolean;
+    applyFlockIdToRemainingHouses?: boolean;
     /**
+     * @deprecated Prefer the per-field apply* remaining flags.
      * Also apply birds placed / placement / catch / flock ID to houses with a
      * higher house number (does not change earlier houses).
      */
     applyToRemainingHouses?: boolean;
     /**
-     * Also apply square footage / total fan CFM / number of fans to houses with
+     * Also apply square footage / total fan CFM to houses with
      * a higher house number (does not change earlier houses).
      */
     applySpecsToRemainingHouses?: boolean;
@@ -2959,9 +2996,9 @@ export function updateHouse(
   if (input.applySpecsToRemainingHouses) {
     db.runSync(
       `UPDATE houses
-       SET square_footage = ?, total_fan_cfm = ?, number_of_fans = ?
+       SET square_footage = ?, total_fan_cfm = ?
        WHERE farm_id = ? AND deleted_at IS NULL AND house_number > ?`,
-      [squareFootage, input.totalFanCFM, input.numberOfFans, farmId, houseNumber],
+      [squareFootage, input.totalFanCFM, farmId, houseNumber],
     );
   }
 
@@ -2969,6 +3006,7 @@ export function updateHouse(
     input.placedBirdCount !== undefined ||
     input.placementDate !== undefined ||
     input.catchDate !== undefined ||
+    input.catchTime !== undefined ||
     input.flockNumber !== undefined;
 
   if (touchesFlockPlacement) {
@@ -2976,10 +3014,18 @@ export function updateHouse(
       placedBirdCount: input.placedBirdCount,
       placementDate: input.placementDate,
       catchDate: input.catchDate,
+      catchTime: input.catchTime,
       flockNumber: input.flockNumber,
     });
 
-    if (input.applyToRemainingHouses) {
+    const applyAllLegacy = Boolean(input.applyToRemainingHouses);
+    const applyBirds = input.applyBirdsToRemainingHouses ?? applyAllLegacy;
+    const applyPlacement = input.applyPlacementToRemainingHouses ?? applyAllLegacy;
+    const applyCatchDate = input.applyCatchDateToRemainingHouses ?? applyAllLegacy;
+    const applyCatchTime = input.applyCatchTimeToRemainingHouses ?? applyAllLegacy;
+    const applyFlockId = input.applyFlockIdToRemainingHouses ?? applyAllLegacy;
+
+    if (applyBirds || applyPlacement || applyCatchDate || applyCatchTime || applyFlockId) {
       const remaining = db.getAllSync<{ id: string }>(
         `SELECT id FROM houses
          WHERE farm_id = ? AND deleted_at IS NULL AND house_number > ?
@@ -2988,34 +3034,12 @@ export function updateHouse(
       );
       for (const h of remaining) {
         applyHouseFlockFields(farmId, h.id, {
-          placedBirdCount: input.placedBirdCount,
-          placementDate: input.placementDate,
-          catchDate: input.catchDate,
-          // Flock ID only applied once via resolve — same place date shares flock.
-          flockNumber: undefined,
+          placedBirdCount: applyBirds ? input.placedBirdCount : undefined,
+          placementDate: applyPlacement ? input.placementDate : undefined,
+          catchDate: applyCatchDate ? input.catchDate : undefined,
+          catchTime: applyCatchTime ? input.catchTime : undefined,
+          flockNumber: applyFlockId ? input.flockNumber : undefined,
         });
-      }
-      // If user set a flock number, ensure the shared place-date flock uses it.
-      if (input.flockNumber?.trim() && input.placementDate?.trim()) {
-        const flock = db.getFirstSync<{ id: string }>(
-          `SELECT id FROM flocks
-           WHERE farm_id = ? AND flock_status = 'ACTIVE' AND placement_date = ?
-           ORDER BY flock_number ASC LIMIT 1`,
-          [farmId, input.placementDate.trim()],
-        );
-        if (flock) {
-          const nextNumber = input.flockNumber.trim();
-          const clash = db.getFirstSync<{ id: string }>(
-            `SELECT id FROM flocks WHERE farm_id = ? AND flock_number = ? AND id != ?`,
-            [farmId, nextNumber, flock.id],
-          );
-          if (!clash) {
-            db.runSync(`UPDATE flocks SET flock_number = ? WHERE id = ?`, [
-              nextNumber,
-              flock.id,
-            ]);
-          }
-        }
       }
     }
   }

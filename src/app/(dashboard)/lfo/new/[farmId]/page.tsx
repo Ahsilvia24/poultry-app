@@ -6,7 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { createLastFeedOrderAction } from "@/app/actions/lfo";
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
 import { Card, PageHeader } from "@/components/ui";
-import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
+import {
+  DEFAULT_LFO_CONSUMPTION_RATE,
+  feedUpFromCatch,
+  formatLocalDateTime,
+} from "@/lib/lfo/calculate";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 
 type Params = Promise<{ farmId: string }>;
@@ -27,7 +31,11 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
       flocks: {
         where: { flockStatus: "ACTIVE", deletedAt: null },
         orderBy: { placementDate: "desc" },
-        select: { id: true, flockNumber: true },
+        include: {
+          houseFlocks: {
+            select: { houseId: true, catchDate: true, catchTime: true },
+          },
+        },
       },
     },
   });
@@ -38,6 +46,30 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
   }
 
   const headCounts = await getFarmHouseHeadCounts(farm.id);
+  const catchByHouse = new Map<
+    string,
+    { catchDate: Date | null; catchTime: string | null; flockCatch: Date | null }
+  >();
+  for (const flock of farm.flocks) {
+    const flockCatch = flock.actualCatchDate ?? flock.projectedCatchDate ?? null;
+    for (const hf of flock.houseFlocks) {
+      if (catchByHouse.has(hf.houseId)) continue;
+      catchByHouse.set(hf.houseId, {
+        catchDate: hf.catchDate,
+        catchTime: hf.catchTime,
+        flockCatch,
+      });
+    }
+  }
+
+  function feedUpPrefill(houseId: string): string | null {
+    const info = catchByHouse.get(houseId);
+    if (!info?.catchTime) return null;
+    const catchDate = info.catchDate ?? info.flockCatch;
+    if (!catchDate) return null;
+    const feedUp = feedUpFromCatch(format(catchDate, "yyyy-MM-dd"), info.catchTime);
+    return feedUp ? formatLocalDateTime(feedUp) : null;
+  }
 
   async function submit(formData: FormData) {
     "use server";
@@ -71,7 +103,7 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
             houseNumber: h.houseNumber,
             binAPounds: 0,
             binBPounds: 0,
-            feedUpAt: null,
+            feedUpAt: feedUpPrefill(h.id),
             headCount: headCounts.get(h.id) ?? 0,
           }))}
         />

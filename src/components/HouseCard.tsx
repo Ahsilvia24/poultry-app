@@ -5,6 +5,7 @@ import { HouseCardActions } from "@/components/HouseCardActions";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Card } from "@/components/ui";
+import { halfHourTimeLabel } from "@/lib/time-slots";
 
 type HouseData = {
   id: string;
@@ -47,6 +48,7 @@ export function HouseCard({
   houseFlockId = null,
   placementDateKey = null,
   catchDateKey = null,
+  catchTime = null,
   birdAgeDays = null,
 }: {
   farmId: string;
@@ -62,6 +64,7 @@ export function HouseCard({
   houseFlockId?: string | null;
   placementDateKey?: string | null;
   catchDateKey?: string | null;
+  catchTime?: string | null;
   birdAgeDays?: number | null;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -249,6 +252,7 @@ export function HouseCard({
                   {catchDateKey ? (
                     <p className="font-semibold leading-snug">
                       {formatHouseDetailDate(catchDateKey)}
+                      {catchTime ? ` · ${halfHourTimeLabel(catchTime)}` : ""}
                     </p>
                   ) : null}
                 </div>
@@ -277,6 +281,7 @@ export function HouseCard({
           placementDateKey,
           catchDateKey,
           flockNumber: flockLabel,
+          catchTime,
         }}
       />
     </div>

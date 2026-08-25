@@ -9,6 +9,7 @@ import {
   calculateLastFeedOrder,
   formatHouseLfoSummary,
 } from "@/lib/lfo/calculate";
+import { HALF_HOUR_TIME_OPTIONS } from "@/lib/time-slots";
 
 export type LfoHouseRow = {
   houseId: string;
@@ -18,18 +19,6 @@ export type LfoHouseRow = {
   feedUpAt: string | null;
   headCount: number;
 };
-
-/** Half-hour slots: top (:00) and bottom (:30) of each hour. */
-const FEED_UP_TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const minutes = i * 30;
-  const hour24 = Math.floor(minutes / 60);
-  const minute = minutes % 60;
-  const value = `${String(hour24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-  const ampm = hour24 < 12 ? "AM" : "PM";
-  const label = `${hour12}:${String(minute).padStart(2, "0")} ${ampm}`;
-  return { value, label };
-});
 
 function formatLbs(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -286,7 +275,7 @@ export function LfoInventoryForm({
                       className="mt-1"
                     >
                       <option value="">Select time</option>
-                      {FEED_UP_TIME_OPTIONS.map((opt) => (
+                      {HALF_HOUR_TIME_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
                           {opt.label}
                         </option>

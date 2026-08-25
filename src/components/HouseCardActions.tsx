@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { deleteHouseAction, updateHouseAction } from "@/app/actions/farms";
-import { Button, Input, Label } from "@/components/ui";
+import { Button, Input, Label, Select } from "@/components/ui";
+import { feedUpFromCatch } from "@/lib/lfo/calculate";
+import { HALF_HOUR_TIME_OPTIONS, halfHourTimeLabel } from "@/lib/time-slots";
 
 export type HouseEditValues = {
   id: string;
@@ -15,6 +17,7 @@ export type HouseEditValues = {
   placedBirdCount: number | null;
   placementDateKey?: string | null;
   catchDateKey?: string | null;
+  catchTime?: string | null;
   flockNumber?: string | null;
 };
 
@@ -27,6 +30,40 @@ function addDaysKey(dateKey: string, days: number) {
   const mm = String(dt.getMonth() + 1).padStart(2, "0");
   const dd = String(dt.getDate()).padStart(2, "0");
   return `${yy}-${mm}-${dd}`;
+}
+
+function feedUpTimeHint(catchTime: string): string | null {
+  const feedUp = feedUpFromCatch("2000-01-02", catchTime);
+  if (!feedUp) return null;
+  const hh = String(feedUp.getHours()).padStart(2, "0");
+  const mm = String(feedUp.getMinutes()).padStart(2, "0");
+  return halfHourTimeLabel(`${hh}:${mm}`);
+}
+
+function RemainingCheck({
+  name,
+  label,
+  checked,
+  onChange,
+}: {
+  name: string;
+  label: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2">
+      <input
+        type="checkbox"
+        name={name}
+        value="true"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 rounded border-stone-300 text-emerald-700 focus:ring-emerald-700"
+      />
+      <span className="text-sm font-medium text-stone-800">{label}</span>
+    </label>
+  );
 }
 
 export function HouseCardActions({
@@ -47,19 +84,30 @@ export function HouseCardActions({
   const [pending, startTransition] = useTransition();
   const [placementDate, setPlacementDate] = useState(house.placementDateKey ?? "");
   const [catchDate, setCatchDate] = useState(house.catchDateKey ?? "");
-  const [applyToRemaining, setApplyToRemaining] = useState(false);
+  const [catchTime, setCatchTime] = useState(house.catchTime ?? "");
+  const [applyBirdsToRemaining, setApplyBirdsToRemaining] = useState(false);
+  const [applyPlacementToRemaining, setApplyPlacementToRemaining] = useState(false);
+  const [applyCatchDateToRemaining, setApplyCatchDateToRemaining] = useState(false);
+  const [applyCatchTimeToRemaining, setApplyCatchTimeToRemaining] = useState(false);
+  const [applyFlockIdToRemaining, setApplyFlockIdToRemaining] = useState(false);
   const [applySpecsToRemaining, setApplySpecsToRemaining] = useState(false);
+  const catchFeedUpHint = catchTime ? feedUpTimeHint(catchTime) : null;
 
   useEffect(() => {
     if (mode === "edit") {
       setPlacementDate(house.placementDateKey ?? "");
       setCatchDate(house.catchDateKey ?? "");
-      setApplyToRemaining(false);
+      setCatchTime(house.catchTime ?? "");
+      setApplyBirdsToRemaining(false);
+      setApplyPlacementToRemaining(false);
+      setApplyCatchDateToRemaining(false);
+      setApplyCatchTimeToRemaining(false);
+      setApplyFlockIdToRemaining(false);
       setApplySpecsToRemaining(false);
       setError(null);
     }
     if (mode === "delete") setError(null);
-  }, [mode, house.placementDateKey, house.catchDateKey]);
+  }, [mode, house.placementDateKey, house.catchDateKey, house.catchTime]);
 
   function close() {
     if (pending) return;
@@ -188,6 +236,29 @@ export function HouseCardActions({
                     </div>
                   </div>
                   <div>
+                    <Label htmlFor={`edit-catchTime-${house.id}`}>Catch time</Label>
+                    <Select
+                      id={`edit-catchTime-${house.id}`}
+                      name="catchTime"
+                      value={catchTime}
+                      onChange={(e) => setCatchTime(e.target.value)}
+                    >
+                      <option value="">Select time</option>
+                      {HALF_HOUR_TIME_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </Select>
+                    <p className="mt-1 text-xs text-stone-500">
+                      Feed up is 5 hours before catch
+                      {catchFeedUpHint
+                        ? ` (${catchFeedUpHint} feed up)`
+                        : " (11:00 PM catch → 6:00 PM feed up → 1:00 PM feed off)"}
+                      .
+                    </p>
+                  </div>
+                  <div>
                     <Label htmlFor={`edit-flockNumber-${house.id}`}>Flock ID</Label>
                     <Input
                       id={`edit-flockNumber-${house.id}`}
@@ -197,25 +268,47 @@ export function HouseCardActions({
                       autoCapitalize="characters"
                     />
                   </div>
-                  <label className="flex cursor-pointer items-start gap-2.5">
-                    <input
-                      type="checkbox"
-                      name="applyToRemaining"
-                      value="true"
-                      checked={applyToRemaining}
-                      onChange={(e) => setApplyToRemaining(e.target.checked)}
-                      className="mt-1 h-4 w-4 rounded border-stone-300 text-emerald-700 focus:ring-emerald-700"
-                    />
-                    <span>
-                      <span className="block text-sm font-semibold text-stone-800">
-                        Apply to all remaining houses
-                      </span>
-                      <span className="mt-0.5 block text-xs text-stone-500">
-                        Birds placed, placement date, catch date, and flock for houses after this
-                        one. Earlier houses stay unchanged.
-                      </span>
-                    </span>
-                  </label>
+                  <fieldset className="space-y-2 rounded-lg border border-stone-200 px-3 py-2.5">
+                    <legend className="px-1 text-sm font-semibold text-stone-800">
+                      Apply to remaining houses
+                    </legend>
+                    <p className="text-xs text-stone-500">
+                      Copies only the checked fields to houses after this one. Earlier houses stay
+                      unchanged.
+                    </p>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                      <RemainingCheck
+                        name="applyBirdsToRemaining"
+                        label="Birds placed"
+                        checked={applyBirdsToRemaining}
+                        onChange={setApplyBirdsToRemaining}
+                      />
+                      <RemainingCheck
+                        name="applyPlacementToRemaining"
+                        label="Placement date"
+                        checked={applyPlacementToRemaining}
+                        onChange={setApplyPlacementToRemaining}
+                      />
+                      <RemainingCheck
+                        name="applyCatchDateToRemaining"
+                        label="Catch date"
+                        checked={applyCatchDateToRemaining}
+                        onChange={setApplyCatchDateToRemaining}
+                      />
+                      <RemainingCheck
+                        name="applyCatchTimeToRemaining"
+                        label="Catch time"
+                        checked={applyCatchTimeToRemaining}
+                        onChange={setApplyCatchTimeToRemaining}
+                      />
+                      <RemainingCheck
+                        name="applyFlockIdToRemaining"
+                        label="Flock ID"
+                        checked={applyFlockIdToRemaining}
+                        onChange={setApplyFlockIdToRemaining}
+                      />
+                    </div>
+                  </fieldset>
                 </>
               ) : null}
               <div className="grid grid-cols-2 gap-3">
@@ -243,18 +336,6 @@ export function HouseCardActions({
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor={`edit-numberOfFans-${house.id}`}>Number of Tunnel Fans</Label>
-                  <Input
-                    id={`edit-numberOfFans-${house.id}`}
-                    name="numberOfFans"
-                    type="number"
-                    min={0}
-                    defaultValue={house.numberOfFans ?? ""}
-                  />
-                </div>
-              </div>
               <label className="flex cursor-pointer items-start gap-2.5">
                 <input
                   type="checkbox"
@@ -269,8 +350,8 @@ export function HouseCardActions({
                     Apply to all remaining houses
                   </span>
                   <span className="mt-0.5 block text-xs text-stone-500">
-                    Square footage, fan CFM, and number of tunnel fans for houses after this one.
-                    Earlier houses stay unchanged.
+                    Square footage and fan CFM for houses after this one. Earlier houses stay
+                    unchanged.
                   </span>
                 </span>
               </label>

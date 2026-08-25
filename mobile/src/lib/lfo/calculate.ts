@@ -1,5 +1,7 @@
 export const DEFAULT_LFO_CONSUMPTION_RATE = 0.45;
 export const FEED_OFF_HOURS_BEFORE_UP = 5;
+/** Catch is 5 hours after feed up (10 hours after feed off). */
+export const FEED_UP_HOURS_BEFORE_CATCH = 5;
 
 export type LfoHouseInventoryInput = {
   houseId: string;
@@ -56,6 +58,34 @@ function toDate(value: string | Date | null | undefined): Date | null {
 
 export function feedOffFromFeedUp(feedUpAt: Date): Date {
   return new Date(feedUpAt.getTime() - FEED_OFF_HOURS_BEFORE_UP * 60 * 60 * 1000);
+}
+
+/** Local `yyyy-MM-dd` + `HH:mm` → Date. */
+export function combineDateAndTime(dateKey: string, timeHHmm: string): Date | null {
+  const date = dateKey.trim();
+  const time = timeHHmm.trim();
+  if (!date || !time) return null;
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
+  if (!y || !m || !d || !Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  const dt = new Date(y, m - 1, d, hh, mm, 0, 0);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+export function formatLocalDateTime(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${day}T${hh}:${mm}`;
+}
+
+/** Feed up is 5 hours before catch (e.g. catch 11:00 PM → feed up 6:00 PM). */
+export function feedUpFromCatch(catchDateKey: string, catchTimeHHmm: string): Date | null {
+  const catchAt = combineDateAndTime(catchDateKey, catchTimeHHmm);
+  if (!catchAt) return null;
+  return new Date(catchAt.getTime() - FEED_UP_HOURS_BEFORE_CATCH * 60 * 60 * 1000);
 }
 
 export function hoursBetween(from: Date, to: Date): number {

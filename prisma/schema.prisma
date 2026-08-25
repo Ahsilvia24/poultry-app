@@ -268,6 +268,8 @@ model HouseFlock {
   placementDate           DateTime? @db.Date
   /** Optional per-house catch; falls back to flock projected/actual catch when null. */
   catchDate               DateTime? @db.Date
+  /** Catch clock time (`HH:mm`, :00 or :30). Feed up is 5 hours before this. */
+  catchTime               String?
   processingPlant         String?
   finalBirdCount          Int?
   finalAverageWeight      Float?

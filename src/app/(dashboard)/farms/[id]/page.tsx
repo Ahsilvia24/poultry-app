@@ -139,6 +139,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       status,
       placementDateKey: placementDate ? format(placementDate, "yyyy-MM-dd") : null,
       catchDateKey: catchDate ? format(catchDate, "yyyy-MM-dd") : null,
+      catchTime: hf?.catchTime ?? null,
       birdAgeDays: placementDate ? daysSincePlacement(placementDate, today) : null,
     };
   });
@@ -213,6 +214,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             status,
             placementDateKey,
             catchDateKey,
+            catchTime,
             birdAgeDays,
           }) => (
           <HouseCard
@@ -237,6 +239,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             houseFlockId={hf?.id ?? null}
             placementDateKey={placementDateKey}
             catchDateKey={catchDateKey}
+            catchTime={catchTime}
             birdAgeDays={birdAgeDays}
           />
         ),

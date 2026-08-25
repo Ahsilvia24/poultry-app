@@ -66,7 +66,9 @@ import {
   formatPct,
 } from "../../../../src/components/ui";
 import { DatePickerField } from "../../../../src/components/DatePickerField";
+import { TimeScrollPickerField } from "../../../../src/components/TimeScrollPicker";
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
+import { halfHourTimeLabel } from "../../../../src/lib/time-slots";
 
 /** "2026-07-25" → "07-25-2026" */
 function formatUsDate(dateKey: string) {
@@ -164,14 +166,18 @@ type HouseEditDraft = {
   houseNumber: string;
   squareFootage: string;
   totalFanCFM: string;
-  numberOfFans: string;
   placedBirdCount: string;
   /** Shown as placeholder while the field stays empty for easy retype. */
   placedBirdCountPlaceholder: string;
   placementDate: string;
   catchDate: string;
+  catchTime: string;
   flockNumber: string;
-  applyToRemaining: boolean;
+  applyBirdsToRemaining: boolean;
+  applyPlacementToRemaining: boolean;
+  applyCatchDateToRemaining: boolean;
+  applyCatchTimeToRemaining: boolean;
+  applyFlockIdToRemaining: boolean;
   applySpecsToRemaining: boolean;
 };
 
@@ -179,7 +185,6 @@ type AddHouseDraft = {
   houseNumber: string;
   squareFootage: string;
   totalFanCFM: string;
-  numberOfFans: string;
 };
 
 type FarmEditDraft = {
@@ -219,6 +224,45 @@ function NativeNumInput({
         placeholderTextColor={colors.muted}
       />
     </View>
+  );
+}
+
+function ApplyRemainingCheck({
+  label,
+  checked,
+  onToggle,
+}: {
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onToggle}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        paddingVertical: 4,
+        width: "50%",
+      }}
+    >
+      <View
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 6,
+          borderWidth: 2,
+          borderColor: checked ? colors.accentDark : colors.border,
+          backgroundColor: checked ? colors.accentDark : "#fff",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {checked ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
+      </View>
+      <Text style={{ flex: 1, fontWeight: "700", color: colors.text, fontSize: 13 }}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -594,7 +638,6 @@ export default function FarmDetailScreen() {
       houseNumber: String(nextNum),
       squareFootage: "29700",
       totalFanCFM: "",
-      numberOfFans: "",
     });
   }
 
@@ -612,19 +655,12 @@ export default function FarmDetailScreen() {
       const sq = Number(addingHouse.squareFootage);
       const cfm =
         addingHouse.totalFanCFM.trim() === "" ? null : Number(addingHouse.totalFanCFM);
-      const fans =
-        addingHouse.numberOfFans.trim() === ""
-          ? null
-          : Math.floor(Number(addingHouse.numberOfFans));
       if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
-      if (fans != null && (!Number.isFinite(fans) || fans < 0)) {
-        throw new Error("Number of Tunnel Fans is invalid");
-      }
       createHouse(data.farm.id, {
         houseNumber: Number(addingHouse.houseNumber),
         squareFootage: sq,
         totalFanCFM: cfm,
-        numberOfFans: fans,
+        numberOfFans: null,
       });
       setAddingHouse(null);
       load();
@@ -646,7 +682,6 @@ export default function FarmDetailScreen() {
       houseNumber: String(h.houseNumber),
       squareFootage: String(h.squareFootage ?? ""),
       totalFanCFM: h.totalFanCFM != null ? String(h.totalFanCFM) : "",
-      numberOfFans: h.numberOfFans != null ? String(h.numberOfFans) : "",
       // Leave blank so the tech can type a new count without deleting first.
       // Placeholder shows the current value; empty on save keeps it.
       placedBirdCount: "",
@@ -654,8 +689,13 @@ export default function FarmDetailScreen() {
         h.placedBirdCount != null ? String(h.placedBirdCount) : "Type birds placed",
       placementDate,
       catchDate,
+      catchTime: h.catchTime ?? "",
       flockNumber: h.flockNumber ?? "",
-      applyToRemaining: false,
+      applyBirdsToRemaining: false,
+      applyPlacementToRemaining: false,
+      applyCatchDateToRemaining: false,
+      applyCatchTimeToRemaining: false,
+      applyFlockIdToRemaining: false,
       applySpecsToRemaining: false,
     });
   }
@@ -793,15 +833,12 @@ export default function FarmDetailScreen() {
       const sq = Number(editingHouse.squareFootage);
       const cfm =
         editingHouse.totalFanCFM.trim() === "" ? null : Number(editingHouse.totalFanCFM);
-      const fans =
-        editingHouse.numberOfFans.trim() === ""
-          ? null
-          : Math.floor(Number(editingHouse.numberOfFans));
+      const existing = data?.houses.find((h) => h.id === editingHouse.id);
+      const fans = existing?.numberOfFans ?? null;
       const placedRaw = editingHouse.placedBirdCount.trim();
       const placed =
         placedRaw === "" ? null : Math.floor(Number(placedRaw));
       if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
-      if (fans != null && !Number.isFinite(fans)) throw new Error("Number of Tunnel Fans is invalid");
       if (
         data?.activeFlock &&
         placedRaw !== "" &&
@@ -827,8 +864,13 @@ export default function FarmDetailScreen() {
                   : {}),
               placementDate: editingHouse.placementDate.trim() || null,
               catchDate: editingHouse.catchDate.trim() || null,
+              catchTime: editingHouse.catchTime.trim() || null,
               flockNumber: editingHouse.flockNumber.trim() || null,
-              applyToRemainingHouses: editingHouse.applyToRemaining,
+              applyBirdsToRemainingHouses: editingHouse.applyBirdsToRemaining,
+              applyPlacementToRemainingHouses: editingHouse.applyPlacementToRemaining,
+              applyCatchDateToRemainingHouses: editingHouse.applyCatchDateToRemaining,
+              applyCatchTimeToRemainingHouses: editingHouse.applyCatchTimeToRemaining,
+              applyFlockIdToRemainingHouses: editingHouse.applyFlockIdToRemaining,
             }
           : null),
       });
@@ -1322,7 +1364,14 @@ export default function FarmDetailScreen() {
                           value={
                             [
                               h.placementDate ? formatHouseDetailDate(h.placementDate) : null,
-                              h.catchDate ? formatHouseDetailDate(h.catchDate) : null,
+                              h.catchDate
+                                ? [
+                                    formatHouseDetailDate(h.catchDate),
+                                    h.catchTime ? halfHourTimeLabel(h.catchTime) : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ")
+                                : null,
                             ]
                               .filter(Boolean)
                               .join("\n") || "—"
@@ -1973,6 +2022,27 @@ export default function FarmDetailScreen() {
                             />
                           </View>
                         </View>
+                        <TimeScrollPickerField
+                          label="Catch time"
+                          value={editingHouse.catchTime}
+                          onChange={(time) =>
+                            setEditingHouse((prev) => (prev ? { ...prev, catchTime: time } : prev))
+                          }
+                        />
+                        {editingHouse.catchTime ? (
+                          <Pressable
+                            onPress={() =>
+                              setEditingHouse((prev) => (prev ? { ...prev, catchTime: "" } : prev))
+                            }
+                            style={{ alignSelf: "flex-start", marginTop: 4, marginBottom: 8 }}
+                            hitSlop={8}
+                          >
+                            <Text style={{ color: colors.muted, fontWeight: "700" }}>Clear time</Text>
+                          </Pressable>
+                        ) : null}
+                        <Text style={[styles.muted, { marginTop: 2, marginBottom: 8 }]}>
+                          Feed up is 5 hours before catch (11:00 PM catch → 6:00 PM feed up).
+                        </Text>
                         <Text style={[styles.label, { marginTop: 2 }]}>Flock ID</Text>
                         <TextInput
                           style={[
@@ -1990,53 +2060,83 @@ export default function FarmDetailScreen() {
                           placeholder="e.g. 26-07"
                           placeholderTextColor={colors.muted}
                         />
-                        <Pressable
-                          onPress={() =>
-                            setEditingHouse((prev) =>
-                              prev
-                                ? { ...prev, applyToRemaining: !prev.applyToRemaining }
-                                : prev,
-                            )
-                          }
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "flex-start",
-                            gap: 10,
-                            marginBottom: 12,
-                            paddingVertical: 4,
-                          }}
-                        >
-                          <View
-                            style={{
-                              width: 22,
-                              height: 22,
-                              borderRadius: 6,
-                              borderWidth: 2,
-                              borderColor: editingHouse.applyToRemaining
-                                ? colors.accentDark
-                                : colors.border,
-                              backgroundColor: editingHouse.applyToRemaining
-                                ? colors.accentDark
-                                : "#fff",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              marginTop: 1,
-                            }}
-                          >
-                            {editingHouse.applyToRemaining ? (
-                              <Ionicons name="checkmark" size={16} color="#fff" />
-                            ) : null}
+                        <View style={{ marginBottom: 12 }}>
+                          <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
+                            Apply to remaining houses
+                          </Text>
+                          <Text style={[styles.muted, { marginTop: 2, marginBottom: 6 }]}>
+                            Copies only the checked fields to houses after this one.
+                          </Text>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                            <ApplyRemainingCheck
+                              label="Birds placed"
+                              checked={editingHouse.applyBirdsToRemaining}
+                              onToggle={() =>
+                                setEditingHouse((prev) =>
+                                  prev
+                                    ? { ...prev, applyBirdsToRemaining: !prev.applyBirdsToRemaining }
+                                    : prev,
+                                )
+                              }
+                            />
+                            <ApplyRemainingCheck
+                              label="Placement date"
+                              checked={editingHouse.applyPlacementToRemaining}
+                              onToggle={() =>
+                                setEditingHouse((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        applyPlacementToRemaining: !prev.applyPlacementToRemaining,
+                                      }
+                                    : prev,
+                                )
+                              }
+                            />
+                            <ApplyRemainingCheck
+                              label="Catch date"
+                              checked={editingHouse.applyCatchDateToRemaining}
+                              onToggle={() =>
+                                setEditingHouse((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        applyCatchDateToRemaining: !prev.applyCatchDateToRemaining,
+                                      }
+                                    : prev,
+                                )
+                              }
+                            />
+                            <ApplyRemainingCheck
+                              label="Catch time"
+                              checked={editingHouse.applyCatchTimeToRemaining}
+                              onToggle={() =>
+                                setEditingHouse((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        applyCatchTimeToRemaining: !prev.applyCatchTimeToRemaining,
+                                      }
+                                    : prev,
+                                )
+                              }
+                            />
+                            <ApplyRemainingCheck
+                              label="Flock ID"
+                              checked={editingHouse.applyFlockIdToRemaining}
+                              onToggle={() =>
+                                setEditingHouse((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        applyFlockIdToRemaining: !prev.applyFlockIdToRemaining,
+                                      }
+                                    : prev,
+                                )
+                              }
+                            />
                           </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
-                              Apply to all remaining houses
-                            </Text>
-                            <Text style={[styles.muted, { marginTop: 2 }]}>
-                              Birds placed, placement date, catch date, and flock for houses after
-                              this one. Earlier houses stay unchanged.
-                            </Text>
-                          </View>
-                        </Pressable>
+                        </View>
                       </>
                     ) : null}
                     <View style={{ flexDirection: "row", gap: 10 }}>
@@ -2058,17 +2158,6 @@ export default function FarmDetailScreen() {
                           setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
                         }
                       />
-                    </View>
-                    <View style={{ flexDirection: "row", gap: 10 }}>
-                      <NativeNumInput
-                        label="Number of Tunnel Fans"
-                        value={editingHouse.numberOfFans}
-                        style={{ flex: 1 }}
-                        onChangeText={(v) =>
-                          setEditingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
-                        }
-                      />
-                      <View style={{ flex: 1 }} />
                     </View>
                     <Pressable
                       onPress={() =>
@@ -2115,8 +2204,8 @@ export default function FarmDetailScreen() {
                           Apply to all remaining houses
                         </Text>
                         <Text style={[styles.muted, { marginTop: 2 }]}>
-                          Square footage, fan CFM, and number of tunnel fans for houses after this
-                          one. Earlier houses stay unchanged.
+                          Square footage and fan CFM for houses after this one. Earlier houses stay
+                          unchanged.
                         </Text>
                       </View>
                     </Pressable>
@@ -2201,13 +2290,6 @@ export default function FarmDetailScreen() {
                     decimal
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
-                    }
-                  />
-                  <NativeNumInput
-                    label="Number of Tunnel Fans"
-                    value={addingHouse.numberOfFans}
-                    onChangeText={(v) =>
-                      setAddingHouse((prev) => (prev ? { ...prev, numberOfFans: v } : prev))
                     }
                   />
                   <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
