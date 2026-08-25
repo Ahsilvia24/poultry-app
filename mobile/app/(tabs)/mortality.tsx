@@ -25,12 +25,15 @@ import {
 } from "../../src/lib/farmNavContext";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { colors, styles } from "../../src/theme";
+import { weekJumpScrollDelta } from "../../src/lib/weekJumpScroll";
 import {
   Card,
   Chip,
   PageHeader,
   formatNumber,
 } from "../../src/components/ui";
+
+const WEEK_SCROLL_PAD = 8;
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const SAVE_DEBOUNCE_MS = 500;
@@ -129,17 +132,20 @@ function MortalityKeypad({
   onEnter,
   onBackToHouse,
   backToHouseLabel,
+  onLayout,
 }: {
   onDigit: (d: string) => void;
   onBackspace: () => void;
   onEnter: () => void;
   onBackToHouse?: () => void;
   backToHouseLabel?: string;
+  onLayout?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
   return (
     <View
+      onLayout={onLayout}
       style={{
         borderTopWidth: 1,
         borderTopColor: colors.border,
@@ -229,8 +235,10 @@ export default function MortalityScreen() {
   const inputRefs = useRef(new Map<string, TextInputType>());
   const rowRefs = useRef(new Map<number, View>());
   const scrollRef = useRef<ScrollViewType>(null);
-  const scrollHostRef = useRef<View>(null);
+  const scrollViewportRef = useRef<View>(null);
   const scrollOffsetRef = useRef(0);
+  const pendingScrollAgeRef = useRef<number | null>(null);
+  const activeFieldRef = useRef<ActiveField | null>(null);
   useTabScrollToTop("mortality", scrollRef);
   const rowsRef = useRef(rows);
   const houseFlockIdRef = useRef(houseFlockId);
@@ -284,6 +292,8 @@ export default function MortalityScreen() {
   }
 
   function resetKeypad() {
+    pendingScrollAgeRef.current = null;
+    activeFieldRef.current = null;
     setActiveField(null);
     setSelection(undefined);
     for (const input of inputRefs.current.values()) {
@@ -291,21 +301,62 @@ export default function MortalityScreen() {
     }
   }
 
-  function scrollRowIntoView(age: number) {
-    const row = rowRefs.current.get(age);
+  function lastAgeInWeek(age: number) {
+    const week = flockWeekFromAge(age);
+    let last = age;
+    for (const r of rowsRef.current) {
+      if (flockWeekFromAge(r.age) === week) last = r.age;
+    }
+    return last;
+  }
+
+  function scrollWeekForAge(age: number) {
+    const focused = rowRefs.current.get(age);
+    const last = rowRefs.current.get(lastAgeInWeek(age)) ?? focused;
+    const viewport = scrollViewportRef.current;
     const scroll = scrollRef.current;
-    const host = scrollHostRef.current;
-    if (!row || !scroll || !host) return false;
-    row.measureInWindow((_rx: number, rowY: number) => {
-      host.measureInWindow((_sx: number, scrollY: number) => {
-        const delta = rowY - scrollY - 120;
-        scroll.scrollTo({
-          y: Math.max(0, scrollOffsetRef.current + delta),
-          animated: true,
+    if (!focused || !last || !viewport || !scroll) return false;
+    focused.measureInWindow((_fx: number, fy: number, _fw: number, fh: number) => {
+      last.measureInWindow((_lx: number, ly: number, _lw: number, lh: number) => {
+        viewport.measureInWindow((_vx: number, vy: number, _vw: number, vh: number) => {
+          const delta = weekJumpScrollDelta({
+            visibleTop: vy + WEEK_SCROLL_PAD,
+            visibleBottom: vy + vh - WEEK_SCROLL_PAD,
+            focusedTop: fy,
+            focusedBottom: fy + fh,
+            lastBottom: ly + lh,
+          });
+          if (Math.abs(delta) < 2) return;
+          scroll.scrollTo({
+            y: Math.max(0, scrollOffsetRef.current + delta),
+            animated: true,
+          });
         });
       });
     });
     return true;
+  }
+
+  function queueWeekScroll(age: number) {
+    pendingScrollAgeRef.current = age;
+    const attempt = (triesLeft: number) => {
+      const lastAge = lastAgeInWeek(age);
+      if (
+        rowRefs.current.get(age) &&
+        rowRefs.current.get(lastAge) &&
+        scrollViewportRef.current &&
+        scrollRef.current
+      ) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => scrollWeekForAge(age));
+        });
+        return;
+      }
+      if (triesLeft > 0) {
+        setTimeout(() => attempt(triesLeft - 1), 50);
+      }
+    };
+    attempt(10);
   }
 
   function jumpToFirstUnfilled(nextRows: DayRow[]) {
@@ -332,12 +383,14 @@ export default function MortalityScreen() {
     const age = jumpTo.age;
     const attempt = (triesLeft: number) => {
       jumpTimerRef.current = setTimeout(() => {
-        scrollRowIntoView(age);
         const input = inputRefs.current.get(fieldKey("mort", age));
         if (input) {
-          setActiveField({ kind: "mort", age });
+          const field = { kind: "mort" as const, age };
+          activeFieldRef.current = field;
+          setActiveField(field);
           setSelection({ start: 0, end: 0 });
           input.focus();
+          queueWeekScroll(age);
           return;
         }
         if (triesLeft > 0) attempt(triesLeft - 1);
@@ -494,6 +547,8 @@ export default function MortalityScreen() {
         if (jumpTimer) clearTimeout(jumpTimer);
         clearJumpTimer();
         persistRowsForCurrentHouse();
+        pendingScrollAgeRef.current = null;
+        activeFieldRef.current = null;
         setActiveField(null);
         setSelection(undefined);
         navigation.setOptions({ tabBarStyle: undefined });
@@ -631,12 +686,14 @@ export default function MortalityScreen() {
     const week = flockWeekFromAge(age);
     // Exclusive accordion when moving to a field (Enter / jump)
     setExpandedWeeks(new Set([week]));
+    pendingScrollAgeRef.current = age;
     const key = fieldKey(kind, age);
     const attempt = (triesLeft: number) => {
       requestAnimationFrame(() => {
         const input = inputRefs.current.get(key);
         if (input) {
           input.focus();
+          queueWeekScroll(age);
           return;
         }
         if (triesLeft > 0) {
@@ -648,7 +705,10 @@ export default function MortalityScreen() {
   }
 
   function onFieldFocus(kind: FieldKind, age: number, value: string) {
-    setActiveField({ kind, age });
+    const field = { kind, age };
+    activeFieldRef.current = field;
+    setActiveField(field);
+    queueWeekScroll(age);
     if (value && Number(value) !== 0) {
       const len = value.length;
       // Place caret at the far right for existing non-zero values
@@ -709,6 +769,8 @@ export default function MortalityScreen() {
     if (rowsRef.current.some((r) => r.age === nextAge)) {
       focusField(kind, nextAge);
     } else {
+      pendingScrollAgeRef.current = null;
+      activeFieldRef.current = null;
       setActiveField(null);
       inputRefs.current.get(fieldKey(kind, age))?.blur();
     }
@@ -724,7 +786,8 @@ export default function MortalityScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <View ref={scrollHostRef} style={{ flex: 1 }} collapsable={false}>
+      <View style={{ flex: 1 }}>
+        <View ref={scrollViewportRef} style={{ flex: 1 }} collapsable={false}>
         <ScrollView
           ref={scrollRef}
           style={styles.screen}
@@ -830,10 +893,11 @@ export default function MortalityScreen() {
             </Card>
           ) : (
             <>
+              <View style={{ gap: 4 }}>
               {weekGroups.map((group) => {
                 const open = expandedWeeks.has(group.week);
                 return (
-                  <Card key={group.week} style={{ padding: 0, overflow: "hidden" }}>
+                  <Card key={group.week} style={{ padding: 0, overflow: "hidden", marginBottom: 0 }}>
                     <Pressable
                       onPress={() =>
                         setExpandedWeeks((prev) => {
@@ -843,7 +907,7 @@ export default function MortalityScreen() {
                           return next;
                         })
                       }
-                      style={{ padding: 14 }}
+                      style={{ paddingHorizontal: 12, paddingVertical: 10 }}
                     >
                       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                         <Text style={{ fontWeight: "800" }}>
@@ -978,16 +1042,22 @@ export default function MortalityScreen() {
                   </Card>
                 );
               })}
+              </View>
             </>
           )}
           </Pressable>
         </ScrollView>
+        </View>
 
         {activeField ? (
           <MortalityKeypad
             onDigit={onDigit}
             onBackspace={onBackspace}
             onEnter={onEnter}
+            onLayout={() => {
+              const age = pendingScrollAgeRef.current ?? activeFieldRef.current?.age;
+              if (age != null) queueWeekScroll(age);
+            }}
             backToHouseLabel={
               selectedHouse ? `Back to House ${selectedHouse.houseNumber}` : undefined
             }
