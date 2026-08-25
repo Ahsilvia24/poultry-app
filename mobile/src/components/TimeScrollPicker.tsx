@@ -127,6 +127,7 @@ export function TimeScrollPickerField({
   onChange,
   onOpen,
   style,
+  inputStyle,
 }: {
   label: string;
   value: string;
@@ -134,6 +135,8 @@ export function TimeScrollPickerField({
   /** Fired when the picker is opened (e.g. to dismiss a keypad). */
   onOpen?: () => void;
   style?: object;
+  /** Extra styles on the value box (e.g. drop bottom margin when a control sits under it). */
+  inputStyle?: object;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseTime(value || "06:00"));
@@ -180,6 +183,7 @@ export function TimeScrollPickerField({
             justifyContent: "space-between",
             gap: 6,
           },
+          inputStyle,
         ]}
       >
         <Text

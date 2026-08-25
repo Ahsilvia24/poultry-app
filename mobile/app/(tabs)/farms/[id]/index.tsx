@@ -269,7 +269,11 @@ function NativeNumInput({
       <TextInput
         ref={inputRef}
         autoFocus={autoFocus}
-        style={[styles.input, { fontSize: 20, fontWeight: "700", color: colors.text }]}
+        style={[
+          styles.input,
+          { fontSize: 20, fontWeight: "700", color: colors.text },
+          onPropagateToggle ? { marginBottom: 0 } : null,
+        ]}
         value={value}
         onChangeText={onChangeText}
         keyboardType={decimal ? "decimal-pad" : "number-pad"}
@@ -293,20 +297,22 @@ function PropagateCheck({
   return (
     <Pressable
       onPress={onToggle}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}
+      accessibilityLabel="Propagate"
       style={{
         flexDirection: "row",
         alignItems: "center",
+        alignSelf: "flex-start",
         gap: 6,
-        marginTop: 6,
-        paddingVertical: 2,
+        marginTop: 2,
       }}
     >
-      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>Propagate</Text>
       <View
         style={{
-          width: 20,
-          height: 20,
-          borderRadius: 5,
+          width: 18,
+          height: 18,
+          borderRadius: 4,
           borderWidth: 2,
           borderColor: checked ? colors.accentDark : colors.border,
           backgroundColor: checked ? colors.accentDark : "#fff",
@@ -314,8 +320,11 @@ function PropagateCheck({
           justifyContent: "center",
         }}
       >
-        {checked ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
+        {checked ? <Ionicons name="checkmark" size={13} color="#fff" /> : null}
       </View>
+      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
+        Propagate
+      </Text>
     </Pressable>
   );
 }
@@ -2142,7 +2151,7 @@ export default function FarmDetailScreen() {
                           <TextInput
                             style={[
                               styles.input,
-                              { fontSize: 20, fontWeight: "700", color: colors.text },
+                              { fontSize: 20, fontWeight: "700", color: colors.text, marginBottom: 0 },
                             ]}
                             value={editingHouse.flockNumber}
                             onChangeText={(v) =>
@@ -2181,6 +2190,7 @@ export default function FarmDetailScreen() {
                               label="Placement date"
                               value={editingHouse.placementDate}
                               presentation="inline"
+                              inputStyle={{ marginBottom: 0 }}
                               onChange={(date) =>
                                 setEditingHouse((prev) => {
                                   if (!prev) return prev;
@@ -2239,6 +2249,7 @@ export default function FarmDetailScreen() {
                               label="Catch date"
                               value={editingHouse.catchDate}
                               presentation="inline"
+                              inputStyle={{ marginBottom: 0 }}
                               onChange={(date) =>
                                 setEditingHouse((prev) =>
                                   prev ? { ...prev, catchDate: date } : prev,
@@ -2263,27 +2274,13 @@ export default function FarmDetailScreen() {
                             <TimeScrollPickerField
                               label="Catch time"
                               value={editingHouse.catchTime}
+                              inputStyle={{ marginBottom: 0 }}
                               onChange={(time) =>
                                 setEditingHouse((prev) =>
                                   prev ? { ...prev, catchTime: time } : prev,
                                 )
                               }
                             />
-                            {editingHouse.catchTime ? (
-                              <Pressable
-                                onPress={() =>
-                                  setEditingHouse((prev) =>
-                                    prev ? { ...prev, catchTime: "" } : prev,
-                                  )
-                                }
-                                style={{ alignSelf: "flex-start", marginTop: 4 }}
-                                hitSlop={8}
-                              >
-                                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 12 }}>
-                                  Clear
-                                </Text>
-                              </Pressable>
-                            ) : null}
                             <PropagateCheck
                               checked={editingHouse.applyCatchTimeToRemaining}
                               onToggle={() =>
@@ -2297,6 +2294,21 @@ export default function FarmDetailScreen() {
                                 )
                               }
                             />
+                            {editingHouse.catchTime ? (
+                              <Pressable
+                                onPress={() =>
+                                  setEditingHouse((prev) =>
+                                    prev ? { ...prev, catchTime: "" } : prev,
+                                  )
+                                }
+                                style={{ alignSelf: "flex-start", marginTop: 2 }}
+                                hitSlop={8}
+                              >
+                                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 12 }}>
+                                  Clear
+                                </Text>
+                              </Pressable>
+                            ) : null}
                           </View>
                         </View>
                       </>
