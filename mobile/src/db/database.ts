@@ -112,6 +112,7 @@ export function migrateDb() {
       flock_id TEXT,
       order_date TEXT NOT NULL,
       notes TEXT,
+      calculated_at TEXT,
       FOREIGN KEY (farm_id) REFERENCES farms(id)
     );
 
@@ -123,6 +124,7 @@ export function migrateDb() {
       bin_b_pounds REAL NOT NULL DEFAULT 0,
       feed_up_at TEXT,
       consumption_rate REAL NOT NULL DEFAULT 0.45,
+      head_count INTEGER,
       FOREIGN KEY (lfo_id) REFERENCES last_feed_orders(id),
       FOREIGN KEY (house_id) REFERENCES houses(id)
     );
@@ -294,6 +296,17 @@ export function migrateDb() {
   }
   if (!hfCols.some((c) => c.name === "catch_date")) {
     database.execSync("ALTER TABLE house_flocks ADD COLUMN catch_date TEXT");
+  }
+
+  const lfoCols = database.getAllSync<{ name: string }>("PRAGMA table_info(last_feed_orders)");
+  if (lfoCols.length > 0 && !lfoCols.some((c) => c.name === "calculated_at")) {
+    database.execSync("ALTER TABLE last_feed_orders ADD COLUMN calculated_at TEXT");
+  }
+  const lfoInvCols = database.getAllSync<{ name: string }>(
+    "PRAGMA table_info(lfo_house_inventory)",
+  );
+  if (lfoInvCols.length > 0 && !lfoInvCols.some((c) => c.name === "head_count")) {
+    database.execSync("ALTER TABLE lfo_house_inventory ADD COLUMN head_count INTEGER");
   }
 
   // Allow clearing a single generator reading without deleting the whole date row.

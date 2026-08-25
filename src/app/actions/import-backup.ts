@@ -460,6 +460,7 @@ export async function importMobileBackupAction(
               orderDate,
               consumptionRate,
               notes: str(row.notes),
+              calculatedAt: dateTime(row.calculated_at),
             },
           });
           lfoIds.set(oldId, id);
@@ -473,6 +474,7 @@ export async function importMobileBackupAction(
               skipped.push(`LFO inventory house ${oldHouseId} not imported`);
               continue;
             }
+            const storedHeads = num(inv.head_count);
             await tx.lastFeedOrderHouseInventory.create({
               data: {
                 id: newId(),
@@ -481,6 +483,7 @@ export async function importMobileBackupAction(
                 binAPounds: num(inv.bin_a_pounds) ?? 0,
                 binBPounds: num(inv.bin_b_pounds) ?? 0,
                 feedUpAt: dateTime(inv.feed_up_at),
+                headCount: storedHeads == null ? null : Math.trunc(storedHeads),
               },
             });
           }

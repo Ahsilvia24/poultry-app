@@ -97,18 +97,23 @@ function CopySummaryButton({
 
 export function LfoInventoryForm({
   action,
+  saveAsNewAction,
   houses: initialHouses,
   orderDate,
   farmName,
   consumptionRate: initialRate = DEFAULT_LFO_CONSUMPTION_RATE,
+  asOf = null,
   submitLabel,
   deleteAction,
 }: {
   action: (formData: FormData) => Promise<{ error?: string; ok?: boolean } | void>;
+  saveAsNewAction?: (formData: FormData) => Promise<{ error?: string; ok?: boolean } | void>;
   houses: LfoHouseRow[];
   orderDate: string;
   farmName?: string;
   consumptionRate?: number;
+  /** Frozen clock for hours-until-off / order math. Omit on a new LFO. */
+  asOf?: Date | string | null;
   submitLabel: string;
   deleteAction?: () => Promise<void>;
 }) {
@@ -136,6 +141,7 @@ export function LfoInventoryForm({
     return calculateLastFeedOrder({
       orderDate,
       consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
+      now: asOf ? new Date(asOf) : undefined,
       houses: rows.map((r) => ({
         houseId: r.houseId,
         houseNumber: r.houseNumber,
@@ -145,7 +151,7 @@ export function LfoInventoryForm({
         feedUpAt: joinFeedUp(r.feedUpDate, r.feedUpTime) || null,
       })),
     });
-  }, [consumptionRate, orderDate, rows]);
+  }, [asOf, consumptionRate, orderDate, rows]);
 
   const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
@@ -177,6 +183,17 @@ export function LfoInventoryForm({
       ) : null}
       {saved ? (
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>
+      ) : null}
+
+      {asOf ? (
+        <p className="text-sm text-stone-600">
+          Numbers as of{" "}
+          <span className="font-semibold text-stone-800">
+            {format(new Date(asOf), "MMM d, yyyy, h:mm a")}
+          </span>
+          . Hours, head counts, and order/reclaim stay frozen to that time. Save as new
+          LFO to capture current time and remaining birds.
+        </p>
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -218,6 +235,7 @@ export function LfoInventoryForm({
                   </p>
                   <p className="text-xs text-stone-500">
                     Head count {house.headCount.toLocaleString()}
+                    {asOf ? " at save" : ""}
                   </p>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -366,6 +384,25 @@ export function LfoInventoryForm({
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : submitLabel}
         </Button>
+        {saveAsNewAction ? (
+          <Button
+            type="submit"
+            variant="secondary"
+            disabled={pending}
+            formAction={(formData) => {
+              setError(null);
+              setSaved(false);
+              startTransition(async () => {
+                const result = await saveAsNewAction(formData);
+                if (result?.error) {
+                  setError(result.error);
+                }
+              });
+            }}
+          >
+            {pending ? "Saving…" : "Save as new LFO"}
+          </Button>
+        ) : null}
         <Link href="/lfo" className="text-sm font-semibold text-stone-600 hover:text-stone-900">
           Back to LFOs
         </Link>

@@ -44,26 +44,34 @@ export default async function LfoPage() {
     }),
   ]);
 
+  const farmsNeedingLiveHeads = [
+    ...new Set(
+      savedLfos
+        .filter((lfo) => lfo.houseInventories.some((inv) => inv.headCount == null))
+        .map((l) => l.farmId),
+    ),
+  ];
   const headCountByFarm = new Map<string, Map<string, number>>();
   await Promise.all(
-    [...new Set(savedLfos.map((l) => l.farmId))].map(async (farmId) => {
+    farmsNeedingLiveHeads.map(async (farmId) => {
       headCountByFarm.set(farmId, await getFarmHouseHeadCounts(farmId));
     }),
   );
 
   const savedWithSummary = savedLfos.map((lfo) => {
-    const heads = headCountByFarm.get(lfo.farmId) ?? new Map();
+    const liveHeads = headCountByFarm.get(lfo.farmId) ?? new Map();
     const orderDateKey = lfo.orderDate.toISOString().slice(0, 10);
     const calc = calculateLastFeedOrder({
       orderDate: orderDateKey,
       consumptionRate: lfo.consumptionRate,
+      now: lfo.calculatedAt ?? lfo.createdAt,
       houses: lfo.houseInventories.map((inv) => ({
         houseId: inv.houseId,
         houseNumber: inv.house.houseNumber,
         binAPounds: inv.binAPounds,
         binBPounds: inv.binBPounds,
         feedUpAt: inv.feedUpAt,
-        headCount: heads.get(inv.houseId) ?? 0,
+        headCount: inv.headCount ?? liveHeads.get(inv.houseId) ?? 0,
       })),
     });
     return {
@@ -86,6 +94,10 @@ export default async function LfoPage() {
 
       <div className="mb-3 mt-8">
         <h2 className="text-lg font-bold text-stone-900">Saved LFOs</h2>
+        <p className="mt-1 text-xs leading-snug text-stone-500">
+          Order/reclaim stay as they were when you saved. Open one to view or edit, or
+          save as a new LFO for a fresh snapshot.
+        </p>
         <p className="mt-1 text-xs leading-snug text-stone-500">
           Rounds up to nearest 500 & adds 2000
         </p>

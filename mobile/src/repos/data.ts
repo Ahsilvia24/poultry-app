@@ -1438,6 +1438,7 @@ export function listLfos() {
       const calc = calculateLastFeedOrder({
         orderDate: detail.orderDate.slice(0, 10),
         consumptionRate: detail.consumptionRate,
+        now: detail.calculatedAt ? new Date(detail.calculatedAt) : undefined,
         houses: detail.houses.map((h) => ({
           houseId: h.houseId,
           houseNumber: h.houseNumber,
@@ -1518,6 +1519,7 @@ export function getLfo(id: string) {
     flock_id: string | null;
     order_date: string;
     notes: string | null;
+    calculated_at: string | null;
   }>("SELECT * FROM last_feed_orders WHERE id = ?", [id]);
   if (!lfo) throw new Error("LFO not found");
   const farm = db.getFirstSync<{ farm_name: string }>(
@@ -1539,6 +1541,7 @@ export function getLfo(id: string) {
     bin_b_pounds: number;
     feed_up_at: string | null;
     consumption_rate: number;
+    head_count: number | null;
   }>("SELECT * FROM lfo_house_inventory WHERE lfo_id = ?", [id]);
   const invByHouse = new Map(inventory.map((i) => [i.house_id, i]));
   const consumptionRate = inventory[0]?.consumption_rate ?? 0.45;
@@ -1550,8 +1553,10 @@ export function getLfo(id: string) {
     orderDate: lfo.order_date,
     notes: lfo.notes,
     consumptionRate,
+    calculatedAt: lfo.calculated_at,
     houses: houses.map((h) => {
       const i = invByHouse.get(h.id);
+      const snapshotted = i?.head_count;
       return {
         id: i?.id ?? newId("lfoi"),
         houseId: h.id,
@@ -1560,7 +1565,10 @@ export function getLfo(id: string) {
         binBPounds: i?.bin_b_pounds ?? 0,
         feedUpAt: i?.feed_up_at ?? null,
         consumptionRate: i?.consumption_rate ?? consumptionRate,
-        headCount: remainingHeadCountForHouse(lfo.farm_id, h.id, today),
+        headCount:
+          snapshotted != null
+            ? snapshotted
+            : remainingHeadCountForHouse(lfo.farm_id, h.id, today),
       };
     }),
   };
@@ -1601,15 +1609,19 @@ export function updateLfo(input: {
   }>;
 }) {
   const db = getDb();
-  const existing = db.getFirstSync<{ id: string }>(
-    "SELECT id FROM last_feed_orders WHERE id = ?",
+  const existing = db.getFirstSync<{ id: string; farm_id: string; calculated_at: string | null }>(
+    "SELECT id, farm_id, calculated_at FROM last_feed_orders WHERE id = ?",
     [input.id],
   );
   if (!existing) throw new Error("LFO not found");
 
-  db.runSync(`UPDATE last_feed_orders SET order_date = ?, notes = ? WHERE id = ?`, [
+  // Stamp clock/heads once; later edits keep the original snapshot.
+  const calculatedAt = existing.calculated_at ?? new Date().toISOString();
+
+  db.runSync(`UPDATE last_feed_orders SET order_date = ?, notes = ?, calculated_at = ? WHERE id = ?`, [
     input.orderDate,
     input.notes,
+    calculatedAt,
     input.id,
   ]);
 
@@ -1617,30 +1629,87 @@ export function updateLfo(input: {
     Number.isFinite(input.consumptionRate) && input.consumptionRate > 0
       ? input.consumptionRate
       : 0.45;
+  const today = todayKey();
 
   for (const h of input.houses) {
     const byHouse = h.houseId
-      ? db.getFirstSync<{ id: string }>(
-          "SELECT id FROM lfo_house_inventory WHERE lfo_id = ? AND house_id = ?",
+      ? db.getFirstSync<{ id: string; head_count: number | null }>(
+          "SELECT id, head_count FROM lfo_house_inventory WHERE lfo_id = ? AND house_id = ?",
           [input.id, h.houseId],
         )
-      : null;
+      : db.getFirstSync<{ id: string; head_count: number | null }>(
+          "SELECT id, head_count FROM lfo_house_inventory WHERE id = ? AND lfo_id = ?",
+          [h.id, input.id],
+        );
     const rowId = byHouse?.id ?? h.id;
+    const headCount =
+      byHouse?.head_count ??
+      (h.houseId ? remainingHeadCountForHouse(existing.farm_id, h.houseId, today) : null);
     const updated = db.runSync(
       `UPDATE lfo_house_inventory
-       SET bin_a_pounds = ?, bin_b_pounds = ?, feed_up_at = ?, consumption_rate = ?
+       SET bin_a_pounds = ?, bin_b_pounds = ?, feed_up_at = ?, consumption_rate = ?, head_count = ?
        WHERE id = ? AND lfo_id = ?`,
-      [h.binAPounds, h.binBPounds, h.feedUpAt, rate, rowId, input.id],
+      [h.binAPounds, h.binBPounds, h.feedUpAt, rate, headCount, rowId, input.id],
     );
     if (updated.changes === 0 && h.houseId) {
       db.runSync(
-        `INSERT INTO lfo_house_inventory (id, lfo_id, house_id, bin_a_pounds, bin_b_pounds, feed_up_at, consumption_rate)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [rowId || newId("lfoi"), input.id, h.houseId, h.binAPounds, h.binBPounds, h.feedUpAt, rate],
+        `INSERT INTO lfo_house_inventory (id, lfo_id, house_id, bin_a_pounds, bin_b_pounds, feed_up_at, consumption_rate, head_count)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          rowId || newId("lfoi"),
+          input.id,
+          h.houseId,
+          h.binAPounds,
+          h.binBPounds,
+          h.feedUpAt,
+          rate,
+          headCount,
+        ],
       );
     }
   }
   return { success: true };
+}
+
+/** Copy an LFO into a new snapshot using live head counts and the current clock. */
+export function saveLfoAsNew(input: {
+  sourceId: string;
+  orderDate: string;
+  notes: string | null;
+  consumptionRate: number;
+  houses: Array<{
+    houseId: string;
+    binAPounds: number;
+    binBPounds: number;
+    feedUpAt: string | null;
+  }>;
+}) {
+  const source = dbFarmIdForLfo(input.sourceId);
+  const { id } = createLfo(source, input.orderDate, input.notes ?? undefined);
+  updateLfo({
+    id,
+    orderDate: input.orderDate,
+    notes: input.notes,
+    consumptionRate: input.consumptionRate,
+    houses: input.houses.map((h) => ({
+      id: newId("lfoi"),
+      houseId: h.houseId,
+      binAPounds: h.binAPounds,
+      binBPounds: h.binBPounds,
+      feedUpAt: h.feedUpAt,
+    })),
+  });
+  return { id };
+}
+
+function dbFarmIdForLfo(id: string) {
+  const db = getDb();
+  const row = db.getFirstSync<{ farm_id: string }>(
+    "SELECT farm_id FROM last_feed_orders WHERE id = ?",
+    [id],
+  );
+  if (!row) throw new Error("LFO not found");
+  return row.farm_id;
 }
 
 export function deleteLfo(id: string) {

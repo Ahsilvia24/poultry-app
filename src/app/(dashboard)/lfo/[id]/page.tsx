@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   deleteLastFeedOrderAction,
+  saveAsNewLastFeedOrderAction,
   updateLastFeedOrderAction,
 } from "@/app/actions/lfo";
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
@@ -34,12 +35,14 @@ export default async function EditLfoPage({ params }: { params: Params }) {
 
   if (!lfo) notFound();
 
-  const [houses, headCounts] = await Promise.all([
+  const asOf = lfo.calculatedAt ?? lfo.createdAt;
+  const needsLiveHeads = lfo.houseInventories.some((inv) => inv.headCount == null);
+  const [houses, liveHeads] = await Promise.all([
     prisma.house.findMany({
       where: { farmId: lfo.farm.id, deletedAt: null },
       orderBy: { houseNumber: "asc" },
     }),
-    getFarmHouseHeadCounts(lfo.farm.id),
+    needsLiveHeads ? getFarmHouseHeadCounts(lfo.farm.id) : Promise.resolve(new Map<string, number>()),
   ]);
 
   const invByHouse = new Map(
@@ -54,13 +57,18 @@ export default async function EditLfoPage({ params }: { params: Params }) {
       binAPounds: inv?.binAPounds ?? 0,
       binBPounds: inv?.binBPounds ?? 0,
       feedUpAt: toDatetimeLocalValue(inv?.feedUpAt),
-      headCount: headCounts.get(h.id) ?? 0,
+      headCount: inv?.headCount ?? liveHeads.get(h.id) ?? 0,
     };
   });
 
   async function submit(formData: FormData) {
     "use server";
     return updateLastFeedOrderAction(id, formData);
+  }
+
+  async function saveAsNew(formData: FormData) {
+    "use server";
+    return saveAsNewLastFeedOrderAction(id, formData);
   }
 
   async function remove() {
@@ -88,9 +96,11 @@ export default async function EditLfoPage({ params }: { params: Params }) {
       <Card>
         <LfoInventoryForm
           action={submit}
+          saveAsNewAction={saveAsNew}
           farmName={lfo.farm.farmName}
           orderDate={format(lfo.orderDate, "yyyy-MM-dd")}
           consumptionRate={lfo.consumptionRate}
+          asOf={asOf}
           submitLabel="Save changes"
           deleteAction={remove}
           houses={houseRows}

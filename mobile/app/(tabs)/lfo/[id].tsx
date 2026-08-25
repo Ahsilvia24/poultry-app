@@ -13,7 +13,7 @@ import {
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { deleteLfo, getLfo, updateLfo } from "../../../src/repos/data";
+import { deleteLfo, getLfo, saveLfoAsNew, updateLfo } from "../../../src/repos/data";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
@@ -45,6 +45,16 @@ function formatFeedStamp(d: Date | null) {
   return d.toLocaleString(undefined, {
     month: "short",
     day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatAsOf(iso: string) {
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
     hour: "numeric",
     minute: "2-digit",
   });
@@ -96,6 +106,7 @@ function loadDraft(id: string) {
     farmName: lfo.farmName,
     orderDate: lfo.orderDate.slice(0, 10),
     consumptionRate: String(lfo.consumptionRate ?? DEFAULT_LFO_CONSUMPTION_RATE),
+    calculatedAt: lfo.calculatedAt,
     houses: lfo.houses.map(
       (h): HouseDraft => {
         const parts = splitFeedUp(h.feedUpAt);
@@ -171,6 +182,7 @@ export default function EditLfoScreen() {
   const [farmName, setFarmName] = useState("");
   const [orderDate, setOrderDate] = useState("");
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
+  const [calculatedAt, setCalculatedAt] = useState<string | null>(null);
   const [houses, setHouses] = useState<HouseDraft[]>([]);
   const [ready, setReady] = useState(false);
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
@@ -191,6 +203,7 @@ export default function EditLfoScreen() {
       setFarmName(draft.farmName);
       setOrderDate(draft.orderDate);
       setConsumptionRate(draft.consumptionRate);
+      setCalculatedAt(draft.calculatedAt);
       setHouses(draft.houses);
       setError(null);
       setReady(true);
@@ -231,6 +244,7 @@ export default function EditLfoScreen() {
     return calculateLastFeedOrder({
       orderDate,
       consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
+      now: calculatedAt ? new Date(calculatedAt) : undefined,
       houses: houses.map((r) => ({
         houseId: r.houseId,
         houseNumber: r.houseNumber,
@@ -240,7 +254,7 @@ export default function EditLfoScreen() {
         feedUpAt: joinFeedUp(r.feedUpDate, r.feedUpTime),
       })),
     });
-  }, [consumptionRate, orderDate, houses]);
+  }, [calculatedAt, consumptionRate, orderDate, houses]);
 
   const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
@@ -329,6 +343,30 @@ export default function EditLfoScreen() {
     }
   }
 
+  function saveAsNew() {
+    if (!id) return;
+    try {
+      const rate = Number(consumptionRate);
+      const created = saveLfoAsNew({
+        sourceId: id,
+        orderDate: orderDate.trim() || orderDate,
+        notes: null,
+        consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
+        houses: houses.map((h) => ({
+          houseId: h.houseId,
+          binAPounds: Number(h.binAPounds) || 0,
+          binBPounds: Number(h.binBPounds) || 0,
+          feedUpAt: joinFeedUp(h.feedUpDate, h.feedUpTime),
+        })),
+      });
+      setError(null);
+      setActiveField(null);
+      router.replace(`/(tabs)/lfo/${created.id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save new LFO");
+    }
+  }
+
   function confirmDelete() {
     if (!id) return;
     Alert.alert("Delete LFO", `Delete LFO for ${farmName || "this farm"}?`, [
@@ -399,6 +437,14 @@ export default function EditLfoScreen() {
 
           {ready ? (
             <>
+              {calculatedAt ? (
+                <Text style={[styles.muted, { marginBottom: 10 }]}>
+                  Numbers as of {formatAsOf(calculatedAt)}. Hours, head counts, and
+                  order/reclaim stay frozen to that time. Save as new LFO to capture
+                  current time and remaining birds.
+                </Text>
+              ) : null}
+
               <Card>
                 <DatePickerField
                   label="Order date"
@@ -439,6 +485,7 @@ export default function EditLfoScreen() {
                       <Text style={{ fontWeight: "800" }}>House {house.houseNumber}</Text>
                       <Text style={styles.muted}>
                         Head count {house.headCount.toLocaleString()}
+                        {calculatedAt ? " at save" : ""}
                       </Text>
                     </View>
                     <View style={styles.row}>
@@ -567,6 +614,12 @@ export default function EditLfoScreen() {
               ) : null}
 
               <PrimaryButton label="Save changes" onPress={save} />
+              <PrimaryButton
+                label="Save as new LFO"
+                secondary
+                onPress={saveAsNew}
+                style={{ marginTop: 8 }}
+              />
               <Pressable
                 onPress={confirmDelete}
                 style={{ alignItems: "center", paddingVertical: 16 }}

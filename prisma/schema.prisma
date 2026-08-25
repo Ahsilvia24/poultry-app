@@ -344,6 +344,8 @@ model LastFeedOrder {
   orderDate        DateTime @db.Date
   /** Lbs feed per bird per day (used for hourly consumption). */
   consumptionRate  Float    @default(0.45)
+  /** Clock used for hours-until-feed-off / order math. Frozen at save. */
+  calculatedAt     DateTime?
   notes            String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -363,6 +365,8 @@ model LastFeedOrderHouseInventory {
   houseId         String
   binAPounds      Float     @default(0)
   binBPounds      Float     @default(0)
+  /** Remaining birds at save. Null on older rows that were never snapshotted. */
+  headCount       Int?
   /** When feeders come back up; feed off is 5 hours before this. */
   feedUpAt        DateTime?
   createdAt       DateTime  @default(now())
