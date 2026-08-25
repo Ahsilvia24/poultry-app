@@ -74,7 +74,9 @@ export function NumberKeypad({
           <Pressable onPress={() => onDigit("000")} style={keyStyle}>
             <Text style={[keyText, { fontSize: 18 }]}>000</Text>
           </Pressable>
-        ) : null}
+        ) : (
+          <View style={[keyStyle, { backgroundColor: "transparent" }]} />
+        )}
         <Pressable
           onPress={onEnter}
           style={[keyStyle, { backgroundColor: colors.accentDark }]}
