@@ -24,7 +24,6 @@ import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, fonts, styles } from "../../../src/theme";
 import {
   Card,
-  Chip,
   PageHeader,
   PrimaryButton,
 } from "../../../src/components/ui";
@@ -34,6 +33,8 @@ import {
   appendKeypadDigit,
   backspaceKeypadValue,
 } from "../../../src/components/NumberKeypad";
+import { LfoFarmTabs, MANUAL_LFO_TAB_ID } from "../../../src/components/LfoFarmTabs";
+import { ManualLfoScreen } from "../../../src/components/ManualLfoScreen";
 
 /** Gallons of water → lbs (approx). Matches web calculator. */
 const LBS_PER_GALLON = 8.34;
@@ -52,19 +53,6 @@ function formatLfoDate(dateKey: string) {
 
 function formatNum(n: number, digits = 2) {
   return n.toLocaleString(undefined, { maximumFractionDigits: digits });
-}
-
-function ChipScroller({ children }: { children: React.ReactNode }) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={{ marginBottom: 10 }}
-      contentContainerStyle={{ flexDirection: "row", alignItems: "center", paddingRight: 8 }}
-    >
-      {children}
-    </ScrollView>
-  );
 }
 
 type CalcField = "water" | "head";
@@ -151,9 +139,10 @@ export default function LfoListScreen() {
     setFarms(nextFarms);
     setLfos(listLfos());
     setFarmId((prev) => {
+      if (prev === MANUAL_LFO_TAB_ID) return prev;
       if (prev && nextFarms.some((f) => f.id === prev)) return prev;
       if (routeFarmId && nextFarms.some((f) => f.id === routeFarmId)) return routeFarmId;
-      return nextFarms[0]?.id ?? "";
+      return nextFarms[0]?.id ?? MANUAL_LFO_TAB_ID;
     });
   }, [routeFarmId]);
 
@@ -264,6 +253,13 @@ export default function LfoListScreen() {
     dismissKeypad();
   }
 
+  const isManual = farmId === MANUAL_LFO_TAB_ID;
+
+  function selectFarm(id: string) {
+    dismissKeypad();
+    setFarmId(id);
+  }
+
   function confirmDelete(id: string, farmName: string) {
     Alert.alert(
       "Are you sure?",
@@ -285,6 +281,9 @@ export default function LfoListScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
+      {isManual ? (
+        <ManualLfoScreen farms={farms} farmId={farmId} onSelectFarm={selectFarm} />
+      ) : (
       <View style={{ flex: 1 }}>
         <ScrollView
           ref={scrollRef}
@@ -302,24 +301,15 @@ export default function LfoListScreen() {
             title="Last Feed Order"
           />
 
-          <ChipScroller>
-            {farms.map((f) => (
-              <Chip
-                key={f.id}
-                label={f.farmName}
-                active={farmId === f.id}
-                onPress={() => {
-                  dismissKeypad();
-                  setFarmId(f.id);
-                }}
-              />
-            ))}
-          </ChipScroller>
+          <LfoFarmTabs farms={farms} selectedId={farmId} onSelect={selectFarm} />
           <PrimaryButton
             label="Create LFO"
             onPress={() => {
               dismissKeypad();
-              if (!farmId) {
+              if (!farmId || farmId === MANUAL_LFO_TAB_ID) {
+                setMsg("Select a farm first");
+                return;
+              }
                 setMsg("Select a farm first");
                 return;
               }
@@ -501,6 +491,7 @@ export default function LfoListScreen() {
           />
         ) : null}
       </View>
+      )}
     </SafeAreaView>
   );
 }
