@@ -194,6 +194,10 @@ model House {
   fanCycleOnSeconds        Int?
   fanCycleOffSeconds       Int?
   notes                    String?
+  /** House temp (°F) logged from the house tile; valid for loggedTempAt's local day. */
+  loggedTemp               String?
+  /** Local `yyyy-MM-dd` the temp was logged; ignored after midnight. */
+  loggedTempAt             String?
   deletedAt                DateTime?
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt

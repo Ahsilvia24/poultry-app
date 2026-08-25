@@ -309,6 +309,7 @@ export function getDashboard() {
     date: string;
     flockAgeDays: number | null;
     catchAgeDays: number;
+    catchTime: string | null;
   };
   const upcomingCatches: CatchRow[] = [];
   const seenCatchKeys = new Set<string>();
@@ -397,11 +398,12 @@ export function getDashboard() {
       flock_id: string;
       placed_bird_count: number;
       catch_date: string | null;
+      catch_time: string | null;
       placement_date: string | null;
       flock_placement: string;
       flock_catch: string | null;
     }>(
-      `SELECT hf.id, hf.flock_id, hf.placed_bird_count, hf.catch_date, hf.placement_date,
+      `SELECT hf.id, hf.flock_id, hf.placed_bird_count, hf.catch_date, hf.catch_time, hf.placement_date,
               f.placement_date as flock_placement, f.projected_catch_date as flock_catch
        FROM house_flocks hf
        JOIN flocks f ON f.id = hf.flock_id
@@ -449,6 +451,7 @@ export function getDashboard() {
         hf.catch_date?.trim() ||
         hf.flock_catch ||
         addDaysKey(housePlacement, 52);
+      const houseCatchTime = hf.catch_time?.trim() || null;
       const catchKey = `${farm.id}|${houseCatch}`;
       if (!seenCatchKeys.has(catchKey)) {
         seenCatchKeys.add(catchKey);
@@ -458,7 +461,15 @@ export function getDashboard() {
           date: houseCatch,
           flockAgeDays: daysSincePlacement(housePlacement, today),
           catchAgeDays: birdAgeFromPlacement(housePlacement, houseCatch),
+          catchTime: houseCatchTime,
         });
+      } else if (houseCatchTime) {
+        const existing = upcomingCatches.find(
+          (c) => c.farmId === farm.id && c.date === houseCatch,
+        );
+        if (existing && (!existing.catchTime || houseCatchTime < existing.catchTime)) {
+          existing.catchTime = houseCatchTime;
+        }
       }
       const daysUntilCatch = daysUntilDateKey(today, houseCatch);
       if (daysUntilCatch != null) {
@@ -487,6 +498,7 @@ export function getDashboard() {
           date: catchDate,
           flockAgeDays: daysSincePlacement(fl.placement_date, today),
           catchAgeDays: birdAgeFromPlacement(fl.placement_date, catchDate),
+          catchTime: null,
         });
       }
     }

@@ -1,11 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { HouseCardActions } from "@/components/HouseCardActions";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Card } from "@/components/ui";
-import { halfHourTimeLabel } from "@/lib/time-slots";
+import { compactCatchTimeLabel } from "@/lib/time-slots";
+import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
+import { useKeypadNav } from "@/components/KeypadNavContext";
+import { updateHouseLoggedTempAction } from "@/app/actions/farms";
 
 type HouseData = {
   id: string;
@@ -15,6 +19,8 @@ type HouseData = {
   numberOfFans: number | null;
   notes: string | null;
   placedBirdCount?: number | null;
+  loggedTemp?: string | null;
+  loggedTempAt?: string | null;
 };
 
 type Metrics = {
@@ -32,6 +38,11 @@ function formatHouseDetailDate(dateKey: string) {
   if (!y || !m || !d) return dateKey;
   const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
   return `${WEEKDAYS[dt.getDay()]} ${d} ${MONTHS[m - 1]} ${String(y).slice(-2)}`;
+}
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function HouseCard({
@@ -67,10 +78,19 @@ export function HouseCard({
   catchTime?: string | null;
   birdAgeDays?: number | null;
 }) {
+  const router = useRouter();
+  const { setKeypadOpen } = useKeypadNav();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [mode, setMode] = useState<"idle" | "edit" | "delete">("idle");
   const [swipeX, setSwipeX] = useState(0);
   const touchStartX = useRef<number | null>(null);
+  const [tempOpen, setTempOpen] = useState(false);
+  const [tempValue, setTempValue] = useState("");
+  const [tempError, setTempError] = useState<string | null>(null);
+  const [tempPending, startTemp] = useTransition();
+
+  const loggedTempToday =
+    house.loggedTemp && house.loggedTempAt === todayKey() ? house.loggedTemp : null;
 
   const mortalityValue = metrics
     ? `${formatNumber(metrics.cumulative)} (${formatPct(metrics.cumulativePct)})`
@@ -108,8 +128,38 @@ export function HouseCard({
 
   const swipeOpen = swipeX < -8;
 
+  useEffect(() => {
+    setKeypadOpen(tempOpen);
+    return () => setKeypadOpen(false);
+  }, [tempOpen, setKeypadOpen]);
+
+  function openTemp() {
+    setTempError(null);
+    setTempValue(loggedTempToday ?? "");
+    setTempOpen(true);
+  }
+
+  function closeTemp() {
+    if (tempPending) return;
+    setTempOpen(false);
+    setTempError(null);
+  }
+
+  function saveTemp(next: string | null) {
+    startTemp(async () => {
+      const result = await updateHouseLoggedTempAction(farmId, house.id, next, todayKey());
+      if (result?.error) {
+        setTempError(result.error);
+        return;
+      }
+      setTempOpen(false);
+      router.refresh();
+    });
+  }
+
   return (
-    <div className="relative overflow-hidden rounded-xl self-start">
+    <div className="self-start">
+    <div className="relative overflow-hidden rounded-xl">
       {/* Only mount while swiping so a stretched grid row can't reveal it under a short tile */}
       {swipeOpen ? (
         <div
@@ -151,9 +201,6 @@ export function HouseCard({
             >
               <p className="text-lg font-bold">
                 House {house.houseNumber}
-                {flockLabel ? (
-                  <span className="font-semibold text-stone-600"> {flockLabel}</span>
-                ) : null}
                 {birdAgeDays != null ? (
                   <span className="font-semibold text-stone-600"> {birdAgeDays}d</span>
                 ) : null}
@@ -168,17 +215,48 @@ export function HouseCard({
                 </p>
               ) : null}
             </button>
-            {hasFlock && houseFlockId ? (
-              <a
-                href={`/mortality?farmId=${encodeURIComponent(farmId)}&houseFlockId=${encodeURIComponent(houseFlockId)}`}
-                className="inline-flex min-h-14 min-w-24 shrink-0 items-center justify-center rounded-xl bg-emerald-800 px-3 py-3 text-center text-sm font-extrabold leading-tight text-white hover:bg-emerald-900"
-                aria-label={`Enter mortality for house ${house.houseNumber}`}
+            <div className="flex shrink-0 items-start gap-2">
+              <button
+                type="button"
+                onClick={openTemp}
+                className={
+                  loggedTempToday
+                    ? "inline-flex min-h-14 min-w-[4.5rem] flex-col items-center justify-center rounded-xl border-[1.5px] border-emerald-800 bg-white px-2.5 py-2"
+                    : "inline-flex min-h-14 min-w-[4.5rem] flex-col items-center justify-center rounded-xl border-[1.5px] border-stone-300 bg-stone-100 px-2.5 py-2"
+                }
+                aria-label={
+                  loggedTempToday
+                    ? `Edit temperature for house ${house.houseNumber}, currently ${loggedTempToday} degrees`
+                    : `Log temperature for house ${house.houseNumber}`
+                }
               >
-                Enter
-                <br />
-                mortality
-              </a>
-            ) : null}
+                {loggedTempToday ? (
+                  <>
+                    <span className="text-lg font-extrabold leading-tight text-emerald-800">
+                      {loggedTempToday}°
+                    </span>
+                    <span className="text-[10px] font-bold text-stone-500">Temp</span>
+                  </>
+                ) : (
+                  <span className="text-center text-xs font-extrabold leading-tight text-stone-900">
+                    Log
+                    <br />
+                    Temp
+                  </span>
+                )}
+              </button>
+              {hasFlock && houseFlockId ? (
+                <a
+                  href={`/mortality?farmId=${encodeURIComponent(farmId)}&houseFlockId=${encodeURIComponent(houseFlockId)}`}
+                  className="inline-flex min-h-14 min-w-24 items-center justify-center rounded-xl bg-emerald-800 px-3 py-3 text-center text-sm font-extrabold leading-tight text-white hover:bg-emerald-900"
+                  aria-label={`Enter mortality for house ${house.houseNumber}`}
+                >
+                  Enter
+                  <br />
+                  mortality
+                </a>
+              ) : null}
+            </div>
           </div>
 
           <button
@@ -252,7 +330,9 @@ export function HouseCard({
                   {catchDateKey ? (
                     <p className="font-semibold leading-snug">
                       {formatHouseDetailDate(catchDateKey)}
-                      {catchTime ? ` · ${halfHourTimeLabel(catchTime)}` : ""}
+                      {catchTime ? (
+                        <span className="ml-1.5">{compactCatchTimeLabel(catchTime)}</span>
+                      ) : null}
                     </p>
                   ) : null}
                 </div>
@@ -269,6 +349,7 @@ export function HouseCard({
           ) : null}
         </Card>
       </div>
+    </div>
 
       <HouseCardActions
         farmId={farmId}
@@ -284,6 +365,44 @@ export function HouseCard({
           catchTime,
         }}
       />
+
+      {tempOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40"
+          onClick={closeTemp}
+        >
+          <div
+            className="rounded-t-xl bg-white pt-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 pb-3">
+              <p className="text-lg font-extrabold text-stone-900">
+                House {house.houseNumber} temperature
+              </p>
+              <p className="mt-3 text-center text-4xl font-extrabold tabular-nums text-stone-900">
+                {tempValue ? `${tempValue}°` : "—"}
+              </p>
+              {tempError ? <p className="mt-2 text-sm text-red-700">{tempError}</p> : null}
+              {loggedTempToday || tempValue ? (
+                <button
+                  type="button"
+                  disabled={tempPending}
+                  onClick={() => saveTemp(null)}
+                  className="mt-3 w-full text-center text-sm font-bold text-stone-600"
+                >
+                  Clear temperature
+                </button>
+              ) : null}
+            </div>
+            <NumberKeypad
+              allowDecimal
+              onDigit={(d) => setTempValue((v) => appendKeypadDigit(v, d, true))}
+              onBackspace={() => setTempValue((v) => backspaceKeypadValue(v))}
+              onEnter={() => saveTemp(tempValue.trim() || null)}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

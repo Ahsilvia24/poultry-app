@@ -32,6 +32,7 @@ import {
   formatPct,
 } from "../../src/components/ui";
 import { ScheduleImportCard } from "../../src/components/ScheduleImportCard";
+import { compactCatchTimeLabel } from "../../src/lib/time-slots";
 
 type Dashboard = ReturnType<typeof getDashboard>;
 type ScheduleItem = Dashboard["todaysSchedule"][number];
@@ -531,6 +532,7 @@ export default function DashboardScreen() {
                           ) : null}
                         </View>
                         <Text style={{ color: colors.muted, fontSize: 13, flexShrink: 0 }}>
+                          {c.catchTime ? `${compactCatchTimeLabel(c.catchTime)} ` : ""}
                           {formatCatchDate(c.date)}
                           {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
                         </Text>

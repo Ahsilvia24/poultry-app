@@ -15,6 +15,18 @@ export function halfHourTimeLabel(value: string | null | undefined): string {
   return HALF_HOUR_TIME_OPTIONS.find((o) => o.value === value)?.label ?? value;
 }
 
+/** e.g. 13:30 → "1:30p", 01:30 → "1:30a" */
+export function compactCatchTimeLabel(value: string | null | undefined): string {
+  if (!value) return "";
+  const [hStr, mStr] = value.split(":");
+  const h = Number(hStr);
+  const m = Number(mStr);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return value;
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  const ap = h < 12 ? "a" : "p";
+  return `${hour12}:${String(m).padStart(2, "0")}${ap}`;
+}
+
 export function normalizeHalfHourTime(raw: string | null | undefined): string | null {
   if (raw == null) return null;
   const s = raw.trim();

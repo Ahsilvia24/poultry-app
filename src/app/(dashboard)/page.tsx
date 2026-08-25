@@ -1,4 +1,5 @@
 import { format, parseISO } from "date-fns";
+import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { auth } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard";
 import { Card } from "@/components/ui";
@@ -69,6 +70,7 @@ export default async function DashboardPage() {
                       ) : null}
                     </span>
                     <span className="shrink-0 text-stone-600">
+                      {c.catchTime ? `${compactCatchTimeLabel(c.catchTime)} ` : ""}
                       {format(parseISO(c.date), "EEE, MMM d")}
                       {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
                     </span>

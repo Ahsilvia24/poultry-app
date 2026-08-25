@@ -227,6 +227,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               totalFanCFM: house.totalFanCFM,
               numberOfFans: house.numberOfFans,
               notes: house.notes,
+              loggedTemp: house.loggedTemp,
+              loggedTempAt: house.loggedTempAt,
             }}
             hasFlock={Boolean(hf)}
             status={status}

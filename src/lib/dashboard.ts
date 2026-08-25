@@ -77,6 +77,7 @@ export async function getDashboardData(userId: string) {
     flockNumber: string;
     flockAgeDays: number;
     catchAgeDays: number;
+    catchTime: string | null;
   }> = [];
   const seenFarmCatchKeys = new Set<string>();
   type FollowUpRow = {
@@ -142,7 +143,7 @@ export async function getDashboardData(userId: string) {
     for (const flock of activeFlocks) {
       const flockCatchDates = new Map<
         string,
-        { catchDate: Date; placement: Date }
+        { catchDate: Date; placement: Date; catchTime: string | null }
       >();
       for (const hf of flock.houseFlocks) {
         const placement = hf.placementDate ?? flock.placementDate;
@@ -150,8 +151,12 @@ export async function getDashboardData(userId: string) {
           ? startOfDay(hf.catchDate)
           : resolveCatchDate(flock);
         const key = format(catchDate, "yyyy-MM-dd");
-        if (!flockCatchDates.has(key)) {
-          flockCatchDates.set(key, { catchDate, placement: startOfDay(placement) });
+        const catchTime = hf.catchTime?.trim() || null;
+        const existing = flockCatchDates.get(key);
+        if (!existing) {
+          flockCatchDates.set(key, { catchDate, placement: startOfDay(placement), catchTime });
+        } else if (catchTime && (!existing.catchTime || catchTime < existing.catchTime)) {
+          existing.catchTime = catchTime;
         }
       }
       if (flockCatchDates.size === 0 && flock.projectedCatchDate) {
@@ -159,11 +164,20 @@ export async function getDashboardData(userId: string) {
         flockCatchDates.set(format(catchDate, "yyyy-MM-dd"), {
           catchDate,
           placement: startOfDay(flock.placementDate),
+          catchTime: null,
         });
       }
-      for (const [dateKey, { catchDate, placement }] of flockCatchDates) {
+      for (const [dateKey, { catchDate, placement, catchTime }] of flockCatchDates) {
         const farmCatchKey = `${farm.id}|${dateKey}`;
-        if (seenFarmCatchKeys.has(farmCatchKey)) continue;
+        if (seenFarmCatchKeys.has(farmCatchKey)) {
+          const existing = upcomingCatches.find(
+            (c) => c.farmName === farm.farmName && c.date === dateKey,
+          );
+          if (existing && catchTime && (!existing.catchTime || catchTime < existing.catchTime)) {
+            existing.catchTime = catchTime;
+          }
+          continue;
+        }
         seenFarmCatchKeys.add(farmCatchKey);
         upcomingCatches.push({
           farmName: farm.farmName,
@@ -171,6 +185,7 @@ export async function getDashboardData(userId: string) {
           flockNumber: flock.flockNumber,
           flockAgeDays: differenceInCalendarDays(today, placement),
           catchAgeDays: differenceInCalendarDays(catchDate, placement),
+          catchTime,
         });
       }
 

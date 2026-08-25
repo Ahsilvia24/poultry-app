@@ -733,3 +733,45 @@ export async function updateFlockWeightProjectionAction(flockId: string, formDat
   revalidatePath("/tools");
   return { success: true };
 }
+
+export async function updateHouseLoggedTempAction(
+  farmId: string,
+  houseId: string,
+  temp: string | null,
+  dateKey: string,
+) {
+  const user = await requireUser();
+  await assertFarmAccess(farmId, user.id!);
+
+  const house = await prisma.house.findFirst({
+    where: { id: houseId, farmId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!house) return { error: "House not found" };
+
+  const day = dateKey.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return { error: "Invalid date" };
+  }
+
+  const trimmed = temp?.trim() ?? "";
+  if (!trimmed) {
+    await prisma.house.update({
+      where: { id: houseId },
+      data: { loggedTemp: null, loggedTempAt: null },
+    });
+    revalidatePath(`/farms/${farmId}`);
+    return { success: true as const, loggedTemp: null };
+  }
+
+  if (!Number.isFinite(Number(trimmed))) {
+    return { error: "Enter a valid temperature" };
+  }
+
+  await prisma.house.update({
+    where: { id: houseId },
+    data: { loggedTemp: trimmed, loggedTempAt: day },
+  });
+  revalidatePath(`/farms/${farmId}`);
+  return { success: true as const, loggedTemp: trimmed };
+}
