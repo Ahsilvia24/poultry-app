@@ -211,7 +211,7 @@ function ScheduleCheckRow({
   );
 }
 
-/** e.g. Wed, Jul 29, 2026 */
+/** e.g. Wed, Jul 29 */
 function formatCatchDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   const dt = new Date(y!, (m ?? 1) - 1, d ?? 1, 12);
@@ -219,7 +219,6 @@ function formatCatchDate(dateKey: string) {
     weekday: "short",
     month: "short",
     day: "numeric",
-    year: "numeric",
   });
 }
 
