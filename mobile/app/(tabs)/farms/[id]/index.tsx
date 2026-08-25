@@ -1509,18 +1509,9 @@ export default function FarmDetailScreen() {
                             </Text>
                           )}
                           {h.catchDate ? (
-                            <View
-                              style={{
-                                flexDirection: "row",
-                                alignItems: "baseline",
-                                marginTop: 2,
-                              }}
-                            >
+                            <View style={{ marginTop: 2 }}>
                               <Text
-                                numberOfLines={1}
                                 style={{
-                                  flexShrink: 1,
-                                  minWidth: 0,
                                   fontSize: 13,
                                   fontWeight: "700",
                                   color: colors.text,
@@ -1532,8 +1523,6 @@ export default function FarmDetailScreen() {
                               {h.catchTime ? (
                                 <Text
                                   style={{
-                                    flexShrink: 0,
-                                    marginLeft: 6,
                                     fontSize: 13,
                                     fontWeight: "700",
                                     color: colors.text,

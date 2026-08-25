@@ -328,12 +328,10 @@ export function HouseCard({
                     <p className="font-semibold">—</p>
                   )}
                   {catchDateKey ? (
-                    <p className="flex items-baseline gap-x-1.5 font-semibold leading-snug">
-                      <span className="min-w-0 truncate">
-                        {formatHouseDetailDate(catchDateKey)}
-                      </span>
+                    <p className="font-semibold leading-snug">
+                      <span className="block">{formatHouseDetailDate(catchDateKey)}</span>
                       {catchTime ? (
-                        <span className="shrink-0">{compactCatchTimeLabel(catchTime)}</span>
+                        <span className="block">{compactCatchTimeLabel(catchTime)}</span>
                       ) : null}
                     </p>
                   ) : null}
