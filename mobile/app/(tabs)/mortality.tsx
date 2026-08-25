@@ -675,6 +675,13 @@ export default function MortalityScreen() {
     const current = getFieldValue(activeField.kind, activeField.age);
     const start = selection?.start ?? current.length;
     const end = selection?.end ?? current.length;
+    if (current === "") {
+      const prevAge = activeField.age - 1;
+      if (rowsRef.current.some((r) => r.age === prevAge)) {
+        focusField(activeField.kind, prevAge);
+      }
+      return;
+    }
     let next: string;
     let caret: number;
     if (start !== end) {
@@ -684,6 +691,10 @@ export default function MortalityScreen() {
       next = `${current.slice(0, start - 1)}${current.slice(start)}`;
       caret = start - 1;
     } else {
+      const prevAge = activeField.age - 1;
+      if (rowsRef.current.some((r) => r.age === prevAge)) {
+        focusField(activeField.kind, prevAge);
+      }
       return;
     }
     setFieldValue(activeField.kind, activeField.age, next);

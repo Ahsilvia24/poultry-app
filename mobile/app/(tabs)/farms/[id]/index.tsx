@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -204,6 +204,8 @@ function NativeNumInput({
   decimal,
   placeholder,
   style,
+  autoFocus,
+  inputRef,
 }: {
   label: string;
   value: string;
@@ -211,11 +213,15 @@ function NativeNumInput({
   decimal?: boolean;
   placeholder?: string;
   style?: object;
+  autoFocus?: boolean;
+  inputRef?: Ref<TextInput>;
 }) {
   return (
     <View style={[{ marginBottom: 10 }, style]}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
+        ref={inputRef}
+        autoFocus={autoFocus}
         style={[styles.input, { fontSize: 20, fontWeight: "700", color: colors.text }]}
         value={value}
         onChangeText={onChangeText}
@@ -411,6 +417,14 @@ export default function FarmDetailScreen() {
   } | null>(null);
   const [tempSaving, setTempSaving] = useState(false);
   const [tempError, setTempError] = useState<string | null>(null);
+  const tempInputRef = useRef<TextInput>(null);
+
+  const tempHouseId = tempHouse?.id ?? null;
+  useEffect(() => {
+    if (!tempHouseId) return;
+    const t = setTimeout(() => tempInputRef.current?.focus(), 280);
+    return () => clearTimeout(t);
+  }, [tempHouseId]);
   const [addingHouse, setAddingHouse] = useState<AddHouseDraft | null>(null);
   const [addHouseError, setAddHouseError] = useState<string | null>(null);
   const [addHouseSaving, setAddHouseSaving] = useState(false);
@@ -481,24 +495,28 @@ export default function FarmDetailScreen() {
   focusHouseParamRef.current = focusHouseFlockIdParam;
   const oneShotHouseScrollRef = useRef<string | null>(null);
 
+  const scrollToHouseKey = useCallback((key: string | null | undefined) => {
+    if (!key) return;
+    let attempts = 0;
+    const tryScroll = () => {
+      const y = sectionY.current[key];
+      if (y != null) {
+        scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
+        return;
+      }
+      if (attempts++ < 12) setTimeout(tryScroll, 50);
+    };
+    setTimeout(tryScroll, 32);
+  }, []);
+
   const scrollToHouseFlock = useCallback(
     (houseFlockId: string | null | undefined) => {
       if (!houseFlockId || !data || data.farm.id !== farmId) return;
       const house = data.houses.find((h) => h.houseFlockId === houseFlockId);
       if (!house) return;
-      const key = `house-${house.id}`;
-      let attempts = 0;
-      const tryScroll = () => {
-        const y = sectionY.current[key];
-        if (y != null) {
-          scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
-          return;
-        }
-        if (attempts++ < 12) setTimeout(tryScroll, 50);
-      };
-      setTimeout(tryScroll, 32);
+      scrollToHouseKey(`house-${house.id}`);
     },
-    [data, farmId],
+    [data, farmId, scrollToHouseKey],
   );
 
   useFocusEffect(
@@ -528,9 +546,13 @@ export default function FarmDetailScreen() {
     }, [load, farmId, router]),
   );
 
-  // Back to House → that house; any other focus → top of page.
+  // Back to House → that house; any other *focus* → top of page.
+  // Do not re-run on data refresh (temp save) or the list jumps back to house 1.
+  const lastFocusNonceRef = useRef(0);
   useEffect(() => {
     if (!data || data.farm.id !== farmId || focusNonce === 0) return;
+    if (lastFocusNonceRef.current === focusNonce) return;
+    lastFocusNonceRef.current = focusNonce;
     const target = oneShotHouseScrollRef.current;
     oneShotHouseScrollRef.current = null;
     if (target) {
@@ -714,12 +736,15 @@ export default function FarmDetailScreen() {
 
   function saveHouseTemp() {
     if (!tempHouse || !farm) return;
+    const houseKey = `house-${tempHouse.id}`;
     setTempSaving(true);
     setTempError(null);
     try {
+      Keyboard.dismiss();
       updateHouseLoggedTemp(farm.id, tempHouse.id, tempHouse.temp);
       setTempHouse(null);
       load();
+      scrollToHouseKey(houseKey);
     } catch (e) {
       setTempError(e instanceof Error ? e.message : "Could not save temperature");
     } finally {
@@ -729,12 +754,15 @@ export default function FarmDetailScreen() {
 
   function clearHouseTemp() {
     if (!tempHouse || !farm) return;
+    const houseKey = `house-${tempHouse.id}`;
     setTempSaving(true);
     setTempError(null);
     try {
+      Keyboard.dismiss();
       updateHouseLoggedTemp(farm.id, tempHouse.id, null);
       setTempHouse(null);
       load();
+      scrollToHouseKey(houseKey);
     } catch (e) {
       setTempError(e instanceof Error ? e.message : "Could not clear temperature");
     } finally {
@@ -1866,8 +1894,11 @@ export default function FarmDetailScreen() {
             }}
           >
             <Pressable style={{ flex: 1 }} onPress={closeTempModal} />
-            <View
-              style={{
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="none"
+              automaticallyAdjustKeyboardInsets
+              contentContainerStyle={{
                 backgroundColor: "#fff",
                 borderTopLeftRadius: 16,
                 borderTopRightRadius: 16,
@@ -1889,6 +1920,8 @@ export default function FarmDetailScreen() {
                 }
                 decimal
                 placeholder="e.g. 78"
+                autoFocus
+                inputRef={tempInputRef}
               />
               {tempError ? (
                 <Text style={{ color: colors.danger, fontWeight: "600", marginBottom: 10 }}>
@@ -1910,7 +1943,7 @@ export default function FarmDetailScreen() {
                   <PrimaryButton label="Cancel" secondary onPress={closeTempModal} />
                 </View>
               )}
-            </View>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>

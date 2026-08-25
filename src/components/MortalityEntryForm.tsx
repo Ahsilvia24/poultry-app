@@ -485,15 +485,20 @@ export function MortalityEntryForm({
     scheduleSave();
   }
 
-  function focusNextInColumn(field: "culls" | "mortality", age: number) {
-    const nextAge = age + 1;
-    if (!rowsRef.current.some((r) => r.age === nextAge)) return;
-
-    // Keep only the week we're moving into open
-    const week = flockWeekFromAge(nextAge);
+  function focusAgeInColumn(field: "culls" | "mortality", age: number) {
+    if (!rowsRef.current.some((r) => r.age === age)) return;
+    const week = flockWeekFromAge(age);
     setExpandedWeeks(new Set([week]));
-    pendingJumpRef.current = { age: nextAge, field };
+    pendingJumpRef.current = { age, field };
     setFocusToken((t) => t + 1);
+  }
+
+  function focusNextInColumn(field: "culls" | "mortality", age: number) {
+    focusAgeInColumn(field, age + 1);
+  }
+
+  function focusPrevInColumn(field: "culls" | "mortality", age: number) {
+    focusAgeInColumn(field, age - 1);
   }
 
   function onColumnEnter(
@@ -501,6 +506,11 @@ export function MortalityEntryForm({
     field: "culls" | "mortality",
     age: number,
   ) {
+    if (e.key === "Backspace" && e.currentTarget.value === "") {
+      e.preventDefault();
+      focusPrevInColumn(field, age);
+      return;
+    }
     if (e.key !== "Enter") return;
     e.preventDefault();
     flushSave();
