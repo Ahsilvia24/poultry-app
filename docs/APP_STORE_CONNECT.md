@@ -8,8 +8,8 @@ TestFlight: https://appstoreconnect.apple.com/apps/6794784343/testflight/ios
 | Field | Value |
 |-------|-------|
 | Version | 1.0.5 |
-| Build | **83** (submitted to ASC 2026-07-30) |
-| Status | Processing → install from TestFlight when ready |
+| Build | **84** (TestFlight submit in progress 2026-08-25) |
+| Status | Waiting on Expo token → EAS production iOS + ASC submit |
 
 ## Paste into App Store listing
 
