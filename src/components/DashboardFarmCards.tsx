@@ -145,8 +145,8 @@ function DashboardFarmCard({
                     </p>
                   </div>
                   <div>
-                    <p className="text-stone-500">Today&apos;s Mortality</p>
-                    <p className="font-semibold">{farm.todayMortality}</p>
+                    <p className="text-stone-500">7 Day Mort.</p>
+                    <p className="font-semibold">{formatNumber(farm.sevenDayMortality)}</p>
                   </div>
                   <div>
                     <p className="text-stone-500">Total Mortality</p>

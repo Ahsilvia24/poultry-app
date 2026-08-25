@@ -46,6 +46,7 @@ export type FarmCardSummary = {
   totalBirdsPlaced: number;
   birdsRemaining: number;
   todayMortality: number;
+  sevenDayMortality: number;
   projectedHeadCount: number | null;
   projectedMortality: number | null;
   weeklyMortality: Array<{ week: number; total: number }>;

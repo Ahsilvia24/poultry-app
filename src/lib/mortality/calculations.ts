@@ -192,10 +192,10 @@ export function summarizeForDate(
 }
 
 /**
- * Average daily loss over the last 7 calendar days ending on `asOfDate`
+ * Total loss over the last 7 calendar days ending on `asOfDate`
  * (missing days count as 0).
  */
-export function averageDailyMortalityLast7Days(
+export function sumMortalityLast7Days(
   records: MortalityRecordLike[],
   asOfDate: Date = new Date(),
 ): number {
@@ -209,7 +209,18 @@ export function averageDailyMortalityLast7Days(
   for (let i = 0; i < 7; i++) {
     total += byDate.get(format(subDays(asOfDate, i), "yyyy-MM-dd")) ?? 0;
   }
-  return total / 7;
+  return total;
+}
+
+/**
+ * Average daily loss over the last 7 calendar days ending on `asOfDate`
+ * (missing days count as 0).
+ */
+export function averageDailyMortalityLast7Days(
+  records: MortalityRecordLike[],
+  asOfDate: Date = new Date(),
+): number {
+  return sumMortalityLast7Days(records, asOfDate) / 7;
 }
 
 /**

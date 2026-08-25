@@ -614,8 +614,8 @@ export default function DashboardScreen() {
                             />
                             <Metric
                               columns={3}
-                              label="Today's Mortality"
-                              value={String(farm.todayMortality)}
+                              label="7 Day Mort."
+                              value={String(farm.sevenDayMortality)}
                             />
                             <Metric
                               columns={3}

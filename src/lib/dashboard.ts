@@ -2,6 +2,7 @@ import { format, subDays, addDays, startOfDay } from "date-fns";
 import {
   DEFAULT_THRESHOLDS,
   averageDailyMortalityLast7Days,
+  sumMortalityLast7Days,
   isRisingThreeDays,
   projectedHeadCountAtCatch,
   resolveMortalityStatus,
@@ -125,6 +126,7 @@ export async function getDashboardData(userId: string) {
 
     let placed = 0;
     let todayMort = 0;
+    let sevenMort = 0;
     let cum = 0;
     let remaining = 0;
     let projectedHead = 0;
@@ -221,6 +223,7 @@ export async function getDashboardData(userId: string) {
         placed += hf.placedBirdCount;
         const metrics = summarizeForDate(hf.placedBirdCount, hf.mortalities, today);
         todayMort += metrics.today;
+        sevenMort += sumMortalityLast7Days(hf.mortalities, today);
         cum += metrics.cumulative;
         remaining += metrics.remaining;
         dailyPct = Math.max(dailyPct, metrics.dailyPct);
@@ -265,6 +268,7 @@ export async function getDashboardData(userId: string) {
       totalBirdsPlaced: placed,
       birdsRemaining: remaining,
       todayMortality: todayMort,
+      sevenDayMortality: sevenMort,
       projectedHeadCount: active ? projectedHead : null,
       projectedMortality: active ? Math.max(0, Math.round(cum + projectedMortExtra)) : null,
       weeklyMortality: Array.from(weeklyTotals.entries())
