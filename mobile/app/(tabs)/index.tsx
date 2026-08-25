@@ -383,7 +383,7 @@ export default function DashboardScreen() {
                         busy={pendingKey === key}
                         onToggle={() => toggleScheduleItem(item)}
                         onOpenFarm={() =>
-                          router.push({
+                          router.navigate({
                             pathname: "/(tabs)/farms/[id]",
                             params: { id: item.farmId },
                           })
@@ -436,7 +436,7 @@ export default function DashboardScreen() {
                           busy={pendingKey === key}
                           onToggle={() => toggleScheduleItem(item)}
                           onOpenFarm={() =>
-                            router.push({
+                            router.navigate({
                               pathname: "/(tabs)/farms/[id]",
                               params: { id: item.farmId },
                             })
@@ -483,7 +483,7 @@ export default function DashboardScreen() {
                       <Pressable
                         key={`${c.farmId}-${c.date}`}
                         onPress={() =>
-                          router.push({
+                          router.navigate({
                             pathname: "/(tabs)/farms/[id]",
                             params: { id: c.farmId },
                           })

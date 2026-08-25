@@ -39,6 +39,7 @@ import {
   consumeFarmReturnFromMortality,
   getFarmNavContext,
   setFarmNavContext,
+  useGoToFarmList,
 } from "../../../../src/lib/farmNavContext";
 import { useTabScrollToTop } from "../../../../src/lib/tabScroll";
 import { VISIT_TYPE_LABELS } from "../../../../src/lib/visits";
@@ -404,6 +405,7 @@ export default function FarmDetailScreen() {
   const openEdit = paramId(params.edit) === "1";
   const focusHouseFlockIdParam = paramId(params.focusHouseFlockId);
   const router = useRouter();
+  const goToFarmList = useGoToFarmList();
   const [data, setData] = useState<FarmDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -596,10 +598,7 @@ export default function FarmDetailScreen() {
       <SafeAreaView style={styles.screen} edges={["top"]}>
         <View style={styles.content}>
           <Pressable
-            onPress={() => {
-              if (router.canGoBack()) router.back();
-              else router.replace("/(tabs)/farms");
-            }}
+            onPress={goToFarmList}
             style={{ marginBottom: 12 }}
           >
             <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
@@ -917,8 +916,7 @@ export default function FarmDetailScreen() {
     setFarmEditError(null);
     if (openEdit) {
       // Opened from list gear — return to the farms list at the prior scroll position.
-      if (router.canGoBack()) router.back();
-      else router.replace("/(tabs)/farms");
+      goToFarmList();
     }
   }
 
@@ -936,8 +934,7 @@ export default function FarmDetailScreen() {
       });
       setEditingFarm(null);
       if (openEdit) {
-        if (router.canGoBack()) router.back();
-        else router.replace("/(tabs)/farms");
+        goToFarmList();
       } else {
         load();
       }
@@ -958,10 +955,7 @@ export default function FarmDetailScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Pressable
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else router.replace("/(tabs)/farms");
-          }}
+          onPress={goToFarmList}
           style={{ marginBottom: 8 }}
           accessibilityRole="button"
           accessibilityLabel="Back to farms"

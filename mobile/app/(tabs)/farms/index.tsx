@@ -231,7 +231,7 @@ export default function FarmsScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`Open ${farm.farmName}`}
                   onPress={() =>
-                    router.push({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } })
+                    router.navigate({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } })
                   }
                   style={({ pressed }) => ({
                     paddingVertical: 10,

@@ -13,7 +13,8 @@ export default function FarmsLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="new" />
-      <Stack.Screen name="[id]" />
+      {/* One farm-detail screen — switching farms updates it instead of stacking. */}
+      <Stack.Screen name="[id]" dangerouslySingular={() => "farm-detail"} />
     </Stack>
   );
 }
