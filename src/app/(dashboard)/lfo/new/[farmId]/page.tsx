@@ -6,11 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { createLastFeedOrderAction } from "@/app/actions/lfo";
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
 import { Card, PageHeader } from "@/components/ui";
-import {
-  DEFAULT_LFO_CONSUMPTION_RATE,
-  feedUpFromCatch,
-  formatLocalDateTime,
-} from "@/lib/lfo/calculate";
+import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 
 type Params = Promise<{ farmId: string }>;
@@ -62,13 +58,14 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
     }
   }
 
-  function feedUpPrefill(houseId: string): string | null {
+  function catchPrefill(houseId: string): { catchDate: string; catchTime: string } {
     const info = catchByHouse.get(houseId);
-    if (!info?.catchTime) return null;
+    if (!info?.catchTime) return { catchDate: "", catchTime: "" };
     const catchDate = info.catchDate ?? info.flockCatch;
-    if (!catchDate) return null;
-    const feedUp = feedUpFromCatch(format(catchDate, "yyyy-MM-dd"), info.catchTime);
-    return feedUp ? formatLocalDateTime(feedUp) : null;
+    return {
+      catchDate: catchDate ? format(catchDate, "yyyy-MM-dd") : "",
+      catchTime: info.catchTime,
+    };
   }
 
   async function submit(formData: FormData) {
@@ -98,14 +95,18 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
           orderDate={today}
           consumptionRate={DEFAULT_LFO_CONSUMPTION_RATE}
           submitLabel="Save LFO"
-          houses={farm.houses.map((h) => ({
-            houseId: h.id,
-            houseNumber: h.houseNumber,
-            binAPounds: 0,
-            binBPounds: 0,
-            feedUpAt: feedUpPrefill(h.id),
-            headCount: headCounts.get(h.id) ?? 0,
-          }))}
+          houses={farm.houses.map((h) => {
+            const catchParts = catchPrefill(h.id);
+            return {
+              houseId: h.id,
+              houseNumber: h.houseNumber,
+              binAPounds: 0,
+              binBPounds: 0,
+              catchDate: catchParts.catchDate,
+              catchTime: catchParts.catchTime,
+              headCount: headCounts.get(h.id) ?? 0,
+            };
+          })}
         />
       </Card>
     </div>

@@ -11,6 +11,7 @@ import {
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
 import { Card, PageHeader } from "@/components/ui";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
+import { catchPartsFromFeedUpAt } from "@/lib/lfo/calculate";
 
 type Params = Promise<{ id: string }>;
 
@@ -51,12 +52,14 @@ export default async function EditLfoPage({ params }: { params: Params }) {
 
   const houseRows = houses.map((h) => {
     const inv = invByHouse.get(h.id);
+    const catchParts = catchPartsFromFeedUpAt(toDatetimeLocalValue(inv?.feedUpAt));
     return {
       houseId: h.id,
       houseNumber: h.houseNumber,
       binAPounds: inv?.binAPounds ?? 0,
       binBPounds: inv?.binBPounds ?? 0,
-      feedUpAt: toDatetimeLocalValue(inv?.feedUpAt),
+      catchDate: catchParts.date,
+      catchTime: catchParts.time,
       headCount: inv?.headCount ?? liveHeads.get(h.id) ?? 0,
     };
   });

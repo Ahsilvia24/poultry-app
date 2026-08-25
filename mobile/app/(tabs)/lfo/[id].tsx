@@ -17,6 +17,8 @@ import { deleteLfo, getLfo, saveLfoAsNew, updateLfo } from "../../../src/repos/d
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
+  catchPartsFromFeedUpAt,
+  feedUpAtFromCatch,
   formatHouseLfoSummary,
 } from "../../../src/lib/lfo/calculate";
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
@@ -60,30 +62,6 @@ function formatAsOf(iso: string) {
   });
 }
 
-function splitFeedUp(feedUpAt: string | null) {
-  if (!feedUpAt) return { date: "", time: "" };
-  const [date = "", timePart = ""] = feedUpAt.split("T");
-  const raw = timePart.slice(0, 5);
-  if (!raw) return { date, time: "" };
-  const [hStr, mStr] = raw.split(":");
-  const h = Number(hStr);
-  const m = Number(mStr);
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return { date, time: "" };
-  const total = h * 60 + m;
-  const snapped = Math.round(total / 30) * 30;
-  const sh = Math.floor((snapped % (24 * 60)) / 60);
-  const sm = snapped % 60;
-  return {
-    date,
-    time: `${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}`,
-  };
-}
-
-function joinFeedUp(date: string, time: string) {
-  if (!date || !time) return null;
-  return `${date}T${time}`;
-}
-
 type HouseDraft = {
   id: string;
   houseId: string;
@@ -91,8 +69,8 @@ type HouseDraft = {
   headCount: number;
   binAPounds: string;
   binBPounds: string;
-  feedUpDate: string;
-  feedUpTime: string;
+  catchDate: string;
+  catchTime: string;
 };
 
 type ActiveField =
@@ -109,7 +87,7 @@ function loadDraft(id: string) {
     calculatedAt: lfo.calculatedAt,
     houses: lfo.houses.map(
       (h): HouseDraft => {
-        const parts = splitFeedUp(h.feedUpAt);
+        const parts = catchPartsFromFeedUpAt(h.feedUpAt);
         return {
           id: h.id,
           houseId: h.houseId,
@@ -117,8 +95,8 @@ function loadDraft(id: string) {
           headCount: h.headCount,
           binAPounds: String(h.binAPounds ?? 0),
           binBPounds: String(h.binBPounds ?? 0),
-          feedUpDate: parts.date,
-          feedUpTime: parts.time,
+          catchDate: parts.date,
+          catchTime: parts.time,
         };
       },
     ),
@@ -259,7 +237,7 @@ export default function EditLfoScreen() {
         headCount: r.headCount,
         binAPounds: Number(r.binAPounds) || 0,
         binBPounds: Number(r.binBPounds) || 0,
-        feedUpAt: joinFeedUp(r.feedUpDate, r.feedUpTime),
+        feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime),
       })),
     });
   }, [calculatedAt, consumptionRate, orderDate, houses]);
@@ -341,7 +319,7 @@ export default function EditLfoScreen() {
           houseId: h.houseId,
           binAPounds: Number(h.binAPounds) || 0,
           binBPounds: Number(h.binBPounds) || 0,
-          feedUpAt: joinFeedUp(h.feedUpDate, h.feedUpTime),
+          feedUpAt: feedUpAtFromCatch(h.catchDate, h.catchTime),
         })),
       });
       setMsg("Saved");
@@ -366,7 +344,7 @@ export default function EditLfoScreen() {
           houseId: h.houseId,
           binAPounds: Number(h.binAPounds) || 0,
           binBPounds: Number(h.binBPounds) || 0,
-          feedUpAt: joinFeedUp(h.feedUpDate, h.feedUpTime),
+          feedUpAt: feedUpAtFromCatch(h.catchDate, h.catchTime),
         })),
       });
       setError(null);
@@ -568,29 +546,29 @@ export default function EditLfoScreen() {
                       }}
                     >
                       <DatePickerField
-                        label="Feed up date"
-                        value={house.feedUpDate}
+                        label="Catch date"
+                        value={house.catchDate}
                         onChange={(date) => {
                           setActiveField(null);
-                          updateHouse(house.houseId, { feedUpDate: date });
+                          updateHouse(house.houseId, { catchDate: date });
                         }}
                         onOpen={() => setActiveField(null)}
                         style={{ flex: 1, minWidth: 0 }}
                       />
                       <TimeScrollPickerField
-                        label="Feed up time"
-                        value={house.feedUpTime}
+                        label="Catch time"
+                        value={house.catchTime}
                         onChange={(time) => {
                           setActiveField(null);
-                          updateHouse(house.houseId, { feedUpTime: time });
+                          updateHouse(house.houseId, { catchTime: time });
                         }}
                         onOpen={() => setActiveField(null)}
                         style={{ flex: 1, minWidth: 0 }}
                       />
                     </View>
-                    {house.feedUpTime ? (
+                    {house.catchTime ? (
                       <Pressable
-                        onPress={() => updateHouse(house.houseId, { feedUpTime: "" })}
+                        onPress={() => updateHouse(house.houseId, { catchTime: "" })}
                         style={{ alignSelf: "flex-end", marginTop: 6 }}
                         hitSlop={8}
                       >
@@ -601,7 +579,13 @@ export default function EditLfoScreen() {
                     {result ? (
                       <View style={{ marginTop: 12, gap: 4 }}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                          <Text style={styles.muted}>Feed off (−5h)</Text>
+                          <Text style={styles.muted}>Feed up (−5)</Text>
+                          <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
+                            {formatFeedStamp(result.feedUpAt)}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                          <Text style={styles.muted}>Feed off (−10)</Text>
                           <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
                             {formatFeedStamp(result.feedOffAt)}
                           </Text>

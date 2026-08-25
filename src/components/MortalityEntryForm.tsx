@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format } from "date-fns";
 import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
@@ -9,8 +9,10 @@ import {
   flockWeekFromAge,
 } from "@/lib/mortality/calculations";
 import { formatNumber } from "@/lib/utils";
-import { Card, Input } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { NumberKeypad } from "@/components/NumberKeypad";
+import { useKeypadNav } from "@/components/KeypadNavContext";
 
 export type MortalityHousePayload = {
   houseFlockId: string;
@@ -92,52 +94,11 @@ function firstUnfilledAfterLastFilled(rows: DayRow[], asOfDateKey: string): DayR
 }
 
 function focusMortalityAge(age: number, field: "culls" | "mortality" = "mortality") {
-  const el = document.querySelector<HTMLInputElement>(`[data-mort-nav="${field}-${age}"]`);
+  const el = document.querySelector<HTMLElement>(`[data-mort-nav="${field}-${age}"]`);
   if (!el) return false;
   el.scrollIntoView({ block: "center", behavior: "smooth" });
   el.focus();
-  el.select();
   return true;
-}
-
-function digitsOnly(value: string) {
-  return value.replace(/\D/g, "");
-}
-
-function isDigitKey(key: string) {
-  return key.length === 1 && key >= "0" && key <= "9";
-}
-
-function onMortNumberKeyDown(
-  e: KeyboardEvent<HTMLInputElement>,
-  field: "culls" | "mortality",
-  age: number,
-  onEnter: (
-    e: KeyboardEvent<HTMLInputElement>,
-    field: "culls" | "mortality",
-    age: number,
-  ) => void,
-) {
-  const allow =
-    isDigitKey(e.key) ||
-    e.key === "Backspace" ||
-    e.key === "Delete" ||
-    e.key === "Tab" ||
-    e.key === "Enter" ||
-    e.key === "Escape" ||
-    e.key === "ArrowLeft" ||
-    e.key === "ArrowRight" ||
-    e.key === "ArrowUp" ||
-    e.key === "ArrowDown" ||
-    e.key === "Home" ||
-    e.key === "End" ||
-    ((e.metaKey || e.ctrlKey) &&
-      (e.key === "a" || e.key === "c" || e.key === "v" || e.key === "x"));
-  if (!allow) {
-    e.preventDefault();
-    return;
-  }
-  onEnter(e, field, age);
 }
 
 type WeekGroup = {
@@ -286,6 +247,12 @@ export function MortalityEntryForm({
   const [jumpToken, setJumpToken] = useState(0);
   /** Bumps to retry focus after exclusive week expand (Enter / jump). */
   const [focusToken, setFocusToken] = useState(0);
+  const [activeField, setActiveField] = useState<{
+    kind: "culls" | "mortality";
+    age: number;
+  } | null>(null);
+  const [replaceOnType, setReplaceOnType] = useState(false);
+  const { setKeypadOpen } = useKeypadNav();
   const pendingJumpRef = useRef<{ age: number; field: "culls" | "mortality" } | null>(null);
 
   const rowsRef = useRef(rows);
@@ -297,6 +264,15 @@ export function MortalityEntryForm({
   rowsRef.current = rows;
   flockRef.current = flock;
   houseRef.current = house;
+
+  function setMortField(next: { kind: "culls" | "mortality"; age: number } | null) {
+    setActiveField(next);
+    setKeypadOpen(!!next);
+  }
+
+  useEffect(() => {
+    return () => setKeypadOpen(false);
+  }, [setKeypadOpen]);
 
   function cancelScheduledSave() {
     if (saveTimerRef.current) {
@@ -488,6 +464,10 @@ export function MortalityEntryForm({
   function focusAgeInColumn(field: "culls" | "mortality", age: number) {
     if (!rowsRef.current.some((r) => r.age === age)) return;
     const week = flockWeekFromAge(age);
+    const row = rowsRef.current.find((r) => r.age === age);
+    const value = field === "culls" ? row?.cullCount ?? "" : row?.dailyMortalityCount ?? "";
+    setMortField({ kind: field, age });
+    setReplaceOnType(value === "" || value === "0");
     setExpandedWeeks(new Set([week]));
     pendingJumpRef.current = { age, field };
     setFocusToken((t) => t + 1);
@@ -501,20 +481,47 @@ export function MortalityEntryForm({
     focusAgeInColumn(field, age - 1);
   }
 
-  function onColumnEnter(
-    e: KeyboardEvent<HTMLInputElement>,
-    field: "culls" | "mortality",
-    age: number,
-  ) {
-    if (e.key === "Backspace" && e.currentTarget.value === "") {
-      e.preventDefault();
-      focusPrevInColumn(field, age);
+  function getActiveValue() {
+    if (!activeField) return "";
+    const row = rowsRef.current.find((r) => r.age === activeField.age);
+    if (!row) return "";
+    return activeField.kind === "culls" ? row.cullCount : row.dailyMortalityCount;
+  }
+
+  function setActiveValue(next: string) {
+    if (!activeField) return;
+    if (activeField.kind === "culls") updateRow(activeField.age, { cullCount: next });
+    else updateRow(activeField.age, { dailyMortalityCount: next });
+  }
+
+  function onDigit(d: string) {
+    if (!activeField || !/^[0-9]$/.test(d)) return;
+    const current = getActiveValue();
+    const next = replaceOnType ? d : current === "0" ? d : `${current}${d}`;
+    setReplaceOnType(false);
+    setActiveValue(next);
+  }
+
+  function onBackspace() {
+    if (!activeField) return;
+    const current = getActiveValue();
+    if (current === "") {
+      focusPrevInColumn(activeField.kind, activeField.age);
       return;
     }
-    if (e.key !== "Enter") return;
-    e.preventDefault();
+    setReplaceOnType(false);
+    setActiveValue(current.slice(0, -1));
+  }
+
+  function onEnter() {
+    if (!activeField) return;
     flushSave();
-    focusNextInColumn(field, age);
+    const nextAge = activeField.age + 1;
+    if (rowsRef.current.some((r) => r.age === nextAge)) {
+      focusNextInColumn(activeField.kind, activeField.age);
+    } else {
+      setMortField(null);
+    }
   }
 
   function changeFarm(nextFarmId: string) {
@@ -524,6 +531,7 @@ export function MortalityEntryForm({
     setError(null);
     jumpOnHouseLoadRef.current = false;
     pendingJumpRef.current = null;
+    setMortField(null);
     setHouseFlockId("");
     setRows([]);
     setExpandedWeeks(new Set());
@@ -537,6 +545,7 @@ export function MortalityEntryForm({
     setError(null);
     // Collapse immediately so only the jump week re-opens after load
     setExpandedWeeks(new Set());
+    setMortField(null);
     if (nextHouseId === houseFlockId) {
       setJumpToken((t) => t + 1);
       return;
@@ -560,7 +569,7 @@ export function MortalityEntryForm({
                   disabled={disabled}
                   onClick={() => changeFarm(f.id)}
                   className={cn(
-                    "shrink-0 rounded-lg px-4 py-2.5 text-sm font-semibold whitespace-nowrap",
+                    "shrink-0 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap",
                     active
                       ? "bg-emerald-700 text-white"
                       : "bg-stone-200 text-stone-800 hover:bg-stone-300",
@@ -583,7 +592,7 @@ export function MortalityEntryForm({
                   type="button"
                   onClick={() => changeHouse(h.houseFlockId)}
                   className={cn(
-                    "shrink-0 rounded-lg px-4 py-2.5 text-sm font-semibold whitespace-nowrap",
+                    "shrink-0 rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap",
                     h.houseFlockId === houseFlockId
                       ? "bg-emerald-700 text-white"
                       : "bg-stone-200 text-stone-800 hover:bg-stone-300",
@@ -623,18 +632,21 @@ export function MortalityEntryForm({
       </div>
 
       {house && rows.length > 0 ? (
-        <div className="space-y-2">
+        <div className={cn("space-y-2", activeField && "pb-72")}>
           {weekGroups.map((group) => {
             const open = expandedWeeks.has(group.week);
             return (
               <Card key={group.week} className="!p-0 overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => toggleWeek(group.week)}
-                  className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left hover:bg-stone-50"
+                  onClick={() => {
+                    setMortField(null);
+                    toggleWeek(group.week);
+                  }}
+                  className="flex min-h-11 w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-stone-50"
                   aria-expanded={open}
                 >
-                  <span className="w-5 shrink-0 text-stone-500" aria-hidden="true">
+                  <span className="w-4 shrink-0 text-stone-500" aria-hidden="true">
                     {open ? "▾" : "▸"}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -652,115 +664,69 @@ export function MortalityEntryForm({
 
                 {open ? (
                   <div className="border-t border-stone-100">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full border-collapse text-sm">
-                        <thead>
-                          <tr className="border-b border-stone-200 bg-stone-50 text-left">
-                            <th className="sticky left-0 z-10 bg-stone-50 px-3 py-2 font-semibold text-stone-600">
-                              Age
-                            </th>
-                            <th className="px-3 py-2 font-semibold text-stone-600">Date</th>
-                            <th className="px-3 py-2 font-semibold text-stone-600">Culls</th>
-                            <th className="px-3 py-2 font-semibold text-stone-600">Mortality</th>
-                            <th className="px-3 py-2 text-right font-semibold text-stone-600">
-                              Loss
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {group.rows.map((row) => {
-                            const loss = Number(row.dailyMortalityCount || 0);
-                            return (
-                              <tr
-                                key={row.mortalityDate}
-                                data-mort-row={row.age}
-                                className="border-b border-stone-100"
-                              >
-                                <td className="sticky left-0 z-10 bg-white px-3 py-2 font-semibold text-stone-900">
-                                  {row.age}
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-2 text-stone-600">
-                                  {formatDayLabel(row.mortalityDate)}
-                                </td>
-                                <td className="px-2 py-1.5">
-                                  <Input
-                                    aria-label={`Culls day ${row.age}`}
-                                    data-mort-nav={`culls-${row.age}`}
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    enterKeyHint="next"
-                                    autoComplete="off"
-                                    autoCorrect="off"
-                                    spellCheck={false}
-                                    className="min-h-11 px-3"
-                                    placeholder=""
-                                    value={row.cullCount}
-                                    onFocus={(e) => e.target.select()}
-                                    onBlur={() => flushSave()}
-                                    onKeyDown={(e) =>
-                                      onMortNumberKeyDown(e, "culls", row.age, onColumnEnter)
-                                    }
-                                    onPaste={(e) => {
-                                      e.preventDefault();
-                                      const digits = digitsOnly(
-                                        e.clipboardData.getData("text") || "",
-                                      );
-                                      updateRow(row.age, { cullCount: digits });
-                                    }}
-                                    onChange={(e) => {
-                                      updateRow(row.age, {
-                                        cullCount: digitsOnly(e.target.value),
-                                      });
-                                    }}
-                                  />
-                                </td>
-                                <td className="px-2 py-1.5">
-                                  <Input
-                                    aria-label={`Mortality day ${row.age}`}
-                                    data-mort-nav={`mortality-${row.age}`}
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    enterKeyHint="next"
-                                    autoComplete="off"
-                                    autoCorrect="off"
-                                    spellCheck={false}
-                                    className="min-h-11 px-3"
-                                    placeholder=""
-                                    value={row.dailyMortalityCount}
-                                    onFocus={(e) => e.target.select()}
-                                    onBlur={() => flushSave()}
-                                    onKeyDown={(e) =>
-                                      onMortNumberKeyDown(e, "mortality", row.age, onColumnEnter)
-                                    }
-                                    onPaste={(e) => {
-                                      e.preventDefault();
-                                      const digits = digitsOnly(
-                                        e.clipboardData.getData("text") || "",
-                                      );
-                                      updateRow(row.age, { dailyMortalityCount: digits });
-                                    }}
-                                    onChange={(e) => {
-                                      updateRow(row.age, {
-                                        dailyMortalityCount: digitsOnly(e.target.value),
-                                      });
-                                    }}
-                                  />
-                                </td>
-                                <td className="px-3 py-2 text-right font-semibold text-stone-800">
-                                  {needsEntry(row, asOfDateKey) ? (
-                                    <NeedsEntryIcon />
-                                  ) : mortalityEntered(row) ? (
-                                    loss
-                                  ) : null}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                    <div className="flex items-center bg-stone-100 px-2.5 py-1.5 text-[11px] font-extrabold uppercase tracking-wide text-stone-500">
+                      <span className="min-w-0 flex-1">Age / Date</span>
+                      <span className="w-16 text-center">Culls</span>
+                      <span className="w-16 text-center">Mort</span>
+                      <span className="w-[4.25rem] text-right">Loss</span>
                     </div>
+                    {group.rows.map((row) => {
+                      const loss = Number(row.dailyMortalityCount || 0);
+                      const cullActive =
+                        activeField?.kind === "culls" && activeField.age === row.age;
+                      const mortActive =
+                        activeField?.kind === "mortality" && activeField.age === row.age;
+                      return (
+                        <div
+                          key={row.mortalityDate}
+                          data-mort-row={row.age}
+                          className="flex items-center gap-1 border-t border-stone-100 px-2.5 py-1.5"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold leading-tight text-stone-900">
+                              {row.age === 0 ? "Day 0" : `Age ${row.age}`}
+                            </p>
+                            <p className="text-xs leading-tight text-stone-500">
+                              {formatDayLabel(row.mortalityDate)}
+                              {row.age === 0 ? " · placement" : ""}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label={`Culls day ${row.age}`}
+                            data-mort-nav={`culls-${row.age}`}
+                            onClick={() => focusAgeInColumn("culls", row.age)}
+                            className={cn(
+                              "h-10 w-16 shrink-0 rounded-lg border bg-white text-center text-base font-semibold tabular-nums text-stone-900",
+                              cullActive ? "border-2 border-emerald-700" : "border-stone-300",
+                            )}
+                          >
+                            {row.cullCount}
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Mortality day ${row.age}`}
+                            data-mort-nav={`mortality-${row.age}`}
+                            onClick={() => focusAgeInColumn("mortality", row.age)}
+                            className={cn(
+                              "h-10 w-16 shrink-0 rounded-lg border bg-white text-center text-base font-semibold tabular-nums text-stone-900",
+                              mortActive ? "border-2 border-emerald-700" : "border-stone-300",
+                            )}
+                          >
+                            {row.dailyMortalityCount}
+                          </button>
+                          <div className="flex w-[4.25rem] shrink-0 items-center justify-end pr-0.5">
+                            {needsEntry(row, asOfDateKey) ? (
+                              <NeedsEntryIcon />
+                            ) : mortalityEntered(row) ? (
+                              <span className="text-sm font-bold tabular-nums text-stone-900">
+                                {loss}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : null}
               </Card>
@@ -770,6 +736,28 @@ export function MortalityEntryForm({
       ) : null}
 
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+
+      {activeField ? (
+        <div className="fixed inset-x-0 bottom-0 z-50">
+          <NumberKeypad
+            onDigit={onDigit}
+            onBackspace={onBackspace}
+            onEnter={onEnter}
+            extraAction={
+              farmId && house
+                ? {
+                    label: `Back to House ${house.houseNumber}`,
+                    onPress: () => {
+                      flushSave();
+                      setMortField(null);
+                      router.push(`/farms/${farmId}`);
+                    },
+                  }
+                : undefined
+            }
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

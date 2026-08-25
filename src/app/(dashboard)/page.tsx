@@ -19,9 +19,9 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-3 md:mb-6">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
+          <h1 className="text-xl font-bold tracking-tight text-stone-900 md:text-3xl">
             Dashboard
           </h1>
           <form action={signOutAction}>

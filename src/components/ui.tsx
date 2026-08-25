@@ -26,11 +26,16 @@ export function Button({
   );
 }
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+export function Input({
+  className,
+  compact = false,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { compact?: boolean }) {
   return (
     <input
       className={cn(
-        "min-h-12 w-full rounded-lg border border-stone-300 bg-white px-4 text-lg font-semibold text-stone-900 caret-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200",
+        "w-full rounded-lg border border-stone-300 bg-white font-semibold text-stone-900 caret-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200",
+        compact ? "min-h-11 px-2.5 text-base" : "min-h-12 px-4 text-lg",
         className,
       )}
       {...props}
@@ -38,11 +43,17 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   );
 }
 
-export function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({
+  className,
+  compact = false,
+  children,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & { compact?: boolean }) {
   return (
     <select
       className={cn(
-        "min-h-12 w-full rounded-lg border border-stone-300 bg-white px-4 text-lg font-semibold text-stone-900 caret-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200",
+        "w-full rounded-lg border border-stone-300 bg-white font-semibold text-stone-900 caret-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200",
+        compact ? "min-h-11 px-2.5 text-base" : "min-h-12 px-4 text-lg",
         className,
       )}
       {...props}
@@ -74,7 +85,7 @@ export function Label({ children, htmlFor }: { children: React.ReactNode; htmlFo
 
 export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("rounded-xl border border-stone-200 bg-white p-4 shadow-sm", className)}>
+    <div className={cn("rounded-xl border border-stone-200 bg-white p-3 shadow-sm md:p-4", className)}>
       {children}
     </div>
   );
@@ -104,10 +115,10 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-3 flex flex-col gap-2 md:mb-6 md:gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">{title}</h1>
-        {subtitle ? <p className="mt-1 text-stone-600">{subtitle}</p> : null}
+        <h1 className="text-xl font-bold tracking-tight text-stone-900 md:text-3xl">{title}</h1>
+        {subtitle ? <p className="mt-0.5 text-sm text-stone-600 md:mt-1 md:text-base">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>

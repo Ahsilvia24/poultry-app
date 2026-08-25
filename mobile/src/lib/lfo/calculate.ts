@@ -88,6 +88,52 @@ export function feedUpFromCatch(catchDateKey: string, catchTimeHHmm: string): Da
   return new Date(catchAt.getTime() - FEED_UP_HOURS_BEFORE_CATCH * 60 * 60 * 1000);
 }
 
+/** Catch is 5 hours after feed up (10 hours after feed off). */
+export function catchFromFeedUp(feedUpAt: Date): Date {
+  return new Date(feedUpAt.getTime() + FEED_UP_HOURS_BEFORE_CATCH * 60 * 60 * 1000);
+}
+
+/** Split a local `yyyy-MM-ddTHH:mm` (or Date) into date + :00/:30 time. */
+export function splitLocalDateTime(value: string | Date | null | undefined): {
+  date: string;
+  time: string;
+} {
+  if (value == null || value === "") return { date: "", time: "" };
+  const formatted = value instanceof Date ? formatLocalDateTime(value) : value;
+  const [date = "", timePart = ""] = formatted.split("T");
+  const raw = timePart.slice(0, 5);
+  if (!raw) return { date, time: "" };
+  const [hStr, mStr] = raw.split(":");
+  const h = Number(hStr);
+  const m = Number(mStr);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return { date, time: "" };
+  const total = h * 60 + m;
+  const snapped = Math.round(total / 30) * 30;
+  const sh = Math.floor((snapped % (24 * 60)) / 60);
+  const sm = snapped % 60;
+  return {
+    date,
+    time: `${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}`,
+  };
+}
+
+/** Stored feed-up datetime → catch date/time for the LFO form. */
+export function catchPartsFromFeedUpAt(feedUpAt: string | Date | null | undefined): {
+  date: string;
+  time: string;
+} {
+  if (feedUpAt == null || feedUpAt === "") return { date: "", time: "" };
+  const parts = splitLocalDateTime(feedUpAt);
+  const feedUp = combineDateAndTime(parts.date, parts.time);
+  if (!feedUp) return { date: "", time: "" };
+  return splitLocalDateTime(catchFromFeedUp(feedUp));
+}
+
+export function feedUpAtFromCatch(catchDate: string, catchTime: string): string | null {
+  const feedUp = feedUpFromCatch(catchDate, catchTime);
+  return feedUp ? formatLocalDateTime(feedUp) : null;
+}
+
 export function hoursBetween(from: Date, to: Date): number {
   return (to.getTime() - from.getTime()) / (60 * 60 * 1000);
 }
