@@ -69,10 +69,12 @@ export default async function DashboardPage() {
                         </span>
                       ) : null}
                     </span>
-                    <span className="shrink-0 text-stone-600">
-                      {format(parseISO(c.date), "EEE, MMM d")}
-                      {c.catchTime ? ` ${compactCatchTimeLabel(c.catchTime)}` : ""}
-                      {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
+                    <span className="flex shrink-0 items-baseline gap-1.5 text-stone-600">
+                      <span>{format(parseISO(c.date), "EEE, MMM d")}</span>
+                      {c.catchTime ? (
+                        <span>{compactCatchTimeLabel(c.catchTime)}</span>
+                      ) : null}
+                      {c.catchAgeDays != null ? <span>({c.catchAgeDays})</span> : null}
                     </span>
                   </li>
                 ))}

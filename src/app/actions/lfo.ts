@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
+import { DEFAULT_LFO_CONSUMPTION_RATE, feedUpAtFromCatch } from "@/lib/lfo/calculate";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 import { lastFeedOrderSchema } from "@/lib/validations";
 import type { z } from "zod";
@@ -218,4 +218,95 @@ export async function deleteLastFeedOrderAction(lfoId: string) {
   revalidatePath("/lfo");
   revalidatePath(`/lfo/${lfoId}`);
   return { ok: true as const };
+}
+
+async function getOrCreateManualFarm(userId: string) {
+  let farm = await prisma.farm.findFirst({
+    where: { userId, farmName: "Manual", isActive: false, deletedAt: null },
+    include: { houses: { where: { deletedAt: null }, orderBy: { houseNumber: "asc" } }, flocks: true },
+  });
+  if (!farm) {
+    farm = await prisma.farm.create({
+      data: {
+        userId,
+        farmName: "Manual",
+        growerName: "",
+        numberOfHouses: 1,
+        isActive: false,
+        houses: { create: { houseNumber: 1, squareFootage: 29700 } },
+        flocks: {
+          create: {
+            flockNumber: "MANUAL",
+            placementDate: new Date(),
+            initialBirdCount: 0,
+            flockStatus: "COMPLETED",
+          },
+        },
+      },
+      include: { houses: { where: { deletedAt: null }, orderBy: { houseNumber: "asc" } }, flocks: true },
+    });
+  }
+  let house = farm.houses[0];
+  if (!house) {
+    house = await prisma.house.create({
+      data: { farmId: farm.id, houseNumber: 1, squareFootage: 29700 },
+    });
+  }
+  let flock = farm.flocks[0];
+  if (!flock) {
+    flock = await prisma.flock.create({
+      data: {
+        farmId: farm.id,
+        flockNumber: "MANUAL",
+        placementDate: new Date(),
+        initialBirdCount: 0,
+        flockStatus: "COMPLETED",
+      },
+    });
+  }
+  return { farm, house, flock };
+}
+
+export async function createManualLastFeedOrderAction(formData: FormData) {
+  const user = await requireUser();
+  const { farm, house, flock } = await getOrCreateManualFarm(user.id!);
+
+  const orderDate = String(formData.get("orderDate") ?? "").trim();
+  if (!orderDate) return { error: "Order date is required" };
+  const rateRaw = Number(formData.get("consumptionRate") || DEFAULT_LFO_CONSUMPTION_RATE);
+  const consumptionRate =
+    Number.isFinite(rateRaw) && rateRaw > 0 ? rateRaw : DEFAULT_LFO_CONSUMPTION_RATE;
+  const headCount = Math.max(0, Math.round(Number(formData.get("headCount")) || 0));
+  const binAPounds = Math.max(0, Number(formData.get("binAPounds")) || 0);
+  const binBPounds = Math.max(0, Number(formData.get("binBPounds")) || 0);
+  const catchDate = String(formData.get("catchDate") ?? "").trim();
+  const catchTime = String(formData.get("catchTime") ?? "").trim();
+  const feedUpAt = parseFeedUpDate(feedUpAtFromCatch(catchDate, catchTime));
+
+  let created;
+  try {
+    created = await prisma.lastFeedOrder.create({
+      data: {
+        farmId: farm.id,
+        flockId: flock.id,
+        orderDate: new Date(orderDate),
+        consumptionRate,
+        calculatedAt: new Date(),
+        houseInventories: {
+          create: {
+            houseId: house.id,
+            binAPounds,
+            binBPounds,
+            feedUpAt,
+            headCount,
+          },
+        },
+      },
+    });
+  } catch {
+    return { error: "Could not save LFO. Try again." };
+  }
+  revalidatePath("/lfo");
+  revalidatePath(`/lfo/${created.id}`);
+  redirect(`/lfo/${created.id}`);
 }

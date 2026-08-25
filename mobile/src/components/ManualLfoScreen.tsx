@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -9,7 +10,7 @@ import {
   type ScrollView as ScrollViewType,
   type View as ViewType,
 } from "react-native";
-import { useNavigation } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
@@ -20,7 +21,7 @@ import { todayKey } from "../lib/ids";
 import { scrollFieldAboveKeypad } from "../lib/scrollField";
 import { useTabScrollToTop } from "../lib/tabScroll";
 import { colors, fonts, styles } from "../theme";
-import { Card, PageHeader } from "./ui";
+import { Card, PageHeader, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { TimeScrollPickerField } from "./TimeScrollPicker";
 import {
@@ -30,6 +31,7 @@ import {
 } from "./NumberKeypad";
 import { LfoHouseSummaryBlock } from "./LfoHouseSummaryBlock";
 import { LfoFarmTabs } from "./LfoFarmTabs";
+import { createManualLfo } from "../repos/data";
 
 const MANUAL_HOUSE_ID = "manual";
 
@@ -111,12 +113,17 @@ export function ManualLfoScreen({
   farms,
   farmId,
   onSelectFarm,
+  onSaved,
+  savedSection,
 }: {
   farms: Array<{ id: string; farmName: string }>;
   farmId: string;
   onSelectFarm: (id: string) => void;
+  onSaved?: (id: string) => void;
+  savedSection?: React.ReactNode;
 }) {
   const navigation = useNavigation();
+  const router = useRouter();
   const [orderDate, setOrderDate] = useState(todayKey);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [headCount, setHeadCount] = useState("");
@@ -218,6 +225,25 @@ export function ManualLfoScreen({
   function onEnter() {
     setActiveField(null);
     setReplaceOnType(false);
+  }
+
+  function save() {
+    try {
+      const rate = Number(consumptionRate);
+      const { id } = createManualLfo({
+        orderDate: orderDate.trim() || todayKey(),
+        consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
+        headCount: Number.isFinite(heads) && heads > 0 ? heads : 0,
+        binAPounds: Number(binAPounds) || 0,
+        binBPounds: Number(binBPounds) || 0,
+        feedUpAt: feedUpAtFromCatch(catchDate, catchTime),
+      });
+      setActiveField(null);
+      if (onSaved) onSaved(id);
+      else router.push(`/(tabs)/lfo/${id}`);
+    } catch (e) {
+      Alert.alert("Could not save LFO", e instanceof Error ? e.message : "Try again");
+    }
   }
 
   return (
@@ -429,6 +455,9 @@ export function ManualLfoScreen({
             </View>
           </Card>
         ) : null}
+
+        <PrimaryButton label="Save LFO" onPress={save} />
+        {savedSection}
       </ScrollView>
 
       {activeField ? (

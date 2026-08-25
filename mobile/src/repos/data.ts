@@ -156,6 +156,10 @@ function summarizeHouse(
   };
 }
 
+/** Hidden farm used to persist Manual LFOs without showing up in farm lists. */
+export const MANUAL_LFO_FARM_ID = "farm__manual__";
+export const MANUAL_LFO_HOUSE_ID = "house__manual__";
+
 export function listFarms(status: "active" | "inactive" | "all" = "active") {
   const db = getDb();
   const today = todayKey();
@@ -178,7 +182,9 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
   );
 
   return {
-    farms: farms.map((f) => {
+    farms: farms
+      .filter((f) => f.id !== MANUAL_LFO_FARM_ID)
+      .map((f) => {
       const flocks = db.getAllSync<{
         id: string;
         flock_number: string;
@@ -1480,7 +1486,7 @@ export function listLfos() {
   }>(
     `SELECT l.*, f.farm_name FROM last_feed_orders l
      JOIN farms f ON f.id = l.farm_id
-     ORDER BY l.order_date DESC`,
+     ORDER BY COALESCE(l.created_at, l.calculated_at, l.order_date) DESC, l.id DESC`,
   );
 
   return rows.map((r) => {
@@ -1544,9 +1550,10 @@ export function createLfo(farmId: string, orderDate: string, notes?: string) {
     [farmId],
   );
   const id = newId("lfo");
+  const createdAt = new Date().toISOString();
   db.runSync(
-    `INSERT INTO last_feed_orders (id, farm_id, flock_id, order_date, notes) VALUES (?, ?, ?, ?, ?)`,
-    [id, farmId, flock?.id ?? null, orderDate, notes ?? null],
+    `INSERT INTO last_feed_orders (id, farm_id, flock_id, order_date, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    [id, farmId, flock?.id ?? null, orderDate, notes ?? null, createdAt],
   );
   const houses = db.getAllSync<{ id: string }>(
     "SELECT id FROM houses WHERE farm_id = ? AND deleted_at IS NULL ORDER BY house_number ASC",
@@ -1575,6 +1582,74 @@ export function createLfo(farmId: string, orderDate: string, notes?: string) {
       [newId("lfoi"), id, h.id, feedUp ? formatLocalDateTime(feedUp) : null],
     );
   }
+  return { id };
+}
+
+function ensureManualLfoFarm() {
+  const db = getDb();
+  const farm = db.getFirstSync<{ id: string }>("SELECT id FROM farms WHERE id = ?", [
+    MANUAL_LFO_FARM_ID,
+  ]);
+  if (!farm) {
+    db.runSync(
+      `INSERT INTO farms (id, farm_name, grower_name, number_of_houses, number_of_generators, is_active)
+       VALUES (?, 'Manual', '', 1, 0, 0)`,
+      [MANUAL_LFO_FARM_ID],
+    );
+  } else {
+    db.runSync("UPDATE farms SET is_active = 0, farm_name = 'Manual' WHERE id = ?", [
+      MANUAL_LFO_FARM_ID,
+    ]);
+  }
+  const house = db.getFirstSync<{ id: string }>("SELECT id FROM houses WHERE id = ?", [
+    MANUAL_LFO_HOUSE_ID,
+  ]);
+  if (!house) {
+    db.runSync(
+      `INSERT INTO houses (id, farm_id, house_number, square_footage, total_fan_cfm, number_of_fans)
+       VALUES (?, ?, 1, 29700, NULL, NULL)`,
+      [MANUAL_LFO_HOUSE_ID, MANUAL_LFO_FARM_ID],
+    );
+  }
+}
+
+export function createManualLfo(input: {
+  orderDate: string;
+  consumptionRate: number;
+  headCount: number;
+  binAPounds: number;
+  binBPounds: number;
+  feedUpAt: string | null;
+  notes?: string | null;
+}) {
+  ensureManualLfoFarm();
+  const db = getDb();
+  const id = newId("lfo");
+  const now = new Date().toISOString();
+  const rate =
+    Number.isFinite(input.consumptionRate) && input.consumptionRate > 0
+      ? input.consumptionRate
+      : 0.45;
+  db.runSync(
+    `INSERT INTO last_feed_orders (id, farm_id, flock_id, order_date, notes, calculated_at, created_at)
+     VALUES (?, ?, NULL, ?, ?, ?, ?)`,
+    [id, MANUAL_LFO_FARM_ID, input.orderDate, input.notes ?? null, now, now],
+  );
+  db.runSync(
+    `INSERT INTO lfo_house_inventory
+      (id, lfo_id, house_id, bin_a_pounds, bin_b_pounds, feed_up_at, consumption_rate, head_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      newId("lfoi"),
+      id,
+      MANUAL_LFO_HOUSE_ID,
+      input.binAPounds,
+      input.binBPounds,
+      input.feedUpAt,
+      rate,
+      Math.max(0, Math.round(input.headCount) || 0),
+    ],
+  );
   return { id };
 }
 
@@ -1674,6 +1749,7 @@ export function updateLfo(input: {
     binAPounds: number;
     binBPounds: number;
     feedUpAt: string | null;
+    headCount?: number | null;
   }>;
 }) {
   const db = getDb();
@@ -1711,8 +1787,10 @@ export function updateLfo(input: {
         );
     const rowId = byHouse?.id ?? h.id;
     const headCount =
-      byHouse?.head_count ??
-      (h.houseId ? remainingHeadCountForHouse(existing.farm_id, h.houseId, today) : null);
+      h.headCount != null && Number.isFinite(h.headCount)
+        ? Math.max(0, Math.round(h.headCount))
+        : (byHouse?.head_count ??
+          (h.houseId ? remainingHeadCountForHouse(existing.farm_id, h.houseId, today) : null));
     const updated = db.runSync(
       `UPDATE lfo_house_inventory
        SET bin_a_pounds = ?, bin_b_pounds = ?, feed_up_at = ?, consumption_rate = ?, head_count = ?

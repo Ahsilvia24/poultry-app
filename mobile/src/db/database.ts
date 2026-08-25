@@ -162,6 +162,7 @@ export async function migrateDb() {
       order_date TEXT NOT NULL,
       notes TEXT,
       calculated_at TEXT,
+      created_at TEXT,
       FOREIGN KEY (farm_id) REFERENCES farms(id)
     );
 
@@ -365,6 +366,14 @@ export async function migrateDb() {
   const lfoCols = await database.getAllAsync<{ name: string }>("PRAGMA table_info(last_feed_orders)");
   if (lfoCols.length > 0 && !lfoCols.some((c) => c.name === "calculated_at")) {
     await database.execAsync("ALTER TABLE last_feed_orders ADD COLUMN calculated_at TEXT");
+  }
+  if (lfoCols.length > 0 && !lfoCols.some((c) => c.name === "created_at")) {
+    await database.execAsync("ALTER TABLE last_feed_orders ADD COLUMN created_at TEXT");
+    await database.execAsync(
+      `UPDATE last_feed_orders
+       SET created_at = COALESCE(calculated_at, order_date || 'T12:00:00.000Z')
+       WHERE created_at IS NULL OR TRIM(created_at) = ''`,
+    );
   }
   const lfoInvCols = await database.getAllAsync<{ name: string }>(
     "PRAGMA table_info(lfo_house_inventory)",

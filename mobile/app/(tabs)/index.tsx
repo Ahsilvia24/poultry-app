@@ -530,11 +530,28 @@ export default function DashboardScreen() {
                             </Text>
                           ) : null}
                         </View>
-                        <Text style={{ color: colors.muted, fontSize: 13, flexShrink: 0 }}>
-                          {formatCatchDate(c.date)}
-                          {c.catchTime ? ` ${compactCatchTimeLabel(c.catchTime)}` : ""}
-                          {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
-                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "baseline",
+                            flexShrink: 0,
+                            gap: 6,
+                          }}
+                        >
+                          <Text style={{ color: colors.muted, fontSize: 13 }}>
+                            {formatCatchDate(c.date)}
+                          </Text>
+                          {c.catchTime ? (
+                            <Text style={{ color: colors.muted, fontSize: 13 }}>
+                              {compactCatchTimeLabel(c.catchTime)}
+                            </Text>
+                          ) : null}
+                          {c.catchAgeDays != null ? (
+                            <Text style={{ color: colors.muted, fontSize: 13 }}>
+                              ({c.catchAgeDays})
+                            </Text>
+                          ) : null}
+                        </View>
                       </Pressable>
                     ))}
                   </ScrollableScheduleList>

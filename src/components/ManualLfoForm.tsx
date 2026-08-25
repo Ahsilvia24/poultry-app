@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Card, Input, Label, Select } from "@/components/ui";
+import { Button, Card, Input, Label, Select } from "@/components/ui";
+import { createManualLastFeedOrderAction } from "@/app/actions/lfo";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
@@ -33,6 +34,7 @@ export function ManualLfoForm() {
   const [binBPounds, setBinBPounds] = useState("0");
   const [catchDate, setCatchDate] = useState("");
   const [catchTime, setCatchTime] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const heads = Number(headCount);
   const calc = useMemo(() => {
@@ -57,13 +59,24 @@ export function ManualLfoForm() {
   const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
   return (
-    <div className="space-y-3">
+    <form
+      action={async (formData) => {
+        setError(null);
+        const result = await createManualLastFeedOrderAction(formData);
+        if (result?.error) setError(result.error);
+      }}
+      className="space-y-3"
+    >
+      {error ? (
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
+      ) : null}
       <Card>
         <div className="grid grid-cols-2 gap-2">
           <PairField>
             <Label htmlFor="manual-orderDate">Order date</Label>
             <Input
               id="manual-orderDate"
+              name="orderDate"
               type="date"
               value={orderDate}
               onChange={(e) => setOrderDate(e.target.value)}
@@ -75,6 +88,7 @@ export function ManualLfoForm() {
             <Label htmlFor="manual-consumptionRate">Consumption rate</Label>
             <Input
               id="manual-consumptionRate"
+              name="consumptionRate"
               type="number"
               min={0}
               step="0.01"
@@ -96,6 +110,7 @@ export function ManualLfoForm() {
             Head count
             <input
               type="text"
+              name="headCount"
               inputMode="numeric"
               pattern="[0-9]*"
               value={headCount}
@@ -111,6 +126,7 @@ export function ManualLfoForm() {
             <Label htmlFor="manual-binA">Bin A (lbs)</Label>
             <Input
               id="manual-binA"
+              name="binAPounds"
               type="number"
               min={0}
               step="any"
@@ -125,6 +141,7 @@ export function ManualLfoForm() {
             <Label htmlFor="manual-binB">Bin B (lbs)</Label>
             <Input
               id="manual-binB"
+              name="binBPounds"
               type="number"
               min={0}
               step="any"
@@ -139,6 +156,7 @@ export function ManualLfoForm() {
             <Label htmlFor="manual-catchDate">Catch date</Label>
             <Input
               id="manual-catchDate"
+              name="catchDate"
               type="date"
               value={catchDate}
               onChange={(e) => setCatchDate(e.target.value)}
@@ -150,6 +168,7 @@ export function ManualLfoForm() {
             <Label htmlFor="manual-catchTime">Catch time</Label>
             <Select
               id="manual-catchTime"
+              name="catchTime"
               value={catchTime}
               onChange={(e) => setCatchTime(e.target.value)}
               className="mt-0.5"
@@ -253,6 +272,8 @@ export function ManualLfoForm() {
           </div>
         </div>
       ) : null}
-    </div>
+
+      <Button type="submit">Save LFO</Button>
+    </form>
   );
 }

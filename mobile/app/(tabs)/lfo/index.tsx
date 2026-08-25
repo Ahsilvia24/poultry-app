@@ -55,6 +55,124 @@ function formatNum(n: number, digits = 2) {
   return n.toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
+function SavedLfoList({
+  lfos,
+  onOpen,
+  onDelete,
+}: {
+  lfos: ReturnType<typeof listLfos>;
+  onOpen: (id: string) => void;
+  onDelete: (id: string, farmName: string) => void;
+}) {
+  return (
+    <>
+      <View style={{ marginTop: 20, marginBottom: 10 }}>
+        <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 4 }]}>
+          Saved LFOs
+        </Text>
+        <Text
+          style={{
+            fontSize: 11,
+            lineHeight: 14,
+            color: colors.muted,
+            fontWeight: "600",
+          }}
+        >
+          Rounds up to nearest 500 & adds 2000
+        </Text>
+        <Text
+          style={{
+            fontSize: 11,
+            lineHeight: 14,
+            color: colors.muted,
+            fontWeight: "600",
+          }}
+        >
+          Reclaim rounds to nearest 500
+        </Text>
+      </View>
+      {lfos.length === 0 ? (
+        <Card>
+          <Text style={styles.muted}>None yet — create one above.</Text>
+        </Card>
+      ) : null}
+      {lfos.map((l) => (
+        <Swipeable
+          key={l.id}
+          overshootRight={false}
+          friction={2}
+          rightThreshold={40}
+          containerStyle={{ marginBottom: 12 }}
+          renderRightActions={() => (
+            <Pressable
+              accessibilityLabel={`Delete LFO for ${l.farmName}`}
+              onPress={() => onDelete(l.id, l.farmName)}
+              style={{
+                backgroundColor: colors.danger,
+                justifyContent: "center",
+                alignItems: "center",
+                width: 88,
+                borderRadius: 14,
+                marginLeft: 8,
+              }}
+            >
+              <Ionicons name="trash-outline" size={22} color="#fff" />
+              <Text
+                style={{
+                  color: "#fff",
+                  fontWeight: "800",
+                  fontSize: 12,
+                  marginTop: 4,
+                }}
+              >
+                Delete
+              </Text>
+            </Pressable>
+          )}
+        >
+          <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
+            <Pressable
+              onPress={() => onOpen(l.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Edit LFO for ${l.farmName}`}
+              style={({ pressed }) => ({
+                padding: 16,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontWeight: "800" }} numberOfLines={1}>
+                    {l.farmName}
+                  </Text>
+                  <Text style={[styles.muted, { marginTop: 2 }]}>
+                    {formatLfoDate(l.orderDate)}
+                  </Text>
+                </View>
+                {l.houseSummary.length > 0 ? (
+                  <CopyHouseSummaryButton lines={l.houseSummary} farmName={l.farmName} />
+                ) : null}
+              </View>
+              {l.houseSummary.length > 0 ? (
+                <View style={{ marginTop: 8, gap: 2, flexShrink: 0 }}>
+                  {l.houseSummary.map((line) => (
+                    <Text
+                      key={line}
+                      style={{ fontWeight: "700", color: colors.text, fontSize: 13 }}
+                    >
+                      {line}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+            </Pressable>
+          </Card>
+        </Swipeable>
+      ))}
+    </>
+  );
+}
+
 type CalcField = "water" | "head";
 
 function CalcFieldButton({
@@ -282,7 +400,18 @@ export default function LfoListScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       {isManual ? (
-        <ManualLfoScreen farms={farms} farmId={farmId} onSelectFarm={selectFarm} />
+        <ManualLfoScreen
+          farms={farms}
+          farmId={farmId}
+          onSelectFarm={selectFarm}
+          onSaved={(id) => {
+            setLfos(listLfos());
+            openLfo(id);
+          }}
+          savedSection={
+            <SavedLfoList lfos={lfos} onOpen={openLfo} onDelete={confirmDelete} />
+          }
+        />
       ) : (
       <View style={{ flex: 1 }}>
         <ScrollView
@@ -374,109 +503,7 @@ export default function LfoListScreen() {
             )}
           </Card>
 
-          <View style={{ marginTop: 20, marginBottom: 10 }}>
-            <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 4 }]}>
-              Saved LFOs
-            </Text>
-            <Text
-              style={{
-                fontSize: 11,
-                lineHeight: 14,
-                color: colors.muted,
-                fontWeight: "600",
-              }}
-            >
-              Rounds up to nearest 500 & adds 2000
-            </Text>
-            <Text
-              style={{
-                fontSize: 11,
-                lineHeight: 14,
-                color: colors.muted,
-                fontWeight: "600",
-              }}
-            >
-              Reclaim rounds to nearest 500
-            </Text>
-          </View>
-          {lfos.length === 0 ? (
-            <Card>
-              <Text style={styles.muted}>None yet — create one above.</Text>
-            </Card>
-          ) : null}
-          {lfos.map((l) => (
-            <Swipeable
-              key={l.id}
-              overshootRight={false}
-              friction={2}
-              rightThreshold={40}
-              containerStyle={{ marginBottom: 12 }}
-              renderRightActions={() => (
-                <Pressable
-                  accessibilityLabel={`Delete LFO for ${l.farmName}`}
-                  onPress={() => confirmDelete(l.id, l.farmName)}
-                  style={{
-                    backgroundColor: colors.danger,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    width: 88,
-                    borderRadius: 14,
-                    marginLeft: 8,
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={22} color="#fff" />
-                  <Text
-                    style={{
-                      color: "#fff",
-                      fontWeight: "800",
-                      fontSize: 12,
-                      marginTop: 4,
-                    }}
-                  >
-                    Delete
-                  </Text>
-                </Pressable>
-              )}
-            >
-              <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
-                <Pressable
-                  onPress={() => openLfo(l.id)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Edit LFO for ${l.farmName}`}
-                  style={({ pressed }) => ({
-                    padding: 16,
-                    opacity: pressed ? 0.85 : 1,
-                  })}
-                >
-                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={{ fontWeight: "800" }} numberOfLines={1}>
-                        {l.farmName}
-                      </Text>
-                      <Text style={[styles.muted, { marginTop: 2 }]}>
-                        {formatLfoDate(l.orderDate)}
-                      </Text>
-                    </View>
-                    {l.houseSummary.length > 0 ? (
-                      <CopyHouseSummaryButton lines={l.houseSummary} farmName={l.farmName} />
-                    ) : null}
-                  </View>
-                  {l.houseSummary.length > 0 ? (
-                    <View style={{ marginTop: 8, gap: 2, flexShrink: 0 }}>
-                      {l.houseSummary.map((line) => (
-                        <Text
-                          key={line}
-                          style={{ fontWeight: "700", color: colors.text, fontSize: 13 }}
-                        >
-                          {line}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-                </Pressable>
-              </Card>
-            </Swipeable>
-          ))}
+          <SavedLfoList lfos={lfos} onOpen={openLfo} onDelete={confirmDelete} />
         </ScrollView>
 
         {activeField ? (

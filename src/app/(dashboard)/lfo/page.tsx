@@ -38,7 +38,7 @@ export default async function LfoPage() {
           include: { house: { select: { houseNumber: true } } },
         },
       },
-      orderBy: [{ orderDate: "desc" }, { createdAt: "desc" }],
+      orderBy: [{ createdAt: "desc" }, { orderDate: "desc" }],
     }),
   ]);
 
