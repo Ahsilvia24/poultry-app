@@ -756,10 +756,15 @@ export async function updateHouseLoggedTempAction(
 
   const trimmed = temp?.trim() ?? "";
   if (!trimmed) {
-    await prisma.house.update({
-      where: { id: houseId },
-      data: { loggedTemp: null, loggedTempAt: null },
-    });
+    try {
+      await prisma.house.update({
+        where: { id: houseId },
+        data: { loggedTemp: null, loggedTempAt: null },
+      });
+    } catch (e) {
+      console.error(e);
+      return { error: "Could not clear temperature" };
+    }
     revalidatePath(`/farms/${farmId}`);
     return { success: true as const, loggedTemp: null };
   }
@@ -768,10 +773,15 @@ export async function updateHouseLoggedTempAction(
     return { error: "Enter a valid temperature" };
   }
 
-  await prisma.house.update({
-    where: { id: houseId },
-    data: { loggedTemp: trimmed, loggedTempAt: day },
-  });
+  try {
+    await prisma.house.update({
+      where: { id: houseId },
+      data: { loggedTemp: trimmed, loggedTempAt: day },
+    });
+  } catch (e) {
+    console.error(e);
+    return { error: "Could not save temperature" };
+  }
   revalidatePath(`/farms/${farmId}`);
   return { success: true as const, loggedTemp: trimmed };
 }
