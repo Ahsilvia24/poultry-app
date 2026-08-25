@@ -9,7 +9,7 @@ TestFlight: https://appstoreconnect.apple.com/apps/6794784343/testflight/ios
 |-------|-------|
 | Version | 1.0.9 |
 | Build | **133** (EAS auto-increment from 132; this session’s UI: Propagate, house catch time, LFO keypad/Manual, dashboard catch date/time, one Import, Export off Tools/More) |
-| Status | EAS production iOS build + ASC submit in progress |
+| Status | Submitted to App Store Connect — wait for TestFlight processing |
 
 ## Paste into App Store listing
 
