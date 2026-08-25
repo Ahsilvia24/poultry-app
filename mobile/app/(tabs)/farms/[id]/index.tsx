@@ -69,7 +69,7 @@ import {
 import { DatePickerField } from "../../../../src/components/DatePickerField";
 import { TimeScrollPickerField } from "../../../../src/components/TimeScrollPicker";
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
-import { halfHourTimeLabel } from "../../../../src/lib/time-slots";
+import { compactCatchTimeLabel } from "../../../../src/lib/time-slots";
 import { ConfirmDialog } from "../../../../src/components/ConfirmDialog";
 
 /** "2026-07-25" → "07-25-2026" */
@@ -249,6 +249,8 @@ function NativeNumInput({
   style,
   autoFocus,
   inputRef,
+  propagateChecked,
+  onPropagateToggle,
 }: {
   label: string;
   value: string;
@@ -258,6 +260,8 @@ function NativeNumInput({
   style?: object;
   autoFocus?: boolean;
   inputRef?: Ref<TextInput>;
+  propagateChecked?: boolean;
+  onPropagateToggle?: () => void;
 }) {
   return (
     <View style={[{ marginBottom: 10 }, style]}>
@@ -272,16 +276,17 @@ function NativeNumInput({
         placeholder={placeholder}
         placeholderTextColor={colors.muted}
       />
+      {onPropagateToggle ? (
+        <PropagateCheck checked={!!propagateChecked} onToggle={onPropagateToggle} />
+      ) : null}
     </View>
   );
 }
 
-function ApplyRemainingCheck({
-  label,
+function PropagateCheck({
   checked,
   onToggle,
 }: {
-  label: string;
   checked: boolean;
   onToggle: () => void;
 }) {
@@ -291,16 +296,17 @@ function ApplyRemainingCheck({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        gap: 8,
-        paddingVertical: 4,
-        width: "50%",
+        gap: 6,
+        marginTop: 6,
+        paddingVertical: 2,
       }}
     >
+      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>Propagate</Text>
       <View
         style={{
-          width: 22,
-          height: 22,
-          borderRadius: 6,
+          width: 20,
+          height: 20,
+          borderRadius: 5,
           borderWidth: 2,
           borderColor: checked ? colors.accentDark : colors.border,
           backgroundColor: checked ? colors.accentDark : "#fff",
@@ -308,9 +314,8 @@ function ApplyRemainingCheck({
           justifyContent: "center",
         }}
       >
-        {checked ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
+        {checked ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
       </View>
-      <Text style={{ flex: 1, fontWeight: "700", color: colors.text, fontSize: 13 }}>{label}</Text>
     </Pressable>
   );
 }
@@ -1486,10 +1491,10 @@ export default function FarmDetailScreen() {
                               h.catchDate
                                 ? [
                                     formatHouseDetailDate(h.catchDate),
-                                    h.catchTime ? halfHourTimeLabel(h.catchTime) : null,
+                                    h.catchTime ? compactCatchTimeLabel(h.catchTime) : null,
                                   ]
                                     .filter(Boolean)
-                                    .join(" · ")
+                                    .join(" ")
                                 : null,
                             ]
                               .filter(Boolean)
@@ -2087,25 +2092,46 @@ export default function FarmDetailScreen() {
                         }
                       />
                       {data.activeFlock ? (
-                        <NativeNumInput
-                          label="Birds placed"
-                          value={editingHouse.placedBirdCount}
-                          placeholder={editingHouse.placedBirdCountPlaceholder}
-                          style={{ flex: 1 }}
-                          onChangeText={(v) =>
-                            setEditingHouse((prev) =>
-                              prev ? { ...prev, placedBirdCount: v } : prev,
-                            )
-                          }
-                        />
+                        <View style={{ flex: 1, marginBottom: 10 }}>
+                          <Text style={styles.label}>Flock ID</Text>
+                          <TextInput
+                            style={[
+                              styles.input,
+                              { fontSize: 20, fontWeight: "700", color: colors.text },
+                            ]}
+                            value={editingHouse.flockNumber}
+                            onChangeText={(v) =>
+                              setEditingHouse((prev) =>
+                                prev ? { ...prev, flockNumber: v } : prev,
+                              )
+                            }
+                            autoCapitalize="characters"
+                            autoCorrect={false}
+                            placeholder="e.g. 26-07"
+                            placeholderTextColor={colors.muted}
+                          />
+                          <PropagateCheck
+                            checked={editingHouse.applyFlockIdToRemaining}
+                            onToggle={() =>
+                              setEditingHouse((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      applyFlockIdToRemaining: !prev.applyFlockIdToRemaining,
+                                    }
+                                  : prev,
+                              )
+                            }
+                          />
+                        </View>
                       ) : (
                         <View style={{ flex: 1 }} />
                       )}
                     </View>
                     {data.activeFlock ? (
                       <>
-                        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
-                          <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: "row", gap: 10 }}>
+                          <View style={{ flex: 1, marginBottom: 10 }}>
                             <DatePickerField
                               label="Placement date"
                               value={editingHouse.placementDate}
@@ -2128,79 +2154,7 @@ export default function FarmDetailScreen() {
                                 })
                               }
                             />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <DatePickerField
-                              label="Catch date"
-                              value={editingHouse.catchDate}
-                              presentation="inline"
-                              onChange={(date) =>
-                                setEditingHouse((prev) =>
-                                  prev ? { ...prev, catchDate: date } : prev,
-                                )
-                              }
-                            />
-                          </View>
-                        </View>
-                        <TimeScrollPickerField
-                          label="Catch time"
-                          value={editingHouse.catchTime}
-                          onChange={(time) =>
-                            setEditingHouse((prev) => (prev ? { ...prev, catchTime: time } : prev))
-                          }
-                        />
-                        {editingHouse.catchTime ? (
-                          <Pressable
-                            onPress={() =>
-                              setEditingHouse((prev) => (prev ? { ...prev, catchTime: "" } : prev))
-                            }
-                            style={{ alignSelf: "flex-start", marginTop: 4, marginBottom: 8 }}
-                            hitSlop={8}
-                          >
-                            <Text style={{ color: colors.muted, fontWeight: "700" }}>Clear time</Text>
-                          </Pressable>
-                        ) : null}
-                        <Text style={[styles.muted, { marginTop: 2, marginBottom: 8 }]}>
-                          Feed up is 5 hours before catch (11:00 PM catch → 6:00 PM feed up).
-                        </Text>
-                        <Text style={[styles.label, { marginTop: 2 }]}>Flock ID</Text>
-                        <TextInput
-                          style={[
-                            styles.input,
-                            { fontSize: 20, fontWeight: "700", color: colors.text },
-                          ]}
-                          value={editingHouse.flockNumber}
-                          onChangeText={(v) =>
-                            setEditingHouse((prev) =>
-                              prev ? { ...prev, flockNumber: v } : prev,
-                            )
-                          }
-                          autoCapitalize="characters"
-                          autoCorrect={false}
-                          placeholder="e.g. 26-07"
-                          placeholderTextColor={colors.muted}
-                        />
-                        <View style={{ marginBottom: 12 }}>
-                          <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
-                            Apply to remaining houses
-                          </Text>
-                          <Text style={[styles.muted, { marginTop: 2, marginBottom: 6 }]}>
-                            Copies only the checked fields to houses after this one.
-                          </Text>
-                          <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                            <ApplyRemainingCheck
-                              label="Birds placed"
-                              checked={editingHouse.applyBirdsToRemaining}
-                              onToggle={() =>
-                                setEditingHouse((prev) =>
-                                  prev
-                                    ? { ...prev, applyBirdsToRemaining: !prev.applyBirdsToRemaining }
-                                    : prev,
-                                )
-                              }
-                            />
-                            <ApplyRemainingCheck
-                              label="Placement date"
+                            <PropagateCheck
                               checked={editingHouse.applyPlacementToRemaining}
                               onToggle={() =>
                                 setEditingHouse((prev) =>
@@ -2213,8 +2167,40 @@ export default function FarmDetailScreen() {
                                 )
                               }
                             />
-                            <ApplyRemainingCheck
+                          </View>
+                          <NativeNumInput
+                            label="Birds placed"
+                            value={editingHouse.placedBirdCount}
+                            placeholder={editingHouse.placedBirdCountPlaceholder}
+                            style={{ flex: 1 }}
+                            onChangeText={(v) =>
+                              setEditingHouse((prev) =>
+                                prev ? { ...prev, placedBirdCount: v } : prev,
+                              )
+                            }
+                            propagateChecked={editingHouse.applyBirdsToRemaining}
+                            onPropagateToggle={() =>
+                              setEditingHouse((prev) =>
+                                prev
+                                  ? { ...prev, applyBirdsToRemaining: !prev.applyBirdsToRemaining }
+                                  : prev,
+                              )
+                            }
+                          />
+                        </View>
+                        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
+                          <View style={{ flex: 1 }}>
+                            <DatePickerField
                               label="Catch date"
+                              value={editingHouse.catchDate}
+                              presentation="inline"
+                              onChange={(date) =>
+                                setEditingHouse((prev) =>
+                                  prev ? { ...prev, catchDate: date } : prev,
+                                )
+                              }
+                            />
+                            <PropagateCheck
                               checked={editingHouse.applyCatchDateToRemaining}
                               onToggle={() =>
                                 setEditingHouse((prev) =>
@@ -2227,8 +2213,33 @@ export default function FarmDetailScreen() {
                                 )
                               }
                             />
-                            <ApplyRemainingCheck
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <TimeScrollPickerField
                               label="Catch time"
+                              value={editingHouse.catchTime}
+                              onChange={(time) =>
+                                setEditingHouse((prev) =>
+                                  prev ? { ...prev, catchTime: time } : prev,
+                                )
+                              }
+                            />
+                            {editingHouse.catchTime ? (
+                              <Pressable
+                                onPress={() =>
+                                  setEditingHouse((prev) =>
+                                    prev ? { ...prev, catchTime: "" } : prev,
+                                  )
+                                }
+                                style={{ alignSelf: "flex-start", marginTop: 4 }}
+                                hitSlop={8}
+                              >
+                                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 12 }}>
+                                  Clear
+                                </Text>
+                              </Pressable>
+                            ) : null}
+                            <PropagateCheck
                               checked={editingHouse.applyCatchTimeToRemaining}
                               onToggle={() =>
                                 setEditingHouse((prev) =>
@@ -2236,20 +2247,6 @@ export default function FarmDetailScreen() {
                                     ? {
                                         ...prev,
                                         applyCatchTimeToRemaining: !prev.applyCatchTimeToRemaining,
-                                      }
-                                    : prev,
-                                )
-                              }
-                            />
-                            <ApplyRemainingCheck
-                              label="Flock ID"
-                              checked={editingHouse.applyFlockIdToRemaining}
-                              onToggle={() =>
-                                setEditingHouse((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        applyFlockIdToRemaining: !prev.applyFlockIdToRemaining,
                                       }
                                     : prev,
                                 )
@@ -2269,6 +2266,14 @@ export default function FarmDetailScreen() {
                         onChangeText={(v) =>
                           setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
                         }
+                        propagateChecked={editingHouse.applySpecsToRemaining}
+                        onPropagateToggle={() =>
+                          setEditingHouse((prev) =>
+                            prev
+                              ? { ...prev, applySpecsToRemaining: !prev.applySpecsToRemaining }
+                              : prev,
+                          )
+                        }
                       />
                       <NativeNumInput
                         label="Total CFM (Min Vent)"
@@ -2278,58 +2283,16 @@ export default function FarmDetailScreen() {
                         onChangeText={(v) =>
                           setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
                         }
+                        propagateChecked={editingHouse.applySpecsToRemaining}
+                        onPropagateToggle={() =>
+                          setEditingHouse((prev) =>
+                            prev
+                              ? { ...prev, applySpecsToRemaining: !prev.applySpecsToRemaining }
+                              : prev,
+                          )
+                        }
                       />
                     </View>
-                    <Pressable
-                      onPress={() =>
-                        setEditingHouse((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                applySpecsToRemaining: !prev.applySpecsToRemaining,
-                              }
-                            : prev,
-                        )
-                      }
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "flex-start",
-                        gap: 10,
-                        marginBottom: 12,
-                        paddingVertical: 4,
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: 22,
-                          height: 22,
-                          borderRadius: 6,
-                          borderWidth: 2,
-                          borderColor: editingHouse.applySpecsToRemaining
-                            ? colors.accentDark
-                            : colors.border,
-                          backgroundColor: editingHouse.applySpecsToRemaining
-                            ? colors.accentDark
-                            : "#fff",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          marginTop: 1,
-                        }}
-                      >
-                        {editingHouse.applySpecsToRemaining ? (
-                          <Ionicons name="checkmark" size={16} color="#fff" />
-                        ) : null}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
-                          Apply to all remaining houses
-                        </Text>
-                        <Text style={[styles.muted, { marginTop: 2 }]}>
-                          Square footage and fan CFM for houses after this one. Earlier houses stay
-                          unchanged.
-                        </Text>
-                      </View>
-                    </Pressable>
                     <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
                       <PrimaryButton
                         label={houseSaving ? "Saving…" : "Save"}

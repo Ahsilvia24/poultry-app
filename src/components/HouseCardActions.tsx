@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { deleteHouseAction, updateHouseAction } from "@/app/actions/farms";
 import { Button, Input, Label, Select } from "@/components/ui";
-import { feedUpFromCatch } from "@/lib/lfo/calculate";
-import { HALF_HOUR_TIME_OPTIONS, halfHourTimeLabel } from "@/lib/time-slots";
+import { HALF_HOUR_TIME_OPTIONS } from "@/lib/time-slots";
 
 export type HouseEditValues = {
   id: string;
@@ -32,27 +31,18 @@ function addDaysKey(dateKey: string, days: number) {
   return `${yy}-${mm}-${dd}`;
 }
 
-function feedUpTimeHint(catchTime: string): string | null {
-  const feedUp = feedUpFromCatch("2000-01-02", catchTime);
-  if (!feedUp) return null;
-  const hh = String(feedUp.getHours()).padStart(2, "0");
-  const mm = String(feedUp.getMinutes()).padStart(2, "0");
-  return halfHourTimeLabel(`${hh}:${mm}`);
-}
-
-function RemainingCheck({
+function PropagateCheck({
   name,
-  label,
   checked,
   onChange,
 }: {
-  name: string;
-  label: string;
+  name?: string;
   checked: boolean;
   onChange: (next: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2">
+    <label className="mt-1.5 flex cursor-pointer items-center gap-1.5">
+      <span className="text-xs font-medium text-stone-600">Propagate</span>
       <input
         type="checkbox"
         name={name}
@@ -61,7 +51,6 @@ function RemainingCheck({
         onChange={(e) => onChange(e.target.checked)}
         className="h-4 w-4 rounded border-stone-300 text-emerald-700 focus:ring-emerald-700"
       />
-      <span className="text-sm font-medium text-stone-800">{label}</span>
     </label>
   );
 }
@@ -91,7 +80,6 @@ export function HouseCardActions({
   const [applyCatchTimeToRemaining, setApplyCatchTimeToRemaining] = useState(false);
   const [applyFlockIdToRemaining, setApplyFlockIdToRemaining] = useState(false);
   const [applySpecsToRemaining, setApplySpecsToRemaining] = useState(false);
-  const catchFeedUpHint = catchTime ? feedUpTimeHint(catchTime) : null;
 
   useEffect(() => {
     if (mode === "edit") {
@@ -188,20 +176,25 @@ export function HouseCardActions({
                     type="number"
                     min={1}
                     required
+                    compact
                     defaultValue={house.houseNumber}
                   />
                 </div>
                 {hasActiveFlock ? (
                   <div>
-                    <Label htmlFor={`edit-placedBirdCount-${house.id}`}>Birds placed</Label>
+                    <Label htmlFor={`edit-flockNumber-${house.id}`}>Flock ID</Label>
                     <Input
-                      id={`edit-placedBirdCount-${house.id}`}
-                      name="placedBirdCount"
-                      type="number"
-                      min={1}
-                      step={1}
-                      defaultValue={house.placedBirdCount ?? ""}
-                      placeholder="e.g. 29700"
+                      id={`edit-flockNumber-${house.id}`}
+                      name="flockNumber"
+                      compact
+                      defaultValue={house.flockNumber ?? ""}
+                      placeholder="e.g. 26-07"
+                      autoCapitalize="characters"
+                    />
+                    <PropagateCheck
+                      name="applyFlockIdToRemaining"
+                      checked={applyFlockIdToRemaining}
+                      onChange={setApplyFlockIdToRemaining}
                     />
                   </div>
                 ) : (
@@ -217,98 +210,75 @@ export function HouseCardActions({
                         id={`edit-placementDate-${house.id}`}
                         name="placementDate"
                         type="date"
+                        compact
                         value={placementDate}
                         onChange={(e) => onPlacementChange(e.target.value)}
                       />
+                      <PropagateCheck
+                        name="applyPlacementToRemaining"
+                        checked={applyPlacementToRemaining}
+                        onChange={setApplyPlacementToRemaining}
+                      />
                     </div>
+                    <div>
+                      <Label htmlFor={`edit-placedBirdCount-${house.id}`}>Birds placed</Label>
+                      <Input
+                        id={`edit-placedBirdCount-${house.id}`}
+                        name="placedBirdCount"
+                        type="number"
+                        min={1}
+                        step={1}
+                        compact
+                        defaultValue={house.placedBirdCount ?? ""}
+                        placeholder="e.g. 29700"
+                      />
+                      <PropagateCheck
+                        name="applyBirdsToRemaining"
+                        checked={applyBirdsToRemaining}
+                        onChange={setApplyBirdsToRemaining}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor={`edit-catchDate-${house.id}`}>Catch date</Label>
                       <Input
                         id={`edit-catchDate-${house.id}`}
                         name="catchDate"
                         type="date"
+                        compact
                         value={catchDate}
                         onChange={(e) => setCatchDate(e.target.value)}
                       />
-                      <p className="mt-1 text-xs text-stone-500">
-                        Defaults to 52 days after placement; change anytime.
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor={`edit-catchTime-${house.id}`}>Catch time</Label>
-                    <Select
-                      id={`edit-catchTime-${house.id}`}
-                      name="catchTime"
-                      value={catchTime}
-                      onChange={(e) => setCatchTime(e.target.value)}
-                    >
-                      <option value="">Select time</option>
-                      {HALF_HOUR_TIME_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </Select>
-                    <p className="mt-1 text-xs text-stone-500">
-                      Feed up is 5 hours before catch
-                      {catchFeedUpHint
-                        ? ` (${catchFeedUpHint} feed up)`
-                        : " (11:00 PM catch → 6:00 PM feed up → 1:00 PM feed off)"}
-                      .
-                    </p>
-                  </div>
-                  <div>
-                    <Label htmlFor={`edit-flockNumber-${house.id}`}>Flock ID</Label>
-                    <Input
-                      id={`edit-flockNumber-${house.id}`}
-                      name="flockNumber"
-                      defaultValue={house.flockNumber ?? ""}
-                      placeholder="e.g. 26-07"
-                      autoCapitalize="characters"
-                    />
-                  </div>
-                  <fieldset className="space-y-2 rounded-lg border border-stone-200 px-3 py-2.5">
-                    <legend className="px-1 text-sm font-semibold text-stone-800">
-                      Apply to remaining houses
-                    </legend>
-                    <p className="text-xs text-stone-500">
-                      Copies only the checked fields to houses after this one. Earlier houses stay
-                      unchanged.
-                    </p>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-                      <RemainingCheck
-                        name="applyBirdsToRemaining"
-                        label="Birds placed"
-                        checked={applyBirdsToRemaining}
-                        onChange={setApplyBirdsToRemaining}
-                      />
-                      <RemainingCheck
-                        name="applyPlacementToRemaining"
-                        label="Placement date"
-                        checked={applyPlacementToRemaining}
-                        onChange={setApplyPlacementToRemaining}
-                      />
-                      <RemainingCheck
+                      <PropagateCheck
                         name="applyCatchDateToRemaining"
-                        label="Catch date"
                         checked={applyCatchDateToRemaining}
                         onChange={setApplyCatchDateToRemaining}
                       />
-                      <RemainingCheck
+                    </div>
+                    <div>
+                      <Label htmlFor={`edit-catchTime-${house.id}`}>Catch time</Label>
+                      <Select
+                        id={`edit-catchTime-${house.id}`}
+                        name="catchTime"
+                        compact
+                        value={catchTime}
+                        onChange={(e) => setCatchTime(e.target.value)}
+                      >
+                        <option value="">Select time</option>
+                        {HALF_HOUR_TIME_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </Select>
+                      <PropagateCheck
                         name="applyCatchTimeToRemaining"
-                        label="Catch time"
                         checked={applyCatchTimeToRemaining}
                         onChange={setApplyCatchTimeToRemaining}
                       />
-                      <RemainingCheck
-                        name="applyFlockIdToRemaining"
-                        label="Flock ID"
-                        checked={applyFlockIdToRemaining}
-                        onChange={setApplyFlockIdToRemaining}
-                      />
                     </div>
-                  </fieldset>
+                  </div>
                 </>
               ) : null}
               <div className="grid grid-cols-2 gap-3">
@@ -321,8 +291,14 @@ export function HouseCardActions({
                     min={1}
                     step="any"
                     required
+                    compact
                     defaultValue={house.squareFootage ?? 29700}
                     placeholder="29700"
+                  />
+                  <PropagateCheck
+                    name="applySpecsToRemaining"
+                    checked={applySpecsToRemaining}
+                    onChange={setApplySpecsToRemaining}
                   />
                 </div>
                 <div>
@@ -333,29 +309,15 @@ export function HouseCardActions({
                     type="number"
                     min={0}
                     step="any"
+                    compact
                     defaultValue={house.totalFanCFM ?? ""}
+                  />
+                  <PropagateCheck
+                    checked={applySpecsToRemaining}
+                    onChange={setApplySpecsToRemaining}
                   />
                 </div>
               </div>
-              <label className="flex cursor-pointer items-start gap-2.5">
-                <input
-                  type="checkbox"
-                  name="applySpecsToRemaining"
-                  value="true"
-                  checked={applySpecsToRemaining}
-                  onChange={(e) => setApplySpecsToRemaining(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-stone-300 text-emerald-700 focus:ring-emerald-700"
-                />
-                <span>
-                  <span className="block text-sm font-semibold text-stone-800">
-                    Apply to all remaining houses
-                  </span>
-                  <span className="mt-0.5 block text-xs text-stone-500">
-                    Square footage and fan CFM for houses after this one. Earlier houses stay
-                    unchanged.
-                  </span>
-                </span>
-              </label>
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={pending}>
                   {pending ? "Saving…" : "Save"}
