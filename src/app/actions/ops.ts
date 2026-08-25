@@ -375,10 +375,12 @@ export async function createVisitAction(formData: FormData) {
       notes: parsed.data.notes,
       followUpRequired: parsed.data.followUpRequired ?? false,
       followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
+      loggedAt: new Date(),
     },
   });
   revalidatePath(`/farms/${parsed.data.farmId}`);
   revalidatePath("/");
+  revalidatePath("/reports");
   return { success: true };
 }
 
@@ -430,6 +432,7 @@ export async function deleteVisitAction(farmId: string, visitId: string) {
   await prisma.farmVisit.delete({ where: { id: visitId } });
   revalidatePath(`/farms/${farmId}`);
   revalidatePath("/");
+  revalidatePath("/reports");
   return { success: true };
 }
 
@@ -487,6 +490,7 @@ export async function updateVisitAction(visitId: string, formData: FormData) {
   });
   revalidatePath(`/farms/${parsed.data.farmId}`);
   revalidatePath("/");
+  revalidatePath("/reports");
   return { success: true };
 }
 

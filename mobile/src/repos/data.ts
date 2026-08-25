@@ -18,6 +18,7 @@ import {
   formatLocalDateTime,
 } from "../lib/lfo/calculate";
 import { normalizeHalfHourTime } from "../lib/time-slots";
+import { buildFieldLogWeeks, type FieldLogWeek } from "../lib/reports/field-log";
 import {
   buildFlockVisitSchedule,
   completionKey,
@@ -1422,6 +1423,36 @@ export function getReports(from: string, to: string, farmId?: string) {
   return { dates, rows };
 }
 
+export function getFieldLog(from: string, to: string): FieldLogWeek[] {
+  const db = getDb();
+  const visits = db.getAllSync<{
+    id: string;
+    farm_name: string;
+    visit_date: string;
+    logged_at: string | null;
+  }>(
+    `SELECT v.id, f.farm_name, v.visit_date, v.logged_at
+     FROM farm_visits v
+     JOIN farms f ON f.id = v.farm_id
+     WHERE f.deleted_at IS NULL
+       AND v.visit_date >= ?
+       AND v.visit_date <= ?
+     ORDER BY v.visit_date ASC, v.logged_at ASC, v.id ASC`,
+    [from, to],
+  );
+
+  return buildFieldLogWeeks(
+    visits.map((v) => ({
+      id: v.id,
+      farmName: v.farm_name,
+      visitDate: v.visit_date,
+      loggedAt: v.logged_at?.trim() || `${v.visit_date}T12:00:00.000Z`,
+    })),
+    from,
+    to,
+  );
+}
+
 export function listLfos() {
   const db = getDb();
   const rows = db.getAllSync<{
@@ -1921,10 +1952,11 @@ export function createVisit(input: VisitInput) {
   const { flockId, age } = resolveVisitFlockAge(input.farmId, input.flockId, input.visitDate);
   const id = newId("visit");
   const followUp = Boolean(input.followUpRequired);
+  const loggedAt = new Date().toISOString();
   db.runSync(
     `INSERT INTO farm_visits
-      (id, farm_id, flock_id, visit_date, visit_type, bird_age_in_days, general_bird_condition, notes, follow_up_required, follow_up_date)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, farm_id, flock_id, visit_date, visit_type, bird_age_in_days, general_bird_condition, notes, follow_up_required, follow_up_date, logged_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       input.farmId,
@@ -1936,6 +1968,7 @@ export function createVisit(input: VisitInput) {
       input.notes?.trim() ? input.notes.trim() : null,
       followUp ? 1 : 0,
       followUp && input.followUpDate ? input.followUpDate : null,
+      loggedAt,
     ],
   );
   return { id, birdAgeInDays: age };

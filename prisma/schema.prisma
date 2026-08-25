@@ -440,6 +440,8 @@ model FarmVisit {
   notes                String?
   followUpRequired     Boolean   @default(false)
   followUpDate         DateTime?
+  /// Clock time the visit was saved; used to order farms on the Field Log.
+  loggedAt             DateTime  @default(now())
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

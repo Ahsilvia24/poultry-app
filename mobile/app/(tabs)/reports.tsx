@@ -2,8 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { getReports, listFarms } from "../../src/repos/data";
+import { getFieldLog, getReports, listFarms } from "../../src/repos/data";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
+import {
+  defaultFieldLogRange,
+  fieldLogWeeksToTsv,
+  formatFieldLogDayHeader,
+  type FieldLogWeek,
+} from "../../src/lib/reports/field-log";
 import { colors, styles } from "../../src/theme";
 import {
   Card,
@@ -16,7 +22,7 @@ import { ClipboardIconButton } from "../../src/components/ClipboardIconButton";
 
 const REPORT_TYPES = [
   { key: "mortality", label: "Mortality" },
-  { key: "placement", label: "Placement" },
+  { key: "field-log", label: "Field Log" },
 ] as const;
 
 type ReportType = (typeof REPORT_TYPES)[number]["key"];
@@ -50,12 +56,18 @@ export default function ReportsScreen() {
   const params = useLocalSearchParams<{ farmId?: string | string[] }>();
   const farmIdParam = paramId(params.farmId);
   const farms = useMemo(() => listFarms().farms, []);
+  const weekDefaults = useMemo(() => defaultFieldLogRange(), []);
   const [reportType, setReportType] = useState<ReportType>("mortality");
   const [farmId, setFarmId] = useState(farmIdParam || farms[0]?.id || "");
   const [from, setFrom] = useState(addDaysKey(todayKey(), -14));
   const [to, setTo] = useState(todayKey());
+  const [fieldFrom, setFieldFrom] = useState(weekDefaults.from);
+  const [fieldTo, setFieldTo] = useState(weekDefaults.to);
   const [matrix, setMatrix] = useState(() =>
     getReports(from, to, (farmIdParam || farms[0]?.id) || undefined),
+  );
+  const [fieldWeeks, setFieldWeeks] = useState<FieldLogWeek[]>(() =>
+    getFieldLog(weekDefaults.from, weekDefaults.to),
   );
 
   const selectedFarmName = useMemo(() => {
@@ -72,9 +84,17 @@ export default function ReportsScreen() {
     }
   }, [farmIdParam, from, to]);
 
-  function apply() {
+  function applyMortality() {
     setMatrix(getReports(from, to, farmId || undefined));
   }
+
+  function applyFieldLog() {
+    setFieldWeeks(getFieldLog(fieldFrom, fieldTo));
+  }
+
+  const hasFieldFarms = fieldWeeks.some((week) =>
+    week.days.some((day) => day.farms.length > 0),
+  );
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -116,16 +136,95 @@ export default function ReportsScreen() {
           </View>
         </ScrollView>
 
-        {reportType !== "mortality" ? (
-          <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>
-              {REPORT_TYPES.find((t) => t.key === reportType)?.label} report
-            </Text>
-            <Text style={[styles.muted, { marginTop: 8 }]}>
-              Placeholder — this report type is coming soon. Use Mortality for house × date results
-              today.
-            </Text>
-          </Card>
+        {reportType === "field-log" ? (
+          <>
+            <Card>
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <DatePickerField label="Start" value={fieldFrom} onChange={setFieldFrom} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <DatePickerField label="Finish" value={fieldTo} onChange={setFieldTo} />
+                </View>
+              </View>
+              <PrimaryButton label="Run report" onPress={applyFieldLog} />
+            </Card>
+
+            {fieldWeeks.map((week) => (
+              <Card key={week.weekStart} style={{ paddingVertical: 12 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 10,
+                    gap: 8,
+                  }}
+                >
+                  <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text, flex: 1 }}>
+                    Field Log
+                  </Text>
+                  <ClipboardIconButton
+                    accessibilityLabel="Copy field log"
+                    color={colors.accentDark}
+                    emptyMessage="No visits in this date range."
+                    getText={() => {
+                      if (!hasFieldFarms) return "";
+                      return fieldLogWeeksToTsv(fieldWeeks);
+                    }}
+                  />
+                </View>
+                <ScrollView horizontal>
+                  <View style={{ flexDirection: "row" }}>
+                    {week.days.map((day) => {
+                      const weekend = day.weekday === "Saturday" || day.weekday === "Sunday";
+                      return (
+                        <View
+                          key={day.dateKey}
+                          style={{
+                            width: 112,
+                            minHeight: 140,
+                            paddingRight: 10,
+                            paddingLeft: 4,
+                            opacity: day.inRange ? 1 : 0.4,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontWeight: "800",
+                              fontSize: 13,
+                              color: weekend ? colors.muted : colors.text,
+                            }}
+                          >
+                            {day.weekday}
+                          </Text>
+                          <Text style={[styles.muted, { marginBottom: 8, fontSize: 12 }]}>
+                            {formatFieldLogDayHeader(day.dateKey)}
+                          </Text>
+                          {day.farms.length === 0 ? (
+                            <Text style={styles.muted}>—</Text>
+                          ) : (
+                            day.farms.map((farm, i) => (
+                              <Text
+                                key={`${day.dateKey}-${i}-${farm}`}
+                                style={{ fontWeight: "700", marginBottom: 6, fontSize: 13 }}
+                              >
+                                {farm}
+                              </Text>
+                            ))
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              </Card>
+            ))}
+
+            {!hasFieldFarms ? (
+              <Text style={styles.muted}>No visits logged in this date range.</Text>
+            ) : null}
+          </>
         ) : (
           <>
             <Text style={styles.label}>Farm</Text>
@@ -152,7 +251,7 @@ export default function ReportsScreen() {
                   <DatePickerField label="To" value={to} onChange={setTo} />
                 </View>
               </View>
-              <PrimaryButton label="Apply filters" onPress={apply} />
+              <PrimaryButton label="Apply filters" onPress={applyMortality} />
             </Card>
 
             <Card style={{ paddingVertical: 12 }}>

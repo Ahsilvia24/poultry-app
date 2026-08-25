@@ -10,7 +10,7 @@ import {
   IssueStatus,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { addDays, format, getDay, nextDay, startOfDay, subDays } from "date-fns";
+import { addDays, format, getDay, nextDay, startOfDay, startOfWeek, subDays, subWeeks } from "date-fns";
 
 const prisma = new PrismaClient();
 
@@ -399,6 +399,54 @@ async function main() {
       flockNumber: spec.flockNumber,
       placementDate,
       projectedCatchDate: addDays(placementDate, 52),
+    });
+  }
+
+  const farmsByName = await prisma.farm.findMany({
+    where: { userId: user.id, deletedAt: null },
+    select: { id: true, farmName: true },
+  });
+  const farmIdByName = new Map(farmsByName.map((f) => [f.farmName, f.id]));
+  const thisMonday = startOfWeek(today, { weekStartsOn: 1 });
+  const lastMonday = subWeeks(thisMonday, 1);
+  const fieldLogStops: Array<{
+    farm: string;
+    weekStart: Date;
+    offset: number;
+    hour: number;
+    minute: number;
+  }> = [
+    { farm: "Oak Hollow", weekStart: lastMonday, offset: 0, hour: 7, minute: 10 },
+    { farm: "Maple Grove", weekStart: lastMonday, offset: 0, hour: 8, minute: 40 },
+    { farm: "Bay View", weekStart: lastMonday, offset: 0, hour: 11, minute: 5 },
+    { farm: "Cedar Creek", weekStart: lastMonday, offset: 1, hour: 7, minute: 20 },
+    { farm: "Pine Ridge", weekStart: lastMonday, offset: 1, hour: 9, minute: 15 },
+    { farm: "Willow Bend", weekStart: lastMonday, offset: 2, hour: 8, minute: 0 },
+    { farm: "Sunrise Farms", weekStart: lastMonday, offset: 3, hour: 7, minute: 45 },
+    { farm: "River Bend", weekStart: lastMonday, offset: 4, hour: 10, minute: 30 },
+    { farm: "Ash Grove", weekStart: lastMonday, offset: 5, hour: 9, minute: 0 },
+    { farm: "Oak Hollow", weekStart: thisMonday, offset: 0, hour: 7, minute: 5 },
+    { farm: "Maple Grove", weekStart: thisMonday, offset: 0, hour: 8, minute: 25 },
+    { farm: "Bay View", weekStart: thisMonday, offset: 0, hour: 10, minute: 50 },
+    { farm: "Cedar Creek", weekStart: thisMonday, offset: 1, hour: 7, minute: 40 },
+    { farm: "Pine Ridge", weekStart: thisMonday, offset: 1, hour: 9, minute: 10 },
+  ];
+  for (const stop of fieldLogStops) {
+    const day = addDays(stop.weekStart, stop.offset);
+    if (day > today) continue;
+    const farmId = farmIdByName.get(stop.farm);
+    if (!farmId) continue;
+    const loggedAt = new Date(day);
+    loggedAt.setHours(stop.hour, stop.minute, 0, 0);
+    await prisma.farmVisit.create({
+      data: {
+        farmId,
+        visitDate: day,
+        loggedAt,
+        visitType: VisitType.ROUTINE_SERVICE,
+        generalBirdCondition: "Healthy",
+        notes: "Field log demo",
+      },
     });
   }
 

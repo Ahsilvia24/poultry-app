@@ -14,8 +14,13 @@ import {
   type HouseBarPoint,
   type HouseByDateMatrix,
 } from "@/components/MortalityCharts";
-import { ReportsTypeTabs, type ReportTypeKey } from "@/components/ReportsTypeTabs";
+import { ReportsTypeTabs, resolveReportType } from "@/components/ReportsTypeTabs";
+import { FieldLogReport } from "@/components/FieldLogReport";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import {
+  buildFieldLogWeeks,
+  defaultFieldLogRange,
+} from "@/lib/reports/field-log";
 
 type SearchParams = Promise<{
   farmId?: string;
@@ -25,11 +30,6 @@ type SearchParams = Promise<{
   type?: string;
 }>;
 
-function resolveReportType(raw: string | undefined): ReportTypeKey {
-  if (raw === "placement") return raw;
-  return "mortality";
-}
-
 export default async function ReportsPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -37,26 +37,72 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
   const params = await searchParams;
   const reportType = resolveReportType(params.type);
   const today = new Date();
-  const from = params.from ?? format(subDays(today, 42), "yyyy-MM-dd");
-  const to = params.to ?? format(today, "yyyy-MM-dd");
+  const fieldDefaults = defaultFieldLogRange(today);
+  const from =
+    params.from ??
+    (reportType === "field-log"
+      ? fieldDefaults.from
+      : format(subDays(today, 42), "yyyy-MM-dd"));
+  const to =
+    params.to ?? (reportType === "field-log" ? fieldDefaults.to : format(today, "yyyy-MM-dd"));
   const fromDate = parseISO(from);
   const toDate = parseISO(to);
 
-  if (reportType !== "mortality") {
-    const title = "Placement";
+  if (reportType === "field-log") {
+    const visits = await prisma.farmVisit.findMany({
+      where: {
+        visitDate: { gte: fromDate, lte: toDate },
+        farm: { userId: session.user.id, deletedAt: null },
+      },
+      select: {
+        id: true,
+        visitDate: true,
+        loggedAt: true,
+        createdAt: true,
+        farm: { select: { farmName: true } },
+      },
+      orderBy: [{ visitDate: "asc" }, { loggedAt: "asc" }, { id: "asc" }],
+    });
+
+    const weeks = buildFieldLogWeeks(
+      visits.map((v) => ({
+        id: v.id,
+        farmName: v.farm.farmName,
+        visitDate: dateKeyFromDb(v.visitDate),
+        loggedAt: (v.loggedAt ?? v.createdAt).toISOString(),
+      })),
+      from,
+      to,
+    );
+
+    const filterLabel = `${format(fromDate, "MMMM d, yyyy")} to ${format(toDate, "MMMM d, yyyy")}`;
+
     return (
       <div>
-        <PageHeader title="Reports" />
+        <PageHeader
+          title="Reports"
+          subtitle="Farms visited each day, in the order you logged them"
+        />
         <Suspense fallback={<div className="mb-4 h-10" />}>
-          <ReportsTypeTabs active={reportType} />
+          <ReportsTypeTabs active="field-log" />
         </Suspense>
-        <Card>
-          <p className="text-lg font-bold text-stone-900">{title} report</p>
-          <p className="mt-2 text-sm text-stone-600">
-            Placeholder — this report type is coming soon. Use the Mortality tab for house × date
-            results today.
-          </p>
+        <Card className="mb-6">
+          <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <input type="hidden" name="type" value="field-log" />
+            <div>
+              <Label htmlFor="from">Start</Label>
+              <Input id="from" name="from" type="date" defaultValue={from} />
+            </div>
+            <div>
+              <Label htmlFor="to">Finish</Label>
+              <Input id="to" name="to" type="date" defaultValue={to} />
+            </div>
+            <div className="flex items-end">
+              <Button type="submit">Run report</Button>
+            </div>
+          </form>
         </Card>
+        <FieldLogReport weeks={weeks} filterLabel={filterLabel} />
       </div>
     );
   }

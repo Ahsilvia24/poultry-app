@@ -6,20 +6,36 @@ import { cn } from "@/lib/utils";
 
 export const REPORT_TYPES = [
   { key: "mortality", label: "Mortality" },
-  { key: "placement", label: "Placement" },
+  { key: "field-log", label: "Field Log" },
 ] as const;
 
 export type ReportTypeKey = (typeof REPORT_TYPES)[number]["key"];
+
+export function resolveReportType(raw: string | undefined): ReportTypeKey {
+  if (raw === "field-log" || raw === "placement") return "field-log";
+  return "mortality";
+}
 
 export function ReportsTypeTabs({ active }: { active: ReportTypeKey }) {
   const searchParams = useSearchParams();
 
   function hrefFor(key: ReportTypeKey) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (key === "mortality") params.delete("type");
-    else params.set("type", key);
-    const qs = params.toString();
-    return qs ? `/reports?${qs}` : "/reports";
+    if (key === "mortality") {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("type");
+      const qs = params.toString();
+      return qs ? `/reports?${qs}` : "/reports";
+    }
+
+    const params = new URLSearchParams();
+    params.set("type", "field-log");
+    if (active === "field-log") {
+      const from = searchParams.get("from");
+      const to = searchParams.get("to");
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+    }
+    return `/reports?${params.toString()}`;
   }
 
   return (

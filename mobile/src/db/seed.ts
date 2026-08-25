@@ -205,8 +205,8 @@ function ensureDemoVisits() {
     if ((existing?.c ?? 0) === 0) {
       db.runSync(
         `INSERT INTO farm_visits
-          (id, farm_id, flock_id, visit_date, visit_type, bird_age_in_days, general_bird_condition, notes, follow_up_required)
-         VALUES (?, ?, ?, ?, 'ROUTINE_SERVICE', ?, 'Healthy', ?, 0)`,
+          (id, farm_id, flock_id, visit_date, visit_type, bird_age_in_days, general_bird_condition, notes, follow_up_required, logged_at)
+         VALUES (?, ?, ?, ?, 'ROUTINE_SERVICE', ?, 'Healthy', ?, 0, ?)`,
         [
           newId("visit"),
           farm.id,
@@ -214,6 +214,7 @@ function ensureDemoVisits() {
           visitDate,
           age,
           "Offline demo visit",
+          `${visitDate}T12:00:00.000Z`,
         ],
       );
     } else {
@@ -506,8 +507,8 @@ export function seedIfNeeded() {
     const visitAge = Math.max(0, daysBetween(placement, visitDate));
     db.runSync(
       `INSERT INTO farm_visits
-        (id, farm_id, flock_id, visit_date, visit_type, bird_age_in_days, general_bird_condition, notes, follow_up_required)
-       VALUES (?, ?, ?, ?, 'ROUTINE_SERVICE', ?, 'Healthy', ?, 0)`,
+        (id, farm_id, flock_id, visit_date, visit_type, bird_age_in_days, general_bird_condition, notes, follow_up_required, logged_at)
+       VALUES (?, ?, ?, ?, 'ROUTINE_SERVICE', ?, 'Healthy', ?, 0, ?)`,
       [
         newId("visit"),
         farmId,
@@ -515,6 +516,7 @@ export function seedIfNeeded() {
         visitDate,
         visitAge,
         `Offline demo visit for ${demo.farmName}`,
+        `${visitDate}T12:00:00.000Z`,
       ],
     );
   }

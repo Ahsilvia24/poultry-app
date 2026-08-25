@@ -392,6 +392,7 @@ export async function importMobileBackupAction(
               farmId,
               flockId: oldFlockId ? flockIds.get(oldFlockId) ?? null : null,
               visitDate,
+              loggedAt: dateTime(row.logged_at) ?? dateTime(row.created_at) ?? new Date(),
               birdAgeInDays: num(row.bird_age_in_days) != null ? int(row.bird_age_in_days) : null,
               visitType: enumOr(row.visit_type, visitTypeValues, VisitType.ROUTINE_SERVICE),
               generalBirdCondition: str(row.general_bird_condition),

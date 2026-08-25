@@ -104,6 +104,7 @@ export function migrateDb() {
       notes TEXT,
       follow_up_required INTEGER NOT NULL DEFAULT 0,
       follow_up_date TEXT,
+      logged_at TEXT,
       FOREIGN KEY (farm_id) REFERENCES farms(id)
     );
 
@@ -300,6 +301,18 @@ export function migrateDb() {
   }
   if (!hfCols.some((c) => c.name === "catch_time")) {
     database.execSync("ALTER TABLE house_flocks ADD COLUMN catch_time TEXT");
+  }
+
+  const visitCols = database.getAllSync<{ name: string }>("PRAGMA table_info(farm_visits)");
+  if (visitCols.length > 0 && !visitCols.some((c) => c.name === "logged_at")) {
+    database.execSync("ALTER TABLE farm_visits ADD COLUMN logged_at TEXT");
+  }
+  if (visitCols.length > 0) {
+    database.execSync(
+      `UPDATE farm_visits
+       SET logged_at = visit_date || 'T12:00:00.000Z'
+       WHERE logged_at IS NULL OR TRIM(logged_at) = ''`,
+    );
   }
 
   const lfoCols = database.getAllSync<{ name: string }>("PRAGMA table_info(last_feed_orders)");
