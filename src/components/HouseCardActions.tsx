@@ -321,7 +321,8 @@ export function HouseCardActions({
                     min={1}
                     step="any"
                     required
-                    defaultValue={house.squareFootage}
+                    defaultValue={house.squareFootage ?? 29700}
+                    placeholder="29700"
                   />
                 </div>
                 <div>

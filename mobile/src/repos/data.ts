@@ -27,8 +27,12 @@ import {
   type CompletionInfo,
   type ScheduledVisit,
 } from "../lib/schedule";
-import { matchPlacementFarm } from "../lib/placementImport/match";
+import { matchPlacementFarmGroups } from "../lib/placementImport/match";
 import { farmGroupKey } from "../lib/placementImport/parse";
+import {
+  farmGroupKey as catchFarmGroupKey,
+  type CatchRow,
+} from "../lib/catchImport/parse";
 
 type MortRow = {
   mortality_date: string;
@@ -2137,15 +2141,39 @@ export function renameFarmOnly(farmId: string, farmName: string) {
 }
 
 export function setFarmNumberIfEmpty(farmId: string, farmNumber: string) {
+  return setFarmNumberFromPlacement(farmId, farmNumber, { onlyIfEmpty: true });
+}
+
+/**
+ * Placement PDF is authoritative for the code left of the farm name.
+ * Fill empty numbers, or correct a stale/wrong code when the new one is free.
+ */
+export function setFarmNumberFromPlacement(
+  farmId: string,
+  farmNumber: string,
+  opts?: { onlyIfEmpty?: boolean },
+) {
   const db = getDb();
   const farm = db.getFirstSync<{ farm_number: string | null }>(
     "SELECT farm_number FROM farms WHERE id = ? AND deleted_at IS NULL",
     [farmId],
   );
   if (!farm) throw new Error("Farm not found");
-  if (farm.farm_number?.trim()) return { success: true as const };
-  db.runSync("UPDATE farms SET farm_number = ? WHERE id = ?", [farmNumber.trim(), farmId]);
-  return { success: true as const };
+  const code = farmNumber.trim();
+  if (!code) return { success: true as const, updated: false as const };
+  const current = farm.farm_number?.trim() ?? "";
+  if (current && opts?.onlyIfEmpty) return { success: true as const, updated: false as const };
+  if (current.toUpperCase() === code.toUpperCase()) {
+    return { success: true as const, updated: false as const };
+  }
+  // Don't reuse another farm's number — that made Catch treat DMD and RED as one.
+  const taken = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM farms WHERE id != ? AND deleted_at IS NULL AND upper(trim(farm_number)) = upper(?)",
+    [farmId, code],
+  );
+  if (taken) return { success: true as const, updated: false as const };
+  db.runSync("UPDATE farms SET farm_number = ? WHERE id = ?", [code, farmId]);
+  return { success: true as const, updated: true as const };
 }
 
 function ensureHouseOnFarm(farmId: string, houseNumber: number): string {
@@ -2211,19 +2239,17 @@ export function importPlacementRows(input: {
   updatedNames: number;
   createdFlocks: number;
   createdHouses: number;
+  updatedPlacements: number;
   warnings: string[];
 } {
   const selectedKeys = new Set(input.selections.filter((s) => s.selected).map((s) => s.key));
   if (selectedKeys.size === 0) throw new Error("Select at least one farm to import.");
 
-  const renameKeys = new Set(
-    input.selections.filter((s) => s.selected && s.renameToImportedName).map((s) => s.key),
-  );
-
   let createdFarms = 0;
   let updatedNames = 0;
   let createdFlocks = 0;
   let createdHouses = 0;
+  let updatedPlacements = 0;
   const warnings: string[] = [];
 
   const existing = listFarmsForPlacementMatch();
@@ -2239,19 +2265,30 @@ export function importPlacementRows(input: {
     byFarm.set(key, list);
   }
 
-  for (const [key, farmRows] of byFarm) {
+  const farmEntries = Array.from(byFarm.entries());
+  const farmMatches = matchPlacementFarmGroups(
+    farmEntries.map(([, rows]) => ({
+      farmName: rows[0]!.farmName,
+      farmCode: rows[0]!.farmCode,
+    })),
+    existing,
+  );
+
+  for (let farmIndex = 0; farmIndex < farmEntries.length; farmIndex++) {
+    const [key, farmRows] = farmEntries[farmIndex]!;
     const sample = farmRows[0]!;
-    const match = matchPlacementFarm(sample.farmName, sample.farmCode, existing);
+    const match = farmMatches[farmIndex]!;
     let farmId: string;
     let createdNewFarm = false;
 
     if (match.farm) {
       farmId = match.farm.id;
-      if (renameKeys.has(key) && match.nameDiffers) {
+      // Placement import overwrites farm name + code from the sheet (that's the point).
+      if (match.farm.farmName.trim() !== sample.farmName.trim()) {
         renameFarmOnly(farmId, sample.farmName);
         updatedNames += 1;
       }
-      setFarmNumberIfEmpty(farmId, sample.farmCode);
+      setFarmNumberFromPlacement(farmId, sample.farmCode);
     } else {
       const maxHouse = Math.max(...farmRows.map((r) => r.houseNo), 1);
       const created = createFarm({
@@ -2293,62 +2330,267 @@ export function importPlacementRows(input: {
       const byHouse = new Map<number, (typeof flockRows)[number]>();
       for (const row of flockRows) byHouse.set(row.houseNo, row);
       const unique = Array.from(byHouse.values());
+      if (unique.length === 0) continue;
 
-      const existingFlock = getDb().getFirstSync<{ id: string }>(
+      let targetFlock = getDb().getFirstSync<{ id: string }>(
         `SELECT id FROM flocks
-         WHERE farm_id = ? AND flock_number = ? AND flock_status = 'ACTIVE' AND deleted_at IS NULL
+         WHERE farm_id = ? AND flock_number = ? AND flock_status = 'ACTIVE'
          LIMIT 1`,
         [farmId, flockId],
       );
-      if (existingFlock) {
-        warnings.push(
-          `${sample.farmName} already has active flock ${flockId} — skipped creating another.`,
-        );
-        continue;
+
+      if (!targetFlock) {
+        // Reclaim the active flock that already holds the most imported houses
+        // (old numbers like "87" / "810"), then rename it to the sheet farm code.
+        const houseIdList = unique
+          .map((r) => houseIds.get(r.houseNo))
+          .filter((id): id is string => Boolean(id));
+        let reclaim: { id: string } | null = null;
+        if (houseIdList.length) {
+          const placeholders = houseIdList.map(() => "?").join(",");
+          reclaim = getDb().getFirstSync<{ id: string }>(
+            `SELECT f.id as id, COUNT(*) as c
+             FROM house_flocks hf
+             JOIN flocks f ON f.id = hf.flock_id
+             WHERE f.farm_id = ? AND f.flock_status = 'ACTIVE'
+               AND hf.house_id IN (${placeholders})
+             GROUP BY f.id
+             ORDER BY c DESC
+             LIMIT 1`,
+            [farmId, ...houseIdList],
+          );
+        }
+        if (!reclaim) {
+          reclaim = getDb().getFirstSync<{ id: string }>(
+            `SELECT id FROM flocks
+             WHERE farm_id = ? AND flock_status = 'ACTIVE'
+             ORDER BY placement_date ASC
+             LIMIT 1`,
+            [farmId],
+          );
+        }
+        if (reclaim) {
+          getDb().runSync(`UPDATE flocks SET flock_number = ? WHERE id = ?`, [
+            flockId,
+            reclaim.id,
+          ]);
+          targetFlock = reclaim;
+        } else {
+          const minDate = unique.map((r) => r.datePlaced).sort()[0]!;
+          const id = newId("flock");
+          getDb().runSync(
+            `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
+             VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
+            [id, farmId, flockId, minDate, addDaysKey(minDate, 52)],
+          );
+          targetFlock = { id };
+          createdFlocks += 1;
+        }
       }
 
-      const placements: Array<{
-        houseId: string;
-        placedBirdCount: number;
-        placementDate: string;
-      }> = [];
+      const vacatedFlockIds = new Set<string>();
 
       for (const row of unique) {
         const houseId = houseIds.get(row.houseNo);
         if (!houseId) continue;
-        const occupied = getDb().getFirstSync<{ flock_number: string }>(
-          `SELECT f.flock_number FROM house_flocks hf
+        const catchDate = addDaysKey(row.datePlaced, 52);
+        const occupied = getDb().getFirstSync<{
+          flock_id: string;
+          flock_number: string;
+          house_flock_id: string;
+        }>(
+          `SELECT f.id as flock_id, f.flock_number, hf.id as house_flock_id
+           FROM house_flocks hf
            JOIN flocks f ON f.id = hf.flock_id
            WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
            LIMIT 1`,
           [houseId, farmId],
         );
+
         if (occupied) {
-          warnings.push(
-            `${sample.farmName} house ${row.houseNo} already on active flock ${occupied.flock_number} — skipped.`,
+          if (occupied.flock_id !== targetFlock.id) {
+            vacatedFlockIds.add(occupied.flock_id);
+          }
+          // Overwrite birds/date and move onto the imported flock identity.
+          getDb().runSync(
+            `UPDATE house_flocks
+             SET flock_id = ?, placed_bird_count = ?, placement_date = ?, catch_date = ?
+             WHERE id = ?`,
+            [
+              targetFlock.id,
+              row.numberSent,
+              row.datePlaced,
+              catchDate,
+              occupied.house_flock_id,
+            ],
           );
+          updatedPlacements += 1;
           continue;
         }
-        placements.push({
-          houseId,
-          placedBirdCount: row.numberSent,
-          placementDate: row.datePlaced,
-        });
+
+        getDb().runSync(
+          `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            newId("hf"),
+            targetFlock.id,
+            houseId,
+            Math.floor(row.numberSent),
+            row.datePlaced,
+            catchDate,
+          ],
+        );
+        updatedPlacements += 1;
       }
 
-      if (placements.length === 0) continue;
-      const minDate = placements.map((p) => p.placementDate).sort()[0]!;
-      createFlock({
-        farmId,
-        flockNumber: flockId,
-        placementDate: minDate,
-        housePlacements: placements,
-      });
-      createdFlocks += 1;
+      syncFlockDatesAndPrune(farmId, targetFlock.id);
+      for (const oldId of vacatedFlockIds) {
+        syncFlockDatesAndPrune(farmId, oldId);
+      }
     }
   }
 
-  return { createdFarms, updatedNames, createdFlocks, createdHouses, warnings };
+  return {
+    createdFarms,
+    updatedNames,
+    createdFlocks,
+    createdHouses,
+    updatedPlacements,
+    warnings,
+  };
+}
+
+export function importCatchRows(input: {
+  rows: CatchRow[];
+  selections: Array<{
+    key: string;
+    selected: boolean;
+    renameToImportedName?: boolean;
+  }>;
+}): {
+  updatedHouses: number;
+  updatedFlocks: number;
+  updatedNames: number;
+  warnings: string[];
+} {
+  const selectedKeys = new Set(input.selections.filter((s) => s.selected).map((s) => s.key));
+  if (selectedKeys.size === 0) throw new Error("Select at least one farm to import.");
+
+  const renameKeys = new Set(
+    input.selections.filter((s) => s.selected && s.renameToImportedName).map((s) => s.key),
+  );
+
+  let updatedHouses = 0;
+  let updatedFlocks = 0;
+  let updatedNames = 0;
+  const warnings: string[] = [];
+  const touchedFlocks = new Set<string>();
+
+  const existing = listFarmsForPlacementMatch();
+  const selectedRows = input.rows.filter((r) =>
+    selectedKeys.has(catchFarmGroupKey(r.farmCode, r.farmName)),
+  );
+
+  const byFarm = new Map<string, CatchRow[]>();
+  for (const row of selectedRows) {
+    const key = catchFarmGroupKey(row.farmCode, row.farmName);
+    const list = byFarm.get(key) ?? [];
+    list.push(row);
+    byFarm.set(key, list);
+  }
+
+  const farmEntries = Array.from(byFarm.entries());
+  const farmMatches = matchPlacementFarmGroups(
+    farmEntries.map(([, rows]) => ({
+      farmName: rows[0]!.farmName,
+      farmCode: rows[0]!.farmCode,
+    })),
+    existing,
+  );
+
+  const db = getDb();
+
+  for (let farmIndex = 0; farmIndex < farmEntries.length; farmIndex++) {
+    const [key, farmRows] = farmEntries[farmIndex]!;
+    const sample = farmRows[0]!;
+    const match = farmMatches[farmIndex]!;
+    if (!match.farm) {
+      warnings.push(
+        `${sample.farmName}: no matching farm — skipped (import Placement first or rename to match).`,
+      );
+      continue;
+    }
+
+    const farmId = match.farm.id;
+    if (
+      renameKeys.has(key) &&
+      match.farm.farmName.trim() !== sample.farmName.trim()
+    ) {
+      renameFarmOnly(farmId, sample.farmName);
+      updatedNames += 1;
+    }
+    setFarmNumberIfEmpty(farmId, sample.farmCode);
+
+    const houses = db.getAllSync<{ id: string; house_number: number }>(
+      "SELECT id, house_number FROM houses WHERE farm_id = ? AND deleted_at IS NULL",
+      [farmId],
+    );
+    const houseByNumber = new Map(houses.map((h) => [h.house_number, h.id]));
+
+    const byHouse = new Map<number, CatchRow>();
+    for (const row of farmRows) byHouse.set(row.houseNo, row);
+
+    for (const row of byHouse.values()) {
+      const houseId = houseByNumber.get(row.houseNo);
+      if (!houseId) {
+        warnings.push(`${sample.farmName} house ${row.houseNo} not found — skipped.`);
+        continue;
+      }
+
+      const activeHf = db.getFirstSync<{
+        id: string;
+        flock_id: string;
+        flock_number: string;
+      }>(
+        `SELECT hf.id, hf.flock_id, f.flock_number
+         FROM house_flocks hf
+         JOIN flocks f ON f.id = hf.flock_id
+         WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
+         LIMIT 1`,
+        [houseId, farmId],
+      );
+      if (!activeHf) {
+        warnings.push(
+          `${sample.farmName} house ${row.houseNo}: no active flock — skipped.`,
+        );
+        continue;
+      }
+
+      db.runSync("UPDATE house_flocks SET catch_date = ? WHERE id = ?", [
+        row.catchDate,
+        activeHf.id,
+      ]);
+      updatedHouses += 1;
+      touchedFlocks.add(activeHf.flock_id);
+    }
+  }
+
+  for (const flockId of touchedFlocks) {
+    const latest = db.getFirstSync<{ catch_date: string }>(
+      `SELECT catch_date FROM house_flocks
+       WHERE flock_id = ? AND catch_date IS NOT NULL AND TRIM(catch_date) != ''
+       ORDER BY catch_date DESC LIMIT 1`,
+      [flockId],
+    );
+    if (!latest?.catch_date) continue;
+    db.runSync("UPDATE flocks SET projected_catch_date = ? WHERE id = ?", [
+      latest.catch_date,
+      flockId,
+    ]);
+    updatedFlocks += 1;
+  }
+
+  return { updatedHouses, updatedFlocks, updatedNames, warnings };
 }
 
 export function completeFlock(flockId: string) {

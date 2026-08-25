@@ -1,0 +1,97 @@
+diff --git a/node_modules/expo-sqlite/web/WorkerChannel.ts b/node_modules/expo-sqlite/web/WorkerChannel.ts
+index 7fba380..75b3158 100644
+--- a/node_modules/expo-sqlite/web/WorkerChannel.ts
++++ b/node_modules/expo-sqlite/web/WorkerChannel.ts
+@@ -40,7 +40,12 @@ export function sendWorkerResult({
+     const resultJson = error != null ? serialize({ error }) : serialize({ result });
+     const resultBytes = new TextEncoder().encode(resultJson);
+     const length = resultBytes.length;
+-    resultArray.set(new Uint32Array([length]), 0);
++    // IMPORTANT: Uint8Array.set(Uint32Array) coerces each element to a byte
++    // (length % 256), which truncates sync payloads. Write a real u32 instead.
++    if (length + 4 > resultArray.byteLength) {
++      throw new Error(`Sync result too large (${length} bytes)`);
++    }
++    new DataView(resultBuffer).setUint32(0, length, true);
+     resultArray.set(resultBytes, 4);
+     Atomics.store(lock, 0, RESOLVED);
+   } else {
+@@ -103,7 +108,7 @@ export function invokeWorkerSync<T extends SQLiteWorkerMessageType & keyof Resul
+   const id = messageId++;
+   const lockBuffer = new SharedArrayBuffer(4);
+   const lock = new Int32Array(lockBuffer);
+-  const resultBuffer = new SharedArrayBuffer(1024 * 1024);
++  const resultBuffer = new SharedArrayBuffer(8 * 1024 * 1024);
+   const resultArray = new Uint8Array(resultBuffer);
+ 
+   Atomics.store(lock, 0, PENDING);
+@@ -116,32 +121,51 @@ export function invokeWorkerSync<T extends SQLiteWorkerMessageType & keyof Resul
+     resultBuffer,
+   });
+ 
+-  let i = 0;
++  const startedAt = Date.now();
+   // @ts-expect-error: Remove this when TypeScript supports Atomics.pause
+   const useAtomicsPause = typeof Atomics.pause === 'function';
+   while (Atomics.load(lock, 0) === PENDING) {
+-    ++i;
+-
++    // Atomics.pause() returns quickly; 1e6 iterations can finish before the
++    // worker responds on cold start. Use a wall-clock budget instead.
++    if (Date.now() - startedAt > 60_000) {
++      throw new Error('Sync operation timeout');
++    }
+     if (useAtomicsPause) {
+-      if (i > 1_000_000) {
+-        throw new Error('Sync operation timeout');
+-      }
+       // @ts-expect-error: Remove this when TypeScript supports Atomics.pause
+       Atomics.pause();
++    }
++  }
++
++  // TypedArray payload writes may lag the Atomics lock signal on some engines.
++  // Retry reading/parsing until the JSON is complete or we time out.
++  const readStarted = Date.now();
++  let lastErr: unknown = null;
++  while (Date.now() - readStarted < 5_000) {
++    const length = new Uint32Array(resultArray.buffer, 0, 1)[0];
++    if (!length || length > resultArray.byteLength - 4) {
++      lastErr = new Error(`Sync operation returned invalid result length (${length})`);
+     } else {
+-      // NOTE(kudo): Unfortunate for the busy loop,
+-      // because we don't have a way for main thread to yield its execution to other callbacks.
+-      if (i > 1000_000_000) {
+-        throw new Error('Sync operation timeout');
++      const resultCopy = new Uint8Array(length);
++      resultCopy.set(new Uint8Array(resultArray.buffer, 4, length));
++      const resultJson = new TextDecoder().decode(resultCopy);
++      if (!resultJson) {
++        lastErr = new Error('Sync operation returned empty result');
++      } else {
++        try {
++          const parsed = deserialize<{ result: ResultTypeMap[T]; error?: string }>(resultJson);
++          if (parsed.error) throw new Error(parsed.error);
++          return parsed.result;
++        } catch (e) {
++          lastErr = e;
++        }
+       }
+     }
++    if (useAtomicsPause) {
++      // @ts-expect-error: Remove this when TypeScript supports Atomics.pause
++      Atomics.pause();
++    }
+   }
+-
+-  const length = new Uint32Array(resultArray.buffer, 0, 1)[0];
+-  const resultCopy = new Uint8Array(length);
+-  resultCopy.set(new Uint8Array(resultArray.buffer, 4, length));
+-  const resultJson = new TextDecoder().decode(resultCopy);
+-  const { result, error } = deserialize<{ result: ResultTypeMap[T]; error?: string }>(resultJson);
+-  if (error) throw new Error(error);
+-  return result;
++  const detail =
++    lastErr instanceof Error ? lastErr.message : String(lastErr ?? 'unknown');
++  throw new Error(`Sync operation returned bad JSON: ${detail}`);
+ }

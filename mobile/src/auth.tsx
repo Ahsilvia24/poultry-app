@@ -1,13 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import * as SecureStore from "expo-secure-store";
-import { initOfflineDb } from "./db";
+import { initOfflineDb, isDbReady } from "./db";
 import { getDb } from "./db/database";
+import { deleteSessionItem, getSessionItem, setSessionItem } from "./lib/sessionStore";
 
 type User = { id: string; name: string; email: string };
 
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
+  dbReady: boolean;
+  dbError: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -18,17 +20,34 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dbReady, setDbReady] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         await initOfflineDb();
-        const session = await SecureStore.getItemAsync(SESSION_KEY);
+        setDbReady(true);
+        setDbError(null);
+      } catch (e) {
+        setUser(null);
+        setDbReady(isDbReady());
+        setDbError(e instanceof Error ? e.message : "Could not open local database");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const session = await getSessionItem(SESSION_KEY);
         if (!session) {
           setUser(null);
           return;
         }
         const parsed = JSON.parse(session) as User;
+        if (!parsed?.id) {
+          setUser(null);
+          return;
+        }
         const row = getDb().getFirstSync<{ id: string; name: string; email: string }>(
           "SELECT id, name, email FROM users WHERE id = ?",
           [parsed.id],
@@ -58,23 +77,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Invalid email or password");
       }
       const next = { id: row2.id, name: row2.name, email: row2.email };
-      await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(next));
+      await setSessionItem(SESSION_KEY, JSON.stringify(next));
       setUser(next);
       return;
     }
     const next = { id: row.id, name: row.name, email: row.email };
-    await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(next));
+    await setSessionItem(SESSION_KEY, JSON.stringify(next));
     setUser(next);
   }, []);
 
   const signOut = useCallback(async () => {
-    await SecureStore.deleteItemAsync(SESSION_KEY);
+    await deleteSessionItem(SESSION_KEY);
     setUser(null);
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, signIn, signOut }),
-    [user, loading, signIn, signOut],
+    () => ({ user, loading, dbReady, dbError, signIn, signOut }),
+    [user, loading, dbReady, dbError, signIn, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

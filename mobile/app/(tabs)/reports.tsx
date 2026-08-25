@@ -121,7 +121,7 @@ export default function ReportsScreen() {
         >
           <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
         </Pressable>
-        <PageHeader title="Reports" subtitle="Choose a report type, then run filters" />
+        <PageHeader title="Reports" />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ flexDirection: "row", marginBottom: 12 }}>

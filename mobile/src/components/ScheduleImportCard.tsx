@@ -1,20 +1,42 @@
-import { useMemo, useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { Alert, Platform, Pressable, Share, Text, View } from "react-native";
+import Constants from "expo-constants";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as XLSX from "xlsx";
 import { colors, styles } from "../theme";
-import { Card, Chip, PrimaryButton } from "./ui";
+import { Card, PrimaryButton } from "./ui";
 import {
   groupPlacementFarms,
+  parsePlacementPdfText,
   parsePlacementSheetRows,
+  placementPdfDebugSample,
+  placementPdfExtractStats,
+  summarizePlacementRows,
   type PlacementRow,
 } from "../lib/placementImport/parse";
-import { matchPlacementFarm } from "../lib/placementImport/match";
 import {
+  groupCatchFarms,
+  parseCatchPdfText,
+  parseCatchSheetRows,
+  type CatchRow,
+} from "../lib/catchImport/parse";
+import { matchPlacementFarmGroups } from "../lib/placementImport/match";
+import { extractPdfTextFromBytes, extractPdfTextFromUri } from "../lib/pdfText";
+import {
+  importCatchRows,
   importPlacementRows,
   listFarmsForPlacementMatch,
 } from "../repos/data";
+
+const APP_BUILD =
+  Constants.expoConfig?.ios?.buildNumber ||
+  Constants.expoConfig?.android?.versionCode ||
+  Constants.nativeBuildVersion ||
+  "?";
+
+const FILE_ACCEPT =
+  ".pdf,.csv,.xls,.xlsx,.txt,application/pdf,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 type ImportType = "placement" | "catch" | "settlement";
 
@@ -25,6 +47,7 @@ type FarmPreview = {
   rowCount: number;
   houseNumbers: number[];
   flockIds: string[];
+  catchDates?: string[];
   isMyFarm: boolean;
   matchName: string | null;
   nameDiffers: boolean;
@@ -41,7 +64,40 @@ function typeLabel(type: ImportType) {
   return TYPE_OPTIONS.find((t) => t.id === type)?.label ?? type;
 }
 
-async function rowsFromPickedFile(asset: DocumentPicker.DocumentPickerAsset): Promise<PlacementRow[]> {
+function canUpload(type: ImportType) {
+  return type === "placement" || type === "catch";
+}
+
+function isPdfFile(fileName: string, mimeType?: string | null) {
+  const name = fileName.toLowerCase();
+  return name.endsWith(".pdf") || Boolean(mimeType?.toLowerCase().includes("pdf"));
+}
+
+function sheetFromWorkbookBytes(bytes: ArrayBuffer | Uint8Array, fileName: string): string[][] {
+  const name = fileName.toLowerCase();
+  if (name.endsWith(".csv") || name.endsWith(".txt")) {
+    const text = new TextDecoder().decode(
+      bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes,
+    );
+    return text.split(/\r?\n/).map((line) => line.split(",").map((c) => c.replace(/^"|"$/g, "")));
+  }
+  if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+    const workbook = XLSX.read(bytes, { type: "array", cellDates: true });
+    const first = workbook.SheetNames[0];
+    if (!first) return [];
+    const sheet = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets[first]!, {
+      header: 1,
+      raw: false,
+      defval: "",
+    });
+    return sheet as string[][];
+  }
+  throw new Error("Use a spreadsheet (.csv / .xlsx) or PDF.");
+}
+
+async function sheetFromPickedFile(
+  asset: DocumentPicker.DocumentPickerAsset,
+): Promise<string[][]> {
   const name = (asset.name || "").toLowerCase();
   const uri = asset.uri;
 
@@ -49,11 +105,15 @@ async function rowsFromPickedFile(asset: DocumentPicker.DocumentPickerAsset): Pr
     const text = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.UTF8,
     });
-    const sheet = text.split(/\r?\n/).map((line) => line.split(",").map((c) => c.replace(/^"|"$/g, "")));
-    return parsePlacementSheetRows(sheet);
+    return text.split(/\r?\n/).map((line) => line.split(",").map((c) => c.replace(/^"|"$/g, "")));
   }
 
-  if (name.endsWith(".xlsx") || name.endsWith(".xls") || asset.mimeType?.includes("sheet") || asset.mimeType?.includes("excel")) {
+  if (
+    name.endsWith(".xlsx") ||
+    name.endsWith(".xls") ||
+    asset.mimeType?.includes("sheet") ||
+    asset.mimeType?.includes("excel")
+  ) {
     const b64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
@@ -65,39 +125,88 @@ async function rowsFromPickedFile(asset: DocumentPicker.DocumentPickerAsset): Pr
       raw: false,
       defval: "",
     });
-    return parsePlacementSheetRows(sheet as string[][]);
+    return sheet as string[][];
   }
 
-  if (name.endsWith(".pdf") || asset.mimeType?.includes("pdf")) {
-    // pdf-parse/pdf.js is not bundled for Expo web/native; use CSV/XLSX here
-    // or run PDF import from the Next.js web app.
-    throw new Error(
-      "PDF placement import needs a CSV/XLSX export on mobile, or use the web Import with this PDF.",
-    );
-  }
+  throw new Error("Use a PDF or spreadsheet (.csv / .xlsx).");
+}
 
-  throw new Error("Use a Weekly Chick Placement PDF or spreadsheet (.csv / .xlsx).");
+function showAlert(title: string, message: string) {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message);
 }
 
 export function ScheduleImportCard() {
   const [importType, setImportType] = useState<ImportType>("placement");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const [rows, setRows] = useState<PlacementRow[]>([]);
+  const [placementRows, setPlacementRows] = useState<PlacementRow[]>([]);
+  const [catchRows, setCatchRows] = useState<CatchRow[]>([]);
   const [farms, setFarms] = useState<FarmPreview[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [rename, setRename] = useState<Record<string, boolean>>({});
   const [onlyMyFarms, setOnlyMyFarms] = useState(false);
+  const [lastPdfText, setLastPdfText] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedCount = useMemo(
     () => Object.values(selected).filter(Boolean).length,
     [selected],
   );
 
-  function buildPreview(parsed: PlacementRow[]) {
+  function clearPreview() {
+    setFarms([]);
+    setPlacementRows([]);
+    setCatchRows([]);
+    setOnlyMyFarms(false);
+    setLastPdfText(null);
+  }
+
+  async function shareLastPdfText() {
+    if (!lastPdfText?.trim()) {
+      showAlert("No PDF text", "Upload a placement PDF first.");
+      return;
+    }
+    const payload = lastPdfText.slice(0, 50000);
+    try {
+      await Share.share({
+        message: payload,
+        title: "Placement PDF text",
+      });
+    } catch {
+      try {
+        const Clipboard = await import("expo-clipboard");
+        await Clipboard.setStringAsync(payload);
+        showAlert("Copied", "PDF text copied to clipboard.");
+      } catch {
+        showAlert("Share failed", "Could not share or copy PDF text.");
+      }
+    }
+  }
+
+  function setPreviewFromGroups(groups: FarmPreview[]) {
+    setFarms(groups);
+    const nextSelected: Record<string, boolean> = {};
+    const nextRename: Record<string, boolean> = {};
+    for (const farm of groups) {
+      // Default: select everything so growers see the full sheet, not only matches.
+      nextSelected[farm.key] = true;
+      nextRename[farm.key] = false;
+    }
+    setSelected(nextSelected);
+    setRename(nextRename);
+    setOnlyMyFarms(false);
+  }
+
+  function buildPlacementPreview(parsed: PlacementRow[], statsLine?: string | null) {
     const existing = listFarmsForPlacementMatch();
-    const groups = groupPlacementFarms(parsed).map((g) => {
-      const match = matchPlacementFarm(g.farmName, g.farmCode, existing);
+    const grouped = groupPlacementFarms(parsed);
+    const matches = matchPlacementFarmGroups(grouped, existing);
+    const groups = grouped.map((g, i) => {
+      const match = matches[i]!;
       return {
         key: g.key,
         farmCode: g.farmCode,
@@ -111,26 +220,191 @@ export function ScheduleImportCard() {
         matchKind: match.kind,
       } satisfies FarmPreview;
     });
-    setRows(parsed);
-    setFarms(groups);
-    const nextSelected: Record<string, boolean> = {};
-    const nextRename: Record<string, boolean> = {};
-    for (const farm of groups) {
-      nextSelected[farm.key] = farm.isMyFarm;
-      nextRename[farm.key] = false;
+    setPlacementRows(parsed);
+    setCatchRows([]);
+    setPreviewFromGroups(groups);
+    const summary = summarizePlacementRows(parsed);
+    const matched = groups.filter((g) => g.isMyFarm).length;
+    const statsSuffix = statsLine ? ` · ${statsLine}` : "";
+    setNote(
+      `Build ${APP_BUILD}: parsed ${summary.farmCount} farm${summary.farmCount === 1 ? "" : "s"} from this PDF · ${summary.houseCount} house${summary.houseCount === 1 ? "" : "s"} · ${summary.birdsSent.toLocaleString()} birds. ${matched} already match farms in your app.${statsSuffix}`,
+    );
+  }
+
+  function buildCatchPreview(parsed: CatchRow[]) {
+    const existing = listFarmsForPlacementMatch();
+    const grouped = groupCatchFarms(parsed);
+    const matches = matchPlacementFarmGroups(grouped, existing);
+    const groups = grouped.map((g, i) => {
+      const match = matches[i]!;
+      return {
+        key: g.key,
+        farmCode: g.farmCode,
+        farmName: g.farmName,
+        rowCount: g.rowCount,
+        houseNumbers: g.houseNumbers,
+        flockIds: g.flockIds,
+        catchDates: g.catchDates,
+        isMyFarm: match.kind !== "none",
+        matchName: match.farm?.farmName ?? null,
+        nameDiffers: match.nameDiffers,
+        matchKind: match.kind,
+      } satisfies FarmPreview;
+    });
+    setCatchRows(parsed);
+    setPlacementRows([]);
+    setPreviewFromGroups(groups);
+  }
+
+  async function processSheet(sheet: string[][], fileName: string) {
+    if (importType === "catch") {
+      const parsed = parseCatchSheetRows(sheet);
+      if (parsed.length === 0) {
+        throw new Error(
+          "Could not read catch rows. Need Catch Date, Farm Name, and House (Farm Code / Flock when available).",
+        );
+      }
+      buildCatchPreview(parsed);
+      setNote(`Read ${parsed.length} rows from ${fileName}.`);
+      return;
     }
-    setSelected(nextSelected);
-    setRename(nextRename);
-    setOnlyMyFarms(true);
+
+    const parsed = parsePlacementSheetRows(sheet);
+    if (parsed.length === 0) {
+      throw new Error(
+        "Could not read placement rows. Need at least Farm Name or Farm Code (Date, House, and birds can be blank).",
+      );
+    }
+    buildPlacementPreview(parsed);
+  }
+
+  async function processPdfText(text: string, fileName: string) {
+    if (!text.trim()) {
+      throw new Error("Could not read text from that PDF. Try a clearer file or CSV/XLSX.");
+    }
+
+    if (importType === "catch") {
+      const parsed = parseCatchPdfText(text);
+      if (parsed.length === 0) {
+        throw new Error(
+          "Could not read catch rows from PDF. Need Catch Date / Ending Kill Date, Farm Name, and House (partial rows OK).",
+        );
+      }
+      buildCatchPreview(parsed);
+      setNote(`Read ${parsed.length} rows from ${fileName}.`);
+      return;
+    }
+
+    setLastPdfText(text);
+    const stats = placementPdfExtractStats(text);
+    const statsLine = `${stats.chars} chars · ${stats.projected} PROJECTED · ${stats.anchors}+${stats.complexAnchors} anchors · expect ~${stats.expectedRows}`;
+    const parsed = parsePlacementPdfText(text);
+    if (parsed.length === 0) {
+      const sample = placementPdfDebugSample(text);
+      try {
+        const Clipboard = await import("expo-clipboard");
+        await Clipboard.setStringAsync(text.slice(0, 20000));
+      } catch {
+        // ignore
+      }
+      throw new Error(
+        `Build ${APP_BUILD}: could not read placement rows (${stats.chars} chars, ${stats.projected} PROJECTED, ${stats.expectedRows} expected). Sample: ${sample}`,
+      );
+    }
+    buildPlacementPreview(parsed, statsLine);
+    const summary = summarizePlacementRows(parsed);
+    if (stats.expectedRows >= 20 && summary.rowCount < stats.expectedRows * 0.5) {
+      try {
+        const Clipboard = await import("expo-clipboard");
+        await Clipboard.setStringAsync(text.slice(0, 20000));
+        setNote(
+          (prev) =>
+            `${prev ?? ""} Partial read ${summary.rowCount}/${stats.expectedRows} — PDF text copied. Tap “Share PDF text” and paste it here.`,
+        );
+      } catch {
+        setNote(
+          (prev) =>
+            `${prev ?? ""} Partial read ${summary.rowCount}/${stats.expectedRows} — tap “Share PDF text” and paste it here.`,
+        );
+      }
+    }
+  }
+
+  async function processPdfBytes(bytes: ArrayBuffer | Uint8Array, fileName: string) {
+    setNote(
+      Platform.OS === "web"
+        ? `Reading ${fileName} (scanned PDFs use OCR and may take a minute)…`
+        : `Reading ${fileName}…`,
+    );
+    const text = await extractPdfTextFromBytes(bytes);
+    await processPdfText(text, fileName);
+  }
+
+  async function processPdfUri(uri: string, fileName: string) {
+    setNote(`Reading ${fileName}…`);
+    const text = await extractPdfTextFromUri(uri);
+    await processPdfText(text, fileName);
+  }
+
+  async function onWebFileSelected(file: File) {
+    setBusy(true);
+    setNote(null);
+    try {
+      const bytes = await file.arrayBuffer();
+      if (isPdfFile(file.name, file.type)) {
+        await processPdfBytes(bytes, file.name);
+      } else {
+        const sheet = sheetFromWorkbookBytes(bytes, file.name);
+        await processSheet(sheet, file.name);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not read file";
+      setNote(msg);
+      showAlert("Upload failed", msg);
+    } finally {
+      setBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function pickWebFile(): Promise<File | null> {
+    return new Promise((resolve) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = FILE_ACCEPT;
+      input.style.display = "none";
+      const cleanup = () => {
+        input.remove();
+      };
+      input.addEventListener("change", () => {
+        const file = input.files?.[0] ?? null;
+        cleanup();
+        resolve(file);
+      });
+      input.addEventListener("cancel", () => {
+        cleanup();
+        resolve(null);
+      });
+      document.body.appendChild(input);
+      input.click();
+    });
   }
 
   async function onUpload() {
     if (busy) return;
-    if (importType !== "placement") {
-      Alert.alert(
-        "Coming next",
-        `${typeLabel(importType)} import comes next. Start with Placement.`,
-      );
+    if (!canUpload(importType)) {
+      showAlert("Coming next", `${typeLabel(importType)} import comes next.`);
+      return;
+    }
+
+    if (Platform.OS === "web") {
+      try {
+        const file = await pickWebFile();
+        if (!file) return;
+        await onWebFileSelected(file);
+      } catch {
+        fileInputRef.current?.click();
+      }
       return;
     }
 
@@ -150,16 +424,18 @@ export function ScheduleImportCard() {
         ],
       });
       if (picked.canceled || !picked.assets?.[0]) return;
-      const parsed = await rowsFromPickedFile(picked.assets[0]);
-      if (parsed.length === 0) {
-        throw new Error(
-          "Could not read placement rows. Need Date Placed, Farm Code, Farm Name, Flock Code, House No, Number Sent.",
-        );
+      const asset = picked.assets[0];
+      const fileName = asset.name || "import.pdf";
+      if (isPdfFile(fileName, asset.mimeType)) {
+        await processPdfUri(asset.uri, fileName);
+      } else {
+        const sheet = await sheetFromPickedFile(asset);
+        await processSheet(sheet, fileName);
       }
-      buildPreview(parsed);
-      setNote(`Read ${parsed.length} rows from ${picked.assets[0].name}.`);
     } catch (e) {
-      Alert.alert("Upload failed", e instanceof Error ? e.message : "Could not read file");
+      const msg = e instanceof Error ? e.message : "Could not read file";
+      setNote(msg);
+      showAlert("Upload failed", msg);
     } finally {
       setBusy(false);
     }
@@ -177,62 +453,114 @@ export function ScheduleImportCard() {
     if (busy || selectedCount === 0) return;
     setBusy(true);
     try {
-      const result = importPlacementRows({
-        rows,
-        selections: farms.map((farm) => ({
-          key: farm.key,
-          selected: Boolean(selected[farm.key]),
-          renameToImportedName: Boolean(rename[farm.key]),
-        })),
-      });
-      setNote(
-        `Imported ${selectedCount} farm(s): ${result.createdFarms} created, ${result.updatedNames} renamed, ${result.createdFlocks} flocks, ${result.createdHouses} houses.`,
-      );
-      if (result.warnings.length) {
-        Alert.alert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+      const selections = farms.map((farm) => ({
+        key: farm.key,
+        selected: Boolean(selected[farm.key]),
+        renameToImportedName: Boolean(rename[farm.key]),
+      }));
+
+      if (importType === "catch") {
+        const result = importCatchRows({ rows: catchRows, selections });
+        setNote(
+          `Updated ${selectedCount} farm(s): ${result.updatedHouses} house catch dates, ${result.updatedFlocks} flock dates, ${result.updatedNames} renamed.`,
+        );
+        if (result.warnings.length) {
+          showAlert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+        }
+      } else {
+        const result = importPlacementRows({
+          rows: placementRows,
+          selections,
+        });
+        setNote(
+          `Imported ${selectedCount} farm(s): ${result.createdFarms} created, ${result.updatedNames} renamed, ${result.updatedPlacements} house placements updated, ${result.createdFlocks} new flocks, ${result.createdHouses} houses.`,
+        );
+        if (result.warnings.length) {
+          showAlert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+        }
       }
-      setFarms([]);
-      setRows([]);
-      setOnlyMyFarms(false);
+      clearPreview();
     } catch (e) {
-      Alert.alert("Import failed", e instanceof Error ? e.message : "Could not import");
+      showAlert("Import failed", e instanceof Error ? e.message : "Could not import");
     } finally {
       setBusy(false);
     }
   }
 
+  const helperText =
+    importType === "placement"
+      ? Platform.OS === "web"
+        ? "Weekly Chick Placement: farm name, code left of the name, house, date placed, birds sent. Ignores Complex / flock-code / mortality columns."
+        : "Weekly Chick Placement: farm name, code left of the name (e.g. 3821FS), house, date placed, birds sent. Ignores Complex, flock-code column, and far-right columns. Text PDFs on iPhone; scans need CSV/XLSX."
+      : importType === "catch"
+        ? Platform.OS === "web"
+          ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (scanned PDFs OK). Ending Kill Date or Catch Date, Farm Name, House."
+          : "Choose a Kill/Catch Schedule PDF/CSV/XLSX. Ending Kill Date or Catch Date, Farm Name, House. Scanned PDFs need CSV/XLSX on iPhone."
+        : `${typeLabel(importType)} mapping comes next.`;
+
   return (
     <Card>
-      <Text style={[styles.muted, { lineHeight: 20 }]}>
-        Import Placement, Catch Schedule, or Settlements. Placement reads Date Placed, Farm
-        Code, Farm Name, Flock ID, House No, and Number Sent.
-      </Text>
-
-      <View style={[styles.row, { marginTop: 12, marginBottom: 4, flexWrap: "wrap" }]}>
-        {TYPE_OPTIONS.map((type) => (
-          <Chip
-            key={type.id}
-            label={type.label}
-            active={importType === type.id}
-            onPress={() => {
-              setImportType(type.id);
-              setNote(null);
-              setFarms([]);
-              setRows([]);
-            }}
-          />
-        ))}
+      {Platform.OS === "web" ? (
+        // @ts-expect-error web-only native input
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={FILE_ACCEPT}
+          style={{ display: "none" }}
+          onChange={(e: { target: { files?: FileList | null } }) => {
+            const file = e.target.files?.[0];
+            if (file) void onWebFileSelected(file);
+          }}
+        />
+      ) : null}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "stretch",
+          gap: 6,
+          marginBottom: 12,
+        }}
+      >
+        {TYPE_OPTIONS.map((type) => {
+          const active = importType === type.id;
+          return (
+            <Pressable
+              key={type.id}
+              onPress={() => {
+                setImportType(type.id);
+                setNote(null);
+                clearPreview();
+              }}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                borderRadius: 10,
+                paddingVertical: 10,
+                paddingHorizontal: 4,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: active ? colors.accentDark : "#e7e5e4",
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+                style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: active ? "#fff" : colors.text,
+                  textAlign: "center",
+                }}
+              >
+                {type.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
-      {importType !== "placement" ? (
-        <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
-          {typeLabel(importType)} mapping comes next. Upload Placement first.
-        </Text>
-      ) : (
-        <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
-          PDF works on web; phone can use CSV/XLSX (or the same PDF in Expo web).
-        </Text>
-      )}
+      <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>{helperText}</Text>
 
       <PrimaryButton label={busy ? "Working…" : "Upload & read"} onPress={onUpload} />
 
@@ -245,7 +573,9 @@ export function ScheduleImportCard() {
       {farms.length > 0 ? (
         <View style={{ marginTop: 14, borderTopWidth: 1, borderTopColor: "#e7e5e4", paddingTop: 12 }}>
           <View style={[styles.row, { justifyContent: "space-between", alignItems: "center" }]}>
-            <Text style={{ fontWeight: "800", color: colors.text }}>Choose farms to import</Text>
+            <Text style={{ fontWeight: "800", color: colors.text }}>
+              {importType === "catch" ? "Choose farms to update" : "Choose farms to import"}
+            </Text>
             <Pressable
               onPress={() => onToggleOnlyMine(!onlyMyFarms)}
               style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
@@ -265,6 +595,35 @@ export function ScheduleImportCard() {
               </Text>
             </Pressable>
           </View>
+
+          {importType === "placement" ? (
+            <View style={[styles.row, { marginTop: 8, gap: 14 }]}>
+              <Pressable
+                onPress={() => {
+                  const next: Record<string, boolean> = {};
+                  for (const farm of farms) next[farm.key] = true;
+                  setSelected(next);
+                  setOnlyMyFarms(false);
+                }}
+              >
+                <Text style={{ fontWeight: "700", color: colors.accentDark, fontSize: 12 }}>
+                  Select all
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  const next: Record<string, boolean> = {};
+                  for (const farm of farms) next[farm.key] = false;
+                  setSelected(next);
+                  setOnlyMyFarms(false);
+                }}
+              >
+                <Text style={{ fontWeight: "700", color: colors.muted, fontSize: 12 }}>
+                  Clear
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           {farms.map((farm) => {
             const checked = Boolean(selected[farm.key]);
@@ -306,6 +665,7 @@ export function ScheduleImportCard() {
                     </Text>
                     <Text style={[styles.muted, { fontSize: 11 }]}>
                       {farm.rowCount} rows · houses {farm.houseNumbers.join(", ")}
+                      {farm.catchDates?.length ? ` · catch ${farm.catchDates.join(", ")}` : ""}
                     </Text>
                     <Text
                       style={{
@@ -317,9 +677,13 @@ export function ScheduleImportCard() {
                     >
                       {farm.isMyFarm
                         ? `Matches your farm${farm.matchName ? `: ${farm.matchName}` : ""}${
-                            farm.matchKind === "fuzzy" ? " (similar name)" : ""
+                            farm.matchKind === "fuzzy" || farm.nameDiffers
+                              ? " (similar name)"
+                              : ""
                           }`
-                        : "New farm will be created"}
+                        : importType === "catch"
+                          ? "No matching farm — will be skipped"
+                          : "New farm will be created"}
                     </Text>
                   </View>
                 </Pressable>
@@ -332,8 +696,12 @@ export function ScheduleImportCard() {
                     style={{
                       marginTop: 8,
                       paddingTop: 8,
-                      borderTopWidth: 1,
-                      borderTopColor: "#e7e5e4",
+                      paddingHorizontal: 8,
+                      paddingBottom: 8,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: "#fde68a",
+                      backgroundColor: "#fffbeb",
                       flexDirection: "row",
                       gap: 8,
                     }}
@@ -349,10 +717,28 @@ export function ScheduleImportCard() {
                         backgroundColor: rename[farm.key] ? colors.accentDark : "#fff",
                       }}
                     />
-                    <Text style={{ flex: 1, fontSize: 12, color: colors.text, lineHeight: 16 }}>
-                      Update farm name from {farm.matchName} to {farm.farmName}? Keeps grower,
-                      phone, houses, and other saved info.
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: "800",
+                          color: colors.text,
+                          lineHeight: 16,
+                        }}
+                      >
+                        Will overwrite “{farm.matchName}” → “{farm.farmName}” (name, dates, birds)
+                      </Text>
+                      <Text
+                        style={{
+                          marginTop: 2,
+                          fontSize: 11,
+                          color: colors.muted,
+                          lineHeight: 14,
+                        }}
+                      >
+                        Keeps grower, phone, houses, and other saved info.
+                      </Text>
+                    </View>
                   </Pressable>
                 ) : null}
               </View>
@@ -368,14 +754,14 @@ export function ScheduleImportCard() {
               }
               onPress={onImport}
             />
-            <Pressable
-              onPress={() => {
-                setFarms([]);
-                setRows([]);
-                setOnlyMyFarms(false);
-              }}
-              style={{ marginTop: 10, alignSelf: "center" }}
-            >
+            {lastPdfText ? (
+              <Pressable onPress={shareLastPdfText} style={{ marginTop: 10, alignSelf: "center" }}>
+                <Text style={{ fontWeight: "700", color: colors.accentDark }}>
+                  Share PDF text
+                </Text>
+              </Pressable>
+            ) : null}
+            <Pressable onPress={clearPreview} style={{ marginTop: 10, alignSelf: "center" }}>
               <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
             </Pressable>
           </View>

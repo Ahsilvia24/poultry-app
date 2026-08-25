@@ -1,11 +1,12 @@
-import { getDb, migrateDb } from "./database";
+import { migrateDb, openDb, getDb } from "./database";
 import { seedIfNeeded } from "./seed";
 
 let ready = false;
 
 export async function initOfflineDb() {
   if (ready) return;
-  migrateDb();
+  await openDb();
+  await migrateDb();
   seedIfNeeded();
   ready = true;
 }

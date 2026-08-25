@@ -8,7 +8,7 @@ TestFlight: https://appstoreconnect.apple.com/apps/6794784343/testflight/ios
 | Field | Value |
 |-------|-------|
 | Version | 1.0.9 |
-| Build | **128** (next TestFlight after 127) |
+| Build | **130** (this branch now includes 83–129 plus LFO / Field Log work) |
 | Status | Waiting on Expo token → EAS production iOS + ASC submit |
 
 ## Paste into App Store listing
@@ -43,7 +43,7 @@ Repo asset for the 13" iPad slot (2064×2752 Service Report UI preview):
 Upload that under App Preview and Screenshots → 13" iPad (or replace with a live device capture if you prefer).
 Also fill iPhone screenshots if not already set.
 
-## Device QA after build 83 installs
+## Device QA after build 130 installs
 
 - [ ] Log Temp on house tiles → value shows → Service Report prefills → clears after midnight
 - [ ] Visit tile tap → edit → View/Edit checklist → Save / Share PDF

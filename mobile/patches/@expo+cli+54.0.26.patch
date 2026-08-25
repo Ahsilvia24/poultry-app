@@ -1,0 +1,37 @@
+diff --git a/node_modules/@expo/cli/build/src/start/server/middleware/CorsMiddleware.js b/node_modules/@expo/cli/build/src/start/server/middleware/CorsMiddleware.js
+index 20c7bd5..a1209ca 100644
+--- a/node_modules/@expo/cli/build/src/start/server/middleware/CorsMiddleware.js
++++ b/node_modules/@expo/cli/build/src/start/server/middleware/CorsMiddleware.js
+@@ -19,6 +19,17 @@ _export(exports, {
+ const DEFAULT_ALLOWED_CORS_HOSTS = [
+     'devtools'
+ ];
++/** Cursor / cloud-agent port proxies (Origin host differs from localhost). */
++const _isTunnelHostname = (hostname)=>{
++    return (
++        hostname.endsWith('.agent.cvm.dev') ||
++        hostname.endsWith('.cursorapi.com') ||
++        hostname.endsWith('.cursor.sh') ||
++        hostname.endsWith('.ngrok-free.app') ||
++        hostname.endsWith('.ngrok.io') ||
++        hostname.endsWith('.expo.dev')
++    );
++};
+ const _isLocalHostname = (hostname)=>{
+     if (hostname === 'localhost') {
+         return true;
+@@ -56,11 +67,12 @@ function createCorsMiddleware(exp) {
+             const { host, hostname } = new URL(req.headers.origin);
+             const isSameOrigin = host === req.headers.host;
+             const isLocalhost = _isLocalHostname(hostname);
+-            const isAllowedHost = allowedHosts.includes(host) || isLocalhost;
++            const isTunnel = _isTunnelHostname(hostname);
++            const isAllowedHost = allowedHosts.includes(host) || isLocalhost || isTunnel;
+             if (!isSameOrigin && !isAllowedHost) {
+                 next(new Error(`Unauthorized request from ${req.headers.origin}. ` + 'This may happen because of a conflicting browser extension to intercept HTTP requests. ' + 'Disable browser extensions or use incognito mode and try again.'));
+                 return;
+-            } else if (!isLocalhost && isAllowedHost) {
++            } else if ((!isLocalhost || isTunnel) && isAllowedHost) {
+                 // Skipped for localhost to only allow requests from this dev-sever and not escalate
+                 // the cross-origin resource sharing that's allowed beyond the browser's defaults
+                 res.setHeader('Access-Control-Allow-Origin', req.headers.origin);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type Ref } from "react";
+import { useCallback, useEffect, useRef, useState, type Ref, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -70,6 +70,7 @@ import { DatePickerField } from "../../../../src/components/DatePickerField";
 import { TimeScrollPickerField } from "../../../../src/components/TimeScrollPicker";
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
 import { halfHourTimeLabel } from "../../../../src/lib/time-slots";
+import { ConfirmDialog } from "../../../../src/components/ConfirmDialog";
 
 /** "2026-07-25" → "07-25-2026" */
 function formatUsDate(dateKey: string) {
@@ -116,6 +117,47 @@ function RecordLink({ label, onPress }: { label: string; onPress: () => void }) 
     <Pressable onPress={onPress} style={{ marginTop: 4, marginBottom: 16 }}>
       <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>{label}</Text>
     </Pressable>
+  );
+}
+
+/** Matches Tools section tiles — scroll the farm page back to the top. */
+function TopLink({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Scroll to top"
+    >
+      <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Top</Text>
+    </Pressable>
+  );
+}
+
+function SectionHeading({
+  title,
+  onTop,
+  right,
+}: {
+  title: string;
+  onTop: () => void;
+  right?: ReactNode;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+      }}
+    >
+      <Text style={{ fontWeight: "800", fontSize: 16, flex: 1, minWidth: 0 }}>{title}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        {right}
+        <TopLink onPress={onTop} />
+      </View>
+    </View>
   );
 }
 
@@ -439,6 +481,12 @@ export default function FarmDetailScreen() {
   const [generatorError, setGeneratorError] = useState<string | null>(null);
   const [generatorEditingId, setGeneratorEditingId] = useState<string | null>(null);
   const [generatorEditingGen, setGeneratorEditingGen] = useState<GenHourKey | null>(null);
+  const [completeConfirm, setCompleteConfirm] = useState<{
+    flockId: string;
+    flockNumber: string;
+  } | null>(null);
+  const [completePickerOpen, setCompletePickerOpen] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
   const [generatorDraft, setGeneratorDraft] = useState({
     logDate: todayKey(),
     gen1Hours: "",
@@ -454,6 +502,10 @@ export default function FarmDetailScreen() {
     const y = sectionY.current[key];
     if (y == null) return;
     scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
+  }
+
+  function scrollPageToTop() {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
   }
 
   function onSectionLayout(key: string) {
@@ -599,9 +651,27 @@ export default function FarmDetailScreen() {
         <View style={styles.content}>
           <Pressable
             onPress={goToFarmList}
-            style={{ marginBottom: 12 }}
+            style={{
+              marginBottom: 12,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 2,
+              minHeight: 44,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to farms"
           >
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
+            <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
+            <Text
+              style={{
+                color: colors.accentDark,
+                fontWeight: "700",
+                fontSize: 17,
+                fontFamily: styles.title.fontFamily,
+              }}
+            >
+              Farms
+            </Text>
           </Pressable>
           <Text style={{ color: colors.danger }}>{error ?? "Farm not found"}</Text>
         </View>
@@ -611,43 +681,35 @@ export default function FarmDetailScreen() {
 
   const { farm } = data;
   const activeFlocks = data.activeFlocks ?? [];
-  function confirmCompleteFlock(flockId: string, flockNumber: string) {
-    Alert.alert(
-      "Complete flock?",
-      `Mark flock ${flockNumber} as completed? You can reactivate it later from Farm History.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Complete",
-          onPress: () => {
-            try {
-              completeFlock(flockId);
-              load();
-            } catch (e) {
-              Alert.alert(
-                "Error",
-                e instanceof Error ? e.message : "Could not complete flock",
-              );
-            }
-          },
-        },
-      ],
-    );
+
+  function askCompleteFlock(flockId: string, flockNumber: string) {
+    setCompleteError(null);
+    setCompletePickerOpen(false);
+    setCompleteConfirm({ flockId, flockNumber });
+  }
+
+  function runCompleteFlock() {
+    if (!completeConfirm) return;
+    try {
+      completeFlock(completeConfirm.flockId);
+      setCompleteConfirm(null);
+      setCompleteError(null);
+      load();
+    } catch (e) {
+      setCompleteConfirm(null);
+      setCompleteError(e instanceof Error ? e.message : "Could not complete flock");
+    }
   }
 
   function promptCompleteFlock() {
     if (activeFlocks.length === 0) return;
     if (activeFlocks.length === 1) {
-      confirmCompleteFlock(activeFlocks[0]!.id, activeFlocks[0]!.flockNumber);
+      askCompleteFlock(activeFlocks[0]!.id, activeFlocks[0]!.flockNumber);
       return;
     }
-    Alert.alert("Complete flock", "Which flock do you want to complete?", [
-      ...activeFlocks.map((fl) => ({
-        text: `${fl.flockNumber} (${fl.flockAgeDays}d)`,
-        onPress: () => confirmCompleteFlock(fl.id, fl.flockNumber),
-      })),
-      { text: "Cancel", style: "cancel" as const },
-    ]);
+    // RN Web Alert.alert is a no-op — use an in-app picker instead.
+    setCompleteError(null);
+    setCompletePickerOpen(true);
   }
 
   function openAddHouse() {
@@ -701,13 +763,13 @@ export default function FarmDetailScreen() {
     setEditingHouse({
       id: h.id,
       houseNumber: String(h.houseNumber),
-      squareFootage: String(h.squareFootage ?? ""),
+      squareFootage: String(h.squareFootage ?? 29700),
       totalFanCFM: h.totalFanCFM != null ? String(h.totalFanCFM) : "",
-      // Leave blank so the tech can type a new count without deleting first.
-      // Placeholder shows the current value; empty on save keeps it.
-      placedBirdCount: "",
+      // Prefill 29700 when unset. If a count already exists, leave blank so the
+      // tech can type a new number without deleting first (placeholder shows it).
+      placedBirdCount: h.placedBirdCount != null ? "" : "29700",
       placedBirdCountPlaceholder:
-        h.placedBirdCount != null ? String(h.placedBirdCount) : "Type birds placed",
+        h.placedBirdCount != null ? String(h.placedBirdCount) : "29700",
       placementDate,
       catchDate,
       catchTime: h.catchTime ?? "",
@@ -954,24 +1016,56 @@ export default function FarmDetailScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         keyboardShouldPersistTaps="handled"
       >
-        <Pressable
-          onPress={goToFarmList}
-          style={{ marginBottom: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="Back to farms"
+        <View
+          style={{
+            marginBottom: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
         >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Farms</Text>
-        </Pressable>
-
-        <View style={{ marginBottom: 16 }}>
+          <Pressable
+            onPress={goToFarmList}
+            accessibilityRole="button"
+            accessibilityLabel="Back to farms"
+            hitSlop={8}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 2,
+              flexShrink: 0,
+              minHeight: 44,
+            }}
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
+            <Text
+              style={{
+                color: colors.accentDark,
+                fontWeight: "700",
+                fontSize: 17,
+                fontFamily: styles.title.fontFamily,
+              }}
+            >
+              Farms
+            </Text>
+          </Pressable>
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
+              justifyContent: "flex-end",
+              gap: 6,
+              flex: 1,
+              minWidth: 0,
             }}
           >
-            <Text style={[styles.title, { flexShrink: 1 }]}>{farm.farmName}</Text>
+            <Text
+              style={[styles.title, { flexShrink: 1, textAlign: "right", fontSize: 24 }]}
+              numberOfLines={1}
+            >
+              {farm.farmName}
+            </Text>
             <Pressable
               accessibilityLabel="Edit farm info"
               onPress={() => openFarmEditor(farm)}
@@ -988,7 +1082,10 @@ export default function FarmDetailScreen() {
               <Ionicons name="settings-outline" size={22} color={colors.muted} />
             </Pressable>
           </View>
-          <Card style={{ marginTop: 12 }}>
+        </View>
+
+        <View style={{ marginBottom: 16 }}>
+          <Card>
             <Text style={{ fontWeight: "800", fontSize: 14, marginBottom: 8 }}>Quick links</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {(
@@ -1151,7 +1248,7 @@ export default function FarmDetailScreen() {
                         {h.ageDays != null ? (
                           <Text style={{ fontWeight: "600", color: colors.muted }}>
                             {" "}
-                            · {h.ageDays}d
+                            {h.ageDays}d
                           </Text>
                         ) : null}
                       </Text>
@@ -1443,7 +1540,7 @@ export default function FarmDetailScreen() {
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>Recent visits</Text>
+            <SectionHeading title="Recent visits" onTop={scrollPageToTop} />
             {data.visits.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -1504,63 +1601,59 @@ export default function FarmDetailScreen() {
         {/* ── Generator log ── */}
         <View onLayout={onSectionLayout("generators")}>
           <Card>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 8,
-              }}
-            >
-              <Text style={{ fontWeight: "800", fontSize: 16 }}>Generator log</Text>
-              {(data.generatorLogs ?? []).some(
-                (log) =>
-                  log.gen1Hours != null ||
-                  log.gen2Hours != null ||
-                  log.gen3Hours != null ||
-                  log.gen4Hours != null,
-              ) ? (
-                <ClipboardIconButton
-                  accessibilityLabel="Copy generator log"
-                  color={colors.accentDark}
-                  getText={() => {
-                    const allLogs = data.generatorLogs ?? [];
-                    return formatGeneratorChartsCopy(
-                      allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY).map((log) => {
-                        const hours: GeneratorHours = {
-                          gen1Hours: log.gen1Hours,
-                          gen2Hours: log.gen2Hours,
-                          gen3Hours: log.gen3Hours,
-                          gen4Hours: log.gen4Hours,
-                        };
-                        const priorFor = (hourKey: GenHourKey) => {
-                          let seen = false;
-                          for (const candidate of allLogs) {
-                            if (!seen) {
-                              if (candidate.id === log.id) seen = true;
-                              continue;
+            <SectionHeading
+              title="Generator log"
+              onTop={scrollPageToTop}
+              right={
+                (data.generatorLogs ?? []).some(
+                  (log) =>
+                    log.gen1Hours != null ||
+                    log.gen2Hours != null ||
+                    log.gen3Hours != null ||
+                    log.gen4Hours != null,
+                ) ? (
+                  <ClipboardIconButton
+                    accessibilityLabel="Copy generator log"
+                    color={colors.accentDark}
+                    getText={() => {
+                      const allLogs = data.generatorLogs ?? [];
+                      return formatGeneratorChartsCopy(
+                        allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY).map((log) => {
+                          const hours: GeneratorHours = {
+                            gen1Hours: log.gen1Hours,
+                            gen2Hours: log.gen2Hours,
+                            gen3Hours: log.gen3Hours,
+                            gen4Hours: log.gen4Hours,
+                          };
+                          const priorFor = (hourKey: GenHourKey) => {
+                            let seen = false;
+                            for (const candidate of allLogs) {
+                              if (!seen) {
+                                if (candidate.id === log.id) seen = true;
+                                continue;
+                              }
+                              if (candidate[hourKey] != null) return candidate[hourKey];
                             }
-                            if (candidate[hourKey] != null) return candidate[hourKey];
-                          }
-                          return null;
-                        };
-                        const [y, m, d] = log.logDate.split("-").map(Number);
-                        return {
-                          dateLabel: `${m}-${d}-${y}`,
-                          hours,
-                          deltas: {
-                            gen1: hoursDelta(log.gen1Hours, priorFor("gen1Hours")),
-                            gen2: hoursDelta(log.gen2Hours, priorFor("gen2Hours")),
-                            gen3: hoursDelta(log.gen3Hours, priorFor("gen3Hours")),
-                            gen4: hoursDelta(log.gen4Hours, priorFor("gen4Hours")),
-                          },
-                        };
-                      }),
-                    );
-                  }}
-                />
-              ) : null}
-            </View>
+                            return null;
+                          };
+                          const [y, m, d] = log.logDate.split("-").map(Number);
+                          return {
+                            dateLabel: `${m}-${d}-${y}`,
+                            hours,
+                            deltas: {
+                              gen1: hoursDelta(log.gen1Hours, priorFor("gen1Hours")),
+                              gen2: hoursDelta(log.gen2Hours, priorFor("gen2Hours")),
+                              gen3: hoursDelta(log.gen3Hours, priorFor("gen3Hours")),
+                              gen4: hoursDelta(log.gen4Hours, priorFor("gen4Hours")),
+                            },
+                          };
+                        }),
+                      );
+                    }}
+                  />
+                ) : null
+              }
+            />
             {(data.generatorLogs ?? []).every(
               (log) =>
                 log.gen1Hours == null &&
@@ -1627,7 +1720,7 @@ export default function FarmDetailScreen() {
         {/* ── Issues ── */}
         <View onLayout={onSectionLayout("issues")}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>Recent issues</Text>
+            <SectionHeading title="Recent issues" onTop={scrollPageToTop} />
             {data.issues.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -1704,7 +1797,7 @@ export default function FarmDetailScreen() {
         {/* ── Litter ── */}
         <View onLayout={onSectionLayout("litter")}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>Litter events</Text>
+            <SectionHeading title="Litter events" onTop={scrollPageToTop} />
             {data.litterEvents.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -1776,7 +1869,7 @@ export default function FarmDetailScreen() {
         {/* ── Feed ── */}
         <View onLayout={onSectionLayout("feed")}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>Feed deliveries</Text>
+            <SectionHeading title="Feed deliveries" onTop={scrollPageToTop} />
             {data.feedDeliveries.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -2170,6 +2263,7 @@ export default function FarmDetailScreen() {
                       <NativeNumInput
                         label="Square footage"
                         value={editingHouse.squareFootage}
+                        placeholder="29700"
                         decimal
                         style={{ flex: 1 }}
                         onChangeText={(v) =>
@@ -2598,6 +2692,103 @@ export default function FarmDetailScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <ConfirmDialog
+        visible={completeConfirm != null}
+        title="Complete flock?"
+        message={
+          completeConfirm
+            ? `Mark flock ${completeConfirm.flockNumber} as completed? You can reactivate it later from Farm History.`
+            : ""
+        }
+        confirmLabel="Complete"
+        onConfirm={runCompleteFlock}
+        onCancel={() => setCompleteConfirm(null)}
+      />
+
+      <ConfirmDialog
+        visible={completeError != null}
+        title="Error"
+        message={completeError ?? ""}
+        confirmLabel="OK"
+        cancelLabel="Dismiss"
+        onConfirm={() => setCompleteError(null)}
+        onCancel={() => setCompleteError(null)}
+      />
+
+      <Modal
+        visible={completePickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCompletePickerOpen(false)}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss"
+          onPress={() => setCompletePickerOpen(false)}
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <Pressable
+            onPress={() => {}}
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: 20,
+              maxWidth: 420,
+              width: "100%",
+              alignSelf: "center",
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+              Complete flock
+            </Text>
+            <Text style={{ marginTop: 8, fontSize: 14, lineHeight: 20, color: colors.muted }}>
+              Which flock do you want to complete?
+            </Text>
+            <View style={{ marginTop: 16, gap: 8 }}>
+              {activeFlocks.map((fl) => (
+                <Pressable
+                  key={fl.id}
+                  accessibilityRole="button"
+                  onPress={() => askCompleteFlock(fl.id, fl.flockNumber)}
+                  style={{
+                    borderRadius: 10,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    backgroundColor: colors.accentDark,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>
+                    {fl.flockNumber} ({fl.flockAgeDays}d)
+                  </Text>
+                </Pressable>
+              ))}
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setCompletePickerOpen(false)}
+                style={{
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 15 }}>
+                  Cancel
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );

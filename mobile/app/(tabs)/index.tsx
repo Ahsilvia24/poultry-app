@@ -16,7 +16,6 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
 import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
 import { useAuth } from "../../src/auth";
@@ -32,7 +31,6 @@ import {
   formatNumber,
   formatPct,
 } from "../../src/components/ui";
-import { ExportDataCard } from "../../src/components/ExportDataCard";
 import { ScheduleImportCard } from "../../src/components/ScheduleImportCard";
 
 type Dashboard = ReturnType<typeof getDashboard>;
@@ -138,6 +136,7 @@ function ScheduleCheckRow({
               fontWeight: "700",
               color: colors.text,
               flexShrink: 1,
+              minWidth: 0,
               textDecorationLine: checked ? "line-through" : "none",
             }}
             numberOfLines={1}
@@ -150,12 +149,12 @@ function ScheduleCheckRow({
                 fontWeight: "400",
                 color: colors.muted,
                 flexShrink: 0,
+                marginLeft: 4,
                 textDecorationLine: checked ? "line-through" : "none",
               }}
               numberOfLines={1}
             >
-              {" "}
-              · {item.flockAgeDays}d
+              {item.flockAgeDays}d
             </Text>
           ) : null}
         </View>
@@ -236,6 +235,8 @@ export default function DashboardScreen() {
   const [upcomingOpen, setUpcomingOpen] = useState(false);
   const [catchesOpen, setCatchesOpen] = useState(false);
   const [expandedFarmIds, setExpandedFarmIds] = useState<Set<string>>(() => new Set());
+  /** Avoid mounting tall swipe actions until open — on web they stretch short tiles. */
+  const [swipingFarmId, setSwipingFarmId] = useState<string | null>(null);
 
   function toggleFarmExpanded(farmId: string) {
     setExpandedFarmIds((prev) => {
@@ -357,14 +358,13 @@ export default function DashboardScreen() {
               </Text>
             </Pressable>
           </View>
-          <Text style={styles.subtitle}>Active farms, mortality, and follow-ups</Text>
         </View>
 
         {error ? <Text style={{ color: colors.danger, marginBottom: 12 }}>{error}</Text> : null}
 
         {data ? (
           <>
-            <Card>
+            <Card style={{ marginBottom: 8 }}>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
                 Today&apos;s schedule
               </Text>
@@ -395,7 +395,7 @@ export default function DashboardScreen() {
               )}
             </Card>
 
-            <Card>
+            <Card style={{ marginBottom: 8 }}>
               <Pressable
                 onPress={() => setUpcomingOpen((v) => !v)}
                 accessibilityRole="button"
@@ -449,7 +449,7 @@ export default function DashboardScreen() {
               ) : null}
             </Card>
 
-            <Card>
+            <Card style={{ marginBottom: 8 }}>
               <Pressable
                 onPress={() => setCatchesOpen((v) => !v)}
                 accessibilityRole="button"
@@ -490,22 +490,47 @@ export default function DashboardScreen() {
                         }
                         style={{
                           flexDirection: "row",
+                          alignItems: "baseline",
                           justifyContent: "space-between",
                           gap: 8,
                           marginTop: 10,
                           minHeight: 22,
                         }}
                       >
-                        <Text style={{ fontWeight: "700", color: colors.text, flex: 1 }}>
-                          {c.farmName}
+                        <View
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            flexDirection: "row",
+                            alignItems: "baseline",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontWeight: "700",
+                              color: colors.text,
+                              flexShrink: 1,
+                              minWidth: 0,
+                            }}
+                            numberOfLines={1}
+                          >
+                            {c.farmName}
+                          </Text>
                           {c.flockAgeDays != null ? (
-                            <Text style={{ fontWeight: "400", color: colors.muted }}>
-                              {" "}
-                              · {c.flockAgeDays}d
+                            <Text
+                              style={{
+                                fontWeight: "400",
+                                color: colors.muted,
+                                flexShrink: 0,
+                                marginLeft: 4,
+                              }}
+                              numberOfLines={1}
+                            >
+                              {c.flockAgeDays}d
                             </Text>
                           ) : null}
-                        </Text>
-                        <Text style={{ color: colors.muted, fontSize: 13 }}>
+                        </View>
+                        <Text style={{ color: colors.muted, fontSize: 13, flexShrink: 0 }}>
                           {formatCatchDate(c.date)}
                           {c.catchAgeDays != null ? ` (${c.catchAgeDays})` : ""}
                         </Text>
@@ -525,38 +550,45 @@ export default function DashboardScreen() {
                   overshootRight={false}
                   friction={2}
                   rightThreshold={40}
-                  containerStyle={{ marginBottom: 12 }}
+                  containerStyle={{ marginBottom: 4, overflow: "hidden" }}
+                  onSwipeableWillOpen={() => setSwipingFarmId(farm.id)}
+                  onSwipeableClose={() =>
+                    setSwipingFarmId((id) => (id === farm.id ? null : id))
+                  }
                   onSwipeableOpen={(direction) => {
                     if (direction === "right") makeInactive(farm.id);
                   }}
-                  renderRightActions={() => (
-                    <Pressable
-                      accessibilityLabel={`Make ${farm.farmName} inactive`}
-                      onPress={() => makeInactive(farm.id)}
-                      style={{
-                        backgroundColor: "#57534e",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        width: 100,
-                        borderRadius: 14,
-                        marginLeft: 8,
-                      }}
-                    >
-                      <Ionicons name="pause-circle-outline" size={22} color="#fff" />
-                      <Text
+                  renderRightActions={() =>
+                    swipingFarmId === farm.id ? (
+                      <Pressable
+                        accessibilityLabel={`Make ${farm.farmName} inactive`}
+                        onPress={() => makeInactive(farm.id)}
                         style={{
-                          color: "#fff",
-                          fontWeight: "800",
-                          fontSize: 11,
-                          marginTop: 4,
-                          textAlign: "center",
-                          paddingHorizontal: 4,
+                          backgroundColor: "#57534e",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          width: 88,
+                          marginLeft: 8,
+                          borderRadius: 14,
+                          alignSelf: "stretch",
                         }}
                       >
-                        Make inactive
-                      </Text>
-                    </Pressable>
-                  )}
+                        <Text
+                          style={{
+                            color: "#fff",
+                            fontWeight: "800",
+                            fontSize: 12,
+                            textAlign: "center",
+                            paddingHorizontal: 4,
+                          }}
+                        >
+                          Inactive
+                        </Text>
+                      </Pressable>
+                    ) : (
+                      <View style={{ width: 88, marginLeft: 8 }} />
+                    )
+                  }
                 >
                   <Card style={{ padding: 0, overflow: "hidden", marginBottom: 0 }}>
                     <Pressable
@@ -564,16 +596,12 @@ export default function DashboardScreen() {
                       accessibilityRole="button"
                       accessibilityState={{ expanded: open }}
                       accessibilityLabel={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
-                      style={{ padding: 14 }}
+                      style={{ paddingVertical: 10, paddingHorizontal: 12 }}
                     >
                       <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
                         <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                          <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>
                             {farm.farmName}
-                            <Text style={{ fontWeight: "600", color: colors.muted }}>
-                              {" "}
-                              ({farm.houseCount})
-                            </Text>
                             {(() => {
                               const ages =
                                 farm.flockAgesDays?.length
@@ -585,7 +613,7 @@ export default function DashboardScreen() {
                               return (
                                 <Text style={{ fontWeight: "600", color: colors.muted }}>
                                   {" "}
-                                  · {ages.map((a) => `${a}d`).join(" · ")}
+                                  {ages.map((a) => `${a}d`).join(" ")}
                                 </Text>
                               );
                             })()}
@@ -698,8 +726,8 @@ export default function DashboardScreen() {
         </View>
 
         <View style={{ marginTop: 16, marginBottom: 24 }}>
-          <SectionTitle>Backup</SectionTitle>
-          <ExportDataCard />
+          <SectionTitle>Import</SectionTitle>
+          <ScheduleImportCard />
         </View>
       </ScrollView>
     </SafeAreaView>
