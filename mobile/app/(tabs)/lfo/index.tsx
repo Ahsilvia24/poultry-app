@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Keyboard,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -87,6 +89,8 @@ function CalcFieldButton({
     <View ref={fieldRef} collapsable={false} style={{ flex: 1 }}>
       <Text style={styles.label}>{label}</Text>
       <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ selected: active }}
         onPress={onPress}
         style={{
           minHeight: 48,
@@ -153,9 +157,24 @@ export default function LfoListScreen() {
     });
   }, [routeFarmId]);
 
+  function dismissKeypad() {
+    setActiveField(null);
+    setReplaceOnType(false);
+    Keyboard.dismiss();
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      const el = document.activeElement;
+      if (el instanceof HTMLElement) el.blur();
+    }
+  }
+
   useFocusEffect(
     useCallback(() => {
+      dismissKeypad();
       load();
+      return () => {
+        setActiveField(null);
+        setReplaceOnType(false);
+      };
     }, [load]),
   );
 
@@ -204,6 +223,11 @@ export default function LfoListScreen() {
   }
 
   function focusField(field: CalcField) {
+    Keyboard.dismiss();
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      const el = document.activeElement;
+      if (el instanceof HTMLElement) el.blur();
+    }
     setActiveField(field);
     setReplaceOnType(true);
     setTimeout(() => {
@@ -226,10 +250,9 @@ export default function LfoListScreen() {
 
   function onDigit(d: string) {
     const current = getActiveValue();
-    const allowDecimal = activeField === "water";
-    const base = replaceOnType && d !== "." ? "" : current;
+    const base = replaceOnType ? "" : current;
     setReplaceOnType(false);
-    setActiveValue(appendKeypadDigit(base, d, allowDecimal));
+    setActiveValue(appendKeypadDigit(base, d, false));
   }
 
   function onBackspace() {
@@ -238,8 +261,7 @@ export default function LfoListScreen() {
   }
 
   function onEnter() {
-    setActiveField(null);
-    setReplaceOnType(false);
+    dismissKeypad();
   }
 
   function confirmDelete(id: string, farmName: string) {
@@ -273,6 +295,7 @@ export default function LfoListScreen() {
           onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
             scrollYRef.current = e.nativeEvent.contentOffset.y;
           }}
+          onScrollBeginDrag={dismissKeypad}
           scrollEventThrottle={16}
         >
           <PageHeader
@@ -285,13 +308,17 @@ export default function LfoListScreen() {
                 key={f.id}
                 label={f.farmName}
                 active={farmId === f.id}
-                onPress={() => setFarmId(f.id)}
+                onPress={() => {
+                  dismissKeypad();
+                  setFarmId(f.id);
+                }}
               />
             ))}
           </ChipScroller>
           <PrimaryButton
             label="Create LFO"
             onPress={() => {
+              dismissKeypad();
               if (!farmId) {
                 setMsg("Select a farm first");
                 return;
@@ -467,7 +494,7 @@ export default function LfoListScreen() {
 
         {activeField ? (
           <NumberKeypad
-            allowDecimal={activeField === "water"}
+            allowDecimal={false}
             onDigit={onDigit}
             onBackspace={onBackspace}
             onEnter={onEnter}

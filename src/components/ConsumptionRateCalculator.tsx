@@ -89,12 +89,12 @@ export function ConsumptionRateCalculator() {
           <Input
             id="calcWater"
             type="text"
-            inputMode="decimal"
+            inputMode="numeric"
             compact
             value={dailyWaterGallons}
             placeholder={DEFAULT_WATER_GAL}
             onFocus={(e) => e.target.select()}
-            onChange={(e) => setDailyWaterGallons(e.target.value.replace(/[^\d.]/g, ""))}
+            onChange={(e) => setDailyWaterGallons(e.target.value.replace(/\D/g, ""))}
             className="mt-0.5 placeholder:text-stone-400/70"
           />
         </div>
