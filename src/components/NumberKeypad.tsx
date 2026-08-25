@@ -1,30 +1,28 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-
 const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 
 function Key({
   label,
   onPress,
-  className,
-  textClassName,
+  variant = "default",
 }: {
   label: string;
   onPress: () => void;
-  className?: string;
-  textClassName?: string;
+  variant?: "default" | "muted" | "enter";
 }) {
+  const variants = {
+    default: "bg-white text-stone-900 active:bg-stone-100",
+    muted: "bg-[#d6d3d1] text-stone-900 active:bg-stone-300",
+    enter: "bg-emerald-700 text-white active:bg-emerald-800",
+  };
   return (
     <button
       type="button"
       onClick={onPress}
-      className={cn(
-        "flex min-h-12 flex-1 items-center justify-center rounded-[10px] bg-white text-[22px] font-bold text-stone-900 active:bg-stone-100",
-        className,
-      )}
+      className={`flex min-h-12 flex-1 items-center justify-center rounded-[10px] text-[22px] font-bold ${variants[variant]}`}
     >
-      <span className={textClassName}>{label}</span>
+      {label}
     </button>
   );
 }
@@ -64,19 +62,14 @@ export function NumberKeypad({
           </div>
         ))}
         <div className="flex gap-2">
-          <Key label="⌫" onPress={onBackspace} className="bg-[#d6d3d1]" />
+          <Key label="⌫" onPress={onBackspace} variant="muted" />
           <Key label="0" onPress={() => onDigit("0")} />
           {allowDecimal ? (
             <Key label="." onPress={() => onDigit(".")} />
           ) : allowTripleZero ? (
-            <Key label="000" onPress={() => onDigit("000")} textClassName="text-lg" />
+            <Key label="000" onPress={() => onDigit("000")} />
           ) : null}
-          <Key
-            label="Enter"
-            onPress={onEnter}
-            className="bg-emerald-700 text-white active:bg-emerald-800"
-            textClassName="text-white"
-          />
+          <Key label="Enter" onPress={onEnter} variant="enter" />
         </div>
       </div>
     </div>

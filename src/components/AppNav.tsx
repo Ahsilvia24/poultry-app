@@ -21,51 +21,59 @@ const extra = [
 
 const desktopNav = [...tabs, ...extra];
 
-function TabIcon({ name, className }: { name: string; className?: string }) {
-  const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+function TabIcon({ name }: { name: (typeof tabs)[number]["icon"] }) {
+  const common = {
+    width: 20,
+    height: 20,
+    viewBox: "0 0 24 24",
+    "aria-hidden": true as const,
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
   switch (name) {
     case "dashboard":
       return (
-        <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-          <rect x="3.5" y="3.5" width="7" height="7" rx="1.2" {...stroke} />
-          <rect x="13.5" y="3.5" width="7" height="4.5" rx="1.2" {...stroke} />
-          <rect x="13.5" y="10.5" width="7" height="10" rx="1.2" {...stroke} />
-          <rect x="3.5" y="13.5" width="7" height="7" rx="1.2" {...stroke} />
+        <svg width={20} height={20} viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="3" width="8" height="8" rx="1.5" fill="currentColor" />
+          <rect x="13" y="3" width="8" height="5" rx="1.5" fill="currentColor" />
+          <rect x="13" y="10" width="8" height="11" rx="1.5" fill="currentColor" />
+          <rect x="3" y="13" width="8" height="8" rx="1.5" fill="currentColor" />
         </svg>
       );
     case "barn":
       return (
-        <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-          <path d="M4 20V10.5L12 4l8 6.5V20" {...stroke} />
-          <path d="M9 20v-6h6v6" {...stroke} />
-          <path d="M4 10.5h16" {...stroke} />
+        <svg {...common}>
+          <path d="M4 20V10l8-6 8 6v10" />
+          <path d="M9 20v-6h6v6" />
+          <path d="M4 10h16" />
         </svg>
       );
     case "plus":
       return (
-        <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-          <circle cx="12" cy="12" r="8.25" {...stroke} />
-          <path d="M12 8.5v7M8.5 12h7" {...stroke} />
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 8v8M8 12h8" />
         </svg>
       );
     case "feed-bin":
       return (
-        <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-          <rect x="6.2" y="3.2" width="11.6" height="2" rx="0.4" fill="currentColor" />
-          <rect x="6.2" y="5.2" width="11.6" height="7.2" fill="currentColor" />
-          <path d="M6.2 12.4h11.6L12 21.2z" fill="currentColor" />
+        <svg {...common} fill="currentColor" stroke="none">
+          <rect x="6" y="3" width="12" height="2" rx="0.5" />
+          <rect x="6" y="5" width="12" height="7" />
+          <path d="M6 12h12L12 21z" />
         </svg>
       );
     case "tools":
       return (
-        <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-          <path d="M14.5 6.2 17.8 9.5l-7.2 7.2H7.3v-3.3z" {...stroke} />
-          <path d="M8.2 5.8a3.4 3.4 0 0 0 4.1 4.1" {...stroke} />
-          <path d="M5.5 18.5 9 15" {...stroke} />
+        <svg {...common}>
+          <path d="M14.7 6.3 18 9.6l-7.4 7.4H7.3v-3.3z" />
+          <path d="M8 6.2a3.2 3.2 0 0 0 4 4" />
+          <path d="M6 18.5 9.2 15.3" />
         </svg>
       );
-    default:
-      return null;
   }
 }
 
@@ -110,11 +118,11 @@ export function AppNav() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-[10px] px-0.5 py-1.5 text-center text-[11px] font-extrabold leading-tight",
+                    "flex min-h-[3.75rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-[10px] px-0.5 py-2 text-center text-[11px] font-extrabold leading-none",
                     active ? "bg-emerald-700 text-white" : "text-stone-700",
                   )}
                 >
-                  <TabIcon name={item.icon} className="h-5 w-5" />
+                  <TabIcon name={item.icon} />
                   {item.label}
                 </Link>
               );

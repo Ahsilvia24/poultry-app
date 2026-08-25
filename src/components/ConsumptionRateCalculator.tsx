@@ -83,31 +83,33 @@ export function ConsumptionRateCalculator() {
   return (
     <Card>
       <h2 className="text-base font-bold text-stone-900">Consumption Rate Calculator</h2>
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <div>
           <Label htmlFor="calcWater">Daily Water (gal)</Label>
           <Input
             id="calcWater"
             type="text"
             inputMode="decimal"
+            compact
             value={dailyWaterGallons}
             placeholder={DEFAULT_WATER_GAL}
             onFocus={(e) => e.target.select()}
             onChange={(e) => setDailyWaterGallons(e.target.value.replace(/[^\d.]/g, ""))}
-            className="mt-1 placeholder:text-stone-400/70"
+            className="mt-0.5 placeholder:text-stone-400/70"
           />
         </div>
         <div>
-          <Label htmlFor="calcHeadCount">Current Head Count</Label>
+          <Label htmlFor="calcHeadCount">Head count</Label>
           <Input
             id="calcHeadCount"
             type="text"
             inputMode="numeric"
+            compact
             value={headCount}
             placeholder={DEFAULT_HEAD_COUNT}
             onFocus={(e) => e.target.select()}
             onChange={(e) => setHeadCount(e.target.value.replace(/\D/g, ""))}
-            className="mt-1 placeholder:text-stone-400/70"
+            className="mt-0.5 placeholder:text-stone-400/70"
           />
         </div>
       </div>
