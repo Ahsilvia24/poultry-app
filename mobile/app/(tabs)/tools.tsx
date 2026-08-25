@@ -29,7 +29,6 @@ import {
 import { colors, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { Card, Chip, PageHeader } from "../../src/components/ui";
-import { ExportDataCard } from "../../src/components/ExportDataCard";
 import { WeightProjectionTile } from "../../src/components/WeightProjectionTile";
 import {
   CoolCellsChart,
@@ -708,10 +707,6 @@ export default function ToolsScreen() {
           ) : (
             <SectionAnchor />
           )}
-        </View>
-
-        <View style={{ marginTop: 8, marginBottom: 24 }}>
-          <ExportDataCard />
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -42,8 +42,8 @@ export function ImportPhoneBackupForm() {
     <Card className="max-w-2xl">
       <h2 className="font-bold text-stone-900">Import phone backup</h2>
       <p className="mt-2 text-sm text-stone-600 leading-relaxed">
-        Upload a JSON file exported from the PoultryTech mobile app (Dashboard or Tools →
-        Export data). Farms and related records are created under your web account.
+        Upload a JSON file exported from the PoultryTech mobile app. Farms and related
+        records are created under your web account.
       </p>
 
       <form onSubmit={onSubmit} className="mt-4 space-y-4">
