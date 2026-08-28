@@ -168,7 +168,7 @@ export function DashboardScheduleImport({
     setPreview(null);
 
     if (!canUpload(importType)) {
-      setLocalError(`${scheduleImportTypeLabel(importType)} import comes next.`);
+      setLocalError(`${scheduleImportTypeLabel(importType)} import is not available.`);
       return;
     }
 

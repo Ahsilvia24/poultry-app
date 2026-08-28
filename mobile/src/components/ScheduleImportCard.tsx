@@ -63,10 +63,6 @@ function typeLabel(type: ImportType) {
   return TYPE_OPTIONS.find((t) => t.id === type)?.label ?? type;
 }
 
-function canUpload(type: ImportType) {
-  return type === "placement" || type === "catch";
-}
-
 function isPdfFile(fileName: string, mimeType?: string | null) {
   const name = fileName.toLowerCase();
   return name.endsWith(".pdf") || Boolean(mimeType?.toLowerCase().includes("pdf"));
@@ -391,10 +387,6 @@ export function ScheduleImportCard() {
 
   async function onUpload() {
     if (busy) return;
-    if (!canUpload(importType)) {
-      showAlert("Coming next", `${typeLabel(importType)} import comes next.`);
-      return;
-    }
 
     if (Platform.OS === "web") {
       try {
