@@ -8,7 +8,7 @@ import { Card } from "@/components/ui";
 export default async function TriplePlacePreviewPage() {
   const today = new Date();
   const farm = await prisma.farm.findFirst({
-    where: { farmName: "Triple Place Demo", deletedAt: null },
+    where: { farmName: "Triple Place", deletedAt: null },
     include: {
       houses: { where: { deletedAt: null }, select: { id: true } },
       flocks: {
@@ -38,7 +38,7 @@ export default async function TriplePlacePreviewPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-stone-200 p-6">
         <Card>
-          <p className="font-semibold">Triple Place Demo farm not found.</p>
+          <p className="font-semibold">Triple Place farm not found.</p>
         </Card>
       </div>
     );

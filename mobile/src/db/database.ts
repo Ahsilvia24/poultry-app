@@ -443,6 +443,22 @@ export async function migrateDb() {
       await database.execAsync("DROP TABLE generator_logs_nullable");
     }
   }
+
+  // Strip leftover seed labels that looked like unfinished demo copy in the UI.
+  await database.execAsync(`
+    UPDATE farms SET notes = NULL
+    WHERE notes IN (
+      'Offline demo farm',
+      'Demo farm with 3 active flocks / place / catch dates'
+    );
+    UPDATE farms SET farm_name = 'Triple Place'
+    WHERE farm_name = 'Triple Place Demo';
+    UPDATE farm_visits SET notes = NULL
+    WHERE notes = 'Offline demo visit'
+       OR notes LIKE 'Offline demo visit for %';
+    UPDATE users SET name = 'Alex Silvia'
+    WHERE email = 'tech@poultry.local' AND name = 'Alex Technician';
+  `);
 }
 
 export function getMeta(key: string): string | null {
