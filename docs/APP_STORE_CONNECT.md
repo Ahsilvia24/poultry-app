@@ -58,7 +58,7 @@ Demo access for review (not shown in the app UI):
 
 Sign-in fields ship empty. There is no remote feature flag, no account-gated extra mode, and no content loaded after approval. All farm data stays in on-device SQLite.
 
-Reports is a visible tab. Export is on the Dashboard under Export. Import offers Placement and Catch Schedule only. The previous TermsFeed privacy URL was a generator page that did not describe this app; the live policy is https://ahsilvia24.github.io/poultry-app/privacy/
+Reports is a visible tab. There is no phone-data export or backup-import feature. Import offers Placement and Catch Schedule only. The previous TermsFeed privacy URL was a generator page that did not describe this app; the live policy is https://ahsilvia24.github.io/poultry-app/privacy/
 
 ## Resolution Center reply for guideline 5.6 (paste)
 
@@ -70,7 +70,7 @@ In this version:
 
 - Reports is a visible tab
 - The unused More screen is removed
-- Export is on the Dashboard, next to Import
+- Phone-data export and web backup import are removed from the app
 - Sign-in fields are empty (demo credentials are only in these notes)
 - App Transport Security no longer allows arbitrary HTTP loads
 - The Privacy Policy URL is our own page and matches what the app actually collects
@@ -96,7 +96,7 @@ Also fill iPhone screenshots if not already set.
 - [ ] Login fields are empty (no demo email/password on screen)
 - [ ] Reports is a visible bottom tab
 - [ ] There is no More tab
-- [ ] Dashboard shows Import (Placement / Catch only) and Export
+- [ ] Dashboard shows Import (Placement / Catch only) and no Export
 - [ ] Privacy URL in App Store Connect is the GitHub Pages policy, not TermsFeed
 - [ ] Log Temp on house tiles → value shows → Service Report prefills → clears after midnight
 - [ ] Visit tile tap → edit → View/Edit checklist → Save / Share PDF

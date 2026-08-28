@@ -52,7 +52,7 @@ export default function PrivacyPolicyPage() {
               <li>
                 <span className="font-semibold text-stone-900">iOS app (on-device)</span> — that
                 operational data is stored in a local database on your phone so the app works
-                offline. Exports or backups you create stay under your control.
+                offline.
               </li>
               <li>
                 <span className="font-semibold text-stone-900">Files you choose to import</span> —
@@ -91,7 +91,7 @@ export default function PrivacyPolicyPage() {
             <ul className="mt-2 list-disc space-y-1 pl-5">
               <li>
                 <span className="font-semibold text-stone-900">iOS:</span> primary data stays on
-                the device. You control backups you export.
+                the device.
               </li>
               <li>
                 <span className="font-semibold text-stone-900">Web:</span> accounts and farm
@@ -105,8 +105,8 @@ export default function PrivacyPolicyPage() {
             <h2 className="text-lg font-bold text-stone-900">6. Sharing</h2>
             <p className="mt-2">
               We do not share personal or farm data for third-party marketing. We share only with
-              infrastructure needed to run the service, if required by law, or when you export and
-              send data yourself.
+              infrastructure needed to run the service, if required by law, or when you choose to
+              share a report yourself.
             </p>
           </section>
 
