@@ -11,7 +11,7 @@ Do **not** run EAS production iOS builds, `eas submit`, or TestFlight uploads un
 |-------|-------|
 | Version | 1.0.9 |
 | Build | Next store binary after 133 (bump with EAS when you ask to submit) |
-| Status | 5.6 hidden-feature fixes in repo — wait for an explicit submit ask |
+| Status | 5.6 + 4.2 quality polish in repo — wait for an explicit submit ask |
 
 ## Identity (keep these the same everywhere)
 
@@ -32,6 +32,7 @@ In [expo.dev](https://expo.dev) → poultry-team project → Settings, rename th
 | Primary category | **Business** |
 | Secondary category | Productivity |
 | Age rating | All answers None / No → **4+** |
+| Devices | **iPhone only** (`supportsTablet` is false — do not list iPad) |
 | Content rights | Yes — I have permission to use the service-report form templates included in the app |
 
 ## Privacy & Support URLs
@@ -58,7 +59,9 @@ Demo access for review (not shown in the app UI):
 
 Sign-in fields ship empty. There is no remote feature flag, no account-gated extra mode, and no content loaded after approval. All farm data stays in on-device SQLite.
 
-Reports is a visible tab. There is no phone-data export or backup-import feature. Import offers Placement and Catch Schedule only. The previous TermsFeed privacy URL was a generator page that did not describe this app; the live policy is https://ahsilvia24.github.io/poultry-app/privacy/
+Reports is a visible tab. There is no phone-data export or backup-import feature. Import offers Placement and Catch Schedule only. Sample farms are included so Review can exercise the product; they are not labeled as demo or unfinished. The previous TermsFeed privacy URL was a generator page that did not describe this app; the live policy is https://ahsilvia24.github.io/poultry-app/privacy/
+
+This binary is iPhone-only. We are not claiming iPad support.
 
 ## Resolution Center reply for guideline 5.6 (paste)
 
@@ -84,19 +87,20 @@ Alex Silvia
 
 ## Screenshots
 
-Repo asset for the 13" iPad slot (2064×2752 Service Report UI preview):
+Listing is **iPhone only**. Fill iPhone screenshots. Do not upload iPad screenshots for this binary (`ios.supportsTablet` is false).
 
-- `docs/app-store/ipad-13-service-report.png`
-
-Upload that under App Preview and Screenshots → 13" iPad (or replace with a live device capture if you prefer).
-Also fill iPhone screenshots if not already set.
+A 13" iPad preview still lives at `docs/app-store/ipad-13-service-report.png` if iPad support is added later.
 
 ## Device QA after the next store build installs
 
-- [ ] Login fields are empty (no demo email/password on screen)
+- [ ] Login shows PoultryTech, empty email/password (no demo credentials on screen)
 - [ ] Reports is a visible bottom tab
 - [ ] There is no More tab
 - [ ] Dashboard shows Import (Placement / Catch only) and no Export
+- [ ] Tools → Cool Cells: Big Bird, Tunnel Diff, and Chore Time each have their own subtitle
+- [ ] Farm list includes Triple Place (not “Triple Place Demo”); visit notes are not “Offline demo visit”
+- [ ] Add Farm name field placeholder is “Farm name”, not a sample farm
 - [ ] Privacy URL in App Store Connect is the GitHub Pages policy, not TermsFeed
 - [ ] Log Temp on house tiles → value shows → Service Report prefills → clears after midnight
 - [ ] Visit tile tap → edit → View/Edit checklist → Save / Share PDF
+- [ ] App Store Connect listing is iPhone-only (no iPad availability)
