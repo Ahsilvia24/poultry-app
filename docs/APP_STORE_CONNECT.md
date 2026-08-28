@@ -17,12 +17,13 @@ Do **not** run EAS production iOS builds, `eas submit`, or TestFlight uploads un
 
 | Surface | Value |
 |---------|-------|
-| App name | PoultryTech |
+| App name (home screen / listing) | PoultryTech |
+| Expo project display name | Poultry Tech |
 | Operator | Alex Silvia |
 | Support / privacy email | talentpro024@gmail.com |
 | Copyright | 2026 Alex Silvia |
 
-In [expo.dev](https://expo.dev) → poultry-team project → Settings, rename the project display name from **Bachoco Tecs** to **PoultryTech**. The iOS display name in `mobile/app.json` is already PoultryTech. The app is an independent technician tool, not a Bachoco product. Service-report PDF templates are used with permission.
+The expo.dev project is already **Poultry Tech** (no longer Bachoco Tecs). The iOS display name in `mobile/app.json` stays **PoultryTech** — that is the name under the icon and in App Store Connect. The app is an independent technician tool, not a Bachoco product. Service-report PDF templates are used with permission.
 
 ## Paste into App Store listing
 
