@@ -162,7 +162,7 @@ async function main() {
   const user = await prisma.user.upsert({
     where: { email: "tech@poultry.local" },
     update: {
-      name: "Alex Technician",
+      name: "Alex Silvia",
       passwordHash,
       settings: {
         upsert: {
@@ -182,7 +182,7 @@ async function main() {
       },
     },
     create: {
-      name: "Alex Technician",
+      name: "Alex Silvia",
       email: "tech@poultry.local",
       passwordHash,
       settings: {
@@ -323,7 +323,6 @@ async function main() {
         growerName: demo.growerName,
         phoneNumber: demo.phoneNumber,
         numberOfHouses: demo.houses,
-        notes: demo.note,
       },
     });
     const houses = await createHouses(farm.id, demo.houses, 2014 + demos.indexOf(demo));
@@ -377,11 +376,10 @@ async function main() {
   const tripleFarm = await prisma.farm.create({
     data: {
       userId: user.id,
-      farmName: "Triple Place Demo",
+      farmName: "Triple Place",
       growerName: "Alex Silvia",
       phoneNumber: "410-555-0199",
       numberOfHouses: triplePlaceHouses,
-      notes: "Demo farm with 3 active flocks / place / catch dates",
     },
   });
   const tripleHouses = await createHouses(tripleFarm.id, triplePlaceHouses, 2020);
@@ -445,7 +443,6 @@ async function main() {
         loggedAt,
         visitType: VisitType.ROUTINE_SERVICE,
         generalBirdCondition: "Healthy",
-        notes: "Field log demo",
       },
     });
   }
@@ -458,7 +455,7 @@ async function main() {
       `- ${d.farmName}: place ${format(d.placementDate, "EEE MMM d")} → catch ${format(d.projectedCatchDate, "EEE MMM d")} (${d.note})`,
     );
   }
-  console.log("- Triple Place Demo: 6 houses / 3 active flocks (26-01 H1–2, 26-02 H3–4, 26-03 H5–6)");
+  console.log("- Triple Place: 6 houses / 3 active flocks (26-01 H1–2, 26-02 H3–4, 26-03 H5–6)");
 }
 
 main()

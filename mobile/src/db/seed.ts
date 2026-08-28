@@ -133,22 +133,13 @@ function refreshDemoScheduleAges() {
 
   const db = getDb();
   for (const demo of DEMOS) {
-    // Update only farms that already exist from the original demo seed.
-    // Prefer the offline-demo note, but also match known demo names so ages
-    // keep rolling after upgrades (never INSERT).
-    const farm =
-      db.getFirstSync<{ id: string }>(
-        `SELECT id FROM farms
-         WHERE farm_name = ? AND is_active = 1 AND notes = 'Offline demo farm'
-         LIMIT 1`,
-        [demo.farmName],
-      ) ??
-      db.getFirstSync<{ id: string }>(
-        `SELECT id FROM farms
-         WHERE farm_name = ? AND is_active = 1 AND grower_name = ?
-         LIMIT 1`,
-        [demo.farmName, demo.growerName],
-      );
+    // Match original seed farms by name + grower (never INSERT).
+    const farm = db.getFirstSync<{ id: string }>(
+      `SELECT id FROM farms
+       WHERE farm_name = ? AND is_active = 1 AND grower_name = ?
+       LIMIT 1`,
+      [demo.farmName, demo.growerName],
+    );
     if (!farm) continue;
 
     const flock = db.getFirstSync<{ id: string }>(
@@ -178,6 +169,7 @@ function refreshDemoScheduleAges() {
   setMeta("demo_schedule_day_v2", today);
   setMeta("demo_schedule_day", today);
 }
+
 function ensureDemoVisits() {
   if (getMeta("visits_v2") === "1") return;
   const db = getDb();
@@ -213,7 +205,7 @@ function ensureDemoVisits() {
           farm.flock_id,
           visitDate,
           age,
-          "Offline demo visit",
+          null,
           `${visitDate}T12:00:00.000Z`,
         ],
       );
@@ -237,8 +229,8 @@ function ensureMultiFlockDemoFarm() {
   const db = getDb();
   const today = todayKey();
   const existing = db.getFirstSync<{ id: string }>(
-    "SELECT id FROM farms WHERE farm_name = ? AND is_active = 1 LIMIT 1",
-    ["Triple Place Demo"],
+    "SELECT id FROM farms WHERE farm_name IN (?, ?) AND is_active = 1 LIMIT 1",
+    ["Triple Place", "Triple Place Demo"],
   );
   if (existing) {
     setMeta("multi_flock_demo_v1", "1");
@@ -251,10 +243,10 @@ function ensureMultiFlockDemoFarm() {
      VALUES (?, ?, ?, ?, ?, ?, 1)`,
     [
       farmId,
-      "Triple Place Demo",
+      "Triple Place",
       "Alex Silvia",
       "410-555-0199",
-      "Demo farm with 3 active flocks / place / catch dates",
+      null,
       6,
     ],
   );
@@ -431,7 +423,7 @@ export function seedIfNeeded() {
   const userId = newId("user");
   db.runSync(
     "INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)",
-    [userId, "Alex Technician", "tech@poultry.local", "password123"],
+    [userId, "Alex Silvia", "tech@poultry.local", "password123"],
   );
 
   const today = todayKey();
@@ -446,7 +438,7 @@ export function seedIfNeeded() {
         demo.farmName,
         demo.growerName,
         demo.phone,
-        "Offline demo farm",
+        null,
         demo.houses,
       ],
     );
@@ -515,7 +507,7 @@ export function seedIfNeeded() {
         flockId,
         visitDate,
         visitAge,
-        `Offline demo visit for ${demo.farmName}`,
+        null,
         `${visitDate}T12:00:00.000Z`,
       ],
     );
