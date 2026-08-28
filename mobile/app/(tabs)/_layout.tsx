@@ -26,6 +26,7 @@ const TAB_ITEMS: {
   { name: "mortality", label: "Mortality", icon: "plus-circle" },
   { name: "lfo", label: "LFO", customIcon: "feed-bin" },
   { name: "tools", label: "Tools", icon: "tools" },
+  { name: "reports", label: "Reports", icon: "chart-box-outline" },
 ];
 
 function WebStyleTabBar({ state, descriptors, navigation }: any) {
@@ -246,15 +247,6 @@ export default function TabsLayout() {
         name="reports"
         options={{
           title: "Reports",
-          href: null,
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: "More",
-          href: null,
           headerShown: false,
         }}
       />

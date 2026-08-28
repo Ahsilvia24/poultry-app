@@ -242,7 +242,7 @@ export function DashboardScheduleImport({
   return (
     <Card>
       <div className="flex flex-wrap gap-2">
-        {SCHEDULE_IMPORT_TYPES.map((type) => {
+        {SCHEDULE_IMPORT_TYPES.filter((type) => type.id !== "settlement").map((type) => {
           const active = importType === type.id;
           return (
             <button
@@ -284,11 +284,7 @@ export function DashboardScheduleImport({
             className="block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-emerald-800"
             disabled={pending || !uploadEnabled}
           />
-          {importType === "placement" ? (
-            <p className="mt-2 text-sm text-stone-500">
-              Weekly Chick Placement PDF (including scanned) or spreadsheet.
-            </p>
-          ) : importType === "catch" ? (
+          {importType === "catch" ? (
             <p className="mt-2 text-sm text-stone-500">
               Kill / Catch Schedule PDF (including scanned) or spreadsheet (Ending Kill Date or Catch Date, Farm Name,
               House — Farm-Entity / Farm Code when available). Side-by-side Fort Smith / Heavener
@@ -296,7 +292,7 @@ export function DashboardScheduleImport({
             </p>
           ) : (
             <p className="mt-2 text-sm text-stone-500">
-              {scheduleImportTypeLabel(importType)} mapping comes next.
+              Weekly Chick Placement PDF (including scanned) or spreadsheet.
             </p>
           )}
         </div>

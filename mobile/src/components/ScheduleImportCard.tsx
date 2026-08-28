@@ -38,7 +38,7 @@ const APP_BUILD =
 const FILE_ACCEPT =
   ".pdf,.csv,.xls,.xlsx,.txt,application/pdf,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-type ImportType = "placement" | "catch" | "settlement";
+type ImportType = "placement" | "catch";
 
 type FarmPreview = {
   key: string;
@@ -57,7 +57,6 @@ type FarmPreview = {
 const TYPE_OPTIONS: Array<{ id: ImportType; label: string }> = [
   { id: "placement", label: "Placement" },
   { id: "catch", label: "Catch Schedule" },
-  { id: "settlement", label: "Settlements" },
 ];
 
 function typeLabel(type: ImportType) {
@@ -488,15 +487,13 @@ export function ScheduleImportCard() {
   }
 
   const helperText =
-    importType === "placement"
+    importType === "catch"
       ? Platform.OS === "web"
+        ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (scanned PDFs OK). Ending Kill Date or Catch Date, Farm Name, House."
+        : "Choose a Kill/Catch Schedule PDF/CSV/XLSX. Ending Kill Date or Catch Date, Farm Name, House. Scanned PDFs need CSV/XLSX on iPhone."
+      : Platform.OS === "web"
         ? "Weekly Chick Placement: farm name, code left of the name, house, date placed, birds sent. Ignores Complex / flock-code / mortality columns."
-        : "Weekly Chick Placement: farm name, code left of the name (e.g. 3821FS), house, date placed, birds sent. Ignores Complex, flock-code column, and far-right columns. Text PDFs on iPhone; scans need CSV/XLSX."
-      : importType === "catch"
-        ? Platform.OS === "web"
-          ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (scanned PDFs OK). Ending Kill Date or Catch Date, Farm Name, House."
-          : "Choose a Kill/Catch Schedule PDF/CSV/XLSX. Ending Kill Date or Catch Date, Farm Name, House. Scanned PDFs need CSV/XLSX on iPhone."
-        : `${typeLabel(importType)} mapping comes next.`;
+        : "Weekly Chick Placement: farm name, code left of the name (e.g. 3821FS), house, date placed, birds sent. Ignores Complex, flock-code column, and far-right columns. Text PDFs on iPhone; scans need CSV/XLSX.";
 
   return (
     <Card>

@@ -32,6 +32,7 @@ import {
   formatPct,
 } from "../../src/components/ui";
 import { ScheduleImportCard } from "../../src/components/ScheduleImportCard";
+import { ExportDataCard } from "../../src/components/ExportDataCard";
 import { compactCatchTimeLabel } from "../../src/lib/time-slots";
 
 type Dashboard = ReturnType<typeof getDashboard>;
@@ -741,6 +742,8 @@ export default function DashboardScreen() {
         <View style={{ marginTop: 16, marginBottom: 24 }}>
           <SectionTitle>Import</SectionTitle>
           <ScheduleImportCard />
+          <SectionTitle>Export</SectionTitle>
+          <ExportDataCard />
         </View>
       </ScrollView>
     </SafeAreaView>

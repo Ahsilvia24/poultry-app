@@ -22,11 +22,11 @@ export default function LoginPage() {
         <form action={onSubmit} className="mt-6 space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required defaultValue="tech@poultry.local" />
+            <Input id="email" name="email" type="email" required autoComplete="email" />
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required defaultValue="password123" />
+            <Input id="password" name="password" type="password" required autoComplete="current-password" />
           </div>
           {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
           <Button type="submit" className="w-full">

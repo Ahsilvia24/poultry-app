@@ -15,8 +15,8 @@ import { Card } from "../src/components/ui";
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
-  const [email, setEmail] = useState("tech@poultry.local");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -72,9 +72,6 @@ export default function LoginScreen() {
               )}
             </Pressable>
           </Card>
-          <Text style={[styles.muted, { marginTop: 12 }]}>
-            Demo: tech@poultry.local / password123
-          </Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
