@@ -102,7 +102,6 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-base font-bold leading-snug text-stone-900">
                 {farm.farmName}
-                <span className="font-semibold text-stone-500"> ({farm.houseCount})</span>
                 {farm.flockAges.length > 0 ? (
                   <span className="font-semibold text-stone-500">
                     {" "}
