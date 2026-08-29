@@ -154,16 +154,13 @@ export default function FarmsScreen() {
         ) : null}
 
         {data?.farms.map((farm) => {
-          const houseCount = farm.houseCount ?? farm.numberOfHouses;
           const ages = farm.flockAgesDays?.length
             ? farm.flockAgesDays
             : farm.flockAgeDays != null
               ? [farm.flockAgeDays]
               : [];
           const ageLabel = ages.length > 0 ? ages.map((a) => `${a}d`).join(" ") : null;
-          const titleMeta = ageLabel
-            ? ` (${houseCount}) ${ageLabel}`
-            : ` (${houseCount})`;
+          const titleMeta = ageLabel ? ` ${ageLabel}` : "";
 
           return (
             <Swipeable
