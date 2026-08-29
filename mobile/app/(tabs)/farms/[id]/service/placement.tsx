@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { DatePickerField } from "../../../../../src/components/DatePickerField";
 import { OptionPicker, SelectField } from "../../../../../src/components/OptionPicker";
 import {
+  MultiToggleField,
   PairFields,
   SectionTitle,
   TextField,
@@ -28,6 +29,7 @@ import { createPlacementDraft } from "../../../../../src/lib/serviceForms/defaul
 import {
   VENT_DOOR_OPTIONS,
   WEEK_OPTIONS,
+  ventDoorTypesFromPayload,
 } from "../../../../../src/lib/serviceForms/format";
 import {
   minVentForWeek,
@@ -47,6 +49,13 @@ function paramId(value: string | string[] | undefined) {
   return value ?? "";
 }
 
+function hydratePlacement(payload: PlacementForm): PlacementForm {
+  return {
+    ...payload,
+    ventDoorTypes: ventDoorTypesFromPayload(payload),
+  };
+}
+
 export default function PlacementChecklistScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -61,7 +70,7 @@ export default function PlacementChecklistScreen() {
 
   const [form, setForm] = useState<PlacementForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
-      return withSavedServiceTech(existing.payload as PlacementForm);
+      return withSavedServiceTech(hydratePlacement(existing.payload as PlacementForm));
     }
     const draft = createPlacementDraft({
       farmName,
@@ -77,7 +86,7 @@ export default function PlacementChecklistScreen() {
     }
     return draft;
   });
-  const [optionPicker, setOptionPicker] = useState<"date" | "ventDoor" | "week" | null>(null);
+  const [optionPicker, setOptionPicker] = useState<"date" | "week" | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
 
   function patch(p: Partial<PlacementForm>) {
@@ -216,10 +225,11 @@ export default function PlacementChecklistScreen() {
           ) : null}
           <YesNoField label="All heaters on and operational" value={form.heatersOk} onChange={(heatersOk) => patch({ heatersOk })} />
           <YesNoField label="Sensors at bird level" value={form.sensorsBirdLevelOk} onChange={(sensorsBirdLevelOk) => patch({ sensorsBirdLevelOk })} />
-          <SelectField
+          <MultiToggleField
             label="Vent door type"
-            valueLabel={VENT_DOOR_OPTIONS.find((o) => o.value === form.ventDoorType)?.label ?? "Select"}
-            onPress={() => setOptionPicker("ventDoor")}
+            options={VENT_DOOR_OPTIONS}
+            value={form.ventDoorTypes}
+            onChange={(ventDoorTypes) => patch({ ventDoorTypes })}
           />
           <PairFields
             left={
@@ -366,16 +376,6 @@ export default function PlacementChecklistScreen() {
       </ScrollView>
       </KeyboardAvoidingView>
 
-      <OptionPicker
-        open={optionPicker === "ventDoor"}
-        title="Vent door type"
-        options={VENT_DOOR_OPTIONS}
-        value={form.ventDoorType}
-        onSelect={(ventDoorType) =>
-          patch({ ventDoorType: ventDoorType as PlacementForm["ventDoorType"] })
-        }
-        onClose={() => setOptionPicker(null)}
-      />
       <OptionPicker
         open={optionPicker === "week"}
         title="Recommended min vent week"

@@ -43,7 +43,8 @@ export type ServiceReportForm = {
   /** Multi-select: Min / Power / Tunnel (paper form allows more than one). */
   ventModes: Array<"min" | "power" | "tunnel">;
   tunnelFanCount: string;
-  ventDoorType: "" | "ceiling" | "sidewall";
+  /** Multi-select: Ceiling / Sidewall (paper form allows both). */
+  ventDoorTypes: Array<"ceiling" | "sidewall">;
   ventOpeningInches: string;
   staticPressure: string;
   cfmPerFt2MinVent: string;
@@ -109,7 +110,8 @@ export type PlacementForm = {
   litterAmendmentType: "" | "PLT" | "Pure7";
   heatersOk: YesNo;
   sensorsBirdLevelOk: YesNo;
-  ventDoorType: "" | "ceiling" | "sidewall";
+  /** Multi-select: Ceiling / Sidewall (paper form allows both). */
+  ventDoorTypes: Array<"ceiling" | "sidewall">;
   ventOpeningInches: string;
   staticPressure: string;
   cfmPerFt2MinVent: string;
