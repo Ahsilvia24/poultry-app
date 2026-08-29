@@ -209,6 +209,7 @@ type HouseEditDraft = {
   houseNumber: string;
   squareFootage: string;
   totalFanCFM: string;
+  totalPowerCFM: string;
   placedBirdCount: string;
   /** Shown as placeholder while the field stays empty for easy retype. */
   placedBirdCountPlaceholder: string;
@@ -221,13 +222,16 @@ type HouseEditDraft = {
   applyCatchDateToRemaining: boolean;
   applyCatchTimeToRemaining: boolean;
   applyFlockIdToRemaining: boolean;
-  applySpecsToRemaining: boolean;
+  applySquareFootageToRemaining: boolean;
+  applyMinVentCfmToRemaining: boolean;
+  applyPowerCfmToRemaining: boolean;
 };
 
 type AddHouseDraft = {
   houseNumber: string;
   squareFootage: string;
   totalFanCFM: string;
+  totalPowerCFM: string;
 };
 
 type FarmEditDraft = {
@@ -810,6 +814,7 @@ export default function FarmDetailScreen() {
       houseNumber: String(nextNum),
       squareFootage: "29700",
       totalFanCFM: "",
+      totalPowerCFM: "",
     });
   }
 
@@ -827,11 +832,17 @@ export default function FarmDetailScreen() {
       const sq = Number(addingHouse.squareFootage);
       const cfm =
         addingHouse.totalFanCFM.trim() === "" ? null : Number(addingHouse.totalFanCFM);
-      if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
+      const powerCfm =
+        addingHouse.totalPowerCFM.trim() === "" ? null : Number(addingHouse.totalPowerCFM);
+      if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total CFM (Min Vent) is invalid");
+      if (powerCfm != null && !Number.isFinite(powerCfm)) {
+        throw new Error("Total CFM (Power) is invalid");
+      }
       createHouse(data.farm.id, {
         houseNumber: Number(addingHouse.houseNumber),
         squareFootage: sq,
         totalFanCFM: cfm,
+        totalPowerCFM: powerCfm,
         numberOfFans: null,
       });
       setAddingHouse(null);
@@ -854,6 +865,7 @@ export default function FarmDetailScreen() {
       houseNumber: String(h.houseNumber),
       squareFootage: String(h.squareFootage ?? 29700),
       totalFanCFM: h.totalFanCFM != null ? String(h.totalFanCFM) : "",
+      totalPowerCFM: h.totalPowerCFM != null ? String(h.totalPowerCFM) : "",
       // Prefill 29700 when unset. If a count already exists, leave blank so the
       // tech can type a new number without deleting first (placeholder shows it).
       placedBirdCount: h.placedBirdCount != null ? "" : "29700",
@@ -868,7 +880,9 @@ export default function FarmDetailScreen() {
       applyCatchDateToRemaining: false,
       applyCatchTimeToRemaining: false,
       applyFlockIdToRemaining: false,
-      applySpecsToRemaining: false,
+      applySquareFootageToRemaining: false,
+      applyMinVentCfmToRemaining: false,
+      applyPowerCfmToRemaining: false,
     });
   }
 
@@ -1011,12 +1025,17 @@ export default function FarmDetailScreen() {
       const sq = Number(editingHouse.squareFootage);
       const cfm =
         editingHouse.totalFanCFM.trim() === "" ? null : Number(editingHouse.totalFanCFM);
+      const powerCfm =
+        editingHouse.totalPowerCFM.trim() === "" ? null : Number(editingHouse.totalPowerCFM);
       const existing = data?.houses.find((h) => h.id === editingHouse.id);
       const fans = existing?.numberOfFans ?? null;
       const placedRaw = editingHouse.placedBirdCount.trim();
       const placed =
         placedRaw === "" ? null : Math.floor(Number(placedRaw));
-      if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
+      if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total CFM (Min Vent) is invalid");
+      if (powerCfm != null && !Number.isFinite(powerCfm)) {
+        throw new Error("Total CFM (Power) is invalid");
+      }
       if (
         data?.activeFlock &&
         placedRaw !== "" &&
@@ -1031,8 +1050,11 @@ export default function FarmDetailScreen() {
         houseNumber: Number(editingHouse.houseNumber),
         squareFootage: sq,
         totalFanCFM: cfm,
+        totalPowerCFM: powerCfm,
         numberOfFans: fans,
-        applySpecsToRemainingHouses: editingHouse.applySpecsToRemaining,
+        applySquareFootageToRemainingHouses: editingHouse.applySquareFootageToRemaining,
+        applyMinVentCfmToRemainingHouses: editingHouse.applyMinVentCfmToRemaining,
+        applyPowerCfmToRemainingHouses: editingHouse.applyPowerCfmToRemaining,
         ...(data?.activeFlock
           ? {
               ...(placedRaw !== ""
@@ -2382,11 +2404,14 @@ export default function FarmDetailScreen() {
                         onChangeText={(v) =>
                           setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
                         }
-                        propagateChecked={editingHouse.applySpecsToRemaining}
+                        propagateChecked={editingHouse.applySquareFootageToRemaining}
                         onPropagateToggle={() =>
                           setEditingHouse((prev) =>
                             prev
-                              ? { ...prev, applySpecsToRemaining: !prev.applySpecsToRemaining }
+                              ? {
+                                  ...prev,
+                                  applySquareFootageToRemaining: !prev.applySquareFootageToRemaining,
+                                }
                               : prev,
                           )
                         }
@@ -2399,15 +2424,38 @@ export default function FarmDetailScreen() {
                         onChangeText={(v) =>
                           setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
                         }
-                        propagateChecked={editingHouse.applySpecsToRemaining}
+                        propagateChecked={editingHouse.applyMinVentCfmToRemaining}
                         onPropagateToggle={() =>
                           setEditingHouse((prev) =>
                             prev
-                              ? { ...prev, applySpecsToRemaining: !prev.applySpecsToRemaining }
+                              ? {
+                                  ...prev,
+                                  applyMinVentCfmToRemaining: !prev.applyMinVentCfmToRemaining,
+                                }
                               : prev,
                           )
                         }
                       />
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <NativeNumInput
+                        label="Total CFM (Power)"
+                        value={editingHouse.totalPowerCFM}
+                        decimal
+                        style={{ flex: 1 }}
+                        onChangeText={(v) =>
+                          setEditingHouse((prev) => (prev ? { ...prev, totalPowerCFM: v } : prev))
+                        }
+                        propagateChecked={editingHouse.applyPowerCfmToRemaining}
+                        onPropagateToggle={() =>
+                          setEditingHouse((prev) =>
+                            prev
+                              ? { ...prev, applyPowerCfmToRemaining: !prev.applyPowerCfmToRemaining }
+                              : prev,
+                          )
+                        }
+                      />
+                      <View style={{ flex: 1 }} />
                     </View>
                     <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
                       <PrimaryButton
@@ -2490,6 +2538,14 @@ export default function FarmDetailScreen() {
                     decimal
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
+                    }
+                  />
+                  <NativeNumInput
+                    label="Total CFM (Power)"
+                    value={addingHouse.totalPowerCFM}
+                    decimal
+                    onChangeText={(v) =>
+                      setAddingHouse((prev) => (prev ? { ...prev, totalPowerCFM: v } : prev))
                     }
                   />
                   <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>

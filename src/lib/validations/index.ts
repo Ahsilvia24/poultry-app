@@ -33,6 +33,7 @@ export const houseSchema = z.object({
   houseNumber: z.coerce.number().int().positive(),
   squareFootage: z.coerce.number().positive("Square footage must be greater than zero"),
   totalFanCFM: z.coerce.number().min(0, "Total CFM cannot be negative").optional().nullable(),
+  totalPowerCFM: z.coerce.number().min(0, "Total CFM cannot be negative").optional().nullable(),
   numberOfFans: z.coerce.number().int().optional().nullable(),
   coolingPadSquareFootage: z.coerce.number().optional().nullable(),
   controllerType: z.string().optional().nullable(),

@@ -182,6 +182,7 @@ function parseHouseForm(formData: FormData) {
     houseNumber: formData.get("houseNumber"),
     squareFootage: formData.get("squareFootage"),
     totalFanCFM: emptyToNull(formData.get("totalFanCFM")),
+    totalPowerCFM: emptyToNull(formData.get("totalPowerCFM")),
     numberOfFans: emptyToNull(formData.get("numberOfFans")),
     coolingPadSquareFootage: emptyToNull(formData.get("coolingPadSquareFootage")),
     controllerType: emptyToNull(formData.get("controllerType")),
@@ -236,20 +237,27 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
     data: houseFields,
   });
 
-  const applySpecsToRemaining =
-    formData.get("applySpecsToRemaining") === "true" ||
-    formData.get("applySpecsToRemaining") === "on";
-  if (applySpecsToRemaining) {
+  const laterHouses = {
+    farmId,
+    deletedAt: null,
+    houseNumber: { gt: parsed.data.houseNumber },
+  };
+  if (formFlag(formData, "applySquareFootageToRemaining")) {
     await prisma.house.updateMany({
-      where: {
-        farmId,
-        deletedAt: null,
-        houseNumber: { gt: parsed.data.houseNumber },
-      },
-      data: {
-        squareFootage: parsed.data.squareFootage,
-        totalFanCFM: parsed.data.totalFanCFM,
-      },
+      where: laterHouses,
+      data: { squareFootage: parsed.data.squareFootage },
+    });
+  }
+  if (formFlag(formData, "applyMinVentCfmToRemaining")) {
+    await prisma.house.updateMany({
+      where: laterHouses,
+      data: { totalFanCFM: parsed.data.totalFanCFM },
+    });
+  }
+  if (formFlag(formData, "applyPowerCfmToRemaining")) {
+    await prisma.house.updateMany({
+      where: laterHouses,
+      data: { totalPowerCFM: parsed.data.totalPowerCFM },
     });
   }
 

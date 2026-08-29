@@ -16,6 +16,7 @@ type HouseData = {
   houseNumber: number;
   squareFootage: number;
   totalFanCFM: number | null;
+  totalPowerCFM: number | null;
   numberOfFans: number | null;
   notes: string | null;
   placedBirdCount?: number | null;

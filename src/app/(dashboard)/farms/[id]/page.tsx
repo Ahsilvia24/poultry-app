@@ -224,6 +224,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               houseNumber: house.houseNumber,
               squareFootage: house.squareFootage,
               totalFanCFM: house.totalFanCFM,
+              totalPowerCFM: house.totalPowerCFM,
               numberOfFans: house.numberOfFans,
               notes: house.notes,
               loggedTemp: house.loggedTemp,

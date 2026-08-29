@@ -185,6 +185,8 @@ model House {
   houseLength              Float?
   houseWidth               Float?
   totalFanCFM              Float?
+  /** Tunnel / power-vent total CFM (separate from min-vent totalFanCFM). */
+  totalPowerCFM            Float?
   numberOfFans             Int?
   coolingPadSquareFootage  Float?
   feederType               String?

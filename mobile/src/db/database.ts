@@ -94,6 +94,7 @@ export async function migrateDb() {
       house_number INTEGER NOT NULL,
       square_footage REAL NOT NULL DEFAULT 29700,
       total_fan_cfm REAL,
+      total_power_cfm REAL,
       number_of_fans INTEGER,
       logged_temp TEXT,
       logged_temp_at TEXT,
@@ -302,6 +303,9 @@ export async function migrateDb() {
   }
   if (!houseCols.some((c) => c.name === "logged_temp_at")) {
     await database.execAsync("ALTER TABLE houses ADD COLUMN logged_temp_at TEXT");
+  }
+  if (!houseCols.some((c) => c.name === "total_power_cfm")) {
+    await database.execAsync("ALTER TABLE houses ADD COLUMN total_power_cfm REAL");
   }
 
   // Schedule dismissals: COMPLETED (crossed out until midnight) vs DISMISSED (gone now)
