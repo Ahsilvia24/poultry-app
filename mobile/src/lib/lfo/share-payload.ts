@@ -148,8 +148,8 @@ export function buildLfoSharePayload(
     calc ??
     calculateLastFeedOrder({
       orderDate,
+      orderTime: inventory.orderTime,
       consumptionRate: inventory.consumptionRate,
-      now: inventory.calculatedAt ? new Date(inventory.calculatedAt) : undefined,
       houses: houses.map((house) => ({
         houseId: house.houseId,
         houseNumber: house.houseNumber,
@@ -179,7 +179,8 @@ export function buildLfoSharePayload(
             maximumFractionDigits: 3,
           })} lbs/bird/day`,
         },
-        { label: "Numbers as of", value: calculatedAtLabel },
+        { label: "Hours measured from", value: `${orderDateLabel}  ${orderTimeLabel}` },
+        { label: "Head counts as of", value: calculatedAtLabel },
         ...(notes ? [{ label: "Notes", value: notes }] : []),
       ],
     },

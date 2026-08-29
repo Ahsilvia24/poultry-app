@@ -21,6 +21,7 @@ import { createLfo, deleteLfo, getLfo, listFarms, listLfos } from "../../../src/
 import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
 import { SharePdfIconButton } from "../../../src/components/SharePdfIconButton";
 import { todayKey } from "../../../src/lib/ids";
+import { currentHalfHourTime } from "../../../src/lib/time-slots";
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, styles } from "../../../src/theme";
@@ -404,7 +405,7 @@ export default function LfoListScreen() {
               }
               setLoading(true);
               try {
-                const { id } = createLfo(farmId, todayKey());
+                const { id } = createLfo(farmId, todayKey(), undefined, currentHalfHourTime());
                 setLfos(listLfos());
                 setMsg("Created LFO");
                 openLfo(id);

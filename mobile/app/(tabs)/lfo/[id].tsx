@@ -237,8 +237,8 @@ export default function EditLfoScreen() {
     const rate = Number(consumptionRate);
     return calculateLastFeedOrder({
       orderDate,
+      orderTime,
       consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
-      now: calculatedAt ? new Date(calculatedAt) : undefined,
       houses: houses.map((r) => ({
         houseId: r.houseId,
         houseNumber: r.houseNumber,
@@ -248,7 +248,7 @@ export default function EditLfoScreen() {
         feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime),
       })),
     });
-  }, [calculatedAt, consumptionRate, orderDate, houses]);
+  }, [consumptionRate, orderDate, orderTime, houses]);
 
   const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
@@ -484,9 +484,9 @@ export default function EditLfoScreen() {
             <>
               {calculatedAt ? (
                 <Text style={[styles.muted, { marginBottom: 10 }]}>
-                  Numbers as of {formatAsOf(calculatedAt)}. Hours, head counts, and
-                  order/reclaim stay frozen to that time. Save as new LFO to capture
-                  current time and remaining birds.
+                  Hours until feed off use the order date and time. Head counts stay
+                  frozen to {formatAsOf(calculatedAt)}. Save as new LFO to capture
+                  current remaining birds.
                 </Text>
               ) : null}
 

@@ -70,7 +70,7 @@ export function LfoInventoryForm({
   action,
   saveAsNewAction,
   houses: initialHouses,
-  orderDate,
+  orderDate: initialOrderDate,
   orderTime: initialOrderTime,
   farmName,
   consumptionRate: initialRate = DEFAULT_LFO_CONSUMPTION_RATE,
@@ -96,6 +96,7 @@ export function LfoInventoryForm({
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
   const [consumptionRate, setConsumptionRate] = useState(String(initialRate));
+  const [orderDate, setOrderDate] = useState(initialOrderDate);
   const [orderTime, setOrderTime] = useState(
     () => normalizeHalfHourTime(initialOrderTime) ?? currentHalfHourTime(),
   );
@@ -115,8 +116,8 @@ export function LfoInventoryForm({
     const rate = Number(consumptionRate);
     return calculateLastFeedOrder({
       orderDate,
+      orderTime,
       consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
-      now: asOf ? new Date(asOf) : undefined,
       houses: rows.map((r) => ({
         houseId: r.houseId,
         houseNumber: r.houseNumber,
@@ -126,7 +127,7 @@ export function LfoInventoryForm({
         feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime),
       })),
     });
-  }, [asOf, consumptionRate, orderDate, rows]);
+  }, [consumptionRate, orderDate, orderTime, rows]);
 
   const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
@@ -180,12 +181,11 @@ export function LfoInventoryForm({
 
       {asOf ? (
         <p className="text-sm text-stone-600">
-          Numbers as of{" "}
+          Hours until feed off use the order date and time. Head counts stay frozen to{" "}
           <span className="font-semibold text-stone-800">
             {format(new Date(asOf), "MMM d, yyyy, h:mm a")}
           </span>
-          . Hours, head counts, and order/reclaim stay frozen to that time. Save as new
-          LFO to capture current time and remaining birds.
+          . Save as new LFO to capture current remaining birds.
         </p>
       ) : null}
 
@@ -197,7 +197,8 @@ export function LfoInventoryForm({
             name="orderDate"
             type="date"
             required
-            defaultValue={orderDate}
+            value={orderDate}
+            onChange={(e) => setOrderDate(e.target.value)}
             className="mt-0.5"
             compact
           />

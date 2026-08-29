@@ -77,8 +77,8 @@ export default async function LfoPage() {
       .sort((a, b) => a.houseNumber - b.houseNumber);
     const calc = calculateLastFeedOrder({
       orderDate: orderDateKey,
+      orderTime: lfo.orderTime,
       consumptionRate: lfo.consumptionRate,
-      now: lfo.calculatedAt ?? lfo.createdAt,
       houses: lfo.houseInventories.map((inv) => ({
         houseId: inv.houseId,
         houseNumber: inv.house.houseNumber,

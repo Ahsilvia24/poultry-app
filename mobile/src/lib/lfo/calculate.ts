@@ -15,6 +15,8 @@ export type LfoHouseInventoryInput = {
 
 export type LfoCalculateInput = {
   orderDate: string;
+  /** Half-hour clock (HH:mm). Hours-until-off is measured from this, not wall clock. */
+  orderTime?: string | null;
   /** Lbs feed per bird per day. */
   consumptionRate: number;
   now?: Date;
@@ -188,8 +190,14 @@ export function formatHouseLfoSummary(
   return parts;
 }
 
+function clockFromOrder(orderDate: string, orderTime?: string | null): Date | null {
+  const time = orderTime?.trim();
+  if (!time) return null;
+  return combineDateAndTime(orderDate.slice(0, 10), time);
+}
+
 export function calculateLastFeedOrder(input: LfoCalculateInput): LfoCalculateResult {
-  const now = input.now ?? new Date();
+  const now = input.now ?? clockFromOrder(input.orderDate, input.orderTime) ?? new Date();
   const rate = Number.isFinite(input.consumptionRate)
     ? input.consumptionRate
     : DEFAULT_LFO_CONSUMPTION_RATE;

@@ -49,7 +49,8 @@ describe("buildLfoSharePayload", () => {
     assert.ok(labels.includes("Order date"));
     assert.ok(labels.includes("Order time"));
     assert.ok(labels.includes("Consumption rate"));
-    assert.ok(labels.includes("Numbers as of"));
+    assert.ok(labels.includes("Hours measured from"));
+    assert.ok(labels.includes("Head counts as of"));
     assert.ok(labels.includes("Notes"));
     assert.ok(labels.includes("Bin A (lbs)"));
     assert.ok(labels.includes("Bin B (lbs)"));
