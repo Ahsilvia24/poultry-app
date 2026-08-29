@@ -16,6 +16,7 @@ import {
   calculateLastFeedOrder,
   feedUpAtFromCatch,
   formatHouseLfoSummary,
+  formatLfoOrderClock,
 } from "../lib/lfo/calculate";
 import { todayKey } from "../lib/ids";
 import { scrollFieldAboveKeypad } from "../lib/scrollField";
@@ -323,6 +324,11 @@ export function ManualLfoScreen({
           <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
             Consumption rate in lbs/bird/day
           </Text>
+          {formatLfoOrderClock(orderDate, orderTime) ? (
+            <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
+              Hours from {formatLfoOrderClock(orderDate, orderTime)}
+            </Text>
+          ) : null}
         </Card>
 
         <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>

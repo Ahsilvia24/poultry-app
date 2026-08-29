@@ -1,3 +1,5 @@
+import { normalizeHalfHourTime } from "@/lib/time-slots";
+
 export const DEFAULT_LFO_CONSUMPTION_RATE = 0.45;
 export const FEED_OFF_HOURS_BEFORE_UP = 5;
 /** Catch is 5 hours after feed up (10 hours after feed off). */
@@ -78,7 +80,18 @@ export function combineDateAndTime(dateKey: string, timeHHmm: string): Date | nu
   if (!date || !time) return null;
   const [y, m, d] = date.split("-").map(Number);
   const [hh, mm] = time.split(":").map(Number);
-  if (!y || !m || !d || !Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  if (
+    !Number.isFinite(y) ||
+    !Number.isFinite(m) ||
+    !Number.isFinite(d) ||
+    !Number.isFinite(hh) ||
+    !Number.isFinite(mm) ||
+    y < 1 ||
+    m < 1 ||
+    d < 1
+  ) {
+    return null;
+  }
   const dt = new Date(y, m - 1, d, hh, mm, 0, 0);
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
@@ -205,14 +218,33 @@ export function formatHouseLfoSummary(
   return parts;
 }
 
-function clockFromOrder(orderDate: string, orderTime?: string | null): Date | null {
-  const time = orderTime?.trim();
+/** Order date + half-hour time. Used as the LFO clock (not wall-clock now). */
+export function lfoClockFromOrder(
+  orderDate: string,
+  orderTime?: string | null,
+): Date | null {
+  const time = normalizeHalfHourTime(orderTime);
   if (!time) return null;
   return combineDateAndTime(orderDate.slice(0, 10), time);
 }
 
+export function formatLfoOrderClock(
+  orderDate: string,
+  orderTime?: string | null,
+): string {
+  const d = lfoClockFromOrder(orderDate, orderTime);
+  if (!d) return "";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function calculateLastFeedOrder(input: LfoCalculateInput): LfoCalculateResult {
-  const now = input.now ?? clockFromOrder(input.orderDate, input.orderTime) ?? new Date();
+  const now = input.now ?? lfoClockFromOrder(input.orderDate, input.orderTime) ?? new Date();
   const rate = Number.isFinite(input.consumptionRate)
     ? input.consumptionRate
     : DEFAULT_LFO_CONSUMPTION_RATE;

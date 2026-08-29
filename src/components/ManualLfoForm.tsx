@@ -9,6 +9,7 @@ import {
   calculateLastFeedOrder,
   feedUpAtFromCatch,
   formatHouseLfoSummary,
+  formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
 import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime } from "@/lib/time-slots";
 
@@ -120,6 +121,11 @@ export function ManualLfoForm() {
           </PairField>
         </div>
         <p className="mt-1 text-xs text-stone-500">Consumption rate in lbs/bird/day</p>
+        {formatLfoOrderClock(orderDate, orderTime) ? (
+          <p className="mt-1 text-xs text-stone-500">
+            Hours from {formatLfoOrderClock(orderDate, orderTime)}
+          </p>
+        ) : null}
       </Card>
 
       <h2 className="text-lg font-bold text-stone-900">Bin inventory & feed up</h2>

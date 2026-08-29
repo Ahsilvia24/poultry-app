@@ -20,6 +20,7 @@ import {
   catchPartsFromFeedUpAt,
   feedUpAtFromCatch,
   formatHouseLfoSummary,
+  formatLfoOrderClock,
 } from "../../../src/lib/lfo/calculate";
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
@@ -482,11 +483,13 @@ export default function EditLfoScreen() {
 
           {ready ? (
             <>
-              {calculatedAt ? (
+              {formatLfoOrderClock(orderDate, orderTime) ? (
                 <Text style={[styles.muted, { marginBottom: 10 }]}>
-                  Hours until feed off use the order date and time. Head counts stay
-                  frozen to {formatAsOf(calculatedAt)}. Save as new LFO to capture
-                  current remaining birds.
+                  Hours until feed off are measured from{" "}
+                  {formatLfoOrderClock(orderDate, orderTime)}.
+                  {calculatedAt
+                    ? ` Head counts stay frozen to ${formatAsOf(calculatedAt)}.`
+                    : ""}
                 </Text>
               ) : null}
 
@@ -530,6 +533,11 @@ export default function EditLfoScreen() {
                 <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
                   Consumption rate in lbs/bird/day
                 </Text>
+                {formatLfoOrderClock(orderDate, orderTime) ? (
+                  <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
+                    Hours from {formatLfoOrderClock(orderDate, orderTime)}
+                  </Text>
+                ) : null}
               </Card>
 
               <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>

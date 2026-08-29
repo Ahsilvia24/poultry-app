@@ -59,4 +59,33 @@ describe("calculateLastFeedOrder clock", () => {
     assert.equal(later.houses[0].hoursUntilFeedOff, 0);
     assert.equal(fromOrder.houses[0].hoursUntilFeedOff, 24);
   });
+
+  it("shifts hours by the same amount when the order time changes", () => {
+    const house = {
+      houseId: "h1",
+      houseNumber: 1,
+      headCount: 10000,
+      binAPounds: 10000,
+      binBPounds: 0,
+      feedUpAt: feedUpAtFromCatch("2026-08-02", "10:00"),
+    };
+    const morning = calculateLastFeedOrder({
+      orderDate: "2026-08-01",
+      orderTime: "08:00",
+      consumptionRate: 0.45,
+      houses: [house],
+    });
+    const noon = calculateLastFeedOrder({
+      orderDate: "2026-08-01",
+      orderTime: "12:00",
+      consumptionRate: 0.45,
+      houses: [house],
+    });
+    assert.equal(morning.houses[0].hoursUntilFeedOff, 16);
+    assert.equal(noon.houses[0].hoursUntilFeedOff, 12);
+    assert.equal(
+      (morning.houses[0].hoursUntilFeedOff ?? 0) - (noon.houses[0].hoursUntilFeedOff ?? 0),
+      4,
+    );
+  });
 });

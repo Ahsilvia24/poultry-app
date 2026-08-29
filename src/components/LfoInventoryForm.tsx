@@ -9,6 +9,7 @@ import {
   calculateLastFeedOrder,
   feedUpAtFromCatch,
   formatHouseLfoSummary,
+  formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
 import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
 import { downloadLfoPdf } from "@/lib/exports/lfo-pdf";
@@ -179,13 +180,29 @@ export function LfoInventoryForm({
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>
       ) : null}
 
-      {asOf ? (
+      {formatLfoOrderClock(orderDate, orderTime) ? (
         <p className="text-sm text-stone-600">
-          Hours until feed off use the order date and time. Head counts stay frozen to{" "}
+          Hours until feed off are measured from{" "}
+          <span className="font-semibold text-stone-800">
+            {formatLfoOrderClock(orderDate, orderTime)}
+          </span>
+          {asOf ? (
+            <>
+              . Head counts stay frozen to{" "}
+              <span className="font-semibold text-stone-800">
+                {format(new Date(asOf), "MMM d, yyyy, h:mm a")}
+              </span>
+            </>
+          ) : null}
+          . Save as new LFO to capture current remaining birds.
+        </p>
+      ) : asOf ? (
+        <p className="text-sm text-stone-600">
+          Head counts stay frozen to{" "}
           <span className="font-semibold text-stone-800">
             {format(new Date(asOf), "MMM d, yyyy, h:mm a")}
           </span>
-          . Save as new LFO to capture current remaining birds.
+          .
         </p>
       ) : null}
 
@@ -238,6 +255,11 @@ export function LfoInventoryForm({
         </PairField>
       </div>
       <p className="text-xs text-stone-500">Consumption rate in lbs/bird/day</p>
+      {formatLfoOrderClock(orderDate, orderTime) ? (
+        <p className="text-xs text-stone-500">
+          Hours from {formatLfoOrderClock(orderDate, orderTime)}
+        </p>
+      ) : null}
 
       <div className="space-y-3">
         {rows.map((house) => {
