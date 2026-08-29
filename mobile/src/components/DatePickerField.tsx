@@ -7,17 +7,27 @@ import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
 import { todayKey } from "../lib/ids";
 
-/** "2026-07-26" → "July 26, 2026" */
+const MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** "2026-09-24" → "24 Sep 26" */
 export function formatDisplayDate(dateKey: string) {
   if (!dateKey) return "Select date";
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
-  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
-  return dt.toLocaleDateString(undefined, {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  return `${d} ${MONTHS_SHORT[m - 1]} ${String(y).slice(-2)}`;
 }
 
 function parseDateKey(dateKey: string): Date {
@@ -90,13 +100,13 @@ function WebMonthCalendar({
   const today = todayKey();
 
   return (
-    <View style={{ paddingHorizontal: 8, paddingTop: 4, paddingBottom: 8 }}>
+    <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12 }}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 8,
+          marginBottom: 12,
           paddingHorizontal: 4,
         }}
       >
@@ -107,11 +117,11 @@ function WebMonthCalendar({
             setCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
           }
           hitSlop={8}
-          style={{ padding: 8 }}
+          style={{ padding: 10 }}
         >
-          <Ionicons name="chevron-back" size={20} color={colors.text} />
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>{monthLabel}</Text>
+        <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>{monthLabel}</Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Next month"
@@ -119,23 +129,23 @@ function WebMonthCalendar({
             setCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
           }
           hitSlop={8}
-          style={{ padding: 8 }}
+          style={{ padding: 10 }}
         >
-          <Ionicons name="chevron-forward" size={20} color={colors.text} />
+          <Ionicons name="chevron-forward" size={24} color={colors.text} />
         </Pressable>
       </View>
 
-      <View style={{ flexDirection: "row", marginBottom: 4 }}>
+      <View style={{ flexDirection: "row", marginBottom: 6 }}>
         {WEEKDAYS.map((d) => (
           <Text
             key={d}
             style={{
               flex: 1,
               textAlign: "center",
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: "700",
               color: colors.muted,
-              paddingVertical: 4,
+              paddingVertical: 6,
             }}
           >
             {d}
@@ -169,9 +179,9 @@ function WebMonthCalendar({
             >
               <View
                 style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 17,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor: isSelected ? colors.accentDark : "transparent",
@@ -181,7 +191,7 @@ function WebMonthCalendar({
               >
                 <Text
                   style={{
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: isSelected || isToday ? "800" : "600",
                     color: isSelected ? "#fff" : colors.text,
                   }}
@@ -370,7 +380,8 @@ export function DatePickerField({
             style={{
               flex: 1,
               backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
+              justifyContent: isWeb ? "center" : "flex-end",
+              padding: isWeb ? 16 : 0,
             }}
             onPress={() => setOpen(false)}
           >
@@ -380,7 +391,12 @@ export function DatePickerField({
                 backgroundColor: "#fff",
                 borderTopLeftRadius: 16,
                 borderTopRightRadius: 16,
+                borderBottomLeftRadius: isWeb ? 16 : 0,
+                borderBottomRightRadius: isWeb ? 16 : 0,
                 paddingBottom: 24,
+                minHeight: isWeb ? "78%" : undefined,
+                maxHeight: isWeb ? "94%" : undefined,
+                width: "100%",
               }}
             >
               <View

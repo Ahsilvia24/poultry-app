@@ -215,8 +215,6 @@ type HouseEditDraft = {
   totalFanCFM: string;
   totalPowerCFM: string;
   placedBirdCount: string;
-  /** Shown as placeholder while the field stays empty for easy retype. */
-  placedBirdCountPlaceholder: string;
   placementDate: string;
   catchDate: string;
   catchTime: string;
@@ -926,11 +924,8 @@ export default function FarmDetailScreen() {
       squareFootage: String(h.squareFootage ?? 29700),
       totalFanCFM: h.totalFanCFM != null ? String(h.totalFanCFM) : "",
       totalPowerCFM: h.totalPowerCFM != null ? String(h.totalPowerCFM) : "",
-      // Prefill 29700 when unset. If a count already exists, leave blank so the
-      // tech can type a new number without deleting first (placeholder shows it).
-      placedBirdCount: h.placedBirdCount != null ? "" : "29700",
-      placedBirdCountPlaceholder:
-        h.placedBirdCount != null ? String(h.placedBirdCount) : "29700",
+      // Only show a count that was already saved — never ghost-fill 23000/29700.
+      placedBirdCount: h.placedBirdCount != null ? String(h.placedBirdCount) : "",
       placementDate,
       catchDate,
       catchTime: h.catchTime ?? "",
@@ -2135,45 +2130,32 @@ export default function FarmDetailScreen() {
       <Modal
         visible={editingHouse != null}
         animationType="slide"
-        transparent
         onRequestClose={closeHouseEditor}
       >
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "bottom"]}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
         >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
-            }}
-          >
-            <Pressable style={{ flex: 1 }} onPress={closeHouseEditor} />
-            <View
-              style={{
-                backgroundColor: "#fff",
-                borderTopLeftRadius: 16,
-                borderTopRightRadius: 16,
-                maxHeight: "92%",
-                overflow: "hidden",
-              }}
-            >
+          <View style={{ flex: 1, backgroundColor: "#fff" }}>
+            <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                Edit house {editingHouse?.houseNumber}
+              </Text>
+              {houseEditError ? (
+                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                  {houseEditError}
+                </Text>
+              ) : null}
+            </View>
               <ScrollView
                 keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ padding: 20, paddingBottom: Platform.OS === "ios" ? 28 : 24 }}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}
               >
-                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                  Edit house {editingHouse?.houseNumber}
-                </Text>
-                {houseEditError ? (
-                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
-                    {houseEditError}
-                  </Text>
-                ) : null}
                 {editingHouse ? (
-                  <View style={{ marginTop: 14 }}>
+                  <View>
                     <View style={{ flexDirection: "row", gap: 10 }}>
                       <NativeNumInput
                         label="House number"
@@ -2227,7 +2209,7 @@ export default function FarmDetailScreen() {
                             <DatePickerField
                               label="Placement date"
                               value={editingHouse.placementDate}
-                              presentation="inline"
+                              presentation={Platform.OS === "web" ? "modal" : "inline"}
                               expanded={housePicker === "placement"}
                               onOpen={() => setHousePicker("placement")}
                               inputStyle={{ marginBottom: 0 }}
@@ -2266,7 +2248,6 @@ export default function FarmDetailScreen() {
                           <NativeNumInput
                             label="Birds placed"
                             value={editingHouse.placedBirdCount}
-                            placeholder={editingHouse.placedBirdCountPlaceholder}
                             style={{ flex: 1 }}
                             onChangeText={(v) =>
                               setEditingHouse((prev) =>
@@ -2288,7 +2269,7 @@ export default function FarmDetailScreen() {
                             <DatePickerField
                               label="Catch date"
                               value={editingHouse.catchDate}
-                              presentation="inline"
+                              presentation={Platform.OS === "web" ? "modal" : "inline"}
                               expanded={housePicker === "catch"}
                               onOpen={() => setHousePicker("catch")}
                               inputStyle={{ marginBottom: 0 }}
@@ -2316,7 +2297,7 @@ export default function FarmDetailScreen() {
                             <TimeScrollPickerField
                               label="Catch time"
                               value={editingHouse.catchTime}
-                              presentation="inline"
+                              presentation={Platform.OS === "web" ? "modal" : "inline"}
                               expanded={housePicker === "catchTime"}
                               onOpen={() => setHousePicker("catchTime")}
                               inputStyle={{ marginBottom: 0 }}
@@ -2421,25 +2402,35 @@ export default function FarmDetailScreen() {
                       />
                       <View style={{ flex: 1 }} />
                     </View>
-                    <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-                      <PrimaryButton
-                        label={houseSaving ? "Saving…" : "Save"}
-                        onPress={saveHouseEdit}
-                        style={{ flex: 1 }}
-                      />
-                      <PrimaryButton
-                        label="Cancel"
-                        secondary
-                        onPress={closeHouseEditor}
-                        style={{ flex: 1 }}
-                      />
-                    </View>
                   </View>
                 ) : null}
               </ScrollView>
-            </View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 10,
+                  paddingHorizontal: 20,
+                  paddingTop: 12,
+                  paddingBottom: 12,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.border,
+                }}
+              >
+                <PrimaryButton
+                  label={houseSaving ? "Saving…" : "Save"}
+                  onPress={saveHouseEdit}
+                  style={{ flex: 1 }}
+                />
+                <PrimaryButton
+                  label="Cancel"
+                  secondary
+                  onPress={closeHouseEditor}
+                  style={{ flex: 1 }}
+                />
+              </View>
           </View>
         </KeyboardAvoidingView>
+        </SafeAreaView>
       </Modal>
 
       <Modal

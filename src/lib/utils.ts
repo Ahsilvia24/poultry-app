@@ -87,3 +87,26 @@ export function formatNumber(value: number, digits = 0): string {
     maximumFractionDigits: digits,
   });
 }
+
+const MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** "2026-09-24" → "24 Sep 26" */
+export function formatInputDate(dateKey: string) {
+  if (!dateKey) return "";
+  const [y, m, d] = dateKey.split("-").map(Number);
+  if (!y || !m || !d) return dateKey;
+  return `${d} ${MONTHS_SHORT[m - 1]} ${String(y).slice(-2)}`;
+}

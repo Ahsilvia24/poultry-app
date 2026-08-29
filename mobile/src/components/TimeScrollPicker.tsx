@@ -64,9 +64,11 @@ function toTimeKey(d: Date): string {
 function WebTimeOptions({
   value,
   onSelect,
+  maxHeight = 420,
 }: {
   value: string;
   onSelect: (time: string) => void;
+  maxHeight?: number;
 }) {
   const listRef = useRef<ScrollViewType | null>(null);
   const selectedIndex = Math.max(
@@ -85,7 +87,7 @@ function WebTimeOptions({
   return (
     <ScrollView
       ref={listRef}
-      style={{ maxHeight: 280 }}
+      style={{ maxHeight }}
       contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 12 }}
       keyboardShouldPersistTaps="handled"
     >
@@ -268,7 +270,8 @@ export function TimeScrollPickerField({
             style={{
               flex: 1,
               backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
+              justifyContent: isWeb ? "center" : "flex-end",
+              padding: isWeb ? 16 : 0,
             }}
             onPress={() => setOpen(false)}
           >
@@ -278,8 +281,12 @@ export function TimeScrollPickerField({
                 backgroundColor: "#fff",
                 borderTopLeftRadius: 16,
                 borderTopRightRadius: 16,
+                borderBottomLeftRadius: isWeb ? 16 : 0,
+                borderBottomRightRadius: isWeb ? 16 : 0,
                 paddingBottom: 24,
-                maxHeight: "80%",
+                minHeight: isWeb ? "72%" : undefined,
+                maxHeight: isWeb ? "92%" : "80%",
+                width: "100%",
               }}
             >
               <View
@@ -322,7 +329,7 @@ export function TimeScrollPickerField({
               </View>
 
               {isWeb ? (
-                <WebTimeOptions value={draftKey} onSelect={selectWebTime} />
+                <WebTimeOptions value={draftKey} onSelect={selectWebTime} maxHeight={520} />
               ) : (
                 <DateTimePicker
                   value={pickerValue}
