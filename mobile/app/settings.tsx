@@ -11,18 +11,25 @@ import {
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../src/auth";
-import { getServiceTech, setServiceTech } from "../src/lib/appSettings";
+import { getFarmOrder, getServiceTech, setFarmOrder, setServiceTech } from "../src/lib/appSettings";
+import { FARM_ORDER_OPTIONS, type FarmOrder } from "../src/lib/farmOrder";
 import { colors, styles } from "../src/theme";
-import { Card } from "../src/components/ui";
+import { Card, Chip } from "../src/components/ui";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
   const [serviceTech, setServiceTechName] = useState(getServiceTech);
+  const [farmOrder, setFarmOrderValue] = useState<FarmOrder>(getFarmOrder);
 
   function onChangeServiceTech(value: string) {
     setServiceTechName(value);
     setServiceTech(value);
+  }
+
+  function onChangeFarmOrder(value: FarmOrder) {
+    setFarmOrderValue(value);
+    setFarmOrder(value);
   }
 
   return (
@@ -71,6 +78,20 @@ export default function SettingsScreen() {
               placeholder="Name on checklists"
               placeholderTextColor={colors.muted}
             />
+          </Card>
+
+          <Card>
+            <Text style={styles.label}>Order farms by</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 4 }}>
+              {FARM_ORDER_OPTIONS.map((option) => (
+                <Chip
+                  key={option.key}
+                  label={option.label}
+                  active={farmOrder === option.key}
+                  onPress={() => onChangeFarmOrder(option.key)}
+                />
+              ))}
+            </View>
           </Card>
 
           <View style={{ flex: 1, minHeight: 48 }} />

@@ -43,6 +43,7 @@ export type FarmCardSummary = {
   phoneNumber: string | null;
   houseCount: number;
   flockAgeDays: number | null;
+  flockAgesDays?: number[];
   totalBirdsPlaced: number;
   birdsRemaining: number;
   todayMortality: number;

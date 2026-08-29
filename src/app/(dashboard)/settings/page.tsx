@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateSettingsAction } from "@/app/actions/ops";
-import { Button, Card, Input, Label, PageHeader } from "@/components/ui";
+import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import { FARM_ORDER_OPTIONS, parseFarmOrder } from "@/lib/farm-order";
 
 async function submitSettings(formData: FormData) {
   "use server";
@@ -117,6 +118,16 @@ export default async function SettingsPage() {
                   defaultValue={s?.defaultMarketAgeDays ?? 52}
                   required
                 />
+              </div>
+              <div>
+                <Label htmlFor="farmOrder">Order farms by</Label>
+                <Select id="farmOrder" name="farmOrder" defaultValue={parseFarmOrder(s?.farmOrder)}>
+                  {FARM_ORDER_OPTIONS.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
               </div>
             </div>
             <div className="mt-3 space-y-2">

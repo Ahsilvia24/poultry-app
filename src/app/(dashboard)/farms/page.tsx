@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FarmsListTiles } from "@/components/FarmsListTiles";
+import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -17,22 +18,28 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
   const status = params.status === "inactive" || params.status === "all" ? params.status : "active";
   const today = new Date();
 
-  const farms = await prisma.farm.findMany({
-    where: {
-      userId: session.user.id,
-      deletedAt: null,
-      ...(status === "active" ? { isActive: true } : status === "inactive" ? { isActive: false } : {}),
-    },
-    include: {
-      houses: { where: { deletedAt: null }, select: { id: true } },
-      flocks: {
-        where: { flockStatus: "ACTIVE", deletedAt: null },
-        orderBy: { placementDate: "asc" },
-        select: { placementDate: true },
+  const [farms, orderRow] = await Promise.all([
+    prisma.farm.findMany({
+      where: {
+        userId: session.user.id,
+        deletedAt: null,
+        ...(status === "active" ? { isActive: true } : status === "inactive" ? { isActive: false } : {}),
       },
-    },
-    orderBy: { farmName: "asc" },
-  });
+      include: {
+        houses: { where: { deletedAt: null }, select: { id: true } },
+        flocks: {
+          where: { flockStatus: "ACTIVE", deletedAt: null },
+          orderBy: { placementDate: "asc" },
+          select: { placementDate: true },
+        },
+      },
+      orderBy: { farmName: "asc" },
+    }),
+    prisma.userSettings.findUnique({
+      where: { userId: session.user.id },
+      select: { farmOrder: true },
+    }),
+  ]);
 
   const filters = [
     { key: "active", label: "Active" },
@@ -40,17 +47,20 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
     { key: "all", label: "All" },
   ] as const;
 
-  const tiles = farms.map((farm) => ({
-    id: farm.id,
-    farmName: farm.farmName,
-    growerName: farm.growerName,
-    phoneNumber: farm.phoneNumber,
-    isActive: farm.isActive,
-    houseCount: farm.houses.length,
-    flockAges: Array.from(
-      new Set(farm.flocks.map((fl) => differenceInCalendarDays(today, fl.placementDate))),
-    ).sort((a, b) => a - b),
-  }));
+  const tiles = sortFarmsByOrder(
+    farms.map((farm) => ({
+      id: farm.id,
+      farmName: farm.farmName,
+      growerName: farm.growerName,
+      phoneNumber: farm.phoneNumber,
+      isActive: farm.isActive,
+      houseCount: farm.houses.length,
+      flockAges: Array.from(
+        new Set(farm.flocks.map((fl) => differenceInCalendarDays(today, fl.placementDate))),
+      ).sort((a, b) => a - b),
+    })),
+    parseFarmOrder(orderRow?.farmOrder),
+  );
 
   return (
     <div>

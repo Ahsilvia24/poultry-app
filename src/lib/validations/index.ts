@@ -234,6 +234,7 @@ export const settingsSchema = z.object({
   defaultMarketAgeDays: z.coerce.number().int().positive(),
   notifyEmail: z.boolean(),
   notifyInApp: z.boolean(),
+  farmOrder: z.enum(["age_desc", "age_asc", "name_asc", "name_desc"]).optional(),
 });
 
 export const performanceSchema = z.object({

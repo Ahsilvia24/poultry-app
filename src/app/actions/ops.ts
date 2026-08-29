@@ -610,6 +610,7 @@ export async function updateSettingsAction(formData: FormData) {
     defaultMarketAgeDays: formData.get("defaultMarketAgeDays"),
     notifyEmail: formData.get("notifyEmail") === "on",
     notifyInApp: formData.get("notifyInApp") === "on",
+    farmOrder: formData.get("farmOrder") || "name_asc",
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid settings" };
 
@@ -631,6 +632,7 @@ export async function updateSettingsAction(formData: FormData) {
       defaultMarketAgeDays: parsed.data.defaultMarketAgeDays,
       notifyEmail: parsed.data.notifyEmail,
       notifyInApp: parsed.data.notifyInApp,
+      farmOrder: parsed.data.farmOrder ?? "name_asc",
     },
     update: {
       dailyMortalityWarningPct: parsed.data.dailyMortalityWarningPct,
@@ -641,11 +643,13 @@ export async function updateSettingsAction(formData: FormData) {
       defaultMarketAgeDays: parsed.data.defaultMarketAgeDays,
       notifyEmail: parsed.data.notifyEmail,
       notifyInApp: parsed.data.notifyInApp,
+      farmOrder: parsed.data.farmOrder ?? "name_asc",
     },
   });
 
   revalidatePath("/settings");
   revalidatePath("/");
+  revalidatePath("/farms");
   return { success: true };
 }
 
