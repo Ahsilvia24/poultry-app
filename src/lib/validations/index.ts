@@ -172,6 +172,7 @@ export const farmVisitSchema = z.object({
   birdAgeInDays: z.coerce.number().int().optional().nullable(),
   visitType: z.enum([
     "ROUTINE_SERVICE",
+    "PREBROOD",
     "PLACEMENT",
     "SEVEN_DAY",
     "WEIGH_DAY",
@@ -180,6 +181,7 @@ export const farmVisitSchema = z.object({
     "EQUIPMENT_ISSUE",
     "MORTALITY_INVESTIGATION",
     "PRE_CATCH",
+    "LAST_FEED_ORDER",
     "OTHER",
   ]),
   generalBirdCondition: z.string().optional().nullable(),

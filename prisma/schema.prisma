@@ -62,6 +62,7 @@ enum LitterEventType {
 
 enum VisitType {
   ROUTINE_SERVICE
+  PREBROOD
   PLACEMENT
   SEVEN_DAY
   WEIGH_DAY
@@ -70,6 +71,7 @@ enum VisitType {
   EQUIPMENT_ISSUE
   MORTALITY_INVESTIGATION
   PRE_CATCH
+  LAST_FEED_ORDER
   OTHER
 }
 

@@ -22,6 +22,7 @@ import {
   ISSUE_CATEGORY_LABELS,
   LITTER_EVENT_LABELS,
   VISIT_TYPE_LABELS,
+  VISIT_TYPE_OPTIONS,
 } from "@/lib/utils";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 
@@ -60,6 +61,17 @@ export function FarmVisitForm({
     initial?.visitDate ?? new Date().toISOString().slice(0, 10),
   );
   const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
+  const visitTypeOptions =
+    initial?.visitType &&
+    !VISIT_TYPE_OPTIONS.some((opt) => opt.value === initial.visitType)
+      ? [
+          {
+            value: initial.visitType,
+            label: VISIT_TYPE_LABELS[initial.visitType] ?? initial.visitType,
+          },
+          ...VISIT_TYPE_OPTIONS,
+        ]
+      : [...VISIT_TYPE_OPTIONS];
 
   const birdAgeInDays =
     placementDate != null && visitDate
@@ -101,9 +113,9 @@ export function FarmVisitForm({
             name="visitType"
             defaultValue={initial?.visitType ?? "ROUTINE_SERVICE"}
           >
-            {Object.entries(VISIT_TYPE_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
+            {visitTypeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
               </option>
             ))}
           </Select>
