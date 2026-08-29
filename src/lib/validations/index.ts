@@ -273,6 +273,7 @@ export const lastFeedOrderHouseInventorySchema = z.object({
 
 export const lastFeedOrderSchema = z.object({
   orderDate: z.string().min(1, "Order date is required"),
+  orderTime: z.string().optional().nullable(),
   consumptionRate: z.coerce
     .number()
     .positive("Consumption rate must be greater than zero")

@@ -1546,7 +1546,7 @@ function remainingHeadCountForHouse(farmId: string, houseId: string, today: stri
   return summarizeHouse(hf.placed_bird_count, records, today).remaining;
 }
 
-export function createLfo(farmId: string, orderDate: string, notes?: string) {
+export function createLfo(farmId: string, orderDate: string, notes?: string, orderTime?: string) {
   const db = getDb();
   const flock = db.getFirstSync<{ id: string }>(
     `SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE'
@@ -1556,8 +1556,8 @@ export function createLfo(farmId: string, orderDate: string, notes?: string) {
   const id = newId("lfo");
   const createdAt = new Date().toISOString();
   db.runSync(
-    `INSERT INTO last_feed_orders (id, farm_id, flock_id, order_date, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-    [id, farmId, flock?.id ?? null, orderDate, notes ?? null, createdAt],
+    `INSERT INTO last_feed_orders (id, farm_id, flock_id, order_date, order_time, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [id, farmId, flock?.id ?? null, orderDate, orderTime ?? null, notes ?? null, createdAt],
   );
   const houses = db.getAllSync<{ id: string }>(
     "SELECT id FROM houses WHERE farm_id = ? AND deleted_at IS NULL ORDER BY house_number ASC",
@@ -1619,6 +1619,7 @@ function ensureManualLfoFarm() {
 
 export function createManualLfo(input: {
   orderDate: string;
+  orderTime?: string | null;
   consumptionRate: number;
   headCount: number;
   binAPounds: number;
@@ -1635,9 +1636,9 @@ export function createManualLfo(input: {
       ? input.consumptionRate
       : 0.45;
   db.runSync(
-    `INSERT INTO last_feed_orders (id, farm_id, flock_id, order_date, notes, calculated_at, created_at)
-     VALUES (?, ?, NULL, ?, ?, ?, ?)`,
-    [id, MANUAL_LFO_FARM_ID, input.orderDate, input.notes ?? null, now, now],
+    `INSERT INTO last_feed_orders (id, farm_id, flock_id, order_date, order_time, notes, calculated_at, created_at)
+     VALUES (?, ?, NULL, ?, ?, ?, ?, ?)`,
+    [id, MANUAL_LFO_FARM_ID, input.orderDate, input.orderTime ?? null, input.notes ?? null, now, now],
   );
   db.runSync(
     `INSERT INTO lfo_house_inventory
@@ -1665,6 +1666,7 @@ export function getLfo(id: string) {
     farm_id: string;
     flock_id: string | null;
     order_date: string;
+    order_time: string | null;
     notes: string | null;
     calculated_at: string | null;
   }>("SELECT * FROM last_feed_orders WHERE id = ?", [id]);
@@ -1698,6 +1700,7 @@ export function getLfo(id: string) {
     farmId: lfo.farm_id,
     farmName: farm.farm_name,
     orderDate: lfo.order_date,
+    orderTime: lfo.order_time,
     notes: lfo.notes,
     consumptionRate,
     calculatedAt: lfo.calculated_at,
@@ -1745,6 +1748,7 @@ export function updateLfoInventory(
 export function updateLfo(input: {
   id: string;
   orderDate: string;
+  orderTime?: string | null;
   notes: string | null;
   consumptionRate: number;
   houses: Array<{
@@ -1766,12 +1770,10 @@ export function updateLfo(input: {
   // Stamp clock/heads once; later edits keep the original snapshot.
   const calculatedAt = existing.calculated_at ?? new Date().toISOString();
 
-  db.runSync(`UPDATE last_feed_orders SET order_date = ?, notes = ?, calculated_at = ? WHERE id = ?`, [
-    input.orderDate,
-    input.notes,
-    calculatedAt,
-    input.id,
-  ]);
+  db.runSync(
+    `UPDATE last_feed_orders SET order_date = ?, order_time = ?, notes = ?, calculated_at = ? WHERE id = ?`,
+    [input.orderDate, input.orderTime ?? null, input.notes, calculatedAt, input.id],
+  );
 
   const rate =
     Number.isFinite(input.consumptionRate) && input.consumptionRate > 0
@@ -1825,6 +1827,7 @@ export function updateLfo(input: {
 export function saveLfoAsNew(input: {
   sourceId: string;
   orderDate: string;
+  orderTime?: string | null;
   notes: string | null;
   consumptionRate: number;
   houses: Array<{
@@ -1835,10 +1838,11 @@ export function saveLfoAsNew(input: {
   }>;
 }) {
   const source = dbFarmIdForLfo(input.sourceId);
-  const { id } = createLfo(source, input.orderDate, input.notes ?? undefined);
+  const { id } = createLfo(source, input.orderDate, input.notes ?? undefined, input.orderTime ?? undefined);
   updateLfo({
     id,
     orderDate: input.orderDate,
+    orderTime: input.orderTime,
     notes: input.notes,
     consumptionRate: input.consumptionRate,
     houses: input.houses.map((h) => ({

@@ -349,6 +349,8 @@ model LastFeedOrder {
   farmId           String
   flockId          String
   orderDate        DateTime @db.Date
+  /** Half-hour clock for the order (HH:mm). */
+  orderTime        String?
   /** Lbs feed per bird per day (used for hourly consumption). */
   consumptionRate  Float    @default(0.45)
   /** Clock used for hours-until-feed-off / order math. Frozen at save. */

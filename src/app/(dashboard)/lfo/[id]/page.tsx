@@ -102,6 +102,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
           saveAsNewAction={saveAsNew}
           farmName={lfo.farm.farmName}
           orderDate={format(lfo.orderDate, "yyyy-MM-dd")}
+          orderTime={lfo.orderTime}
           consumptionRate={lfo.consumptionRate}
           asOf={asOf}
           submitLabel="Save changes"

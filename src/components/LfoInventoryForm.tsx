@@ -10,7 +10,7 @@ import {
   feedUpAtFromCatch,
   formatHouseLfoSummary,
 } from "@/lib/lfo/calculate";
-import { HALF_HOUR_TIME_OPTIONS } from "@/lib/time-slots";
+import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
 
 export type LfoHouseRow = {
   houseId: string;
@@ -70,6 +70,7 @@ export function LfoInventoryForm({
   saveAsNewAction,
   houses: initialHouses,
   orderDate,
+  orderTime: initialOrderTime,
   farmName,
   consumptionRate: initialRate = DEFAULT_LFO_CONSUMPTION_RATE,
   asOf = null,
@@ -80,6 +81,7 @@ export function LfoInventoryForm({
   saveAsNewAction?: (formData: FormData) => Promise<{ error?: string; ok?: boolean } | void>;
   houses: LfoHouseRow[];
   orderDate: string;
+  orderTime?: string | null;
   farmName?: string;
   consumptionRate?: number;
   /** Frozen clock for hours-until-off / order math. Omit on a new LFO. */
@@ -91,6 +93,9 @@ export function LfoInventoryForm({
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
   const [consumptionRate, setConsumptionRate] = useState(String(initialRate));
+  const [orderTime, setOrderTime] = useState(
+    () => normalizeHalfHourTime(initialOrderTime) ?? currentHalfHourTime(),
+  );
   const [rows, setRows] = useState(
     initialHouses.map((h) => ({
       houseId: h.houseId,
@@ -172,6 +177,23 @@ export function LfoInventoryForm({
             className="mt-0.5"
             compact
           />
+          <div className="mt-2">
+            <Label htmlFor="orderTime">Order time</Label>
+          </div>
+          <Select
+            id="orderTime"
+            name="orderTime"
+            value={orderTime}
+            onChange={(e) => setOrderTime(e.target.value)}
+            className="mt-0.5"
+            compact
+          >
+            {HALF_HOUR_TIME_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
         </PairField>
         <PairField>
           <Label htmlFor="consumptionRate">Consumption rate</Label>

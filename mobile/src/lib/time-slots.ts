@@ -27,6 +27,13 @@ export function compactCatchTimeLabel(value: string | null | undefined): string 
   return `${hour12}:${String(m).padStart(2, "0")}${ap}`;
 }
 
+/** Current clock snapped to the nearest :00 / :30 slot. */
+export function currentHalfHourTime(now = new Date()): string {
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  return normalizeHalfHourTime(`${hh}:${mm}`) ?? "00:00";
+}
+
 export function normalizeHalfHourTime(raw: string | null | undefined): string | null {
   if (raw == null) return null;
   const s = raw.trim();
