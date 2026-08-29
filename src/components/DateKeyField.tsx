@@ -90,7 +90,7 @@ export function DateKeyField({
             role="dialog"
             aria-modal="true"
             aria-label={label}
-            className="flex max-h-[94vh] min-h-[78vh] w-full max-w-lg flex-col rounded-2xl bg-white shadow-xl"
+            className="flex h-[94vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
@@ -150,7 +150,7 @@ export function DateKeyField({
               <div className="grid grid-cols-7">
                 {cells.map((cell) => {
                   if (cell.day == null || !cell.date) {
-                    return <div key={cell.key} className="aspect-square" />;
+                    return <div key={cell.key} className="h-12" />;
                   }
                   const key = toDateKey(cell.date);
                   const isSelected = key === selectedKey;
@@ -164,7 +164,7 @@ export function DateKeyField({
                         onChange(key);
                         setOpen(false);
                       }}
-                      className="flex aspect-square items-center justify-center"
+                      className="flex h-12 items-center justify-center"
                     >
                       <span
                         className={[

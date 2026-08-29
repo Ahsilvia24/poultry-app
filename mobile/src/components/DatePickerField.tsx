@@ -156,7 +156,7 @@ function WebMonthCalendar({
       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
         {cells.map((cell) => {
           if (cell.day == null || !cell.date) {
-            return <View key={cell.key} style={{ width: "14.2857%", aspectRatio: 1 }} />;
+            return <View key={cell.key} style={{ width: "14.2857%", height: 48 }} />;
           }
           const key = toDateKey(cell.date);
           const isSelected = key === selectedKey;
@@ -172,16 +172,16 @@ function WebMonthCalendar({
               }}
               style={{
                 width: "14.2857%",
-                aspectRatio: 1,
+                height: 48,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <View
                 style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor: isSelected ? colors.accentDark : "transparent",
@@ -368,7 +368,70 @@ export function DatePickerField({
         </View>
       ) : null}
 
-      {Platform.OS !== "android" && open && !useInline ? (
+      {isWeb && open && !useInline ? (
+        <View
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10000,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            padding: 10,
+            justifyContent: "center",
+          }}
+        >
+          <Pressable
+            onPress={() => setOpen(false)}
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+          />
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "#fff",
+              borderRadius: 16,
+              paddingBottom: 16,
+            }}
+          >
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.border,
+                }}
+              >
+                <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+                  <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    onChange(draftKey);
+                    setOpen(false);
+                  }}
+                  hitSlop={8}
+                >
+                  <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
+                </Pressable>
+              </View>
+              <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+                <Text style={{ fontSize: 13, color: colors.muted, fontWeight: "600" }}>
+                  Selected
+                </Text>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, marginTop: 2 }}>
+                  {formatDisplayDate(draftKey)}
+                </Text>
+              </View>
+              {calendarBody}
+          </View>
+        </View>
+      ) : null}
+
+      {Platform.OS !== "android" && !isWeb && open && !useInline ? (
         <Modal
           transparent
           animationType="slide"
@@ -380,8 +443,7 @@ export function DatePickerField({
             style={{
               flex: 1,
               backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: isWeb ? "center" : "flex-end",
-              padding: isWeb ? 16 : 0,
+              justifyContent: "flex-end",
             }}
             onPress={() => setOpen(false)}
           >
@@ -391,12 +453,7 @@ export function DatePickerField({
                 backgroundColor: "#fff",
                 borderTopLeftRadius: 16,
                 borderTopRightRadius: 16,
-                borderBottomLeftRadius: isWeb ? 16 : 0,
-                borderBottomRightRadius: isWeb ? 16 : 0,
                 paddingBottom: 24,
-                minHeight: isWeb ? "78%" : undefined,
-                maxHeight: isWeb ? "94%" : undefined,
-                width: "100%",
               }}
             >
               <View

@@ -2139,9 +2139,19 @@ export default function FarmDetailScreen() {
       <Modal
         visible={editingHouse != null}
         animationType="slide"
+        transparent={Platform.OS === "web"}
         onRequestClose={closeHouseEditor}
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["top", "bottom"]}>
+        <SafeAreaView
+          style={{
+            flex: 1,
+            backgroundColor: "#fff",
+            ...(Platform.OS === "web"
+              ? { position: "fixed" as const, top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }
+              : null),
+          }}
+          edges={["top", "bottom"]}
+        >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}

@@ -65,10 +65,12 @@ function WebTimeOptions({
   value,
   onSelect,
   maxHeight = 420,
+  fill = false,
 }: {
   value: string;
   onSelect: (time: string) => void;
   maxHeight?: number;
+  fill?: boolean;
 }) {
   const listRef = useRef<ScrollViewType | null>(null);
   const selectedIndex = Math.max(
@@ -87,7 +89,7 @@ function WebTimeOptions({
   return (
     <ScrollView
       ref={listRef}
-      style={{ maxHeight }}
+      style={fill ? { flex: 1 } : { maxHeight }}
       contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 12 }}
       keyboardShouldPersistTaps="handled"
     >
@@ -258,7 +260,66 @@ export function TimeScrollPickerField({
         </View>
       ) : null}
 
-      {Platform.OS !== "android" && open && !useInline ? (
+      {isWeb && open && !useInline ? (
+        <View
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10000,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            padding: 10,
+          }}
+        >
+          <Pressable
+            onPress={() => setOpen(false)}
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+          />
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "#fff",
+              borderRadius: 16,
+              paddingBottom: 16,
+            }}
+          >
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.border,
+                }}
+              >
+                <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+                  <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
+                </Pressable>
+                <Text style={{ fontWeight: "800", color: colors.text }}>{label}</Text>
+                <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+                  <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
+                </Pressable>
+              </View>
+
+              <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+                <Text style={{ fontSize: 13, color: colors.muted, fontWeight: "600" }}>
+                  Selected
+                </Text>
+                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, marginTop: 2 }}>
+                  {timeLabel(draftKey)}
+                </Text>
+              </View>
+
+              <WebTimeOptions value={draftKey} onSelect={selectWebTime} fill />
+          </View>
+        </View>
+      ) : null}
+
+      {Platform.OS !== "android" && !isWeb && open && !useInline ? (
         <Modal
           transparent
           animationType="slide"
@@ -270,8 +331,7 @@ export function TimeScrollPickerField({
             style={{
               flex: 1,
               backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: isWeb ? "center" : "flex-end",
-              padding: isWeb ? 16 : 0,
+              justifyContent: "flex-end",
             }}
             onPress={() => setOpen(false)}
           >
@@ -281,12 +341,8 @@ export function TimeScrollPickerField({
                 backgroundColor: "#fff",
                 borderTopLeftRadius: 16,
                 borderTopRightRadius: 16,
-                borderBottomLeftRadius: isWeb ? 16 : 0,
-                borderBottomRightRadius: isWeb ? 16 : 0,
                 paddingBottom: 24,
-                minHeight: isWeb ? "72%" : undefined,
-                maxHeight: isWeb ? "92%" : "80%",
-                width: "100%",
+                maxHeight: "80%",
               }}
             >
               <View
@@ -304,19 +360,15 @@ export function TimeScrollPickerField({
                   <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
                 </Pressable>
                 <Text style={{ fontWeight: "800", color: colors.text }}>{label}</Text>
-                {isWeb ? (
-                  <View style={{ width: 56 }} />
-                ) : (
-                  <Pressable
-                    onPress={() => {
-                      onChange(draftKey);
-                      setOpen(false);
-                    }}
-                    hitSlop={8}
-                  >
-                    <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
-                  </Pressable>
-                )}
+                <Pressable
+                  onPress={() => {
+                    onChange(draftKey);
+                    setOpen(false);
+                  }}
+                  hitSlop={8}
+                >
+                  <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
+                </Pressable>
               </View>
 
               <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
@@ -328,18 +380,14 @@ export function TimeScrollPickerField({
                 </Text>
               </View>
 
-              {isWeb ? (
-                <WebTimeOptions value={draftKey} onSelect={selectWebTime} maxHeight={520} />
-              ) : (
-                <DateTimePicker
-                  value={pickerValue}
-                  mode="time"
-                  display="spinner"
-                  minuteInterval={30}
-                  onChange={onPickerChange}
-                  style={{ alignSelf: "center" }}
-                />
-              )}
+              <DateTimePicker
+                value={pickerValue}
+                mode="time"
+                display="spinner"
+                minuteInterval={30}
+                onChange={onPickerChange}
+                style={{ alignSelf: "center" }}
+              />
             </Pressable>
           </Pressable>
         </Modal>

@@ -57,7 +57,7 @@ export function TimeKeyField({
             role="dialog"
             aria-modal="true"
             aria-label={label}
-            className="flex max-h-[92vh] min-h-[72vh] w-full max-w-lg flex-col rounded-2xl bg-white shadow-xl"
+            className="flex h-[92vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
