@@ -151,7 +151,7 @@ export default function ServiceReportScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: 280 }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
+        automaticallyAdjustKeyboardInsets={Platform.OS !== "web"}
       >
         <BackHeader
           backLabel="Checklists"
