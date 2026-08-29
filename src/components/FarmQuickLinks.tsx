@@ -11,31 +11,18 @@ type FlockOption = { id: string; flockNumber: string; ageDays: number };
 
 export function FarmQuickLinks({
   farmId,
-  hasActiveFlock,
   completeFlocks = [],
 }: {
   farmId: string;
-  hasActiveFlock: boolean;
   completeFlocks?: FlockOption[];
 }) {
-  const lfoHref = hasActiveFlock ? `/lfo/new/${farmId}` : "/lfo";
-
   const links: Array<{ key: string; href: string; label: string; external?: boolean }> = [
     { key: "service", href: `/farms/${farmId}/service`, label: "Service Farm", external: true },
-    { key: "mortality", href: `/mortality?farmId=${farmId}`, label: "Mortality", external: true },
-    { key: "lfo", href: lfoHref, label: "LFO", external: true },
-    {
-      key: "weight",
-      href: `/tools?farmId=${farmId}#weight-projections`,
-      label: "Weight Proj.",
-      external: true,
-    },
     { key: "generators", href: "#generators", label: "Generator Log" },
     { key: "visits", href: "#visits", label: "Visits" },
     { key: "issues", href: "#issues", label: "Issues" },
     { key: "litter", href: "#litter", label: "Litter" },
     { key: "feed", href: "#feed", label: "Feed" },
-    { key: "reports", href: `/reports?farmId=${farmId}`, label: "Reports", external: true },
     { key: "add-flock", href: "#add-flock", label: "Add Flock" },
   ];
 
