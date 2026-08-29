@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Keyboard,
   Platform,
   Pressable,
@@ -22,8 +21,10 @@ import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
 import { SharePdfIconButton } from "../../../src/components/SharePdfIconButton";
 import { todayKey } from "../../../src/lib/ids";
 import { currentHalfHourTime } from "../../../src/lib/time-slots";
-import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
+import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
+import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
+import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 import { colors, styles } from "../../../src/theme";
 import {
   Card,
@@ -39,6 +40,7 @@ import {
 import { LfoFarmTabs, MANUAL_LFO_TAB_ID } from "../../../src/components/LfoFarmTabs";
 import { ManualLfoScreen } from "../../../src/components/ManualLfoScreen";
 import { ConsumptionRateCalculator } from "../../../src/components/ConsumptionRateCalculator";
+import { userFacingMessage } from "../../../src/lib/useKeyboardInset";
 
 /** "2026-07-26" → "7-26-2026" (no leading zeros). */
 function formatLfoDate(dateKey: string) {
@@ -47,44 +49,38 @@ function formatLfoDate(dateKey: string) {
   return `${m}-${d}-${y}`;
 }
 
-function shareSavedLfo(id: string) {
-  try {
-    const detail = getLfo(id);
-    void shareLfoPdf({
-      farmName: detail.farmName,
-      orderDate: detail.orderDate.slice(0, 10),
-      orderTime: detail.orderTime,
-      consumptionRate: detail.consumptionRate,
-      calculatedAt: detail.calculatedAt,
-      notes: detail.notes,
-      houses: detail.houses.map((house) => ({
-        houseId: house.houseId,
-        houseNumber: house.houseNumber,
-        headCount: house.headCount,
-        binAPounds: house.binAPounds,
-        binBPounds: house.binBPounds,
-        feedUpAt: house.feedUpAt,
-      })),
-    }).catch(() => {
-      Alert.alert("Could not share PDF", "Try again in a moment.");
-    });
-  } catch (e) {
-    Alert.alert(
-      "Could not share PDF",
-      e instanceof Error ? e.message : "This LFO could not be loaded.",
-    );
-  }
+async function shareSavedLfo(id: string) {
+  const detail = getLfo(id);
+  await shareLfoPdf({
+    farmName: detail.farmName,
+    orderDate: detail.orderDate.slice(0, 10),
+    orderTime: detail.orderTime,
+    consumptionRate: detail.consumptionRate,
+    calculatedAt: detail.calculatedAt,
+    notes: detail.notes,
+    houses: detail.houses.map((house) => ({
+      houseId: house.houseId,
+      houseNumber: house.houseNumber,
+      headCount: house.headCount,
+      binAPounds: house.binAPounds,
+      binBPounds: house.binBPounds,
+      feedUpAt: house.feedUpAt,
+    })),
+  });
 }
 
 function SavedLfoList({
   lfos,
   onOpen,
   onDelete,
+  onShareError,
 }: {
   lfos: ReturnType<typeof listLfos>;
   onOpen: (id: string) => void;
   onDelete: (id: string, farmName: string) => void;
+  onShareError?: (message: string) => void;
 }) {
+  const swipe = useExclusiveSwipeables();
   return (
     <>
       <View style={{ marginTop: 20, marginBottom: 10 }}>
@@ -120,10 +116,12 @@ function SavedLfoList({
       {lfos.map((l) => (
         <Swipeable
           key={l.id}
+          ref={swipe.setRef(l.id)}
           overshootRight={false}
           friction={2}
           rightThreshold={40}
           containerStyle={{ marginBottom: 12 }}
+          onSwipeableWillOpen={() => swipe.closeOthers(l.id)}
           renderRightActions={() => (
             <Pressable
               accessibilityLabel={`Delete LFO for ${l.farmName}`}
@@ -172,7 +170,13 @@ function SavedLfoList({
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <SharePdfIconButton
-                    onPress={() => shareSavedLfo(l.id)}
+                    onPress={() => {
+                      void shareSavedLfo(l.id).catch((e) => {
+                        onShareError?.(
+                          userFacingMessage(e, "Could not share PDF. Try again in a moment."),
+                        );
+                      });
+                    }}
                     accessibilityLabel={`Share PDF for ${l.farmName}`}
                   />
                   {l.houseSummary.length > 0 ? (
@@ -221,6 +225,9 @@ export default function LfoListScreen() {
   const [headCount, setHeadCount] = useState("");
   const [activeField, setActiveField] = useState<CalcField | null>(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; farmName: string } | null>(
+    null,
+  );
 
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("lfo", scrollRef);
@@ -328,7 +335,12 @@ export default function LfoListScreen() {
 
   function onBackspace() {
     setReplaceOnType(false);
-    setActiveValue(backspaceKeypadValue(getActiveValue()));
+    const current = getActiveValue();
+    if (!current) {
+      dismissKeypad();
+      return;
+    }
+    setActiveValue(backspaceKeypadValue(current));
   }
 
   function onEnter() {
@@ -343,26 +355,23 @@ export default function LfoListScreen() {
   }
 
   function confirmDelete(id: string, farmName: string) {
-    Alert.alert(
-      "Are you sure?",
-      `Delete LFO for ${farmName}? This cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            deleteLfo(id);
-            setLfos(listLfos());
-            setMsg("LFO deleted");
-          },
-        },
-      ],
-    );
+    setDeleteTarget({ id, farmName });
   }
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
+      {msg ? (
+        <Text
+          style={{
+            color: msg === "Created LFO" || msg === "LFO deleted" ? colors.accentDark : colors.danger,
+            fontWeight: "700",
+            paddingHorizontal: 16,
+            paddingTop: 8,
+          }}
+        >
+          {msg}
+        </Text>
+      ) : null}
       {isManual ? (
         <ManualLfoScreen
           farms={farms}
@@ -373,7 +382,12 @@ export default function LfoListScreen() {
             openLfo(id);
           }}
           savedSection={
-            <SavedLfoList lfos={lfos} onOpen={openLfo} onDelete={confirmDelete} />
+            <SavedLfoList
+              lfos={lfos}
+              onOpen={openLfo}
+              onDelete={confirmDelete}
+              onShareError={setMsg}
+            />
           }
         />
       ) : (
@@ -381,7 +395,10 @@ export default function LfoListScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.screen}
-          contentContainerStyle={[styles.content, { paddingBottom: activeField ? 24 : 40 }]}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: activeField ? CUSTOM_KEYPAD_HEIGHT : 40 },
+          ]}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
           keyboardShouldPersistTaps="handled"
           onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -417,12 +434,6 @@ export default function LfoListScreen() {
             }}
           />
 
-          {msg ? (
-            <Text style={{ color: colors.accentDark, marginTop: 8, fontWeight: "700" }}>
-              {msg}
-            </Text>
-          ) : null}
-
           <ConsumptionRateCalculator
             style={{ marginTop: 8 }}
             waterGal={waterGal}
@@ -439,19 +450,51 @@ export default function LfoListScreen() {
             }}
           />
 
-          <SavedLfoList lfos={lfos} onOpen={openLfo} onDelete={confirmDelete} />
+          <SavedLfoList
+            lfos={lfos}
+            onOpen={openLfo}
+            onDelete={confirmDelete}
+            onShareError={setMsg}
+          />
         </ScrollView>
 
         {activeField ? (
-          <NumberKeypad
-            allowDecimal={false}
-            onDigit={onDigit}
-            onBackspace={onBackspace}
-            onEnter={onEnter}
-          />
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss keypad"
+              onPress={dismissKeypad}
+              style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
+            />
+            <NumberKeypad
+              allowDecimal={false}
+              onDigit={onDigit}
+              onBackspace={onBackspace}
+              onEnter={onEnter}
+            />
+          </>
         ) : null}
       </View>
       )}
+      <ConfirmDialog
+        visible={deleteTarget != null}
+        title="Are you sure?"
+        message={
+          deleteTarget
+            ? `Delete LFO for ${deleteTarget.farmName}? This cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteLfo(deleteTarget.id);
+          setLfos(listLfos());
+          setMsg("LFO deleted");
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </SafeAreaView>
   );
 }

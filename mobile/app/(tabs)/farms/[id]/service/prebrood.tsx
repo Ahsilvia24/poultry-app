@@ -20,7 +20,7 @@ import {
   CommentsField,
   CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
-import { Card, PageHeader } from "../../../../../src/components/ui";
+import { BackHeader, Card } from "../../../../../src/components/ui";
 import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
 import { createPrebroodDraft } from "../../../../../src/lib/serviceForms/defaults";
 import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/format";
@@ -46,11 +46,12 @@ export default function PrebroodChecklistScreen() {
   const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "prebrood");
   const editVisitId = useEditVisitIdParam();
-  const { complete, saving, editing } = useCompleteServiceForm(farmId, {
+  const { complete, saving, editing, error: completeError } = useCompleteServiceForm(farmId, {
     serviceFormId: existing?.id ?? null,
     existingVisitId: existing ? null : editVisitId,
   });
 
+  const [datePicker, setDatePicker] = useState<"form" | "generator" | null>(null);
   const [form, setForm] = useState<PrebroodForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
       return withSavedServiceTech(existing.payload as PrebroodForm);
@@ -89,8 +90,11 @@ export default function PrebroodChecklistScreen() {
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
       >
-        <Pressable
-          onPress={() => {
+        <BackHeader
+          backLabel="Checklists"
+          title={editing ? "Edit Prebrood Checklist" : "Prebrood Checklist"}
+          accessibilityLabel="Back to checklists"
+          onBack={() => {
             if (router.canGoBack()) router.back();
             else
               router.replace({
@@ -98,13 +102,6 @@ export default function PrebroodChecklistScreen() {
                 params: { id: farmId },
               });
           }}
-          style={{ marginBottom: 8 }}
-        >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Checklists</Text>
-        </Pressable>
-        <PageHeader
-          title={editing ? "Edit Prebrood Checklist" : "Prebrood Checklist"}
-          subtitle={farmName}
         />
 
         <Card>
@@ -117,7 +114,13 @@ export default function PrebroodChecklistScreen() {
               <TextField label="Flock" value={form.flockNumber} onChange={(flockNumber) => patch({ flockNumber })} />
             }
           />
-          <DatePickerField label="Date" value={form.date} onChange={(date) => patch({ date })} />
+          <DatePickerField
+            label="Date"
+            value={form.date}
+            expanded={datePicker === "form"}
+            onOpen={() => setDatePicker("form")}
+            onChange={(date) => patch({ date })}
+          />
           <Text style={{ fontWeight: "700", marginBottom: 6 }}>Window</Text>
           <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
             {(["48", "72"] as const).map((opt) => {
@@ -158,7 +161,7 @@ export default function PrebroodChecklistScreen() {
           <YesNoField label="All burnt bulbs replaced" value={form.bulbsReplacedOk} onChange={(bulbsReplacedOk) => patch({ bulbsReplacedOk })} />
           <YesNoField label="Lighting program is present" value={form.lightingProgramOk} onChange={(lightingProgramOk) => patch({ lightingProgramOk })} />
 
-          <SectionTitle title="Air and litter" />
+          <SectionTitle title="Air and Litter" />
           <YesNoField label="Moisture removal chart present" value={form.moistureChartOk} onChange={(moistureChartOk) => patch({ moistureChartOk })} />
           <YesNoField
             label="Litter amendment has been applied"
@@ -279,6 +282,8 @@ export default function PrebroodChecklistScreen() {
               <DatePickerField
                 label={`Service date (${formatServiceShortDate(form.generatorServiceDate || form.date) || "dd MMM yy"})`}
                 value={form.generatorServiceDate || form.date}
+                expanded={datePicker === "generator"}
+                onOpen={() => setDatePicker("generator")}
                 onChange={(generatorServiceDate) => patch({ generatorServiceDate })}
               />
             </View>
@@ -291,6 +296,11 @@ export default function PrebroodChecklistScreen() {
           scrollRef={scrollRef}
         />
 
+        {completeError ? (
+          <Text style={{ color: colors.danger, fontWeight: "700", marginTop: 12 }}>
+            {completeError}
+          </Text>
+        ) : null}
         <Pressable
           disabled={saving}
           onPress={() => {

@@ -1,4 +1,4 @@
-import { Alert, Platform } from "react-native";
+import { Platform } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
@@ -34,11 +34,9 @@ export async function savePdfBytes(bytes: Uint8Array, filename: string) {
     encoding: FileSystem.EncodingType.Base64,
   });
   if (!(await Sharing.isAvailableAsync())) {
-    Alert.alert(
-      "PDF ready",
+    throw new Error(
       "Sharing is not available on this device. The PDF was generated but could not be exported.",
     );
-    return;
   }
   await Sharing.shareAsync(uri, {
     mimeType: "application/pdf",

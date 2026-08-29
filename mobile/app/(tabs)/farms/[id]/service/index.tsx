@@ -1,9 +1,8 @@
 import { Pressable, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getFarmDetail } from "../../../../../src/repos/data";
 import { colors, styles } from "../../../../../src/theme";
-import { Card, PageHeader } from "../../../../../src/components/ui";
+import { BackHeader, Card } from "../../../../../src/components/ui";
 
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -14,19 +13,16 @@ const FORMS = [
   {
     key: "report",
     title: "Service Report",
-    subtitle: "Routine service checklist → visit + PDF",
     path: "/(tabs)/farms/[id]/service/report" as const,
   },
   {
     key: "placement",
     title: "Placement",
-    subtitle: "Placement day checklist → visit + PDF",
     path: "/(tabs)/farms/[id]/service/placement" as const,
   },
   {
     key: "prebrood",
     title: "Prebrood (48–72 hr)",
-    subtitle: "Prebrood checklist → visit + PDF",
     path: "/(tabs)/farms/[id]/service/prebrood" as const,
   },
 ] as const;
@@ -36,18 +32,14 @@ export default function ServiceFarmPickerScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const farmId = paramId(params.id);
 
-  let farmName = "Farm";
-  try {
-    farmName = getFarmDetail(farmId)?.farm.farmName ?? farmName;
-  } catch {
-    // keep placeholder
-  }
-
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={[styles.content, { flex: 1 }]}>
-        <Pressable
-          onPress={() => {
+        <BackHeader
+          backLabel="Farm"
+          title="Service Farm"
+          accessibilityLabel="Back to farm"
+          onBack={() => {
             if (router.canGoBack()) router.back();
             else
               router.replace({
@@ -55,14 +47,8 @@ export default function ServiceFarmPickerScreen() {
                 params: { id: farmId },
               });
           }}
-          style={{ marginBottom: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="Back to farm"
-        >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← {farmName}</Text>
-        </Pressable>
-        <PageHeader title="Service Farm" subtitle="Choose a checklist" />
-        <View style={{ gap: 10 }}>
+        />
+        <View style={{ gap: 6 }}>
           {FORMS.map((form) => (
             <Pressable
               key={form.key}
@@ -76,11 +62,10 @@ export default function ServiceFarmPickerScreen() {
                 opacity: pressed ? 0.9 : 1,
               })}
             >
-              <Card>
+              <Card style={{ marginBottom: 0, paddingVertical: 12, paddingHorizontal: 14 }}>
                 <Text style={{ fontWeight: "800", fontSize: 17, color: colors.text }}>
                   {form.title}
                 </Text>
-                <Text style={[styles.muted, { marginTop: 4 }]}>{form.subtitle}</Text>
               </Card>
             </Pressable>
           ))}

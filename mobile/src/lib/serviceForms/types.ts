@@ -30,11 +30,13 @@ export type ServiceReportForm = {
   // Light
   lightIntensityOk: YesNo;
   lightsOperationalOk: YesNo;
-  lightsOnAt: string; // HH:mm
+  lightsOnAt: string; // HH:mm or "24/7"
   lightsOffAt: string;
   // Air
   tempTargetsOk: YesNo;
+  /** Controller set temp (°F). */
   actualTempTarget: string;
+  /** Temp Curve target for flock age (°F). */
   recommendedTempTarget: string;
   ammoniaOk: YesNo;
   humidityPct: string; // "" or "0"…"100"

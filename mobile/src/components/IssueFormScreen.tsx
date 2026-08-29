@@ -1,10 +1,8 @@
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -27,9 +25,10 @@ import {
   ISSUE_STATUS_OPTIONS,
 } from "../lib/opsLabels";
 import { colors, styles } from "../theme";
-import { Card, PageHeader, PrimaryButton } from "./ui";
+import { BackHeader, Card, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { OptionPicker, SelectField } from "./OptionPicker";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?: string }) {
   const router = useRouter();
@@ -59,9 +58,12 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
   const [assignedTo, setAssignedTo] = useState(initial?.assignedTo ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [correctiveAction, setCorrectiveAction] = useState(initial?.correctiveAction ?? "");
-  const [picker, setPicker] = useState<"house" | "category" | "priority" | "status" | null>(null);
+  const [picker, setPicker] = useState<
+    "date" | "house" | "category" | "priority" | "status" | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (editing && !initial) {
     return (
@@ -114,17 +116,18 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-          </Pressable>
-          <PageHeader
+          <BackHeader
+            backLabel="Farm"
             title={editing ? "Edit issue" : "Report issue"}
-            subtitle={detail?.farm.farmName ?? "Farm"}
+            onBack={() => router.back()}
+            accessibilityLabel="Back to farm"
           />
           <Card>
             <DatePickerField
               label="Date reported"
               value={dateReported}
+              expanded={picker === "date"}
+              onOpen={() => setPicker("date")}
               onChange={setDateReported}
             />
             <SelectField label="House" valueLabel={houseLabel} onPress={() => setPicker("house")} />
@@ -174,19 +177,7 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
                 label="Delete issue"
                 secondary
                 style={{ marginTop: 10 }}
-                onPress={() =>
-                  Alert.alert("Delete issue?", "This cannot be undone.", [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Delete",
-                      style: "destructive",
-                      onPress: () => {
-                        deleteIssue(farmId, issueId);
-                        router.back();
-                      },
-                    },
-                  ])
-                }
+                onPress={() => setDeleteOpen(true)}
               />
             ) : null}
           </Card>
@@ -227,6 +218,20 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
         options={[...ISSUE_STATUS_OPTIONS]}
         onSelect={setStatus}
         onClose={() => setPicker(null)}
+      />
+      <ConfirmDialog
+        visible={deleteOpen}
+        title="Delete issue?"
+        message="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          if (!issueId) return;
+          deleteIssue(farmId, issueId);
+          setDeleteOpen(false);
+          router.back();
+        }}
+        onCancel={() => setDeleteOpen(false)}
       />
     </SafeAreaView>
   );

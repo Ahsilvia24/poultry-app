@@ -506,7 +506,10 @@ export function MortalityEntryForm({
     if (!activeField) return;
     const current = getActiveValue();
     if (current === "") {
-      focusPrevInColumn(activeField.kind, activeField.age);
+      const prevAge = activeField.age - 1;
+      if (rowsRef.current.some((r) => r.age === prevAge)) {
+        focusPrevInColumn(activeField.kind, activeField.age);
+      }
       return;
     }
     setReplaceOnType(false);
@@ -743,6 +746,16 @@ export function MortalityEntryForm({
 
       {activeField ? (
         <div className="fixed inset-x-0 bottom-0 z-50">
+          <button
+            type="button"
+            aria-label="Dismiss keypad"
+            className="fixed inset-0 z-40 bg-transparent"
+            onClick={() => {
+              flushSave();
+              setMortField(null);
+            }}
+          />
+          <div className="relative z-50">
           <NumberKeypad
             onDigit={onDigit}
             onBackspace={onBackspace}
@@ -760,6 +773,7 @@ export function MortalityEntryForm({
                 : undefined
             }
           />
+          </div>
         </div>
       ) : null}
     </div>

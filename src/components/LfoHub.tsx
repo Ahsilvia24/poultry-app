@@ -7,6 +7,7 @@ import { Card } from "@/components/ui";
 import { ConsumptionRateCalculator } from "@/components/ConsumptionRateCalculator";
 import { ManualLfoForm } from "@/components/ManualLfoForm";
 import { SavedLfoRow } from "@/components/SavedLfoRow";
+import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import type { LfoShareInventory } from "@/lib/lfo/share-payload";
 
 export const MANUAL_LFO_TAB_ID = "manual";
@@ -111,18 +112,20 @@ export function LfoHub({
           </p>
         </Card>
       ) : (
-        <div className="grid gap-2">
-          {savedLfos.map((lfo) => (
-            <SavedLfoRow
-              key={lfo.id}
-              id={lfo.id}
-              farmName={lfo.farmName}
-              dateLabel={lfo.dateLabel}
-              houseSummary={lfo.houseSummary}
-              shareInventory={lfo.shareInventory}
-            />
-          ))}
-        </div>
+        <ExclusiveSwipeGroup>
+          <div className="grid gap-2">
+            {savedLfos.map((lfo) => (
+              <SavedLfoRow
+                key={lfo.id}
+                id={lfo.id}
+                farmName={lfo.farmName}
+                dateLabel={lfo.dateLabel}
+                houseSummary={lfo.houseSummary}
+                shareInventory={lfo.shareInventory}
+              />
+            ))}
+          </div>
+        </ExclusiveSwipeGroup>
       )}
     </div>
   );

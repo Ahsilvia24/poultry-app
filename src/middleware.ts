@@ -29,7 +29,6 @@ export default auth((req) => {
     isDevBypassLogin ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/mobile") ||
-    pathname.startsWith("/preview") ||
     pathname.startsWith("/support") ||
     pathname.startsWith("/privacy");
 

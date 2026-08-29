@@ -257,10 +257,8 @@ function buildServiceReportFields(
   setText(ctx, "Text45", data.lightsOffAt, 8);
 
   markYesNo(ctx, "Check Box9", "Check Box10", data.tempTargetsOk);
-  if (data.tempTargetsOk === "no") {
-    setText(ctx, "Text48", data.actualTempTarget, 8);
-    setText(ctx, "Text47", data.recommendedTempTarget, 8);
-  }
+  setText(ctx, "Text48", data.actualTempTarget, 8);
+  setText(ctx, "Text47", data.recommendedTempTarget, 8);
   markYesNo(ctx, "Check Box11", "Check Box12", data.ammoniaOk);
   setText(ctx, " Humidity", data.humidityPct ? `${data.humidityPct}%` : "", 8);
 

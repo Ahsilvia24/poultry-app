@@ -1,10 +1,8 @@
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -22,9 +20,10 @@ import {
 import { todayKey } from "../lib/ids";
 import { FEED_MILL_OPTIONS, FEED_TYPE_OPTIONS } from "../lib/opsLabels";
 import { colors, styles } from "../theme";
-import { Card, PageHeader, PrimaryButton } from "./ui";
+import { BackHeader, Card, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { OptionPicker, SelectField } from "./OptionPicker";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliveryId?: string }) {
   const router = useRouter();
@@ -62,7 +61,8 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
   const [feedMill, setFeedMill] = useState(initial?.feedMill ?? "Heavener");
   const [ticketNumber, setTicketNumber] = useState(initial?.ticketNumber ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [picker, setPicker] = useState<"flock" | "house" | "type" | "mill" | null>(null);
+  const [picker, setPicker] = useState<"date" | "flock" | "house" | "type" | "mill" | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -111,17 +111,18 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-          </Pressable>
-          <PageHeader
+          <BackHeader
+            backLabel="Farm"
             title={editing ? "Edit feed delivery" : "Record feed delivery"}
-            subtitle={detail?.farm.farmName ?? "Farm"}
+            onBack={() => router.back()}
+            accessibilityLabel="Back to farm"
           />
           <Card>
             <DatePickerField
               label="Delivery date"
               value={deliveryDate}
+              expanded={picker === "date"}
+              onOpen={() => setPicker("date")}
               onChange={setDeliveryDate}
             />
             <SelectField
@@ -189,19 +190,7 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
                 label="Delete feed delivery"
                 secondary
                 style={{ marginTop: 10 }}
-                onPress={() =>
-                  Alert.alert("Delete feed delivery?", "This cannot be undone.", [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Delete",
-                      style: "destructive",
-                      onPress: () => {
-                        deleteFeedDelivery(deliveryId);
-                        router.back();
-                      },
-                    },
-                  ])
-                }
+                onPress={() => setDeleteOpen(true)}
               />
             ) : null}
           </Card>
@@ -249,6 +238,20 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
         options={FEED_MILL_OPTIONS.map((v) => ({ value: v, label: v }))}
         onSelect={setFeedMill}
         onClose={() => setPicker(null)}
+      />
+      <ConfirmDialog
+        visible={deleteOpen}
+        title="Delete feed delivery?"
+        message="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          if (!deliveryId) return;
+          deleteFeedDelivery(deliveryId);
+          setDeleteOpen(false);
+          router.back();
+        }}
+        onCancel={() => setDeleteOpen(false)}
       />
     </SafeAreaView>
   );

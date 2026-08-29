@@ -7,6 +7,7 @@ import { deleteLastFeedOrderAction } from "@/app/actions/lfo";
 import { Button, Card } from "@/components/ui";
 import { downloadLfoPdf } from "@/lib/exports/lfo-pdf";
 import type { LfoShareInventory } from "@/lib/lfo/share-payload";
+import { useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
 
 function CopyIcon({ className }: { className?: string }) {
   return (
@@ -120,6 +121,11 @@ export function SavedLfoRow({
   const touchStartX = useRef<number | null>(null);
   const lines = houseSummary ?? [];
   const actionWidth = 88;
+  const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(id);
+
+  useEffect(() => {
+    if (!isOpenOwner) setSwipeX(0);
+  }, [isOpenOwner]);
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -138,8 +144,13 @@ export function SavedLfoRow({
       setSwipeX(0);
       return;
     }
-    if (swipeX <= -48) setSwipeX(-actionWidth);
-    else setSwipeX(0);
+    if (swipeX <= -48) {
+      setSwipeX(-actionWidth);
+      requestOpen();
+    } else {
+      setSwipeX(0);
+      requestClose();
+    }
     touchStartX.current = null;
   }
 

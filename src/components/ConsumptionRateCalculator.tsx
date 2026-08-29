@@ -67,8 +67,8 @@ export function ConsumptionRateCalculator() {
   }, [dailyWaterGallons, headCount, ready]);
 
   const result = useMemo(() => {
-    const water = parsePositive(dailyWaterGallons) ?? Number(DEFAULT_WATER_GAL);
-    const chc = parsePositive(headCount) ?? Number(DEFAULT_HEAD_COUNT);
+    const water = parsePositive(dailyWaterGallons);
+    const chc = parsePositive(headCount);
     if (!Number.isFinite(water) || water <= 0 || !Number.isFinite(chc) || chc <= 0) {
       return null;
     }
@@ -92,7 +92,7 @@ export function ConsumptionRateCalculator() {
             inputMode="numeric"
             compact
             value={dailyWaterGallons}
-            placeholder={DEFAULT_WATER_GAL}
+            placeholder=""
             onFocus={(e) => e.target.select()}
             onChange={(e) => setDailyWaterGallons(e.target.value.replace(/\D/g, ""))}
             className="mt-0.5 placeholder:text-stone-400/70"
@@ -106,7 +106,7 @@ export function ConsumptionRateCalculator() {
             inputMode="numeric"
             compact
             value={headCount}
-            placeholder={DEFAULT_HEAD_COUNT}
+            placeholder=""
             onFocus={(e) => e.target.select()}
             onChange={(e) => setHeadCount(e.target.value.replace(/\D/g, ""))}
             className="mt-0.5 placeholder:text-stone-400/70"

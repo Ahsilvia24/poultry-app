@@ -25,20 +25,22 @@ export default async function DashboardPage() {
           <h1 className="text-xl font-bold tracking-tight text-stone-900 md:text-3xl">
             Dashboard
           </h1>
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              className="text-sm font-semibold text-stone-700 underline"
-            >
-              Sign out
-            </button>
-          </form>
+          <div className="flex items-center gap-3">
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="text-sm font-semibold text-stone-700 underline"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <Card>
-          <p className="text-sm font-semibold text-stone-500">Today&apos;s schedule</p>
+          <p className="text-sm font-semibold text-stone-500">Today&apos;s Schedule</p>
           <FollowUpsDueList items={data.todaysSchedule} showDate />
         </Card>
         <Card>
@@ -50,7 +52,7 @@ export default async function DashboardPage() {
           )}
         </Card>
         <Card>
-          <p className="text-sm font-semibold text-stone-500">Upcoming catches</p>
+          <p className="text-sm font-semibold text-stone-500">Upcoming Catches</p>
           {data.upcomingCatches.length === 0 ? (
             <p className="mt-2 text-sm text-stone-500">None</p>
           ) : (
@@ -84,7 +86,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <h2 className="mt-8 text-xl font-bold">Active farms</h2>
+      <h2 className="mt-8 text-xl font-bold">Active Farms</h2>
       <DashboardFarmCards farms={data.farmCards} />
 
       <h2 className="mt-8 text-xl font-bold">Import</h2>

@@ -25,6 +25,7 @@ import {
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { colors, styles } from "../../src/theme";
 import { weekJumpScrollDelta } from "../../src/lib/weekJumpScroll";
+import { CUSTOM_KEYPAD_HEIGHT } from "../../src/lib/scrollField";
 import {
   Card,
   Chip,
@@ -142,6 +143,25 @@ function MortalityKeypad({
 }) {
   const insets = useSafeAreaInsets();
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
+  const holdDelay = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdTick = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopBackspaceHold() {
+    if (holdDelay.current) clearTimeout(holdDelay.current);
+    if (holdTick.current) clearInterval(holdTick.current);
+    holdDelay.current = null;
+    holdTick.current = null;
+  }
+
+  function startBackspaceHold() {
+    stopBackspaceHold();
+    onBackspace();
+    holdDelay.current = setTimeout(() => {
+      holdTick.current = setInterval(onBackspace, 70);
+    }, 380);
+  }
+
+  useEffect(() => () => stopBackspaceHold(), []);
   return (
     <View
       onLayout={onLayout}
@@ -190,7 +210,11 @@ function MortalityKeypad({
         </View>
       ))}
       <View style={{ flexDirection: "row", gap: 8 }}>
-        <Pressable onPress={onBackspace} style={[keypadKey, keypadActionKey]}>
+        <Pressable
+          onPressIn={startBackspaceHold}
+          onPressOut={stopBackspaceHold}
+          style={[keypadKey, keypadActionKey]}
+        >
           <Text style={keypadKeyText}>⌫</Text>
         </Pressable>
         <Pressable onPress={() => onDigit("0")} style={keypadKey}>
@@ -684,6 +708,15 @@ export default function MortalityScreen() {
     // Exclusive accordion when moving to a field (Enter / jump)
     setExpandedWeeks(new Set([week]));
     pendingScrollAgeRef.current = age;
+    const field = { kind, age };
+    activeFieldRef.current = field;
+    setActiveField(field);
+    const value = getFieldValue(kind, age);
+    if (value && Number(value) !== 0) {
+      setSelection({ start: value.length, end: value.length });
+    } else {
+      setSelection({ start: 0, end: value.length });
+    }
     const key = fieldKey(kind, age);
     const attempt = (triesLeft: number) => {
       requestAnimationFrame(() => {
@@ -698,7 +731,7 @@ export default function MortalityScreen() {
         }
       });
     };
-    attempt(3);
+    attempt(10);
   }
 
   function onFieldFocus(kind: FieldKind, age: number, value: string) {
@@ -716,26 +749,28 @@ export default function MortalityScreen() {
   }
 
   function onDigit(d: string) {
-    if (!activeField) return;
+    const field = activeFieldRef.current ?? activeField;
+    if (!field) return;
     if (!/^[0-9]$/.test(d)) return;
-    const current = getFieldValue(activeField.kind, activeField.age);
+    const current = getFieldValue(field.kind, field.age);
     const start = selection?.start ?? current.length;
     const end = selection?.end ?? current.length;
     const next = `${current.slice(0, start)}${d}${current.slice(end)}`.replace(/[^0-9]/g, "");
-    setFieldValue(activeField.kind, activeField.age, next);
+    setFieldValue(field.kind, field.age, next);
     const caret = Math.min(start + 1, next.length);
     setSelection({ start: caret, end: caret });
   }
 
   function onBackspace() {
-    if (!activeField) return;
-    const current = getFieldValue(activeField.kind, activeField.age);
+    const field = activeFieldRef.current ?? activeField;
+    if (!field) return;
+    const current = getFieldValue(field.kind, field.age);
     const start = selection?.start ?? current.length;
     const end = selection?.end ?? current.length;
     if (current === "") {
-      const prevAge = activeField.age - 1;
+      const prevAge = field.age - 1;
       if (rowsRef.current.some((r) => r.age === prevAge)) {
-        focusField(activeField.kind, prevAge);
+        focusField(field.kind, prevAge);
       }
       return;
     }
@@ -748,13 +783,16 @@ export default function MortalityScreen() {
       next = `${current.slice(0, start - 1)}${current.slice(start)}`;
       caret = start - 1;
     } else {
-      const prevAge = activeField.age - 1;
+      const prevAge = field.age - 1;
       if (rowsRef.current.some((r) => r.age === prevAge)) {
-        focusField(activeField.kind, prevAge);
+        focusField(field.kind, prevAge);
+        return;
       }
-      return;
+      // Age 0 (or no previous row): delete from the end instead of no-op.
+      next = current.slice(0, -1);
+      caret = next.length;
     }
-    setFieldValue(activeField.kind, activeField.age, next);
+    setFieldValue(field.kind, field.age, next);
     setSelection({ start: caret, end: caret });
   }
 
@@ -788,7 +826,10 @@ export default function MortalityScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.screen}
-          contentContainerStyle={[styles.content, { paddingBottom: activeField ? 8 : 40 }]}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: activeField ? CUSTOM_KEYPAD_HEIGHT : 40 },
+          ]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           onScrollBeginDrag={resetKeypad}
@@ -798,7 +839,7 @@ export default function MortalityScreen() {
           scrollEventThrottle={16}
         >
           <Pressable onPress={resetKeypad}>
-          <PageHeader title="Mortality entry" />
+          <PageHeader title="Mortality Entry" />
 
           <ChipScroller>
             {payload?.farms.map((f) => (

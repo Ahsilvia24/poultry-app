@@ -18,11 +18,11 @@ import {
   reactivateFarm,
 } from "../../../src/repos/data";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
+import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
 import { colors, styles } from "../../../src/theme";
-import { Card, Chip, PageHeader } from "../../../src/components/ui";
+import { Card, PageHeader } from "../../../src/components/ui";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 
-type StatusFilter = "active" | "inactive" | "all";
 type ConfirmKind = "inactive" | "active" | "delete";
 
 function dialUrl(phone: string) {
@@ -34,12 +34,12 @@ export default function FarmsScreen() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("farms", scrollRef);
-  const [status, setStatus] = useState<StatusFilter>("active");
   const [data, setData] = useState<ReturnType<typeof listFarms> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   /** Avoid mounting tall swipe Delete until open — on web it stretches short tiles. */
   const [swipingFarmId, setSwipingFarmId] = useState<string | null>(null);
+  const swipe = useExclusiveSwipeables();
   const [confirm, setConfirm] = useState<{
     kind: ConfirmKind;
     farmId: string;
@@ -48,13 +48,13 @@ export default function FarmsScreen() {
   const load = useCallback(async () => {
     try {
       setError(null);
-      setData(listFarms(status));
+      setData(listFarms("all"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [status]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -70,7 +70,6 @@ export default function FarmsScreen() {
       deactivateFarm(farmId);
     } else if (kind === "active") {
       reactivateFarm(farmId);
-      setStatus("active");
     } else {
       deleteFarm(farmId);
     }
@@ -93,36 +92,26 @@ export default function FarmsScreen() {
         style={styles.screen}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+        onScrollBeginDrag={swipe.closeAll}
       >
-        <PageHeader title="Farms" />
-
-        <View style={[styles.row, { marginBottom: 8, alignItems: "center" }]}>
-          <Pressable
-            onPress={() => router.push("/(tabs)/farms/new")}
-            accessibilityRole="button"
-            accessibilityLabel="Add Farm"
-            style={{
-              borderRadius: 10,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              marginRight: 8,
-              marginBottom: 8,
-              flexShrink: 0,
-              backgroundColor: colors.accentDark,
-            }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Add Farm</Text>
-          </Pressable>
-          {(["active", "inactive", "all"] as const).map((key) => (
-            <Chip
-              key={key}
-              label={key[0]!.toUpperCase() + key.slice(1)}
-              active={status === key}
-              tone="neutral"
-              onPress={() => setStatus(key)}
-            />
-          ))}
-        </View>
+        <PageHeader
+          title="Farms"
+          actions={
+            <Pressable
+              onPress={() => router.push("/(tabs)/farms/new")}
+              accessibilityRole="button"
+              accessibilityLabel="Add Farm"
+              style={{
+                borderRadius: 10,
+                paddingVertical: 8,
+                paddingHorizontal: 14,
+                backgroundColor: colors.accentDark,
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Add Farm</Text>
+            </Pressable>
+          }
+        />
 
         {error ? <Text style={{ color: colors.danger }}>{error}</Text> : null}
 
@@ -144,11 +133,15 @@ export default function FarmsScreen() {
           return (
             <Swipeable
               key={farm.id}
+              ref={swipe.setRef(farm.id)}
               overshootRight={false}
               friction={2}
               rightThreshold={40}
               containerStyle={{ marginBottom: 4, overflow: "hidden" }}
-              onSwipeableWillOpen={() => setSwipingFarmId(farm.id)}
+              onSwipeableWillOpen={() => {
+                swipe.closeOthers(farm.id);
+                setSwipingFarmId(farm.id);
+              }}
               onSwipeableClose={() =>
                 setSwipingFarmId((id) => (id === farm.id ? null : id))
               }

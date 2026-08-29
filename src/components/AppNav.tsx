@@ -11,11 +11,11 @@ const tabs = [
   { href: "/mortality", label: "Mortality", icon: "plus" },
   { href: "/lfo", label: "LFO", icon: "feed-bin" },
   { href: "/tools", label: "Tools", icon: "tools" },
+  { href: "/reports", label: "Reports", icon: "reports" },
 ] as const;
 
 const extra = [
   { href: "/settlement", label: "Settlement" },
-  { href: "/reports", label: "Reports" },
   { href: "/settings", label: "Settings" },
 ] as const;
 
@@ -72,6 +72,14 @@ function TabIcon({ name }: { name: (typeof tabs)[number]["icon"] }) {
           <path d="M14.7 6.3 18 9.6l-7.4 7.4H7.3v-3.3z" />
           <path d="M8 6.2a3.2 3.2 0 0 0 4 4" />
           <path d="M6 18.5 9.2 15.3" />
+        </svg>
+      );
+    case "reports":
+      return (
+        <svg {...common}>
+          <rect x="4" y="10" width="4" height="8" rx="0.5" />
+          <rect x="10" y="6" width="4" height="12" rx="0.5" />
+          <rect x="16" y="3" width="4" height="15" rx="0.5" />
         </svg>
       );
   }

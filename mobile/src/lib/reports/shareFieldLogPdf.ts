@@ -1,15 +1,13 @@
-import { Alert } from "react-native";
 import { buildFieldLogPdfBytes } from "./buildFieldLogPdf";
-import type { FieldLogWeek } from "./field-log";
+import { fieldLogHasVisits, type FieldLogWeek } from "./field-log";
 import { savePdfBytes } from "./savePdf";
 
 export async function shareFieldLogPdf(opts: {
   weeks: FieldLogWeek[];
   subtitle: string;
 }) {
-  if (opts.weeks.length === 0) {
-    Alert.alert("Nothing to share", "No field log weeks in this date range.");
-    return;
+  if (!fieldLogHasVisits(opts.weeks)) {
+    throw new Error("No visits logged in this date range.");
   }
 
   const bytes = await buildFieldLogPdfBytes({

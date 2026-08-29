@@ -4,7 +4,7 @@ import { summarizeForDate } from "@/lib/mortality/calculations";
 import { cn, formatNumber } from "@/lib/utils";
 import { Card } from "@/components/ui";
 
-/** Temporary no-auth preview of the multi-flock farm tile. */
+/** Internal farm-tile check. Requires a signed-in session. */
 export default async function TriplePlacePreviewPage() {
   const today = new Date();
   const farm = await prisma.farm.findFirst({
@@ -77,7 +77,7 @@ export default async function TriplePlacePreviewPage() {
     <div className="flex min-h-screen items-center justify-center bg-[#d6d3d1] p-6">
       <div className="w-full max-w-md">
         <p className="mb-3 text-xs font-bold uppercase tracking-wide text-stone-500">
-          Farms list — live preview
+          Farm tile
         </p>
         <Card className="transition hover:border-emerald-400">
           <div className="flex items-start justify-between gap-3">

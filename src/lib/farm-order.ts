@@ -15,6 +15,7 @@ export function parseFarmOrder(value: string | null | undefined): FarmOrder {
 
 type FarmOrderable = {
   farmName: string;
+  isActive?: boolean;
   flockAgesDays?: number[];
   flockAges?: number[];
   flockAgeDays?: number | null;
@@ -45,5 +46,13 @@ export function compareFarmsByOrder(a: FarmOrderable, b: FarmOrderable, order: F
 }
 
 export function sortFarmsByOrder<T extends FarmOrderable>(farms: T[], order: FarmOrder): T[] {
-  return [...farms].sort((a, b) => compareFarmsByOrder(a, b, order));
+  const active: T[] = [];
+  const inactive: T[] = [];
+  for (const farm of farms) {
+    if (farm.isActive === false) inactive.push(farm);
+    else active.push(farm);
+  }
+  active.sort((a, b) => compareFarmsByOrder(a, b, order));
+  inactive.sort((a, b) => compareFarmsByOrder(a, b, order));
+  return [...active, ...inactive];
 }

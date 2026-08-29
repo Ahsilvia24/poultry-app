@@ -305,7 +305,7 @@ export async function createLitterEventAction(formData: FormData) {
     eventType: formData.get("eventType"),
     litterDepth: emptyToNull(formData.get("litterDepth")),
     contractor: emptyToNull(formData.get("contractor")),
-    cost: emptyToNull(formData.get("cost")),
+    cost: null,
     notes: emptyToNull(formData.get("notes")),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid litter event" };
@@ -319,7 +319,7 @@ export async function createLitterEventAction(formData: FormData) {
       eventType: parsed.data.eventType,
       litterDepth: parsed.data.litterDepth,
       contractor: parsed.data.contractor,
-      cost: parsed.data.cost,
+      cost: null,
       notes: parsed.data.notes,
     },
   });
@@ -571,7 +571,7 @@ export async function updateLitterEventAction(eventId: string, formData: FormDat
     eventType: formData.get("eventType"),
     litterDepth: emptyToNull(formData.get("litterDepth")),
     contractor: emptyToNull(formData.get("contractor")),
-    cost: emptyToNull(formData.get("cost")),
+    cost: null,
     notes: emptyToNull(formData.get("notes")),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid litter event" };
@@ -589,7 +589,6 @@ export async function updateLitterEventAction(eventId: string, formData: FormDat
       eventType: parsed.data.eventType,
       litterDepth: parsed.data.litterDepth,
       contractor: parsed.data.contractor,
-      cost: parsed.data.cost,
       notes: parsed.data.notes,
     },
   });

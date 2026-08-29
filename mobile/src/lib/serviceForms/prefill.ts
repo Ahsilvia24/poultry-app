@@ -81,3 +81,16 @@ export function currentFlockWeek(detail: FarmDetailLike): number {
   if (withAge?.ageDays == null) return 1;
   return flockWeekFromAge(Math.max(0, withAge.ageDays));
 }
+
+export function flockAgeDaysFromHouses(
+  houses: Array<{ age?: string; ageDays?: number | null }>,
+): number | null {
+  for (const house of houses) {
+    if (house.ageDays != null && Number.isFinite(house.ageDays)) return house.ageDays;
+    if (house.age != null && house.age.trim() !== "") {
+      const n = Number(house.age);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return null;
+}

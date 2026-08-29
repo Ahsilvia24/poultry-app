@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -19,7 +18,7 @@ import {
   formatLfoOrderClock,
 } from "../lib/lfo/calculate";
 import { todayKey } from "../lib/ids";
-import { scrollFieldAboveKeypad } from "../lib/scrollField";
+import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../lib/scrollField";
 import { useTabScrollToTop } from "../lib/tabScroll";
 import { colors, fonts, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
@@ -138,7 +137,11 @@ export function ManualLfoScreen({
   const [catchDate, setCatchDate] = useState("");
   const [catchTime, setCatchTime] = useState("");
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
+  const [openPicker, setOpenPicker] = useState<
+    "orderDate" | "orderTime" | "catchDate" | "catchTime" | null
+  >(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("lfo", scrollRef);
   const scrollYRef = useRef(0);
@@ -228,9 +231,19 @@ export function ManualLfoScreen({
     setActiveValue(appendKeypadDigit(base, d, allowDecimal));
   }
 
+  function dismissKeypad() {
+    setActiveField(null);
+    setReplaceOnType(false);
+  }
+
   function onBackspace() {
     setReplaceOnType(false);
-    setActiveValue(backspaceKeypadValue(getActiveValue()));
+    const current = getActiveValue();
+    if (!current) {
+      dismissKeypad();
+      return;
+    }
+    setActiveValue(backspaceKeypadValue(current));
   }
 
   function onEnter() {
@@ -240,6 +253,7 @@ export function ManualLfoScreen({
 
   function save() {
     try {
+      setError(null);
       const rate = Number(consumptionRate);
       const { id } = createManualLfo({
         orderDate: orderDate.trim() || todayKey(),
@@ -254,7 +268,7 @@ export function ManualLfoScreen({
       if (onSaved) onSaved(id);
       else router.push(`/(tabs)/lfo/${id}`);
     } catch (e) {
-      Alert.alert("Could not save LFO", e instanceof Error ? e.message : "Try again");
+      setError(e instanceof Error ? e.message : "Could not save LFO. Try again.");
     }
   }
 
@@ -263,14 +277,23 @@ export function ManualLfoScreen({
       <ScrollView
         ref={scrollRef}
         style={styles.screen}
-        contentContainerStyle={[styles.content, { paddingBottom: activeField ? 24 : 40 }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: activeField ? CUSTOM_KEYPAD_HEIGHT : 40 },
+        ]}
         keyboardShouldPersistTaps="handled"
         onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
           scrollYRef.current = e.nativeEvent.contentOffset.y;
         }}
+        onScrollBeginDrag={dismissKeypad}
         scrollEventThrottle={16}
       >
         <PageHeader title="Last Feed Order" />
+        {error ? (
+          <Text style={{ color: colors.danger, fontWeight: "700", marginBottom: 10 }}>
+            {error}
+          </Text>
+        ) : null}
         <LfoFarmTabs farms={farms} selectedId={farmId} onSelect={onSelectFarm} />
 
         <ConsumptionRateCalculator
@@ -296,31 +319,41 @@ export function ManualLfoScreen({
               <DatePickerField
                 label="Order date"
                 value={orderDate}
+                expanded={openPicker === "orderDate"}
                 onChange={(date) => {
                   setActiveField(null);
                   setOrderDate(date);
                 }}
-                onOpen={() => setActiveField(null)}
+                onOpen={() => {
+                  setActiveField(null);
+                  setOpenPicker("orderDate");
+                }}
               />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <TimeScrollPickerField
                 label="Order time"
                 value={orderTime}
+                expanded={openPicker === "orderTime"}
                 onChange={(time) => {
                   setActiveField(null);
                   setOrderTime(time);
                 }}
-                onOpen={() => setActiveField(null)}
+                onOpen={() => {
+                  setActiveField(null);
+                  setOpenPicker("orderTime");
+                }}
               />
             </View>
-            <FieldButton
-              label="Consumption rate"
-              value={consumptionRate}
-              active={activeField === "rate"}
-              onPress={() => focusField("rate")}
-              fieldRef={bindFieldRef("rate")}
-              style={{ flex: 1, minWidth: 0 }}
-            />
           </View>
+          <FieldButton
+            label="Consumption rate"
+            value={consumptionRate}
+            active={activeField === "rate"}
+            onPress={() => focusField("rate")}
+            fieldRef={bindFieldRef("rate")}
+            style={{ marginTop: 8 }}
+          />
           <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
             Consumption rate in lbs/bird/day
           </Text>
@@ -331,7 +364,7 @@ export function ManualLfoScreen({
           ) : null}
         </Card>
 
-        <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>
+        <Text style={styles.sectionTitle}>Bin Inventory & Feed Up</Text>
         <Card>
           <View
             ref={bindFieldRef("head")}
@@ -387,21 +420,29 @@ export function ManualLfoScreen({
             <DatePickerField
               label="Catch date"
               value={catchDate}
+              expanded={openPicker === "catchDate"}
               onChange={(date) => {
                 setActiveField(null);
                 setCatchDate(date);
               }}
-              onOpen={() => setActiveField(null)}
+              onOpen={() => {
+                setActiveField(null);
+                setOpenPicker("catchDate");
+              }}
               style={{ flex: 1, minWidth: 0 }}
             />
             <TimeScrollPickerField
               label="Catch time"
               value={catchTime}
+              expanded={openPicker === "catchTime"}
               onChange={(time) => {
                 setActiveField(null);
                 setCatchTime(time);
               }}
-              onOpen={() => setActiveField(null)}
+              onOpen={() => {
+                setActiveField(null);
+                setOpenPicker("catchTime");
+              }}
               style={{ flex: 1, minWidth: 0 }}
             />
           </View>
@@ -499,13 +540,21 @@ export function ManualLfoScreen({
       </ScrollView>
 
       {activeField ? (
-        <NumberKeypad
-          allowDecimal={activeField === "rate"}
-          allowTripleZero={activeField === "binA" || activeField === "binB" || activeField === "head"}
-          onDigit={onDigit}
-          onBackspace={onBackspace}
-          onEnter={onEnter}
-        />
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss keypad"
+            onPress={dismissKeypad}
+            style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
+          />
+          <NumberKeypad
+            allowDecimal={activeField === "rate"}
+            allowTripleZero={activeField === "binA" || activeField === "binB" || activeField === "head"}
+            onDigit={onDigit}
+            onBackspace={onBackspace}
+            onEnter={onEnter}
+          />
+        </>
       ) : null}
     </View>
   );

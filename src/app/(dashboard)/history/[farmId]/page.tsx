@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { differenceInCalendarDays, format } from "date-fns";
 import { auth } from "@/lib/auth";
@@ -8,7 +7,7 @@ import {
   calcPercentage,
 } from "@/lib/mortality/calculations";
 import { formatNumber, formatPct } from "@/lib/utils";
-import { Button, Card, PageHeader } from "@/components/ui";
+import { BackHeader, Card } from "@/components/ui";
 import { DeleteFlockButton, ReactivateFlockButton } from "@/components/FarmOpsForms";
 import { SettlementForm } from "@/components/SettlementForm";
 
@@ -131,14 +130,11 @@ export default async function FarmHistoryPage({ params }: { params: Params }) {
 
   return (
     <div>
-      <PageHeader
-        title={`History — ${farm.farmName}`}
+      <BackHeader
+        href={`/farms/${farm.id}`}
+        backLabel="Farm"
+        title="History"
         subtitle="Previous flocks and performance comparison"
-        actions={
-          <Link href={`/farms/${farm.id}`}>
-            <Button variant="secondary">Back to farm</Button>
-          </Link>
-        }
       />
 
       {current ? (
@@ -169,7 +165,7 @@ export default async function FarmHistoryPage({ params }: { params: Params }) {
         </Card>
       )}
 
-      <h2 className="text-xl font-bold">Previous 3 flocks</h2>
+      <h2 className="text-xl font-bold">Previous 3 Flocks</h2>
       {previousThree.length === 0 ? (
         <Card className="mt-3">
           <p className="text-stone-600">No completed previous flocks to compare.</p>
@@ -204,7 +200,7 @@ export default async function FarmHistoryPage({ params }: { params: Params }) {
 
       {current && previousThree.length > 0 ? (
         <Card className="mt-6">
-          <h2 className="text-lg font-bold">Comparison notes</h2>
+          <h2 className="text-lg font-bold">Comparison Notes</h2>
           <div className="mt-3 space-y-3 text-sm text-stone-700">
             <p>
               Farm total mortality for current flock is{" "}
@@ -255,7 +251,7 @@ export default async function FarmHistoryPage({ params }: { params: Params }) {
         </Card>
       ) : null}
 
-      <h2 className="mt-8 text-xl font-bold">All flocks</h2>
+      <h2 className="mt-8 text-xl font-bold">All Flocks</h2>
       <div className="mt-3 overflow-x-auto rounded-xl border border-stone-200 bg-white">
         <table className="min-w-full text-left text-sm">
           <thead className="bg-stone-100 text-stone-600">

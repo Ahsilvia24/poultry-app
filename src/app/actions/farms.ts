@@ -6,11 +6,17 @@ import { addDays } from "date-fns";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { farmSchema, createFarmSchema, flockSchema, houseSchema } from "@/lib/validations";
+import { ungroupNumber } from "@/lib/grouped-number";
 import { normalizeHalfHourTime } from "@/lib/time-slots";
 
 function emptyToNull(value: FormDataEntryValue | null) {
   const s = String(value ?? "").trim();
   return s === "" ? null : s;
+}
+
+function groupedFormNumber(value: FormDataEntryValue | null) {
+  if (value == null) return value;
+  return ungroupNumber(String(value));
 }
 
 function formFlag(formData: FormData, name: string) {
@@ -139,7 +145,7 @@ export async function deactivateFarmAction(farmId: string, options?: { skipRedir
   revalidatePath(`/farms/${farmId}`);
   revalidatePath("/");
   if (!options?.skipRedirect) {
-    redirect("/farms?status=inactive");
+    redirect("/farms");
   }
 }
 
@@ -180,9 +186,9 @@ export async function archiveFarmAction(farmId: string) {
 function parseHouseForm(formData: FormData) {
   return houseSchema.safeParse({
     houseNumber: formData.get("houseNumber"),
-    squareFootage: formData.get("squareFootage"),
-    totalFanCFM: emptyToNull(formData.get("totalFanCFM")),
-    totalPowerCFM: emptyToNull(formData.get("totalPowerCFM")),
+    squareFootage: groupedFormNumber(formData.get("squareFootage")),
+    totalFanCFM: emptyToNull(groupedFormNumber(formData.get("totalFanCFM"))),
+    totalPowerCFM: emptyToNull(groupedFormNumber(formData.get("totalPowerCFM"))),
     numberOfFans: emptyToNull(formData.get("numberOfFans")),
     coolingPadSquareFootage: emptyToNull(formData.get("coolingPadSquareFootage")),
     controllerType: emptyToNull(formData.get("controllerType")),
@@ -261,7 +267,7 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
     });
   }
 
-  const placedRaw = emptyToNull(formData.get("placedBirdCount"));
+  const placedRaw = emptyToNull(groupedFormNumber(formData.get("placedBirdCount")));
   const placementRaw = emptyToNull(formData.get("placementDate"));
   const catchRaw = emptyToNull(formData.get("catchDate"));
   const catchTimeSubmitted = formData.get("catchTime") != null;

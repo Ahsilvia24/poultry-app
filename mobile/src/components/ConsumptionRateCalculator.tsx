@@ -14,8 +14,9 @@ export function consumptionRateFromWater(
   waterGal: string,
   headCount: string,
 ): { wc: number; fc: number; rate: number } | null {
-  const water = Number(waterGal || DEFAULT_WATER_GAL);
-  const heads = Number(headCount || DEFAULT_HEAD_COUNT);
+  if (!waterGal.trim() || !headCount.trim()) return null;
+  const water = Number(waterGal);
+  const heads = Number(headCount);
   if (!Number.isFinite(water) || water <= 0 || !Number.isFinite(heads) || heads <= 0) {
     return null;
   }
@@ -110,7 +111,7 @@ export function ConsumptionRateCalculator({
         <CalcFieldButton
           label="Daily water (gal)"
           value={waterGal}
-          placeholder={DEFAULT_WATER_GAL}
+          placeholder=""
           active={waterActive}
           onPress={onFocusWater}
           fieldRef={waterRef}
@@ -118,7 +119,7 @@ export function ConsumptionRateCalculator({
         <CalcFieldButton
           label="Current head count"
           value={headCount}
-          placeholder={DEFAULT_HEAD_COUNT}
+          placeholder=""
           active={headActive}
           onPress={onFocusHead}
           fieldRef={headRef}

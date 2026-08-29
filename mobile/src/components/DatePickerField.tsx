@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal, Platform, Pressable, Text, View } from "react-native";
 import DateTimePicker, {
   type DateTimePickerEvent,
@@ -6,18 +6,29 @@ import DateTimePicker, {
 import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
 import { todayKey } from "../lib/ids";
+import { WebPortalOverlay } from "./WebPortalOverlay";
 
-/** "2026-07-26" → "July 26, 2026" */
+const MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** "2026-09-24" → "24 Sep 26" */
 export function formatDisplayDate(dateKey: string) {
   if (!dateKey) return "Select date";
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
-  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
-  return dt.toLocaleDateString(undefined, {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  return `${d} ${MONTHS_SHORT[m - 1]} ${String(y).slice(-2)}`;
 }
 
 function parseDateKey(dateKey: string): Date {
@@ -90,13 +101,13 @@ function WebMonthCalendar({
   const today = todayKey();
 
   return (
-    <View style={{ paddingHorizontal: 8, paddingTop: 4, paddingBottom: 8 }}>
+    <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12 }}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: 8,
+          marginBottom: 12,
           paddingHorizontal: 4,
         }}
       >
@@ -107,11 +118,11 @@ function WebMonthCalendar({
             setCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
           }
           hitSlop={8}
-          style={{ padding: 8 }}
+          style={{ padding: 10 }}
         >
-          <Ionicons name="chevron-back" size={20} color={colors.text} />
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>{monthLabel}</Text>
+        <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>{monthLabel}</Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Next month"
@@ -119,23 +130,23 @@ function WebMonthCalendar({
             setCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
           }
           hitSlop={8}
-          style={{ padding: 8 }}
+          style={{ padding: 10 }}
         >
-          <Ionicons name="chevron-forward" size={20} color={colors.text} />
+          <Ionicons name="chevron-forward" size={24} color={colors.text} />
         </Pressable>
       </View>
 
-      <View style={{ flexDirection: "row", marginBottom: 4 }}>
+      <View style={{ flexDirection: "row", marginBottom: 6 }}>
         {WEEKDAYS.map((d) => (
           <Text
             key={d}
             style={{
               flex: 1,
               textAlign: "center",
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: "700",
               color: colors.muted,
-              paddingVertical: 4,
+              paddingVertical: 6,
             }}
           >
             {d}
@@ -146,7 +157,7 @@ function WebMonthCalendar({
       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
         {cells.map((cell) => {
           if (cell.day == null || !cell.date) {
-            return <View key={cell.key} style={{ width: "14.2857%", aspectRatio: 1 }} />;
+            return <View key={cell.key} style={{ width: "14.2857%", height: 48 }} />;
           }
           const key = toDateKey(cell.date);
           const isSelected = key === selectedKey;
@@ -162,16 +173,16 @@ function WebMonthCalendar({
               }}
               style={{
                 width: "14.2857%",
-                aspectRatio: 1,
+                height: 48,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <View
                 style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 17,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor: isSelected ? colors.accentDark : "transparent",
@@ -181,7 +192,7 @@ function WebMonthCalendar({
               >
                 <Text
                   style={{
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: isSelected || isToday ? "800" : "600",
                     color: isSelected ? "#fff" : colors.text,
                   }}
@@ -208,6 +219,7 @@ export function DatePickerField({
   onChange,
   presentation = "modal",
   onOpen,
+  expanded,
   style,
   inputStyle,
 }: {
@@ -218,6 +230,8 @@ export function DatePickerField({
   presentation?: "modal" | "inline";
   /** Fired when the calendar is opened (e.g. to dismiss a keypad). */
   onOpen?: () => void;
+  /** When false, collapse an inline calendar (exclusive accordion). */
+  expanded?: boolean;
   style?: object;
   /** Extra styles on the value box (e.g. drop bottom margin when a control sits under it). */
   inputStyle?: object;
@@ -225,6 +239,10 @@ export function DatePickerField({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseDateKey(value));
   const isWeb = Platform.OS === "web";
+
+  useEffect(() => {
+    if (expanded === false) setOpen(false);
+  }, [expanded]);
   // Web can use the modal sheet too (needed when the field sits in a tight row).
   // Pass presentation="inline" to expand under the field (e.g. nested modals).
   const useInline = presentation === "inline" || Platform.OS === "android";
@@ -351,7 +369,45 @@ export function DatePickerField({
         </View>
       ) : null}
 
-      {Platform.OS !== "android" && open && !useInline ? (
+      {isWeb && open && !useInline ? (
+        <WebPortalOverlay onDismiss={() => setOpen(false)}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          >
+            <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+              <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                onChange(draftKey);
+                setOpen(false);
+              }}
+              hitSlop={8}
+            >
+              <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
+            </Pressable>
+          </View>
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+            <Text style={{ fontSize: 13, color: colors.muted, fontWeight: "600" }}>
+              Selected
+            </Text>
+            <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, marginTop: 2 }}>
+              {formatDisplayDate(draftKey)}
+            </Text>
+          </View>
+          {calendarBody}
+        </WebPortalOverlay>
+      ) : null}
+
+      {Platform.OS !== "android" && !isWeb && open && !useInline ? (
         <Modal
           transparent
           animationType="slide"

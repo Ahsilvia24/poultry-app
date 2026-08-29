@@ -42,6 +42,21 @@ export default function LoginPage() {
             Register
           </Link>
         </p>
+        <p className="mt-3 text-center text-sm text-stone-600">
+          <a
+            href="https://ahsilvia24.github.io/poultry-app/support/"
+            className="font-semibold text-emerald-800 underline"
+          >
+            Support
+          </a>
+          {" · "}
+          <a
+            href="https://ahsilvia24.github.io/poultry-app/privacy/"
+            className="font-semibold text-emerald-800 underline"
+          >
+            Privacy Policy
+          </a>
+        </p>
       </div>
     </div>
   );

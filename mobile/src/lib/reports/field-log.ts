@@ -111,6 +111,10 @@ export function buildFieldLogWeeks(
   return weeks;
 }
 
+export function fieldLogHasVisits(weeks: FieldLogWeek[]) {
+  return weeks.some((week) => week.days.some((day) => day.farms.length > 0));
+}
+
 export function fieldLogWeeksToTsv(weeks: FieldLogWeek[]): string {
   const blocks: string[] = [];
   for (const week of weeks) {

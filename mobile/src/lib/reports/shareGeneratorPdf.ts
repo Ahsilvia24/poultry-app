@@ -1,4 +1,3 @@
-import { Alert } from "react-native";
 import { buildGeneratorPdfBytes } from "./buildGeneratorPdf";
 import type { GeneratorReportViewFarm } from "./generator-log";
 import { savePdfBytes } from "./savePdf";
@@ -8,8 +7,7 @@ export async function shareGeneratorReportPdf(opts: {
   subtitle: string;
 }) {
   if (opts.farms.length === 0) {
-    Alert.alert("Nothing to share", "No generator hours logged in this date range.");
-    return;
+    throw new Error("No generator hours logged in this date range.");
   }
 
   const bytes = await buildGeneratorPdfBytes({

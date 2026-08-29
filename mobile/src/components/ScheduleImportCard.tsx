@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Alert, Platform, Pressable, Share, Text, View } from "react-native";
-import Constants from "expo-constants";
+import { Platform, Pressable, Text, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as XLSX from "xlsx";
@@ -10,7 +9,6 @@ import {
   groupPlacementFarms,
   parsePlacementPdfText,
   parsePlacementSheetRows,
-  placementPdfDebugSample,
   placementPdfExtractStats,
   summarizePlacementRows,
   type PlacementRow,
@@ -28,12 +26,6 @@ import {
   importPlacementRows,
   listFarmsForPlacementMatch,
 } from "../repos/data";
-
-const APP_BUILD =
-  Constants.expoConfig?.ios?.buildNumber ||
-  Constants.expoConfig?.android?.versionCode ||
-  Constants.nativeBuildVersion ||
-  "?";
 
 const FILE_ACCEPT =
   ".pdf,.csv,.xls,.xlsx,.txt,application/pdf,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -126,14 +118,6 @@ async function sheetFromPickedFile(
   throw new Error("Use a PDF or spreadsheet (.csv / .xlsx).");
 }
 
-function showAlert(title: string, message: string) {
-  if (Platform.OS === "web") {
-    window.alert(`${title}\n\n${message}`);
-    return;
-  }
-  Alert.alert(title, message);
-}
-
 export function ScheduleImportCard() {
   const [importType, setImportType] = useState<ImportType>("placement");
   const [busy, setBusy] = useState(false);
@@ -144,7 +128,6 @@ export function ScheduleImportCard() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [rename, setRename] = useState<Record<string, boolean>>({});
   const [onlyMyFarms, setOnlyMyFarms] = useState(false);
-  const [lastPdfText, setLastPdfText] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedCount = useMemo(
@@ -157,29 +140,6 @@ export function ScheduleImportCard() {
     setPlacementRows([]);
     setCatchRows([]);
     setOnlyMyFarms(false);
-    setLastPdfText(null);
-  }
-
-  async function shareLastPdfText() {
-    if (!lastPdfText?.trim()) {
-      showAlert("No PDF text", "Upload a placement PDF first.");
-      return;
-    }
-    const payload = lastPdfText.slice(0, 50000);
-    try {
-      await Share.share({
-        message: payload,
-        title: "Placement PDF text",
-      });
-    } catch {
-      try {
-        const Clipboard = await import("expo-clipboard");
-        await Clipboard.setStringAsync(payload);
-        showAlert("Copied", "PDF text copied to clipboard.");
-      } catch {
-        showAlert("Share failed", "Could not share or copy PDF text.");
-      }
-    }
   }
 
   function setPreviewFromGroups(groups: FarmPreview[]) {
@@ -196,7 +156,7 @@ export function ScheduleImportCard() {
     setOnlyMyFarms(false);
   }
 
-  function buildPlacementPreview(parsed: PlacementRow[], statsLine?: string | null) {
+  function buildPlacementPreview(parsed: PlacementRow[]) {
     const existing = listFarmsForPlacementMatch();
     const grouped = groupPlacementFarms(parsed);
     const matches = matchPlacementFarmGroups(grouped, existing);
@@ -220,9 +180,8 @@ export function ScheduleImportCard() {
     setPreviewFromGroups(groups);
     const summary = summarizePlacementRows(parsed);
     const matched = groups.filter((g) => g.isMyFarm).length;
-    const statsSuffix = statsLine ? ` · ${statsLine}` : "";
     setNote(
-      `Build ${APP_BUILD}: parsed ${summary.farmCount} farm${summary.farmCount === 1 ? "" : "s"} from this PDF · ${summary.houseCount} house${summary.houseCount === 1 ? "" : "s"} · ${summary.birdsSent.toLocaleString()} birds. ${matched} already match farms in your app.${statsSuffix}`,
+      `Parsed ${summary.farmCount} farm${summary.farmCount === 1 ? "" : "s"} · ${summary.houseCount} house${summary.houseCount === 1 ? "" : "s"} · ${summary.birdsSent.toLocaleString()} birds. ${matched} already match farms in your app.`,
     );
   }
 
@@ -290,38 +249,20 @@ export function ScheduleImportCard() {
       return;
     }
 
-    setLastPdfText(text);
     const stats = placementPdfExtractStats(text);
-    const statsLine = `${stats.chars} chars · ${stats.projected} PROJECTED · ${stats.anchors}+${stats.complexAnchors} anchors · expect ~${stats.expectedRows}`;
     const parsed = parsePlacementPdfText(text);
     if (parsed.length === 0) {
-      const sample = placementPdfDebugSample(text);
-      try {
-        const Clipboard = await import("expo-clipboard");
-        await Clipboard.setStringAsync(text.slice(0, 20000));
-      } catch {
-        // ignore
-      }
       throw new Error(
-        `Build ${APP_BUILD}: could not read placement rows (${stats.chars} chars, ${stats.projected} PROJECTED, ${stats.expectedRows} expected). Sample: ${sample}`,
+        "Couldn’t read placement rows from this PDF. Try CSV/XLSX or a clearer text PDF.",
       );
     }
-    buildPlacementPreview(parsed, statsLine);
+    buildPlacementPreview(parsed);
     const summary = summarizePlacementRows(parsed);
     if (stats.expectedRows >= 20 && summary.rowCount < stats.expectedRows * 0.5) {
-      try {
-        const Clipboard = await import("expo-clipboard");
-        await Clipboard.setStringAsync(text.slice(0, 20000));
-        setNote(
-          (prev) =>
-            `${prev ?? ""} Partial read ${summary.rowCount}/${stats.expectedRows} — PDF text copied. Tap “Share PDF text” and paste it here.`,
-        );
-      } catch {
-        setNote(
-          (prev) =>
-            `${prev ?? ""} Partial read ${summary.rowCount}/${stats.expectedRows} — tap “Share PDF text” and paste it here.`,
-        );
-      }
+      setNote(
+        (prev) =>
+          `${prev ?? ""} Some rows may be missing — if the list looks short, try CSV/XLSX.`,
+      );
     }
   }
 
@@ -355,7 +296,6 @@ export function ScheduleImportCard() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not read file";
       setNote(msg);
-      showAlert("Upload failed", msg);
     } finally {
       setBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -426,7 +366,6 @@ export function ScheduleImportCard() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not read file";
       setNote(msg);
-      showAlert("Upload failed", msg);
     } finally {
       setBusy(false);
     }
@@ -456,7 +395,7 @@ export function ScheduleImportCard() {
           `Updated ${selectedCount} farm(s): ${result.updatedHouses} house catch dates, ${result.updatedFlocks} flock dates, ${result.updatedNames} renamed.`,
         );
         if (result.warnings.length) {
-          showAlert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+          setNote((prev) => `${prev ?? ""}\n${result.warnings.slice(0, 6).join("\n")}`.trim());
         }
       } else {
         const result = importPlacementRows({
@@ -467,12 +406,12 @@ export function ScheduleImportCard() {
           `Imported ${selectedCount} farm(s): ${result.createdFarms} created, ${result.updatedNames} renamed, ${result.updatedPlacements} house placements updated, ${result.createdFlocks} new flocks, ${result.createdHouses} houses.`,
         );
         if (result.warnings.length) {
-          showAlert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+          setNote((prev) => `${prev ?? ""}\n${result.warnings.slice(0, 6).join("\n")}`.trim());
         }
       }
       clearPreview();
     } catch (e) {
-      showAlert("Import failed", e instanceof Error ? e.message : "Could not import");
+      setNote(e instanceof Error ? e.message : "Could not import");
     } finally {
       setBusy(false);
     }
@@ -551,7 +490,7 @@ export function ScheduleImportCard() {
 
       <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>{helperText}</Text>
 
-      <PrimaryButton label={busy ? "Working…" : "Upload & read"} onPress={onUpload} />
+      <PrimaryButton label={busy ? "Working…" : "Upload & Read"} onPress={onUpload} />
 
       {note ? (
         <Text style={[styles.muted, { marginTop: 10, lineHeight: 18, color: colors.text }]}>
@@ -743,13 +682,6 @@ export function ScheduleImportCard() {
               }
               onPress={onImport}
             />
-            {lastPdfText ? (
-              <Pressable onPress={shareLastPdfText} style={{ marginTop: 10, alignSelf: "center" }}>
-                <Text style={{ fontWeight: "700", color: colors.accentDark }}>
-                  Share PDF text
-                </Text>
-              </Pressable>
-            ) : null}
             <Pressable onPress={clearPreview} style={{ marginTop: 10, alignSelf: "center" }}>
               <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
             </Pressable>

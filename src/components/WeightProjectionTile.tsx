@@ -10,14 +10,14 @@ import {
 } from "@/lib/weight/projections";
 import { Button, Card, Input, Label } from "@/components/ui";
 
-const DAY_2 = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
+const DAY_3 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-/** Compact date for tight projection cells: "Mo 8/3" */
+/** Compact date for projection cells: "Mon 8/3" */
 function formatCatchShort(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
   const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
-  const day = DAY_2[dt.getDay()] ?? "";
+  const day = DAY_3[dt.getDay()] ?? "";
   return `${day} ${m}/${d}`;
 }
 
@@ -145,7 +145,7 @@ export function WeightProjectionTile({
           ageToggle
         ) : (
           <div>
-            <p className="text-base font-semibold text-stone-500">Weight projections</p>
+            <p className="text-base font-semibold text-stone-500">Weight Projections</p>
             {ageToggle ? <div className="mt-2">{ageToggle}</div> : null}
           </div>
         )}
@@ -162,6 +162,7 @@ export function WeightProjectionTile({
               min={0}
               step={1}
               inputMode="numeric"
+              autoFocus
               value={ageDaysText}
               onChange={(e) => onAgeDaysChange?.(e.target.value)}
               placeholder="e.g. 42"

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  KeyboardAvoidingView,
   LayoutChangeEvent,
+  Platform,
   Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   listFarms,
@@ -28,7 +31,8 @@ import {
 } from "../../src/lib/weight/projections";
 import { colors, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
-import { Card, Chip, PageHeader } from "../../src/components/ui";
+import { useKeyboardInset } from "../../src/lib/useKeyboardInset";
+import { Card, Chip } from "../../src/components/ui";
 import { WeightProjectionTile } from "../../src/components/WeightProjectionTile";
 import {
   CoolCellsChart,
@@ -54,6 +58,7 @@ function paramValue(value: string | string[] | undefined) {
 }
 
 export default function ToolsScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams<{
     farmId?: string | string[];
     section?: string | string[];
@@ -63,6 +68,7 @@ export default function ToolsScreen() {
 
   const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("tools", scrollRef);
+  const keyboardInset = useKeyboardInset();
   const sectionY = useRef<Partial<Record<SectionKey, number>>>({});
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
     temp: true,
@@ -210,23 +216,54 @@ export default function ToolsScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
+      <KeyboardAvoidingView
+        style={styles.screen}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       <ScrollView
         ref={scrollRef}
         style={styles.screen}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          Platform.OS !== "ios" && keyboardInset > 0
+            ? { paddingBottom: keyboardInset + 32 }
+            : null,
+        ]}
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="on-drag"
       >
-        <PageHeader title="Tools" />
+        <View
+          style={{
+            marginBottom: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <Text style={[styles.title, { flex: 1 }]}>Tools</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+            onPress={() => router.push("/settings")}
+            hitSlop={10}
+            style={{
+              width: 40,
+              height: 40,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="settings-outline" size={24} color={colors.text} />
+          </Pressable>
+        </View>
 
         <Card style={{ marginBottom: 12 }}>
-          <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text }}>
-            Quick links
-          </Text>
           <View
             style={{
               flexDirection: "row",
               flexWrap: "wrap",
               gap: 8,
-              marginTop: 10,
             }}
           >
             {QUICK_LINKS.map((item) => (
@@ -234,24 +271,24 @@ export default function ToolsScreen() {
                 key={item.key}
                 onPress={() => openAndScroll(item.key)}
                 style={{
-                  width: "48%",
-                  flexGrow: 1,
-                  minHeight: 40,
+                  width: "31.5%",
+                  minHeight: 44,
                   borderRadius: 10,
                   backgroundColor: colors.accentDark,
                   alignItems: "center",
                   justifyContent: "center",
-                  paddingHorizontal: 10,
-                  paddingVertical: 10,
+                  paddingHorizontal: 4,
+                  paddingVertical: 8,
                 }}
               >
                 <Text
                   style={{
                     color: "#fff",
-                    fontSize: 14,
-                    fontWeight: "700",
+                    fontSize: 12,
+                    fontWeight: "800",
                     textAlign: "center",
                   }}
+                  numberOfLines={2}
                 >
                   {item.label}
                 </Text>
@@ -262,7 +299,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("weight", e)} collapsable={false}>
           {open.weight ? (
-            <SectionPanel title="Weight projections" onTop={scrollToTop}>
+            <SectionPanel title="Weight Projections">
               {!useAgeOfBird ? (
                 <>
                   <ChipScroller style={{ marginBottom: 6 }}>
@@ -706,6 +743,7 @@ export default function ToolsScreen() {
         </View>
 
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -758,7 +796,7 @@ function SectionPanel({
 }: {
   title: string;
   subtitle?: string;
-  onTop: () => void;
+  onTop?: () => void;
   children?: React.ReactNode;
 }) {
   return (
@@ -777,9 +815,11 @@ function SectionPanel({
             <Text style={[styles.muted, { marginTop: 4 }]}>{subtitle}</Text>
           ) : null}
         </View>
-        <Pressable onPress={onTop} hitSlop={8}>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Top</Text>
-        </Pressable>
+        {onTop ? (
+          <Pressable onPress={onTop} hitSlop={8}>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Top</Text>
+          </Pressable>
+        ) : null}
       </View>
       {children ? <View style={{ marginTop: 12 }}>{children}</View> : null}
     </Card>

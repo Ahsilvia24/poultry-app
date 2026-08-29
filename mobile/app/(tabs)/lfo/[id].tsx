@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -22,7 +21,7 @@ import {
   formatHouseLfoSummary,
   formatLfoOrderClock,
 } from "../../../src/lib/lfo/calculate";
-import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
+import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, fonts, styles } from "../../../src/theme";
 import { Card, PrimaryButton } from "../../../src/components/ui";
@@ -36,6 +35,8 @@ import {
 } from "../../../src/components/NumberKeypad";
 import { LfoHouseSummaryBlock } from "../../../src/components/LfoHouseSummaryBlock";
 import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
+import { userFacingMessage } from "../../../src/lib/useKeyboardInset";
+import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 
 function formatLbs(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -179,6 +180,8 @@ export default function EditLfoScreen() {
   const [houses, setHouses] = useState<HouseDraft[]>([]);
   const [ready, setReady] = useState(false);
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
+  const [openPicker, setOpenPicker] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [replaceOnType, setReplaceOnType] = useState(false);
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("lfo", scrollRef);
@@ -271,8 +274,8 @@ export default function EditLfoScreen() {
         catchDate: house.catchDate,
         catchTime: house.catchTime,
       })),
-    }).catch(() => {
-      Alert.alert("Could not share PDF", "Try again in a moment.");
+    }).catch((e) => {
+      setMsg(userFacingMessage(e, "Could not share PDF. Try again in a moment."));
     });
   }
 
@@ -327,9 +330,19 @@ export default function EditLfoScreen() {
     setActiveValue(appendKeypadDigit(base, d, allowDecimal));
   }
 
+  function dismissKeypad() {
+    setActiveField(null);
+    setReplaceOnType(false);
+  }
+
   function onBackspace() {
     setReplaceOnType(false);
-    setActiveValue(backspaceKeypadValue(getActiveValue()));
+    const current = getActiveValue();
+    if (!current) {
+      dismissKeypad();
+      return;
+    }
+    setActiveValue(backspaceKeypadValue(current));
   }
 
   function onEnter() {
@@ -391,18 +404,7 @@ export default function EditLfoScreen() {
 
   function confirmDelete() {
     if (!id) return;
-    Alert.alert("Delete LFO", `Delete LFO for ${farmName || "this farm"}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          deleteLfo(id);
-          if (router.canGoBack()) router.back();
-          else router.replace("/(tabs)/lfo");
-        },
-      },
-    ]);
+    setDeleteOpen(true);
   }
 
   return (
@@ -411,11 +413,15 @@ export default function EditLfoScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.screen}
-          contentContainerStyle={[styles.content, { paddingBottom: activeField ? 24 : 40 }]}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: activeField ? CUSTOM_KEYPAD_HEIGHT : 40 },
+          ]}
           keyboardShouldPersistTaps="handled"
           onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
             scrollYRef.current = e.nativeEvent.contentOffset.y;
           }}
+          onScrollBeginDrag={dismissKeypad}
           scrollEventThrottle={16}
         >
           <View
@@ -476,7 +482,13 @@ export default function EditLfoScreen() {
           ) : null}
 
           {msg ? (
-            <Text style={{ color: colors.accentDark, marginBottom: 8, fontWeight: "700" }}>
+            <Text
+              style={{
+                color: msg === "Saved" ? colors.accentDark : colors.danger,
+                marginBottom: 8,
+                fontWeight: "700",
+              }}
+            >
               {msg}
             </Text>
           ) : null}
@@ -505,31 +517,41 @@ export default function EditLfoScreen() {
                     <DatePickerField
                       label="Order date"
                       value={orderDate}
+                      expanded={openPicker === "orderDate"}
                       onChange={(date) => {
                         setActiveField(null);
                         setOrderDate(date);
                       }}
-                      onOpen={() => setActiveField(null)}
+                      onOpen={() => {
+                        setActiveField(null);
+                        setOpenPicker("orderDate");
+                      }}
                     />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <TimeScrollPickerField
                       label="Order time"
                       value={orderTime}
+                      expanded={openPicker === "orderTime"}
                       onChange={(time) => {
                         setActiveField(null);
                         setOrderTime(time);
                       }}
-                      onOpen={() => setActiveField(null)}
+                      onOpen={() => {
+                        setActiveField(null);
+                        setOpenPicker("orderTime");
+                      }}
                     />
                   </View>
-                  <FieldButton
-                    label="Consumption rate"
-                    value={consumptionRate}
-                    active={activeField?.kind === "rate"}
-                    onPress={() => focusField({ kind: "rate" })}
-                    fieldRef={bindFieldRef("rate")}
-                    style={{ flex: 1, minWidth: 0 }}
-                  />
                 </View>
+                <FieldButton
+                  label="Consumption rate"
+                  value={consumptionRate}
+                  active={activeField?.kind === "rate"}
+                  onPress={() => focusField({ kind: "rate" })}
+                  fieldRef={bindFieldRef("rate")}
+                  style={{ marginTop: 8 }}
+                />
                 <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
                   Consumption rate in lbs/bird/day
                 </Text>
@@ -540,7 +562,7 @@ export default function EditLfoScreen() {
                 ) : null}
               </Card>
 
-              <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>
+              <Text style={styles.sectionTitle}>Bin Inventory & Feed Up</Text>
               {houses.length === 0 ? (
                 <Card>
                   <Text style={styles.muted}>
@@ -599,21 +621,29 @@ export default function EditLfoScreen() {
                       <DatePickerField
                         label="Catch date"
                         value={house.catchDate}
+                        expanded={openPicker === `catchDate:${house.houseId}`}
                         onChange={(date) => {
                           setActiveField(null);
                           updateHouse(house.houseId, { catchDate: date });
                         }}
-                        onOpen={() => setActiveField(null)}
+                        onOpen={() => {
+                          setActiveField(null);
+                          setOpenPicker(`catchDate:${house.houseId}`);
+                        }}
                         style={{ flex: 1, minWidth: 0 }}
                       />
                       <TimeScrollPickerField
                         label="Catch time"
                         value={house.catchTime}
+                        expanded={openPicker === `catchTime:${house.houseId}`}
                         onChange={(time) => {
                           setActiveField(null);
                           updateHouse(house.houseId, { catchTime: time });
                         }}
-                        onOpen={() => setActiveField(null)}
+                        onOpen={() => {
+                          setActiveField(null);
+                          setOpenPicker(`catchTime:${house.houseId}`);
+                        }}
                         style={{ flex: 1, minWidth: 0 }}
                       />
                     </View>
@@ -740,15 +770,38 @@ export default function EditLfoScreen() {
         </ScrollView>
 
         {activeField ? (
-          <NumberKeypad
-            allowDecimal={activeField.kind === "rate"}
-            allowTripleZero={activeField.kind === "binA" || activeField.kind === "binB"}
-            onDigit={onDigit}
-            onBackspace={onBackspace}
-            onEnter={onEnter}
-          />
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss keypad"
+              onPress={dismissKeypad}
+              style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
+            />
+            <NumberKeypad
+              allowDecimal={activeField.kind === "rate"}
+              allowTripleZero={activeField.kind === "binA" || activeField.kind === "binB"}
+              onDigit={onDigit}
+              onBackspace={onBackspace}
+              onEnter={onEnter}
+            />
+          </>
         ) : null}
       </View>
+      <ConfirmDialog
+        visible={deleteOpen}
+        title="Delete LFO"
+        message={`Delete LFO for ${farmName || "this farm"}?`}
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          if (!id) return;
+          deleteLfo(id);
+          setDeleteOpen(false);
+          if (router.canGoBack()) router.back();
+          else router.replace("/(tabs)/lfo");
+        }}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </SafeAreaView>
   );
 }

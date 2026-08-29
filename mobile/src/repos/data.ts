@@ -39,6 +39,7 @@ import {
 } from "../lib/catchImport/parse";
 import { getFarmOrder } from "../lib/appSettings";
 import { sortFarmsByOrder } from "../lib/farmOrder";
+import { VISIT_TYPE_LABELS } from "../lib/visits";
 
 type MortRow = {
   mortality_date: string;
@@ -1657,7 +1658,33 @@ export function createLfo(farmId: string, orderDate: string, notes?: string, ord
       [newId("lfoi"), id, h.id, feedUp ? formatLocalDateTime(feedUp) : null],
     );
   }
+  ensureLastFeedOrderVisit(farmId, orderDate);
   return { id };
+}
+
+/** One Last Feed Order visit per farm per order date. Manual LFOs never log a visit. */
+function ensureLastFeedOrderVisit(farmId: string, orderDate: string) {
+  if (!farmId || farmId === MANUAL_LFO_FARM_ID) return;
+  const dateKey = orderDate.trim().slice(0, 10);
+  if (!dateKey) return;
+  try {
+    const existing = getDb().getFirstSync<{ id: string }>(
+      `SELECT id FROM farm_visits
+       WHERE farm_id = ? AND visit_type = 'LAST_FEED_ORDER' AND visit_date = ?
+       LIMIT 1`,
+      [farmId, dateKey],
+    );
+    if (existing) return;
+    createVisit({
+      farmId,
+      visitDate: dateKey,
+      visitType: "LAST_FEED_ORDER",
+      notes: VISIT_TYPE_LABELS.LAST_FEED_ORDER,
+      generalBirdCondition: "Healthy",
+    });
+  } catch {
+    // LFO save still succeeds if visit logging fails.
+  }
 }
 
 function ensureManualLfoFarm() {
@@ -1891,6 +1918,7 @@ export function updateLfo(input: {
       );
     }
   }
+  ensureLastFeedOrderVisit(existing.farm_id, input.orderDate);
   return { success: true };
 }
 
@@ -4272,12 +4300,7 @@ function serviceFormVisitMeta(formKind: ServiceFormKind) {
       : formKind === "placement"
         ? "PLACEMENT"
         : "PREBROOD";
-  const visitLabel =
-    formKind === "service_report"
-      ? "Service report"
-      : formKind === "placement"
-        ? "Placement checklist"
-        : "Prebrood checklist";
+  const visitLabel = VISIT_TYPE_LABELS[visitType] ?? visitType;
   return { visitType, visitLabel };
 }
 

@@ -8,14 +8,14 @@ import {
 import { colors, styles } from "../theme";
 import { Card, PrimaryButton } from "./ui";
 
-const DAY_2 = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
+const DAY_3 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-/** Compact date for tight projection cells: "Mo 8/3" */
+/** Compact date for projection cells: "Mon 8/3" */
 function formatCatchShort(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
   const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
-  const day = DAY_2[dt.getDay()] ?? "";
+  const day = DAY_3[dt.getDay()] ?? "";
   return `${day} ${m}/${d}`;
 }
 
@@ -42,6 +42,7 @@ export function WeightProjectionTile({
   onUseAgeOfBirdChange,
   ageDaysText = "",
   onAgeDaysChange,
+  onInputFocus,
 }: {
   groups: WeightProjectionGroup[];
   growthRateLbsPerDay: number;
@@ -52,6 +53,8 @@ export function WeightProjectionTile({
   onUseAgeOfBirdChange?: (next: boolean) => void;
   ageDaysText?: string;
   onAgeDaysChange?: (next: string) => void;
+  /** Scroll the focused input above the software keyboard. */
+  onInputFocus?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(growthRateLbsPerDay));
@@ -79,6 +82,7 @@ export function WeightProjectionTile({
     setDraft(String(growthRateLbsPerDay || DEFAULT_GROWTH_RATE_LBS_PER_DAY));
     setError(null);
     setEditing(true);
+    onInputFocus?.();
   }
 
   function save() {
@@ -168,7 +172,7 @@ export function WeightProjectionTile({
           ageToggle
         ) : (
           <View style={{ flex: 1, minWidth: 160 }}>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight projections</Text>
+            <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight Projections</Text>
             {ageToggle ? <View style={{ marginTop: 8 }}>{ageToggle}</View> : null}
           </View>
         )}
@@ -184,6 +188,7 @@ export function WeightProjectionTile({
             <TextInput
               value={ageDaysText}
               onChangeText={(t) => onAgeDaysChange?.(t)}
+              autoFocus
               keyboardType="number-pad"
               style={[styles.input, { maxWidth: 140 }]}
               placeholder="e.g. 42"
@@ -278,6 +283,7 @@ export function WeightProjectionTile({
           <TextInput
             value={draft}
             onChangeText={setDraft}
+            onFocus={onInputFocus}
             keyboardType="decimal-pad"
             style={styles.input}
             placeholder={String(DEFAULT_GROWTH_RATE_LBS_PER_DAY)}

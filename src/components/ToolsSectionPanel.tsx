@@ -10,6 +10,7 @@ export function ToolsSectionPanel({
   children,
   footer,
   defaultOpen = true,
+  showTop = true,
 }: {
   hashId: string;
   title: string;
@@ -19,6 +20,7 @@ export function ToolsSectionPanel({
   footer?: React.ReactNode;
   /** When false, section stays hidden until opened via quick link. */
   defaultOpen?: boolean;
+  showTop?: boolean;
 }) {
   const hash = `#${hashId}`;
   const [open, setOpen] = useState(defaultOpen);
@@ -46,13 +48,15 @@ export function ToolsSectionPanel({
             <h2 className="text-base font-bold text-stone-900">{title}</h2>
             {subtitle ? <p className="mt-1 text-sm text-stone-500">{subtitle}</p> : null}
           </div>
-          <button
-            type="button"
-            onClick={snapToTop}
-            className="shrink-0 text-sm font-semibold text-stone-500 hover:text-stone-800"
-          >
-            Top
-          </button>
+          {showTop ? (
+            <button
+              type="button"
+              onClick={snapToTop}
+              className="shrink-0 text-sm font-semibold text-stone-500 hover:text-stone-800"
+            >
+              Top
+            </button>
+          ) : null}
         </div>
         {children ? <div className="mt-4">{children}</div> : null}
       </Card>

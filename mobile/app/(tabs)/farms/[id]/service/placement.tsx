@@ -22,7 +22,7 @@ import {
   CompactHouseValueGrid,
   CompactBackupSettings,
 } from "../../../../../src/components/serviceForms/fields";
-import { Card, PageHeader } from "../../../../../src/components/ui";
+import { BackHeader, Card } from "../../../../../src/components/ui";
 import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
 import { createPlacementDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
@@ -54,7 +54,7 @@ export default function PlacementChecklistScreen() {
   const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "placement");
   const editVisitId = useEditVisitIdParam();
-  const { complete, saving, editing } = useCompleteServiceForm(farmId, {
+  const { complete, saving, editing, error: completeError } = useCompleteServiceForm(farmId, {
     serviceFormId: existing?.id ?? null,
     existingVisitId: existing ? null : editVisitId,
   });
@@ -77,8 +77,7 @@ export default function PlacementChecklistScreen() {
     }
     return draft;
   });
-  const [ventDoorOpen, setVentDoorOpen] = useState(false);
-  const [weekOpen, setWeekOpen] = useState(false);
+  const [optionPicker, setOptionPicker] = useState<"date" | "ventDoor" | "week" | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
 
   function patch(p: Partial<PlacementForm>) {
@@ -120,8 +119,11 @@ export default function PlacementChecklistScreen() {
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
       >
-        <Pressable
-          onPress={() => {
+        <BackHeader
+          backLabel="Checklists"
+          title={editing ? "Edit Placement Checklist" : "Placement Checklist"}
+          accessibilityLabel="Back to checklists"
+          onBack={() => {
             if (router.canGoBack()) router.back();
             else
               router.replace({
@@ -129,13 +131,6 @@ export default function PlacementChecklistScreen() {
                 params: { id: farmId },
               });
           }}
-          style={{ marginBottom: 8 }}
-        >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Checklists</Text>
-        </Pressable>
-        <PageHeader
-          title={editing ? "Edit Placement Checklist" : "Placement Checklist"}
-          subtitle={farmName}
         />
 
         <Card>
@@ -156,7 +151,13 @@ export default function PlacementChecklistScreen() {
               />
             }
           />
-          <DatePickerField label="Date" value={form.date} onChange={(date) => patch({ date })} />
+          <DatePickerField
+            label="Date"
+            value={form.date}
+            expanded={optionPicker === "date"}
+            onOpen={() => setOptionPicker("date")}
+            onChange={(date) => patch({ date })}
+          />
           <TextField
             label="Service tech"
             value={form.serviceTech}
@@ -177,7 +178,7 @@ export default function PlacementChecklistScreen() {
           <YesNoField label="Call pan lights operational" value={form.callPanLightsOk} onChange={(callPanLightsOk) => patch({ callPanLightsOk })} />
           <YesNoField label="Brood lights are ON" value={form.broodLightsOnOk} onChange={(broodLightsOnOk) => patch({ broodLightsOnOk })} />
 
-          <SectionTitle title="Air and litter" />
+          <SectionTitle title="Air and Litter" />
           <YesNoField label="Temperature set to Day 1 target" value={form.tempDay1Ok} onChange={(tempDay1Ok) => patch({ tempDay1Ok })} />
           <YesNoField
             label="Litter amendment has been applied"
@@ -218,7 +219,7 @@ export default function PlacementChecklistScreen() {
           <SelectField
             label="Vent door type"
             valueLabel={VENT_DOOR_OPTIONS.find((o) => o.value === form.ventDoorType)?.label ?? "Select"}
-            onPress={() => setVentDoorOpen(true)}
+            onPress={() => setOptionPicker("ventDoor")}
           />
           <PairFields
             left={
@@ -253,7 +254,7 @@ export default function PlacementChecklistScreen() {
           <SelectField
             label="Recommended min vent week"
             valueLabel={`Week ${form.minVentRecommendedWeek}`}
-            onPress={() => setWeekOpen(true)}
+            onPress={() => setOptionPicker("week")}
           />
           <Text style={[styles.muted, { marginBottom: 8 }]}>
             Recommended:{" "}
@@ -263,7 +264,7 @@ export default function PlacementChecklistScreen() {
           </Text>
         </Card>
 
-        <SectionTitle title="Litter temps" />
+        <SectionTitle title="Litter Temps" />
         <Card style={{ marginBottom: 10 }}>
           <Text style={[styles.muted, { marginBottom: 10, lineHeight: 18 }]}>
             Optional — leave blank for houses not being placed.
@@ -337,6 +338,11 @@ export default function PlacementChecklistScreen() {
           scrollRef={scrollRef}
         />
 
+        {completeError ? (
+          <Text style={{ color: colors.danger, fontWeight: "700", marginTop: 12 }}>
+            {completeError}
+          </Text>
+        ) : null}
         <Pressable
           disabled={saving}
           onPress={() => complete({ form })}
@@ -361,22 +367,22 @@ export default function PlacementChecklistScreen() {
       </KeyboardAvoidingView>
 
       <OptionPicker
-        open={ventDoorOpen}
+        open={optionPicker === "ventDoor"}
         title="Vent door type"
         options={VENT_DOOR_OPTIONS}
         value={form.ventDoorType}
         onSelect={(ventDoorType) =>
           patch({ ventDoorType: ventDoorType as PlacementForm["ventDoorType"] })
         }
-        onClose={() => setVentDoorOpen(false)}
+        onClose={() => setOptionPicker(null)}
       />
       <OptionPicker
-        open={weekOpen}
+        open={optionPicker === "week"}
         title="Recommended min vent week"
         options={WEEK_OPTIONS}
         value={String(form.minVentRecommendedWeek)}
         onSelect={(v) => applyRecommendedWeek(Number(v))}
-        onClose={() => setWeekOpen(false)}
+        onClose={() => setOptionPicker(null)}
       />
     </SafeAreaView>
   );

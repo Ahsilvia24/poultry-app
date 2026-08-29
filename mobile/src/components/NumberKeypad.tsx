@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, fonts } from "../theme";
@@ -34,6 +35,25 @@ export function NumberKeypad({
 }) {
   const insets = useSafeAreaInsets();
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
+  const holdDelay = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdTick = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopBackspaceHold() {
+    if (holdDelay.current) clearTimeout(holdDelay.current);
+    if (holdTick.current) clearInterval(holdTick.current);
+    holdDelay.current = null;
+    holdTick.current = null;
+  }
+
+  function startBackspaceHold() {
+    stopBackspaceHold();
+    onBackspace();
+    holdDelay.current = setTimeout(() => {
+      holdTick.current = setInterval(onBackspace, 70);
+    }, 380);
+  }
+
+  useEffect(() => () => stopBackspaceHold(), []);
 
   return (
     <View
@@ -58,7 +78,8 @@ export function NumberKeypad({
       ))}
       <View style={{ flexDirection: "row", gap: 8 }}>
         <Pressable
-          onPress={onBackspace}
+          onPressIn={startBackspaceHold}
+          onPressOut={stopBackspaceHold}
           style={[keyStyle, { backgroundColor: "#d6d3d1" }]}
         >
           <Text style={keyText}>⌫</Text>

@@ -44,8 +44,7 @@ export default function SupportPage() {
         </div>
 
         <p className="mt-10 text-sm text-stone-500">
-          For App Store review questions about demo access or account setup, email the address
-          above and mention Apple App Review.
+          For help with PoultryTech, email the address above.
         </p>
         <p className="mt-4 text-sm text-stone-500">
           <Link

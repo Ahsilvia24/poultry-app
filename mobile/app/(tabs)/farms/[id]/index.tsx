@@ -56,6 +56,7 @@ import {
   type GeneratorHours,
 } from "../../../../src/lib/generator";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
+import { formatGroupedInput, parseGroupedNumber, ungroupNumber } from "../../../../src/lib/grouped-number";
 import { colors, styles } from "../../../../src/theme";
 import {
   Card,
@@ -71,6 +72,7 @@ import { TimeScrollPickerField } from "../../../../src/components/TimeScrollPick
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
 import { compactCatchTimeLabel } from "../../../../src/lib/time-slots";
 import { ConfirmDialog } from "../../../../src/components/ConfirmDialog";
+import { useExclusiveSwipeables } from "../../../../src/lib/useExclusiveSwipeables";
 
 /** "2026-07-25" → "07-25-2026" */
 function formatUsDate(dateKey: string) {
@@ -79,7 +81,6 @@ function formatUsDate(dateKey: string) {
   return `${m}-${d}-${y}`;
 }
 
-const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MONTHS_SHORT = [
   "Jan",
   "Feb",
@@ -95,12 +96,20 @@ const MONTHS_SHORT = [
   "Dec",
 ] as const;
 
-/** e.g. Wed 29 Jul 26 */
+/** e.g. 2 Sep 26 */
 function formatHouseDetailDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
-  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
-  return `${WEEKDAYS_SHORT[dt.getDay()]} ${d} ${MONTHS_SHORT[m - 1]} ${String(y).slice(-2)}`;
+  return `${d} ${MONTHS_SHORT[m - 1]} ${String(y).slice(-2)}`;
+}
+
+function daysBetweenKeys(fromKey: string, toKey: string): number | null {
+  const [y1, m1, d1] = fromKey.split("-").map(Number);
+  const [y2, m2, d2] = toKey.split("-").map(Number);
+  if (!y1 || !m1 || !d1 || !y2 || !m2 || !d2) return null;
+  const a = new Date(y1, m1 - 1, d1, 12, 0, 0, 0).getTime();
+  const b = new Date(y2, m2 - 1, d2, 12, 0, 0, 0).getTime();
+  return Math.round((b - a) / 86400000);
 }
 
 function formatShortDate(dateKey: string) {
@@ -114,7 +123,10 @@ function formatShortDate(dateKey: string) {
 
 function RecordLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={{ marginTop: 4, marginBottom: 16 }}>
+    <Pressable
+      onPress={onPress}
+      style={{ marginTop: 4, marginBottom: 16, alignSelf: "flex-end" }}
+    >
       <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>{label}</Text>
     </Pressable>
   );
@@ -211,8 +223,6 @@ type HouseEditDraft = {
   totalFanCFM: string;
   totalPowerCFM: string;
   placedBirdCount: string;
-  /** Shown as placeholder while the field stays empty for easy retype. */
-  placedBirdCountPlaceholder: string;
   placementDate: string;
   catchDate: string;
   catchTime: string;
@@ -249,6 +259,7 @@ function NativeNumInput({
   value,
   onChangeText,
   decimal,
+  grouped,
   placeholder,
   style,
   autoFocus,
@@ -260,6 +271,7 @@ function NativeNumInput({
   value: string;
   onChangeText: (v: string) => void;
   decimal?: boolean;
+  grouped?: boolean;
   placeholder?: string;
   style?: object;
   autoFocus?: boolean;
@@ -278,8 +290,10 @@ function NativeNumInput({
           { fontSize: 20, fontWeight: "700", color: colors.text },
           onPropagateToggle ? { marginBottom: 0 } : null,
         ]}
-        value={value}
-        onChangeText={onChangeText}
+        value={grouped ? formatGroupedInput(value, !!decimal) : value}
+        onChangeText={(text) =>
+          onChangeText(grouped ? formatGroupedInput(text, !!decimal) : text)
+        }
         keyboardType={decimal ? "decimal-pad" : "number-pad"}
         placeholder={placeholder}
         placeholderTextColor={colors.muted}
@@ -348,14 +362,22 @@ function GeneratorSwipeDeleteRow({
   deleteLabel,
   onDelete,
   children,
+  isOpen,
+  onOpen,
 }: {
   deleteLabel: string;
   onDelete: () => void;
   children: ReactNode;
+  isOpen: boolean;
+  onOpen: () => void;
 }) {
   const [x, setX] = useState(0);
   const startX = useRef<number | null>(null);
   const startY = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) setX(0);
+  }, [isOpen]);
 
   function begin(pageX: number, pageY: number) {
     startX.current = pageX;
@@ -372,7 +394,11 @@ function GeneratorSwipeDeleteRow({
       setX(0);
       return;
     }
-    setX((cur) => (cur <= -36 ? -GENERATOR_SWIPE_DELETE_W : 0));
+    setX((cur) => {
+      const next = cur <= -36 ? -GENERATOR_SWIPE_DELETE_W : 0;
+      if (next < 0) onOpen();
+      return next;
+    });
     startX.current = null;
     startY.current = null;
   }
@@ -446,6 +472,7 @@ function GeneratorHoursChart({
   onDelete?: (id: string) => void;
 }) {
   const showActions = onEdit != null && onDelete != null;
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const cell = {
     fontSize: 16,
     lineHeight: 22,
@@ -502,6 +529,8 @@ function GeneratorHoursChart({
                   <GeneratorSwipeDeleteRow
                     deleteLabel="Delete generator log"
                     onDelete={() => onDelete(row.id)}
+                    isOpen={openSwipeId === row.id}
+                    onOpen={() => setOpenSwipeId(row.id)}
                   >
                     {cells}
                   </GeneratorSwipeDeleteRow>
@@ -543,6 +572,9 @@ export default function FarmDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingHouse, setEditingHouse] = useState<HouseEditDraft | null>(null);
+  const [housePicker, setHousePicker] = useState<"placement" | "catch" | "catchTime" | null>(
+    null,
+  );
   const [houseEditError, setHouseEditError] = useState<string | null>(null);
   const [houseSaving, setHouseSaving] = useState(false);
   const [tempHouse, setTempHouse] = useState<{
@@ -574,6 +606,16 @@ export default function FarmDetailScreen() {
   const [generatorError, setGeneratorError] = useState<string | null>(null);
   const [generatorEditingId, setGeneratorEditingId] = useState<string | null>(null);
   const [generatorEditingGen, setGeneratorEditingGen] = useState<GenHourKey | null>(null);
+  const [opsConfirm, setOpsConfirm] = useState<
+    | { kind: "house"; houseId: string; houseNumber: number }
+    | { kind: "visit"; visitId: string; visitDate: string }
+    | { kind: "issue"; issueId: string }
+    | { kind: "litter"; eventId: string }
+    | { kind: "feed"; deliveryId: string }
+    | { kind: "generator"; logId: string; hourKey: GenHourKey; label: string }
+    | null
+  >(null);
+  const [opsError, setOpsError] = useState<string | null>(null);
   const [completeConfirm, setCompleteConfirm] = useState<{
     flockId: string;
     flockNumber: string;
@@ -589,6 +631,7 @@ export default function FarmDetailScreen() {
   });
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("farms", scrollRef);
+  const houseSwipe = useExclusiveSwipeables();
   const sectionY = useRef<Record<string, number>>({});
 
   function scrollToSection(key: string) {
@@ -882,6 +925,7 @@ export default function FarmDetailScreen() {
 
   function openHouseEditor(h: HouseRow) {
     setHouseEditError(null);
+    setHousePicker(null);
     // Only prefill dates the house already has — don't inherit an old flock
     // date. Empty fields open the calendar on today via DatePickerField.
     const placementDate = h.placementDate ?? "";
@@ -892,11 +936,8 @@ export default function FarmDetailScreen() {
       squareFootage: String(h.squareFootage ?? 29700),
       totalFanCFM: h.totalFanCFM != null ? String(h.totalFanCFM) : "",
       totalPowerCFM: h.totalPowerCFM != null ? String(h.totalPowerCFM) : "",
-      // Prefill 29700 when unset. If a count already exists, leave blank so the
-      // tech can type a new number without deleting first (placeholder shows it).
-      placedBirdCount: h.placedBirdCount != null ? "" : "29700",
-      placedBirdCountPlaceholder:
-        h.placedBirdCount != null ? String(h.placedBirdCount) : "29700",
+      // Only show a count that was already saved — never ghost-fill 23000/29700.
+      placedBirdCount: h.placedBirdCount != null ? String(h.placedBirdCount) : "",
       placementDate,
       catchDate,
       catchTime: h.catchTime ?? "",
@@ -915,6 +956,7 @@ export default function FarmDetailScreen() {
   function closeHouseEditor() {
     if (houseSaving) return;
     setEditingHouse(null);
+    setHousePicker(null);
     setHouseEditError(null);
   }
 
@@ -1004,43 +1046,28 @@ export default function FarmDetailScreen() {
   }
 
   function confirmDeleteHouse(h: HouseRow) {
-    Alert.alert(
-      `Delete house ${h.houseNumber}?`,
-      "This removes the house from the farm. It will no longer appear in your lists.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            try {
-              deleteHouse(farm.id, h.id);
-              load();
-            } catch (e) {
-              Alert.alert("Error", e instanceof Error ? e.message : "Could not delete house");
-            }
-          },
-        },
-      ],
-    );
+    setOpsConfirm({ kind: "house", houseId: h.id, houseNumber: h.houseNumber });
   }
 
   function confirmDeleteVisit(visitId: string, visitDate: string) {
-    Alert.alert("Delete visit?", `${visitDate} will be removed.`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          try {
-            deleteVisit(farm.id, visitId);
-            load();
-          } catch (e) {
-            Alert.alert("Error", e instanceof Error ? e.message : "Could not delete visit");
-          }
-        },
-      },
-    ]);
+    setOpsConfirm({ kind: "visit", visitId, visitDate });
+  }
+
+  function runOpsConfirm() {
+    if (!opsConfirm) return;
+    try {
+      if (opsConfirm.kind === "house") deleteHouse(farm.id, opsConfirm.houseId);
+      else if (opsConfirm.kind === "visit") deleteVisit(farm.id, opsConfirm.visitId);
+      else if (opsConfirm.kind === "issue") deleteIssue(farm.id, opsConfirm.issueId);
+      else if (opsConfirm.kind === "litter") deleteLitterEvent(farm.id, opsConfirm.eventId);
+      else if (opsConfirm.kind === "feed") deleteFeedDelivery(opsConfirm.deliveryId);
+      else deleteGeneratorLog(farm.id, opsConfirm.logId, opsConfirm.hourKey);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    } finally {
+      setOpsConfirm(null);
+    }
   }
 
   function saveHouseEdit() {
@@ -1048,16 +1075,20 @@ export default function FarmDetailScreen() {
     setHouseSaving(true);
     setHouseEditError(null);
     try {
-      const sq = Number(editingHouse.squareFootage);
+      const sq = parseGroupedNumber(editingHouse.squareFootage);
       const cfm =
-        editingHouse.totalFanCFM.trim() === "" ? null : Number(editingHouse.totalFanCFM);
+        editingHouse.totalFanCFM.trim() === ""
+          ? null
+          : parseGroupedNumber(editingHouse.totalFanCFM);
       const powerCfm =
-        editingHouse.totalPowerCFM.trim() === "" ? null : Number(editingHouse.totalPowerCFM);
+        editingHouse.totalPowerCFM.trim() === ""
+          ? null
+          : parseGroupedNumber(editingHouse.totalPowerCFM);
       const existing = data?.houses.find((h) => h.id === editingHouse.id);
       const fans = existing?.numberOfFans ?? null;
-      const placedRaw = editingHouse.placedBirdCount.trim();
+      const placedRaw = ungroupNumber(editingHouse.placedBirdCount).trim();
       const placed =
-        placedRaw === "" ? null : Math.floor(Number(placedRaw));
+        placedRaw === "" ? null : Math.floor(parseGroupedNumber(placedRaw));
       if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total CFM (Min Vent) is invalid");
       if (powerCfm != null && !Number.isFinite(powerCfm)) {
         throw new Error("Total CFM (Power) is invalid");
@@ -1159,6 +1190,7 @@ export default function FarmDetailScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={houseSwipe.closeAll}
       >
         <View
           style={{
@@ -1230,7 +1262,6 @@ export default function FarmDetailScreen() {
 
         <View style={{ marginBottom: 16 }}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 14, marginBottom: 8 }}>Quick links</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {(
                 [
@@ -1245,7 +1276,7 @@ export default function FarmDetailScreen() {
                   },
                   {
                     key: "generators",
-                    label: "Generator Log",
+                    label: "Generator",
                     onPress: () => scrollToSection("generators"),
                   },
                   { key: "visits", label: "Visits", onPress: () => scrollToSection("visits") },
@@ -1265,11 +1296,20 @@ export default function FarmDetailScreen() {
                     ? [
                         {
                           key: "complete-flock",
-                          label: "Complete Flock",
+                          label: "End Flock",
                           onPress: promptCompleteFlock,
                         },
                       ]
                     : []),
+                  {
+                    key: "history",
+                    label: "History",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/history",
+                        params: { id: farm.id },
+                      }),
+                  },
                 ] as Array<{ key: string; label: string; onPress: () => void }>
               ).map((link) => (
                 <Pressable
@@ -1313,9 +1353,11 @@ export default function FarmDetailScreen() {
               style={{ marginBottom: 12 }}
             >
             <Swipeable
+              ref={houseSwipe.setRef(h.id)}
               overshootRight={false}
               friction={2}
               rightThreshold={40}
+              onSwipeableWillOpen={() => houseSwipe.closeOthers(h.id)}
               renderRightActions={() => (
                 <Pressable
                   accessibilityLabel={`Delete house ${h.houseNumber}`}
@@ -1553,7 +1595,7 @@ export default function FarmDetailScreen() {
                     {detailsOpen ? "▾" : "▸"}
                   </Text>
                   <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
-                    {detailsOpen ? "Hide details" : "Show details"}
+                    {detailsOpen ? "Hide Details" : "Show Details"}
                   </Text>
                 </Pressable>
 
@@ -1565,11 +1607,31 @@ export default function FarmDetailScreen() {
                   >
                     <View style={{ gap: 10 }}>
                       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                        <Metric
-                          columns={3}
-                          label="Placed"
-                          value={formatNumber(h.placedBirdCount)}
-                        />
+                        <View style={{ width: "33.333%", paddingRight: 8, marginBottom: 10 }}>
+                          <Text style={{ fontSize: 13, color: colors.muted }}>Placed</Text>
+                          <Text
+                            style={{
+                              fontSize: 15,
+                              fontWeight: "700",
+                              color: colors.text,
+                              marginTop: 2,
+                            }}
+                          >
+                            {formatNumber(h.placedBirdCount)}
+                          </Text>
+                          {h.placementDate ? (
+                            <Text
+                              style={{
+                                fontSize: 15,
+                                fontWeight: "700",
+                                color: colors.text,
+                                marginTop: 2,
+                              }}
+                            >
+                              {formatHouseDetailDate(h.placementDate)}
+                            </Text>
+                          ) : null}
+                        </View>
                         <Metric
                           columns={3}
                           label="Remaining"
@@ -1584,23 +1646,23 @@ export default function FarmDetailScreen() {
                       </View>
                       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                         <View style={{ width: "33.333%", paddingRight: 8, marginBottom: 10 }}>
-                          <Text style={{ fontSize: 13, color: colors.muted }}>Placed/Catch</Text>
-                          {h.placementDate ? (
+                          <Text style={{ fontSize: 13, color: colors.muted }}>Catch</Text>
+                          {h.catchDate ? (
                             <Text
                               style={{
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: "700",
                                 color: colors.text,
                                 marginTop: 2,
-                                lineHeight: 18,
+                                lineHeight: 20,
                               }}
                             >
-                              {formatHouseDetailDate(h.placementDate)}
+                              {formatHouseDetailDate(h.catchDate)}
                             </Text>
                           ) : (
                             <Text
                               style={{
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: "700",
                                 color: colors.text,
                                 marginTop: 2,
@@ -1609,39 +1671,42 @@ export default function FarmDetailScreen() {
                               —
                             </Text>
                           )}
-                          {h.catchDate ? (
-                            <View style={{ marginTop: 2 }}>
-                              <Text
-                                style={{
-                                  fontSize: 13,
-                                  fontWeight: "700",
-                                  color: colors.text,
-                                  lineHeight: 18,
-                                }}
-                              >
-                                {formatHouseDetailDate(h.catchDate)}
-                              </Text>
-                              {h.catchTime ? (
-                                <Text
-                                  style={{
-                                    fontSize: 13,
-                                    fontWeight: "700",
-                                    color: colors.text,
-                                    lineHeight: 18,
-                                  }}
-                                >
-                                  {compactCatchTimeLabel(h.catchTime)}
-                                </Text>
-                              ) : null}
-                            </View>
+                          {h.catchTime ? (
+                            <Text
+                              style={{
+                                fontSize: 15,
+                                fontWeight: "700",
+                                color: colors.text,
+                                lineHeight: 20,
+                              }}
+                            >
+                              {compactCatchTimeLabel(h.catchTime)}
+                            </Text>
                           ) : null}
+                          {h.placementDate && h.catchDate
+                            ? (() => {
+                                const age = daysBetweenKeys(h.placementDate, h.catchDate);
+                                return age != null ? (
+                                  <Text
+                                    style={{
+                                      fontSize: 15,
+                                      fontWeight: "700",
+                                      color: colors.text,
+                                      lineHeight: 20,
+                                    }}
+                                  >
+                                    {age} days
+                                  </Text>
+                                ) : null;
+                              })()
+                            : null}
                         </View>
                         <Metric
                           columns={3}
                           label="Mortality"
                           value={
                             h.placedBirdCount != null
-                              ? `${formatNumber(h.cumulativeMortality)} (${formatPct(h.cumulativeMortalityPct)})`
+                              ? `${formatNumber(h.cumulativeMortality)}\n(${formatPct(h.cumulativeMortalityPct)})`
                               : formatNumber(h.cumulativeMortality)
                           }
                         />
@@ -1652,7 +1717,7 @@ export default function FarmDetailScreen() {
                             h.projectedMortality != null &&
                             h.placedBirdCount != null &&
                             h.placedBirdCount > 0
-                              ? `${formatNumber(h.projectedMortality)} (${formatPct(
+                              ? `${formatNumber(h.projectedMortality)}\n(${formatPct(
                                   (h.projectedMortality / h.placedBirdCount) * 100,
                                 )})`
                               : formatNumber(h.projectedMortality)
@@ -1671,16 +1736,20 @@ export default function FarmDetailScreen() {
         {data.houses.length === 0 ? (
           <Text style={[styles.muted, { marginBottom: 4 }]}>No houses yet.</Text>
         ) : null}
-        <Pressable onPress={openAddHouse} hitSlop={8} style={{ marginBottom: 8, paddingVertical: 4 }}>
+        <Pressable
+          onPress={openAddHouse}
+          hitSlop={8}
+          style={{ marginBottom: 8, paddingVertical: 4, alignSelf: "flex-end" }}
+        >
           <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
-            Add house
+            Add House
           </Text>
         </Pressable>
 
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
           <Card>
-            <SectionHeading title="Recent visits" onTop={scrollPageToTop} />
+            <SectionHeading title="Recent Visits" onTop={scrollPageToTop} />
             {data.visits.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -1742,7 +1811,7 @@ export default function FarmDetailScreen() {
         <View onLayout={onSectionLayout("generators")}>
           <Card>
             <SectionHeading
-              title="Generator log"
+              title="Generator Log"
               onTop={scrollPageToTop}
               right={
                 (data.generatorLogs ?? []).some(
@@ -1830,21 +1899,12 @@ export default function FarmDetailScreen() {
                         if (log) openGeneratorEditor(log, gen.hourKey);
                       }}
                       onDelete={(id) =>
-                        Alert.alert(
-                          `Delete ${gen.label} entry?`,
-                          "Only this generator reading will be removed. Other generators on this date stay.",
-                          [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                              text: "Delete",
-                              style: "destructive",
-                              onPress: () => {
-                                deleteGeneratorLog(farm.id, id, gen.hourKey);
-                                load();
-                              },
-                            },
-                          ],
-                        )
+                        setOpsConfirm({
+                          kind: "generator",
+                          logId: id,
+                          hourKey: gen.hourKey,
+                          label: gen.label,
+                        })
                       }
                     />
                   );
@@ -1860,7 +1920,7 @@ export default function FarmDetailScreen() {
         {/* ── Issues ── */}
         <View onLayout={onSectionLayout("issues")}>
           <Card>
-            <SectionHeading title="Recent issues" onTop={scrollPageToTop} />
+            <SectionHeading title="Recent Issues" onTop={scrollPageToTop} />
             {data.issues.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -1898,26 +1958,7 @@ export default function FarmDetailScreen() {
                         params: { id: farm.id, issueId: issue.id },
                       })
                     }
-                    onDelete={() =>
-                      Alert.alert("Delete issue?", "This cannot be undone.", [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => {
-                            try {
-                              deleteIssue(farm.id, issue.id);
-                              load();
-                            } catch (e) {
-                              Alert.alert(
-                                "Error",
-                                e instanceof Error ? e.message : "Could not delete",
-                              );
-                            }
-                          },
-                        },
-                      ])
-                    }
+                    onDelete={() => setOpsConfirm({ kind: "issue", issueId: issue.id })}
                   />
                 </View>
               ))
@@ -1937,7 +1978,7 @@ export default function FarmDetailScreen() {
         {/* ── Litter ── */}
         <View onLayout={onSectionLayout("litter")}>
           <Card>
-            <SectionHeading title="Litter events" onTop={scrollPageToTop} />
+            <SectionHeading title="Litter Events" onTop={scrollPageToTop} />
             {data.litterEvents.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -1970,26 +2011,7 @@ export default function FarmDetailScreen() {
                         params: { id: farm.id, eventId: e.id },
                       })
                     }
-                    onDelete={() =>
-                      Alert.alert("Delete litter event?", "This cannot be undone.", [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => {
-                            try {
-                              deleteLitterEvent(farm.id, e.id);
-                              load();
-                            } catch (err) {
-                              Alert.alert(
-                                "Error",
-                                err instanceof Error ? err.message : "Could not delete",
-                              );
-                            }
-                          },
-                        },
-                      ])
-                    }
+                    onDelete={() => setOpsConfirm({ kind: "litter", eventId: e.id })}
                   />
                 </View>
               ))
@@ -2009,7 +2031,7 @@ export default function FarmDetailScreen() {
         {/* ── Feed ── */}
         <View onLayout={onSectionLayout("feed")}>
           <Card>
-            <SectionHeading title="Feed deliveries" onTop={scrollPageToTop} />
+            <SectionHeading title="Feed Deliveries" onTop={scrollPageToTop} />
             {data.feedDeliveries.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -2042,26 +2064,7 @@ export default function FarmDetailScreen() {
                         params: { id: farm.id, deliveryId: d.id },
                       })
                     }
-                    onDelete={() =>
-                      Alert.alert("Delete feed delivery?", "This cannot be undone.", [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => {
-                            try {
-                              deleteFeedDelivery(d.id);
-                              load();
-                            } catch (err) {
-                              Alert.alert(
-                                "Error",
-                                err instanceof Error ? err.message : "Could not delete",
-                              );
-                            }
-                          },
-                        },
-                      ])
-                    }
+                    onDelete={() => setOpsConfirm({ kind: "feed", deliveryId: d.id })}
                   />
                 </View>
               ))
@@ -2078,28 +2081,6 @@ export default function FarmDetailScreen() {
           />
         </View>
 
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            marginTop: 8,
-            marginBottom: 8,
-          }}
-        >
-          <Pressable
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/history",
-                params: { id: farm.id },
-              })
-            }
-            hitSlop={8}
-          >
-            <Text style={{ color: colors.accentDark, fontWeight: "600", fontSize: 14 }}>
-              Farm History
-            </Text>
-          </Pressable>
-        </View>
       </ScrollView>
 
       <Modal
@@ -2178,45 +2159,42 @@ export default function FarmDetailScreen() {
       <Modal
         visible={editingHouse != null}
         animationType="slide"
-        transparent
+        transparent={Platform.OS === "web"}
         onRequestClose={closeHouseEditor}
       >
+        <SafeAreaView
+          style={{
+            flex: 1,
+            backgroundColor: "#fff",
+            ...(Platform.OS === "web"
+              ? { position: "fixed" as const, top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }
+              : null),
+          }}
+          edges={["top", "bottom"]}
+        >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
         >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
-            }}
-          >
-            <Pressable style={{ flex: 1 }} onPress={closeHouseEditor} />
-            <View
-              style={{
-                backgroundColor: "#fff",
-                borderTopLeftRadius: 16,
-                borderTopRightRadius: 16,
-                maxHeight: "92%",
-                overflow: "hidden",
-              }}
-            >
+          <View style={{ flex: 1, backgroundColor: "#fff" }}>
+            <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                Edit house {editingHouse?.houseNumber}
+              </Text>
+              {houseEditError ? (
+                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                  {houseEditError}
+                </Text>
+              ) : null}
+            </View>
               <ScrollView
                 keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ padding: 20, paddingBottom: Platform.OS === "ios" ? 28 : 24 }}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}
               >
-                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                  Edit house {editingHouse?.houseNumber}
-                </Text>
-                {houseEditError ? (
-                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
-                    {houseEditError}
-                  </Text>
-                ) : null}
                 {editingHouse ? (
-                  <View style={{ marginTop: 14 }}>
+                  <View>
                     <View style={{ flexDirection: "row", gap: 10 }}>
                       <NativeNumInput
                         label="House number"
@@ -2270,7 +2248,9 @@ export default function FarmDetailScreen() {
                             <DatePickerField
                               label="Placement date"
                               value={editingHouse.placementDate}
-                              presentation="inline"
+                              presentation={Platform.OS === "web" ? "modal" : "inline"}
+                              expanded={housePicker === "placement"}
+                              onOpen={() => setHousePicker("placement")}
                               inputStyle={{ marginBottom: 0 }}
                               onChange={(date) =>
                                 setEditingHouse((prev) => {
@@ -2307,7 +2287,7 @@ export default function FarmDetailScreen() {
                           <NativeNumInput
                             label="Birds placed"
                             value={editingHouse.placedBirdCount}
-                            placeholder={editingHouse.placedBirdCountPlaceholder}
+                            grouped
                             style={{ flex: 1 }}
                             onChangeText={(v) =>
                               setEditingHouse((prev) =>
@@ -2329,7 +2309,9 @@ export default function FarmDetailScreen() {
                             <DatePickerField
                               label="Catch date"
                               value={editingHouse.catchDate}
-                              presentation="inline"
+                              presentation={Platform.OS === "web" ? "modal" : "inline"}
+                              expanded={housePicker === "catch"}
+                              onOpen={() => setHousePicker("catch")}
                               inputStyle={{ marginBottom: 0 }}
                               onChange={(date) =>
                                 setEditingHouse((prev) =>
@@ -2355,6 +2337,9 @@ export default function FarmDetailScreen() {
                             <TimeScrollPickerField
                               label="Catch time"
                               value={editingHouse.catchTime}
+                              presentation={Platform.OS === "web" ? "modal" : "inline"}
+                              expanded={housePicker === "catchTime"}
+                              onOpen={() => setHousePicker("catchTime")}
                               inputStyle={{ marginBottom: 0 }}
                               onChange={(time) =>
                                 setEditingHouse((prev) =>
@@ -2398,8 +2383,9 @@ export default function FarmDetailScreen() {
                       <NativeNumInput
                         label="Square footage"
                         value={editingHouse.squareFootage}
-                        placeholder="29700"
+                        placeholder="29,700"
                         decimal
+                        grouped
                         style={{ flex: 1 }}
                         onChangeText={(v) =>
                           setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
@@ -2420,6 +2406,7 @@ export default function FarmDetailScreen() {
                         label="Total CFM (Min Vent)"
                         value={editingHouse.totalFanCFM}
                         decimal
+                        grouped
                         style={{ flex: 1 }}
                         onChangeText={(v) =>
                           setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
@@ -2442,6 +2429,7 @@ export default function FarmDetailScreen() {
                         label="Total CFM (Power)"
                         value={editingHouse.totalPowerCFM}
                         decimal
+                        grouped
                         style={{ flex: 1 }}
                         onChangeText={(v) =>
                           setEditingHouse((prev) => (prev ? { ...prev, totalPowerCFM: v } : prev))
@@ -2457,25 +2445,35 @@ export default function FarmDetailScreen() {
                       />
                       <View style={{ flex: 1 }} />
                     </View>
-                    <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-                      <PrimaryButton
-                        label={houseSaving ? "Saving…" : "Save"}
-                        onPress={saveHouseEdit}
-                        style={{ flex: 1 }}
-                      />
-                      <PrimaryButton
-                        label="Cancel"
-                        secondary
-                        onPress={closeHouseEditor}
-                        style={{ flex: 1 }}
-                      />
-                    </View>
                   </View>
                 ) : null}
               </ScrollView>
-            </View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 10,
+                  paddingHorizontal: 20,
+                  paddingTop: 12,
+                  paddingBottom: 12,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.border,
+                }}
+              >
+                <PrimaryButton
+                  label={houseSaving ? "Saving…" : "Save"}
+                  onPress={saveHouseEdit}
+                  style={{ flex: 1 }}
+                />
+                <PrimaryButton
+                  label="Cancel"
+                  secondary
+                  onPress={closeHouseEditor}
+                  style={{ flex: 1 }}
+                />
+              </View>
           </View>
         </KeyboardAvoidingView>
+        </SafeAreaView>
       </Modal>
 
       <Modal
@@ -2508,7 +2506,7 @@ export default function FarmDetailScreen() {
               }}
             >
               <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                Add house
+                Add House
               </Text>
               {addHouseError ? (
                 <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
@@ -2607,7 +2605,7 @@ export default function FarmDetailScreen() {
                 }}
               >
                 <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                  Edit farm info
+                  Edit Farm Info
                 </Text>
                 {farmEditError ? (
                   <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
@@ -2834,14 +2832,54 @@ export default function FarmDetailScreen() {
       </Modal>
 
       <ConfirmDialog
+        visible={opsConfirm != null}
+        title={
+          opsConfirm?.kind === "house"
+            ? `Delete house ${opsConfirm.houseNumber}?`
+            : opsConfirm?.kind === "visit"
+              ? "Delete visit?"
+              : opsConfirm?.kind === "issue"
+                ? "Delete issue?"
+                : opsConfirm?.kind === "litter"
+                  ? "Delete litter event?"
+                  : opsConfirm?.kind === "feed"
+                    ? "Delete feed delivery?"
+                    : opsConfirm?.kind === "generator"
+                      ? `Delete ${opsConfirm.label} entry?`
+                      : "Delete?"
+        }
+        message={
+          opsConfirm?.kind === "house"
+            ? "This removes the house from the farm. It will no longer appear in your lists."
+            : opsConfirm?.kind === "visit"
+              ? `${opsConfirm.visitDate} will be removed.`
+              : opsConfirm?.kind === "generator"
+                ? "Only this generator reading will be removed. Other generators on this date stay."
+                : "This cannot be undone."
+        }
+        confirmLabel="Delete"
+        danger
+        onConfirm={runOpsConfirm}
+        onCancel={() => setOpsConfirm(null)}
+      />
+      <ConfirmDialog
+        visible={opsError != null}
+        title="Error"
+        message={opsError ?? ""}
+        confirmLabel="OK"
+        cancelLabel="Dismiss"
+        onConfirm={() => setOpsError(null)}
+        onCancel={() => setOpsError(null)}
+      />
+      <ConfirmDialog
         visible={completeConfirm != null}
-        title="Complete flock?"
+        title="End flock?"
         message={
           completeConfirm
             ? `Mark flock ${completeConfirm.flockNumber} as completed? You can reactivate it later from Farm History.`
             : ""
         }
-        confirmLabel="Complete"
+        confirmLabel="End flock"
         onConfirm={runCompleteFlock}
         onCancel={() => setCompleteConfirm(null)}
       />
@@ -2887,10 +2925,10 @@ export default function FarmDetailScreen() {
             }}
           >
             <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-              Complete flock
+              End flock
             </Text>
             <Text style={{ marginTop: 8, fontSize: 14, lineHeight: 20, color: colors.muted }}>
-              Which flock do you want to complete?
+              Which flock do you want to end?
             </Text>
             <View style={{ marginTop: 16, gap: 8 }}>
               {activeFlocks.map((fl) => (

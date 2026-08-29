@@ -73,7 +73,7 @@ export function FarmVisitsSection({
     <div id="visits" className="scroll-mt-24">
       <Card>
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold">Recent visits</h3>
+          <h3 className="font-bold">Recent Visits</h3>
           <button
             type="button"
             onClick={closeSection}
@@ -129,25 +129,29 @@ export function FarmVisitsSection({
       </Card>
 
       {!logOpen ? (
-        <button
-          type="button"
-          onClick={() => {
-            setEditingId(null);
-            setLogOpen(true);
-          }}
-          className="mt-3 text-sm text-emerald-800 hover:underline"
-        >
-          Log visit
-        </button>
-      ) : (
-        <div className="mt-3">
+        <div className="mt-3 text-right">
           <button
             type="button"
-            onClick={() => setLogOpen(false)}
+            onClick={() => {
+              setEditingId(null);
+              setLogOpen(true);
+            }}
             className="text-sm text-emerald-800 hover:underline"
           >
             Log visit
           </button>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => setLogOpen(false)}
+              className="text-sm text-emerald-800 hover:underline"
+            >
+              Log visit
+            </button>
+          </div>
           <Card className="mt-3">
             <FarmVisitForm
               farmId={farmId}

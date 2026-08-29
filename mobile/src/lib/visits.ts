@@ -1,18 +1,20 @@
-export const VISIT_TYPE_LABELS: Record<string, string> = {
-  ROUTINE_SERVICE: "Routine service visit",
-  PLACEMENT: "Placement",
-  PREBROOD: "Prebrood",
-  SEVEN_DAY: "7-day visit",
-  WEIGH_DAY: "Weigh day",
-  VACCINATION: "Vaccination",
-  MEDICATION: "Medication",
-  EQUIPMENT_ISSUE: "Equipment issue",
-  MORTALITY_INVESTIGATION: "Mortality investigation",
-  PRE_CATCH: "Pre-catch visit",
-  OTHER: "Other",
-};
+/** Picker order and labels for a new/edited visit. */
+export const VISIT_TYPE_OPTIONS = [
+  { value: "ROUTINE_SERVICE", label: "Routine Service" },
+  { value: "PREBROOD", label: "Prebrood" },
+  { value: "PLACEMENT", label: "Placement" },
+  { value: "WEIGH_DAY", label: "Weigh Day" },
+  { value: "VACCINATION", label: "Vaccination" },
+  { value: "MEDICATION", label: "Medication" },
+  { value: "EQUIPMENT_ISSUE", label: "Equipment Issue" },
+  { value: "MORTALITY_INVESTIGATION", label: "Mortality Investigation" },
+  { value: "PRE_CATCH", label: "Pre-Catch Visit" },
+  { value: "LAST_FEED_ORDER", label: "Last Feed Order" },
+  { value: "OTHER", label: "Other" },
+] as const;
 
-export const VISIT_TYPE_OPTIONS = Object.entries(VISIT_TYPE_LABELS).map(([value, label]) => ({
-  value,
-  label,
-}));
+export const VISIT_TYPE_LABELS: Record<string, string> = {
+  ...Object.fromEntries(VISIT_TYPE_OPTIONS.map((opt) => [opt.value, opt.label])),
+  // Kept for visits saved before this type was removed from the picker.
+  SEVEN_DAY: "7-day visit",
+};

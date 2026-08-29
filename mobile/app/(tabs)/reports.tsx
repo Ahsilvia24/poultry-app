@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import { getFieldLog, getGeneratorLogReport, getReports, listFarms } from "../../src/repos/data";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
   defaultFieldLogRange,
+  fieldLogHasVisits,
   fieldLogWeeksToTsv,
   formatFieldLogDayHeader,
   type FieldLogWeek,
@@ -28,6 +29,7 @@ import {
 } from "../../src/components/ui";
 import { DatePickerField } from "../../src/components/DatePickerField";
 import { ClipboardIconButton } from "../../src/components/ClipboardIconButton";
+import { userFacingMessage } from "../../src/lib/useKeyboardInset";
 
 const REPORT_TYPES = [
   { key: "field-log", label: "Field Log" },
@@ -74,6 +76,8 @@ export default function ReportsScreen() {
   const [genTo, setGenTo] = useState(todayKey());
   const [fieldFrom, setFieldFrom] = useState(weekDefaults.from);
   const [fieldTo, setFieldTo] = useState(weekDefaults.to);
+  const [openDate, setOpenDate] = useState<string | null>(null);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [matrix, setMatrix] = useState(() =>
     getReports(from, to, (farmIdParam || farms[0]?.id) || undefined),
   );
@@ -124,9 +128,7 @@ export default function ReportsScreen() {
     setGenFarms(getGeneratorLogReport(genFrom, genTo));
   }, [reportType, genFrom, genTo]);
 
-  const hasFieldFarms = fieldWeeks.some((week) =>
-    week.days.some((day) => day.farms.length > 0),
-  );
+  const hasFieldFarms = fieldLogHasVisits(fieldWeeks);
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -146,6 +148,7 @@ export default function ReportsScreen() {
                 active={reportType === t.key}
                 onPress={() => {
                   setReportType(t.key);
+                  setOpenDate(null);
                   if (t.key === "generator") applyGenerator();
                 }}
               />
@@ -153,15 +156,33 @@ export default function ReportsScreen() {
           </View>
         </ScrollView>
 
+        {shareNotice ? (
+          <Text style={{ color: colors.danger, fontWeight: "700", marginBottom: 10 }}>
+            {shareNotice}
+          </Text>
+        ) : null}
+
         {reportType === "field-log" ? (
           <>
             <Card>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <DatePickerField label="Start" value={fieldFrom} onChange={setFieldFrom} />
+                  <DatePickerField
+                    label="Start"
+                    value={fieldFrom}
+                    onChange={setFieldFrom}
+                    expanded={openDate === "fieldFrom"}
+                    onOpen={() => setOpenDate("fieldFrom")}
+                  />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <DatePickerField label="Finish" value={fieldTo} onChange={setFieldTo} />
+                  <DatePickerField
+                    label="Finish"
+                    value={fieldTo}
+                    onChange={setFieldTo}
+                    expanded={openDate === "fieldTo"}
+                    onOpen={() => setOpenDate("fieldTo")}
+                  />
                 </View>
               </View>
               <PrimaryButton label="Run report" onPress={applyFieldLog} />
@@ -187,6 +208,7 @@ export default function ReportsScreen() {
                   accessibilityLabel="Copy field log"
                   color={colors.accentDark}
                   emptyMessage="No visits in this date range."
+                  onNotice={setShareNotice}
                   getText={() => {
                     if (!hasFieldFarms) return "";
                     return fieldLogWeeksToTsv(fieldWeeks);
@@ -196,11 +218,14 @@ export default function ReportsScreen() {
                   secondary
                   label="Share PDF"
                   onPress={() => {
+                    setShareNotice(null);
                     void shareFieldLogPdf({
                       weeks: fieldWeeks,
                       subtitle: fieldFilterLabel,
-                    }).catch(() => {
-                      Alert.alert("Could not share PDF", "Try again in a moment.");
+                    }).catch((e) => {
+                      setShareNotice(
+                        userFacingMessage(e, "Could not share PDF. Try again in a moment."),
+                      );
                     });
                   }}
                   style={{ minWidth: 120 }}
@@ -262,10 +287,22 @@ export default function ReportsScreen() {
             <Card>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <DatePickerField label="From" value={genFrom} onChange={setGenFrom} />
+                  <DatePickerField
+                    label="From"
+                    value={genFrom}
+                    onChange={setGenFrom}
+                    expanded={openDate === "genFrom"}
+                    onOpen={() => setOpenDate("genFrom")}
+                  />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <DatePickerField label="To" value={genTo} onChange={setGenTo} />
+                  <DatePickerField
+                    label="To"
+                    value={genTo}
+                    onChange={setGenTo}
+                    expanded={openDate === "genTo"}
+                    onOpen={() => setOpenDate("genTo")}
+                  />
                 </View>
               </View>
               <PrimaryButton label="Apply filters" onPress={applyGenerator} />
@@ -294,17 +331,21 @@ export default function ReportsScreen() {
                     accessibilityLabel="Copy generator report"
                     color={colors.accentDark}
                     emptyMessage="No generator hours in this date range."
+                    onNotice={setShareNotice}
                     getText={() => generatorReportToTsv(genView)}
                   />
                   <PrimaryButton
                     secondary
                     label="Share PDF"
                     onPress={() => {
+                      setShareNotice(null);
                       void shareGeneratorReportPdf({
                         farms: genView,
                         subtitle: genFilterLabel,
-                      }).catch(() => {
-                        Alert.alert("Could not share PDF", "Try again in a moment.");
+                      }).catch((e) => {
+                        setShareNotice(
+                          userFacingMessage(e, "Could not share PDF. Try again in a moment."),
+                        );
                       });
                     }}
                     style={{ minWidth: 120 }}
@@ -374,10 +415,22 @@ export default function ReportsScreen() {
             <Card>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <DatePickerField label="From" value={from} onChange={setFrom} />
+                  <DatePickerField
+                    label="From"
+                    value={from}
+                    onChange={setFrom}
+                    expanded={openDate === "mortFrom"}
+                    onOpen={() => setOpenDate("mortFrom")}
+                  />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <DatePickerField label="To" value={to} onChange={setTo} />
+                  <DatePickerField
+                    label="To"
+                    value={to}
+                    onChange={setTo}
+                    expanded={openDate === "mortTo"}
+                    onOpen={() => setOpenDate("mortTo")}
+                  />
                 </View>
               </View>
               <PrimaryButton label="Apply filters" onPress={applyMortality} />
@@ -400,6 +453,7 @@ export default function ReportsScreen() {
                   accessibilityLabel="Copy mortality report"
                   color={colors.accentDark}
                   emptyMessage="Run a report with data first."
+                  onNotice={setShareNotice}
                   getText={() => {
                     if (matrix.rows.length === 0) return "";
                     return matrixToTsv(matrix, rowHeaderLabel);

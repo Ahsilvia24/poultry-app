@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button, Card } from "@/components/ui";
 import { downloadReportPdf } from "@/lib/exports/pdf";
 import {
+  fieldLogHasVisits,
   fieldLogWeeksToTsv,
   formatFieldLogDayHeader,
   type FieldLogWeek,
@@ -18,21 +19,30 @@ export function FieldLogReport({
   filterLabel: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const hasFarms = weeks.some((week) => week.days.some((day) => day.farms.length > 0));
+  const [notice, setNotice] = useState<string | null>(null);
+  const hasFarms = fieldLogHasVisits(weeks);
 
   async function copy() {
-    if (!hasFarms) return;
+    if (!hasFarms) {
+      setNotice("No visits logged in this date range.");
+      return;
+    }
     try {
       await navigator.clipboard.writeText(fieldLogWeeksToTsv(weeks));
       setCopied(true);
+      setNotice(null);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
+      setNotice("Could not copy to clipboard on this device.");
     }
   }
 
   function sharePdf() {
-    if (weeks.length === 0) return;
+    if (!hasFarms) {
+      setNotice("No visits logged in this date range.");
+      return;
+    }
     downloadReportPdf({
       title: "Field Log",
       subtitle: filterLabel,
@@ -65,11 +75,12 @@ export function FieldLogReport({
           <Button type="button" variant="secondary" onClick={copy} disabled={!hasFarms}>
             {copied ? "Copied" : "Copy"}
           </Button>
-          <Button type="button" variant="secondary" onClick={sharePdf} disabled={weeks.length === 0}>
+          <Button type="button" variant="secondary" onClick={sharePdf} disabled={!hasFarms}>
             Share PDF
           </Button>
         </div>
       </div>
+      {notice ? <p className="mb-3 text-sm font-semibold text-red-800">{notice}</p> : null}
 
       <div className="space-y-4">
         {weeks.map((week) => (

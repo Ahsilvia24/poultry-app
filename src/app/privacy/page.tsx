@@ -81,7 +81,7 @@ export default function PrivacyPolicyPage() {
             <ul className="mt-2 list-disc space-y-1 pl-5">
               <li>Provide farm-management features you ask for</li>
               <li>Sign you in on the web service</li>
-              <li>Respond to support and App Store questions</li>
+              <li>Respond to support requests</li>
               <li>Comply with law when required</li>
             </ul>
           </section>
