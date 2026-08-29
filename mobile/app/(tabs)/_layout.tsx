@@ -1,4 +1,4 @@
-import { Tabs, router } from "expo-router";
+import { Tabs } from "expo-router";
 import { Platform, Pressable, Text, View } from "react-native";
 import { StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,7 +7,6 @@ import type { ComponentProps } from "react";
 import { colors } from "../../src/theme";
 import { FeedBinIcon } from "../../src/components/FeedBinIcon";
 import {
-  armFarmReturnFromMortality,
   clearFarmReturnFromMortality,
   getFarmNavContext,
 } from "../../src/lib/farmNavContext";
@@ -87,19 +86,13 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 const ctx = getFarmNavContext();
                 const fromMortality = focusedRoute?.name === "mortality";
 
-                // Mortality → Farms: open the selected farm/house.
-                // Do not emit tabPress (nested stacks popToTop on that event).
-                // Do not navigate to farms/index — that was forcing the list.
-                // Open the selected farm, but do not snap to a house —
-                // only Mortality "Back to House" passes focusHouseFlockId.
-                if (!focused && route.name === "farms" && fromMortality && ctx.farmId) {
-                  armFarmReturnFromMortality();
-                  router.navigate({
-                    pathname: "/(tabs)/farms/[id]",
-                    params: {
-                      id: ctx.farmId,
-                    },
-                  });
+                // Mortality → Farms: always the farm list. Only Mortality
+                // "Back to House" opens a farm (via focusHouseFlockId).
+                if (!focused && route.name === "farms" && fromMortality) {
+                  clearFarmReturnFromMortality();
+                  popNestedToRoot(tabRoute);
+                  navigation.navigate("farms");
+                  requestTabScrollTop("farms");
                   return;
                 }
 
