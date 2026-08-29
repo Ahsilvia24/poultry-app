@@ -23,7 +23,6 @@ import { colors, styles } from "../../../src/theme";
 import { Card, PageHeader } from "../../../src/components/ui";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 
-type StatusFilter = "active" | "inactive" | "all";
 type ConfirmKind = "inactive" | "active" | "delete";
 
 function dialUrl(phone: string) {
@@ -35,7 +34,6 @@ export default function FarmsScreen() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("farms", scrollRef);
-  const [status, setStatus] = useState<StatusFilter>("active");
   const [data, setData] = useState<ReturnType<typeof listFarms> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,13 +48,13 @@ export default function FarmsScreen() {
   const load = useCallback(async () => {
     try {
       setError(null);
-      setData(listFarms(status));
+      setData(listFarms("all"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [status]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -72,7 +70,6 @@ export default function FarmsScreen() {
       deactivateFarm(farmId);
     } else if (kind === "active") {
       reactivateFarm(farmId);
-      setStatus("active");
     } else {
       deleteFarm(farmId);
     }
@@ -97,7 +94,24 @@ export default function FarmsScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         onScrollBeginDrag={swipe.closeAll}
       >
-        <PageHeader title="Farms" />
+        <PageHeader
+          title="Farms"
+          actions={
+            <Pressable
+              onPress={() => router.push("/(tabs)/farms/new")}
+              accessibilityRole="button"
+              accessibilityLabel="Add Farm"
+              style={{
+                borderRadius: 10,
+                paddingVertical: 8,
+                paddingHorizontal: 14,
+                backgroundColor: colors.accentDark,
+              }}
+            >
+              <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Add Farm</Text>
+            </Pressable>
+          }
+        />
 
         {error ? <Text style={{ color: colors.danger }}>{error}</Text> : null}
 
@@ -278,64 +292,6 @@ export default function FarmsScreen() {
           );
         })}
       </ScrollView>
-
-      <View
-        style={{
-          flexDirection: "row",
-          gap: 8,
-          paddingHorizontal: 16,
-          paddingTop: 10,
-          paddingBottom: 10,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          backgroundColor: colors.bg,
-        }}
-      >
-        <Pressable
-          onPress={() => router.push("/(tabs)/farms/new")}
-          accessibilityRole="button"
-          accessibilityLabel="Add Farm"
-          style={{
-            flex: 1,
-            borderRadius: 10,
-            paddingVertical: 10,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: colors.accentDark,
-          }}
-        >
-          <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Add Farm</Text>
-        </Pressable>
-        {(["active", "inactive", "all"] as const).map((key) => {
-          const selected = status === key;
-          return (
-            <Pressable
-              key={key}
-              onPress={() => setStatus(key)}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              style={{
-                flex: 1,
-                borderRadius: 10,
-                paddingVertical: 10,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: selected ? "#292524" : "#e7e5e4",
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "700",
-                  color: selected ? "#fff" : colors.text,
-                }}
-              >
-                {key[0]!.toUpperCase() + key.slice(1)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
 
       <ConfirmDialog
         visible={confirm != null}

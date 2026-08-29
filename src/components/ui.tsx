@@ -116,12 +116,12 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="mb-3 flex flex-col gap-2 md:mb-6 md:gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
+    <div className="mb-3 flex items-center justify-between gap-3 md:mb-6">
+      <div className="min-w-0">
         <h1 className="text-xl font-bold tracking-tight text-stone-900 md:text-3xl">{title}</h1>
         {subtitle ? <p className="mt-0.5 text-sm text-stone-600 md:mt-1 md:text-base">{subtitle}</p> : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   );
 }

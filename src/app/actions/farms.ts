@@ -145,7 +145,7 @@ export async function deactivateFarmAction(farmId: string, options?: { skipRedir
   revalidatePath(`/farms/${farmId}`);
   revalidatePath("/");
   if (!options?.skipRedirect) {
-    redirect("/farms?status=inactive");
+    redirect("/farms");
   }
 }
 
