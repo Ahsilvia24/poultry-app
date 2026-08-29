@@ -329,6 +329,8 @@ export function ManualLfoScreen({
                   setOpenPicker("orderDate");
                 }}
               />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <TimeScrollPickerField
                 label="Order time"
                 value={orderTime}
@@ -343,15 +345,15 @@ export function ManualLfoScreen({
                 }}
               />
             </View>
-            <FieldButton
-              label="Consumption rate"
-              value={consumptionRate}
-              active={activeField === "rate"}
-              onPress={() => focusField("rate")}
-              fieldRef={bindFieldRef("rate")}
-              style={{ flex: 1, minWidth: 0 }}
-            />
           </View>
+          <FieldButton
+            label="Consumption rate"
+            value={consumptionRate}
+            active={activeField === "rate"}
+            onPress={() => focusField("rate")}
+            fieldRef={bindFieldRef("rate")}
+            style={{ marginTop: 8 }}
+          />
           <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
             Consumption rate in lbs/bird/day
           </Text>
