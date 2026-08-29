@@ -727,6 +727,32 @@ export default function FarmDetailScreen() {
     openFarmEditor(data.farm);
   }, [openEdit, data, farmId, editingFarm]);
 
+  useEffect(() => {
+    if (!editingFarm) {
+      setFarmEditKeyboardH(0);
+      return;
+    }
+    const show = Keyboard.addListener("keyboardDidShow", (e) => {
+      setFarmEditKeyboardH(e.endCoordinates?.height ?? 0);
+    });
+    const hide = Keyboard.addListener("keyboardDidHide", () => setFarmEditKeyboardH(0));
+
+    const vv = Platform.OS === "web" && typeof window !== "undefined" ? window.visualViewport : null;
+    const onViewport = () => {
+      if (!vv) return;
+      setFarmEditKeyboardH(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    };
+    vv?.addEventListener("resize", onViewport);
+    vv?.addEventListener("scroll", onViewport);
+
+    return () => {
+      show.remove();
+      hide.remove();
+      vv?.removeEventListener("resize", onViewport);
+      vv?.removeEventListener("scroll", onViewport);
+    };
+  }, [editingFarm]);
+
   // Never render a previous farm under a new id
   const ready = data != null && data.farm.id === farmId;
 
@@ -1093,32 +1119,6 @@ export default function FarmDetailScreen() {
       goToFarmList();
     }
   }
-
-  useEffect(() => {
-    if (!editingFarm) {
-      setFarmEditKeyboardH(0);
-      return;
-    }
-    const show = Keyboard.addListener("keyboardDidShow", (e) => {
-      setFarmEditKeyboardH(e.endCoordinates?.height ?? 0);
-    });
-    const hide = Keyboard.addListener("keyboardDidHide", () => setFarmEditKeyboardH(0));
-
-    const vv = Platform.OS === "web" && typeof window !== "undefined" ? window.visualViewport : null;
-    const onViewport = () => {
-      if (!vv) return;
-      setFarmEditKeyboardH(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
-    };
-    vv?.addEventListener("resize", onViewport);
-    vv?.addEventListener("scroll", onViewport);
-
-    return () => {
-      show.remove();
-      hide.remove();
-      vv?.removeEventListener("resize", onViewport);
-      vv?.removeEventListener("scroll", onViewport);
-    };
-  }, [editingFarm]);
 
   function scrollFarmNotesAboveKeyboard() {
     setTimeout(() => {
