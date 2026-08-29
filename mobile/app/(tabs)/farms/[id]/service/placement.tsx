@@ -80,19 +80,19 @@ export default function PlacementChecklistScreen() {
     if (draft?.kind === "placement") {
       return withSavedServiceTech(hydratePlacement(draft));
     }
-    const draft = createPlacementDraft({
+    const blank = createPlacementDraft({
       farmName,
       flockNumber: firstFlockNumber,
       houses: detail ? prefillHouseRows(detail) : [],
     });
     if (detail) {
-      const week = draft.minVentRecommendedWeek || 1;
+      const week = blank.minVentRecommendedWeek || 1;
       const minVent = minVentForWeek(detail, week);
-      draft.minVentRecommendedWeek = week;
-      draft.minVentRecommendedOn = minVent?.on ?? "";
-      draft.minVentRecommendedOff = minVent?.off ?? "";
+      blank.minVentRecommendedWeek = week;
+      blank.minVentRecommendedOn = minVent?.on ?? "";
+      blank.minVentRecommendedOff = minVent?.off ?? "";
     }
-    return draft;
+    return blank;
   });
   const [optionPicker, setOptionPicker] = useState<"date" | "week" | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
