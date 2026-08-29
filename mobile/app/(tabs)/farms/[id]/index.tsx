@@ -71,6 +71,7 @@ import { TimeScrollPickerField } from "../../../../src/components/TimeScrollPick
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
 import { compactCatchTimeLabel } from "../../../../src/lib/time-slots";
 import { ConfirmDialog } from "../../../../src/components/ConfirmDialog";
+import { useExclusiveSwipeables } from "../../../../src/lib/useExclusiveSwipeables";
 
 /** "2026-07-25" → "07-25-2026" */
 function formatUsDate(dateKey: string) {
@@ -348,14 +349,22 @@ function GeneratorSwipeDeleteRow({
   deleteLabel,
   onDelete,
   children,
+  isOpen,
+  onOpen,
 }: {
   deleteLabel: string;
   onDelete: () => void;
   children: ReactNode;
+  isOpen: boolean;
+  onOpen: () => void;
 }) {
   const [x, setX] = useState(0);
   const startX = useRef<number | null>(null);
   const startY = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) setX(0);
+  }, [isOpen]);
 
   function begin(pageX: number, pageY: number) {
     startX.current = pageX;
@@ -372,7 +381,11 @@ function GeneratorSwipeDeleteRow({
       setX(0);
       return;
     }
-    setX((cur) => (cur <= -36 ? -GENERATOR_SWIPE_DELETE_W : 0));
+    setX((cur) => {
+      const next = cur <= -36 ? -GENERATOR_SWIPE_DELETE_W : 0;
+      if (next < 0) onOpen();
+      return next;
+    });
     startX.current = null;
     startY.current = null;
   }
@@ -446,6 +459,7 @@ function GeneratorHoursChart({
   onDelete?: (id: string) => void;
 }) {
   const showActions = onEdit != null && onDelete != null;
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const cell = {
     fontSize: 16,
     lineHeight: 22,
@@ -502,6 +516,8 @@ function GeneratorHoursChart({
                   <GeneratorSwipeDeleteRow
                     deleteLabel="Delete generator log"
                     onDelete={() => onDelete(row.id)}
+                    isOpen={openSwipeId === row.id}
+                    onOpen={() => setOpenSwipeId(row.id)}
                   >
                     {cells}
                   </GeneratorSwipeDeleteRow>
@@ -543,6 +559,9 @@ export default function FarmDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingHouse, setEditingHouse] = useState<HouseEditDraft | null>(null);
+  const [housePicker, setHousePicker] = useState<"placement" | "catch" | "catchTime" | null>(
+    null,
+  );
   const [houseEditError, setHouseEditError] = useState<string | null>(null);
   const [houseSaving, setHouseSaving] = useState(false);
   const [tempHouse, setTempHouse] = useState<{
@@ -589,6 +608,7 @@ export default function FarmDetailScreen() {
   });
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("farms", scrollRef);
+  const houseSwipe = useExclusiveSwipeables();
   const sectionY = useRef<Record<string, number>>({});
 
   function scrollToSection(key: string) {
@@ -882,6 +902,7 @@ export default function FarmDetailScreen() {
 
   function openHouseEditor(h: HouseRow) {
     setHouseEditError(null);
+    setHousePicker(null);
     // Only prefill dates the house already has — don't inherit an old flock
     // date. Empty fields open the calendar on today via DatePickerField.
     const placementDate = h.placementDate ?? "";
@@ -915,6 +936,7 @@ export default function FarmDetailScreen() {
   function closeHouseEditor() {
     if (houseSaving) return;
     setEditingHouse(null);
+    setHousePicker(null);
     setHouseEditError(null);
   }
 
@@ -1159,6 +1181,7 @@ export default function FarmDetailScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={houseSwipe.closeAll}
       >
         <View
           style={{
@@ -1313,9 +1336,11 @@ export default function FarmDetailScreen() {
               style={{ marginBottom: 12 }}
             >
             <Swipeable
+              ref={houseSwipe.setRef(h.id)}
               overshootRight={false}
               friction={2}
               rightThreshold={40}
+              onSwipeableWillOpen={() => houseSwipe.closeOthers(h.id)}
               renderRightActions={() => (
                 <Pressable
                   accessibilityLabel={`Delete house ${h.houseNumber}`}
@@ -2271,6 +2296,8 @@ export default function FarmDetailScreen() {
                               label="Placement date"
                               value={editingHouse.placementDate}
                               presentation="inline"
+                              expanded={housePicker === "placement"}
+                              onOpen={() => setHousePicker("placement")}
                               inputStyle={{ marginBottom: 0 }}
                               onChange={(date) =>
                                 setEditingHouse((prev) => {
@@ -2330,6 +2357,8 @@ export default function FarmDetailScreen() {
                               label="Catch date"
                               value={editingHouse.catchDate}
                               presentation="inline"
+                              expanded={housePicker === "catch"}
+                              onOpen={() => setHousePicker("catch")}
                               inputStyle={{ marginBottom: 0 }}
                               onChange={(date) =>
                                 setEditingHouse((prev) =>
@@ -2356,6 +2385,8 @@ export default function FarmDetailScreen() {
                               label="Catch time"
                               value={editingHouse.catchTime}
                               presentation="inline"
+                              expanded={housePicker === "catchTime"}
+                              onOpen={() => setHousePicker("catchTime")}
                               inputStyle={{ marginBottom: 0 }}
                               onChange={(time) =>
                                 setEditingHouse((prev) =>

@@ -22,6 +22,7 @@ import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../sr
 import { colors, styles } from "../../src/theme";
 import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/schedule";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
+import { useExclusiveSwipeables } from "../../src/lib/useExclusiveSwipeables";
 import {
   Card,
   Metric,
@@ -236,6 +237,7 @@ export default function DashboardScreen() {
   const [expandedFarmIds, setExpandedFarmIds] = useState<Set<string>>(() => new Set());
   /** Avoid mounting tall swipe actions until open — on web they stretch short tiles. */
   const [swipingFarmId, setSwipingFarmId] = useState<string | null>(null);
+  const swipe = useExclusiveSwipeables();
 
   function toggleFarmExpanded(farmId: string) {
     setExpandedFarmIds((prev) => {
@@ -334,6 +336,7 @@ export default function DashboardScreen() {
         style={styles.screen}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+        onScrollBeginDrag={swipe.closeAll}
       >
         <View style={{ marginBottom: 16 }}>
           <View
@@ -567,11 +570,15 @@ export default function DashboardScreen() {
               return (
                 <Swipeable
                   key={farm.id}
+                  ref={swipe.setRef(farm.id)}
                   overshootRight={false}
                   friction={2}
                   rightThreshold={40}
                   containerStyle={{ marginBottom: 4, overflow: "hidden" }}
-                  onSwipeableWillOpen={() => setSwipingFarmId(farm.id)}
+                  onSwipeableWillOpen={() => {
+                    swipe.closeOthers(farm.id);
+                    setSwipingFarmId(farm.id);
+                  }}
                   onSwipeableClose={() =>
                     setSwipingFarmId((id) => (id === farm.id ? null : id))
                   }

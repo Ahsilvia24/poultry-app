@@ -30,10 +30,10 @@ export default async function ServiceFarmPage({ params }: { params: Params }) {
       </Link>
       <PageHeader title="Service Farm" subtitle={farm.farmName} />
       <Card>
-        <p className="font-semibold text-stone-800">Available on mobile</p>
+        <p className="font-semibold text-stone-800">Available in the iOS app</p>
         <p className="mt-2 text-sm text-stone-600">
-          Service Report, Placement, and Prebrood checklists are in the Expo app.
-          Completing a form logs a visit and can share a PDF. Web forms will follow.
+          Service Report, Placement, and Prebrood checklists are in PoultryTech on iPhone.
+          Completing a form logs a visit and can share a PDF.
         </p>
       </Card>
     </div>

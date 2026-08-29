@@ -18,6 +18,7 @@ import {
   reactivateFarm,
 } from "../../../src/repos/data";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
+import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
 import { colors, styles } from "../../../src/theme";
 import { Card, Chip, PageHeader } from "../../../src/components/ui";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
@@ -40,6 +41,7 @@ export default function FarmsScreen() {
   const [error, setError] = useState<string | null>(null);
   /** Avoid mounting tall swipe Delete until open — on web it stretches short tiles. */
   const [swipingFarmId, setSwipingFarmId] = useState<string | null>(null);
+  const swipe = useExclusiveSwipeables();
   const [confirm, setConfirm] = useState<{
     kind: ConfirmKind;
     farmId: string;
@@ -93,6 +95,7 @@ export default function FarmsScreen() {
         style={styles.screen}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+        onScrollBeginDrag={swipe.closeAll}
       >
         <PageHeader title="Farms" />
 
@@ -144,11 +147,15 @@ export default function FarmsScreen() {
           return (
             <Swipeable
               key={farm.id}
+              ref={swipe.setRef(farm.id)}
               overshootRight={false}
               friction={2}
               rightThreshold={40}
               containerStyle={{ marginBottom: 4, overflow: "hidden" }}
-              onSwipeableWillOpen={() => setSwipingFarmId(farm.id)}
+              onSwipeableWillOpen={() => {
+                swipe.closeOthers(farm.id);
+                setSwipingFarmId(farm.id);
+              }}
               onSwipeableClose={() =>
                 setSwipingFarmId((id) => (id === farm.id ? null : id))
               }

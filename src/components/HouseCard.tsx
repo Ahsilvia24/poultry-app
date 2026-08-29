@@ -9,6 +9,7 @@ import { Card } from "@/components/ui";
 import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
+import { useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
 import { updateHouseLoggedTempAction } from "@/app/actions/farms";
 
 type HouseData = {
@@ -85,6 +86,11 @@ export function HouseCard({
   const [mode, setMode] = useState<"idle" | "edit" | "delete">("idle");
   const [swipeX, setSwipeX] = useState(0);
   const touchStartX = useRef<number | null>(null);
+  const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(house.id);
+
+  useEffect(() => {
+    if (!isOpenOwner) setSwipeX(0);
+  }, [isOpenOwner]);
   const [tempOpen, setTempOpen] = useState(false);
   const [tempValue, setTempValue] = useState("");
   const [tempError, setTempError] = useState<string | null>(null);
@@ -122,8 +128,13 @@ export function HouseCard({
       return;
     }
     // Snap open if swiped far enough left
-    if (swipeX <= -48) setSwipeX(-88);
-    else setSwipeX(0);
+    if (swipeX <= -48) {
+      setSwipeX(-88);
+      requestOpen();
+    } else {
+      setSwipeX(0);
+      requestClose();
+    }
     touchStartX.current = null;
   }
 
@@ -398,7 +409,10 @@ export function HouseCard({
             <NumberKeypad
               allowDecimal
               onDigit={(d) => setTempValue((v) => appendKeypadDigit(v, d, true))}
-              onBackspace={() => setTempValue((v) => backspaceKeypadValue(v))}
+              onBackspace={() => {
+                if (!tempValue) closeTemp();
+                else setTempValue((v) => backspaceKeypadValue(v));
+              }}
               onEnter={() => saveTemp(tempValue.trim() || null)}
             />
           </div>

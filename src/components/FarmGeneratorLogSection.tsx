@@ -9,6 +9,7 @@ import {
   updateGeneratorLogAction,
 } from "@/app/actions/ops";
 import { Button, Card, Input, Label } from "@/components/ui";
+import { ExclusiveSwipeGroup, useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
 import {
   formatGeneratorChartsCopy,
   formatGeneratorHours,
@@ -130,10 +131,12 @@ function isActionTarget(target: EventTarget | null) {
 }
 
 function SwipeDeleteRow({
+  rowId,
   deleteLabel,
   onDelete,
   children,
 }: {
+  rowId: string;
   deleteLabel: string;
   onDelete: () => void;
   children: ReactNode;
@@ -141,6 +144,11 @@ function SwipeDeleteRow({
   const [swipeX, setSwipeX] = useState(0);
   const startX = useRef<number | null>(null);
   const actionWidth = 72;
+  const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(rowId);
+
+  useEffect(() => {
+    if (!isOpenOwner) setSwipeX(0);
+  }, [isOpenOwner]);
 
   function begin(x: number) {
     startX.current = x;
@@ -156,8 +164,13 @@ function SwipeDeleteRow({
       setSwipeX(0);
       return;
     }
-    if (swipeX <= -40) setSwipeX(-actionWidth);
-    else setSwipeX(0);
+    if (swipeX <= -40) {
+      setSwipeX(-actionWidth);
+      requestOpen();
+    } else {
+      setSwipeX(0);
+      requestClose();
+    }
     startX.current = null;
   }
 
@@ -236,6 +249,7 @@ function GeneratorHoursChart({
       {rows.length === 0 ? (
         <p className="text-stone-500">None yet</p>
       ) : (
+        <ExclusiveSwipeGroup>
         <div>
           {rows.map((row) => {
             const cells = (
@@ -266,6 +280,7 @@ function GeneratorHoursChart({
             return (
               <SwipeDeleteRow
                 key={row.id}
+                rowId={row.id}
                 deleteLabel="Delete generator entry"
                 onDelete={() => {
                   void onDelete(row.id);
@@ -276,6 +291,7 @@ function GeneratorHoursChart({
             );
           })}
         </div>
+        </ExclusiveSwipeGroup>
       )}
     </div>
   );

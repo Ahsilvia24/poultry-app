@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal, Platform, Pressable, Text, View } from "react-native";
 import DateTimePicker, {
   type DateTimePickerEvent,
@@ -208,6 +208,7 @@ export function DatePickerField({
   onChange,
   presentation = "modal",
   onOpen,
+  expanded,
   style,
   inputStyle,
 }: {
@@ -218,6 +219,8 @@ export function DatePickerField({
   presentation?: "modal" | "inline";
   /** Fired when the calendar is opened (e.g. to dismiss a keypad). */
   onOpen?: () => void;
+  /** When false, collapse an inline calendar (exclusive accordion). */
+  expanded?: boolean;
   style?: object;
   /** Extra styles on the value box (e.g. drop bottom margin when a control sits under it). */
   inputStyle?: object;
@@ -225,6 +228,10 @@ export function DatePickerField({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseDateKey(value));
   const isWeb = Platform.OS === "web";
+
+  useEffect(() => {
+    if (expanded === false) setOpen(false);
+  }, [expanded]);
   // Web can use the modal sheet too (needed when the field sits in a tight row).
   // Pass presentation="inline" to expand under the field (e.g. nested modals).
   const useInline = presentation === "inline" || Platform.OS === "android";

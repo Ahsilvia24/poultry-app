@@ -22,8 +22,9 @@ import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
 import { SharePdfIconButton } from "../../../src/components/SharePdfIconButton";
 import { todayKey } from "../../../src/lib/ids";
 import { currentHalfHourTime } from "../../../src/lib/time-slots";
-import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
+import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
+import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
 import { colors, styles } from "../../../src/theme";
 import {
   Card,
@@ -85,6 +86,7 @@ function SavedLfoList({
   onOpen: (id: string) => void;
   onDelete: (id: string, farmName: string) => void;
 }) {
+  const swipe = useExclusiveSwipeables();
   return (
     <>
       <View style={{ marginTop: 20, marginBottom: 10 }}>
@@ -120,10 +122,12 @@ function SavedLfoList({
       {lfos.map((l) => (
         <Swipeable
           key={l.id}
+          ref={swipe.setRef(l.id)}
           overshootRight={false}
           friction={2}
           rightThreshold={40}
           containerStyle={{ marginBottom: 12 }}
+          onSwipeableWillOpen={() => swipe.closeOthers(l.id)}
           renderRightActions={() => (
             <Pressable
               accessibilityLabel={`Delete LFO for ${l.farmName}`}
@@ -386,7 +390,10 @@ export default function LfoListScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.screen}
-          contentContainerStyle={[styles.content, { paddingBottom: activeField ? 24 : 40 }]}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: activeField ? CUSTOM_KEYPAD_HEIGHT : 40 },
+          ]}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
           keyboardShouldPersistTaps="handled"
           onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {

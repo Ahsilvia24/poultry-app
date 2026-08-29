@@ -16,6 +16,7 @@ import {
 import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
 import { createFlockAction } from "@/app/actions/farms";
 import { HouseCard } from "@/components/HouseCard";
+import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { AddFlockSection } from "@/components/AddFlockSection";
 import { AddHouseForm } from "@/components/AddHouseForm";
 import { FarmInfoEditor } from "@/components/FarmInfoEditor";
@@ -200,6 +201,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         />
       </div>
 
+      <ExclusiveSwipeGroup>
       <div className="mt-3 grid items-start gap-3 md:grid-cols-2">
         {houseCards.map(
           ({
@@ -252,6 +254,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           </Card>
         ) : null}
       </div>
+      </ExclusiveSwipeGroup>
 
       <AddHouseForm farmId={farm.id} />
 

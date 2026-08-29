@@ -25,6 +25,7 @@ import {
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { colors, styles } from "../../src/theme";
 import { weekJumpScrollDelta } from "../../src/lib/weekJumpScroll";
+import { CUSTOM_KEYPAD_HEIGHT } from "../../src/lib/scrollField";
 import {
   Card,
   Chip,
@@ -825,7 +826,10 @@ export default function MortalityScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.screen}
-          contentContainerStyle={[styles.content, { paddingBottom: activeField ? 8 : 40 }]}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: activeField ? CUSTOM_KEYPAD_HEIGHT : 40 },
+          ]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           onScrollBeginDrag={resetKeypad}

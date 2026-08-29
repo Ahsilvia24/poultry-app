@@ -19,7 +19,7 @@ import {
   formatLfoOrderClock,
 } from "../lib/lfo/calculate";
 import { todayKey } from "../lib/ids";
-import { scrollFieldAboveKeypad } from "../lib/scrollField";
+import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../lib/scrollField";
 import { useTabScrollToTop } from "../lib/tabScroll";
 import { colors, fonts, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
@@ -273,7 +273,10 @@ export function ManualLfoScreen({
       <ScrollView
         ref={scrollRef}
         style={styles.screen}
-        contentContainerStyle={[styles.content, { paddingBottom: activeField ? 24 : 40 }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: activeField ? CUSTOM_KEYPAD_HEIGHT : 40 },
+        ]}
         keyboardShouldPersistTaps="handled"
         onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
           scrollYRef.current = e.nativeEvent.contentOffset.y;

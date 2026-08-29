@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   deactivateFarmAction,
@@ -8,6 +8,7 @@ import {
   reactivateFarmAction,
 } from "@/app/actions/farms";
 import { Button, Card } from "@/components/ui";
+import { ExclusiveSwipeGroup, useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
 
 function dialHref(phone: string) {
   const digits = phone.replace(/[^\d+]/g, "");
@@ -32,6 +33,11 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
   const [pending, start] = useTransition();
   const touchStartX = useRef<number | null>(null);
   const actionWidth = 88;
+  const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(farm.id);
+
+  useEffect(() => {
+    if (!isOpenOwner) setSwipeX(0);
+  }, [isOpenOwner]);
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -50,8 +56,13 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
       setSwipeX(0);
       return;
     }
-    if (swipeX <= -48) setSwipeX(-actionWidth);
-    else setSwipeX(0);
+    if (swipeX <= -48) {
+      setSwipeX(-actionWidth);
+      requestOpen();
+    } else {
+      setSwipeX(0);
+      requestClose();
+    }
     touchStartX.current = null;
   }
 
@@ -246,12 +257,14 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
 
 export function FarmsListTiles({ farms }: { farms: FarmsListTileFarm[] }) {
   return (
-    <div className="grid auto-rows-fr items-stretch gap-2 lg:grid-cols-3">
-      {farms.map((farm) => (
-        <div key={farm.id} className="h-full min-h-[4.75rem]">
-          <FarmsListTile farm={farm} />
-        </div>
-      ))}
-    </div>
+    <ExclusiveSwipeGroup>
+      <div className="grid auto-rows-fr items-stretch gap-2 lg:grid-cols-3">
+        {farms.map((farm) => (
+          <div key={farm.id} className="h-full min-h-[4.75rem]">
+            <FarmsListTile farm={farm} />
+          </div>
+        ))}
+      </div>
+    </ExclusiveSwipeGroup>
   );
 }

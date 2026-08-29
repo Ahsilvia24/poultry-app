@@ -22,7 +22,7 @@ import {
   formatHouseLfoSummary,
   formatLfoOrderClock,
 } from "../../../src/lib/lfo/calculate";
-import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
+import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, fonts, styles } from "../../../src/theme";
 import { Card, PrimaryButton } from "../../../src/components/ui";
@@ -421,7 +421,10 @@ export default function EditLfoScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.screen}
-          contentContainerStyle={[styles.content, { paddingBottom: activeField ? 24 : 40 }]}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: activeField ? CUSTOM_KEYPAD_HEIGHT : 40 },
+          ]}
           keyboardShouldPersistTaps="handled"
           onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
             scrollYRef.current = e.nativeEvent.contentOffset.y;

@@ -746,6 +746,16 @@ export function MortalityEntryForm({
 
       {activeField ? (
         <div className="fixed inset-x-0 bottom-0 z-50">
+          <button
+            type="button"
+            aria-label="Dismiss keypad"
+            className="fixed inset-0 z-40 bg-transparent"
+            onClick={() => {
+              flushSave();
+              setMortField(null);
+            }}
+          />
+          <div className="relative z-50">
           <NumberKeypad
             onDigit={onDigit}
             onBackspace={onBackspace}
@@ -763,6 +773,7 @@ export function MortalityEntryForm({
                 : undefined
             }
           />
+          </div>
         </div>
       ) : null}
     </div>

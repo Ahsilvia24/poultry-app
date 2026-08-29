@@ -126,6 +126,7 @@ export function TimeScrollPickerField({
   value,
   onChange,
   onOpen,
+  expanded,
   style,
   inputStyle,
   presentation = "modal",
@@ -135,6 +136,8 @@ export function TimeScrollPickerField({
   onChange: (time: string) => void;
   /** Fired when the picker is opened (e.g. to dismiss a keypad). */
   onOpen?: () => void;
+  /** When false, collapse an inline picker (exclusive accordion). */
+  expanded?: boolean;
   style?: object;
   /** Extra styles on the value box (e.g. drop bottom margin when a control sits under it). */
   inputStyle?: object;
@@ -145,6 +148,10 @@ export function TimeScrollPickerField({
   const [draft, setDraft] = useState(() => parseTime(value || "06:00"));
   const isWeb = Platform.OS === "web";
   const useInline = presentation === "inline";
+
+  useEffect(() => {
+    if (expanded === false) setOpen(false);
+  }, [expanded]);
 
   function openPicker() {
     onOpen?.();

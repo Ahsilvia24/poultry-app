@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { format, parseISO } from "date-fns";
 import { deactivateFarmAction } from "@/app/actions/farms";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Card, StatusBadge } from "@/components/ui";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
+import { ExclusiveSwipeGroup, useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
 import type { FarmCardSummary } from "@/types";
 
 /** Matches `lg:grid-cols-3` — expand/collapse applies to the whole visual row. */
@@ -34,6 +35,11 @@ function DashboardFarmCard({
   const [pending, start] = useTransition();
   const touchStartX = useRef<number | null>(null);
   const deactivatingRef = useRef(false);
+  const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(farm.id);
+
+  useEffect(() => {
+    if (!isOpenOwner) setSwipeX(0);
+  }, [isOpenOwner]);
 
   function makeInactive() {
     if (pending || deactivatingRef.current) return;
@@ -58,16 +64,21 @@ function DashboardFarmCard({
     if (x == null) return;
     const dx = x - touchStartX.current;
     setSwipeX(Math.max(-100, Math.min(0, dx)));
+    if (dx < -8) requestOpen();
   }
 
   function onTouchEnd() {
     if (touchStartX.current == null) {
       setSwipeX(0);
+      requestClose();
       return;
     }
     // Full swipe past threshold → deactivate immediately (no confirm)
     if (swipeX <= -48) makeInactive();
-    else setSwipeX(0);
+    else {
+      setSwipeX(0);
+      requestClose();
+    }
     touchStartX.current = null;
   }
 
@@ -204,18 +215,20 @@ export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
   }
 
   return (
-    <div className="mt-3 grid items-start gap-1 lg:grid-cols-3">
-      {farms.map((farm, index) => {
-        const row = Math.floor(index / FARMS_PER_ROW);
-        return (
-          <DashboardFarmCard
-            key={farm.id}
-            farm={farm}
-            open={expandedRows.has(row)}
-            onToggle={() => toggleRow(index)}
-          />
-        );
-      })}
-    </div>
+    <ExclusiveSwipeGroup>
+      <div className="mt-3 grid items-start gap-1 lg:grid-cols-3">
+        {farms.map((farm, index) => {
+          const row = Math.floor(index / FARMS_PER_ROW);
+          return (
+            <DashboardFarmCard
+              key={farm.id}
+              farm={farm}
+              open={expandedRows.has(row)}
+              onToggle={() => toggleRow(index)}
+            />
+          );
+        })}
+      </div>
+    </ExclusiveSwipeGroup>
   );
 }

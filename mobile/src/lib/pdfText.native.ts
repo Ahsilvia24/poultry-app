@@ -1,6 +1,6 @@
 /**
  * Native PDF text extraction via PDFKit (iOS) / PDFBox (Android).
- * Digital/text PDFs work on TestFlight; scanned image PDFs need CSV/XLSX
+ * Digital/text PDFs work on a native install; scanned image PDFs need CSV/XLSX
  * (OCR stays on Expo web).
  */
 
