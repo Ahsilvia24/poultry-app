@@ -447,6 +447,47 @@ async function main() {
     });
   }
 
+  const exerciseHours = [0.8, 0.9, 1.0, 1.1] as const;
+  const seededFarms = await prisma.farm.findMany({
+    where: { userId: user.id, deletedAt: null },
+    orderBy: { farmName: "asc" },
+    select: { id: true, farmName: true },
+  });
+  for (const [farmIndex, farm] of seededFarms.entries()) {
+    const genCount = (farmIndex % 4) + 1;
+    await prisma.farm.update({
+      where: { id: farm.id },
+      data: { numberOfGenerators: genCount },
+    });
+    let nameHash = 0;
+    for (let i = 0; i < farm.farmName.length; i++) {
+      nameHash = (nameHash + farm.farmName.charCodeAt(i)) % 80;
+    }
+    const baseHours = 90 + nameHash;
+    for (let w = 5; w >= 0; w--) {
+      const weekFromOldest = 5 - w;
+      const logDate = subDays(today, 7 * w);
+      const hours: Array<number | null> = [null, null, null, null];
+      for (let g = 0; g < genCount; g++) {
+        let reading = baseHours + g * 18;
+        for (let i = 0; i < weekFromOldest; i++) {
+          reading = Math.round((reading + exerciseHours[(i + g) % 4]) * 10) / 10;
+        }
+        hours[g] = reading;
+      }
+      await prisma.generatorLog.create({
+        data: {
+          farmId: farm.id,
+          logDate,
+          gen1Hours: hours[0],
+          gen2Hours: hours[1],
+          gen3Hours: hours[2],
+          gen4Hours: hours[3],
+        },
+      });
+    }
+  }
+
   console.log(`Seed complete — ${demos.length + 1} demo farms relative to ${format(today, "yyyy-MM-dd")}.`);
   console.log("Re-run npm run db:seed after midnight so Today's schedule stays populated.");
   console.log("Login: tech@poultry.local / password123");
