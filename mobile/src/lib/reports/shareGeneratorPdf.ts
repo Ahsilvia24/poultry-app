@@ -1,11 +1,7 @@
-import { Alert, Platform } from "react-native";
-import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
-import {
-  generatorReportToHtml,
-  type GeneratorReportViewFarm,
-} from "./generator-log";
-import { printHtmlDocument } from "./printHtml";
+import { Alert } from "react-native";
+import { buildGeneratorPdfBytes } from "./buildGeneratorPdf";
+import type { GeneratorReportViewFarm } from "./generator-log";
+import { savePdfBytes } from "./savePdf";
 
 export async function shareGeneratorReportPdf(opts: {
   farms: GeneratorReportViewFarm[];
@@ -16,29 +12,10 @@ export async function shareGeneratorReportPdf(opts: {
     return;
   }
 
-  const html = generatorReportToHtml({
+  const bytes = await buildGeneratorPdfBytes({
     title: "Generator Hours",
     subtitle: opts.subtitle,
     farms: opts.farms,
   });
-
-  if (Platform.OS === "web") {
-    await printHtmlDocument(html);
-    return;
-  }
-
-  const result = await Print.printToFileAsync({ html });
-  if (!(await Sharing.isAvailableAsync())) {
-    Alert.alert(
-      "PDF ready",
-      "Sharing is not available on this device. The PDF was generated but could not be exported.",
-    );
-    return;
-  }
-
-  await Sharing.shareAsync(result.uri, {
-    mimeType: "application/pdf",
-    dialogTitle: "Save or share generator report",
-    UTI: "com.adobe.pdf",
-  });
+  await savePdfBytes(bytes, `generator-hours-${Date.now()}.pdf`);
 }

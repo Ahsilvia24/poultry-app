@@ -11,8 +11,12 @@ export type PdfBlock =
   | { type: "heading"; text: string }
   | { type: "table"; title?: string; headers: string[]; rows: Array<Array<string | number>> };
 
+function pageBottom(doc: jsPDF) {
+  return doc.internal.pageSize.getHeight() - 16;
+}
+
 function ensurePageSpace(doc: jsPDF, y: number, needed: number) {
-  if (y + needed <= 270) return y;
+  if (y + needed <= pageBottom(doc)) return y;
   doc.addPage();
   return 14;
 }
@@ -21,9 +25,10 @@ export function downloadReportPdf(opts: {
   title: string;
   subtitle?: string;
   filename?: string;
+  orientation?: "portrait" | "landscape";
   blocks: PdfBlock[];
 }) {
-  const doc = new jsPDF();
+  const doc = new jsPDF({ orientation: opts.orientation ?? "portrait" });
   let y = 14;
 
   doc.setFontSize(16);
@@ -68,7 +73,7 @@ export function downloadReportPdf(opts: {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     y = ((doc as any).lastAutoTable?.finalY ?? y) + 10;
-    if (y > 270) {
+    if (y > pageBottom(doc)) {
       doc.addPage();
       y = 14;
     }

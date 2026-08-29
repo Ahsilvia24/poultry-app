@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button, Card } from "@/components/ui";
-import { printHtmlDocument } from "@/lib/exports/printHtml";
+import { downloadReportPdf } from "@/lib/exports/pdf";
 import {
-  fieldLogWeeksToHtml,
   fieldLogWeeksToTsv,
   formatFieldLogDayHeader,
   type FieldLogWeek,
@@ -32,15 +31,27 @@ export function FieldLogReport({
     }
   }
 
-  async function sharePdf() {
+  function sharePdf() {
     if (weeks.length === 0) return;
-    await printHtmlDocument(
-      fieldLogWeeksToHtml({
-        title: "Field Log",
-        subtitle: filterLabel,
-        weeks,
+    downloadReportPdf({
+      title: "Field Log",
+      subtitle: filterLabel,
+      filename: `field-log-${Date.now()}.pdf`,
+      orientation: "landscape",
+      blocks: weeks.map((week) => {
+        const maxRows = Math.max(1, ...week.days.map((day) => day.farms.length));
+        const rows = Array.from({ length: maxRows }, (_, row) =>
+          week.days.map((day) => day.farms[row] ?? (row === 0 ? "—" : "")),
+        );
+        return {
+          type: "table" as const,
+          headers: week.days.map(
+            (day) => `${day.weekday} ${formatFieldLogDayHeader(day.dateKey)}`,
+          ),
+          rows,
+        };
       }),
-    );
+    });
   }
 
   return (
@@ -54,7 +65,7 @@ export function FieldLogReport({
           <Button type="button" variant="secondary" onClick={copy} disabled={!hasFarms}>
             {copied ? "Copied" : "Copy"}
           </Button>
-          <Button type="button" variant="secondary" onClick={() => void sharePdf()} disabled={weeks.length === 0}>
+          <Button type="button" variant="secondary" onClick={sharePdf} disabled={weeks.length === 0}>
             Share PDF
           </Button>
         </div>
