@@ -49,3 +49,7 @@ export const WEEK_OPTIONS = Array.from({ length: 8 }, (_, i) => ({
   value: String(i + 1),
   label: `Week ${i + 1}`,
 }));
+
+/** Checklist CFM labels — same C.F.M. spelling and Ft² on both fields. */
+export const CFM_FT2_MIN_VENT_LABEL = "C.F.M. / Ft² min vent";
+export const MAX_CFM_FT2_POWER_LABEL = "Max C.F.M. / Ft² Power";

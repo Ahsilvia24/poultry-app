@@ -29,7 +29,9 @@ import { BackHeader, Card } from "../../../../../src/components/ui";
 import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
 import { createServiceReportDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
+  CFM_FT2_MIN_VENT_LABEL,
   HUMIDITY_OPTIONS,
+  MAX_CFM_FT2_POWER_LABEL,
   VENT_DOOR_OPTIONS,
   WEEK_OPTIONS,
   ventDoorTypesFromPayload,
@@ -362,7 +364,7 @@ export default function ServiceReportScreen() {
             }
           />
           <TextField
-            label="C.F.M. / Ft² min vent"
+            label={CFM_FT2_MIN_VENT_LABEL}
             value={form.cfmPerFt2MinVent}
             onChange={(cfmPerFt2MinVent) => patch({ cfmPerFt2MinVent })}
             keyboardType="decimal-pad"
@@ -404,7 +406,7 @@ export default function ServiceReportScreen() {
               : "—"}
           </Text>
           <TextField
-            label="Max CFM (House 1 Total CFM)"
+            label={MAX_CFM_FT2_POWER_LABEL}
             value={form.maxCfm}
             onChange={(maxCfm) => patch({ maxCfm })}
             keyboardType="number-pad"
