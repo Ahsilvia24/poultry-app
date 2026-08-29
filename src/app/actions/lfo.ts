@@ -8,6 +8,9 @@ import { DEFAULT_LFO_CONSUMPTION_RATE, feedUpAtFromCatch } from "@/lib/lfo/calcu
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 import { lastFeedOrderSchema } from "@/lib/validations";
 import { normalizeHalfHourTime } from "@/lib/time-slots";
+import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
+import { parseDateKey } from "@/lib/visits/schedule";
+import { VISIT_TYPE_LABELS } from "@/lib/utils";
 import type { z } from "zod";
 
 function emptyToNull(value: FormDataEntryValue | null) {
@@ -68,6 +71,41 @@ async function assertInventoriesOnFarm(farmId: string, inventories: ParsedLfo["h
   return null;
 }
 
+/** One Last Feed Order visit per farm per order date. Manual LFOs never call this. */
+async function ensureLastFeedOrderVisit(farmId: string, orderDate: string) {
+  const dateKey = orderDate.trim().slice(0, 10);
+  if (!farmId || !dateKey) return;
+  const visitDate = parseDateKey(dateKey);
+  const existing = await prisma.farmVisit.findFirst({
+    where: { farmId, visitType: "LAST_FEED_ORDER", visitDate },
+    select: { id: true },
+  });
+  if (existing) return;
+  const flock = await prisma.flock.findFirst({
+    where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+    orderBy: { placementDate: "desc" },
+    select: { id: true, placementDate: true },
+  });
+  try {
+    await prisma.farmVisit.create({
+      data: {
+        farmId,
+        flockId: flock?.id ?? null,
+        visitDate,
+        birdAgeInDays: flock
+          ? birdAgeFromPlacement(flock.placementDate, visitDate)
+          : null,
+        visitType: "LAST_FEED_ORDER",
+        generalBirdCondition: "Healthy",
+        notes: VISIT_TYPE_LABELS.LAST_FEED_ORDER,
+        loggedAt: new Date(),
+      },
+    });
+  } catch {
+    // LFO save still succeeds if visit logging fails.
+  }
+}
+
 async function createLfoRecord(farmId: string, parsed: ParsedLfo) {
   const activeFlock = await prisma.flock.findFirst({
     where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
@@ -104,6 +142,7 @@ async function createLfoRecord(farmId: string, parsed: ParsedLfo) {
         },
       },
     });
+    await ensureLastFeedOrderVisit(farmId, parsed.orderDate);
     return { id: created.id };
   } catch {
     return { error: "Could not save LFO. Try again." };
@@ -124,6 +163,9 @@ export async function createLastFeedOrderAction(farmId: string, formData: FormDa
 
   revalidatePath("/lfo");
   revalidatePath(`/lfo/${created.id}`);
+  revalidatePath(`/farms/${farmId}`);
+  revalidatePath("/");
+  revalidatePath("/reports");
   redirect(`/lfo/${created.id}`);
 }
 
@@ -190,8 +232,12 @@ export async function updateLastFeedOrderAction(lfoId: string, formData: FormDat
     return { error: "Could not update LFO. Try again." };
   }
 
+  await ensureLastFeedOrderVisit(existing.farmId, parsed.data.orderDate);
   revalidatePath("/lfo");
   revalidatePath(`/lfo/${lfoId}`);
+  revalidatePath(`/farms/${existing.farmId}`);
+  revalidatePath("/");
+  revalidatePath("/reports");
   return { ok: true };
 }
 
@@ -210,6 +256,9 @@ export async function saveAsNewLastFeedOrderAction(fromLfoId: string, formData: 
 
   revalidatePath("/lfo");
   revalidatePath(`/lfo/${created.id}`);
+  revalidatePath(`/farms/${existing.farmId}`);
+  revalidatePath("/");
+  revalidatePath("/reports");
   redirect(`/lfo/${created.id}`);
 }
 
@@ -313,6 +362,4 @@ export async function createManualLastFeedOrderAction(formData: FormData) {
     return { error: "Could not save LFO. Try again." };
   }
   revalidatePath("/lfo");
-  revalidatePath(`/lfo/${created.id}`);
-  redirect(`/lfo/${created.id}`);
-}
+  revalidatePath(`/lf
