@@ -1266,7 +1266,7 @@ export default function FarmDetailScreen() {
                   },
                   {
                     key: "generators",
-                    label: "Generator Log",
+                    label: "Generator",
                     onPress: () => scrollToSection("generators"),
                   },
                   { key: "visits", label: "Visits", onPress: () => scrollToSection("visits") },
@@ -1778,7 +1778,7 @@ export default function FarmDetailScreen() {
         <View onLayout={onSectionLayout("generators")}>
           <Card>
             <SectionHeading
-              title="Generator log"
+              title="Generator Log"
               onTop={scrollPageToTop}
               right={
                 (data.generatorLogs ?? []).some(

@@ -577,7 +577,7 @@ export function FarmGeneratorLogSection({
     <div id="generators" className="scroll-mt-24">
       <Card>
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold">Generator log</h3>
+          <h3 className="font-bold">Generator Log</h3>
           <div className="flex items-center gap-3">
             {chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
             <button
