@@ -178,7 +178,7 @@ export default function PlacementChecklistScreen() {
           <YesNoField label="Call pan lights operational" value={form.callPanLightsOk} onChange={(callPanLightsOk) => patch({ callPanLightsOk })} />
           <YesNoField label="Brood lights are ON" value={form.broodLightsOnOk} onChange={(broodLightsOnOk) => patch({ broodLightsOnOk })} />
 
-          <SectionTitle title="Air and litter" />
+          <SectionTitle title="Air and Litter" />
           <YesNoField label="Temperature set to Day 1 target" value={form.tempDay1Ok} onChange={(tempDay1Ok) => patch({ tempDay1Ok })} />
           <YesNoField
             label="Litter amendment has been applied"
@@ -264,7 +264,7 @@ export default function PlacementChecklistScreen() {
           </Text>
         </Card>
 
-        <SectionTitle title="Litter temps" />
+        <SectionTitle title="Litter Temps" />
         <Card style={{ marginBottom: 10 }}>
           <Text style={[styles.muted, { marginBottom: 10, lineHeight: 18 }]}>
             Optional — leave blank for houses not being placed.

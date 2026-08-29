@@ -427,17 +427,16 @@ function LegendSwatch({
 export function LightsChart() {
   return (
     <View style={{ gap: 8, alignSelf: "stretch", width: "100%" }}>
-      <Text style={{ fontSize: 12, color: colors.muted }}>Big Bird lighting program</Text>
       <TableShell>
         <View style={{ flexDirection: "row", width: "100%" }}>
           <HeaderCell flex={1.05} padH={3}>
             Age (days)
           </HeaderCell>
           <HeaderCell flex={0.95} padH={3} align="center">
-            Hrs light
+            Hrs Light
           </HeaderCell>
           <HeaderCell flex={0.95} padH={3} align="center">
-            Hrs dark
+            Hrs Dark
           </HeaderCell>
           <HeaderCell flex={1.05} padH={3} align="center">
             Center

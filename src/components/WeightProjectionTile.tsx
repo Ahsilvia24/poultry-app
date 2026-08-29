@@ -145,7 +145,7 @@ export function WeightProjectionTile({
           ageToggle
         ) : (
           <div>
-            <p className="text-base font-semibold text-stone-500">Weight projections</p>
+            <p className="text-base font-semibold text-stone-500">Weight Projections</p>
             {ageToggle ? <div className="mt-2">{ageToggle}</div> : null}
           </div>
         )}

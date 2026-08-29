@@ -43,7 +43,7 @@ export default async function SettingsPage() {
           </div>
 
           <div>
-            <h2 className="font-bold text-stone-900">Mortality thresholds (%)</h2>
+            <h2 className="font-bold text-stone-900">Mortality Thresholds (%)</h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="dailyMortalityWarningPct">Daily warning</Label>
@@ -124,7 +124,7 @@ export default async function SettingsPage() {
                   htmlFor="farmOrder"
                   className="shrink-0 text-sm font-semibold text-stone-700"
                 >
-                  Order farms by
+                  Order Farms By
                 </label>
                 <Select
                   id="farmOrder"

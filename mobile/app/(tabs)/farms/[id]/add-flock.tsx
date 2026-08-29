@@ -131,7 +131,7 @@ export default function AddFlockScreen() {
         <View style={styles.content}>
           <BackHeader
             backLabel="Farm"
-            title="Add flock"
+            title="Add Flock"
             onBack={() => router.back()}
             accessibilityLabel="Back to farm"
           />
@@ -154,7 +154,7 @@ export default function AddFlockScreen() {
         >
           <BackHeader
             backLabel="Farm"
-            title="Add flock"
+            title="Add Flock"
             onBack={() => router.back()}
             accessibilityLabel="Back to farm"
           />

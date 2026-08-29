@@ -11,7 +11,7 @@ export default function NewFarmPage() {
   return (
     <div>
       <PageHeader
-        title="New farm"
+        title="New Farm"
         actions={
           <Link href="/farms">
             <Button variant="secondary">Cancel</Button>

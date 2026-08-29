@@ -839,7 +839,7 @@ export default function MortalityScreen() {
           scrollEventThrottle={16}
         >
           <Pressable onPress={resetKeypad}>
-          <PageHeader title="Mortality entry" />
+          <PageHeader title="Mortality Entry" />
 
           <ChipScroller>
             {payload?.farms.map((f) => (

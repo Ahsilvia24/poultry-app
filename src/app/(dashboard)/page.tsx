@@ -40,7 +40,7 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <Card>
-          <p className="text-sm font-semibold text-stone-500">Today&apos;s schedule</p>
+          <p className="text-sm font-semibold text-stone-500">Today&apos;s Schedule</p>
           <FollowUpsDueList items={data.todaysSchedule} showDate />
         </Card>
         <Card>
@@ -52,7 +52,7 @@ export default async function DashboardPage() {
           )}
         </Card>
         <Card>
-          <p className="text-sm font-semibold text-stone-500">Upcoming catches</p>
+          <p className="text-sm font-semibold text-stone-500">Upcoming Catches</p>
           {data.upcomingCatches.length === 0 ? (
             <p className="mt-2 text-sm text-stone-500">None</p>
           ) : (
@@ -86,7 +86,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <h2 className="mt-8 text-xl font-bold">Active farms</h2>
+      <h2 className="mt-8 text-xl font-bold">Active Farms</h2>
       <DashboardFarmCards farms={data.farmCards} />
 
       <h2 className="mt-8 text-xl font-bold">Import</h2>

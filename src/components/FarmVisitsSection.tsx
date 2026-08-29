@@ -73,7 +73,7 @@ export function FarmVisitsSection({
     <div id="visits" className="scroll-mt-24">
       <Card>
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold">Recent visits</h3>
+          <h3 className="font-bold">Recent Visits</h3>
           <button
             type="button"
             onClick={closeSection}

@@ -299,7 +299,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("weight", e)} collapsable={false}>
           {open.weight ? (
-            <SectionPanel title="Weight projections" onTop={scrollToTop}>
+            <SectionPanel title="Weight Projections" onTop={scrollToTop}>
               {!useAgeOfBird ? (
                 <>
                   <ChipScroller style={{ marginBottom: 6 }}>

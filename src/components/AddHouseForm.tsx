@@ -34,7 +34,7 @@ export function AddHouseForm({ farmId }: { farmId: string }) {
           onClick={() => setOpen(true)}
           className="text-sm text-emerald-800 hover:underline"
         >
-          Add house
+          Add House
         </button>
       </div>
     );
@@ -48,7 +48,7 @@ export function AddHouseForm({ farmId }: { farmId: string }) {
           onClick={() => !pending && setOpen(false)}
           className="text-sm text-emerald-800 hover:underline"
         >
-          Add house
+          Add House
         </button>
       </div>
       <Card className="mt-3">

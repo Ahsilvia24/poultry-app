@@ -128,7 +128,7 @@ export function ManualLfoForm() {
         ) : null}
       </Card>
 
-      <h2 className="text-lg font-bold text-stone-900">Bin inventory & feed up</h2>
+      <h2 className="text-lg font-bold text-stone-900">Bin Inventory & Feed Up</h2>
       <Card>
         <div className="flex items-baseline justify-end">
           <label className="flex items-baseline gap-1.5 text-xs text-stone-500">

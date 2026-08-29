@@ -350,7 +350,7 @@ export default function DashboardScreen() {
           <>
             <Card style={{ marginBottom: 8 }}>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
-                Today&apos;s schedule
+                Today&apos;s Schedule
               </Text>
               {data.todaysSchedule.length === 0 ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>Nothing due today</Text>
@@ -412,7 +412,7 @@ export default function DashboardScreen() {
 
             <Card style={{ marginBottom: 8 }}>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
-                Upcoming catches
+                Upcoming Catches
               </Text>
               {data.upcomingCatches.length === 0 ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>None</Text>
@@ -497,7 +497,7 @@ export default function DashboardScreen() {
               )}
             </Card>
 
-            <SectionTitle>Active farms</SectionTitle>
+            <SectionTitle>Active Farms</SectionTitle>
             {data.farmCards.map((farm) => {
               const open = expandedFarmIds.has(farm.id);
               return (

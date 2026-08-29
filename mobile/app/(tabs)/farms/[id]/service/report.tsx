@@ -187,7 +187,7 @@ export default function ServiceReportScreen() {
           />
         </Card>
 
-        <SectionTitle title="House temps" />
+        <SectionTitle title="House Temps" />
         <Card style={{ marginBottom: 10 }}>
           <Text style={[styles.muted, { marginBottom: 10, lineHeight: 18 }]}>
             Prefills from today’s Log Temp on each house tile (resets at midnight). Age, placed,
@@ -245,7 +245,7 @@ export default function ServiceReportScreen() {
             onChange={(lightsOffAt) => patch({ lightsOffAt })}
           />
 
-          <SectionTitle title="Air and litter" />
+          <SectionTitle title="Air and Litter" />
           <YesNoField
             label="Temp targets per recommended program"
             value={form.tempTargetsOk}

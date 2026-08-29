@@ -76,7 +76,7 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
 
   return (
     <div>
-      <PageHeader title="Mortality entry" />
+      <PageHeader title="Mortality Entry" />
       {farms.length === 0 ? (
         <p className="text-stone-600">Add an active farm with a flock to enter mortality.</p>
       ) : (

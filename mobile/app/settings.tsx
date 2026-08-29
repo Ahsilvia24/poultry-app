@@ -87,7 +87,7 @@ export default function SettingsScreen() {
 
           <Card>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <Text style={[styles.label, { marginBottom: 0, flexShrink: 0 }]}>Order farms by</Text>
+              <Text style={[styles.label, { marginBottom: 0, flexShrink: 0 }]}>Order Farms By</Text>
               {Platform.OS === "web" ? (
                 <View style={{ flex: 1, minWidth: 0 }}>
                   {createElement(
@@ -143,7 +143,7 @@ export default function SettingsScreen() {
 
           <OptionPicker
             open={farmOrderOpen}
-            title="Order farms by"
+            title="Order Farms By"
             options={FARM_ORDER_OPTIONS.map((option) => ({
               value: option.key,
               label: option.label,

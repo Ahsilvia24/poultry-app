@@ -1742,14 +1742,14 @@ export default function FarmDetailScreen() {
           style={{ marginBottom: 8, paddingVertical: 4, alignSelf: "flex-end" }}
         >
           <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
-            Add house
+            Add House
           </Text>
         </Pressable>
 
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
           <Card>
-            <SectionHeading title="Recent visits" onTop={scrollPageToTop} />
+            <SectionHeading title="Recent Visits" onTop={scrollPageToTop} />
             {data.visits.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -1920,7 +1920,7 @@ export default function FarmDetailScreen() {
         {/* ── Issues ── */}
         <View onLayout={onSectionLayout("issues")}>
           <Card>
-            <SectionHeading title="Recent issues" onTop={scrollPageToTop} />
+            <SectionHeading title="Recent Issues" onTop={scrollPageToTop} />
             {data.issues.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -1978,7 +1978,7 @@ export default function FarmDetailScreen() {
         {/* ── Litter ── */}
         <View onLayout={onSectionLayout("litter")}>
           <Card>
-            <SectionHeading title="Litter events" onTop={scrollPageToTop} />
+            <SectionHeading title="Litter Events" onTop={scrollPageToTop} />
             {data.litterEvents.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -2031,7 +2031,7 @@ export default function FarmDetailScreen() {
         {/* ── Feed ── */}
         <View onLayout={onSectionLayout("feed")}>
           <Card>
-            <SectionHeading title="Feed deliveries" onTop={scrollPageToTop} />
+            <SectionHeading title="Feed Deliveries" onTop={scrollPageToTop} />
             {data.feedDeliveries.length === 0 ? (
               <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
             ) : (
@@ -2506,7 +2506,7 @@ export default function FarmDetailScreen() {
               }}
             >
               <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                Add house
+                Add House
               </Text>
               {addHouseError ? (
                 <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
@@ -2605,7 +2605,7 @@ export default function FarmDetailScreen() {
                 }}
               >
                 <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                  Edit farm info
+                  Edit Farm Info
                 </Text>
                 {farmEditError ? (
                   <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>

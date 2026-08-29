@@ -172,7 +172,7 @@ export function WeightProjectionTile({
           ageToggle
         ) : (
           <View style={{ flex: 1, minWidth: 160 }}>
-            <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight projections</Text>
+            <Text style={{ fontWeight: "800", fontSize: 16 }}>Weight Projections</Text>
             {ageToggle ? <View style={{ marginTop: 8 }}>{ageToggle}</View> : null}
           </View>
         )}

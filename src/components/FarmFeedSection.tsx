@@ -76,7 +76,7 @@ export function FarmFeedSection({
     <div id="feed" className="scroll-mt-24">
       <Card>
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold">Feed deliveries</h3>
+          <h3 className="font-bold">Feed Deliveries</h3>
           <button
             type="button"
             onClick={closeSection}

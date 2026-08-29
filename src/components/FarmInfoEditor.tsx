@@ -54,7 +54,7 @@ export function FarmInfoEditor({
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Close farm settings" : "Edit farm info"}
           aria-expanded={open}
-          title="Edit farm info"
+          title="Edit Farm Info"
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
         >
           <GearIcon className="h-5 w-5" />
@@ -64,7 +64,7 @@ export function FarmInfoEditor({
 
       {open ? (
         <Card className="col-span-2 text-left">
-          <h2 className="font-bold text-stone-900">Edit farm info</h2>
+          <h2 className="font-bold text-stone-900">Edit Farm Info</h2>
           <form
             action={async (formData) => {
               await updateFarmAction(farm.id, formData);

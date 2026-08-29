@@ -364,7 +364,7 @@ export function ManualLfoScreen({
           ) : null}
         </Card>
 
-        <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>
+        <Text style={styles.sectionTitle}>Bin Inventory & Feed Up</Text>
         <Card>
           <View
             ref={bindFieldRef("head")}

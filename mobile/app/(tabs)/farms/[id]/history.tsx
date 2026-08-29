@@ -230,7 +230,7 @@ export default function FarmHistoryScreen() {
           </Card>
         )}
 
-        <SectionTitle>Previous 3 flocks</SectionTitle>
+        <SectionTitle>Previous 3 Flocks</SectionTitle>
         {data?.previous.length ? (
           data.previous.map((row) => (
             <FlockHistoryCard
@@ -249,7 +249,7 @@ export default function FarmHistoryScreen() {
 
         {data && data.all.length > 0 ? (
           <>
-            <SectionTitle>All flocks</SectionTitle>
+            <SectionTitle>All Flocks</SectionTitle>
             {data.all.map((row) => (
               <Card key={`all-${row.id}`}>
                 <View

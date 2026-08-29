@@ -80,7 +80,7 @@ export function FarmListSettingsButton({ farm }: { farm: FarmInfo }) {
               id={`edit-farm-${farm.id}-title`}
               className="text-lg font-bold text-stone-900"
             >
-              Edit farm info
+              Edit Farm Info
             </h3>
             <form
               className="mt-4 space-y-4"

@@ -72,7 +72,7 @@ export function FarmLitterSection({
     <div id="litter" className="scroll-mt-24">
       <Card>
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold">Litter events</h3>
+          <h3 className="font-bold">Litter Events</h3>
           <button
             type="button"
             onClick={closeSection}
