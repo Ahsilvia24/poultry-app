@@ -18,7 +18,6 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Swipeable } from "react-native-gesture-handler";
 import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
-import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
 import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/schedule";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
@@ -223,7 +222,6 @@ function formatCatchDate(dateKey: string) {
 }
 
 export default function DashboardScreen() {
-  const { signOut } = useAuth();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("index", scrollRef);
@@ -346,7 +344,7 @@ export default function DashboardScreen() {
             }}
           >
             <Text style={[styles.title, { flex: 1 }]}>Dashboard</Text>
-            <Pressable onPress={signOut} hitSlop={8}>
+            <Pressable onPress={() => router.push("/settings")} hitSlop={8}>
               <Text
                 style={{
                   color: colors.text,
@@ -354,7 +352,7 @@ export default function DashboardScreen() {
                   textDecorationLine: "underline",
                 }}
               >
-                Sign out
+                Settings
               </Text>
             </Pressable>
           </View>

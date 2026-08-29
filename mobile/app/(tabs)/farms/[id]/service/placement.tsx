@@ -23,6 +23,7 @@ import {
   CompactBackupSettings,
 } from "../../../../../src/components/serviceForms/fields";
 import { Card, PageHeader } from "../../../../../src/components/ui";
+import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
 import { createPlacementDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
   VENT_DOOR_OPTIONS,
@@ -60,7 +61,7 @@ export default function PlacementChecklistScreen() {
 
   const [form, setForm] = useState<PlacementForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
-      return existing.payload as PlacementForm;
+      return withSavedServiceTech(existing.payload as PlacementForm);
     }
     const draft = createPlacementDraft({
       farmName,

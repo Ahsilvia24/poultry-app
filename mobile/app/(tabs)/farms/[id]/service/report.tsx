@@ -25,6 +25,7 @@ import {
 } from "../../../../../src/components/serviceForms/fields";
 import { TimeScrollPickerField } from "../../../../../src/components/TimeScrollPicker";
 import { Card, PageHeader } from "../../../../../src/components/ui";
+import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
 import { createServiceReportDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
   HUMIDITY_OPTIONS,
@@ -65,20 +66,19 @@ export default function ServiceReportScreen() {
 
   const initial = useMemo(() => {
     if (existing?.payload && typeof existing.payload === "object") {
-      return existing.payload as ServiceReportForm;
+      return withSavedServiceTech(existing.payload as ServiceReportForm);
     }
     if (!detail) return createServiceReportDraft({ farmName, flockNumber });
     return createServiceReportDraft({
       farmName: detail.farm.farmName,
       flockNumber: detail.activeFlock?.flockNumber ?? flockNumber,
       houses: prefillHouseRows(detail),
-      serviceTech: "",
     });
   }, [detail, farmName, flockNumber, existing]);
 
   const [form, setForm] = useState<ServiceReportForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
-      return existing.payload as ServiceReportForm;
+      return withSavedServiceTech(existing.payload as ServiceReportForm);
     }
     if (!detail) return initial;
     const week = currentFlockWeek(detail);
