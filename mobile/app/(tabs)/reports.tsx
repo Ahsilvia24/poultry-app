@@ -17,6 +17,7 @@ import {
   generatorReportToTsv,
   type GeneratorReportFarm,
 } from "../../src/lib/reports/generator-log";
+import { shareFieldLogPdf } from "../../src/lib/reports/shareFieldLogPdf";
 import { shareGeneratorReportPdf } from "../../src/lib/reports/shareGeneratorPdf";
 import { colors, styles } from "../../src/theme";
 import {
@@ -86,6 +87,10 @@ export default function ReportsScreen() {
   const genFilterLabel = useMemo(
     () => `${formatGeneratorReportDate(genFrom)} to ${formatGeneratorReportDate(genTo)}`,
     [genFrom, genTo],
+  );
+  const fieldFilterLabel = useMemo(
+    () => `${formatFieldLogDayHeader(fieldFrom)} to ${formatFieldLogDayHeader(fieldTo)}`,
+    [fieldFrom, fieldTo],
   );
 
   const selectedFarmName = useMemo(() => {
@@ -162,31 +167,47 @@ export default function ReportsScreen() {
               <PrimaryButton label="Run report" onPress={applyFieldLog} />
             </Card>
 
-            {fieldWeeks.map((week) => (
-              <Card key={week.weekStart} style={{ paddingVertical: 12 }}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: 10,
-                    gap: 8,
-                  }}
-                >
-                  <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text, flex: 1 }}>
+            <Card style={{ paddingVertical: 12 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 10,
+                  gap: 8,
+                }}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontWeight: "800", fontSize: 16, color: colors.text }}>
                     Field Log
                   </Text>
-                  <ClipboardIconButton
-                    accessibilityLabel="Copy field log"
-                    color={colors.accentDark}
-                    emptyMessage="No visits in this date range."
-                    getText={() => {
-                      if (!hasFieldFarms) return "";
-                      return fieldLogWeeksToTsv(fieldWeeks);
-                    }}
-                  />
+                  <Text style={[styles.muted, { marginTop: 2 }]}>{fieldFilterLabel}</Text>
                 </View>
-                <ScrollView horizontal>
+                <ClipboardIconButton
+                  accessibilityLabel="Copy field log"
+                  color={colors.accentDark}
+                  emptyMessage="No visits in this date range."
+                  getText={() => {
+                    if (!hasFieldFarms) return "";
+                    return fieldLogWeeksToTsv(fieldWeeks);
+                  }}
+                />
+                <PrimaryButton
+                  secondary
+                  label="Share PDF"
+                  onPress={() => {
+                    void shareFieldLogPdf({
+                      weeks: fieldWeeks,
+                      subtitle: fieldFilterLabel,
+                    }).catch(() => {
+                      Alert.alert("Could not share PDF", "Try again in a moment.");
+                    });
+                  }}
+                  style={{ minWidth: 120 }}
+                />
+              </View>
+              {fieldWeeks.map((week) => (
+                <ScrollView key={week.weekStart} horizontal style={{ marginBottom: 12 }}>
                   <View style={{ flexDirection: "row" }}>
                     {week.days.map((day) => {
                       const weekend = day.weekday === "Saturday" || day.weekday === "Sunday";
@@ -230,12 +251,11 @@ export default function ReportsScreen() {
                     })}
                   </View>
                 </ScrollView>
-              </Card>
-            ))}
-
-            {!hasFieldFarms ? (
-              <Text style={styles.muted}>No visits logged in this date range.</Text>
-            ) : null}
+              ))}
+              {!hasFieldFarms ? (
+                <Text style={styles.muted}>No visits logged in this date range.</Text>
+              ) : null}
+            </Card>
           </>
         ) : reportType === "generator" ? (
           <>

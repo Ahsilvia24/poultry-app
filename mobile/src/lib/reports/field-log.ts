@@ -126,3 +126,77 @@ export function fieldLogWeeksToTsv(weeks: FieldLogWeek[]): string {
   }
   return blocks.join("\n\n");
 }
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Landscape week grid for Share PDF — tile content only. */
+export function fieldLogWeeksToHtml(opts: {
+  title?: string;
+  subtitle?: string;
+  weeks: FieldLogWeek[];
+}): string {
+  const title = opts.title ?? "Field Log";
+  const weeksHtml = opts.weeks
+    .map((week) => {
+      const cells = week.days
+        .map((day) => {
+          const weekend = day.weekday === "Saturday" || day.weekday === "Sunday";
+          const farms =
+            day.farms.length === 0
+              ? `<p class="empty">—</p>`
+              : `<ol>${day.farms.map((farm) => `<li>${escapeHtml(farm)}</li>`).join("")}</ol>`;
+          return `<div class="day${weekend ? " weekend" : ""}${day.inRange ? "" : " out"}">
+        <p class="wd">${escapeHtml(day.weekday)}</p>
+        <p class="dt">${escapeHtml(formatFieldLogDayHeader(day.dateKey))}</p>
+        ${farms}
+      </div>`;
+        })
+        .join("");
+      return `<section class="week">${cells}</section>`;
+    })
+    .join("");
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>${escapeHtml(title)}</title>
+<style>
+  @page { size: landscape; margin: 0.4in; }
+  html, body { margin: 0; }
+  body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #1c1917; padding: 16px 20px; }
+  h1 { font-size: 18px; margin: 0 0 2px; }
+  .sub { color: #57534e; font-size: 11px; margin: 0 0 14px; }
+  .week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border: 1px solid #e7e5e4;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    page-break-inside: avoid;
+  }
+  .day { min-height: 120px; padding: 8px 8px 10px; border-right: 1px solid #e7e5e4; }
+  .day:last-child { border-right: 0; }
+  .weekend { background: #fafaf9; }
+  .out { opacity: 0.4; }
+  .wd { font-size: 11px; font-weight: 800; margin: 0; }
+  .dt { font-size: 10px; color: #78716c; font-weight: 600; margin: 0 0 8px; }
+  ol { list-style: none; margin: 0; padding: 0; }
+  li { font-size: 11px; font-weight: 700; margin: 0 0 6px; }
+  .empty { color: #a8a29e; font-size: 11px; margin: 0; }
+</style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  ${opts.subtitle ? `<p class="sub">${escapeHtml(opts.subtitle)}</p>` : ""}
+  ${weeksHtml}
+</body>
+</html>`;
+}

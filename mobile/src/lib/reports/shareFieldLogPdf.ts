@@ -1,25 +1,25 @@
 import { Alert, Platform } from "react-native";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import {
-  generatorReportToHtml,
-  type GeneratorReportViewFarm,
-} from "./generator-log";
+import { fieldLogWeeksToHtml, type FieldLogWeek } from "./field-log";
 import { printHtmlDocument } from "./printHtml";
 
-export async function shareGeneratorReportPdf(opts: {
-  farms: GeneratorReportViewFarm[];
+/** US Letter landscape at 72 PPI — week columns need the extra width. */
+const LANDSCAPE_LETTER = { width: 792, height: 612 };
+
+export async function shareFieldLogPdf(opts: {
+  weeks: FieldLogWeek[];
   subtitle: string;
 }) {
-  if (opts.farms.length === 0) {
-    Alert.alert("Nothing to share", "No generator hours logged in this date range.");
+  if (opts.weeks.length === 0) {
+    Alert.alert("Nothing to share", "No field log weeks in this date range.");
     return;
   }
 
-  const html = generatorReportToHtml({
-    title: "Generator Hours",
+  const html = fieldLogWeeksToHtml({
+    title: "Field Log",
     subtitle: opts.subtitle,
-    farms: opts.farms,
+    weeks: opts.weeks,
   });
 
   if (Platform.OS === "web") {
@@ -27,7 +27,11 @@ export async function shareGeneratorReportPdf(opts: {
     return;
   }
 
-  const result = await Print.printToFileAsync({ html });
+  const result = await Print.printToFileAsync({
+    html,
+    width: LANDSCAPE_LETTER.width,
+    height: LANDSCAPE_LETTER.height,
+  });
   if (!(await Sharing.isAvailableAsync())) {
     Alert.alert(
       "PDF ready",
@@ -38,7 +42,7 @@ export async function shareGeneratorReportPdf(opts: {
 
   await Sharing.shareAsync(result.uri, {
     mimeType: "application/pdf",
-    dialogTitle: "Save or share generator report",
+    dialogTitle: "Save or share field log",
     UTI: "com.adobe.pdf",
   });
 }
