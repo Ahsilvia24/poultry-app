@@ -102,11 +102,18 @@ export function FarmInfoEditor({
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="notes">Notes</Label>
-                <Textarea id="notes" name="notes" rows={3} defaultValue={farm.notes ?? ""} />
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  rows={3}
+                  defaultValue={farm.notes ?? ""}
+                  className="scroll-mb-32"
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })}
+                />
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button type="submit">Save farm changes</Button>
+              <Button type="submit">Save</Button>
               <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
