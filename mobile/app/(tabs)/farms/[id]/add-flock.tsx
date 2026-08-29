@@ -29,6 +29,7 @@ export default function AddFlockScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const farmId = paramId(params.id);
+  const [datePicker, setDatePicker] = useState<"placement" | "catch" | null>(null);
 
   const detail = useMemo(() => {
     try {
@@ -183,6 +184,8 @@ export default function AddFlockScreen() {
                 <DatePickerField
                   label="Placement date"
                   value={placementDate}
+                  expanded={datePicker === "placement"}
+                  onOpen={() => setDatePicker("placement")}
                   onChange={onPlacementChange}
                 />
               </View>
@@ -199,6 +202,8 @@ export default function AddFlockScreen() {
                 <DatePickerField
                   label="Catch date"
                   value={catchDate}
+                  expanded={datePicker === "catch"}
+                  onOpen={() => setDatePicker("catch")}
                   onChange={onCatchChange}
                 />
               </View>

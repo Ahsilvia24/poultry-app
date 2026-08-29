@@ -74,6 +74,7 @@ export default function ReportsScreen() {
   const [genTo, setGenTo] = useState(todayKey());
   const [fieldFrom, setFieldFrom] = useState(weekDefaults.from);
   const [fieldTo, setFieldTo] = useState(weekDefaults.to);
+  const [openDate, setOpenDate] = useState<string | null>(null);
   const [matrix, setMatrix] = useState(() =>
     getReports(from, to, (farmIdParam || farms[0]?.id) || undefined),
   );
@@ -146,6 +147,7 @@ export default function ReportsScreen() {
                 active={reportType === t.key}
                 onPress={() => {
                   setReportType(t.key);
+                  setOpenDate(null);
                   if (t.key === "generator") applyGenerator();
                 }}
               />
@@ -158,10 +160,22 @@ export default function ReportsScreen() {
             <Card>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <DatePickerField label="Start" value={fieldFrom} onChange={setFieldFrom} />
+                  <DatePickerField
+                    label="Start"
+                    value={fieldFrom}
+                    onChange={setFieldFrom}
+                    expanded={openDate === "fieldFrom"}
+                    onOpen={() => setOpenDate("fieldFrom")}
+                  />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <DatePickerField label="Finish" value={fieldTo} onChange={setFieldTo} />
+                  <DatePickerField
+                    label="Finish"
+                    value={fieldTo}
+                    onChange={setFieldTo}
+                    expanded={openDate === "fieldTo"}
+                    onOpen={() => setOpenDate("fieldTo")}
+                  />
                 </View>
               </View>
               <PrimaryButton label="Run report" onPress={applyFieldLog} />
@@ -262,10 +276,22 @@ export default function ReportsScreen() {
             <Card>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <DatePickerField label="From" value={genFrom} onChange={setGenFrom} />
+                  <DatePickerField
+                    label="From"
+                    value={genFrom}
+                    onChange={setGenFrom}
+                    expanded={openDate === "genFrom"}
+                    onOpen={() => setOpenDate("genFrom")}
+                  />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <DatePickerField label="To" value={genTo} onChange={setGenTo} />
+                  <DatePickerField
+                    label="To"
+                    value={genTo}
+                    onChange={setGenTo}
+                    expanded={openDate === "genTo"}
+                    onOpen={() => setOpenDate("genTo")}
+                  />
                 </View>
               </View>
               <PrimaryButton label="Apply filters" onPress={applyGenerator} />
@@ -374,10 +400,22 @@ export default function ReportsScreen() {
             <Card>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <DatePickerField label="From" value={from} onChange={setFrom} />
+                  <DatePickerField
+                    label="From"
+                    value={from}
+                    onChange={setFrom}
+                    expanded={openDate === "mortFrom"}
+                    onOpen={() => setOpenDate("mortFrom")}
+                  />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <DatePickerField label="To" value={to} onChange={setTo} />
+                  <DatePickerField
+                    label="To"
+                    value={to}
+                    onChange={setTo}
+                    expanded={openDate === "mortTo"}
+                    onOpen={() => setOpenDate("mortTo")}
+                  />
                 </View>
               </View>
               <PrimaryButton label="Apply filters" onPress={applyMortality} />

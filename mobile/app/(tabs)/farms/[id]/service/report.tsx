@@ -92,7 +92,7 @@ export default function ServiceReportScreen() {
     };
   });
 
-  const [timePicker, setTimePicker] = useState<"on" | "off" | null>(null);
+  const [timePicker, setTimePicker] = useState<"date" | "on" | "off" | null>(null);
   const [humidityOpen, setHumidityOpen] = useState(false);
   const [ventDoorOpen, setVentDoorOpen] = useState(false);
   const [weekOpen, setWeekOpen] = useState(false);
@@ -180,6 +180,8 @@ export default function ServiceReportScreen() {
           <DatePickerField
             label="Date"
             value={form.date}
+            expanded={timePicker === "date"}
+            onOpen={() => setTimePicker("date")}
             onChange={(date) => patch({ date })}
           />
           <TextField

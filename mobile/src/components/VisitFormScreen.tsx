@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -29,6 +28,7 @@ import type { ServiceFormKind } from "../lib/serviceForms/types";
 import { colors, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 type Props = {
   farmId: string;
@@ -129,6 +129,8 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
   const [followUpRequired, setFollowUpRequired] = useState(initial?.followUpRequired ?? false);
   const [followUpDate, setFollowUpDate] = useState(initial?.followUpDate ?? "");
   const [typePickerOpen, setTypePickerOpen] = useState(false);
+  const [datePicker, setDatePicker] = useState<"visit" | "followUp" | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -197,21 +199,19 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
 
   function confirmDelete() {
     if (!visitId) return;
-    Alert.alert("Delete visit?", "This cannot be undone.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          try {
-            deleteVisit(farmId, visitId);
-            router.back();
-          } catch (e) {
-            Alert.alert("Error", e instanceof Error ? e.message : "Could not delete visit");
-          }
-        },
-      },
-    ]);
+    setDeleteOpen(true);
+  }
+
+  function runDelete() {
+    if (!visitId) return;
+    try {
+      deleteVisit(farmId, visitId);
+      setDeleteOpen(false);
+      router.back();
+    } catch (e) {
+      setDeleteOpen(false);
+      setError(e instanceof Error ? e.message : "Could not delete visit");
+    }
   }
 
   return (
@@ -238,12 +238,17 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
             <DatePickerField
               label="Visit date"
               value={visitDate}
+              expanded={datePicker === "visit"}
+              onOpen={() => setDatePicker("visit")}
               onChange={setVisitDate}
             />
 
             <Text style={[styles.label, { marginTop: 8 }]}>Visit type</Text>
             <Pressable
-              onPress={() => setTypePickerOpen(true)}
+              onPress={() => {
+                setDatePicker(null);
+                setTypePickerOpen(true);
+              }}
               style={[
                 styles.input,
                 {
@@ -326,6 +331,8 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
                 <DatePickerField
                   label="Follow-up date"
                   value={followUpDate}
+                  expanded={datePicker === "followUp"}
+                  onOpen={() => setDatePicker("followUp")}
                   onChange={setFollowUpDate}
                 />
               </View>
@@ -446,6 +453,15 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
           </Pressable>
         </Pressable>
       </Modal>
+      <ConfirmDialog
+        visible={deleteOpen}
+        title="Delete visit?"
+        message="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={runDelete}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </SafeAreaView>
   );
 }

@@ -36,6 +36,7 @@ import {
 } from "../../../src/components/NumberKeypad";
 import { LfoHouseSummaryBlock } from "../../../src/components/LfoHouseSummaryBlock";
 import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
+import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 
 function formatLbs(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -179,6 +180,8 @@ export default function EditLfoScreen() {
   const [houses, setHouses] = useState<HouseDraft[]>([]);
   const [ready, setReady] = useState(false);
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
+  const [openPicker, setOpenPicker] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [replaceOnType, setReplaceOnType] = useState(false);
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("lfo", scrollRef);
@@ -401,18 +404,7 @@ export default function EditLfoScreen() {
 
   function confirmDelete() {
     if (!id) return;
-    Alert.alert("Delete LFO", `Delete LFO for ${farmName || "this farm"}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          deleteLfo(id);
-          if (router.canGoBack()) router.back();
-          else router.replace("/(tabs)/lfo");
-        },
-      },
-    ]);
+    setDeleteOpen(true);
   }
 
   return (
@@ -519,20 +511,28 @@ export default function EditLfoScreen() {
                     <DatePickerField
                       label="Order date"
                       value={orderDate}
+                      expanded={openPicker === "orderDate"}
                       onChange={(date) => {
                         setActiveField(null);
                         setOrderDate(date);
                       }}
-                      onOpen={() => setActiveField(null)}
+                      onOpen={() => {
+                        setActiveField(null);
+                        setOpenPicker("orderDate");
+                      }}
                     />
                     <TimeScrollPickerField
                       label="Order time"
                       value={orderTime}
+                      expanded={openPicker === "orderTime"}
                       onChange={(time) => {
                         setActiveField(null);
                         setOrderTime(time);
                       }}
-                      onOpen={() => setActiveField(null)}
+                      onOpen={() => {
+                        setActiveField(null);
+                        setOpenPicker("orderTime");
+                      }}
                     />
                   </View>
                   <FieldButton
@@ -613,21 +613,29 @@ export default function EditLfoScreen() {
                       <DatePickerField
                         label="Catch date"
                         value={house.catchDate}
+                        expanded={openPicker === `catchDate:${house.houseId}`}
                         onChange={(date) => {
                           setActiveField(null);
                           updateHouse(house.houseId, { catchDate: date });
                         }}
-                        onOpen={() => setActiveField(null)}
+                        onOpen={() => {
+                          setActiveField(null);
+                          setOpenPicker(`catchDate:${house.houseId}`);
+                        }}
                         style={{ flex: 1, minWidth: 0 }}
                       />
                       <TimeScrollPickerField
                         label="Catch time"
                         value={house.catchTime}
+                        expanded={openPicker === `catchTime:${house.houseId}`}
                         onChange={(time) => {
                           setActiveField(null);
                           updateHouse(house.houseId, { catchTime: time });
                         }}
-                        onOpen={() => setActiveField(null)}
+                        onOpen={() => {
+                          setActiveField(null);
+                          setOpenPicker(`catchTime:${house.houseId}`);
+                        }}
                         style={{ flex: 1, minWidth: 0 }}
                       />
                     </View>
@@ -771,6 +779,21 @@ export default function EditLfoScreen() {
           </>
         ) : null}
       </View>
+      <ConfirmDialog
+        visible={deleteOpen}
+        title="Delete LFO"
+        message={`Delete LFO for ${farmName || "this farm"}?`}
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          if (!id) return;
+          deleteLfo(id);
+          setDeleteOpen(false);
+          if (router.canGoBack()) router.back();
+          else router.replace("/(tabs)/lfo");
+        }}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </SafeAreaView>
   );
 }

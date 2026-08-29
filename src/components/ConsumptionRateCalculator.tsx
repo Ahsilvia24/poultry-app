@@ -92,7 +92,7 @@ export function ConsumptionRateCalculator() {
             inputMode="numeric"
             compact
             value={dailyWaterGallons}
-            placeholder={DEFAULT_WATER_GAL}
+            placeholder=""
             onFocus={(e) => e.target.select()}
             onChange={(e) => setDailyWaterGallons(e.target.value.replace(/\D/g, ""))}
             className="mt-0.5 placeholder:text-stone-400/70"
@@ -106,7 +106,7 @@ export function ConsumptionRateCalculator() {
             inputMode="numeric"
             compact
             value={headCount}
-            placeholder={DEFAULT_HEAD_COUNT}
+            placeholder=""
             onFocus={(e) => e.target.select()}
             onChange={(e) => setHeadCount(e.target.value.replace(/\D/g, ""))}
             className="mt-0.5 placeholder:text-stone-400/70"

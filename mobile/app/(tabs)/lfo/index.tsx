@@ -25,6 +25,7 @@ import { currentHalfHourTime } from "../../../src/lib/time-slots";
 import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
+import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 import { colors, styles } from "../../../src/theme";
 import {
   Card,
@@ -225,6 +226,9 @@ export default function LfoListScreen() {
   const [headCount, setHeadCount] = useState("");
   const [activeField, setActiveField] = useState<CalcField | null>(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; farmName: string } | null>(
+    null,
+  );
 
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("lfo", scrollRef);
@@ -352,22 +356,7 @@ export default function LfoListScreen() {
   }
 
   function confirmDelete(id: string, farmName: string) {
-    Alert.alert(
-      "Are you sure?",
-      `Delete LFO for ${farmName}? This cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            deleteLfo(id);
-            setLfos(listLfos());
-            setMsg("LFO deleted");
-          },
-        },
-      ],
-    );
+    setDeleteTarget({ id, farmName });
   }
 
   return (
@@ -472,6 +461,25 @@ export default function LfoListScreen() {
         ) : null}
       </View>
       )}
+      <ConfirmDialog
+        visible={deleteTarget != null}
+        title="Are you sure?"
+        message={
+          deleteTarget
+            ? `Delete LFO for ${deleteTarget.farmName}? This cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteLfo(deleteTarget.id);
+          setLfos(listLfos());
+          setMsg("LFO deleted");
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </SafeAreaView>
   );
 }

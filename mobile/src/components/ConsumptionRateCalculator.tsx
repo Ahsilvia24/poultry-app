@@ -111,7 +111,7 @@ export function ConsumptionRateCalculator({
         <CalcFieldButton
           label="Daily water (gal)"
           value={waterGal}
-          placeholder={DEFAULT_WATER_GAL}
+          placeholder=""
           active={waterActive}
           onPress={onFocusWater}
           fieldRef={waterRef}
@@ -119,7 +119,7 @@ export function ConsumptionRateCalculator({
         <CalcFieldButton
           label="Current head count"
           value={headCount}
-          placeholder={DEFAULT_HEAD_COUNT}
+          placeholder=""
           active={headActive}
           onPress={onFocusHead}
           fieldRef={headRef}

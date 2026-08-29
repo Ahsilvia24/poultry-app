@@ -138,6 +138,9 @@ export function ManualLfoScreen({
   const [catchDate, setCatchDate] = useState("");
   const [catchTime, setCatchTime] = useState("");
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
+  const [openPicker, setOpenPicker] = useState<
+    "orderDate" | "orderTime" | "catchDate" | "catchTime" | null
+  >(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("lfo", scrollRef);
@@ -310,20 +313,28 @@ export function ManualLfoScreen({
               <DatePickerField
                 label="Order date"
                 value={orderDate}
+                expanded={openPicker === "orderDate"}
                 onChange={(date) => {
                   setActiveField(null);
                   setOrderDate(date);
                 }}
-                onOpen={() => setActiveField(null)}
+                onOpen={() => {
+                  setActiveField(null);
+                  setOpenPicker("orderDate");
+                }}
               />
               <TimeScrollPickerField
                 label="Order time"
                 value={orderTime}
+                expanded={openPicker === "orderTime"}
                 onChange={(time) => {
                   setActiveField(null);
                   setOrderTime(time);
                 }}
-                onOpen={() => setActiveField(null)}
+                onOpen={() => {
+                  setActiveField(null);
+                  setOpenPicker("orderTime");
+                }}
               />
             </View>
             <FieldButton
@@ -401,21 +412,29 @@ export function ManualLfoScreen({
             <DatePickerField
               label="Catch date"
               value={catchDate}
+              expanded={openPicker === "catchDate"}
               onChange={(date) => {
                 setActiveField(null);
                 setCatchDate(date);
               }}
-              onOpen={() => setActiveField(null)}
+              onOpen={() => {
+                setActiveField(null);
+                setOpenPicker("catchDate");
+              }}
               style={{ flex: 1, minWidth: 0 }}
             />
             <TimeScrollPickerField
               label="Catch time"
               value={catchTime}
+              expanded={openPicker === "catchTime"}
               onChange={(time) => {
                 setActiveField(null);
                 setCatchTime(time);
               }}
-              onOpen={() => setActiveField(null)}
+              onOpen={() => {
+                setActiveField(null);
+                setOpenPicker("catchTime");
+              }}
               style={{ flex: 1, minWidth: 0 }}
             />
           </View>

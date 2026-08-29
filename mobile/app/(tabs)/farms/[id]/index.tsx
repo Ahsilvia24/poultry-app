@@ -593,6 +593,16 @@ export default function FarmDetailScreen() {
   const [generatorError, setGeneratorError] = useState<string | null>(null);
   const [generatorEditingId, setGeneratorEditingId] = useState<string | null>(null);
   const [generatorEditingGen, setGeneratorEditingGen] = useState<GenHourKey | null>(null);
+  const [opsConfirm, setOpsConfirm] = useState<
+    | { kind: "house"; houseId: string; houseNumber: number }
+    | { kind: "visit"; visitId: string; visitDate: string }
+    | { kind: "issue"; issueId: string }
+    | { kind: "litter"; eventId: string }
+    | { kind: "feed"; deliveryId: string }
+    | { kind: "generator"; logId: string; hourKey: GenHourKey; label: string }
+    | null
+  >(null);
+  const [opsError, setOpsError] = useState<string | null>(null);
   const [completeConfirm, setCompleteConfirm] = useState<{
     flockId: string;
     flockNumber: string;
@@ -1026,43 +1036,28 @@ export default function FarmDetailScreen() {
   }
 
   function confirmDeleteHouse(h: HouseRow) {
-    Alert.alert(
-      `Delete house ${h.houseNumber}?`,
-      "This removes the house from the farm. It will no longer appear in your lists.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            try {
-              deleteHouse(farm.id, h.id);
-              load();
-            } catch (e) {
-              Alert.alert("Error", e instanceof Error ? e.message : "Could not delete house");
-            }
-          },
-        },
-      ],
-    );
+    setOpsConfirm({ kind: "house", houseId: h.id, houseNumber: h.houseNumber });
   }
 
   function confirmDeleteVisit(visitId: string, visitDate: string) {
-    Alert.alert("Delete visit?", `${visitDate} will be removed.`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          try {
-            deleteVisit(farm.id, visitId);
-            load();
-          } catch (e) {
-            Alert.alert("Error", e instanceof Error ? e.message : "Could not delete visit");
-          }
-        },
-      },
-    ]);
+    setOpsConfirm({ kind: "visit", visitId, visitDate });
+  }
+
+  function runOpsConfirm() {
+    if (!opsConfirm) return;
+    try {
+      if (opsConfirm.kind === "house") deleteHouse(farm.id, opsConfirm.houseId);
+      else if (opsConfirm.kind === "visit") deleteVisit(farm.id, opsConfirm.visitId);
+      else if (opsConfirm.kind === "issue") deleteIssue(farm.id, opsConfirm.issueId);
+      else if (opsConfirm.kind === "litter") deleteLitterEvent(farm.id, opsConfirm.eventId);
+      else if (opsConfirm.kind === "feed") deleteFeedDelivery(opsConfirm.deliveryId);
+      else deleteGeneratorLog(farm.id, opsConfirm.logId, opsConfirm.hourKey);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    } finally {
+      setOpsConfirm(null);
+    }
   }
 
   function saveHouseEdit() {
@@ -1855,21 +1850,12 @@ export default function FarmDetailScreen() {
                         if (log) openGeneratorEditor(log, gen.hourKey);
                       }}
                       onDelete={(id) =>
-                        Alert.alert(
-                          `Delete ${gen.label} entry?`,
-                          "Only this generator reading will be removed. Other generators on this date stay.",
-                          [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                              text: "Delete",
-                              style: "destructive",
-                              onPress: () => {
-                                deleteGeneratorLog(farm.id, id, gen.hourKey);
-                                load();
-                              },
-                            },
-                          ],
-                        )
+                        setOpsConfirm({
+                          kind: "generator",
+                          logId: id,
+                          hourKey: gen.hourKey,
+                          label: gen.label,
+                        })
                       }
                     />
                   );
@@ -1923,26 +1909,7 @@ export default function FarmDetailScreen() {
                         params: { id: farm.id, issueId: issue.id },
                       })
                     }
-                    onDelete={() =>
-                      Alert.alert("Delete issue?", "This cannot be undone.", [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => {
-                            try {
-                              deleteIssue(farm.id, issue.id);
-                              load();
-                            } catch (e) {
-                              Alert.alert(
-                                "Error",
-                                e instanceof Error ? e.message : "Could not delete",
-                              );
-                            }
-                          },
-                        },
-                      ])
-                    }
+                    onDelete={() => setOpsConfirm({ kind: "issue", issueId: issue.id })}
                   />
                 </View>
               ))
@@ -1995,26 +1962,7 @@ export default function FarmDetailScreen() {
                         params: { id: farm.id, eventId: e.id },
                       })
                     }
-                    onDelete={() =>
-                      Alert.alert("Delete litter event?", "This cannot be undone.", [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => {
-                            try {
-                              deleteLitterEvent(farm.id, e.id);
-                              load();
-                            } catch (err) {
-                              Alert.alert(
-                                "Error",
-                                err instanceof Error ? err.message : "Could not delete",
-                              );
-                            }
-                          },
-                        },
-                      ])
-                    }
+                    onDelete={() => setOpsConfirm({ kind: "litter", eventId: e.id })}
                   />
                 </View>
               ))
@@ -2067,26 +2015,7 @@ export default function FarmDetailScreen() {
                         params: { id: farm.id, deliveryId: d.id },
                       })
                     }
-                    onDelete={() =>
-                      Alert.alert("Delete feed delivery?", "This cannot be undone.", [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => {
-                            try {
-                              deleteFeedDelivery(d.id);
-                              load();
-                            } catch (err) {
-                              Alert.alert(
-                                "Error",
-                                err instanceof Error ? err.message : "Could not delete",
-                              );
-                            }
-                          },
-                        },
-                      ])
-                    }
+                    onDelete={() => setOpsConfirm({ kind: "feed", deliveryId: d.id })}
                   />
                 </View>
               ))
@@ -2865,6 +2794,46 @@ export default function FarmDetailScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      <ConfirmDialog
+        visible={opsConfirm != null}
+        title={
+          opsConfirm?.kind === "house"
+            ? `Delete house ${opsConfirm.houseNumber}?`
+            : opsConfirm?.kind === "visit"
+              ? "Delete visit?"
+              : opsConfirm?.kind === "issue"
+                ? "Delete issue?"
+                : opsConfirm?.kind === "litter"
+                  ? "Delete litter event?"
+                  : opsConfirm?.kind === "feed"
+                    ? "Delete feed delivery?"
+                    : opsConfirm?.kind === "generator"
+                      ? `Delete ${opsConfirm.label} entry?`
+                      : "Delete?"
+        }
+        message={
+          opsConfirm?.kind === "house"
+            ? "This removes the house from the farm. It will no longer appear in your lists."
+            : opsConfirm?.kind === "visit"
+              ? `${opsConfirm.visitDate} will be removed.`
+              : opsConfirm?.kind === "generator"
+                ? "Only this generator reading will be removed. Other generators on this date stay."
+                : "This cannot be undone."
+        }
+        confirmLabel="Delete"
+        danger
+        onConfirm={runOpsConfirm}
+        onCancel={() => setOpsConfirm(null)}
+      />
+      <ConfirmDialog
+        visible={opsError != null}
+        title="Error"
+        message={opsError ?? ""}
+        confirmLabel="OK"
+        cancelLabel="Dismiss"
+        onConfirm={() => setOpsError(null)}
+        onCancel={() => setOpsError(null)}
+      />
       <ConfirmDialog
         visible={completeConfirm != null}
         title="Complete flock?"
