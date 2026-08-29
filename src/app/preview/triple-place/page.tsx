@@ -45,7 +45,6 @@ export default async function TriplePlacePreviewPage() {
   }
 
   const activeFlocks = farm.flocks;
-  const houseCount = farm.houses.length;
   const birdsPlaced = activeFlocks.reduce(
     (sum, fl) => sum + fl.houseFlocks.reduce((s, hf) => s + hf.placedBirdCount, 0),
     0,
@@ -85,7 +84,6 @@ export default async function TriplePlacePreviewPage() {
             <div className="min-w-0 flex-1">
               <p className="text-lg font-bold text-stone-900">
                 {farm.farmName}
-                <span className="font-semibold text-stone-500"> ({houseCount})</span>
                 {flockAges.length > 0 ? (
                   <span className="font-semibold text-stone-500">
                     {" "}
