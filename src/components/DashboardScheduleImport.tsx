@@ -294,7 +294,7 @@ export function DashboardScheduleImport({
         </div>
 
         <Button type="submit" disabled={pending || !uploadEnabled}>
-          {pending ? "Working…" : "Upload & read"}
+          {pending ? "Working…" : "Upload & Read"}
         </Button>
       </form>
 

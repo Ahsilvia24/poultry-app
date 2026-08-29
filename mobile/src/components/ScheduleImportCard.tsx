@@ -490,7 +490,7 @@ export function ScheduleImportCard() {
 
       <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>{helperText}</Text>
 
-      <PrimaryButton label={busy ? "Working…" : "Upload & read"} onPress={onUpload} />
+      <PrimaryButton label={busy ? "Working…" : "Upload & Read"} onPress={onUpload} />
 
       {note ? (
         <Text style={[styles.muted, { marginTop: 10, lineHeight: 18, color: colors.text }]}>
