@@ -38,10 +38,12 @@ export const VENT_MODE_OPTIONS = [
   { value: "tunnel", label: "Tunnel" },
 ];
 
-export const VENT_DOOR_OPTIONS = [
-  { value: "ceiling", label: "Ceiling" },
-  { value: "sidewall", label: "Sidewall" },
-];
+export {
+  VENT_DOOR_OPTIONS,
+  normalizeVentDoorTypes,
+  ventDoorTypesFromPayload,
+  type VentDoorType,
+} from "./ventDoor";
 
 export const WEEK_OPTIONS = Array.from({ length: 8 }, (_, i) => ({
   value: String(i + 1),
