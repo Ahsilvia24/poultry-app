@@ -105,6 +105,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
           orderTime={lfo.orderTime}
           consumptionRate={lfo.consumptionRate}
           asOf={asOf}
+          notes={lfo.notes}
           submitLabel="Save changes"
           deleteAction={remove}
           houses={houseRows}

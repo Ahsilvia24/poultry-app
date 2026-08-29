@@ -1,5 +1,6 @@
 import { Text, View } from "react-native";
 import { ClipboardIconButton } from "./ClipboardIconButton";
+import { SharePdfIconButton } from "./SharePdfIconButton";
 import { colors, fonts } from "../theme";
 
 export function CopyHouseSummaryButton({
@@ -28,10 +29,12 @@ export function LfoHouseSummaryBlock({
   lines,
   farmName,
   fontSize = 13,
+  onSharePdf,
 }: {
   lines: string[];
   farmName?: string;
   fontSize?: number;
+  onSharePdf?: () => void;
 }) {
   if (lines.length === 0) return null;
 
@@ -48,6 +51,9 @@ export function LfoHouseSummaryBlock({
             </Text>
           ))}
         </View>
+        {onSharePdf ? (
+          <SharePdfIconButton onPress={onSharePdf} accessibilityLabel="Share full LFO PDF" />
+        ) : null}
         <CopyHouseSummaryButton lines={lines} farmName={farmName} />
       </View>
     </View>

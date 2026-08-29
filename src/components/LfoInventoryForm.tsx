@@ -11,6 +11,7 @@ import {
   formatHouseLfoSummary,
 } from "@/lib/lfo/calculate";
 import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
+import { downloadLfoPdf } from "@/lib/exports/lfo-pdf";
 
 export type LfoHouseRow = {
   houseId: string;
@@ -74,6 +75,7 @@ export function LfoInventoryForm({
   farmName,
   consumptionRate: initialRate = DEFAULT_LFO_CONSUMPTION_RATE,
   asOf = null,
+  notes = null,
   submitLabel,
   deleteAction,
 }: {
@@ -86,6 +88,7 @@ export function LfoInventoryForm({
   consumptionRate?: number;
   /** Frozen clock for hours-until-off / order math. Omit on a new LFO. */
   asOf?: Date | string | null;
+  notes?: string | null;
   submitLabel: string;
   deleteAction?: () => Promise<void>;
 }) {
@@ -129,6 +132,27 @@ export function LfoInventoryForm({
 
   function updateRow(houseId: string, patch: Partial<(typeof rows)[number]>) {
     setRows((prev) => prev.map((r) => (r.houseId === houseId ? { ...r, ...patch } : r)));
+  }
+
+  function shareCurrent() {
+    const rate = Number(consumptionRate);
+    downloadLfoPdf({
+      farmName: farmName ?? "Farm",
+      orderDate,
+      orderTime,
+      consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
+      calculatedAt: asOf,
+      notes,
+      houses: rows.map((house) => ({
+        houseId: house.houseId,
+        houseNumber: house.houseNumber,
+        headCount: house.headCount,
+        binAPounds: Number(house.binAPounds) || 0,
+        binBPounds: Number(house.binBPounds) || 0,
+        catchDate: house.catchDate,
+        catchTime: house.catchTime,
+      })),
+    });
   }
 
   return (
@@ -386,11 +410,21 @@ export function LfoInventoryForm({
               </p>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={shareCurrent}
+            className="shrink-0 text-sm font-semibold text-emerald-800 hover:underline"
+          >
+            Share PDF
+          </button>
           <CopySummaryButton lines={houseSummary} farmName={farmName} />
         </div>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" variant="secondary" onClick={shareCurrent}>
+          Share PDF
+        </Button>
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : submitLabel}
         </Button>

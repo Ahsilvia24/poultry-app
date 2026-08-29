@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { deleteLastFeedOrderAction } from "@/app/actions/lfo";
 import { Button, Card } from "@/components/ui";
+import { downloadLfoPdf } from "@/lib/exports/lfo-pdf";
+import type { LfoShareInventory } from "@/lib/lfo/share-payload";
 
 function CopyIcon({ className }: { className?: string }) {
   return (
@@ -37,6 +39,25 @@ function CheckIcon({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function ShareIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+      <polyline points="16 6 12 2 8 6" />
+      <line x1="12" y1="2" x2="12" y2="15" />
     </svg>
   );
 }
@@ -83,12 +104,14 @@ export function SavedLfoRow({
   farmName,
   dateLabel,
   houseSummary,
+  shareInventory,
 }: {
   id: string;
   farmName: string;
   dateLabel: string;
   /** e.g. ["H1-4000 lbs.", "H2-5000 Rec."] */
   houseSummary?: string[] | null;
+  shareInventory: LfoShareInventory;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -169,9 +192,24 @@ export function SavedLfoRow({
               <p className="font-semibold text-stone-900">{farmName}</p>
               <p className="text-sm text-stone-600">{dateLabel}</p>
             </div>
-            {lines.length > 0 ? (
-              <CopyHouseSummaryButton lines={lines} farmName={farmName} />
-            ) : null}
+            <div className="pointer-events-auto relative z-10 flex items-center">
+              <button
+                type="button"
+                aria-label={`Share PDF for ${farmName}`}
+                title="Share PDF"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  downloadLfoPdf(shareInventory);
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
+              >
+                <ShareIcon className="h-4 w-4" />
+              </button>
+              {lines.length > 0 ? (
+                <CopyHouseSummaryButton lines={lines} farmName={farmName} />
+              ) : null}
+            </div>
           </div>
           {lines.length > 0 ? (
             <div className="relative z-10 pointer-events-none mt-2 space-y-0.5">

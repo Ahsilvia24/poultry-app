@@ -34,6 +34,7 @@ import {
   backspaceKeypadValue,
 } from "../../../src/components/NumberKeypad";
 import { LfoHouseSummaryBlock } from "../../../src/components/LfoHouseSummaryBlock";
+import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
 
 function formatLbs(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -87,6 +88,7 @@ function loadDraft(id: string) {
     orderTime: normalizeHalfHourTime(lfo.orderTime) ?? currentHalfHourTime(),
     consumptionRate: String(lfo.consumptionRate ?? DEFAULT_LFO_CONSUMPTION_RATE),
     calculatedAt: lfo.calculatedAt,
+    notes: lfo.notes,
     houses: lfo.houses.map(
       (h): HouseDraft => {
         const parts = catchPartsFromFeedUpAt(h.feedUpAt);
@@ -172,6 +174,7 @@ export default function EditLfoScreen() {
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [calculatedAt, setCalculatedAt] = useState<string | null>(null);
+  const [notes, setNotes] = useState<string | null>(null);
   const [houses, setHouses] = useState<HouseDraft[]>([]);
   const [ready, setReady] = useState(false);
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
@@ -194,6 +197,7 @@ export default function EditLfoScreen() {
       setOrderTime(draft.orderTime);
       setConsumptionRate(draft.consumptionRate);
       setCalculatedAt(draft.calculatedAt);
+      setNotes(draft.notes);
       setHouses(draft.houses);
       setError(null);
       setReady(true);
@@ -247,6 +251,29 @@ export default function EditLfoScreen() {
   }, [calculatedAt, consumptionRate, orderDate, houses]);
 
   const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
+
+  function shareCurrentLfo() {
+    const rate = Number(consumptionRate);
+    void shareLfoPdf({
+      farmName,
+      orderDate,
+      orderTime,
+      consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
+      calculatedAt,
+      notes,
+      houses: houses.map((house) => ({
+        houseId: house.houseId,
+        houseNumber: house.houseNumber,
+        headCount: house.headCount,
+        binAPounds: Number(house.binAPounds) || 0,
+        binBPounds: Number(house.binBPounds) || 0,
+        catchDate: house.catchDate,
+        catchTime: house.catchTime,
+      })),
+    }).catch(() => {
+      Alert.alert("Could not share PDF", "Try again in a moment.");
+    });
+  }
 
   function updateHouse(houseId: string, patch: Partial<HouseDraft>) {
     setHouses((prev) => prev.map((h) => (h.houseId === houseId ? { ...h, ...patch } : h)));
@@ -674,12 +701,18 @@ export default function EditLfoScreen() {
                       lines={houseSummary}
                       farmName={farmName}
                       fontSize={15}
+                      onSharePdf={shareCurrentLfo}
                     />
                   </View>
                 </Card>
               ) : null}
 
-              <PrimaryButton label="Save changes" onPress={save} />
+              <PrimaryButton
+                label="Share PDF"
+                secondary
+                onPress={shareCurrentLfo}
+              />
+              <PrimaryButton label="Save changes" onPress={save} style={{ marginTop: 8 }} />
               <PrimaryButton
                 label="Save as new LFO"
                 secondary
