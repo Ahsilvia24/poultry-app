@@ -190,7 +190,7 @@ export const BIG_BIRD_LIGHTING_PROGRAM: LightingProgramRow[] = [
   { ageLabel: "28", hoursLight: 18, hoursDark: 6, centerLights: "off", intensity: ".25 fc" },
   { ageLabel: "42", hoursLight: 20, hoursDark: 4, centerLights: "off", intensity: ".25 fc" },
   {
-    ageLabel: "Day before kill",
+    ageLabel: "Catch",
     hoursLight: 24,
     hoursDark: 0,
     centerLights: "off",
