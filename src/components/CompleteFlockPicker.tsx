@@ -61,7 +61,7 @@ export function CompleteFlockPicker({
         disabled={pending}
         onClick={() => complete(flocks[0]!)}
       >
-        Complete Flock
+        End Flock
       </Button>
     );
   }
