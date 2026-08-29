@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { fieldLogWeeksToHtml, type FieldLogWeek } from "./field-log.ts";
+import { fieldLogHasVisits, fieldLogWeeksToHtml, type FieldLogWeek } from "./field-log.ts";
 
 const week: FieldLogWeek = {
   weekStart: "2026-08-24",
@@ -19,6 +19,18 @@ const week: FieldLogWeek = {
     farms: weekday === "Monday" ? ["Maple Grove"] : [],
   })),
 };
+
+describe("fieldLogHasVisits", () => {
+  it("treats week shells with no farm names as empty", () => {
+    const empty: FieldLogWeek = {
+      ...week,
+      days: week.days.map((day) => ({ ...day, farms: [] })),
+    };
+    assert.equal(fieldLogHasVisits([]), false);
+    assert.equal(fieldLogHasVisits([empty]), false);
+    assert.equal(fieldLogHasVisits([week]), true);
+  });
+});
 
 describe("fieldLogWeeksToHtml", () => {
   it("builds a landscape week grid with farm names", () => {

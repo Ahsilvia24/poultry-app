@@ -6,6 +6,7 @@ import { getFieldLog, getGeneratorLogReport, getReports, listFarms } from "../..
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
   defaultFieldLogRange,
+  fieldLogHasVisits,
   fieldLogWeeksToTsv,
   formatFieldLogDayHeader,
   type FieldLogWeek,
@@ -127,9 +128,7 @@ export default function ReportsScreen() {
     setGenFarms(getGeneratorLogReport(genFrom, genTo));
   }, [reportType, genFrom, genTo]);
 
-  const hasFieldFarms = fieldWeeks.some((week) =>
-    week.days.some((day) => day.farms.length > 0),
-  );
+  const hasFieldFarms = fieldLogHasVisits(fieldWeeks);
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
