@@ -393,14 +393,10 @@ export default function ToolsScreen() {
                         value={selectedHouse.placedBirdCount?.toLocaleString() ?? "—"}
                       />
                       <MetricTile
-                        label="Total CFM"
+                        label="Total CFM (Min Vent)"
                         value={
                           selectedHouse.totalFanCFM != null
-                            ? `${selectedHouse.totalFanCFM.toLocaleString()}${
-                                selectedHouse.numberOfFans != null
-                                  ? ` · ${selectedHouse.numberOfFans} fans`
-                                  : ""
-                              }`
+                            ? selectedHouse.totalFanCFM.toLocaleString()
                             : "—"
                         }
                       />
@@ -529,7 +525,7 @@ export default function ToolsScreen() {
                       </View>
                     ) : (
                       <Text style={{ color: colors.warn, marginTop: 10 }}>
-                        Need birds placed, flock week, and Total fan CFM on this house to calculate.
+                        Need birds placed, flock week, and Total CFM (Min Vent) on this house to calculate.
                       </Text>
                     )}
                   </View>
