@@ -46,14 +46,6 @@ export function prefillHouseRows(detail: FarmDetailLike): ServiceHouseRow[] {
   });
 }
 
-/** House 1 (lowest house number with fan CFM) Total CFM for Max CFM prefill. */
-export function house1TotalCfm(detail: FarmDetailLike): string {
-  const sorted = [...detail.houses].sort((a, b) => a.houseNumber - b.houseNumber);
-  const h1 = sorted.find((h) => h.houseNumber === 1) ?? sorted[0];
-  if (!h1?.totalFanCFM || h1.totalFanCFM <= 0) return "";
-  return String(Math.round(h1.totalFanCFM));
-}
-
 export function minVentForWeek(
   detail: FarmDetailLike,
   week: number,
