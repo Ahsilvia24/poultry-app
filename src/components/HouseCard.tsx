@@ -315,28 +315,28 @@ export function HouseCard({
             <button
               type="button"
               onClick={() => setMode("edit")}
-              className="mt-3 w-full space-y-3 text-left text-sm text-inherit"
+              className="mt-3 w-full space-y-3 text-left text-inherit"
               aria-label={`Edit house ${house.houseNumber} details`}
             >
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <p className="text-stone-500">Placed</p>
-                  <p className="font-semibold">
+                  <p className="text-[13px] text-stone-500">Placed</p>
+                  <p className="mt-0.5 text-[15px] font-bold">
                     {birdsPlaced != null ? formatNumber(birdsPlaced) : "—"}
                   </p>
                   {placementDateKey ? (
-                    <p className="font-semibold leading-snug">{formatHouseDetailDate(placementDateKey)}</p>
+                    <p className="text-[15px] font-bold leading-snug">{formatHouseDetailDate(placementDateKey)}</p>
                   ) : null}
                 </div>
                 <div>
-                  <p className="text-stone-500">Remaining</p>
-                  <p className="font-semibold">
+                  <p className="text-[13px] text-stone-500">Remaining</p>
+                  <p className="mt-0.5 text-[15px] font-bold">
                     {metrics ? formatNumber(metrics.remaining) : "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-stone-500">PHC</p>
-                  <p className="font-semibold">
+                  <p className="text-[13px] text-stone-500">PHC</p>
+                  <p className="mt-0.5 text-[15px] font-bold">
                     {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
                   </p>
                   <p className="mt-0.5 text-[11px] text-stone-400">150 catch crew</p>
@@ -344,30 +344,34 @@ export function HouseCard({
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <p className="text-stone-500">Catch</p>
+                  <p className="text-[13px] text-stone-500">Catch</p>
                   {catchDateKey ? (
-                    <p className="font-semibold leading-snug">
+                    <p className="mt-0.5 text-[15px] font-bold leading-snug">
                       {formatHouseDetailDate(catchDateKey)}
                     </p>
                   ) : (
-                    <p className="font-semibold">—</p>
+                    <p className="mt-0.5 text-[15px] font-bold">—</p>
                   )}
                   {catchTime ? (
-                    <p className="font-semibold leading-snug">{compactCatchTimeLabel(catchTime)}</p>
+                    <p className="text-[15px] font-bold leading-snug">{compactCatchTimeLabel(catchTime)}</p>
                   ) : null}
                   {catchAgeDays != null ? (
-                    <p className="font-semibold leading-snug">{catchAgeDays} days</p>
+                    <p className="text-[15px] font-bold leading-snug">{catchAgeDays} days</p>
                   ) : null}
                 </div>
                 <div>
-                  <p className="text-stone-500">Mortality</p>
-                  <p className="font-semibold">{mortalityValue}</p>
-                  {mortalityPct ? <p className="font-semibold leading-snug">{mortalityPct}</p> : null}
+                  <p className="text-[13px] text-stone-500">Mortality</p>
+                  <p className="mt-0.5 text-[15px] font-bold">{mortalityValue}</p>
+                  {mortalityPct ? (
+                    <p className="text-[15px] font-bold leading-snug">({mortalityPct})</p>
+                  ) : null}
                 </div>
                 <div>
-                  <p className="text-stone-500">Proj. Mort.</p>
-                  <p className="font-semibold">{projMortValue}</p>
-                  {projMortPct ? <p className="font-semibold leading-snug">{projMortPct}</p> : null}
+                  <p className="text-[13px] text-stone-500">Proj. Mort.</p>
+                  <p className="mt-0.5 text-[15px] font-bold">{projMortValue}</p>
+                  {projMortPct ? (
+                    <p className="text-[15px] font-bold leading-snug">({projMortPct})</p>
+                  ) : null}
                 </div>
               </div>
             </button>

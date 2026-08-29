@@ -1622,7 +1622,7 @@ export default function FarmDetailScreen() {
                           {h.placementDate ? (
                             <Text
                               style={{
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: "700",
                                 color: colors.text,
                                 marginTop: 2,
@@ -1650,11 +1650,11 @@ export default function FarmDetailScreen() {
                           {h.catchDate ? (
                             <Text
                               style={{
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: "700",
                                 color: colors.text,
                                 marginTop: 2,
-                                lineHeight: 18,
+                                lineHeight: 20,
                               }}
                             >
                               {formatHouseDetailDate(h.catchDate)}
@@ -1662,7 +1662,7 @@ export default function FarmDetailScreen() {
                           ) : (
                             <Text
                               style={{
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: "700",
                                 color: colors.text,
                                 marginTop: 2,
@@ -1674,10 +1674,10 @@ export default function FarmDetailScreen() {
                           {h.catchTime ? (
                             <Text
                               style={{
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: "700",
                                 color: colors.text,
-                                lineHeight: 18,
+                                lineHeight: 20,
                               }}
                             >
                               {compactCatchTimeLabel(h.catchTime)}
@@ -1689,10 +1689,10 @@ export default function FarmDetailScreen() {
                                 return age != null ? (
                                   <Text
                                     style={{
-                                      fontSize: 13,
+                                      fontSize: 15,
                                       fontWeight: "700",
                                       color: colors.text,
-                                      lineHeight: 18,
+                                      lineHeight: 20,
                                     }}
                                   >
                                     {age} days
@@ -1706,7 +1706,7 @@ export default function FarmDetailScreen() {
                           label="Mortality"
                           value={
                             h.placedBirdCount != null
-                              ? `${formatNumber(h.cumulativeMortality)}\n${formatPct(h.cumulativeMortalityPct)}`
+                              ? `${formatNumber(h.cumulativeMortality)}\n(${formatPct(h.cumulativeMortalityPct)})`
                               : formatNumber(h.cumulativeMortality)
                           }
                         />
@@ -1717,9 +1717,9 @@ export default function FarmDetailScreen() {
                             h.projectedMortality != null &&
                             h.placedBirdCount != null &&
                             h.placedBirdCount > 0
-                              ? `${formatNumber(h.projectedMortality)}\n${formatPct(
+                              ? `${formatNumber(h.projectedMortality)}\n(${formatPct(
                                   (h.projectedMortality / h.placedBirdCount) * 100,
-                                )}`
+                                )})`
                               : formatNumber(h.projectedMortality)
                           }
                         />
