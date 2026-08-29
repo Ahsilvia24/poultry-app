@@ -39,7 +39,6 @@ import {
 import {
   currentFlockWeek,
   flockAgeDaysFromHouses,
-  house1TotalCfm,
   minVentForWeek,
   prefillHouseRows,
 } from "../../../../../src/lib/serviceForms/prefill";
@@ -98,7 +97,6 @@ export default function ServiceReportScreen() {
     const minVent = minVentForWeek(detail, week);
     return {
       ...initial,
-      maxCfm: house1TotalCfm(detail),
       minVentRecommendedWeek: week,
       minVentRecommendedOn: minVent?.on ?? "",
       minVentRecommendedOff: minVent?.off ?? "",
@@ -409,7 +407,7 @@ export default function ServiceReportScreen() {
             label={MAX_CFM_FT2_POWER_LABEL}
             value={form.maxCfm}
             onChange={(maxCfm) => patch({ maxCfm })}
-            keyboardType="number-pad"
+            keyboardType="decimal-pad"
           />
           <PairFields
             left={
@@ -417,7 +415,7 @@ export default function ServiceReportScreen() {
                 label="Cool cell OFF temp"
                 value={form.coolCellOffTemp}
                 onChange={(coolCellOffTemp) => patch({ coolCellOffTemp })}
-                keyboardType="number-pad"
+                keyboardType="decimal-pad"
               />
             }
             right={
@@ -425,7 +423,7 @@ export default function ServiceReportScreen() {
                 label="Cool cell ON temp"
                 value={form.coolCellOnTemp}
                 onChange={(coolCellOnTemp) => patch({ coolCellOnTemp })}
-                keyboardType="number-pad"
+                keyboardType="decimal-pad"
               />
             }
           />
@@ -543,7 +541,7 @@ export default function ServiceReportScreen() {
                 label="Alarm HI"
                 value={form.alarmHi}
                 onChange={(alarmHi) => patch({ alarmHi })}
-                keyboardType="number-pad"
+                keyboardType="decimal-pad"
               />
             }
             right={
@@ -551,7 +549,7 @@ export default function ServiceReportScreen() {
                 label="Alarm LOW"
                 value={form.alarmLow}
                 onChange={(alarmLow) => patch({ alarmLow })}
-                keyboardType="number-pad"
+                keyboardType="decimal-pad"
               />
             }
           />

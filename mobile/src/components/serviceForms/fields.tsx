@@ -184,6 +184,14 @@ export function MultiToggleField<T extends string>({
   );
 }
 
+function inputModeFor(
+  keyboardType: TextInputProps["keyboardType"],
+): TextInputProps["inputMode"] {
+  if (keyboardType === "decimal-pad") return "decimal";
+  if (keyboardType === "number-pad" || keyboardType === "numeric") return "numeric";
+  return undefined;
+}
+
 export function TextField({
   label,
   value,
@@ -214,6 +222,7 @@ export function TextField({
         placeholder={placeholder}
         placeholderTextColor="#a8a29e"
         keyboardType={keyboardType}
+        inputMode={inputModeFor(keyboardType)}
         multiline={multiline}
         onFocus={onFocus}
         editable={editable}
@@ -296,6 +305,7 @@ function CompactCell({
         placeholder={placeholder}
         placeholderTextColor="#a8a29e"
         keyboardType={keyboardType}
+        inputMode={inputModeFor(keyboardType)}
         style={compactInputStyle}
       />
     </View>
@@ -364,12 +374,14 @@ export function CompactBackupSettings({
           label="Heat"
           value={heat}
           onChange={(backupHeat) => onChange({ backupHeat })}
+          keyboardType="decimal-pad"
           flexBasis="48%"
         />
         <CompactCell
           label="Cool"
           value={cool}
           onChange={(backupCool) => onChange({ backupCool })}
+          keyboardType="decimal-pad"
           flexBasis="48%"
         />
       </View>
@@ -378,16 +390,19 @@ export function CompactBackupSettings({
           label="Stage 1"
           value={stage1}
           onChange={(backupStage1) => onChange({ backupStage1 })}
+          keyboardType="decimal-pad"
         />
         <CompactCell
           label="Stage 2"
           value={stage2}
           onChange={(backupStage2) => onChange({ backupStage2 })}
+          keyboardType="decimal-pad"
         />
         <CompactCell
           label="Stage 3"
           value={stage3}
           onChange={(backupStage3) => onChange({ backupStage3 })}
+          keyboardType="decimal-pad"
         />
       </View>
     </View>
