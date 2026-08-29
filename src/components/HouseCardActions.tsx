@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { deleteHouseAction, updateHouseAction } from "@/app/actions/farms";
 import { DateKeyField } from "@/components/DateKeyField";
+import { GroupedNumberInput } from "@/components/GroupedNumberInput";
 import { TimeKeyField } from "@/components/TimeKeyField";
 import { Button, Input, Label } from "@/components/ui";
 
@@ -229,10 +230,9 @@ export function HouseCardActions({
                     </div>
                     <div>
                       <Label htmlFor={`edit-placedBirdCount-${house.id}`}>Birds placed</Label>
-                      <Input
+                      <GroupedNumberInput
                         id={`edit-placedBirdCount-${house.id}`}
                         name="placedBirdCount"
-                        type="number"
                         min={1}
                         step={1}
                         compact
@@ -282,16 +282,15 @@ export function HouseCardActions({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor={`edit-squareFootage-${house.id}`}>Square footage</Label>
-                  <Input
+                  <GroupedNumberInput
                     id={`edit-squareFootage-${house.id}`}
                     name="squareFootage"
-                    type="number"
+                    decimal
                     min={1}
                     step="any"
                     required
                     compact
                     defaultValue={house.squareFootage ?? 29700}
-                    placeholder="29700"
                   />
                   <PropagateCheck
                     name="applySquareFootageToRemaining"
@@ -301,10 +300,10 @@ export function HouseCardActions({
                 </div>
                 <div>
                   <Label htmlFor={`edit-totalFanCFM-${house.id}`}>Total CFM (Min Vent)</Label>
-                  <Input
+                  <GroupedNumberInput
                     id={`edit-totalFanCFM-${house.id}`}
                     name="totalFanCFM"
-                    type="number"
+                    decimal
                     min={0}
                     step="any"
                     compact
@@ -320,10 +319,10 @@ export function HouseCardActions({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor={`edit-totalPowerCFM-${house.id}`}>Total CFM (Power)</Label>
-                  <Input
+                  <GroupedNumberInput
                     id={`edit-totalPowerCFM-${house.id}`}
                     name="totalPowerCFM"
-                    type="number"
+                    decimal
                     min={0}
                     step="any"
                     compact

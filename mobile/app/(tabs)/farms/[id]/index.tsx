@@ -56,6 +56,7 @@ import {
   type GeneratorHours,
 } from "../../../../src/lib/generator";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
+import { formatGroupedInput, parseGroupedNumber, ungroupNumber } from "../../../../src/lib/grouped-number";
 import { colors, styles } from "../../../../src/theme";
 import {
   Card,
@@ -251,6 +252,7 @@ function NativeNumInput({
   value,
   onChangeText,
   decimal,
+  grouped,
   placeholder,
   style,
   autoFocus,
@@ -262,6 +264,7 @@ function NativeNumInput({
   value: string;
   onChangeText: (v: string) => void;
   decimal?: boolean;
+  grouped?: boolean;
   placeholder?: string;
   style?: object;
   autoFocus?: boolean;
@@ -280,8 +283,10 @@ function NativeNumInput({
           { fontSize: 20, fontWeight: "700", color: colors.text },
           onPropagateToggle ? { marginBottom: 0 } : null,
         ]}
-        value={value}
-        onChangeText={onChangeText}
+        value={grouped ? formatGroupedInput(value, !!decimal) : value}
+        onChangeText={(text) =>
+          onChangeText(grouped ? formatGroupedInput(text, !!decimal) : text)
+        }
         keyboardType={decimal ? "decimal-pad" : "number-pad"}
         placeholder={placeholder}
         placeholderTextColor={colors.muted}
@@ -1063,16 +1068,20 @@ export default function FarmDetailScreen() {
     setHouseSaving(true);
     setHouseEditError(null);
     try {
-      const sq = Number(editingHouse.squareFootage);
+      const sq = parseGroupedNumber(editingHouse.squareFootage);
       const cfm =
-        editingHouse.totalFanCFM.trim() === "" ? null : Number(editingHouse.totalFanCFM);
+        editingHouse.totalFanCFM.trim() === ""
+          ? null
+          : parseGroupedNumber(editingHouse.totalFanCFM);
       const powerCfm =
-        editingHouse.totalPowerCFM.trim() === "" ? null : Number(editingHouse.totalPowerCFM);
+        editingHouse.totalPowerCFM.trim() === ""
+          ? null
+          : parseGroupedNumber(editingHouse.totalPowerCFM);
       const existing = data?.houses.find((h) => h.id === editingHouse.id);
       const fans = existing?.numberOfFans ?? null;
-      const placedRaw = editingHouse.placedBirdCount.trim();
+      const placedRaw = ungroupNumber(editingHouse.placedBirdCount).trim();
       const placed =
-        placedRaw === "" ? null : Math.floor(Number(placedRaw));
+        placedRaw === "" ? null : Math.floor(parseGroupedNumber(placedRaw));
       if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total CFM (Min Vent) is invalid");
       if (powerCfm != null && !Number.isFinite(powerCfm)) {
         throw new Error("Total CFM (Power) is invalid");
@@ -2248,6 +2257,7 @@ export default function FarmDetailScreen() {
                           <NativeNumInput
                             label="Birds placed"
                             value={editingHouse.placedBirdCount}
+                            grouped
                             style={{ flex: 1 }}
                             onChangeText={(v) =>
                               setEditingHouse((prev) =>
@@ -2343,8 +2353,9 @@ export default function FarmDetailScreen() {
                       <NativeNumInput
                         label="Square footage"
                         value={editingHouse.squareFootage}
-                        placeholder="29700"
+                        placeholder="29,700"
                         decimal
+                        grouped
                         style={{ flex: 1 }}
                         onChangeText={(v) =>
                           setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
@@ -2365,6 +2376,7 @@ export default function FarmDetailScreen() {
                         label="Total CFM (Min Vent)"
                         value={editingHouse.totalFanCFM}
                         decimal
+                        grouped
                         style={{ flex: 1 }}
                         onChangeText={(v) =>
                           setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
@@ -2387,6 +2399,7 @@ export default function FarmDetailScreen() {
                         label="Total CFM (Power)"
                         value={editingHouse.totalPowerCFM}
                         decimal
+                        grouped
                         style={{ flex: 1 }}
                         onChangeText={(v) =>
                           setEditingHouse((prev) => (prev ? { ...prev, totalPowerCFM: v } : prev))
