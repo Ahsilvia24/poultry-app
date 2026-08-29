@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -35,10 +35,12 @@ import {
 } from "../../../../../src/lib/serviceForms/format";
 import {
   currentFlockWeek,
+  flockAgeDaysFromHouses,
   house1TotalCfm,
   minVentForWeek,
   prefillHouseRows,
 } from "../../../../../src/lib/serviceForms/prefill";
+import { recommendedHouseTempF } from "../../../../../src/lib/tools";
 import type { ServiceReportForm } from "../../../../../src/lib/serviceForms/types";
 import {
   useCompleteServiceForm,
@@ -102,6 +104,13 @@ export default function ServiceReportScreen() {
   function patch(p: Partial<ServiceReportForm>) {
     setForm((prev) => ({ ...prev, ...p }));
   }
+
+  useEffect(() => {
+    const age = flockAgeDaysFromHouses(form.houses);
+    const next = age == null ? "" : String(recommendedHouseTempF(age));
+    if (next === form.recommendedTempTarget) return;
+    setForm((prev) => ({ ...prev, recommendedTempTarget: next }));
+  }, [form.houses, form.recommendedTempTarget]);
 
   function patchHouse(houseNumber: number, p: Partial<ServiceReportForm["houses"][number]>) {
     setForm((prev) => ({
@@ -266,26 +275,26 @@ export default function ServiceReportScreen() {
             value={form.tempTargetsOk}
             onChange={(tempTargetsOk) => patch({ tempTargetsOk })}
           />
-          {form.tempTargetsOk === "no" ? (
-            <PairFields
-              left={
-                <TextField
-                  label="Actual target"
-                  value={form.actualTempTarget}
-                  onChange={(actualTempTarget) => patch({ actualTempTarget })}
-                  keyboardType="decimal-pad"
-                />
-              }
-              right={
-                <TextField
-                  label="Recommended target"
-                  value={form.recommendedTempTarget}
-                  onChange={(recommendedTempTarget) => patch({ recommendedTempTarget })}
-                  keyboardType="decimal-pad"
-                />
-              }
-            />
-          ) : null}
+          <PairFields
+            left={
+              <TextField
+                label="Set Temp"
+                value={form.actualTempTarget}
+                onChange={(actualTempTarget) => patch({ actualTempTarget })}
+                keyboardType="decimal-pad"
+                placeholder="°F"
+              />
+            }
+            right={
+              <TextField
+                label="Recommended"
+                value={form.recommendedTempTarget}
+                onChange={() => {}}
+                editable={false}
+                placeholder="°F"
+              />
+            }
+          />
           <YesNoField
             label="Ammonia < 25 PPM in all houses"
             value={form.ammoniaOk}

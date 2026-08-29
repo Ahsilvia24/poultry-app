@@ -137,11 +137,7 @@ export function serviceReportPdfHtml(form: Extract<AnyServiceForm, { kind: "serv
         <h2>AIR AND LITTER</h2>
         <table>
           ${checkRow("Temp Targets Are Per Recommended Program", form.tempTargetsOk)}
-          ${
-            form.tempTargetsOk === "no"
-              ? `<tr><td>Actual / Recommended Target</td><td>${esc(form.actualTempTarget)} / ${esc(form.recommendedTempTarget)}</td></tr>`
-              : ""
-          }
+          <tr><td>Set Temp / Recommended</td><td>${esc(form.actualTempTarget)} / ${esc(form.recommendedTempTarget)}</td></tr>
           ${checkRow("Ammonia Levels Are < 25 PPM In All Houses", form.ammoniaOk)}
           <tr><td>% Humidity</td><td>${esc(form.humidityPct ? `${form.humidityPct}%` : "")}</td></tr>
           <tr><td>Ventilation</td><td>${esc(form.ventModes.join(", "))}${form.ventModes.includes("tunnel") ? ` · fans ${esc(form.tunnelFanCount)}` : ""}</td></tr>
