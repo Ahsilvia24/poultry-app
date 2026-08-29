@@ -15,10 +15,10 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Swipeable } from "react-native-gesture-handler";
 import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
-import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
 import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/schedule";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
@@ -223,7 +223,6 @@ function formatCatchDate(dateKey: string) {
 }
 
 export default function DashboardScreen() {
-  const { signOut } = useAuth();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("index", scrollRef);
@@ -346,16 +345,19 @@ export default function DashboardScreen() {
             }}
           >
             <Text style={[styles.title, { flex: 1 }]}>Dashboard</Text>
-            <Pressable onPress={signOut} hitSlop={8}>
-              <Text
-                style={{
-                  color: colors.text,
-                  fontWeight: "700",
-                  textDecorationLine: "underline",
-                }}
-              >
-                Sign out
-              </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Settings"
+              onPress={() => router.push("/settings")}
+              hitSlop={10}
+              style={{
+                width: 40,
+                height: 40,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="settings-outline" size={24} color={colors.text} />
             </Pressable>
           </View>
         </View>

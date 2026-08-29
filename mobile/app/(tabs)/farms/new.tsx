@@ -65,7 +65,7 @@ export default function NewFarmScreen() {
               value={farmName}
               onChangeText={setFarmName}
               autoCapitalize="words"
-              placeholder="Oak Hollow"
+              placeholder="Farm name"
               placeholderTextColor={colors.muted}
             />
 

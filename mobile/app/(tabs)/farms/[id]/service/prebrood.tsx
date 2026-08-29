@@ -21,6 +21,7 @@ import {
   CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
 import { Card, PageHeader } from "../../../../../src/components/ui";
+import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
 import { createPrebroodDraft } from "../../../../../src/lib/serviceForms/defaults";
 import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/format";
 import { prefillHouseRows } from "../../../../../src/lib/serviceForms/prefill";
@@ -52,7 +53,7 @@ export default function PrebroodChecklistScreen() {
 
   const [form, setForm] = useState<PrebroodForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
-      return existing.payload as PrebroodForm;
+      return withSavedServiceTech(existing.payload as PrebroodForm);
     }
     return createPrebroodDraft({
       farmName,

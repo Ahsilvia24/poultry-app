@@ -1,3 +1,4 @@
+import { getServiceTech } from "../appSettings";
 import { todayKey } from "../ids";
 import type {
   PlacementForm,
@@ -34,7 +35,7 @@ export function createServiceReportDraft(input?: {
     farmNumber: input?.farmNumber ?? "",
     flockNumber: input?.flockNumber ?? "",
     date: todayKey(),
-    serviceTech: input?.serviceTech ?? "",
+    serviceTech: input?.serviceTech ?? getServiceTech(),
     houses: input?.houses?.length ? input.houses : [],
     feederHeightOk: "yes",
     feedingEquipmentOk: "yes",
@@ -103,7 +104,7 @@ export function createPlacementDraft(input?: {
     farmNumber: input?.farmNumber ?? "",
     flockNumber: input?.flockNumber ?? "",
     date: todayKey(),
-    serviceTech: input?.serviceTech ?? "",
+    serviceTech: input?.serviceTech ?? getServiceTech(),
     supplementalLidsOk: "yes",
     feederPaperOk: "yes",
     feedTrayRibsOk: "yes",
@@ -165,7 +166,7 @@ export function createPrebroodDraft(input?: {
     farmNumber: input?.farmNumber ?? "",
     flockNumber: input?.flockNumber ?? "",
     date: todayKey(),
-    serviceTech: input?.serviceTech ?? "",
+    serviceTech: input?.serviceTech ?? getServiceTech(),
     windowHours: "48",
     feedDeliveredOk: "yes",
     feedPaperDeliveredOk: "yes",

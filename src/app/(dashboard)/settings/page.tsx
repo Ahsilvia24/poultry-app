@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateSettingsAction } from "@/app/actions/ops";
-import { ImportPhoneBackupForm } from "@/components/ImportPhoneBackupForm";
 import { Button, Card, Input, Label, PageHeader } from "@/components/ui";
 
 async function submitSettings(formData: FormData) {
@@ -145,11 +144,6 @@ export default async function SettingsPage() {
           <Button type="submit">Save settings</Button>
         </form>
       </Card>
-
-      <h2 className="mt-8 text-xl font-bold">Backup</h2>
-      <div className="mt-3 max-w-2xl">
-        <ImportPhoneBackupForm />
-      </div>
     </div>
   );
 }
