@@ -1251,7 +1251,16 @@ export default function FarmDetailScreen() {
 
         <View style={{ marginBottom: 16 }}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 14, marginBottom: 8 }}>Quick links</Text>
+            <Text
+              style={{
+                fontWeight: "800",
+                fontSize: 14,
+                marginBottom: 8,
+                textAlign: "center",
+              }}
+            >
+              Quick Links
+            </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {(
                 [
@@ -1286,7 +1295,7 @@ export default function FarmDetailScreen() {
                     ? [
                         {
                           key: "complete-flock",
-                          label: "Complete Flock",
+                          label: "End Flock",
                           onPress: promptCompleteFlock,
                         },
                       ]
@@ -2830,13 +2839,13 @@ export default function FarmDetailScreen() {
       />
       <ConfirmDialog
         visible={completeConfirm != null}
-        title="Complete flock?"
+        title="End flock?"
         message={
           completeConfirm
             ? `Mark flock ${completeConfirm.flockNumber} as completed? You can reactivate it later from Farm History.`
             : ""
         }
-        confirmLabel="Complete"
+        confirmLabel="End flock"
         onConfirm={runCompleteFlock}
         onCancel={() => setCompleteConfirm(null)}
       />
@@ -2882,10 +2891,10 @@ export default function FarmDetailScreen() {
             }}
           >
             <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-              Complete flock
+              End flock
             </Text>
             <Text style={{ marginTop: 8, fontSize: 14, lineHeight: 20, color: colors.muted }}>
-              Which flock do you want to complete?
+              Which flock do you want to end?
             </Text>
             <View style={{ marginTop: 16, gap: 8 }}>
               {activeFlocks.map((fl) => (

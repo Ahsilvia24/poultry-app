@@ -25,7 +25,7 @@ export function FarmQuickLinks({
     { key: "add-flock", href: "#add-flock", label: "Add Flock" },
   ];
 
-  // Append Complete Flock after Add Flock when there is an active flock.
+  // Append End Flock after Add Flock when there is an active flock.
   const items: Array<
     | { kind: "link"; key: string; href: string; label: string; external?: boolean }
     | { kind: "complete"; key: string }
@@ -46,7 +46,7 @@ export function FarmQuickLinks({
 
   return (
     <div className={cn("rounded-xl border border-stone-200 bg-white p-3 shadow-sm")}>
-      <h2 className="text-sm font-bold text-stone-900">Quick links</h2>
+      <h2 className="text-center text-sm font-bold text-stone-900">Quick Links</h2>
       <div className="mt-2 grid grid-cols-3 gap-2">
         {items.map((item) => {
           if (item.kind === "complete") {

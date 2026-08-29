@@ -259,8 +259,15 @@ export default function ToolsScreen() {
         </View>
 
         <Card style={{ marginBottom: 12 }}>
-          <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text }}>
-            Quick links
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "800",
+              color: colors.text,
+              textAlign: "center",
+            }}
+          >
+            Quick Links
           </Text>
           <View
             style={{
