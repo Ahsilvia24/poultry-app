@@ -168,15 +168,11 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-stone-500">Total CFM</dt>
+                  <dt className="text-xs uppercase tracking-wide text-stone-500">
+                    Total CFM (Min Vent)
+                  </dt>
                   <dd className="font-semibold tabular-nums text-stone-900">
                     {house.totalFanCFM != null ? formatCfm(house.totalFanCFM) : "—"}
-                    {house.numberOfFans != null ? (
-                      <span className="font-medium text-stone-500">
-                        {" "}
-                        · {house.numberOfFans} fans
-                      </span>
-                    ) : null}
                   </dd>
                 </div>
                 <div>
@@ -242,8 +238,8 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                           chart by flock week
                         </li>
                         <li>
-                          <span className="font-medium text-stone-900">Total CFM</span> — house
-                          total fan CFM
+                          <span className="font-medium text-stone-900">Total CFM (Min Vent)</span> —
+                          house min-vent CFM
                         </li>
                       </ul>
                       <div className="space-y-1 border-t border-stone-200 pt-3 font-mono text-[13px] leading-relaxed text-stone-800">
@@ -265,7 +261,7 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                 </div>
               ) : (
                 <p className="mt-3 text-amber-800">
-                  Need birds placed, flock week, and Total fan CFM on this house to calculate.
+                  Need birds placed, flock week, and Total CFM (Min Vent) on this house to calculate.
                 </p>
               )}
             </div>
