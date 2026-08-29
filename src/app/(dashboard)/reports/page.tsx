@@ -16,12 +16,14 @@ import {
 } from "@/components/MortalityCharts";
 import { ReportsTypeTabs } from "@/components/ReportsTypeTabs";
 import { FieldLogReport } from "@/components/FieldLogReport";
+import { GeneratorLogReport } from "@/components/GeneratorLogReport";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 import {
   buildFieldLogWeeks,
   defaultFieldLogRange,
 } from "@/lib/reports/field-log";
 import { resolveReportType } from "@/lib/reports/types";
+import type { GeneratorReportFarm } from "@/lib/reports/generator-log";
 
 type SearchParams = Promise<{
   farmId?: string;
@@ -104,6 +106,109 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           </form>
         </Card>
         <FieldLogReport weeks={weeks} filterLabel={filterLabel} />
+      </div>
+    );
+  }
+
+  if (reportType === "generator") {
+    const farms = await prisma.farm.findMany({
+      where: { userId: session.user.id, deletedAt: null },
+      orderBy: { farmName: "asc" },
+      select: { id: true, farmName: true, numberOfGenerators: true },
+    });
+    const selectedFarmId = params.farmId || "";
+    const logs = await prisma.generatorLog.findMany({
+      where: {
+        logDate: { gte: fromDate, lte: toDate },
+        farm: {
+          userId: session.user.id,
+          deletedAt: null,
+          ...(selectedFarmId ? { id: selectedFarmId } : {}),
+        },
+      },
+      select: {
+        id: true,
+        farmId: true,
+        logDate: true,
+        gen1Hours: true,
+        gen2Hours: true,
+        gen3Hours: true,
+        gen4Hours: true,
+        farm: { select: { farmName: true, numberOfGenerators: true } },
+      },
+      orderBy: [{ logDate: "desc" }, { createdAt: "desc" }],
+    });
+
+    const byFarm = new Map<string, GeneratorReportFarm>();
+    for (const farm of farms) {
+      if (selectedFarmId && farm.id !== selectedFarmId) continue;
+      byFarm.set(farm.id, {
+        farmId: farm.id,
+        farmName: farm.farmName,
+        numberOfGenerators: farm.numberOfGenerators,
+        logs: [],
+      });
+    }
+    for (const log of logs) {
+      const farm = byFarm.get(log.farmId);
+      if (!farm) continue;
+      farm.logs.push({
+        id: log.id,
+        farmId: log.farmId,
+        farmName: log.farm.farmName,
+        logDate: dateKeyFromDb(log.logDate),
+        gen1Hours: log.gen1Hours,
+        gen2Hours: log.gen2Hours,
+        gen3Hours: log.gen3Hours,
+        gen4Hours: log.gen4Hours,
+      });
+    }
+    const reportFarms = [...byFarm.values()].filter((farm) => farm.logs.length > 0);
+    const filterLabel = [
+      selectedFarmId
+        ? `Farm: ${farms.find((f) => f.id === selectedFarmId)?.farmName ?? selectedFarmId}`
+        : "All farms",
+      `${format(fromDate, "MMMM d, yyyy")} to ${format(toDate, "MMMM d, yyyy")}`,
+    ].join(" · ");
+
+    return (
+      <div>
+        <PageHeader title="Reports" />
+        <Suspense fallback={<div className="mb-4 h-10" />}>
+          <ReportsTypeTabs active="generator" />
+        </Suspense>
+        <Card className="mb-6">
+          <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <input type="hidden" name="type" value="generator" />
+            <div>
+              <Label htmlFor="farmId">Farm</Label>
+              <Select id="farmId" name="farmId" defaultValue={selectedFarmId}>
+                <option value="">All farms</option>
+                {farms.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.farmName}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="from">From</Label>
+              <Input id="from" name="from" type="date" defaultValue={from} />
+            </div>
+            <div>
+              <Label htmlFor="to">To</Label>
+              <Input id="to" name="to" type="date" defaultValue={to} />
+            </div>
+            <div className="flex items-end">
+              <Button type="submit">Apply filters</Button>
+            </div>
+          </form>
+        </Card>
+        <GeneratorLogReport
+          farms={reportFarms}
+          filterLabel={filterLabel}
+          includeFarmColumn={!selectedFarmId}
+        />
       </div>
     );
   }

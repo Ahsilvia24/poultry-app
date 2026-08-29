@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
-import { getFieldLog, getReports, listFarms } from "../../src/repos/data";
+import { getFieldLog, getGeneratorLogReport, getReports, listFarms } from "../../src/repos/data";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
   defaultFieldLogRange,
@@ -10,6 +10,13 @@ import {
   formatFieldLogDayHeader,
   type FieldLogWeek,
 } from "../../src/lib/reports/field-log";
+import {
+  formatGeneratorReportDate,
+  formatGeneratorReportHours,
+  generatorColumnsForFarm,
+  generatorReportToTsv,
+  type GeneratorReportFarm,
+} from "../../src/lib/reports/generator-log";
 import { colors, styles } from "../../src/theme";
 import {
   Card,
@@ -23,6 +30,7 @@ import { ClipboardIconButton } from "../../src/components/ClipboardIconButton";
 const REPORT_TYPES = [
   { key: "mortality", label: "Mortality" },
   { key: "field-log", label: "Field Log" },
+  { key: "generator", label: "Generator" },
 ] as const;
 
 type ReportType = (typeof REPORT_TYPES)[number]["key"];
@@ -68,6 +76,9 @@ export default function ReportsScreen() {
   const [fieldWeeks, setFieldWeeks] = useState<FieldLogWeek[]>(() =>
     getFieldLog(weekDefaults.from, weekDefaults.to),
   );
+  const [genFarms, setGenFarms] = useState<GeneratorReportFarm[]>(() =>
+    getGeneratorLogReport(from, to, (farmIdParam || farms[0]?.id) || undefined),
+  );
 
   const selectedFarmName = useMemo(() => {
     if (!farmId) return null;
@@ -80,6 +91,7 @@ export default function ReportsScreen() {
     if (farmIdParam) {
       setFarmId(farmIdParam);
       setMatrix(getReports(from, to, farmIdParam));
+      setGenFarms(getGeneratorLogReport(from, to, farmIdParam));
     }
   }, [farmIdParam, from, to]);
 
@@ -90,6 +102,15 @@ export default function ReportsScreen() {
   function applyFieldLog() {
     setFieldWeeks(getFieldLog(fieldFrom, fieldTo));
   }
+
+  function applyGenerator() {
+    setGenFarms(getGeneratorLogReport(from, to, farmId || undefined));
+  }
+
+  useEffect(() => {
+    if (reportType !== "generator") return;
+    setGenFarms(getGeneratorLogReport(from, to, farmId || undefined));
+  }, [reportType, farmId, from, to]);
 
   const hasFieldFarms = fieldWeeks.some((week) =>
     week.days.some((day) => day.farms.length > 0),
@@ -111,7 +132,10 @@ export default function ReportsScreen() {
                 key={t.key}
                 label={t.label}
                 active={reportType === t.key}
-                onPress={() => setReportType(t.key)}
+                onPress={() => {
+                  setReportType(t.key);
+                  if (t.key === "generator") applyGenerator();
+                }}
               />
             ))}
           </View>
@@ -205,6 +229,121 @@ export default function ReportsScreen() {
             {!hasFieldFarms ? (
               <Text style={styles.muted}>No visits logged in this date range.</Text>
             ) : null}
+          </>
+        ) : reportType === "generator" ? (
+          <>
+            <Text style={styles.label}>Farm</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ flexDirection: "row", marginBottom: 8 }}>
+                <Chip label="All" active={farmId === ""} onPress={() => setFarmId("")} />
+                {farms.map((f) => (
+                  <Chip
+                    key={f.id}
+                    label={f.farmName}
+                    active={farmId === f.id}
+                    onPress={() => setFarmId(f.id)}
+                  />
+                ))}
+              </View>
+            </ScrollView>
+
+            <Card>
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <DatePickerField label="From" value={from} onChange={setFrom} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <DatePickerField label="To" value={to} onChange={setTo} />
+                </View>
+              </View>
+              <PrimaryButton label="Apply filters" onPress={applyGenerator} />
+            </Card>
+
+            {genFarms.length === 0 ? (
+              <Text style={styles.muted}>No generator hours logged in this date range.</Text>
+            ) : (
+              genFarms.map((farm) => {
+                const columns = generatorColumnsForFarm(farm);
+                return (
+                  <Card key={farm.farmId} style={{ paddingVertical: 12 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: 10,
+                        gap: 8,
+                      }}
+                    >
+                      <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text, flex: 1 }}>
+                        {farmId ? "Generator hours" : farm.farmName}
+                      </Text>
+                      <ClipboardIconButton
+                        accessibilityLabel="Copy generator log"
+                        color={colors.accentDark}
+                        emptyMessage="No generator hours in this date range."
+                        getText={() => {
+                          if (genFarms.length === 0) return "";
+                          return generatorReportToTsv(genFarms, !farmId);
+                        }}
+                      />
+                    </View>
+                    <ScrollView horizontal>
+                      <View>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            marginBottom: 8,
+                            borderBottomWidth: 1,
+                            borderBottomColor: colors.border,
+                            paddingBottom: 8,
+                          }}
+                        >
+                          <Text
+                            style={{ width: 88, fontWeight: "800", color: colors.muted }}
+                          >
+                            Date
+                          </Text>
+                          {columns.map((col) => (
+                            <Text
+                              key={col.key}
+                              style={{
+                                width: 64,
+                                textAlign: "right",
+                                fontWeight: "800",
+                                color: colors.muted,
+                              }}
+                            >
+                              {col.label}
+                            </Text>
+                          ))}
+                        </View>
+                        {farm.logs.map((log) => (
+                          <View key={log.id} style={{ flexDirection: "row", marginBottom: 6 }}>
+                            <Text style={{ width: 88, fontWeight: "700" }}>
+                              {formatGeneratorReportDate(log.logDate)}
+                            </Text>
+                            {columns.map((col) => (
+                              <Text
+                                key={col.key}
+                                style={{
+                                  width: 64,
+                                  textAlign: "right",
+                                  fontWeight: log[col.key] != null ? "700" : "400",
+                                  color: log[col.key] != null ? colors.text : colors.muted,
+                                }}
+                              >
+                                {formatGeneratorReportHours(log[col.key])}
+                              </Text>
+                            ))}
+                          </View>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </Card>
+                );
+              })
+            )}
           </>
         ) : (
           <>
