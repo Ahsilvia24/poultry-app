@@ -299,7 +299,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("weight", e)} collapsable={false}>
           {open.weight ? (
-            <SectionPanel title="Weight Projections" onTop={scrollToTop}>
+            <SectionPanel title="Weight Projections">
               {!useAgeOfBird ? (
                 <>
                   <ChipScroller style={{ marginBottom: 6 }}>
@@ -796,7 +796,7 @@ function SectionPanel({
 }: {
   title: string;
   subtitle?: string;
-  onTop: () => void;
+  onTop?: () => void;
   children?: React.ReactNode;
 }) {
   return (
@@ -815,9 +815,11 @@ function SectionPanel({
             <Text style={[styles.muted, { marginTop: 4 }]}>{subtitle}</Text>
           ) : null}
         </View>
-        <Pressable onPress={onTop} hitSlop={8}>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Top</Text>
-        </Pressable>
+        {onTop ? (
+          <Pressable onPress={onTop} hitSlop={8}>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Top</Text>
+          </Pressable>
+        ) : null}
       </View>
       {children ? <View style={{ marginTop: 12 }}>{children}</View> : null}
     </Card>

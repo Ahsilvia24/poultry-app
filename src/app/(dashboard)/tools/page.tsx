@@ -191,7 +191,7 @@ export default async function ToolsPage({
       </div>
 
       <div className="space-y-4">
-        <ToolsSectionPanel hashId="weight-projections" title="Weight Projections">
+        <ToolsSectionPanel hashId="weight-projections" title="Weight Projections" showTop={false}>
           <ToolsWeightProjections
             farms={weightFarms}
             initialFarmId={sp.farmId ?? null}
