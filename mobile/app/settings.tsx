@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../src/auth";
 import { getServiceTech, setServiceTech } from "../src/lib/appSettings";
 import { colors, styles } from "../src/theme";
-import { Card, PageHeader } from "../src/components/ui";
+import { Card } from "../src/components/ui";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -36,12 +36,27 @@ export default function SettingsScreen() {
           contentContainerStyle={[styles.content, { flexGrow: 1 }]}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable onPress={() => router.back()} style={{ alignSelf: "flex-end", marginBottom: 8 }}>
-            <Text style={{ color: colors.text, fontWeight: "700", textDecorationLine: "underline" }}>
-              Done
-            </Text>
-          </Pressable>
-          <PageHeader title="Settings" />
+          <View
+            style={{
+              marginBottom: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <Text style={[styles.title, { flex: 1 }]}>Settings</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+              onPress={() => router.back()}
+              hitSlop={10}
+            >
+              <Text style={{ color: colors.text, fontWeight: "700", textDecorationLine: "underline" }}>
+                Done
+              </Text>
+            </Pressable>
+          </View>
 
           <Card>
             <Text style={styles.label}>Service Tech</Text>
