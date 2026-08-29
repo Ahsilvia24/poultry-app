@@ -70,14 +70,16 @@ export default function FarmsScreen() {
     }, [load]),
   );
 
-  // If Mortality armed a return target and we landed on the list, bounce to that farm.
-  if (pendingReturn?.farmId) {
+  // Only bounce if Mortality still has a live return target. Stale React state
+  // after a consumed return was trapping people on the farm until sign-out.
+  const bounceFarmId = peekFarmReturnFromMortality()?.farmId ?? null;
+  if (bounceFarmId && pendingReturn?.farmId === bounceFarmId) {
     return (
       <Redirect
         href={{
           pathname: "/(tabs)/farms/[id]",
           params: {
-            id: pendingReturn.farmId,
+            id: bounceFarmId,
           },
         }}
       />

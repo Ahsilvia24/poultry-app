@@ -3,8 +3,7 @@
  * (and silent house-tile taps) open the right farm/house without a visible link.
  */
 import { useCallback } from "react";
-import { StackActions } from "@react-navigation/native";
-import { router, useNavigation } from "expo-router";
+import { router } from "expo-router";
 
 let currentFarmId: string | null = null;
 let currentHouseFlockId: string | null = null;
@@ -71,26 +70,17 @@ export function clearFarmReturnFromMortality() {
 
 /**
  * Leave a farm detail screen and show the farm list in one step.
- * `router.back()` is wrong here: opening several farms (list, dashboard,
- * mortality return) stacks them, so Back walks farm → farm → list.
+ * Dashboard / Mortality can open a farm with no list underneath, so popToTop
+ * and dismissTo are no-ops — replace always lands on the list.
  */
 export function goToFarmList() {
   pendingFarmReturn = null;
-  router.dismissTo("/(tabs)/farms");
+  router.replace("/(tabs)/farms");
 }
 
-/** Farm-detail hook: pop the Farms stack to the list, not one farm at a time. */
+/** Farm-detail hook: always show the farm list, even if this farm was the stack root. */
 export function useGoToFarmList() {
-  const navigation = useNavigation();
   return useCallback(() => {
-    pendingFarmReturn = null;
-    const farmsStack = navigation.getParent();
-    const names = farmsStack?.getState?.()?.routeNames ?? [];
-    // Farms stack has `index` (list) and `[id]` (detail). Never popToTop the tab bar.
-    if (farmsStack && names.includes("index") && names.includes("[id]")) {
-      farmsStack.dispatch(StackActions.popToTop());
-      return;
-    }
-    router.dismissTo("/(tabs)/farms");
-  }, [navigation]);
+    goToFarmList();
+  }, []);
 }
