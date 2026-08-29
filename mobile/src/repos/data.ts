@@ -4473,3 +4473,69 @@ export function completeServiceForm(input: {
 
   return { id, visitId };
 }
+
+function ensureServiceFormDraftsTable() {
+  getDb().execSync(`
+    CREATE TABLE IF NOT EXISTS service_form_drafts (
+      farm_id TEXT NOT NULL,
+      form_kind TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (farm_id, form_kind)
+    );
+  `);
+}
+
+export function getServiceFormDraft(
+  farmId: string,
+  formKind: ServiceFormKind,
+): unknown | null {
+  ensureServiceFormDraftsTable();
+  const row = getDb().getFirstSync<{ payload_json: string }>(
+    "SELECT payload_json FROM service_form_drafts WHERE farm_id = ? AND form_kind = ?",
+    [farmId, formKind],
+  );
+  if (!row) return null;
+  try {
+    return JSON.parse(row.payload_json);
+  } catch {
+    return null;
+  }
+}
+
+export function listServiceFormDraftKinds(farmId: string): ServiceFormKind[] {
+  ensureServiceFormDraftsTable();
+  const rows = getDb().getAllSync<{ form_kind: string }>(
+    "SELECT form_kind FROM service_form_drafts WHERE farm_id = ?",
+    [farmId],
+  );
+  return rows
+    .map((r) => r.form_kind)
+    .filter((k): k is ServiceFormKind =>
+      k === "service_report" || k === "placement" || k === "prebrood",
+    );
+}
+
+export function saveServiceFormDraft(
+  farmId: string,
+  formKind: ServiceFormKind,
+  payload: unknown,
+) {
+  ensureServiceFormDraftsTable();
+  getDb().runSync(
+    `INSERT INTO service_form_drafts (farm_id, form_kind, payload_json, updated_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(farm_id, form_kind) DO UPDATE SET
+       payload_json = excluded.payload_json,
+       updated_at = excluded.updated_at`,
+    [farmId, formKind, JSON.stringify(payload), new Date().toISOString()],
+  );
+}
+
+export function deleteServiceFormDraft(farmId: string, formKind: ServiceFormKind) {
+  ensureServiceFormDraftsTable();
+  getDb().runSync(
+    "DELETE FROM service_form_drafts WHERE farm_id = ? AND form_kind = ?",
+    [farmId, formKind],
+  );
+}

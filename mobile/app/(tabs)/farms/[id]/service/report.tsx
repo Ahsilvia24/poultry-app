@@ -45,6 +45,8 @@ import {
 import { recommendedHouseTempF } from "../../../../../src/lib/tools";
 import type { ServiceReportForm } from "../../../../../src/lib/serviceForms/types";
 import {
+  readInProgressDraft,
+  useAutosaveServiceFormDraft,
   useCompleteServiceForm,
   useEditVisitIdParam,
   useExistingServiceForm,
@@ -66,8 +68,9 @@ function hydrateReport(payload: ServiceReportForm): ServiceReportForm {
 
 export default function ServiceReportScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; fresh?: string | string[] }>();
   const farmId = paramId(params.id);
+  const fresh = paramId(params.fresh) === "1";
   const { detail, farmName, flockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "service_report");
   const editVisitId = useEditVisitIdParam();
@@ -92,6 +95,10 @@ export default function ServiceReportScreen() {
     if (existing?.payload && typeof existing.payload === "object") {
       return withSavedServiceTech(hydrateReport(existing.payload as ServiceReportForm));
     }
+    const draft = readInProgressDraft<ServiceReportForm>(farmId, "service_report", fresh);
+    if (draft?.kind === "service_report") {
+      return withSavedServiceTech(hydrateReport(draft));
+    }
     if (!detail) return initial;
     const week = currentFlockWeek(detail);
     const minVent = minVentForWeek(detail, week);
@@ -106,6 +113,7 @@ export default function ServiceReportScreen() {
   const [timePicker, setTimePicker] = useState<"date" | "on" | "off" | null>(null);
   const [optionPicker, setOptionPicker] = useState<"humidity" | "week" | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
+  useAutosaveServiceFormDraft(farmId, "service_report", form, !existing && !saving);
 
   function patch(p: Partial<ServiceReportForm>) {
     setForm((prev) => ({ ...prev, ...p }));

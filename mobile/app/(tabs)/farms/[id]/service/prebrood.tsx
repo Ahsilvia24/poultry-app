@@ -27,6 +27,8 @@ import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/form
 import { prefillHouseRows } from "../../../../../src/lib/serviceForms/prefill";
 import type { PrebroodForm } from "../../../../../src/lib/serviceForms/types";
 import {
+  readInProgressDraft,
+  useAutosaveServiceFormDraft,
   useCompleteServiceForm,
   useEditVisitIdParam,
   useExistingServiceForm,
@@ -41,8 +43,9 @@ function paramId(value: string | string[] | undefined) {
 
 export default function PrebroodChecklistScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; fresh?: string | string[] }>();
   const farmId = paramId(params.id);
+  const fresh = paramId(params.fresh) === "1";
   const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "prebrood");
   const editVisitId = useEditVisitIdParam();
@@ -56,6 +59,10 @@ export default function PrebroodChecklistScreen() {
     if (existing?.payload && typeof existing.payload === "object") {
       return withSavedServiceTech(existing.payload as PrebroodForm);
     }
+    const draft = readInProgressDraft<PrebroodForm>(farmId, "prebrood", fresh);
+    if (draft?.kind === "prebrood") {
+      return withSavedServiceTech(draft);
+    }
     return createPrebroodDraft({
       farmName,
       flockNumber: firstFlockNumber,
@@ -63,6 +70,7 @@ export default function PrebroodChecklistScreen() {
     });
   });
   const scrollRef = useRef<ScrollViewType>(null);
+  useAutosaveServiceFormDraft(farmId, "prebrood", form, !existing && !saving);
 
   function patch(p: Partial<PrebroodForm>) {
     setForm((prev) => ({ ...prev, ...p }));
