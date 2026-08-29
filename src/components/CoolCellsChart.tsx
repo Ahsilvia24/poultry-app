@@ -70,7 +70,6 @@ export function CoolCellsChart() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-stone-800">Big Bird</p>
         <CoolCellSettingsTable rows={BIG_BIRD_COOL_CELLS} diffLabel="Temp diff" />
         <p className="text-xs text-stone-500">{scheduleNote}</p>
       </div>
