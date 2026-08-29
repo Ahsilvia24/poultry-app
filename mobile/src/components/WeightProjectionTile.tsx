@@ -8,14 +8,14 @@ import {
 import { colors, styles } from "../theme";
 import { Card, PrimaryButton } from "./ui";
 
-const DAY_2 = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
+const DAY_3 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-/** Compact date for tight projection cells: "Mo 8/3" */
+/** Compact date for projection cells: "Mon 8/3" */
 function formatCatchShort(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
   const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
-  const day = DAY_2[dt.getDay()] ?? "";
+  const day = DAY_3[dt.getDay()] ?? "";
   return `${day} ${m}/${d}`;
 }
 
