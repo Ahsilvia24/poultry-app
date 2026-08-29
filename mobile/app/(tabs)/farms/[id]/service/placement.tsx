@@ -38,6 +38,8 @@ import {
 } from "../../../../../src/lib/serviceForms/prefill";
 import type { PlacementForm } from "../../../../../src/lib/serviceForms/types";
 import {
+  readInProgressDraft,
+  useAutosaveServiceFormDraft,
   useCompleteServiceForm,
   useEditVisitIdParam,
   useExistingServiceForm,
@@ -59,8 +61,9 @@ function hydratePlacement(payload: PlacementForm): PlacementForm {
 
 export default function PlacementChecklistScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; fresh?: string | string[] }>();
   const farmId = paramId(params.id);
+  const fresh = paramId(params.fresh) === "1";
   const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "placement");
   const editVisitId = useEditVisitIdParam();
@@ -73,22 +76,27 @@ export default function PlacementChecklistScreen() {
     if (existing?.payload && typeof existing.payload === "object") {
       return withSavedServiceTech(hydratePlacement(existing.payload as PlacementForm));
     }
-    const draft = createPlacementDraft({
+    const draft = readInProgressDraft<PlacementForm>(farmId, "placement", fresh);
+    if (draft?.kind === "placement") {
+      return withSavedServiceTech(hydratePlacement(draft));
+    }
+    const blank = createPlacementDraft({
       farmName,
       flockNumber: firstFlockNumber,
       houses: detail ? prefillHouseRows(detail) : [],
     });
     if (detail) {
-      const week = draft.minVentRecommendedWeek || 1;
+      const week = blank.minVentRecommendedWeek || 1;
       const minVent = minVentForWeek(detail, week);
-      draft.minVentRecommendedWeek = week;
-      draft.minVentRecommendedOn = minVent?.on ?? "";
-      draft.minVentRecommendedOff = minVent?.off ?? "";
+      blank.minVentRecommendedWeek = week;
+      blank.minVentRecommendedOn = minVent?.on ?? "";
+      blank.minVentRecommendedOff = minVent?.off ?? "";
     }
-    return draft;
+    return blank;
   });
   const [optionPicker, setOptionPicker] = useState<"date" | "week" | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
+  useAutosaveServiceFormDraft(farmId, "placement", form, !existing && !saving);
 
   function patch(p: Partial<PlacementForm>) {
     setForm((prev) => ({ ...prev, ...p }));

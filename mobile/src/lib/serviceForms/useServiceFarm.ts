@@ -1,10 +1,13 @@
-import { useMemo, useState } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   completeServiceForm,
+  deleteServiceFormDraft,
   getFarmDetail,
   getServiceFormById,
+  getServiceFormDraft,
   getServiceFormForVisit,
+  saveServiceFormDraft,
   type StoredServiceForm,
 } from "../../repos/data";
 import type { AnyServiceForm, ServiceFormKind } from "./types";
@@ -100,6 +103,11 @@ export function useCompleteServiceForm(farmId: string, opts?: {
         existingVisitId: opts?.serviceFormId ? null : opts?.existingVisitId ?? null,
       });
       try {
+        deleteServiceFormDraft(farmId, input.form.kind);
+      } catch {
+        // Completed form is already saved.
+      }
+      try {
         await shareServiceFormPdf(input.form);
       } catch {
         // Visit is saved even if share sheet fails / is dismissed.
@@ -125,4 +133,55 @@ export function useCompleteServiceForm(farmId: string, opts?: {
   }
 
   return { complete, saving, editing, error };
+}
+
+export function readInProgressDraft<T>(
+  farmId: string,
+  kind: ServiceFormKind,
+  fresh: boolean,
+): T | null {
+  if (fresh || !farmId) return null;
+  try {
+    const payload = getServiceFormDraft(farmId, kind);
+    if (!payload || typeof payload !== "object") return null;
+    return payload as T;
+  } catch {
+    return null;
+  }
+}
+
+/** Auto-save an in-progress checklist so leaving the screen does not lose it. */
+export function useAutosaveServiceFormDraft(
+  farmId: string,
+  kind: ServiceFormKind,
+  form: AnyServiceForm,
+  enabled: boolean,
+) {
+  const formRef = useRef(form);
+  formRef.current = form;
+
+  useEffect(() => {
+    if (!enabled || !farmId) return;
+    const t = setTimeout(() => {
+      try {
+        saveServiceFormDraft(farmId, kind, formRef.current);
+      } catch {
+        // Offline draft is best-effort.
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [enabled, farmId, kind, form]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        if (!enabled || !farmId) return;
+        try {
+          saveServiceFormDraft(farmId, kind, formRef.current);
+        } catch {
+          // Offline draft is best-effort.
+        }
+      };
+    }, [enabled, farmId, kind]),
+  );
 }

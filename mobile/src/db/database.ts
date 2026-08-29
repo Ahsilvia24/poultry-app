@@ -269,6 +269,14 @@ export async function migrateDb() {
     CREATE INDEX IF NOT EXISTS idx_generator_farm ON generator_logs(farm_id);
     CREATE INDEX IF NOT EXISTS idx_feed_flock ON feed_deliveries(flock_id);
     CREATE INDEX IF NOT EXISTS idx_service_forms_farm ON service_forms(farm_id);
+
+    CREATE TABLE IF NOT EXISTS service_form_drafts (
+      farm_id TEXT NOT NULL,
+      form_kind TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (farm_id, form_kind)
+    );
   `);
 
   // Older installs may not have service_forms yet.
@@ -291,6 +299,16 @@ export async function migrateDb() {
       CREATE INDEX IF NOT EXISTS idx_service_forms_farm ON service_forms(farm_id);
     `);
   }
+
+  await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS service_form_drafts (
+      farm_id TEXT NOT NULL,
+      form_kind TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (farm_id, form_kind)
+    );
+  `);
 
   // Existing installs created houses without deleted_at — add if missing
   const houseCols = await database.getAllAsync<{ name: string }>("PRAGMA table_info(houses)");
