@@ -245,9 +245,6 @@ export function CoolCellsChart() {
 
       <View style={{ gap: 6 }}>
         <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>Chore Time</Text>
-        <Text style={{ fontSize: 12, color: colors.muted }}>
-          Cool pad controller setpoints
-        </Text>
         <View
           style={{
             alignSelf: "stretch",
