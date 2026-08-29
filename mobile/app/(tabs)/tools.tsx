@@ -41,11 +41,11 @@ type SectionKey = "temp" | "cool" | "max" | "lights" | "weight" | "vent";
 
 const QUICK_LINKS: Array<{ key: SectionKey; label: string }> = [
   { key: "weight", label: "Weight Proj." },
+  { key: "vent", label: "Ventilation" },
   { key: "temp", label: "Temp Curve" },
   { key: "cool", label: "Cool Cells" },
   { key: "max", label: "Max Cooling" },
   { key: "lights", label: "Lights" },
-  { key: "vent", label: "Ventilation" },
 ];
 
 function paramValue(value: string | string[] | undefined) {
@@ -315,46 +315,6 @@ export default function ToolsScreen() {
                   }
                 }}
               />
-            </SectionPanel>
-          ) : (
-            <SectionAnchor />
-          )}
-        </View>
-
-        <View onLayout={(e) => onSectionLayout("temp", e)} collapsable={false}>
-          {open.temp ? (
-            <SectionPanel title="Temp Curve" onTop={scrollToTop}>
-              <TempCurveChart />
-            </SectionPanel>
-          ) : (
-            <SectionAnchor />
-          )}
-        </View>
-
-        <View onLayout={(e) => onSectionLayout("cool", e)} collapsable={false}>
-          {open.cool ? (
-            <SectionPanel title="Cool Cells" onTop={scrollToTop}>
-              <CoolCellsChart />
-            </SectionPanel>
-          ) : (
-            <SectionAnchor />
-          )}
-        </View>
-
-        <View onLayout={(e) => onSectionLayout("max", e)} collapsable={false}>
-          {open.max ? (
-            <SectionPanel title="Max Cooling" onTop={scrollToTop}>
-              <MaxCoolingChart />
-            </SectionPanel>
-          ) : (
-            <SectionAnchor />
-          )}
-        </View>
-
-        <View onLayout={(e) => onSectionLayout("lights", e)} collapsable={false}>
-          {open.lights ? (
-            <SectionPanel title="Lights" onTop={scrollToTop}>
-              <LightsChart />
             </SectionPanel>
           ) : (
             <SectionAnchor />
@@ -708,6 +668,47 @@ export default function ToolsScreen() {
             <SectionAnchor />
           )}
         </View>
+
+        <View onLayout={(e) => onSectionLayout("temp", e)} collapsable={false}>
+          {open.temp ? (
+            <SectionPanel title="Temp Curve" onTop={scrollToTop}>
+              <TempCurveChart />
+            </SectionPanel>
+          ) : (
+            <SectionAnchor />
+          )}
+        </View>
+
+        <View onLayout={(e) => onSectionLayout("cool", e)} collapsable={false}>
+          {open.cool ? (
+            <SectionPanel title="Cool Cells" onTop={scrollToTop}>
+              <CoolCellsChart />
+            </SectionPanel>
+          ) : (
+            <SectionAnchor />
+          )}
+        </View>
+
+        <View onLayout={(e) => onSectionLayout("max", e)} collapsable={false}>
+          {open.max ? (
+            <SectionPanel title="Max Cooling" onTop={scrollToTop}>
+              <MaxCoolingChart />
+            </SectionPanel>
+          ) : (
+            <SectionAnchor />
+          )}
+        </View>
+
+        <View onLayout={(e) => onSectionLayout("lights", e)} collapsable={false}>
+          {open.lights ? (
+            <SectionPanel title="Lights" onTop={scrollToTop}>
+              <LightsChart />
+            </SectionPanel>
+          ) : (
+            <SectionAnchor />
+          )}
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
