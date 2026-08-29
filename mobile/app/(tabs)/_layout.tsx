@@ -8,8 +8,8 @@ import { colors } from "../../src/theme";
 import { FeedBinIcon } from "../../src/components/FeedBinIcon";
 import {
   armFarmReturnFromMortality,
-  clearFarmReturnFromMortality,
   getFarmNavContext,
+  goToFarmList,
 } from "../../src/lib/farmNavContext";
 import { requestTabScrollTop, tabStackIndex } from "../../src/lib/tabScroll";
 
@@ -113,8 +113,7 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 if (focused) {
                   // Re-tap Farms/LFO while already on that tab → root list.
                   if (route.name === "farms") {
-                    clearFarmReturnFromMortality();
-                    popNestedToRoot(tabRoute);
+                    goToFarmList();
                     requestTabScrollTop("farms");
                     return;
                   }
