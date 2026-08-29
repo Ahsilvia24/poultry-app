@@ -39,7 +39,7 @@ type Dashboard = ReturnType<typeof getDashboard>;
 type ScheduleItem = Dashboard["todaysSchedule"][number];
 
 /** Visible farm rows before the list scrolls inside the tile. */
-const VISIBLE_SCHEDULE_ROWS = 8;
+const VISIBLE_SCHEDULE_ROWS = 6;
 /** marginTop 10 + ~22px row content (checkbox / single-line text). */
 const SCHEDULE_ROW_STEP = 32;
 const SCHEDULE_LIST_MAX_HEIGHT = VISIBLE_SCHEDULE_ROWS * SCHEDULE_ROW_STEP;
@@ -48,7 +48,7 @@ function scheduleItemKey(item: Pick<ScheduleItem, "farmId" | "date" | "label">) 
   return `${item.farmId}-${item.date}-${item.label}`;
 }
 
-/** One-finger scroll inside a dashboard schedule tile when there are more than 8 farms. */
+/** One-finger scroll inside a dashboard schedule tile when there are more than 6 farms. */
 function ScrollableScheduleList({ children }: { children: ReactNode }) {
   return (
     <ScrollView
@@ -232,8 +232,6 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const [upcomingOpen, setUpcomingOpen] = useState(false);
-  const [catchesOpen, setCatchesOpen] = useState(false);
   const [expandedFarmIds, setExpandedFarmIds] = useState<Set<string>>(() => new Set());
   /** Avoid mounting tall swipe actions until open — on web they stretch short tiles. */
   const [swipingFarmId, setSwipingFarmId] = useState<string | null>(null);
@@ -382,167 +380,121 @@ export default function DashboardScreen() {
             </Card>
 
             <Card style={{ marginBottom: 8 }}>
-              <Pressable
-                onPress={() => setUpcomingOpen((v) => !v)}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: upcomingOpen }}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 8,
-                }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted, flex: 1 }}>
-                  Upcoming Visits
-                  {!upcomingOpen ? (
-                    <Text style={{ fontWeight: "500", color: colors.muted }}>
-                      {" "}
-                      · {data.upcomingSchedule.length}
-                    </Text>
-                  ) : null}
-                </Text>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.accentDark }}>
-                  {upcomingOpen ? "Hide" : "Show"}
-                </Text>
-              </Pressable>
-              {upcomingOpen ? (
-                data.upcomingSchedule.length === 0 ? (
-                  <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 10 days</Text>
-                ) : (
-                  <ScrollableScheduleList>
-                    {data.upcomingSchedule.map((item) => {
-                      const key = scheduleItemKey(item);
-                      return (
-                        <ScheduleCheckRow
-                          key={key}
-                          item={item}
-                          showDate
-                          checked={checked[key] ?? item.completed}
-                          busy={pendingKey === key}
-                          onToggle={() => toggleScheduleItem(item)}
-                          onOpenFarm={() =>
-                            router.navigate({
-                              pathname: "/(tabs)/farms/[id]",
-                              params: { id: item.farmId },
-                            })
-                          }
-                        />
-                      );
-                    })}
-                  </ScrollableScheduleList>
-                )
-              ) : null}
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
+                Upcoming Visits
+              </Text>
+              {data.upcomingSchedule.length === 0 ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 10 days</Text>
+              ) : (
+                <ScrollableScheduleList>
+                  {data.upcomingSchedule.map((item) => {
+                    const key = scheduleItemKey(item);
+                    return (
+                      <ScheduleCheckRow
+                        key={key}
+                        item={item}
+                        showDate
+                        checked={checked[key] ?? item.completed}
+                        busy={pendingKey === key}
+                        onToggle={() => toggleScheduleItem(item)}
+                        onOpenFarm={() =>
+                          router.navigate({
+                            pathname: "/(tabs)/farms/[id]",
+                            params: { id: item.farmId },
+                          })
+                        }
+                      />
+                    );
+                  })}
+                </ScrollableScheduleList>
+              )}
             </Card>
 
             <Card style={{ marginBottom: 8 }}>
-              <Pressable
-                onPress={() => setCatchesOpen((v) => !v)}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: catchesOpen }}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 8,
-                }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted, flex: 1 }}>
-                  Upcoming catches
-                  {!catchesOpen ? (
-                    <Text style={{ fontWeight: "500", color: colors.muted }}>
-                      {" "}
-                      · {data.upcomingCatches.length}
-                    </Text>
-                  ) : null}
-                </Text>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.accentDark }}>
-                  {catchesOpen ? "Hide" : "Show"}
-                </Text>
-              </Pressable>
-              {catchesOpen ? (
-                data.upcomingCatches.length === 0 ? (
-                  <Text style={[styles.muted, { marginTop: 8 }]}>None</Text>
-                ) : (
-                  <ScrollableScheduleList>
-                    {data.upcomingCatches.map((c) => (
-                      <Pressable
-                        key={`${c.farmId}-${c.date}`}
-                        onPress={() =>
-                          router.navigate({
-                            pathname: "/(tabs)/farms/[id]",
-                            params: { id: c.farmId },
-                          })
-                        }
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
+                Upcoming catches
+              </Text>
+              {data.upcomingCatches.length === 0 ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>None</Text>
+              ) : (
+                <ScrollableScheduleList>
+                  {data.upcomingCatches.map((c) => (
+                    <Pressable
+                      key={`${c.farmId}-${c.date}`}
+                      onPress={() =>
+                        router.navigate({
+                          pathname: "/(tabs)/farms/[id]",
+                          params: { id: c.farmId },
+                        })
+                      }
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "baseline",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        marginTop: 10,
+                        minHeight: 22,
+                      }}
+                    >
+                      <View
                         style={{
+                          flex: 1,
+                          minWidth: 0,
                           flexDirection: "row",
                           alignItems: "baseline",
-                          justifyContent: "space-between",
-                          gap: 8,
-                          marginTop: 10,
-                          minHeight: 22,
                         }}
                       >
-                        <View
+                        <Text
                           style={{
-                            flex: 1,
+                            fontWeight: "700",
+                            color: colors.text,
+                            flexShrink: 1,
                             minWidth: 0,
-                            flexDirection: "row",
-                            alignItems: "baseline",
                           }}
+                          numberOfLines={1}
                         >
+                          {c.farmName}
+                        </Text>
+                        {c.flockAgeDays != null ? (
                           <Text
                             style={{
-                              fontWeight: "700",
-                              color: colors.text,
-                              flexShrink: 1,
-                              minWidth: 0,
+                              fontWeight: "400",
+                              color: colors.muted,
+                              flexShrink: 0,
+                              marginLeft: 4,
                             }}
                             numberOfLines={1}
                           >
-                            {c.farmName}
+                            {c.flockAgeDays}d
                           </Text>
-                          {c.flockAgeDays != null ? (
-                            <Text
-                              style={{
-                                fontWeight: "400",
-                                color: colors.muted,
-                                flexShrink: 0,
-                                marginLeft: 4,
-                              }}
-                              numberOfLines={1}
-                            >
-                              {c.flockAgeDays}d
-                            </Text>
-                          ) : null}
-                        </View>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "baseline",
-                            flexShrink: 0,
-                            gap: 6,
-                          }}
-                        >
+                        ) : null}
+                      </View>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "baseline",
+                          flexShrink: 0,
+                          gap: 6,
+                        }}
+                      >
+                        <Text style={{ color: colors.muted, fontSize: 13 }}>
+                          {formatCatchDate(c.date)}
+                        </Text>
+                        {c.catchTime ? (
                           <Text style={{ color: colors.muted, fontSize: 13 }}>
-                            {formatCatchDate(c.date)}
+                            {compactCatchTimeLabel(c.catchTime)}
                           </Text>
-                          {c.catchTime ? (
-                            <Text style={{ color: colors.muted, fontSize: 13 }}>
-                              {compactCatchTimeLabel(c.catchTime)}
-                            </Text>
-                          ) : null}
-                          {c.catchAgeDays != null ? (
-                            <Text style={{ color: colors.muted, fontSize: 13 }}>
-                              ({c.catchAgeDays})
-                            </Text>
-                          ) : null}
-                        </View>
-                      </Pressable>
-                    ))}
-                  </ScrollableScheduleList>
-                )
-              ) : null}
+                        ) : null}
+                        {c.catchAgeDays != null ? (
+                          <Text style={{ color: colors.muted, fontSize: 13 }}>
+                            ({c.catchAgeDays})
+                          </Text>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  ))}
+                </ScrollableScheduleList>
+              )}
             </Card>
 
             <SectionTitle>Active farms</SectionTitle>
