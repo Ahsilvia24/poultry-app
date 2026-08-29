@@ -23,7 +23,10 @@ import {
   defaultFieldLogRange,
 } from "@/lib/reports/field-log";
 import { resolveReportType } from "@/lib/reports/types";
-import type { GeneratorReportFarm } from "@/lib/reports/generator-log";
+import {
+  collectPriorHours,
+  type GeneratorReportFarm,
+} from "@/lib/reports/generator-log";
 
 type SearchParams = Promise<{
   farmId?: string;
@@ -117,14 +120,15 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       select: { id: true, farmName: true, numberOfGenerators: true },
     });
     const selectedFarmId = params.farmId || "";
+    const farmFilter = {
+      userId: session.user.id,
+      deletedAt: null,
+      ...(selectedFarmId ? { id: selectedFarmId } : {}),
+    };
     const logs = await prisma.generatorLog.findMany({
       where: {
         logDate: { gte: fromDate, lte: toDate },
-        farm: {
-          userId: session.user.id,
-          deletedAt: null,
-          ...(selectedFarmId ? { id: selectedFarmId } : {}),
-        },
+        farm: farmFilter,
       },
       select: {
         id: true,
@@ -138,6 +142,40 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       },
       orderBy: [{ logDate: "desc" }, { createdAt: "desc" }],
     });
+    const priorLogs = await prisma.generatorLog.findMany({
+      where: {
+        logDate: { lt: fromDate },
+        farm: farmFilter,
+      },
+      select: {
+        farmId: true,
+        gen1Hours: true,
+        gen2Hours: true,
+        gen3Hours: true,
+        gen4Hours: true,
+      },
+      orderBy: [{ logDate: "desc" }, { createdAt: "desc" }],
+    });
+    const priorByFarm = new Map<string, ReturnType<typeof collectPriorHours>>();
+    const priorGrouped = new Map<string, typeof priorLogs>();
+    for (const log of priorLogs) {
+      const list = priorGrouped.get(log.farmId) ?? [];
+      list.push(log);
+      priorGrouped.set(log.farmId, list);
+    }
+    for (const [farmId, list] of priorGrouped) {
+      priorByFarm.set(
+        farmId,
+        collectPriorHours(
+          list.map((log) => ({
+            gen1Hours: log.gen1Hours,
+            gen2Hours: log.gen2Hours,
+            gen3Hours: log.gen3Hours,
+            gen4Hours: log.gen4Hours,
+          })),
+        ),
+      );
+    }
 
     const byFarm = new Map<string, GeneratorReportFarm>();
     for (const farm of farms) {
@@ -146,6 +184,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
         farmId: farm.id,
         farmName: farm.farmName,
         numberOfGenerators: farm.numberOfGenerators,
+        priorHours: priorByFarm.get(farm.id) ?? null,
         logs: [],
       });
     }
@@ -204,11 +243,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
             </div>
           </form>
         </Card>
-        <GeneratorLogReport
-          farms={reportFarms}
-          filterLabel={filterLabel}
-          includeFarmColumn={!selectedFarmId}
-        />
+        <GeneratorLogReport farms={reportFarms} filterLabel={filterLabel} />
       </div>
     );
   }

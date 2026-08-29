@@ -19,7 +19,10 @@ import {
 } from "../lib/lfo/calculate";
 import { normalizeHalfHourTime } from "../lib/time-slots";
 import { buildFieldLogWeeks, type FieldLogWeek } from "../lib/reports/field-log";
-import type { GeneratorReportFarm } from "../lib/reports/generator-log";
+import {
+  collectPriorHours,
+  type GeneratorReportFarm,
+} from "../lib/reports/generator-log";
 import {
   buildFlockVisitSchedule,
   completionKey,
@@ -1477,10 +1480,30 @@ export function getGeneratorLogReport(
       [farm.id, from, to],
     );
     if (logs.length === 0) continue;
+    const older = db.getAllSync<{
+      gen1_hours: number | null;
+      gen2_hours: number | null;
+      gen3_hours: number | null;
+      gen4_hours: number | null;
+    }>(
+      `SELECT gen1_hours, gen2_hours, gen3_hours, gen4_hours
+       FROM generator_logs
+       WHERE farm_id = ? AND log_date < ?
+       ORDER BY log_date DESC, id DESC`,
+      [farm.id, from],
+    );
     rows.push({
       farmId: farm.id,
       farmName: farm.farmName,
       numberOfGenerators: farm.numberOfGenerators ?? null,
+      priorHours: collectPriorHours(
+        older.map((log) => ({
+          gen1Hours: log.gen1_hours,
+          gen2Hours: log.gen2_hours,
+          gen3Hours: log.gen3_hours,
+          gen4Hours: log.gen4_hours,
+        })),
+      ),
       logs: logs.map((log) => ({
         id: log.id,
         farmId: farm.id,
