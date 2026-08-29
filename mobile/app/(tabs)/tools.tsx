@@ -147,7 +147,7 @@ export default function ToolsScreen() {
     setLocalGrowthRate(null);
   }, [selectedHouse?.id]);
 
-  /** Selected house → Catch day / +1 / +2 from that house’s catch (or flock). */
+  /** Selected house → Low / Catch day / High (±0.20 lb) from that house’s catch (or flock). */
   const weightProjectionGroups = (() => {
     if (!detail || growthRate == null || !selectedHouse) return [];
     const catchDate =

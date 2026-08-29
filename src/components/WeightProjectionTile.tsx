@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { updateFlockWeightProjectionAction } from "@/app/actions/farms";
 import {
   DEFAULT_GROWTH_RATE_LBS_PER_DAY,
+  weightBandAround,
   weightFromAgeDays,
 } from "@/lib/weight/projections";
 import { Button, Card, Input, Label } from "@/components/ui";
@@ -23,6 +24,7 @@ function formatCatchShort(dateKey: string) {
 export type WeightProjectionGroup = {
   catchDateKey: string;
   projections: Array<{
+    key?: "low" | "catch" | "high";
     offsetDays: number;
     dateKey: string;
     label: string;
@@ -62,14 +64,11 @@ export function WeightProjectionTile({
   const ageDays = Number(ageDaysText);
   const ageValid = Number.isFinite(ageDays) && ageDays >= 0 && ageDaysText.trim() !== "";
   const ageProjections = ageValid
-    ? [0, 1, 2].map((offset) => {
-        const days = ageDays + offset;
-        return {
-          offset,
-          ageDays: days,
-          label: offset === 0 ? "Age day" : offset === 1 ? "Age +1" : "Age +2",
-          weightLbs: weightFromAgeDays(days, growthRateLbsPerDay),
-        };
+    ? weightBandAround({
+        date: new Date(1970, 0, 1),
+        ageDays,
+        midWeightLbs: weightFromAgeDays(ageDays, growthRateLbsPerDay),
+        midLabel: "Age day",
       })
     : null;
 
@@ -171,7 +170,7 @@ export function WeightProjectionTile({
           {ageProjections ? (
             <div className="grid grid-cols-3 gap-2 text-lg">
               {ageProjections.map((p) => (
-                <div key={p.offset} className="rounded-lg bg-stone-50 px-3 py-2">
+                <div key={p.key} className="rounded-lg bg-stone-50 px-3 py-2">
                   <p className="text-sm text-stone-500">{p.label}</p>
                   <p className="font-bold text-stone-900">{p.weightLbs.toFixed(2)} lb</p>
                   <p className="text-sm text-stone-400">{p.ageDays}d</p>
@@ -191,7 +190,7 @@ export function WeightProjectionTile({
             <div className="grid grid-cols-3 gap-2 text-lg">
               {group.projections.map((p) => (
                 <div
-                  key={`${group.catchDateKey}-${p.offsetDays}`}
+                  key={`${group.catchDateKey}-${p.key ?? p.offsetDays}`}
                   className="rounded-lg bg-stone-50 px-3 py-2"
                 >
                   <p className="text-sm text-stone-500">{p.label}</p>
