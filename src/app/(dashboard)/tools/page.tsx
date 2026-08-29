@@ -195,6 +195,14 @@ export default async function ToolsPage({
           />
         </ToolsSectionPanel>
 
+        <ToolsSectionPanel
+          hashId="ventilation"
+          title="Ventilation"
+          footer={<VentilationCfmCharts />}
+        >
+          <VentilationLinks farms={farms} />
+        </ToolsSectionPanel>
+
         <ToolsSectionPanel hashId="temp-curve" title="Temp Curve">
           <TempCurveChart />
         </ToolsSectionPanel>
@@ -209,14 +217,6 @@ export default async function ToolsPage({
 
         <ToolsSectionPanel hashId="lights" title="Lights">
           <LightsChart />
-        </ToolsSectionPanel>
-
-        <ToolsSectionPanel
-          hashId="ventilation"
-          title="Ventilation"
-          footer={<VentilationCfmCharts />}
-        >
-          <VentilationLinks farms={farms} />
         </ToolsSectionPanel>
       </div>
     </div>
