@@ -420,6 +420,7 @@ async function main() {
     { farm: "Cedar Creek", weekStart: lastMonday, offset: 1, hour: 7, minute: 20 },
     { farm: "Pine Ridge", weekStart: lastMonday, offset: 1, hour: 9, minute: 15 },
     { farm: "Willow Bend", weekStart: lastMonday, offset: 2, hour: 8, minute: 0 },
+    { farm: "Triple Place", weekStart: lastMonday, offset: 2, hour: 10, minute: 20 },
     { farm: "Sunrise Farms", weekStart: lastMonday, offset: 3, hour: 7, minute: 45 },
     { farm: "River Bend", weekStart: lastMonday, offset: 4, hour: 10, minute: 30 },
     { farm: "Ash Grove", weekStart: lastMonday, offset: 5, hour: 9, minute: 0 },
@@ -428,6 +429,11 @@ async function main() {
     { farm: "Bay View", weekStart: thisMonday, offset: 0, hour: 10, minute: 50 },
     { farm: "Cedar Creek", weekStart: thisMonday, offset: 1, hour: 7, minute: 40 },
     { farm: "Pine Ridge", weekStart: thisMonday, offset: 1, hour: 9, minute: 10 },
+    { farm: "Willow Bend", weekStart: thisMonday, offset: 2, hour: 8, minute: 15 },
+    { farm: "Triple Place", weekStart: thisMonday, offset: 2, hour: 10, minute: 5 },
+    { farm: "Sunrise Farms", weekStart: thisMonday, offset: 3, hour: 7, minute: 50 },
+    { farm: "River Bend", weekStart: thisMonday, offset: 4, hour: 10, minute: 20 },
+    { farm: "Ash Grove", weekStart: thisMonday, offset: 5, hour: 8, minute: 45 },
   ];
   for (const stop of fieldLogStops) {
     const day = addDays(stop.weekStart, stop.offset);
