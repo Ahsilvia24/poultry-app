@@ -191,22 +191,6 @@ export default function ToolsScreen() {
     });
   }
 
-  function scrollWeightInputsIntoView() {
-    setOpen((prev) => ({ ...prev, weight: true }));
-    requestAnimationFrame(() => {
-      const y = sectionY.current.weight;
-      if (y != null) {
-        scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
-      }
-    });
-    setTimeout(() => {
-      const y = sectionY.current.weight;
-      if (y != null) {
-        scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
-      }
-    }, 320);
-  }
-
   function scrollToTop() {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   }
@@ -245,7 +229,7 @@ export default function ToolsScreen() {
             ? { paddingBottom: keyboardInset + 32 }
             : null,
         ]}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
         keyboardDismissMode="on-drag"
       >
         <View
@@ -354,13 +338,9 @@ export default function ToolsScreen() {
                 growthRateLbsPerDay={growthRate}
                 embedded
                 useAgeOfBird={useAgeOfBird}
-                onUseAgeOfBirdChange={(next) => {
-                  setUseAgeOfBird(next);
-                  if (next) scrollWeightInputsIntoView();
-                }}
+                onUseAgeOfBirdChange={setUseAgeOfBird}
                 ageDaysText={ageDaysText}
                 onAgeDaysChange={setAgeDaysText}
-                onInputFocus={scrollWeightInputsIntoView}
                 onSaveGrowthRate={(rate) => {
                   setLocalGrowthRate(rate);
                   const flockId =

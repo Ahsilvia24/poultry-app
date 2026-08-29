@@ -162,6 +162,7 @@ export function WeightProjectionTile({
               min={0}
               step={1}
               inputMode="numeric"
+              autoFocus
               value={ageDaysText}
               onChange={(e) => onAgeDaysChange?.(e.target.value)}
               placeholder="e.g. 42"

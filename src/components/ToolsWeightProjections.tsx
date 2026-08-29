@@ -126,7 +126,7 @@ export function ToolsWeightProjections({
       ) : null}
 
       <WeightProjectionTile
-        key={useAgeOfBird ? "age" : (house?.id ?? "empty")}
+        key={house?.id ?? "empty"}
         flockId={house?.flockId ?? null}
         groups={house?.groups ?? []}
         growthRateLbsPerDay={growthRateLbsPerDay}

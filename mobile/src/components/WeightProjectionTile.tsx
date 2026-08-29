@@ -188,7 +188,7 @@ export function WeightProjectionTile({
             <TextInput
               value={ageDaysText}
               onChangeText={(t) => onAgeDaysChange?.(t)}
-              onFocus={onInputFocus}
+              autoFocus
               keyboardType="number-pad"
               style={[styles.input, { maxWidth: 140 }]}
               placeholder="e.g. 42"
