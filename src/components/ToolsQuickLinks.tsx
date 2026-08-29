@@ -15,8 +15,7 @@ const links = [
 export function ToolsQuickLinks() {
   return (
     <div className={cn("rounded-xl border border-stone-200 bg-white p-3 shadow-sm")}>
-      <h2 className="text-center text-sm font-bold text-stone-900">Quick Links</h2>
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {links.map((link) => (
           <a key={link.href} href={link.href} className={linkClass}>
             {link.label}

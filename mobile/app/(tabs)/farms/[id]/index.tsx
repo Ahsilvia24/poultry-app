@@ -1262,16 +1262,6 @@ export default function FarmDetailScreen() {
 
         <View style={{ marginBottom: 16 }}>
           <Card>
-            <Text
-              style={{
-                fontWeight: "800",
-                fontSize: 14,
-                marginBottom: 8,
-                textAlign: "center",
-              }}
-            >
-              Quick Links
-            </Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {(
                 [

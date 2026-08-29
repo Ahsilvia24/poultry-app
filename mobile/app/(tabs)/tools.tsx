@@ -259,22 +259,11 @@ export default function ToolsScreen() {
         </View>
 
         <Card style={{ marginBottom: 12 }}>
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "800",
-              color: colors.text,
-              textAlign: "center",
-            }}
-          >
-            Quick Links
-          </Text>
           <View
             style={{
               flexDirection: "row",
               flexWrap: "wrap",
               gap: 8,
-              marginTop: 10,
             }}
           >
             {QUICK_LINKS.map((item) => (
