@@ -20,7 +20,7 @@ import {
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
 import { colors, styles } from "../../../src/theme";
-import { Card, Chip, PageHeader } from "../../../src/components/ui";
+import { Card, PageHeader } from "../../../src/components/ui";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 
 type StatusFilter = "active" | "inactive" | "all";
@@ -98,34 +98,6 @@ export default function FarmsScreen() {
         onScrollBeginDrag={swipe.closeAll}
       >
         <PageHeader title="Farms" />
-
-        <View style={[styles.row, { marginBottom: 8, alignItems: "center" }]}>
-          <Pressable
-            onPress={() => router.push("/(tabs)/farms/new")}
-            accessibilityRole="button"
-            accessibilityLabel="Add Farm"
-            style={{
-              borderRadius: 10,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              marginRight: 8,
-              marginBottom: 8,
-              flexShrink: 0,
-              backgroundColor: colors.accentDark,
-            }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Add Farm</Text>
-          </Pressable>
-          {(["active", "inactive", "all"] as const).map((key) => (
-            <Chip
-              key={key}
-              label={key[0]!.toUpperCase() + key.slice(1)}
-              active={status === key}
-              tone="neutral"
-              onPress={() => setStatus(key)}
-            />
-          ))}
-        </View>
 
         {error ? <Text style={{ color: colors.danger }}>{error}</Text> : null}
 
@@ -306,6 +278,64 @@ export default function FarmsScreen() {
           );
         })}
       </ScrollView>
+
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 8,
+          paddingHorizontal: 16,
+          paddingTop: 10,
+          paddingBottom: 10,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          backgroundColor: colors.bg,
+        }}
+      >
+        <Pressable
+          onPress={() => router.push("/(tabs)/farms/new")}
+          accessibilityRole="button"
+          accessibilityLabel="Add Farm"
+          style={{
+            flex: 1,
+            borderRadius: 10,
+            paddingVertical: 10,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: colors.accentDark,
+          }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Add Farm</Text>
+        </Pressable>
+        {(["active", "inactive", "all"] as const).map((key) => {
+          const selected = status === key;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => setStatus(key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              style={{
+                flex: 1,
+                borderRadius: 10,
+                paddingVertical: 10,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: selected ? "#292524" : "#e7e5e4",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: selected ? "#fff" : colors.text,
+                }}
+              >
+                {key[0]!.toUpperCase() + key.slice(1)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
       <ConfirmDialog
         visible={confirm != null}

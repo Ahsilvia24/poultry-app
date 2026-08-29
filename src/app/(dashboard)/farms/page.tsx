@@ -63,29 +63,8 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
   );
 
   return (
-    <div>
+    <div className="pb-16 md:pb-20">
       <PageHeader title="Farms" />
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Link
-          href="/farms/new"
-          className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
-        >
-          Add Farm
-        </Link>
-        {filters.map((f) => (
-          <Link
-            key={f.key}
-            href={f.key === "active" ? "/farms" : `/farms?status=${f.key}`}
-            className={cn(
-              "rounded-lg px-4 py-2 text-sm font-semibold",
-              status === f.key ? "bg-stone-800 text-white" : "bg-stone-200 text-stone-800",
-            )}
-          >
-            {f.label}
-          </Link>
-        ))}
-      </div>
 
       {farms.length === 0 ? (
         <Card>
@@ -97,6 +76,29 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
       ) : (
         <FarmsListTiles farms={tiles} />
       )}
+
+      <div className="fixed inset-x-0 bottom-24 z-30 border-t border-stone-200 bg-[#f3efe6] px-3 py-2 md:bottom-0">
+        <div className="mx-auto flex max-w-7xl gap-2">
+          <Link
+            href="/farms/new"
+            className="flex min-h-10 flex-1 items-center justify-center rounded-lg bg-emerald-700 px-2 text-center text-sm font-semibold text-white hover:bg-emerald-800"
+          >
+            Add Farm
+          </Link>
+          {filters.map((f) => (
+            <Link
+              key={f.key}
+              href={f.key === "active" ? "/farms" : `/farms?status=${f.key}`}
+              className={cn(
+                "flex min-h-10 flex-1 items-center justify-center rounded-lg px-2 text-center text-sm font-semibold",
+                status === f.key ? "bg-stone-800 text-white" : "bg-stone-200 text-stone-800",
+              )}
+            >
+              {f.label}
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
