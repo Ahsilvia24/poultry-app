@@ -56,26 +56,30 @@ export function GeneratorLogReport({
     });
   }
 
+  if (!hasLogs) {
+    return <p className="text-sm text-stone-500">No generator hours logged in this date range.</p>;
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-stone-600">{filterLabel}</p>
+    <Card>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-base font-extrabold text-stone-900">Generator hours</p>
+          <p className="text-sm text-stone-600">{filterLabel}</p>
+        </div>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" onClick={copy} disabled={!hasLogs}>
+          <Button type="button" variant="secondary" onClick={copy}>
             {copied ? "Copied" : "Copy"}
           </Button>
-          <Button type="button" variant="secondary" onClick={exportPdf} disabled={!hasLogs}>
+          <Button type="button" variant="secondary" onClick={exportPdf}>
             Share PDF
           </Button>
         </div>
       </div>
-
-      {!hasLogs ? (
-        <p className="text-sm text-stone-500">No generator hours logged in this date range.</p>
-      ) : (
-        view.map((farm) => (
-          <Card key={farm.farmId}>
-            <p className="mb-3 text-base font-extrabold text-stone-900">{farm.farmName}</p>
+      <div className="space-y-6">
+        {view.map((farm) => (
+          <div key={farm.farmId}>
+            <p className="mb-2 text-base font-extrabold text-stone-900">{farm.farmName}</p>
             <div className="space-y-5">
               {farm.generators.map((gen) => (
                 <div key={gen.key}>
@@ -108,9 +112,9 @@ export function GeneratorLogReport({
                 </div>
               ))}
             </div>
-          </Card>
-        ))
-      )}
-    </div>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }

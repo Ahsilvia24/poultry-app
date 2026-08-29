@@ -254,16 +254,22 @@ export default function ReportsScreen() {
             {genView.length === 0 ? (
               <Text style={styles.muted}>No generator hours logged in this date range.</Text>
             ) : (
-              <>
+              <Card style={{ paddingVertical: 12 }}>
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    justifyContent: "flex-end",
+                    justifyContent: "space-between",
+                    marginBottom: 10,
                     gap: 8,
-                    marginBottom: 8,
                   }}
                 >
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={{ fontWeight: "800", fontSize: 16, color: colors.text }}>
+                      Generator hours
+                    </Text>
+                    <Text style={[styles.muted, { marginTop: 2 }]}>{genFilterLabel}</Text>
+                  </View>
                   <ClipboardIconButton
                     accessibilityLabel="Copy generator report"
                     color={colors.accentDark}
@@ -285,8 +291,8 @@ export default function ReportsScreen() {
                   />
                 </View>
                 {genView.map((farm) => (
-                  <Card key={farm.farmId} style={{ paddingVertical: 12 }}>
-                    <Text style={{ fontWeight: "800", fontSize: 16, color: colors.text, marginBottom: 8 }}>
+                  <View key={farm.farmId} style={{ marginTop: 10 }}>
+                    <Text style={{ fontWeight: "800", fontSize: 16, color: colors.text, marginBottom: 4 }}>
                       {farm.farmName}
                     </Text>
                     {farm.generators.map((gen) => (
@@ -323,9 +329,9 @@ export default function ReportsScreen() {
                         ))}
                       </View>
                     ))}
-                  </Card>
+                  </View>
                 ))}
-              </>
+              </Card>
             )}
           </>
         ) : (
