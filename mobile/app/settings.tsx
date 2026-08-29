@@ -71,10 +71,6 @@ export default function SettingsScreen() {
               placeholder="Name on checklists"
               placeholderTextColor={colors.muted}
             />
-            <Text style={[styles.muted, { marginTop: -4, fontSize: 13, lineHeight: 18 }]}>
-              Prefills on Service Report, Placement, and Prebrood checklists. You can still edit it
-              on a form.
-            </Text>
           </Card>
 
           <View style={{ flex: 1, minHeight: 48 }} />
