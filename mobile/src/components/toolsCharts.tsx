@@ -231,6 +231,7 @@ export function CoolCellsChart() {
   return (
     <View style={{ gap: 20 }}>
       <View style={{ gap: 6 }}>
+        {/* No Big Bird title or subtext — the Cool Cells section heading is enough. */}
         <CoolCellSettingsTable rows={BIG_BIRD_COOL_CELLS} diffLabel="Temp diff" />
         <Text style={{ fontSize: 12, color: colors.muted }}>{SCHEDULE_NOTE}</Text>
       </View>

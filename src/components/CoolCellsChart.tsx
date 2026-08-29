@@ -70,6 +70,7 @@ export function CoolCellsChart() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
+        {/* No Big Bird title or subtext — the Cool Cells section heading is enough. */}
         <CoolCellSettingsTable rows={BIG_BIRD_COOL_CELLS} diffLabel="Temp diff" />
         <p className="text-xs text-stone-500">{scheduleNote}</p>
       </div>

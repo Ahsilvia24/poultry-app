@@ -98,7 +98,7 @@ A 13" iPad preview still lives at `docs/app-store/ipad-13-service-report.png` if
 - [ ] Reports is a visible bottom tab
 - [ ] There is no More tab
 - [ ] Dashboard shows Import (Placement / Catch only) and no Export
-- [ ] Tools → Cool Cells: Big Bird, Tunnel Diff, and Chore Time each have their own subtitle
+- [ ] Tools → Cool Cells: no Big Bird title or subtitle above the first table
 - [ ] Farm list includes Triple Place (not “Triple Place Demo”); visit notes are not “Offline demo visit”
 - [ ] Add Farm name field placeholder is “Farm name”, not a sample farm
 - [ ] Privacy URL in App Store Connect is the GitHub Pages policy, not TermsFeed
