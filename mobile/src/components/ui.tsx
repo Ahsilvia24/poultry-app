@@ -13,9 +13,18 @@ export function PageHeader({
 }) {
   return (
     <View style={{ marginBottom: 16 }}>
-      <Text style={styles.title}>{title}</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <Text style={[styles.title, { flex: 1, minWidth: 0 }]}>{title}</Text>
+        {actions}
+      </View>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-      {actions ? <View style={{ marginTop: 12 }}>{actions}</View> : null}
     </View>
   );
 }
@@ -144,11 +153,11 @@ export function Metric({
       <Text style={{ fontSize: 13, color: colors.muted }}>{label}</Text>
       <Text
         style={{
-          fontSize: multiline ? 13 : 15,
+          fontSize: 15,
           fontWeight: "700",
           color: colors.text,
           marginTop: 2,
-          lineHeight: multiline ? 18 : undefined,
+          lineHeight: multiline ? 20 : undefined,
         }}
       >
         {value}
