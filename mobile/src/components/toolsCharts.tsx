@@ -234,9 +234,6 @@ export function CoolCellsChart() {
         <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>
           Big Bird
         </Text>
-        <Text style={{ fontSize: 12, color: colors.muted }}>
-          Temp-diff cool-cell stages
-        </Text>
         <CoolCellSettingsTable rows={BIG_BIRD_COOL_CELLS} diffLabel="Temp diff" />
         <Text style={{ fontSize: 12, color: colors.muted }}>{SCHEDULE_NOTE}</Text>
       </View>
@@ -244,9 +241,6 @@ export function CoolCellsChart() {
       <View style={{ gap: 6 }}>
         <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>
           Tunnel Diff Cool Cells
-        </Text>
-        <Text style={{ fontSize: 12, color: colors.muted }}>
-          Tunnel-diff cool-cell stages
         </Text>
         <CoolCellSettingsTable rows={MIST_AND_COOL_CELLS} diffLabel="Tunnel diff" />
         <Text style={{ fontSize: 12, color: colors.muted }}>{SCHEDULE_NOTE}</Text>

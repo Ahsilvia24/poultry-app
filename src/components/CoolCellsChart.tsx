@@ -71,14 +71,12 @@ export function CoolCellsChart() {
     <div className="space-y-8">
       <div className="space-y-2">
         <p className="text-sm font-semibold text-stone-800">Big Bird</p>
-        <p className="text-xs text-stone-500">Temp-diff cool-cell stages</p>
         <CoolCellSettingsTable rows={BIG_BIRD_COOL_CELLS} diffLabel="Temp diff" />
         <p className="text-xs text-stone-500">{scheduleNote}</p>
       </div>
 
       <div className="space-y-2">
         <p className="text-sm font-semibold text-stone-800">Tunnel Diff Cool Cells</p>
-        <p className="text-xs text-stone-500">Tunnel-diff cool-cell stages</p>
         <CoolCellSettingsTable rows={MIST_AND_COOL_CELLS} diffLabel="Tunnel diff" />
         <p className="text-xs text-stone-500">{scheduleNote}</p>
       </div>
