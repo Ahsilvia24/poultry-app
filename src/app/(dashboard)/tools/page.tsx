@@ -23,7 +23,7 @@ import {
   VentilationLinks,
   type VentilationFarmPayload,
 } from "@/components/VentilationLinks";
-import { PageHeader } from "@/components/ui";
+import { SettingsGearLink } from "@/components/SettingsGearLink";
 
 /** Local noon from yyyy-MM-dd — safe for startOfDay / calendar math. */
 function localNoonFromKey(dateKey: string) {
@@ -177,7 +177,14 @@ export default async function ToolsPage({
 
   return (
     <div>
-      <PageHeader title="Tools" />
+      <div className="mb-3 md:mb-6">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-xl font-bold tracking-tight text-stone-900 md:text-3xl">
+            Tools
+          </h1>
+          <SettingsGearLink />
+        </div>
+      </div>
 
       <div className="mb-6">
         <ToolsQuickLinks />

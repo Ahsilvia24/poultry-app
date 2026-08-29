@@ -8,7 +8,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   listFarms,
@@ -31,7 +32,7 @@ import {
 import { colors, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { useKeyboardInset } from "../../src/lib/useKeyboardInset";
-import { Card, Chip, PageHeader } from "../../src/components/ui";
+import { Card, Chip } from "../../src/components/ui";
 import { WeightProjectionTile } from "../../src/components/WeightProjectionTile";
 import {
   CoolCellsChart,
@@ -57,6 +58,7 @@ function paramValue(value: string | string[] | undefined) {
 }
 
 export default function ToolsScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams<{
     farmId?: string | string[];
     section?: string | string[];
@@ -246,7 +248,31 @@ export default function ToolsScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        <PageHeader title="Tools" />
+        <View
+          style={{
+            marginBottom: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <Text style={[styles.title, { flex: 1 }]}>Tools</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+            onPress={() => router.push("/settings")}
+            hitSlop={10}
+            style={{
+              width: 40,
+              height: 40,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="settings-outline" size={24} color={colors.text} />
+          </Pressable>
+        </View>
 
         <Card style={{ marginBottom: 12 }}>
           <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text }}>
