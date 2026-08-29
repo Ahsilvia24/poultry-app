@@ -420,7 +420,17 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
               Visit type
             </Text>
             <ScrollView>
-              {VISIT_TYPE_OPTIONS.map((opt) => (
+              {(
+                VISIT_TYPE_OPTIONS.some((opt) => opt.value === visitType)
+                  ? VISIT_TYPE_OPTIONS
+                  : [
+                      {
+                        value: visitType,
+                        label: VISIT_TYPE_LABELS[visitType] ?? visitType,
+                      },
+                      ...VISIT_TYPE_OPTIONS,
+                    ]
+              ).map((opt) => (
                 <Pressable
                   key={opt.value}
                   onPress={() => {
