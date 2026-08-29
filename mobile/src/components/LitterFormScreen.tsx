@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -25,6 +24,7 @@ import { colors, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { OptionPicker, SelectField } from "./OptionPicker";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?: string }) {
   const router = useRouter();
@@ -58,6 +58,7 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
   const [picker, setPicker] = useState<"house" | "type" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (editing && !initial) {
     return (
@@ -169,19 +170,7 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
                 label="Delete litter event"
                 secondary
                 style={{ marginTop: 10 }}
-                onPress={() =>
-                  Alert.alert("Delete litter event?", "This cannot be undone.", [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Delete",
-                      style: "destructive",
-                      onPress: () => {
-                        deleteLitterEvent(farmId, eventId);
-                        router.back();
-                      },
-                    },
-                  ])
-                }
+                onPress={() => setDeleteOpen(true)}
               />
             ) : null}
           </Card>
@@ -206,6 +195,20 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
         ]}
         onSelect={setHouseId}
         onClose={() => setPicker(null)}
+      />
+      <ConfirmDialog
+        visible={deleteOpen}
+        title="Delete litter event?"
+        message="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          if (!eventId) return;
+          deleteLitterEvent(farmId, eventId);
+          setDeleteOpen(false);
+          router.back();
+        }}
+        onCancel={() => setDeleteOpen(false)}
       />
     </SafeAreaView>
   );

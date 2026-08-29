@@ -59,7 +59,7 @@ export default function ServiceReportScreen() {
   const { detail, farmName, flockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "service_report");
   const editVisitId = useEditVisitIdParam();
-  const { complete, saving, editing } = useCompleteServiceForm(farmId, {
+  const { complete, saving, editing, error: completeError } = useCompleteServiceForm(farmId, {
     serviceFormId: existing?.id ?? null,
     existingVisitId: existing ? null : editVisitId,
   });
@@ -93,9 +93,9 @@ export default function ServiceReportScreen() {
   });
 
   const [timePicker, setTimePicker] = useState<"date" | "on" | "off" | null>(null);
-  const [humidityOpen, setHumidityOpen] = useState(false);
-  const [ventDoorOpen, setVentDoorOpen] = useState(false);
-  const [weekOpen, setWeekOpen] = useState(false);
+  const [optionPicker, setOptionPicker] = useState<"humidity" | "ventDoor" | "week" | null>(
+    null,
+  );
   const scrollRef = useRef<ScrollViewType>(null);
 
   function patch(p: Partial<ServiceReportForm>) {
@@ -285,7 +285,7 @@ export default function ServiceReportScreen() {
             valueLabel={
               form.humidityPct === "" ? "Blank" : `${form.humidityPct}%`
             }
-            onPress={() => setHumidityOpen(true)}
+            onPress={() => setOptionPicker("humidity")}
           />
           <MultiToggleField
             label="Current ventilation"
@@ -315,7 +315,7 @@ export default function ServiceReportScreen() {
             valueLabel={
               VENT_DOOR_OPTIONS.find((o) => o.value === form.ventDoorType)?.label ?? "Select"
             }
-            onPress={() => setVentDoorOpen(true)}
+            onPress={() => setOptionPicker("ventDoor")}
           />
           <PairFields
             left={
@@ -370,7 +370,7 @@ export default function ServiceReportScreen() {
           <SelectField
             label="Recommended min vent week"
             valueLabel={`Week ${form.minVentRecommendedWeek}`}
-            onPress={() => setWeekOpen(true)}
+            onPress={() => setOptionPicker("week")}
           />
           <Text style={[styles.muted, { marginBottom: 8 }]}>
             Recommended:{" "}
@@ -544,6 +544,11 @@ export default function ServiceReportScreen() {
           scrollRef={scrollRef}
         />
 
+        {completeError ? (
+          <Text style={{ color: colors.danger, fontWeight: "700", marginTop: 12 }}>
+            {completeError}
+          </Text>
+        ) : null}
         <Pressable
           disabled={saving}
           onPress={() => complete({ form })}
@@ -568,30 +573,30 @@ export default function ServiceReportScreen() {
       </KeyboardAvoidingView>
 
       <OptionPicker
-        open={humidityOpen}
+        open={optionPicker === "humidity"}
         title="Humidity %"
         options={HUMIDITY_OPTIONS}
         value={form.humidityPct}
         onSelect={(humidityPct) => patch({ humidityPct })}
-        onClose={() => setHumidityOpen(false)}
+        onClose={() => setOptionPicker(null)}
       />
       <OptionPicker
-        open={ventDoorOpen}
+        open={optionPicker === "ventDoor"}
         title="Vent door type"
         options={VENT_DOOR_OPTIONS}
         value={form.ventDoorType}
         onSelect={(ventDoorType) =>
           patch({ ventDoorType: ventDoorType as ServiceReportForm["ventDoorType"] })
         }
-        onClose={() => setVentDoorOpen(false)}
+        onClose={() => setOptionPicker(null)}
       />
       <OptionPicker
-        open={weekOpen}
+        open={optionPicker === "week"}
         title="Recommended min vent week"
         options={WEEK_OPTIONS}
         value={String(form.minVentRecommendedWeek)}
         onSelect={(v) => applyRecommendedWeek(Number(v))}
-        onClose={() => setWeekOpen(false)}
+        onClose={() => setOptionPicker(null)}
       />
     </SafeAreaView>
   );

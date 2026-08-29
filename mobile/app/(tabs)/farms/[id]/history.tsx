@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -27,6 +26,7 @@ import {
   formatNumber,
   formatPct,
 } from "../../../../src/components/ui";
+import { ConfirmDialog } from "../../../../src/components/ConfirmDialog";
 
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -131,6 +131,11 @@ export default function FarmHistoryScreen() {
   const [data, setData] = useState<HistoryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<
+    | { kind: "reactivate"; row: HistoryRow }
+    | { kind: "delete"; row: HistoryRow }
+    | null
+  >(null);
 
   const load = useCallback(() => {
     if (!farmId) {
@@ -158,46 +163,24 @@ export default function FarmHistoryScreen() {
   );
 
   function onReactivate(row: HistoryRow) {
-    Alert.alert(
-      "Make flock active?",
-      `Make flock ${row.flockNumber} active again?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Make active",
-          onPress: () => {
-            try {
-              reactivateFlock(row.id);
-              load();
-            } catch (e) {
-              Alert.alert("Error", e instanceof Error ? e.message : "Could not reactivate");
-            }
-          },
-        },
-      ],
-    );
+    setConfirm({ kind: "reactivate", row });
   }
 
   function onDelete(row: HistoryRow) {
-    Alert.alert(
-      `Delete flock ${row.flockNumber}?`,
-      "This permanently removes the flock and its mortality, feed, and LFO records. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            try {
-              deleteFlock(farmId, row.id);
-              load();
-            } catch (e) {
-              Alert.alert("Error", e instanceof Error ? e.message : "Could not delete flock");
-            }
-          },
-        },
-      ],
-    );
+    setConfirm({ kind: "delete", row });
+  }
+
+  function runConfirm() {
+    if (!confirm) return;
+    try {
+      if (confirm.kind === "reactivate") reactivateFlock(confirm.row.id);
+      else deleteFlock(farmId, confirm.row.id);
+      setConfirm(null);
+      load();
+    } catch (e) {
+      setConfirm(null);
+      setError(e instanceof Error ? e.message : "Could not update flock");
+    }
   }
 
   if (loading && !data) {
@@ -319,6 +302,25 @@ export default function FarmHistoryScreen() {
           </>
         ) : null}
       </ScrollView>
+      <ConfirmDialog
+        visible={confirm != null}
+        title={
+          confirm?.kind === "reactivate"
+            ? "Make flock active?"
+            : confirm
+              ? `Delete flock ${confirm.row.flockNumber}?`
+              : ""
+        }
+        message={
+          confirm?.kind === "reactivate"
+            ? `Make flock ${confirm.row.flockNumber} active again?`
+            : "This permanently removes the flock and its mortality, feed, and LFO records. This cannot be undone."
+        }
+        confirmLabel={confirm?.kind === "reactivate" ? "Make active" : "Delete"}
+        danger={confirm?.kind === "delete"}
+        onConfirm={runConfirm}
+        onCancel={() => setConfirm(null)}
+      />
     </SafeAreaView>
   );
 }

@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   completeServiceForm,
@@ -79,6 +78,7 @@ export function useCompleteServiceForm(farmId: string, opts?: {
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const editing = Boolean(opts?.serviceFormId);
 
   async function complete(input: {
@@ -87,6 +87,7 @@ export function useCompleteServiceForm(farmId: string, opts?: {
   }) {
     if (saving) return;
     setSaving(true);
+    setError(null);
     try {
       completeServiceForm({
         farmId,
@@ -103,38 +104,25 @@ export function useCompleteServiceForm(farmId: string, opts?: {
       } catch {
         // Visit is saved even if share sheet fails / is dismissed.
       }
-      Alert.alert(
-        "Saved",
-        editing
-          ? "Changes saved. Use the share sheet to Save to Files, AirDrop, or email the PDF."
-          : "Visit logged. Use the share sheet to Save to Files, AirDrop, or email the PDF.",
-        [
-          {
-            text: editing || opts?.existingVisitId ? "Done" : "Back to farm",
-            onPress: () => {
-              if (editing || opts?.existingVisitId) {
-                if (router.canGoBack()) router.back();
-                else
-                  router.replace({
-                    pathname: "/(tabs)/farms/[id]",
-                    params: { id: farmId },
-                  });
-                return;
-              }
-              router.replace({
-                pathname: "/(tabs)/farms/[id]",
-                params: { id: farmId },
-              });
-            },
-          },
-        ],
-      );
+      if (editing || opts?.existingVisitId) {
+        if (router.canGoBack()) router.back();
+        else
+          router.replace({
+            pathname: "/(tabs)/farms/[id]",
+            params: { id: farmId },
+          });
+      } else {
+        router.replace({
+          pathname: "/(tabs)/farms/[id]",
+          params: { id: farmId },
+        });
+      }
     } catch (e) {
-      Alert.alert("Could not save", e instanceof Error ? e.message : "Save failed");
+      setError(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
   }
 
-  return { complete, saving, editing };
+  return { complete, saving, editing, error };
 }

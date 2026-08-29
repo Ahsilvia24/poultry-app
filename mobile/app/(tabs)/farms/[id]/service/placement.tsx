@@ -54,7 +54,7 @@ export default function PlacementChecklistScreen() {
   const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "placement");
   const editVisitId = useEditVisitIdParam();
-  const { complete, saving, editing } = useCompleteServiceForm(farmId, {
+  const { complete, saving, editing, error: completeError } = useCompleteServiceForm(farmId, {
     serviceFormId: existing?.id ?? null,
     existingVisitId: existing ? null : editVisitId,
   });
@@ -77,8 +77,7 @@ export default function PlacementChecklistScreen() {
     }
     return draft;
   });
-  const [ventDoorOpen, setVentDoorOpen] = useState(false);
-  const [weekOpen, setWeekOpen] = useState(false);
+  const [optionPicker, setOptionPicker] = useState<"ventDoor" | "week" | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
 
   function patch(p: Partial<PlacementForm>) {
@@ -218,7 +217,7 @@ export default function PlacementChecklistScreen() {
           <SelectField
             label="Vent door type"
             valueLabel={VENT_DOOR_OPTIONS.find((o) => o.value === form.ventDoorType)?.label ?? "Select"}
-            onPress={() => setVentDoorOpen(true)}
+            onPress={() => setOptionPicker("ventDoor")}
           />
           <PairFields
             left={
@@ -253,7 +252,7 @@ export default function PlacementChecklistScreen() {
           <SelectField
             label="Recommended min vent week"
             valueLabel={`Week ${form.minVentRecommendedWeek}`}
-            onPress={() => setWeekOpen(true)}
+            onPress={() => setOptionPicker("week")}
           />
           <Text style={[styles.muted, { marginBottom: 8 }]}>
             Recommended:{" "}
@@ -337,6 +336,11 @@ export default function PlacementChecklistScreen() {
           scrollRef={scrollRef}
         />
 
+        {completeError ? (
+          <Text style={{ color: colors.danger, fontWeight: "700", marginTop: 12 }}>
+            {completeError}
+          </Text>
+        ) : null}
         <Pressable
           disabled={saving}
           onPress={() => complete({ form })}
@@ -361,22 +365,22 @@ export default function PlacementChecklistScreen() {
       </KeyboardAvoidingView>
 
       <OptionPicker
-        open={ventDoorOpen}
+        open={optionPicker === "ventDoor"}
         title="Vent door type"
         options={VENT_DOOR_OPTIONS}
         value={form.ventDoorType}
         onSelect={(ventDoorType) =>
           patch({ ventDoorType: ventDoorType as PlacementForm["ventDoorType"] })
         }
-        onClose={() => setVentDoorOpen(false)}
+        onClose={() => setOptionPicker(null)}
       />
       <OptionPicker
-        open={weekOpen}
+        open={optionPicker === "week"}
         title="Recommended min vent week"
         options={WEEK_OPTIONS}
         value={String(form.minVentRecommendedWeek)}
         onSelect={(v) => applyRecommendedWeek(Number(v))}
-        onClose={() => setWeekOpen(false)}
+        onClose={() => setOptionPicker(null)}
       />
     </SafeAreaView>
   );

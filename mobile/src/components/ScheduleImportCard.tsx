@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Alert, Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as XLSX from "xlsx";
@@ -116,14 +116,6 @@ async function sheetFromPickedFile(
   }
 
   throw new Error("Use a PDF or spreadsheet (.csv / .xlsx).");
-}
-
-function showAlert(title: string, message: string) {
-  if (Platform.OS === "web") {
-    window.alert(`${title}\n\n${message}`);
-    return;
-  }
-  Alert.alert(title, message);
 }
 
 export function ScheduleImportCard() {
@@ -304,7 +296,6 @@ export function ScheduleImportCard() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not read file";
       setNote(msg);
-      showAlert("Upload failed", msg);
     } finally {
       setBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -375,7 +366,6 @@ export function ScheduleImportCard() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not read file";
       setNote(msg);
-      showAlert("Upload failed", msg);
     } finally {
       setBusy(false);
     }
@@ -405,7 +395,7 @@ export function ScheduleImportCard() {
           `Updated ${selectedCount} farm(s): ${result.updatedHouses} house catch dates, ${result.updatedFlocks} flock dates, ${result.updatedNames} renamed.`,
         );
         if (result.warnings.length) {
-          showAlert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+          setNote((prev) => `${prev ?? ""}\n${result.warnings.slice(0, 6).join("\n")}`.trim());
         }
       } else {
         const result = importPlacementRows({
@@ -416,12 +406,12 @@ export function ScheduleImportCard() {
           `Imported ${selectedCount} farm(s): ${result.createdFarms} created, ${result.updatedNames} renamed, ${result.updatedPlacements} house placements updated, ${result.createdFlocks} new flocks, ${result.createdHouses} houses.`,
         );
         if (result.warnings.length) {
-          showAlert("Imported with notes", result.warnings.slice(0, 6).join("\n"));
+          setNote((prev) => `${prev ?? ""}\n${result.warnings.slice(0, 6).join("\n")}`.trim());
         }
       }
       clearPreview();
     } catch (e) {
-      showAlert("Import failed", e instanceof Error ? e.message : "Could not import");
+      setNote(e instanceof Error ? e.message : "Could not import");
     } finally {
       setBusy(false);
     }
