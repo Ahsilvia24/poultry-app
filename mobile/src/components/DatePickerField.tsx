@@ -6,6 +6,7 @@ import DateTimePicker, {
 import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
 import { todayKey } from "../lib/ids";
+import { WebPortalOverlay } from "./WebPortalOverlay";
 
 const MONTHS_SHORT = [
   "Jan",
@@ -369,66 +370,41 @@ export function DatePickerField({
       ) : null}
 
       {isWeb && open && !useInline ? (
-        <View
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 10000,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            padding: 10,
-            justifyContent: "center",
-          }}
-        >
-          <Pressable
-            onPress={() => setOpen(false)}
-            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-          />
+        <WebPortalOverlay onDismiss={() => setOpen(false)}>
           <View
             style={{
-              flex: 1,
-              backgroundColor: "#fff",
-              borderRadius: 16,
-              paddingBottom: 16,
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
             }}
           >
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderBottomWidth: 1,
-                  borderBottomColor: colors.border,
-                }}
-              >
-                <Pressable onPress={() => setOpen(false)} hitSlop={8}>
-                  <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    onChange(draftKey);
-                    setOpen(false);
-                  }}
-                  hitSlop={8}
-                >
-                  <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
-                </Pressable>
-              </View>
-              <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
-                <Text style={{ fontSize: 13, color: colors.muted, fontWeight: "600" }}>
-                  Selected
-                </Text>
-                <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, marginTop: 2 }}>
-                  {formatDisplayDate(draftKey)}
-                </Text>
-              </View>
-              {calendarBody}
+            <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+              <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                onChange(draftKey);
+                setOpen(false);
+              }}
+              hitSlop={8}
+            >
+              <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
+            </Pressable>
           </View>
-        </View>
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+            <Text style={{ fontSize: 13, color: colors.muted, fontWeight: "600" }}>
+              Selected
+            </Text>
+            <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, marginTop: 2 }}>
+              {formatDisplayDate(draftKey)}
+            </Text>
+          </View>
+          {calendarBody}
+        </WebPortalOverlay>
       ) : null}
 
       {Platform.OS !== "android" && !isWeb && open && !useInline ? (
