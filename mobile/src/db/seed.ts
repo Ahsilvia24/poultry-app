@@ -1,6 +1,7 @@
 import { getDb, getMeta, setMeta } from "./database";
 import { newId, todayKey, addDaysKey, daysBetween } from "../lib/ids";
 import { calcTotalDailyLoss } from "../lib/mortality";
+import { mondayOfWeek } from "../lib/reports/field-log";
 import { buildFlockVisitSchedule } from "../lib/schedule";
 
 /** Most recent scheduled visit on or before today (for demo last-visit dates). */
@@ -476,12 +477,97 @@ function ensureDemoGeneratorLogs() {
   setMeta("generator_demo_logs_v1", "1");
 }
 
+type FieldLogDemoStop = {
+  farm: string;
+  weekStart: string;
+  offset: number;
+  hour: number;
+  minute: number;
+};
+
+/** Route-style visits across last week and this week for the Field Log. */
+function ensureDemoFieldLogVisits() {
+  if (getMeta("field_log_demo_visits_v1") === "1") return;
+
+  const db = getDb();
+  const today = todayKey();
+  const thisMonday = mondayOfWeek(today);
+  const lastMonday = addDaysKey(thisMonday, -7);
+  const stops: FieldLogDemoStop[] = [
+    { farm: "Oak Hollow", weekStart: lastMonday, offset: 0, hour: 7, minute: 10 },
+    { farm: "Maple Grove", weekStart: lastMonday, offset: 0, hour: 8, minute: 40 },
+    { farm: "Bay View", weekStart: lastMonday, offset: 0, hour: 11, minute: 5 },
+    { farm: "Cedar Creek", weekStart: lastMonday, offset: 1, hour: 7, minute: 20 },
+    { farm: "Pine Ridge", weekStart: lastMonday, offset: 1, hour: 9, minute: 15 },
+    { farm: "Willow Bend", weekStart: lastMonday, offset: 2, hour: 8, minute: 0 },
+    { farm: "Triple Place", weekStart: lastMonday, offset: 2, hour: 10, minute: 20 },
+    { farm: "Sunrise Farms", weekStart: lastMonday, offset: 3, hour: 7, minute: 45 },
+    { farm: "River Bend", weekStart: lastMonday, offset: 4, hour: 10, minute: 30 },
+    { farm: "Ash Grove", weekStart: lastMonday, offset: 5, hour: 9, minute: 0 },
+    { farm: "Oak Hollow", weekStart: thisMonday, offset: 0, hour: 7, minute: 5 },
+    { farm: "Maple Grove", weekStart: thisMonday, offset: 0, hour: 8, minute: 25 },
+    { farm: "Bay View", weekStart: thisMonday, offset: 0, hour: 10, minute: 50 },
+    { farm: "Cedar Creek", weekStart: thisMonday, offset: 1, hour: 7, minute: 40 },
+    { farm: "Pine Ridge", weekStart: thisMonday, offset: 1, hour: 9, minute: 10 },
+    { farm: "Willow Bend", weekStart: thisMonday, offset: 2, hour: 8, minute: 15 },
+    { farm: "Triple Place", weekStart: thisMonday, offset: 2, hour: 10, minute: 5 },
+    { farm: "Sunrise Farms", weekStart: thisMonday, offset: 3, hour: 7, minute: 50 },
+    { farm: "River Bend", weekStart: thisMonday, offset: 4, hour: 10, minute: 20 },
+    { farm: "Ash Grove", weekStart: thisMonday, offset: 5, hour: 8, minute: 45 },
+  ];
+
+  for (const stop of stops) {
+    const visitDate = addDaysKey(stop.weekStart, stop.offset);
+    if (visitDate > today) continue;
+    const farm = db.getFirstSync<{ id: string }>(
+      `SELECT id FROM farms
+       WHERE farm_name = ? AND deleted_at IS NULL AND is_active = 1`,
+      [stop.farm],
+    );
+    if (!farm) continue;
+    const already = db.getFirstSync<{ id: string }>(
+      "SELECT id FROM farm_visits WHERE farm_id = ? AND visit_date = ?",
+      [farm.id, visitDate],
+    );
+    if (already) continue;
+
+    const flock = db.getFirstSync<{ id: string; placement_date: string }>(
+      `SELECT id, placement_date FROM flocks
+       WHERE farm_id = ? AND flock_status = 'ACTIVE'
+       ORDER BY placement_date DESC LIMIT 1`,
+      [farm.id],
+    );
+    const age = flock
+      ? Math.max(0, daysBetween(flock.placement_date, visitDate))
+      : null;
+    const hh = String(stop.hour).padStart(2, "0");
+    const mm = String(stop.minute).padStart(2, "0");
+    db.runSync(
+      `INSERT INTO farm_visits
+        (id, farm_id, flock_id, visit_date, visit_type, bird_age_in_days, general_bird_condition, notes, follow_up_required, logged_at)
+       VALUES (?, ?, ?, ?, 'ROUTINE_SERVICE', ?, 'Healthy', ?, 0, ?)`,
+      [
+        newId("visit"),
+        farm.id,
+        flock?.id ?? null,
+        visitDate,
+        age,
+        null,
+        `${visitDate}T${hh}:${mm}:00.000Z`,
+      ],
+    );
+  }
+
+  setMeta("field_log_demo_visits_v1", "1");
+}
+
 export function seedIfNeeded() {
   if (getMeta("seeded") === "1") {
-    // Already has user/demo data — never inject new farms, visits, or mortality.
-    // Only re-anchor ages on farms that were originally seeded as demos.
+    // Already has user/demo data — never inject new farms or mortality.
+    // Only re-anchor ages and backfill demo generator / field-log rows.
     refreshDemoScheduleAges();
     ensureDemoGeneratorLogs();
+    ensureDemoFieldLogVisits();
     return;
   }
 
@@ -586,4 +672,5 @@ export function seedIfNeeded() {
   ensureMultiFlockDemoFarm();
   ensureSplitStaggeredActiveFlocks();
   ensureDemoGeneratorLogs();
+  ensureDemoFieldLogVisits();
 }
