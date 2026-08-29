@@ -31,6 +31,7 @@ import {
 } from "./NumberKeypad";
 import { LfoHouseSummaryBlock } from "./LfoHouseSummaryBlock";
 import { LfoFarmTabs } from "./LfoFarmTabs";
+import { ConsumptionRateCalculator } from "./ConsumptionRateCalculator";
 import { createManualLfo } from "../repos/data";
 
 const MANUAL_HOUSE_ID = "manual";
@@ -60,7 +61,7 @@ function formatHeadCountLabel(raw: string) {
   return `Head count ${n.toLocaleString()}`;
 }
 
-type ActiveField = "rate" | "head" | "binA" | "binB";
+type ActiveField = "rate" | "head" | "binA" | "binB" | "calcWater" | "calcHead";
 
 function FieldButton({
   label,
@@ -127,6 +128,8 @@ export function ManualLfoScreen({
   const [orderDate, setOrderDate] = useState(todayKey);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [headCount, setHeadCount] = useState("");
+  const [calcWaterGal, setCalcWaterGal] = useState("");
+  const [calcHeadCount, setCalcHeadCount] = useState("");
   const [binAPounds, setBinAPounds] = useState("0");
   const [binBPounds, setBinBPounds] = useState("0");
   const [catchDate, setCatchDate] = useState("");
@@ -183,6 +186,8 @@ export function ManualLfoScreen({
     if (activeField === "head") return headCount;
     if (activeField === "binA") return binAPounds;
     if (activeField === "binB") return binBPounds;
+    if (activeField === "calcWater") return calcWaterGal;
+    if (activeField === "calcHead") return calcHeadCount;
     return "";
   }
 
@@ -191,6 +196,8 @@ export function ManualLfoScreen({
     else if (activeField === "head") setHeadCount(next);
     else if (activeField === "binA") setBinAPounds(next);
     else if (activeField === "binB") setBinBPounds(next);
+    else if (activeField === "calcWater") setCalcWaterGal(next);
+    else if (activeField === "calcHead") setCalcHeadCount(next);
   }
 
   function focusField(field: ActiveField) {
@@ -260,6 +267,17 @@ export function ManualLfoScreen({
       >
         <PageHeader title="Last Feed Order" />
         <LfoFarmTabs farms={farms} selectedId={farmId} onSelect={onSelectFarm} />
+
+        <ConsumptionRateCalculator
+          waterGal={calcWaterGal}
+          headCount={calcHeadCount}
+          waterActive={activeField === "calcWater"}
+          headActive={activeField === "calcHead"}
+          onFocusWater={() => focusField("calcWater")}
+          onFocusHead={() => focusField("calcHead")}
+          waterRef={bindFieldRef("calcWater")}
+          headRef={bindFieldRef("calcHead")}
+        />
 
         <Card>
           <View

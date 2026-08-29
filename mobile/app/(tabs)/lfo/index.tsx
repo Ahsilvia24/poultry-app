@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Keyboard,
@@ -21,7 +21,7 @@ import { createLfo, deleteLfo, listFarms, listLfos } from "../../../src/repos/da
 import { todayKey } from "../../../src/lib/ids";
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
-import { colors, fonts, styles } from "../../../src/theme";
+import { colors, styles } from "../../../src/theme";
 import {
   Card,
   PageHeader,
@@ -35,24 +35,13 @@ import {
 } from "../../../src/components/NumberKeypad";
 import { LfoFarmTabs, MANUAL_LFO_TAB_ID } from "../../../src/components/LfoFarmTabs";
 import { ManualLfoScreen } from "../../../src/components/ManualLfoScreen";
-
-/** Gallons of water → lbs (approx). Matches web calculator. */
-const LBS_PER_GALLON = 8.34;
-/** Water:feed weight ratio used to back into feed. */
-const WATER_TO_FEED_RATIO = 1.9;
-
-const DEFAULT_WATER_GAL = "2500";
-const DEFAULT_HEAD_COUNT = "24360";
+import { ConsumptionRateCalculator } from "../../../src/components/ConsumptionRateCalculator";
 
 /** "2026-07-26" → "7-26-2026" (no leading zeros). */
 function formatLfoDate(dateKey: string) {
   const [y, m, d] = dateKey.slice(0, 10).split("-").map(Number);
   if (!y || !m || !d) return dateKey;
   return `${m}-${d}-${y}`;
-}
-
-function formatNum(n: number, digits = 2) {
-  return n.toLocaleString(undefined, { maximumFractionDigits: digits });
 }
 
 function SavedLfoList({
@@ -175,57 +164,6 @@ function SavedLfoList({
 
 type CalcField = "water" | "head";
 
-function CalcFieldButton({
-  label,
-  value,
-  placeholder,
-  active,
-  onPress,
-  fieldRef,
-}: {
-  label: string;
-  value: string;
-  placeholder: string;
-  active: boolean;
-  onPress: () => void;
-  fieldRef?: React.RefObject<ViewType | null>;
-}) {
-  const showPlaceholder = !value;
-  return (
-    <View ref={fieldRef} collapsable={false} style={{ flex: 1 }}>
-      <Text style={styles.label}>{label}</Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ selected: active }}
-        onPress={onPress}
-        style={{
-          minHeight: 48,
-          borderWidth: active ? 2 : 1,
-          borderColor: active ? colors.accentDark : "#d6d3d1",
-          borderRadius: 12,
-          paddingHorizontal: 14,
-          backgroundColor: "#fff",
-          marginBottom: 12,
-          justifyContent: "center",
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: fonts.sans,
-            fontSize: 16,
-            lineHeight: 20,
-            fontWeight: "600",
-            color: showPlaceholder ? "rgba(120,113,108,0.55)" : colors.text,
-          }}
-          numberOfLines={1}
-        >
-          {showPlaceholder ? placeholder : value}
-        </Text>
-      </Pressable>
-    </View>
-  );
-}
-
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
   return value ?? "";
@@ -312,18 +250,6 @@ export default function LfoListScreen() {
     }, 100);
     return () => clearTimeout(t);
   }, [activeField]);
-
-  const calcResult = useMemo(() => {
-    const water = Number(waterGal || DEFAULT_WATER_GAL);
-    const heads = Number(headCount || DEFAULT_HEAD_COUNT);
-    if (!Number.isFinite(water) || water <= 0 || !Number.isFinite(heads) || heads <= 0) {
-      return null;
-    }
-    const wc = water * LBS_PER_GALLON;
-    const fc = wc / WATER_TO_FEED_RATIO;
-    const rate = fc / heads;
-    return { wc, fc, rate };
-  }, [waterGal, headCount]);
 
   function openLfo(id: string) {
     router.push(`/(tabs)/lfo/${id}`);
@@ -459,49 +385,21 @@ export default function LfoListScreen() {
             </Text>
           ) : null}
 
-          <Card style={{ marginTop: 8 }}>
-            <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
-              Consumption rate calculator
-            </Text>
-            <View style={styles.row}>
-              <CalcFieldButton
-                label="Daily water (gal)"
-                value={waterGal}
-                placeholder={DEFAULT_WATER_GAL}
-                active={activeField === "water"}
-                onPress={() => focusField("water")}
-                fieldRef={waterRef}
-              />
-              <CalcFieldButton
-                label="Current head count"
-                value={headCount}
-                placeholder={DEFAULT_HEAD_COUNT}
-                active={activeField === "head"}
-                onPress={() => focusField("head")}
-                fieldRef={headRef}
-              />
-            </View>
-            {calcResult ? (
-              <View style={{ gap: 6 }}>
-                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 12 }}>
-                  <Text style={styles.muted}>WC (water lbs)</Text>
-                  <Text style={{ fontWeight: "600" }}>{formatNum(calcResult.wc, 1)} lbs</Text>
-                </View>
-                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 12 }}>
-                  <Text style={styles.muted}>FC (feed / day)</Text>
-                  <Text style={{ fontWeight: "600" }}>{formatNum(calcResult.fc, 1)} lbs</Text>
-                </View>
-                <View style={{ flexDirection: "row", alignItems: "baseline", gap: 12 }}>
-                  <Text style={styles.muted}>Consumption rate</Text>
-                  <Text style={{ fontWeight: "800" }}>
-                    {formatNum(calcResult.rate, 3)} lbs/bird/day
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              <Text style={styles.muted}>Enter water and head count to calculate.</Text>
-            )}
-          </Card>
+          <ConsumptionRateCalculator
+            style={{ marginTop: 8 }}
+            waterGal={waterGal}
+            headCount={headCount}
+            waterActive={activeField === "water"}
+            headActive={activeField === "head"}
+            onFocusWater={() => focusField("water")}
+            onFocusHead={() => focusField("head")}
+            waterRef={(node) => {
+              waterRef.current = node;
+            }}
+            headRef={(node) => {
+              headRef.current = node;
+            }}
+          />
 
           <SavedLfoList lfos={lfos} onOpen={openLfo} onDelete={confirmDelete} />
         </ScrollView>
