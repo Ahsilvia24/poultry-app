@@ -563,6 +563,8 @@ export default function FarmDetailScreen() {
   const [editingFarm, setEditingFarm] = useState<FarmEditDraft | null>(null);
   const [farmEditError, setFarmEditError] = useState<string | null>(null);
   const [farmSaving, setFarmSaving] = useState(false);
+  const [farmEditKeyboardH, setFarmEditKeyboardH] = useState(0);
+  const farmEditScrollRef = useRef<ScrollViewType>(null);
   const [generatorModalOpen, setGeneratorModalOpen] = useState(false);
   const [generatorSaving, setGeneratorSaving] = useState(false);
   const [generatorError, setGeneratorError] = useState<string | null>(null);
@@ -1063,10 +1065,43 @@ export default function FarmDetailScreen() {
     if (farmSaving) return;
     setEditingFarm(null);
     setFarmEditError(null);
+    setFarmEditKeyboardH(0);
     if (openEdit) {
       // Opened from list gear — return to the farms list at the prior scroll position.
       goToFarmList();
     }
+  }
+
+  useEffect(() => {
+    if (!editingFarm) {
+      setFarmEditKeyboardH(0);
+      return;
+    }
+    const show = Keyboard.addListener("keyboardDidShow", (e) => {
+      setFarmEditKeyboardH(e.endCoordinates?.height ?? 0);
+    });
+    const hide = Keyboard.addListener("keyboardDidHide", () => setFarmEditKeyboardH(0));
+
+    const vv = Platform.OS === "web" && typeof window !== "undefined" ? window.visualViewport : null;
+    const onViewport = () => {
+      if (!vv) return;
+      setFarmEditKeyboardH(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    };
+    vv?.addEventListener("resize", onViewport);
+    vv?.addEventListener("scroll", onViewport);
+
+    return () => {
+      show.remove();
+      hide.remove();
+      vv?.removeEventListener("resize", onViewport);
+      vv?.removeEventListener("scroll", onViewport);
+    };
+  }, [editingFarm]);
+
+  function scrollFarmNotesAboveKeyboard() {
+    setTimeout(() => {
+      farmEditScrollRef.current?.scrollToEnd({ animated: true });
+    }, 280);
   }
 
   function saveFarmEdit() {
@@ -2485,32 +2520,35 @@ export default function FarmDetailScreen() {
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
         >
-          <Pressable
+          <View
             style={{
               flex: 1,
               backgroundColor: "rgba(0,0,0,0.4)",
               justifyContent: "flex-end",
             }}
-            onPress={closeFarmEditor}
           >
-            <Pressable
-              onPress={(e) => e.stopPropagation()}
+            <Pressable style={{ flex: 1 }} onPress={closeFarmEditor} />
+            <View
               style={{
                 backgroundColor: "#fff",
                 borderTopLeftRadius: 16,
                 borderTopRightRadius: 16,
-                padding: 20,
-                paddingBottom: Platform.OS === "ios" ? 28 : 20,
                 maxHeight: "90%",
+                overflow: "hidden",
               }}
             >
               <ScrollView
+                ref={farmEditScrollRef}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
-                contentContainerStyle={{ paddingBottom: 24 }}
+                automaticallyAdjustKeyboardInsets
+                contentContainerStyle={{
+                  padding: 20,
+                  paddingBottom: 28 + farmEditKeyboardH,
+                }}
               >
                 <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
                   Edit farm info
@@ -2579,6 +2617,7 @@ export default function FarmDetailScreen() {
                       onChangeText={(v) =>
                         setEditingFarm((prev) => (prev ? { ...prev, notes: v } : prev))
                       }
+                      onFocus={scrollFarmNotesAboveKeyboard}
                       multiline
                       scrollEnabled
                       placeholder="Notes"
@@ -2586,7 +2625,7 @@ export default function FarmDetailScreen() {
                     />
                     <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
                       <PrimaryButton
-                        label={farmSaving ? "Saving…" : "Save farm changes"}
+                        label={farmSaving ? "Saving…" : "Save"}
                         onPress={saveFarmEdit}
                         style={{ flex: 1 }}
                       />
@@ -2600,8 +2639,8 @@ export default function FarmDetailScreen() {
                   </View>
                 ) : null}
               </ScrollView>
-            </Pressable>
-          </Pressable>
+            </View>
+          </View>
         </KeyboardAvoidingView>
       </Modal>
 

@@ -73,7 +73,7 @@ export function FarmListSettingsButton({ farm }: { farm: FarmInfo }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby={`edit-farm-${farm.id}-title`}
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-stone-200 bg-white p-5 pb-8 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3
@@ -142,13 +142,17 @@ export function FarmListSettingsButton({ farm }: { farm: FarmInfo }) {
                     name="notes"
                     rows={3}
                     defaultValue={farm.notes ?? ""}
+                    className="scroll-mb-32"
+                    onFocus={(e) =>
+                      e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })
+                    }
                   />
                 </div>
               </div>
               {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={pending}>
-                  {pending ? "Saving…" : "Save farm changes"}
+                  {pending ? "Saving…" : "Save"}
                 </Button>
                 <Button type="button" variant="ghost" disabled={pending} onClick={close}>
                   Cancel
