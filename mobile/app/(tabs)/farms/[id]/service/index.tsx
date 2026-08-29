@@ -13,19 +13,16 @@ const FORMS = [
   {
     key: "report",
     title: "Service Report",
-    subtitle: "Routine service checklist → visit + PDF",
     path: "/(tabs)/farms/[id]/service/report" as const,
   },
   {
     key: "placement",
     title: "Placement",
-    subtitle: "Placement day checklist → visit + PDF",
     path: "/(tabs)/farms/[id]/service/placement" as const,
   },
   {
     key: "prebrood",
     title: "Prebrood (48–72 hr)",
-    subtitle: "Prebrood checklist → visit + PDF",
     path: "/(tabs)/farms/[id]/service/prebrood" as const,
   },
 ] as const;
@@ -41,7 +38,6 @@ export default function ServiceFarmPickerScreen() {
         <BackHeader
           backLabel="Farm"
           title="Service Farm"
-          subtitle="Choose a checklist"
           accessibilityLabel="Back to farm"
           onBack={() => {
             if (router.canGoBack()) router.back();
@@ -52,7 +48,7 @@ export default function ServiceFarmPickerScreen() {
               });
           }}
         />
-        <View style={{ gap: 10 }}>
+        <View style={{ gap: 6 }}>
           {FORMS.map((form) => (
             <Pressable
               key={form.key}
@@ -66,11 +62,10 @@ export default function ServiceFarmPickerScreen() {
                 opacity: pressed ? 0.9 : 1,
               })}
             >
-              <Card>
+              <Card style={{ marginBottom: 0, paddingVertical: 12, paddingHorizontal: 14 }}>
                 <Text style={{ fontWeight: "800", fontSize: 17, color: colors.text }}>
                   {form.title}
                 </Text>
-                <Text style={[styles.muted, { marginTop: 4 }]}>{form.subtitle}</Text>
               </Card>
             </Pressable>
           ))}
