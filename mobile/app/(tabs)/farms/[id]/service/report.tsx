@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { DatePickerField } from "../../../../../src/components/DatePickerField";
 import { OptionPicker, SelectField } from "../../../../../src/components/OptionPicker";
 import {
+  CheckField,
   MultiToggleField,
   PairFields,
   SectionTitle,
@@ -229,6 +230,20 @@ export default function ServiceReportScreen() {
             label="All lights operational"
             value={form.lightsOperationalOk}
             onChange={(lightsOperationalOk) => patch({ lightsOperationalOk })}
+          />
+          <CheckField
+            label="Lights on 24/7"
+            checked={form.lightsOnAt === "24/7"}
+            onChange={(on) =>
+              patch(
+                on
+                  ? { lightsOnAt: "24/7", lightsOffAt: "24/7" }
+                  : {
+                      lightsOnAt: form.lightsOnAt === "24/7" ? "" : form.lightsOnAt,
+                      lightsOffAt: form.lightsOffAt === "24/7" ? "" : form.lightsOffAt,
+                    },
+              )
+            }
           />
           <TimeScrollPickerField
             label="Lights ON at"

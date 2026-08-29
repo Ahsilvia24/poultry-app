@@ -19,6 +19,51 @@ export function SectionTitle({ title }: { title: string }) {
   );
 }
 
+export function CheckField({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <Pressable
+      onPress={() => onChange(!checked)}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}
+      accessibilityLabel={label}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+      }}
+    >
+      <View
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 6,
+          borderWidth: 2,
+          borderColor: checked ? colors.accentDark : colors.border,
+          backgroundColor: checked ? colors.accentDark : "#fff",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {checked ? (
+          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "800", lineHeight: 15 }}>✓</Text>
+        ) : null}
+      </View>
+      <Text style={{ flex: 1, fontWeight: "600", color: colors.text, fontSize: 14 }}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export function YesNoField({
   label,
   value,
