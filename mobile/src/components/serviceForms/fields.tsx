@@ -1,6 +1,10 @@
-import { Pressable, Text, TextInput, View, type ScrollView, type TextInputProps } from "react-native";
+import { Platform, Pressable, Text, TextInput, View, type ScrollView, type TextInputProps } from "react-native";
 import { useRef } from "react";
 import { colors, styles } from "../../theme";
+import {
+  commentsScrollYForFocus,
+  visualViewportOffsetTop,
+} from "../../lib/serviceForms/commentsScroll";
 import type { YesNo } from "../../lib/serviceForms/types";
 
 export function SectionTitle({ title }: { title: string }) {
@@ -427,13 +431,32 @@ export function CommentsField({
 }) {
   const sectionY = useRef(0);
 
+  function pinCommentsToVisibleTop() {
+    if (Platform.OS === "web" && typeof window !== "undefined" && window.scrollY) {
+      window.scrollTo(0, 0);
+    }
+    scrollRef.current?.scrollTo({
+      y: commentsScrollYForFocus(sectionY.current, visualViewportOffsetTop()),
+      animated: true,
+    });
+  }
+
   function focusComments() {
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({
-        y: Math.max(0, sectionY.current - 8),
-        animated: true,
-      });
-    }, 300);
+    // Native iOS: pin under the header after KeyboardAvoidingView settles.
+    // Safari: wait for the visual viewport (keyboard) so we do not park
+    // Comments above the visible screen.
+    const delay = Platform.OS === "web" ? 450 : 300;
+    setTimeout(pinCommentsToVisibleTop, delay);
+
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onViewport = () => {
+      pinCommentsToVisibleTop();
+      vv.removeEventListener("resize", onViewport);
+    };
+    vv.addEventListener("resize", onViewport);
+    setTimeout(() => vv.removeEventListener("resize", onViewport), 1200);
   }
 
   return (
