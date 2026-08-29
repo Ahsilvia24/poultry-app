@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import { getFieldLog, getGeneratorLogReport, getReports, listFarms } from "../../src/repos/data";
@@ -28,6 +28,7 @@ import {
 } from "../../src/components/ui";
 import { DatePickerField } from "../../src/components/DatePickerField";
 import { ClipboardIconButton } from "../../src/components/ClipboardIconButton";
+import { userFacingMessage } from "../../src/lib/useKeyboardInset";
 
 const REPORT_TYPES = [
   { key: "field-log", label: "Field Log" },
@@ -75,6 +76,7 @@ export default function ReportsScreen() {
   const [fieldFrom, setFieldFrom] = useState(weekDefaults.from);
   const [fieldTo, setFieldTo] = useState(weekDefaults.to);
   const [openDate, setOpenDate] = useState<string | null>(null);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [matrix, setMatrix] = useState(() =>
     getReports(from, to, (farmIdParam || farms[0]?.id) || undefined),
   );
@@ -155,6 +157,12 @@ export default function ReportsScreen() {
           </View>
         </ScrollView>
 
+        {shareNotice ? (
+          <Text style={{ color: colors.danger, fontWeight: "700", marginBottom: 10 }}>
+            {shareNotice}
+          </Text>
+        ) : null}
+
         {reportType === "field-log" ? (
           <>
             <Card>
@@ -201,6 +209,7 @@ export default function ReportsScreen() {
                   accessibilityLabel="Copy field log"
                   color={colors.accentDark}
                   emptyMessage="No visits in this date range."
+                  onNotice={setShareNotice}
                   getText={() => {
                     if (!hasFieldFarms) return "";
                     return fieldLogWeeksToTsv(fieldWeeks);
@@ -210,11 +219,14 @@ export default function ReportsScreen() {
                   secondary
                   label="Share PDF"
                   onPress={() => {
+                    setShareNotice(null);
                     void shareFieldLogPdf({
                       weeks: fieldWeeks,
                       subtitle: fieldFilterLabel,
-                    }).catch(() => {
-                      Alert.alert("Could not share PDF", "Try again in a moment.");
+                    }).catch((e) => {
+                      setShareNotice(
+                        userFacingMessage(e, "Could not share PDF. Try again in a moment."),
+                      );
                     });
                   }}
                   style={{ minWidth: 120 }}
@@ -320,17 +332,21 @@ export default function ReportsScreen() {
                     accessibilityLabel="Copy generator report"
                     color={colors.accentDark}
                     emptyMessage="No generator hours in this date range."
+                    onNotice={setShareNotice}
                     getText={() => generatorReportToTsv(genView)}
                   />
                   <PrimaryButton
                     secondary
                     label="Share PDF"
                     onPress={() => {
+                      setShareNotice(null);
                       void shareGeneratorReportPdf({
                         farms: genView,
                         subtitle: genFilterLabel,
-                      }).catch(() => {
-                        Alert.alert("Could not share PDF", "Try again in a moment.");
+                      }).catch((e) => {
+                        setShareNotice(
+                          userFacingMessage(e, "Could not share PDF. Try again in a moment."),
+                        );
                       });
                     }}
                     style={{ minWidth: 120 }}
@@ -438,6 +454,7 @@ export default function ReportsScreen() {
                   accessibilityLabel="Copy mortality report"
                   color={colors.accentDark}
                   emptyMessage="Run a report with data first."
+                  onNotice={setShareNotice}
                   getText={() => {
                     if (matrix.rows.length === 0) return "";
                     return matrixToTsv(matrix, rowHeaderLabel);

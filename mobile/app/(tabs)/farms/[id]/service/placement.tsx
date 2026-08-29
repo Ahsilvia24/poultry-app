@@ -77,7 +77,7 @@ export default function PlacementChecklistScreen() {
     }
     return draft;
   });
-  const [optionPicker, setOptionPicker] = useState<"ventDoor" | "week" | null>(null);
+  const [optionPicker, setOptionPicker] = useState<"date" | "ventDoor" | "week" | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
 
   function patch(p: Partial<PlacementForm>) {
@@ -155,7 +155,13 @@ export default function PlacementChecklistScreen() {
               />
             }
           />
-          <DatePickerField label="Date" value={form.date} onChange={(date) => patch({ date })} />
+          <DatePickerField
+            label="Date"
+            value={form.date}
+            expanded={optionPicker === "date"}
+            onOpen={() => setOptionPicker("date")}
+            onChange={(date) => patch({ date })}
+          />
           <TextField
             label="Service tech"
             value={form.serviceTech}

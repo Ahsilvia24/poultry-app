@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -142,6 +141,7 @@ export function ManualLfoScreen({
     "orderDate" | "orderTime" | "catchDate" | "catchTime" | null
   >(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("lfo", scrollRef);
   const scrollYRef = useRef(0);
@@ -253,6 +253,7 @@ export function ManualLfoScreen({
 
   function save() {
     try {
+      setError(null);
       const rate = Number(consumptionRate);
       const { id } = createManualLfo({
         orderDate: orderDate.trim() || todayKey(),
@@ -267,7 +268,7 @@ export function ManualLfoScreen({
       if (onSaved) onSaved(id);
       else router.push(`/(tabs)/lfo/${id}`);
     } catch (e) {
-      Alert.alert("Could not save LFO", e instanceof Error ? e.message : "Try again");
+      setError(e instanceof Error ? e.message : "Could not save LFO. Try again.");
     }
   }
 
@@ -288,6 +289,11 @@ export function ManualLfoScreen({
         scrollEventThrottle={16}
       >
         <PageHeader title="Last Feed Order" />
+        {error ? (
+          <Text style={{ color: colors.danger, fontWeight: "700", marginBottom: 10 }}>
+            {error}
+          </Text>
+        ) : null}
         <LfoFarmTabs farms={farms} selectedId={farmId} onSelect={onSelectFarm} />
 
         <ConsumptionRateCalculator

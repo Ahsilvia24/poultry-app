@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  KeyboardAvoidingView,
   LayoutChangeEvent,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -28,6 +30,7 @@ import {
 } from "../../src/lib/weight/projections";
 import { colors, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
+import { useKeyboardInset } from "../../src/lib/useKeyboardInset";
 import { Card, Chip, PageHeader } from "../../src/components/ui";
 import { WeightProjectionTile } from "../../src/components/WeightProjectionTile";
 import {
@@ -63,6 +66,7 @@ export default function ToolsScreen() {
 
   const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("tools", scrollRef);
+  const keyboardInset = useKeyboardInset();
   const sectionY = useRef<Partial<Record<SectionKey, number>>>({});
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
     temp: true,
@@ -185,6 +189,22 @@ export default function ToolsScreen() {
     });
   }
 
+  function scrollWeightInputsIntoView() {
+    setOpen((prev) => ({ ...prev, weight: true }));
+    requestAnimationFrame(() => {
+      const y = sectionY.current.weight;
+      if (y != null) {
+        scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
+      }
+    });
+    setTimeout(() => {
+      const y = sectionY.current.weight;
+      if (y != null) {
+        scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
+      }
+    }, 320);
+  }
+
   function scrollToTop() {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   }
@@ -210,10 +230,21 @@ export default function ToolsScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
+      <KeyboardAvoidingView
+        style={styles.screen}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       <ScrollView
         ref={scrollRef}
         style={styles.screen}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          Platform.OS !== "ios" && keyboardInset > 0
+            ? { paddingBottom: keyboardInset + 32 }
+            : null,
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <PageHeader title="Tools" />
 
@@ -297,9 +328,13 @@ export default function ToolsScreen() {
                 growthRateLbsPerDay={growthRate}
                 embedded
                 useAgeOfBird={useAgeOfBird}
-                onUseAgeOfBirdChange={setUseAgeOfBird}
+                onUseAgeOfBirdChange={(next) => {
+                  setUseAgeOfBird(next);
+                  if (next) scrollWeightInputsIntoView();
+                }}
                 ageDaysText={ageDaysText}
                 onAgeDaysChange={setAgeDaysText}
+                onInputFocus={scrollWeightInputsIntoView}
                 onSaveGrowthRate={(rate) => {
                   setLocalGrowthRate(rate);
                   const flockId =
@@ -706,6 +741,7 @@ export default function ToolsScreen() {
         </View>
 
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

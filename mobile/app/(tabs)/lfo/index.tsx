@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Keyboard,
   Platform,
   Pressable,
@@ -41,6 +40,7 @@ import {
 import { LfoFarmTabs, MANUAL_LFO_TAB_ID } from "../../../src/components/LfoFarmTabs";
 import { ManualLfoScreen } from "../../../src/components/ManualLfoScreen";
 import { ConsumptionRateCalculator } from "../../../src/components/ConsumptionRateCalculator";
+import { userFacingMessage } from "../../../src/lib/useKeyboardInset";
 
 /** "2026-07-26" → "7-26-2026" (no leading zeros). */
 function formatLfoDate(dateKey: string) {
@@ -49,43 +49,36 @@ function formatLfoDate(dateKey: string) {
   return `${m}-${d}-${y}`;
 }
 
-function shareSavedLfo(id: string) {
-  try {
-    const detail = getLfo(id);
-    void shareLfoPdf({
-      farmName: detail.farmName,
-      orderDate: detail.orderDate.slice(0, 10),
-      orderTime: detail.orderTime,
-      consumptionRate: detail.consumptionRate,
-      calculatedAt: detail.calculatedAt,
-      notes: detail.notes,
-      houses: detail.houses.map((house) => ({
-        houseId: house.houseId,
-        houseNumber: house.houseNumber,
-        headCount: house.headCount,
-        binAPounds: house.binAPounds,
-        binBPounds: house.binBPounds,
-        feedUpAt: house.feedUpAt,
-      })),
-    }).catch(() => {
-      Alert.alert("Could not share PDF", "Try again in a moment.");
-    });
-  } catch (e) {
-    Alert.alert(
-      "Could not share PDF",
-      e instanceof Error ? e.message : "This LFO could not be loaded.",
-    );
-  }
+async function shareSavedLfo(id: string) {
+  const detail = getLfo(id);
+  await shareLfoPdf({
+    farmName: detail.farmName,
+    orderDate: detail.orderDate.slice(0, 10),
+    orderTime: detail.orderTime,
+    consumptionRate: detail.consumptionRate,
+    calculatedAt: detail.calculatedAt,
+    notes: detail.notes,
+    houses: detail.houses.map((house) => ({
+      houseId: house.houseId,
+      houseNumber: house.houseNumber,
+      headCount: house.headCount,
+      binAPounds: house.binAPounds,
+      binBPounds: house.binBPounds,
+      feedUpAt: house.feedUpAt,
+    })),
+  });
 }
 
 function SavedLfoList({
   lfos,
   onOpen,
   onDelete,
+  onShareError,
 }: {
   lfos: ReturnType<typeof listLfos>;
   onOpen: (id: string) => void;
   onDelete: (id: string, farmName: string) => void;
+  onShareError?: (message: string) => void;
 }) {
   const swipe = useExclusiveSwipeables();
   return (
@@ -177,7 +170,13 @@ function SavedLfoList({
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <SharePdfIconButton
-                    onPress={() => shareSavedLfo(l.id)}
+                    onPress={() => {
+                      void shareSavedLfo(l.id).catch((e) => {
+                        onShareError?.(
+                          userFacingMessage(e, "Could not share PDF. Try again in a moment."),
+                        );
+                      });
+                    }}
                     accessibilityLabel={`Share PDF for ${l.farmName}`}
                   />
                   {l.houseSummary.length > 0 ? (
@@ -361,6 +360,18 @@ export default function LfoListScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
+      {msg ? (
+        <Text
+          style={{
+            color: msg === "Created LFO" || msg === "LFO deleted" ? colors.accentDark : colors.danger,
+            fontWeight: "700",
+            paddingHorizontal: 16,
+            paddingTop: 8,
+          }}
+        >
+          {msg}
+        </Text>
+      ) : null}
       {isManual ? (
         <ManualLfoScreen
           farms={farms}
@@ -371,7 +382,12 @@ export default function LfoListScreen() {
             openLfo(id);
           }}
           savedSection={
-            <SavedLfoList lfos={lfos} onOpen={openLfo} onDelete={confirmDelete} />
+            <SavedLfoList
+              lfos={lfos}
+              onOpen={openLfo}
+              onDelete={confirmDelete}
+              onShareError={setMsg}
+            />
           }
         />
       ) : (
@@ -418,12 +434,6 @@ export default function LfoListScreen() {
             }}
           />
 
-          {msg ? (
-            <Text style={{ color: colors.accentDark, marginTop: 8, fontWeight: "700" }}>
-              {msg}
-            </Text>
-          ) : null}
-
           <ConsumptionRateCalculator
             style={{ marginTop: 8 }}
             waterGal={waterGal}
@@ -440,7 +450,12 @@ export default function LfoListScreen() {
             }}
           />
 
-          <SavedLfoList lfos={lfos} onOpen={openLfo} onDelete={confirmDelete} />
+          <SavedLfoList
+            lfos={lfos}
+            onOpen={openLfo}
+            onDelete={confirmDelete}
+            onShareError={setMsg}
+          />
         </ScrollView>
 
         {activeField ? (

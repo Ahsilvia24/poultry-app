@@ -86,9 +86,9 @@ export function ManualLfoForm() {
               className="mt-0.5"
               compact
             />
-            <div className="mt-2">
-              <Label htmlFor="manual-orderTime">Order time</Label>
-            </div>
+          </PairField>
+          <PairField>
+            <Label htmlFor="manual-orderTime">Order time</Label>
             <Select
               id="manual-orderTime"
               name="orderTime"
@@ -104,21 +104,21 @@ export function ManualLfoForm() {
               ))}
             </Select>
           </PairField>
-          <PairField>
-            <Label htmlFor="manual-consumptionRate">Consumption rate</Label>
-            <Input
-              id="manual-consumptionRate"
-              name="consumptionRate"
-              type="number"
-              min={0}
-              step="0.01"
-              inputMode="decimal"
-              value={consumptionRate}
-              onChange={(e) => setConsumptionRate(e.target.value)}
-              className="mt-0.5"
-              compact
-            />
-          </PairField>
+        </div>
+        <div className="mt-2">
+          <Label htmlFor="manual-consumptionRate">Consumption rate</Label>
+          <Input
+            id="manual-consumptionRate"
+            name="consumptionRate"
+            type="number"
+            min={0}
+            step="0.01"
+            inputMode="decimal"
+            value={consumptionRate}
+            onChange={(e) => setConsumptionRate(e.target.value)}
+            className="mt-0.5"
+            compact
+          />
         </div>
         <p className="mt-1 text-xs text-stone-500">Consumption rate in lbs/bird/day</p>
         {formatLfoOrderClock(orderDate, orderTime) ? (

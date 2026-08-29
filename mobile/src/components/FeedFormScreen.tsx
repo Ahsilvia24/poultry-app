@@ -62,7 +62,7 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
   const [feedMill, setFeedMill] = useState(initial?.feedMill ?? "Heavener");
   const [ticketNumber, setTicketNumber] = useState(initial?.ticketNumber ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [picker, setPicker] = useState<"flock" | "house" | "type" | "mill" | null>(null);
+  const [picker, setPicker] = useState<"date" | "flock" | "house" | "type" | "mill" | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -123,6 +123,8 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
             <DatePickerField
               label="Delivery date"
               value={deliveryDate}
+              expanded={picker === "date"}
+              onOpen={() => setPicker("date")}
               onChange={setDeliveryDate}
             />
             <SelectField

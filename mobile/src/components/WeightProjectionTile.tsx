@@ -42,6 +42,7 @@ export function WeightProjectionTile({
   onUseAgeOfBirdChange,
   ageDaysText = "",
   onAgeDaysChange,
+  onInputFocus,
 }: {
   groups: WeightProjectionGroup[];
   growthRateLbsPerDay: number;
@@ -52,6 +53,8 @@ export function WeightProjectionTile({
   onUseAgeOfBirdChange?: (next: boolean) => void;
   ageDaysText?: string;
   onAgeDaysChange?: (next: string) => void;
+  /** Scroll the focused input above the software keyboard. */
+  onInputFocus?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(growthRateLbsPerDay));
@@ -79,6 +82,7 @@ export function WeightProjectionTile({
     setDraft(String(growthRateLbsPerDay || DEFAULT_GROWTH_RATE_LBS_PER_DAY));
     setError(null);
     setEditing(true);
+    onInputFocus?.();
   }
 
   function save() {
@@ -184,6 +188,7 @@ export function WeightProjectionTile({
             <TextInput
               value={ageDaysText}
               onChangeText={(t) => onAgeDaysChange?.(t)}
+              onFocus={onInputFocus}
               keyboardType="number-pad"
               style={[styles.input, { maxWidth: 140 }]}
               placeholder="e.g. 42"
@@ -278,6 +283,7 @@ export function WeightProjectionTile({
           <TextInput
             value={draft}
             onChangeText={setDraft}
+            onFocus={onInputFocus}
             keyboardType="decimal-pad"
             style={styles.input}
             placeholder={String(DEFAULT_GROWTH_RATE_LBS_PER_DAY)}

@@ -59,7 +59,9 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
   const [assignedTo, setAssignedTo] = useState(initial?.assignedTo ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [correctiveAction, setCorrectiveAction] = useState(initial?.correctiveAction ?? "");
-  const [picker, setPicker] = useState<"house" | "category" | "priority" | "status" | null>(null);
+  const [picker, setPicker] = useState<
+    "date" | "house" | "category" | "priority" | "status" | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -126,6 +128,8 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
             <DatePickerField
               label="Date reported"
               value={dateReported}
+              expanded={picker === "date"}
+              onOpen={() => setPicker("date")}
               onChange={setDateReported}
             />
             <SelectField label="House" valueLabel={houseLabel} onPress={() => setPicker("house")} />

@@ -55,7 +55,7 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
   );
   const [cost, setCost] = useState(initial?.cost != null ? String(initial.cost) : "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [picker, setPicker] = useState<"house" | "type" | null>(null);
+  const [picker, setPicker] = useState<"date" | "house" | "type" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -122,7 +122,13 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
             subtitle={detail?.farm.farmName ?? "Farm"}
           />
           <Card>
-            <DatePickerField label="Event date" value={eventDate} onChange={setEventDate} />
+            <DatePickerField
+              label="Event date"
+              value={eventDate}
+              expanded={picker === "date"}
+              onOpen={() => setPicker("date")}
+              onChange={setEventDate}
+            />
             <SelectField
               label="Event type"
               valueLabel={LITTER_EVENT_LABELS[eventType] ?? eventType}

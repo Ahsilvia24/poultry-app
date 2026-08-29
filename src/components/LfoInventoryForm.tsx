@@ -219,9 +219,9 @@ export function LfoInventoryForm({
             className="mt-0.5"
             compact
           />
-          <div className="mt-2">
-            <Label htmlFor="orderTime">Order time</Label>
-          </div>
+        </PairField>
+        <PairField>
+          <Label htmlFor="orderTime">Order time</Label>
           <Select
             id="orderTime"
             name="orderTime"
@@ -237,22 +237,22 @@ export function LfoInventoryForm({
             ))}
           </Select>
         </PairField>
-        <PairField>
-          <Label htmlFor="consumptionRate">Consumption rate</Label>
-          <Input
-            id="consumptionRate"
-            name="consumptionRate"
-            type="number"
-            min={0}
-            step="0.01"
-            inputMode="decimal"
-            required
-            value={consumptionRate}
-            onChange={(e) => setConsumptionRate(e.target.value)}
-            className="mt-0.5"
-            compact
-          />
-        </PairField>
+      </div>
+      <div className="mt-2">
+        <Label htmlFor="consumptionRate">Consumption rate</Label>
+        <Input
+          id="consumptionRate"
+          name="consumptionRate"
+          type="number"
+          min={0}
+          step="0.01"
+          inputMode="decimal"
+          required
+          value={consumptionRate}
+          onChange={(e) => setConsumptionRate(e.target.value)}
+          className="mt-0.5"
+          compact
+        />
       </div>
       <p className="text-xs text-stone-500">Consumption rate in lbs/bird/day</p>
       {formatLfoOrderClock(orderDate, orderTime) ? (

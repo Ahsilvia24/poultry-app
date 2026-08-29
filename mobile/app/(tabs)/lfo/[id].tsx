@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -36,6 +35,7 @@ import {
 } from "../../../src/components/NumberKeypad";
 import { LfoHouseSummaryBlock } from "../../../src/components/LfoHouseSummaryBlock";
 import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
+import { userFacingMessage } from "../../../src/lib/useKeyboardInset";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 
 function formatLbs(n: number) {
@@ -274,8 +274,8 @@ export default function EditLfoScreen() {
         catchDate: house.catchDate,
         catchTime: house.catchTime,
       })),
-    }).catch(() => {
-      Alert.alert("Could not share PDF", "Try again in a moment.");
+    }).catch((e) => {
+      setMsg(userFacingMessage(e, "Could not share PDF. Try again in a moment."));
     });
   }
 
@@ -482,7 +482,13 @@ export default function EditLfoScreen() {
           ) : null}
 
           {msg ? (
-            <Text style={{ color: colors.accentDark, marginBottom: 8, fontWeight: "700" }}>
+            <Text
+              style={{
+                color: msg === "Saved" ? colors.accentDark : colors.danger,
+                marginBottom: 8,
+                fontWeight: "700",
+              }}
+            >
               {msg}
             </Text>
           ) : null}
