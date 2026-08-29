@@ -51,6 +51,7 @@ export default function PrebroodChecklistScreen() {
     existingVisitId: existing ? null : editVisitId,
   });
 
+  const [datePicker, setDatePicker] = useState<"form" | "generator" | null>(null);
   const [form, setForm] = useState<PrebroodForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
       return withSavedServiceTech(existing.payload as PrebroodForm);
@@ -117,7 +118,13 @@ export default function PrebroodChecklistScreen() {
               <TextField label="Flock" value={form.flockNumber} onChange={(flockNumber) => patch({ flockNumber })} />
             }
           />
-          <DatePickerField label="Date" value={form.date} onChange={(date) => patch({ date })} />
+          <DatePickerField
+            label="Date"
+            value={form.date}
+            expanded={datePicker === "form"}
+            onOpen={() => setDatePicker("form")}
+            onChange={(date) => patch({ date })}
+          />
           <Text style={{ fontWeight: "700", marginBottom: 6 }}>Window</Text>
           <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
             {(["48", "72"] as const).map((opt) => {
@@ -279,6 +286,8 @@ export default function PrebroodChecklistScreen() {
               <DatePickerField
                 label={`Service date (${formatServiceShortDate(form.generatorServiceDate || form.date) || "dd MMM yy"})`}
                 value={form.generatorServiceDate || form.date}
+                expanded={datePicker === "generator"}
+                onOpen={() => setDatePicker("generator")}
                 onChange={(generatorServiceDate) => patch({ generatorServiceDate })}
               />
             </View>

@@ -92,6 +92,7 @@ export default function ServiceReportScreen() {
     };
   });
 
+  const [timePicker, setTimePicker] = useState<"on" | "off" | null>(null);
   const [humidityOpen, setHumidityOpen] = useState(false);
   const [ventDoorOpen, setVentDoorOpen] = useState(false);
   const [weekOpen, setWeekOpen] = useState(false);
@@ -234,11 +235,15 @@ export default function ServiceReportScreen() {
           <TimeScrollPickerField
             label="Lights ON at"
             value={form.lightsOnAt}
+            expanded={timePicker === "on"}
+            onOpen={() => setTimePicker("on")}
             onChange={(lightsOnAt) => patch({ lightsOnAt })}
           />
           <TimeScrollPickerField
             label="Lights OFF at"
             value={form.lightsOffAt}
+            expanded={timePicker === "off"}
+            onOpen={() => setTimePicker("off")}
             onChange={(lightsOffAt) => patch({ lightsOffAt })}
           />
 
