@@ -411,11 +411,77 @@ function ensureSplitStaggeredActiveFlocks() {
   setMeta("split_staggered_active_flocks_v1", "1");
 }
 
+const GENERATOR_EXERCISE_HOURS = [0.8, 0.9, 1.0, 1.1] as const;
+const GENERATOR_DEMO_WEEKS = 6;
+
+function generatorsForFarmIndex(index: number) {
+  return (index % 4) + 1;
+}
+
+function generatorDemoReading(baseHours: number, genIndex: number, weekFromOldest: number) {
+  let reading = baseHours + genIndex * 18;
+  for (let i = 0; i < weekFromOldest; i++) {
+    reading =
+      Math.round((reading + GENERATOR_EXERCISE_HOURS[(i + genIndex) % 4]) * 10) / 10;
+  }
+  return reading;
+}
+
+/** Hour-meter logs once a week for 6 weeks, 1–4 gens per farm, 0.8–1.1 hr exercised. */
+function ensureDemoGeneratorLogs() {
+  if (getMeta("generator_demo_logs_v1") === "1") return;
+
+  const db = getDb();
+  const today = todayKey();
+  const farms = db.getAllSync<{ id: string; farm_name: string }>(
+    `SELECT id, farm_name FROM farms
+     WHERE deleted_at IS NULL AND is_active = 1
+     ORDER BY farm_name ASC`,
+  );
+
+  farms.forEach((farm, farmIndex) => {
+    const genCount = generatorsForFarmIndex(farmIndex);
+    db.runSync("UPDATE farms SET number_of_generators = ? WHERE id = ?", [
+      genCount,
+      farm.id,
+    ]);
+
+    let nameHash = 0;
+    for (let i = 0; i < farm.farm_name.length; i++) {
+      nameHash = (nameHash + farm.farm_name.charCodeAt(i)) % 80;
+    }
+    const baseHours = 90 + nameHash;
+
+    for (let w = GENERATOR_DEMO_WEEKS - 1; w >= 0; w--) {
+      const logDate = addDaysKey(today, -7 * w);
+      const weekFromOldest = GENERATOR_DEMO_WEEKS - 1 - w;
+      const hours: Array<number | null> = [null, null, null, null];
+      for (let g = 0; g < genCount; g++) {
+        hours[g] = generatorDemoReading(baseHours, g, weekFromOldest);
+      }
+
+      db.runSync(
+        "DELETE FROM generator_logs WHERE farm_id = ? AND log_date = ?",
+        [farm.id, logDate],
+      );
+      db.runSync(
+        `INSERT INTO generator_logs
+          (id, farm_id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [newId("genlog"), farm.id, logDate, hours[0], hours[1], hours[2], hours[3]],
+      );
+    }
+  });
+
+  setMeta("generator_demo_logs_v1", "1");
+}
+
 export function seedIfNeeded() {
   if (getMeta("seeded") === "1") {
     // Already has user/demo data — never inject new farms, visits, or mortality.
     // Only re-anchor ages on farms that were originally seeded as demos.
     refreshDemoScheduleAges();
+    ensureDemoGeneratorLogs();
     return;
   }
 
@@ -519,4 +585,5 @@ export function seedIfNeeded() {
   setMeta("userId", userId);
   ensureMultiFlockDemoFarm();
   ensureSplitStaggeredActiveFlocks();
+  ensureDemoGeneratorLogs();
 }
