@@ -1595,7 +1595,7 @@ export default function FarmDetailScreen() {
                     {detailsOpen ? "▾" : "▸"}
                   </Text>
                   <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
-                    {detailsOpen ? "Hide details" : "Show details"}
+                    {detailsOpen ? "Hide Details" : "Show Details"}
                   </Text>
                 </Pressable>
 

@@ -308,7 +308,7 @@ export function HouseCard({
             <span className="w-4 text-stone-500" aria-hidden="true">
               {detailsOpen ? "▾" : "▸"}
             </span>
-            {detailsOpen ? "Hide details" : "Show details"}
+            {detailsOpen ? "Hide Details" : "Show Details"}
           </button>
 
           {detailsOpen ? (
