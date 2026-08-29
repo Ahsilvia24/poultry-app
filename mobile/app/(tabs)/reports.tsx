@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { getFieldLog, getReports, listFarms } from "../../src/repos/data";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
@@ -52,7 +52,6 @@ function matrixToTsv(
 }
 
 export default function ReportsScreen() {
-  const router = useRouter();
   const params = useLocalSearchParams<{ farmId?: string | string[] }>();
   const farmIdParam = paramId(params.farmId);
   const farms = useMemo(() => listFarms().farms, []);
@@ -103,24 +102,6 @@ export default function ReportsScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <Pressable
-          onPress={() => {
-            // Prefer the originating farm (passed as `farmId`), since tab-stack
-            // navigation can make `router.back()` land on Dashboard.
-            if (farmIdParam) {
-              router.replace({
-                pathname: "/(tabs)/farms/[id]",
-                params: { id: farmIdParam },
-              });
-              return;
-            }
-
-            if (router.canGoBack()) router.back();
-          }}
-          style={{ marginBottom: 8 }}
-        >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-        </Pressable>
         <PageHeader title="Reports" />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
