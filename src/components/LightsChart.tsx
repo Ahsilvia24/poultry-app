@@ -30,7 +30,7 @@ export function LightsChart() {
       </div>
       <div className="space-y-1 text-xs text-stone-500">
         <p>* Brood lights ON days 1–7 only.</p>
-        <p>* 24 hours prior to sell, the lights should be left on.</p>
+        <p>* 24 hours prior to catch, the lights should be left on.</p>
       </div>
     </div>
   );

@@ -479,7 +479,7 @@ export function LightsChart() {
       </TableShell>
       <Text style={{ fontSize: 12, color: colors.muted }}>* Brood lights ON days 1–7 only.</Text>
       <Text style={{ fontSize: 12, color: colors.muted }}>
-        * 24 hours prior to sell, the lights should be left on.
+        * 24 hours prior to catch, the lights should be left on.
       </Text>
     </View>
   );
