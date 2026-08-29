@@ -11,22 +11,18 @@ export function ReportsTypeTabs({ active }: { active: ReportTypeKey }) {
   const searchParams = useSearchParams();
 
   function hrefFor(key: ReportTypeKey) {
-    if (key === "mortality") {
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete("type");
-      const qs = params.toString();
-      return qs ? `/reports?${qs}` : "/reports";
-    }
-
     const params = new URLSearchParams();
-    params.set("type", "field-log");
-    if (active === "field-log") {
-      const from = searchParams.get("from");
-      const to = searchParams.get("to");
-      if (from) params.set("from", from);
-      if (to) params.set("to", to);
-    }
-    return `/reports?${params.toString()}`;
+    if (key !== "mortality") params.set("type", key);
+
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+    const farmId = searchParams.get("farmId");
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (farmId && key !== "field-log") params.set("farmId", farmId);
+
+    const qs = params.toString();
+    return qs ? `/reports?${qs}` : "/reports";
   }
 
   return (

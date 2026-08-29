@@ -19,6 +19,7 @@ import {
 } from "../lib/lfo/calculate";
 import { normalizeHalfHourTime } from "../lib/time-slots";
 import { buildFieldLogWeeks, type FieldLogWeek } from "../lib/reports/field-log";
+import type { GeneratorReportFarm } from "../lib/reports/generator-log";
 import {
   buildFlockVisitSchedule,
   completionKey,
@@ -1449,6 +1450,51 @@ export function getReports(from: string, to: string, farmId?: string) {
   }
 
   return { dates, rows };
+}
+
+export function getGeneratorLogReport(
+  from: string,
+  to: string,
+  farmId?: string,
+): GeneratorReportFarm[] {
+  const db = getDb();
+  const farms = listFarms().farms.filter((f) => !farmId || f.id === farmId);
+  const rows: GeneratorReportFarm[] = [];
+
+  for (const farm of farms) {
+    const logs = db.getAllSync<{
+      id: string;
+      log_date: string;
+      gen1_hours: number | null;
+      gen2_hours: number | null;
+      gen3_hours: number | null;
+      gen4_hours: number | null;
+    }>(
+      `SELECT id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours
+       FROM generator_logs
+       WHERE farm_id = ? AND log_date >= ? AND log_date <= ?
+       ORDER BY log_date DESC, id DESC`,
+      [farm.id, from, to],
+    );
+    if (logs.length === 0) continue;
+    rows.push({
+      farmId: farm.id,
+      farmName: farm.farmName,
+      numberOfGenerators: farm.numberOfGenerators ?? null,
+      logs: logs.map((log) => ({
+        id: log.id,
+        farmId: farm.id,
+        farmName: farm.farmName,
+        logDate: log.log_date,
+        gen1Hours: log.gen1_hours,
+        gen2Hours: log.gen2_hours,
+        gen3Hours: log.gen3_hours,
+        gen4Hours: log.gen4_hours,
+      })),
+    });
+  }
+
+  return rows;
 }
 
 export function getFieldLog(from: string, to: string): FieldLogWeek[] {
