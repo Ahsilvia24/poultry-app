@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { DEFAULT_LFO_CONSUMPTION_RATE, feedUpAtFromCatch } from "@/lib/lfo/calculate";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 import { lastFeedOrderSchema } from "@/lib/validations";
+import { normalizeHalfHourTime } from "@/lib/time-slots";
 import type { z } from "zod";
 
 function emptyToNull(value: FormDataEntryValue | null) {
@@ -48,6 +49,7 @@ type ParsedLfo = z.infer<typeof lastFeedOrderSchema>;
 function parseLfoForm(formData: FormData) {
   return lastFeedOrderSchema.safeParse({
     orderDate: formData.get("orderDate"),
+    orderTime: emptyToNull(formData.get("orderTime")),
     consumptionRate: formData.get("consumptionRate") || DEFAULT_LFO_CONSUMPTION_RATE,
     notes: emptyToNull(formData.get("notes")),
     houseInventories: parseHouseInventories(formData),
@@ -87,6 +89,7 @@ async function createLfoRecord(farmId: string, parsed: ParsedLfo) {
         farmId,
         flockId: activeFlock.id,
         orderDate: new Date(parsed.orderDate),
+        orderTime: normalizeHalfHourTime(parsed.orderTime),
         consumptionRate: parsed.consumptionRate,
         notes: parsed.notes,
         calculatedAt: asOf,
@@ -143,6 +146,7 @@ export async function updateLastFeedOrderAction(lfoId: string, formData: FormDat
         where: { id: lfoId },
         data: {
           orderDate: new Date(parsed.data.orderDate),
+          orderTime: normalizeHalfHourTime(parsed.data.orderTime),
           consumptionRate: parsed.data.consumptionRate,
           notes: parsed.data.notes,
           // Legacy rows: freeze the original save clock without shifting hours to now.
@@ -273,6 +277,7 @@ export async function createManualLastFeedOrderAction(formData: FormData) {
 
   const orderDate = String(formData.get("orderDate") ?? "").trim();
   if (!orderDate) return { error: "Order date is required" };
+  const orderTime = normalizeHalfHourTime(String(formData.get("orderTime") ?? "").trim());
   const rateRaw = Number(formData.get("consumptionRate") || DEFAULT_LFO_CONSUMPTION_RATE);
   const consumptionRate =
     Number.isFinite(rateRaw) && rateRaw > 0 ? rateRaw : DEFAULT_LFO_CONSUMPTION_RATE;
@@ -290,6 +295,7 @@ export async function createManualLastFeedOrderAction(formData: FormData) {
         farmId: farm.id,
         flockId: flock.id,
         orderDate: new Date(orderDate),
+        orderTime,
         consumptionRate,
         calculatedAt: new Date(),
         houseInventories: {

@@ -24,6 +24,7 @@ import { colors, fonts, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { TimeScrollPickerField } from "./TimeScrollPicker";
+import { currentHalfHourTime, normalizeHalfHourTime } from "../lib/time-slots";
 import {
   NumberKeypad,
   appendKeypadDigit,
@@ -126,6 +127,7 @@ export function ManualLfoScreen({
   const navigation = useNavigation();
   const router = useRouter();
   const [orderDate, setOrderDate] = useState(todayKey);
+  const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [headCount, setHeadCount] = useState("");
   const [calcWaterGal, setCalcWaterGal] = useState("");
@@ -239,6 +241,7 @@ export function ManualLfoScreen({
       const rate = Number(consumptionRate);
       const { id } = createManualLfo({
         orderDate: orderDate.trim() || todayKey(),
+        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(),
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         headCount: Number.isFinite(heads) && heads > 0 ? heads : 0,
         binAPounds: Number(binAPounds) || 0,
@@ -287,16 +290,26 @@ export function ManualLfoScreen({
               gap: 10,
             }}
           >
-            <DatePickerField
-              label="Order date"
-              value={orderDate}
-              onChange={(date) => {
-                setActiveField(null);
-                setOrderDate(date);
-              }}
-              onOpen={() => setActiveField(null)}
-              style={{ flex: 1, minWidth: 0 }}
-            />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <DatePickerField
+                label="Order date"
+                value={orderDate}
+                onChange={(date) => {
+                  setActiveField(null);
+                  setOrderDate(date);
+                }}
+                onOpen={() => setActiveField(null)}
+              />
+              <TimeScrollPickerField
+                label="Order time"
+                value={orderTime}
+                onChange={(time) => {
+                  setActiveField(null);
+                  setOrderTime(time);
+                }}
+                onOpen={() => setActiveField(null)}
+              />
+            </View>
             <FieldButton
               label="Consumption rate"
               value={consumptionRate}

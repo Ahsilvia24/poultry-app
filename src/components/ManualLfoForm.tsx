@@ -10,7 +10,7 @@ import {
   feedUpAtFromCatch,
   formatHouseLfoSummary,
 } from "@/lib/lfo/calculate";
-import { HALF_HOUR_TIME_OPTIONS } from "@/lib/time-slots";
+import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime } from "@/lib/time-slots";
 
 const MANUAL_HOUSE_ID = "manual";
 
@@ -28,6 +28,7 @@ function PairField({ children }: { children: React.ReactNode }) {
 
 export function ManualLfoForm() {
   const [orderDate, setOrderDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [headCount, setHeadCount] = useState("");
   const [binAPounds, setBinAPounds] = useState("0");
@@ -83,6 +84,23 @@ export function ManualLfoForm() {
               className="mt-0.5"
               compact
             />
+            <div className="mt-2">
+              <Label htmlFor="manual-orderTime">Order time</Label>
+            </div>
+            <Select
+              id="manual-orderTime"
+              name="orderTime"
+              value={orderTime}
+              onChange={(e) => setOrderTime(e.target.value)}
+              className="mt-0.5"
+              compact
+            >
+              {HALF_HOUR_TIME_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
           </PairField>
           <PairField>
             <Label htmlFor="manual-consumptionRate">Consumption rate</Label>

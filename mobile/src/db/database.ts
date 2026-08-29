@@ -160,6 +160,7 @@ export async function migrateDb() {
       farm_id TEXT NOT NULL,
       flock_id TEXT,
       order_date TEXT NOT NULL,
+      order_time TEXT,
       notes TEXT,
       calculated_at TEXT,
       created_at TEXT,
@@ -366,6 +367,9 @@ export async function migrateDb() {
   const lfoCols = await database.getAllAsync<{ name: string }>("PRAGMA table_info(last_feed_orders)");
   if (lfoCols.length > 0 && !lfoCols.some((c) => c.name === "calculated_at")) {
     await database.execAsync("ALTER TABLE last_feed_orders ADD COLUMN calculated_at TEXT");
+  }
+  if (lfoCols.length > 0 && !lfoCols.some((c) => c.name === "order_time")) {
+    await database.execAsync("ALTER TABLE last_feed_orders ADD COLUMN order_time TEXT");
   }
   if (lfoCols.length > 0 && !lfoCols.some((c) => c.name === "created_at")) {
     await database.execAsync("ALTER TABLE last_feed_orders ADD COLUMN created_at TEXT");

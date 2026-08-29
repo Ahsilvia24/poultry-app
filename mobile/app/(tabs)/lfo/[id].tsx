@@ -27,6 +27,7 @@ import { colors, fonts, styles } from "../../../src/theme";
 import { Card, PrimaryButton } from "../../../src/components/ui";
 import { DatePickerField } from "../../../src/components/DatePickerField";
 import { TimeScrollPickerField } from "../../../src/components/TimeScrollPicker";
+import { currentHalfHourTime, normalizeHalfHourTime } from "../../../src/lib/time-slots";
 import {
   NumberKeypad,
   appendKeypadDigit,
@@ -83,6 +84,7 @@ function loadDraft(id: string) {
   return {
     farmName: lfo.farmName,
     orderDate: lfo.orderDate.slice(0, 10),
+    orderTime: normalizeHalfHourTime(lfo.orderTime) ?? currentHalfHourTime(),
     consumptionRate: String(lfo.consumptionRate ?? DEFAULT_LFO_CONSUMPTION_RATE),
     calculatedAt: lfo.calculatedAt,
     houses: lfo.houses.map(
@@ -167,6 +169,7 @@ export default function EditLfoScreen() {
   const [msg, setMsg] = useState<string | null>(null);
   const [farmName, setFarmName] = useState("");
   const [orderDate, setOrderDate] = useState("");
+  const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [calculatedAt, setCalculatedAt] = useState<string | null>(null);
   const [houses, setHouses] = useState<HouseDraft[]>([]);
@@ -188,6 +191,7 @@ export default function EditLfoScreen() {
       const draft = loadDraft(id);
       setFarmName(draft.farmName);
       setOrderDate(draft.orderDate);
+      setOrderTime(draft.orderTime);
       setConsumptionRate(draft.consumptionRate);
       setCalculatedAt(draft.calculatedAt);
       setHouses(draft.houses);
@@ -312,6 +316,7 @@ export default function EditLfoScreen() {
       updateLfo({
         id,
         orderDate: orderDate.trim() || orderDate,
+        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(),
         notes: null,
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         houses: houses.map((h) => ({
@@ -338,6 +343,7 @@ export default function EditLfoScreen() {
       const created = saveLfoAsNew({
         sourceId: id,
         orderDate: orderDate.trim() || orderDate,
+        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(),
         notes: null,
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         houses: houses.map((h) => ({
@@ -465,16 +471,26 @@ export default function EditLfoScreen() {
                     gap: 10,
                   }}
                 >
-                  <DatePickerField
-                    label="Order date"
-                    value={orderDate}
-                    onChange={(date) => {
-                      setActiveField(null);
-                      setOrderDate(date);
-                    }}
-                    onOpen={() => setActiveField(null)}
-                    style={{ flex: 1, minWidth: 0 }}
-                  />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <DatePickerField
+                      label="Order date"
+                      value={orderDate}
+                      onChange={(date) => {
+                        setActiveField(null);
+                        setOrderDate(date);
+                      }}
+                      onOpen={() => setActiveField(null)}
+                    />
+                    <TimeScrollPickerField
+                      label="Order time"
+                      value={orderTime}
+                      onChange={(time) => {
+                        setActiveField(null);
+                        setOrderTime(time);
+                      }}
+                      onOpen={() => setActiveField(null)}
+                    />
+                  </View>
                   <FieldButton
                     label="Consumption rate"
                     value={consumptionRate}
