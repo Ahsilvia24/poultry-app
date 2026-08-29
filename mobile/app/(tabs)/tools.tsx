@@ -291,24 +291,24 @@ export default function ToolsScreen() {
                 key={item.key}
                 onPress={() => openAndScroll(item.key)}
                 style={{
-                  width: "48%",
-                  flexGrow: 1,
-                  minHeight: 40,
+                  width: "31.5%",
+                  minHeight: 44,
                   borderRadius: 10,
                   backgroundColor: colors.accentDark,
                   alignItems: "center",
                   justifyContent: "center",
-                  paddingHorizontal: 10,
-                  paddingVertical: 10,
+                  paddingHorizontal: 4,
+                  paddingVertical: 8,
                 }}
               >
                 <Text
                   style={{
                     color: "#fff",
-                    fontSize: 14,
-                    fontWeight: "700",
+                    fontSize: 12,
+                    fontWeight: "800",
                     textAlign: "center",
                   }}
+                  numberOfLines={2}
                 >
                   {item.label}
                 </Text>
