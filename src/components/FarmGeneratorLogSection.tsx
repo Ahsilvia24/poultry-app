@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 import {
   createGeneratorLogAction,
   deleteGeneratorLogAction,
   updateGeneratorLogAction,
 } from "@/app/actions/ops";
-import { DeleteRecordButton } from "@/components/DeleteRecordButton";
 import { Button, Card, Input, Label } from "@/components/ui";
 import {
   formatGeneratorChartsCopy,
@@ -107,6 +107,111 @@ function CopyLogButton({ text }: { text: string }) {
   );
 }
 
+function GearIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0 1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
+function isActionTarget(target: EventTarget | null) {
+  return target instanceof Element && target.closest("button");
+}
+
+function SwipeDeleteRow({
+  deleteLabel,
+  onDelete,
+  children,
+}: {
+  deleteLabel: string;
+  onDelete: () => void;
+  children: ReactNode;
+}) {
+  const [swipeX, setSwipeX] = useState(0);
+  const startX = useRef<number | null>(null);
+  const actionWidth = 72;
+
+  function begin(x: number) {
+    startX.current = x;
+  }
+
+  function move(x: number) {
+    if (startX.current == null) return;
+    setSwipeX(Math.max(-actionWidth, Math.min(0, x - startX.current)));
+  }
+
+  function end() {
+    if (startX.current == null) {
+      setSwipeX(0);
+      return;
+    }
+    if (swipeX <= -40) setSwipeX(-actionWidth);
+    else setSwipeX(0);
+    startX.current = null;
+  }
+
+  function cancel() {
+    startX.current = null;
+    setSwipeX(0);
+  }
+
+  return (
+    <div className="relative overflow-hidden">
+      {swipeX < -8 ? (
+        <div className="absolute inset-y-0 right-0 flex w-[72px] items-stretch">
+          <button
+            type="button"
+            onClick={() => {
+              setSwipeX(0);
+              onDelete();
+            }}
+            className="flex w-full items-center justify-center bg-red-700 text-xs font-bold text-white"
+            aria-label={deleteLabel}
+          >
+            Delete
+          </button>
+        </div>
+      ) : null}
+      <div
+        className="relative bg-white transition-transform duration-150 ease-out"
+        style={{ transform: `translateX(${swipeX}px)` }}
+        onTouchStart={(e) => {
+          if (isActionTarget(e.target)) return;
+          begin(e.touches[0]?.clientX ?? 0);
+        }}
+        onTouchMove={(e) => {
+          const x = e.touches[0]?.clientX;
+          if (x != null) move(x);
+        }}
+        onTouchEnd={end}
+        onTouchCancel={cancel}
+        onPointerDown={(e) => {
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          if (isActionTarget(e.target)) return;
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+          begin(e.clientX);
+        }}
+        onPointerMove={(e) => move(e.clientX)}
+        onPointerUp={end}
+        onPointerCancel={cancel}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function GeneratorHoursChart({
   title,
   rows,
@@ -120,32 +225,29 @@ function GeneratorHoursChart({
 }) {
   const showActions = onEdit != null && onDelete != null;
   return (
-    <div className="text-xs leading-tight">
-      <h4 className="mb-0.5 font-bold text-stone-900">{title}</h4>
-      <div className="flex gap-3 text-[11px] leading-none text-stone-500">
-        <span className="w-20 shrink-0 font-semibold">Date</span>
-        <span className="w-12 shrink-0 font-semibold">Hours</span>
-        <span className="w-14 shrink-0 font-semibold">Exercised</span>
-        {showActions ? <span className="w-12 shrink-0" aria-hidden /> : null}
+    <div className="text-sm leading-snug">
+      <h4 className="mb-1 text-base font-bold text-stone-900">{title}</h4>
+      <div className="flex gap-3 text-sm leading-none text-stone-500">
+        <span className="w-24 shrink-0 font-semibold">Date</span>
+        <span className="w-14 shrink-0 font-semibold">Hours</span>
+        <span className="w-[4.5rem] shrink-0 font-semibold">Exercised</span>
+        {showActions ? <span className="w-7 shrink-0" aria-hidden /> : null}
       </div>
       {rows.length === 0 ? (
         <p className="text-stone-500">None yet</p>
       ) : (
         <div>
-          {rows.map((row) => (
-            <div
-              key={row.id}
-              className="flex items-center gap-3 py-px leading-none tabular-nums text-stone-800"
-            >
-              <span className="w-20 shrink-0 whitespace-nowrap font-medium">{row.dateLabel}</span>
-              <span className="w-12 shrink-0 font-medium">
-                {formatGeneratorHours(row.hours)}
-              </span>
-              <span className="w-14 shrink-0 font-medium">
-                {formatGeneratorHours(row.exercised)}
-              </span>
-              {showActions ? (
-                <span className="flex shrink-0 items-center">
+          {rows.map((row) => {
+            const cells = (
+              <div className="flex items-center gap-3 py-1 tabular-nums text-stone-800">
+                <span className="w-24 shrink-0 whitespace-nowrap font-semibold">{row.dateLabel}</span>
+                <span className="w-14 shrink-0 font-semibold">
+                  {formatGeneratorHours(row.hours)}
+                </span>
+                <span className="w-[4.5rem] shrink-0 font-semibold">
+                  {formatGeneratorHours(row.exercised)}
+                </span>
+                {showActions ? (
                   <button
                     type="button"
                     onClick={() => onEdit(row.id)}
@@ -153,29 +255,26 @@ function GeneratorHoursChart({
                     aria-label="Edit generator entry"
                     title="Edit generator entry"
                   >
-                    <svg
-                      className="h-3.5 w-3.5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                    </svg>
+                    <GearIcon className="h-4 w-4" />
                   </button>
-                  <DeleteRecordButton
-                    label="Delete generator entry"
-                    compact
-                    onDelete={() => onDelete(row.id)}
-                  />
-                </span>
-              ) : null}
-            </div>
-          ))}
+                ) : null}
+              </div>
+            );
+            if (!showActions) {
+              return <div key={row.id}>{cells}</div>;
+            }
+            return (
+              <SwipeDeleteRow
+                key={row.id}
+                deleteLabel="Delete generator entry"
+                onDelete={() => {
+                  void onDelete(row.id);
+                }}
+              >
+                {cells}
+              </SwipeDeleteRow>
+            );
+          })}
         </div>
       )}
     </div>
@@ -326,6 +425,7 @@ export function FarmGeneratorLogSection({
   farmId: string;
   logs: GeneratorLogRow[];
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -507,6 +607,7 @@ export function FarmGeneratorLogSection({
                 }}
                 onDelete={async (id) => {
                   await deleteGeneratorLogAction(id, gen.hourKey);
+                  router.refresh();
                 }}
               />
             ))}

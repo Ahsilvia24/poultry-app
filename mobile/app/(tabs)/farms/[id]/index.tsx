@@ -349,102 +349,109 @@ function GeneratorHoursChart({
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
 }) {
+  const [swipingId, setSwipingId] = useState<string | null>(null);
   const showActions = onEdit != null && onDelete != null;
+  const cell = {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "600" as const,
+    color: colors.text,
+    fontVariant: ["tabular-nums"] as const,
+  };
   return (
-    <View style={{ marginTop: 6 }}>
-      <Text style={{ fontWeight: "700", fontSize: 12, color: colors.text, marginBottom: 1 }}>
+    <View style={{ marginTop: 8 }}>
+      <Text style={{ fontWeight: "700", fontSize: 15, color: colors.text, marginBottom: 2 }}>
         {title}
       </Text>
       <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-        <Text style={{ width: 80, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 92, fontSize: 13, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
           Date
         </Text>
-        <Text style={{ width: 48, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 56, fontSize: 13, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
           Hours
         </Text>
-        <Text style={{ width: 56, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 72, fontSize: 13, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
           Exercised
         </Text>
-        {showActions ? <View style={{ width: 44 }} /> : null}
+        {showActions ? <View style={{ width: 28 }} /> : null}
       </View>
       {rows.length === 0 ? (
-        <Text style={[styles.muted, { fontSize: 12 }]}>None yet</Text>
+        <Text style={[styles.muted, { fontSize: 14 }]}>None yet</Text>
       ) : (
         <View>
-          {rows.map((row) => (
-            <View
-              key={row.id}
-              style={{ flexDirection: "row", gap: 12, alignItems: "center", minHeight: 16 }}
-            >
-              <Text
+          {rows.map((row) => {
+            const rowInner = (
+              <View
                 style={{
-                  width: 80,
-                  fontSize: 12,
-                  lineHeight: 16,
-                  fontWeight: "600",
-                  color: colors.text,
-                  fontVariant: ["tabular-nums"],
-                }}
-                numberOfLines={1}
-              >
-                {row.dateLabel}
-              </Text>
-              <Text
-                style={{
-                  width: 48,
-                  fontSize: 12,
-                  lineHeight: 16,
-                  fontWeight: "600",
-                  color: colors.text,
-                  fontVariant: ["tabular-nums"],
+                  flexDirection: "row",
+                  gap: 12,
+                  alignItems: "center",
+                  minHeight: 28,
+                  paddingVertical: 3,
+                  backgroundColor: colors.card,
                 }}
               >
-                {formatGeneratorHours(row.hours)}
-              </Text>
-              <Text
-                style={{
-                  width: 56,
-                  fontSize: 12,
-                  lineHeight: 16,
-                  fontWeight: "600",
-                  color: colors.text,
-                  fontVariant: ["tabular-nums"],
-                }}
-              >
-                {formatGeneratorHours(row.exercised)}
-              </Text>
-              {showActions ? (
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text style={{ ...cell, width: 92 }} numberOfLines={1}>
+                  {row.dateLabel}
+                </Text>
+                <Text style={{ ...cell, width: 56 }}>{formatGeneratorHours(row.hours)}</Text>
+                <Text style={{ ...cell, width: 72 }}>{formatGeneratorHours(row.exercised)}</Text>
+                {showActions ? (
                   <Pressable
                     accessibilityLabel="Edit generator log"
                     onPress={() => onEdit(row.id)}
-                    hitSlop={4}
+                    hitSlop={6}
                     style={{
-                      width: 22,
-                      height: 16,
+                      width: 28,
+                      height: 24,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Ionicons name="pencil-outline" size={13} color={colors.muted} />
+                    <Ionicons name="settings-outline" size={18} color={colors.muted} />
                   </Pressable>
-                  <Pressable
-                    accessibilityLabel="Delete generator log"
-                    onPress={() => onDelete(row.id)}
-                    hitSlop={4}
-                    style={{
-                      width: 22,
-                      height: 16,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons name="trash-outline" size={13} color={colors.danger} />
-                  </Pressable>
-                </View>
-              ) : null}
-            </View>
-          ))}
+                ) : null}
+              </View>
+            );
+            if (!showActions) {
+              return <View key={row.id}>{rowInner}</View>;
+            }
+            return (
+              <Swipeable
+                key={row.id}
+                overshootRight={false}
+                friction={2}
+                rightThreshold={36}
+                containerStyle={{ overflow: "hidden" }}
+                onSwipeableWillOpen={() => setSwipingId(row.id)}
+                onSwipeableClose={() =>
+                  setSwipingId((id) => (id === row.id ? null : id))
+                }
+                renderRightActions={() =>
+                  swipingId === row.id ? (
+                    <Pressable
+                      accessibilityLabel="Delete generator log"
+                      onPress={() => onDelete(row.id)}
+                      style={{
+                        backgroundColor: colors.danger,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        width: 72,
+                        marginLeft: 8,
+                        alignSelf: "stretch",
+                      }}
+                    >
+                      <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}>
+                        Delete
+                      </Text>
+                    </Pressable>
+                  ) : null
+                }
+              >
+                {rowInner}
+              </Swipeable>
+            );
+          })}
         </View>
       )}
     </View>
