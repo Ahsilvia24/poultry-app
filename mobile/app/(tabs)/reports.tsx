@@ -65,7 +65,7 @@ export default function ReportsScreen() {
   const farmIdParam = paramId(params.farmId);
   const farms = useMemo(() => listFarms().farms, []);
   const weekDefaults = useMemo(() => defaultFieldLogRange(), []);
-  const [reportType, setReportType] = useState<ReportType>("mortality");
+  const [reportType, setReportType] = useState<ReportType>("field-log");
   const [farmId, setFarmId] = useState(farmIdParam || farms[0]?.id || "");
   const [from, setFrom] = useState(addDaysKey(todayKey(), -14));
   const [to, setTo] = useState(todayKey());

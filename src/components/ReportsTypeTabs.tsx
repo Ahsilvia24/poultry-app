@@ -12,7 +12,7 @@ export function ReportsTypeTabs({ active }: { active: ReportTypeKey }) {
 
   function hrefFor(key: ReportTypeKey) {
     const params = new URLSearchParams();
-    if (key !== "mortality") params.set("type", key);
+    if (key !== "field-log") params.set("type", key);
 
     const from = searchParams.get("from");
     const to = searchParams.get("to");
