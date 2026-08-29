@@ -12,6 +12,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import type { FarmCardSummary, ThresholdSettings } from "@/types";
 import { differenceInCalendarDays } from "date-fns";
+import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import {
   buildFlockVisitSchedule,
   completionKey,
@@ -36,7 +37,11 @@ export async function getUserThresholds(userId: string): Promise<ThresholdSettin
 export async function getDashboardData(userId: string) {
   const today = new Date();
   const todayKey = format(today, "yyyy-MM-dd");
-  const thresholds = await getUserThresholds(userId);
+  const [thresholds, orderRow] = await Promise.all([
+    getUserThresholds(userId),
+    prisma.userSettings.findUnique({ where: { userId }, select: { farmOrder: true } }),
+  ]);
+  const farmOrder = parseFarmOrder(orderRow?.farmOrder);
 
   const farms = await prisma.farm.findMany({
     where: { userId, deletedAt: null, isActive: true },
@@ -280,6 +285,7 @@ export async function getDashboardData(userId: string) {
       flockAgeDays: active
         ? differenceInCalendarDays(today, active.placementDate)
         : null,
+      flockAgesDays: activeFlocks.map((fl) => differenceInCalendarDays(today, fl.placementDate)),
       totalBirdsPlaced: placed,
       birdsRemaining: remaining,
       todayMortality: todayMort,
@@ -337,7 +343,7 @@ export async function getDashboardData(userId: string) {
       openIssues,
       highPriorityIssues,
     },
-    farmCards,
+    farmCards: sortFarmsByOrder(farmCards, farmOrder),
     upcomingCatches: upcomingCatches
       .filter((c) => c.date >= todayCatchKey && c.date <= catchHorizonEnd)
       .sort((a, b) => a.date.localeCompare(b.date) || a.farmName.localeCompare(b.farmName)),

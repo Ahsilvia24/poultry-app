@@ -134,6 +134,7 @@ model UserSettings {
   defaultMarketAgeDays       Int             @default(52)
   notifyEmail                Boolean         @default(false)
   notifyInApp                Boolean         @default(true)
+  farmOrder                  String          @default("name_asc")
   ageBandThresholdsJson      String?
   createdAt                  DateTime        @default(now())
   updatedAt                  DateTime        @updatedAt

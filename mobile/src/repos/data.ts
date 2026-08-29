@@ -33,6 +33,8 @@ import {
   farmGroupKey as catchFarmGroupKey,
   type CatchRow,
 } from "../lib/catchImport/parse";
+import { getFarmOrder } from "../lib/appSettings";
+import { sortFarmsByOrder } from "../lib/farmOrder";
 
 type MortRow = {
   mortality_date: string;
@@ -181,8 +183,7 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
         : "SELECT * FROM farms WHERE is_active = 1 AND deleted_at IS NULL ORDER BY farm_name ASC",
   );
 
-  return {
-    farms: farms
+  const mapped = farms
       .filter((f) => f.id !== MANUAL_LFO_FARM_ID)
       .map((f) => {
       const flocks = db.getAllSync<{
@@ -283,7 +284,10 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
             }
           : null,
       };
-    }),
+    });
+
+  return {
+    farms: sortFarmsByOrder(mapped, getFarmOrder()),
   };
 }
 
