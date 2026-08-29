@@ -59,7 +59,12 @@ export function LfoHub({
       </div>
 
       {isManual ? (
-        <ManualLfoForm />
+        <>
+          <div className="mb-3">
+            <ConsumptionRateCalculator />
+          </div>
+          <ManualLfoForm />
+        </>
       ) : (
         <>
           {farms.length === 0 ? (
