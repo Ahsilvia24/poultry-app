@@ -860,7 +860,7 @@ export default function MortalityScreen() {
               House <Text style={{ fontWeight: "700", color: colors.text }}>{selectedHouse.houseNumber}</Text>
               {" · Placed "}
               {formatNumber(selectedHouse.placedBirdCount)}
-              {" · Day 0 "}
+              {" · "}
               <Text style={{ fontWeight: "700", color: colors.text }}>
                 {formatDayLabel(
                   selectedHouse.placementDate ?? selectedFarm.activeFlock.placementDate,

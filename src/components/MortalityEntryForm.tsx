@@ -611,6 +611,10 @@ export function MortalityEntryForm({
               House <span className="font-semibold">{house.houseNumber}</span> · Placed{" "}
               {formatNumber(house.placedBirdCount)} ·{" "}
               <span className="font-semibold text-stone-900">
+                {format(parseLocalDate(flock.placementDate), "EEE M/d")}
+              </span>
+              {" · "}
+              <span className="font-semibold text-stone-900">
                 {birdAgeFromPlacement(
                   parseLocalDate(flock.placementDate),
                   parseLocalDate(asOfDateKey),
