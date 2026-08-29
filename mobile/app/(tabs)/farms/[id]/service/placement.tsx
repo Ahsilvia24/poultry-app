@@ -27,6 +27,7 @@ import { BackHeader, Card } from "../../../../../src/components/ui";
 import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
 import { createPlacementDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
+  CFM_FT2_MIN_VENT_LABEL,
   VENT_DOOR_OPTIONS,
   WEEK_OPTIONS,
   ventDoorTypesFromPayload,
@@ -239,7 +240,7 @@ export default function PlacementChecklistScreen() {
               <TextField label="Vent opening (in)" value={form.ventOpeningInches} onChange={(ventOpeningInches) => patch({ ventOpeningInches })} keyboardType="decimal-pad" />
             }
           />
-          <TextField label="C.F.M. / Ft² min vent" value={form.cfmPerFt2MinVent} onChange={(cfmPerFt2MinVent) => patch({ cfmPerFt2MinVent })} keyboardType="decimal-pad" />
+          <TextField label={CFM_FT2_MIN_VENT_LABEL} value={form.cfmPerFt2MinVent} onChange={(cfmPerFt2MinVent) => patch({ cfmPerFt2MinVent })} keyboardType="decimal-pad" />
           <TextField label="Size and number of fans" value={form.fansSizeAndCount} onChange={(fansSizeAndCount) => patch({ fansSizeAndCount })} />
           <PairFields
             left={
