@@ -148,14 +148,10 @@ export default async function ToolsPage({
                   catchDate: localNoonFromKey(catchKey),
                   growthRateLbsPerDay,
                 }).map((p) => ({
+                  key: p.key,
                   offsetDays: p.offsetDays,
                   dateKey: format(p.date, "yyyy-MM-dd"),
-                  label:
-                    p.offsetDays === 0
-                      ? "Catch day"
-                      : p.offsetDays === 1
-                        ? "Catch +1"
-                        : "Catch +2",
+                  label: p.label,
                   ageDays: p.ageDays,
                   weightLbs: p.weightLbs,
                 })),

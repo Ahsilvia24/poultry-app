@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import {
   DEFAULT_GROWTH_RATE_LBS_PER_DAY,
+  weightBandAround,
   weightFromAgeDays,
 } from "../lib/weight/projections";
 import { colors, styles } from "../theme";
@@ -19,6 +20,7 @@ function formatCatchShort(dateKey: string) {
 }
 
 type Projection = {
+  key?: "low" | "catch" | "high";
   offsetDays: number;
   dateKey: string;
   label: string;
@@ -59,14 +61,11 @@ export function WeightProjectionTile({
   const ageDays = Number(ageDaysText);
   const ageValid = Number.isFinite(ageDays) && ageDays >= 0 && ageDaysText.trim() !== "";
   const ageProjections = ageValid
-    ? [0, 1, 2].map((offset) => {
-        const days = ageDays + offset;
-        return {
-          offset,
-          ageDays: days,
-          label: offset === 0 ? "Age day" : offset === 1 ? "Age +1" : "Age +2",
-          weightLbs: weightFromAgeDays(days, growthRateLbsPerDay),
-        };
+    ? weightBandAround({
+        dateKey: "1970-01-01",
+        ageDays,
+        midWeightLbs: weightFromAgeDays(ageDays, growthRateLbsPerDay),
+        midLabel: "Age day",
       })
     : null;
 
@@ -195,7 +194,7 @@ export function WeightProjectionTile({
             <View style={{ flexDirection: "row", gap: 8 }}>
               {ageProjections.map((p) => (
                 <View
-                  key={p.offset}
+                  key={p.key}
                   style={{
                     flex: 1,
                     backgroundColor: "#fafaf9",
@@ -236,7 +235,7 @@ export function WeightProjectionTile({
             <View style={{ flexDirection: "row", gap: 8 }}>
               {group.projections.map((p) => (
                 <View
-                  key={`${group.catchDateKey}-${p.offsetDays}`}
+                  key={`${group.catchDateKey}-${p.key ?? p.offsetDays}`}
                   style={{
                     flex: 1,
                     backgroundColor: "#fafaf9",
