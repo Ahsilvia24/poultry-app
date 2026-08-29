@@ -695,6 +695,7 @@ export function getFarmDetail(farmId: string) {
     house_number: number;
     square_footage: number;
     total_fan_cfm: number | null;
+    total_power_cfm: number | null;
     number_of_fans: number | null;
     logged_temp: string | null;
     logged_temp_at: string | null;
@@ -804,6 +805,7 @@ export function getFarmDetail(farmId: string) {
       houseNumber: h.house_number,
       squareFootage: h.square_footage,
       totalFanCFM: h.total_fan_cfm,
+      totalPowerCFM: h.total_power_cfm,
       numberOfFans: h.number_of_fans,
       cfmPerSqFt:
         h.total_fan_cfm != null && h.square_footage > 0
@@ -2923,6 +2925,7 @@ export function createHouse(
     houseNumber: number;
     squareFootage?: number;
     totalFanCFM?: number | null;
+    totalPowerCFM?: number | null;
     numberOfFans?: number | null;
   },
 ) {
@@ -2953,6 +2956,10 @@ export function createHouse(
     input.totalFanCFM == null || !Number.isFinite(Number(input.totalFanCFM))
       ? null
       : Number(input.totalFanCFM);
+  const totalPowerCFM =
+    input.totalPowerCFM == null || !Number.isFinite(Number(input.totalPowerCFM))
+      ? null
+      : Number(input.totalPowerCFM);
   const numberOfFans =
     input.numberOfFans == null || !Number.isFinite(Number(input.numberOfFans))
       ? null
@@ -2960,9 +2967,9 @@ export function createHouse(
 
   const id = newId("house");
   db.runSync(
-    `INSERT INTO houses (id, farm_id, house_number, square_footage, total_fan_cfm, number_of_fans)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [id, farmId, houseNumber, squareFootage, totalFanCFM, numberOfFans],
+    `INSERT INTO houses (id, farm_id, house_number, square_footage, total_fan_cfm, total_power_cfm, number_of_fans)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [id, farmId, houseNumber, squareFootage, totalFanCFM, totalPowerCFM, numberOfFans],
   );
 
   const count = db.getFirstSync<{ c: number }>(
@@ -3300,6 +3307,7 @@ export function updateHouse(
     houseNumber: number;
     squareFootage: number;
     totalFanCFM: number | null;
+    totalPowerCFM?: number | null;
     numberOfFans: number | null;
     /** When set, updates (or creates) placed birds on the active flock house_flock. */
     placedBirdCount?: number | null;
@@ -3322,16 +3330,18 @@ export function updateHouse(
      * higher house number (does not change earlier houses).
      */
     applyToRemainingHouses?: boolean;
-    /**
-     * Also apply square footage / total fan CFM to houses with
-     * a higher house number (does not change earlier houses).
-     */
-    applySpecsToRemainingHouses?: boolean;
+    applySquareFootageToRemainingHouses?: boolean;
+    applyMinVentCfmToRemainingHouses?: boolean;
+    applyPowerCfmToRemainingHouses?: boolean;
   },
 ) {
   const db = getDb();
-  const house = db.getFirstSync<{ id: string; house_number: number }>(
-    "SELECT id, house_number FROM houses WHERE id = ? AND farm_id = ? AND deleted_at IS NULL",
+  const house = db.getFirstSync<{
+    id: string;
+    house_number: number;
+    total_power_cfm: number | null;
+  }>(
+    "SELECT id, house_number, total_power_cfm FROM houses WHERE id = ? AND farm_id = ? AND deleted_at IS NULL",
     [houseId, farmId],
   );
   if (!house) throw new Error("House not found");
@@ -3352,26 +3362,50 @@ export function updateHouse(
   );
   if (conflict) throw new Error(`House ${houseNumber} already exists on this farm`);
 
+  const totalPowerCFM =
+    input.totalPowerCFM === undefined
+      ? house.total_power_cfm
+      : input.totalPowerCFM == null || !Number.isFinite(Number(input.totalPowerCFM))
+        ? null
+        : Number(input.totalPowerCFM);
+
   db.runSync(
     `UPDATE houses
-     SET house_number = ?, square_footage = ?, total_fan_cfm = ?, number_of_fans = ?
+     SET house_number = ?, square_footage = ?, total_fan_cfm = ?, total_power_cfm = ?, number_of_fans = ?
      WHERE id = ? AND farm_id = ?`,
     [
       houseNumber,
       squareFootage,
       input.totalFanCFM,
+      totalPowerCFM,
       input.numberOfFans,
       houseId,
       farmId,
     ],
   );
 
-  if (input.applySpecsToRemainingHouses) {
+  if (input.applySquareFootageToRemainingHouses) {
     db.runSync(
       `UPDATE houses
-       SET square_footage = ?, total_fan_cfm = ?
+       SET square_footage = ?
        WHERE farm_id = ? AND deleted_at IS NULL AND house_number > ?`,
-      [squareFootage, input.totalFanCFM, farmId, houseNumber],
+      [squareFootage, farmId, houseNumber],
+    );
+  }
+  if (input.applyMinVentCfmToRemainingHouses) {
+    db.runSync(
+      `UPDATE houses
+       SET total_fan_cfm = ?
+       WHERE farm_id = ? AND deleted_at IS NULL AND house_number > ?`,
+      [input.totalFanCFM, farmId, houseNumber],
+    );
+  }
+  if (input.applyPowerCfmToRemainingHouses) {
+    db.runSync(
+      `UPDATE houses
+       SET total_power_cfm = ?
+       WHERE farm_id = ? AND deleted_at IS NULL AND house_number > ?`,
+      [totalPowerCFM, farmId, houseNumber],
     );
   }
 

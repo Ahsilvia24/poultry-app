@@ -11,6 +11,7 @@ export type HouseEditValues = {
   houseNumber: number;
   squareFootage: number;
   totalFanCFM: number | null;
+  totalPowerCFM: number | null;
   numberOfFans: number | null;
   notes: string | null;
   placedBirdCount: number | null;
@@ -79,7 +80,9 @@ export function HouseCardActions({
   const [applyCatchDateToRemaining, setApplyCatchDateToRemaining] = useState(false);
   const [applyCatchTimeToRemaining, setApplyCatchTimeToRemaining] = useState(false);
   const [applyFlockIdToRemaining, setApplyFlockIdToRemaining] = useState(false);
-  const [applySpecsToRemaining, setApplySpecsToRemaining] = useState(false);
+  const [applySquareFootageToRemaining, setApplySquareFootageToRemaining] = useState(false);
+  const [applyMinVentCfmToRemaining, setApplyMinVentCfmToRemaining] = useState(false);
+  const [applyPowerCfmToRemaining, setApplyPowerCfmToRemaining] = useState(false);
 
   useEffect(() => {
     if (mode === "edit") {
@@ -91,7 +94,9 @@ export function HouseCardActions({
       setApplyCatchDateToRemaining(false);
       setApplyCatchTimeToRemaining(false);
       setApplyFlockIdToRemaining(false);
-      setApplySpecsToRemaining(false);
+      setApplySquareFootageToRemaining(false);
+      setApplyMinVentCfmToRemaining(false);
+      setApplyPowerCfmToRemaining(false);
       setError(null);
     }
     if (mode === "delete") setError(null);
@@ -296,9 +301,9 @@ export function HouseCardActions({
                     placeholder="29700"
                   />
                   <PropagateCheck
-                    name="applySpecsToRemaining"
-                    checked={applySpecsToRemaining}
-                    onChange={setApplySpecsToRemaining}
+                    name="applySquareFootageToRemaining"
+                    checked={applySquareFootageToRemaining}
+                    onChange={setApplySquareFootageToRemaining}
                   />
                 </div>
                 <div>
@@ -313,8 +318,28 @@ export function HouseCardActions({
                     defaultValue={house.totalFanCFM ?? ""}
                   />
                   <PropagateCheck
-                    checked={applySpecsToRemaining}
-                    onChange={setApplySpecsToRemaining}
+                    name="applyMinVentCfmToRemaining"
+                    checked={applyMinVentCfmToRemaining}
+                    onChange={setApplyMinVentCfmToRemaining}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor={`edit-totalPowerCFM-${house.id}`}>Total CFM (Power)</Label>
+                  <Input
+                    id={`edit-totalPowerCFM-${house.id}`}
+                    name="totalPowerCFM"
+                    type="number"
+                    min={0}
+                    step="any"
+                    compact
+                    defaultValue={house.totalPowerCFM ?? ""}
+                  />
+                  <PropagateCheck
+                    name="applyPowerCfmToRemaining"
+                    checked={applyPowerCfmToRemaining}
+                    onChange={setApplyPowerCfmToRemaining}
                   />
                 </div>
               </div>
