@@ -86,7 +86,7 @@ async function extractPagedText(pathOrUri: string): Promise<string> {
 async function extractFromUri(uri: string): Promise<string> {
   if (!isAvailable()) {
     throw new Error(
-      "PDF import needs a native build (TestFlight). Reinstall the latest build, or use CSV/XLSX.",
+      "PDF import needs the installed PoultryTech app. Reinstall from the App Store, or use CSV/XLSX.",
     );
   }
 
@@ -102,7 +102,7 @@ async function extractFromUri(uri: string): Promise<string> {
 
   if (!text.trim()) {
     throw new Error(
-      "No readable text in this PDF (likely a scan). On iPhone use a text PDF, or export CSV/XLSX. OCR for scans is available in Expo web.",
+      "No readable text in this PDF (likely a scan). Use a text PDF, or import CSV/XLSX.",
     );
   }
   return text;

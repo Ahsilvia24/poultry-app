@@ -228,9 +228,19 @@ export function ManualLfoScreen({
     setActiveValue(appendKeypadDigit(base, d, allowDecimal));
   }
 
+  function dismissKeypad() {
+    setActiveField(null);
+    setReplaceOnType(false);
+  }
+
   function onBackspace() {
     setReplaceOnType(false);
-    setActiveValue(backspaceKeypadValue(getActiveValue()));
+    const current = getActiveValue();
+    if (!current) {
+      dismissKeypad();
+      return;
+    }
+    setActiveValue(backspaceKeypadValue(current));
   }
 
   function onEnter() {
@@ -268,6 +278,7 @@ export function ManualLfoScreen({
         onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
           scrollYRef.current = e.nativeEvent.contentOffset.y;
         }}
+        onScrollBeginDrag={dismissKeypad}
         scrollEventThrottle={16}
       >
         <PageHeader title="Last Feed Order" />

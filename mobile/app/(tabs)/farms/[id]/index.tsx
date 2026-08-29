@@ -2355,6 +2355,7 @@ export default function FarmDetailScreen() {
                             <TimeScrollPickerField
                               label="Catch time"
                               value={editingHouse.catchTime}
+                              presentation="inline"
                               inputStyle={{ marginBottom: 0 }}
                               onChange={(time) =>
                                 setEditingHouse((prev) =>

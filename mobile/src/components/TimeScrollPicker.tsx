@@ -128,6 +128,7 @@ export function TimeScrollPickerField({
   onOpen,
   style,
   inputStyle,
+  presentation = "modal",
 }: {
   label: string;
   value: string;
@@ -137,15 +138,18 @@ export function TimeScrollPickerField({
   style?: object;
   /** Extra styles on the value box (e.g. drop bottom margin when a control sits under it). */
   inputStyle?: object;
+  /** `inline` expands under the field — required inside parent Modals. */
+  presentation?: "modal" | "inline";
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseTime(value || "06:00"));
   const isWeb = Platform.OS === "web";
+  const useInline = presentation === "inline";
 
   function openPicker() {
     onOpen?.();
     setDraft(parseTime(value || "06:00"));
-    setOpen(true);
+    setOpen((v) => (useInline ? !v : true));
   }
 
   function onPickerChange(event: DateTimePickerEvent, selected?: Date) {
@@ -203,7 +207,7 @@ export function TimeScrollPickerField({
         <Ionicons name="time-outline" size={20} color={colors.muted} />
       </Pressable>
 
-      {Platform.OS === "android" && open ? (
+      {Platform.OS === "android" && open && !useInline ? (
         <DateTimePicker
           value={pickerValue}
           mode="time"
@@ -213,7 +217,39 @@ export function TimeScrollPickerField({
         />
       ) : null}
 
-      {Platform.OS !== "android" && open ? (
+      {open && useInline ? (
+        <View
+          style={{
+            marginTop: 8,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 12,
+            backgroundColor: "#fff",
+            overflow: "hidden",
+            paddingBottom: 8,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          >
+            <Text style={{ fontWeight: "700", color: colors.text }}>{timeLabel(draftKey)}</Text>
+            <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+              <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
+            </Pressable>
+          </View>
+          <WebTimeOptions value={draftKey} onSelect={selectWebTime} />
+        </View>
+      ) : null}
+
+      {Platform.OS !== "android" && open && !useInline ? (
         <Modal
           transparent
           animationType="slide"

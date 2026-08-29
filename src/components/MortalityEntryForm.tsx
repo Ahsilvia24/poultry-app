@@ -506,7 +506,10 @@ export function MortalityEntryForm({
     if (!activeField) return;
     const current = getActiveValue();
     if (current === "") {
-      focusPrevInColumn(activeField.kind, activeField.age);
+      const prevAge = activeField.age - 1;
+      if (rowsRef.current.some((r) => r.age === prevAge)) {
+        focusPrevInColumn(activeField.kind, activeField.age);
+      }
       return;
     }
     setReplaceOnType(false);
