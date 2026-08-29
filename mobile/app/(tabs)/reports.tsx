@@ -80,15 +80,13 @@ export default function ReportsScreen() {
     getFieldLog(weekDefaults.from, weekDefaults.to),
   );
   const [genFarms, setGenFarms] = useState<GeneratorReportFarm[]>(() =>
-    getGeneratorLogReport(genFrom, genTo, (farmIdParam || farms[0]?.id) || undefined),
+    getGeneratorLogReport(genFrom, genTo),
   );
   const genView = useMemo(() => buildGeneratorReportView(genFarms), [genFarms]);
-  const genFilterLabel = useMemo(() => {
-    const farmLabel = farmId
-      ? farms.find((f) => f.id === farmId)?.farmName ?? "Farm"
-      : "All farms";
-    return `${farmLabel} · ${formatGeneratorReportDate(genFrom)} to ${formatGeneratorReportDate(genTo)}`;
-  }, [farmId, farms, genFrom, genTo]);
+  const genFilterLabel = useMemo(
+    () => `${formatGeneratorReportDate(genFrom)} to ${formatGeneratorReportDate(genTo)}`,
+    [genFrom, genTo],
+  );
 
   const selectedFarmName = useMemo(() => {
     if (!farmId) return null;
@@ -101,9 +99,8 @@ export default function ReportsScreen() {
     if (farmIdParam) {
       setFarmId(farmIdParam);
       setMatrix(getReports(from, to, farmIdParam));
-      setGenFarms(getGeneratorLogReport(genFrom, genTo, farmIdParam));
     }
-  }, [farmIdParam, from, to, genFrom, genTo]);
+  }, [farmIdParam, from, to]);
 
   function applyMortality() {
     setMatrix(getReports(from, to, farmId || undefined));
@@ -114,13 +111,13 @@ export default function ReportsScreen() {
   }
 
   function applyGenerator() {
-    setGenFarms(getGeneratorLogReport(genFrom, genTo, farmId || undefined));
+    setGenFarms(getGeneratorLogReport(genFrom, genTo));
   }
 
   useEffect(() => {
     if (reportType !== "generator") return;
-    setGenFarms(getGeneratorLogReport(genFrom, genTo, farmId || undefined));
-  }, [reportType, farmId, genFrom, genTo]);
+    setGenFarms(getGeneratorLogReport(genFrom, genTo));
+  }, [reportType, genFrom, genTo]);
 
   const hasFieldFarms = fieldWeeks.some((week) =>
     week.days.some((day) => day.farms.length > 0),
@@ -242,21 +239,6 @@ export default function ReportsScreen() {
           </>
         ) : reportType === "generator" ? (
           <>
-            <Text style={styles.label}>Farm</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: "row", marginBottom: 8 }}>
-                <Chip label="All" active={farmId === ""} onPress={() => setFarmId("")} />
-                {farms.map((f) => (
-                  <Chip
-                    key={f.id}
-                    label={f.farmName}
-                    active={farmId === f.id}
-                    onPress={() => setFarmId(f.id)}
-                  />
-                ))}
-              </View>
-            </ScrollView>
-
             <Card>
               <View style={{ flexDirection: "row", gap: 10, marginBottom: 12 }}>
                 <View style={{ flex: 1, minWidth: 0 }}>
