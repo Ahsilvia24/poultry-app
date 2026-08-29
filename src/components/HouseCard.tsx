@@ -31,15 +31,22 @@ type Metrics = {
   remaining: number;
 };
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
-/** e.g. Wed 29 Jul 26 */
+/** e.g. 2 Sep 26 */
 function formatHouseDetailDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
-  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
-  return `${WEEKDAYS[dt.getDay()]} ${d} ${MONTHS[m - 1]} ${String(y).slice(-2)}`;
+  return `${d} ${MONTHS[m - 1]} ${String(y).slice(-2)}`;
+}
+
+function daysBetweenKeys(fromKey: string, toKey: string): number | null {
+  const [y1, m1, d1] = fromKey.split("-").map(Number);
+  const [y2, m2, d2] = toKey.split("-").map(Number);
+  if (!y1 || !m1 || !d1 || !y2 || !m2 || !d2) return null;
+  const a = new Date(y1, m1 - 1, d1, 12, 0, 0, 0).getTime();
+  const b = new Date(y2, m2 - 1, d2, 12, 0, 0, 0).getTime();
+  return Math.round((b - a) / 86400000);
 }
 
 function todayKey() {
@@ -99,15 +106,18 @@ export function HouseCard({
   const loggedTempToday =
     house.loggedTemp && house.loggedTempAt === todayKey() ? house.loggedTemp : null;
 
-  const mortalityValue = metrics
-    ? `${formatNumber(metrics.cumulative)} (${formatPct(metrics.cumulativePct)})`
-    : "—";
+  const mortalityValue = metrics ? formatNumber(metrics.cumulative) : "—";
+  const mortalityPct = metrics ? formatPct(metrics.cumulativePct) : null;
   const projMortValue =
+    projectedMortality != null ? formatNumber(projectedMortality) : "—";
+  const projMortPct =
     projectedMortality != null && birdsPlaced != null && birdsPlaced > 0
-      ? `${formatNumber(projectedMortality)} (${formatPct((projectedMortality / birdsPlaced) * 100)})`
-      : projectedMortality != null
-        ? formatNumber(projectedMortality)
-        : "—";
+      ? formatPct((projectedMortality / birdsPlaced) * 100)
+      : null;
+  const catchAgeDays =
+    placementDateKey && catchDateKey
+      ? daysBetweenKeys(placementDateKey, catchDateKey)
+      : null;
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0]?.clientX ?? null;
@@ -314,6 +324,9 @@ export function HouseCard({
                   <p className="font-semibold">
                     {birdsPlaced != null ? formatNumber(birdsPlaced) : "—"}
                   </p>
+                  {placementDateKey ? (
+                    <p className="font-semibold leading-snug">{formatHouseDetailDate(placementDateKey)}</p>
+                  ) : null}
                 </div>
                 <div>
                   <p className="text-stone-500">Remaining</p>
@@ -331,30 +344,30 @@ export function HouseCard({
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <p className="text-stone-500">Placed/Catch</p>
-                  {placementDateKey ? (
+                  <p className="text-stone-500">Catch</p>
+                  {catchDateKey ? (
                     <p className="font-semibold leading-snug">
-                      {formatHouseDetailDate(placementDateKey)}
+                      {formatHouseDetailDate(catchDateKey)}
                     </p>
                   ) : (
                     <p className="font-semibold">—</p>
                   )}
-                  {catchDateKey ? (
-                    <p className="font-semibold leading-snug">
-                      <span className="block">{formatHouseDetailDate(catchDateKey)}</span>
-                      {catchTime ? (
-                        <span className="block">{compactCatchTimeLabel(catchTime)}</span>
-                      ) : null}
-                    </p>
+                  {catchTime ? (
+                    <p className="font-semibold leading-snug">{compactCatchTimeLabel(catchTime)}</p>
+                  ) : null}
+                  {catchAgeDays != null ? (
+                    <p className="font-semibold leading-snug">{catchAgeDays} days</p>
                   ) : null}
                 </div>
                 <div>
                   <p className="text-stone-500">Mortality</p>
                   <p className="font-semibold">{mortalityValue}</p>
+                  {mortalityPct ? <p className="font-semibold leading-snug">{mortalityPct}</p> : null}
                 </div>
                 <div>
                   <p className="text-stone-500">Proj. Mort.</p>
                   <p className="font-semibold">{projMortValue}</p>
+                  {projMortPct ? <p className="font-semibold leading-snug">{projMortPct}</p> : null}
                 </div>
               </div>
             </button>

@@ -81,7 +81,6 @@ function formatUsDate(dateKey: string) {
   return `${m}-${d}-${y}`;
 }
 
-const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MONTHS_SHORT = [
   "Jan",
   "Feb",
@@ -97,12 +96,20 @@ const MONTHS_SHORT = [
   "Dec",
 ] as const;
 
-/** e.g. Wed 29 Jul 26 */
+/** e.g. 2 Sep 26 */
 function formatHouseDetailDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
-  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
-  return `${WEEKDAYS_SHORT[dt.getDay()]} ${d} ${MONTHS_SHORT[m - 1]} ${String(y).slice(-2)}`;
+  return `${d} ${MONTHS_SHORT[m - 1]} ${String(y).slice(-2)}`;
+}
+
+function daysBetweenKeys(fromKey: string, toKey: string): number | null {
+  const [y1, m1, d1] = fromKey.split("-").map(Number);
+  const [y2, m2, d2] = toKey.split("-").map(Number);
+  if (!y1 || !m1 || !d1 || !y2 || !m2 || !d2) return null;
+  const a = new Date(y1, m1 - 1, d1, 12, 0, 0, 0).getTime();
+  const b = new Date(y2, m2 - 1, d2, 12, 0, 0, 0).getTime();
+  return Math.round((b - a) / 86400000);
 }
 
 function formatShortDate(dateKey: string) {
@@ -1610,11 +1617,31 @@ export default function FarmDetailScreen() {
                   >
                     <View style={{ gap: 10 }}>
                       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                        <Metric
-                          columns={3}
-                          label="Placed"
-                          value={formatNumber(h.placedBirdCount)}
-                        />
+                        <View style={{ width: "33.333%", paddingRight: 8, marginBottom: 10 }}>
+                          <Text style={{ fontSize: 13, color: colors.muted }}>Placed</Text>
+                          <Text
+                            style={{
+                              fontSize: 15,
+                              fontWeight: "700",
+                              color: colors.text,
+                              marginTop: 2,
+                            }}
+                          >
+                            {formatNumber(h.placedBirdCount)}
+                          </Text>
+                          {h.placementDate ? (
+                            <Text
+                              style={{
+                                fontSize: 13,
+                                fontWeight: "700",
+                                color: colors.text,
+                                marginTop: 2,
+                              }}
+                            >
+                              {formatHouseDetailDate(h.placementDate)}
+                            </Text>
+                          ) : null}
+                        </View>
                         <Metric
                           columns={3}
                           label="Remaining"
@@ -1629,8 +1656,8 @@ export default function FarmDetailScreen() {
                       </View>
                       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                         <View style={{ width: "33.333%", paddingRight: 8, marginBottom: 10 }}>
-                          <Text style={{ fontSize: 13, color: colors.muted }}>Placed/Catch</Text>
-                          {h.placementDate ? (
+                          <Text style={{ fontSize: 13, color: colors.muted }}>Catch</Text>
+                          {h.catchDate ? (
                             <Text
                               style={{
                                 fontSize: 13,
@@ -1640,7 +1667,7 @@ export default function FarmDetailScreen() {
                                 lineHeight: 18,
                               }}
                             >
-                              {formatHouseDetailDate(h.placementDate)}
+                              {formatHouseDetailDate(h.catchDate)}
                             </Text>
                           ) : (
                             <Text
@@ -1654,39 +1681,42 @@ export default function FarmDetailScreen() {
                               —
                             </Text>
                           )}
-                          {h.catchDate ? (
-                            <View style={{ marginTop: 2 }}>
-                              <Text
-                                style={{
-                                  fontSize: 13,
-                                  fontWeight: "700",
-                                  color: colors.text,
-                                  lineHeight: 18,
-                                }}
-                              >
-                                {formatHouseDetailDate(h.catchDate)}
-                              </Text>
-                              {h.catchTime ? (
-                                <Text
-                                  style={{
-                                    fontSize: 13,
-                                    fontWeight: "700",
-                                    color: colors.text,
-                                    lineHeight: 18,
-                                  }}
-                                >
-                                  {compactCatchTimeLabel(h.catchTime)}
-                                </Text>
-                              ) : null}
-                            </View>
+                          {h.catchTime ? (
+                            <Text
+                              style={{
+                                fontSize: 13,
+                                fontWeight: "700",
+                                color: colors.text,
+                                lineHeight: 18,
+                              }}
+                            >
+                              {compactCatchTimeLabel(h.catchTime)}
+                            </Text>
                           ) : null}
+                          {h.placementDate && h.catchDate
+                            ? (() => {
+                                const age = daysBetweenKeys(h.placementDate, h.catchDate);
+                                return age != null ? (
+                                  <Text
+                                    style={{
+                                      fontSize: 13,
+                                      fontWeight: "700",
+                                      color: colors.text,
+                                      lineHeight: 18,
+                                    }}
+                                  >
+                                    {age} days
+                                  </Text>
+                                ) : null;
+                              })()
+                            : null}
                         </View>
                         <Metric
                           columns={3}
                           label="Mortality"
                           value={
                             h.placedBirdCount != null
-                              ? `${formatNumber(h.cumulativeMortality)} (${formatPct(h.cumulativeMortalityPct)})`
+                              ? `${formatNumber(h.cumulativeMortality)}\n${formatPct(h.cumulativeMortalityPct)}`
                               : formatNumber(h.cumulativeMortality)
                           }
                         />
@@ -1697,9 +1727,9 @@ export default function FarmDetailScreen() {
                             h.projectedMortality != null &&
                             h.placedBirdCount != null &&
                             h.placedBirdCount > 0
-                              ? `${formatNumber(h.projectedMortality)} (${formatPct(
+                              ? `${formatNumber(h.projectedMortality)}\n${formatPct(
                                   (h.projectedMortality / h.placedBirdCount) * 100,
-                                )})`
+                                )}`
                               : formatNumber(h.projectedMortality)
                           }
                         />
