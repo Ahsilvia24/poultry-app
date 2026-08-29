@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -21,7 +20,7 @@ import {
 import { todayKey } from "../lib/ids";
 import { FEED_MILL_OPTIONS, FEED_TYPE_OPTIONS } from "../lib/opsLabels";
 import { colors, styles } from "../theme";
-import { Card, PageHeader, PrimaryButton } from "./ui";
+import { BackHeader, Card, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { OptionPicker, SelectField } from "./OptionPicker";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -112,12 +111,11 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-          </Pressable>
-          <PageHeader
+          <BackHeader
+            backLabel="Farm"
             title={editing ? "Edit feed delivery" : "Record feed delivery"}
-            subtitle={detail?.farm.farmName ?? "Farm"}
+            onBack={() => router.back()}
+            accessibilityLabel="Back to farm"
           />
           <Card>
             <DatePickerField

@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -21,7 +20,7 @@ import {
 import { todayKey } from "../lib/ids";
 import { LITTER_EVENT_LABELS, LITTER_EVENT_OPTIONS } from "../lib/opsLabels";
 import { colors, styles } from "../theme";
-import { Card, PageHeader, PrimaryButton } from "./ui";
+import { BackHeader, Card, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { OptionPicker, SelectField } from "./OptionPicker";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -53,7 +52,6 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
   const [litterDepth, setLitterDepth] = useState(
     initial?.litterDepth != null ? String(initial.litterDepth) : "",
   );
-  const [cost, setCost] = useState(initial?.cost != null ? String(initial.cost) : "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [picker, setPicker] = useState<"date" | "house" | "type" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +62,12 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
     return (
       <SafeAreaView style={styles.screen} edges={["top"]}>
         <View style={styles.content}>
+          <BackHeader
+            backLabel="Farm"
+            title="Litter event"
+            onBack={() => router.back()}
+            accessibilityLabel="Back to farm"
+          />
           <Text style={{ color: colors.danger }}>Litter event not found</Text>
         </View>
       </SafeAreaView>
@@ -76,9 +80,7 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
     try {
       const depth =
         litterDepth.trim() === "" ? null : Number(litterDepth);
-      const costNum = cost.trim() === "" ? null : Number(cost);
       if (depth != null && !Number.isFinite(depth)) throw new Error("Litter depth is invalid");
-      if (costNum != null && !Number.isFinite(costNum)) throw new Error("Cost is invalid");
       const payload = {
         farmId,
         houseId: houseId || null,
@@ -86,7 +88,7 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
         eventType,
         contractor,
         litterDepth: depth,
-        cost: costNum,
+        cost: editing ? initial?.cost ?? null : null,
         notes,
       };
       if (eventId) updateLitterEvent(eventId, payload);
@@ -114,12 +116,11 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-          </Pressable>
-          <PageHeader
+          <BackHeader
+            backLabel="Farm"
             title={editing ? "Edit litter event" : "Record litter event"}
-            subtitle={detail?.farm.farmName ?? "Farm"}
+            onBack={() => router.back()}
+            accessibilityLabel="Back to farm"
           />
           <Card>
             <DatePickerField
@@ -142,13 +143,6 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
               style={styles.input}
               value={litterDepth}
               onChangeText={setLitterDepth}
-              keyboardType="decimal-pad"
-            />
-            <Text style={[styles.label, { marginTop: 8 }]}>Cost</Text>
-            <TextInput
-              style={styles.input}
-              value={cost}
-              onChangeText={setCost}
               keyboardType="decimal-pad"
             />
             <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>

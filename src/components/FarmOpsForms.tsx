@@ -308,7 +308,6 @@ export type LitterFormValues = {
   houseId?: string | null;
   contractor?: string | null;
   litterDepth?: number | null;
-  cost?: number | null;
   notes?: string | null;
 };
 
@@ -398,17 +397,6 @@ export function LitterEventForm({
             type="number"
             step="any"
             defaultValue={initial?.litterDepth ?? undefined}
-          />
-        </div>
-        <div>
-          <Label htmlFor={fid("cost")}>Cost</Label>
-          <Input
-            id={fid("cost")}
-            name="cost"
-            type="number"
-            step="any"
-            min={0}
-            defaultValue={initial?.cost ?? undefined}
           />
         </div>
       </div>

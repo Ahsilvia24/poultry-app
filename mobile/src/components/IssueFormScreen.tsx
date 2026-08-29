@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -26,7 +25,7 @@ import {
   ISSUE_STATUS_OPTIONS,
 } from "../lib/opsLabels";
 import { colors, styles } from "../theme";
-import { Card, PageHeader, PrimaryButton } from "./ui";
+import { BackHeader, Card, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { OptionPicker, SelectField } from "./OptionPicker";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -117,12 +116,11 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-          </Pressable>
-          <PageHeader
+          <BackHeader
+            backLabel="Farm"
             title={editing ? "Edit issue" : "Report issue"}
-            subtitle={detail?.farm.farmName ?? "Farm"}
+            onBack={() => router.back()}
+            accessibilityLabel="Back to farm"
           />
           <Card>
             <DatePickerField

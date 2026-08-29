@@ -329,7 +329,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             houseNumber: e.house?.houseNumber ?? null,
             contractor: e.contractor,
             litterDepth: e.litterDepth,
-            cost: e.cost,
             notes: e.notes,
           }))}
         />

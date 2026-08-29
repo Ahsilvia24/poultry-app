@@ -26,7 +26,7 @@ import { todayKey } from "../lib/ids";
 import { VISIT_TYPE_LABELS, VISIT_TYPE_OPTIONS } from "../lib/visits";
 import type { ServiceFormKind } from "../lib/serviceForms/types";
 import { colors, styles } from "../theme";
-import { Card, PageHeader, PrimaryButton } from "./ui";
+import { BackHeader, Card, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -162,9 +162,12 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
     return (
       <SafeAreaView style={styles.screen} edges={["top"]}>
         <View style={styles.content}>
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 12 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-          </Pressable>
+          <BackHeader
+            backLabel="Farm"
+            title="Visit"
+            onBack={() => router.back()}
+            accessibilityLabel="Back to farm"
+          />
           <Text style={{ color: colors.danger }}>Visit not found</Text>
         </View>
       </SafeAreaView>
@@ -225,13 +228,11 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-          </Pressable>
-
-          <PageHeader
+          <BackHeader
+            backLabel="Farm"
             title={editing ? "Edit visit" : "Log visit"}
-            subtitle={farmDetail?.farm.farmName ?? "Farm visit"}
+            onBack={() => router.back()}
+            accessibilityLabel="Back to farm"
           />
 
           <Card>

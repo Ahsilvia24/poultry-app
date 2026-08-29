@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -14,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { createFlock, getFarmDetail } from "../../../../src/repos/data";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { colors, styles } from "../../../../src/theme";
-import { Card, PageHeader, PrimaryButton } from "../../../../src/components/ui";
+import { BackHeader, Card, PrimaryButton } from "../../../../src/components/ui";
 import { DatePickerField } from "../../../../src/components/DatePickerField";
 
 function paramId(value: string | string[] | undefined) {
@@ -130,9 +129,12 @@ export default function AddFlockScreen() {
     return (
       <SafeAreaView style={styles.screen} edges={["top"]}>
         <View style={styles.content}>
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 12 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-          </Pressable>
+          <BackHeader
+            backLabel="Farm"
+            title="Add flock"
+            onBack={() => router.back()}
+            accessibilityLabel="Back to farm"
+          />
           <Text style={{ color: colors.danger }}>Farm not found</Text>
         </View>
       </SafeAreaView>
@@ -150,11 +152,12 @@ export default function AddFlockScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-          </Pressable>
-
-          <PageHeader title="Add flock" subtitle={detail.farm.farmName} />
+          <BackHeader
+            backLabel="Farm"
+            title="Add flock"
+            onBack={() => router.back()}
+            accessibilityLabel="Back to farm"
+          />
 
           {houses.length === 0 ? (
             <Card>
