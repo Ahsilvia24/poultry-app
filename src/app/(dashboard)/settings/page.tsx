@@ -140,26 +140,10 @@ export default async function SettingsPage() {
                 </Select>
               </div>
             </div>
-            <div className="mt-3 space-y-2">
-              <label className="flex items-center gap-2 text-sm font-semibold text-stone-700">
-                <input
-                  type="checkbox"
-                  name="notifyInApp"
-                  defaultChecked={s?.notifyInApp ?? true}
-                  className="h-5 w-5"
-                />
-                In-app notifications
-              </label>
-              <label className="flex items-center gap-2 text-sm font-semibold text-stone-700">
-                <input
-                  type="checkbox"
-                  name="notifyEmail"
-                  defaultChecked={s?.notifyEmail ?? false}
-                  className="h-5 w-5"
-                />
-                Email notifications
-              </label>
-            </div>
+            {s?.notifyInApp !== false ? (
+              <input type="hidden" name="notifyInApp" value="on" />
+            ) : null}
+            {s?.notifyEmail ? <input type="hidden" name="notifyEmail" value="on" /> : null}
           </div>
 
           <Button type="submit">Save settings</Button>

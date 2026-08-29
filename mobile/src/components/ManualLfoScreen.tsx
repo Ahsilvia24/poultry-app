@@ -513,13 +513,21 @@ export function ManualLfoScreen({
       </ScrollView>
 
       {activeField ? (
-        <NumberKeypad
-          allowDecimal={activeField === "rate"}
-          allowTripleZero={activeField === "binA" || activeField === "binB" || activeField === "head"}
-          onDigit={onDigit}
-          onBackspace={onBackspace}
-          onEnter={onEnter}
-        />
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss keypad"
+            onPress={dismissKeypad}
+            style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
+          />
+          <NumberKeypad
+            allowDecimal={activeField === "rate"}
+            allowTripleZero={activeField === "binA" || activeField === "binB" || activeField === "head"}
+            onDigit={onDigit}
+            onBackspace={onBackspace}
+            onEnter={onEnter}
+          />
+        </>
       ) : null}
     </View>
   );

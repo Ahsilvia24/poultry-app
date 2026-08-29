@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { format, parseISO } from "date-fns";
 import { deactivateFarmAction } from "@/app/actions/farms";
 import { formatNumber, formatPct } from "@/lib/utils";
-import { Card, StatusBadge } from "@/components/ui";
+import { Button, Card, StatusBadge } from "@/components/ui";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import { ExclusiveSwipeGroup, useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
 import type { FarmCardSummary } from "@/types";
@@ -32,6 +32,7 @@ function DashboardFarmCard({
   onToggle: () => void;
 }) {
   const [swipeX, setSwipeX] = useState(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, start] = useTransition();
   const touchStartX = useRef<number | null>(null);
   const deactivatingRef = useRef(false);
@@ -73,9 +74,10 @@ function DashboardFarmCard({
       requestClose();
       return;
     }
-    // Full swipe past threshold → deactivate immediately (no confirm)
-    if (swipeX <= -48) makeInactive();
-    else {
+    if (swipeX <= -48) {
+      setSwipeX(-100);
+      requestOpen();
+    } else {
       setSwipeX(0);
       requestClose();
     }
@@ -95,7 +97,7 @@ function DashboardFarmCard({
           <button
             type="button"
             disabled={pending}
-            onClick={makeInactive}
+            onClick={() => setConfirmOpen(true)}
             className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-xs font-bold text-white disabled:opacity-60"
             aria-label={`Make ${farm.farmName} inactive`}
           >
@@ -197,6 +199,42 @@ function DashboardFarmCard({
           </button>
         </Card>
       </div>
+      {confirmOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          onClick={() => setConfirmOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`dash-inactive-${farm.id}`}
+            className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id={`dash-inactive-${farm.id}`} className="text-lg font-bold text-stone-900">
+              Make this farm inactive?
+            </h3>
+            <p className="mt-2 text-sm text-stone-600">
+              {farm.farmName} will move to Inactive. You can make it active again later.
+            </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                disabled={pending}
+                onClick={() => {
+                  setConfirmOpen(false);
+                  makeInactive();
+                }}
+              >
+                {pending ? "Working…" : "Make inactive"}
+              </Button>
+              <Button type="button" variant="ghost" disabled={pending} onClick={() => setConfirmOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

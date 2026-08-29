@@ -754,13 +754,21 @@ export default function EditLfoScreen() {
         </ScrollView>
 
         {activeField ? (
-          <NumberKeypad
-            allowDecimal={activeField.kind === "rate"}
-            allowTripleZero={activeField.kind === "binA" || activeField.kind === "binB"}
-            onDigit={onDigit}
-            onBackspace={onBackspace}
-            onEnter={onEnter}
-          />
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss keypad"
+              onPress={dismissKeypad}
+              style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
+            />
+            <NumberKeypad
+              allowDecimal={activeField.kind === "rate"}
+              allowTripleZero={activeField.kind === "binA" || activeField.kind === "binB"}
+              onDigit={onDigit}
+              onBackspace={onBackspace}
+              onEnter={onEnter}
+            />
+          </>
         ) : null}
       </View>
     </SafeAreaView>

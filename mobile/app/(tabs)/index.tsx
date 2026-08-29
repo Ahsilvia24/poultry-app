@@ -23,6 +23,7 @@ import { colors, styles } from "../../src/theme";
 import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/schedule";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { useExclusiveSwipeables } from "../../src/lib/useExclusiveSwipeables";
+import { ConfirmDialog } from "../../src/components/ConfirmDialog";
 import {
   Card,
   Metric,
@@ -237,6 +238,10 @@ export default function DashboardScreen() {
   const [expandedFarmIds, setExpandedFarmIds] = useState<Set<string>>(() => new Set());
   /** Avoid mounting tall swipe actions until open — on web they stretch short tiles. */
   const [swipingFarmId, setSwipingFarmId] = useState<string | null>(null);
+  const [inactiveConfirm, setInactiveConfirm] = useState<{
+    farmId: string;
+    farmName: string;
+  } | null>(null);
   const swipe = useExclusiveSwipeables();
 
   function toggleFarmExpanded(farmId: string) {
@@ -582,14 +587,13 @@ export default function DashboardScreen() {
                   onSwipeableClose={() =>
                     setSwipingFarmId((id) => (id === farm.id ? null : id))
                   }
-                  onSwipeableOpen={(direction) => {
-                    if (direction === "right") makeInactive(farm.id);
-                  }}
                   renderRightActions={() =>
                     swipingFarmId === farm.id ? (
                       <Pressable
                         accessibilityLabel={`Make ${farm.farmName} inactive`}
-                        onPress={() => makeInactive(farm.id)}
+                        onPress={() =>
+                          setInactiveConfirm({ farmId: farm.id, farmName: farm.farmName })
+                        }
                         style={{
                           backgroundColor: "#57534e",
                           justifyContent: "center",
@@ -752,6 +756,23 @@ export default function DashboardScreen() {
           <ScheduleImportCard />
         </View>
       </ScrollView>
+      <ConfirmDialog
+        visible={inactiveConfirm != null}
+        title="Make this farm inactive?"
+        message={
+          inactiveConfirm
+            ? `${inactiveConfirm.farmName} will move to Inactive. You can make it active again later.`
+            : ""
+        }
+        confirmLabel="Make inactive"
+        onConfirm={() => {
+          if (!inactiveConfirm) return;
+          makeInactive(inactiveConfirm.farmId);
+          setInactiveConfirm(null);
+          swipe.closeAll();
+        }}
+        onCancel={() => setInactiveConfirm(null)}
+      />
     </SafeAreaView>
   );
 }

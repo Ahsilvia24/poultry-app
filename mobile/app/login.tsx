@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   Text,
@@ -77,6 +78,18 @@ export default function LoginScreen() {
               )}
             </Pressable>
           </Card>
+          <View style={{ marginTop: 16, alignItems: "center", gap: 8 }}>
+            <Pressable
+              onPress={() => Linking.openURL("https://ahsilvia24.github.io/poultry-app/support/")}
+            >
+              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>Support</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => Linking.openURL("https://ahsilvia24.github.io/poultry-app/privacy/")}
+            >
+              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>Privacy Policy</Text>
+            </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
