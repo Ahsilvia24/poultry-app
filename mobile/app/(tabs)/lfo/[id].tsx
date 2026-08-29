@@ -20,6 +20,7 @@ import {
   catchPartsFromFeedUpAt,
   feedUpAtFromCatch,
   formatHouseLfoSummary,
+  formatLfoOrderClock,
 } from "../../../src/lib/lfo/calculate";
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
@@ -34,6 +35,7 @@ import {
   backspaceKeypadValue,
 } from "../../../src/components/NumberKeypad";
 import { LfoHouseSummaryBlock } from "../../../src/components/LfoHouseSummaryBlock";
+import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
 
 function formatLbs(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -87,6 +89,7 @@ function loadDraft(id: string) {
     orderTime: normalizeHalfHourTime(lfo.orderTime) ?? currentHalfHourTime(),
     consumptionRate: String(lfo.consumptionRate ?? DEFAULT_LFO_CONSUMPTION_RATE),
     calculatedAt: lfo.calculatedAt,
+    notes: lfo.notes,
     houses: lfo.houses.map(
       (h): HouseDraft => {
         const parts = catchPartsFromFeedUpAt(h.feedUpAt);
@@ -172,6 +175,7 @@ export default function EditLfoScreen() {
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [calculatedAt, setCalculatedAt] = useState<string | null>(null);
+  const [notes, setNotes] = useState<string | null>(null);
   const [houses, setHouses] = useState<HouseDraft[]>([]);
   const [ready, setReady] = useState(false);
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
@@ -194,6 +198,7 @@ export default function EditLfoScreen() {
       setOrderTime(draft.orderTime);
       setConsumptionRate(draft.consumptionRate);
       setCalculatedAt(draft.calculatedAt);
+      setNotes(draft.notes);
       setHouses(draft.houses);
       setError(null);
       setReady(true);
@@ -233,8 +238,8 @@ export default function EditLfoScreen() {
     const rate = Number(consumptionRate);
     return calculateLastFeedOrder({
       orderDate,
+      orderTime,
       consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
-      now: calculatedAt ? new Date(calculatedAt) : undefined,
       houses: houses.map((r) => ({
         houseId: r.houseId,
         houseNumber: r.houseNumber,
@@ -244,9 +249,32 @@ export default function EditLfoScreen() {
         feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime),
       })),
     });
-  }, [calculatedAt, consumptionRate, orderDate, houses]);
+  }, [consumptionRate, orderDate, orderTime, houses]);
 
   const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
+
+  function shareCurrentLfo() {
+    const rate = Number(consumptionRate);
+    void shareLfoPdf({
+      farmName,
+      orderDate,
+      orderTime,
+      consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
+      calculatedAt,
+      notes,
+      houses: houses.map((house) => ({
+        houseId: house.houseId,
+        houseNumber: house.houseNumber,
+        headCount: house.headCount,
+        binAPounds: Number(house.binAPounds) || 0,
+        binBPounds: Number(house.binBPounds) || 0,
+        catchDate: house.catchDate,
+        catchTime: house.catchTime,
+      })),
+    }).catch(() => {
+      Alert.alert("Could not share PDF", "Try again in a moment.");
+    });
+  }
 
   function updateHouse(houseId: string, patch: Partial<HouseDraft>) {
     setHouses((prev) => prev.map((h) => (h.houseId === houseId ? { ...h, ...patch } : h)));
@@ -455,11 +483,13 @@ export default function EditLfoScreen() {
 
           {ready ? (
             <>
-              {calculatedAt ? (
+              {formatLfoOrderClock(orderDate, orderTime) ? (
                 <Text style={[styles.muted, { marginBottom: 10 }]}>
-                  Numbers as of {formatAsOf(calculatedAt)}. Hours, head counts, and
-                  order/reclaim stay frozen to that time. Save as new LFO to capture
-                  current time and remaining birds.
+                  Hours until feed off are measured from{" "}
+                  {formatLfoOrderClock(orderDate, orderTime)}.
+                  {calculatedAt
+                    ? ` Head counts stay frozen to ${formatAsOf(calculatedAt)}.`
+                    : ""}
                 </Text>
               ) : null}
 
@@ -503,6 +533,11 @@ export default function EditLfoScreen() {
                 <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
                   Consumption rate in lbs/bird/day
                 </Text>
+                {formatLfoOrderClock(orderDate, orderTime) ? (
+                  <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
+                    Hours from {formatLfoOrderClock(orderDate, orderTime)}
+                  </Text>
+                ) : null}
               </Card>
 
               <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>
@@ -674,12 +709,18 @@ export default function EditLfoScreen() {
                       lines={houseSummary}
                       farmName={farmName}
                       fontSize={15}
+                      onSharePdf={shareCurrentLfo}
                     />
                   </View>
                 </Card>
               ) : null}
 
-              <PrimaryButton label="Save changes" onPress={save} />
+              <PrimaryButton
+                label="Share PDF"
+                secondary
+                onPress={shareCurrentLfo}
+              />
+              <PrimaryButton label="Save changes" onPress={save} style={{ marginTop: 8 }} />
               <PrimaryButton
                 label="Save as new LFO"
                 secondary

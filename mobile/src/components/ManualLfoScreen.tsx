@@ -16,6 +16,7 @@ import {
   calculateLastFeedOrder,
   feedUpAtFromCatch,
   formatHouseLfoSummary,
+  formatLfoOrderClock,
 } from "../lib/lfo/calculate";
 import { todayKey } from "../lib/ids";
 import { scrollFieldAboveKeypad } from "../lib/scrollField";
@@ -166,6 +167,7 @@ export function ManualLfoScreen({
     const rate = Number(consumptionRate);
     return calculateLastFeedOrder({
       orderDate,
+      orderTime,
       consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
       houses: [
         {
@@ -178,7 +180,7 @@ export function ManualLfoScreen({
         },
       ],
     });
-  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate]);
+  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime]);
 
   const result = calc.houses[0];
   const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
@@ -322,6 +324,11 @@ export function ManualLfoScreen({
           <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
             Consumption rate in lbs/bird/day
           </Text>
+          {formatLfoOrderClock(orderDate, orderTime) ? (
+            <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
+              Hours from {formatLfoOrderClock(orderDate, orderTime)}
+            </Text>
+          ) : null}
         </Card>
 
         <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>

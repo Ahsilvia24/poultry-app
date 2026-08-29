@@ -9,8 +9,10 @@ import {
   calculateLastFeedOrder,
   feedUpAtFromCatch,
   formatHouseLfoSummary,
+  formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
 import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
+import { downloadLfoPdf } from "@/lib/exports/lfo-pdf";
 
 export type LfoHouseRow = {
   houseId: string;
@@ -69,11 +71,12 @@ export function LfoInventoryForm({
   action,
   saveAsNewAction,
   houses: initialHouses,
-  orderDate,
+  orderDate: initialOrderDate,
   orderTime: initialOrderTime,
   farmName,
   consumptionRate: initialRate = DEFAULT_LFO_CONSUMPTION_RATE,
   asOf = null,
+  notes = null,
   submitLabel,
   deleteAction,
 }: {
@@ -86,6 +89,7 @@ export function LfoInventoryForm({
   consumptionRate?: number;
   /** Frozen clock for hours-until-off / order math. Omit on a new LFO. */
   asOf?: Date | string | null;
+  notes?: string | null;
   submitLabel: string;
   deleteAction?: () => Promise<void>;
 }) {
@@ -93,6 +97,7 @@ export function LfoInventoryForm({
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
   const [consumptionRate, setConsumptionRate] = useState(String(initialRate));
+  const [orderDate, setOrderDate] = useState(initialOrderDate);
   const [orderTime, setOrderTime] = useState(
     () => normalizeHalfHourTime(initialOrderTime) ?? currentHalfHourTime(),
   );
@@ -112,8 +117,8 @@ export function LfoInventoryForm({
     const rate = Number(consumptionRate);
     return calculateLastFeedOrder({
       orderDate,
+      orderTime,
       consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
-      now: asOf ? new Date(asOf) : undefined,
       houses: rows.map((r) => ({
         houseId: r.houseId,
         houseNumber: r.houseNumber,
@@ -123,12 +128,33 @@ export function LfoInventoryForm({
         feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime),
       })),
     });
-  }, [asOf, consumptionRate, orderDate, rows]);
+  }, [consumptionRate, orderDate, orderTime, rows]);
 
   const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
   function updateRow(houseId: string, patch: Partial<(typeof rows)[number]>) {
     setRows((prev) => prev.map((r) => (r.houseId === houseId ? { ...r, ...patch } : r)));
+  }
+
+  function shareCurrent() {
+    const rate = Number(consumptionRate);
+    downloadLfoPdf({
+      farmName: farmName ?? "Farm",
+      orderDate,
+      orderTime,
+      consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
+      calculatedAt: asOf,
+      notes,
+      houses: rows.map((house) => ({
+        houseId: house.houseId,
+        houseNumber: house.houseNumber,
+        headCount: house.headCount,
+        binAPounds: Number(house.binAPounds) || 0,
+        binBPounds: Number(house.binBPounds) || 0,
+        catchDate: house.catchDate,
+        catchTime: house.catchTime,
+      })),
+    });
   }
 
   return (
@@ -154,14 +180,29 @@ export function LfoInventoryForm({
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>
       ) : null}
 
-      {asOf ? (
+      {formatLfoOrderClock(orderDate, orderTime) ? (
         <p className="text-sm text-stone-600">
-          Numbers as of{" "}
+          Hours until feed off are measured from{" "}
+          <span className="font-semibold text-stone-800">
+            {formatLfoOrderClock(orderDate, orderTime)}
+          </span>
+          {asOf ? (
+            <>
+              . Head counts stay frozen to{" "}
+              <span className="font-semibold text-stone-800">
+                {format(new Date(asOf), "MMM d, yyyy, h:mm a")}
+              </span>
+            </>
+          ) : null}
+          . Save as new LFO to capture current remaining birds.
+        </p>
+      ) : asOf ? (
+        <p className="text-sm text-stone-600">
+          Head counts stay frozen to{" "}
           <span className="font-semibold text-stone-800">
             {format(new Date(asOf), "MMM d, yyyy, h:mm a")}
           </span>
-          . Hours, head counts, and order/reclaim stay frozen to that time. Save as new
-          LFO to capture current time and remaining birds.
+          .
         </p>
       ) : null}
 
@@ -173,7 +214,8 @@ export function LfoInventoryForm({
             name="orderDate"
             type="date"
             required
-            defaultValue={orderDate}
+            value={orderDate}
+            onChange={(e) => setOrderDate(e.target.value)}
             className="mt-0.5"
             compact
           />
@@ -213,6 +255,11 @@ export function LfoInventoryForm({
         </PairField>
       </div>
       <p className="text-xs text-stone-500">Consumption rate in lbs/bird/day</p>
+      {formatLfoOrderClock(orderDate, orderTime) ? (
+        <p className="text-xs text-stone-500">
+          Hours from {formatLfoOrderClock(orderDate, orderTime)}
+        </p>
+      ) : null}
 
       <div className="space-y-3">
         {rows.map((house) => {
@@ -386,11 +433,21 @@ export function LfoInventoryForm({
               </p>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={shareCurrent}
+            className="shrink-0 text-sm font-semibold text-emerald-800 hover:underline"
+          >
+            Share PDF
+          </button>
           <CopySummaryButton lines={houseSummary} farmName={farmName} />
         </div>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" variant="secondary" onClick={shareCurrent}>
+          Share PDF
+        </Button>
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : submitLabel}
         </Button>

@@ -17,8 +17,11 @@ import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
-import { createLfo, deleteLfo, listFarms, listLfos } from "../../../src/repos/data";
+import { createLfo, deleteLfo, getLfo, listFarms, listLfos } from "../../../src/repos/data";
+import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
+import { SharePdfIconButton } from "../../../src/components/SharePdfIconButton";
 import { todayKey } from "../../../src/lib/ids";
+import { currentHalfHourTime } from "../../../src/lib/time-slots";
 import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, styles } from "../../../src/theme";
@@ -42,6 +45,35 @@ function formatLfoDate(dateKey: string) {
   const [y, m, d] = dateKey.slice(0, 10).split("-").map(Number);
   if (!y || !m || !d) return dateKey;
   return `${m}-${d}-${y}`;
+}
+
+function shareSavedLfo(id: string) {
+  try {
+    const detail = getLfo(id);
+    void shareLfoPdf({
+      farmName: detail.farmName,
+      orderDate: detail.orderDate.slice(0, 10),
+      orderTime: detail.orderTime,
+      consumptionRate: detail.consumptionRate,
+      calculatedAt: detail.calculatedAt,
+      notes: detail.notes,
+      houses: detail.houses.map((house) => ({
+        houseId: house.houseId,
+        houseNumber: house.houseNumber,
+        headCount: house.headCount,
+        binAPounds: house.binAPounds,
+        binBPounds: house.binBPounds,
+        feedUpAt: house.feedUpAt,
+      })),
+    }).catch(() => {
+      Alert.alert("Could not share PDF", "Try again in a moment.");
+    });
+  } catch (e) {
+    Alert.alert(
+      "Could not share PDF",
+      e instanceof Error ? e.message : "This LFO could not be loaded.",
+    );
+  }
 }
 
 function SavedLfoList({
@@ -138,9 +170,15 @@ function SavedLfoList({
                     {formatLfoDate(l.orderDate)}
                   </Text>
                 </View>
-                {l.houseSummary.length > 0 ? (
-                  <CopyHouseSummaryButton lines={l.houseSummary} farmName={l.farmName} />
-                ) : null}
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <SharePdfIconButton
+                    onPress={() => shareSavedLfo(l.id)}
+                    accessibilityLabel={`Share PDF for ${l.farmName}`}
+                  />
+                  {l.houseSummary.length > 0 ? (
+                    <CopyHouseSummaryButton lines={l.houseSummary} farmName={l.farmName} />
+                  ) : null}
+                </View>
               </View>
               {l.houseSummary.length > 0 ? (
                 <View style={{ marginTop: 8, gap: 2, flexShrink: 0 }}>
@@ -367,7 +405,7 @@ export default function LfoListScreen() {
               }
               setLoading(true);
               try {
-                const { id } = createLfo(farmId, todayKey());
+                const { id } = createLfo(farmId, todayKey(), undefined, currentHalfHourTime());
                 setLfos(listLfos());
                 setMsg("Created LFO");
                 openLfo(id);

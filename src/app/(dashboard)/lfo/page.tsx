@@ -5,8 +5,10 @@ import { PageHeader } from "@/components/ui";
 import { LfoHub } from "@/components/LfoHub";
 import {
   calculateLastFeedOrder,
+  catchPartsFromFeedUpAt,
   formatHouseLfoSummary,
 } from "@/lib/lfo/calculate";
+import type { LfoShareInventory } from "@/lib/lfo/share-payload";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 
 /** Date-only → "7-26-2026" (no leading zeros). */
@@ -59,10 +61,24 @@ export default async function LfoPage() {
   const savedWithSummary = savedLfos.map((lfo) => {
     const liveHeads = headCountByFarm.get(lfo.farmId) ?? new Map();
     const orderDateKey = lfo.orderDate.toISOString().slice(0, 10);
+    const houses = lfo.houseInventories
+      .map((inv) => {
+        const catchParts = catchPartsFromFeedUpAt(inv.feedUpAt);
+        return {
+          houseId: inv.houseId,
+          houseNumber: inv.house.houseNumber,
+          binAPounds: inv.binAPounds,
+          binBPounds: inv.binBPounds,
+          catchDate: catchParts.date,
+          catchTime: catchParts.time,
+          headCount: inv.headCount ?? liveHeads.get(inv.houseId) ?? 0,
+        };
+      })
+      .sort((a, b) => a.houseNumber - b.houseNumber);
     const calc = calculateLastFeedOrder({
       orderDate: orderDateKey,
+      orderTime: lfo.orderTime,
       consumptionRate: lfo.consumptionRate,
-      now: lfo.calculatedAt ?? lfo.createdAt,
       houses: lfo.houseInventories.map((inv) => ({
         houseId: inv.houseId,
         houseNumber: inv.house.houseNumber,
@@ -72,11 +88,21 @@ export default async function LfoPage() {
         headCount: inv.headCount ?? liveHeads.get(inv.houseId) ?? 0,
       })),
     });
+    const shareInventory: LfoShareInventory = {
+      farmName: lfo.farm.farmName,
+      orderDate: orderDateKey,
+      orderTime: lfo.orderTime,
+      consumptionRate: lfo.consumptionRate,
+      calculatedAt: (lfo.calculatedAt ?? lfo.createdAt).toISOString(),
+      notes: lfo.notes,
+      houses,
+    };
     return {
       id: lfo.id,
       farmName: lfo.farm.farmName,
       dateLabel: formatLfoDate(lfo.orderDate),
       houseSummary: formatHouseLfoSummary(calc.houses),
+      shareInventory,
     };
   });
 

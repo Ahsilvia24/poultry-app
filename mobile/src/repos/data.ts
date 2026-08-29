@@ -1570,8 +1570,8 @@ export function listLfos() {
       const detail = getLfo(r.id);
       const calc = calculateLastFeedOrder({
         orderDate: detail.orderDate.slice(0, 10),
+        orderTime: detail.orderTime,
         consumptionRate: detail.consumptionRate,
-        now: detail.calculatedAt ? new Date(detail.calculatedAt) : undefined,
         houses: detail.houses.map((h) => ({
           houseId: h.houseId,
           houseNumber: h.houseNumber,

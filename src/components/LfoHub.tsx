@@ -7,6 +7,7 @@ import { Card } from "@/components/ui";
 import { ConsumptionRateCalculator } from "@/components/ConsumptionRateCalculator";
 import { ManualLfoForm } from "@/components/ManualLfoForm";
 import { SavedLfoRow } from "@/components/SavedLfoRow";
+import type { LfoShareInventory } from "@/lib/lfo/share-payload";
 
 export const MANUAL_LFO_TAB_ID = "manual";
 
@@ -20,6 +21,7 @@ export function LfoHub({
     farmName: string;
     dateLabel: string;
     houseSummary: string[];
+    shareInventory: LfoShareInventory;
   }>;
 }) {
   const router = useRouter();
@@ -117,6 +119,7 @@ export function LfoHub({
               farmName={lfo.farmName}
               dateLabel={lfo.dateLabel}
               houseSummary={lfo.houseSummary}
+              shareInventory={lfo.shareInventory}
             />
           ))}
         </div>
