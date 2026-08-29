@@ -225,7 +225,7 @@ function GeneratorHoursChart({
 }) {
   const showActions = onEdit != null && onDelete != null;
   return (
-    <div className="text-sm leading-snug">
+    <div className="text-base leading-snug">
       <h4 className="mb-1 text-base font-bold text-stone-900">{title}</h4>
       <div className="flex gap-3 text-sm leading-none text-stone-500">
         <span className="w-24 shrink-0 font-semibold">Date</span>

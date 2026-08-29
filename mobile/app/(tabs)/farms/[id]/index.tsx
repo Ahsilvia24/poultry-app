@@ -338,6 +338,98 @@ type GeneratorChartRow = {
   exercised: number | null;
 };
 
+const GENERATOR_SWIPE_DELETE_W = 72;
+
+function GeneratorSwipeDeleteRow({
+  deleteLabel,
+  onDelete,
+  children,
+}: {
+  deleteLabel: string;
+  onDelete: () => void;
+  children: ReactNode;
+}) {
+  const [x, setX] = useState(0);
+  const startX = useRef<number | null>(null);
+  const startY = useRef<number | null>(null);
+
+  function begin(pageX: number, pageY: number) {
+    startX.current = pageX;
+    startY.current = pageY;
+  }
+
+  function move(pageX: number) {
+    if (startX.current == null) return;
+    setX(Math.max(-GENERATOR_SWIPE_DELETE_W, Math.min(0, pageX - startX.current)));
+  }
+
+  function end() {
+    if (startX.current == null) {
+      setX(0);
+      return;
+    }
+    setX((cur) => (cur <= -36 ? -GENERATOR_SWIPE_DELETE_W : 0));
+    startX.current = null;
+    startY.current = null;
+  }
+
+  return (
+    <View style={{ overflow: "hidden" }}>
+      {x < -8 ? (
+        <Pressable
+          accessibilityLabel={deleteLabel}
+          onPress={onDelete}
+          style={{
+            position: "absolute",
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: GENERATOR_SWIPE_DELETE_W,
+            backgroundColor: colors.danger,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 13 }}>Delete</Text>
+        </Pressable>
+      ) : null}
+      <View
+        // Responder + mouse so swipe-left works on native and Expo web.
+        onStartShouldSetResponder={() => false}
+        onMoveShouldSetResponder={(e) => {
+          if (startX.current == null || startY.current == null) return false;
+          const dx = e.nativeEvent.pageX - startX.current;
+          const dy = e.nativeEvent.pageY - startY.current;
+          return Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy);
+        }}
+        onResponderGrant={(e) => begin(e.nativeEvent.pageX, e.nativeEvent.pageY)}
+        onResponderMove={(e) => move(e.nativeEvent.pageX)}
+        onResponderRelease={end}
+        onResponderTerminate={end}
+        onTouchStart={(e) => begin(e.nativeEvent.pageX, e.nativeEvent.pageY)}
+        {...(Platform.OS === "web"
+          ? {
+              onMouseDown: (e: { pageX: number; pageY: number }) => begin(e.pageX, e.pageY),
+              onMouseMove: (e: { pageX: number; buttons?: number }) => {
+                if (e.buttons === 1) move(e.pageX);
+              },
+              onMouseUp: end,
+              onMouseLeave: () => {
+                if (startX.current != null) end();
+              },
+            }
+          : {})}
+        style={{
+          transform: [{ translateX: x }],
+          backgroundColor: colors.card,
+        }}
+      >
+        {children}
+      </View>
+    </View>
+  );
+}
+
 function GeneratorHoursChart({
   title,
   rows,
@@ -349,107 +441,81 @@ function GeneratorHoursChart({
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
 }) {
-  const [swipingId, setSwipingId] = useState<string | null>(null);
   const showActions = onEdit != null && onDelete != null;
   const cell = {
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: "600" as const,
     color: colors.text,
     fontVariant: ["tabular-nums"] as const,
   };
   return (
     <View style={{ marginTop: 8 }}>
-      <Text style={{ fontWeight: "700", fontSize: 15, color: colors.text, marginBottom: 2 }}>
+      <Text style={{ fontWeight: "700", fontSize: 16, color: colors.text, marginBottom: 2 }}>
         {title}
       </Text>
       <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-        <Text style={{ width: 92, fontSize: 13, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
+        <Text style={{ width: 96, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Date
         </Text>
-        <Text style={{ width: 56, fontSize: 13, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
+        <Text style={{ width: 60, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Hours
         </Text>
-        <Text style={{ width: 72, fontSize: 13, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
+        <Text style={{ width: 80, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Exercised
         </Text>
         {showActions ? <View style={{ width: 28 }} /> : null}
       </View>
       {rows.length === 0 ? (
-        <Text style={[styles.muted, { fontSize: 14 }]}>None yet</Text>
+        <Text style={[styles.muted, { fontSize: 15 }]}>None yet</Text>
       ) : (
         <View>
           {rows.map((row) => {
-            const rowInner = (
+            const cells = (
               <View
                 style={{
                   flexDirection: "row",
                   gap: 12,
                   alignItems: "center",
-                  minHeight: 28,
-                  paddingVertical: 3,
+                  minHeight: 30,
+                  paddingVertical: 4,
                   backgroundColor: colors.card,
                 }}
               >
-                <Text style={{ ...cell, width: 92 }} numberOfLines={1}>
+                <Text style={{ ...cell, width: 96 }} numberOfLines={1}>
                   {row.dateLabel}
                 </Text>
-                <Text style={{ ...cell, width: 56 }}>{formatGeneratorHours(row.hours)}</Text>
-                <Text style={{ ...cell, width: 72 }}>{formatGeneratorHours(row.exercised)}</Text>
-                {showActions ? (
-                  <Pressable
-                    accessibilityLabel="Edit generator log"
-                    onPress={() => onEdit(row.id)}
-                    hitSlop={6}
-                    style={{
-                      width: 28,
-                      height: 24,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons name="settings-outline" size={18} color={colors.muted} />
-                  </Pressable>
-                ) : null}
+                <Text style={{ ...cell, width: 60 }}>{formatGeneratorHours(row.hours)}</Text>
+                <Text style={{ ...cell, width: 80 }}>{formatGeneratorHours(row.exercised)}</Text>
               </View>
             );
             if (!showActions) {
-              return <View key={row.id}>{rowInner}</View>;
+              return <View key={row.id}>{cells}</View>;
             }
             return (
-              <Swipeable
-                key={row.id}
-                overshootRight={false}
-                friction={2}
-                rightThreshold={36}
-                containerStyle={{ overflow: "hidden" }}
-                onSwipeableWillOpen={() => setSwipingId(row.id)}
-                onSwipeableClose={() =>
-                  setSwipingId((id) => (id === row.id ? null : id))
-                }
-                renderRightActions={() =>
-                  swipingId === row.id ? (
-                    <Pressable
-                      accessibilityLabel="Delete generator log"
-                      onPress={() => onDelete(row.id)}
-                      style={{
-                        backgroundColor: colors.danger,
-                        justifyContent: "center",
-                        alignItems: "center",
-                        width: 72,
-                        marginLeft: 8,
-                        alignSelf: "stretch",
-                      }}
-                    >
-                      <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}>
-                        Delete
-                      </Text>
-                    </Pressable>
-                  ) : null
-                }
-              >
-                {rowInner}
-              </Swipeable>
+              <View key={row.id} style={{ flexDirection: "row", alignItems: "center" }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <GeneratorSwipeDeleteRow
+                    deleteLabel="Delete generator log"
+                    onDelete={() => onDelete(row.id)}
+                  >
+                    {cells}
+                  </GeneratorSwipeDeleteRow>
+                </View>
+                <Pressable
+                  accessibilityLabel="Edit generator log"
+                  onPress={() => onEdit(row.id)}
+                  hitSlop={6}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="settings-outline" size={20} color={colors.muted} />
+                </Pressable>
+              </View>
             );
           })}
         </View>
