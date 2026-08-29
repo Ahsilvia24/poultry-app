@@ -115,7 +115,10 @@ function formatShortDate(dateKey: string) {
 
 function RecordLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={{ marginTop: 4, marginBottom: 16 }}>
+    <Pressable
+      onPress={onPress}
+      style={{ marginTop: 4, marginBottom: 16, alignSelf: "flex-end" }}
+    >
       <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>{label}</Text>
     </Pressable>
   );
@@ -1288,6 +1291,15 @@ export default function FarmDetailScreen() {
                         },
                       ]
                     : []),
+                  {
+                    key: "history",
+                    label: "History",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/history",
+                        params: { id: farm.id },
+                      }),
+                  },
                 ] as Array<{ key: string; label: string; onPress: () => void }>
               ).map((link) => (
                 <Pressable
@@ -1691,7 +1703,11 @@ export default function FarmDetailScreen() {
         {data.houses.length === 0 ? (
           <Text style={[styles.muted, { marginBottom: 4 }]}>No houses yet.</Text>
         ) : null}
-        <Pressable onPress={openAddHouse} hitSlop={8} style={{ marginBottom: 8, paddingVertical: 4 }}>
+        <Pressable
+          onPress={openAddHouse}
+          hitSlop={8}
+          style={{ marginBottom: 8, paddingVertical: 4, alignSelf: "flex-end" }}
+        >
           <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
             Add house
           </Text>
@@ -2032,28 +2048,6 @@ export default function FarmDetailScreen() {
           />
         </View>
 
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            marginTop: 8,
-            marginBottom: 8,
-          }}
-        >
-          <Pressable
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/history",
-                params: { id: farm.id },
-              })
-            }
-            hitSlop={8}
-          >
-            <Text style={{ color: colors.accentDark, fontWeight: "600", fontSize: 14 }}>
-              Farm History
-            </Text>
-          </Pressable>
-        </View>
       </ScrollView>
 
       <Modal

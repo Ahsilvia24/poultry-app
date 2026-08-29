@@ -632,17 +632,19 @@ export function FarmGeneratorLogSection({
       </Card>
 
       {!formOpen ? (
-        <button
-          type="button"
-          onClick={() => {
-            setEditingId(null);
-            setEditingGen(null);
-            setFormOpen(true);
-          }}
-          className="mt-3 text-sm text-emerald-800 hover:underline"
-        >
-          Log generators
-        </button>
+        <div className="mt-3 text-right">
+          <button
+            type="button"
+            onClick={() => {
+              setEditingId(null);
+              setEditingGen(null);
+              setFormOpen(true);
+            }}
+            className="text-sm text-emerald-800 hover:underline"
+          >
+            Log generators
+          </button>
+        </div>
       ) : (
         <Card className="mt-3">
           <GeneratorLogForm

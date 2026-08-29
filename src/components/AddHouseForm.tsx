@@ -28,25 +28,29 @@ export function AddHouseForm({ farmId }: { farmId: string }) {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-3 text-sm text-emerald-800 hover:underline"
-      >
-        Add house
-      </button>
+      <div className="mt-3 text-right">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-sm text-emerald-800 hover:underline"
+        >
+          Add house
+        </button>
+      </div>
     );
   }
 
   return (
     <div className="mt-3">
-      <button
-        type="button"
-        onClick={() => !pending && setOpen(false)}
-        className="text-sm text-emerald-800 hover:underline"
-      >
-        Add house
-      </button>
+      <div className="text-right">
+        <button
+          type="button"
+          onClick={() => !pending && setOpen(false)}
+          className="text-sm text-emerald-800 hover:underline"
+        >
+          Add house
+        </button>
+      </div>
       <Card className="mt-3">
         {error ? <p className="mb-3 text-sm text-red-700">{error}</p> : null}
         <form key={formKey} action={onSave} className="space-y-3">

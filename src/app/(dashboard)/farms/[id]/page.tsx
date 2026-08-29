@@ -365,14 +365,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         />
       </div>
 
-      <div className="mt-8 flex justify-end">
-        <Link
-          href={`/history/${farm.id}`}
-          className="text-sm font-semibold text-emerald-800 hover:underline"
-        >
-          Farm History
-        </Link>
-      </div>
     </div>
   );
 }

@@ -132,25 +132,29 @@ export function FarmIssuesSection({
       </Card>
 
       {!formOpen ? (
-        <button
-          type="button"
-          onClick={() => {
-            setEditingId(null);
-            setFormOpen(true);
-          }}
-          className="mt-3 text-sm text-emerald-800 hover:underline"
-        >
-          Report issue
-        </button>
-      ) : (
-        <div className="mt-3">
+        <div className="mt-3 text-right">
           <button
             type="button"
-            onClick={() => setFormOpen(false)}
+            onClick={() => {
+              setEditingId(null);
+              setFormOpen(true);
+            }}
             className="text-sm text-emerald-800 hover:underline"
           >
             Report issue
           </button>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => setFormOpen(false)}
+              className="text-sm text-emerald-800 hover:underline"
+            >
+              Report issue
+            </button>
+          </div>
           <Card className="mt-3">
             <FarmIssueForm
               farmId={farmId}
