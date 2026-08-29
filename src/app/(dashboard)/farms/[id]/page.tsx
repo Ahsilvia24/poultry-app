@@ -192,7 +192,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       <div className="mb-6">
         <FarmQuickLinks
           farmId={farm.id}
-          hasActiveFlock={activeFlocks.length > 0}
           completeFlocks={activeFlocks.map((flock) => ({
             id: flock.id,
             flockNumber: flock.flockNumber,

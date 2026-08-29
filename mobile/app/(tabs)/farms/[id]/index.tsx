@@ -1114,35 +1114,6 @@ export default function FarmDetailScreen() {
                       }),
                   },
                   {
-                    key: "mortality",
-                    label: "Mortality",
-                    onPress: () => {
-                      setFarmNavContext({ farmId: farm.id, houseFlockId: null });
-                      router.navigate({
-                        pathname: "/(tabs)/mortality",
-                        params: { farmId: farm.id },
-                      });
-                    },
-                  },
-                  {
-                    key: "lfo",
-                    label: "LFO",
-                    onPress: () =>
-                      router.push({
-                        pathname: "/(tabs)/lfo",
-                        params: { farmId: farm.id },
-                      }),
-                  },
-                  {
-                    key: "weight",
-                    label: "Weight Proj.",
-                    onPress: () =>
-                      router.push({
-                        pathname: "/(tabs)/tools",
-                        params: { farmId: farm.id, section: "weight" },
-                      }),
-                  },
-                  {
                     key: "generators",
                     label: "Generator Log",
                     onPress: () => scrollToSection("generators"),
@@ -1151,15 +1122,6 @@ export default function FarmDetailScreen() {
                   { key: "issues", label: "Issues", onPress: () => scrollToSection("issues") },
                   { key: "litter", label: "Litter", onPress: () => scrollToSection("litter") },
                   { key: "feed", label: "Feed", onPress: () => scrollToSection("feed") },
-                  {
-                    key: "reports",
-                    label: "Reports",
-                    onPress: () =>
-                      router.push({
-                        pathname: "/(tabs)/reports",
-                        params: { farmId: farm.id },
-                      }),
-                  },
                   {
                     key: "add-flock",
                     label: "Add Flock",
