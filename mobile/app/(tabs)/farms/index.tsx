@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { Redirect, useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Swipeable } from "react-native-gesture-handler";
 import {
@@ -17,7 +17,6 @@ import {
   listFarms,
   reactivateFarm,
 } from "../../../src/repos/data";
-import { peekFarmReturnFromMortality } from "../../../src/lib/farmNavContext";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, styles } from "../../../src/theme";
 import { Card, Chip, PageHeader } from "../../../src/components/ui";
@@ -46,9 +45,6 @@ export default function FarmsScreen() {
     farmId: string;
     farmName: string;
   } | null>(null);
-  // Re-read on focus so Mortality → Farms pending redirect is picked up.
-  const [pendingReturn, setPendingReturn] = useState(() => peekFarmReturnFromMortality());
-
   const load = useCallback(async () => {
     try {
       setError(null);
@@ -62,27 +58,10 @@ export default function FarmsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const pending = peekFarmReturnFromMortality();
-      setPendingReturn(pending);
-      if (pending?.farmId) return;
       setLoading(true);
       load();
     }, [load]),
   );
-
-  // If Mortality armed a return target and we landed on the list, bounce to that farm.
-  if (pendingReturn?.farmId) {
-    return (
-      <Redirect
-        href={{
-          pathname: "/(tabs)/farms/[id]",
-          params: {
-            id: pendingReturn.farmId,
-          },
-        }}
-      />
-    );
-  }
 
   function runConfirm() {
     if (!confirm) return;

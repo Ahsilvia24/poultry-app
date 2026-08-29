@@ -19,7 +19,6 @@ import {
 import { birdAgeFromPlacement, flockWeekFromAge } from "../../src/lib/mortality";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
-  armFarmReturnFromMortality,
   getFarmNavContext,
   setFarmNavContext,
 } from "../../src/lib/farmNavContext";
@@ -552,8 +551,6 @@ export default function MortalityScreen() {
         setActiveField(null);
         setSelection(undefined);
         navigation.setOptions({ tabBarStyle: undefined });
-        // So Farms tab opens this farm instead of the main list.
-        armFarmReturnFromMortality();
       };
     }, [farmIdParam, houseFlockIdParam, jumpParam, loadFarms, navigation]),
   );

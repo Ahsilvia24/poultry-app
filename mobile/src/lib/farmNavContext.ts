@@ -10,9 +10,8 @@ let currentFarmId: string | null = null;
 let currentHouseFlockId: string | null = null;
 
 /**
- * When leaving Mortality, Farms should open this farm (not the list).
- * Cleared once farm detail successfully focuses, or when the user
- * explicitly re-taps Farms to return to the list.
+ * One-shot Mortality → farm-detail return. Only Back to House should
+ * open a farm; the Farms tab always shows the list.
  */
 let pendingFarmReturn: {
   farmId: string;
@@ -40,7 +39,7 @@ export function clearHouseFlockNavContext() {
   currentHouseFlockId = null;
 }
 
-/** Call when leaving Mortality so Farms can open the selected farm. */
+/** @deprecated Farms tab always opens the list. Kept for Back-to-House helpers. */
 export function armFarmReturnFromMortality() {
   if (!currentFarmId) {
     pendingFarmReturn = null;
