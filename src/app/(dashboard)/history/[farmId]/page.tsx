@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { differenceInCalendarDays, format } from "date-fns";
 import { auth } from "@/lib/auth";
@@ -8,7 +7,7 @@ import {
   calcPercentage,
 } from "@/lib/mortality/calculations";
 import { formatNumber, formatPct } from "@/lib/utils";
-import { Button, Card, PageHeader } from "@/components/ui";
+import { BackHeader, Card } from "@/components/ui";
 import { DeleteFlockButton, ReactivateFlockButton } from "@/components/FarmOpsForms";
 import { SettlementForm } from "@/components/SettlementForm";
 
@@ -131,14 +130,11 @@ export default async function FarmHistoryPage({ params }: { params: Params }) {
 
   return (
     <div>
-      <PageHeader
-        title={`History — ${farm.farmName}`}
+      <BackHeader
+        href={`/farms/${farm.id}`}
+        backLabel="Farm"
+        title="History"
         subtitle="Previous flocks and performance comparison"
-        actions={
-          <Link href={`/farms/${farm.id}`}>
-            <Button variant="secondary">Back to farm</Button>
-          </Link>
-        }
       />
 
       {current ? (

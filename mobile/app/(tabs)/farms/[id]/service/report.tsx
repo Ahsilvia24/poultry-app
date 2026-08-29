@@ -24,7 +24,7 @@ import {
   CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
 import { TimeScrollPickerField } from "../../../../../src/components/TimeScrollPicker";
-import { Card, PageHeader } from "../../../../../src/components/ui";
+import { BackHeader, Card } from "../../../../../src/components/ui";
 import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
 import { createServiceReportDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
@@ -137,8 +137,11 @@ export default function ServiceReportScreen() {
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
       >
-        <Pressable
-          onPress={() => {
+        <BackHeader
+          backLabel="Checklists"
+          title={editing ? "Edit Service Report" : "Service Report"}
+          accessibilityLabel="Back to checklists"
+          onBack={() => {
             if (router.canGoBack()) router.back();
             else
               router.replace({
@@ -146,13 +149,6 @@ export default function ServiceReportScreen() {
                 params: { id: farmId },
               });
           }}
-          style={{ marginBottom: 8 }}
-        >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Checklists</Text>
-        </Pressable>
-        <PageHeader
-          title={editing ? "Edit Service Report" : "Service Report"}
-          subtitle={farmName}
         />
 
         <Card>

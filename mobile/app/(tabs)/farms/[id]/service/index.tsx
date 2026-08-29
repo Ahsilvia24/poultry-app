@@ -1,9 +1,8 @@
 import { Pressable, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getFarmDetail } from "../../../../../src/repos/data";
 import { colors, styles } from "../../../../../src/theme";
-import { Card, PageHeader } from "../../../../../src/components/ui";
+import { BackHeader, Card } from "../../../../../src/components/ui";
 
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -36,18 +35,15 @@ export default function ServiceFarmPickerScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const farmId = paramId(params.id);
 
-  let farmName = "Farm";
-  try {
-    farmName = getFarmDetail(farmId)?.farm.farmName ?? farmName;
-  } catch {
-    // keep placeholder
-  }
-
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <View style={[styles.content, { flex: 1 }]}>
-        <Pressable
-          onPress={() => {
+        <BackHeader
+          backLabel="Farm"
+          title="Service Farm"
+          subtitle="Choose a checklist"
+          accessibilityLabel="Back to farm"
+          onBack={() => {
             if (router.canGoBack()) router.back();
             else
               router.replace({
@@ -55,13 +51,7 @@ export default function ServiceFarmPickerScreen() {
                 params: { id: farmId },
               });
           }}
-          style={{ marginBottom: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="Back to farm"
-        >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← {farmName}</Text>
-        </Pressable>
-        <PageHeader title="Service Farm" subtitle="Choose a checklist" />
+        />
         <View style={{ gap: 10 }}>
           {FORMS.map((form) => (
             <Pressable

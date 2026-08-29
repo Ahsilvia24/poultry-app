@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createLastFeedOrderAction } from "@/app/actions/lfo";
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
-import { Card, PageHeader } from "@/components/ui";
+import { BackHeader, Card } from "@/components/ui";
 import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 
@@ -77,16 +76,7 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
 
   return (
     <div>
-      <Link
-        href="/lfo/new"
-        className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
-      >
-        <span aria-hidden="true" className="text-xl leading-none">
-          ←
-        </span>
-        Choose farm
-      </Link>
-      <PageHeader title={farm.farmName} />
+      <BackHeader href="/lfo/new" backLabel="Choose farm" title={farm.farmName} />
 
       <Card>
         <LfoInventoryForm

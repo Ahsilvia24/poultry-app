@@ -20,7 +20,7 @@ import { colors, styles } from "../../../../src/theme";
 import {
   Card,
   Metric,
-  PageHeader,
+  BackHeader,
   PrimaryButton,
   SectionTitle,
   formatNumber,
@@ -198,19 +198,15 @@ export default function FarmHistoryScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       >
-        <Pressable
-          onPress={() => {
+        <BackHeader
+          backLabel="Farm"
+          title="History"
+          subtitle="Previous flocks and performance comparison"
+          accessibilityLabel="Back to farm"
+          onBack={() => {
             if (router.canGoBack()) router.back();
             else router.replace({ pathname: "/(tabs)/farms/[id]", params: { id: farmId } });
           }}
-          style={{ marginBottom: 8 }}
-        >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back to farm</Text>
-        </Pressable>
-
-        <PageHeader
-          title={`History — ${data?.farm.farmName ?? "Farm"}`}
-          subtitle="Previous flocks and performance comparison"
         />
 
         {error ? (

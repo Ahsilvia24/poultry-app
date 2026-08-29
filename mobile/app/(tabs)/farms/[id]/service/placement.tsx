@@ -22,7 +22,7 @@ import {
   CompactHouseValueGrid,
   CompactBackupSettings,
 } from "../../../../../src/components/serviceForms/fields";
-import { Card, PageHeader } from "../../../../../src/components/ui";
+import { BackHeader, Card } from "../../../../../src/components/ui";
 import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
 import { createPlacementDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
@@ -119,8 +119,11 @@ export default function PlacementChecklistScreen() {
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
       >
-        <Pressable
-          onPress={() => {
+        <BackHeader
+          backLabel="Checklists"
+          title={editing ? "Edit Placement Checklist" : "Placement Checklist"}
+          accessibilityLabel="Back to checklists"
+          onBack={() => {
             if (router.canGoBack()) router.back();
             else
               router.replace({
@@ -128,13 +131,6 @@ export default function PlacementChecklistScreen() {
                 params: { id: farmId },
               });
           }}
-          style={{ marginBottom: 8 }}
-        >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Checklists</Text>
-        </Pressable>
-        <PageHeader
-          title={editing ? "Edit Placement Checklist" : "Placement Checklist"}
-          subtitle={farmName}
         />
 
         <Card>

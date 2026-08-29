@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { ButtonHTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 
@@ -121,6 +122,40 @@ export function PageHeader({
         {subtitle ? <p className="mt-0.5 text-sm text-stone-600 md:mt-1 md:text-base">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+    </div>
+  );
+}
+
+export function BackHeader({
+  href,
+  backLabel,
+  title,
+  subtitle,
+}: {
+  href: string;
+  backLabel: string;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href={href}
+          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
+        >
+          <span aria-hidden="true" className="text-xl leading-none">
+            ←
+          </span>
+          {backLabel}
+        </Link>
+        <h1 className="min-w-0 flex-1 text-right text-xl font-bold tracking-tight text-stone-900 md:text-3xl">
+          {title}
+        </h1>
+      </div>
+      {subtitle ? (
+        <p className="mt-1 text-right text-sm text-stone-600 md:text-base">{subtitle}</p>
+      ) : null}
     </div>
   );
 }

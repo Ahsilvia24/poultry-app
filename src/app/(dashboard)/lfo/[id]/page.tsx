@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { format } from "date-fns";
 import { auth } from "@/lib/auth";
@@ -9,7 +8,7 @@ import {
   updateLastFeedOrderAction,
 } from "@/app/actions/lfo";
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
-import { Card, PageHeader } from "@/components/ui";
+import { BackHeader, Card } from "@/components/ui";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 import { catchPartsFromFeedUpAt } from "@/lib/lfo/calculate";
 
@@ -82,16 +81,9 @@ export default async function EditLfoPage({ params }: { params: Params }) {
 
   return (
     <div>
-      <Link
+      <BackHeader
         href="/lfo"
-        className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
-      >
-        <span aria-hidden="true" className="text-xl leading-none">
-          ←
-        </span>
-        LFOs
-      </Link>
-      <PageHeader
+        backLabel="LFOs"
         title={lfo.farm.farmName}
         subtitle="Edit last feed order"
       />

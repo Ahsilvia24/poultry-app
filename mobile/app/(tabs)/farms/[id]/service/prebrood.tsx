@@ -20,7 +20,7 @@ import {
   CommentsField,
   CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
-import { Card, PageHeader } from "../../../../../src/components/ui";
+import { BackHeader, Card } from "../../../../../src/components/ui";
 import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
 import { createPrebroodDraft } from "../../../../../src/lib/serviceForms/defaults";
 import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/format";
@@ -90,8 +90,11 @@ export default function PrebroodChecklistScreen() {
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
       >
-        <Pressable
-          onPress={() => {
+        <BackHeader
+          backLabel="Checklists"
+          title={editing ? "Edit Prebrood Checklist" : "Prebrood Checklist"}
+          accessibilityLabel="Back to checklists"
+          onBack={() => {
             if (router.canGoBack()) router.back();
             else
               router.replace({
@@ -99,13 +102,6 @@ export default function PrebroodChecklistScreen() {
                 params: { id: farmId },
               });
           }}
-          style={{ marginBottom: 8 }}
-        >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Checklists</Text>
-        </Pressable>
-        <PageHeader
-          title={editing ? "Edit Prebrood Checklist" : "Prebrood Checklist"}
-          subtitle={farmName}
         />
 
         <Card>

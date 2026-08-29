@@ -24,57 +24,61 @@ export function PageHeader({
 export function BackHeader({
   backLabel,
   title,
+  subtitle,
   onBack,
   accessibilityLabel,
 }: {
   backLabel: string;
   title: string;
+  subtitle?: string;
   onBack: () => void;
   accessibilityLabel?: string;
 }) {
   return (
-    <View
-      style={{
-        marginBottom: 16,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 10,
-      }}
-    >
-      <Pressable
-        onPress={onBack}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel ?? `Back to ${backLabel}`}
-        hitSlop={8}
+    <View style={{ marginBottom: 16 }}>
+      <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: 2,
-          flexShrink: 0,
-          minHeight: 44,
+          justifyContent: "space-between",
+          gap: 10,
         }}
       >
-        <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
-        <Text
+        <Pressable
+          onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel ?? `Back to ${backLabel}`}
+          hitSlop={8}
           style={{
-            color: colors.accentDark,
-            fontWeight: "700",
-            fontSize: 17,
-            fontFamily: styles.title.fontFamily,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 2,
+            flexShrink: 0,
+            minHeight: 44,
           }}
         >
-          {backLabel}
+          <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
+          <Text
+            style={{
+              color: colors.accentDark,
+              fontWeight: "700",
+              fontSize: 17,
+              fontFamily: styles.title.fontFamily,
+            }}
+          >
+            {backLabel}
+          </Text>
+        </Pressable>
+        <Text
+          style={[styles.title, { flex: 1, minWidth: 0, textAlign: "right", fontSize: 24 }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {title}
         </Text>
-      </Pressable>
-      <Text
-        style={[styles.title, { flex: 1, minWidth: 0, textAlign: "right", fontSize: 24 }]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.7}
-      >
-        {title}
-      </Text>
+      </View>
+      {subtitle ? <Text style={[styles.subtitle, { textAlign: "right" }]}>{subtitle}</Text> : null}
     </View>
   );
 }
