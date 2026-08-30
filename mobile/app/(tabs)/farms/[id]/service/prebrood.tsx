@@ -9,7 +9,7 @@ import {
   View,
   type ScrollView as ScrollViewType,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DatePickerField } from "../../../../../src/components/DatePickerField";
 import {
@@ -34,6 +34,7 @@ import {
   useExistingServiceForm,
   useRefreshDraftHouseMetrics,
   useServiceFarmContext,
+  goToServiceFarm,
 } from "../../../../../src/lib/serviceForms/useServiceFarm";
 import { colors, styles } from "../../../../../src/theme";
 
@@ -43,7 +44,6 @@ function paramId(value: string | string[] | undefined) {
 }
 
 export default function PrebroodChecklistScreen() {
-  const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[]; fresh?: string | string[] }>();
   const farmId = paramId(params.id);
   const fresh = paramId(params.fresh) === "1";
@@ -105,14 +105,7 @@ export default function PrebroodChecklistScreen() {
           backLabel="Checklists"
           title={editing ? "Edit Prebrood Checklist" : "Prebrood Checklist"}
           accessibilityLabel="Back to checklists"
-          onBack={() => {
-            if (router.canGoBack()) router.back();
-            else
-              router.replace({
-                pathname: "/(tabs)/farms/[id]/service",
-                params: { id: farmId },
-              });
-          }}
+          onBack={() => goToServiceFarm(farmId)}
         />
 
         <Card>
