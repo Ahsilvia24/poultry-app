@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
+  allowServiceFormDraftSave,
+  blockServiceFormDraftSave,
   completeServiceForm,
   deleteServiceFormDraft,
   getFarmDetail,
@@ -90,6 +92,7 @@ export function useCompleteServiceForm(farmId: string, opts?: {
     generatorHours?: number | null;
   }) {
     if (saving) return;
+    blockServiceFormDraftSave(farmId, input.form.kind);
     setSaving(true);
     setError(null);
     try {
@@ -119,11 +122,17 @@ export function useCompleteServiceForm(farmId: string, opts?: {
       } catch {
         // Visit is saved even if share sheet fails / is dismissed.
       }
+      try {
+        deleteServiceFormDraft(farmId, form.kind);
+      } catch {
+        // Draft should already be gone.
+      }
       router.replace({
         pathname: "/(tabs)/farms/[id]/service",
         params: { id: farmId },
       });
     } catch (e) {
+      allowServiceFormDraftSave(farmId, input.form.kind);
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
@@ -176,10 +185,17 @@ export function useAutosaveServiceFormDraft(
 ) {
   const formRef = useRef(form);
   formRef.current = form;
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
+
+  useEffect(() => {
+    if (farmId) allowServiceFormDraftSave(farmId, kind);
+  }, [farmId, kind]);
 
   useEffect(() => {
     if (!enabled || !farmId) return;
     const t = setTimeout(() => {
+      if (!enabledRef.current) return;
       try {
         saveServiceFormDraft(farmId, kind, formRef.current);
       } catch {
@@ -192,13 +208,13 @@ export function useAutosaveServiceFormDraft(
   useFocusEffect(
     useCallback(() => {
       return () => {
-        if (!enabled || !farmId) return;
+        if (!enabledRef.current || !farmId) return;
         try {
           saveServiceFormDraft(farmId, kind, formRef.current);
         } catch {
           // Offline draft is best-effort.
         }
       };
-    }, [enabled, farmId, kind]),
+    }, [farmId, kind]),
   );
 }

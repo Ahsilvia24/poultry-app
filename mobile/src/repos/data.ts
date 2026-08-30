@@ -4528,7 +4528,22 @@ export function completeServiceForm(input: {
     ],
   );
 
+  deleteServiceFormDraft(input.farmId, input.formKind);
   return { id, visitId };
+}
+
+const blockedDraftSaves = new Set<string>();
+
+function draftSaveKey(farmId: string, formKind: ServiceFormKind) {
+  return `${farmId}:${formKind}`;
+}
+
+export function blockServiceFormDraftSave(farmId: string, formKind: ServiceFormKind) {
+  blockedDraftSaves.add(draftSaveKey(farmId, formKind));
+}
+
+export function allowServiceFormDraftSave(farmId: string, formKind: ServiceFormKind) {
+  blockedDraftSaves.delete(draftSaveKey(farmId, formKind));
 }
 
 function ensureServiceFormDraftsTable() {
@@ -4578,6 +4593,7 @@ export function saveServiceFormDraft(
   formKind: ServiceFormKind,
   payload: unknown,
 ) {
+  if (blockedDraftSaves.has(draftSaveKey(farmId, formKind))) return;
   ensureServiceFormDraftsTable();
   getDb().runSync(
     `INSERT INTO service_form_drafts (farm_id, form_kind, payload_json, updated_at)
