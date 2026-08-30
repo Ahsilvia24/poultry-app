@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -9,7 +9,7 @@ import {
   View,
   type ScrollView as ScrollViewType,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DatePickerField } from "../../../../../src/components/DatePickerField";
 import {
@@ -22,6 +22,8 @@ import {
 } from "../../../../../src/components/serviceForms/fields";
 import { BackHeader, Card } from "../../../../../src/components/ui";
 import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
+import { withPrebroodLoggedHours } from "../../../../../src/lib/generator";
+import { getLatestGeneratorHours } from "../../../../../src/repos/data";
 import { createPrebroodDraft, hydratePrebroodForm } from "../../../../../src/lib/serviceForms/defaults";
 import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/format";
 import { applyLiveHouseMetrics, prefillHouseRows } from "../../../../../src/lib/serviceForms/prefill";
@@ -75,9 +77,30 @@ export default function PrebroodChecklistScreen() {
   useAutosaveServiceFormDraft(farmId, "prebrood", form, !existing && !saving);
   useRefreshDraftHouseMetrics(farmId, !existing && !saving, setForm);
 
-  function patch(p: Partial<PrebroodForm>) {
-    setForm((prev) => ({ ...prev, ...p }));
+  function pullLoggedHours(next: PrebroodForm): PrebroodForm {
+    if (next.generatorHoursCheckedOk !== "yes" || !farmId) {
+      return { ...next, generatorHoursLogged: "" };
+    }
+    try {
+      return withPrebroodLoggedHours(
+        next,
+        getLatestGeneratorHours(farmId),
+        detail?.farm.numberOfGenerators,
+      );
+    } catch {
+      return next;
+    }
   }
+
+  function patch(p: Partial<PrebroodForm>) {
+    setForm((prev) => pullLoggedHours({ ...prev, ...p }));
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      setForm((prev) => pullLoggedHours(prev));
+    }, [farmId, detail?.farm.numberOfGenerators]),
+  );
 
   function patchHouse(houseNumber: number, p: Partial<PrebroodForm["houses"][number]>) {
     setForm((prev) => ({
@@ -297,6 +320,11 @@ export default function PrebroodChecklistScreen() {
             value={form.generatorHoursCheckedOk}
             onChange={(generatorHoursCheckedOk) => patch({ generatorHoursCheckedOk })}
           />
+          {form.generatorHoursCheckedOk === "yes" && form.generatorHoursLogged ? (
+            <Text style={{ color: colors.muted, fontWeight: "600", marginBottom: 8 }}>
+              {form.generatorHoursLogged}
+            </Text>
+          ) : null}
         </Card>
 
         <CommentsField

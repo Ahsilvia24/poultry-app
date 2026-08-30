@@ -196,6 +196,7 @@ export function createPrebroodDraft(input?: {
     generatorServicedOk: "yes",
     generatorServiceDate: "",
     generatorHoursCheckedOk: "yes",
+    generatorHoursLogged: "",
     comments: "",
   };
 }
@@ -208,5 +209,6 @@ export function hydratePrebroodForm(form: PrebroodForm): PrebroodForm {
       form.generatorHoursCheckedOk === "no" || form.generatorHoursCheckedOk === "yes"
         ? form.generatorHoursCheckedOk
         : "yes",
+    generatorHoursLogged: form.generatorHoursLogged ?? "",
   };
 }

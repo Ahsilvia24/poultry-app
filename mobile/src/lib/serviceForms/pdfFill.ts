@@ -274,6 +274,26 @@ function markYesNo(
   markCheck(ctx, noName, value === "no", noWidget);
 }
 
+/** Stamp readings on the Generator Hours row, same column as the service date. */
+function stampBesideLabel(ctx: Ctx, value: string, rowName: string, columnName: string) {
+  const v = String(value ?? "").trim();
+  if (!v) return;
+  const row = widgetRect(ctx.map, rowName);
+  const column = widgetRect(ctx.map, columnName);
+  if (!row) return;
+  const size = 8;
+  const x = (column?.x ?? row.x - 90) + 1.5;
+  const maxW = Math.max(4, row.x - 4 - x);
+  ctx.page.drawText(v, {
+    x,
+    y: row.y + Math.max(0.5, (row.h - size) * 0.35),
+    size,
+    font: ctx.font,
+    color: rgb(0, 0, 0),
+    maxWidth: maxW,
+  });
+}
+
 function fillCommentLines(ctx: Ctx, names: string[], text: string) {
   const fontSize = 8;
   const lineWidths = names.map((name) => {
@@ -572,6 +592,9 @@ function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
     { xPad: 12 },
   );
   markYesNo(ctx, "Check Box201", "Check Box207", data.generatorHoursCheckedOk);
+  if (data.generatorHoursCheckedOk === "yes") {
+    stampBesideLabel(ctx, data.generatorHoursLogged, "Check Box201", "Text110");
+  }
 
   const leftoverComments = fillCommentLines(ctx, [...PREBROOD_COMMENT_FIELDS], data.comments);
   setText(ctx, "Text111", data.serviceTech, 10, { yNudge: -3 });
