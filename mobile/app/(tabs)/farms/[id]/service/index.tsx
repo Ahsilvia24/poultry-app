@@ -18,6 +18,7 @@ import {
 import type { AnyServiceForm, ServiceFormKind } from "../../../../../src/lib/serviceForms/types";
 import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/format";
 import { shareServiceFormPdf } from "../../../../../src/lib/serviceForms/sharePdf";
+import { goToFarmFromService } from "../../../../../src/lib/serviceForms/useServiceFarm";
 
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -146,14 +147,7 @@ export default function ServiceFarmPickerScreen() {
           backLabel="Farm"
           title="Service Farm"
           accessibilityLabel="Back to farm"
-          onBack={() => {
-            if (router.canGoBack()) router.back();
-            else
-              router.replace({
-                pathname: "/(tabs)/farms/[id]",
-                params: { id: farmId },
-              });
-          }}
+          onBack={() => goToFarmFromService(farmId)}
         />
 
         <View

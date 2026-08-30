@@ -9,7 +9,7 @@ import {
   View,
   type ScrollView as ScrollViewType,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DatePickerField } from "../../../../../src/components/DatePickerField";
 import { OptionPicker, SelectField } from "../../../../../src/components/OptionPicker";
@@ -46,6 +46,7 @@ import {
   useExistingServiceForm,
   useRefreshDraftHouseMetrics,
   useServiceFarmContext,
+  goToServiceFarm,
 } from "../../../../../src/lib/serviceForms/useServiceFarm";
 import { colors, styles } from "../../../../../src/theme";
 
@@ -62,7 +63,6 @@ function hydratePlacement(payload: PlacementForm): PlacementForm {
 }
 
 export default function PlacementChecklistScreen() {
-  const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[]; fresh?: string | string[] }>();
   const farmId = paramId(params.id);
   const fresh = paramId(params.fresh) === "1";
@@ -145,14 +145,7 @@ export default function PlacementChecklistScreen() {
           backLabel="Checklists"
           title={editing ? "Edit Placement Checklist" : "Placement Checklist"}
           accessibilityLabel="Back to checklists"
-          onBack={() => {
-            if (router.canGoBack()) router.back();
-            else
-              router.replace({
-                pathname: "/(tabs)/farms/[id]/service",
-                params: { id: farmId },
-              });
-          }}
+          onBack={() => goToServiceFarm(farmId)}
         />
 
         <Card>

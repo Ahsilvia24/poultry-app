@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import {
   allowServiceFormDraftSave,
   blockServiceFormDraftSave,
@@ -20,6 +20,22 @@ import { shareServiceFormPdf } from "./sharePdf";
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
   return value ?? "";
+}
+
+/** Pop stacked Service Farm screens and land on the farm in one step. */
+export function goToFarmFromService(farmId: string) {
+  router.dismissTo({
+    pathname: "/(tabs)/farms/[id]",
+    params: { id: farmId },
+  });
+}
+
+/** Return to Service Farm without leaving another copy on the stack. */
+export function goToServiceFarm(farmId: string) {
+  router.dismissTo({
+    pathname: "/(tabs)/farms/[id]/service",
+    params: { id: farmId },
+  });
 }
 
 export function useServiceFarmContext(farmId: string) {
@@ -92,7 +108,6 @@ export function useCompleteServiceForm(farmId: string, opts?: {
   serviceFormId?: string | null;
   existingVisitId?: string | null;
 }) {
-  const router = useRouter();
   const params = useLocalSearchParams<{ formId?: string | string[] }>();
   const routeFormId = paramId(params.formId);
   const serviceFormId = opts?.serviceFormId || routeFormId || null;
@@ -142,10 +157,7 @@ export function useCompleteServiceForm(farmId: string, opts?: {
       } catch {
         // Draft should already be gone.
       }
-      router.replace({
-        pathname: "/(tabs)/farms/[id]/service",
-        params: { id: farmId },
-      });
+      goToServiceFarm(farmId);
     } catch (e) {
       allowServiceFormDraftSave(farmId, input.form.kind);
       setError(e instanceof Error ? e.message : "Save failed");
