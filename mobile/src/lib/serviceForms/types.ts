@@ -188,6 +188,7 @@ export type PrebroodForm = {
   dialerTestOk: YesNo;
   generatorServicedOk: YesNo;
   generatorServiceDate: string; // YYYY-MM-DD when serviced
+  generatorHoursCheckedOk: YesNo;
   comments: string;
 };
 

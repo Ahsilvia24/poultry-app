@@ -22,7 +22,7 @@ import {
 } from "../../../../../src/components/serviceForms/fields";
 import { BackHeader, Card } from "../../../../../src/components/ui";
 import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
-import { createPrebroodDraft } from "../../../../../src/lib/serviceForms/defaults";
+import { createPrebroodDraft, hydratePrebroodForm } from "../../../../../src/lib/serviceForms/defaults";
 import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/format";
 import { applyLiveHouseMetrics, prefillHouseRows } from "../../../../../src/lib/serviceForms/prefill";
 import type { PrebroodForm } from "../../../../../src/lib/serviceForms/types";
@@ -58,11 +58,11 @@ export default function PrebroodChecklistScreen() {
   const [datePicker, setDatePicker] = useState<"form" | "generator" | null>(null);
   const [form, setForm] = useState<PrebroodForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
-      return withSavedServiceTech(existing.payload as PrebroodForm);
+      return withSavedServiceTech(hydratePrebroodForm(existing.payload as PrebroodForm));
     }
     const draft = readInProgressDraft<PrebroodForm>(farmId, "prebrood", fresh);
     if (draft?.kind === "prebrood") {
-      const hydrated = withSavedServiceTech(draft);
+      const hydrated = withSavedServiceTech(hydratePrebroodForm(draft));
       return detail ? applyLiveHouseMetrics(hydrated, detail) : hydrated;
     }
     return createPrebroodDraft({
@@ -292,6 +292,11 @@ export default function PrebroodChecklistScreen() {
               />
             </View>
           ) : null}
+          <YesNoField
+            label="Generator hours checked"
+            value={form.generatorHoursCheckedOk}
+            onChange={(generatorHoursCheckedOk) => patch({ generatorHoursCheckedOk })}
+          />
         </Card>
 
         <CommentsField

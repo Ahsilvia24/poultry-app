@@ -195,6 +195,18 @@ export function createPrebroodDraft(input?: {
     dialerTestOk: "yes",
     generatorServicedOk: "yes",
     generatorServiceDate: "",
+    generatorHoursCheckedOk: "yes",
     comments: "",
+  };
+}
+
+/** Fill fields added after a checklist was saved. */
+export function hydratePrebroodForm(form: PrebroodForm): PrebroodForm {
+  return {
+    ...form,
+    generatorHoursCheckedOk:
+      form.generatorHoursCheckedOk === "no" || form.generatorHoursCheckedOk === "yes"
+        ? form.generatorHoursCheckedOk
+        : "yes",
   };
 }

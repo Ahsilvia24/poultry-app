@@ -571,6 +571,7 @@ function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
     8,
     { xPad: 12 },
   );
+  markYesNo(ctx, "Check Box201", "Check Box207", data.generatorHoursCheckedOk);
 
   const leftoverComments = fillCommentLines(ctx, [...PREBROOD_COMMENT_FIELDS], data.comments);
   setText(ctx, "Text111", data.serviceTech, 10, { yNudge: -3 });
