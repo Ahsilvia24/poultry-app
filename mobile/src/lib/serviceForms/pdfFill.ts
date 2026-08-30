@@ -22,7 +22,7 @@ import type {
   YesNo,
 } from "./types";
 import { formatMinVentPair, formatServiceShortDate } from "./format";
-import { formatMinVentBoxNumbers } from "./minVentLabel";
+import { minVentSideBoxes } from "./minVentLabel";
 
 type FieldWidget = {
   x: number;
@@ -157,6 +157,39 @@ function setText(
     color: rgb(0, 0, 0),
     maxWidth: Math.max(4, r.w - xPad - 2),
   });
+}
+
+/** Stamp on/off into the two halves of a printed "n / n" box. Do not draw a slash. */
+function stampMinVentSides(ctx: Ctx, name: string, on: string, off: string, fontSize = 7) {
+  const left = String(on ?? "").trim();
+  const right = String(off ?? "").trim();
+  if (!left && !right) return;
+  const r = widgetRect(ctx.map, name);
+  if (!r) return;
+  const size = Math.min(fontSize, Math.max(5, r.h * 0.82));
+  const y = r.y + Math.max(0.5, (r.h - size) * 0.35);
+  const { left: leftBox, right: rightBox } = minVentSideBoxes(r);
+  if (left) {
+    const tw = ctx.font.widthOfTextAtSize(left, size);
+    ctx.page.drawText(left, {
+      x: Math.max(leftBox.x + 0.5, leftBox.x + leftBox.w - tw),
+      y,
+      size,
+      font: ctx.font,
+      color: rgb(0, 0, 0),
+      maxWidth: Math.max(4, leftBox.w),
+    });
+  }
+  if (right) {
+    ctx.page.drawText(right, {
+      x: rightBox.x,
+      y,
+      size,
+      font: ctx.font,
+      color: rgb(0, 0, 0),
+      maxWidth: Math.max(4, rightBox.w - 1),
+    });
+  }
 }
 
 function markCheck(ctx: Ctx, name: string, on: boolean, widgetIndex = 0) {
@@ -384,18 +417,8 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
   setText(ctx, "Text69", data.ventOpeningInches, 7);
   setText(ctx, "Text70", data.cfmPerFt2MinVent, 7);
   setText(ctx, "Text89", data.fansSizeAndCount, 7);
-  setText(
-    ctx,
-    "Text71",
-    formatMinVentBoxNumbers(data.minVentActualOn, data.minVentActualOff),
-    7,
-  );
-  setText(
-    ctx,
-    "Text88",
-    formatMinVentBoxNumbers(data.minVentRecommendedOn, data.minVentRecommendedOff),
-    7,
-  );
+  stampMinVentSides(ctx, "Text71", data.minVentActualOn, data.minVentActualOff);
+  stampMinVentSides(ctx, "Text88", data.minVentRecommendedOn, data.minVentRecommendedOff);
 
   const sorted = [...data.houses].sort((a, b) => a.houseNumber - b.houseNumber);
   const litterFields = [

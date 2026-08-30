@@ -1,9 +1,13 @@
-export function formatMinVentBoxNumbers(on: string, off: string) {
-  const a = on.trim();
-  const b = off.trim();
-  if (!a && !b) return "";
-  if (a && b) return `${a} / ${b}`;
-  return a || b;
+/** Leave this many points on each side of the form's printed slash. */
+export const MIN_VENT_SLASH_GAP = 3.5;
+
+export function minVentSideBoxes(widget: { x: number; w: number }, slashGap = MIN_VENT_SLASH_GAP) {
+  const mid = widget.x + widget.w / 2;
+  return {
+    mid,
+    left: { x: widget.x, w: Math.max(0, mid - slashGap - widget.x) },
+    right: { x: mid + slashGap, w: Math.max(0, widget.x + widget.w - (mid + slashGap)) },
+  };
 }
 
 export function recommendedWeekLabel(week: number | "" | null | undefined) {
