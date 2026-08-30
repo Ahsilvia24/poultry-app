@@ -73,6 +73,7 @@ import { ClipboardIconButton } from "../../../../src/components/ClipboardIconBut
 import { compactCatchTimeLabel } from "../../../../src/lib/time-slots";
 import { ConfirmDialog } from "../../../../src/components/ConfirmDialog";
 import { useExclusiveSwipeables } from "../../../../src/lib/useExclusiveSwipeables";
+import { useVisualViewportBox } from "../../../../src/lib/useKeyboardInset";
 
 /** "2026-07-25" → "07-25-2026" */
 function formatUsDate(dateKey: string) {
@@ -587,9 +588,14 @@ export default function FarmDetailScreen() {
   const tempInputRef = useRef<TextInput>(null);
 
   const tempHouseId = tempHouse?.id ?? null;
+  const tempViewportBox = useVisualViewportBox(tempHouseId != null);
   useEffect(() => {
     if (!tempHouseId) return;
-    const t = setTimeout(() => tempInputRef.current?.focus(), 280);
+    const t = setTimeout(() => {
+      const input = tempInputRef.current as (TextInput & { focus?: (opts?: FocusOptions) => void }) | null;
+      if (Platform.OS === "web") input?.focus?.({ preventScroll: true });
+      else input?.focus?.();
+    }, 280);
     return () => clearTimeout(t);
   }, [tempHouseId]);
   const [addingHouse, setAddingHouse] = useState<AddHouseDraft | null>(null);
@@ -2090,7 +2096,18 @@ export default function FarmDetailScreen() {
         onRequestClose={closeTempModal}
       >
         <KeyboardAvoidingView
-          style={{ flex: 1 }}
+          style={[
+            { flex: 1 },
+            Platform.OS === "web" && tempViewportBox.height > 0
+              ? {
+                  position: "fixed" as const,
+                  top: tempViewportBox.top,
+                  height: tempViewportBox.height,
+                  left: 0,
+                  right: 0,
+                }
+              : null,
+          ]}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
         >
@@ -2102,11 +2119,8 @@ export default function FarmDetailScreen() {
             }}
           >
             <Pressable style={{ flex: 1 }} onPress={closeTempModal} />
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="none"
-              automaticallyAdjustKeyboardInsets
-              contentContainerStyle={{
+            <View
+              style={{
                 backgroundColor: "#fff",
                 borderTopLeftRadius: 16,
                 borderTopRightRadius: 16,
@@ -2128,7 +2142,6 @@ export default function FarmDetailScreen() {
                 }
                 decimal
                 placeholder="e.g. 78"
-                autoFocus
                 inputRef={tempInputRef}
               />
               {tempError ? (
@@ -2151,7 +2164,7 @@ export default function FarmDetailScreen() {
                   <PrimaryButton label="Cancel" secondary onPress={closeTempModal} />
                 </View>
               )}
-            </ScrollView>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
