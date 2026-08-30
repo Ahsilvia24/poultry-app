@@ -3,6 +3,7 @@
  * templates. Field positions come from a fillable AcroForm map (JSON), so the
  * shared PDF has no widget borders — only the printed form grid + stamped ink.
  */
+import { Platform } from "react-native";
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
 import {
@@ -224,6 +225,15 @@ async function loadTemplate(moduleRef: number) {
   const asset = Asset.fromModule(moduleRef);
   await asset.downloadAsync();
   const uri = asset.localUri ?? asset.uri;
+  if (!uri) throw new Error("Could not load PDF template");
+
+  // expo-file-system read/write is native-only. Web must fetch the asset.
+  if (Platform.OS === "web") {
+    const res = await fetch(uri);
+    if (!res.ok) throw new Error("Could not load PDF template");
+    return PDFDocument.load(new Uint8Array(await res.arrayBuffer()));
+  }
+
   const b64 = await FileSystem.readAsStringAsync(uri, {
     encoding: FileSystem.EncodingType.Base64,
   });
@@ -547,7 +557,13 @@ function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
   setText(ctx, "Text111", data.serviceTech, 10);
 }
 
-export async function buildServiceFormPdf(form: AnyServiceForm): Promise<string> {
+export type BuiltServicePdf = {
+  uri: string;
+  bytes: Uint8Array;
+  filename: string;
+};
+
+export async function buildServiceFormPdf(form: AnyServiceForm): Promise<BuiltServicePdf> {
   if (form.kind === "service_report") return buildServiceReportPdf(form);
   if (form.kind === "placement") return buildPlacementPdf(form);
   return buildPrebroodPdf(form);
@@ -630,15 +646,18 @@ function pdfFileName(kind: string, farmName: string, date: string) {
   return `${kind}-${farm}-${day}.pdf`;
 }
 
-async function writePdfToCache(doc: PDFDocument, filename: string) {
+async function writePdfToCache(doc: PDFDocument, filename: string): Promise<BuiltServicePdf> {
   const bytes = await doc.save({ updateFieldAppearances: false });
+  if (Platform.OS === "web") {
+    return { uri: "", bytes, filename };
+  }
   const base64 =
     typeof Buffer !== "undefined" ? Buffer.from(bytes).toString("base64") : uint8ToBase64(bytes);
   const uri = `${FileSystem.cacheDirectory}${filename}`;
   await FileSystem.writeAsStringAsync(uri, base64, {
     encoding: FileSystem.EncodingType.Base64,
   });
-  return uri;
+  return { uri, bytes, filename };
 }
 
 function uint8ToBase64(bytes: Uint8Array) {
