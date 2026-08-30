@@ -14,6 +14,7 @@ import { MaxCoolingChart } from "@/components/MaxCoolingChart";
 import { TempCurveChart } from "@/components/TempCurveChart";
 import { ToolsQuickLinks } from "@/components/ToolsQuickLinks";
 import { ToolsSectionPanel } from "@/components/ToolsSectionPanel";
+import { WeightProjectionManualTile } from "@/components/WeightProjectionManualTile";
 import {
   ToolsWeightProjections,
   type WeightFarmPayload,
@@ -196,6 +197,13 @@ export default async function ToolsPage({
             farms={weightFarms}
             initialFarmId={sp.farmId ?? null}
           />
+        </ToolsSectionPanel>
+
+        <ToolsSectionPanel
+          hashId="weight-projections-manual"
+          title="Weight Projections Manual"
+        >
+          <WeightProjectionManualTile />
         </ToolsSectionPanel>
 
         <ToolsSectionPanel

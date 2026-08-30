@@ -70,6 +70,16 @@ export function weightBandAround(input: {
   ];
 }
 
+/** Low / Catch Day / High around a typed catch weight (± CATCH_WEIGHT_BAND_LBS). */
+export function catchWeightBandFromLbs(midWeightLbs: number): WeightBandProjection[] {
+  return weightBandAround({
+    dateKey: "1970-01-01",
+    ageDays: 0,
+    midWeightLbs,
+    midLabel: "Catch Day",
+  });
+}
+
 export function catchWeightProjections(input: {
   placementDate: string;
   catchDate: string;

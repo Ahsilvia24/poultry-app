@@ -33,6 +33,7 @@ import { colors, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { useKeyboardInset } from "../../src/lib/useKeyboardInset";
 import { Card, Chip } from "../../src/components/ui";
+import { WeightProjectionManualTile } from "../../src/components/WeightProjectionManualTile";
 import { WeightProjectionTile } from "../../src/components/WeightProjectionTile";
 import {
   CoolCellsChart,
@@ -41,10 +42,11 @@ import {
   TempCurveChart,
 } from "../../src/components/toolsCharts";
 
-type SectionKey = "temp" | "cool" | "max" | "lights" | "weight" | "vent";
+type SectionKey = "temp" | "cool" | "max" | "lights" | "weight" | "weightManual" | "vent";
 
 const QUICK_LINKS: Array<{ key: SectionKey; label: string }> = [
   { key: "weight", label: "Weight Proj." },
+  { key: "weightManual", label: "Weight Manual" },
   { key: "vent", label: "Ventilation" },
   { key: "temp", label: "Temp Curve" },
   { key: "cool", label: "Cool Cells" },
@@ -76,6 +78,7 @@ export default function ToolsScreen() {
     max: true,
     lights: true,
     weight: true,
+    weightManual: true,
     vent: true,
   });
   const [cfmOpen, setCfmOpen] = useState<"bird" | "fan" | null>(null);
@@ -204,6 +207,7 @@ export default function ToolsScreen() {
       paramSection === "max" ||
       paramSection === "lights" ||
       paramSection === "weight" ||
+      paramSection === "weightManual" ||
       paramSection === "vent"
         ? paramSection
         : paramFarmId
@@ -352,6 +356,16 @@ export default function ToolsScreen() {
                   }
                 }}
               />
+            </SectionPanel>
+          ) : (
+            <SectionAnchor />
+          )}
+        </View>
+
+        <View onLayout={(e) => onSectionLayout("weightManual", e)} collapsable={false}>
+          {open.weightManual ? (
+            <SectionPanel title="Weight Projections Manual" onTop={scrollToTop}>
+              <WeightProjectionManualTile />
             </SectionPanel>
           ) : (
             <SectionAnchor />

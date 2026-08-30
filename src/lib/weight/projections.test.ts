@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { catchWeightProjections, weightBandAround } from "./projections.ts";
+import { catchWeightBandFromLbs, catchWeightProjections, weightBandAround } from "./projections.ts";
 
 describe("catchWeightProjections", () => {
   it("puts catch day in the middle with ±0.20 lb low and high", () => {
@@ -16,6 +16,17 @@ describe("catchWeightProjections", () => {
       ["Low", "Catch Day", "High"],
     );
     assert.ok(rows.every((r) => r.ageDays === 42));
+    assert.equal(rows[0]!.weightLbs, 6.1);
+    assert.equal(rows[1]!.weightLbs, 6.3);
+    assert.equal(rows[2]!.weightLbs, 6.5);
+  });
+
+  it("builds Low / Catch Day / High from a typed catch weight", () => {
+    const rows = catchWeightBandFromLbs(6.3);
+    assert.deepEqual(
+      rows.map((r) => r.label),
+      ["Low", "Catch Day", "High"],
+    );
     assert.equal(rows[0]!.weightLbs, 6.1);
     assert.equal(rows[1]!.weightLbs, 6.3);
     assert.equal(rows[2]!.weightLbs, 6.5);
