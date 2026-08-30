@@ -6,6 +6,7 @@ import {
   startOfDay,
   subDays,
 } from "date-fns";
+import { lfoTargetWeekday } from "../lfoSchedule";
 
 const DEFAULT_MARKET_AGE = 52;
 
@@ -86,13 +87,12 @@ export function weightProjectDate(catchDate: Date): Date {
 
 /**
  * LFO (based on catch day):
- * Mon–Wed kill → Friday before; Thu–Fri kill → Monday before.
+ * Mon kill → Thursday before; Tue–Wed kill → Friday before;
+ * Thu–Fri kill → Monday before; Sat–Sun kill → Tuesday before.
  */
 export function lfoDate(catchDate: Date): Date | null {
-  const dow = getDay(startOfDay(catchDate));
-  if (dow >= MONDAY && dow <= WEDNESDAY) return previousWeekday(catchDate, FRIDAY);
-  if (dow === THURSDAY || dow === FRIDAY) return previousWeekday(catchDate, MONDAY);
-  return null;
+  const target = lfoTargetWeekday(getDay(startOfDay(catchDate)));
+  return target == null ? null : previousWeekday(catchDate, target);
 }
 
 /**

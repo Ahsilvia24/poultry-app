@@ -202,7 +202,7 @@ async function main() {
   const today = startOfDay(new Date());
 
   // Catch dates chosen so Weight Projection / LFO land in the next week
-  const catchMon = upcomingWeekday(today, 1); // Mon → WP Tue before, LFO Fri before
+  const catchMon = upcomingWeekday(today, 1); // Mon → WP Tue before, LFO Thu before
   const catchThu = upcomingWeekday(today, 4); // Thu → WP Fri before, LFO Mon before
   const catchWed = upcomingWeekday(today, 3);
 
