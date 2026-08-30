@@ -107,23 +107,6 @@ export function ConsumptionRateCalculator({
             onPress={onFocusHead}
             fieldRef={headRef}
           />
-          {result ? (
-            <Text
-              style={{
-                fontFamily: fonts.sans,
-                fontSize: 16,
-                fontWeight: "800",
-                color: colors.text,
-                marginTop: 8,
-              }}
-            >
-              Consumption Rate: {formatNum(result.rate, 2)} lb/bird/day
-            </Text>
-          ) : (
-            <Text style={[styles.muted, { marginTop: 8 }]}>
-              Enter water and head count to calculate.
-            </Text>
-          )}
         </View>
         {result ? (
           <View style={{ alignItems: "flex-end", paddingTop: 4, gap: 4 }}>
@@ -132,6 +115,24 @@ export function ConsumptionRateCalculator({
           </View>
         ) : null}
       </View>
+      {result ? (
+        <Text
+          numberOfLines={1}
+          style={{
+            fontFamily: fonts.sans,
+            fontSize: 16,
+            fontWeight: "800",
+            color: colors.text,
+            marginTop: 8,
+          }}
+        >
+          Consumption Rate: {formatNum(result.rate, 2)} lb/bird/day
+        </Text>
+      ) : (
+        <Text style={[styles.muted, { marginTop: 8 }]}>
+          Enter water and head count to calculate.
+        </Text>
+      )}
     </Card>
   );
 }

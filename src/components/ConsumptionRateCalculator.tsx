@@ -140,16 +140,7 @@ export function ConsumptionRateCalculator({
                   ? Number(headCount).toLocaleString()
                   : "—"}
             </span>
-          </button>
-          {result ? (
-            <p className="pt-1 text-base font-extrabold text-stone-900">
-              Consumption Rate: {formatNum(result.rate, 2)} lb/bird/day
-            </p>
-          ) : (
-            <p className="pt-1 text-sm text-stone-500">
-              Enter water and head count to calculate.
-            </p>
-          )}
+            </button>
         </div>
         {result ? (
           <div className="shrink-0 pt-1 text-right text-sm text-stone-600">
@@ -158,6 +149,15 @@ export function ConsumptionRateCalculator({
           </div>
         ) : null}
       </div>
+      {result ? (
+        <p className="mt-2 whitespace-nowrap text-base font-extrabold text-stone-900">
+          Consumption Rate: {formatNum(result.rate, 2)} lb/bird/day
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-stone-500">
+          Enter water and head count to calculate.
+        </p>
+      )}
       {active ? (
         <div className="fixed inset-x-0 bottom-0 z-50">
           <button
