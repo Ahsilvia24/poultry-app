@@ -3,8 +3,8 @@
  * (and silent house-tile taps) open the right farm/house without a visible link.
  */
 import { useCallback } from "react";
-import { StackActions } from "@react-navigation/native";
 import { router, useNavigation } from "expo-router";
+import { findFarmsListNavigator, type NavLike } from "./farmNavStack";
 
 let currentFarmId: string | null = null;
 let currentHouseFlockId: string | null = null;
@@ -69,27 +69,32 @@ export function clearFarmReturnFromMortality() {
 }
 
 /**
+ * Show the farm list even when Service Farm (or farm detail) is the only
+ * remaining Farms-stack route. `popToTop` / `dismissTo` no-op in that case.
+ */
+export function showFarmList(navigation?: NavLike | null) {
+  pendingFarmReturn = null;
+  const farmsStack = findFarmsListNavigator(navigation);
+  if (farmsStack?.navigate) {
+    farmsStack.navigate("index");
+    return;
+  }
+  router.navigate("/(tabs)/farms");
+}
+
+/**
  * Leave a farm detail screen and show the farm list in one step.
  * `router.back()` is wrong here: opening several farms (list, dashboard,
  * mortality return) stacks them, so Back walks farm → farm → list.
  */
 export function goToFarmList() {
-  pendingFarmReturn = null;
-  router.dismissTo("/(tabs)/farms");
+  showFarmList(null);
 }
 
-/** Farm-detail hook: pop the Farms stack to the list, not one farm at a time. */
+/** Farm-detail hook: open the list, not one farm at a time. */
 export function useGoToFarmList() {
   const navigation = useNavigation();
   return useCallback(() => {
-    pendingFarmReturn = null;
-    const farmsStack = navigation.getParent();
-    const names = farmsStack?.getState?.()?.routeNames ?? [];
-    // Farms stack has `index` (list) and `[id]` (detail). Never popToTop the tab bar.
-    if (farmsStack && names.includes("index") && names.includes("[id]")) {
-      farmsStack.dispatch(StackActions.popToTop());
-      return;
-    }
-    router.dismissTo("/(tabs)/farms");
+    showFarmList(navigation);
   }, [navigation]);
 }

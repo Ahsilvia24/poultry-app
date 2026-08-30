@@ -90,8 +90,7 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 // "Back to House" opens a farm (via focusHouseFlockId).
                 if (!focused && route.name === "farms" && fromMortality) {
                   clearFarmReturnFromMortality();
-                  popNestedToRoot(tabRoute);
-                  navigation.navigate("farms");
+                  navigation.navigate("farms", { screen: "index" });
                   requestTabScrollTop("farms");
                   return;
                 }
@@ -105,9 +104,11 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
 
                 if (focused) {
                   // Re-tap Farms/LFO while already on that tab → root list.
+                  // `screen: "index"` is required: Service Farm lives in a nested
+                  // [id] stack, so popToTop on that stack only returns to the farm.
                   if (route.name === "farms") {
                     clearFarmReturnFromMortality();
-                    popNestedToRoot(tabRoute);
+                    navigation.navigate("farms", { screen: "index" });
                     requestTabScrollTop("farms");
                     return;
                   }

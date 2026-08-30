@@ -24,7 +24,9 @@ function paramId(value: string | string[] | undefined) {
 
 /** Pop stacked Service Farm screens and land on the farm in one step. */
 export function goToFarmFromService(farmId: string) {
-  router.dismissTo({
+  // navigate (not dismissTo): POP_TO /(tabs)/farms/[id] often targets the
+  // Farms stack that is already on [id], so the Service Farm screen stays.
+  router.navigate({
     pathname: "/(tabs)/farms/[id]",
     params: { id: farmId },
   });
@@ -32,7 +34,7 @@ export function goToFarmFromService(farmId: string) {
 
 /** Return to Service Farm without leaving another copy on the stack. */
 export function goToServiceFarm(farmId: string) {
-  router.dismissTo({
+  router.navigate({
     pathname: "/(tabs)/farms/[id]/service",
     params: { id: farmId },
   });
