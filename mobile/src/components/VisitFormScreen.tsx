@@ -17,14 +17,12 @@ import {
   createVisit,
   deleteVisit,
   getFarmDetail,
-  getServiceFormForVisit,
   getVisit,
   updateVisit,
 } from "../repos/data";
 import { birdAgeFromPlacement } from "../lib/mortality";
 import { todayKey } from "../lib/ids";
 import { VISIT_TYPE_LABELS, VISIT_TYPE_OPTIONS } from "../lib/visits";
-import type { ServiceFormKind } from "../lib/serviceForms/types";
 import { colors, styles } from "../theme";
 import { BackHeader, Card, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
@@ -33,60 +31,6 @@ import { ConfirmDialog } from "./ConfirmDialog";
 type Props = {
   farmId: string;
   visitId?: string;
-};
-
-const VISIT_SERVICE_FORM: Partial<
-  Record<
-    string,
-    {
-      kind: ServiceFormKind;
-      label: string;
-      path:
-        | "/(tabs)/farms/[id]/service/report"
-        | "/(tabs)/farms/[id]/service/placement"
-        | "/(tabs)/farms/[id]/service/prebrood";
-    }
-  >
-> = {
-  ROUTINE_SERVICE: {
-    kind: "service_report",
-    label: "View/Edit Service Report",
-    path: "/(tabs)/farms/[id]/service/report",
-  },
-  PLACEMENT: {
-    kind: "placement",
-    label: "View/Edit Placement",
-    path: "/(tabs)/farms/[id]/service/placement",
-  },
-  PREBROOD: {
-    kind: "prebrood",
-    label: "View/Edit Prebrood",
-    path: "/(tabs)/farms/[id]/service/prebrood",
-  },
-};
-
-const FORM_KIND_CTA: Record<
-  ServiceFormKind,
-  {
-    label: string;
-    path:
-      | "/(tabs)/farms/[id]/service/report"
-      | "/(tabs)/farms/[id]/service/placement"
-      | "/(tabs)/farms/[id]/service/prebrood";
-  }
-> = {
-  service_report: {
-    label: "View/Edit Service Report",
-    path: "/(tabs)/farms/[id]/service/report",
-  },
-  placement: {
-    label: "View/Edit Placement",
-    path: "/(tabs)/farms/[id]/service/placement",
-  },
-  prebrood: {
-    label: "View/Edit Prebrood",
-    path: "/(tabs)/farms/[id]/service/prebrood",
-  },
 };
 
 export function VisitFormScreen({ farmId, visitId }: Props) {
@@ -110,15 +54,6 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
     }
   }, [farmId]);
 
-  const linkedServiceForm = useMemo(() => {
-    if (!visitId) return null;
-    try {
-      return getServiceFormForVisit(farmId, visitId);
-    } catch {
-      return null;
-    }
-  }, [farmId, visitId]);
-
   const placementDate = farmDetail?.activeFlock?.placementDate ?? null;
   const flockId = farmDetail?.activeFlock?.id ?? initial?.flockId ?? null;
 
@@ -138,25 +73,6 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
     placementDate && visitDate
       ? birdAgeFromPlacement(placementDate, visitDate)
       : (initial?.birdAgeInDays ?? null);
-
-  const serviceFormCta = useMemo(() => {
-    if (!editing || !visitId) return null;
-    if (linkedServiceForm) {
-      const meta = FORM_KIND_CTA[linkedServiceForm.formKind];
-      return {
-        label: meta.label,
-        path: meta.path,
-        formId: linkedServiceForm.id,
-      };
-    }
-    const byType = VISIT_SERVICE_FORM[visitType];
-    if (!byType) return null;
-    return {
-      label: byType.label,
-      path: byType.path,
-      formId: null as string | null,
-    };
-  }, [editing, visitId, linkedServiceForm, visitType]);
 
   if (editing && !initial) {
     return (
@@ -363,33 +279,6 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
               />
             ) : null}
           </Card>
-
-          {serviceFormCta ? (
-            <Card style={{ marginTop: 14 }}>
-              <Text style={{ fontWeight: "800", fontSize: 16, color: colors.text, marginBottom: 6 }}>
-                Checklist
-              </Text>
-              <Text style={{ color: colors.muted, marginBottom: 12, lineHeight: 20 }}>
-                Open the saved checklist to make changes and export a new PDF.
-              </Text>
-              <PrimaryButton
-                label={serviceFormCta.label}
-                onPress={() =>
-                  router.push({
-                    pathname: serviceFormCta.path,
-                    params: {
-                      id: farmId,
-                      ...(serviceFormCta.formId
-                        ? { formId: serviceFormCta.formId }
-                        : visitId
-                          ? { visitId }
-                          : {}),
-                    },
-                  })
-                }
-              />
-            </Card>
-          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
 

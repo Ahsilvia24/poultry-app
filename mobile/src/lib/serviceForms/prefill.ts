@@ -5,6 +5,7 @@ function formatMinVentCycle(onSeconds: number, offSeconds: number) {
   return `${onSeconds} ON / ${offSeconds} OFF`;
 }
 import { emptyHouseRow } from "./defaults";
+import { mergeLiveHouseRows } from "./liveHouseMetrics";
 import type { ServiceHouseRow } from "./types";
 
 type FarmHouse = {
@@ -18,7 +19,7 @@ type FarmHouse = {
   loggedTemp?: string | null;
 };
 
-type FarmDetailLike = {
+export type FarmDetailLike = {
   farm: { farmName: string };
   activeFlock: { flockNumber: string } | null;
   houses: FarmHouse[];
@@ -44,6 +45,14 @@ export function prefillHouseRows(detail: FarmDetailLike): ServiceHouseRow[] {
     row.currentTemp = h.loggedTemp?.trim() || "";
     return row;
   });
+}
+
+/** When resuming a draft, pull latest logged temps and mortality from the farm. */
+export function applyLiveHouseMetrics<T extends { houses: ServiceHouseRow[] }>(
+  form: T,
+  detail: FarmDetailLike,
+): T {
+  return { ...form, houses: mergeLiveHouseRows(form.houses, prefillHouseRows(detail)) };
 }
 
 export function minVentForWeek(

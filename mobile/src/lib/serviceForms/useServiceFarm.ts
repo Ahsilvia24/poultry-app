@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   completeServiceForm,
@@ -10,7 +10,8 @@ import {
   saveServiceFormDraft,
   type StoredServiceForm,
 } from "../../repos/data";
-import type { AnyServiceForm, ServiceFormKind } from "./types";
+import { applyLiveHouseMetrics } from "./prefill";
+import type { AnyServiceForm, ServiceFormKind, ServiceHouseRow } from "./types";
 import { shareServiceFormPdf } from "./sharePdf";
 
 function paramId(value: string | string[] | undefined) {
@@ -112,19 +113,10 @@ export function useCompleteServiceForm(farmId: string, opts?: {
       } catch {
         // Visit is saved even if share sheet fails / is dismissed.
       }
-      if (editing || opts?.existingVisitId) {
-        if (router.canGoBack()) router.back();
-        else
-          router.replace({
-            pathname: "/(tabs)/farms/[id]",
-            params: { id: farmId },
-          });
-      } else {
-        router.replace({
-          pathname: "/(tabs)/farms/[id]",
-          params: { id: farmId },
-        });
-      }
+      router.replace({
+        pathname: "/(tabs)/farms/[id]/service",
+        params: { id: farmId },
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -148,6 +140,25 @@ export function readInProgressDraft<T>(
   } catch {
     return null;
   }
+}
+
+/** On resume, pull latest logged temps and mortality into a draft. */
+export function useRefreshDraftHouseMetrics<T extends { houses: ServiceHouseRow[] }>(
+  farmId: string,
+  enabled: boolean,
+  setForm: Dispatch<SetStateAction<T>>,
+) {
+  useFocusEffect(
+    useCallback(() => {
+      if (!enabled || !farmId) return;
+      try {
+        const latest = getFarmDetail(farmId);
+        setForm((prev) => applyLiveHouseMetrics(prev, latest));
+      } catch {
+        // Keep the draft as-is if farm detail cannot load.
+      }
+    }, [enabled, farmId, setForm]),
+  );
 }
 
 /** Auto-save an in-progress checklist so leaving the screen does not lose it. */
