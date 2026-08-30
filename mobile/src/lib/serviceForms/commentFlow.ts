@@ -11,6 +11,18 @@ export const PLACEMENT_COMMENT_FIELDS = [
   "Comments 9",
 ] as const;
 
+export const SERVICE_REPORT_COMMENT_FIELDS = [
+  "COMMENTS 1",
+  "COMMENTS 2",
+  "COMMENTS 3",
+  "Comments 4",
+  "Comments 5",
+  "Comments 6",
+  "Comments 7",
+  "Comments 8",
+  "Comments 9",
+] as const;
+
 export const MAX_PLACEMENT_COMMENT_PAGES = 12;
 
 export function splitCommentWords(text: string) {
