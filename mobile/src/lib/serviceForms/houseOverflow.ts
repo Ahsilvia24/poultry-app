@@ -1,11 +1,15 @@
-/** White-out only the printed 1–8 house-number column, left of Age. */
+/** White-out the printed 1–8 digits only — stay inside the # cell, off the grid lines. */
 export function continuationHouseNumberBox(ageX: number, ageY: number, ageH: number) {
-  const x = 14;
-  const w = Math.max(16, ageX - x - 1.25);
+  const insetX = 2.4;
+  const insetY = 2.2;
+  const left = 20.5;
+  const right = ageX - insetX;
+  const x = left;
+  const w = Math.max(9, right - x);
   return {
     x,
-    y: ageY + 0.4,
+    y: ageY + insetY,
     w,
-    h: Math.max(10, ageH - 0.8),
+    h: Math.max(6.5, ageH - insetY * 2),
   };
 }
