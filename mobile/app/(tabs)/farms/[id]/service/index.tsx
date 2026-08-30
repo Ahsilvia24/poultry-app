@@ -1,10 +1,15 @@
 import { useCallback, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../../../../../src/theme";
 import { BackHeader, Card, PrimaryButton } from "../../../../../src/components/ui";
+import { ConfirmDialog } from "../../../../../src/components/ConfirmDialog";
+import { useExclusiveSwipeables } from "../../../../../src/lib/useExclusiveSwipeables";
 import {
+  deleteServiceForm,
   deleteServiceFormDraft,
   listServiceFormDraftKinds,
   listServiceForms,
@@ -52,6 +57,9 @@ export default function ServiceFarmPickerScreen() {
   const [completed, setCompleted] = useState<StoredServiceForm[]>([]);
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<StoredServiceForm | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const swipe = useExclusiveSwipeables();
 
   useFocusEffect(
     useCallback(() => {
@@ -103,6 +111,24 @@ export default function ServiceFarmPickerScreen() {
       setShareError(e instanceof Error ? e.message : "Could not share PDF");
     } finally {
       setSharingId(null);
+    }
+  }
+
+  function confirmDelete(row: StoredServiceForm) {
+    swipe.closeAll();
+    setPendingDelete(row);
+  }
+
+  function runDelete() {
+    if (!pendingDelete) return;
+    try {
+      deleteServiceForm(farmId, pendingDelete.id);
+      setCompleted((prev) => prev.filter((row) => row.id !== pendingDelete.id));
+      setDeleteError(null);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Could not delete checklist");
+    } finally {
+      setPendingDelete(null);
     }
   }
 
@@ -215,29 +241,80 @@ export default function ServiceFarmPickerScreen() {
           <Text style={{ color: colors.muted }}>No completed checklists yet.</Text>
         ) : (
           completed.map((row) => (
-            <Card key={row.id} style={{ marginBottom: 10, paddingVertical: 12, paddingHorizontal: 14 }}>
-              <Pressable
-                onPress={() => openSaved(row)}
-                accessibilityRole="button"
-                accessibilityLabel={`View or edit ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
-              >
-                <Text style={{ fontWeight: "800", fontSize: 16, color: colors.text }}>
-                  {kindTitle(row.formKind)}
-                </Text>
-                <Text style={{ marginTop: 2, color: colors.muted, fontWeight: "600" }}>
-                  {formatServiceShortDate(row.formDate)}
-                </Text>
-              </Pressable>
-              <PrimaryButton
-                label={sharingId === row.id ? "Sharing…" : "Share PDF"}
-                secondary
-                onPress={() => void shareSaved(row)}
-                style={{ marginTop: 10 }}
-              />
-            </Card>
+            <Swipeable
+              key={row.id}
+              ref={swipe.setRef(row.id)}
+              overshootRight={false}
+              friction={2}
+              rightThreshold={40}
+              containerStyle={{ marginBottom: 10 }}
+              onSwipeableWillOpen={() => swipe.closeOthers(row.id)}
+              renderRightActions={() => (
+                <Pressable
+                  accessibilityLabel={`Delete ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
+                  onPress={() => confirmDelete(row)}
+                  style={{
+                    backgroundColor: colors.danger,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    width: 88,
+                    borderRadius: 14,
+                    marginLeft: 8,
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={22} color="#fff" />
+                  <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12, marginTop: 4 }}>
+                    Delete
+                  </Text>
+                </Pressable>
+              )}
+            >
+              <Card style={{ marginBottom: 0, paddingVertical: 12, paddingHorizontal: 14 }}>
+                <Pressable
+                  onPress={() => openSaved(row)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`View or edit ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
+                >
+                  <Text style={{ fontWeight: "800", fontSize: 16, color: colors.text }}>
+                    {kindTitle(row.formKind)}
+                  </Text>
+                  <Text style={{ marginTop: 2, color: colors.muted, fontWeight: "600" }}>
+                    {formatServiceShortDate(row.formDate)}
+                  </Text>
+                </Pressable>
+                <PrimaryButton
+                  label={sharingId === row.id ? "Sharing…" : "Share PDF"}
+                  secondary
+                  onPress={() => void shareSaved(row)}
+                  style={{ marginTop: 10 }}
+                />
+              </Card>
+            </Swipeable>
           ))
         )}
       </ScrollView>
+      <ConfirmDialog
+        visible={pendingDelete != null}
+        title={`Delete ${pendingDelete ? kindTitle(pendingDelete.formKind) : "checklist"}?`}
+        message={
+          pendingDelete
+            ? `${formatServiceShortDate(pendingDelete.formDate)} will be removed from this farm.`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        onConfirm={runDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
+      <ConfirmDialog
+        visible={deleteError != null}
+        title="Error"
+        message={deleteError ?? ""}
+        confirmLabel="OK"
+        cancelLabel="Dismiss"
+        onConfirm={() => setDeleteError(null)}
+        onCancel={() => setDeleteError(null)}
+      />
     </SafeAreaView>
   );
 }

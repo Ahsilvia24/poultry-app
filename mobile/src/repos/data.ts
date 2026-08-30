@@ -4333,6 +4333,23 @@ export function listServiceForms(farmId: string): StoredServiceForm[] {
   return rows.map(mapServiceFormRow);
 }
 
+export function deleteServiceForm(farmId: string, formId: string) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string; visit_id: string | null }>(
+    "SELECT id, visit_id FROM service_forms WHERE id = ? AND farm_id = ?",
+    [formId, farmId],
+  );
+  if (!existing) throw new Error("Checklist not found");
+  db.runSync("DELETE FROM service_forms WHERE id = ? AND farm_id = ?", [formId, farmId]);
+  if (existing.visit_id) {
+    db.runSync("DELETE FROM farm_visits WHERE id = ? AND farm_id = ?", [
+      existing.visit_id,
+      farmId,
+    ]);
+  }
+  return { success: true as const };
+}
+
 function serviceFormVisitMeta(formKind: ServiceFormKind) {
   const visitType =
     formKind === "service_report"
