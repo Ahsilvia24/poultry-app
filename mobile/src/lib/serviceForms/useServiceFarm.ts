@@ -6,6 +6,7 @@ import {
   completeServiceForm,
   deleteServiceFormDraft,
   getFarmDetail,
+  getLatestGeneratorHours,
   getServiceFormById,
   getServiceFormDraft,
   getServiceFormForVisit,
@@ -13,6 +14,7 @@ import {
   saveServiceFormDraft,
   type StoredServiceForm,
 } from "../../repos/data";
+import { withPrebroodLoggedHours } from "../generator";
 import { applyLiveHouseMetrics } from "./prefill";
 import type { AnyServiceForm, ServiceFormKind, ServiceHouseRow } from "./types";
 import { shareServiceFormPdf } from "./sharePdf";
@@ -140,7 +142,15 @@ export function useCompleteServiceForm(farmId: string, opts?: {
     try {
       let form = input.form;
       try {
-        form = applyLiveHouseMetrics(form, getFarmDetail(farmId));
+        const detail = getFarmDetail(farmId);
+        form = applyLiveHouseMetrics(form, detail);
+        if (form.kind === "prebrood") {
+          form = withPrebroodLoggedHours(
+            form,
+            getLatestGeneratorHours(farmId),
+            detail.farm.numberOfGenerators,
+          );
+        }
       } catch {
         // Save the in-memory form if farm detail cannot load.
       }

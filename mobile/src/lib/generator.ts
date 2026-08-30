@@ -33,6 +33,53 @@ export const GENERATOR_FIELD_DEFS = [
   { key: "gen4", label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
 ] as const;
 
+/** Newest-first logs → last reading for each generator. */
+export function lastLoggedGeneratorHours(
+  logsNewestFirst: GeneratorHours[],
+): GeneratorHours {
+  const last: GeneratorHours = {
+    gen1Hours: null,
+    gen2Hours: null,
+    gen3Hours: null,
+    gen4Hours: null,
+  };
+  for (const log of logsNewestFirst) {
+    for (const field of GENERATOR_FIELD_DEFS) {
+      if (last[field.hourKey] == null && log[field.hourKey] != null) {
+        last[field.hourKey] = log[field.hourKey];
+      }
+    }
+    if (GENERATOR_FIELD_DEFS.every((field) => last[field.hourKey] != null)) break;
+  }
+  return last;
+}
+
+/** Space-separated hours in gen 1… order. Skip gens with no log. */
+export function formatLoggedGeneratorHourList(
+  hours: GeneratorHours,
+  generatorCount?: number | null,
+): string {
+  const max =
+    generatorCount != null && generatorCount > 0 ? Math.min(4, Math.floor(generatorCount)) : 4;
+  return GENERATOR_FIELD_DEFS.slice(0, max)
+    .map((field) => hours[field.hourKey])
+    .filter((n): n is number => n != null && Number.isFinite(n))
+    .map((n) => formatGeneratorHours(n))
+    .join("  ");
+}
+
+export function withPrebroodLoggedHours<
+  T extends { generatorHoursCheckedOk?: string; generatorHoursLogged?: string },
+>(form: T, hours: GeneratorHours, generatorCount?: number | null): T {
+  if (form.generatorHoursCheckedOk !== "yes") {
+    return { ...form, generatorHoursLogged: "" };
+  }
+  return {
+    ...form,
+    generatorHoursLogged: formatLoggedGeneratorHourList(hours, generatorCount),
+  };
+}
+
 export function isGenHourKey(value: unknown): value is GenHourKey {
   return (
     value === "gen1Hours" ||

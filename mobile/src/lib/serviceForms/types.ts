@@ -189,6 +189,8 @@ export type PrebroodForm = {
   generatorServicedOk: YesNo;
   generatorServiceDate: string; // YYYY-MM-DD when serviced
   generatorHoursCheckedOk: YesNo;
+  /** Last logged hours per generator, stamped next to Generator Hours when yes. */
+  generatorHoursLogged: string;
   comments: string;
 };
 

@@ -41,6 +41,10 @@ import { getFarmOrder } from "../lib/appSettings";
 import { sortFarmsByOrder } from "../lib/farmOrder";
 import { VISIT_TYPE_LABELS } from "../lib/visits";
 import { normalizedLoggedTemp } from "../lib/serviceForms/liveHouseMetrics";
+import {
+  lastLoggedGeneratorHours,
+  type GeneratorHours,
+} from "../lib/generator";
 
 type MortRow = {
   mortality_date: string;
@@ -3770,6 +3774,30 @@ export function deleteIssue(farmId: string, issueId: string) {
   if (!existing) throw new Error("Issue not found");
   db.runSync("DELETE FROM farm_issues WHERE id = ? AND farm_id = ?", [issueId, farmId]);
   return { success: true as const };
+}
+
+/** Last hour-meter reading per generator (newest log that has that gen). */
+export function getLatestGeneratorHours(farmId: string): GeneratorHours {
+  const db = getDb();
+  const logs = db
+    .getAllSync<{
+      gen1_hours: number | null;
+      gen2_hours: number | null;
+      gen3_hours: number | null;
+      gen4_hours: number | null;
+    }>(
+      `SELECT gen1_hours, gen2_hours, gen3_hours, gen4_hours
+       FROM generator_logs WHERE farm_id = ?
+       ORDER BY log_date DESC, id DESC`,
+      [farmId],
+    )
+    .map((log) => ({
+      gen1Hours: log.gen1_hours,
+      gen2Hours: log.gen2_hours,
+      gen3Hours: log.gen3_hours,
+      gen4Hours: log.gen4_hours,
+    }));
+  return lastLoggedGeneratorHours(logs);
 }
 
 /* ─── Generator logs ───────────────────────────────────────────────────── */
