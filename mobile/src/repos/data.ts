@@ -2244,7 +2244,10 @@ export function deleteVisit(farmId: string, visitId: string) {
     [visitId, farmId],
   );
   if (!existing) throw new Error("Visit not found");
-  db.runSync("DELETE FROM service_forms WHERE visit_id = ? AND farm_id = ?", [visitId, farmId]);
+  db.runSync(
+    "UPDATE service_forms SET visit_id = NULL WHERE visit_id = ? AND farm_id = ?",
+    [visitId, farmId],
+  );
   db.runSync("DELETE FROM farm_visits WHERE id = ? AND farm_id = ?", [visitId, farmId]);
   return { success: true as const };
 }
