@@ -51,7 +51,7 @@ export type ServiceReportForm = {
   fansSizeAndCount: string;
   minVentActualOn: string;
   minVentActualOff: string;
-  minVentRecommendedWeek: number;
+  minVentRecommendedWeek: number | "";
   minVentRecommendedOn: string;
   minVentRecommendedOff: string;
   maxCfm: string;
@@ -118,7 +118,7 @@ export type PlacementForm = {
   fansSizeAndCount: string;
   minVentActualOn: string;
   minVentActualOff: string;
-  minVentRecommendedWeek: number;
+  minVentRecommendedWeek: number | "";
   minVentRecommendedOn: string;
   minVentRecommendedOff: string;
   houses: ServiceHouseRow[];
