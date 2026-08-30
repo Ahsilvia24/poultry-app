@@ -12,6 +12,7 @@ import {
 } from "@/lib/generator/format";
 import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_FARM_ORDER } from "@/lib/farm-order";
 import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
 import {
   farmIssueSchema,
@@ -610,7 +611,7 @@ export async function updateSettingsAction(formData: FormData) {
     defaultMarketAgeDays: formData.get("defaultMarketAgeDays"),
     notifyEmail: formData.get("notifyEmail") === "on",
     notifyInApp: formData.get("notifyInApp") === "on",
-    farmOrder: formData.get("farmOrder") || "name_asc",
+    farmOrder: formData.get("farmOrder") || DEFAULT_FARM_ORDER,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid settings" };
 
@@ -632,7 +633,7 @@ export async function updateSettingsAction(formData: FormData) {
       defaultMarketAgeDays: parsed.data.defaultMarketAgeDays,
       notifyEmail: parsed.data.notifyEmail,
       notifyInApp: parsed.data.notifyInApp,
-      farmOrder: parsed.data.farmOrder ?? "name_asc",
+      farmOrder: parsed.data.farmOrder ?? DEFAULT_FARM_ORDER,
     },
     update: {
       dailyMortalityWarningPct: parsed.data.dailyMortalityWarningPct,
@@ -643,7 +644,7 @@ export async function updateSettingsAction(formData: FormData) {
       defaultMarketAgeDays: parsed.data.defaultMarketAgeDays,
       notifyEmail: parsed.data.notifyEmail,
       notifyInApp: parsed.data.notifyInApp,
-      farmOrder: parsed.data.farmOrder ?? "name_asc",
+      farmOrder: parsed.data.farmOrder ?? DEFAULT_FARM_ORDER,
     },
   });
 

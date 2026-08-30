@@ -7,6 +7,7 @@ import {
   flockWeekFromAge,
   summarizeForDate,
 } from "@/lib/mortality/calculations";
+import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
 import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
 import { CoolCellsChart } from "@/components/CoolCellsChart";
@@ -45,7 +46,8 @@ export default async function ToolsPage({
 
   const sp = searchParams ? await searchParams : {};
   const today = new Date();
-  const farmsRaw = await prisma.farm.findMany({
+  const [farmsFetched, orderRow] = await Promise.all([
+    prisma.farm.findMany({
     where: { userId: session.user.id, deletedAt: null, isActive: true },
     orderBy: { farmName: "asc" },
     include: {
@@ -78,7 +80,20 @@ export default async function ToolsPage({
         },
       },
     },
-  });
+    }),
+    prisma.userSettings.findUnique({
+      where: { userId: session.user.id },
+      select: { farmOrder: true },
+    }),
+  ]);
+
+  const farmsRaw = sortFarmsByOrder(
+    farmsFetched.map((farm) => ({
+      ...farm,
+      flockAgesDays: farm.flocks.map((fl) => birdAgeFromPlacement(fl.placementDate, today)),
+    })),
+    parseFarmOrder(orderRow?.farmOrder),
+  );
 
   const farms: VentilationFarmPayload[] = farmsRaw.map((farm) => {
     const active = farm.flocks[0] ?? null;

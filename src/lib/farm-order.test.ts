@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { sortFarmsByOrder } from "./farm-order.ts";
+import { DEFAULT_FARM_ORDER, parseFarmOrder, sortFarmsByOrder } from "./farm-order.ts";
+
+describe("parseFarmOrder", () => {
+  it("defaults to age high to low", () => {
+    assert.equal(DEFAULT_FARM_ORDER, "age_desc");
+    assert.equal(parseFarmOrder(null), "age_desc");
+    assert.equal(parseFarmOrder(undefined), "age_desc");
+    assert.equal(parseFarmOrder(""), "age_desc");
+  });
+});
 
 describe("sortFarmsByOrder", () => {
   it("sorts A–Z within active, then A–Z within inactive", () => {
