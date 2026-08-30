@@ -209,8 +209,7 @@ function stampBackupSettings(ctx: Ctx, values: string[]) {
   const present = rects.filter((r): r is FieldWidget => r != null);
   if (!present.length) return;
   const midY = present.reduce((sum, r) => sum + r.y + r.h / 2, 0) / present.length;
-  // AcroForm widgets sit on the top of the printed cells — drop into the box.
-  const y = midY - size * 0.4 - 3.5;
+  const y = midY - size * 0.45;
   values.forEach((value, i) => {
     const v = String(value ?? "").trim();
     const r = rects[i];
