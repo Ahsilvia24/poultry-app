@@ -2,6 +2,9 @@ export const FARM_ORDERS = ["age_desc", "age_asc", "name_asc", "name_desc"] as c
 
 export type FarmOrder = (typeof FARM_ORDERS)[number];
 
+/** Settings default when nothing has been saved. */
+export const DEFAULT_FARM_ORDER: FarmOrder = "age_desc";
+
 export const FARM_ORDER_OPTIONS: { key: FarmOrder; label: string }[] = [
   { key: "age_desc", label: "Age high to low" },
   { key: "age_asc", label: "Age low to high" },
@@ -10,7 +13,7 @@ export const FARM_ORDER_OPTIONS: { key: FarmOrder; label: string }[] = [
 ];
 
 export function parseFarmOrder(value: string | null | undefined): FarmOrder {
-  return FARM_ORDERS.includes(value as FarmOrder) ? (value as FarmOrder) : "name_asc";
+  return FARM_ORDERS.includes(value as FarmOrder) ? (value as FarmOrder) : DEFAULT_FARM_ORDER;
 }
 
 type FarmOrderable = {

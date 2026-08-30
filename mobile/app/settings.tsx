@@ -25,7 +25,7 @@ export default function SettingsScreen() {
   const [farmOrder, setFarmOrderValue] = useState<FarmOrder>(getFarmOrder);
   const [farmOrderOpen, setFarmOrderOpen] = useState(false);
   const farmOrderLabel =
-    FARM_ORDER_OPTIONS.find((option) => option.key === farmOrder)?.label ?? "Name A to Z";
+    FARM_ORDER_OPTIONS.find((option) => option.key === farmOrder)?.label ?? "Age high to low";
 
   function onChangeServiceTech(value: string) {
     setServiceTechName(value);
