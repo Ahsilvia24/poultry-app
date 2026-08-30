@@ -120,6 +120,51 @@ describe("buildGeneratorReportView", () => {
     assert.equal(gen2?.rows[1]?.exercised, null);
     assert.equal(gen2?.rows[0]?.exercised, null);
   });
+
+  it("does not add empty generators from the farm count", () => {
+    const view = buildGeneratorReportView([
+      farm({
+        numberOfGenerators: 4,
+        logs: [
+          {
+            id: "only-gen1",
+            farmId: "farm_1",
+            farmName: "Maple Grove",
+            logDate: "2026-08-29",
+            gen1Hours: 96.6,
+            gen2Hours: null,
+            gen3Hours: null,
+            gen4Hours: null,
+          },
+        ],
+      }),
+    ]);
+    assert.deepEqual(
+      view[0]?.generators.map((g) => g.label),
+      ["Gen 1"],
+    );
+  });
+
+  it("omits a farm whose log rows have no hours left", () => {
+    const view = buildGeneratorReportView([
+      farm({
+        numberOfGenerators: 3,
+        logs: [
+          {
+            id: "empty",
+            farmId: "farm_1",
+            farmName: "Maple Grove",
+            logDate: "2026-08-29",
+            gen1Hours: null,
+            gen2Hours: null,
+            gen3Hours: null,
+            gen4Hours: null,
+          },
+        ],
+      }),
+    ]);
+    assert.deepEqual(view, []);
+  });
 });
 
 describe("collectPriorHours", () => {
