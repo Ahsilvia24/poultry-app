@@ -52,9 +52,15 @@ export function excessGeneratorHourCells<T extends { id: string } & GeneratorHou
   return excess;
 }
 
-/** Newest-first logs → last reading for each generator. */
+function asLoggedHours(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Newest-first logs → last reading for each generator (dates may differ). */
 export function lastLoggedGeneratorHours(
-  logsNewestFirst: GeneratorHours[],
+  logsNewestFirst: Array<Partial<GeneratorHours>>,
 ): GeneratorHours {
   const last: GeneratorHours = {
     gen1Hours: null,
@@ -64,9 +70,9 @@ export function lastLoggedGeneratorHours(
   };
   for (const log of logsNewestFirst) {
     for (const field of GENERATOR_FIELD_DEFS) {
-      if (last[field.hourKey] == null && log[field.hourKey] != null) {
-        last[field.hourKey] = log[field.hourKey];
-      }
+      if (last[field.hourKey] != null) continue;
+      const hours = asLoggedHours(log[field.hourKey]);
+      if (hours != null) last[field.hourKey] = hours;
     }
     if (GENERATOR_FIELD_DEFS.every((field) => last[field.hourKey] != null)) break;
   }
@@ -74,28 +80,22 @@ export function lastLoggedGeneratorHours(
 }
 
 /** Space-separated hours in gen 1… order. Skip gens with no log. */
-export function formatLoggedGeneratorHourList(
-  hours: GeneratorHours,
-  generatorCount?: number | null,
-): string {
-  const max =
-    generatorCount != null && generatorCount > 0 ? Math.min(4, Math.floor(generatorCount)) : 4;
-  return GENERATOR_FIELD_DEFS.slice(0, max)
-    .map((field) => hours[field.hourKey])
-    .filter((n): n is number => n != null && Number.isFinite(n))
+export function formatLoggedGeneratorHourList(hours: GeneratorHours): string {
+  return GENERATOR_FIELD_DEFS.map((field) => asLoggedHours(hours[field.hourKey]))
+    .filter((n): n is number => n != null)
     .map((n) => formatGeneratorHours(n))
     .join("  ");
 }
 
 export function withPrebroodLoggedHours<
   T extends { generatorHoursCheckedOk?: string; generatorHoursLogged?: string },
->(form: T, hours: GeneratorHours, generatorCount?: number | null): T {
+>(form: T, hours: GeneratorHours): T {
   if (form.generatorHoursCheckedOk !== "yes") {
     return { ...form, generatorHoursLogged: "" };
   }
   return {
     ...form,
-    generatorHoursLogged: formatLoggedGeneratorHourList(hours, generatorCount),
+    generatorHoursLogged: formatLoggedGeneratorHourList(hours),
   };
 }
 
