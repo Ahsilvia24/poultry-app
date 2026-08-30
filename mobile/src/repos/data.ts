@@ -4364,6 +4364,76 @@ function serviceFormVisitMeta(formKind: ServiceFormKind) {
   return { visitType, visitLabel };
 }
 
+function readLiveVisit(farmId: string, visitId: string | null | undefined) {
+  const id = visitId?.trim();
+  if (!id) return null;
+  return (
+    getDb().getFirstSync<{
+      id: string;
+      flock_id: string | null;
+      visit_type: string;
+      general_bird_condition: string | null;
+      follow_up_required: number;
+      follow_up_date: string | null;
+    }>(
+      `SELECT id, flock_id, visit_type, general_bird_condition, follow_up_required, follow_up_date
+       FROM farm_visits WHERE id = ? AND farm_id = ?`,
+      [id, farmId],
+    ) ?? null
+  );
+}
+
+/** Update the linked visit when it still exists; otherwise log a new one and attach it. */
+function syncServiceFormVisit(input: {
+  serviceFormId: string;
+  farmId: string;
+  formKind: ServiceFormKind;
+  formDate: string;
+  visitNotes?: string | null;
+  linkedVisitId?: string | null;
+}) {
+  const db = getDb();
+  const { visitType, visitLabel } = serviceFormVisitMeta(input.formKind);
+  const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n") || visitLabel;
+  const visitDate = input.formDate.trim();
+  if (!visitDate) throw new Error("Visit date is required");
+
+  const existingVisit = readLiveVisit(input.farmId, input.linkedVisitId);
+  if (existingVisit) {
+    updateVisit(existingVisit.id, {
+      farmId: input.farmId,
+      flockId: existingVisit.flock_id,
+      visitDate,
+      visitType: existingVisit.visit_type,
+      generalBirdCondition: existingVisit.general_bird_condition,
+      notes,
+      followUpRequired: existingVisit.follow_up_required === 1,
+      followUpDate: existingVisit.follow_up_date,
+    });
+    return existingVisit.id;
+  }
+
+  const visit = createVisit({
+    farmId: input.farmId,
+    visitDate,
+    visitType,
+    notes,
+    generalBirdCondition: "Healthy",
+  });
+  const flockId =
+    visit.birdAgeInDays != null
+      ? db.getFirstSync<{ id: string }>(
+          "SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
+          [input.farmId],
+        )?.id ?? null
+      : null;
+  db.runSync(
+    "UPDATE service_forms SET visit_id = ?, flock_id = COALESCE(flock_id, ?) WHERE id = ? AND farm_id = ?",
+    [visit.id, flockId, input.serviceFormId, input.farmId],
+  );
+  return visit.id;
+}
+
 /** Update an existing checklist payload and sync the linked visit date/notes. */
 export function updateServiceForm(input: {
   serviceFormId: string;
@@ -4374,78 +4444,32 @@ export function updateServiceForm(input: {
   visitNotes?: string | null;
 }) {
   const db = getDb();
-  const existing = db.getFirstSync<{ id: string; visit_id: string | null }>(
-    "SELECT id, visit_id FROM service_forms WHERE id = ? AND farm_id = ?",
+  const existing = db.getFirstSync<{
+    id: string;
+    visit_id: string | null;
+    form_date: string;
+  }>(
+    "SELECT id, visit_id, form_date FROM service_forms WHERE id = ? AND farm_id = ?",
     [input.serviceFormId, input.farmId],
   );
   if (!existing) throw new Error("Service form not found");
 
+  const formDate = input.formDate.trim() || existing.form_date;
   db.runSync(
     `UPDATE service_forms
        SET form_kind = ?, form_date = ?, payload_json = ?
      WHERE id = ? AND farm_id = ?`,
-    [
-      input.formKind,
-      input.formDate,
-      JSON.stringify(input.payload),
-      input.serviceFormId,
-      input.farmId,
-    ],
+    [input.formKind, formDate, JSON.stringify(input.payload), input.serviceFormId, input.farmId],
   );
 
-  let visitId = existing.visit_id;
-  const { visitType, visitLabel } = serviceFormVisitMeta(input.formKind);
-  const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n");
-
-  if (visitId) {
-    const visit = db.getFirstSync<{
-      id: string;
-      flock_id: string | null;
-      visit_type: string;
-      general_bird_condition: string | null;
-      follow_up_required: number;
-      follow_up_date: string | null;
-    }>("SELECT * FROM farm_visits WHERE id = ? AND farm_id = ?", [
-      visitId,
-      input.farmId,
-    ]);
-    if (visit) {
-      updateVisit(visitId, {
-        farmId: input.farmId,
-        flockId: visit.flock_id,
-        visitDate: input.formDate,
-        visitType: visit.visit_type,
-        generalBirdCondition: visit.general_bird_condition,
-        notes: notes || visitLabel,
-        followUpRequired: visit.follow_up_required === 1,
-        followUpDate: visit.follow_up_date,
-      });
-    } else {
-      visitId = null;
-    }
-  }
-
-  if (!visitId) {
-    const visit = createVisit({
-      farmId: input.farmId,
-      visitDate: input.formDate,
-      visitType,
-      notes: notes || visitLabel,
-      generalBirdCondition: "Healthy",
-    });
-    visitId = visit.id;
-    const flockId =
-      visit.birdAgeInDays != null
-        ? db.getFirstSync<{ id: string }>(
-            "SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
-            [input.farmId],
-          )?.id ?? null
-        : null;
-    db.runSync(
-      "UPDATE service_forms SET visit_id = ?, flock_id = COALESCE(flock_id, ?) WHERE id = ? AND farm_id = ?",
-      [visitId, flockId, input.serviceFormId, input.farmId],
-    );
-  }
+  const visitId = syncServiceFormVisit({
+    serviceFormId: input.serviceFormId,
+    farmId: input.farmId,
+    formKind: input.formKind,
+    formDate,
+    visitNotes: input.visitNotes,
+    linkedVisitId: existing.visit_id,
+  });
 
   return { id: existing.id, visitId };
 }
@@ -4481,42 +4505,35 @@ export function completeServiceForm(input: {
     });
   }
 
+  const formDate = input.formDate.trim();
+  if (!formDate) throw new Error("Visit date is required");
+
   const { visitType, visitLabel } = serviceFormVisitMeta(input.formKind);
-  const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n");
+  const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n") || visitLabel;
 
   let visitId: string;
   let flockId: string | null = null;
 
-  if (input.existingVisitId) {
-    const visit = db.getFirstSync<{
-      id: string;
-      flock_id: string | null;
-      general_bird_condition: string | null;
-      follow_up_required: number;
-      follow_up_date: string | null;
-    }>("SELECT id, flock_id, general_bird_condition, follow_up_required, follow_up_date FROM farm_visits WHERE id = ? AND farm_id = ?", [
-      input.existingVisitId,
-      input.farmId,
-    ]);
-    if (!visit) throw new Error("Visit not found");
-    visitId = visit.id;
-    flockId = visit.flock_id;
+  const liveVisit = readLiveVisit(input.farmId, input.existingVisitId);
+  if (liveVisit) {
+    visitId = liveVisit.id;
+    flockId = liveVisit.flock_id;
     updateVisit(visitId, {
       farmId: input.farmId,
       flockId,
-      visitDate: input.formDate,
+      visitDate: formDate,
       visitType,
-      generalBirdCondition: visit.general_bird_condition ?? "Healthy",
-      notes: notes || visitLabel,
-      followUpRequired: visit.follow_up_required === 1,
-      followUpDate: visit.follow_up_date,
+      generalBirdCondition: liveVisit.general_bird_condition ?? "Healthy",
+      notes,
+      followUpRequired: liveVisit.follow_up_required === 1,
+      followUpDate: liveVisit.follow_up_date,
     });
   } else {
     const visit = createVisit({
       farmId: input.farmId,
-      visitDate: input.formDate,
+      visitDate: formDate,
       visitType,
-      notes: notes || visitLabel,
+      notes,
       generalBirdCondition: "Healthy",
     });
     visitId = visit.id;
@@ -4532,7 +4549,7 @@ export function completeServiceForm(input: {
   if (input.generatorHours != null && Number.isFinite(input.generatorHours)) {
     createGeneratorLog({
       farmId: input.farmId,
-      logDate: input.formDate,
+      logDate: formDate,
       gen1Hours: input.generatorHours,
       gen2Hours: null,
       gen3Hours: null,
@@ -4550,7 +4567,7 @@ export function completeServiceForm(input: {
       input.farmId,
       flockId,
       input.formKind,
-      input.formDate,
+      formDate,
       JSON.stringify(input.payload),
       visitId,
       new Date().toISOString(),

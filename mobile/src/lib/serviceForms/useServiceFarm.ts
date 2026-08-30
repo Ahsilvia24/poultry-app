@@ -9,6 +9,7 @@ import {
   getServiceFormById,
   getServiceFormDraft,
   getServiceFormForVisit,
+  getVisit,
   saveServiceFormDraft,
   type StoredServiceForm,
 } from "../../repos/data";
@@ -72,10 +73,19 @@ export function useExistingServiceForm(
   }, [farmId, formId, visitId, expectedKind]);
 }
 
-export function useEditVisitIdParam(): string | null {
+export function useEditVisitIdParam(farmId?: string): string | null {
   const params = useLocalSearchParams<{ visitId?: string | string[] }>();
   const visitId = paramId(params.visitId);
-  return visitId || null;
+  return useMemo(() => {
+    if (!visitId) return null;
+    if (!farmId) return visitId;
+    try {
+      getVisit(farmId, visitId);
+      return visitId;
+    } catch {
+      return null;
+    }
+  }, [farmId, visitId]);
 }
 
 export function useCompleteServiceForm(farmId: string, opts?: {
@@ -83,9 +93,14 @@ export function useCompleteServiceForm(farmId: string, opts?: {
   existingVisitId?: string | null;
 }) {
   const router = useRouter();
+  const params = useLocalSearchParams<{ formId?: string | string[] }>();
+  const routeFormId = paramId(params.formId);
+  const serviceFormId = opts?.serviceFormId || routeFormId || null;
+  const liveVisitId = useEditVisitIdParam(farmId);
+  const existingVisitId = serviceFormId ? null : opts?.existingVisitId || liveVisitId;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const editing = Boolean(opts?.serviceFormId);
+  const editing = Boolean(serviceFormId);
 
   async function complete(input: {
     form: AnyServiceForm;
@@ -105,12 +120,12 @@ export function useCompleteServiceForm(farmId: string, opts?: {
       completeServiceForm({
         farmId,
         formKind: form.kind,
-        formDate: form.date,
+        formDate: form.date?.trim() || "",
         payload: form,
         visitNotes: form.comments?.trim() || null,
         generatorHours: input.generatorHours ?? null,
-        serviceFormId: opts?.serviceFormId ?? null,
-        existingVisitId: opts?.serviceFormId ? null : opts?.existingVisitId ?? null,
+        serviceFormId,
+        existingVisitId,
       });
       try {
         deleteServiceFormDraft(farmId, input.form.kind);
