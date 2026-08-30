@@ -1,5 +1,11 @@
 import { getDb, getMeta, setMeta } from "./database";
 import { newId, todayKey, addDaysKey, daysBetween } from "../lib/ids";
+import {
+  GENERATOR_DEMO_WEEKS,
+  isDemoGeneratorFarmName,
+  matchesSeededDemoGeneratorHours,
+  seededDemoHoursForWeek,
+} from "../lib/generatorDemoSeed";
 import { calcTotalDailyLoss } from "../lib/mortality";
 import { mondayOfWeek } from "../lib/reports/field-log";
 import { buildFlockVisitSchedule } from "../lib/schedule";
@@ -412,54 +418,45 @@ function ensureSplitStaggeredActiveFlocks() {
   setMeta("split_staggered_active_flocks_v1", "1");
 }
 
-const GENERATOR_EXERCISE_HOURS = [0.8, 0.9, 1.0, 1.1] as const;
-const GENERATOR_DEMO_WEEKS = 6;
-
 function generatorsForFarmIndex(index: number) {
   return (index % 4) + 1;
 }
 
-function generatorDemoReading(baseHours: number, genIndex: number, weekFromOldest: number) {
-  let reading = baseHours + genIndex * 18;
-  for (let i = 0; i < weekFromOldest; i++) {
-    reading =
-      Math.round((reading + GENERATOR_EXERCISE_HOURS[(i + genIndex) % 4]) * 10) / 10;
-  }
-  return reading;
-}
-
-/** Hour-meter logs once a week for 6 weeks, 1–4 gens per farm, 0.8–1.1 hr exercised. */
+/**
+ * Sample-farm hour-meter history only — never walk every farm.
+ * First-install seed may fill Oak Hollow / Triple Place / etc.
+ * Already-seeded installs must not call this.
+ */
 function ensureDemoGeneratorLogs() {
   if (getMeta("generator_demo_logs_v1") === "1") return;
 
   const db = getDb();
   const today = todayKey();
-  const farms = db.getAllSync<{ id: string; farm_name: string }>(
-    `SELECT id, farm_name FROM farms
-     WHERE deleted_at IS NULL AND is_active = 1
-     ORDER BY farm_name ASC`,
-  );
+  const farms = db
+    .getAllSync<{ id: string; farm_name: string; number_of_generators: number | null }>(
+      `SELECT id, farm_name, number_of_generators FROM farms
+       WHERE deleted_at IS NULL AND is_active = 1
+       ORDER BY farm_name ASC`,
+    )
+    .filter((farm) => isDemoGeneratorFarmName(farm.farm_name));
 
   farms.forEach((farm, farmIndex) => {
-    const genCount = generatorsForFarmIndex(farmIndex);
-    db.runSync("UPDATE farms SET number_of_generators = ? WHERE id = ?", [
-      genCount,
-      farm.id,
-    ]);
-
-    let nameHash = 0;
-    for (let i = 0; i < farm.farm_name.length; i++) {
-      nameHash = (nameHash + farm.farm_name.charCodeAt(i)) % 80;
+    const existingGens = farm.number_of_generators;
+    const genCount =
+      existingGens != null && existingGens > 0
+        ? Math.min(4, existingGens)
+        : generatorsForFarmIndex(farmIndex);
+    if (existingGens == null || existingGens === 0) {
+      db.runSync("UPDATE farms SET number_of_generators = ? WHERE id = ?", [
+        genCount,
+        farm.id,
+      ]);
     }
-    const baseHours = 90 + nameHash;
 
     for (let w = GENERATOR_DEMO_WEEKS - 1; w >= 0; w--) {
       const logDate = addDaysKey(today, -7 * w);
       const weekFromOldest = GENERATOR_DEMO_WEEKS - 1 - w;
-      const hours: Array<number | null> = [null, null, null, null];
-      for (let g = 0; g < genCount; g++) {
-        hours[g] = generatorDemoReading(baseHours, g, weekFromOldest);
-      }
+      const hours = seededDemoHoursForWeek(farm.farm_name, genCount, weekFromOldest);
 
       db.runSync(
         "DELETE FROM generator_logs WHERE farm_id = ? AND log_date = ?",
@@ -475,6 +472,48 @@ function ensureDemoGeneratorLogs() {
   });
 
   setMeta("generator_demo_logs_v1", "1");
+}
+
+/**
+ * Remove hour-meter rows an earlier build injected onto real farms.
+ * Leaves sample-farm logs and any reading that does not match that seed formula.
+ */
+function stripInjectedDemoGeneratorLogsFromUserFarms() {
+  if (getMeta("generator_demo_logs_stripped_v1") === "1") return;
+
+  const db = getDb();
+  const farms = db.getAllSync<{ id: string; farm_name: string }>(
+    `SELECT id, farm_name FROM farms WHERE deleted_at IS NULL`,
+  );
+
+  for (const farm of farms) {
+    if (isDemoGeneratorFarmName(farm.farm_name)) continue;
+    const logs = db.getAllSync<{
+      id: string;
+      gen1_hours: number | null;
+      gen2_hours: number | null;
+      gen3_hours: number | null;
+      gen4_hours: number | null;
+    }>(
+      `SELECT id, gen1_hours, gen2_hours, gen3_hours, gen4_hours
+       FROM generator_logs WHERE farm_id = ?`,
+      [farm.id],
+    );
+    for (const log of logs) {
+      if (
+        matchesSeededDemoGeneratorHours(farm.farm_name, [
+          log.gen1_hours,
+          log.gen2_hours,
+          log.gen3_hours,
+          log.gen4_hours,
+        ])
+      ) {
+        db.runSync("DELETE FROM generator_logs WHERE id = ?", [log.id]);
+      }
+    }
+  }
+
+  setMeta("generator_demo_logs_stripped_v1", "1");
 }
 
 type FieldLogDemoStop = {
@@ -563,10 +602,9 @@ function ensureDemoFieldLogVisits() {
 
 export function seedIfNeeded() {
   if (getMeta("seeded") === "1") {
-    // Already has user/demo data — never inject new farms or mortality.
-    // Only re-anchor ages and backfill demo generator / field-log rows.
+    // Already has user/demo data — never inject farms, mortality, or generator logs.
     refreshDemoScheduleAges();
-    ensureDemoGeneratorLogs();
+    stripInjectedDemoGeneratorLogsFromUserFarms();
     ensureDemoFieldLogVisits();
     return;
   }
@@ -672,5 +710,6 @@ export function seedIfNeeded() {
   ensureMultiFlockDemoFarm();
   ensureSplitStaggeredActiveFlocks();
   ensureDemoGeneratorLogs();
+  stripInjectedDemoGeneratorLogsFromUserFarms();
   ensureDemoFieldLogVisits();
 }
