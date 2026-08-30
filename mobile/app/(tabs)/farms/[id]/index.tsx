@@ -73,7 +73,11 @@ import { ClipboardIconButton } from "../../../../src/components/ClipboardIconBut
 import { compactCatchTimeLabel } from "../../../../src/lib/time-slots";
 import { ConfirmDialog } from "../../../../src/components/ConfirmDialog";
 import { useExclusiveSwipeables } from "../../../../src/lib/useExclusiveSwipeables";
-import { useVisualViewportBox } from "../../../../src/lib/useKeyboardInset";
+import {
+  NumberKeypad,
+  appendKeypadDigit,
+  backspaceKeypadValue,
+} from "../../../../src/components/NumberKeypad";
 
 /** "2026-07-25" → "07-25-2026" */
 function formatUsDate(dateKey: string) {
@@ -585,19 +589,6 @@ export default function FarmDetailScreen() {
   } | null>(null);
   const [tempSaving, setTempSaving] = useState(false);
   const [tempError, setTempError] = useState<string | null>(null);
-  const tempInputRef = useRef<TextInput>(null);
-
-  const tempHouseId = tempHouse?.id ?? null;
-  const tempViewportBox = useVisualViewportBox(tempHouseId != null);
-  useEffect(() => {
-    if (!tempHouseId) return;
-    const t = setTimeout(() => {
-      const input = tempInputRef.current as (TextInput & { focus?: (opts?: FocusOptions) => void }) | null;
-      if (Platform.OS === "web") input?.focus?.({ preventScroll: true });
-      else input?.focus?.();
-    }, 280);
-    return () => clearTimeout(t);
-  }, [tempHouseId]);
   const [addingHouse, setAddingHouse] = useState<AddHouseDraft | null>(null);
   const [addHouseError, setAddHouseError] = useState<string | null>(null);
   const [addHouseSaving, setAddHouseSaving] = useState(false);
@@ -2095,78 +2086,78 @@ export default function FarmDetailScreen() {
         transparent
         onRequestClose={closeTempModal}
       >
-        <KeyboardAvoidingView
-          style={[
-            { flex: 1 },
-            Platform.OS === "web" && tempViewportBox.height > 0
-              ? {
-                  position: "fixed" as const,
-                  top: tempViewportBox.top,
-                  height: tempViewportBox.height,
-                  left: 0,
-                  right: 0,
-                }
-              : null,
-          ]}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+          }}
         >
+          <Pressable style={{ flex: 1 }} onPress={closeTempModal} />
           <View
             style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              overflow: "hidden",
             }}
           >
-            <Pressable style={{ flex: 1 }} onPress={closeTempModal} />
-            <View
-              style={{
-                backgroundColor: "#fff",
-                borderTopLeftRadius: 16,
-                borderTopRightRadius: 16,
-                padding: 20,
-                paddingBottom: Platform.OS === "ios" ? 28 : 24,
-              }}
-            >
+            <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
               <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
                 House {tempHouse?.houseNumber} temperature
               </Text>
-              <Text style={{ color: colors.muted, marginTop: 4, marginBottom: 14 }}>
-                Logged temps fill Current Temp on the Service Report and reset at midnight.
+              <Text
+                style={{
+                  marginTop: 12,
+                  fontSize: 40,
+                  fontWeight: "800",
+                  textAlign: "center",
+                  color: colors.text,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {tempHouse?.temp.trim() ? `${tempHouse.temp}°` : "—"}
               </Text>
-              <NativeNumInput
-                label="Temperature (°F)"
-                value={tempHouse?.temp ?? ""}
-                onChangeText={(v) =>
-                  setTempHouse((prev) => (prev ? { ...prev, temp: v } : prev))
-                }
-                decimal
-                placeholder="e.g. 78"
-                inputRef={tempInputRef}
-              />
               {tempError ? (
-                <Text style={{ color: colors.danger, fontWeight: "600", marginBottom: 10 }}>
+                <Text style={{ color: colors.danger, fontWeight: "600", marginTop: 8 }}>
                   {tempError}
                 </Text>
               ) : null}
-              {tempSaving ? (
-                <ActivityIndicator color={colors.accent} />
-              ) : (
-                <View style={{ gap: 10 }}>
-                  <PrimaryButton label="Save temperature" onPress={saveHouseTemp} />
-                  {tempHouse?.temp.trim() ? (
-                    <PrimaryButton
-                      label="Clear temperature"
-                      secondary
-                      onPress={clearHouseTemp}
-                    />
-                  ) : null}
-                  <PrimaryButton label="Cancel" secondary onPress={closeTempModal} />
-                </View>
-              )}
+              {tempHouse?.temp.trim() ? (
+                <Pressable
+                  onPress={clearHouseTemp}
+                  disabled={tempSaving}
+                  style={{ marginTop: 10, minHeight: 36, justifyContent: "center" }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear temperature"
+                >
+                  <Text style={{ textAlign: "center", fontWeight: "700", color: colors.muted }}>
+                    Clear temperature
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
+            <NumberKeypad
+              allowDecimal
+              onDigit={(d) =>
+                setTempHouse((prev) =>
+                  prev ? { ...prev, temp: appendKeypadDigit(prev.temp, d, true) } : prev,
+                )
+              }
+              onBackspace={() => {
+                if (!tempHouse?.temp) closeTempModal();
+                else
+                  setTempHouse((prev) =>
+                    prev ? { ...prev, temp: backspaceKeypadValue(prev.temp) } : prev,
+                  );
+              }}
+              onEnter={() => {
+                if (tempHouse?.temp.trim()) saveHouseTemp();
+                else clearHouseTemp();
+              }}
+            />
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       <Modal
