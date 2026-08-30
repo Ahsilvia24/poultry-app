@@ -8,6 +8,7 @@ import {
   getServiceFormDraft,
   getServiceFormForVisit,
   saveServiceFormDraft,
+  tryPushHouseLoggedTemp,
   type StoredServiceForm,
 } from "../../repos/data";
 import { applyLiveHouseMetrics } from "./prefill";
@@ -93,6 +94,9 @@ export function useCompleteServiceForm(farmId: string, opts?: {
     setSaving(true);
     setError(null);
     try {
+      for (const house of input.form.houses) {
+        tryPushHouseLoggedTemp(farmId, house.houseNumber, house.currentTemp);
+      }
       completeServiceForm({
         farmId,
         formKind: input.form.kind,

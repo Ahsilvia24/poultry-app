@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { mergeLiveHouseRows } from "./liveHouseMetrics.ts";
+import { mergeLiveHouseRows, normalizedLoggedTemp } from "./liveHouseMetrics.ts";
 import type { ServiceHouseRow } from "./types.ts";
 
 function row(partial: Partial<ServiceHouseRow> & { houseNumber: number }): ServiceHouseRow {
@@ -17,6 +17,19 @@ function row(partial: Partial<ServiceHouseRow> & { houseNumber: number }): Servi
     ammoniaPpm: "",
   };
 }
+
+describe("normalizedLoggedTemp", () => {
+  it("accepts a typed temperature", () => {
+    assert.equal(normalizedLoggedTemp("78"), "78");
+    assert.equal(normalizedLoggedTemp(" 80.5 "), "80.5");
+  });
+
+  it("skips empty or invalid values", () => {
+    assert.equal(normalizedLoggedTemp(""), null);
+    assert.equal(normalizedLoggedTemp("  "), null);
+    assert.equal(normalizedLoggedTemp("n/a"), null);
+  });
+});
 
 describe("mergeLiveHouseRows", () => {
   it("pulls logged temp and mortality into a draft house row", () => {
