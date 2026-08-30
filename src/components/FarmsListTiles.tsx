@@ -162,8 +162,8 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
         <div
           className={
             farm.isActive
-              ? "relative flex h-full min-h-[5.25rem] flex-col rounded-xl border-2 border-emerald-700 bg-white p-2.5 shadow-sm"
-              : "relative flex h-full min-h-[5.25rem] flex-col rounded-xl border-2 border-stone-300 bg-white p-2.5 shadow-sm"
+              ? "relative flex h-full flex-col rounded-xl border-2 border-emerald-700 bg-white p-2.5 shadow-sm"
+              : "relative flex h-full flex-col rounded-xl border-2 border-stone-300 bg-white p-2.5 shadow-sm"
           }
         >
           <Link
@@ -177,34 +177,32 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
               }
             }}
           />
-          <div className="relative z-10 flex min-h-0 flex-1 flex-col pointer-events-none">
+          <div className="relative z-10 min-w-0 pointer-events-none">
             <p className="truncate text-[15px] font-bold leading-snug text-stone-900">
               {farm.farmName}
             </p>
             {farm.growerName ? (
               <p className="mt-0.5 truncate text-[13px] leading-4 text-stone-600">{farm.growerName}</p>
             ) : null}
-            <div className="mt-auto pt-2">
-              {!farm.isActive ? (
-                <button
-                  type="button"
-                  className="pointer-events-auto relative z-10 mb-1 self-start text-xs font-bold text-red-800 hover:underline"
-                  aria-label={`Delete ${farm.farmName} permanently`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setConfirm("delete");
-                  }}
-                >
-                  Delete
-                </button>
-              ) : null}
-              {ageLabel ? (
-                <p className="text-[13px] font-semibold leading-4 text-stone-500">
-                  Flock Age: {ageLabel}
-                </p>
-              ) : null}
-            </div>
+            {ageLabel ? (
+              <p className="mt-0.5 text-[13px] font-semibold leading-4 text-stone-500">
+                Flock Age: {ageLabel}
+              </p>
+            ) : null}
+            {!farm.isActive ? (
+              <button
+                type="button"
+                className="pointer-events-auto relative z-10 mt-1 self-start text-xs font-bold text-red-800 hover:underline"
+                aria-label={`Delete ${farm.farmName} permanently`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setConfirm("delete");
+                }}
+              >
+                Delete
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -288,7 +286,7 @@ export function FarmsListTiles({ farms }: { farms: FarmsListTileFarm[] }) {
     <ExclusiveSwipeGroup>
       <div className="grid auto-rows-fr items-stretch gap-2 grid-cols-2 lg:grid-cols-3">
         {farms.map((farm) => (
-          <div key={farm.id} className="h-full min-h-[5.25rem]">
+          <div key={farm.id} className="h-full">
             <FarmsListTile farm={farm} />
           </div>
         ))}

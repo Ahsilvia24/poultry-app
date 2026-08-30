@@ -184,7 +184,6 @@ export default function FarmsScreen() {
                       padding: 10,
                       marginBottom: 0,
                       overflow: "hidden",
-                      minHeight: 92,
                       borderWidth: 2,
                       borderColor: farm.isActive ? colors.accentDark : "#d6d3d1",
                     }}
@@ -209,8 +208,6 @@ export default function FarmsScreen() {
                         });
                       }}
                       style={({ pressed }) => ({
-                        flex: 1,
-                        minHeight: 72,
                         opacity: pressed ? 0.85 : 1,
                       })}
                     >
@@ -247,8 +244,7 @@ export default function FarmsScreen() {
                             fontSize: 13,
                             fontWeight: "600",
                             color: colors.muted,
-                            marginTop: "auto",
-                            paddingTop: 8,
+                            marginTop: 2,
                             lineHeight: 16,
                           }}
                         >
