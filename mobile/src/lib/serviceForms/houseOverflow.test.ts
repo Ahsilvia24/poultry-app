@@ -9,9 +9,9 @@ describe("continuationHouseNumberBox", () => {
     const ageH = 14.835;
     const box = continuationHouseNumberBox(ageX, ageY, ageH);
     assert.ok(box.x > 18);
-    assert.ok(box.x + box.w < ageX - 2);
-    assert.ok(box.y > ageY + 1.5);
-    assert.ok(box.y + box.h < ageY + ageH - 1.5);
+    assert.ok(box.x + box.w < ageX - 3.4);
+    assert.ok(box.y > ageY + 0.6);
+    assert.ok(box.y + box.h < ageY + ageH - 2);
     assert.ok(box.w >= 9);
     assert.ok(box.h >= 6.5);
   });

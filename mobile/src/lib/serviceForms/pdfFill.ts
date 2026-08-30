@@ -128,7 +128,7 @@ function stampContinuationHouseNumber(ctx: Ctx, houseNumber: number, slot: numbe
   const tw = ctx.font.widthOfTextAtSize(label, size);
   ctx.page.drawText(label, {
     x: box.x + Math.max(0.5, (box.w - tw) / 2),
-    y: box.y + Math.max(0.5, (box.h - size) * 0.35),
+    y: box.y + Math.max(0.5, (box.h - size) * 0.55),
     size,
     font: ctx.font,
     color: rgb(0, 0, 0),
