@@ -52,6 +52,7 @@ import {
   formatGeneratorHours,
   hoursDelta,
   GENERATOR_FIELD_DEFS,
+  MAX_GENERATOR_HOUR_LOGS,
   type GenHourKey,
   type GeneratorHours,
 } from "../../../../src/lib/generator";
@@ -352,7 +353,7 @@ function PropagateCheck({
   );
 }
 
-const MAX_GENERATOR_LOGS_DISPLAY = 8;
+const MAX_GENERATOR_LOGS_DISPLAY = MAX_GENERATOR_HOUR_LOGS;
 
 type GeneratorChartRow = {
   id: string;
@@ -1824,7 +1825,7 @@ export default function FarmDetailScreen() {
                     getText={() => {
                       const allLogs = data.generatorLogs ?? [];
                       return formatGeneratorChartsCopy(
-                        allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY).map((log) => {
+                        allLogs.map((log) => {
                           const hours: GeneratorHours = {
                             gen1Hours: log.gen1Hours,
                             gen2Hours: log.gen2Hours,

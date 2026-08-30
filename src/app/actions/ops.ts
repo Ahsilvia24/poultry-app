@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { poundsToTons } from "@/lib/feed/calculations";
 import {
+  excessGeneratorHourCells,
   isGenHourKey,
   logHasAnyGeneratorReading,
   parseOptionalGeneratorHours,
@@ -652,15 +653,45 @@ export async function updateSettingsAction(formData: FormData) {
   return { success: true };
 }
 
-async function pruneGeneratorLogs(farmId: string, keep = 8) {
-  const ids = await prisma.generatorLog.findMany({
+/** Keep the last 10 hour readings per generator; drop older cells (and empty rows). */
+async function pruneGeneratorLogs(farmId: string) {
+  const rows = await prisma.generatorLog.findMany({
     where: { farmId },
     orderBy: [{ logDate: "desc" }, { createdAt: "desc" }, { id: "desc" }],
-    select: { id: true },
+    select: {
+      id: true,
+      gen1Hours: true,
+      gen2Hours: true,
+      gen3Hours: true,
+      gen4Hours: true,
+    },
   });
-  if (ids.length > keep) {
-    await prisma.generatorLog.deleteMany({
-      where: { id: { in: ids.slice(keep).map((r) => r.id) } },
+  const excess = excessGeneratorHourCells(rows);
+  if (excess.length === 0) return;
+
+  const clearById = new Map<string, Set<GenHourKey>>();
+  for (const cell of excess) {
+    const keys = clearById.get(cell.id) ?? new Set<GenHourKey>();
+    keys.add(cell.hourKey);
+    clearById.set(cell.id, keys);
+  }
+
+  for (const [id, keys] of clearById) {
+    const row = rows.find((r) => r.id === id);
+    if (!row) continue;
+    const next = {
+      gen1Hours: keys.has("gen1Hours") ? null : row.gen1Hours,
+      gen2Hours: keys.has("gen2Hours") ? null : row.gen2Hours,
+      gen3Hours: keys.has("gen3Hours") ? null : row.gen3Hours,
+      gen4Hours: keys.has("gen4Hours") ? null : row.gen4Hours,
+    };
+    if (!logHasAnyGeneratorReading(next)) {
+      await prisma.generatorLog.delete({ where: { id } });
+      continue;
+    }
+    await prisma.generatorLog.update({
+      where: { id },
+      data: { ...next, notes: null },
     });
   }
 }
@@ -794,6 +825,7 @@ export async function updateGeneratorLogAction(logId: string, formData: FormData
         where: { id: logId },
         data: { [onlyGenRaw]: hours, notes: null },
       });
+      await pruneGeneratorLogs(existing.farmId);
       revalidatePath(`/farms/${existing.farmId}`);
       return { success: true };
     }
@@ -845,6 +877,7 @@ export async function updateGeneratorLogAction(logId: string, formData: FormData
     },
   });
 
+  await pruneGeneratorLogs(existing.farmId);
   revalidatePath(`/farms/${existing.farmId}`);
   return { success: true };
 }

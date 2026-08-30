@@ -15,6 +15,7 @@ import {
   formatGeneratorHours,
   hoursDelta,
   GENERATOR_FIELD_DEFS,
+  MAX_GENERATOR_HOUR_LOGS,
   type GenHourKey,
   type GeneratorDeltas,
   type GeneratorHours,
@@ -29,7 +30,7 @@ export type GeneratorLogRow = {
   gen4Hours: number | null;
 };
 
-const MAX_GENERATOR_LOGS_DISPLAY = 8;
+const MAX_GENERATOR_LOGS_DISPLAY = MAX_GENERATOR_HOUR_LOGS;
 
 type ChartRow = {
   id: string;
@@ -473,7 +474,7 @@ export function FarmGeneratorLogSection({
   }, [allSorted]);
 
   const chartsCopyText = useMemo(() => {
-    // Match chart windows: up to 8 readings per gen, not 8 shared date rows.
+    // Match chart windows: up to 10 readings per gen, not 10 shared date rows.
     const byDate = new Map<
       string,
       { dateLabel: string; hours: GeneratorHours; deltas: GeneratorDeltas }
