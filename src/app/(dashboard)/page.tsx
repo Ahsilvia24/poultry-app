@@ -76,7 +76,7 @@ export default async function DashboardPage() {
                       {c.catchTime ? (
                         <span>{compactCatchTimeLabel(c.catchTime)}</span>
                       ) : null}
-                      {c.catchAgeDays != null ? <span>({c.catchAgeDays})</span> : null}
+                      {c.catchAgeDays != null ? <span>({c.catchAgeDays}d)</span> : null}
                     </span>
                   </li>
                 ))}

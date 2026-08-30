@@ -487,7 +487,7 @@ export default function DashboardScreen() {
                         ) : null}
                         {c.catchAgeDays != null ? (
                           <Text style={{ color: colors.muted, fontSize: 13 }}>
-                            ({c.catchAgeDays})
+                            ({c.catchAgeDays}d)
                           </Text>
                         ) : null}
                       </View>
