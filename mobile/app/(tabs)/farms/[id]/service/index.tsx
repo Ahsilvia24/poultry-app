@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../../../../../src/theme";
@@ -79,7 +79,7 @@ export default function ServiceFarmPickerScreen() {
   function openForm(path: (typeof FORMS)[number]["path"], extra?: Record<string, string>) {
     router.push({
       pathname: path,
-      params: { id: farmId, ...extra },
+      params: { id: farmId, visitId: "", ...extra },
     });
   }
 
@@ -90,7 +90,10 @@ export default function ServiceFarmPickerScreen() {
   function openSaved(row: StoredServiceForm) {
     const form = FORMS.find((f) => f.key === row.formKind);
     if (!form) return;
-    openForm(form.path, { formId: row.id });
+    router.push({
+      pathname: `${form.path}/[formId]`,
+      params: { id: farmId, formId: row.id, visitId: "" },
+    } as Href);
   }
 
   async function shareSaved(row: StoredServiceForm) {

@@ -49,7 +49,7 @@ export default function PrebroodChecklistScreen() {
   const fresh = paramId(params.fresh) === "1";
   const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "prebrood");
-  const editVisitId = useEditVisitIdParam();
+  const editVisitId = useEditVisitIdParam(farmId);
   const { complete, saving, editing, error: completeError } = useCompleteServiceForm(farmId, {
     serviceFormId: existing?.id ?? null,
     existingVisitId: existing ? null : editVisitId,

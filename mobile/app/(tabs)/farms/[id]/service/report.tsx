@@ -74,7 +74,7 @@ export default function ServiceReportScreen() {
   const fresh = paramId(params.fresh) === "1";
   const { detail, farmName, flockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "service_report");
-  const editVisitId = useEditVisitIdParam();
+  const editVisitId = useEditVisitIdParam(farmId);
   const { complete, saving, editing, error: completeError } = useCompleteServiceForm(farmId, {
     serviceFormId: existing?.id ?? null,
     existingVisitId: existing ? null : editVisitId,

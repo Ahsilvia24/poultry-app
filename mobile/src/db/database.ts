@@ -298,6 +298,13 @@ export async function migrateDb() {
       );
       CREATE INDEX IF NOT EXISTS idx_service_forms_farm ON service_forms(farm_id);
     `);
+  } else {
+    const serviceFormCols = await database.getAllAsync<{ name: string }>(
+      "PRAGMA table_info(service_forms)",
+    );
+    if (!serviceFormCols.some((c) => c.name === "visit_id")) {
+      await database.execAsync("ALTER TABLE service_forms ADD COLUMN visit_id TEXT");
+    }
   }
 
   await database.execAsync(`
