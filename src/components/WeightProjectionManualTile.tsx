@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
 import { catchWeightBandFromLbs } from "@/lib/weight/projections";
-import { manualProjectedWeightLbs, parseManualNumber } from "@/lib/weight/manualProjection";
+import {
+  DEFAULT_EXPECTED_FEED_CONVERSION,
+  manualProjectedWeightLbs,
+  parseManualNumber,
+} from "@/lib/weight/manualProjection";
 import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +66,7 @@ export function WeightProjectionManualTile({
   const [chc, setChc] = useState("");
   const [cr, setCr] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [dtk, setDtk] = useState("");
-  const [efc, setEfc] = useState("");
+  const [efc, setEfc] = useState(String(DEFAULT_EXPECTED_FEED_CONVERSION));
   const [manualChc, setManualChc] = useState("");
   const [manualDtk, setManualDtk] = useState("");
   const [active, setActive] = useState<FieldKey | null>(null);

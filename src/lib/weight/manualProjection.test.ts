@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { catchWeightBandFromLbs } from "./projections.ts";
-import { manualProjectedWeightLbs } from "./manualProjection.ts";
+import { DEFAULT_EXPECTED_FEED_CONVERSION, manualProjectedWeightLbs } from "./manualProjection.ts";
 
 describe("manualProjectedWeightLbs", () => {
+  it("defaults expected feed conversion to 1.8", () => {
+    assert.equal(DEFAULT_EXPECTED_FEED_CONVERSION, 1.8);
+  });
+
   it("projects catch weight from feed math", () => {
     // TF 50,000 − INV 5,000 = 45,000 / CHC 20,000 = 2.25 FCPB
     // (2.25 + 0.45 × 8) / 1.6 = 3.65625

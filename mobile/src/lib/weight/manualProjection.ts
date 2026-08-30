@@ -1,3 +1,6 @@
+/** Default expected feed conversion on the manual weight tile. */
+export const DEFAULT_EXPECTED_FEED_CONVERSION = 1.8;
+
 /**
  * Manual catch-weight projection from feed:
  *   FCPB = (TF − INV) / CHC
