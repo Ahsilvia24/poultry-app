@@ -9,7 +9,6 @@ import {
 } from "@/app/actions/farms";
 import { Button } from "@/components/ui";
 import { ExclusiveSwipeGroup, useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
-import { formatPhoneDisplay } from "@/lib/phone";
 
 export type FarmsListTileFarm = {
   id: string;
@@ -26,47 +25,6 @@ type ConfirmKind = "inactive" | "active" | "delete" | null;
 const LONG_PRESS_MS = 500;
 const MOVE_CANCEL_PX = 12;
 
-function CopyPhoneButton({ phone }: { phone: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      type="button"
-      className="relative z-10 shrink-0 rounded p-1 text-emerald-800 hover:bg-emerald-50"
-      aria-label={copied ? "Copied" : `Copy ${phone}`}
-      title={copied ? "Copied" : "Copy phone"}
-      onClick={async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        try {
-          await navigator.clipboard.writeText(phone);
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1600);
-        } catch {
-          // leave uncopied
-        }
-      }}
-    >
-      {copied ? (
-        <span className="text-[11px] font-bold">Copied</span>
-      ) : (
-        <svg
-          className="h-4 w-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-        </svg>
-      )}
-    </button>
-  );
-}
-
 function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
   const [swipeX, setSwipeX] = useState(0);
   const [confirm, setConfirm] = useState<ConfirmKind>(null);
@@ -77,7 +35,6 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
   const didLongPress = useRef(false);
   const actionWidth = 72;
   const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(farm.id);
-  const phone = formatPhoneDisplay(farm.phoneNumber);
   const ageLabel =
     farm.flockAges.length > 0 ? farm.flockAges.map((a) => `${a}d`).join(" ") : null;
 
@@ -205,8 +162,8 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
         <div
           className={
             farm.isActive
-              ? "relative flex h-full min-h-[6.5rem] flex-col rounded-xl border-2 border-emerald-700 bg-white p-2.5 shadow-sm"
-              : "relative flex h-full min-h-[6.5rem] flex-col rounded-xl border-2 border-stone-300 bg-white p-2.5 shadow-sm"
+              ? "relative flex h-full min-h-[5.25rem] flex-col rounded-xl border-2 border-emerald-700 bg-white p-2.5 shadow-sm"
+              : "relative flex h-full min-h-[5.25rem] flex-col rounded-xl border-2 border-stone-300 bg-white p-2.5 shadow-sm"
           }
         >
           <Link
@@ -224,21 +181,11 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
             <p className="truncate text-[15px] font-bold leading-snug text-stone-900">
               {farm.farmName}
             </p>
-            {ageLabel ? (
-              <p className="mt-0.5 text-[13px] font-semibold leading-4 text-stone-500">{ageLabel}</p>
-            ) : null}
             {farm.growerName ? (
-              <p className="mt-1.5 truncate text-[13px] leading-4 text-stone-600">{farm.growerName}</p>
+              <p className="mt-0.5 truncate text-[13px] leading-4 text-stone-600">{farm.growerName}</p>
             ) : null}
-            {phone ? (
-              <div className="mt-0.5 flex items-center gap-0.5">
-                <p className="min-w-0 truncate text-[13px] font-semibold tabular-nums text-stone-700 select-all">
-                  {phone}
-                </p>
-                <span className="pointer-events-auto">
-                  <CopyPhoneButton phone={phone} />
-                </span>
-              </div>
+            {ageLabel ? (
+              <p className="mt-1.5 text-[13px] font-semibold leading-4 text-stone-500">{ageLabel}</p>
             ) : null}
           </div>
           {!farm.isActive ? (
@@ -337,7 +284,7 @@ export function FarmsListTiles({ farms }: { farms: FarmsListTileFarm[] }) {
     <ExclusiveSwipeGroup>
       <div className="grid auto-rows-fr items-stretch gap-2 grid-cols-2 lg:grid-cols-3">
         {farms.map((farm) => (
-          <div key={farm.id} className="h-full min-h-[6.5rem]">
+          <div key={farm.id} className="h-full min-h-[5.25rem]">
             <FarmsListTile farm={farm} />
           </div>
         ))}

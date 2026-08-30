@@ -18,11 +18,9 @@ import {
 } from "../../../src/repos/data";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
-import { formatPhoneDisplay } from "../../../src/lib/phone";
 import { colors, fonts, styles } from "../../../src/theme";
 import { Card, PageHeader } from "../../../src/components/ui";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
-import { ClipboardIconButton } from "../../../src/components/ClipboardIconButton";
 
 type ConfirmKind = "inactive" | "active" | "delete";
 
@@ -125,7 +123,6 @@ export default function FarmsScreen() {
                 ? [farm.flockAgeDays]
                 : [];
             const ageLabel = ages.length > 0 ? ages.map((a) => `${a}d`).join(" ") : null;
-            const phone = formatPhoneDisplay(farm.phoneNumber);
 
             return (
               <View
@@ -187,7 +184,7 @@ export default function FarmsScreen() {
                       padding: 10,
                       marginBottom: 0,
                       overflow: "hidden",
-                      minHeight: 104,
+                      minHeight: 84,
                       borderWidth: 2,
                       borderColor: farm.isActive ? colors.accentDark : "#d6d3d1",
                     }}
@@ -227,20 +224,6 @@ export default function FarmsScreen() {
                       >
                         {farm.farmName}
                       </Text>
-                      {ageLabel ? (
-                        <Text
-                          style={{
-                            fontFamily: fonts.sans,
-                            fontSize: 13,
-                            fontWeight: "600",
-                            color: colors.muted,
-                            marginTop: 2,
-                            lineHeight: 16,
-                          }}
-                        >
-                          {ageLabel}
-                        </Text>
-                      ) : null}
                       {farm.growerName ? (
                         <Text
                           numberOfLines={1}
@@ -248,43 +231,28 @@ export default function FarmsScreen() {
                             fontFamily: fonts.sans,
                             fontSize: 13,
                             color: colors.muted,
-                            marginTop: 8,
+                            marginTop: 2,
                             lineHeight: 16,
                           }}
                         >
                           {farm.growerName}
                         </Text>
                       ) : null}
-                    </Pressable>
-                    {phone ? (
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          marginTop: farm.growerName ? 2 : 8,
-                          marginLeft: -6,
-                        }}
-                      >
+                      {ageLabel ? (
                         <Text
-                          selectable
                           style={{
                             fontFamily: fonts.sans,
                             fontSize: 13,
-                            fontWeight: "700",
-                            color: colors.text,
+                            fontWeight: "600",
+                            color: colors.muted,
+                            marginTop: 8,
                             lineHeight: 16,
-                            flexShrink: 1,
                           }}
                         >
-                          {phone}
+                          {ageLabel}
                         </Text>
-                        <ClipboardIconButton
-                          getText={() => phone}
-                          accessibilityLabel={`Copy ${phone}`}
-                          size={16}
-                        />
-                      </View>
-                    ) : null}
+                      ) : null}
+                    </Pressable>
                   </Card>
                 </Swipeable>
               </View>
