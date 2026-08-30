@@ -28,8 +28,8 @@ const FIELDS: Array<{
   decimal: boolean;
   tripleZero: boolean;
 }> = [
-  { key: "tf", label: "TF", unit: "lb", decimal: true, tripleZero: true },
-  { key: "inv", label: "INV", unit: "lb", decimal: true, tripleZero: true },
+  { key: "tf", label: "TF", unit: "lb", decimal: false, tripleZero: true },
+  { key: "inv", label: "INV", unit: "lb", decimal: false, tripleZero: true },
   { key: "chc", label: "CHC", unit: "", decimal: false, tripleZero: true },
   { key: "cr", label: "CR", unit: "lb/bird/day", decimal: true, tripleZero: false },
   { key: "dtk", label: "DTK", unit: "days", decimal: true, tripleZero: false },
@@ -54,7 +54,9 @@ function formatField(key: FieldKey, raw: string) {
   const n = Number(raw);
   if (!Number.isFinite(n)) return raw;
   if (key === "cr" || key === "efc") return n.toFixed(3);
-  if (key === "chc") return Math.round(n).toLocaleString();
+  if (key === "tf" || key === "inv" || key === "chc") {
+    return Math.round(n).toLocaleString();
+  }
   if (key === "dtk") {
     return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
   }
