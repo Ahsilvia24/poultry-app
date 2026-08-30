@@ -11,6 +11,7 @@ import {
 import { Button, Card, Input, Label } from "@/components/ui";
 import { ExclusiveSwipeGroup, useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
 import {
+  detectGeneratorHourSwap,
   formatGeneratorChartsCopy,
   formatGeneratorHours,
   hoursDelta,
@@ -18,6 +19,7 @@ import {
   MAX_GENERATOR_HOUR_LOGS,
   type GenHourKey,
   type GeneratorDeltas,
+  type GeneratorHourSwapSuggestion,
   type GeneratorHours,
 } from "@/lib/generator/format";
 
@@ -317,6 +319,7 @@ function GeneratorLogForm({
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [swap, setSwap] = useState<GeneratorHourSwapSuggestion | null>(null);
   const [logDate, setLogDate] = useState(
     initial?.logDate ?? new Date().toISOString().slice(0, 10),
   );
@@ -336,21 +339,85 @@ function GeneratorLogForm({
     ? GENERATOR_FIELD_DEFS.filter((field) => field.hourKey === onlyGen)
     : GENERATOR_FIELD_DEFS;
 
+  function enteredHours(): GeneratorHours {
+    const parse = (raw: string) => {
+      const text = raw.trim();
+      if (text === "") return null;
+      const n = Number(text);
+      if (!Number.isFinite(n) || n < 0) {
+        throw new Error("Generator hours must be 0 or greater");
+      }
+      return n;
+    };
+    return {
+      gen1Hours: parse(gen1),
+      gen2Hours: parse(gen2),
+      gen3Hours: parse(gen3),
+      gen4Hours: parse(gen4),
+    };
+  }
+
+  function previousHours(): GeneratorHours {
+    return {
+      gen1Hours: previousByGen?.gen1Hours ?? null,
+      gen2Hours: previousByGen?.gen2Hours ?? null,
+      gen3Hours: previousByGen?.gen3Hours ?? null,
+      gen4Hours: previousByGen?.gen4Hours ?? null,
+    };
+  }
+
+  function appendHours(fd: FormData, hours: GeneratorHours) {
+    fd.set("farmId", farmId);
+    fd.set("logDate", logDate);
+    if (onlyGen) fd.set("onlyGen", onlyGen);
+    for (const field of GENERATOR_FIELD_DEFS) {
+      const value = hours[field.hourKey];
+      fd.set(field.hourKey, value == null ? "" : String(value));
+    }
+  }
+
+  function submitHours(hours: GeneratorHours, remapAll = false) {
+    setError(null);
+    const fd = new FormData();
+    appendHours(fd, hours);
+    if (remapAll) fd.delete("onlyGen");
+    start(async () => {
+      const result = recordId
+        ? await updateGeneratorLogAction(recordId, fd)
+        : await createGeneratorLogAction(fd);
+      if (result && "error" in result && result.error) {
+        setError(result.error);
+        return;
+      }
+      setSwap(null);
+      onSuccess?.();
+    });
+  }
+
   return (
     <form
       className="mt-4 space-y-3"
-      action={(fd) => {
-        setError(null);
-        start(async () => {
-          const result = recordId
-            ? await updateGeneratorLogAction(recordId, fd)
-            : await createGeneratorLogAction(fd);
-          if (result && "error" in result && result.error) {
-            setError(result.error);
+      onSubmit={(e) => {
+        e.preventDefault();
+        try {
+          const entered = enteredHours();
+          const forDetect = onlyGen
+            ? {
+                gen1Hours: onlyGen === "gen1Hours" ? entered.gen1Hours : null,
+                gen2Hours: onlyGen === "gen2Hours" ? entered.gen2Hours : null,
+                gen3Hours: onlyGen === "gen3Hours" ? entered.gen3Hours : null,
+                gen4Hours: onlyGen === "gen4Hours" ? entered.gen4Hours : null,
+              }
+            : entered;
+          const found = detectGeneratorHourSwap(previousHours(), forDetect);
+          if (found) {
+            setSwap(found);
             return;
           }
-          onSuccess?.();
-        });
+          submitHours(entered);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Could not save generator log");
+        }
       }}
     >
       <input type="hidden" name="farmId" value={farmId} />
@@ -395,6 +462,37 @@ function GeneratorLogForm({
         })}
       </div>
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+      {swap ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-stone-800">
+          <p className="font-semibold">Hours look swapped</p>
+          <p className="mt-1 whitespace-pre-line">{swap.message}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              disabled={pending}
+              onClick={() => submitHours({ ...enteredHours(), ...swap.suggested }, true)}
+            >
+              Fix and save
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={pending}
+              onClick={() => submitHours(enteredHours())}
+            >
+              Save as entered
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={pending}
+              onClick={() => setSwap(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={pending}>
           {pending
@@ -551,28 +649,31 @@ export function FarmGeneratorLogSection({
 
   const editingLog = editingId ? allSorted.find((l) => l.id === editingId) : null;
   const createPreviousByGen: Partial<Record<GenHourKey, number | null>> = {
-    gen1Hours: previousReadingForGen(allSorted, "gen1Hours", {
-      beforeDate: new Date().toISOString().slice(0, 10),
-    }),
-    gen2Hours: previousReadingForGen(allSorted, "gen2Hours", {
-      beforeDate: new Date().toISOString().slice(0, 10),
-    }),
-    gen3Hours: previousReadingForGen(allSorted, "gen3Hours", {
-      beforeDate: new Date().toISOString().slice(0, 10),
-    }),
-    gen4Hours: previousReadingForGen(allSorted, "gen4Hours", {
-      beforeDate: new Date().toISOString().slice(0, 10),
-    }),
+    gen1Hours: previousReadingForGen(allSorted, "gen1Hours"),
+    gen2Hours: previousReadingForGen(allSorted, "gen2Hours"),
+    gen3Hours: previousReadingForGen(allSorted, "gen3Hours"),
+    gen4Hours: previousReadingForGen(allSorted, "gen4Hours"),
   };
-  const editPreviousByGen =
-    editingLog && editingGen
-      ? {
-          [editingGen]: previousReadingForGen(allSorted, editingGen, {
-            beforeLogId: editingLog.id,
-            beforeDate: editingLog.logDate,
-          }),
-        }
-      : undefined;
+  const editPreviousByGen = editingLog
+    ? {
+        gen1Hours: previousReadingForGen(allSorted, "gen1Hours", {
+          beforeLogId: editingLog.id,
+          beforeDate: editingLog.logDate,
+        }),
+        gen2Hours: previousReadingForGen(allSorted, "gen2Hours", {
+          beforeLogId: editingLog.id,
+          beforeDate: editingLog.logDate,
+        }),
+        gen3Hours: previousReadingForGen(allSorted, "gen3Hours", {
+          beforeLogId: editingLog.id,
+          beforeDate: editingLog.logDate,
+        }),
+        gen4Hours: previousReadingForGen(allSorted, "gen4Hours", {
+          beforeLogId: editingLog.id,
+          beforeDate: editingLog.logDate,
+        }),
+      }
+    : undefined;
 
   return (
     <div id="generators" className="scroll-mt-24">
@@ -597,7 +698,7 @@ export function FarmGeneratorLogSection({
             recordId={editingLog.id}
             initial={editingLog}
             onlyGen={editingGen}
-            previousByGen={editPreviousByGen}
+            previousByGen={editPreviousByGen ?? undefined}
             onSuccess={afterSaved}
             onCancel={() => {
               setEditingId(null);

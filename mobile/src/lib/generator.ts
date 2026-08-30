@@ -99,6 +99,130 @@ export function withPrebroodLoggedHours<
   };
 }
 
+function emptyGeneratorHours(): GeneratorHours {
+  return { gen1Hours: null, gen2Hours: null, gen3Hours: null, gen4Hours: null };
+}
+
+function isHourDecrease(next: number, prev: number) {
+  return Math.round(next * 10) < Math.round(prev * 10);
+}
+
+function permute<T>(items: T[]): T[][] {
+  if (items.length <= 1) return [items.slice()];
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i++) {
+    const pick = items[i]!;
+    for (const rest of permute(items.filter((_, j) => j !== i))) {
+      out.push([pick, ...rest]);
+    }
+  }
+  return out;
+}
+
+function formatHourAssignment(hours: GeneratorHours): string {
+  return GENERATOR_FIELD_DEFS.filter((field) => asLoggedHours(hours[field.hourKey]) != null)
+    .map((field) => `${field.label} ${formatGeneratorHours(hours[field.hourKey])}`)
+    .join(", ");
+}
+
+export type GeneratorHourSwapSuggestion = {
+  entered: GeneratorHours;
+  suggested: GeneratorHours;
+  message: string;
+};
+
+/** Last reading per generator on or before a date, optionally skipping one log. */
+export function previousGeneratorHoursFromLogs(
+  logsNewestFirst: Array<{ id?: string; logDate: string } & Partial<GeneratorHours>>,
+  opts: { onOrBeforeDate: string; excludeLogId?: string | null },
+): GeneratorHours {
+  return lastLoggedGeneratorHours(
+    logsNewestFirst.filter(
+      (log) => log.logDate <= opts.onOrBeforeDate && log.id !== opts.excludeLogId,
+    ),
+  );
+}
+
+/**
+ * If entered hours look like they were typed on the wrong generators
+ * (a different assignment has fewer decreases vs last readings), suggest a fix.
+ */
+export function detectGeneratorHourSwap(
+  previous: GeneratorHours,
+  entered: GeneratorHours,
+): GeneratorHourSwapSuggestion | null {
+  const keys = GENERATOR_FIELD_DEFS.map((field) => field.hourKey).filter(
+    (key) => asLoggedHours(entered[key]) != null && asLoggedHours(previous[key]) != null,
+  );
+  if (keys.length === 0) return null;
+
+  const enteredDecreases = keys.filter((key) =>
+    isHourDecrease(asLoggedHours(entered[key])!, asLoggedHours(previous[key])!),
+  ).length;
+  if (enteredDecreases === 0) return null;
+
+  let suggested: GeneratorHours | null = null;
+
+  if (keys.length === 1) {
+    const key = keys[0]!;
+    const next = asLoggedHours(entered[key])!;
+    let bestKey: GenHourKey | null = null;
+    let bestPrev = Number.NEGATIVE_INFINITY;
+    for (const field of GENERATOR_FIELD_DEFS) {
+      const prev = asLoggedHours(previous[field.hourKey]);
+      if (prev == null || isHourDecrease(next, prev)) continue;
+      if (prev >= bestPrev) {
+        bestPrev = prev;
+        bestKey = field.hourKey;
+      }
+    }
+    if (bestKey && bestKey !== key) {
+      suggested = emptyGeneratorHours();
+      for (const field of GENERATOR_FIELD_DEFS) {
+        suggested[field.hourKey] =
+          field.hourKey === key
+            ? null
+            : field.hourKey === bestKey
+              ? next
+              : asLoggedHours(entered[field.hourKey]);
+      }
+    }
+  } else {
+    const values = keys.map((key) => asLoggedHours(entered[key])!);
+    let bestAssign = values;
+    let bestDecreases = enteredDecreases;
+    for (const assign of permute(values)) {
+      const decreases = keys.filter((key, i) =>
+        isHourDecrease(assign[i]!, asLoggedHours(previous[key])!),
+      ).length;
+      if (decreases < bestDecreases) {
+        bestDecreases = decreases;
+        bestAssign = assign;
+      }
+    }
+    if (
+      bestDecreases < enteredDecreases &&
+      keys.some((key, i) => bestAssign[i] !== asLoggedHours(entered[key]))
+    ) {
+      suggested = { ...entered };
+      keys.forEach((key, i) => {
+        suggested![key] = bestAssign[i]!;
+      });
+    }
+  }
+
+  if (!suggested) return null;
+  return {
+    entered,
+    suggested,
+    message:
+      `Hour meters usually go up. These look like they were logged on the wrong generators.\n\n` +
+      `You entered: ${formatHourAssignment(entered)}\n` +
+      `Suggested: ${formatHourAssignment(suggested)}\n\n` +
+      `Fix the order, or save as entered if a meter was replaced.`,
+  };
+}
+
 export function isGenHourKey(value: unknown): value is GenHourKey {
   return (
     value === "gen1Hours" ||

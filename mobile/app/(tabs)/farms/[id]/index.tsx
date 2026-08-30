@@ -48,12 +48,15 @@ import {
   LITTER_EVENT_LABELS,
 } from "../../../../src/lib/opsLabels";
 import {
+  detectGeneratorHourSwap,
   formatGeneratorChartsCopy,
   formatGeneratorHours,
   hoursDelta,
+  previousGeneratorHoursFromLogs,
   GENERATOR_FIELD_DEFS,
   MAX_GENERATOR_HOUR_LOGS,
   type GenHourKey,
+  type GeneratorHourSwapSuggestion,
   type GeneratorHours,
 } from "../../../../src/lib/generator";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
@@ -627,6 +630,9 @@ export default function FarmDetailScreen() {
     gen3Hours: "",
     gen4Hours: "",
   });
+  const [generatorSwap, setGeneratorSwap] = useState<GeneratorHourSwapSuggestion | null>(
+    null,
+  );
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("farms", scrollRef);
   const houseSwipe = useExclusiveSwipeables();
@@ -1006,6 +1012,95 @@ export default function FarmDetailScreen() {
     setGeneratorError(null);
     setGeneratorEditingId(null);
     setGeneratorEditingGen(null);
+    setGeneratorSwap(null);
+  }
+
+  function parseGeneratorDraftHours() {
+    const parseHours = (raw: string) => {
+      const trimmed = raw.trim();
+      if (trimmed === "") return null;
+      const n = Number(trimmed);
+      if (!Number.isFinite(n) || n < 0) {
+        throw new Error("Generator hours must be 0 or greater");
+      }
+      return n;
+    };
+    return {
+      logDate: generatorDraft.logDate.trim(),
+      gen1Hours: parseHours(generatorDraft.gen1Hours),
+      gen2Hours: parseHours(generatorDraft.gen2Hours),
+      gen3Hours: parseHours(generatorDraft.gen3Hours),
+      gen4Hours: parseHours(generatorDraft.gen4Hours),
+    };
+  }
+
+  function persistGeneratorHours(
+    hours: {
+      logDate: string;
+      gen1Hours: number | null;
+      gen2Hours: number | null;
+      gen3Hours: number | null;
+      gen4Hours: number | null;
+    },
+    remapAll = false,
+  ) {
+    if (generatorEditingId) {
+      updateGeneratorLog(farm.id, generatorEditingId, {
+        ...hours,
+        onlyGen: remapAll ? undefined : generatorEditingGen ?? undefined,
+      });
+    } else {
+      createGeneratorLog({
+        farmId: farm.id,
+        ...hours,
+      });
+    }
+    setGeneratorModalOpen(false);
+    setGeneratorEditingId(null);
+    setGeneratorEditingGen(null);
+    setGeneratorSwap(null);
+    load();
+  }
+
+  function saveGeneratorLog(
+    hours?: {
+      logDate: string;
+      gen1Hours: number | null;
+      gen2Hours: number | null;
+      gen3Hours: number | null;
+      gen4Hours: number | null;
+    },
+    remapAll = false,
+  ) {
+    setGeneratorSaving(true);
+    setGeneratorError(null);
+    try {
+      const payload = hours ?? parseGeneratorDraftHours();
+      if (!hours) {
+        const previous = previousGeneratorHoursFromLogs(data?.generatorLogs ?? [], {
+          onOrBeforeDate: payload.logDate,
+          excludeLogId: generatorEditingId,
+        });
+        const entered = generatorEditingGen
+          ? {
+              gen1Hours: generatorEditingGen === "gen1Hours" ? payload.gen1Hours : null,
+              gen2Hours: generatorEditingGen === "gen2Hours" ? payload.gen2Hours : null,
+              gen3Hours: generatorEditingGen === "gen3Hours" ? payload.gen3Hours : null,
+              gen4Hours: generatorEditingGen === "gen4Hours" ? payload.gen4Hours : null,
+            }
+          : payload;
+        const swap = detectGeneratorHourSwap(previous, entered);
+        if (swap) {
+          setGeneratorSwap(swap);
+          return;
+        }
+      }
+      persistGeneratorHours(payload, remapAll);
+    } catch (e) {
+      setGeneratorError(e instanceof Error ? e.message : "Could not save generator log");
+    } finally {
+      setGeneratorSaving(false);
+    }
   }
 
   function openGeneratorEditor(
@@ -2778,49 +2873,7 @@ export default function FarmDetailScreen() {
                 <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
                   <PrimaryButton
                     label={generatorSaving ? "Saving…" : "Save"}
-                    onPress={() => {
-                      setGeneratorSaving(true);
-                      setGeneratorError(null);
-                      try {
-                        const parseHours = (raw: string) => {
-                          const trimmed = raw.trim();
-                          if (trimmed === "") return null;
-                          const n = Number(trimmed);
-                          if (!Number.isFinite(n) || n < 0) {
-                            throw new Error("Generator hours must be 0 or greater");
-                          }
-                          return n;
-                        };
-                        const payload = {
-                          logDate: generatorDraft.logDate.trim(),
-                          gen1Hours: parseHours(generatorDraft.gen1Hours),
-                          gen2Hours: parseHours(generatorDraft.gen2Hours),
-                          gen3Hours: parseHours(generatorDraft.gen3Hours),
-                          gen4Hours: parseHours(generatorDraft.gen4Hours),
-                        };
-                        if (generatorEditingId) {
-                          updateGeneratorLog(farm.id, generatorEditingId, {
-                            ...payload,
-                            onlyGen: generatorEditingGen ?? undefined,
-                          });
-                        } else {
-                          createGeneratorLog({
-                            farmId: farm.id,
-                            ...payload,
-                          });
-                        }
-                        setGeneratorModalOpen(false);
-                        setGeneratorEditingId(null);
-                        setGeneratorEditingGen(null);
-                        load();
-                      } catch (e) {
-                        setGeneratorError(
-                          e instanceof Error ? e.message : "Could not save generator log",
-                        );
-                      } finally {
-                        setGeneratorSaving(false);
-                      }
-                    }}
+                    onPress={() => saveGeneratorLog()}
                     style={{ flex: 1 }}
                   />
                   <PrimaryButton
@@ -2836,6 +2889,23 @@ export default function FarmDetailScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      <ConfirmDialog
+        visible={generatorSwap != null}
+        title="Hours look swapped"
+        message={generatorSwap?.message ?? ""}
+        confirmLabel="Fix and save"
+        altLabel="Save as entered"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          if (!generatorSwap) return;
+          const draft = parseGeneratorDraftHours();
+          saveGeneratorLog({ ...draft, ...generatorSwap.suggested }, true);
+        }}
+        onAlt={() => {
+          saveGeneratorLog(parseGeneratorDraftHours(), false);
+        }}
+        onCancel={() => setGeneratorSwap(null)}
+      />
       <ConfirmDialog
         visible={opsConfirm != null}
         title={
