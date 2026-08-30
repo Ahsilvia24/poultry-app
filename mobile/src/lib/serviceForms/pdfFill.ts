@@ -22,7 +22,7 @@ import type {
   YesNo,
 } from "./types";
 import { formatMinVentPair, formatServiceShortDate } from "./format";
-import { minVentSideBoxes } from "./minVentLabel";
+import { minVentCenteredX, minVentSideBoxes } from "./minVentLabel";
 
 type FieldWidget = {
   x: number;
@@ -172,7 +172,7 @@ function stampMinVentSides(ctx: Ctx, name: string, on: string, off: string, font
   if (left) {
     const tw = ctx.font.widthOfTextAtSize(left, size);
     ctx.page.drawText(left, {
-      x: Math.max(leftBox.x + 0.5, leftBox.x + leftBox.w - tw),
+      x: minVentCenteredX(leftBox, tw),
       y,
       size,
       font: ctx.font,
@@ -181,13 +181,14 @@ function stampMinVentSides(ctx: Ctx, name: string, on: string, off: string, font
     });
   }
   if (right) {
+    const tw = ctx.font.widthOfTextAtSize(right, size);
     ctx.page.drawText(right, {
-      x: rightBox.x,
+      x: minVentCenteredX(rightBox, tw),
       y,
       size,
       font: ctx.font,
       color: rgb(0, 0, 0),
-      maxWidth: Math.max(4, rightBox.w - 1),
+      maxWidth: Math.max(4, rightBox.w),
     });
   }
 }

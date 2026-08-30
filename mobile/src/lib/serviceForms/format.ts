@@ -19,6 +19,7 @@ export function formatMinVentPair(on: string, off: string) {
 }
 
 export {
+  minVentCenteredX,
   minVentSideBoxes,
   recommendedWeekLabel,
   WEEK_OPTIONS,

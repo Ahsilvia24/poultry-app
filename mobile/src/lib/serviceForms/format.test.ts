@@ -5,7 +5,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, it } from "node:test";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { minVentSideBoxes, recommendedWeekLabel, WEEK_OPTIONS } from "./minVentLabel.ts";
+import {
+  minVentCenteredX,
+  minVentSideBoxes,
+  recommendedWeekLabel,
+  WEEK_OPTIONS,
+} from "./minVentLabel.ts";
 import { normalizeVentDoorTypes, ventDoorTypesFromPayload } from "./ventDoor.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -69,11 +74,13 @@ describe("minVentSideBoxes", () => {
       const size = 7;
       const { left: leftBox, right: rightBox, mid } = minVentSideBoxes(r);
       const onW = font.widthOfTextAtSize(on, size);
-      const onX = Math.max(leftBox.x + 0.5, leftBox.x + leftBox.w - onW);
-      assert.ok(onX + onW <= mid, `${name} on stays left of the printed slash`);
-      assert.ok(rightBox.x >= mid, `${name} off starts right of the printed slash`);
+      const offW = font.widthOfTextAtSize(off, size);
+      const onX = minVentCenteredX(leftBox, onW);
+      const offX = minVentCenteredX(rightBox, offW);
+      assert.ok(onX + onW < mid - 8, `${name} on stays clear of the printed slash`);
+      assert.ok(offX > mid + 8, `${name} off stays clear of the printed slash`);
       page.drawText(on, { x: onX, y: r.y, size, font, color: rgb(0, 0, 0) });
-      page.drawText(off, { x: rightBox.x, y: r.y, size, font, color: rgb(0, 0, 0) });
+      page.drawText(off, { x: offX, y: r.y, size, font, color: rgb(0, 0, 0) });
     }
     const bytes = await doc.save({ updateFieldAppearances: false });
     const pdf = await getDocument({
@@ -96,6 +103,17 @@ describe("minVentSideBoxes", () => {
     const recMid = minVentSideBoxes(map.fields.Text88!.widgets[0]!).mid;
     assert.ok(items[0]!.x < actualMid && items[1]!.x > actualMid);
     assert.ok(items[2]!.x < recMid && items[3]!.x > recMid);
+  });
+
+  it("keeps a 1-digit on value in the left half, not on the slash", () => {
+    const r = { x: 459.533, w: 82.354 };
+    const boxes = minVentSideBoxes(r);
+    const onX = minVentCenteredX(boxes.left, 4);
+    const offX = minVentCenteredX(boxes.right, 12);
+    assert.ok(onX + 4 < boxes.mid - 8);
+    assert.ok(offX > boxes.mid + 8);
+    assert.ok(onX > r.x);
+    assert.ok(offX + 12 < r.x + r.w);
   });
 });
 
