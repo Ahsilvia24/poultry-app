@@ -4393,9 +4393,11 @@ export function updateServiceForm(input: {
     ],
   );
 
-  if (existing.visit_id) {
-    const { visitLabel } = serviceFormVisitMeta(input.formKind);
-    const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n");
+  let visitId = existing.visit_id;
+  const { visitType, visitLabel } = serviceFormVisitMeta(input.formKind);
+  const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n");
+
+  if (visitId) {
     const visit = db.getFirstSync<{
       id: string;
       flock_id: string | null;
@@ -4404,11 +4406,11 @@ export function updateServiceForm(input: {
       follow_up_required: number;
       follow_up_date: string | null;
     }>("SELECT * FROM farm_visits WHERE id = ? AND farm_id = ?", [
-      existing.visit_id,
+      visitId,
       input.farmId,
     ]);
     if (visit) {
-      updateVisit(existing.visit_id, {
+      updateVisit(visitId, {
         farmId: input.farmId,
         flockId: visit.flock_id,
         visitDate: input.formDate,
@@ -4418,10 +4420,34 @@ export function updateServiceForm(input: {
         followUpRequired: visit.follow_up_required === 1,
         followUpDate: visit.follow_up_date,
       });
+    } else {
+      visitId = null;
     }
   }
 
-  return { id: existing.id, visitId: existing.visit_id };
+  if (!visitId) {
+    const visit = createVisit({
+      farmId: input.farmId,
+      visitDate: input.formDate,
+      visitType,
+      notes: notes || visitLabel,
+      generalBirdCondition: "Healthy",
+    });
+    visitId = visit.id;
+    const flockId =
+      visit.birdAgeInDays != null
+        ? db.getFirstSync<{ id: string }>(
+            "SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
+            [input.farmId],
+          )?.id ?? null
+        : null;
+    db.runSync(
+      "UPDATE service_forms SET visit_id = ?, flock_id = COALESCE(flock_id, ?) WHERE id = ? AND farm_id = ?",
+      [visitId, flockId, input.serviceFormId, input.farmId],
+    );
+  }
+
+  return { id: existing.id, visitId };
 }
 
 /** Persist a completed service checklist, log a visit, and optionally generator hours. */
