@@ -23,6 +23,23 @@ export const SERVICE_REPORT_COMMENT_FIELDS = [
   "Comments 9",
 ] as const;
 
+export const PREBROOD_COMMENT_FIELDS = [
+  "Comments first line",
+  "Comments 1_2",
+  "Comments 2_2",
+  "Comments 3_2",
+  "Comments 4_2",
+  "Comments 5_2",
+  "Comments 6_2",
+  "Comments 7_2",
+  "Comments 8_2",
+  "comments 9",
+  "comments 10",
+  "comments 11",
+  "comments 12",
+  "comments 13",
+] as const;
+
 export const MAX_PLACEMENT_COMMENT_PAGES = 12;
 
 export function splitCommentWords(text: string) {
