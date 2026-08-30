@@ -117,7 +117,7 @@ export function ConsumptionRateCalculator({
                 marginTop: 8,
               }}
             >
-              Consumption Rate: {formatNum(result.rate, 2)}
+              Consumption Rate: {formatNum(result.rate, 2)} lb/bird/day
             </Text>
           ) : (
             <Text style={[styles.muted, { marginTop: 8 }]}>
@@ -127,8 +127,8 @@ export function ConsumptionRateCalculator({
         </View>
         {result ? (
           <View style={{ alignItems: "flex-end", paddingTop: 4, gap: 4 }}>
-            <Text style={styles.muted}>WC {formatNum(result.wc, 1)} lbs</Text>
-            <Text style={styles.muted}>FC {formatNum(result.fc, 1)} lbs</Text>
+            <Text style={styles.muted}>WC {formatNum(result.wc, 1)} lbs/day</Text>
+            <Text style={styles.muted}>FC {formatNum(result.fc, 1)} lbs/day</Text>
           </View>
         ) : null}
       </View>

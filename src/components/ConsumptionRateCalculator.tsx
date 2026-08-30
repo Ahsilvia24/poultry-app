@@ -143,7 +143,7 @@ export function ConsumptionRateCalculator({
           </button>
           {result ? (
             <p className="pt-1 text-base font-extrabold text-stone-900">
-              Consumption Rate: {formatNum(result.rate, 2)}
+              Consumption Rate: {formatNum(result.rate, 2)} lb/bird/day
             </p>
           ) : (
             <p className="pt-1 text-sm text-stone-500">
@@ -153,8 +153,8 @@ export function ConsumptionRateCalculator({
         </div>
         {result ? (
           <div className="shrink-0 pt-1 text-right text-sm text-stone-600">
-            <p>WC {formatNum(result.wc, 1)} lbs</p>
-            <p>FC {formatNum(result.fc, 1)} lbs</p>
+            <p>WC {formatNum(result.wc, 1)} lbs/day</p>
+            <p>FC {formatNum(result.fc, 1)} lbs/day</p>
           </div>
         ) : null}
       </div>
