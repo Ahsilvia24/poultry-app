@@ -68,7 +68,7 @@ export function WeightProjectionTile({
         dateKey: "1970-01-01",
         ageDays,
         midWeightLbs: weightFromAgeDays(ageDays, growthRateLbsPerDay),
-        midLabel: "Age day",
+        midLabel: "Catch Day",
       })
     : null;
 
