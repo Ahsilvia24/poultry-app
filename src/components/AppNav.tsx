@@ -8,7 +8,6 @@ import { useKeypadNav } from "@/components/KeypadNavContext";
 const tabs = [
   { href: "/", label: "Dashboard", icon: "dashboard" },
   { href: "/farms", label: "Farms", icon: "barn" },
-  { href: "/mortality", label: "Mortality", icon: "plus" },
   { href: "/lfo", label: "LFO", icon: "feed-bin" },
   { href: "/tools", label: "Tools", icon: "tools" },
   { href: "/reports", label: "Reports", icon: "reports" },
@@ -49,13 +48,6 @@ function TabIcon({ name }: { name: (typeof tabs)[number]["icon"] }) {
           <path d="M4 20V10l8-6 8 6v10" />
           <path d="M9 20v-6h6v6" />
           <path d="M4 10h16" />
-        </svg>
-      );
-    case "plus":
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="8" />
-          <path d="M12 8v8M8 12h8" />
         </svg>
       );
     case "feed-bin":

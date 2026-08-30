@@ -6,10 +6,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
 import { colors } from "../../src/theme";
 import { FeedBinIcon } from "../../src/components/FeedBinIcon";
-import {
-  clearFarmReturnFromMortality,
-  getFarmNavContext,
-} from "../../src/lib/farmNavContext";
+import { clearFarmReturnFromMortality } from "../../src/lib/farmNavContext";
 import { requestTabScrollTop, tabStackIndex } from "../../src/lib/tabScroll";
 
 type MciName = ComponentProps<typeof MaterialCommunityIcons>["name"];
@@ -22,7 +19,6 @@ const TAB_ITEMS: {
 }[] = [
   { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
   { name: "farms", label: "Farms", icon: "barn" },
-  { name: "mortality", label: "Mortality", icon: "plus-circle" },
   { name: "lfo", label: "LFO", customIcon: "feed-bin" },
   { name: "tools", label: "Tools", icon: "tools" },
   { name: "reports", label: "Reports", icon: "chart-box-outline" },
@@ -83,7 +79,6 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
               accessibilityRole="button"
               accessibilityState={focused ? { selected: true } : {}}
               onPress={() => {
-                const ctx = getFarmNavContext();
                 const fromMortality = focusedRoute?.name === "mortality";
 
                 // Mortality → Farms: always the farm list. Only Mortality
@@ -117,14 +112,6 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                     requestTabScrollTop("lfo");
                     return;
                   }
-                  if (route.name === "mortality") {
-                    navigation.navigate(route.name, {
-                      farmId: ctx.farmId ?? undefined,
-                      houseFlockId: ctx.houseFlockId ?? undefined,
-                    });
-                    requestTabScrollTop("mortality");
-                    return;
-                  }
                   requestTabScrollTop(route.name);
                   return;
                 }
@@ -134,14 +121,7 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                   navigation.navigate("farms");
                   return;
                 }
-                if (route.name === "mortality") {
-                  navigation.navigate(route.name, {
-                    farmId: ctx.farmId ?? undefined,
-                    houseFlockId: ctx.houseFlockId ?? undefined,
-                  });
-                } else {
-                  navigation.navigate(route.name);
-                }
+                navigation.navigate(route.name);
                 requestTabScrollTop(route.name);
               }}
               style={{
@@ -221,6 +201,7 @@ export default function TabsLayout() {
         options={{
           title: "Mortality",
           headerShown: false,
+          href: null,
         }}
       />
       <Tabs.Screen
