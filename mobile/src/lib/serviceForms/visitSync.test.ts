@@ -87,10 +87,23 @@ function setup() {
   return db;
 }
 
+function visitNotesFromChecklist(visitNotes?: string | null) {
+  const notes = visitNotes?.trim() || "";
+  return notes || null;
+}
+
+describe("checklist visit notes", () => {
+  it("keeps only the checklist comments", () => {
+    assert.equal(visitNotesFromChecklist("House 2 fans noisy"), "House 2 fans noisy");
+    assert.equal(visitNotesFromChecklist("  "), null);
+    assert.equal(visitNotesFromChecklist(null), null);
+  });
+});
+
 describe("checklist visit sync", () => {
   it("updates the same visit when it is still linked", () => {
     const db = setup();
-    const result = syncVisit(db, "form_1", "farm_1", "2026-08-10", "Routine Service\nUpdated notes");
+    const result = syncVisit(db, "form_1", "farm_1", "2026-08-10", "Updated notes");
     assert.equal(result.action, "update");
     assert.equal(result.visitId, "visit_1");
 
@@ -102,7 +115,7 @@ describe("checklist visit sync", () => {
     assert.equal(visits.length, 1);
     assert.equal(visits[0]?.id, "visit_1");
     assert.equal(visits[0]?.visit_date, "2026-08-10");
-    assert.equal(visits[0]?.notes, "Routine Service\nUpdated notes");
+    assert.equal(visits[0]?.notes, "Updated notes");
 
     const form = db.prepare("SELECT visit_id FROM service_forms WHERE id = ?").get("form_1") as {
       visit_id: string;

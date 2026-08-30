@@ -4360,8 +4360,12 @@ function serviceFormVisitMeta(formKind: ServiceFormKind) {
       : formKind === "placement"
         ? "PLACEMENT"
         : "PREBROOD";
-  const visitLabel = VISIT_TYPE_LABELS[visitType] ?? visitType;
-  return { visitType, visitLabel };
+  return { visitType };
+}
+
+function serviceFormVisitNotes(visitNotes?: string | null) {
+  const notes = visitNotes?.trim() || "";
+  return notes || null;
 }
 
 function readLiveVisit(farmId: string, visitId: string | null | undefined) {
@@ -4393,8 +4397,8 @@ function syncServiceFormVisit(input: {
   linkedVisitId?: string | null;
 }) {
   const db = getDb();
-  const { visitType, visitLabel } = serviceFormVisitMeta(input.formKind);
-  const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n") || visitLabel;
+  const { visitType } = serviceFormVisitMeta(input.formKind);
+  const notes = serviceFormVisitNotes(input.visitNotes);
   const visitDate = input.formDate.trim();
   if (!visitDate) throw new Error("Visit date is required");
 
@@ -4508,8 +4512,8 @@ export function completeServiceForm(input: {
   const formDate = input.formDate.trim();
   if (!formDate) throw new Error("Visit date is required");
 
-  const { visitType, visitLabel } = serviceFormVisitMeta(input.formKind);
-  const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n") || visitLabel;
+  const { visitType } = serviceFormVisitMeta(input.formKind);
+  const notes = serviceFormVisitNotes(input.visitNotes);
 
   let visitId: string;
   let flockId: string | null = null;
