@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import {
   PLACEMENT_COMMENT_FIELDS,
+  PREBROOD_COMMENT_FIELDS,
   SERVICE_REPORT_COMMENT_FIELDS,
   commentPageCount,
   consumeCommentLines,
@@ -101,5 +102,28 @@ describe("consumeCommentLines", () => {
     assert.ok(page1.rest.startsWith(houseOverflowPage.lines[0]!));
     assert.ok(commentPageCount(text, widths, measure) >= 3);
     assert.ok(houseOverflowPage.rest);
+  });
+
+  it("continues leftover prebrood comments on extra stamped sheets", async () => {
+    const map = JSON.parse(readFileSync(join(assetsDir, "prebrood-fields.json"), "utf8")) as {
+      fields: Record<string, { widgets: { w: number; samePage?: boolean }[] }>;
+    };
+    const font = await (await PDFDocument.create()).embedFont(StandardFonts.Helvetica);
+    const widths = PREBROOD_COMMENT_FIELDS.map((name) => {
+      const widgets = map.fields[name]?.widgets ?? [];
+      const w = widgets.find((row) => row.samePage !== false) ?? widgets[0];
+      return Math.max(40, (w?.w ?? 500) * 0.92);
+    });
+    const measure = (text: string) => font.widthOfTextAtSize(text, 8);
+    const text = Array.from({ length: 1400 }, (_, i) => `pb${i}`).join(" ");
+    assert.ok(commentPageCount(text, widths, measure) >= 3);
+    const page1 = consumeCommentLines(text, widths, measure);
+    const page2 = consumeCommentLines(page1.rest, widths, measure);
+    const page3 = consumeCommentLines(page2.rest, widths, measure);
+    assert.ok(page1.rest);
+    assert.ok(page2.rest);
+    assert.ok(page1.rest.startsWith(page2.lines[0]!));
+    assert.ok(page2.rest.startsWith(page3.lines[0]!));
+    assert.equal(PREBROOD_COMMENT_FIELDS.length, 14);
   });
 });

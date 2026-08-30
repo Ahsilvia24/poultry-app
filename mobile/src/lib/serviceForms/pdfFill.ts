@@ -26,6 +26,7 @@ import { minVentCenteredX, minVentSideBoxes } from "./minVentLabel";
 import {
   MAX_PLACEMENT_COMMENT_PAGES,
   PLACEMENT_COMMENT_FIELDS,
+  PREBROOD_COMMENT_FIELDS,
   SERVICE_REPORT_COMMENT_FIELDS,
   consumeCommentLines,
 } from "./commentFlow";
@@ -566,27 +567,9 @@ function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
     { xPad: 12 },
   );
 
-  fillCommentLines(
-    ctx,
-    [
-      "Comments first line",
-      "Comments 1_2",
-      "Comments 2_2",
-      "Comments 3_2",
-      "Comments 4_2",
-      "Comments 5_2",
-      "Comments 6_2",
-      "Comments 7_2",
-      "Comments 8_2",
-      "comments 9",
-      "comments 10",
-      "comments 11",
-      "comments 12",
-      "comments 13",
-    ],
-    data.comments,
-  );
+  const leftoverComments = fillCommentLines(ctx, [...PREBROOD_COMMENT_FIELDS], data.comments);
   setText(ctx, "Text111", data.serviceTech, 10);
+  return leftoverComments;
 }
 
 export type BuiltServicePdf = {
@@ -685,7 +668,14 @@ async function buildPrebroodPdf(form: PrebroodForm) {
   const map = require("../../../assets/service-forms/prebrood-fields.json") as FieldMap;
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  buildPrebroodFields({ page: doc.getPages()[0]!, font, map }, form);
+  let comments = form.comments;
+  for (let pageIndex = 0; pageIndex < MAX_PLACEMENT_COMMENT_PAGES; pageIndex++) {
+    const page =
+      pageIndex === 0 ? doc.getPages()[0]! : await appendTemplatePage(doc, template);
+    const leftover = buildPrebroodFields({ page, font, map }, { ...form, comments });
+    if (!leftover || leftover === comments) break;
+    comments = leftover;
+  }
   return writePdfToCache(doc, pdfFileName("Prebrood", form.farmName, form.date));
 }
 
