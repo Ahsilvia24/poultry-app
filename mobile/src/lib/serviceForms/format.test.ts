@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { formatMinVentBoxNumbers, recommendedWeekLabel, WEEK_OPTIONS } from "./minVentLabel.ts";
 import { normalizeVentDoorTypes, ventDoorTypesFromPayload } from "./ventDoor.ts";
 
 describe("normalizeVentDoorTypes", () => {
@@ -20,6 +21,29 @@ describe("normalizeVentDoorTypes", () => {
       "ceiling",
       "sidewall",
     ]);
+  });
+});
+
+describe("WEEK_OPTIONS", () => {
+  it("includes blank plus weeks 1–8", () => {
+    assert.equal(WEEK_OPTIONS[0]?.value, "");
+    assert.equal(WEEK_OPTIONS[0]?.label, "Blank");
+    assert.equal(WEEK_OPTIONS.length, 9);
+  });
+});
+
+describe("formatMinVentBoxNumbers", () => {
+  it("stamps numbers only", () => {
+    assert.equal(formatMinVentBoxNumbers("30", "270"), "30 / 270");
+    assert.equal(formatMinVentBoxNumbers("", ""), "");
+    assert.equal(formatMinVentBoxNumbers("30", ""), "30");
+  });
+});
+
+describe("recommendedWeekLabel", () => {
+  it("shows Blank when no week is selected", () => {
+    assert.equal(recommendedWeekLabel(""), "Blank");
+    assert.equal(recommendedWeekLabel(3), "Week 3");
   });
 });
 

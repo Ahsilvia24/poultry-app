@@ -22,6 +22,7 @@ import type {
   YesNo,
 } from "./types";
 import { formatMinVentPair, formatServiceShortDate } from "./format";
+import { formatMinVentBoxNumbers } from "./minVentLabel";
 
 type FieldWidget = {
   x: number;
@@ -386,16 +387,14 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
   setText(
     ctx,
     "Text71",
-    formatMinVentPair(data.minVentActualOn, data.minVentActualOff),
-    6,
-    { coverPrinted: "field" },
+    formatMinVentBoxNumbers(data.minVentActualOn, data.minVentActualOff),
+    7,
   );
   setText(
     ctx,
     "Text88",
-    formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
-    6,
-    { coverPrinted: "field" },
+    formatMinVentBoxNumbers(data.minVentRecommendedOn, data.minVentRecommendedOff),
+    7,
   );
 
   const sorted = [...data.houses].sort((a, b) => a.houseNumber - b.houseNumber);

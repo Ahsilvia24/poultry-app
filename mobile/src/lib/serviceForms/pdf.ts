@@ -152,7 +152,7 @@ export function serviceReportPdfHtml(form: Extract<AnyServiceForm, { kind: "serv
           <tr><td>${esc(CFM_FT2_MIN_VENT_LABEL)}</td><td>${esc(form.cfmPerFt2MinVent)}</td></tr>
           <tr><td>Size and Number Of Fans Used</td><td>${esc(form.fansSizeAndCount)}</td></tr>
           <tr><td>Min Vent Timer (Actual)</td><td>${esc(formatMinVentPair(form.minVentActualOn, form.minVentActualOff))}</td></tr>
-          <tr><td>Min Vent Timer (Recommended) Wk ${esc(String(form.minVentRecommendedWeek))}</td><td>${esc(formatMinVentPair(form.minVentRecommendedOn, form.minVentRecommendedOff))}</td></tr>
+          <tr><td>Min Vent Timer (Recommended)${form.minVentRecommendedWeek ? ` Wk ${esc(String(form.minVentRecommendedWeek))}` : ""}</td><td>${esc(formatMinVentPair(form.minVentRecommendedOn, form.minVentRecommendedOff))}</td></tr>
           <tr><td>${esc(MAX_CFM_FT2_POWER_LABEL)}</td><td>${esc(form.maxCfm)}</td></tr>
           <tr><td>Cool Cell Off / On</td><td>${esc(form.coolCellOffTemp)} / ${esc(form.coolCellOnTemp)}</td></tr>
           <tr><td>Cool Cell Timer</td><td>${esc(form.coolCellTimerOn)}/${esc(form.coolCellTimerOff)}</td></tr>
@@ -236,7 +236,7 @@ export function placementPdfHtml(form: Extract<AnyServiceForm, { kind: "placemen
           <tr><td>${esc(CFM_FT2_MIN_VENT_LABEL)}</td><td>${esc(form.cfmPerFt2MinVent)}</td></tr>
           <tr><td>Fans</td><td>${esc(form.fansSizeAndCount)}</td></tr>
           <tr><td>Min Vent Actual</td><td>${esc(formatMinVentPair(form.minVentActualOn, form.minVentActualOff))}</td></tr>
-          <tr><td>Min Vent Recommended (Wk ${esc(String(form.minVentRecommendedWeek))})</td><td>${esc(formatMinVentPair(form.minVentRecommendedOn, form.minVentRecommendedOff))}</td></tr>
+          <tr><td>Min Vent Recommended${form.minVentRecommendedWeek ? ` (Wk ${esc(String(form.minVentRecommendedWeek))})` : ""}</td><td>${esc(formatMinVentPair(form.minVentRecommendedOn, form.minVentRecommendedOff))}</td></tr>
         </table>
         <h2>SPACE / SANITATION / EMERGENCY</h2>
         <table>

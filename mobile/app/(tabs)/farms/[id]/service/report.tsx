@@ -33,6 +33,7 @@ import {
   MAX_CFM_FT2_POWER_LABEL,
   VENT_DOOR_OPTIONS,
   WEEK_OPTIONS,
+  recommendedWeekLabel,
   ventDoorTypesFromPayload,
 } from "../../../../../src/lib/serviceForms/format";
 import {
@@ -129,7 +130,15 @@ export default function ServiceReportScreen() {
     setForm((prev) => ({ ...prev, recommendedTempTarget: next }));
   }, [form.houses, form.recommendedTempTarget]);
 
-  function applyRecommendedWeek(week: number) {
+  function applyRecommendedWeek(week: number | "") {
+    if (week === "" || week < 1) {
+      patch({
+        minVentRecommendedWeek: "",
+        minVentRecommendedOn: "",
+        minVentRecommendedOff: "",
+      });
+      return;
+    }
     if (!detail) {
       patch({ minVentRecommendedWeek: week });
       return;
@@ -375,7 +384,7 @@ export default function ServiceReportScreen() {
           />
           <SelectField
             label="Recommended min vent week"
-            valueLabel={`Week ${form.minVentRecommendedWeek}`}
+            valueLabel={recommendedWeekLabel(form.minVentRecommendedWeek)}
             onPress={() => setOptionPicker("week")}
           />
           <Text style={[styles.muted, { marginBottom: 8 }]}>
@@ -590,8 +599,8 @@ export default function ServiceReportScreen() {
         open={optionPicker === "week"}
         title="Recommended min vent week"
         options={WEEK_OPTIONS}
-        value={String(form.minVentRecommendedWeek)}
-        onSelect={(v) => applyRecommendedWeek(Number(v))}
+        value={form.minVentRecommendedWeek === "" ? "" : String(form.minVentRecommendedWeek)}
+        onSelect={(v) => applyRecommendedWeek(v === "" ? "" : Number(v))}
         onClose={() => setOptionPicker(null)}
       />
     </SafeAreaView>
