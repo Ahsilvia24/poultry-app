@@ -13,7 +13,7 @@ function pullLiveHouseFields(row: ServiceHouseRow, live: ServiceHouseRow): Servi
   while (weeks.length < live.weeks.length) weeks.push("");
   return {
     ...row,
-    currentTemp: live.currentTemp.trim() ? live.currentTemp : row.currentTemp,
+    currentTemp: live.currentTemp.trim(),
     mortalityToDate: live.mortalityToDate.trim() ? live.mortalityToDate : row.mortalityToDate,
     weeks: weeks.map((w, i) => {
       const next = live.weeks[i]?.trim();
