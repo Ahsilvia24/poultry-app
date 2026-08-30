@@ -168,4 +168,20 @@ describe("checklist visit sync", () => {
     assert.equal(form.visit_id, result.visitId);
     db.close();
   });
+
+  it("still finds the checklist by form id after the visit is deleted", () => {
+    const db = setup();
+    deleteVisitKeepForm(db, "farm_1", "visit_1");
+
+    const byForm = db
+      .prepare("SELECT id FROM service_forms WHERE id = ? AND farm_id = ?")
+      .get("form_1", "farm_1") as { id: string } | undefined;
+    const byVisit = db
+      .prepare("SELECT id FROM service_forms WHERE visit_id = ? AND farm_id = ?")
+      .get("visit_1", "farm_1") as { id: string } | undefined;
+
+    assert.equal(byForm?.id, "form_1");
+    assert.equal(byVisit, undefined);
+    db.close();
+  });
 });

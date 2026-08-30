@@ -76,11 +76,21 @@ export function useExistingServiceForm(
 
   return useMemo(() => {
     try {
-      const row = formId
-        ? getServiceFormById(farmId, formId)
-        : visitId
-          ? getServiceFormForVisit(farmId, visitId)
-          : null;
+      // After a visit is deleted the form stays, but visit_id is cleared.
+      // Always prefer formId so "open this checklist" still works.
+      if (formId) {
+        const row = getServiceFormById(farmId, formId);
+        if (!row || row.formKind !== expectedKind) return null;
+        return row;
+      }
+      if (!visitId) return null;
+      try {
+        getVisit(farmId, visitId);
+      } catch {
+        // Leftover visitId after delete must not open a blank new form.
+        return null;
+      }
+      const row = getServiceFormForVisit(farmId, visitId);
       if (!row || row.formKind !== expectedKind) return null;
       return row;
     } catch {
