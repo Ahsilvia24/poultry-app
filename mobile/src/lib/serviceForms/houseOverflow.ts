@@ -1,6 +1,6 @@
 /** White-out the printed 1–8 digits only — stay inside the # cell, off the grid lines. */
 export function continuationHouseNumberBox(ageX: number, ageY: number, ageH: number) {
-  const insetRight = 3.9;
+  const insetRight = 6.25;
   const insetBottom = 0.85;
   const insetTop = 2.5;
   const x = 21;
