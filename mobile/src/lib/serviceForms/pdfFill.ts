@@ -160,14 +160,21 @@ function setText(
 }
 
 /** Stamp on/off into the two halves of a printed "n / n" box. Do not draw a slash. */
-function stampMinVentSides(ctx: Ctx, name: string, on: string, off: string, fontSize = 7) {
+function stampMinVentSides(
+  ctx: Ctx,
+  name: string,
+  on: string,
+  off: string,
+  fontSize = 7,
+  opts?: { yNudge?: number },
+) {
   const left = String(on ?? "").trim();
   const right = String(off ?? "").trim();
   if (!left && !right) return;
   const r = widgetRect(ctx.map, name);
   if (!r) return;
   const size = Math.min(fontSize, Math.max(5, r.h * 0.82));
-  const y = r.y + Math.max(0.5, (r.h - size) * 0.35);
+  const y = r.y + Math.max(0.5, (r.h - size) * 0.35) + (opts?.yNudge ?? 0);
   const { left: leftBox, right: rightBox } = minVentSideBoxes(r);
   if (left) {
     const tw = ctx.font.widthOfTextAtSize(left, size);
@@ -191,6 +198,33 @@ function stampMinVentSides(ctx: Ctx, name: string, on: string, off: string, font
       maxWidth: Math.max(4, rightBox.w),
     });
   }
+}
+
+const BACKUP_SETTING_FIELDS = ["Text94", "Text95", "Text96", "Text97", "Text98"] as const;
+
+/** Center Heat/Cool/Stage values on one baseline inside the printed boxes. */
+function stampBackupSettings(ctx: Ctx, values: string[]) {
+  const size = 8;
+  const rects = BACKUP_SETTING_FIELDS.map((name) => widgetRect(ctx.map, name));
+  const present = rects.filter((r): r is FieldWidget => r != null);
+  if (!present.length) return;
+  const midY = present.reduce((sum, r) => sum + r.y + r.h / 2, 0) / present.length;
+  // AcroForm widgets sit on the top of the printed cells — drop into the box.
+  const y = midY - size * 0.4 - 3.5;
+  values.forEach((value, i) => {
+    const v = String(value ?? "").trim();
+    const r = rects[i];
+    if (!v || !r) return;
+    const tw = ctx.font.widthOfTextAtSize(v, size);
+    ctx.page.drawText(v, {
+      x: r.x + Math.max(1, (r.w - tw) / 2),
+      y,
+      size,
+      font: ctx.font,
+      color: rgb(0, 0, 0),
+      maxWidth: Math.max(4, r.w - 2),
+    });
+  });
 }
 
 function markCheck(ctx: Ctx, name: string, on: boolean, widgetIndex = 0) {
@@ -419,7 +453,10 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
   setText(ctx, "Text70", data.cfmPerFt2MinVent, 7);
   setText(ctx, "Text89", data.fansSizeAndCount, 7);
   stampMinVentSides(ctx, "Text71", data.minVentActualOn, data.minVentActualOff);
-  stampMinVentSides(ctx, "Text88", data.minVentRecommendedOn, data.minVentRecommendedOff);
+  // Recommended widget is taller/lower than the printed box — lift to match actual.
+  stampMinVentSides(ctx, "Text88", data.minVentRecommendedOn, data.minVentRecommendedOff, 7, {
+    yNudge: 3,
+  });
 
   const sorted = [...data.houses].sort((a, b) => a.houseNumber - b.houseNumber);
   const litterFields = [
@@ -466,11 +503,13 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
 
   setText(ctx, "HIController Temp Alarm Setting", data.alarmHi, 8);
   setText(ctx, "LOWController Temp Alarm Setting", data.alarmLow, 8);
-  setText(ctx, "Text94", data.backupHeat, 8);
-  setText(ctx, "Text95", data.backupCool, 8);
-  setText(ctx, "Text96", data.backupStage1, 8);
-  setText(ctx, "Text97", data.backupStage2, 8);
-  setText(ctx, "Text98", data.backupStage3, 8);
+  stampBackupSettings(ctx, [
+    data.backupHeat,
+    data.backupCool,
+    data.backupStage1,
+    data.backupStage2,
+    data.backupStage3,
+  ]);
 
   fillCommentLines(
     ctx,
