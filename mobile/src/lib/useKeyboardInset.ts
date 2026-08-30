@@ -1,5 +1,32 @@
 import { useEffect, useState } from "react";
 import { Keyboard, Platform } from "react-native";
+import { visualViewportOverlayBox } from "./visualViewport";
+
+export function useVisualViewportBox(enabled = true) {
+  const [box, setBox] = useState({ top: 0, height: 0 });
+
+  useEffect(() => {
+    if (!enabled || Platform.OS !== "web" || typeof window === "undefined") {
+      setBox({ top: 0, height: 0 });
+      return;
+    }
+    const vv = window.visualViewport;
+    const update = () => {
+      setBox(visualViewportOverlayBox(window.innerHeight, vv));
+    };
+    update();
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
+    return () => {
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [enabled]);
+
+  return box;
+}
 
 /**
  * Extra bottom inset when the software keyboard covers the viewport.
