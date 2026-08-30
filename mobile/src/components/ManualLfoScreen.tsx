@@ -134,7 +134,7 @@ export function ManualLfoScreen({
   const [orderDate, setOrderDate] = useState(todayKey);
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
-  const [headCount, setHeadCount] = useState("");
+  const [headCount, setHeadCount] = useState("29000");
   const [calcWaterGal, setCalcWaterGal] = useState(DEFAULT_WATER_GAL);
   const [calcHeadCount, setCalcHeadCount] = useState(DEFAULT_HEAD_COUNT);
   const [binAPounds, setBinAPounds] = useState("0");

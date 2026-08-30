@@ -32,7 +32,7 @@ export function ManualLfoForm() {
   const [orderDate, setOrderDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
-  const [headCount, setHeadCount] = useState("");
+  const [headCount, setHeadCount] = useState("29000");
   const [binAPounds, setBinAPounds] = useState("0");
   const [binBPounds, setBinBPounds] = useState("0");
   const [catchDate, setCatchDate] = useState("");
