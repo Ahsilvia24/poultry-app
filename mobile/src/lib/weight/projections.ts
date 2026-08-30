@@ -80,6 +80,6 @@ export function catchWeightProjections(input: {
     dateKey: input.catchDate,
     ageDays,
     midWeightLbs: weightFromAgeDays(ageDays, input.growthRateLbsPerDay),
-    midLabel: "Catch day",
+    midLabel: "Catch Day",
   });
 }
