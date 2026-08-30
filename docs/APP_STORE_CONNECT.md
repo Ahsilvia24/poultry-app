@@ -10,8 +10,8 @@ Do **not** run EAS production iOS builds, `eas submit`, or TestFlight uploads un
 | Field | Value |
 |-------|-------|
 | Version | 1.0.9 |
-| Build | Next store binary after 133 (bump with EAS when you ask to submit) |
-| Status | 5.6 + 4.2 quality polish in repo — wait for an explicit submit ask |
+| Build | 134 |
+| Status | Uploaded to App Store Connect 2026-08-30 — wait for TestFlight processing |
 
 ## Identity (keep these the same everywhere)
 
