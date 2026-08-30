@@ -81,4 +81,25 @@ describe("consumeCommentLines", () => {
     assert.ok(first.rest.startsWith(second.lines[0]!));
     assert.equal(SERVICE_REPORT_COMMENT_FIELDS.length, 9);
   });
+
+  it("continues leftover comments on the 9–16 sheet before opening a blank page", async () => {
+    const map = JSON.parse(
+      readFileSync(join(assetsDir, "service-report-fields.json"), "utf8"),
+    ) as { fields: Record<string, { widgets: { w: number; samePage?: boolean }[] }> };
+    const font = await (await PDFDocument.create()).embedFont(StandardFonts.Helvetica);
+    const widths = SERVICE_REPORT_COMMENT_FIELDS.map((name) => {
+      const widgets = map.fields[name]?.widgets ?? [];
+      const w = widgets.find((row) => row.samePage !== false) ?? widgets[0];
+      return Math.max(40, (w?.w ?? 500) * 0.92);
+    });
+    const measure = (text: string) => font.widthOfTextAtSize(text, 8);
+    const text = Array.from({ length: 700 }, (_, i) => `sr${i}`).join(" ");
+    const page1 = consumeCommentLines(text, widths, measure);
+    const houseOverflowPage = consumeCommentLines(page1.rest, widths, measure);
+    assert.ok(page1.rest);
+    assert.ok(houseOverflowPage.lines[0]);
+    assert.ok(page1.rest.startsWith(houseOverflowPage.lines[0]!));
+    assert.ok(commentPageCount(text, widths, measure) >= 3);
+    assert.ok(houseOverflowPage.rest);
+  });
 });

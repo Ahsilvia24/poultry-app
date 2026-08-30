@@ -620,7 +620,7 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
     const slice = pages[p]!;
     const extraCtx: Ctx = { page, font, map };
 
-    // House overflow only — leave lights/temps/comments blank for 9–16.
+    // House overflow: header + 9–16 (etc.). Comments continue here; other fields stay blank.
     setText(extraCtx, "Farm Name", form.farmName, 10);
     setText(extraCtx, "Date", formatServiceShortDate(form.date) || form.date, 10, { yNudge: 3 });
     setText(extraCtx, "Farm", form.farmNumber ?? "", 9, { yNudge: 2.5 });
@@ -632,6 +632,13 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
       const slot = i + 1;
       stampContinuationHouseNumber(extraCtx, h.houseNumber, slot);
       stampServiceReportHouseRow(extraCtx, h, slot);
+    }
+    if (leftoverComments) {
+      leftoverComments = fillCommentLines(
+        extraCtx,
+        [...SERVICE_REPORT_COMMENT_FIELDS],
+        leftoverComments,
+      );
     }
   }
 
