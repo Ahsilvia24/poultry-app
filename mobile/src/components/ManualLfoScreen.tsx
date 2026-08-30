@@ -232,6 +232,9 @@ export function ManualLfoScreen({
   }
 
   function dismissKeypad() {
+    if (activeField === "rate" && !consumptionRate.trim()) {
+      setConsumptionRate(String(DEFAULT_LFO_CONSUMPTION_RATE));
+    }
     setActiveField(null);
     setReplaceOnType(false);
   }
@@ -247,8 +250,7 @@ export function ManualLfoScreen({
   }
 
   function onEnter() {
-    setActiveField(null);
-    setReplaceOnType(false);
+    dismissKeypad();
   }
 
   function save() {
@@ -307,6 +309,37 @@ export function ManualLfoScreen({
           headRef={bindFieldRef("calcHead")}
         />
 
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Edit consumption rate"
+          onPress={() => focusField("rate")}
+          style={{ marginTop: 10, marginBottom: 12, alignSelf: "flex-start" }}
+        >
+          <View ref={bindFieldRef("rate")} collapsable={false}>
+            <Text
+              style={{
+                fontFamily: fonts.sans,
+                fontSize: 16,
+                fontWeight: "600",
+                color: colors.text,
+              }}
+            >
+              Consumption Rate:{" "}
+              <Text
+                style={{
+                  fontWeight: "800",
+                  textDecorationLine: "underline",
+                  color: activeField === "rate" ? colors.accentDark : colors.text,
+                }}
+              >
+                {activeField === "rate"
+                  ? consumptionRate || " "
+                  : consumptionRate.trim() || String(DEFAULT_LFO_CONSUMPTION_RATE)}
+              </Text>
+            </Text>
+          </View>
+        </Pressable>
+
         <Card>
           <View
             style={{
@@ -346,17 +379,6 @@ export function ManualLfoScreen({
               />
             </View>
           </View>
-          <FieldButton
-            label="Consumption rate"
-            value={consumptionRate}
-            active={activeField === "rate"}
-            onPress={() => focusField("rate")}
-            fieldRef={bindFieldRef("rate")}
-            style={{ marginTop: 8 }}
-          />
-          <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
-            Consumption rate in lbs/bird/day
-          </Text>
           {formatLfoOrderClock(orderDate, orderTime) ? (
             <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
               Hours from {formatLfoOrderClock(orderDate, orderTime)}
