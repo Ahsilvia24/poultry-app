@@ -33,6 +33,7 @@ import {
   ventDoorTypesFromPayload,
 } from "../../../../../src/lib/serviceForms/format";
 import {
+  applyLiveHouseMetrics,
   minVentForWeek,
   prefillHouseRows,
 } from "../../../../../src/lib/serviceForms/prefill";
@@ -43,6 +44,7 @@ import {
   useCompleteServiceForm,
   useEditVisitIdParam,
   useExistingServiceForm,
+  useRefreshDraftHouseMetrics,
   useServiceFarmContext,
 } from "../../../../../src/lib/serviceForms/useServiceFarm";
 import { colors, styles } from "../../../../../src/theme";
@@ -78,7 +80,8 @@ export default function PlacementChecklistScreen() {
     }
     const draft = readInProgressDraft<PlacementForm>(farmId, "placement", fresh);
     if (draft?.kind === "placement") {
-      return withSavedServiceTech(hydratePlacement(draft));
+      const hydrated = withSavedServiceTech(hydratePlacement(draft));
+      return detail ? applyLiveHouseMetrics(hydrated, detail) : hydrated;
     }
     const blank = createPlacementDraft({
       farmName,
@@ -97,6 +100,7 @@ export default function PlacementChecklistScreen() {
   const [optionPicker, setOptionPicker] = useState<"date" | "week" | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
   useAutosaveServiceFormDraft(farmId, "placement", form, !existing && !saving);
+  useRefreshDraftHouseMetrics(farmId, !existing && !saving, setForm);
 
   function patch(p: Partial<PlacementForm>) {
     setForm((prev) => ({ ...prev, ...p }));

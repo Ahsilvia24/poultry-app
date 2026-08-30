@@ -37,6 +37,7 @@ import {
   ventDoorTypesFromPayload,
 } from "../../../../../src/lib/serviceForms/format";
 import {
+  applyLiveHouseMetrics,
   currentFlockWeek,
   flockAgeDaysFromHouses,
   minVentForWeek,
@@ -50,6 +51,7 @@ import {
   useCompleteServiceForm,
   useEditVisitIdParam,
   useExistingServiceForm,
+  useRefreshDraftHouseMetrics,
   useServiceFarmContext,
 } from "../../../../../src/lib/serviceForms/useServiceFarm";
 import { colors, styles } from "../../../../../src/theme";
@@ -97,7 +99,8 @@ export default function ServiceReportScreen() {
     }
     const draft = readInProgressDraft<ServiceReportForm>(farmId, "service_report", fresh);
     if (draft?.kind === "service_report") {
-      return withSavedServiceTech(hydrateReport(draft));
+      const hydrated = withSavedServiceTech(hydrateReport(draft));
+      return detail ? applyLiveHouseMetrics(hydrated, detail) : hydrated;
     }
     if (!detail) return initial;
     const week = currentFlockWeek(detail);
@@ -114,6 +117,7 @@ export default function ServiceReportScreen() {
   const [optionPicker, setOptionPicker] = useState<"humidity" | "week" | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
   useAutosaveServiceFormDraft(farmId, "service_report", form, !existing && !saving);
+  useRefreshDraftHouseMetrics(farmId, !existing && !saving, setForm);
 
   function patch(p: Partial<ServiceReportForm>) {
     setForm((prev) => ({ ...prev, ...p }));

@@ -4293,6 +4293,24 @@ export function getServiceFormForVisit(
   return row ? mapServiceFormRow(row) : null;
 }
 
+export function listServiceForms(farmId: string): StoredServiceForm[] {
+  const db = getDb();
+  const rows = db.getAllSync<{
+    id: string;
+    farm_id: string;
+    flock_id: string | null;
+    form_kind: string;
+    form_date: string;
+    payload_json: string;
+    visit_id: string | null;
+    created_at: string;
+  }>(
+    "SELECT * FROM service_forms WHERE farm_id = ? ORDER BY form_date DESC, created_at DESC",
+    [farmId],
+  );
+  return rows.map(mapServiceFormRow);
+}
+
 function serviceFormVisitMeta(formKind: ServiceFormKind) {
   const visitType =
     formKind === "service_report"

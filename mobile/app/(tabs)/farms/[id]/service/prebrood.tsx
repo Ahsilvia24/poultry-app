@@ -24,7 +24,7 @@ import { BackHeader, Card } from "../../../../../src/components/ui";
 import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
 import { createPrebroodDraft } from "../../../../../src/lib/serviceForms/defaults";
 import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/format";
-import { prefillHouseRows } from "../../../../../src/lib/serviceForms/prefill";
+import { applyLiveHouseMetrics, prefillHouseRows } from "../../../../../src/lib/serviceForms/prefill";
 import type { PrebroodForm } from "../../../../../src/lib/serviceForms/types";
 import {
   readInProgressDraft,
@@ -32,6 +32,7 @@ import {
   useCompleteServiceForm,
   useEditVisitIdParam,
   useExistingServiceForm,
+  useRefreshDraftHouseMetrics,
   useServiceFarmContext,
 } from "../../../../../src/lib/serviceForms/useServiceFarm";
 import { colors, styles } from "../../../../../src/theme";
@@ -61,7 +62,8 @@ export default function PrebroodChecklistScreen() {
     }
     const draft = readInProgressDraft<PrebroodForm>(farmId, "prebrood", fresh);
     if (draft?.kind === "prebrood") {
-      return withSavedServiceTech(draft);
+      const hydrated = withSavedServiceTech(draft);
+      return detail ? applyLiveHouseMetrics(hydrated, detail) : hydrated;
     }
     return createPrebroodDraft({
       farmName,
@@ -71,6 +73,7 @@ export default function PrebroodChecklistScreen() {
   });
   const scrollRef = useRef<ScrollViewType>(null);
   useAutosaveServiceFormDraft(farmId, "prebrood", form, !existing && !saving);
+  useRefreshDraftHouseMetrics(farmId, !existing && !saving, setForm);
 
   function patch(p: Partial<PrebroodForm>) {
     setForm((prev) => ({ ...prev, ...p }));
