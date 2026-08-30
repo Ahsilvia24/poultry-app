@@ -5,12 +5,8 @@ import { format, parseISO } from "date-fns";
 import { deactivateFarmAction } from "@/app/actions/farms";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Button, Card, StatusBadge } from "@/components/ui";
-import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import { ExclusiveSwipeGroup, useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
 import type { FarmCardSummary } from "@/types";
-
-/** Matches `lg:grid-cols-3` — expand/collapse applies to the whole visual row. */
-const FARMS_PER_ROW = 3;
 
 function formatLastVisitDate(dateKey: string) {
   return format(parseISO(dateKey), "EEE, d MMM yy");
@@ -22,15 +18,7 @@ function openIssuesLabel(count: number) {
   return `${count} open issues`;
 }
 
-function DashboardFarmCard({
-  farm,
-  open,
-  onToggle,
-}: {
-  farm: FarmCardSummary;
-  open: boolean;
-  onToggle: () => void;
-}) {
+function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
   const [swipeX, setSwipeX] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, start] = useTransition();
@@ -118,13 +106,7 @@ function DashboardFarmCard({
         }}
       >
         <Card className="!p-0 overflow-hidden">
-          <button
-            type="button"
-            onClick={onToggle}
-            className="w-full px-3 py-2.5 text-left transition hover:bg-stone-50"
-            aria-expanded={open}
-            aria-label={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
-          >
+          <div className="w-full px-3 py-2.5 text-left">
             <div className="flex w-full items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <p className="text-base font-bold text-stone-900">
@@ -137,66 +119,56 @@ function DashboardFarmCard({
               <StatusBadge status={farm.status} />
             </div>
 
-            {open ? (
-              <div className="mt-3 border-t border-stone-100 pt-3">
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div>
-                    <p className="text-stone-500">Birds placed</p>
-                    <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
-                  </div>
-                  <div>
-                    <p className="text-stone-500">Birds remaining</p>
-                    <p className="font-semibold">{formatNumber(farm.birdsRemaining)}</p>
-                  </div>
-                  <div>
-                    <p className="text-stone-500">Proj. Head Count</p>
-                    <p className="font-semibold">
-                      {farm.projectedHeadCount != null
-                        ? formatNumber(farm.projectedHeadCount)
-                        : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-stone-500">7 Day Mort.</p>
-                    <p className="font-semibold">{formatNumber(farm.sevenDayMortality)}</p>
-                  </div>
-                  <div>
-                    <p className="text-stone-500">Total Mortality</p>
-                    <p className="font-semibold">
-                      {farm.cumulativeMortality} ({formatPct(farm.cumulativeMortalityPct)})
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-stone-500">Proj. Mortality</p>
-                    <p className="font-semibold">
-                      {farm.projectedMortality != null
-                        ? `${formatNumber(farm.projectedMortality)} (${formatPct(
-                            farm.totalBirdsPlaced > 0
-                              ? (farm.projectedMortality / farm.totalBirdsPlaced) * 100
-                              : 0,
-                          )})`
-                        : "—"}
-                    </p>
-                  </div>
+            <div className="mt-3 border-t border-stone-100 pt-3">
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div>
+                  <p className="text-stone-500">Birds placed</p>
+                  <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
                 </div>
-                {farm.weeklyMortality.length > 0 ? (
-                  <div className="mt-3 border-t border-stone-100 pt-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-                      Weekly mortality
-                    </p>
-                    <WeeklyMortalityList weeks={farm.weeklyMortality} />
-                  </div>
-                ) : null}
-                <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
-                  <span>
-                    Last visit:{" "}
-                    {farm.lastVisitDate ? formatLastVisitDate(farm.lastVisitDate) : "—"}
-                  </span>
-                  <span>{openIssuesLabel(farm.openIssues)}</span>
+                <div>
+                  <p className="text-stone-500">Birds remaining</p>
+                  <p className="font-semibold">{formatNumber(farm.birdsRemaining)}</p>
+                </div>
+                <div>
+                  <p className="text-stone-500">Proj. Head Count</p>
+                  <p className="font-semibold">
+                    {farm.projectedHeadCount != null
+                      ? formatNumber(farm.projectedHeadCount)
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-stone-500">7 Day Mort.</p>
+                  <p className="font-semibold">{formatNumber(farm.sevenDayMortality)}</p>
+                </div>
+                <div>
+                  <p className="text-stone-500">Total Mortality</p>
+                  <p className="font-semibold">
+                    {farm.cumulativeMortality} ({formatPct(farm.cumulativeMortalityPct)})
+                  </p>
+                </div>
+                <div>
+                  <p className="text-stone-500">Proj. Mortality</p>
+                  <p className="font-semibold">
+                    {farm.projectedMortality != null
+                      ? `${formatNumber(farm.projectedMortality)} (${formatPct(
+                          farm.totalBirdsPlaced > 0
+                            ? (farm.projectedMortality / farm.totalBirdsPlaced) * 100
+                            : 0,
+                        )})`
+                      : "—"}
+                  </p>
                 </div>
               </div>
-            ) : null}
-          </button>
+              <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
+                <span>
+                  Last visit:{" "}
+                  {farm.lastVisitDate ? formatLastVisitDate(farm.lastVisitDate) : "—"}
+                </span>
+                <span>{openIssuesLabel(farm.openIssues)}</span>
+              </div>
+            </div>
+          </div>
         </Card>
       </div>
       {confirmOpen ? (
@@ -240,32 +212,12 @@ function DashboardFarmCard({
 }
 
 export function DashboardFarmCards({ farms }: { farms: FarmCardSummary[] }) {
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(() => new Set());
-
-  function toggleRow(farmIndex: number) {
-    const row = Math.floor(farmIndex / FARMS_PER_ROW);
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(row)) next.delete(row);
-      else next.add(row);
-      return next;
-    });
-  }
-
   return (
     <ExclusiveSwipeGroup>
       <div className="mt-3 grid items-start gap-1 lg:grid-cols-3">
-        {farms.map((farm, index) => {
-          const row = Math.floor(index / FARMS_PER_ROW);
-          return (
-            <DashboardFarmCard
-              key={farm.id}
-              farm={farm}
-              open={expandedRows.has(row)}
-              onToggle={() => toggleRow(index)}
-            />
-          );
-        })}
+        {farms.map((farm) => (
+          <DashboardFarmCard key={farm.id} farm={farm} />
+        ))}
       </div>
     </ExclusiveSwipeGroup>
   );
