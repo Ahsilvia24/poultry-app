@@ -86,10 +86,6 @@ export function LfoHub({
               Create LFO
             </button>
           )}
-
-          <div className="mt-6">
-            <ConsumptionRateCalculator />
-          </div>
         </>
       )}
 

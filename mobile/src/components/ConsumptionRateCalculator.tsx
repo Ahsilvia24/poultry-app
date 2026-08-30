@@ -105,7 +105,7 @@ export function ConsumptionRateCalculator({
   return (
     <Card style={style}>
       <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
-        Consumption rate calculator
+        Consumption Rate Calculator
       </Text>
       <View style={styles.row}>
         <CalcFieldButton

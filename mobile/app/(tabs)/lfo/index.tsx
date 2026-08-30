@@ -1,18 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Keyboard,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   Text,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  type ScrollView as ScrollViewType,
-  type View as ViewType,
 } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
@@ -21,7 +15,6 @@ import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
 import { SharePdfIconButton } from "../../../src/components/SharePdfIconButton";
 import { todayKey } from "../../../src/lib/ids";
 import { currentHalfHourTime } from "../../../src/lib/time-slots";
-import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
@@ -32,14 +25,8 @@ import {
   PrimaryButton,
 } from "../../../src/components/ui";
 import { CopyHouseSummaryButton } from "../../../src/components/LfoHouseSummaryBlock";
-import {
-  NumberKeypad,
-  appendKeypadDigit,
-  backspaceKeypadValue,
-} from "../../../src/components/NumberKeypad";
 import { LfoFarmTabs, MANUAL_LFO_TAB_ID } from "../../../src/components/LfoFarmTabs";
 import { ManualLfoScreen } from "../../../src/components/ManualLfoScreen";
-import { ConsumptionRateCalculator } from "../../../src/components/ConsumptionRateCalculator";
 import { userFacingMessage } from "../../../src/lib/useKeyboardInset";
 
 /** "2026-07-26" → "7-26-2026" (no leading zeros). */
@@ -204,8 +191,6 @@ function SavedLfoList({
   );
 }
 
-type CalcField = "water" | "head";
-
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
   return value ?? "";
@@ -213,7 +198,6 @@ function paramId(value: string | string[] | undefined) {
 
 export default function LfoListScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
   const params = useLocalSearchParams<{ farmId?: string | string[] }>();
   const routeFarmId = paramId(params.farmId);
   const [lfos, setLfos] = useState<ReturnType<typeof listLfos>>([]);
@@ -221,19 +205,12 @@ export default function LfoListScreen() {
   const [farmId, setFarmId] = useState(routeFarmId || "");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [waterGal, setWaterGal] = useState("");
-  const [headCount, setHeadCount] = useState("");
-  const [activeField, setActiveField] = useState<CalcField | null>(null);
-  const [replaceOnType, setReplaceOnType] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; farmName: string } | null>(
     null,
   );
 
-  const scrollRef = useRef<ScrollViewType>(null);
+  const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("lfo", scrollRef);
-  const scrollYRef = useRef(0);
-  const waterRef = useRef<ViewType>(null);
-  const headRef = useRef<ViewType>(null);
 
   const load = useCallback(() => {
     const nextFarms = listFarms().farms;
@@ -247,24 +224,9 @@ export default function LfoListScreen() {
     });
   }, [routeFarmId]);
 
-  function dismissKeypad() {
-    setActiveField(null);
-    setReplaceOnType(false);
-    Keyboard.dismiss();
-    if (Platform.OS === "web" && typeof document !== "undefined") {
-      const el = document.activeElement;
-      if (el instanceof HTMLElement) el.blur();
-    }
-  }
-
   useFocusEffect(
     useCallback(() => {
-      dismissKeypad();
       load();
-      return () => {
-        setActiveField(null);
-        setReplaceOnType(false);
-      };
     }, [load]),
   );
 
@@ -274,83 +236,13 @@ export default function LfoListScreen() {
     }
   }, [routeFarmId, farms]);
 
-  useEffect(() => {
-    navigation.setOptions({
-      tabBarStyle: activeField ? { display: "none" } : undefined,
-    });
-    return () => {
-      navigation.setOptions({ tabBarStyle: undefined });
-    };
-  }, [activeField, navigation]);
-
-  // Re-scroll after keypad mounts (layout shift)
-  useEffect(() => {
-    if (!activeField) return;
-    const t = setTimeout(() => {
-      scrollFieldAboveKeypad(
-        scrollRef,
-        activeField === "water" ? waterRef : headRef,
-        scrollYRef,
-      );
-    }, 100);
-    return () => clearTimeout(t);
-  }, [activeField]);
-
   function openLfo(id: string) {
     router.push(`/(tabs)/lfo/${id}`);
-  }
-
-  function focusField(field: CalcField) {
-    Keyboard.dismiss();
-    if (Platform.OS === "web" && typeof document !== "undefined") {
-      const el = document.activeElement;
-      if (el instanceof HTMLElement) el.blur();
-    }
-    setActiveField(field);
-    setReplaceOnType(true);
-    setTimeout(() => {
-      scrollFieldAboveKeypad(
-        scrollRef,
-        field === "water" ? waterRef : headRef,
-        scrollYRef,
-      );
-    }, 50);
-  }
-
-  function getActiveValue() {
-    return activeField === "water" ? waterGal : headCount;
-  }
-
-  function setActiveValue(next: string) {
-    if (activeField === "water") setWaterGal(next);
-    else if (activeField === "head") setHeadCount(next);
-  }
-
-  function onDigit(d: string) {
-    const current = getActiveValue();
-    const base = replaceOnType ? "" : current;
-    setReplaceOnType(false);
-    setActiveValue(appendKeypadDigit(base, d, false));
-  }
-
-  function onBackspace() {
-    setReplaceOnType(false);
-    const current = getActiveValue();
-    if (!current) {
-      dismissKeypad();
-      return;
-    }
-    setActiveValue(backspaceKeypadValue(current));
-  }
-
-  function onEnter() {
-    dismissKeypad();
   }
 
   const isManual = farmId === MANUAL_LFO_TAB_ID;
 
   function selectFarm(id: string) {
-    dismissKeypad();
     setFarmId(id);
   }
 
@@ -395,17 +287,9 @@ export default function LfoListScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.screen}
-          contentContainerStyle={[
-            styles.content,
-            { paddingBottom: activeField ? CUSTOM_KEYPAD_HEIGHT : 40 },
-          ]}
+          contentContainerStyle={styles.content}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
           keyboardShouldPersistTaps="handled"
-          onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-            scrollYRef.current = e.nativeEvent.contentOffset.y;
-          }}
-          onScrollBeginDrag={dismissKeypad}
-          scrollEventThrottle={16}
         >
           <PageHeader
             title="Last Feed Order"
@@ -415,7 +299,6 @@ export default function LfoListScreen() {
           <PrimaryButton
             label="Create LFO"
             onPress={() => {
-              dismissKeypad();
               if (!farmId || farmId === MANUAL_LFO_TAB_ID) {
                 setMsg("Select a farm first");
                 return;
@@ -434,22 +317,6 @@ export default function LfoListScreen() {
             }}
           />
 
-          <ConsumptionRateCalculator
-            style={{ marginTop: 8 }}
-            waterGal={waterGal}
-            headCount={headCount}
-            waterActive={activeField === "water"}
-            headActive={activeField === "head"}
-            onFocusWater={() => focusField("water")}
-            onFocusHead={() => focusField("head")}
-            waterRef={(node) => {
-              waterRef.current = node;
-            }}
-            headRef={(node) => {
-              headRef.current = node;
-            }}
-          />
-
           <SavedLfoList
             lfos={lfos}
             onOpen={openLfo}
@@ -457,23 +324,6 @@ export default function LfoListScreen() {
             onShareError={setMsg}
           />
         </ScrollView>
-
-        {activeField ? (
-          <>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss keypad"
-              onPress={dismissKeypad}
-              style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
-            />
-            <NumberKeypad
-              allowDecimal={false}
-              onDigit={onDigit}
-              onBackspace={onBackspace}
-              onEnter={onEnter}
-            />
-          </>
-        ) : null}
       </View>
       )}
       <ConfirmDialog
