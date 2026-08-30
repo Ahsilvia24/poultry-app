@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
-import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
-import { useKeypadNav } from "@/components/KeypadNavContext";
+import { ConsumptionRateCalculator } from "@/components/ConsumptionRateCalculator";
 import { createManualLastFeedOrderAction } from "@/app/actions/lfo";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
@@ -39,14 +38,6 @@ export function ManualLfoForm() {
   const [catchDate, setCatchDate] = useState("");
   const [catchTime, setCatchTime] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [editingRate, setEditingRate] = useState(false);
-  const [replaceOnType, setReplaceOnType] = useState(false);
-  const { setKeypadOpen } = useKeypadNav();
-
-  useEffect(() => {
-    setKeypadOpen(editingRate);
-    return () => setKeypadOpen(false);
-  }, [editingRate, setKeypadOpen]);
 
   const heads = Number(headCount);
   const calc = useMemo(() => {
@@ -84,28 +75,9 @@ export function ManualLfoForm() {
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
       ) : null}
       <input type="hidden" name="consumptionRate" value={consumptionRate} />
-      <button
-        type="button"
-        onClick={() => {
-          setEditingRate(true);
-          setReplaceOnType(consumptionRate.trim() !== "");
-        }}
-        className="mb-1 text-left text-base font-semibold text-stone-900"
-        aria-label="Edit consumption rate"
-      >
-        Consumption Rate:{" "}
-        <span
-          className={
-            editingRate
-              ? "font-extrabold text-emerald-800 underline decoration-emerald-700 underline-offset-2"
-              : "font-extrabold underline decoration-stone-300 underline-offset-2"
-          }
-        >
-          {editingRate
-            ? consumptionRate || "\u00a0"
-            : consumptionRate.trim() || String(DEFAULT_LFO_CONSUMPTION_RATE)}
-        </span>
-      </button>
+      <ConsumptionRateCalculator
+        onRateChange={(rate) => setConsumptionRate(String(rate))}
+      />
       <Card>
         <div className="grid grid-cols-2 gap-2">
           <PairField>
@@ -316,45 +288,6 @@ export function ManualLfoForm() {
       ) : null}
 
       <Button type="submit">Save LFO</Button>
-      {editingRate ? (
-        <div className="fixed inset-x-0 bottom-0 z-50">
-          <button
-            type="button"
-            aria-label="Dismiss keypad"
-            className="fixed inset-0 z-40 bg-transparent"
-            onClick={() => {
-              if (!consumptionRate.trim()) {
-                setConsumptionRate(String(DEFAULT_LFO_CONSUMPTION_RATE));
-              }
-              setEditingRate(false);
-            }}
-          />
-          <div className="relative z-50">
-            <NumberKeypad
-              allowDecimal
-              onDigit={(d) => {
-                const base = replaceOnType && d !== "." ? "" : consumptionRate;
-                setReplaceOnType(false);
-                setConsumptionRate(appendKeypadDigit(base, d, true));
-              }}
-              onBackspace={() => {
-                setReplaceOnType(false);
-                if (!consumptionRate) {
-                  setEditingRate(false);
-                  return;
-                }
-                setConsumptionRate(backspaceKeypadValue(consumptionRate));
-              }}
-              onEnter={() => {
-                if (!consumptionRate.trim()) {
-                  setConsumptionRate(String(DEFAULT_LFO_CONSUMPTION_RATE));
-                }
-                setEditingRate(false);
-              }}
-            />
-          </div>
-        </div>
-      ) : null}
     </form>
   );
 }

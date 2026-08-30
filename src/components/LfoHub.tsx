@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui";
-import { ConsumptionRateCalculator } from "@/components/ConsumptionRateCalculator";
 import { ManualLfoForm } from "@/components/ManualLfoForm";
 import { SavedLfoRow } from "@/components/SavedLfoRow";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
@@ -62,12 +61,7 @@ export function LfoHub({
       </div>
 
       {isManual ? (
-        <>
-          <div className="mb-3">
-            <ConsumptionRateCalculator />
-          </div>
-          <ManualLfoForm />
-        </>
+        <ManualLfoForm />
       ) : (
         <>
           {farms.length === 0 ? (

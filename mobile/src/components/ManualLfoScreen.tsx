@@ -33,6 +33,11 @@ import {
 import { LfoHouseSummaryBlock } from "./LfoHouseSummaryBlock";
 import { LfoFarmTabs } from "./LfoFarmTabs";
 import { ConsumptionRateCalculator } from "./ConsumptionRateCalculator";
+import {
+  DEFAULT_HEAD_COUNT,
+  DEFAULT_WATER_GAL,
+  consumptionRateFromWater,
+} from "../lib/lfo/consumptionRate";
 import { createManualLfo } from "../repos/data";
 
 const MANUAL_HOUSE_ID = "manual";
@@ -130,8 +135,8 @@ export function ManualLfoScreen({
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [headCount, setHeadCount] = useState("");
-  const [calcWaterGal, setCalcWaterGal] = useState("");
-  const [calcHeadCount, setCalcHeadCount] = useState("");
+  const [calcWaterGal, setCalcWaterGal] = useState(DEFAULT_WATER_GAL);
+  const [calcHeadCount, setCalcHeadCount] = useState(DEFAULT_HEAD_COUNT);
   const [binAPounds, setBinAPounds] = useState("0");
   const [binBPounds, setBinBPounds] = useState("0");
   const [catchDate, setCatchDate] = useState("");
@@ -164,6 +169,11 @@ export function ManualLfoScreen({
     }, 100);
     return () => clearTimeout(t);
   }, [activeField]);
+
+  useEffect(() => {
+    const next = consumptionRateFromWater(calcWaterGal, calcHeadCount);
+    if (next) setConsumptionRate(String(next.rate));
+  }, [calcWaterGal, calcHeadCount]);
 
   const heads = Number(headCount);
   const calc = useMemo(() => {
@@ -232,9 +242,6 @@ export function ManualLfoScreen({
   }
 
   function dismissKeypad() {
-    if (activeField === "rate" && !consumptionRate.trim()) {
-      setConsumptionRate(String(DEFAULT_LFO_CONSUMPTION_RATE));
-    }
     setActiveField(null);
     setReplaceOnType(false);
   }
@@ -308,37 +315,6 @@ export function ManualLfoScreen({
           waterRef={bindFieldRef("calcWater")}
           headRef={bindFieldRef("calcHead")}
         />
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Edit consumption rate"
-          onPress={() => focusField("rate")}
-          style={{ marginTop: 10, marginBottom: 12, alignSelf: "flex-start" }}
-        >
-          <View ref={bindFieldRef("rate")} collapsable={false}>
-            <Text
-              style={{
-                fontFamily: fonts.sans,
-                fontSize: 16,
-                fontWeight: "600",
-                color: colors.text,
-              }}
-            >
-              Consumption Rate:{" "}
-              <Text
-                style={{
-                  fontWeight: "800",
-                  textDecorationLine: "underline",
-                  color: activeField === "rate" ? colors.accentDark : colors.text,
-                }}
-              >
-                {activeField === "rate"
-                  ? consumptionRate || " "
-                  : consumptionRate.trim() || String(DEFAULT_LFO_CONSUMPTION_RATE)}
-              </Text>
-            </Text>
-          </View>
-        </Pressable>
 
         <Card>
           <View
