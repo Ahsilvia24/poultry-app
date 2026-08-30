@@ -8,7 +8,6 @@ import {
   getServiceFormDraft,
   getServiceFormForVisit,
   saveServiceFormDraft,
-  tryPushHouseLoggedTemp,
   type StoredServiceForm,
 } from "../../repos/data";
 import { applyLiveHouseMetrics } from "./prefill";
@@ -94,15 +93,18 @@ export function useCompleteServiceForm(farmId: string, opts?: {
     setSaving(true);
     setError(null);
     try {
-      for (const house of input.form.houses) {
-        tryPushHouseLoggedTemp(farmId, house.houseNumber, house.currentTemp);
+      let form = input.form;
+      try {
+        form = applyLiveHouseMetrics(form, getFarmDetail(farmId));
+      } catch {
+        // Save the in-memory form if farm detail cannot load.
       }
       completeServiceForm({
         farmId,
-        formKind: input.form.kind,
-        formDate: input.form.date,
-        payload: input.form,
-        visitNotes: input.form.comments?.trim() || null,
+        formKind: form.kind,
+        formDate: form.date,
+        payload: form,
+        visitNotes: form.comments?.trim() || null,
         generatorHours: input.generatorHours ?? null,
         serviceFormId: opts?.serviceFormId ?? null,
         existingVisitId: opts?.serviceFormId ? null : opts?.existingVisitId ?? null,
@@ -113,7 +115,7 @@ export function useCompleteServiceForm(farmId: string, opts?: {
         // Completed form is already saved.
       }
       try {
-        await shareServiceFormPdf(input.form);
+        await shareServiceFormPdf(form);
       } catch {
         // Visit is saved even if share sheet fails / is dismissed.
       }

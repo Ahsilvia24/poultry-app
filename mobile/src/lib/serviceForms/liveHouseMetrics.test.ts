@@ -42,12 +42,12 @@ describe("mergeLiveHouseRows", () => {
     assert.equal(next[0]?.weeks[0], "18");
   });
 
-  it("does not wipe a typed temp when the house has no logged temp", () => {
+  it("leaves current temp blank when the house has no logged temp", () => {
     const next = mergeLiveHouseRows(
       [row({ houseNumber: 1, currentTemp: "81" })],
       [row({ houseNumber: 1, currentTemp: "" })],
     );
-    assert.equal(next[0]?.currentTemp, "81");
+    assert.equal(next[0]?.currentTemp, "");
   });
 
   it("adds a house that was created after the draft started", () => {
