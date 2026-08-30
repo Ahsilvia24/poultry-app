@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { farmSchema, createFarmSchema, flockSchema, houseSchema } from "@/lib/validations";
 import { ungroupNumber } from "@/lib/grouped-number";
 import { normalizeHalfHourTime } from "@/lib/time-slots";
+import { isHouseInPropagateRange } from "@/lib/housePropagate";
 
 function emptyToNull(value: FormDataEntryValue | null) {
   const s = String(value ?? "").trim();
@@ -243,24 +244,29 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
     data: houseFields,
   });
 
-  const laterHouses = {
-    farmId,
-    deletedAt: null,
-    houseNumber: { gt: parsed.data.houseNumber },
-  };
-  if (formFlag(formData, "applySquareFootageToRemaining")) {
+  const fromHouseNumber = house.houseNumber;
+  const laterHouseRows = (
+    await prisma.house.findMany({
+      where: { farmId, deletedAt: null, NOT: { id: houseId } },
+      select: { id: true, houseNumber: true },
+      orderBy: { houseNumber: "asc" },
+    })
+  ).filter((h) => isHouseInPropagateRange(h.houseNumber, fromHouseNumber));
+  const laterHouseIds = laterHouseRows.map((h) => h.id);
+  const laterHouses = { id: { in: laterHouseIds } };
+  if (laterHouseIds.length > 0 && formFlag(formData, "applySquareFootageToRemaining")) {
     await prisma.house.updateMany({
       where: laterHouses,
       data: { squareFootage: parsed.data.squareFootage },
     });
   }
-  if (formFlag(formData, "applyMinVentCfmToRemaining")) {
+  if (laterHouseIds.length > 0 && formFlag(formData, "applyMinVentCfmToRemaining")) {
     await prisma.house.updateMany({
       where: laterHouses,
       data: { totalFanCFM: parsed.data.totalFanCFM },
     });
   }
-  if (formFlag(formData, "applyPowerCfmToRemaining")) {
+  if (laterHouseIds.length > 0 && formFlag(formData, "applyPowerCfmToRemaining")) {
     await prisma.house.updateMany({
       where: laterHouses,
       data: { totalPowerCFM: parsed.data.totalPowerCFM },
@@ -334,10 +340,24 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
       if (!nextNumber) {
         return { error: "Flock ID is required" };
       }
-      await prisma.flock.update({
-        where: { id: activeFlock.id },
-        data: { flockNumber: nextNumber },
+      const earlierOnFlock = await prisma.houseFlock.findFirst({
+        where: {
+          flockId: activeFlock.id,
+          house: {
+            deletedAt: null,
+            NOT: { id: houseId },
+            houseNumber: { lt: fromHouseNumber },
+          },
+        },
+        select: { id: true },
       });
+      // Shared flock: renaming it would change earlier houses.
+      if (!earlierOnFlock) {
+        await prisma.flock.update({
+          where: { id: activeFlock.id },
+          data: { flockNumber: nextNumber },
+        });
+      }
     }
 
     async function upsertHouseFlockFields(
@@ -401,15 +421,7 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
         applyCatchTimeToRemaining ||
         applyFlockIdToRemaining;
       if (remainingFlags) {
-        const remaining = await prisma.house.findMany({
-          where: {
-            farmId,
-            deletedAt: null,
-            houseNumber: { gt: parsed.data.houseNumber },
-          },
-          select: { id: true },
-          orderBy: { houseNumber: "asc" },
-        });
+        const remaining = laterHouseRows;
         for (const h of remaining) {
           await upsertHouseFlockFields(h.id, {
             ...(applyBirdsToRemaining ? { placedBirdCount } : {}),
@@ -426,10 +438,19 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
               select: { flockId: true },
             });
             if (remainingHf && remainingHf.flockId !== activeFlock.id) {
-              await prisma.flock.update({
-                where: { id: remainingHf.flockId },
-                data: { flockNumber: flockNumberRaw.trim() },
+              const earlierOnThatFlock = await prisma.houseFlock.findFirst({
+                where: {
+                  flockId: remainingHf.flockId,
+                  house: { deletedAt: null, houseNumber: { lt: fromHouseNumber } },
+                },
+                select: { id: true },
               });
+              if (!earlierOnThatFlock) {
+                await prisma.flock.update({
+                  where: { id: remainingHf.flockId },
+                  data: { flockNumber: flockNumberRaw.trim() },
+                });
+              }
             }
           }
         }

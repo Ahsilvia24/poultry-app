@@ -38,6 +38,7 @@ import {
   type CatchRow,
 } from "../lib/catchImport/parse";
 import { getFarmOrder } from "../lib/appSettings";
+import { isHouseInPropagateRange } from "../lib/housePropagate";
 import { sortFarmsByOrder } from "../lib/farmOrder";
 import { VISIT_TYPE_LABELS } from "../lib/visits";
 import { normalizedLoggedTemp } from "../lib/serviceForms/liveHouseMetrics";
@@ -3360,12 +3361,28 @@ function applyHouseFlockFields(
 
   if (input.flockNumber?.trim()) {
     const nextNumber = input.flockNumber.trim();
-    const clash = db.getFirstSync<{ id: string }>(
-      `SELECT id FROM flocks WHERE farm_id = ? AND flock_number = ? AND id != ?`,
-      [farmId, nextNumber, flock.id],
+    const thisHouse = db.getFirstSync<{ house_number: number }>(
+      "SELECT house_number FROM houses WHERE id = ? AND farm_id = ?",
+      [houseId, farmId],
     );
-    if (clash) throw new Error(`Flock ${nextNumber} already exists on this farm`);
-    db.runSync(`UPDATE flocks SET flock_number = ? WHERE id = ?`, [nextNumber, flock.id]);
+    const earlierOnFlock = thisHouse
+      ? db.getFirstSync<{ id: string }>(
+          `SELECT h.id FROM houses h
+           JOIN house_flocks hf ON hf.house_id = h.id
+           WHERE hf.flock_id = ? AND h.deleted_at IS NULL AND h.id != ?
+             AND CAST(h.house_number AS INTEGER) < ?`,
+          [flock.id, houseId, Math.floor(Number(thisHouse.house_number))],
+        )
+      : null;
+    // Shared flock: renaming it would change earlier houses. Leave those IDs alone.
+    if (!earlierOnFlock) {
+      const clash = db.getFirstSync<{ id: string }>(
+        `SELECT id FROM flocks WHERE farm_id = ? AND flock_number = ? AND id != ?`,
+        [farmId, nextNumber, flock.id],
+      );
+      if (clash) throw new Error(`Flock ${nextNumber} already exists on this farm`);
+      db.runSync(`UPDATE flocks SET flock_number = ? WHERE id = ?`, [nextNumber, flock.id]);
+    }
   }
 
   syncFlockDatesAndPrune(farmId, flock.id);
@@ -3511,29 +3528,39 @@ export function updateHouse(
     ],
   );
 
+  // Propagate from the house that was opened, not a house-number field the form may change.
+  const fromHouseNumber = Math.floor(Number(house.house_number));
+  const laterHouses = db
+    .getAllSync<{ id: string; house_number: number }>(
+      `SELECT id, house_number FROM houses
+       WHERE farm_id = ? AND deleted_at IS NULL AND id != ?`,
+      [farmId, houseId],
+    )
+    .filter((h) => isHouseInPropagateRange(h.house_number, fromHouseNumber));
+
   if (input.applySquareFootageToRemainingHouses) {
-    db.runSync(
-      `UPDATE houses
-       SET square_footage = ?
-       WHERE farm_id = ? AND deleted_at IS NULL AND house_number > ?`,
-      [squareFootage, farmId, houseNumber],
-    );
+    for (const h of laterHouses) {
+      db.runSync(
+        "UPDATE houses SET square_footage = ? WHERE id = ? AND farm_id = ?",
+        [squareFootage, h.id, farmId],
+      );
+    }
   }
   if (input.applyMinVentCfmToRemainingHouses) {
-    db.runSync(
-      `UPDATE houses
-       SET total_fan_cfm = ?
-       WHERE farm_id = ? AND deleted_at IS NULL AND house_number > ?`,
-      [input.totalFanCFM, farmId, houseNumber],
-    );
+    for (const h of laterHouses) {
+      db.runSync(
+        "UPDATE houses SET total_fan_cfm = ? WHERE id = ? AND farm_id = ?",
+        [input.totalFanCFM, h.id, farmId],
+      );
+    }
   }
   if (input.applyPowerCfmToRemainingHouses) {
-    db.runSync(
-      `UPDATE houses
-       SET total_power_cfm = ?
-       WHERE farm_id = ? AND deleted_at IS NULL AND house_number > ?`,
-      [totalPowerCFM, farmId, houseNumber],
-    );
+    for (const h of laterHouses) {
+      db.runSync(
+        "UPDATE houses SET total_power_cfm = ? WHERE id = ? AND farm_id = ?",
+        [totalPowerCFM, h.id, farmId],
+      );
+    }
   }
 
   const touchesFlockPlacement =
@@ -3560,12 +3587,7 @@ export function updateHouse(
     const applyFlockId = input.applyFlockIdToRemainingHouses ?? applyAllLegacy;
 
     if (applyBirds || applyPlacement || applyCatchDate || applyCatchTime || applyFlockId) {
-      const remaining = db.getAllSync<{ id: string }>(
-        `SELECT id FROM houses
-         WHERE farm_id = ? AND deleted_at IS NULL AND house_number > ?
-         ORDER BY house_number ASC`,
-        [farmId, houseNumber],
-      );
+      const remaining = laterHouses;
       for (const h of remaining) {
         applyHouseFlockFields(farmId, h.id, {
           placedBirdCount: applyBirds ? input.placedBirdCount : undefined,
