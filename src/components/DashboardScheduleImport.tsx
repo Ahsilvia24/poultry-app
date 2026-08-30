@@ -286,7 +286,11 @@ export function DashboardScheduleImport({
               House — Farm-Entity / Farm Code when available). Side-by-side Fort Smith / Heavener
               sheets supported.
             </p>
-          ) : null}
+          ) : (
+            <p className="mt-2 text-sm text-stone-500">
+              Weekly Chick Placement PDF (including scanned) or spreadsheet.
+            </p>
+          )}
         </div>
 
         <Button type="submit" disabled={pending || !uploadEnabled}>

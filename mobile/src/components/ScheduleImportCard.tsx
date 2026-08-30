@@ -422,7 +422,9 @@ export function ScheduleImportCard() {
       ? Platform.OS === "web"
         ? "Choose a Kill/Catch Schedule PDF/CSV/XLSX (scanned PDFs OK). Ending Kill Date or Catch Date, Farm Name, House."
         : "Choose a Kill/Catch Schedule PDF/CSV/XLSX. Ending Kill Date or Catch Date, Farm Name, House. Scanned PDFs need CSV/XLSX on iPhone."
-      : null;
+      : Platform.OS === "web"
+        ? "Weekly Chick Placement: farm name, code left of the name, house, date placed, birds sent. Ignores Complex / flock-code / mortality columns."
+        : "Weekly Chick Placement: farm name, code left of the name (e.g. 3821FS), house, date placed, birds sent. Ignores Complex, flock-code column, and far-right columns. Text PDFs on iPhone; scans need CSV/XLSX.";
 
   return (
     <Card>
@@ -486,9 +488,7 @@ export function ScheduleImportCard() {
         })}
       </View>
 
-      {helperText ? (
-        <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>{helperText}</Text>
-      ) : null}
+      <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>{helperText}</Text>
 
       <PrimaryButton label={busy ? "Working…" : "Upload & Read"} onPress={onUpload} />
 
