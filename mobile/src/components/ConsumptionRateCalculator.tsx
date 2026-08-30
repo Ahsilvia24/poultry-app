@@ -89,43 +89,49 @@ export function ConsumptionRateCalculator({
       <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text, marginBottom: 8 }}>
         Consumption Rate Calculator
       </Text>
-      <LineValue
-        label="Daily water (gal)"
-        value={waterGal}
-        display={waterDisplay}
-        active={waterActive}
-        onPress={onFocusWater}
-        fieldRef={waterRef}
-      />
-      <LineValue
-        label="Current head count"
-        value={headCount}
-        display={headDisplay}
-        active={headActive}
-        onPress={onFocusHead}
-        fieldRef={headRef}
-      />
-      {result ? (
-        <View style={{ marginTop: 10, gap: 4 }}>
-          <Text style={styles.muted}>WC {formatNum(result.wc, 1)} lbs</Text>
-          <Text style={styles.muted}>FC {formatNum(result.fc, 1)} lbs</Text>
-          <Text
-            style={{
-              fontFamily: fonts.sans,
-              fontSize: 16,
-              fontWeight: "800",
-              color: colors.text,
-              marginTop: 4,
-            }}
-          >
-            Consumption Rate: {formatNum(result.rate, 2)}
-          </Text>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <LineValue
+            label="Daily Water (gal)"
+            value={waterGal}
+            display={waterDisplay}
+            active={waterActive}
+            onPress={onFocusWater}
+            fieldRef={waterRef}
+          />
+          <LineValue
+            label="Cur. Head Count"
+            value={headCount}
+            display={headDisplay}
+            active={headActive}
+            onPress={onFocusHead}
+            fieldRef={headRef}
+          />
+          {result ? (
+            <Text
+              style={{
+                fontFamily: fonts.sans,
+                fontSize: 16,
+                fontWeight: "800",
+                color: colors.text,
+                marginTop: 8,
+              }}
+            >
+              Consumption Rate: {formatNum(result.rate, 2)}
+            </Text>
+          ) : (
+            <Text style={[styles.muted, { marginTop: 8 }]}>
+              Enter water and head count to calculate.
+            </Text>
+          )}
         </View>
-      ) : (
-        <Text style={[styles.muted, { marginTop: 10 }]}>
-          Enter water and head count to calculate.
-        </Text>
-      )}
+        {result ? (
+          <View style={{ alignItems: "flex-end", paddingTop: 4, gap: 4 }}>
+            <Text style={styles.muted}>WC {formatNum(result.wc, 1)}</Text>
+            <Text style={styles.muted}>FC {formatNum(result.fc, 1)}</Text>
+          </View>
+        ) : null}
+      </View>
     </Card>
   );
 }

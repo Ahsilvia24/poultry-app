@@ -91,67 +91,73 @@ export function ConsumptionRateCalculator({
   return (
     <Card>
       <h2 className="text-base font-bold text-stone-900">Consumption Rate Calculator</h2>
-      <div className="mt-2 space-y-1">
-        <button
-          type="button"
-          onClick={() => {
-            setActive("water");
-            setReplaceOnType(dailyWaterGallons.trim() !== "");
-          }}
-          className="block text-left text-base font-semibold text-stone-900"
-        >
-          Daily water (gal):{" "}
-          <span
-            className={cn(
-              "font-extrabold underline underline-offset-2",
-              active === "water"
-                ? "text-emerald-800 decoration-emerald-700"
-                : "decoration-stone-300",
-            )}
+      <div className="mt-2 flex items-start gap-3">
+        <div className="min-w-0 flex-1 space-y-1">
+          <button
+            type="button"
+            onClick={() => {
+              setActive("water");
+              setReplaceOnType(dailyWaterGallons.trim() !== "");
+            }}
+            className="block text-left text-base font-semibold text-stone-900"
           >
-            {active === "water"
-              ? dailyWaterGallons || "\u00a0"
-              : dailyWaterGallons.trim()
-                ? Number(dailyWaterGallons).toLocaleString()
-                : "—"}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActive("head");
-            setReplaceOnType(headCount.trim() !== "");
-          }}
-          className="block text-left text-base font-semibold text-stone-900"
-        >
-          Current head count:{" "}
-          <span
-            className={cn(
-              "font-extrabold underline underline-offset-2",
-              active === "head"
-                ? "text-emerald-800 decoration-emerald-700"
-                : "decoration-stone-300",
-            )}
+            Daily Water (gal):{" "}
+            <span
+              className={cn(
+                "font-extrabold underline underline-offset-2",
+                active === "water"
+                  ? "text-emerald-800 decoration-emerald-700"
+                  : "decoration-stone-300",
+              )}
+            >
+              {active === "water"
+                ? dailyWaterGallons || "\u00a0"
+                : dailyWaterGallons.trim()
+                  ? Number(dailyWaterGallons).toLocaleString()
+                  : "—"}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActive("head");
+              setReplaceOnType(headCount.trim() !== "");
+            }}
+            className="block text-left text-base font-semibold text-stone-900"
           >
-            {active === "head"
-              ? headCount || "\u00a0"
-              : headCount.trim()
-                ? Number(headCount).toLocaleString()
-                : "—"}
-          </span>
-        </button>
-      </div>
-      {result ? (
-        <div className="mt-3 space-y-1 text-sm text-stone-600">
-          <p>WC {formatNum(result.wc, 1)} lbs</p>
-          <p>FC {formatNum(result.fc, 1)} lbs</p>
-          <p className="pt-1 text-base font-extrabold text-stone-900">
-            Consumption Rate: {formatNum(result.rate, 2)}
-          </p>
+            Cur. Head Count:{" "}
+            <span
+              className={cn(
+                "font-extrabold underline underline-offset-2",
+                active === "head"
+                  ? "text-emerald-800 decoration-emerald-700"
+                  : "decoration-stone-300",
+              )}
+            >
+              {active === "head"
+                ? headCount || "\u00a0"
+                : headCount.trim()
+                  ? Number(headCount).toLocaleString()
+                  : "—"}
+            </span>
+          </button>
+          {result ? (
+            <p className="pt-1 text-base font-extrabold text-stone-900">
+              Consumption Rate: {formatNum(result.rate, 2)}
+            </p>
+          ) : (
+            <p className="pt-1 text-sm text-stone-500">
+              Enter water and head count to calculate.
+            </p>
+          )}
         </div>
-      ) : (
-        <p className="mt-3 text-sm text-stone-500">Enter water and head count to calculate.</p>
-      )}
+        {result ? (
+          <div className="shrink-0 pt-1 text-right text-sm text-stone-600">
+            <p>WC {formatNum(result.wc, 1)}</p>
+            <p>FC {formatNum(result.fc, 1)}</p>
+          </div>
+        ) : null}
+      </div>
       {active ? (
         <div className="fixed inset-x-0 bottom-0 z-50">
           <button
