@@ -1377,6 +1377,15 @@ export default function FarmDetailScreen() {
                   { key: "litter", label: "Litter", onPress: () => scrollToSection("litter") },
                   { key: "feed", label: "Feed", onPress: () => scrollToSection("feed") },
                   {
+                    key: "lfo",
+                    label: "LFO",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/lfo",
+                        params: { farmId: farm.id },
+                      }),
+                  },
+                  {
                     key: "add-flock",
                     label: "Add Flock",
                     onPress: () =>

@@ -7,6 +7,7 @@ import { Card } from "@/components/ui";
 import { ManualLfoForm } from "@/components/ManualLfoForm";
 import { SavedLfoRow } from "@/components/SavedLfoRow";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
+import { lfoTabFromRoute } from "@/lib/lfo/defaultTab";
 import type { LfoShareInventory } from "@/lib/lfo/share-payload";
 
 export const MANUAL_LFO_TAB_ID = "manual";
@@ -14,6 +15,7 @@ export const MANUAL_LFO_TAB_ID = "manual";
 export function LfoHub({
   farms,
   savedLfos,
+  initialFarmId,
 }: {
   farms: Array<{ id: string; farmName: string }>;
   savedLfos: Array<{
@@ -23,9 +25,25 @@ export function LfoHub({
     houseSummary: string[];
     shareInventory: LfoShareInventory;
   }>;
+  initialFarmId?: string;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState(farms[0]?.id ?? MANUAL_LFO_TAB_ID);
+  const [tab, setTab] = useState(() => {
+    const fromRoute = lfoTabFromRoute(initialFarmId, MANUAL_LFO_TAB_ID);
+    return fromRoute !== MANUAL_LFO_TAB_ID && farms.some((f) => f.id === fromRoute)
+      ? fromRoute
+      : MANUAL_LFO_TAB_ID;
+  });
+
+  function selectTab(id: string) {
+    setTab(id);
+    if (id === MANUAL_LFO_TAB_ID) {
+      if (initialFarmId) router.replace("/lfo");
+      return;
+    }
+    if (initialFarmId !== id) router.replace(`/lfo?farmId=${id}`);
+  }
+
   const isManual = tab === MANUAL_LFO_TAB_ID;
   const selected = farms.find((f) => f.id === tab) ?? null;
 
@@ -34,7 +52,7 @@ export function LfoHub({
       <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
         <button
           type="button"
-          onClick={() => setTab(MANUAL_LFO_TAB_ID)}
+          onClick={() => selectTab(MANUAL_LFO_TAB_ID)}
           className={cn(
             "shrink-0 rounded-[10px] px-3.5 py-2.5 text-sm font-bold",
             isManual ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
@@ -48,7 +66,7 @@ export function LfoHub({
             <button
               key={f.id}
               type="button"
-              onClick={() => setTab(f.id)}
+              onClick={() => selectTab(f.id)}
               className={cn(
                 "shrink-0 rounded-[10px] px-3.5 py-2.5 text-sm font-bold",
                 active ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",

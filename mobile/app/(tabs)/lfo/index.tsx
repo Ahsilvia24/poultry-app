@@ -27,6 +27,7 @@ import {
 import { CopyHouseSummaryButton } from "../../../src/components/LfoHouseSummaryBlock";
 import { LfoFarmTabs, MANUAL_LFO_TAB_ID } from "../../../src/components/LfoFarmTabs";
 import { ManualLfoScreen } from "../../../src/components/ManualLfoScreen";
+import { lfoTabFromRoute } from "../../../src/lib/lfo/defaultTab";
 import { userFacingMessage } from "../../../src/lib/useKeyboardInset";
 
 /** "2026-07-26" → "7-26-2026" (no leading zeros). */
@@ -202,7 +203,10 @@ export default function LfoListScreen() {
   const routeFarmId = paramId(params.farmId);
   const [lfos, setLfos] = useState<ReturnType<typeof listLfos>>([]);
   const [farms, setFarms] = useState<ReturnType<typeof listFarms>["farms"]>([]);
-  const [farmId, setFarmId] = useState(routeFarmId || "");
+  const [farmId, setFarmId] = useState(() =>
+    lfoTabFromRoute(routeFarmId || undefined, MANUAL_LFO_TAB_ID),
+  );
+  const appliedRouteFarmId = useRef(routeFarmId);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; farmName: string } | null>(
@@ -219,10 +223,9 @@ export default function LfoListScreen() {
     setFarmId((prev) => {
       if (prev === MANUAL_LFO_TAB_ID) return prev;
       if (prev && nextFarms.some((f) => f.id === prev)) return prev;
-      if (routeFarmId && nextFarms.some((f) => f.id === routeFarmId)) return routeFarmId;
-      return nextFarms[0]?.id ?? MANUAL_LFO_TAB_ID;
+      return MANUAL_LFO_TAB_ID;
     });
-  }, [routeFarmId]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -231,10 +234,10 @@ export default function LfoListScreen() {
   );
 
   useEffect(() => {
-    if (routeFarmId && farms.some((f) => f.id === routeFarmId)) {
-      setFarmId(routeFarmId);
-    }
-  }, [routeFarmId, farms]);
+    if (routeFarmId === appliedRouteFarmId.current) return;
+    appliedRouteFarmId.current = routeFarmId;
+    setFarmId(lfoTabFromRoute(routeFarmId || undefined, MANUAL_LFO_TAB_ID));
+  }, [routeFarmId]);
 
   function openLfo(id: string) {
     router.push(`/(tabs)/lfo/${id}`);

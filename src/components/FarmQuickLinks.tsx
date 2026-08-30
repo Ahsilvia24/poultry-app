@@ -22,6 +22,7 @@ export function FarmQuickLinks({
     { key: "issues", href: "#issues", label: "Issues" },
     { key: "litter", href: "#litter", label: "Litter" },
     { key: "feed", href: "#feed", label: "Feed" },
+    { key: "lfo", href: `/lfo?farmId=${farmId}`, label: "LFO", external: true },
     { key: "add-flock", href: "#add-flock", label: "Add Flock" },
   ];
 

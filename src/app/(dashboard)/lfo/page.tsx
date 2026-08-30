@@ -16,9 +16,17 @@ function formatLfoDate(d: Date) {
   return `${d.getUTCMonth() + 1}-${d.getUTCDate()}-${d.getUTCFullYear()}`;
 }
 
-export default async function LfoPage() {
+type SearchParams = Promise<{ farmId?: string }>;
+
+export default async function LfoPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+  const sp = searchParams ? await searchParams : {};
+  const initialFarmId = typeof sp.farmId === "string" ? sp.farmId : undefined;
 
   const [farms, savedLfos] = await Promise.all([
     prisma.farm.findMany({
@@ -109,7 +117,12 @@ export default async function LfoPage() {
   return (
     <div>
       <PageHeader title="Last Feed Order" />
-      <LfoHub farms={farms} savedLfos={savedWithSummary} />
+      <LfoHub
+        key={initialFarmId ?? "manual"}
+        farms={farms}
+        savedLfos={savedWithSummary}
+        initialFarmId={initialFarmId}
+      />
     </div>
   );
 }
