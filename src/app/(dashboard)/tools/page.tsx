@@ -1,10 +1,11 @@
-import { addDays, format } from "date-fns";
+import { addDays, differenceInCalendarDays, format } from "date-fns";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   birdAgeFromPlacement,
   flockWeekFromAge,
+  summarizeForDate,
 } from "@/lib/mortality/calculations";
 import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
 import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
@@ -14,6 +15,7 @@ import { MaxCoolingChart } from "@/components/MaxCoolingChart";
 import { TempCurveChart } from "@/components/TempCurveChart";
 import { ToolsQuickLinks } from "@/components/ToolsQuickLinks";
 import { ToolsSectionPanel } from "@/components/ToolsSectionPanel";
+import { WeightProjectionManualTile } from "@/components/WeightProjectionManualTile";
 import {
   ToolsWeightProjections,
   type WeightFarmPayload,
@@ -61,6 +63,16 @@ export default async function ToolsPage({
               placedBirdCount: true,
               placementDate: true,
               catchDate: true,
+              mortalities: {
+                where: { isDraft: false },
+                select: {
+                  mortalityDate: true,
+                  birdAgeInDays: true,
+                  dailyMortalityCount: true,
+                  cullCount: true,
+                  totalDailyLoss: true,
+                },
+              },
             },
           },
         },
@@ -165,6 +177,12 @@ export default async function ToolsPage({
         flockId: flock?.id ?? null,
         growthRateLbsPerDay,
         groups,
+        currentHeadCount: hf
+          ? summarizeForDate(hf.placedBirdCount, hf.mortalities, today).remaining
+          : null,
+        daysToKill: catchKey
+          ? Math.max(0, differenceInCalendarDays(localNoonFromKey(catchKey), today))
+          : null,
       };
     });
 
@@ -195,6 +213,24 @@ export default async function ToolsPage({
           <ToolsWeightProjections
             farms={weightFarms}
             initialFarmId={sp.farmId ?? null}
+          />
+        </ToolsSectionPanel>
+
+        <ToolsSectionPanel
+          hashId="weight-projections-manual"
+          title="Weight Projections Manual"
+        >
+          <WeightProjectionManualTile
+            farms={weightFarms.map((farm) => ({
+              id: farm.id,
+              farmName: farm.farmName,
+              houses: farm.houses.map((house) => ({
+                id: house.id,
+                houseNumber: house.houseNumber,
+                currentHeadCount: house.currentHeadCount,
+                daysToKill: house.daysToKill,
+              })),
+            }))}
           />
         </ToolsSectionPanel>
 
