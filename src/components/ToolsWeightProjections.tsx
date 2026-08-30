@@ -14,6 +14,8 @@ export type WeightHousePayload = {
   flockId: string | null;
   growthRateLbsPerDay: number;
   groups: WeightProjectionGroup[];
+  currentHeadCount: number | null;
+  daysToKill: number | null;
 };
 
 export type WeightFarmPayload = {
