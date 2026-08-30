@@ -38,7 +38,7 @@ function weightProjectDate(catchDate: string): string {
   return previousWeekday(catchDate, 1);
 }
 
-/** Catch Mon → Thu before; Tue/Wed → Fri before; Thu/Fri → Mon before. */
+/** Catch Mon → Thu before; Tue/Wed → Fri before; Thu/Fri → Mon before; Sat/Sun → Tue before. */
 export function lfoDate(catchDate: string): string | null {
   const target = lfoTargetWeekday(weekdayOf(catchDate));
   return target == null ? null : previousWeekday(catchDate, target);

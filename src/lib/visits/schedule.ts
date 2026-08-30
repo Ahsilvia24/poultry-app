@@ -88,7 +88,7 @@ export function weightProjectDate(catchDate: Date): Date {
 /**
  * LFO (based on catch day):
  * Mon kill → Thursday before; Tue–Wed kill → Friday before;
- * Thu–Fri kill → Monday before.
+ * Thu–Fri kill → Monday before; Sat–Sun kill → Tuesday before.
  */
 export function lfoDate(catchDate: Date): Date | null {
   const target = lfoTargetWeekday(getDay(startOfDay(catchDate)));

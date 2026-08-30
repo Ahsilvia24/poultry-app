@@ -9,7 +9,7 @@ describe("lfoTargetWeekday", () => {
     assert.equal(lfoTargetWeekday(3), 5); // Wed → Fri
     assert.equal(lfoTargetWeekday(4), 1); // Thu → Mon
     assert.equal(lfoTargetWeekday(5), 1); // Fri → Mon
-    assert.equal(lfoTargetWeekday(6), null);
-    assert.equal(lfoTargetWeekday(0), null);
+    assert.equal(lfoTargetWeekday(6), 2); // Sat → Tue
+    assert.equal(lfoTargetWeekday(0), 2); // Sun → Tue
   });
 });
