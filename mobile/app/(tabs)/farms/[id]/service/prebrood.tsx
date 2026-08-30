@@ -82,11 +82,7 @@ export default function PrebroodChecklistScreen() {
       return { ...next, generatorHoursLogged: "" };
     }
     try {
-      return withPrebroodLoggedHours(
-        next,
-        getLatestGeneratorHours(farmId),
-        detail?.farm.numberOfGenerators,
-      );
+      return withPrebroodLoggedHours(next, getLatestGeneratorHours(farmId));
     } catch {
       return next;
     }
@@ -99,7 +95,7 @@ export default function PrebroodChecklistScreen() {
   useFocusEffect(
     useCallback(() => {
       setForm((prev) => pullLoggedHours(prev));
-    }, [farmId, detail?.farm.numberOfGenerators]),
+    }, [farmId]),
   );
 
   function patchHouse(houseNumber: number, p: Partial<PrebroodForm["houses"][number]>) {

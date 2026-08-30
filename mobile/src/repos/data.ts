@@ -3777,28 +3777,28 @@ export function deleteIssue(farmId: string, issueId: string) {
   return { success: true as const };
 }
 
-/** Last hour-meter reading per generator (newest log that has that gen). */
+/** Last hour-meter reading per generator (newest log that has that gen; dates may differ). */
 export function getLatestGeneratorHours(farmId: string): GeneratorHours {
   const db = getDb();
-  const logs = db
-    .getAllSync<{
-      gen1_hours: number | null;
-      gen2_hours: number | null;
-      gen3_hours: number | null;
-      gen4_hours: number | null;
-    }>(
-      `SELECT gen1_hours, gen2_hours, gen3_hours, gen4_hours
-       FROM generator_logs WHERE farm_id = ?
-       ORDER BY log_date DESC, id DESC`,
+  const latestFor = (column: "gen1_hours" | "gen2_hours" | "gen3_hours" | "gen4_hours") => {
+    const row = db.getFirstSync<{ hours: number | null }>(
+      `SELECT ${column} AS hours
+       FROM generator_logs
+       WHERE farm_id = ? AND ${column} IS NOT NULL
+       ORDER BY log_date DESC, id DESC
+       LIMIT 1`,
       [farmId],
-    )
-    .map((log) => ({
-      gen1Hours: log.gen1_hours,
-      gen2Hours: log.gen2_hours,
-      gen3Hours: log.gen3_hours,
-      gen4Hours: log.gen4_hours,
-    }));
-  return lastLoggedGeneratorHours(logs);
+    );
+    return row?.hours ?? null;
+  };
+  return lastLoggedGeneratorHours([
+    {
+      gen1Hours: latestFor("gen1_hours"),
+      gen2Hours: latestFor("gen2_hours"),
+      gen3Hours: latestFor("gen3_hours"),
+      gen4Hours: latestFor("gen4_hours"),
+    },
+  ]);
 }
 
 /* ─── Generator logs ───────────────────────────────────────────────────── */
