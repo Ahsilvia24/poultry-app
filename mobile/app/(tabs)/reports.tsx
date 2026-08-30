@@ -18,8 +18,10 @@ import {
   generatorReportToTsv,
   type GeneratorReportFarm,
 } from "../../src/lib/reports/generator-log";
+import { formatMortalityReportDate } from "../../src/lib/reports/mortality-matrix";
 import { shareFieldLogPdf } from "../../src/lib/reports/shareFieldLogPdf";
 import { shareGeneratorReportPdf } from "../../src/lib/reports/shareGeneratorPdf";
+import { shareMortalityReportPdf } from "../../src/lib/reports/shareMortalityPdf";
 import { colors, styles } from "../../src/theme";
 import {
   Card,
@@ -95,6 +97,10 @@ export default function ReportsScreen() {
   const fieldFilterLabel = useMemo(
     () => `${formatFieldLogDayHeader(fieldFrom)} to ${formatFieldLogDayHeader(fieldTo)}`,
     [fieldFrom, fieldTo],
+  );
+  const mortFilterLabel = useMemo(
+    () => `${formatMortalityReportDate(from)} to ${formatMortalityReportDate(to)}`,
+    [from, to],
   );
 
   const selectedFarmName = useMemo(() => {
@@ -446,9 +452,12 @@ export default function ReportsScreen() {
                   gap: 8,
                 }}
               >
-                <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text, flex: 1 }}>
-                  Mortality
-                </Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text }}>
+                    Mortality
+                  </Text>
+                  <Text style={[styles.muted, { marginTop: 2 }]}>{mortFilterLabel}</Text>
+                </View>
                 <ClipboardIconButton
                   accessibilityLabel="Copy mortality report"
                   color={colors.accentDark}
@@ -458,6 +467,23 @@ export default function ReportsScreen() {
                     if (matrix.rows.length === 0) return "";
                     return matrixToTsv(matrix, rowHeaderLabel);
                   }}
+                />
+                <PrimaryButton
+                  secondary
+                  label="Share PDF"
+                  onPress={() => {
+                    setShareNotice(null);
+                    void shareMortalityReportPdf({
+                      matrix,
+                      rowHeaderLabel,
+                      subtitle: mortFilterLabel,
+                    }).catch((e) => {
+                      setShareNotice(
+                        userFacingMessage(e, "Could not share PDF. Try again in a moment."),
+                      );
+                    });
+                  }}
+                  style={{ minWidth: 120 }}
                 />
               </View>
               <ScrollView horizontal>

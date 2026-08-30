@@ -14,7 +14,11 @@ import {
   YAxis,
 } from "recharts";
 import { downloadCsv, toCsv } from "@/lib/exports/csv";
-import { downloadMortalityPdf } from "@/lib/exports/pdf";
+import { downloadMortalityPdf, downloadReportPdf } from "@/lib/exports/pdf";
+import {
+  mortalityMatrixHasData,
+  mortalityMatrixToTable,
+} from "@/lib/reports/mortality-matrix";
 import { MORTALITY_CAUSE_LABELS, formatNumber, formatPct } from "@/lib/utils";
 import { Button, Card } from "@/components/ui";
 
@@ -66,6 +70,24 @@ export function MortalityCharts({
       return [row.houseLabel, ...values, total].join("\t");
     });
     return [header.join("\t"), ...lines].join("\n");
+  }
+
+  function shareHouseByDatePdf() {
+    if (!mortalityMatrixHasData(byHouseByDate)) return;
+    const table = mortalityMatrixToTable(byHouseByDate, "House");
+    downloadReportPdf({
+      title: "Mortality",
+      subtitle: filterLabel,
+      filename: `mortality-report-${Date.now()}.pdf`,
+      orientation: "landscape",
+      blocks: [
+        {
+          type: "table",
+          headers: table.headers,
+          rows: table.rows,
+        },
+      ],
+    });
   }
 
   async function copyHouseByDate() {
@@ -212,14 +234,24 @@ export function MortalityCharts({
               Total daily loss (mortality + culls) for the selected date range.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={copyHouseByDate}
-            disabled={byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0}
-          >
-            {copiedHouseByDate ? "Copied" : "Copy to clipboard"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={copyHouseByDate}
+              disabled={byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0}
+            >
+              {copiedHouseByDate ? "Copied" : "Copy to clipboard"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={shareHouseByDatePdf}
+              disabled={!mortalityMatrixHasData(byHouseByDate)}
+            >
+              Share PDF
+            </Button>
+          </div>
         </div>
         <div className="mt-3 overflow-x-auto">
           {byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0 ? (
