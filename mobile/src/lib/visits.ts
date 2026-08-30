@@ -10,6 +10,7 @@ export const VISIT_TYPE_OPTIONS = [
   { value: "MORTALITY_INVESTIGATION", label: "Mortality Investigation" },
   { value: "PRE_CATCH", label: "Pre-Catch Visit" },
   { value: "LAST_FEED_ORDER", label: "Last Feed Order" },
+  { value: "CERTIFICATION", label: "Certification" },
   { value: "OTHER", label: "Other" },
 ] as const;
 
