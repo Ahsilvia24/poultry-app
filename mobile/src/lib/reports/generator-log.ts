@@ -94,29 +94,32 @@ export function collectPriorHours(
   return prior;
 }
 
+/** Only generators that have at least one hour reading on the log — never pad empty gens. */
 export function generatorColumnsForFarm(
   farm: GeneratorReportFarm,
 ): Array<(typeof GENERATOR_REPORT_COLUMNS)[number]> {
-  const count = farm.numberOfGenerators;
-  if (count != null && count > 0) {
-    return GENERATOR_REPORT_COLUMNS.slice(0, Math.min(4, count));
-  }
   return GENERATOR_REPORT_COLUMNS.filter((col) =>
     farm.logs.some((log) => log[col.key] != null),
   );
 }
 
-/** Unique log dates, newest first, shared by every generator on the farm. */
+function logHasHours(log: GeneratorReportHours): boolean {
+  return GENERATOR_REPORT_COLUMNS.some((col) => log[col.key] != null);
+}
+
+/** Unique log dates with hours, newest first, shared by every generator on the farm. */
 export function generatorReportDates(farm: GeneratorReportFarm): string[] {
   const dates = new Set<string>();
-  for (const log of farm.logs) dates.add(log.logDate);
+  for (const log of farm.logs) {
+    if (logHasHours(log)) dates.add(log.logDate);
+  }
   return [...dates].sort((a, b) => b.localeCompare(a));
 }
 
 export function buildGeneratorReportView(
   farms: GeneratorReportFarm[],
 ): GeneratorReportViewFarm[] {
-  return farms.map((farm) => {
+  return farms.flatMap((farm) => {
     const columns = generatorColumnsForFarm(farm);
     const datesNewestFirst = generatorReportDates(farm);
     const datesOldestFirst = [...datesNewestFirst].reverse();
@@ -140,11 +143,14 @@ export function buildGeneratorReportView(
       };
     });
 
-    return {
-      farmId: farm.farmId,
-      farmName: farm.farmName,
-      generators,
-    };
+    if (generators.length === 0) return [];
+    return [
+      {
+        farmId: farm.farmId,
+        farmName: farm.farmName,
+        generators,
+      },
+    ];
   });
 }
 
