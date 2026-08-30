@@ -62,30 +62,3 @@ export function seededDemoHoursForWeek(
   }
   return hours;
 }
-
-function hoursMatch(expected: number | null, actual: number | null): boolean {
-  if (expected == null) return actual == null;
-  if (actual == null || !Number.isFinite(actual)) return false;
-  return Math.abs(actual - expected) < 0.001;
-}
-
-/** True when a log row is the exact 6-week / 1–4-gen pattern written by the old all-farm seed. */
-export function matchesSeededDemoGeneratorHours(
-  farmName: string,
-  hours: DemoGeneratorHours,
-): boolean {
-  for (let week = 0; week < GENERATOR_DEMO_WEEKS; week++) {
-    for (let genCount = 1; genCount <= 4; genCount++) {
-      const expected = seededDemoHoursForWeek(farmName, genCount, week);
-      if (
-        hoursMatch(expected[0], hours[0]) &&
-        hoursMatch(expected[1], hours[1]) &&
-        hoursMatch(expected[2], hours[2]) &&
-        hoursMatch(expected[3], hours[3])
-      ) {
-        return true;
-      }
-    }
-  }
-  return false;
-}

@@ -3,7 +3,6 @@ import { newId, todayKey, addDaysKey, daysBetween } from "../lib/ids";
 import {
   GENERATOR_DEMO_WEEKS,
   isDemoGeneratorFarmName,
-  matchesSeededDemoGeneratorHours,
   seededDemoHoursForWeek,
 } from "../lib/generatorDemoSeed";
 import { calcTotalDailyLoss } from "../lib/mortality";
@@ -474,46 +473,14 @@ function ensureDemoGeneratorLogs() {
   setMeta("generator_demo_logs_v1", "1");
 }
 
-/**
- * Remove hour-meter rows an earlier build injected onto real farms.
- * Leaves sample-farm logs and any reading that does not match that seed formula.
- */
-function stripInjectedDemoGeneratorLogsFromUserFarms() {
-  if (getMeta("generator_demo_logs_stripped_v1") === "1") return;
-
-  const db = getDb();
-  const farms = db.getAllSync<{ id: string; farm_name: string }>(
-    `SELECT id, farm_name FROM farms WHERE deleted_at IS NULL`,
-  );
-
-  for (const farm of farms) {
-    if (isDemoGeneratorFarmName(farm.farm_name)) continue;
-    const logs = db.getAllSync<{
-      id: string;
-      gen1_hours: number | null;
-      gen2_hours: number | null;
-      gen3_hours: number | null;
-      gen4_hours: number | null;
-    }>(
-      `SELECT id, gen1_hours, gen2_hours, gen3_hours, gen4_hours
-       FROM generator_logs WHERE farm_id = ?`,
-      [farm.id],
-    );
-    for (const log of logs) {
-      if (
-        matchesSeededDemoGeneratorHours(farm.farm_name, [
-          log.gen1_hours,
-          log.gen2_hours,
-          log.gen3_hours,
-          log.gen4_hours,
-        ])
-      ) {
-        db.runSync("DELETE FROM generator_logs WHERE id = ?", [log.id]);
-      }
-    }
+/** Mark content backfills done without writing farms, logs, or visits. */
+function skipContentBackfillsOnExistingInstall() {
+  if (getMeta("generator_demo_logs_v1") !== "1") {
+    setMeta("generator_demo_logs_v1", "1");
   }
-
-  setMeta("generator_demo_logs_stripped_v1", "1");
+  if (getMeta("field_log_demo_visits_v1") !== "1") {
+    setMeta("field_log_demo_visits_v1", "1");
+  }
 }
 
 type FieldLogDemoStop = {
@@ -524,7 +491,7 @@ type FieldLogDemoStop = {
   minute: number;
 };
 
-/** Route-style visits across last week and this week for the Field Log. */
+/** First-install sample visits only. Never call on an already-seeded database. */
 function ensureDemoFieldLogVisits() {
   if (getMeta("field_log_demo_visits_v1") === "1") return;
 
@@ -602,10 +569,9 @@ function ensureDemoFieldLogVisits() {
 
 export function seedIfNeeded() {
   if (getMeta("seeded") === "1") {
-    // Already has user/demo data — never inject farms, mortality, or generator logs.
+    // Existing install (TestFlight / production): never insert or delete rows.
     refreshDemoScheduleAges();
-    stripInjectedDemoGeneratorLogsFromUserFarms();
-    ensureDemoFieldLogVisits();
+    skipContentBackfillsOnExistingInstall();
     return;
   }
 
@@ -710,6 +676,5 @@ export function seedIfNeeded() {
   ensureMultiFlockDemoFarm();
   ensureSplitStaggeredActiveFlocks();
   ensureDemoGeneratorLogs();
-  stripInjectedDemoGeneratorLogsFromUserFarms();
   ensureDemoFieldLogVisits();
 }
