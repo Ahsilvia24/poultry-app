@@ -7,13 +7,8 @@ import {
   deleteFarmAction,
   reactivateFarmAction,
 } from "@/app/actions/farms";
-import { Button, Card } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { ExclusiveSwipeGroup, useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
-
-function dialHref(phone: string) {
-  const digits = phone.replace(/[^\d+]/g, "");
-  return digits ? `tel:${digits}` : `tel:${phone}`;
-}
 
 export type FarmsListTileFarm = {
   id: string;
@@ -27,36 +22,72 @@ export type FarmsListTileFarm = {
 
 type ConfirmKind = "inactive" | "active" | "delete" | null;
 
+const LONG_PRESS_MS = 500;
+const MOVE_CANCEL_PX = 12;
+
 function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
   const [swipeX, setSwipeX] = useState(0);
   const [confirm, setConfirm] = useState<ConfirmKind>(null);
   const [pending, start] = useTransition();
   const touchStartX = useRef<number | null>(null);
-  const actionWidth = 88;
+  const longPressTimer = useRef<number | null>(null);
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
+  const didLongPress = useRef(false);
+  const actionWidth = 72;
   const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(farm.id);
+  const ageLabel =
+    farm.flockAges.length > 0 ? farm.flockAges.map((a) => `${a}d`).join(" ") : null;
 
   useEffect(() => {
     if (!isOpenOwner) setSwipeX(0);
   }, [isOpenOwner]);
 
+  function clearLongPress() {
+    if (longPressTimer.current != null) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+  function startLongPress() {
+    didLongPress.current = false;
+    clearLongPress();
+    longPressTimer.current = window.setTimeout(() => {
+      didLongPress.current = true;
+      setConfirm(farm.isActive ? "inactive" : "active");
+    }, LONG_PRESS_MS);
+  }
+
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0]?.clientX ?? null;
+    const t = e.touches[0];
+    pointerStart.current = t ? { x: t.clientX, y: t.clientY } : null;
+    startLongPress();
   }
 
   function onTouchMove(e: React.TouchEvent) {
-    if (touchStartX.current == null) return;
     const x = e.touches[0]?.clientX;
+    const y = e.touches[0]?.clientY;
     if (x == null) return;
+    if (pointerStart.current) {
+      const dx = x - pointerStart.current.x;
+      const dy = y - (pointerStart.current.y ?? y);
+      if (Math.abs(dx) > MOVE_CANCEL_PX || Math.abs(dy) > MOVE_CANCEL_PX) {
+        clearLongPress();
+      }
+    }
+    if (touchStartX.current == null) return;
     const dx = x - touchStartX.current;
     setSwipeX(Math.max(-actionWidth, Math.min(0, dx)));
   }
 
   function onTouchEnd() {
+    clearLongPress();
     if (touchStartX.current == null) {
       setSwipeX(0);
       return;
     }
-    if (swipeX <= -48) {
+    if (swipeX <= -40) {
       setSwipeX(-actionWidth);
       requestOpen();
     } else {
@@ -70,13 +101,30 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
     setSwipeX(0);
   }
 
-  const subtitle =
-    [farm.growerName, farm.phoneNumber].filter(Boolean).join(" · ") || "\u00a0";
+  function onPointerDown(e: React.PointerEvent) {
+    if (e.pointerType === "touch") return;
+    pointerStart.current = { x: e.clientX, y: e.clientY };
+    startLongPress();
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    if (e.pointerType === "touch" || !pointerStart.current) return;
+    const dx = e.clientX - pointerStart.current.x;
+    const dy = e.clientY - pointerStart.current.y;
+    if (Math.abs(dx) > MOVE_CANCEL_PX || Math.abs(dy) > MOVE_CANCEL_PX) {
+      clearLongPress();
+    }
+  }
+
+  function onPointerUp() {
+    if (pointerStart.current) clearLongPress();
+    pointerStart.current = null;
+  }
 
   return (
     <div className="relative h-full overflow-hidden rounded-xl">
       <div
-        className="absolute inset-y-0 right-0 flex w-[88px] items-stretch"
+        className="absolute inset-y-0 right-0 flex w-[72px] items-stretch"
         aria-hidden={swipeX > -40}
       >
         <button
@@ -99,86 +147,64 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onTouchCancel={() => {
+          clearLongPress();
           touchStartX.current = null;
           setSwipeX(0);
         }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onContextMenu={(e) => {
+          e.preventDefault();
+        }}
       >
-        <Card className="relative flex h-full min-h-[4.75rem] items-center p-3 transition hover:border-emerald-400">
+        <div
+          className={
+            farm.isActive
+              ? "relative flex h-full flex-col rounded-xl border-2 border-emerald-700 bg-white p-2.5 shadow-sm"
+              : "relative flex h-full flex-col rounded-xl border-2 border-stone-300 bg-white p-2.5 shadow-sm"
+          }
+        >
           <Link
             href={`/farms/${farm.id}`}
             className="absolute inset-0 z-0 rounded-[inherit]"
-            aria-label={`Open ${farm.farmName}`}
+            aria-label={`Open ${farm.farmName}. Long press to ${farm.isActive ? "make inactive" : "make active"}`}
+            onClick={(e) => {
+              if (didLongPress.current) {
+                e.preventDefault();
+                didLongPress.current = false;
+              }
+            }}
           />
-          <div className="relative z-10 flex w-full pointer-events-none items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-bold leading-snug text-stone-900">
-                {farm.farmName}
-                {farm.flockAges.length > 0 ? (
-                  <span className="font-semibold text-stone-500">
-                    {" "}
-                    {farm.flockAges.map((a) => `${a}d`).join(" ")}
-                  </span>
-                ) : null}
+          <div className="relative z-10 min-w-0 pointer-events-none">
+            <p className="truncate text-[15px] font-bold leading-snug text-stone-900">
+              {farm.farmName}
+            </p>
+            {farm.growerName ? (
+              <p className="mt-0.5 truncate text-[13px] leading-4 text-stone-600">{farm.growerName}</p>
+            ) : null}
+            {ageLabel ? (
+              <p className="mt-0.5 text-[13px] font-semibold leading-4 text-stone-500">
+                Flock Age: {ageLabel}
               </p>
-              <p className="mt-0.5 h-5 truncate text-sm leading-5 text-stone-600">
-                {farm.phoneNumber ? (
-                  <>
-                    {farm.growerName ? <span>{farm.growerName}</span> : null}
-                    {farm.growerName ? (
-                      <span className="text-stone-400"> · </span>
-                    ) : null}
-                    <a
-                      href={dialHref(farm.phoneNumber)}
-                      className="pointer-events-auto relative z-10 font-semibold text-emerald-800 underline-offset-2 hover:underline"
-                    >
-                      {farm.phoneNumber}
-                    </a>
-                  </>
-                ) : (
-                  <span>{subtitle}</span>
-                )}
-              </p>
-            </div>
-            <div className="pointer-events-auto relative z-10 flex h-8 shrink-0 items-center gap-1.5">
+            ) : null}
+            {!farm.isActive ? (
               <button
                 type="button"
-                className={
-                  farm.isActive
-                    ? "inline-flex rounded-md bg-emerald-100 px-2.5 py-1 text-sm font-bold text-emerald-900 hover:bg-emerald-200"
-                    : "inline-flex rounded-md bg-stone-100 px-2.5 py-1 text-sm font-bold text-stone-700 hover:bg-stone-200"
-                }
-                aria-label={
-                  farm.isActive
-                    ? `Make ${farm.farmName} inactive`
-                    : `Make ${farm.farmName} active`
-                }
-                title={farm.isActive ? "Make inactive" : "Make active"}
+                className="pointer-events-auto relative z-10 mt-1 self-start text-xs font-bold text-red-800 hover:underline"
+                aria-label={`Delete ${farm.farmName} permanently`}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setConfirm(farm.isActive ? "inactive" : "active");
+                  setConfirm("delete");
                 }}
               >
-                {farm.isActive ? "Active" : "Inactive"}
+                Delete
               </button>
-              {!farm.isActive ? (
-                <button
-                  type="button"
-                  className="inline-flex rounded-md bg-red-100 px-2.5 py-1 text-sm font-bold text-red-800 hover:bg-red-200"
-                  aria-label={`Delete ${farm.farmName} permanently`}
-                  title="Delete"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setConfirm("delete");
-                  }}
-                >
-                  Delete
-                </button>
-              ) : null}
-            </div>
+            ) : null}
           </div>
-        </Card>
+        </div>
       </div>
 
       {confirm ? (
@@ -258,9 +284,9 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
 export function FarmsListTiles({ farms }: { farms: FarmsListTileFarm[] }) {
   return (
     <ExclusiveSwipeGroup>
-      <div className="grid auto-rows-fr items-stretch gap-2 lg:grid-cols-3">
+      <div className="grid auto-rows-fr items-stretch gap-2 grid-cols-2 lg:grid-cols-3">
         {farms.map((farm) => (
-          <div key={farm.id} className="h-full min-h-[4.75rem]">
+          <div key={farm.id} className="h-full">
             <FarmsListTile farm={farm} />
           </div>
         ))}

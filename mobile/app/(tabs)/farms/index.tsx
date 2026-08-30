@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -19,16 +18,11 @@ import {
 } from "../../../src/repos/data";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
-import { colors, styles } from "../../../src/theme";
+import { colors, fonts, styles } from "../../../src/theme";
 import { Card, PageHeader } from "../../../src/components/ui";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 
 type ConfirmKind = "inactive" | "active" | "delete";
-
-function dialUrl(phone: string) {
-  const digits = phone.replace(/[^\d+]/g, "");
-  return `tel:${digits || phone}`;
-}
 
 export default function FarmsScreen() {
   const router = useRouter();
@@ -121,176 +115,149 @@ export default function FarmsScreen() {
           </Card>
         ) : null}
 
-        {data?.farms.map((farm) => {
-          const ages = farm.flockAgesDays?.length
-            ? farm.flockAgesDays
-            : farm.flockAgeDays != null
-              ? [farm.flockAgeDays]
-              : [];
-          const ageLabel = ages.length > 0 ? ages.map((a) => `${a}d`).join(" ") : null;
-          const titleMeta = ageLabel ? ` ${ageLabel}` : "";
+        <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 }}>
+          {data?.farms.map((farm) => {
+            const ages = farm.flockAgesDays?.length
+              ? farm.flockAgesDays
+              : farm.flockAgeDays != null
+                ? [farm.flockAgeDays]
+                : [];
+            const ageLabel = ages.length > 0 ? ages.map((a) => `${a}d`).join(" ") : null;
 
-          return (
-            <Swipeable
-              key={farm.id}
-              ref={swipe.setRef(farm.id)}
-              overshootRight={false}
-              friction={2}
-              rightThreshold={40}
-              containerStyle={{ marginBottom: 4, overflow: "hidden" }}
-              onSwipeableWillOpen={() => {
-                swipe.closeOthers(farm.id);
-                setSwipingFarmId(farm.id);
-              }}
-              onSwipeableClose={() =>
-                setSwipingFarmId((id) => (id === farm.id ? null : id))
-              }
-              renderRightActions={() =>
-                swipingFarmId === farm.id ? (
-                  <Pressable
-                    accessibilityLabel={`Delete ${farm.farmName} permanently`}
-                    onPress={() =>
-                      setConfirm({
-                        kind: "delete",
-                        farmId: farm.id,
-                        farmName: farm.farmName,
-                      })
-                    }
-                    style={{
-                      backgroundColor: colors.danger,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      width: 88,
-                      borderRadius: 14,
-                      marginLeft: 8,
-                      alignSelf: "stretch",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: "#fff",
-                        fontWeight: "800",
-                        fontSize: 12,
-                        textAlign: "center",
-                      }}
-                    >
-                      Delete
-                    </Text>
-                  </Pressable>
-                ) : (
-                  <View style={{ width: 88, marginLeft: 8 }} />
-                )
-              }
-            >
-              <Card style={{ padding: 0, marginBottom: 0, overflow: "hidden" }}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
+            return (
+              <View
+                key={farm.id}
+                style={{ width: "50%", paddingHorizontal: 4, marginBottom: 8 }}
+              >
+                <Swipeable
+                  ref={swipe.setRef(farm.id)}
+                  overshootRight={false}
+                  friction={2}
+                  rightThreshold={40}
+                  containerStyle={{ overflow: "hidden" }}
+                  onSwipeableWillOpen={() => {
+                    swipe.closeOthers(farm.id);
+                    setSwipingFarmId(farm.id);
                   }}
-                >
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Open ${farm.farmName}`}
-                    onPress={() =>
-                      router.navigate({ pathname: "/(tabs)/farms/[id]", params: { id: farm.id } })
-                    }
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      minWidth: 0,
-                      opacity: pressed ? 0.85 : 1,
-                    })}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 16,
-                        fontWeight: "800",
-                        color: colors.text,
-                        lineHeight: 20,
-                      }}
-                    >
-                      {farm.farmName}
-                      <Text style={{ fontWeight: "600", color: colors.muted }}>{titleMeta}</Text>
-                    </Text>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        alignItems: "baseline",
-                        gap: 6,
-                        marginTop: 1,
-                        minHeight: 16,
-                      }}
-                    >
-                      {farm.growerName ? (
-                        <Text style={[styles.muted, { lineHeight: 16 }]}>{farm.growerName}</Text>
-                      ) : null}
-                      {farm.phoneNumber ? (
-                        <Pressable
-                          accessibilityRole="link"
-                          accessibilityLabel={`Call ${farm.phoneNumber}`}
-                          onPress={() => Linking.openURL(dialUrl(farm.phoneNumber!))}
-                          hitSlop={8}
+                  onSwipeableClose={() =>
+                    setSwipingFarmId((id) => (id === farm.id ? null : id))
+                  }
+                  renderRightActions={() =>
+                    swipingFarmId === farm.id ? (
+                      <Pressable
+                        accessibilityLabel={`Delete ${farm.farmName} permanently`}
+                        onPress={() =>
+                          setConfirm({
+                            kind: "delete",
+                            farmId: farm.id,
+                            farmName: farm.farmName,
+                          })
+                        }
+                        style={{
+                          backgroundColor: colors.danger,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          width: 72,
+                          borderRadius: 14,
+                          marginLeft: 8,
+                          alignSelf: "stretch",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: "#fff",
+                            fontWeight: "800",
+                            fontSize: 12,
+                            textAlign: "center",
+                          }}
                         >
-                          <Text
-                            style={{
-                              color: colors.accentDark,
-                              fontWeight: "700",
-                              fontSize: 13,
-                              lineHeight: 16,
-                              textDecorationLine: "underline",
-                            }}
-                          >
-                            {farm.phoneNumber}
-                          </Text>
-                        </Pressable>
-                      ) : null}
-                      {!farm.growerName && !farm.phoneNumber ? (
-                        <Text style={{ lineHeight: 16, opacity: 0 }}>{"\u00a0"}</Text>
-                      ) : null}
-                    </View>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      farm.isActive
-                        ? `Make ${farm.farmName} inactive`
-                        : `Make ${farm.farmName} active`
-                    }
-                    onPress={() => {
-                      setConfirm({
-                        kind: farm.isActive ? "inactive" : "active",
-                        farmId: farm.id,
-                        farmName: farm.farmName,
-                      });
+                          Delete
+                        </Text>
+                      </Pressable>
+                    ) : (
+                      <View style={{ width: 72, marginLeft: 8 }} />
+                    )
+                  }
+                >
+                  <Card
+                    style={{
+                      padding: 10,
+                      marginBottom: 0,
+                      overflow: "hidden",
+                      borderWidth: 2,
+                      borderColor: farm.isActive ? colors.accentDark : "#d6d3d1",
                     }}
-                    hitSlop={8}
-                    style={{ flexShrink: 0 }}
                   >
-                    <Text
-                      style={[
-                        styles.badge,
-                        {
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          fontSize: 12,
-                        },
-                        farm.isActive
-                          ? { backgroundColor: "#d1fae5", color: "#065f46" }
-                          : { backgroundColor: "#e7e5e4", color: "#44403c" },
-                      ]}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Open ${farm.farmName}. Long press to ${
+                        farm.isActive ? "make inactive" : "make active"
+                      }`}
+                      delayLongPress={500}
+                      onPress={() =>
+                        router.navigate({
+                          pathname: "/(tabs)/farms/[id]",
+                          params: { id: farm.id },
+                        })
+                      }
+                      onLongPress={() => {
+                        setConfirm({
+                          kind: farm.isActive ? "inactive" : "active",
+                          farmId: farm.id,
+                          farmName: farm.farmName,
+                        });
+                      }}
+                      style={({ pressed }) => ({
+                        opacity: pressed ? 0.85 : 1,
+                      })}
                     >
-                      {farm.isActive ? "Active" : "Inactive"}
-                    </Text>
-                  </Pressable>
-                </View>
-              </Card>
-            </Swipeable>
-          );
-        })}
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          fontFamily: fonts.sans,
+                          fontSize: 15,
+                          fontWeight: "800",
+                          color: colors.text,
+                          lineHeight: 19,
+                        }}
+                      >
+                        {farm.farmName}
+                      </Text>
+                      {farm.growerName ? (
+                        <Text
+                          numberOfLines={1}
+                          style={{
+                            fontFamily: fonts.sans,
+                            fontSize: 13,
+                            color: colors.muted,
+                            marginTop: 2,
+                            lineHeight: 16,
+                          }}
+                        >
+                          {farm.growerName}
+                        </Text>
+                      ) : null}
+                      {ageLabel ? (
+                        <Text
+                          style={{
+                            fontFamily: fonts.sans,
+                            fontSize: 13,
+                            fontWeight: "600",
+                            color: colors.muted,
+                            marginTop: 2,
+                            lineHeight: 16,
+                          }}
+                        >
+                          {`Flock Age: ${ageLabel}`}
+                        </Text>
+                      ) : null}
+                    </Pressable>
+                  </Card>
+                </Swipeable>
+              </View>
+            );
+          })}
+        </View>
       </ScrollView>
 
       <ConfirmDialog
