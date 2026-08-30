@@ -23,6 +23,11 @@ import type {
 } from "./types";
 import { formatMinVentPair, formatServiceShortDate } from "./format";
 import { minVentCenteredX, minVentSideBoxes } from "./minVentLabel";
+import {
+  MAX_PLACEMENT_COMMENT_PAGES,
+  PLACEMENT_COMMENT_FIELDS,
+  consumeCommentLines,
+} from "./commentFlow";
 
 type FieldWidget = {
   x: number;
@@ -252,41 +257,17 @@ function markYesNo(
   markCheck(ctx, noName, value === "no", noWidget);
 }
 
-function takeCommentLine(
-  words: string[],
-  font: PDFFont,
-  fontSize: number,
-  maxWidth: number,
-): { line: string; rest: string[] } {
-  let cur = "";
-  let i = 0;
-  for (; i < words.length; i++) {
-    const word = words[i]!;
-    const next = cur ? `${cur} ${word}` : word;
-    if (cur && font.widthOfTextAtSize(next, fontSize) > maxWidth) break;
-    cur = next;
-  }
-  return { line: cur, rest: words.slice(i) };
-}
-
 function fillCommentLines(ctx: Ctx, names: string[], text: string) {
   const fontSize = 8;
-  let words = String(text ?? "")
-    .split(/\s+/)
-    .filter(Boolean);
-  for (const name of names) {
-    if (words.length === 0) break;
+  const lineWidths = names.map((name) => {
     const r = widgetRect(ctx.map, name, 0);
-    const maxWidth = r ? Math.max(40, r.w * 0.92) : ctx.page.getWidth() * 0.9;
-    const { line, rest } = takeCommentLine(words, ctx.font, fontSize, maxWidth);
-    if (!line) {
-      setText(ctx, name, words[0]!, fontSize);
-      words = words.slice(1);
-      continue;
-    }
-    setText(ctx, name, line, fontSize);
-    words = rest;
-  }
+    return r ? Math.max(40, r.w * 0.92) : ctx.page.getWidth() * 0.9;
+  });
+  const { lines, rest } = consumeCommentLines(text, lineWidths, (value) =>
+    ctx.font.widthOfTextAtSize(value, fontSize),
+  );
+  lines.forEach((line, i) => setText(ctx, names[i]!, line, fontSize));
+  return rest;
 }
 
 async function loadTemplate(moduleRef: number) {
@@ -420,7 +401,7 @@ function buildServiceReportFields(
   setText(ctx, "Text64", data.serviceTech, 10);
 }
 
-function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
+function buildPlacementFields(ctx: Ctx, data: PlacementForm): string {
   setText(ctx, "Farm Name_2", data.farmName, 9);
   setText(ctx, "Text65", data.farmNumber, 9, { yNudge: 2.5 });
   setText(ctx, "Text66", data.flockNumber, 9, { yNudge: 2.5 });
@@ -510,23 +491,9 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
     data.backupStage3,
   ]);
 
-  fillCommentLines(
-    ctx,
-    [
-      "Comments first line",
-      "Comments 1",
-      "Comments 2",
-      "Comments 3",
-      "Comments 4",
-      "Comments 5",
-      "Comments 6",
-      "Comments 7",
-      "Comments 8",
-      "Comments 9",
-    ],
-    data.comments,
-  );
+  const leftoverComments = fillCommentLines(ctx, [...PLACEMENT_COMMENT_FIELDS], data.comments);
   setText(ctx, "undefined", data.serviceTech, 10);
+  return leftoverComments;
 }
 
 function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
@@ -678,12 +645,26 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
   return writePdfToCache(doc, pdfFileName("Service-Report", form.farmName, form.date));
 }
 
+async function appendTemplatePage(doc: PDFDocument, template: number) {
+  const templateDoc = await loadTemplate(template);
+  const [blank] = await doc.copyPages(templateDoc, [0]);
+  doc.addPage(blank);
+  return doc.getPages()[doc.getPageCount() - 1]!;
+}
+
 async function buildPlacementPdf(form: PlacementForm) {
   const template = require("../../../assets/service-forms/placement.pdf");
   const map = require("../../../assets/service-forms/placement-fields.json") as FieldMap;
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  buildPlacementFields({ page: doc.getPages()[0]!, font, map }, form);
+  let comments = form.comments;
+  for (let pageIndex = 0; pageIndex < MAX_PLACEMENT_COMMENT_PAGES; pageIndex++) {
+    const page =
+      pageIndex === 0 ? doc.getPages()[0]! : await appendTemplatePage(doc, template);
+    const leftover = buildPlacementFields({ page, font, map }, { ...form, comments });
+    if (!leftover || leftover === comments) break;
+    comments = leftover;
+  }
   return writePdfToCache(doc, pdfFileName("Placement", form.farmName, form.date));
 }
 
