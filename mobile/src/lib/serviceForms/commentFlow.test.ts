@@ -8,6 +8,7 @@ import {
   PLACEMENT_COMMENT_FIELDS,
   PREBROOD_COMMENT_FIELDS,
   SERVICE_REPORT_COMMENT_FIELDS,
+  commentLineYNudge,
   commentPageCount,
   consumeCommentLines,
 } from "./commentFlow.ts";
@@ -125,5 +126,18 @@ describe("consumeCommentLines", () => {
     assert.ok(page1.rest.startsWith(page2.lines[0]!));
     assert.ok(page2.rest.startsWith(page3.lines[0]!));
     assert.equal(PREBROOD_COMMENT_FIELDS.length, 14);
+  });
+});
+
+describe("commentLineYNudge", () => {
+  it("drops lined comments toward the rule without going through it", () => {
+    const placement = commentLineYNudge(16.749);
+    const service = commentLineYNudge(11.724);
+    const prebrood = commentLineYNudge(16.724);
+    assert.ok(placement < -2);
+    assert.ok(service < -0.5 && service > -2);
+    assert.ok(Math.abs(placement - prebrood) < 0.1);
+    const leftoverLift = (16.749 - 8) * 0.35 + placement;
+    assert.ok(leftoverLift > 0 && leftoverLift < 0.5);
   });
 });

@@ -28,6 +28,7 @@ import {
   PLACEMENT_COMMENT_FIELDS,
   PREBROOD_COMMENT_FIELDS,
   SERVICE_REPORT_COMMENT_FIELDS,
+  commentLineYNudge,
   consumeCommentLines,
 } from "./commentFlow";
 import { continuationHouseNumberBox } from "./houseOverflow";
@@ -282,7 +283,11 @@ function fillCommentLines(ctx: Ctx, names: string[], text: string) {
   const { lines, rest } = consumeCommentLines(text, lineWidths, (value) =>
     ctx.font.widthOfTextAtSize(value, fontSize),
   );
-  lines.forEach((line, i) => setText(ctx, names[i]!, line, fontSize));
+  lines.forEach((line, i) => {
+    const r = widgetRect(ctx.map, names[i]!, 0);
+    const yNudge = r ? commentLineYNudge(r.h, fontSize) : 0;
+    setText(ctx, names[i]!, line, fontSize, { yNudge });
+  });
   return rest;
 }
 
