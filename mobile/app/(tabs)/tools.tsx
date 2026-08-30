@@ -46,7 +46,6 @@ type SectionKey = "temp" | "cool" | "max" | "lights" | "weight" | "weightManual"
 
 const QUICK_LINKS: Array<{ key: SectionKey; label: string }> = [
   { key: "weight", label: "Weight Proj." },
-  { key: "weightManual", label: "Weight Manual" },
   { key: "vent", label: "Ventilation" },
   { key: "temp", label: "Temp Curve" },
   { key: "cool", label: "Cool Cells" },

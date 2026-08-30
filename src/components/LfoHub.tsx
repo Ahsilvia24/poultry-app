@@ -41,7 +41,7 @@ export function LfoHub({
             isManual ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
           )}
         >
-          Manual
+          Quick Calc.
         </button>
         {farms.map((f) => {
           const active = tab === f.id;

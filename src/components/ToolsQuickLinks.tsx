@@ -5,7 +5,6 @@ const linkClass =
 
 const links = [
   { href: "#weight-projections", label: "Weight Proj." },
-  { href: "#weight-projections-manual", label: "Weight Manual" },
   { href: "#ventilation", label: "Ventilation" },
   { href: "#temp-curve", label: "Temp Curve" },
   { href: "#cool-cells", label: "Cool Cells" },
