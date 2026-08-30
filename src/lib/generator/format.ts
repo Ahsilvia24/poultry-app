@@ -33,6 +33,25 @@ export const GENERATOR_FIELD_DEFS = [
   { key: "gen4", label: "Gen 4", hourKey: "gen4Hours" as const, deltaKey: "gen4" as const },
 ] as const;
 
+/** Keep the newest N hour-meter readings per generator. */
+export const MAX_GENERATOR_HOUR_LOGS = 10;
+
+/** Newest-first logs → oldest extra readings to drop (11th+ per generator). */
+export function excessGeneratorHourCells<T extends { id: string } & GeneratorHours>(
+  logsNewestFirst: T[],
+  keep = MAX_GENERATOR_HOUR_LOGS,
+): Array<{ id: string; hourKey: GenHourKey }> {
+  const limit = keep > 0 ? Math.floor(keep) : 0;
+  const excess: Array<{ id: string; hourKey: GenHourKey }> = [];
+  for (const field of GENERATOR_FIELD_DEFS) {
+    const withReading = logsNewestFirst.filter((log) => log[field.hourKey] != null);
+    for (const log of withReading.slice(limit)) {
+      excess.push({ id: log.id, hourKey: field.hourKey });
+    }
+  }
+  return excess;
+}
+
 export function isGenHourKey(value: unknown): value is GenHourKey {
   return (
     value === "gen1Hours" ||

@@ -42,6 +42,7 @@ import { sortFarmsByOrder } from "../lib/farmOrder";
 import { VISIT_TYPE_LABELS } from "../lib/visits";
 import { normalizedLoggedTemp } from "../lib/serviceForms/liveHouseMetrics";
 import {
+  excessGeneratorHourCells,
   lastLoggedGeneratorHours,
   type GeneratorHours,
 } from "../lib/generator";
@@ -3872,6 +3873,60 @@ function clearGeneratorHourOnLog(
   );
 }
 
+/** Keep the last 10 hour readings per generator; drop older cells (and empty rows). */
+function pruneGeneratorLogs(db: ReturnType<typeof getDb>, farmId: string) {
+  const rows = db.getAllSync<{
+    id: string;
+    gen1_hours: number | null;
+    gen2_hours: number | null;
+    gen3_hours: number | null;
+    gen4_hours: number | null;
+  }>(
+    `SELECT id, gen1_hours, gen2_hours, gen3_hours, gen4_hours
+     FROM generator_logs WHERE farm_id = ?
+     ORDER BY log_date DESC, id DESC`,
+    [farmId],
+  );
+  const excess = excessGeneratorHourCells(
+    rows.map((row) => ({
+      id: row.id,
+      gen1Hours: row.gen1_hours,
+      gen2Hours: row.gen2_hours,
+      gen3Hours: row.gen3_hours,
+      gen4Hours: row.gen4_hours,
+    })),
+  );
+  if (excess.length === 0) return;
+
+  const clearById = new Map<string, Set<GenHourKey>>();
+  for (const cell of excess) {
+    const keys = clearById.get(cell.id) ?? new Set<GenHourKey>();
+    keys.add(cell.hourKey);
+    clearById.set(cell.id, keys);
+  }
+
+  for (const [id, keys] of clearById) {
+    const row = rows.find((r) => r.id === id);
+    if (!row) continue;
+    const next = {
+      gen1Hours: keys.has("gen1Hours") ? null : row.gen1_hours,
+      gen2Hours: keys.has("gen2Hours") ? null : row.gen2_hours,
+      gen3Hours: keys.has("gen3Hours") ? null : row.gen3_hours,
+      gen4Hours: keys.has("gen4Hours") ? null : row.gen4_hours,
+    };
+    if (!hasAnyGeneratorReading(next)) {
+      db.runSync("DELETE FROM generator_logs WHERE id = ? AND farm_id = ?", [id, farmId]);
+      continue;
+    }
+    db.runSync(
+      `UPDATE generator_logs
+       SET gen1_hours = ?, gen2_hours = ?, gen3_hours = ?, gen4_hours = ?, notes = NULL
+       WHERE id = ? AND farm_id = ?`,
+      [next.gen1Hours, next.gen2Hours, next.gen3Hours, next.gen4Hours, id, farmId],
+    );
+  }
+}
+
 export function createGeneratorLog(input: GeneratorLogInput) {
   const db = getDb();
   if (!input.logDate?.trim()) throw new Error("Date is required");
@@ -3934,17 +3989,7 @@ export function createGeneratorLog(input: GeneratorLogInput) {
     );
   }
 
-  // Keep at most 8 logs per farm — drop oldest when over the cap.
-  const keep = 8;
-  const ids = db.getAllSync<{ id: string }>(
-    `SELECT id FROM generator_logs WHERE farm_id = ?
-     ORDER BY log_date DESC, id DESC`,
-    [input.farmId],
-  );
-  for (const row of ids.slice(keep)) {
-    db.runSync("DELETE FROM generator_logs WHERE id = ? AND farm_id = ?", [row.id, input.farmId]);
-  }
-
+  pruneGeneratorLogs(db, input.farmId);
   return { id };
 }
 
@@ -3981,6 +4026,7 @@ export function updateGeneratorLog(
          WHERE id = ? AND farm_id = ?`,
         [hours, logId, farmId],
       );
+      pruneGeneratorLogs(db, farmId);
       return { success: true as const };
     }
 
@@ -4009,6 +4055,7 @@ export function updateGeneratorLog(
         gen4Hours: hourKey === "gen4Hours" ? hours : null,
       });
     }
+    pruneGeneratorLogs(db, farmId);
     return { success: true as const };
   }
 
@@ -4037,6 +4084,7 @@ export function updateGeneratorLog(
       farmId,
     ],
   );
+  pruneGeneratorLogs(db, farmId);
   return { success: true as const };
 }
 
