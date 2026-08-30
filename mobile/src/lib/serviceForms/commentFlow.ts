@@ -42,6 +42,15 @@ export const PREBROOD_COMMENT_FIELDS = [
 
 export const MAX_PLACEMENT_COMMENT_PAGES = 12;
 
+/** Sit just above the printed rule. `setText` otherwise centers in the box. */
+export const COMMENT_BASELINE_INSET = 0.35;
+
+export function commentLineYNudge(boxHeight: number, fontSize = 8) {
+  const size = Math.min(fontSize, Math.max(5, boxHeight * 0.82));
+  const defaultLift = Math.max(0.5, (boxHeight - size) * 0.35);
+  return COMMENT_BASELINE_INSET - defaultLift;
+}
+
 export function splitCommentWords(text: string) {
   return String(text ?? "")
     .split(/\s+/)
