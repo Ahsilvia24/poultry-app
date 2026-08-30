@@ -5,7 +5,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../../../../../src/theme";
-import { BackHeader, Card, PrimaryButton } from "../../../../../src/components/ui";
+import { BackHeader, Card } from "../../../../../src/components/ui";
 import { ConfirmDialog } from "../../../../../src/components/ConfirmDialog";
 import { useExclusiveSwipeables } from "../../../../../src/lib/useExclusiveSwipeables";
 import {
@@ -270,24 +270,38 @@ export default function ServiceFarmPickerScreen() {
               )}
             >
               <Card style={{ marginBottom: 0, paddingVertical: 12, paddingHorizontal: 14 }}>
-                <Pressable
-                  onPress={() => openSaved(row)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`View or edit ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
-                >
-                  <Text style={{ fontWeight: "800", fontSize: 16, color: colors.text }}>
-                    {kindTitle(row.formKind)}
-                  </Text>
-                  <Text style={{ marginTop: 2, color: colors.muted, fontWeight: "600" }}>
-                    {formatServiceShortDate(row.formDate)}
-                  </Text>
-                </Pressable>
-                <PrimaryButton
-                  label={sharingId === row.id ? "Sharing…" : "Share PDF"}
-                  secondary
-                  onPress={() => void shareSaved(row)}
-                  style={{ marginTop: 10 }}
-                />
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Pressable
+                    onPress={() => openSaved(row)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`View or edit ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
+                    style={{ flex: 1, minWidth: 0 }}
+                  >
+                    <Text style={{ fontWeight: "800", fontSize: 16, color: colors.text }}>
+                      {kindTitle(row.formKind)}
+                    </Text>
+                    <Text style={{ marginTop: 2, color: colors.muted, fontWeight: "600" }}>
+                      {formatServiceShortDate(row.formDate)}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => void shareSaved(row)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Share PDF for ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
+                    style={{
+                      borderWidth: 1.5,
+                      borderColor: colors.accentDark,
+                      borderRadius: 8,
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                      alignSelf: "center",
+                    }}
+                  >
+                    <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 12 }}>
+                      {sharingId === row.id ? "Sharing…" : "Share PDF"}
+                    </Text>
+                  </Pressable>
+                </View>
               </Card>
             </Swipeable>
           ))
