@@ -29,6 +29,7 @@ import {
   SERVICE_REPORT_COMMENT_FIELDS,
   consumeCommentLines,
 } from "./commentFlow";
+import { continuationHouseNumberBox } from "./houseOverflow";
 
 type FieldWidget = {
   x: number;
@@ -113,21 +114,21 @@ function stampServiceReportHouseRow(ctx: Ctx, house: ServiceHouseRow, slot: numb
 function stampContinuationHouseNumber(ctx: Ctx, houseNumber: number, slot: number) {
   const ageR = widgetRect(ctx.map, `Age${slot}`);
   if (!ageR) return;
-  const houseLeft = 12;
-  const houseWidth = Math.max(18, ageR.x - houseLeft - 0.75);
+  const box = continuationHouseNumberBox(ageR.x, ageR.y, ageR.h);
   ctx.page.drawRectangle({
-    x: houseLeft,
-    y: ageR.y - 3,
-    width: houseWidth,
-    height: ageR.h + 6,
+    x: box.x,
+    y: box.y,
+    width: box.w,
+    height: box.h,
     color: rgb(1, 1, 1),
     borderWidth: 0,
   });
   const label = String(houseNumber);
   const size = label.length > 1 ? 7.5 : 8;
+  const tw = ctx.font.widthOfTextAtSize(label, size);
   ctx.page.drawText(label, {
-    x: houseLeft + (label.length > 1 ? 3 : 5),
-    y: ageR.y + Math.max(0.5, (ageR.h - size) * 0.35),
+    x: box.x + Math.max(0.5, (box.w - tw) / 2),
+    y: box.y + Math.max(0.5, (box.h - size) * 0.55),
     size,
     font: ctx.font,
     color: rgb(0, 0, 0),
@@ -213,12 +214,13 @@ function stampMinVentSides(
   }
 }
 
-const BACKUP_SETTING_FIELDS = ["Text94", "Text95", "Text96", "Text97", "Text98"] as const;
+const PLACEMENT_BACKUP_FIELDS = ["Text94", "Text95", "Text96", "Text97", "Text98"] as const;
+const SERVICE_REPORT_BACKUP_FIELDS = ["Text59", "Text60", "Text61", "Text62", "Text63"] as const;
 
 /** Center Heat/Cool/Stage values on one baseline inside the printed boxes. */
-function stampBackupSettings(ctx: Ctx, values: string[]) {
+function stampBackupSettings(ctx: Ctx, names: readonly string[], values: string[]) {
   const size = 8;
-  const rects = BACKUP_SETTING_FIELDS.map((name) => widgetRect(ctx.map, name));
+  const rects = names.map((name) => widgetRect(ctx.map, name));
   const present = rects.filter((r): r is FieldWidget => r != null);
   if (!present.length) return;
   const midY = present.reduce((sum, r) => sum + r.y + r.h / 2, 0) / present.length;
@@ -227,11 +229,16 @@ function stampBackupSettings(ctx: Ctx, values: string[]) {
     const v = String(value ?? "").trim();
     const r = rects[i];
     if (!v || !r) return;
-    const tw = ctx.font.widthOfTextAtSize(v, size);
+    let fit = size;
+    let tw = ctx.font.widthOfTextAtSize(v, fit);
+    if (tw > r.w - 2) {
+      fit = Math.max(5, fit * ((r.w - 2) / tw));
+      tw = ctx.font.widthOfTextAtSize(v, fit);
+    }
     ctx.page.drawText(v, {
       x: r.x + Math.max(1, (r.w - tw) / 2),
       y,
-      size,
+      size: fit,
       font: ctx.font,
       color: rgb(0, 0, 0),
       maxWidth: Math.max(4, r.w - 2),
@@ -385,11 +392,13 @@ function buildServiceReportFields(
   markYesNo(ctx, "Check Box35", "Check Box37", data.dialerOnOk);
   setText(ctx, "Text57", data.alarmHi, 8);
   setText(ctx, "Text58", data.alarmLow, 8);
-  setText(ctx, "Text59", data.backupHeat, 8);
-  setText(ctx, "Text60", data.backupCool, 8);
-  setText(ctx, "Text61", data.backupStage1, 8);
-  setText(ctx, "Text62", data.backupStage2, 8);
-  setText(ctx, "Text63", data.backupStage3, 8);
+  stampBackupSettings(ctx, SERVICE_REPORT_BACKUP_FIELDS, [
+    data.backupHeat,
+    data.backupCool,
+    data.backupStage1,
+    data.backupStage2,
+    data.backupStage3,
+  ]);
 
   const leftoverComments = fillCommentLines(ctx, [...SERVICE_REPORT_COMMENT_FIELDS], data.comments);
   setText(ctx, "Text64", data.serviceTech, 10);
@@ -478,7 +487,7 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm): string {
 
   setText(ctx, "HIController Temp Alarm Setting", data.alarmHi, 8);
   setText(ctx, "LOWController Temp Alarm Setting", data.alarmLow, 8);
-  stampBackupSettings(ctx, [
+  stampBackupSettings(ctx, PLACEMENT_BACKUP_FIELDS, [
     data.backupHeat,
     data.backupCool,
     data.backupStage1,
@@ -622,14 +631,6 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
       if (!h) continue;
       const slot = i + 1;
       stampContinuationHouseNumber(extraCtx, h.houseNumber, slot);
-      // Clear age / placed cells before fill (template may have guides).
-      coverWidget(extraCtx, `Age${slot}`);
-      coverWidget(extraCtx, `No Placed${slot}`);
-      for (const weekName of HOUSE_WEEK_FIELDS(slot)) {
-        coverWidget(extraCtx, weekName);
-      }
-      coverWidget(extraCtx, `Current Temp${slot}`);
-      coverWidget(extraCtx, `Mortality To Date${slot}`);
       stampServiceReportHouseRow(extraCtx, h, slot);
     }
   }
