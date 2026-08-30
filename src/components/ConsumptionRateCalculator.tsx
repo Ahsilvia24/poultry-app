@@ -153,8 +153,8 @@ export function ConsumptionRateCalculator({
         </div>
         {result ? (
           <div className="shrink-0 pt-1 text-right text-sm text-stone-600">
-            <p>WC {formatNum(result.wc, 1)}</p>
-            <p>FC {formatNum(result.fc, 1)}</p>
+            <p>WC {formatNum(result.wc, 1)} lbs</p>
+            <p>FC {formatNum(result.fc, 1)} lbs</p>
           </div>
         ) : null}
       </div>

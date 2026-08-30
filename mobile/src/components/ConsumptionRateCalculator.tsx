@@ -127,8 +127,8 @@ export function ConsumptionRateCalculator({
         </View>
         {result ? (
           <View style={{ alignItems: "flex-end", paddingTop: 4, gap: 4 }}>
-            <Text style={styles.muted}>WC {formatNum(result.wc, 1)}</Text>
-            <Text style={styles.muted}>FC {formatNum(result.fc, 1)}</Text>
+            <Text style={styles.muted}>WC {formatNum(result.wc, 1)} lbs</Text>
+            <Text style={styles.muted}>FC {formatNum(result.fc, 1)} lbs</Text>
           </View>
         ) : null}
       </View>
