@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
-import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../../../../../src/theme";
@@ -91,10 +91,9 @@ export default function ServiceFarmPickerScreen() {
   function openSaved(row: StoredServiceForm) {
     const form = FORMS.find((f) => f.key === row.formKind);
     if (!form) return;
-    router.push({
-      pathname: `${form.path}/[formId]`,
-      params: { id: farmId, formId: row.id, visitId: "" },
-    } as Href);
+    // Stay on the existing form route with formId. A nested [formId] path
+    // can drop the id on web, then a leftover deleted visitId opens nothing.
+    openForm(form.path, { formId: row.id });
   }
 
   async function shareSaved(row: StoredServiceForm) {
