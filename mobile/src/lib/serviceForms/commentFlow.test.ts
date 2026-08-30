@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import {
   PLACEMENT_COMMENT_FIELDS,
+  SERVICE_REPORT_COMMENT_FIELDS,
   commentPageCount,
   consumeCommentLines,
 } from "./commentFlow.ts";
@@ -58,5 +59,26 @@ describe("consumeCommentLines", () => {
     assert.equal(second.rest, "");
     assert.ok(text.startsWith(first.lines[0]!));
     assert.ok(first.rest.startsWith(second.lines[0]!));
+  });
+
+  it("continues leftover service-report comments without needing a filled form", async () => {
+    const map = JSON.parse(
+      readFileSync(join(assetsDir, "service-report-fields.json"), "utf8"),
+    ) as { fields: Record<string, { widgets: { w: number; samePage?: boolean }[] }> };
+    const font = await (await PDFDocument.create()).embedFont(StandardFonts.Helvetica);
+    const widths = SERVICE_REPORT_COMMENT_FIELDS.map((name) => {
+      const widgets = map.fields[name]?.widgets ?? [];
+      const w = widgets.find((row) => row.samePage !== false) ?? widgets[0];
+      return Math.max(40, (w?.w ?? 500) * 0.92);
+    });
+    const measure = (text: string) => font.widthOfTextAtSize(text, 8);
+    const words = Array.from({ length: 400 }, (_, i) => `sr${i}`);
+    const text = words.join(" ");
+    assert.ok(commentPageCount(text, widths, measure) >= 2);
+    const first = consumeCommentLines(text, widths, measure);
+    assert.ok(first.rest);
+    const second = consumeCommentLines(first.rest, widths, measure);
+    assert.ok(first.rest.startsWith(second.lines[0]!));
+    assert.equal(SERVICE_REPORT_COMMENT_FIELDS.length, 9);
   });
 });

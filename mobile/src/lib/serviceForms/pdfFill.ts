@@ -26,6 +26,7 @@ import { minVentCenteredX, minVentSideBoxes } from "./minVentLabel";
 import {
   MAX_PLACEMENT_COMMENT_PAGES,
   PLACEMENT_COMMENT_FIELDS,
+  SERVICE_REPORT_COMMENT_FIELDS,
   consumeCommentLines,
 } from "./commentFlow";
 
@@ -47,6 +48,9 @@ type StampOpts = {
   xPad?: number;
   /** Extra baseline lift (pts) — positive scoots text up in the box. */
   yNudge?: number;
+  /** Extra horizontal shift (pts) — negative scoots text left. */
+  xNudge?: number;
+  align?: "left" | "center";
   /** White-out the whole widget rect (e.g. printed "/" under placement timers). */
   coverPrinted?: "field";
 };
@@ -154,8 +158,12 @@ function setText(
   const size = Math.min(fontSize, Math.max(5, r.h * 0.82));
   const xPad = opts?.xPad ?? 1.5;
   const yNudge = opts?.yNudge ?? 0;
+  const xNudge = opts?.xNudge ?? 0;
+  const tw = ctx.font.widthOfTextAtSize(v, size);
+  const x =
+    (opts?.align === "center" ? r.x + Math.max(0, (r.w - tw) / 2) : r.x + xPad) + xNudge;
   ctx.page.drawText(v, {
-    x: r.x + xPad,
+    x,
     y: r.y + Math.max(0.5, (r.h - size) * 0.35) + yNudge,
     size,
     font: ctx.font,
@@ -294,9 +302,9 @@ function buildServiceReportFields(
   ctx: Ctx,
   data: ServiceReportForm,
   housesSlice: ServiceReportForm["houses"],
-) {
+): string {
   setText(ctx, "Farm Name", data.farmName, 10);
-  setText(ctx, "Date", formatServiceShortDate(data.date) || data.date, 10);
+  setText(ctx, "Date", formatServiceShortDate(data.date) || data.date, 10, { yNudge: 3 });
   setText(ctx, "Farm", data.farmNumber ?? "", 9, { yNudge: 2.5 });
   setText(ctx, "Flock", data.flockNumber ?? "", 9, { yNudge: 2.5 });
 
@@ -312,12 +320,12 @@ function buildServiceReportFields(
 
   markYesNo(ctx, "Check Box13", "Check Box15", data.lightIntensityOk);
   markYesNo(ctx, "Check Box14", "Check Box16", data.lightsOperationalOk);
-  setText(ctx, "Text44", data.lightsOnAt, 8);
-  setText(ctx, "Text45", data.lightsOffAt, 8);
+  setText(ctx, "Text44", data.lightsOnAt, 8, { align: "center", yNudge: 2.5 });
+  setText(ctx, "Text45", data.lightsOffAt, 8, { align: "center", xNudge: -14, yNudge: 2.5 });
 
   markYesNo(ctx, "Check Box9", "Check Box10", data.tempTargetsOk);
-  setText(ctx, "Text48", data.actualTempTarget, 8);
-  setText(ctx, "Text47", data.recommendedTempTarget, 8);
+  setText(ctx, "Text48", data.actualTempTarget, 8, { xPad: 6, yNudge: 1.5 });
+  setText(ctx, "Text47", data.recommendedTempTarget, 8, { xPad: 6, yNudge: 1.5 });
   markYesNo(ctx, "Check Box11", "Check Box12", data.ammoniaOk);
   setText(ctx, " Humidity", data.humidityPct ? `${data.humidityPct}%` : "", 8);
 
@@ -383,22 +391,9 @@ function buildServiceReportFields(
   setText(ctx, "Text62", data.backupStage2, 8);
   setText(ctx, "Text63", data.backupStage3, 8);
 
-  fillCommentLines(
-    ctx,
-    [
-      "COMMENTS 1",
-      "COMMENTS 2",
-      "COMMENTS 3",
-      "Comments 4",
-      "Comments 5",
-      "Comments 6",
-      "Comments 7",
-      "Comments 8",
-      "Comments 9",
-    ],
-    data.comments,
-  );
+  const leftoverComments = fillCommentLines(ctx, [...SERVICE_REPORT_COMMENT_FIELDS], data.comments);
   setText(ctx, "Text64", data.serviceTech, 10);
+  return leftoverComments;
 }
 
 function buildPlacementFields(ctx: Ctx, data: PlacementForm): string {
@@ -609,21 +604,18 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const ctx: Ctx = { page: doc.getPages()[0]!, font, map };
-  buildServiceReportFields(ctx, form, pages[0] ?? []);
+  let leftoverComments = buildServiceReportFields(ctx, form, pages[0] ?? []);
 
   for (let p = 1; p < pages.length; p++) {
-    const templateDoc = await loadTemplate(template);
-    const [blank] = await doc.copyPages(templateDoc, [0]);
-    doc.addPage(blank);
-    const page = doc.getPages()[doc.getPageCount() - 1]!;
+    const page = await appendTemplatePage(doc, template);
     const slice = pages[p]!;
     const extraCtx: Ctx = { page, font, map };
 
-    // Header so the continuation page is identifiable.
+    // House overflow only — leave lights/temps/comments blank for 9–16.
     setText(extraCtx, "Farm Name", form.farmName, 10);
-    setText(extraCtx, "Date", formatServiceShortDate(form.date) || form.date, 10);
-    setText(extraCtx, "Farm", form.farmNumber ?? "", 9);
-    setText(extraCtx, "Flock", form.flockNumber ?? "", 9);
+    setText(extraCtx, "Date", formatServiceShortDate(form.date) || form.date, 10, { yNudge: 3 });
+    setText(extraCtx, "Farm", form.farmNumber ?? "", 9, { yNudge: 2.5 });
+    setText(extraCtx, "Flock", form.flockNumber ?? "", 9, { yNudge: 2.5 });
 
     for (let i = 0; i < 8; i++) {
       const h = slice[i];
@@ -640,6 +632,18 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
       coverWidget(extraCtx, `Mortality To Date${slot}`);
       stampServiceReportHouseRow(extraCtx, h, slot);
     }
+  }
+
+  for (let pageIndex = 0; pageIndex < MAX_PLACEMENT_COMMENT_PAGES; pageIndex++) {
+    if (!leftoverComments) break;
+    const page = await appendTemplatePage(doc, template);
+    const next = fillCommentLines(
+      { page, font, map },
+      [...SERVICE_REPORT_COMMENT_FIELDS],
+      leftoverComments,
+    );
+    if (next === leftoverComments) break;
+    leftoverComments = next;
   }
 
   return writePdfToCache(doc, pdfFileName("Service-Report", form.farmName, form.date));
