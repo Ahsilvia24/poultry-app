@@ -1,5 +1,13 @@
 import type { ServiceHouseRow } from "./types";
 
+/** Valid checklist temp to write onto the house Log Temp tile. Empty or non-numeric → skip. */
+export function normalizedLoggedTemp(temp: string): string | null {
+  const trimmed = temp.trim();
+  if (!trimmed) return null;
+  if (!Number.isFinite(Number(trimmed))) return null;
+  return trimmed;
+}
+
 function pullLiveHouseFields(row: ServiceHouseRow, live: ServiceHouseRow): ServiceHouseRow {
   const weeks = row.weeks.slice();
   while (weeks.length < live.weeks.length) weeks.push("");

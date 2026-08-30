@@ -55,6 +55,7 @@ import {
   useServiceFarmContext,
 } from "../../../../../src/lib/serviceForms/useServiceFarm";
 import { colors, styles } from "../../../../../src/theme";
+import { tryPushHouseLoggedTemp } from "../../../../../src/repos/data";
 
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -116,8 +117,16 @@ export default function ServiceReportScreen() {
   const [timePicker, setTimePicker] = useState<"date" | "on" | "off" | null>(null);
   const [optionPicker, setOptionPicker] = useState<"humidity" | "week" | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
+  const loggedTempPushTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   useAutosaveServiceFormDraft(farmId, "service_report", form, !existing && !saving);
   useRefreshDraftHouseMetrics(farmId, !existing && !saving, setForm);
+
+  useEffect(() => {
+    return () => {
+      for (const timer of loggedTempPushTimers.current.values()) clearTimeout(timer);
+      loggedTempPushTimers.current.clear();
+    };
+  }, []);
 
   function patch(p: Partial<ServiceReportForm>) {
     setForm((prev) => ({ ...prev, ...p }));
@@ -137,6 +146,16 @@ export default function ServiceReportScreen() {
         h.houseNumber === houseNumber ? { ...h, ...p } : h,
       ),
     }));
+    if (p.currentTemp == null) return;
+    const prevTimer = loggedTempPushTimers.current.get(houseNumber);
+    if (prevTimer) clearTimeout(prevTimer);
+    loggedTempPushTimers.current.set(
+      houseNumber,
+      setTimeout(() => {
+        tryPushHouseLoggedTemp(farmId, houseNumber, p.currentTemp ?? "");
+        loggedTempPushTimers.current.delete(houseNumber);
+      }, 400),
+    );
   }
 
   function applyRecommendedWeek(week: number) {

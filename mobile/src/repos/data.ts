@@ -40,6 +40,7 @@ import {
 import { getFarmOrder } from "../lib/appSettings";
 import { sortFarmsByOrder } from "../lib/farmOrder";
 import { VISIT_TYPE_LABELS } from "../lib/visits";
+import { normalizedLoggedTemp } from "../lib/serviceForms/liveHouseMetrics";
 
 type MortRow = {
   mortality_date: string;
@@ -3360,6 +3361,27 @@ function applyHouseFlockFields(
   }
 
   syncFlockDatesAndPrune(farmId, flock.id);
+}
+
+export function tryPushHouseLoggedTemp(
+  farmId: string,
+  houseNumber: number,
+  temp: string,
+): boolean {
+  const normalized = normalizedLoggedTemp(temp);
+  if (!normalized) return false;
+  const db = getDb();
+  const house = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM houses WHERE farm_id = ? AND house_number = ? AND deleted_at IS NULL",
+    [farmId, houseNumber],
+  );
+  if (!house) return false;
+  try {
+    updateHouseLoggedTemp(farmId, house.id, normalized);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function updateHouseLoggedTemp(
