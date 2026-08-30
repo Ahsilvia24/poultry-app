@@ -13,7 +13,7 @@ describe("catchWeightProjections", () => {
     assert.equal(rows.length, 3);
     assert.deepEqual(
       rows.map((r) => r.label),
-      ["Low", "Catch day", "High"],
+      ["Low", "Catch Day", "High"],
     );
     assert.ok(rows.every((r) => r.ageDays === 42));
     assert.equal(rows[0]!.weightLbs, 6.1);
@@ -26,7 +26,7 @@ describe("catchWeightProjections", () => {
       date: new Date(2026, 8, 12),
       ageDays: 1,
       midWeightLbs: 0.1,
-      midLabel: "Catch day",
+      midLabel: "Catch Day",
     });
     assert.equal(rows[0]!.weightLbs, 0);
     assert.equal(rows[1]!.weightLbs, 0.1);
