@@ -274,15 +274,14 @@ function markYesNo(
   markCheck(ctx, noName, value === "no", noWidget);
 }
 
-/** Stamp readings on the Generator Hours row, same column as the service date. */
-function stampBesideLabel(ctx: Ctx, value: string, rowName: string, columnName: string) {
+/** Stamp readings just after the printed Generator Hours label. */
+function stampBesideLabel(ctx: Ctx, value: string, rowName: string, afterX: number) {
   const v = String(value ?? "").trim();
   if (!v) return;
   const row = widgetRect(ctx.map, rowName);
-  const column = widgetRect(ctx.map, columnName);
   if (!row) return;
   const size = 8;
-  const x = (column?.x ?? row.x - 90) + 1.5;
+  const x = afterX;
   const maxW = Math.max(4, row.x - 4 - x);
   ctx.page.drawText(v, {
     x,
@@ -593,7 +592,8 @@ function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
   );
   markYesNo(ctx, "Check Box201", "Check Box207", data.generatorHoursCheckedOk);
   if (data.generatorHoursCheckedOk === "yes") {
-    stampBesideLabel(ctx, data.generatorHoursLogged, "Check Box201", "Text110");
+    // Just after the printed “Hours” (~95pt); leave a small gap before the numbers.
+    stampBesideLabel(ctx, data.generatorHoursLogged, "Check Box201", 101);
   }
 
   const leftoverComments = fillCommentLines(ctx, [...PREBROOD_COMMENT_FIELDS], data.comments);
