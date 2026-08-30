@@ -316,52 +316,6 @@ export function ManualLfoScreen({
           headRef={bindFieldRef("calcHead")}
         />
 
-        <Card>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-              gap: 10,
-            }}
-          >
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <DatePickerField
-                label="Order date"
-                value={orderDate}
-                expanded={openPicker === "orderDate"}
-                onChange={(date) => {
-                  setActiveField(null);
-                  setOrderDate(date);
-                }}
-                onOpen={() => {
-                  setActiveField(null);
-                  setOpenPicker("orderDate");
-                }}
-              />
-            </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <TimeScrollPickerField
-                label="Order time"
-                value={orderTime}
-                expanded={openPicker === "orderTime"}
-                onChange={(time) => {
-                  setActiveField(null);
-                  setOrderTime(time);
-                }}
-                onOpen={() => {
-                  setActiveField(null);
-                  setOpenPicker("orderTime");
-                }}
-              />
-            </View>
-          </View>
-          {formatLfoOrderClock(orderDate, orderTime) ? (
-            <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
-              Hours from {formatLfoOrderClock(orderDate, orderTime)}
-            </Text>
-          ) : null}
-        </Card>
-
         <Text style={styles.sectionTitle}>Bin Inventory & Feed Up</Text>
         <Card>
           <View
@@ -532,6 +486,52 @@ export function ManualLfoScreen({
             </View>
           </Card>
         ) : null}
+
+        <Card>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-start",
+              gap: 10,
+            }}
+          >
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <DatePickerField
+                label="Order date"
+                value={orderDate}
+                expanded={openPicker === "orderDate"}
+                onChange={(date) => {
+                  setActiveField(null);
+                  setOrderDate(date);
+                }}
+                onOpen={() => {
+                  setActiveField(null);
+                  setOpenPicker("orderDate");
+                }}
+              />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <TimeScrollPickerField
+                label="Order time"
+                value={orderTime}
+                expanded={openPicker === "orderTime"}
+                onChange={(time) => {
+                  setActiveField(null);
+                  setOrderTime(time);
+                }}
+                onOpen={() => {
+                  setActiveField(null);
+                  setOpenPicker("orderTime");
+                }}
+              />
+            </View>
+          </View>
+          {formatLfoOrderClock(orderDate, orderTime) ? (
+            <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
+              Hours from {formatLfoOrderClock(orderDate, orderTime)}
+            </Text>
+          ) : null}
+        </Card>
 
         <PrimaryButton label="Save LFO" onPress={save} />
         {savedSection}

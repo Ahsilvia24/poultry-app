@@ -78,44 +78,6 @@ export function ManualLfoForm() {
       <ConsumptionRateCalculator
         onRateChange={(rate) => setConsumptionRate(String(rate))}
       />
-      <Card>
-        <div className="grid grid-cols-2 gap-2">
-          <PairField>
-            <Label htmlFor="manual-orderDate">Order date</Label>
-            <Input
-              id="manual-orderDate"
-              name="orderDate"
-              type="date"
-              value={orderDate}
-              onChange={(e) => setOrderDate(e.target.value)}
-              className="mt-0.5"
-              compact
-            />
-          </PairField>
-          <PairField>
-            <Label htmlFor="manual-orderTime">Order time</Label>
-            <Select
-              id="manual-orderTime"
-              name="orderTime"
-              value={orderTime}
-              onChange={(e) => setOrderTime(e.target.value)}
-              className="mt-0.5"
-              compact
-            >
-              {HALF_HOUR_TIME_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-          </PairField>
-        </div>
-        {formatLfoOrderClock(orderDate, orderTime) ? (
-          <p className="mt-1 text-xs text-stone-500">
-            Hours from {formatLfoOrderClock(orderDate, orderTime)}
-          </p>
-        ) : null}
-      </Card>
 
       <h2 className="text-lg font-bold text-stone-900">Bin Inventory & Feed Up</h2>
       <Card>
@@ -286,6 +248,45 @@ export function ManualLfoForm() {
           </div>
         </div>
       ) : null}
+
+      <Card>
+        <div className="grid grid-cols-2 gap-2">
+          <PairField>
+            <Label htmlFor="manual-orderDate">Order date</Label>
+            <Input
+              id="manual-orderDate"
+              name="orderDate"
+              type="date"
+              value={orderDate}
+              onChange={(e) => setOrderDate(e.target.value)}
+              className="mt-0.5"
+              compact
+            />
+          </PairField>
+          <PairField>
+            <Label htmlFor="manual-orderTime">Order time</Label>
+            <Select
+              id="manual-orderTime"
+              name="orderTime"
+              value={orderTime}
+              onChange={(e) => setOrderTime(e.target.value)}
+              className="mt-0.5"
+              compact
+            >
+              {HALF_HOUR_TIME_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </PairField>
+        </div>
+        {formatLfoOrderClock(orderDate, orderTime) ? (
+          <p className="mt-1 text-xs text-stone-500">
+            Hours from {formatLfoOrderClock(orderDate, orderTime)}
+          </p>
+        ) : null}
+      </Card>
 
       <Button type="submit">Save LFO</Button>
     </form>
