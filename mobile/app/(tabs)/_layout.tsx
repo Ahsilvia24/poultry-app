@@ -17,19 +17,19 @@ const TAB_ITEMS: {
   icon?: MciName;
   customIcon?: "feed-bin";
 }[] = [
+  { name: "tools", label: "Tools", icon: "tools" },
+  { name: "farms", label: "Farms", icon: "barn" },
   { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
   { name: "lfo", label: "LFO", customIcon: "feed-bin" },
-  { name: "farms", label: "Farms", icon: "barn" },
-  { name: "tools", label: "Tools", icon: "tools" },
   { name: "reports", label: "Reports", icon: "chart-box-outline" },
 ];
 
-/** Center Farms tab look. Swap to compare: "raised" | "circle" | "soft". */
-const FARMS_TAB_STYLE = "raised" as const;
+/** Center Dashboard tab look. Swap to compare: "raised" | "circle" | "soft". */
+const CENTER_TAB_STYLE = "raised" as const;
 
-function farmsTabStyle(focused: boolean) {
+function centerTabStyle(focused: boolean) {
   const idleWash = "rgba(4, 120, 87, 0.08)";
-  if (FARMS_TAB_STYLE === "circle") {
+  if (CENTER_TAB_STYLE === "circle") {
     return {
       flex: 1.15,
       minHeight: 64,
@@ -42,7 +42,7 @@ function farmsTabStyle(focused: boolean) {
       backgroundColor: focused ? colors.accentDark : idleWash,
     };
   }
-  if (FARMS_TAB_STYLE === "soft") {
+  if (CENTER_TAB_STYLE === "soft") {
     return {
       flex: 1.1,
       borderRadius: 10,
@@ -88,7 +88,7 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
         borderTopWidth: 1,
         borderTopColor: colors.border,
         backgroundColor: "#fff",
-        paddingTop: FARMS_TAB_STYLE === "circle" ? 14 : 8,
+        paddingTop: CENTER_TAB_STYLE === "circle" ? 14 : 8,
         paddingBottom: Math.max(insets.bottom, 8),
         paddingHorizontal: 4,
       }}
@@ -99,9 +99,9 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
           const focused = state.index === index;
           const item = TAB_ITEMS.find((t) => t.name === route.name);
           const label = item?.label ?? descriptors[route.key]?.options?.title ?? route.name;
-          const isFarms = route.name === "farms";
-          const iconSize = isFarms ? 24 : 20;
-          const farmsStyle = farmsTabStyle(focused);
+          const isDashboard = route.name === "index";
+          const iconSize = isDashboard ? 24 : 20;
+          const dashboardStyle = centerTabStyle(focused);
 
           return (
             <Pressable
@@ -176,7 +176,7 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 justifyContent: "center",
                 gap: 2,
                 backgroundColor: focused ? colors.accentDark : "transparent",
-                ...(isFarms ? farmsStyle : null),
+                ...(isDashboard ? dashboardStyle : null),
               }}
             >
               {item?.customIcon === "feed-bin" ? (
@@ -185,16 +185,16 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 <MaterialCommunityIcons
                   name={item.icon}
                   size={iconSize}
-                  color={focused ? "#fff" : isFarms ? colors.accentDark : "#44403c"}
+                  color={focused ? "#fff" : isDashboard ? colors.accentDark : "#44403c"}
                 />
               ) : null}
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 style={{
-                  fontSize: isFarms ? 12 : 11,
+                  fontSize: isDashboard ? 12 : 11,
                   fontWeight: "800",
-                  color: focused ? "#fff" : isFarms ? colors.accentDark : "#44403c",
+                  color: focused ? "#fff" : isDashboard ? colors.accentDark : "#44403c",
                   textAlign: "center",
                 }}
               >

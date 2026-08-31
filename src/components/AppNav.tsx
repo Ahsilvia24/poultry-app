@@ -6,25 +6,25 @@ import { cn } from "@/lib/utils";
 import { useKeypadNav } from "@/components/KeypadNavContext";
 
 const tabs = [
+  { href: "/tools", label: "Tools", icon: "tools" },
+  { href: "/farms", label: "Farms", icon: "barn" },
   { href: "/", label: "Dashboard", icon: "dashboard" },
   { href: "/lfo", label: "LFO", icon: "feed-bin" },
-  { href: "/farms", label: "Farms", icon: "barn" },
-  { href: "/tools", label: "Tools", icon: "tools" },
   { href: "/reports", label: "Reports", icon: "reports" },
 ] as const;
 
-/** Center Farms tab look. Swap to compare: "raised" | "circle" | "soft". */
-const FARMS_TAB_STYLE = "raised" as const;
+/** Center Dashboard tab look. Swap to compare: "raised" | "circle" | "soft". */
+const CENTER_TAB_STYLE = "raised" as const;
 
-function farmsTabClass(active: boolean) {
+function centerTabClass(active: boolean) {
   const idle = active ? "" : "bg-emerald-50 text-emerald-800";
-  if (FARMS_TAB_STYLE === "circle") {
+  if (CENTER_TAB_STYLE === "circle") {
     return cn(
       "min-h-16 flex-[1.15] -mt-2.5 rounded-full border-[2.5px] border-emerald-600 px-2 py-2.5 text-[12px]",
       idle,
     );
   }
-  if (FARMS_TAB_STYLE === "soft") {
+  if (CENTER_TAB_STYLE === "soft") {
     return cn(
       "flex-[1.1] border-2 px-0.5 py-2.5 text-[12px]",
       active ? "border-emerald-800" : "border-emerald-600",
@@ -121,7 +121,7 @@ export function AppNav() {
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
           <nav className="flex items-center gap-1">
             {desktopNav.map((item) => {
-              const farms = item.href === "/farms";
+              const dashboard = item.href === "/";
               return (
                 <Link
                   key={item.href}
@@ -131,8 +131,8 @@ export function AppNav() {
                     isActive(pathname, item.href)
                       ? "bg-emerald-700 text-white"
                       : "text-stone-700 hover:bg-stone-200",
-                    farms && "border-2 border-emerald-700 px-4 text-lg",
-                    farms && !isActive(pathname, item.href) && "bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
+                    dashboard && "border-2 border-emerald-700 px-4 text-lg",
+                    dashboard && !isActive(pathname, item.href) && "bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
                   )}
                 >
                   {item.label}
@@ -148,12 +148,12 @@ export function AppNav() {
           <div
             className={cn(
               "flex items-center gap-1 px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]",
-              FARMS_TAB_STYLE === "circle" ? "pt-3.5" : "pt-2",
+              CENTER_TAB_STYLE === "circle" ? "pt-3.5" : "pt-2",
             )}
           >
             {tabs.map((item) => {
               const active = isActive(pathname, item.href);
-              const farms = item.href === "/farms";
+              const dashboard = item.href === "/";
               return (
                 <Link
                   key={item.href}
@@ -161,10 +161,10 @@ export function AppNav() {
                   className={cn(
                     "flex min-h-[3.75rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-[10px] px-0.5 py-2 text-center text-[11px] font-extrabold leading-none",
                     active ? "bg-emerald-700 text-white" : "text-stone-700",
-                    farms && farmsTabClass(active),
+                    dashboard && centerTabClass(active),
                   )}
                 >
-                  <TabIcon name={item.icon} size={farms ? 24 : 20} />
+                  <TabIcon name={item.icon} size={dashboard ? 24 : 20} />
                   {item.label}
                 </Link>
               );
