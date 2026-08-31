@@ -17,12 +17,28 @@ const TAB_ITEMS: {
   icon?: MciName;
   customIcon?: "feed-bin";
 }[] = [
-  { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
-  { name: "farms", label: "Farms", icon: "barn" },
-  { name: "lfo", label: "LFO", customIcon: "feed-bin" },
   { name: "tools", label: "Tools", icon: "tools" },
+  { name: "farms", label: "Farms", icon: "barn" },
+  { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
+  { name: "lfo", label: "LFO", customIcon: "feed-bin" },
   { name: "reports", label: "Reports", icon: "chart-box-outline" },
 ];
+
+const dashboardTabStyle = {
+  flex: 1.2,
+  borderRadius: 14,
+  paddingVertical: 10,
+  paddingHorizontal: 2,
+  borderWidth: 2,
+  borderColor: colors.accentDark,
+  backgroundColor: colors.accentDark,
+} as const;
+
+const selectedSideTabStyle = {
+  borderWidth: 1,
+  borderColor: "rgba(6, 95, 70, 0.35)",
+  backgroundColor: "rgba(4, 120, 87, 0.07)",
+} as const;
 
 function WebStyleTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -38,9 +54,9 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
     return null;
   }
 
-  const visibleRoutes = state.routes.filter((route: { name: string }) =>
-    TAB_ITEMS.some((t) => t.name === route.name),
-  );
+  const visibleRoutes = TAB_ITEMS.map((item) =>
+    state.routes.find((route: { name: string }) => route.name === item.name),
+  ).filter((route): route is { key: string; name: string; state?: any } => Boolean(route));
 
   return (
     <View
@@ -53,12 +69,14 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
         paddingHorizontal: 4,
       }}
     >
-      <View style={{ flexDirection: "row", gap: 4 }}>
+      <View style={{ flexDirection: "row", gap: 4, alignItems: "center" }}>
         {visibleRoutes.map((route: { key: string; name: string; state?: any }) => {
           const index = state.routes.findIndex((r: { key: string }) => r.key === route.key);
           const focused = state.index === index;
           const item = TAB_ITEMS.find((t) => t.name === route.name);
           const label = item?.label ?? descriptors[route.key]?.options?.title ?? route.name;
+          const isDashboard = route.name === "index";
+          const iconSize = isDashboard ? 24 : 20;
 
           return (
             <Pressable
@@ -132,25 +150,30 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 2,
-                backgroundColor: focused ? colors.accentDark : "transparent",
+                backgroundColor: "transparent",
+                ...(isDashboard
+                  ? dashboardTabStyle
+                  : focused
+                    ? selectedSideTabStyle
+                    : null),
               }}
             >
               {item?.customIcon === "feed-bin" ? (
-                <FeedBinIcon color={focused ? "#fff" : "#44403c"} size={20} />
+                <FeedBinIcon color={isDashboard ? "#fff" : "#44403c"} size={iconSize} />
               ) : item?.icon ? (
                 <MaterialCommunityIcons
                   name={item.icon}
-                  size={20}
-                  color={focused ? "#fff" : "#44403c"}
+                  size={iconSize}
+                  color={isDashboard ? "#fff" : "#44403c"}
                 />
               ) : null}
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 style={{
-                  fontSize: 11,
+                  fontSize: isDashboard ? 12 : 11,
                   fontWeight: "800",
-                  color: focused ? "#fff" : "#44403c",
+                  color: isDashboard ? "#fff" : "#44403c",
                   textAlign: "center",
                 }}
               >
