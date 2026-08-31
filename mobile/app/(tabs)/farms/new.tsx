@@ -20,7 +20,6 @@ export default function NewFarmScreen() {
   const router = useRouter();
   const [farmName, setFarmName] = useState("");
   const [growerName, setGrowerName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [numberOfHouses, setNumberOfHouses] = useState("4");
   const [numberOfGenerators, setNumberOfGenerators] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +32,6 @@ export default function NewFarmScreen() {
       const { id } = createFarm({
         farmName,
         growerName,
-        phoneNumber,
         numberOfHouses: Number(numberOfHouses) || 0,
         numberOfGenerators,
       });
@@ -106,14 +104,6 @@ export default function NewFarmScreen() {
               value={growerName}
               onChangeText={setGrowerName}
               autoCapitalize="words"
-            />
-
-            <Text style={styles.label}>Phone</Text>
-            <TextInput
-              style={styles.input}
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
               returnKeyType="done"
               blurOnSubmit
               onSubmitEditing={() => Keyboard.dismiss()}

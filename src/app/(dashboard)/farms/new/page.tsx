@@ -57,10 +57,6 @@ export default function NewFarmPage() {
               <Label htmlFor="growerName">Grower name</Label>
               <Input id="growerName" name="growerName" />
             </div>
-            <div className="sm:col-span-2">
-              <Label htmlFor="phoneNumber">Phone</Label>
-              <Input id="phoneNumber" name="phoneNumber" type="tel" />
-            </div>
           </div>
           <Button type="submit" className="w-full sm:w-auto">
             Create farm

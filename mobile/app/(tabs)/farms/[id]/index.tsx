@@ -256,8 +256,6 @@ type AddHouseDraft = {
 type FarmEditDraft = {
   farmName: string;
   growerName: string;
-  phoneNumber: string;
-  email: string;
   notes: string;
   numberOfGenerators: number | null;
 };
@@ -761,8 +759,6 @@ export default function FarmDetailScreen() {
     setEditingFarm({
       farmName: farm.farmName,
       growerName: farm.growerName ?? "",
-      phoneNumber: farm.phoneNumber ?? "",
-      email: farm.email ?? "",
       notes: farm.notes ?? "",
       numberOfGenerators: farm.numberOfGenerators ?? null,
     });
@@ -1258,8 +1254,6 @@ export default function FarmDetailScreen() {
       updateFarm(farm.id, {
         farmName: editingFarm.farmName,
         growerName: editingFarm.growerName,
-        phoneNumber: editingFarm.phoneNumber,
-        email: editingFarm.email,
         notes: editingFarm.notes,
       });
       setEditingFarm(null);
@@ -2740,29 +2734,6 @@ export default function FarmDetailScreen() {
                         setEditingFarm((prev) => (prev ? { ...prev, growerName: v } : prev))
                       }
                       autoCapitalize="words"
-                    />
-                    <Text style={[styles.label, { marginTop: 8 }]}>Phone</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={editingFarm.phoneNumber}
-                      onChangeText={(v) =>
-                        setEditingFarm((prev) => (prev ? { ...prev, phoneNumber: v } : prev))
-                      }
-                      keyboardType="phone-pad"
-                      returnKeyType="done"
-                      blurOnSubmit
-                      onSubmitEditing={() => Keyboard.dismiss()}
-                    />
-                    <Text style={[styles.label, { marginTop: 8 }]}>Email</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={editingFarm.email}
-                      onChangeText={(v) =>
-                        setEditingFarm((prev) => (prev ? { ...prev, email: v } : prev))
-                      }
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
                     />
                     <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
                     <TextInput

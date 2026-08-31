@@ -8,8 +8,6 @@ type FarmInfo = {
   id: string;
   farmName: string;
   growerName: string;
-  phoneNumber: string | null;
-  email?: string | null;
   notes: string | null;
   numberOfGenerators?: number | null;
 };
@@ -108,31 +106,12 @@ export function FarmListSettingsButton({ farm }: { farm: FarmInfo }) {
                     defaultValue={farm.farmName}
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-2">
                   <Label htmlFor={`list-growerName-${farm.id}`}>Grower name</Label>
                   <Input
                     id={`list-growerName-${farm.id}`}
                     name="growerName"
                     defaultValue={farm.growerName}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`list-phoneNumber-${farm.id}`}>Phone</Label>
-                  <Input
-                    id={`list-phoneNumber-${farm.id}`}
-                    name="phoneNumber"
-                    type="tel"
-                    defaultValue={farm.phoneNumber ?? ""}
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor={`list-email-${farm.id}`}>Email</Label>
-                  <Input
-                    id={`list-email-${farm.id}`}
-                    name="email"
-                    type="email"
-                    defaultValue={farm.email ?? ""}
-                    autoComplete="email"
                   />
                 </div>
                 <div className="sm:col-span-2">

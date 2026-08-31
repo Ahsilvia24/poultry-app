@@ -182,8 +182,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             id: farm.id,
             farmName: farm.farmName,
             growerName: farm.growerName,
-            phoneNumber: farm.phoneNumber,
-            email: farm.email,
             notes: farm.notes,
             numberOfGenerators: farm.numberOfGenerators,
           }}
