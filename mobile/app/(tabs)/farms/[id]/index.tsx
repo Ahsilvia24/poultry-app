@@ -76,6 +76,7 @@ import { TimeScrollPickerField } from "../../../../src/components/TimeScrollPick
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
 import { compactCatchTimeLabel } from "../../../../src/lib/time-slots";
 import { ConfirmDialog } from "../../../../src/components/ConfirmDialog";
+import { SwipeCommitDeleteRow } from "../../../../src/components/SwipeCommitDeleteRow";
 import { useExclusiveSwipeables } from "../../../../src/lib/useExclusiveSwipeables";
 import {
   NumberKeypad,
@@ -608,7 +609,6 @@ export default function FarmDetailScreen() {
   const [generatorEditingGen, setGeneratorEditingGen] = useState<GenHourKey | null>(null);
   const [opsConfirm, setOpsConfirm] = useState<
     | { kind: "house"; houseId: string; houseNumber: number }
-    | { kind: "visit"; visitId: string; visitDate: string }
     | { kind: "issue"; issueId: string }
     | { kind: "litter"; eventId: string }
     | { kind: "feed"; deliveryId: string }
@@ -1140,15 +1140,19 @@ export default function FarmDetailScreen() {
     setOpsConfirm({ kind: "house", houseId: h.id, houseNumber: h.houseNumber });
   }
 
-  function confirmDeleteVisit(visitId: string, visitDate: string) {
-    setOpsConfirm({ kind: "visit", visitId, visitDate });
+  function removeVisit(visitId: string) {
+    try {
+      deleteVisit(farm.id, visitId);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
   }
 
   function runOpsConfirm() {
     if (!opsConfirm) return;
     try {
       if (opsConfirm.kind === "house") deleteHouse(farm.id, opsConfirm.houseId);
-      else if (opsConfirm.kind === "visit") deleteVisit(farm.id, opsConfirm.visitId);
       else if (opsConfirm.kind === "issue") deleteIssue(farm.id, opsConfirm.issueId);
       else if (opsConfirm.kind === "litter") deleteLitterEvent(farm.id, opsConfirm.eventId);
       else if (opsConfirm.kind === "feed") deleteFeedDelivery(opsConfirm.deliveryId);
@@ -1851,37 +1855,35 @@ export default function FarmDetailScreen() {
                     paddingTop: 10,
                     borderTopWidth: 1,
                     borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                    alignItems: "flex-start",
                   }}
                 >
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
+                  <SwipeCommitDeleteRow
+                    onDelete={() => removeVisit(v.id)}
                     onPress={() =>
                       router.push({
                         pathname: "/(tabs)/farms/[id]/visits/[visitId]",
                         params: { id: farm.id, visitId: v.id },
                       })
                     }
-                    style={{ flex: 1, minWidth: 0 }}
                   >
-                    <Text style={{ fontWeight: "700" }}>
-                      {formatShortDate(v.visitDate)} —{" "}
-                      {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
-                    </Text>
-                    {v.followUpRequired ? (
-                      <Text style={{ color: "#b45309", fontWeight: "600", marginTop: 2 }}>
-                        Follow-up due
+                    <View
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
+                    >
+                      <Text style={{ fontWeight: "700" }}>
+                        {formatShortDate(v.visitDate)} —{" "}
+                        {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
                       </Text>
-                    ) : null}
-                    {v.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text> : null}
-                  </Pressable>
-                  <RowActions
-                    deleteLabel="Delete visit"
-                    onDelete={() => confirmDeleteVisit(v.id, v.visitDate)}
-                  />
+                      {v.followUpRequired ? (
+                        <Text style={{ color: "#b45309", fontWeight: "600", marginTop: 2 }}>
+                          Follow-up due
+                        </Text>
+                      ) : null}
+                      {v.notes ? (
+                        <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text>
+                      ) : null}
+                    </View>
+                  </SwipeCommitDeleteRow>
                 </View>
               ))
             )}
@@ -2894,26 +2896,22 @@ export default function FarmDetailScreen() {
         title={
           opsConfirm?.kind === "house"
             ? `Delete house ${opsConfirm.houseNumber}?`
-            : opsConfirm?.kind === "visit"
-              ? "Delete visit?"
-              : opsConfirm?.kind === "issue"
-                ? "Delete issue?"
-                : opsConfirm?.kind === "litter"
-                  ? "Delete litter event?"
-                  : opsConfirm?.kind === "feed"
-                    ? "Delete feed delivery?"
-                    : opsConfirm?.kind === "generator"
-                      ? `Delete ${opsConfirm.label} entry?`
-                      : "Delete?"
+            : opsConfirm?.kind === "issue"
+              ? "Delete issue?"
+              : opsConfirm?.kind === "litter"
+                ? "Delete litter event?"
+                : opsConfirm?.kind === "feed"
+                  ? "Delete feed delivery?"
+                  : opsConfirm?.kind === "generator"
+                    ? `Delete ${opsConfirm.label} entry?`
+                    : "Delete?"
         }
         message={
           opsConfirm?.kind === "house"
             ? "This removes the house from the farm. It will no longer appear in your lists."
-            : opsConfirm?.kind === "visit"
-              ? `${opsConfirm.visitDate} will be removed.`
-              : opsConfirm?.kind === "generator"
-                ? "Only this generator reading will be removed. Other generators on this date stay."
-                : "This cannot be undone."
+            : opsConfirm?.kind === "generator"
+              ? "Only this generator reading will be removed. Other generators on this date stay."
+              : "This cannot be undone."
         }
         confirmLabel="Delete"
         danger
