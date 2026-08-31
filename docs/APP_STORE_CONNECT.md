@@ -10,8 +10,8 @@ Do **not** run EAS production iOS builds, `eas submit`, or TestFlight uploads un
 | Field | Value |
 |-------|-------|
 | Version | 1.0.9 |
-| Build | 134 |
-| Status | Uploaded to App Store Connect 2026-08-30 — wait for TestFlight processing |
+| Build | 135 |
+| Status | EAS production iOS build + submit started 2026-08-31 — wait for TestFlight processing |
 
 ## Identity (keep these the same everywhere)
 
