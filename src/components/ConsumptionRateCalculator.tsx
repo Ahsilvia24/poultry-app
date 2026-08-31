@@ -151,7 +151,7 @@ export function ConsumptionRateCalculator({
       </div>
       {result ? (
         <p className="mt-2 whitespace-nowrap text-base font-extrabold text-stone-900">
-          Consumption Rate: {formatNum(result.rate, 2)} lb/bird/day
+          Consumption Rate: {formatNum(result.rate, 4)} lb/bird/day
         </p>
       ) : (
         <p className="mt-2 text-sm text-stone-500">

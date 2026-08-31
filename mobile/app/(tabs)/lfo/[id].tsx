@@ -34,6 +34,7 @@ import {
 } from "../../../src/components/NumberKeypad";
 import { FeedMillDataButton } from "../../../src/components/LfoHouseSummaryBlock";
 import { formatFeedMillData } from "../../../src/lib/lfo/feedMillData";
+import { formatConsumptionRate } from "../../../src/lib/lfo/consumptionRate";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 
 function formatLbs(n: number) {
@@ -86,7 +87,7 @@ function loadDraft(id: string) {
     farmName: lfo.farmName,
     orderDate: lfo.orderDate.slice(0, 10),
     orderTime: normalizeHalfHourTime(lfo.orderTime) ?? currentHalfHourTime(),
-    consumptionRate: String(lfo.consumptionRate ?? DEFAULT_LFO_CONSUMPTION_RATE),
+    consumptionRate: formatConsumptionRate(lfo.consumptionRate ?? DEFAULT_LFO_CONSUMPTION_RATE),
     calculatedAt: lfo.calculatedAt,
     notes: lfo.notes,
     houses: lfo.houses.map(

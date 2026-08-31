@@ -20,3 +20,9 @@ export function consumptionRateFromWater(
   const fc = wc / WATER_TO_FEED_RATIO;
   return { wc, fc, rate: fc / heads };
 }
+
+/** At most 4 decimal places — avoids 0.449999999999 float display. */
+export function formatConsumptionRate(rate: number): string {
+  if (!Number.isFinite(rate)) return "";
+  return String(Number(rate.toFixed(4)));
+}

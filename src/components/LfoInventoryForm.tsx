@@ -12,6 +12,7 @@ import {
   formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
 import { formatFeedMillData } from "@/lib/lfo/feedMillData";
+import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
 import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
 
 export type LfoHouseRow = {
@@ -98,7 +99,9 @@ export function LfoInventoryForm({
     router.push("/lfo");
   }
   const [pending, startTransition] = useTransition();
-  const [consumptionRate, setConsumptionRate] = useState(String(initialRate));
+  const [consumptionRate, setConsumptionRate] = useState(() =>
+    formatConsumptionRate(initialRate),
+  );
   const [orderDate, setOrderDate] = useState(initialOrderDate);
   const [orderTime, setOrderTime] = useState(
     () => normalizeHalfHourTime(initialOrderTime) ?? currentHalfHourTime(),

@@ -126,7 +126,7 @@ export function ConsumptionRateCalculator({
             marginTop: 8,
           }}
         >
-          Consumption Rate: {formatNum(result.rate, 2)} lb/bird/day
+          Consumption Rate: {formatNum(result.rate, 4)} lb/bird/day
         </Text>
       ) : (
         <Text style={[styles.muted, { marginTop: 8 }]}>

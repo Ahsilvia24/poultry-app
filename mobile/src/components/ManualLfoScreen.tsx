@@ -35,6 +35,7 @@ import {
   DEFAULT_HEAD_COUNT,
   DEFAULT_WATER_GAL,
   consumptionRateFromWater,
+  formatConsumptionRate,
 } from "../lib/lfo/consumptionRate";
 import { createManualLfo } from "../repos/data";
 
@@ -169,7 +170,7 @@ export function ManualLfoScreen({
 
   useEffect(() => {
     const next = consumptionRateFromWater(calcWaterGal, calcHeadCount);
-    if (next) setConsumptionRate(String(next.rate));
+    if (next) setConsumptionRate(formatConsumptionRate(next.rate));
   }, [calcWaterGal, calcHeadCount]);
 
   const heads = Number(headCount);

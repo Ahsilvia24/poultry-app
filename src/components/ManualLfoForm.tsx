@@ -12,6 +12,7 @@ import {
   formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
 import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime } from "@/lib/time-slots";
+import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
 
 const MANUAL_HOUSE_ID = "manual";
 
@@ -74,7 +75,7 @@ export function ManualLfoForm() {
       ) : null}
       <input type="hidden" name="consumptionRate" value={consumptionRate} />
       <ConsumptionRateCalculator
-        onRateChange={(rate) => setConsumptionRate(String(rate))}
+        onRateChange={(rate) => setConsumptionRate(formatConsumptionRate(rate))}
       />
 
       <h2 className="text-lg font-bold text-stone-900">Bin Inventory & Feed Up</h2>

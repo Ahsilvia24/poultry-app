@@ -176,7 +176,7 @@ export function buildLfoSharePayload(
         {
           label: "Consumption rate",
           value: `${inventory.consumptionRate.toLocaleString(undefined, {
-            maximumFractionDigits: 3,
+            maximumFractionDigits: 4,
           })} lbs/bird/day`,
         },
         { label: "Hours measured from", value: `${orderDateLabel}  ${orderTimeLabel}` },
