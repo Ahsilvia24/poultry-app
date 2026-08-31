@@ -25,17 +25,11 @@ const TAB_ITEMS: {
 ];
 
 const dashboardTabStyle = {
-  flex: 1.2,
-  borderRadius: 14,
-  paddingVertical: 10,
-  paddingHorizontal: 2,
-  borderWidth: 2,
   borderColor: colors.accentDark,
   backgroundColor: colors.accentDark,
 } as const;
 
 const selectedSideTabStyle = {
-  borderWidth: 1,
   borderColor: "rgba(6, 95, 70, 0.35)",
   backgroundColor: "rgba(4, 120, 87, 0.07)",
 } as const;
@@ -64,8 +58,8 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
         borderTopWidth: 1,
         borderTopColor: colors.border,
         backgroundColor: "#fff",
-        paddingTop: 8,
-        paddingBottom: Math.max(insets.bottom, 8),
+        paddingTop: 6,
+        paddingBottom: Math.max(insets.bottom, 6),
         paddingHorizontal: 4,
       }}
     >
@@ -76,7 +70,6 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
           const item = TAB_ITEMS.find((t) => t.name === route.name);
           const label = item?.label ?? descriptors[route.key]?.options?.title ?? route.name;
           const isDashboard = route.name === "index";
-          const iconSize = isDashboard ? 24 : 20;
 
           return (
             <Pressable
@@ -144,12 +137,15 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
               }}
               style={{
                 flex: 1,
+                minHeight: 48,
                 borderRadius: 10,
-                paddingVertical: 8,
+                paddingVertical: 6,
                 paddingHorizontal: 2,
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 2,
+                borderWidth: 1,
+                borderColor: "transparent",
                 backgroundColor: "transparent",
                 ...(isDashboard
                   ? dashboardTabStyle
@@ -159,11 +155,11 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
               }}
             >
               {item?.customIcon === "feed-bin" ? (
-                <FeedBinIcon color={isDashboard ? "#fff" : "#44403c"} size={iconSize} />
+                <FeedBinIcon color={isDashboard ? "#fff" : "#44403c"} size={18} />
               ) : item?.icon ? (
                 <MaterialCommunityIcons
                   name={item.icon}
-                  size={iconSize}
+                  size={18}
                   color={isDashboard ? "#fff" : "#44403c"}
                 />
               ) : null}
@@ -171,7 +167,7 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 style={{
-                  fontSize: isDashboard ? 12 : 11,
+                  fontSize: 10,
                   fontWeight: "800",
                   color: isDashboard ? "#fff" : "#44403c",
                   textAlign: "center",
