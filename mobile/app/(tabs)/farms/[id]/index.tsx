@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
   completeFlock,
@@ -577,6 +577,11 @@ export default function FarmDetailScreen() {
   const focusHouseFlockIdParam = paramId(params.focusHouseFlockId);
   const router = useRouter();
   const goToFarmList = useGoToFarmList();
+  const insets = useSafeAreaInsets();
+  const houseEditTopPad =
+    Platform.OS === "web"
+      ? (`max(${Math.max(insets.top, 12)}px, env(safe-area-inset-top, 12px))` as unknown as number)
+      : Math.max(insets.top, 12);
   const [data, setData] = useState<FarmDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -2265,11 +2270,12 @@ export default function FarmDetailScreen() {
           style={{
             flex: 1,
             backgroundColor: "#fff",
+            paddingTop: houseEditTopPad,
             ...(Platform.OS === "web"
               ? { position: "fixed" as const, top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }
               : null),
           }}
-          edges={["top", "bottom"]}
+          edges={["bottom"]}
         >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
