@@ -183,7 +183,7 @@ export function WeightProjectionManualTile() {
         style={{ marginBottom: 4 }}
         contentContainerStyle={{ flexDirection: "row", alignItems: "center", paddingRight: 8 }}
       >
-        <Chip label="Manual" active={isManual} onPress={selectManual} />
+        <Chip label="Custom" active={isManual} onPress={selectManual} />
         {farms.map((f) => (
           <Chip
             key={f.id}
