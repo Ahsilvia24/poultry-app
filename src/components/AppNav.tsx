@@ -13,11 +13,10 @@ const tabs = [
   { href: "/reports", label: "Reports", icon: "reports" },
 ] as const;
 
-const dashboardTabClass =
-  "min-h-[4.25rem] flex-[1.2] rounded-[14px] border-2 border-emerald-800 bg-emerald-700 px-0.5 py-2.5 text-[12px] text-white";
+const dashboardTabClass = "border-emerald-800 bg-emerald-700 text-white";
 
 const selectedSideTabClass =
-  "border border-emerald-700/35 bg-emerald-50/70 text-stone-700";
+  "border-emerald-700/35 bg-emerald-50/70 text-stone-700";
 
 const extra = [
   { href: "/settlement", label: "Settlement" },
@@ -112,7 +111,7 @@ export function AppNav() {
                   className={cn(
                     "rounded-lg px-3 py-2 text-base font-semibold",
                     dashboard
-                      ? "border-2 border-emerald-800 bg-emerald-700 px-4 text-lg text-white"
+                      ? "bg-emerald-700 text-white"
                       : active
                         ? "border border-emerald-700/35 bg-emerald-50/70 text-stone-700"
                         : "text-stone-700 hover:bg-stone-200",
@@ -128,7 +127,7 @@ export function AppNav() {
 
       {keypadOpen ? null : (
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white md:hidden">
-          <div className="flex items-center gap-1 px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <div className="flex items-center gap-1 px-1 pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))]">
             {tabs.map((item) => {
               const active = isActive(pathname, item.href);
               const dashboard = item.href === "/";
@@ -137,12 +136,12 @@ export function AppNav() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex min-h-[3.75rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-[10px] px-0.5 py-2 text-center text-[11px] font-extrabold leading-none text-stone-700",
-                    dashboard && dashboardTabClass,
+                    "flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-[10px] border px-0.5 py-1.5 text-center text-[10px] font-extrabold leading-none text-stone-700",
+                    dashboard ? dashboardTabClass : "border-transparent",
                     !dashboard && active && selectedSideTabClass,
                   )}
                 >
-                  <TabIcon name={item.icon} size={dashboard ? 24 : 20} />
+                  <TabIcon name={item.icon} size={18} />
                   {item.label}
                 </Link>
               );
