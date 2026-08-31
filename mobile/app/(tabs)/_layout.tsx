@@ -24,45 +24,21 @@ const TAB_ITEMS: {
   { name: "reports", label: "Reports", icon: "chart-box-outline" },
 ];
 
-/** Center Dashboard tab look. Swap to compare: "raised" | "circle" | "soft". */
-const CENTER_TAB_STYLE = "raised" as const;
+const dashboardTabStyle = {
+  flex: 1.2,
+  borderRadius: 14,
+  paddingVertical: 10,
+  paddingHorizontal: 2,
+  borderWidth: 2,
+  borderColor: colors.accentDark,
+  backgroundColor: colors.accentDark,
+} as const;
 
-function centerTabStyle(focused: boolean) {
-  const idleWash = "rgba(4, 120, 87, 0.08)";
-  if (CENTER_TAB_STYLE === "circle") {
-    return {
-      flex: 1.15,
-      minHeight: 64,
-      marginTop: -10,
-      borderRadius: 999,
-      paddingVertical: 10,
-      paddingHorizontal: 8,
-      borderWidth: 2.5,
-      borderColor: colors.accent,
-      backgroundColor: focused ? colors.accentDark : idleWash,
-    };
-  }
-  if (CENTER_TAB_STYLE === "soft") {
-    return {
-      flex: 1.1,
-      borderRadius: 10,
-      paddingVertical: 9,
-      paddingHorizontal: 2,
-      borderWidth: 2,
-      borderColor: focused ? colors.accentDark : colors.accent,
-      backgroundColor: focused ? colors.accentDark : idleWash,
-    };
-  }
-  return {
-    flex: 1.2,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 2,
-    borderWidth: 2,
-    borderColor: colors.accent,
-    backgroundColor: focused ? colors.accentDark : idleWash,
-  };
-}
+const selectedSideTabStyle = {
+  borderWidth: 1,
+  borderColor: "rgba(6, 95, 70, 0.35)",
+  backgroundColor: "rgba(4, 120, 87, 0.07)",
+} as const;
 
 function WebStyleTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -88,7 +64,7 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
         borderTopWidth: 1,
         borderTopColor: colors.border,
         backgroundColor: "#fff",
-        paddingTop: CENTER_TAB_STYLE === "circle" ? 14 : 8,
+        paddingTop: 8,
         paddingBottom: Math.max(insets.bottom, 8),
         paddingHorizontal: 4,
       }}
@@ -101,7 +77,6 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
           const label = item?.label ?? descriptors[route.key]?.options?.title ?? route.name;
           const isDashboard = route.name === "index";
           const iconSize = isDashboard ? 24 : 20;
-          const dashboardStyle = centerTabStyle(focused);
 
           return (
             <Pressable
@@ -175,17 +150,21 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 2,
-                backgroundColor: focused ? colors.accentDark : "transparent",
-                ...(isDashboard ? dashboardStyle : null),
+                backgroundColor: "transparent",
+                ...(isDashboard
+                  ? dashboardTabStyle
+                  : focused
+                    ? selectedSideTabStyle
+                    : null),
               }}
             >
               {item?.customIcon === "feed-bin" ? (
-                <FeedBinIcon color={focused ? "#fff" : "#44403c"} size={iconSize} />
+                <FeedBinIcon color={isDashboard ? "#fff" : "#44403c"} size={iconSize} />
               ) : item?.icon ? (
                 <MaterialCommunityIcons
                   name={item.icon}
                   size={iconSize}
-                  color={focused ? "#fff" : isDashboard ? colors.accentDark : "#44403c"}
+                  color={isDashboard ? "#fff" : "#44403c"}
                 />
               ) : null}
               <Text
@@ -194,7 +173,7 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 style={{
                   fontSize: isDashboard ? 12 : 11,
                   fontWeight: "800",
-                  color: focused ? "#fff" : isDashboard ? colors.accentDark : "#44403c",
+                  color: isDashboard ? "#fff" : "#44403c",
                   textAlign: "center",
                 }}
               >

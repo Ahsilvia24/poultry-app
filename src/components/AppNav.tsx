@@ -13,29 +13,11 @@ const tabs = [
   { href: "/reports", label: "Reports", icon: "reports" },
 ] as const;
 
-/** Center Dashboard tab look. Swap to compare: "raised" | "circle" | "soft". */
-const CENTER_TAB_STYLE = "raised" as const;
+const dashboardTabClass =
+  "min-h-[4.25rem] flex-[1.2] rounded-[14px] border-2 border-emerald-800 bg-emerald-700 px-0.5 py-2.5 text-[12px] text-white";
 
-function centerTabClass(active: boolean) {
-  const idle = active ? "" : "bg-emerald-50 text-emerald-800";
-  if (CENTER_TAB_STYLE === "circle") {
-    return cn(
-      "min-h-16 flex-[1.15] -mt-2.5 rounded-full border-[2.5px] border-emerald-600 px-2 py-2.5 text-[12px]",
-      idle,
-    );
-  }
-  if (CENTER_TAB_STYLE === "soft") {
-    return cn(
-      "flex-[1.1] border-2 px-0.5 py-2.5 text-[12px]",
-      active ? "border-emerald-800" : "border-emerald-600",
-      idle,
-    );
-  }
-  return cn(
-    "min-h-[4.25rem] flex-[1.2] rounded-[14px] border-2 border-emerald-600 px-0.5 py-2.5 text-[12px]",
-    idle,
-  );
-}
+const selectedSideTabClass =
+  "border border-emerald-700/35 bg-emerald-50/70 text-stone-700";
 
 const extra = [
   { href: "/settlement", label: "Settlement" },
@@ -122,17 +104,18 @@ export function AppNav() {
           <nav className="flex items-center gap-1">
             {desktopNav.map((item) => {
               const dashboard = item.href === "/";
+              const active = isActive(pathname, item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
                     "rounded-lg px-3 py-2 text-base font-semibold",
-                    isActive(pathname, item.href)
-                      ? "bg-emerald-700 text-white"
-                      : "text-stone-700 hover:bg-stone-200",
-                    dashboard && "border-2 border-emerald-700 px-4 text-lg",
-                    dashboard && !isActive(pathname, item.href) && "bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
+                    dashboard
+                      ? "border-2 border-emerald-800 bg-emerald-700 px-4 text-lg text-white"
+                      : active
+                        ? "border border-emerald-700/35 bg-emerald-50/70 text-stone-700"
+                        : "text-stone-700 hover:bg-stone-200",
                   )}
                 >
                   {item.label}
@@ -145,12 +128,7 @@ export function AppNav() {
 
       {keypadOpen ? null : (
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white md:hidden">
-          <div
-            className={cn(
-              "flex items-center gap-1 px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]",
-              CENTER_TAB_STYLE === "circle" ? "pt-3.5" : "pt-2",
-            )}
-          >
+          <div className="flex items-center gap-1 px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             {tabs.map((item) => {
               const active = isActive(pathname, item.href);
               const dashboard = item.href === "/";
@@ -159,9 +137,9 @@ export function AppNav() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex min-h-[3.75rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-[10px] px-0.5 py-2 text-center text-[11px] font-extrabold leading-none",
-                    active ? "bg-emerald-700 text-white" : "text-stone-700",
-                    dashboard && centerTabClass(active),
+                    "flex min-h-[3.75rem] flex-1 flex-col items-center justify-center gap-0.5 rounded-[10px] px-0.5 py-2 text-center text-[11px] font-extrabold leading-none text-stone-700",
+                    dashboard && dashboardTabClass,
+                    !dashboard && active && selectedSideTabClass,
                   )}
                 >
                   <TabIcon name={item.icon} size={dashboard ? 24 : 20} />
