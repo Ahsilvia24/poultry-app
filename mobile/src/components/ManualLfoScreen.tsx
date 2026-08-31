@@ -9,7 +9,7 @@ import {
   type ScrollView as ScrollViewType,
   type View as ViewType,
 } from "react-native";
-import { useNavigation, useRouter } from "expo-router";
+import { useNavigation } from "expo-router";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
@@ -128,7 +128,6 @@ export function ManualLfoScreen({
   savedSection?: React.ReactNode;
 }) {
   const navigation = useNavigation();
-  const router = useRouter();
   const [orderDate, setOrderDate] = useState(todayKey);
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
@@ -272,7 +271,6 @@ export function ManualLfoScreen({
       });
       setActiveField(null);
       if (onSaved) onSaved(id);
-      else router.push(`/(tabs)/lfo/${id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save LFO. Try again.");
     }

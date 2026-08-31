@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_LFO_CONSUMPTION_RATE, feedUpAtFromCatch } from "@/lib/lfo/calculate";
+import { nextCustomLfoName } from "@/lib/lfo/customName";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 import { lastFeedOrderSchema } from "@/lib/validations";
 import { normalizeHalfHourTime } from "@/lib/time-slots";
@@ -190,7 +191,7 @@ export async function updateLastFeedOrderAction(lfoId: string, formData: FormDat
           orderDate: new Date(parsed.data.orderDate),
           orderTime: normalizeHalfHourTime(parsed.data.orderTime),
           consumptionRate: parsed.data.consumptionRate,
-          notes: parsed.data.notes,
+          notes: parsed.data.notes ?? existing.notes,
           // Legacy rows: freeze the original save clock without shifting hours to now.
           ...(existing.calculatedAt ? {} : { calculatedAt: existing.createdAt }),
         },
@@ -337,15 +338,21 @@ export async function createManualLastFeedOrderAction(formData: FormData) {
   const catchTime = String(formData.get("catchTime") ?? "").trim();
   const feedUpAt = parseFeedUpDate(feedUpAtFromCatch(catchDate, catchTime));
 
-  let created;
+  const prior = await prisma.lastFeedOrder.findMany({
+    where: { farm: { userId: user.id } },
+    select: { notes: true },
+  });
+  const customName = nextCustomLfoName(prior.map((row) => row.notes));
+
   try {
-    created = await prisma.lastFeedOrder.create({
+    await prisma.lastFeedOrder.create({
       data: {
         farmId: farm.id,
         flockId: flock.id,
         orderDate: new Date(orderDate),
         orderTime,
         consumptionRate,
+        notes: customName,
         calculatedAt: new Date(),
         houseInventories: {
           create: {
@@ -362,4 +369,5 @@ export async function createManualLastFeedOrderAction(formData: FormData) {
     return { error: "Could not save LFO. Try again." };
   }
   revalidatePath("/lfo");
-  revalidatePath(`/lf
+  return { ok: true as const };
+}

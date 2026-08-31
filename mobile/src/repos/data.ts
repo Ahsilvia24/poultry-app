@@ -17,6 +17,7 @@ import {
   formatHouseLfoSummary,
   formatLocalDateTime,
 } from "../lib/lfo/calculate";
+import { lfoDisplayName, nextCustomLfoName } from "../lib/lfo/customName";
 import { normalizeHalfHourTime } from "../lib/time-slots";
 import { buildFieldLogWeeks, type FieldLogWeek } from "../lib/reports/field-log";
 import {
@@ -1596,7 +1597,7 @@ export function listLfos() {
     return {
       id: r.id,
       farmId: r.farm_id,
-      farmName: r.farm_name,
+      farmName: lfoDisplayName(r.farm_name, r.notes),
       orderDate: r.order_date,
       notes: r.notes,
       houseSummary,
@@ -1740,10 +1741,15 @@ export function createManualLfo(input: {
     Number.isFinite(input.consumptionRate) && input.consumptionRate > 0
       ? input.consumptionRate
       : 0.45;
+  const customName =
+    input.notes?.trim() ||
+    nextCustomLfoName(
+      db.getAllSync<{ notes: string | null }>("SELECT notes FROM last_feed_orders").map((r) => r.notes),
+    );
   db.runSync(
     `INSERT INTO last_feed_orders (id, farm_id, flock_id, order_date, order_time, notes, calculated_at, created_at)
      VALUES (?, ?, NULL, ?, ?, ?, ?, ?)`,
-    [id, MANUAL_LFO_FARM_ID, input.orderDate, input.orderTime ?? null, input.notes ?? null, now, now],
+    [id, MANUAL_LFO_FARM_ID, input.orderDate, input.orderTime ?? null, customName, now, now],
   );
   db.runSync(
     `INSERT INTO lfo_house_inventory
@@ -1803,7 +1809,7 @@ export function getLfo(id: string) {
   return {
     id: lfo.id,
     farmId: lfo.farm_id,
-    farmName: farm.farm_name,
+    farmName: lfoDisplayName(farm.farm_name, lfo.notes),
     orderDate: lfo.order_date,
     orderTime: lfo.order_time,
     notes: lfo.notes,

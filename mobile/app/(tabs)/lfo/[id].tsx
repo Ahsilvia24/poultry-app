@@ -358,7 +358,7 @@ export default function EditLfoScreen() {
         id,
         orderDate: orderDate.trim() || orderDate,
         orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(),
-        notes: null,
+        notes,
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         houses: houses.map((h) => ({
           id: h.id,

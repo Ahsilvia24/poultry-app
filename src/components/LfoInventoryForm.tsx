@@ -173,6 +173,7 @@ export function LfoInventoryForm({
       }}
       className="space-y-3"
     >
+      {notes ? <input type="hidden" name="notes" value={notes} /> : null}
       {error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
       ) : null}

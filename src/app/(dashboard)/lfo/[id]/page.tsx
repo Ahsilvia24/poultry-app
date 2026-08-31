@@ -11,6 +11,7 @@ import { LfoInventoryForm } from "@/components/LfoInventoryForm";
 import { BackHeader, Card } from "@/components/ui";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 import { catchPartsFromFeedUpAt } from "@/lib/lfo/calculate";
+import { lfoDisplayName } from "@/lib/lfo/customName";
 
 type Params = Promise<{ id: string }>;
 
@@ -35,6 +36,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
 
   if (!lfo) notFound();
 
+  const displayName = lfoDisplayName(lfo.farm.farmName, lfo.notes);
   const asOf = lfo.calculatedAt ?? lfo.createdAt;
   const needsLiveHeads = lfo.houseInventories.some((inv) => inv.headCount == null);
   const [houses, liveHeads] = await Promise.all([
@@ -84,7 +86,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
       <BackHeader
         href="/lfo"
         backLabel="LFOs"
-        title={lfo.farm.farmName}
+        title={displayName}
         subtitle="Edit last feed order"
       />
 
@@ -92,7 +94,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
         <LfoInventoryForm
           action={submit}
           saveAsNewAction={saveAsNew}
-          farmName={lfo.farm.farmName}
+          farmName={displayName}
           orderDate={format(lfo.orderDate, "yyyy-MM-dd")}
           orderTime={lfo.orderTime}
           consumptionRate={lfo.consumptionRate}

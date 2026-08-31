@@ -272,9 +272,8 @@ export default function LfoListScreen() {
           farms={farms}
           farmId={farmId}
           onSelectFarm={selectFarm}
-          onSaved={(id) => {
+          onSaved={() => {
             setLfos(listLfos());
-            openLfo(id);
           }}
           savedSection={
             <SavedLfoList

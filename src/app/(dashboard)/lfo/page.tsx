@@ -10,6 +10,7 @@ import {
 } from "@/lib/lfo/calculate";
 import type { LfoShareInventory } from "@/lib/lfo/share-payload";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
+import { lfoDisplayName } from "@/lib/lfo/customName";
 
 /** Date-only → "7-26-2026" (no leading zeros). */
 function formatLfoDate(d: Date) {
@@ -96,8 +97,9 @@ export default async function LfoPage({
         headCount: inv.headCount ?? liveHeads.get(inv.houseId) ?? 0,
       })),
     });
+    const displayName = lfoDisplayName(lfo.farm.farmName, lfo.notes);
     const shareInventory: LfoShareInventory = {
-      farmName: lfo.farm.farmName,
+      farmName: displayName,
       orderDate: orderDateKey,
       orderTime: lfo.orderTime,
       consumptionRate: lfo.consumptionRate,
@@ -107,7 +109,7 @@ export default async function LfoPage({
     };
     return {
       id: lfo.id,
-      farmName: lfo.farm.farmName,
+      farmName: displayName,
       dateLabel: formatLfoDate(lfo.orderDate),
       houseSummary: formatHouseLfoSummary(calc.houses),
       shareInventory,
