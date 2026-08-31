@@ -129,7 +129,7 @@ export function FarmLfoForm({
         setError(null);
         setSaved(false);
         const result = await saveFarmLfoHubAction(farmId, formData);
-        if (result?.error) {
+        if (result && "error" in result && result.error) {
           setError(result.error);
           return;
         }
