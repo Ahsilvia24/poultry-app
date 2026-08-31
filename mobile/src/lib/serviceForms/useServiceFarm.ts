@@ -61,6 +61,7 @@ export function useServiceFarmContext(farmId: string) {
   return {
     detail,
     farmName: detail?.farm.farmName ?? "Farm",
+    farmNumber: detail?.farm.farmNumber?.trim() ?? "",
     flockNumber: detail?.activeFlock?.flockNumber ?? "",
     firstFlockNumber,
   };

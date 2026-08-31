@@ -7,6 +7,7 @@ import { Button, Input, Label, Textarea } from "@/components/ui";
 type FarmInfo = {
   id: string;
   farmName: string;
+  farmNumber?: string | null;
   growerName: string;
   notes: string | null;
   numberOfGenerators?: number | null;
@@ -104,6 +105,14 @@ export function FarmListSettingsButton({ farm }: { farm: FarmInfo }) {
                     name="farmName"
                     required
                     defaultValue={farm.farmName}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor={`list-farmNumber-${farm.id}`}>Farm #</Label>
+                  <Input
+                    id={`list-farmNumber-${farm.id}`}
+                    name="farmNumber"
+                    defaultValue={farm.farmNumber ?? ""}
                   />
                 </div>
                 <div className="sm:col-span-2">

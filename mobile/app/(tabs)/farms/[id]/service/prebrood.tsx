@@ -49,7 +49,7 @@ export default function PrebroodChecklistScreen() {
   const params = useLocalSearchParams<{ id?: string | string[]; fresh?: string | string[] }>();
   const farmId = paramId(params.id);
   const fresh = paramId(params.fresh) === "1";
-  const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
+  const { detail, farmName, farmNumber, firstFlockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "prebrood");
   const editVisitId = useEditVisitIdParam(farmId);
   const { complete, saving, editing, error: completeError } = useCompleteServiceForm(farmId, {
@@ -65,10 +65,12 @@ export default function PrebroodChecklistScreen() {
     const draft = readInProgressDraft<PrebroodForm>(farmId, "prebrood", fresh);
     if (draft?.kind === "prebrood") {
       const hydrated = withSavedServiceTech(hydratePrebroodForm(draft));
+      if (!hydrated.farmNumber?.trim() && farmNumber) hydrated.farmNumber = farmNumber;
       return detail ? applyLiveHouseMetrics(hydrated, detail) : hydrated;
     }
     return createPrebroodDraft({
       farmName,
+      farmNumber,
       flockNumber: firstFlockNumber,
       houses: detail ? prefillHouseRows(detail) : [],
     });

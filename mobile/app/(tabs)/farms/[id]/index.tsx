@@ -255,6 +255,7 @@ type AddHouseDraft = {
 
 type FarmEditDraft = {
   farmName: string;
+  farmNumber: string;
   growerName: string;
   notes: string;
   numberOfGenerators: number | null;
@@ -758,6 +759,7 @@ export default function FarmDetailScreen() {
     setFarmEditError(null);
     setEditingFarm({
       farmName: farm.farmName,
+      farmNumber: farm.farmNumber ?? "",
       growerName: farm.growerName ?? "",
       notes: farm.notes ?? "",
       numberOfGenerators: farm.numberOfGenerators ?? null,
@@ -1253,6 +1255,7 @@ export default function FarmDetailScreen() {
     try {
       updateFarm(farm.id, {
         farmName: editingFarm.farmName,
+        farmNumber: editingFarm.farmNumber,
         growerName: editingFarm.growerName,
         notes: editingFarm.notes,
       });
@@ -2725,6 +2728,15 @@ export default function FarmDetailScreen() {
                         setEditingFarm((prev) => (prev ? { ...prev, farmName: v } : prev))
                       }
                       autoCapitalize="words"
+                    />
+                    <Text style={[styles.label, { marginTop: 8 }]}>Farm #</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingFarm.farmNumber}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, farmNumber: v } : prev))
+                      }
+                      autoCapitalize="characters"
                     />
                     <Text style={[styles.label, { marginTop: 8 }]}>Grower name</Text>
                     <TextInput

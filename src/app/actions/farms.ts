@@ -106,17 +106,32 @@ export async function updateFarmAction(farmId: string, formData: FormData) {
   await assertFarmAccess(farmId, user.id!);
   const parsed = farmSchema.safeParse({
     farmName: formData.get("farmName"),
+    farmNumber: emptyToNull(formData.get("farmNumber")),
     growerName: emptyToNull(formData.get("growerName")),
     notes: emptyToNull(formData.get("notes")),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid farm" };
+
+  const farmNumber = parsed.data.farmNumber?.trim() || null;
+  if (farmNumber) {
+    const taken = await prisma.farm.findFirst({
+      where: {
+        userId: user.id,
+        deletedAt: null,
+        id: { not: farmId },
+        farmNumber: { equals: farmNumber, mode: "insensitive" },
+      },
+      select: { id: true },
+    });
+    if (taken) return { error: "That Farm # is already used on another farm." };
+  }
 
   await prisma.farm.update({
     where: { id: farmId },
     data: {
       farmName: parsed.data.farmName,
       growerName: parsed.data.growerName?.trim() || "",
-      farmNumber: null,
+      farmNumber,
       address: null,
       city: null,
       state: null,

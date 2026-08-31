@@ -8,6 +8,7 @@ export const registerSchema = z.object({
 
 export const farmSchema = z.object({
   farmName: z.string().min(1, "Farm name is required"),
+  farmNumber: z.string().optional().nullable(),
   growerName: z.string().optional().nullable(),
   phoneNumber: z.string().optional().nullable(),
   email: z.preprocess(

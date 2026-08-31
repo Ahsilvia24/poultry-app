@@ -73,7 +73,7 @@ export default function ServiceReportScreen() {
   const params = useLocalSearchParams<{ id?: string | string[]; fresh?: string | string[] }>();
   const farmId = paramId(params.id);
   const fresh = paramId(params.fresh) === "1";
-  const { detail, farmName, flockNumber } = useServiceFarmContext(farmId);
+  const { detail, farmName, farmNumber, flockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "service_report");
   const editVisitId = useEditVisitIdParam(farmId);
   const { complete, saving, editing, error: completeError } = useCompleteServiceForm(farmId, {
@@ -85,13 +85,14 @@ export default function ServiceReportScreen() {
     if (existing?.payload && typeof existing.payload === "object") {
       return withSavedServiceTech(hydrateReport(existing.payload as ServiceReportForm));
     }
-    if (!detail) return createServiceReportDraft({ farmName, flockNumber });
+    if (!detail) return createServiceReportDraft({ farmName, farmNumber, flockNumber });
     return createServiceReportDraft({
       farmName: detail.farm.farmName,
+      farmNumber: detail.farm.farmNumber ?? farmNumber,
       flockNumber: detail.activeFlock?.flockNumber ?? flockNumber,
       houses: prefillHouseRows(detail),
     });
-  }, [detail, farmName, flockNumber, existing]);
+  }, [detail, farmName, farmNumber, flockNumber, existing]);
 
   const [form, setForm] = useState<ServiceReportForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
@@ -100,6 +101,7 @@ export default function ServiceReportScreen() {
     const draft = readInProgressDraft<ServiceReportForm>(farmId, "service_report", fresh);
     if (draft?.kind === "service_report") {
       const hydrated = withSavedServiceTech(hydrateReport(draft));
+      if (!hydrated.farmNumber?.trim() && farmNumber) hydrated.farmNumber = farmNumber;
       return detail ? applyLiveHouseMetrics(hydrated, detail) : hydrated;
     }
     if (!detail) return initial;
