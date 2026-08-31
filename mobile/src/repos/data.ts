@@ -681,6 +681,7 @@ export function getFarmDetail(farmId: string) {
     grower_name: string;
     phone_number: string | null;
     email: string | null;
+    farm_number: string | null;
     notes: string | null;
     number_of_generators: number;
   }>("SELECT * FROM farms WHERE id = ?", [farmId]);
@@ -922,6 +923,7 @@ export function getFarmDetail(farmId: string) {
     farm: {
       id: farm.id,
       farmName: farm.farm_name,
+      farmNumber: farm.farm_number ?? null,
       growerName: farm.grower_name,
       phoneNumber: farm.phone_number,
       email: farm.email ?? null,
@@ -2117,6 +2119,7 @@ export function updateFarm(
   input: {
     farmName: string;
     growerName?: string;
+    farmNumber?: string | null;
     phoneNumber?: string | null;
     email?: string | null;
     notes?: string | null;
@@ -2130,6 +2133,16 @@ export function updateFarm(
   const farmName = input.farmName.trim();
   if (!farmName) throw new Error("Farm name is required");
 
+  const farmNumber =
+    input.farmNumber === undefined ? undefined : input.farmNumber.trim() || null;
+  if (farmNumber) {
+    const taken = db.getFirstSync<{ id: string }>(
+      "SELECT id FROM farms WHERE id != ? AND deleted_at IS NULL AND upper(trim(farm_number)) = upper(?)",
+      [farmId, farmNumber],
+    );
+    if (taken) throw new Error("That Farm # is already used on another farm.");
+  }
+
   // Keep existing generator count unless explicitly provided — generator log
   // owns how many gens are recorded; farm settings no longer edit this.
   if (input.numberOfGenerators !== undefined) {
@@ -2137,15 +2150,44 @@ export function updateFarm(
       input.numberOfGenerators == null || input.numberOfGenerators === 0
         ? 0
         : Math.max(1, Math.min(4, Math.floor(Number(input.numberOfGenerators) || 0)));
+    if (farmNumber !== undefined) {
+      db.runSync(
+        `UPDATE farms
+         SET farm_name = ?, grower_name = ?, farm_number = ?, notes = ?, number_of_generators = ?
+         WHERE id = ?`,
+        [
+          farmName,
+          (input.growerName ?? "").trim(),
+          farmNumber,
+          input.notes?.trim() || null,
+          generatorCount,
+          farmId,
+        ],
+      );
+    } else {
+      db.runSync(
+        `UPDATE farms
+         SET farm_name = ?, grower_name = ?, notes = ?, number_of_generators = ?
+         WHERE id = ?`,
+        [
+          farmName,
+          (input.growerName ?? "").trim(),
+          input.notes?.trim() || null,
+          generatorCount,
+          farmId,
+        ],
+      );
+    }
+  } else if (farmNumber !== undefined) {
     db.runSync(
       `UPDATE farms
-       SET farm_name = ?, grower_name = ?, notes = ?, number_of_generators = ?
+       SET farm_name = ?, grower_name = ?, farm_number = ?, notes = ?
        WHERE id = ?`,
       [
         farmName,
         (input.growerName ?? "").trim(),
+        farmNumber,
         input.notes?.trim() || null,
-        generatorCount,
         farmId,
       ],
     );

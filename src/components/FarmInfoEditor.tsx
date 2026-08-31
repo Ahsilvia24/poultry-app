@@ -7,6 +7,7 @@ import { Button, Card, Input, Label, Textarea } from "@/components/ui";
 type FarmInfo = {
   id: string;
   farmName: string;
+  farmNumber?: string | null;
   growerName: string;
   notes: string | null;
   numberOfGenerators?: number | null;
@@ -40,6 +41,7 @@ export function FarmInfoEditor({
   actions?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="contents">
@@ -65,7 +67,12 @@ export function FarmInfoEditor({
           <h2 className="font-bold text-stone-900">Edit Farm Info</h2>
           <form
             action={async (formData) => {
-              await updateFarmAction(farm.id, formData);
+              setError(null);
+              const result = await updateFarmAction(farm.id, formData);
+              if (result && "error" in result && result.error) {
+                setError(result.error);
+                return;
+              }
               setOpen(false);
             }}
             className="mt-4 space-y-4"
@@ -74,6 +81,10 @@ export function FarmInfoEditor({
               <div className="sm:col-span-2">
                 <Label htmlFor="farmName">Farm name *</Label>
                 <Input id="farmName" name="farmName" required defaultValue={farm.farmName} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="farmNumber">Farm #</Label>
+                <Input id="farmNumber" name="farmNumber" defaultValue={farm.farmNumber ?? ""} />
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="growerName">Grower name</Label>
@@ -91,6 +102,7 @@ export function FarmInfoEditor({
                 />
               </div>
             </div>
+            {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
             <div className="flex flex-wrap gap-2">
               <Button type="submit">Save</Button>
               <Button type="button" variant="ghost" onClick={() => setOpen(false)}>

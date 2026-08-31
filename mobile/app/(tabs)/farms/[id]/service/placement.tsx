@@ -67,7 +67,7 @@ export default function PlacementChecklistScreen() {
   const params = useLocalSearchParams<{ id?: string | string[]; fresh?: string | string[] }>();
   const farmId = paramId(params.id);
   const fresh = paramId(params.fresh) === "1";
-  const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
+  const { detail, farmName, farmNumber, firstFlockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "placement");
   const editVisitId = useEditVisitIdParam(farmId);
   const { complete, saving, editing, error: completeError } = useCompleteServiceForm(farmId, {
@@ -82,10 +82,12 @@ export default function PlacementChecklistScreen() {
     const draft = readInProgressDraft<PlacementForm>(farmId, "placement", fresh);
     if (draft?.kind === "placement") {
       const hydrated = withSavedServiceTech(hydratePlacement(draft));
+      if (!hydrated.farmNumber?.trim() && farmNumber) hydrated.farmNumber = farmNumber;
       return detail ? applyLiveHouseMetrics(hydrated, detail) : hydrated;
     }
     const blank = createPlacementDraft({
       farmName,
+      farmNumber,
       flockNumber: firstFlockNumber,
       houses: detail ? prefillHouseRows(detail) : [],
     });
