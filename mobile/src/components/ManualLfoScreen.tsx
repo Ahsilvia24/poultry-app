@@ -9,12 +9,11 @@ import {
   type ScrollView as ScrollViewType,
   type View as ViewType,
 } from "react-native";
-import { useNavigation, useRouter } from "expo-router";
+import { useNavigation } from "expo-router";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
   feedUpAtFromCatch,
-  formatHouseLfoSummary,
   formatLfoOrderClock,
 } from "../lib/lfo/calculate";
 import { todayKey } from "../lib/ids";
@@ -30,9 +29,14 @@ import {
   appendKeypadDigit,
   backspaceKeypadValue,
 } from "./NumberKeypad";
-import { LfoHouseSummaryBlock } from "./LfoHouseSummaryBlock";
 import { LfoFarmTabs } from "./LfoFarmTabs";
 import { ConsumptionRateCalculator } from "./ConsumptionRateCalculator";
+import {
+  DEFAULT_HEAD_COUNT,
+  DEFAULT_WATER_GAL,
+  consumptionRateFromWater,
+  formatConsumptionRate,
+} from "../lib/lfo/consumptionRate";
 import { createManualLfo } from "../repos/data";
 
 const MANUAL_HOUSE_ID = "manual";
@@ -125,13 +129,12 @@ export function ManualLfoScreen({
   savedSection?: React.ReactNode;
 }) {
   const navigation = useNavigation();
-  const router = useRouter();
   const [orderDate, setOrderDate] = useState(todayKey);
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
-  const [headCount, setHeadCount] = useState("");
-  const [calcWaterGal, setCalcWaterGal] = useState("");
-  const [calcHeadCount, setCalcHeadCount] = useState("");
+  const [headCount, setHeadCount] = useState("29000");
+  const [calcWaterGal, setCalcWaterGal] = useState(DEFAULT_WATER_GAL);
+  const [calcHeadCount, setCalcHeadCount] = useState(DEFAULT_HEAD_COUNT);
   const [binAPounds, setBinAPounds] = useState("0");
   const [binBPounds, setBinBPounds] = useState("0");
   const [catchDate, setCatchDate] = useState("");
@@ -165,6 +168,11 @@ export function ManualLfoScreen({
     return () => clearTimeout(t);
   }, [activeField]);
 
+  useEffect(() => {
+    const next = consumptionRateFromWater(calcWaterGal, calcHeadCount);
+    if (next) setConsumptionRate(formatConsumptionRate(next.rate));
+  }, [calcWaterGal, calcHeadCount]);
+
   const heads = Number(headCount);
   const calc = useMemo(() => {
     const rate = Number(consumptionRate);
@@ -186,7 +194,6 @@ export function ManualLfoScreen({
   }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime]);
 
   const result = calc.houses[0];
-  const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
   function getActiveValue() {
     if (activeField === "rate") return consumptionRate;
@@ -247,8 +254,7 @@ export function ManualLfoScreen({
   }
 
   function onEnter() {
-    setActiveField(null);
-    setReplaceOnType(false);
+    dismissKeypad();
   }
 
   function save() {
@@ -266,7 +272,6 @@ export function ManualLfoScreen({
       });
       setActiveField(null);
       if (onSaved) onSaved(id);
-      else router.push(`/(tabs)/lfo/${id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save LFO. Try again.");
     }
@@ -306,63 +311,6 @@ export function ManualLfoScreen({
           waterRef={bindFieldRef("calcWater")}
           headRef={bindFieldRef("calcHead")}
         />
-
-        <Card>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-              gap: 10,
-            }}
-          >
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <DatePickerField
-                label="Order date"
-                value={orderDate}
-                expanded={openPicker === "orderDate"}
-                onChange={(date) => {
-                  setActiveField(null);
-                  setOrderDate(date);
-                }}
-                onOpen={() => {
-                  setActiveField(null);
-                  setOpenPicker("orderDate");
-                }}
-              />
-            </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <TimeScrollPickerField
-                label="Order time"
-                value={orderTime}
-                expanded={openPicker === "orderTime"}
-                onChange={(time) => {
-                  setActiveField(null);
-                  setOrderTime(time);
-                }}
-                onOpen={() => {
-                  setActiveField(null);
-                  setOpenPicker("orderTime");
-                }}
-              />
-            </View>
-          </View>
-          <FieldButton
-            label="Consumption rate"
-            value={consumptionRate}
-            active={activeField === "rate"}
-            onPress={() => focusField("rate")}
-            fieldRef={bindFieldRef("rate")}
-            style={{ marginTop: 8 }}
-          />
-          <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
-            Consumption rate in lbs/bird/day
-          </Text>
-          {formatLfoOrderClock(orderDate, orderTime) ? (
-            <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
-              Hours from {formatLfoOrderClock(orderDate, orderTime)}
-            </Text>
-          ) : null}
-        </Card>
 
         <Text style={styles.sectionTitle}>Bin Inventory & Feed Up</Text>
         <Card>
@@ -527,13 +475,51 @@ export function ManualLfoScreen({
           ) : null}
         </Card>
 
-        {houseSummary.length > 0 ? (
-          <Card>
-            <View style={{ marginTop: -4 }}>
-              <LfoHouseSummaryBlock lines={houseSummary} farmName="Manual" fontSize={15} />
+        <Card>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-start",
+              gap: 10,
+            }}
+          >
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <DatePickerField
+                label="Order date"
+                value={orderDate}
+                expanded={openPicker === "orderDate"}
+                onChange={(date) => {
+                  setActiveField(null);
+                  setOrderDate(date);
+                }}
+                onOpen={() => {
+                  setActiveField(null);
+                  setOpenPicker("orderDate");
+                }}
+              />
             </View>
-          </Card>
-        ) : null}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <TimeScrollPickerField
+                label="Order time"
+                value={orderTime}
+                expanded={openPicker === "orderTime"}
+                onChange={(time) => {
+                  setActiveField(null);
+                  setOrderTime(time);
+                }}
+                onOpen={() => {
+                  setActiveField(null);
+                  setOpenPicker("orderTime");
+                }}
+              />
+            </View>
+          </View>
+          {formatLfoOrderClock(orderDate, orderTime) ? (
+            <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
+              Hours from {formatLfoOrderClock(orderDate, orderTime)}
+            </Text>
+          ) : null}
+        </Card>
 
         <PrimaryButton label="Save LFO" onPress={save} />
         {savedSection}

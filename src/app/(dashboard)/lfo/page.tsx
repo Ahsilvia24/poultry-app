@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui";
@@ -10,15 +11,25 @@ import {
 } from "@/lib/lfo/calculate";
 import type { LfoShareInventory } from "@/lib/lfo/share-payload";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
+import { lfoDisplayName } from "@/lib/lfo/customName";
+import type { FarmLfoHouseInput } from "@/components/FarmLfoForm";
 
 /** Date-only → "7-26-2026" (no leading zeros). */
 function formatLfoDate(d: Date) {
   return `${d.getUTCMonth() + 1}-${d.getUTCDate()}-${d.getUTCFullYear()}`;
 }
 
-export default async function LfoPage() {
+type SearchParams = Promise<{ farmId?: string }>;
+
+export default async function LfoPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+  const sp = searchParams ? await searchParams : {};
+  const initialFarmId = typeof sp.farmId === "string" ? sp.farmId : undefined;
 
   const [farms, savedLfos] = await Promise.all([
     prisma.farm.findMany({
@@ -29,7 +40,26 @@ export default async function LfoPage() {
         flocks: { some: { flockStatus: "ACTIVE", deletedAt: null } },
         houses: { some: { deletedAt: null } },
       },
-      select: { id: true, farmName: true },
+      select: {
+        id: true,
+        farmName: true,
+        houses: {
+          where: { deletedAt: null },
+          orderBy: { houseNumber: "asc" },
+          select: { id: true, houseNumber: true },
+        },
+        flocks: {
+          where: { flockStatus: "ACTIVE", deletedAt: null },
+          orderBy: { placementDate: "desc" },
+          select: {
+            actualCatchDate: true,
+            projectedCatchDate: true,
+            houseFlocks: {
+              select: { houseId: true, catchDate: true, catchTime: true },
+            },
+          },
+        },
+      },
       orderBy: { farmName: "asc" },
     }),
     prisma.lastFeedOrder.findMany({
@@ -45,11 +75,12 @@ export default async function LfoPage() {
   ]);
 
   const farmsNeedingLiveHeads = [
-    ...new Set(
-      savedLfos
+    ...new Set([
+      ...farms.map((farm) => farm.id),
+      ...savedLfos
         .filter((lfo) => lfo.houseInventories.some((inv) => inv.headCount == null))
         .map((l) => l.farmId),
-    ),
+    ]),
   ];
   const headCountByFarm = new Map<string, Map<string, number>>();
   await Promise.all(
@@ -57,6 +88,37 @@ export default async function LfoPage() {
       headCountByFarm.set(farmId, await getFarmHouseHeadCounts(farmId));
     }),
   );
+
+  const farmsWithHouses = farms.map((farm) => {
+    const heads = headCountByFarm.get(farm.id) ?? new Map();
+    const catchByHouse = new Map<
+      string,
+      { catchDate: Date | null; catchTime: string | null; flockCatch: Date | null }
+    >();
+    for (const flock of farm.flocks) {
+      const flockCatch = flock.actualCatchDate ?? flock.projectedCatchDate ?? null;
+      for (const hf of flock.houseFlocks) {
+        if (catchByHouse.has(hf.houseId)) continue;
+        catchByHouse.set(hf.houseId, {
+          catchDate: hf.catchDate,
+          catchTime: hf.catchTime,
+          flockCatch,
+        });
+      }
+    }
+    const houses: FarmLfoHouseInput[] = farm.houses.map((house) => {
+      const info = catchByHouse.get(house.id);
+      const catchDate = info?.catchDate ?? info?.flockCatch ?? null;
+      return {
+        houseId: house.id,
+        houseNumber: house.houseNumber,
+        headCount: heads.get(house.id) ?? 0,
+        catchDate: catchDate ? format(catchDate, "yyyy-MM-dd") : "",
+        catchTime: info?.catchTime?.trim() || "",
+      };
+    });
+    return { id: farm.id, farmName: farm.farmName, houses };
+  });
 
   const savedWithSummary = savedLfos.map((lfo) => {
     const liveHeads = headCountByFarm.get(lfo.farmId) ?? new Map();
@@ -88,8 +150,9 @@ export default async function LfoPage() {
         headCount: inv.headCount ?? liveHeads.get(inv.houseId) ?? 0,
       })),
     });
+    const displayName = lfoDisplayName(lfo.farm.farmName, lfo.notes);
     const shareInventory: LfoShareInventory = {
-      farmName: lfo.farm.farmName,
+      farmName: displayName,
       orderDate: orderDateKey,
       orderTime: lfo.orderTime,
       consumptionRate: lfo.consumptionRate,
@@ -99,7 +162,7 @@ export default async function LfoPage() {
     };
     return {
       id: lfo.id,
-      farmName: lfo.farm.farmName,
+      farmName: displayName,
       dateLabel: formatLfoDate(lfo.orderDate),
       houseSummary: formatHouseLfoSummary(calc.houses),
       shareInventory,
@@ -109,7 +172,12 @@ export default async function LfoPage() {
   return (
     <div>
       <PageHeader title="Last Feed Order" />
-      <LfoHub farms={farms} savedLfos={savedWithSummary} />
+      <LfoHub
+        key={initialFarmId ?? "manual"}
+        farms={farmsWithHouses}
+        savedLfos={savedWithSummary}
+        initialFarmId={initialFarmId}
+      />
     </div>
   );
 }

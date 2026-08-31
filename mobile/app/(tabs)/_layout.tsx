@@ -1,13 +1,13 @@
 import { Tabs } from "expo-router";
 import { Platform, Pressable, Text, View } from "react-native";
-import { StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
 import { colors } from "../../src/theme";
 import { FeedBinIcon } from "../../src/components/FeedBinIcon";
 import { clearFarmReturnFromMortality } from "../../src/lib/farmNavContext";
-import { requestTabScrollTop, tabStackIndex } from "../../src/lib/tabScroll";
+import { requestTabScrollTop } from "../../src/lib/tabScroll";
+import { MANUAL_LFO_TAB_ID } from "../../src/components/LfoFarmTabs";
 
 type MciName = ComponentProps<typeof MaterialCommunityIcons>["name"];
 
@@ -42,18 +42,6 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
     TAB_ITEMS.some((t) => t.name === route.name),
   );
 
-  function popNestedToRoot(tabRoute: { state?: { index?: number; key?: string } }) {
-    const nested = tabStackIndex(tabRoute);
-    if (nested.index > 0 && nested.key) {
-      navigation.dispatch({
-        ...StackActions.popToTop(),
-        target: nested.key,
-      });
-      return true;
-    }
-    return false;
-  }
-
   return (
     <View
       style={{
@@ -71,7 +59,6 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
           const focused = state.index === index;
           const item = TAB_ITEMS.find((t) => t.name === route.name);
           const label = item?.label ?? descriptors[route.key]?.options?.title ?? route.name;
-          const tabRoute = state.routes[index] as { key: string; name: string; state?: any };
 
           return (
             <Pressable
@@ -108,7 +95,10 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                     return;
                   }
                   if (route.name === "lfo") {
-                    popNestedToRoot(tabRoute);
+                    navigation.navigate("lfo", {
+                      screen: "index",
+                      params: { farmId: MANUAL_LFO_TAB_ID },
+                    });
                     requestTabScrollTop("lfo");
                     return;
                   }
@@ -119,6 +109,16 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 // Switching tabs — restore last screen (never force Farms → list).
                 if (route.name === "farms") {
                   navigation.navigate("farms");
+                  return;
+                }
+                // LFO tab always opens Quick Calc. A farm tab is only selected
+                // when LFO is opened from that farm's quick links.
+                if (route.name === "lfo") {
+                  navigation.navigate("lfo", {
+                    screen: "index",
+                    params: { farmId: MANUAL_LFO_TAB_ID },
+                  });
+                  requestTabScrollTop("lfo");
                   return;
                 }
                 navigation.navigate(route.name);

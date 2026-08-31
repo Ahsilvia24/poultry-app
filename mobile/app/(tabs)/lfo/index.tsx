@@ -1,45 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Keyboard,
-  Platform,
   Pressable,
-  RefreshControl,
-  ScrollView,
   Text,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  type ScrollView as ScrollViewType,
-  type View as ViewType,
 } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
-import { createLfo, deleteLfo, getLfo, listFarms, listLfos } from "../../../src/repos/data";
+import { deleteLfo, getLfo, listFarms, listLfos } from "../../../src/repos/data";
 import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
 import { SharePdfIconButton } from "../../../src/components/SharePdfIconButton";
-import { todayKey } from "../../../src/lib/ids";
-import { currentHalfHourTime } from "../../../src/lib/time-slots";
-import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
-import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 import { colors, styles } from "../../../src/theme";
-import {
-  Card,
-  PageHeader,
-  PrimaryButton,
-} from "../../../src/components/ui";
+import { Card } from "../../../src/components/ui";
 import { CopyHouseSummaryButton } from "../../../src/components/LfoHouseSummaryBlock";
-import {
-  NumberKeypad,
-  appendKeypadDigit,
-  backspaceKeypadValue,
-} from "../../../src/components/NumberKeypad";
-import { LfoFarmTabs, MANUAL_LFO_TAB_ID } from "../../../src/components/LfoFarmTabs";
+import { MANUAL_LFO_TAB_ID } from "../../../src/components/LfoFarmTabs";
 import { ManualLfoScreen } from "../../../src/components/ManualLfoScreen";
-import { ConsumptionRateCalculator } from "../../../src/components/ConsumptionRateCalculator";
+import { FarmLfoScreen } from "../../../src/components/FarmLfoScreen";
+import { lfoTabFromRoute } from "../../../src/lib/lfo/defaultTab";
 import { userFacingMessage } from "../../../src/lib/useKeyboardInset";
 
 /** "2026-07-26" → "7-26-2026" (no leading zeros). */
@@ -110,7 +90,7 @@ function SavedLfoList({
       </View>
       {lfos.length === 0 ? (
         <Card>
-          <Text style={styles.muted}>None yet — create one above.</Text>
+          <Text style={styles.muted}>None yet — save from Quick Calc or a farm tab.</Text>
         </Card>
       ) : null}
       {lfos.map((l) => (
@@ -204,8 +184,6 @@ function SavedLfoList({
   );
 }
 
-type CalcField = "water" | "head";
-
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
   return value ?? "";
@@ -213,27 +191,18 @@ function paramId(value: string | string[] | undefined) {
 
 export default function LfoListScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
   const params = useLocalSearchParams<{ farmId?: string | string[] }>();
   const routeFarmId = paramId(params.farmId);
   const [lfos, setLfos] = useState<ReturnType<typeof listLfos>>([]);
   const [farms, setFarms] = useState<ReturnType<typeof listFarms>["farms"]>([]);
-  const [farmId, setFarmId] = useState(routeFarmId || "");
-  const [loading, setLoading] = useState(false);
+  const [farmId, setFarmId] = useState(() =>
+    lfoTabFromRoute(routeFarmId || undefined, MANUAL_LFO_TAB_ID),
+  );
+  const appliedRouteFarmId = useRef(routeFarmId);
   const [msg, setMsg] = useState<string | null>(null);
-  const [waterGal, setWaterGal] = useState("");
-  const [headCount, setHeadCount] = useState("");
-  const [activeField, setActiveField] = useState<CalcField | null>(null);
-  const [replaceOnType, setReplaceOnType] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; farmName: string } | null>(
     null,
   );
-
-  const scrollRef = useRef<ScrollViewType>(null);
-  useTabScrollToTop("lfo", scrollRef);
-  const scrollYRef = useRef(0);
-  const waterRef = useRef<ViewType>(null);
-  const headRef = useRef<ViewType>(null);
 
   const load = useCallback(() => {
     const nextFarms = listFarms().farms;
@@ -242,115 +211,29 @@ export default function LfoListScreen() {
     setFarmId((prev) => {
       if (prev === MANUAL_LFO_TAB_ID) return prev;
       if (prev && nextFarms.some((f) => f.id === prev)) return prev;
-      if (routeFarmId && nextFarms.some((f) => f.id === routeFarmId)) return routeFarmId;
-      return nextFarms[0]?.id ?? MANUAL_LFO_TAB_ID;
+      return MANUAL_LFO_TAB_ID;
     });
-  }, [routeFarmId]);
-
-  function dismissKeypad() {
-    setActiveField(null);
-    setReplaceOnType(false);
-    Keyboard.dismiss();
-    if (Platform.OS === "web" && typeof document !== "undefined") {
-      const el = document.activeElement;
-      if (el instanceof HTMLElement) el.blur();
-    }
-  }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      dismissKeypad();
       load();
-      return () => {
-        setActiveField(null);
-        setReplaceOnType(false);
-      };
     }, [load]),
   );
 
   useEffect(() => {
-    if (routeFarmId && farms.some((f) => f.id === routeFarmId)) {
-      setFarmId(routeFarmId);
-    }
-  }, [routeFarmId, farms]);
-
-  useEffect(() => {
-    navigation.setOptions({
-      tabBarStyle: activeField ? { display: "none" } : undefined,
-    });
-    return () => {
-      navigation.setOptions({ tabBarStyle: undefined });
-    };
-  }, [activeField, navigation]);
-
-  // Re-scroll after keypad mounts (layout shift)
-  useEffect(() => {
-    if (!activeField) return;
-    const t = setTimeout(() => {
-      scrollFieldAboveKeypad(
-        scrollRef,
-        activeField === "water" ? waterRef : headRef,
-        scrollYRef,
-      );
-    }, 100);
-    return () => clearTimeout(t);
-  }, [activeField]);
+    if (routeFarmId === appliedRouteFarmId.current) return;
+    appliedRouteFarmId.current = routeFarmId;
+    setFarmId(lfoTabFromRoute(routeFarmId || undefined, MANUAL_LFO_TAB_ID));
+  }, [routeFarmId]);
 
   function openLfo(id: string) {
     router.push(`/(tabs)/lfo/${id}`);
   }
 
-  function focusField(field: CalcField) {
-    Keyboard.dismiss();
-    if (Platform.OS === "web" && typeof document !== "undefined") {
-      const el = document.activeElement;
-      if (el instanceof HTMLElement) el.blur();
-    }
-    setActiveField(field);
-    setReplaceOnType(true);
-    setTimeout(() => {
-      scrollFieldAboveKeypad(
-        scrollRef,
-        field === "water" ? waterRef : headRef,
-        scrollYRef,
-      );
-    }, 50);
-  }
-
-  function getActiveValue() {
-    return activeField === "water" ? waterGal : headCount;
-  }
-
-  function setActiveValue(next: string) {
-    if (activeField === "water") setWaterGal(next);
-    else if (activeField === "head") setHeadCount(next);
-  }
-
-  function onDigit(d: string) {
-    const current = getActiveValue();
-    const base = replaceOnType ? "" : current;
-    setReplaceOnType(false);
-    setActiveValue(appendKeypadDigit(base, d, false));
-  }
-
-  function onBackspace() {
-    setReplaceOnType(false);
-    const current = getActiveValue();
-    if (!current) {
-      dismissKeypad();
-      return;
-    }
-    setActiveValue(backspaceKeypadValue(current));
-  }
-
-  function onEnter() {
-    dismissKeypad();
-  }
-
   const isManual = farmId === MANUAL_LFO_TAB_ID;
 
   function selectFarm(id: string) {
-    dismissKeypad();
     setFarmId(id);
   }
 
@@ -363,7 +246,7 @@ export default function LfoListScreen() {
       {msg ? (
         <Text
           style={{
-            color: msg === "Created LFO" || msg === "LFO deleted" ? colors.accentDark : colors.danger,
+            color: msg === "LFO deleted" ? colors.accentDark : colors.danger,
             fontWeight: "700",
             paddingHorizontal: 16,
             paddingTop: 8,
@@ -377,9 +260,8 @@ export default function LfoListScreen() {
           farms={farms}
           farmId={farmId}
           onSelectFarm={selectFarm}
-          onSaved={(id) => {
+          onSaved={() => {
             setLfos(listLfos());
-            openLfo(id);
           }}
           savedSection={
             <SavedLfoList
@@ -391,90 +273,23 @@ export default function LfoListScreen() {
           }
         />
       ) : (
-      <View style={{ flex: 1 }}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.screen}
-          contentContainerStyle={[
-            styles.content,
-            { paddingBottom: activeField ? CUSTOM_KEYPAD_HEIGHT : 40 },
-          ]}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-          keyboardShouldPersistTaps="handled"
-          onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-            scrollYRef.current = e.nativeEvent.contentOffset.y;
+        <FarmLfoScreen
+          key={farmId}
+          farms={farms}
+          farmId={farmId}
+          onSelectFarm={selectFarm}
+          onSaved={() => {
+            setLfos(listLfos());
           }}
-          onScrollBeginDrag={dismissKeypad}
-          scrollEventThrottle={16}
-        >
-          <PageHeader
-            title="Last Feed Order"
-          />
-
-          <LfoFarmTabs farms={farms} selectedId={farmId} onSelect={selectFarm} />
-          <PrimaryButton
-            label="Create LFO"
-            onPress={() => {
-              dismissKeypad();
-              if (!farmId || farmId === MANUAL_LFO_TAB_ID) {
-                setMsg("Select a farm first");
-                return;
-              }
-              setLoading(true);
-              try {
-                const { id } = createLfo(farmId, todayKey(), undefined, currentHalfHourTime());
-                setLfos(listLfos());
-                setMsg("Created LFO");
-                openLfo(id);
-              } catch (e) {
-                setMsg(e instanceof Error ? e.message : "Could not create LFO");
-              } finally {
-                setLoading(false);
-              }
-            }}
-          />
-
-          <ConsumptionRateCalculator
-            style={{ marginTop: 8 }}
-            waterGal={waterGal}
-            headCount={headCount}
-            waterActive={activeField === "water"}
-            headActive={activeField === "head"}
-            onFocusWater={() => focusField("water")}
-            onFocusHead={() => focusField("head")}
-            waterRef={(node) => {
-              waterRef.current = node;
-            }}
-            headRef={(node) => {
-              headRef.current = node;
-            }}
-          />
-
-          <SavedLfoList
-            lfos={lfos}
-            onOpen={openLfo}
-            onDelete={confirmDelete}
-            onShareError={setMsg}
-          />
-        </ScrollView>
-
-        {activeField ? (
-          <>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss keypad"
-              onPress={dismissKeypad}
-              style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
+          savedSection={
+            <SavedLfoList
+              lfos={lfos}
+              onOpen={openLfo}
+              onDelete={confirmDelete}
+              onShareError={setMsg}
             />
-            <NumberKeypad
-              allowDecimal={false}
-              onDigit={onDigit}
-              onBackspace={onBackspace}
-              onEnter={onEnter}
-            />
-          </>
-        ) : null}
-      </View>
+          }
+        />
       )}
       <ConfirmDialog
         visible={deleteTarget != null}

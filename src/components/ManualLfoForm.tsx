@@ -3,15 +3,16 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
+import { ConsumptionRateCalculator } from "@/components/ConsumptionRateCalculator";
 import { createManualLastFeedOrderAction } from "@/app/actions/lfo";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
   feedUpAtFromCatch,
-  formatHouseLfoSummary,
   formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
 import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime } from "@/lib/time-slots";
+import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
 
 const MANUAL_HOUSE_ID = "manual";
 
@@ -31,7 +32,7 @@ export function ManualLfoForm() {
   const [orderDate, setOrderDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
-  const [headCount, setHeadCount] = useState("");
+  const [headCount, setHeadCount] = useState("29000");
   const [binAPounds, setBinAPounds] = useState("0");
   const [binBPounds, setBinBPounds] = useState("0");
   const [catchDate, setCatchDate] = useState("");
@@ -59,7 +60,6 @@ export function ManualLfoForm() {
   }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime]);
 
   const result = calc.houses[0];
-  const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
   return (
     <form
@@ -73,60 +73,10 @@ export function ManualLfoForm() {
       {error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
       ) : null}
-      <Card>
-        <div className="grid grid-cols-2 gap-2">
-          <PairField>
-            <Label htmlFor="manual-orderDate">Order date</Label>
-            <Input
-              id="manual-orderDate"
-              name="orderDate"
-              type="date"
-              value={orderDate}
-              onChange={(e) => setOrderDate(e.target.value)}
-              className="mt-0.5"
-              compact
-            />
-          </PairField>
-          <PairField>
-            <Label htmlFor="manual-orderTime">Order time</Label>
-            <Select
-              id="manual-orderTime"
-              name="orderTime"
-              value={orderTime}
-              onChange={(e) => setOrderTime(e.target.value)}
-              className="mt-0.5"
-              compact
-            >
-              {HALF_HOUR_TIME_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-          </PairField>
-        </div>
-        <div className="mt-2">
-          <Label htmlFor="manual-consumptionRate">Consumption rate</Label>
-          <Input
-            id="manual-consumptionRate"
-            name="consumptionRate"
-            type="number"
-            min={0}
-            step="0.01"
-            inputMode="decimal"
-            value={consumptionRate}
-            onChange={(e) => setConsumptionRate(e.target.value)}
-            className="mt-0.5"
-            compact
-          />
-        </div>
-        <p className="mt-1 text-xs text-stone-500">Consumption rate in lbs/bird/day</p>
-        {formatLfoOrderClock(orderDate, orderTime) ? (
-          <p className="mt-1 text-xs text-stone-500">
-            Hours from {formatLfoOrderClock(orderDate, orderTime)}
-          </p>
-        ) : null}
-      </Card>
+      <input type="hidden" name="consumptionRate" value={consumptionRate} />
+      <ConsumptionRateCalculator
+        onRateChange={(rate) => setConsumptionRate(formatConsumptionRate(rate))}
+      />
 
       <h2 className="text-lg font-bold text-stone-900">Bin Inventory & Feed Up</h2>
       <Card>
@@ -286,17 +236,44 @@ export function ManualLfoForm() {
         ) : null}
       </Card>
 
-      {houseSummary.length > 0 ? (
-        <div className="rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-700">
-          <div className="space-y-0.5">
-            {houseSummary.map((line) => (
-              <p key={line} className="font-semibold text-stone-900">
-                {line}
-              </p>
-            ))}
-          </div>
+      <Card>
+        <div className="grid grid-cols-2 gap-2">
+          <PairField>
+            <Label htmlFor="manual-orderDate">Order date</Label>
+            <Input
+              id="manual-orderDate"
+              name="orderDate"
+              type="date"
+              value={orderDate}
+              onChange={(e) => setOrderDate(e.target.value)}
+              className="mt-0.5"
+              compact
+            />
+          </PairField>
+          <PairField>
+            <Label htmlFor="manual-orderTime">Order time</Label>
+            <Select
+              id="manual-orderTime"
+              name="orderTime"
+              value={orderTime}
+              onChange={(e) => setOrderTime(e.target.value)}
+              className="mt-0.5"
+              compact
+            >
+              {HALF_HOUR_TIME_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </PairField>
         </div>
-      ) : null}
+        {formatLfoOrderClock(orderDate, orderTime) ? (
+          <p className="mt-1 text-xs text-stone-500">
+            Hours from {formatLfoOrderClock(orderDate, orderTime)}
+          </p>
+        ) : null}
+      </Card>
 
       <Button type="submit">Save LFO</Button>
     </form>

@@ -1,28 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { Button, Input, Label, Select } from "@/components/ui";
+import { Button, Card, Input, Label, Select } from "@/components/ui";
+import { saveFarmLfoHubAction } from "@/app/actions/lfo";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
   feedUpAtFromCatch,
   formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
-import { formatFeedMillData } from "@/lib/lfo/feedMillData";
 import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
-import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
+import { formatFeedMillData } from "@/lib/lfo/feedMillData";
+import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime } from "@/lib/time-slots";
 
-export type LfoHouseRow = {
+export type FarmLfoHouseInput = {
   houseId: string;
   houseNumber: number;
-  binAPounds: number;
-  binBPounds: number;
+  headCount: number;
   catchDate: string;
   catchTime: string;
-  headCount: number;
 };
 
 function formatLbs(n: number) {
@@ -31,6 +29,10 @@ function formatLbs(n: number) {
 
 function formatHours(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
+function PairField({ children }: { children: React.ReactNode }) {
+  return <div className="min-w-0">{children}</div>;
 }
 
 function FeedMillDataButton({ getText }: { getText: () => string }) {
@@ -45,6 +47,7 @@ function FeedMillDataButton({ getText }: { getText: () => string }) {
   return (
     <Button
       type="button"
+      className="w-full"
       onClick={async () => {
         const text = getText();
         if (!text.trim()) return;
@@ -57,66 +60,30 @@ function FeedMillDataButton({ getText }: { getText: () => string }) {
   );
 }
 
-function PairField({ children }: { children: React.ReactNode }) {
-  return <div className="min-w-0">{children}</div>;
+function emptyHouses(houses: FarmLfoHouseInput[]) {
+  return houses.map((house) => ({
+    ...house,
+    binAPounds: "0",
+    binBPounds: "0",
+  }));
 }
 
-export function LfoInventoryForm({
-  action,
-  saveAsNewAction,
+export function FarmLfoForm({
+  farmId,
   houses: initialHouses,
-  orderDate: initialOrderDate,
-  orderTime: initialOrderTime,
-  consumptionRate: initialRate = DEFAULT_LFO_CONSUMPTION_RATE,
-  asOf = null,
-  notes = null,
-  submitLabel,
-  deleteAction,
 }: {
-  action: (formData: FormData) => Promise<{ error?: string; ok?: boolean } | void>;
-  saveAsNewAction?: (formData: FormData) => Promise<{ error?: string; ok?: boolean } | void>;
-  houses: LfoHouseRow[];
-  orderDate: string;
-  orderTime?: string | null;
-  farmName?: string;
-  consumptionRate?: number;
-  /** Frozen clock for hours-until-off / order math. Omit on a new LFO. */
-  asOf?: Date | string | null;
-  notes?: string | null;
-  submitLabel: string;
-  deleteAction?: () => Promise<void>;
+  farmId: string;
+  houses: FarmLfoHouseInput[];
 }) {
+  const [orderDate, setOrderDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [orderTime, setOrderTime] = useState(currentHalfHourTime);
+  const [consumptionRate, setConsumptionRate] = useState(
+    formatConsumptionRate(DEFAULT_LFO_CONSUMPTION_RATE),
+  );
+  const [rows, setRows] = useState(() => emptyHouses(initialHouses));
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const returnAfterSave = Boolean(saveAsNewAction);
-
-  function leaveAfterSave() {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.push("/lfo");
-  }
-  const [pending, startTransition] = useTransition();
-  const [consumptionRate, setConsumptionRate] = useState(() =>
-    formatConsumptionRate(initialRate),
-  );
-  const [orderDate, setOrderDate] = useState(initialOrderDate);
-  const [orderTime, setOrderTime] = useState(
-    () => normalizeHalfHourTime(initialOrderTime) ?? currentHalfHourTime(),
-  );
-  const [rows, setRows] = useState(
-    initialHouses.map((h) => ({
-      houseId: h.houseId,
-      houseNumber: h.houseNumber,
-      headCount: h.headCount,
-      binAPounds: String(h.binAPounds),
-      binBPounds: String(h.binBPounds),
-      catchDate: h.catchDate,
-      catchTime: h.catchTime,
-    })),
-  );
 
   const calc = useMemo(() => {
     const rate = Number(consumptionRate);
@@ -124,13 +91,13 @@ export function LfoInventoryForm({
       orderDate,
       orderTime,
       consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
-      houses: rows.map((r) => ({
-        houseId: r.houseId,
-        houseNumber: r.houseNumber,
-        headCount: r.headCount,
-        binAPounds: Number(r.binAPounds) || 0,
-        binBPounds: Number(r.binBPounds) || 0,
-        feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime),
+      houses: rows.map((row) => ({
+        houseId: row.houseId,
+        houseNumber: row.houseNumber,
+        headCount: row.headCount,
+        binAPounds: Number(row.binAPounds) || 0,
+        binBPounds: Number(row.binBPounds) || 0,
+        feedUpAt: feedUpAtFromCatch(row.catchDate, row.catchTime),
       })),
     });
   }, [consumptionRate, orderDate, orderTime, rows]);
@@ -153,137 +120,75 @@ export function LfoInventoryForm({
   );
 
   function updateRow(houseId: string, patch: Partial<(typeof rows)[number]>) {
-    setRows((prev) => prev.map((r) => (r.houseId === houseId ? { ...r, ...patch } : r)));
+    setRows((prev) => prev.map((row) => (row.houseId === houseId ? { ...row, ...patch } : row)));
   }
 
   return (
     <form
-      action={(formData) => {
+      action={async (formData) => {
         setError(null);
         setSaved(false);
-        startTransition(async () => {
-          const result = await action(formData);
-          if (result?.error) {
-            setError(result.error);
-            return;
-          }
-          if (returnAfterSave) {
-            leaveAfterSave();
-            return;
-          }
-          if (result?.ok) setSaved(true);
-        });
+        const result = await saveFarmLfoHubAction(farmId, formData);
+        if (result && "error" in result && result.error) {
+          setError(result.error);
+          return;
+        }
+        setSaved(true);
+        setRows(emptyHouses(initialHouses));
+        router.refresh();
       }}
       className="space-y-3"
     >
-      {notes ? <input type="hidden" name="notes" value={notes} /> : null}
       {error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
       ) : null}
       {saved ? (
-        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>
-      ) : null}
-
-      {formatLfoOrderClock(orderDate, orderTime) ? (
-        <p className="text-sm text-stone-600">
-          Hours until feed off are measured from{" "}
-          <span className="font-semibold text-stone-800">
-            {formatLfoOrderClock(orderDate, orderTime)}
-          </span>
-          {asOf ? (
-            <>
-              . Head counts stay frozen to{" "}
-              <span className="font-semibold text-stone-800">
-                {format(new Date(asOf), "MMM d, yyyy, h:mm a")}
-              </span>
-            </>
-          ) : null}
-          . Save as new LFO to capture current remaining birds.
-        </p>
-      ) : asOf ? (
-        <p className="text-sm text-stone-600">
-          Head counts stay frozen to{" "}
-          <span className="font-semibold text-stone-800">
-            {format(new Date(asOf), "MMM d, yyyy, h:mm a")}
-          </span>
-          .
+        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          Saved. Open it below anytime.
         </p>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-2">
-        <PairField>
-          <Label htmlFor="orderDate">Order date</Label>
-          <Input
-            id="orderDate"
-            name="orderDate"
-            type="date"
-            required
-            value={orderDate}
-            onChange={(e) => setOrderDate(e.target.value)}
-            className="mt-0.5"
-            compact
-          />
-        </PairField>
-        <PairField>
-          <Label htmlFor="orderTime">Order time</Label>
-          <Select
-            id="orderTime"
-            name="orderTime"
-            value={orderTime}
-            onChange={(e) => setOrderTime(e.target.value)}
-            className="mt-0.5"
-            compact
-          >
-            {HALF_HOUR_TIME_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </Select>
-        </PairField>
-      </div>
-      <div className="mt-2">
-        <Label htmlFor="consumptionRate">Consumption rate</Label>
-        <Input
-          id="consumptionRate"
-          name="consumptionRate"
-          type="number"
-          min={0}
-          step="0.01"
-          inputMode="decimal"
-          required
+      <input type="hidden" name="orderDate" value={orderDate} />
+      <input type="hidden" name="orderTime" value={orderTime} />
+      <input type="hidden" name="consumptionRate" value={consumptionRate} />
+
+      <label className="block text-base font-extrabold text-stone-900">
+        Consumption Rate:{" "}
+        <input
           value={consumptionRate}
-          onChange={(e) => setConsumptionRate(e.target.value)}
-          className="mt-0.5"
-          compact
-        />
-      </div>
-      <p className="text-xs text-stone-500">Consumption rate in lbs/bird/day</p>
-      {formatLfoOrderClock(orderDate, orderTime) ? (
-        <p className="text-xs text-stone-500">
-          Hours from {formatLfoOrderClock(orderDate, orderTime)}
-        </p>
-      ) : null}
+          inputMode="decimal"
+          onChange={(e) => {
+            const next = e.target.value.replace(/[^\d.]/g, "");
+            setConsumptionRate(next);
+          }}
+          onBlur={() => {
+            const n = Number(consumptionRate);
+            if (Number.isFinite(n) && n > 0) setConsumptionRate(formatConsumptionRate(n));
+          }}
+          className="w-24 border-0 bg-transparent p-0 font-extrabold text-stone-900 underline decoration-stone-300 underline-offset-2 caret-stone-900 outline-none focus:text-emerald-800 focus:decoration-emerald-700"
+          aria-label="Consumption rate"
+        />{" "}
+        <span className="font-extrabold">lb/bird/day</span>
+      </label>
 
-      <div className="space-y-3">
-        {rows.map((house) => {
-          const result = calc.houses.find((h) => h.houseId === house.houseId);
+      <h2 className="text-lg font-bold text-stone-900">Bin Inventory & Feed Up</h2>
+      {rows.length === 0 ? (
+        <p className="text-sm text-stone-600">This farm needs houses and an active flock.</p>
+      ) : (
+        rows.map((house) => {
+          const result = calc.houses.find((row) => row.houseId === house.houseId);
           const feedUpAt = feedUpAtFromCatch(house.catchDate, house.catchTime) ?? "";
           return (
-            <div
-              key={house.houseId}
-              className="space-y-2 border-b border-stone-100 pb-3 last:border-0 last:pb-0"
-            >
+            <Card key={house.houseId}>
               <input type="hidden" name="houseId" value={house.houseId} />
               <input type="hidden" name="feedUpAt" value={feedUpAt} />
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div className="flex items-baseline justify-between gap-2">
                 <p className="text-sm font-bold text-stone-800">House {house.houseNumber}</p>
                 <p className="text-xs text-stone-500">
                   Head count {house.headCount.toLocaleString()}
-                  {asOf ? " at save" : ""}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="mt-2 grid grid-cols-2 gap-2">
                 <PairField>
                   <Label htmlFor={`binA-${house.houseId}`}>Bin A (lbs)</Label>
                   <Input
@@ -347,13 +252,13 @@ export function LfoInventoryForm({
                 <button
                   type="button"
                   onClick={() => updateRow(house.houseId, { catchTime: "" })}
-                  className="ml-auto block text-xs font-bold text-stone-500"
+                  className="ml-auto mt-2 block text-xs font-bold text-stone-500"
                 >
                   Clear time
                 </button>
               ) : null}
               {result ? (
-                <dl className="space-y-1 text-sm text-stone-600">
+                <dl className="mt-3 space-y-1 text-sm text-stone-600">
                   <div className="flex justify-between gap-2">
                     <dt className="text-stone-500">Feed up (−5)</dt>
                     <dd className="font-medium text-stone-800">
@@ -423,62 +328,56 @@ export function LfoInventoryForm({
                   </div>
                 </dl>
               ) : null}
-            </div>
+            </Card>
           );
-        })}
-      </div>
+        })
+      )}
+
+      <Card>
+        <div className="grid grid-cols-2 gap-2">
+          <PairField>
+            <Label htmlFor="farm-orderDate">Order date</Label>
+            <Input
+              id="farm-orderDate"
+              type="date"
+              value={orderDate}
+              onChange={(e) => setOrderDate(e.target.value)}
+              className="mt-0.5"
+              compact
+            />
+          </PairField>
+          <PairField>
+            <Label htmlFor="farm-orderTime">Order time</Label>
+            <Select
+              id="farm-orderTime"
+              value={orderTime}
+              onChange={(e) => setOrderTime(e.target.value)}
+              className="mt-0.5"
+              compact
+            >
+              {HALF_HOUR_TIME_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </PairField>
+        </div>
+        {formatLfoOrderClock(orderDate, orderTime) ? (
+          <p className="mt-1 text-xs text-stone-500">
+            Hours from {formatLfoOrderClock(orderDate, orderTime)}
+          </p>
+        ) : null}
+      </Card>
 
       <FeedMillDataButton getText={() => feedMillText} />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="submit"
-          disabled={pending}
-          className="border-2 border-emerald-950"
-        >
-          {pending ? "Saving…" : submitLabel}
-        </Button>
-        {saveAsNewAction ? (
-          <Button
-            type="submit"
-            variant="secondary"
-            disabled={pending}
-            className="border-2 border-emerald-800"
-            formAction={(formData) => {
-              setError(null);
-              setSaved(false);
-              startTransition(async () => {
-                const result = await saveAsNewAction(formData);
-                if (result?.error) {
-                  setError(result.error);
-                  return;
-                }
-                leaveAfterSave();
-              });
-            }}
-          >
-            {pending ? "Saving…" : "Save as new LFO"}
-          </Button>
-        ) : null}
-        <Link href="/lfo" className="text-sm font-semibold text-stone-600 hover:text-stone-900">
-          Back to LFOs
-        </Link>
-        {deleteAction ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => {
-              if (!confirm("Delete this LFO?")) return;
-              startTransition(async () => {
-                await deleteAction();
-              });
-            }}
-            className="ml-auto text-sm font-semibold text-red-700 hover:text-red-900"
-          >
-            Delete
-          </button>
-        ) : null}
-      </div>
+      <Button
+        type="submit"
+        disabled={rows.length === 0}
+        className="w-full border-2 border-emerald-950"
+      >
+        Save LFO
+      </Button>
     </form>
   );
 }
