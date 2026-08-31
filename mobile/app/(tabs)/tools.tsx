@@ -363,7 +363,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("weightManual", e)} collapsable={false}>
           {open.weightManual ? (
-            <SectionPanel title="Weight Projections Manual" onTop={scrollToTop}>
+            <SectionPanel title="Custom Weight Projection" onTop={scrollToTop}>
               <WeightProjectionManualTile />
             </SectionPanel>
           ) : (
