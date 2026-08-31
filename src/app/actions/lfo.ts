@@ -170,6 +170,27 @@ export async function createLastFeedOrderAction(farmId: string, formData: FormDa
   redirect(`/lfo/${created.id}`);
 }
 
+/** Hub farm tab: save and stay on /lfo. */
+export async function saveFarmLfoHubAction(farmId: string, formData: FormData) {
+  const user = await requireUser();
+  await assertFarmAccess(farmId, user.id!);
+
+  const parsed = parseLfoForm(formData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid LFO" };
+  }
+
+  const created = await createLfoRecord(farmId, parsed.data);
+  if ("error" in created) return created;
+
+  revalidatePath("/lfo");
+  revalidatePath(`/lfo/${created.id}`);
+  revalidatePath(`/farms/${farmId}`);
+  revalidatePath("/");
+  revalidatePath("/reports");
+  return { ok: true as const };
+}
+
 export async function updateLastFeedOrderAction(lfoId: string, formData: FormData) {
   const user = await requireUser();
   const existing = await assertLfoAccess(lfoId, user.id!);

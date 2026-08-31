@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Pressable,
-  RefreshControl,
-  ScrollView,
   Text,
   View,
 } from "react-native";
@@ -10,23 +8,17 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
-import { createLfo, deleteLfo, getLfo, listFarms, listLfos } from "../../../src/repos/data";
+import { deleteLfo, getLfo, listFarms, listLfos } from "../../../src/repos/data";
 import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
 import { SharePdfIconButton } from "../../../src/components/SharePdfIconButton";
-import { todayKey } from "../../../src/lib/ids";
-import { currentHalfHourTime } from "../../../src/lib/time-slots";
-import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 import { colors, styles } from "../../../src/theme";
-import {
-  Card,
-  PageHeader,
-  PrimaryButton,
-} from "../../../src/components/ui";
+import { Card } from "../../../src/components/ui";
 import { CopyHouseSummaryButton } from "../../../src/components/LfoHouseSummaryBlock";
-import { LfoFarmTabs, MANUAL_LFO_TAB_ID } from "../../../src/components/LfoFarmTabs";
+import { MANUAL_LFO_TAB_ID } from "../../../src/components/LfoFarmTabs";
 import { ManualLfoScreen } from "../../../src/components/ManualLfoScreen";
+import { FarmLfoScreen } from "../../../src/components/FarmLfoScreen";
 import { lfoTabFromRoute } from "../../../src/lib/lfo/defaultTab";
 import { userFacingMessage } from "../../../src/lib/useKeyboardInset";
 
@@ -98,7 +90,7 @@ function SavedLfoList({
       </View>
       {lfos.length === 0 ? (
         <Card>
-          <Text style={styles.muted}>None yet — create one above.</Text>
+          <Text style={styles.muted}>None yet — save from Quick Calc or a farm tab.</Text>
         </Card>
       ) : null}
       {lfos.map((l) => (
@@ -207,14 +199,10 @@ export default function LfoListScreen() {
     lfoTabFromRoute(routeFarmId || undefined, MANUAL_LFO_TAB_ID),
   );
   const appliedRouteFarmId = useRef(routeFarmId);
-  const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; farmName: string } | null>(
     null,
   );
-
-  const scrollRef = useRef<ScrollView>(null);
-  useTabScrollToTop("lfo", scrollRef);
 
   const load = useCallback(() => {
     const nextFarms = listFarms().farms;
@@ -258,7 +246,7 @@ export default function LfoListScreen() {
       {msg ? (
         <Text
           style={{
-            color: msg === "Created LFO" || msg === "LFO deleted" ? colors.accentDark : colors.danger,
+            color: msg === "LFO deleted" ? colors.accentDark : colors.danger,
             fontWeight: "700",
             paddingHorizontal: 16,
             paddingTop: 8,
@@ -285,48 +273,23 @@ export default function LfoListScreen() {
           }
         />
       ) : (
-      <View style={{ flex: 1 }}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.screen}
-          contentContainerStyle={styles.content}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-          keyboardShouldPersistTaps="handled"
-        >
-          <PageHeader
-            title="Last Feed Order"
-          />
-
-          <LfoFarmTabs farms={farms} selectedId={farmId} onSelect={selectFarm} />
-          <PrimaryButton
-            label="Create LFO"
-            onPress={() => {
-              if (!farmId || farmId === MANUAL_LFO_TAB_ID) {
-                setMsg("Select a farm first");
-                return;
-              }
-              setLoading(true);
-              try {
-                const { id } = createLfo(farmId, todayKey(), undefined, currentHalfHourTime());
-                setLfos(listLfos());
-                setMsg("Created LFO");
-                openLfo(id);
-              } catch (e) {
-                setMsg(e instanceof Error ? e.message : "Could not create LFO");
-              } finally {
-                setLoading(false);
-              }
-            }}
-          />
-
-          <SavedLfoList
-            lfos={lfos}
-            onOpen={openLfo}
-            onDelete={confirmDelete}
-            onShareError={setMsg}
-          />
-        </ScrollView>
-      </View>
+        <FarmLfoScreen
+          key={farmId}
+          farms={farms}
+          farmId={farmId}
+          onSelectFarm={selectFarm}
+          onSaved={() => {
+            setLfos(listLfos());
+          }}
+          savedSection={
+            <SavedLfoList
+              lfos={lfos}
+              onOpen={openLfo}
+              onDelete={confirmDelete}
+              onShareError={setMsg}
+            />
+          }
+        />
       )}
       <ConfirmDialog
         visible={deleteTarget != null}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui";
+import { FarmLfoForm, type FarmLfoHouseInput } from "@/components/FarmLfoForm";
 import { ManualLfoForm } from "@/components/ManualLfoForm";
 import { SavedLfoRow } from "@/components/SavedLfoRow";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
@@ -17,7 +18,7 @@ export function LfoHub({
   savedLfos,
   initialFarmId,
 }: {
-  farms: Array<{ id: string; farmName: string }>;
+  farms: Array<{ id: string; farmName: string; houses: FarmLfoHouseInput[] }>;
   savedLfos: Array<{
     id: string;
     farmName: string;
@@ -80,25 +81,12 @@ export function LfoHub({
 
       {isManual ? (
         <ManualLfoForm />
+      ) : farms.length === 0 || !selected ? (
+        <p className="mb-6 text-sm text-stone-600">
+          Add an active farm with a flock before creating an LFO.
+        </p>
       ) : (
-        <>
-          {farms.length === 0 ? (
-            <p className="mb-6 text-sm text-stone-600">
-              Add an active farm with a flock before creating an LFO.
-            </p>
-          ) : (
-            <button
-              type="button"
-              className="mb-6 flex h-10 w-full items-center justify-center rounded-xl bg-emerald-800 px-4 text-[15px] font-bold text-white hover:bg-emerald-900"
-              onClick={() => {
-                if (!selected) return;
-                router.push(`/lfo/new/${selected.id}`);
-              }}
-            >
-              Create LFO
-            </button>
-          )}
-        </>
+        <FarmLfoForm key={selected.id} farmId={selected.id} houses={selected.houses} />
       )}
 
       <div className="mb-3 mt-8">
@@ -116,7 +104,7 @@ export function LfoHub({
       {savedLfos.length === 0 ? (
         <Card>
           <p className="text-sm text-stone-600">
-            No saved LFOs yet. Select a farm and create an LFO to enter A/B bin inventory.
+            No saved LFOs yet. Save from Quick Calc or a farm tab.
           </p>
         </Card>
       ) : (

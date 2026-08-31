@@ -1626,6 +1626,79 @@ function remainingHeadCountForHouse(farmId: string, houseId: string, today: stri
   return summarizeHouse(hf.placed_bird_count, records, today).remaining;
 }
 
+export type FarmLfoHouse = {
+  houseId: string;
+  houseNumber: number;
+  headCount: number;
+  catchDate: string;
+  catchTime: string;
+};
+
+export function getFarmLfoHouses(farmId: string): FarmLfoHouse[] {
+  const db = getDb();
+  const today = todayKey();
+  const houses = db.getAllSync<{ id: string; house_number: number }>(
+    `SELECT id, house_number FROM houses
+     WHERE farm_id = ? AND deleted_at IS NULL
+     ORDER BY house_number ASC`,
+    [farmId],
+  );
+  return houses.map((h) => {
+    const hf = db.getFirstSync<{
+      catch_date: string | null;
+      catch_time: string | null;
+      flock_catch: string | null;
+    }>(
+      `SELECT hf.catch_date, hf.catch_time, f.projected_catch_date as flock_catch
+       FROM house_flocks hf
+       JOIN flocks f ON f.id = hf.flock_id
+       WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
+       ORDER BY f.placement_date DESC, f.id DESC
+       LIMIT 1`,
+      [h.id, farmId],
+    );
+    return {
+      houseId: h.id,
+      houseNumber: h.house_number,
+      headCount: remainingHeadCountForHouse(farmId, h.id, today),
+      catchDate: hf?.catch_date?.trim() || hf?.flock_catch?.trim() || "",
+      catchTime: hf?.catch_time?.trim() || "",
+    };
+  });
+}
+
+export function saveFarmLfo(input: {
+  farmId: string;
+  orderDate: string;
+  orderTime?: string | null;
+  consumptionRate: number;
+  houses: Array<{
+    houseId: string;
+    binAPounds: number;
+    binBPounds: number;
+    feedUpAt: string | null;
+    headCount: number;
+  }>;
+}) {
+  const { id } = createLfo(input.farmId, input.orderDate, undefined, input.orderTime ?? undefined);
+  updateLfo({
+    id,
+    orderDate: input.orderDate,
+    orderTime: input.orderTime,
+    notes: null,
+    consumptionRate: input.consumptionRate,
+    houses: input.houses.map((house) => ({
+      id: newId("lfoi"),
+      houseId: house.houseId,
+      binAPounds: house.binAPounds,
+      binBPounds: house.binBPounds,
+      feedUpAt: house.feedUpAt,
+      headCount: house.headCount,
+    })),
+  });
+  return { id };
+}
+
 export function createLfo(farmId: string, orderDate: string, notes?: string, orderTime?: string) {
   const db = getDb();
   const flock = db.getFirstSync<{ id: string }>(
