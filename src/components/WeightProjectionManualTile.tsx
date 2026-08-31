@@ -178,7 +178,7 @@ export function WeightProjectionManualTile({
             isManual ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
           )}
         >
-          Manual
+          Custom
         </button>
         {farms.map((f) => {
           const selected = tab === f.id;
