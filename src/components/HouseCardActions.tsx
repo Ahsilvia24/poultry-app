@@ -169,7 +169,7 @@ export function HouseCardActions({
       >
         {mode === "edit" ? (
           <form action={onSave} className="flex min-h-0 flex-1 flex-col">
-            <div className="shrink-0 px-5 pt-5">
+            <div className="shrink-0 px-5 pt-[max(1.25rem,env(safe-area-inset-top,1.25rem))]">
               <h3 className="text-lg font-bold text-stone-900">
                 Edit house {house.houseNumber}
               </h3>

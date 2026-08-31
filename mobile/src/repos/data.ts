@@ -40,6 +40,7 @@ import {
 } from "../lib/catchImport/parse";
 import { getFarmOrder } from "../lib/appSettings";
 import { isHouseInPropagateRange } from "../lib/housePropagate";
+import { planFlockNumberChange } from "../lib/houseFlockNumber";
 import { sortFarmsByOrder } from "../lib/farmOrder";
 import { VISIT_TYPE_LABELS } from "../lib/visits";
 import { normalizedLoggedTemp } from "../lib/serviceForms/liveHouseMetrics";
@@ -3358,6 +3359,79 @@ function realignMortalityForHouseFlock(
   }
 }
 
+function assignHouseFlockNumber(
+  farmId: string,
+  houseId: string,
+  currentFlockId: string,
+  nextNumber: string,
+  placementDate: string,
+  catchDate: string,
+) {
+  const db = getDb();
+  const current = db.getFirstSync<{ flock_number: string }>(
+    "SELECT flock_number FROM flocks WHERE id = ?",
+    [currentFlockId],
+  );
+  const existing = db.getFirstSync<{ id: string }>(
+    `SELECT id FROM flocks
+     WHERE farm_id = ? AND flock_number = ? AND flock_status = 'ACTIVE'`,
+    [farmId, nextNumber],
+  );
+  const others =
+    db.getFirstSync<{ c: number }>(
+      `SELECT COUNT(*) as c
+       FROM house_flocks hf
+       JOIN houses h ON h.id = hf.house_id
+       WHERE hf.flock_id = ? AND h.deleted_at IS NULL AND hf.house_id != ?`,
+      [currentFlockId, houseId],
+    )?.c ?? 0;
+  const hf = db.getFirstSync<{ id: string }>(
+    `SELECT hf.id FROM house_flocks hf
+     JOIN flocks f ON f.id = hf.flock_id
+     WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
+     ORDER BY f.placement_date DESC LIMIT 1`,
+    [houseId, farmId],
+  );
+  const plan = planFlockNumberChange({
+    nextNumber,
+    currentFlockNumber: current?.flock_number ?? "",
+    currentFlockId,
+    otherHousesOnCurrentFlock: others,
+    existingFlockIdWithNumber: existing?.id ?? null,
+  });
+
+  if (plan.type === "keep") {
+    syncFlockDatesAndPrune(farmId, currentFlockId);
+    return;
+  }
+  if (plan.type === "rename") {
+    db.runSync(`UPDATE flocks SET flock_number = ? WHERE id = ?`, [nextNumber, currentFlockId]);
+    syncFlockDatesAndPrune(farmId, currentFlockId);
+    return;
+  }
+
+  const targetId =
+    plan.type === "move"
+      ? plan.flockId
+      : (() => {
+          const id = newId("flock");
+          db.runSync(
+            `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
+             VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
+            [id, farmId, nextNumber, placementDate, catchDate],
+          );
+          return id;
+        })();
+
+  if (hf) {
+    db.runSync(`UPDATE house_flocks SET flock_id = ? WHERE id = ?`, [targetId, hf.id]);
+  }
+  if (targetId !== currentFlockId) {
+    syncFlockDatesAndPrune(farmId, currentFlockId);
+  }
+  syncFlockDatesAndPrune(farmId, targetId);
+}
+
 function applyHouseFlockFields(
   farmId: string,
   houseId: string,
@@ -3484,32 +3558,10 @@ function applyHouseFlockFields(
   }
 
   if (input.flockNumber?.trim()) {
-    const nextNumber = input.flockNumber.trim();
-    const thisHouse = db.getFirstSync<{ house_number: number }>(
-      "SELECT house_number FROM houses WHERE id = ? AND farm_id = ?",
-      [houseId, farmId],
-    );
-    const earlierOnFlock = thisHouse
-      ? db.getFirstSync<{ id: string }>(
-          `SELECT h.id FROM houses h
-           JOIN house_flocks hf ON hf.house_id = h.id
-           WHERE hf.flock_id = ? AND h.deleted_at IS NULL AND h.id != ?
-             AND CAST(h.house_number AS INTEGER) < ?`,
-          [flock.id, houseId, Math.floor(Number(thisHouse.house_number))],
-        )
-      : null;
-    // Shared flock: renaming it would change earlier houses. Leave those IDs alone.
-    if (!earlierOnFlock) {
-      const clash = db.getFirstSync<{ id: string }>(
-        `SELECT id FROM flocks WHERE farm_id = ? AND flock_number = ? AND id != ?`,
-        [farmId, nextNumber, flock.id],
-      );
-      if (clash) throw new Error(`Flock ${nextNumber} already exists on this farm`);
-      db.runSync(`UPDATE flocks SET flock_number = ? WHERE id = ?`, [nextNumber, flock.id]);
-    }
+    assignHouseFlockNumber(farmId, houseId, flock.id, input.flockNumber.trim(), nextPlacement, nextCatch);
+  } else {
+    syncFlockDatesAndPrune(farmId, flock.id);
   }
-
-  syncFlockDatesAndPrune(farmId, flock.id);
 }
 
 export function tryPushHouseLoggedTemp(
