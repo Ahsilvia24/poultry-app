@@ -18,11 +18,51 @@ const TAB_ITEMS: {
   customIcon?: "feed-bin";
 }[] = [
   { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
-  { name: "farms", label: "Farms", icon: "barn" },
   { name: "lfo", label: "LFO", customIcon: "feed-bin" },
+  { name: "farms", label: "Farms", icon: "barn" },
   { name: "tools", label: "Tools", icon: "tools" },
   { name: "reports", label: "Reports", icon: "chart-box-outline" },
 ];
+
+/** Center Farms tab look. Swap to compare: "raised" | "circle" | "soft". */
+const FARMS_TAB_STYLE = "raised" as const;
+
+function farmsTabStyle(focused: boolean) {
+  const idleWash = "rgba(4, 120, 87, 0.08)";
+  if (FARMS_TAB_STYLE === "circle") {
+    return {
+      flex: 1.15,
+      minHeight: 64,
+      marginTop: -10,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+      borderWidth: 2.5,
+      borderColor: colors.accent,
+      backgroundColor: focused ? colors.accentDark : idleWash,
+    };
+  }
+  if (FARMS_TAB_STYLE === "soft") {
+    return {
+      flex: 1.1,
+      borderRadius: 10,
+      paddingVertical: 9,
+      paddingHorizontal: 2,
+      borderWidth: 2,
+      borderColor: focused ? colors.accentDark : colors.accent,
+      backgroundColor: focused ? colors.accentDark : idleWash,
+    };
+  }
+  return {
+    flex: 1.2,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 2,
+    borderWidth: 2,
+    borderColor: colors.accent,
+    backgroundColor: focused ? colors.accentDark : idleWash,
+  };
+}
 
 function WebStyleTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -38,9 +78,9 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
     return null;
   }
 
-  const visibleRoutes = state.routes.filter((route: { name: string }) =>
-    TAB_ITEMS.some((t) => t.name === route.name),
-  );
+  const visibleRoutes = TAB_ITEMS.map((item) =>
+    state.routes.find((route: { name: string }) => route.name === item.name),
+  ).filter((route): route is { key: string; name: string; state?: any } => Boolean(route));
 
   return (
     <View
@@ -48,17 +88,20 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
         borderTopWidth: 1,
         borderTopColor: colors.border,
         backgroundColor: "#fff",
-        paddingTop: 8,
+        paddingTop: FARMS_TAB_STYLE === "circle" ? 14 : 8,
         paddingBottom: Math.max(insets.bottom, 8),
         paddingHorizontal: 4,
       }}
     >
-      <View style={{ flexDirection: "row", gap: 4 }}>
+      <View style={{ flexDirection: "row", gap: 4, alignItems: "center" }}>
         {visibleRoutes.map((route: { key: string; name: string; state?: any }) => {
           const index = state.routes.findIndex((r: { key: string }) => r.key === route.key);
           const focused = state.index === index;
           const item = TAB_ITEMS.find((t) => t.name === route.name);
           const label = item?.label ?? descriptors[route.key]?.options?.title ?? route.name;
+          const isFarms = route.name === "farms";
+          const iconSize = isFarms ? 24 : 20;
+          const farmsStyle = farmsTabStyle(focused);
 
           return (
             <Pressable
@@ -133,24 +176,25 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 justifyContent: "center",
                 gap: 2,
                 backgroundColor: focused ? colors.accentDark : "transparent",
+                ...(isFarms ? farmsStyle : null),
               }}
             >
               {item?.customIcon === "feed-bin" ? (
-                <FeedBinIcon color={focused ? "#fff" : "#44403c"} size={20} />
+                <FeedBinIcon color={focused ? "#fff" : "#44403c"} size={iconSize} />
               ) : item?.icon ? (
                 <MaterialCommunityIcons
                   name={item.icon}
-                  size={20}
-                  color={focused ? "#fff" : "#44403c"}
+                  size={iconSize}
+                  color={focused ? "#fff" : isFarms ? colors.accentDark : "#44403c"}
                 />
               ) : null}
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 style={{
-                  fontSize: 11,
+                  fontSize: isFarms ? 12 : 11,
                   fontWeight: "800",
-                  color: focused ? "#fff" : "#44403c",
+                  color: focused ? "#fff" : isFarms ? colors.accentDark : "#44403c",
                   textAlign: "center",
                 }}
               >
