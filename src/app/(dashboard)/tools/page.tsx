@@ -233,7 +233,7 @@ export default async function ToolsPage({
 
         <ToolsSectionPanel
           hashId="weight-projections-manual"
-          title="Weight Projections Manual"
+          title="Custom Weight Projection"
         >
           <WeightProjectionManualTile
             farms={weightFarms.map((farm) => ({
