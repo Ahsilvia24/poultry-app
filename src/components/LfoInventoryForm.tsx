@@ -2,15 +2,16 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Button, Input, Label, Select } from "@/components/ui";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
   feedUpAtFromCatch,
-  formatHouseLfoSummary,
   formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
+import { formatFeedMillData } from "@/lib/lfo/feedMillData";
 import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
 import { downloadLfoPdf } from "@/lib/exports/lfo-pdf";
 
@@ -32,13 +33,7 @@ function formatHours(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
-function CopySummaryButton({
-  lines,
-  farmName,
-}: {
-  lines: string[];
-  farmName?: string;
-}) {
+function FeedMillDataButton({ getText }: { getText: () => string }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -48,18 +43,18 @@ function CopySummaryButton({
   }, [copied]);
 
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
       onClick={async () => {
-        const name = farmName?.trim();
-        const text = name ? [name, ...lines].join("\n") : lines.join("\n");
+        const text = getText();
+        if (!text.trim()) return;
         await navigator.clipboard.writeText(text);
         setCopied(true);
       }}
-      className="shrink-0 text-sm font-semibold text-emerald-800 hover:underline"
     >
-      {copied ? "Copied" : "Copy"}
-    </button>
+      {copied ? "Copied" : "Feed Mill Data"}
+    </Button>
   );
 }
 
@@ -93,8 +88,18 @@ export function LfoInventoryForm({
   submitLabel: string;
   deleteAction?: () => Promise<void>;
 }) {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const returnAfterSave = Boolean(saveAsNewAction);
+
+  function leaveAfterSave() {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push("/lfo");
+  }
   const [pending, startTransition] = useTransition();
   const [consumptionRate, setConsumptionRate] = useState(String(initialRate));
   const [orderDate, setOrderDate] = useState(initialOrderDate);
@@ -130,7 +135,22 @@ export function LfoInventoryForm({
     });
   }, [consumptionRate, orderDate, orderTime, rows]);
 
-  const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
+  const feedMillText = useMemo(
+    () =>
+      formatFeedMillData(
+        rows.map((row) => {
+          const result = calc.houses.find((house) => house.houseId === row.houseId);
+          return {
+            houseNumber: row.houseNumber,
+            binAPounds: Number(row.binAPounds) || 0,
+            binBPounds: Number(row.binBPounds) || 0,
+            orderLbs: result?.orderLbs ?? null,
+            reclaimLbs: result?.reclaimLbs ?? null,
+          };
+        }),
+      ),
+    [calc.houses, rows],
+  );
 
   function updateRow(houseId: string, patch: Partial<(typeof rows)[number]>) {
     setRows((prev) => prev.map((r) => (r.houseId === houseId ? { ...r, ...patch } : r)));
@@ -166,6 +186,10 @@ export function LfoInventoryForm({
           const result = await action(formData);
           if (result?.error) {
             setError(result.error);
+            return;
+          }
+          if (returnAfterSave) {
+            leaveAfterSave();
             return;
           }
           if (result?.ok) setSaved(true);
@@ -425,25 +449,7 @@ export function LfoInventoryForm({
         })}
       </div>
 
-      {houseSummary.length > 0 ? (
-        <div className="flex items-start gap-2 rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-700">
-          <div className="min-w-0 flex-1 space-y-0.5">
-            {houseSummary.map((line) => (
-              <p key={line} className="font-semibold text-stone-900">
-                {line}
-              </p>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={shareCurrent}
-            className="shrink-0 text-sm font-semibold text-emerald-800 hover:underline"
-          >
-            Share PDF
-          </button>
-          <CopySummaryButton lines={houseSummary} farmName={farmName} />
-        </div>
-      ) : null}
+      <FeedMillDataButton getText={() => feedMillText} />
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" variant="secondary" onClick={shareCurrent}>
@@ -464,7 +470,9 @@ export function LfoInventoryForm({
                 const result = await saveAsNewAction(formData);
                 if (result?.error) {
                   setError(result.error);
+                  return;
                 }
+                leaveAfterSave();
               });
             }}
           >

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_LFO_CONSUMPTION_RATE, feedUpAtFromCatch } from "@/lib/lfo/calculate";
-import { nextCustomLfoName } from "@/lib/lfo/customName";
+import { nextCustomLfoName, parseCustomLfoNumber } from "@/lib/lfo/customName";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 import { lastFeedOrderSchema } from "@/lib/validations";
 import { normalizeHalfHourTime } from "@/lib/time-slots";
@@ -252,15 +252,57 @@ export async function saveAsNewLastFeedOrderAction(fromLfoId: string, formData: 
     return { error: parsed.error.issues[0]?.message ?? "Invalid LFO" };
   }
 
-  const created = await createLfoRecord(existing.farmId, parsed.data);
-  if ("error" in created) return created;
+  const prior = await prisma.lastFeedOrder.findMany({
+    where: { farm: { userId: user.id } },
+    select: { notes: true },
+  });
+  const nextNotes =
+    parseCustomLfoNumber(existing.notes) != null
+      ? nextCustomLfoName(prior.map((row) => row.notes))
+      : parsed.data.notes;
+  const isManualFarm = !existing.farm.isActive && existing.farm.farmName === "Manual";
+
+  if (isManualFarm) {
+    const sourceInvs = await prisma.lastFeedOrderHouseInventory.findMany({
+      where: { lastFeedOrderId: fromLfoId },
+      select: { houseId: true, headCount: true },
+    });
+    const headByHouse = new Map(sourceInvs.map((row) => [row.houseId, row.headCount]));
+    try {
+      await prisma.lastFeedOrder.create({
+        data: {
+          farmId: existing.farmId,
+          flockId: existing.flockId,
+          orderDate: new Date(parsed.data.orderDate),
+          orderTime: normalizeHalfHourTime(parsed.data.orderTime),
+          consumptionRate: parsed.data.consumptionRate,
+          notes: nextNotes,
+          calculatedAt: new Date(),
+          houseInventories: {
+            create: parsed.data.houseInventories.map((h) => ({
+              houseId: h.houseId,
+              binAPounds: h.binAPounds,
+              binBPounds: h.binBPounds,
+              feedUpAt: parseFeedUpDate(h.feedUpAt),
+              headCount: headByHouse.get(h.houseId) ?? 0,
+            })),
+          },
+        },
+      });
+    } catch {
+      return { error: "Could not save LFO. Try again." };
+    }
+  } else {
+    const created = await createLfoRecord(existing.farmId, { ...parsed.data, notes: nextNotes });
+    if ("error" in created) return created;
+    revalidatePath(`/lfo/${created.id}`);
+  }
 
   revalidatePath("/lfo");
-  revalidatePath(`/lfo/${created.id}`);
   revalidatePath(`/farms/${existing.farmId}`);
   revalidatePath("/");
   revalidatePath("/reports");
-  redirect(`/lfo/${created.id}`);
+  return { ok: true as const };
 }
 
 export async function deleteLastFeedOrderAction(lfoId: string) {

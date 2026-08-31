@@ -1950,12 +1950,19 @@ export function saveLfoAsNew(input: {
   }>;
 }) {
   const source = dbFarmIdForLfo(input.sourceId);
-  const { id } = createLfo(source, input.orderDate, input.notes ?? undefined, input.orderTime ?? undefined);
+  const db = getDb();
+  const notes =
+    source === MANUAL_LFO_FARM_ID
+      ? nextCustomLfoName(
+          db.getAllSync<{ notes: string | null }>("SELECT notes FROM last_feed_orders").map((r) => r.notes),
+        )
+      : input.notes;
+  const { id } = createLfo(source, input.orderDate, notes ?? undefined, input.orderTime ?? undefined);
   updateLfo({
     id,
     orderDate: input.orderDate,
     orderTime: input.orderTime,
-    notes: input.notes,
+    notes,
     consumptionRate: input.consumptionRate,
     houses: input.houses.map((h) => ({
       id: newId("lfoi"),

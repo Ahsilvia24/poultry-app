@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { ClipboardIconButton } from "./ClipboardIconButton";
 import { SharePdfIconButton } from "./SharePdfIconButton";
+import { PrimaryButton } from "./ui";
 import { colors, fonts } from "../theme";
 
 export function CopyHouseSummaryButton({
@@ -19,6 +21,43 @@ export function CopyHouseSummaryButton({
       getText={() => {
         const name = farmName?.trim();
         return name ? [name, ...lines].join("\n") : lines.join("\n");
+      }}
+    />
+  );
+}
+
+export function FeedMillDataButton({ getText }: { getText: () => string }) {
+  const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!copied && !failed) return;
+    const t = setTimeout(() => {
+      setCopied(false);
+      setFailed(false);
+    }, 2200);
+    return () => clearTimeout(t);
+  }, [copied, failed]);
+
+  return (
+    <PrimaryButton
+      secondary
+      label={copied ? "Copied" : failed ? "Copy failed" : "Feed Mill Data"}
+      onPress={async () => {
+        try {
+          const text = getText();
+          if (!text.trim()) {
+            setFailed(true);
+            return;
+          }
+          const Clipboard = await import("expo-clipboard");
+          await Clipboard.setStringAsync(text);
+          setFailed(false);
+          setCopied(true);
+        } catch {
+          setCopied(false);
+          setFailed(true);
+        }
       }}
     />
   );

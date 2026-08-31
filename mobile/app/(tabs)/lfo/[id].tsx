@@ -18,7 +18,6 @@ import {
   calculateLastFeedOrder,
   catchPartsFromFeedUpAt,
   feedUpAtFromCatch,
-  formatHouseLfoSummary,
   formatLfoOrderClock,
 } from "../../../src/lib/lfo/calculate";
 import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
@@ -33,7 +32,8 @@ import {
   appendKeypadDigit,
   backspaceKeypadValue,
 } from "../../../src/components/NumberKeypad";
-import { LfoHouseSummaryBlock } from "../../../src/components/LfoHouseSummaryBlock";
+import { FeedMillDataButton } from "../../../src/components/LfoHouseSummaryBlock";
+import { formatFeedMillData } from "../../../src/lib/lfo/feedMillData";
 import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
 import { userFacingMessage } from "../../../src/lib/useKeyboardInset";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
@@ -254,7 +254,22 @@ export default function EditLfoScreen() {
     });
   }, [consumptionRate, orderDate, orderTime, houses]);
 
-  const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
+  const feedMillText = useMemo(
+    () =>
+      formatFeedMillData(
+        houses.map((house) => {
+          const result = calc.houses.find((row) => row.houseId === house.houseId);
+          return {
+            houseNumber: house.houseNumber,
+            binAPounds: Number(house.binAPounds) || 0,
+            binBPounds: Number(house.binBPounds) || 0,
+            orderLbs: result?.orderLbs ?? null,
+            reclaimLbs: result?.reclaimLbs ?? null,
+          };
+        }),
+      ),
+    [calc.houses, houses],
+  );
 
   function shareCurrentLfo() {
     const rate = Number(consumptionRate);
@@ -350,6 +365,11 @@ export default function EditLfoScreen() {
     setReplaceOnType(false);
   }
 
+  function leaveAfterSave() {
+    if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)/lfo");
+  }
+
   function save() {
     if (!id) return;
     try {
@@ -368,10 +388,9 @@ export default function EditLfoScreen() {
           feedUpAt: feedUpAtFromCatch(h.catchDate, h.catchTime),
         })),
       });
-      setMsg("Saved");
       setError(null);
       setActiveField(null);
-      reload();
+      leaveAfterSave();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save LFO");
     }
@@ -381,11 +400,11 @@ export default function EditLfoScreen() {
     if (!id) return;
     try {
       const rate = Number(consumptionRate);
-      const created = saveLfoAsNew({
+      saveLfoAsNew({
         sourceId: id,
         orderDate: orderDate.trim() || orderDate,
         orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(),
-        notes: null,
+        notes,
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         houses: houses.map((h) => ({
           houseId: h.houseId,
@@ -396,7 +415,7 @@ export default function EditLfoScreen() {
       });
       setError(null);
       setActiveField(null);
-      router.replace(`/(tabs)/lfo/${created.id}`);
+      leaveAfterSave();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save new LFO");
     }
@@ -732,18 +751,7 @@ export default function EditLfoScreen() {
                 );
               })}
 
-              {houseSummary.length > 0 ? (
-                <Card>
-                  <View style={{ marginTop: -4 }}>
-                    <LfoHouseSummaryBlock
-                      lines={houseSummary}
-                      farmName={farmName}
-                      fontSize={15}
-                      onSharePdf={shareCurrentLfo}
-                    />
-                  </View>
-                </Card>
-              ) : null}
+              <FeedMillDataButton getText={() => feedMillText} />
 
               <PrimaryButton
                 label="Share PDF"
