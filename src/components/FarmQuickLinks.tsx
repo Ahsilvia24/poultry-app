@@ -37,13 +37,6 @@ export function FarmQuickLinks({
       items.push({ kind: "complete", key: "complete-flock" });
     }
   }
-  items.push({
-    kind: "link",
-    key: "history",
-    href: `/history/${farmId}`,
-    label: "History",
-    external: true,
-  });
 
   return (
     <div className={cn("rounded-xl border border-stone-200 bg-white p-3 shadow-sm")}>

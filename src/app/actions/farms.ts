@@ -619,7 +619,7 @@ export async function completeFlockAction(flockId: string) {
     },
   });
   revalidatePath(`/farms/${flock.farmId}`);
-  revalidatePath(`/history/${flock.farmId}`);
+  revalidatePath("/reports");
 }
 
 export async function reactivateFlockAction(flockId: string) {
@@ -669,7 +669,7 @@ export async function reactivateFlockAction(flockId: string) {
     },
   });
   revalidatePath(`/farms/${flock.farmId}`);
-  revalidatePath(`/history/${flock.farmId}`);
+  revalidatePath("/reports");
   revalidatePath("/");
   return { success: true };
 }
@@ -689,7 +689,7 @@ export async function deleteFlockAction(flockId: string) {
     data: { deletedAt: new Date() },
   });
   revalidatePath(`/farms/${flock.farmId}`);
-  revalidatePath(`/history/${flock.farmId}`);
+  revalidatePath("/reports");
   revalidatePath("/");
   return { success: true };
 }
@@ -708,7 +708,7 @@ export async function updateFlockNumberAction(flockId: string, flockNumber: stri
     data: { flockNumber: next },
   });
   revalidatePath(`/farms/${flock.farmId}`);
-  revalidatePath(`/history/${flock.farmId}`);
+  revalidatePath("/reports");
   revalidatePath("/");
   return { success: true };
 }

@@ -249,7 +249,7 @@ export async function upsertPerformanceAction(formData: FormData) {
   });
 
   revalidatePath(`/farms/${hf.flock.farmId}`);
-  revalidatePath(`/history/${hf.flock.farmId}`);
+  revalidatePath("/reports");
   return { success: true };
 }
 
@@ -293,7 +293,7 @@ export async function saveFlockSettlementAction(formData: FormData) {
   });
 
   revalidatePath(`/farms/${flock.farmId}`);
-  revalidatePath(`/history/${flock.farmId}`);
+  revalidatePath("/reports");
   revalidatePath("/settlement");
   return { success: true };
 }

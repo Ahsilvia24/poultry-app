@@ -31,12 +31,14 @@ import {
 } from "../../src/components/ui";
 import { DatePickerField } from "../../src/components/DatePickerField";
 import { ClipboardIconButton } from "../../src/components/ClipboardIconButton";
+import { FarmHistoryPanel } from "../../src/components/FarmHistoryPanel";
 import { userFacingMessage } from "../../src/lib/useKeyboardInset";
 
 const REPORT_TYPES = [
   { key: "field-log", label: "Field Log" },
   { key: "generator", label: "Generator" },
   { key: "mortality", label: "Mortality" },
+  { key: "history", label: "Farm History" },
 ] as const;
 
 type ReportType = (typeof REPORT_TYPES)[number]["key"];
@@ -65,12 +67,24 @@ function matrixToTsv(
   return [header.join("\t"), ...lines].join("\n");
 }
 
+function resolveMobileReportType(raw: string): ReportType {
+  if (raw === "generator" || raw === "mortality" || raw === "history") return raw;
+  return "field-log";
+}
+
 export default function ReportsScreen() {
-  const params = useLocalSearchParams<{ farmId?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    farmId?: string | string[];
+    type?: string | string[];
+  }>();
   const farmIdParam = paramId(params.farmId);
+  const typeParam = paramId(params.type);
   const farms = useMemo(() => listFarms().farms, []);
+  const historyFarms = useMemo(() => listFarms("all").farms, []);
   const weekDefaults = useMemo(() => defaultFieldLogRange(), []);
-  const [reportType, setReportType] = useState<ReportType>("field-log");
+  const [reportType, setReportType] = useState<ReportType>(() =>
+    resolveMobileReportType(typeParam),
+  );
   const [farmId, setFarmId] = useState(farmIdParam || farms[0]?.id || "");
   const [from, setFrom] = useState(addDaysKey(todayKey(), -14));
   const [to, setTo] = useState(todayKey());
@@ -111,11 +125,17 @@ export default function ReportsScreen() {
   const rowHeaderLabel = selectedFarmName || "Farm Name";
 
   useEffect(() => {
+    if (typeParam) setReportType(resolveMobileReportType(typeParam));
+  }, [typeParam]);
+
+  useEffect(() => {
     if (farmIdParam) {
       setFarmId(farmIdParam);
       setMatrix(getReports(from, to, farmIdParam));
     }
   }, [farmIdParam, from, to]);
+
+  const historyFarmId = farmId || historyFarms[0]?.id || "";
 
   function applyMortality() {
     setMatrix(getReports(from, to, farmId || undefined));
@@ -156,6 +176,9 @@ export default function ReportsScreen() {
                   setReportType(t.key);
                   setOpenDate(null);
                   if (t.key === "generator") applyGenerator();
+                  if (t.key === "history" && !farmId && historyFarms[0]?.id) {
+                    setFarmId(historyFarms[0].id);
+                  }
                 }}
               />
             ))}
@@ -399,6 +422,31 @@ export default function ReportsScreen() {
                   </View>
                 ))}
               </Card>
+            )}
+          </>
+        ) : reportType === "history" ? (
+          <>
+            <Text style={styles.label}>Farm</Text>
+            {historyFarms.length === 0 ? (
+              <Card>
+                <Text style={styles.muted}>No farms found.</Text>
+              </Card>
+            ) : (
+              <>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: "row", marginBottom: 8 }}>
+                    {historyFarms.map((f) => (
+                      <Chip
+                        key={f.id}
+                        label={f.farmName}
+                        active={historyFarmId === f.id}
+                        onPress={() => setFarmId(f.id)}
+                      />
+                    ))}
+                  </View>
+                </ScrollView>
+                <FarmHistoryPanel farmId={historyFarmId} />
+              </>
             )}
           </>
         ) : (
