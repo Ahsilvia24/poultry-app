@@ -41,7 +41,6 @@ export function FeedMillDataButton({ getText }: { getText: () => string }) {
 
   return (
     <PrimaryButton
-      secondary
       label={copied ? "Copied" : failed ? "Copy failed" : "Feed Mill Data"}
       onPress={async () => {
         try {

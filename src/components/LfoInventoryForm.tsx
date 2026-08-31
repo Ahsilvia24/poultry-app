@@ -13,7 +13,6 @@ import {
 } from "@/lib/lfo/calculate";
 import { formatFeedMillData } from "@/lib/lfo/feedMillData";
 import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
-import { downloadLfoPdf } from "@/lib/exports/lfo-pdf";
 
 export type LfoHouseRow = {
   houseId: string;
@@ -45,7 +44,6 @@ function FeedMillDataButton({ getText }: { getText: () => string }) {
   return (
     <Button
       type="button"
-      variant="secondary"
       onClick={async () => {
         const text = getText();
         if (!text.trim()) return;
@@ -68,7 +66,6 @@ export function LfoInventoryForm({
   houses: initialHouses,
   orderDate: initialOrderDate,
   orderTime: initialOrderTime,
-  farmName,
   consumptionRate: initialRate = DEFAULT_LFO_CONSUMPTION_RATE,
   asOf = null,
   notes = null,
@@ -154,27 +151,6 @@ export function LfoInventoryForm({
 
   function updateRow(houseId: string, patch: Partial<(typeof rows)[number]>) {
     setRows((prev) => prev.map((r) => (r.houseId === houseId ? { ...r, ...patch } : r)));
-  }
-
-  function shareCurrent() {
-    const rate = Number(consumptionRate);
-    downloadLfoPdf({
-      farmName: farmName ?? "Farm",
-      orderDate,
-      orderTime,
-      consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
-      calculatedAt: asOf,
-      notes,
-      houses: rows.map((house) => ({
-        houseId: house.houseId,
-        houseNumber: house.houseNumber,
-        headCount: house.headCount,
-        binAPounds: Number(house.binAPounds) || 0,
-        binBPounds: Number(house.binBPounds) || 0,
-        catchDate: house.catchDate,
-        catchTime: house.catchTime,
-      })),
-    });
   }
 
   return (
@@ -452,10 +428,11 @@ export function LfoInventoryForm({
       <FeedMillDataButton getText={() => feedMillText} />
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" variant="secondary" onClick={shareCurrent}>
-          Share PDF
-        </Button>
-        <Button type="submit" disabled={pending}>
+        <Button
+          type="submit"
+          disabled={pending}
+          className="border-2 border-emerald-950"
+        >
           {pending ? "Saving…" : submitLabel}
         </Button>
         {saveAsNewAction ? (
@@ -463,6 +440,7 @@ export function LfoInventoryForm({
             type="submit"
             variant="secondary"
             disabled={pending}
+            className="border-2 border-emerald-800"
             formAction={(formData) => {
               setError(null);
               setSaved(false);

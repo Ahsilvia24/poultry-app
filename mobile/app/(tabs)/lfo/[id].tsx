@@ -34,8 +34,6 @@ import {
 } from "../../../src/components/NumberKeypad";
 import { FeedMillDataButton } from "../../../src/components/LfoHouseSummaryBlock";
 import { formatFeedMillData } from "../../../src/lib/lfo/feedMillData";
-import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
-import { userFacingMessage } from "../../../src/lib/useKeyboardInset";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 
 function formatLbs(n: number) {
@@ -170,7 +168,6 @@ export default function EditLfoScreen() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [error, setError] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
   const [farmName, setFarmName] = useState("");
   const [orderDate, setOrderDate] = useState("");
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
@@ -270,29 +267,6 @@ export default function EditLfoScreen() {
       ),
     [calc.houses, houses],
   );
-
-  function shareCurrentLfo() {
-    const rate = Number(consumptionRate);
-    void shareLfoPdf({
-      farmName,
-      orderDate,
-      orderTime,
-      consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
-      calculatedAt,
-      notes,
-      houses: houses.map((house) => ({
-        houseId: house.houseId,
-        houseNumber: house.houseNumber,
-        headCount: house.headCount,
-        binAPounds: Number(house.binAPounds) || 0,
-        binBPounds: Number(house.binBPounds) || 0,
-        catchDate: house.catchDate,
-        catchTime: house.catchTime,
-      })),
-    }).catch((e) => {
-      setMsg(userFacingMessage(e, "Could not share PDF. Try again in a moment."));
-    });
-  }
 
   function updateHouse(houseId: string, patch: Partial<HouseDraft>) {
     setHouses((prev) => prev.map((h) => (h.houseId === houseId ? { ...h, ...patch } : h)));
@@ -498,18 +472,6 @@ export default function EditLfoScreen() {
                 }}
               />
             </Card>
-          ) : null}
-
-          {msg ? (
-            <Text
-              style={{
-                color: msg === "Saved" ? colors.accentDark : colors.danger,
-                marginBottom: 8,
-                fontWeight: "700",
-              }}
-            >
-              {msg}
-            </Text>
           ) : null}
 
           {ready ? (
@@ -752,18 +714,24 @@ export default function EditLfoScreen() {
               })}
 
               <FeedMillDataButton getText={() => feedMillText} />
-
               <PrimaryButton
-                label="Share PDF"
-                secondary
-                onPress={shareCurrentLfo}
+                label="Save changes"
+                onPress={save}
+                style={{
+                  marginTop: 8,
+                  borderWidth: 2,
+                  borderColor: "#022c22",
+                }}
               />
-              <PrimaryButton label="Save changes" onPress={save} style={{ marginTop: 8 }} />
               <PrimaryButton
                 label="Save as new LFO"
                 secondary
                 onPress={saveAsNew}
-                style={{ marginTop: 8 }}
+                style={{
+                  marginTop: 8,
+                  borderWidth: 2,
+                  borderColor: colors.accentDark,
+                }}
               />
               <Pressable
                 onPress={confirmDelete}
