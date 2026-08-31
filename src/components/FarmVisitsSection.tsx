@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { deleteVisitAction } from "@/app/actions/ops";
-import { DeleteRecordButton, EditRecordButton } from "@/components/DeleteRecordButton";
+import { EditRecordButton } from "@/components/DeleteRecordButton";
+import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
+import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { FarmVisitForm, type VisitFormValues } from "@/components/FarmOpsForms";
 import { Card } from "@/components/ui";
 import { VISIT_TYPE_LABELS } from "@/lib/utils";
@@ -27,9 +30,11 @@ export function FarmVisitsSection({
   placementDate?: string | null;
   visits: VisitRow[];
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(true);
   const [logOpen, setLogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [, startDelete] = useTransition();
 
   useEffect(() => {
     if (visitsHashActive()) setOpen(true);
@@ -82,50 +87,56 @@ export function FarmVisitsSection({
             Close
           </button>
         </div>
-        <ul className="mt-3 space-y-2 text-sm">
-          {visits.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-          {visits.map((v) => (
-            <li key={v.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <span className="font-semibold">
-                    {format(new Date(v.visitDate + "T12:00:00"), "MMM d, yyyy")}
-                  </span>
-                  {" — "}
-                  {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
-                  {v.followUpRequired ? (
-                    <span className="ml-2 text-amber-700">Follow-up due</span>
-                  ) : null}
-                  {v.notes ? <p className="text-stone-600">{v.notes}</p> : null}
-                </div>
-                <div className="flex shrink-0 items-center gap-0.5">
-                  <EditRecordButton
-                    label="Edit visit"
-                    active={editingId === v.id}
-                    onClick={() => {
-                      setLogOpen(false);
-                      setEditingId((id) => (id === v.id ? null : v.id));
-                    }}
+        <ExclusiveSwipeGroup>
+          <ul className="mt-3 space-y-2 text-sm">
+            {visits.length === 0 ? <li className="text-stone-500">None yet</li> : null}
+            {visits.map((v) => (
+              <li key={v.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
+                <SwipeCommitDeleteRow
+                  rowId={v.id}
+                  onDelete={() => {
+                    startDelete(async () => {
+                      await deleteVisitAction(farmId, v.id);
+                      router.refresh();
+                    });
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="font-semibold">
+                        {format(new Date(v.visitDate + "T12:00:00"), "MMM d, yyyy")}
+                      </span>
+                      {" — "}
+                      {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
+                      {v.followUpRequired ? (
+                        <span className="ml-2 text-amber-700">Follow-up due</span>
+                      ) : null}
+                      {v.notes ? <p className="text-stone-600">{v.notes}</p> : null}
+                    </div>
+                    <EditRecordButton
+                      label="Edit visit"
+                      active={editingId === v.id}
+                      onClick={() => {
+                        setLogOpen(false);
+                        setEditingId((id) => (id === v.id ? null : v.id));
+                      }}
+                    />
+                  </div>
+                </SwipeCommitDeleteRow>
+                {editingId === v.id ? (
+                  <FarmVisitForm
+                    farmId={farmId}
+                    flockId={flockId}
+                    placementDate={placementDate}
+                    recordId={v.id}
+                    initial={v}
+                    onSuccess={afterVisitSaved}
                   />
-                  <DeleteRecordButton
-                    label="Delete visit"
-                    onDelete={() => deleteVisitAction(farmId, v.id)}
-                  />
-                </div>
-              </div>
-              {editingId === v.id ? (
-                <FarmVisitForm
-                  farmId={farmId}
-                  flockId={flockId}
-                  placementDate={placementDate}
-                  recordId={v.id}
-                  initial={v}
-                  onSuccess={afterVisitSaved}
-                />
-              ) : null}
-            </li>
-          ))}
-        </ul>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </ExclusiveSwipeGroup>
       </Card>
 
       {!logOpen ? (
