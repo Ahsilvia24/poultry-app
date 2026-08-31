@@ -8,8 +8,6 @@ type FarmInfo = {
   id: string;
   farmName: string;
   growerName: string;
-  phoneNumber: string | null;
-  email?: string | null;
   notes: string | null;
   numberOfGenerators?: number | null;
 };
@@ -77,28 +75,9 @@ export function FarmInfoEditor({
                 <Label htmlFor="farmName">Farm name *</Label>
                 <Input id="farmName" name="farmName" required defaultValue={farm.farmName} />
               </div>
-              <div>
+              <div className="sm:col-span-2">
                 <Label htmlFor="growerName">Grower name</Label>
                 <Input id="growerName" name="growerName" defaultValue={farm.growerName} />
-              </div>
-              <div>
-                <Label htmlFor="phoneNumber">Phone</Label>
-                <Input
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  type="tel"
-                  defaultValue={farm.phoneNumber ?? ""}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  defaultValue={farm.email ?? ""}
-                  autoComplete="email"
-                />
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="notes">Notes</Label>

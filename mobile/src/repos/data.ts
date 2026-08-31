@@ -2139,13 +2139,11 @@ export function updateFarm(
         : Math.max(1, Math.min(4, Math.floor(Number(input.numberOfGenerators) || 0)));
     db.runSync(
       `UPDATE farms
-       SET farm_name = ?, grower_name = ?, phone_number = ?, email = ?, notes = ?, number_of_generators = ?
+       SET farm_name = ?, grower_name = ?, notes = ?, number_of_generators = ?
        WHERE id = ?`,
       [
         farmName,
         (input.growerName ?? "").trim(),
-        input.phoneNumber?.trim() || null,
-        input.email?.trim() || null,
         input.notes?.trim() || null,
         generatorCount,
         farmId,
@@ -2154,13 +2152,11 @@ export function updateFarm(
   } else {
     db.runSync(
       `UPDATE farms
-       SET farm_name = ?, grower_name = ?, phone_number = ?, email = ?, notes = ?
+       SET farm_name = ?, grower_name = ?, notes = ?
        WHERE id = ?`,
       [
         farmName,
         (input.growerName ?? "").trim(),
-        input.phoneNumber?.trim() || null,
-        input.email?.trim() || null,
         input.notes?.trim() || null,
         farmId,
       ],
