@@ -35,7 +35,13 @@ function PairField({ children }: { children: React.ReactNode }) {
   return <div className="min-w-0">{children}</div>;
 }
 
-function FeedMillDataButton({ getText }: { getText: () => string }) {
+function FeedMillDataButton({
+  getText,
+  onBeforeCopy,
+}: {
+  getText: () => string;
+  onBeforeCopy?: () => Promise<boolean> | boolean;
+}) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -49,6 +55,10 @@ function FeedMillDataButton({ getText }: { getText: () => string }) {
       type="button"
       className="w-full"
       onClick={async () => {
+        if (onBeforeCopy) {
+          const ok = await onBeforeCopy();
+          if (!ok) return;
+        }
         const text = getText();
         if (!text.trim()) return;
         await navigator.clipboard.writeText(text);
@@ -123,19 +133,39 @@ export function FarmLfoForm({
     setRows((prev) => prev.map((row) => (row.houseId === houseId ? { ...row, ...patch } : row)));
   }
 
+  function buildFormData() {
+    const formData = new FormData();
+    formData.set("orderDate", orderDate);
+    formData.set("orderTime", orderTime);
+    formData.set("consumptionRate", consumptionRate);
+    for (const row of rows) {
+      formData.append("houseId", row.houseId);
+      formData.append("binAPounds", row.binAPounds);
+      formData.append("binBPounds", row.binBPounds);
+      formData.append("feedUpAt", feedUpAtFromCatch(row.catchDate, row.catchTime) ?? "");
+    }
+    return formData;
+  }
+
+  async function persistLfo(resetBins: boolean) {
+    setError(null);
+    setSaved(false);
+    const result = await saveFarmLfoHubAction(farmId, buildFormData());
+    if (result && "error" in result && result.error) {
+      setError(result.error);
+      return false;
+    }
+    setSaved(true);
+    if (resetBins) setRows(emptyHouses(initialHouses));
+    router.refresh();
+    return true;
+  }
+
   return (
     <form
-      action={async (formData) => {
-        setError(null);
-        setSaved(false);
-        const result = await saveFarmLfoHubAction(farmId, formData);
-        if (result && "error" in result && result.error) {
-          setError(result.error);
-          return;
-        }
-        setSaved(true);
-        setRows(emptyHouses(initialHouses));
-        router.refresh();
+      onSubmit={(e) => {
+        e.preventDefault();
+        void persistLfo(true);
       }}
       className="space-y-3"
     >
@@ -370,7 +400,10 @@ export function FarmLfoForm({
         ) : null}
       </Card>
 
-      <FeedMillDataButton getText={() => feedMillText} />
+      <FeedMillDataButton
+        getText={() => feedMillText}
+        onBeforeCopy={() => persistLfo(false)}
+      />
       <Button
         type="submit"
         disabled={rows.length === 0}

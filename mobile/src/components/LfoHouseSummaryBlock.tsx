@@ -26,7 +26,13 @@ export function CopyHouseSummaryButton({
   );
 }
 
-export function FeedMillDataButton({ getText }: { getText: () => string }) {
+export function FeedMillDataButton({
+  getText,
+  onBeforeCopy,
+}: {
+  getText: () => string;
+  onBeforeCopy?: () => boolean | Promise<boolean>;
+}) {
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -44,6 +50,10 @@ export function FeedMillDataButton({ getText }: { getText: () => string }) {
       label={copied ? "Copied" : failed ? "Copy failed" : "Feed Mill Data"}
       onPress={async () => {
         try {
+          if (onBeforeCopy) {
+            const ok = await onBeforeCopy();
+            if (!ok) return;
+          }
           const text = getText();
           if (!text.trim()) {
             setFailed(true);

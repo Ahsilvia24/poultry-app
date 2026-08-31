@@ -345,8 +345,8 @@ export default function EditLfoScreen() {
     else router.replace("/(tabs)/lfo");
   }
 
-  function save() {
-    if (!id) return;
+  function persistLfo(leave: boolean) {
+    if (!id) return false;
     try {
       const rate = Number(consumptionRate);
       updateLfo({
@@ -365,10 +365,16 @@ export default function EditLfoScreen() {
       });
       setError(null);
       setActiveField(null);
-      leaveAfterSave();
+      if (leave) leaveAfterSave();
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save LFO");
+      return false;
     }
+  }
+
+  function save() {
+    persistLfo(true);
   }
 
   function saveAsNew() {
@@ -714,7 +720,10 @@ export default function EditLfoScreen() {
                 );
               })}
 
-              <FeedMillDataButton getText={() => feedMillText} />
+              <FeedMillDataButton
+                getText={() => feedMillText}
+                onBeforeCopy={() => persistLfo(false)}
+              />
               <PrimaryButton
                 label="Save changes"
                 onPress={save}
