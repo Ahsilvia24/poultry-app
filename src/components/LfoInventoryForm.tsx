@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
@@ -33,7 +33,13 @@ function formatHours(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
-function FeedMillDataButton({ getText }: { getText: () => string }) {
+function FeedMillDataButton({
+  getText,
+  onBeforeCopy,
+}: {
+  getText: () => string;
+  onBeforeCopy?: () => Promise<boolean> | boolean;
+}) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -46,6 +52,10 @@ function FeedMillDataButton({ getText }: { getText: () => string }) {
     <Button
       type="button"
       onClick={async () => {
+        if (onBeforeCopy) {
+          const ok = await onBeforeCopy();
+          if (!ok) return;
+        }
         const text = getText();
         if (!text.trim()) return;
         await navigator.clipboard.writeText(text);
@@ -87,6 +97,7 @@ export function LfoInventoryForm({
   deleteAction?: () => Promise<void>;
 }) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const returnAfterSave = Boolean(saveAsNewAction);
@@ -156,8 +167,23 @@ export function LfoInventoryForm({
     setRows((prev) => prev.map((r) => (r.houseId === houseId ? { ...r, ...patch } : r)));
   }
 
+  async function persistInPlace() {
+    const form = formRef.current;
+    if (!form) return false;
+    setError(null);
+    setSaved(false);
+    const result = await action(new FormData(form));
+    if (result?.error) {
+      setError(result.error);
+      return false;
+    }
+    setSaved(true);
+    return true;
+  }
+
   return (
     <form
+      ref={formRef}
       action={(formData) => {
         setError(null);
         setSaved(false);
@@ -428,7 +454,10 @@ export function LfoInventoryForm({
         })}
       </div>
 
-      <FeedMillDataButton getText={() => feedMillText} />
+      <FeedMillDataButton
+        getText={() => feedMillText}
+        onBeforeCopy={() => persistInPlace()}
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <Button

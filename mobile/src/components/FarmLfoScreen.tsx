@@ -281,7 +281,7 @@ export function FarmLfoScreen({
     setActiveValue(backspaceKeypadValue(current));
   }
 
-  function save() {
+  function persistLfo(resetBins: boolean) {
     try {
       setError(null);
       setSaved(false);
@@ -300,12 +300,18 @@ export function FarmLfoScreen({
         })),
       });
       setActiveField(null);
-      setHouses(draftsFromFarm(farmId));
+      if (resetBins) setHouses(draftsFromFarm(farmId));
       setSaved(true);
       onSaved?.();
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save LFO. Try again.");
+      return false;
     }
+  }
+
+  function save() {
+    persistLfo(true);
   }
 
   return (
@@ -574,7 +580,10 @@ export function FarmLfoScreen({
           ) : null}
         </Card>
 
-        <FeedMillDataButton getText={() => feedMillText} />
+        <FeedMillDataButton
+          getText={() => feedMillText}
+          onBeforeCopy={() => persistLfo(false)}
+        />
         <PrimaryButton
           label="Save LFO"
           onPress={save}
