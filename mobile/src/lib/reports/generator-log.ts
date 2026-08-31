@@ -107,7 +107,7 @@ function logHasHours(log: GeneratorReportHours): boolean {
   return GENERATOR_REPORT_COLUMNS.some((col) => log[col.key] != null);
 }
 
-/** Unique log dates with hours, newest first, shared by every generator on the farm. */
+/** Unique log dates that have any hours, newest first. */
 export function generatorReportDates(farm: GeneratorReportFarm): string[] {
   const dates = new Set<string>();
   for (const log of farm.logs) {
@@ -130,11 +130,12 @@ export function buildGeneratorReportView(
 
     const generators = columns.map((col) => {
       let previous = farm.priorHours?.[col.key] ?? null;
-      const oldestFirst = datesOldestFirst.map((logDate) => {
+      const oldestFirst = datesOldestFirst.flatMap((logDate) => {
         const hours = logByDate.get(logDate)?.[col.key] ?? null;
+        if (hours == null) return [];
         const exercised = hoursDelta(hours, previous);
-        if (hours != null) previous = hours;
-        return { logDate, hours, exercised };
+        previous = hours;
+        return [{ logDate, hours, exercised }];
       });
       return {
         key: col.key,
