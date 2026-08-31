@@ -19,7 +19,7 @@ export function ReportsTypeTabs({ active }: { active: ReportTypeKey }) {
     const farmId = searchParams.get("farmId");
     if (from) params.set("from", from);
     if (to) params.set("to", to);
-    if (farmId && key !== "field-log") params.set("farmId", farmId);
+    if (farmId && (key === "mortality" || key === "history")) params.set("farmId", farmId);
 
     const qs = params.toString();
     return qs ? `/reports?${qs}` : "/reports";

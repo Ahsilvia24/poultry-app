@@ -1400,15 +1400,6 @@ export default function FarmDetailScreen() {
                         },
                       ]
                     : []),
-                  {
-                    key: "history",
-                    label: "History",
-                    onPress: () =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/history",
-                        params: { id: farm.id },
-                      }),
-                  },
                 ] as Array<{ key: string; label: string; onPress: () => void }>
               ).map((link) => (
                 <Pressable

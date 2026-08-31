@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { eachDayOfInterval, format, parseISO, subDays } from "date-fns";
@@ -5,7 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calcPercentage } from "@/lib/mortality/calculations";
 import { dateKeyFromDb } from "@/lib/visits/schedule";
-import { MORTALITY_CAUSE_LABELS } from "@/lib/utils";
+import { cn, MORTALITY_CAUSE_LABELS } from "@/lib/utils";
 import {
   MortalityCharts,
   type CauseRow,
@@ -17,6 +18,7 @@ import {
 import { ReportsTypeTabs } from "@/components/ReportsTypeTabs";
 import { FieldLogReport } from "@/components/FieldLogReport";
 import { GeneratorLogReport } from "@/components/GeneratorLogReport";
+import { FarmHistoryView } from "@/components/FarmHistoryView";
 import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
 import {
   buildFieldLogWeeks,
@@ -42,6 +44,56 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
 
   const params = await searchParams;
   const reportType = resolveReportType(params.type);
+
+  if (reportType === "history") {
+    const farms = await prisma.farm.findMany({
+      where: { userId: session.user.id, deletedAt: null },
+      orderBy: { farmName: "asc" },
+      select: { id: true, farmName: true },
+    });
+    const selectedFarmId =
+      (params.farmId && farms.some((f) => f.id === params.farmId)
+        ? params.farmId
+        : farms[0]?.id) ?? "";
+
+    return (
+      <div>
+        <PageHeader title="Reports" />
+        <Suspense fallback={<div className="mb-4 h-10" />}>
+          <ReportsTypeTabs active="history" />
+        </Suspense>
+        {farms.length === 0 ? (
+          <Card>
+            <p className="text-stone-600">No farms found.</p>
+          </Card>
+        ) : (
+          <>
+            <div className="mb-6">
+              <p className="mb-2 text-sm font-semibold text-stone-700">Farm</p>
+              <div className="flex flex-wrap gap-2">
+                {farms.map((farm) => (
+                  <Link
+                    key={farm.id}
+                    href={`/reports?type=history&farmId=${farm.id}`}
+                    className={cn(
+                      "rounded-lg px-4 py-2 text-sm font-semibold",
+                      selectedFarmId === farm.id
+                        ? "bg-emerald-700 text-white"
+                        : "bg-stone-200 text-stone-800",
+                    )}
+                  >
+                    {farm.farmName}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <FarmHistoryView farmId={selectedFarmId} userId={session.user.id} />
+          </>
+        )}
+      </div>
+    );
+  }
+
   const today = new Date();
   const fieldDefaults = defaultFieldLogRange(today);
   const from =
