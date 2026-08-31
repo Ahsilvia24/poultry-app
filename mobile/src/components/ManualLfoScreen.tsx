@@ -14,7 +14,6 @@ import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
   feedUpAtFromCatch,
-  formatHouseLfoSummary,
   formatLfoOrderClock,
 } from "../lib/lfo/calculate";
 import { todayKey } from "../lib/ids";
@@ -30,7 +29,6 @@ import {
   appendKeypadDigit,
   backspaceKeypadValue,
 } from "./NumberKeypad";
-import { LfoHouseSummaryBlock } from "./LfoHouseSummaryBlock";
 import { LfoFarmTabs } from "./LfoFarmTabs";
 import { ConsumptionRateCalculator } from "./ConsumptionRateCalculator";
 import {
@@ -196,7 +194,6 @@ export function ManualLfoScreen({
   }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime]);
 
   const result = calc.houses[0];
-  const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
   function getActiveValue() {
     if (activeField === "rate") return consumptionRate;
@@ -478,14 +475,6 @@ export function ManualLfoScreen({
             </View>
           ) : null}
         </Card>
-
-        {houseSummary.length > 0 ? (
-          <Card>
-            <View style={{ marginTop: -4 }}>
-              <LfoHouseSummaryBlock lines={houseSummary} farmName="Manual" fontSize={15} />
-            </View>
-          </Card>
-        ) : null}
 
         <Card>
           <View

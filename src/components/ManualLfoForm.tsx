@@ -9,7 +9,6 @@ import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
   feedUpAtFromCatch,
-  formatHouseLfoSummary,
   formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
 import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime } from "@/lib/time-slots";
@@ -60,7 +59,6 @@ export function ManualLfoForm() {
   }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime]);
 
   const result = calc.houses[0];
-  const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
   return (
     <form
@@ -236,18 +234,6 @@ export function ManualLfoForm() {
           </dl>
         ) : null}
       </Card>
-
-      {houseSummary.length > 0 ? (
-        <div className="rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-700">
-          <div className="space-y-0.5">
-            {houseSummary.map((line) => (
-              <p key={line} className="font-semibold text-stone-900">
-                {line}
-              </p>
-            ))}
-          </div>
-        </div>
-      ) : null}
 
       <Card>
         <div className="grid grid-cols-2 gap-2">
