@@ -1505,7 +1505,7 @@ export default function FarmDetailScreen() {
                             lineHeight: 16,
                           }}
                         >
-                          Enter{"\n"}mortality
+                          Enter{"\n"}Mortality
                         </Text>
                       </Pressable>
                     ) : null}

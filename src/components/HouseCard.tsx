@@ -206,7 +206,7 @@ export function HouseCard({
                 >
                   Enter
                   <br />
-                  mortality
+                  Mortality
                 </a>
               ) : null}
             </div>
