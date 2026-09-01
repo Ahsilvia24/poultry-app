@@ -1732,7 +1732,7 @@ export default function FarmDetailScreen() {
         <Pressable
           onPress={openAddHouse}
           hitSlop={8}
-          style={{ marginBottom: 8, paddingVertical: 4, alignSelf: "flex-end" }}
+          style={{ marginBottom: 8, paddingVertical: 4, alignSelf: "flex-start" }}
         >
           <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
             Add House
@@ -1745,7 +1745,7 @@ export default function FarmDetailScreen() {
             title="Recent Visits"
             right={
               <RecordLink
-                label="Log visit"
+                label="Log Visit"
                 onPress={() =>
                   router.push({
                     pathname: "/(tabs)/farms/[id]/log-visit",
@@ -1856,7 +1856,7 @@ export default function FarmDetailScreen() {
                   />
                 ) : null}
                 {!generatorModalOpen ? (
-                  <RecordLink label="Log generators" onPress={() => openGeneratorEditor()} />
+                  <RecordLink label="Log Gen." onPress={() => openGeneratorEditor()} />
                 ) : null}
               </>
             }
@@ -1911,7 +1911,7 @@ export default function FarmDetailScreen() {
             title="Recent Issues"
             right={
               <RecordLink
-                label="Report issue"
+                label="Log Issue"
                 onPress={() =>
                   router.push({
                     pathname: "/(tabs)/farms/[id]/report-issue",
@@ -1972,7 +1972,7 @@ export default function FarmDetailScreen() {
             title="Litter Events"
             right={
               <RecordLink
-                label="Record litter event"
+                label="Log Litter"
                 onPress={() =>
                   router.push({
                     pathname: "/(tabs)/farms/[id]/record-litter",
@@ -2028,7 +2028,7 @@ export default function FarmDetailScreen() {
             title="Feed Deliveries"
             right={
               <RecordLink
-                label="Record feed delivery"
+                label="Log Feed"
                 onPress={() =>
                   router.push({
                     pathname: "/(tabs)/farms/[id]/record-feed",

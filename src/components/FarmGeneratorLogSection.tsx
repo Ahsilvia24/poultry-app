@@ -561,7 +561,7 @@ export function FarmGeneratorLogSection({
       <FarmLogSectionHeader
         title="Generator Log"
         extraRight={chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
-        logLabel="Log generators"
+        logLabel="Log Gen."
         onLog={() => {
           setEditingId(null);
           setEditingGen(null);

@@ -64,7 +64,7 @@ export function FarmLitterSection({
     <div id="litter" className="scroll-mt-24">
       <FarmLogSectionHeader
         title="Litter Events"
-        logLabel="Record litter event"
+        logLabel="Log Litter"
         onLog={() => {
           setEditingId(null);
           setFormOpen((open) => !open);

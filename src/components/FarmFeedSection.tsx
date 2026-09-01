@@ -68,7 +68,7 @@ export function FarmFeedSection({
     <div id="feed" className="scroll-mt-24">
       <FarmLogSectionHeader
         title="Feed Deliveries"
-        logLabel="Record feed delivery"
+        logLabel="Log Feed"
         onLog={() => {
           setEditingId(null);
           setFormOpen((open) => !open);

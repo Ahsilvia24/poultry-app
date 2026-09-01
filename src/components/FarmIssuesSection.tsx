@@ -65,7 +65,7 @@ export function FarmIssuesSection({
     <div id="issues" className="scroll-mt-24">
       <FarmLogSectionHeader
         title="Recent Issues"
-        logLabel="Report issue"
+        logLabel="Log Issue"
         onLog={() => {
           setEditingId(null);
           setFormOpen((open) => !open);

@@ -70,7 +70,7 @@ export function FarmVisitsSection({
     <div id="visits" className="scroll-mt-24">
       <FarmLogSectionHeader
         title="Recent Visits"
-        logLabel="Log visit"
+        logLabel="Log Visit"
         onLog={() => {
           setEditingId(null);
           setLogOpen((open) => !open);
