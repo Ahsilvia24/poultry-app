@@ -1,10 +1,17 @@
 import { useRef, useState, type ReactNode } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import { colors } from "../theme";
 import {
   shouldCommitSwipeDelete,
   SWIPE_DELETE_COMMIT_PX,
-  SWIPE_DELETE_MAX_PX,
+  SWIPE_ROW_RADIUS,
 } from "../lib/swipe-commit";
 
 export function SwipeCommitDeleteRow({
@@ -12,17 +19,19 @@ export function SwipeCommitDeleteRow({
   onPress,
   children,
   commitPx = SWIPE_DELETE_COMMIT_PX,
-  stretchUntilRelease = false,
+  radius = SWIPE_ROW_RADIUS,
+  actionColor = colors.danger,
   deleteContent,
+  style,
 }: {
   onDelete: () => void;
   onPress?: () => void;
   children: ReactNode;
-  /** How far left the row must travel before release deletes it. */
   commitPx?: number;
-  /** Grow the red delete strip with the finger instead of a fixed width. */
-  stretchUntilRelease?: boolean;
+  radius?: number;
+  actionColor?: string;
   deleteContent?: ReactNode;
+  style?: StyleProp<ViewStyle>;
 }) {
   const [x, setX] = useState(0);
   const [rowWidth, setRowWidth] = useState(0);
@@ -32,10 +41,8 @@ export function SwipeCommitDeleteRow({
   const didSwipe = useRef(false);
   const committed = useRef(false);
 
-  const maxPx = stretchUntilRelease
-    ? Math.max(rowWidth || 1000, commitPx)
-    : SWIPE_DELETE_MAX_PX;
-  const redWidth = stretchUntilRelease ? Math.max(0, -x) : SWIPE_DELETE_MAX_PX;
+  const maxPx = Math.max(rowWidth || 1000, commitPx);
+  const redWidth = Math.max(0, -x);
 
   function setOffset(next: number) {
     xRef.current = next;
@@ -67,9 +74,8 @@ export function SwipeCommitDeleteRow({
     if (!committed.current && shouldCommitSwipeDelete(xRef.current, commitPx)) {
       committed.current = true;
       onDelete();
-    } else {
-      setOffset(0);
     }
+    setOffset(0);
     startX.current = null;
     startY.current = null;
   }
@@ -106,7 +112,7 @@ export function SwipeCommitDeleteRow({
 
   return (
     <View
-      style={{ overflow: "hidden" }}
+      style={[{ overflow: "hidden", borderRadius: radius }, style]}
       onLayout={(e) => {
         const w = e.nativeEvent.layout.width;
         if (w > 0 && w !== rowWidth) setRowWidth(w);
@@ -121,10 +127,11 @@ export function SwipeCommitDeleteRow({
             top: 0,
             bottom: 0,
             width: redWidth,
-            backgroundColor: colors.danger,
+            backgroundColor: actionColor,
             justifyContent: "center",
-            alignItems: stretchUntilRelease ? "center" : "flex-end",
-            paddingRight: stretchUntilRelease ? 0 : 16,
+            alignItems: "center",
+            borderTopRightRadius: radius,
+            borderBottomRightRadius: radius,
           }}
         >
           {deleteContent ?? (
@@ -137,6 +144,8 @@ export function SwipeCommitDeleteRow({
         style={{
           transform: [{ translateX: x }],
           backgroundColor: colors.card,
+          borderRadius: radius,
+          overflow: "hidden",
         }}
       >
         {onPress ? (

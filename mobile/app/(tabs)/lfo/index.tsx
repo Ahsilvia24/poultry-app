@@ -11,7 +11,6 @@ import { deleteLfo, getLfo, listFarms, listLfos } from "../../../src/repos/data"
 import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
 import { SharePdfIconButton } from "../../../src/components/SharePdfIconButton";
 import { SwipeCommitDeleteRow } from "../../../src/components/SwipeCommitDeleteRow";
-import { LFO_SWIPE_DELETE_COMMIT_PX } from "../../../src/lib/swipe-commit";
 import { colors, styles } from "../../../src/theme";
 import { Card } from "../../../src/components/ui";
 import { CopyHouseSummaryButton } from "../../../src/components/LfoHouseSummaryBlock";
@@ -95,8 +94,6 @@ function SavedLfoList({
         <View key={l.id} style={{ marginBottom: 12 }}>
           <SwipeCommitDeleteRow
             onDelete={() => onDelete(l.id)}
-            commitPx={LFO_SWIPE_DELETE_COMMIT_PX}
-            stretchUntilRelease
             deleteContent={
               <View
                 accessibilityLabel={`Delete LFO for ${l.farmName}`}
@@ -116,7 +113,7 @@ function SavedLfoList({
               </View>
             }
           >
-            <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
+            <Card style={{ marginBottom: 0, padding: 0 }}>
             <View style={{ padding: 16 }}>
               <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
                 <Pressable

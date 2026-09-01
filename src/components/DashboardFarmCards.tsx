@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { format, parseISO } from "date-fns";
 import { deactivateFarmAction } from "@/app/actions/farms";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Button, Card, StatusBadge } from "@/components/ui";
-import { ExclusiveSwipeGroup, useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
+import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
+import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import type { FarmCardSummary } from "@/types";
 
 function formatLastVisitDate(dateKey: string) {
@@ -19,21 +20,13 @@ function openIssuesLabel(count: number) {
 }
 
 function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
-  const [swipeX, setSwipeX] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, start] = useTransition();
-  const touchStartX = useRef<number | null>(null);
   const deactivatingRef = useRef(false);
-  const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(farm.id);
-
-  useEffect(() => {
-    if (!isOpenOwner) setSwipeX(0);
-  }, [isOpenOwner]);
 
   function makeInactive() {
     if (pending || deactivatingRef.current) return;
     deactivatingRef.current = true;
-    setSwipeX(0);
     start(async () => {
       try {
         await deactivateFarmAction(farm.id, { skipRedirect: true });
@@ -43,69 +36,15 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
     });
   }
 
-  function onTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0]?.clientX ?? null;
-  }
-
-  function onTouchMove(e: React.TouchEvent) {
-    if (touchStartX.current == null) return;
-    const x = e.touches[0]?.clientX;
-    if (x == null) return;
-    const dx = x - touchStartX.current;
-    setSwipeX(Math.max(-100, Math.min(0, dx)));
-    if (dx < -8) requestOpen();
-  }
-
-  function onTouchEnd() {
-    if (touchStartX.current == null) {
-      setSwipeX(0);
-      requestClose();
-      return;
-    }
-    if (swipeX <= -48) {
-      setSwipeX(-100);
-      requestOpen();
-    } else {
-      setSwipeX(0);
-      requestClose();
-    }
-    touchStartX.current = null;
-  }
-
-  const swipeOpen = swipeX < -8;
-
   return (
-    <div className="relative overflow-hidden rounded-xl self-start">
-      {/* Only mount while swiping so a stretched grid row can't reveal it under a short tile */}
-      {swipeOpen ? (
-        <div
-          className="absolute inset-y-0 right-0 flex w-[100px] items-center justify-center rounded-xl bg-stone-600"
-          aria-hidden={swipeX > -40}
-        >
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => setConfirmOpen(true)}
-            className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 text-center text-xs font-bold text-white disabled:opacity-60"
-            aria-label={`Make ${farm.farmName} inactive`}
-          >
-            {pending ? "Working…" : "Make inactive"}
-          </button>
-        </div>
-      ) : null}
-
-      <div
-        className="relative transition-transform duration-150 ease-out"
-        style={{ transform: `translateX(${swipeX}px)` }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={() => {
-          touchStartX.current = null;
-          setSwipeX(0);
-        }}
+    <div className="self-start">
+      <SwipeCommitDeleteRow
+        rowId={farm.id}
+        onDelete={() => setConfirmOpen(true)}
+        actionClassName="bg-stone-600"
+        deleteLabel={pending ? "Working…" : "Inactive"}
       >
-        <Card className="!p-0 overflow-hidden">
+        <Card className="!p-0 overflow-hidden rounded-xl">
           <div className="w-full px-3 py-2.5 text-left">
             <div className="flex w-full items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
@@ -170,7 +109,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
             </div>
           </div>
         </Card>
-      </div>
+      </SwipeCommitDeleteRow>
       {confirmOpen ? (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"

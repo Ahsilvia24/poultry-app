@@ -15,7 +15,6 @@ import {
   type LayoutChangeEvent,
   type ScrollView as ScrollViewType,
 } from "react-native";
-import { Swipeable } from "react-native-gesture-handler";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -77,7 +76,6 @@ import { ClipboardIconButton } from "../../../../src/components/ClipboardIconBut
 import { compactCatchTimeLabel } from "../../../../src/lib/time-slots";
 import { ConfirmDialog } from "../../../../src/components/ConfirmDialog";
 import { SwipeCommitDeleteRow } from "../../../../src/components/SwipeCommitDeleteRow";
-import { useExclusiveSwipeables } from "../../../../src/lib/useExclusiveSwipeables";
 import {
   NumberKeypad,
   appendKeypadDigit,
@@ -365,110 +363,6 @@ type GeneratorChartRow = {
   exercised: number | null;
 };
 
-const GENERATOR_SWIPE_DELETE_W = 72;
-
-function GeneratorSwipeDeleteRow({
-  deleteLabel,
-  onDelete,
-  children,
-  isOpen,
-  onOpen,
-}: {
-  deleteLabel: string;
-  onDelete: () => void;
-  children: ReactNode;
-  isOpen: boolean;
-  onOpen: () => void;
-}) {
-  const [x, setX] = useState(0);
-  const startX = useRef<number | null>(null);
-  const startY = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) setX(0);
-  }, [isOpen]);
-
-  function begin(pageX: number, pageY: number) {
-    startX.current = pageX;
-    startY.current = pageY;
-  }
-
-  function move(pageX: number) {
-    if (startX.current == null) return;
-    setX(Math.max(-GENERATOR_SWIPE_DELETE_W, Math.min(0, pageX - startX.current)));
-  }
-
-  function end() {
-    if (startX.current == null) {
-      setX(0);
-      return;
-    }
-    setX((cur) => {
-      const next = cur <= -36 ? -GENERATOR_SWIPE_DELETE_W : 0;
-      if (next < 0) onOpen();
-      return next;
-    });
-    startX.current = null;
-    startY.current = null;
-  }
-
-  return (
-    <View style={{ overflow: "hidden" }}>
-      {x < -8 ? (
-        <Pressable
-          accessibilityLabel={deleteLabel}
-          onPress={onDelete}
-          style={{
-            position: "absolute",
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: GENERATOR_SWIPE_DELETE_W,
-            backgroundColor: colors.danger,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 13 }}>Delete</Text>
-        </Pressable>
-      ) : null}
-      <View
-        // Responder + mouse so swipe-left works on native and Expo web.
-        onStartShouldSetResponder={() => false}
-        onMoveShouldSetResponder={(e) => {
-          if (startX.current == null || startY.current == null) return false;
-          const dx = e.nativeEvent.pageX - startX.current;
-          const dy = e.nativeEvent.pageY - startY.current;
-          return Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy);
-        }}
-        onResponderGrant={(e) => begin(e.nativeEvent.pageX, e.nativeEvent.pageY)}
-        onResponderMove={(e) => move(e.nativeEvent.pageX)}
-        onResponderRelease={end}
-        onResponderTerminate={end}
-        onTouchStart={(e) => begin(e.nativeEvent.pageX, e.nativeEvent.pageY)}
-        {...(Platform.OS === "web"
-          ? {
-              onMouseDown: (e: { pageX: number; pageY: number }) => begin(e.pageX, e.pageY),
-              onMouseMove: (e: { pageX: number; buttons?: number }) => {
-                if (e.buttons === 1) move(e.pageX);
-              },
-              onMouseUp: end,
-              onMouseLeave: () => {
-                if (startX.current != null) end();
-              },
-            }
-          : {})}
-        style={{
-          transform: [{ translateX: x }],
-          backgroundColor: colors.card,
-        }}
-      >
-        {children}
-      </View>
-    </View>
-  );
-}
-
 function GeneratorHoursChart({
   title,
   rows,
@@ -481,7 +375,6 @@ function GeneratorHoursChart({
   onDelete?: (id: string) => void;
 }) {
   const showActions = onEdit != null && onDelete != null;
-  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const cell = {
     fontSize: 16,
     lineHeight: 22,
@@ -535,15 +428,13 @@ function GeneratorHoursChart({
               return <View key={row.id}>{cells}</View>;
             }
             return (
-              <GeneratorSwipeDeleteRow
+              <SwipeCommitDeleteRow
                 key={row.id}
-                deleteLabel="Delete generator log"
                 onDelete={() => onDelete(row.id)}
-                isOpen={openSwipeId === row.id}
-                onOpen={() => setOpenSwipeId(row.id)}
+                radius={10}
               >
                 {cells}
-              </GeneratorSwipeDeleteRow>
+              </SwipeCommitDeleteRow>
             );
           })}
         </View>
@@ -623,7 +514,6 @@ export default function FarmDetailScreen() {
   );
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("farms", scrollRef);
-  const houseSwipe = useExclusiveSwipeables();
   const sectionY = useRef<Record<string, number>>({});
 
   function scrollToSection(key: string) {
@@ -1301,7 +1191,6 @@ export default function FarmDetailScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         keyboardShouldPersistTaps="handled"
-        onScrollBeginDrag={houseSwipe.closeAll}
       >
         <View
           style={{
@@ -1463,33 +1352,21 @@ export default function FarmDetailScreen() {
               onLayout={onSectionLayout(`house-${h.id}`)}
               style={{ marginBottom: 12 }}
             >
-            <Swipeable
-              ref={houseSwipe.setRef(h.id)}
-              overshootRight={false}
-              friction={2}
-              rightThreshold={40}
-              onSwipeableWillOpen={() => houseSwipe.closeOthers(h.id)}
-              renderRightActions={() => (
-                <Pressable
+            <SwipeCommitDeleteRow
+              onDelete={() => confirmDeleteHouse(h)}
+              deleteContent={
+                <View
                   accessibilityLabel={`Delete house ${h.houseNumber}`}
-                  onPress={() => confirmDeleteHouse(h)}
-                  style={{
-                    backgroundColor: colors.danger,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    width: 88,
-                    borderRadius: 14,
-                    marginLeft: 8,
-                  }}
+                  style={{ alignItems: "center" }}
                 >
                   <Ionicons name="trash-outline" size={22} color="#fff" />
                   <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12, marginTop: 4 }}>
                     Delete
                   </Text>
-                </Pressable>
-              )}
+                </View>
+              }
             >
-              <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
+              <Card style={{ marginBottom: 0, padding: 0 }}>
                 <View style={{ padding: 16, paddingBottom: 4 }}>
                   <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
                     <Pressable
@@ -1839,7 +1716,7 @@ export default function FarmDetailScreen() {
                   </Pressable>
                 ) : null}
               </Card>
-            </Swipeable>
+            </SwipeCommitDeleteRow>
             </View>
           );
         })}

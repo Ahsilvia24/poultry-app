@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   deactivateFarmAction,
@@ -8,7 +8,8 @@ import {
   reactivateFarmAction,
 } from "@/app/actions/farms";
 import { Button } from "@/components/ui";
-import { ExclusiveSwipeGroup, useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
+import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
+import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 
 export type FarmsListTileFarm = {
   id: string;
@@ -26,21 +27,13 @@ const LONG_PRESS_MS = 500;
 const MOVE_CANCEL_PX = 12;
 
 function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
-  const [swipeX, setSwipeX] = useState(0);
   const [confirm, setConfirm] = useState<ConfirmKind>(null);
   const [pending, start] = useTransition();
-  const touchStartX = useRef<number | null>(null);
   const longPressTimer = useRef<number | null>(null);
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const didLongPress = useRef(false);
-  const actionWidth = 72;
-  const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(farm.id);
   const ageLabel =
     farm.flockAges.length > 0 ? farm.flockAges.map((a) => `${a}d`).join(" ") : null;
-
-  useEffect(() => {
-    if (!isOpenOwner) setSwipeX(0);
-  }, [isOpenOwner]);
 
   function clearLongPress() {
     if (longPressTimer.current != null) {
@@ -59,7 +52,6 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
   }
 
   function onTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0]?.clientX ?? null;
     const t = e.touches[0];
     pointerStart.current = t ? { x: t.clientX, y: t.clientY } : null;
     startLongPress();
@@ -68,37 +60,16 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
   function onTouchMove(e: React.TouchEvent) {
     const x = e.touches[0]?.clientX;
     const y = e.touches[0]?.clientY;
-    if (x == null) return;
-    if (pointerStart.current) {
-      const dx = x - pointerStart.current.x;
-      const dy = y - (pointerStart.current.y ?? y);
-      if (Math.abs(dx) > MOVE_CANCEL_PX || Math.abs(dy) > MOVE_CANCEL_PX) {
-        clearLongPress();
-      }
+    if (x == null || !pointerStart.current) return;
+    const dx = x - pointerStart.current.x;
+    const dy = y - (pointerStart.current.y ?? y);
+    if (Math.abs(dx) > MOVE_CANCEL_PX || Math.abs(dy) > MOVE_CANCEL_PX) {
+      clearLongPress();
     }
-    if (touchStartX.current == null) return;
-    const dx = x - touchStartX.current;
-    setSwipeX(Math.max(-actionWidth, Math.min(0, dx)));
   }
 
   function onTouchEnd() {
     clearLongPress();
-    if (touchStartX.current == null) {
-      setSwipeX(0);
-      return;
-    }
-    if (swipeX <= -40) {
-      setSwipeX(-actionWidth);
-      requestOpen();
-    } else {
-      setSwipeX(0);
-      requestClose();
-    }
-    touchStartX.current = null;
-  }
-
-  function closeSwipe() {
-    setSwipeX(0);
   }
 
   function onPointerDown(e: React.PointerEvent) {
@@ -122,35 +93,18 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
   }
 
   return (
-    <div className="relative h-full overflow-hidden rounded-xl">
-      <div
-        className="absolute inset-y-0 right-0 flex w-[72px] items-stretch"
-        aria-hidden={swipeX > -40}
+    <div className="h-full">
+      <SwipeCommitDeleteRow
+        rowId={farm.id}
+        className="h-full"
+        onDelete={() => setConfirm("delete")}
       >
-        <button
-          type="button"
-          onClick={() => {
-            closeSwipe();
-            setConfirm("delete");
-          }}
-          className="flex w-full flex-col items-center justify-center gap-1 rounded-xl bg-red-700 px-1 text-center text-xs font-bold text-white"
-          aria-label={`Delete ${farm.farmName} permanently`}
-        >
-          Delete
-        </button>
-      </div>
-
       <div
-        className="relative h-full transition-transform duration-150 ease-out"
-        style={{ transform: `translateX(${swipeX}px)` }}
+        className="relative h-full"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        onTouchCancel={() => {
-          clearLongPress();
-          touchStartX.current = null;
-          setSwipeX(0);
-        }}
+        onTouchCancel={clearLongPress}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -206,6 +160,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
           </div>
         </div>
       </div>
+      </SwipeCommitDeleteRow>
 
       {confirm ? (
         <div

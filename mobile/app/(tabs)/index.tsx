@@ -16,13 +16,12 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Swipeable } from "react-native-gesture-handler";
 import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
 import { colors, styles } from "../../src/theme";
 import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/schedule";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
-import { useExclusiveSwipeables } from "../../src/lib/useExclusiveSwipeables";
 import { ConfirmDialog } from "../../src/components/ConfirmDialog";
+import { SwipeCommitDeleteRow } from "../../src/components/SwipeCommitDeleteRow";
 import {
   Card,
   Metric,
@@ -231,13 +230,10 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  /** Avoid mounting tall swipe actions until open — on web they stretch short tiles. */
-  const [swipingFarmId, setSwipingFarmId] = useState<string | null>(null);
   const [inactiveConfirm, setInactiveConfirm] = useState<{
     farmId: string;
     farmName: string;
   } | null>(null);
-  const swipe = useExclusiveSwipeables();
 
   const load = useCallback(async () => {
     try {
@@ -322,7 +318,6 @@ export default function DashboardScreen() {
         style={styles.screen}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-        onScrollBeginDrag={swipe.closeAll}
       >
         <View style={{ marginBottom: 16 }}>
           <Text style={styles.title}>Dashboard</Text>
@@ -484,55 +479,28 @@ export default function DashboardScreen() {
             <SectionTitle>Active Farms</SectionTitle>
             {data.farmCards.map((farm) => {
               return (
-                <Swipeable
+                <SwipeCommitDeleteRow
                   key={farm.id}
-                  ref={swipe.setRef(farm.id)}
-                  overshootRight={false}
-                  friction={2}
-                  rightThreshold={40}
-                  containerStyle={{ marginBottom: 4, overflow: "hidden" }}
-                  onSwipeableWillOpen={() => {
-                    swipe.closeOthers(farm.id);
-                    setSwipingFarmId(farm.id);
-                  }}
-                  onSwipeableClose={() =>
-                    setSwipingFarmId((id) => (id === farm.id ? null : id))
+                  onDelete={() =>
+                    setInactiveConfirm({ farmId: farm.id, farmName: farm.farmName })
                   }
-                  renderRightActions={() =>
-                    swipingFarmId === farm.id ? (
-                      <Pressable
-                        accessibilityLabel={`Make ${farm.farmName} inactive`}
-                        onPress={() =>
-                          setInactiveConfirm({ farmId: farm.id, farmName: farm.farmName })
-                        }
-                        style={{
-                          backgroundColor: "#57534e",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          width: 88,
-                          marginLeft: 8,
-                          borderRadius: 14,
-                          alignSelf: "stretch",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: "#fff",
-                            fontWeight: "800",
-                            fontSize: 12,
-                            textAlign: "center",
-                            paddingHorizontal: 4,
-                          }}
-                        >
-                          Inactive
-                        </Text>
-                      </Pressable>
-                    ) : (
-                      <View style={{ width: 88, marginLeft: 8 }} />
-                    )
+                  actionColor="#57534e"
+                  deleteContent={
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontWeight: "800",
+                        fontSize: 12,
+                        textAlign: "center",
+                        paddingHorizontal: 4,
+                      }}
+                    >
+                      Inactive
+                    </Text>
                   }
+                  style={{ marginBottom: 4 }}
                 >
-                  <Card style={{ padding: 0, overflow: "hidden", marginBottom: 0 }}>
+                  <Card style={{ padding: 0, marginBottom: 0 }}>
                     <View style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
                       <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
                         <View style={{ flex: 1, minWidth: 0 }}>
@@ -623,7 +591,7 @@ export default function DashboardScreen() {
                       </View>
                     </View>
                   </Card>
-                </Swipeable>
+                </SwipeCommitDeleteRow>
               );
             })}
           </>
@@ -647,7 +615,6 @@ export default function DashboardScreen() {
           if (!inactiveConfirm) return;
           makeInactive(inactiveConfirm.farmId);
           setInactiveConfirm(null);
-          swipe.closeAll();
         }}
         onCancel={() => setInactiveConfirm(null)}
       />

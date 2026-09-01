@@ -3,9 +3,9 @@ import { describe, it } from "node:test";
 import { shouldCommitSwipeDelete, SWIPE_DELETE_COMMIT_PX } from "./swipe-commit.ts";
 
 describe("shouldCommitSwipeDelete", () => {
-  it("needs a good swipe left before delete", () => {
+  it("needs an 80px swipe left before delete", () => {
     assert.equal(shouldCommitSwipeDelete(-40), false);
-    assert.equal(shouldCommitSwipeDelete(-99), false);
+    assert.equal(shouldCommitSwipeDelete(-79), false);
     assert.equal(shouldCommitSwipeDelete(-SWIPE_DELETE_COMMIT_PX), true);
     assert.equal(shouldCommitSwipeDelete(-140), true);
   });
@@ -13,10 +13,5 @@ describe("shouldCommitSwipeDelete", () => {
   it("ignores right swipes", () => {
     assert.equal(shouldCommitSwipeDelete(20), false);
     assert.equal(shouldCommitSwipeDelete(0), false);
-  });
-
-  it("uses a shorter 80px commit for LFO tiles", () => {
-    assert.equal(shouldCommitSwipeDelete(-79, 80), false);
-    assert.equal(shouldCommitSwipeDelete(-80, 80), true);
   });
 });

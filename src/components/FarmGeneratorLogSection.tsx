@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import {
@@ -9,7 +9,8 @@ import {
   updateGeneratorLogAction,
 } from "@/app/actions/ops";
 import { Button, Card, Input, Label } from "@/components/ui";
-import { ExclusiveSwipeGroup, useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
+import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
+import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import {
   detectGeneratorHourSwap,
   formatGeneratorChartsCopy,
@@ -111,105 +112,6 @@ function CopyLogButton({ text }: { text: string }) {
   );
 }
 
-function isActionTarget(target: EventTarget | null) {
-  return target instanceof Element && target.closest("button");
-}
-
-function SwipeDeleteRow({
-  rowId,
-  deleteLabel,
-  onDelete,
-  children,
-}: {
-  rowId: string;
-  deleteLabel: string;
-  onDelete: () => void;
-  children: ReactNode;
-}) {
-  const [swipeX, setSwipeX] = useState(0);
-  const startX = useRef<number | null>(null);
-  const actionWidth = 72;
-  const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(rowId);
-
-  useEffect(() => {
-    if (!isOpenOwner) setSwipeX(0);
-  }, [isOpenOwner]);
-
-  function begin(x: number) {
-    startX.current = x;
-  }
-
-  function move(x: number) {
-    if (startX.current == null) return;
-    setSwipeX(Math.max(-actionWidth, Math.min(0, x - startX.current)));
-  }
-
-  function end() {
-    if (startX.current == null) {
-      setSwipeX(0);
-      return;
-    }
-    if (swipeX <= -40) {
-      setSwipeX(-actionWidth);
-      requestOpen();
-    } else {
-      setSwipeX(0);
-      requestClose();
-    }
-    startX.current = null;
-  }
-
-  function cancel() {
-    startX.current = null;
-    setSwipeX(0);
-  }
-
-  return (
-    <div className="relative overflow-hidden">
-      {swipeX < -8 ? (
-        <div className="absolute inset-y-0 right-0 flex w-[72px] items-stretch">
-          <button
-            type="button"
-            onClick={() => {
-              setSwipeX(0);
-              onDelete();
-            }}
-            className="flex w-full items-center justify-center bg-red-700 text-xs font-bold text-white"
-            aria-label={deleteLabel}
-          >
-            Delete
-          </button>
-        </div>
-      ) : null}
-      <div
-        className="relative bg-white transition-transform duration-150 ease-out"
-        style={{ transform: `translateX(${swipeX}px)` }}
-        onTouchStart={(e) => {
-          if (isActionTarget(e.target)) return;
-          begin(e.touches[0]?.clientX ?? 0);
-        }}
-        onTouchMove={(e) => {
-          const x = e.touches[0]?.clientX;
-          if (x != null) move(x);
-        }}
-        onTouchEnd={end}
-        onTouchCancel={cancel}
-        onPointerDown={(e) => {
-          if (e.pointerType === "mouse" && e.button !== 0) return;
-          if (isActionTarget(e.target)) return;
-          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-          begin(e.clientX);
-        }}
-        onPointerMove={(e) => move(e.clientX)}
-        onPointerUp={end}
-        onPointerCancel={cancel}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function GeneratorHoursChart({
   title,
   rows,
@@ -269,16 +171,15 @@ function GeneratorHoursChart({
               return <div key={row.id}>{cells}</div>;
             }
             return (
-              <SwipeDeleteRow
+              <SwipeCommitDeleteRow
                 key={row.id}
                 rowId={row.id}
-                deleteLabel="Delete generator entry"
                 onDelete={() => {
                   void onDelete(row.id);
                 }}
               >
                 {cells}
-              </SwipeDeleteRow>
+              </SwipeCommitDeleteRow>
             );
           })}
         </div>
