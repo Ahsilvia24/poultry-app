@@ -78,13 +78,24 @@ export function SwipeCommitDeleteRow({
     const dx = x - startX.current;
     const dy = y - (startY.current ?? y);
     if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-    if (Math.abs(dy) > Math.abs(dx)) return;
+    if (Math.abs(dy) > Math.abs(dx)) {
+      if (didSwipe.current) cancel();
+      return;
+    }
     didSwipe.current = true;
     requestOpen();
     setX(Math.max(-maxPx, Math.min(0, dx)));
   }
 
-  function end() {
+  function cancel() {
+    startX.current = null;
+    startY.current = null;
+    committed.current = false;
+    setX(0);
+    requestClose();
+  }
+
+  function release() {
     if (startX.current == null) {
       setX(0);
       return;
@@ -97,12 +108,6 @@ export function SwipeCommitDeleteRow({
     requestClose();
     startX.current = null;
     startY.current = null;
-  }
-
-  function cancel() {
-    startX.current = null;
-    startY.current = null;
-    setX(0);
   }
 
   return (
@@ -130,7 +135,7 @@ export function SwipeCommitDeleteRow({
           const t = e.touches[0];
           if (t) move(t.clientX, t.clientY);
         }}
-        onTouchEnd={end}
+        onTouchEnd={release}
         onTouchCancel={cancel}
         onPointerDown={(e) => {
           if (e.pointerType === "touch") return;
@@ -140,7 +145,7 @@ export function SwipeCommitDeleteRow({
           begin(e.clientX, e.clientY);
         }}
         onPointerMove={(e) => move(e.clientX, e.clientY)}
-        onPointerUp={end}
+        onPointerUp={release}
         onPointerCancel={cancel}
         onClickCapture={(e) => {
           if (!didSwipe.current) return;

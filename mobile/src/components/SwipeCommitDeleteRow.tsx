@@ -61,12 +61,22 @@ export function SwipeCommitDeleteRow({
     const dx = pageX - startX.current;
     const dy = pageY != null && startY.current != null ? pageY - startY.current : 0;
     if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-    if (Math.abs(dy) > Math.abs(dx)) return;
+    if (Math.abs(dy) > Math.abs(dx)) {
+      if (didSwipe.current) cancel();
+      return;
+    }
     didSwipe.current = true;
     setOffset(Math.max(-maxPx, Math.min(0, dx)));
   }
 
-  function end() {
+  function cancel() {
+    startX.current = null;
+    startY.current = null;
+    committed.current = false;
+    setOffset(0);
+  }
+
+  function release() {
     if (startX.current == null) {
       setOffset(0);
       return;
@@ -92,26 +102,27 @@ export function SwipeCommitDeleteRow({
       begin(e.nativeEvent.pageX, e.nativeEvent.pageY),
     onResponderMove: (e: { nativeEvent: { pageX: number; pageY: number } }) =>
       move(e.nativeEvent.pageX, e.nativeEvent.pageY),
-    onResponderRelease: end,
-    onResponderTerminate: end,
+    onResponderRelease: release,
+    onResponderTerminate: cancel,
     onTouchStart: (e: { nativeEvent: { pageX: number; pageY: number } }) =>
       begin(e.nativeEvent.pageX, e.nativeEvent.pageY),
-    ...(Platform.OS === "web"
+  };
+
+  const webRow =
+    Platform.OS === "web"
       ? {
           onMouseDown: (e: { pageX: number; pageY: number }) => begin(e.pageX, e.pageY),
           onMouseMove: (e: { pageX: number; buttons?: number; pageY: number }) => {
             if (e.buttons === 1) move(e.pageX, e.pageY);
           },
-          onMouseUp: end,
-          onMouseLeave: () => {
-            if (startX.current != null) end();
-          },
+          onMouseUp: release,
+          onMouseLeave: cancel,
         }
-      : {}),
-  };
+      : {};
 
   return (
     <View
+      {...webRow}
       style={[{ overflow: "hidden" }, style]}
       onLayout={(e) => {
         const w = e.nativeEvent.layout.width;
