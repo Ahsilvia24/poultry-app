@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { deleteIssueAction } from "@/app/actions/ops";
 import { DeleteRecordButton, EditRecordButton } from "@/components/DeleteRecordButton";
 import { FarmIssueForm, type IssueFormValues } from "@/components/FarmOpsForms";
+import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSectionChrome";
 import { Card } from "@/components/ui";
 import { ISSUE_CATEGORY_LABELS } from "@/lib/utils";
 
@@ -45,15 +46,6 @@ export function FarmIssuesSection({
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  function closeSection() {
-    setOpen(false);
-    setFormOpen(false);
-    setEditingId(null);
-    if (issuesHashActive()) {
-      history.replaceState(null, "", window.location.pathname + window.location.search);
-    }
-  }
-
   function afterIssueSaved() {
     setFormOpen(false);
     setEditingId(null);
@@ -71,100 +63,73 @@ export function FarmIssuesSection({
 
   return (
     <div id="issues" className="scroll-mt-24">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="min-w-0 flex-1 font-bold">Recent Issues</h3>
-        <button
-          type="button"
-          onClick={closeSection}
-          className="shrink-0 text-sm font-semibold text-stone-500 hover:text-stone-800"
-        >
-          Close
-        </button>
-      </div>
-      <Card>
-        <ul className="space-y-2 text-sm">
-          {issues.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-          {issues.map((issue) => (
-            <li key={issue.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">
-                      {format(new Date(issue.dateReported + "T12:00:00"), "MMM d, yyyy")}
-                    </span>
-                    <span className="rounded bg-stone-100 px-2 py-0.5 text-xs font-bold">
-                      {issue.priority}
-                    </span>
-                    <span className="text-xs text-stone-500">{issue.status}</span>
-                  </div>
-                  <p>
-                    {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}: {issue.description}
-                  </p>
+      <FarmLogSectionHeader
+        title="Recent Issues"
+        logLabel="Report issue"
+        onLog={() => {
+          setEditingId(null);
+          setFormOpen((open) => !open);
+        }}
+      />
+      <ul className="space-y-2 text-sm">
+        {issues.length === 0 ? <li className="text-stone-500">None yet</li> : null}
+        {issues.map((issue) => (
+          <li key={issue.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">
+                    {format(new Date(issue.dateReported + "T12:00:00"), "MMM d, yyyy")}
+                  </span>
+                  <span className="rounded bg-stone-100 px-2 py-0.5 text-xs font-bold">
+                    {issue.priority}
+                  </span>
+                  <span className="text-xs text-stone-500">{issue.status}</span>
                 </div>
-                <div className="flex shrink-0 items-center gap-0.5">
-                  <EditRecordButton
-                    label="Edit issue"
-                    active={editingId === issue.id}
-                    onClick={() => {
-                      setFormOpen(false);
-                      setEditingId((id) => (id === issue.id ? null : issue.id));
-                    }}
-                  />
-                  <DeleteRecordButton
-                    label="Delete issue"
-                    onDelete={() => deleteIssueAction(farmId, issue.id)}
-                  />
-                </div>
+                <p>
+                  {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}: {issue.description}
+                </p>
               </div>
-              {editingId === issue.id ? (
-                <FarmIssueForm
-                  farmId={farmId}
-                  flockId={flockId}
-                  houses={houses}
-                  recordId={issue.id}
-                  initial={issue}
-                  onSuccess={afterIssueSaved}
+              <div className="flex shrink-0 items-center gap-0.5">
+                <EditRecordButton
+                  label="Edit issue"
+                  active={editingId === issue.id}
+                  onClick={() => {
+                    setFormOpen(false);
+                    setEditingId((id) => (id === issue.id ? null : issue.id));
+                  }}
                 />
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </Card>
+                <DeleteRecordButton
+                  label="Delete issue"
+                  onDelete={() => deleteIssueAction(farmId, issue.id)}
+                />
+              </div>
+            </div>
+            {editingId === issue.id ? (
+              <FarmIssueForm
+                farmId={farmId}
+                flockId={flockId}
+                houses={houses}
+                recordId={issue.id}
+                initial={issue}
+                onSuccess={afterIssueSaved}
+              />
+            ) : null}
+          </li>
+        ))}
+      </ul>
 
-      {!formOpen ? (
-        <div className="mt-3 text-right">
-          <button
-            type="button"
-            onClick={() => {
-              setEditingId(null);
-              setFormOpen(true);
-            }}
-            className="text-sm text-emerald-800 hover:underline"
-          >
-            Report issue
-          </button>
-        </div>
-      ) : (
-        <div className="mt-3">
-          <div className="text-right">
-            <button
-              type="button"
-              onClick={() => setFormOpen(false)}
-              className="text-sm text-emerald-800 hover:underline"
-            >
-              Report issue
-            </button>
-          </div>
-          <Card className="mt-3">
-            <FarmIssueForm
-              farmId={farmId}
-              flockId={flockId}
-              houses={houses}
-              onSuccess={afterIssueSaved}
-            />
-          </Card>
-        </div>
-      )}
+      {formOpen ? (
+        <Card className="mt-3">
+          <FarmIssueForm
+            farmId={farmId}
+            flockId={flockId}
+            houses={houses}
+            onSuccess={afterIssueSaved}
+          />
+        </Card>
+      ) : null}
+      <FarmLogSectionTop />
     </div>
   );
 }

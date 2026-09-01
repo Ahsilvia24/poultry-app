@@ -131,10 +131,7 @@ function formatShortDate(dateKey: string) {
 
 function RecordLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={{ marginTop: 4, marginBottom: 16, alignSelf: "flex-end" }}
-    >
+    <Pressable onPress={onPress} hitSlop={8}>
       <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>{label}</Text>
     </Pressable>
   );
@@ -156,11 +153,9 @@ function TopLink({ onPress }: { onPress: () => void }) {
 
 function SectionHeading({
   title,
-  onTop,
   right,
 }: {
   title: string;
-  onTop: () => void;
   right?: ReactNode;
 }) {
   return (
@@ -174,10 +169,19 @@ function SectionHeading({
       }}
     >
       <Text style={{ fontWeight: "800", fontSize: 16, flex: 1, minWidth: 0 }}>{title}</Text>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
-        {right}
-        <TopLink onPress={onTop} />
-      </View>
+      {right ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          {right}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function SectionTop({ onPress }: { onPress: () => void }) {
+  return (
+    <View style={{ marginTop: 8, marginBottom: 16, alignSelf: "flex-start" }}>
+      <TopLink onPress={onPress} />
     </View>
   );
 }
@@ -1737,328 +1741,340 @@ export default function FarmDetailScreen() {
 
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
-          <SectionHeading title="Recent Visits" onTop={scrollPageToTop} />
-          <Card>
-            {data.visits.length === 0 ? (
-              <Text style={styles.muted}>None yet</Text>
-            ) : (
-              data.visits.map((v, i) => (
-                <View
-                  key={v.id}
-                  style={{
-                    marginTop: i === 0 ? 0 : 10,
-                    paddingTop: i === 0 ? 0 : 10,
-                    borderTopWidth: i === 0 ? 0 : 1,
-                    borderTopColor: "#f5f5f4",
-                  }}
-                >
-                  <SwipeCommitDeleteRow
-                    onDelete={() => removeVisit(v.id)}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/visits/[visitId]",
-                        params: { id: farm.id, visitId: v.id },
-                      })
-                    }
-                  >
-                    <View
-                      accessibilityRole="button"
-                      accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
-                    >
-                      <Text style={{ fontWeight: "700" }}>
-                        {formatShortDate(v.visitDate)} —{" "}
-                        {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
-                      </Text>
-                      {v.followUpRequired ? (
-                        <Text style={{ color: "#b45309", fontWeight: "600", marginTop: 2 }}>
-                          Follow-up due
-                        </Text>
-                      ) : null}
-                      {v.notes ? (
-                        <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text>
-                      ) : null}
-                    </View>
-                  </SwipeCommitDeleteRow>
-                </View>
-              ))
-            )}
-          </Card>
-          <RecordLink
-            label="Log visit"
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/log-visit",
-                params: { id: farm.id },
-              })
+          <SectionHeading
+            title="Recent Visits"
+            right={
+              <RecordLink
+                label="Log visit"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/log-visit",
+                    params: { id: farm.id },
+                  })
+                }
+              />
             }
           />
+          {data.visits.length === 0 ? (
+            <Text style={styles.muted}>None yet</Text>
+          ) : (
+            data.visits.map((v, i) => (
+              <View
+                key={v.id}
+                style={{
+                  marginTop: i === 0 ? 0 : 10,
+                  paddingTop: i === 0 ? 0 : 10,
+                  borderTopWidth: i === 0 ? 0 : 1,
+                  borderTopColor: "#f5f5f4",
+                }}
+              >
+                <SwipeCommitDeleteRow
+                  onDelete={() => removeVisit(v.id)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/visits/[visitId]",
+                      params: { id: farm.id, visitId: v.id },
+                    })
+                  }
+                >
+                  <View
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
+                  >
+                    <Text style={{ fontWeight: "700" }}>
+                      {formatShortDate(v.visitDate)} —{" "}
+                      {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
+                    </Text>
+                    {v.followUpRequired ? (
+                      <Text style={{ color: "#b45309", fontWeight: "600", marginTop: 2 }}>
+                        Follow-up due
+                      </Text>
+                    ) : null}
+                    {v.notes ? (
+                      <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text>
+                    ) : null}
+                  </View>
+                </SwipeCommitDeleteRow>
+              </View>
+            ))
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
         {/* ── Generator log ── */}
         <View onLayout={onSectionLayout("generators")}>
           <SectionHeading
             title="Generator Log"
-            onTop={scrollPageToTop}
             right={
-              (data.generatorLogs ?? []).some(
-                (log) =>
-                  log.gen1Hours != null ||
-                  log.gen2Hours != null ||
-                  log.gen3Hours != null ||
-                  log.gen4Hours != null,
-              ) ? (
-                <ClipboardIconButton
-                  accessibilityLabel="Copy generator log"
-                  color={colors.accentDark}
-                  getText={() => {
-                    const allLogs = data.generatorLogs ?? [];
-                    return formatGeneratorChartsCopy(
-                      allLogs.map((log) => {
-                        const hours: GeneratorHours = {
-                          gen1Hours: log.gen1Hours,
-                          gen2Hours: log.gen2Hours,
-                          gen3Hours: log.gen3Hours,
-                          gen4Hours: log.gen4Hours,
-                        };
-                        const priorFor = (hourKey: GenHourKey) => {
-                          let seen = false;
-                          for (const candidate of allLogs) {
-                            if (!seen) {
-                              if (candidate.id === log.id) seen = true;
-                              continue;
+              <>
+                {(data.generatorLogs ?? []).some(
+                  (log) =>
+                    log.gen1Hours != null ||
+                    log.gen2Hours != null ||
+                    log.gen3Hours != null ||
+                    log.gen4Hours != null,
+                ) ? (
+                  <ClipboardIconButton
+                    accessibilityLabel="Copy generator log"
+                    color={colors.accentDark}
+                    getText={() => {
+                      const allLogs = data.generatorLogs ?? [];
+                      return formatGeneratorChartsCopy(
+                        allLogs.map((log) => {
+                          const hours: GeneratorHours = {
+                            gen1Hours: log.gen1Hours,
+                            gen2Hours: log.gen2Hours,
+                            gen3Hours: log.gen3Hours,
+                            gen4Hours: log.gen4Hours,
+                          };
+                          const priorFor = (hourKey: GenHourKey) => {
+                            let seen = false;
+                            for (const candidate of allLogs) {
+                              if (!seen) {
+                                if (candidate.id === log.id) seen = true;
+                                continue;
+                              }
+                              if (candidate[hourKey] != null) return candidate[hourKey];
                             }
-                            if (candidate[hourKey] != null) return candidate[hourKey];
-                          }
-                          return null;
-                        };
-                        const [y, m, d] = log.logDate.split("-").map(Number);
-                        return {
-                          dateLabel: `${m}-${d}-${y}`,
-                          hours,
-                          deltas: {
-                            gen1: hoursDelta(log.gen1Hours, priorFor("gen1Hours")),
-                            gen2: hoursDelta(log.gen2Hours, priorFor("gen2Hours")),
-                            gen3: hoursDelta(log.gen3Hours, priorFor("gen3Hours")),
-                            gen4: hoursDelta(log.gen4Hours, priorFor("gen4Hours")),
-                          },
-                        };
-                      }),
-                    );
-                  }}
-                />
-              ) : null
+                            return null;
+                          };
+                          const [y, m, d] = log.logDate.split("-").map(Number);
+                          return {
+                            dateLabel: `${m}-${d}-${y}`,
+                            hours,
+                            deltas: {
+                              gen1: hoursDelta(log.gen1Hours, priorFor("gen1Hours")),
+                              gen2: hoursDelta(log.gen2Hours, priorFor("gen2Hours")),
+                              gen3: hoursDelta(log.gen3Hours, priorFor("gen3Hours")),
+                              gen4: hoursDelta(log.gen4Hours, priorFor("gen4Hours")),
+                            },
+                          };
+                        }),
+                      );
+                    }}
+                  />
+                ) : null}
+                {!generatorModalOpen ? (
+                  <RecordLink label="Log generators" onPress={() => openGeneratorEditor()} />
+                ) : null}
+              </>
             }
           />
-          <Card>
-            {(data.generatorLogs ?? []).every(
-              (log) =>
-                log.gen1Hours == null &&
-                log.gen2Hours == null &&
-                log.gen3Hours == null &&
-                log.gen4Hours == null,
-            ) ? (
-              <Text style={styles.muted}>None yet</Text>
-            ) : (
-              <>
-                {GENERATOR_FIELD_DEFS.map((gen) => {
-                  const allLogs = data.generatorLogs ?? [];
-                  const genLogs = allLogs
-                    .filter((log) => log[gen.hourKey] != null)
-                    .slice(0, MAX_GENERATOR_LOGS_DISPLAY);
-                  if (genLogs.length === 0) return null;
-                  const rows: GeneratorChartRow[] = genLogs.map((log, index) => {
-                    const previous = genLogs[index + 1] ?? null;
-                    const [y, m, d] = log.logDate.split("-").map(Number);
-                    return {
-                      id: log.id,
-                      dateLabel: `${m}-${d}-${y}`,
-                      hours: log[gen.hourKey] as number,
-                      exercised: hoursDelta(log[gen.hourKey], previous?.[gen.hourKey]),
-                    };
-                  });
-                  return (
-                    <GeneratorHoursChart
-                      key={gen.key}
-                      title={gen.label}
-                      rows={rows}
-                      onEdit={(id) => {
-                        const log = allLogs.find((l) => l.id === id);
-                        if (log) openGeneratorEditor(log, gen.hourKey);
-                      }}
-                      onDelete={(id) => removeGenerator(id, gen.hourKey)}
-                    />
-                  );
-                })}
-              </>
-            )}
-          </Card>
-          {!generatorModalOpen ? (
-            <RecordLink label="Log generators" onPress={() => openGeneratorEditor()} />
-          ) : null}
+          {(data.generatorLogs ?? []).every(
+            (log) =>
+              log.gen1Hours == null &&
+              log.gen2Hours == null &&
+              log.gen3Hours == null &&
+              log.gen4Hours == null,
+          ) ? (
+            <Text style={styles.muted}>None yet</Text>
+          ) : (
+            <>
+              {GENERATOR_FIELD_DEFS.map((gen) => {
+                const allLogs = data.generatorLogs ?? [];
+                const genLogs = allLogs
+                  .filter((log) => log[gen.hourKey] != null)
+                  .slice(0, MAX_GENERATOR_LOGS_DISPLAY);
+                if (genLogs.length === 0) return null;
+                const rows: GeneratorChartRow[] = genLogs.map((log, index) => {
+                  const previous = genLogs[index + 1] ?? null;
+                  const [y, m, d] = log.logDate.split("-").map(Number);
+                  return {
+                    id: log.id,
+                    dateLabel: `${m}-${d}-${y}`,
+                    hours: log[gen.hourKey] as number,
+                    exercised: hoursDelta(log[gen.hourKey], previous?.[gen.hourKey]),
+                  };
+                });
+                return (
+                  <GeneratorHoursChart
+                    key={gen.key}
+                    title={gen.label}
+                    rows={rows}
+                    onEdit={(id) => {
+                      const log = allLogs.find((l) => l.id === id);
+                      if (log) openGeneratorEditor(log, gen.hourKey);
+                    }}
+                    onDelete={(id) => removeGenerator(id, gen.hourKey)}
+                  />
+                );
+              })}
+            </>
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
         {/* ── Issues ── */}
         <View onLayout={onSectionLayout("issues")}>
-          <SectionHeading title="Recent Issues" onTop={scrollPageToTop} />
-          <Card>
-            {data.issues.length === 0 ? (
-              <Text style={styles.muted}>None yet</Text>
-            ) : (
-              data.issues.map((issue, i) => (
-                <View
-                  key={issue.id}
-                  style={{
-                    marginTop: i === 0 ? 0 : 10,
-                    paddingTop: i === 0 ? 0 : 10,
-                    borderTopWidth: i === 0 ? 0 : 1,
-                    borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                  }}
-                >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontWeight: "700" }}>
-                      {formatShortDate(issue.dateReported)} · {issue.priority}
-                      <Text style={{ fontWeight: "600", color: colors.muted }}>
-                        {" "}
-                        · {issue.status}
-                      </Text>
-                    </Text>
-                    <Text style={{ marginTop: 2 }}>
-                      {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}:{" "}
-                      {issue.description}
-                    </Text>
-                  </View>
-                  <RowActions
-                    editLabel="Edit issue"
-                    deleteLabel="Delete issue"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/issues/[issueId]",
-                        params: { id: farm.id, issueId: issue.id },
-                      })
-                    }
-                    onDelete={() => removeIssue(issue.id)}
-                  />
-                </View>
-              ))
-            )}
-          </Card>
-          <RecordLink
-            label="Report issue"
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/report-issue",
-                params: { id: farm.id },
-              })
+          <SectionHeading
+            title="Recent Issues"
+            right={
+              <RecordLink
+                label="Report issue"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/report-issue",
+                    params: { id: farm.id },
+                  })
+                }
+              />
             }
           />
+          {data.issues.length === 0 ? (
+            <Text style={styles.muted}>None yet</Text>
+          ) : (
+            data.issues.map((issue, i) => (
+              <View
+                key={issue.id}
+                style={{
+                  marginTop: i === 0 ? 0 : 10,
+                  paddingTop: i === 0 ? 0 : 10,
+                  borderTopWidth: i === 0 ? 0 : 1,
+                  borderTopColor: "#f5f5f4",
+                  flexDirection: "row",
+                  gap: 8,
+                }}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontWeight: "700" }}>
+                    {formatShortDate(issue.dateReported)} · {issue.priority}
+                    <Text style={{ fontWeight: "600", color: colors.muted }}>
+                      {" "}
+                      · {issue.status}
+                    </Text>
+                  </Text>
+                  <Text style={{ marginTop: 2 }}>
+                    {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}:{" "}
+                    {issue.description}
+                  </Text>
+                </View>
+                <RowActions
+                  editLabel="Edit issue"
+                  deleteLabel="Delete issue"
+                  onEdit={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/issues/[issueId]",
+                      params: { id: farm.id, issueId: issue.id },
+                    })
+                  }
+                  onDelete={() => removeIssue(issue.id)}
+                />
+              </View>
+            ))
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
         {/* ── Litter ── */}
         <View onLayout={onSectionLayout("litter")}>
-          <SectionHeading title="Litter Events" onTop={scrollPageToTop} />
-          <Card>
-            {data.litterEvents.length === 0 ? (
-              <Text style={styles.muted}>None yet</Text>
-            ) : (
-              data.litterEvents.map((e, i) => (
-                <View
-                  key={e.id}
-                  style={{
-                    marginTop: i === 0 ? 0 : 10,
-                    paddingTop: i === 0 ? 0 : 10,
-                    borderTopWidth: i === 0 ? 0 : 1,
-                    borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                  }}
-                >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontWeight: "700" }}>
-                      {formatShortDate(e.eventDate)} —{" "}
-                      {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
-                      {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
-                    </Text>
-                    {e.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{e.notes}</Text> : null}
-                  </View>
-                  <RowActions
-                    editLabel="Edit litter event"
-                    deleteLabel="Delete litter event"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/litter/[eventId]",
-                        params: { id: farm.id, eventId: e.id },
-                      })
-                    }
-                    onDelete={() => removeLitter(e.id)}
-                  />
-                </View>
-              ))
-            )}
-          </Card>
-          <RecordLink
-            label="Record litter event"
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/record-litter",
-                params: { id: farm.id },
-              })
+          <SectionHeading
+            title="Litter Events"
+            right={
+              <RecordLink
+                label="Record litter event"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/record-litter",
+                    params: { id: farm.id },
+                  })
+                }
+              />
             }
           />
+          {data.litterEvents.length === 0 ? (
+            <Text style={styles.muted}>None yet</Text>
+          ) : (
+            data.litterEvents.map((e, i) => (
+              <View
+                key={e.id}
+                style={{
+                  marginTop: i === 0 ? 0 : 10,
+                  paddingTop: i === 0 ? 0 : 10,
+                  borderTopWidth: i === 0 ? 0 : 1,
+                  borderTopColor: "#f5f5f4",
+                  flexDirection: "row",
+                  gap: 8,
+                }}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontWeight: "700" }}>
+                    {formatShortDate(e.eventDate)} —{" "}
+                    {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
+                    {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
+                  </Text>
+                  {e.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{e.notes}</Text> : null}
+                </View>
+                <RowActions
+                  editLabel="Edit litter event"
+                  deleteLabel="Delete litter event"
+                  onEdit={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/litter/[eventId]",
+                      params: { id: farm.id, eventId: e.id },
+                    })
+                  }
+                  onDelete={() => removeLitter(e.id)}
+                />
+              </View>
+            ))
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
         {/* ── Feed ── */}
         <View onLayout={onSectionLayout("feed")}>
-          <SectionHeading title="Feed Deliveries" onTop={scrollPageToTop} />
-          <Card>
-            {data.feedDeliveries.length === 0 ? (
-              <Text style={styles.muted}>None yet</Text>
-            ) : (
-              data.feedDeliveries.map((d, i) => (
-                <View
-                  key={d.id}
-                  style={{
-                    marginTop: i === 0 ? 0 : 10,
-                    paddingTop: i === 0 ? 0 : 10,
-                    borderTopWidth: i === 0 ? 0 : 1,
-                    borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                  }}
-                >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontWeight: "700" }}>
-                      {formatShortDate(d.deliveryDate)} — {formatNumber(d.poundsDelivered)} lbs
-                      {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
-                      {d.feedType ? ` · ${d.feedType}` : ""}
-                      {d.feedMill ? ` · ${d.feedMill}` : ""}
-                    </Text>
-                  </View>
-                  <RowActions
-                    editLabel="Edit feed delivery"
-                    deleteLabel="Delete feed delivery"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/feed/[deliveryId]",
-                        params: { id: farm.id, deliveryId: d.id },
-                      })
-                    }
-                    onDelete={() => removeFeed(d.id)}
-                  />
-                </View>
-              ))
-            )}
-          </Card>
-          <RecordLink
-            label="Record feed delivery"
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/record-feed",
-                params: { id: farm.id },
-              })
+          <SectionHeading
+            title="Feed Deliveries"
+            right={
+              <RecordLink
+                label="Record feed delivery"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/record-feed",
+                    params: { id: farm.id },
+                  })
+                }
+              />
             }
           />
+          {data.feedDeliveries.length === 0 ? (
+            <Text style={styles.muted}>None yet</Text>
+          ) : (
+            data.feedDeliveries.map((d, i) => (
+              <View
+                key={d.id}
+                style={{
+                  marginTop: i === 0 ? 0 : 10,
+                  paddingTop: i === 0 ? 0 : 10,
+                  borderTopWidth: i === 0 ? 0 : 1,
+                  borderTopColor: "#f5f5f4",
+                  flexDirection: "row",
+                  gap: 8,
+                }}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontWeight: "700" }}>
+                    {formatShortDate(d.deliveryDate)} — {formatNumber(d.poundsDelivered)} lbs
+                    {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
+                    {d.feedType ? ` · ${d.feedType}` : ""}
+                    {d.feedMill ? ` · ${d.feedMill}` : ""}
+                  </Text>
+                </View>
+                <RowActions
+                  editLabel="Edit feed delivery"
+                  deleteLabel="Delete feed delivery"
+                  onEdit={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/feed/[deliveryId]",
+                      params: { id: farm.id, deliveryId: d.id },
+                    })
+                  }
+                  onDelete={() => removeFeed(d.id)}
+                />
+              </View>
+            ))
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
       </ScrollView>

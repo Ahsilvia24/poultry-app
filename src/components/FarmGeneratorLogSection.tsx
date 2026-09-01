@@ -10,6 +10,7 @@ import {
 } from "@/app/actions/ops";
 import { Button, Card, Input, Label } from "@/components/ui";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
+import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSectionChrome";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import {
   detectGeneratorHourSwap,
@@ -510,16 +511,6 @@ export function FarmGeneratorLogSection({
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  function closeSection() {
-    setOpen(false);
-    setFormOpen(false);
-    setEditingId(null);
-    setEditingGen(null);
-    if (generatorsHashActive()) {
-      history.replaceState(null, "", window.location.pathname + window.location.search);
-    }
-  }
-
   function afterSaved() {
     setFormOpen(false);
     setEditingId(null);
@@ -566,21 +557,18 @@ export function FarmGeneratorLogSection({
 
   return (
     <div id="generators" className="scroll-mt-24">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="min-w-0 flex-1 font-bold">Generator Log</h3>
-        <div className="flex shrink-0 items-center gap-3">
-          {chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
-          <button
-            type="button"
-            onClick={closeSection}
-            className="text-sm font-semibold text-stone-500 hover:text-stone-800"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-      <Card>
-        {editingLog && editingGen ? (
+      <FarmLogSectionHeader
+        title="Generator Log"
+        extraRight={chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
+        logLabel="Log generators"
+        onLog={() => {
+          setEditingId(null);
+          setEditingGen(null);
+          setFormOpen((open) => !open);
+        }}
+      />
+      {editingLog && editingGen ? (
+        <Card className="mb-3">
           <GeneratorLogForm
             farmId={farmId}
             recordId={editingLog.id}
@@ -593,49 +581,35 @@ export function FarmGeneratorLogSection({
               setEditingGen(null);
             }}
           />
-        ) : null}
+        </Card>
+      ) : null}
 
-        {!hasAnyChartRows ? (
-          <p className="text-sm text-stone-500">None yet</p>
-        ) : (
-          <div className="grid gap-2 sm:grid-cols-2">
-            {chartRowsByGen
-              .filter((gen) => gen.rows.length > 0)
-              .map((gen) => (
-              <GeneratorHoursChart
-                key={gen.key}
-                title={gen.label}
-                rows={gen.rows}
-                onEdit={(id) => {
-                  setFormOpen(false);
-                  setEditingId(id);
-                  setEditingGen(gen.hourKey);
-                }}
-                onDelete={async (id) => {
-                  await deleteGeneratorLogAction(id, gen.hourKey);
-                  router.refresh();
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {!formOpen ? (
-        <div className="mt-3 text-right">
-          <button
-            type="button"
-            onClick={() => {
-              setEditingId(null);
-              setEditingGen(null);
-              setFormOpen(true);
-            }}
-            className="text-sm text-emerald-800 hover:underline"
-          >
-            Log generators
-          </button>
-        </div>
+      {!hasAnyChartRows ? (
+        <p className="text-sm text-stone-500">None yet</p>
       ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {chartRowsByGen
+            .filter((gen) => gen.rows.length > 0)
+            .map((gen) => (
+            <GeneratorHoursChart
+              key={gen.key}
+              title={gen.label}
+              rows={gen.rows}
+              onEdit={(id) => {
+                setFormOpen(false);
+                setEditingId(id);
+                setEditingGen(gen.hourKey);
+              }}
+              onDelete={async (id) => {
+                await deleteGeneratorLogAction(id, gen.hourKey);
+                router.refresh();
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {formOpen ? (
         <Card className="mt-3">
           <GeneratorLogForm
             farmId={farmId}
@@ -644,7 +618,8 @@ export function FarmGeneratorLogSection({
             onCancel={() => setFormOpen(false)}
           />
         </Card>
-      )}
+      ) : null}
+      <FarmLogSectionTop />
     </div>
   );
 }

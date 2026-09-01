@@ -9,6 +9,7 @@ import {
   type FeedDeliveryFormValues,
   type FeedFarmOption,
 } from "@/components/FeedDeliveryForm";
+import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSectionChrome";
 import { Card } from "@/components/ui";
 import { formatNumber } from "@/lib/utils";
 
@@ -48,15 +49,6 @@ export function FarmFeedSection({
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  function closeSection() {
-    setOpen(false);
-    setFormOpen(false);
-    setEditingId(null);
-    if (feedHashActive()) {
-      history.replaceState(null, "", window.location.pathname + window.location.search);
-    }
-  }
-
   function afterSaved() {
     setFormOpen(false);
     setEditingId(null);
@@ -74,94 +66,67 @@ export function FarmFeedSection({
 
   return (
     <div id="feed" className="scroll-mt-24">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="min-w-0 flex-1 font-bold">Feed Deliveries</h3>
-        <button
-          type="button"
-          onClick={closeSection}
-          className="shrink-0 text-sm font-semibold text-stone-500 hover:text-stone-800"
-        >
-          Close
-        </button>
-      </div>
-      <Card>
-        <ul className="space-y-2 text-sm">
-          {deliveries.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-          {deliveries.map((d) => (
-            <li key={d.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <span className="font-semibold">
-                    {format(new Date(d.deliveryDate + "T12:00:00"), "MMM d, yyyy")}
-                  </span>
-                  {" — "}
-                  {formatNumber(d.poundsDelivered)} lbs
-                  {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
-                  {d.feedType ? ` · ${d.feedType}` : ""}
-                  {d.feedMill ? ` · ${d.feedMill}` : ""}
-                </div>
-                <div className="flex shrink-0 items-center gap-0.5">
-                  <EditRecordButton
-                    label="Edit feed delivery"
-                    active={editingId === d.id}
-                    onClick={() => {
-                      setFormOpen(false);
-                      setEditingId((id) => (id === d.id ? null : d.id));
-                    }}
-                  />
-                  <DeleteRecordButton
-                    label="Delete feed delivery"
-                    onDelete={() => deleteFeedDeliveryAction(d.id)}
-                  />
-                </div>
+      <FarmLogSectionHeader
+        title="Feed Deliveries"
+        logLabel="Record feed delivery"
+        onLog={() => {
+          setEditingId(null);
+          setFormOpen((open) => !open);
+        }}
+      />
+      <ul className="space-y-2 text-sm">
+        {deliveries.length === 0 ? <li className="text-stone-500">None yet</li> : null}
+        {deliveries.map((d) => (
+          <li key={d.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span className="font-semibold">
+                  {format(new Date(d.deliveryDate + "T12:00:00"), "MMM d, yyyy")}
+                </span>
+                {" — "}
+                {formatNumber(d.poundsDelivered)} lbs
+                {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
+                {d.feedType ? ` · ${d.feedType}` : ""}
+                {d.feedMill ? ` · ${d.feedMill}` : ""}
               </div>
-              {editingId === d.id ? (
-                <FeedDeliveryForm
-                  lockedFarmId={farmId}
-                  farms={farms}
-                  recordId={d.id}
-                  initial={d}
-                  onSuccess={afterSaved}
+              <div className="flex shrink-0 items-center gap-0.5">
+                <EditRecordButton
+                  label="Edit feed delivery"
+                  active={editingId === d.id}
+                  onClick={() => {
+                    setFormOpen(false);
+                    setEditingId((id) => (id === d.id ? null : d.id));
+                  }}
                 />
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </Card>
+                <DeleteRecordButton
+                  label="Delete feed delivery"
+                  onDelete={() => deleteFeedDeliveryAction(d.id)}
+                />
+              </div>
+            </div>
+            {editingId === d.id ? (
+              <FeedDeliveryForm
+                lockedFarmId={farmId}
+                farms={farms}
+                recordId={d.id}
+                initial={d}
+                onSuccess={afterSaved}
+              />
+            ) : null}
+          </li>
+        ))}
+      </ul>
 
-      {!formOpen ? (
-        <div className="mt-3 text-right">
-          <button
-            type="button"
-            onClick={() => {
-              setEditingId(null);
-              setFormOpen(true);
-            }}
-            className="text-sm text-emerald-800 hover:underline"
-          >
-            Record feed delivery
-          </button>
-        </div>
-      ) : (
-        <div className="mt-3">
-          <div className="text-right">
-            <button
-              type="button"
-              onClick={() => setFormOpen(false)}
-              className="text-sm text-emerald-800 hover:underline"
-            >
-              Record feed delivery
-            </button>
-          </div>
-          <Card className="mt-3">
-            <FeedDeliveryForm
-              lockedFarmId={farmId}
-              farms={farms}
-              onSuccess={afterSaved}
-            />
-          </Card>
-        </div>
-      )}
+      {formOpen ? (
+        <Card className="mt-3">
+          <FeedDeliveryForm
+            lockedFarmId={farmId}
+            farms={farms}
+            onSuccess={afterSaved}
+          />
+        </Card>
+      ) : null}
+      <FarmLogSectionTop />
     </div>
   );
 }
