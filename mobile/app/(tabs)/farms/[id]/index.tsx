@@ -613,11 +613,11 @@ export default function FarmDetailScreen() {
   const [generatorError, setGeneratorError] = useState<string | null>(null);
   const [generatorEditingId, setGeneratorEditingId] = useState<string | null>(null);
   const [generatorEditingGen, setGeneratorEditingGen] = useState<GenHourKey | null>(null);
-  const [opsConfirm, setOpsConfirm] = useState<
-    | { kind: "house"; houseId: string; houseNumber: number }
-    | { kind: "generator"; logId: string; hourKey: GenHourKey; label: string }
-    | null
-  >(null);
+  const [opsConfirm, setOpsConfirm] = useState<{
+    kind: "house";
+    houseId: string;
+    houseNumber: number;
+  } | null>(null);
   const [opsError, setOpsError] = useState<string | null>(null);
   const [completeConfirm, setCompleteConfirm] = useState<{
     flockId: string;
@@ -1181,11 +1181,19 @@ export default function FarmDetailScreen() {
     }
   }
 
+  function removeGenerator(logId: string, hourKey: GenHourKey) {
+    try {
+      deleteGeneratorLog(farm.id, logId, hourKey);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
   function runOpsConfirm() {
     if (!opsConfirm) return;
     try {
-      if (opsConfirm.kind === "house") deleteHouse(farm.id, opsConfirm.houseId);
-      else deleteGeneratorLog(farm.id, opsConfirm.logId, opsConfirm.hourKey);
+      deleteHouse(farm.id, opsConfirm.houseId);
       load();
     } catch (e) {
       setOpsError(e instanceof Error ? e.message : "Could not delete");
@@ -2013,14 +2021,7 @@ export default function FarmDetailScreen() {
                         const log = allLogs.find((l) => l.id === id);
                         if (log) openGeneratorEditor(log, gen.hourKey);
                       }}
-                      onDelete={(id) =>
-                        setOpsConfirm({
-                          kind: "generator",
-                          logId: id,
-                          hourKey: gen.hourKey,
-                          label: gen.label,
-                        })
-                      }
+                      onDelete={(id) => removeGenerator(id, gen.hourKey)}
                     />
                   );
                 })}
@@ -2935,19 +2936,11 @@ export default function FarmDetailScreen() {
       <ConfirmDialog
         visible={opsConfirm != null}
         title={
-          opsConfirm?.kind === "house"
+          opsConfirm
             ? `Delete house ${opsConfirm.houseNumber}?`
-            : opsConfirm?.kind === "generator"
-              ? `Delete ${opsConfirm.label} entry?`
-              : "Delete?"
+            : "Delete?"
         }
-        message={
-          opsConfirm?.kind === "house"
-            ? "This removes the house from the farm. It will no longer appear in your lists."
-            : opsConfirm?.kind === "generator"
-              ? "Only this generator reading will be removed. Other generators on this date stay."
-              : "This cannot be undone."
-        }
+        message="This removes the house from the farm. It will no longer appear in your lists."
         confirmLabel="Delete"
         danger
         onConfirm={runOpsConfirm}
