@@ -127,11 +127,18 @@ export default function SettingsScreen() {
           <View
             style={{
               flexDirection: "row",
-              alignItems: "center",
+              alignItems: "flex-start",
               gap: 8,
             }}
           >
-            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>
+            <Text
+              style={{
+                fontSize: 17,
+                fontWeight: "700",
+                color: colors.text,
+                paddingTop: 8,
+              }}
+            >
               Order Farms By:
             </Text>
             <View style={{ flex: 1, minWidth: 0 }}>

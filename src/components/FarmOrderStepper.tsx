@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const ROW_H = 36;
-
 export function FarmOrderStepper({
   name,
   defaultValue,
@@ -13,81 +11,90 @@ export function FarmOrderStepper({
   defaultValue: string;
   options: Array<{ key: string; label: string }>;
 }) {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const settleTimer = useRef<number | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
   const [value, setValue] = useState(defaultValue);
-  const index = Math.max(
-    0,
-    options.findIndex((option) => option.key === value),
-  );
-  const last = Math.max(0, options.length - 1);
+  const selected = options.find((option) => option.key === value) ?? options[0];
 
   useEffect(() => {
-    scrollerRef.current?.scrollTo({ top: index * ROW_H, behavior: "auto" });
-  }, [index]);
-
-  function onScrollSettled() {
-    if (settleTimer.current != null) window.clearTimeout(settleTimer.current);
-    settleTimer.current = window.setTimeout(() => {
-      const node = scrollerRef.current;
-      if (!node) return;
-      const next = Math.min(last, Math.max(0, Math.round(node.scrollTop / ROW_H)));
-      const option = options[next];
-      if (option && option.key !== value) setValue(option.key);
-      node.scrollTo({ top: next * ROW_H, behavior: "smooth" });
-    }, 80);
-  }
+    if (!open) return;
+    function onPointerDown(event: MouseEvent) {
+      if (rootRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open]);
 
   return (
-    <div className="flex min-w-0 flex-1 items-center">
+    <div ref={rootRef} className="relative min-w-0 flex-1">
       <input type="hidden" name={name} value={value} />
-      <div
-        ref={scrollerRef}
-        role="listbox"
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="listbox"
         aria-label="Order farms by"
-        tabIndex={0}
-        onScroll={onScrollSettled}
-        className="h-9 min-w-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-        style={{ scrollSnapType: "y mandatory" }}
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex min-h-9 w-full items-center text-left"
       >
-        {options.map((option) => (
-          <div
-            key={option.key}
-            role="option"
-            aria-selected={option.key === value}
-            className="flex h-9 items-center text-base font-semibold text-stone-900"
-            style={{ scrollSnapAlign: "start" }}
-          >
-            {option.label}
-          </div>
-        ))}
-      </div>
-      <div className="ml-1 flex flex-col" aria-hidden="true">
-        <span className={`flex h-4 items-center justify-center ${index > 0 ? "text-stone-900" : "text-stone-300"}`}>
-          <svg width="14" height="14" viewBox="0 0 24 24">
-            <path
-              d="M6 15l6-6 6 6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+        <span className="min-w-0 flex-1 truncate text-base font-semibold text-stone-900">
+          {selected?.label}
         </span>
-        <span className={`flex h-4 items-center justify-center ${index < last ? "text-stone-900" : "text-stone-300"}`}>
-          <svg width="14" height="14" viewBox="0 0 24 24">
-            <path
-              d="M6 9l6 6 6-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+        <span className="ml-1 flex flex-col" aria-hidden="true">
+          <span className="flex h-4 items-center justify-center text-stone-900">
+            <svg width="14" height="14" viewBox="0 0 24 24">
+              <path
+                d="M6 15l6-6 6 6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <span className="flex h-4 items-center justify-center text-stone-900">
+            <svg width="14" height="14" viewBox="0 0 24 24">
+              <path
+                d="M6 9l6 6 6-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
         </span>
-      </div>
+      </button>
+      {open ? (
+        <ul
+          role="listbox"
+          className="absolute left-0 right-0 z-20 mt-0.5 max-h-36 overflow-y-auto overscroll-contain rounded-[10px] border border-stone-200 bg-white py-0.5 shadow-md [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {options.map((option) => {
+            const active = option.key === value;
+            return (
+              <li key={option.key}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => {
+                    setValue(option.key);
+                    setOpen(false);
+                  }}
+                  className={`flex min-h-9 w-full items-center px-2.5 text-left text-base ${
+                    active ? "bg-emerald-50/70 font-extrabold" : "font-semibold"
+                  } text-stone-900`}
+                >
+                  {option.label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
     </div>
   );
 }

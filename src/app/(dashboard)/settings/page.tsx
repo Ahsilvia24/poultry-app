@@ -131,8 +131,8 @@ export default async function SettingsPage() {
                   required
                 />
               </div>
-              <div className="flex items-center gap-2 sm:col-span-2">
-                <p className="shrink-0 text-sm font-semibold text-stone-800">Order Farms By:</p>
+              <div className="flex items-start gap-2 sm:col-span-2">
+                <p className="shrink-0 pt-2 text-sm font-semibold text-stone-800">Order Farms By:</p>
                 <FarmOrderStepper
                   name="farmOrder"
                   defaultValue={parseFarmOrder(s?.farmOrder)}

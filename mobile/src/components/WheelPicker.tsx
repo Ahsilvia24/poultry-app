@@ -1,20 +1,13 @@
-import { useEffect, useRef } from "react";
-import {
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Platform,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme";
 
 const ROW_H = 36;
 
 /**
- * One-row scroll picker: only the selected value is visible.
- * Flick/scroll to change; chevrons on the right are the Apple affordance, not buttons.
+ * Closed: selected value + up/down chevrons, on one line.
+ * Open: scrollable list; tap a row to choose and close.
  */
 export function WheelPicker<T extends string>({
   options,
@@ -25,99 +18,100 @@ export function WheelPicker<T extends string>({
   value: T;
   onChange: (value: T) => void;
 }) {
-  const scrollRef = useRef<ScrollView>(null);
-  const index = Math.max(
-    0,
-    options.findIndex((option) => option.value === value),
-  );
-  const last = Math.max(0, options.length - 1);
-  const canUp = index > 0;
-  const canDown = index < last;
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      scrollRef.current?.scrollTo({ y: index * ROW_H, animated: false });
-    }, 0);
-    return () => clearTimeout(t);
-  }, [index]);
-
-  function commitOffset(y: number) {
-    const next = Math.min(last, Math.max(0, Math.round(y / ROW_H)));
-    const option = options[next];
-    if (option && option.value !== value) onChange(option.value);
-    scrollRef.current?.scrollTo({ y: next * ROW_H, animated: true });
-  }
-
-  function onScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    commitOffset(e.nativeEvent.contentOffset.y);
-  }
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.value === value) ?? options[0];
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", minHeight: ROW_H }}>
-      <View
+    <View style={{ zIndex: open ? 20 : 1 }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Order farms by"
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen((prev) => !prev)}
         style={{
-          flex: 1,
-          minWidth: 0,
-          height: ROW_H,
-          overflow: "hidden",
+          flexDirection: "row",
+          alignItems: "center",
+          minHeight: ROW_H,
         }}
       >
-        <ScrollView
-          ref={scrollRef}
-          nestedScrollEnabled
-          showsVerticalScrollIndicator={false}
-          snapToInterval={ROW_H}
-          snapToAlignment="start"
-          disableIntervalMomentum
-          decelerationRate="fast"
-          onMomentumScrollEnd={onScrollEnd}
-          onScrollEndDrag={onScrollEnd}
-          scrollEventThrottle={16}
-          style={
-            Platform.OS === "web"
-              ? ({
-                  height: ROW_H,
-                  overflowY: "auto",
-                  scrollSnapType: "y mandatory",
-                } as object)
-              : { height: ROW_H }
-          }
+        <Text
+          numberOfLines={1}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: 17,
+            fontWeight: "600",
+            color: colors.text,
+          }}
         >
-          {options.map((option) => (
-            <View
-              key={option.value}
-              style={
-                Platform.OS === "web"
-                  ? ({
-                      height: ROW_H,
-                      justifyContent: "center",
-                      scrollSnapAlign: "start",
-                    } as object)
-                  : { height: ROW_H, justifyContent: "center" }
-              }
-            >
-              <Text
-                numberOfLines={1}
-                style={{
-                  fontSize: 17,
-                  fontWeight: "600",
-                  color: colors.text,
-                }}
-              >
-                {option.label}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-      <View pointerEvents="none" style={{ marginLeft: 4 }}>
-        <View style={{ height: 16, alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name="chevron-up" size={14} color={canUp ? colors.text : "#d6d3d1"} />
+          {selected?.label ?? ""}
+        </Text>
+        <View pointerEvents="none" style={{ marginLeft: 4 }}>
+          <View style={{ height: 16, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="chevron-up" size={14} color={colors.text} />
+          </View>
+          <View style={{ height: 16, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="chevron-down" size={14} color={colors.text} />
+          </View>
         </View>
-        <View style={{ height: 16, alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name="chevron-down" size={14} color={canDown ? colors.text : "#d6d3d1"} />
+      </Pressable>
+
+      {open ? (
+        <View
+          style={{
+            marginTop: 2,
+            maxHeight: ROW_H * 4,
+            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: "#fff",
+            overflow: "hidden",
+            shadowColor: "#000",
+            shadowOpacity: 0.08,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 3,
+          }}
+        >
+          <ScrollView
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            decelerationRate="fast"
+            bounces
+          >
+            {options.map((option) => {
+              const active = option.value === value;
+              return (
+                <Pressable
+                  key={option.value}
+                  onPress={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  style={{
+                    minHeight: ROW_H,
+                    justifyContent: "center",
+                    paddingHorizontal: 10,
+                    backgroundColor: active ? "rgba(4, 120, 87, 0.07)" : "#fff",
+                  }}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontSize: 17,
+                      fontWeight: active ? "800" : "600",
+                      color: colors.text,
+                    }}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
-      </View>
+      ) : null}
     </View>
   );
 }
