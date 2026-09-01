@@ -170,6 +170,7 @@ function SectionHeading({
         alignItems: "center",
         justifyContent: "space-between",
         gap: 8,
+        marginBottom: 8,
       }}
     >
       <Text style={{ fontWeight: "800", fontSize: 16, flex: 1, minWidth: 0 }}>{title}</Text>
@@ -1736,18 +1737,18 @@ export default function FarmDetailScreen() {
 
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
+          <SectionHeading title="Recent Visits" onTop={scrollPageToTop} />
           <Card>
-            <SectionHeading title="Recent Visits" onTop={scrollPageToTop} />
             {data.visits.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
+              <Text style={styles.muted}>None yet</Text>
             ) : (
-              data.visits.map((v) => (
+              data.visits.map((v, i) => (
                 <View
                   key={v.id}
                   style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
+                    marginTop: i === 0 ? 0 : 10,
+                    paddingTop: i === 0 ? 0 : 10,
+                    borderTopWidth: i === 0 ? 0 : 1,
                     borderTopColor: "#f5f5f4",
                   }}
                 >
@@ -1795,60 +1796,60 @@ export default function FarmDetailScreen() {
 
         {/* ── Generator log ── */}
         <View onLayout={onSectionLayout("generators")}>
-          <Card>
-            <SectionHeading
-              title="Generator Log"
-              onTop={scrollPageToTop}
-              right={
-                (data.generatorLogs ?? []).some(
-                  (log) =>
-                    log.gen1Hours != null ||
-                    log.gen2Hours != null ||
-                    log.gen3Hours != null ||
-                    log.gen4Hours != null,
-                ) ? (
-                  <ClipboardIconButton
-                    accessibilityLabel="Copy generator log"
-                    color={colors.accentDark}
-                    getText={() => {
-                      const allLogs = data.generatorLogs ?? [];
-                      return formatGeneratorChartsCopy(
-                        allLogs.map((log) => {
-                          const hours: GeneratorHours = {
-                            gen1Hours: log.gen1Hours,
-                            gen2Hours: log.gen2Hours,
-                            gen3Hours: log.gen3Hours,
-                            gen4Hours: log.gen4Hours,
-                          };
-                          const priorFor = (hourKey: GenHourKey) => {
-                            let seen = false;
-                            for (const candidate of allLogs) {
-                              if (!seen) {
-                                if (candidate.id === log.id) seen = true;
-                                continue;
-                              }
-                              if (candidate[hourKey] != null) return candidate[hourKey];
+          <SectionHeading
+            title="Generator Log"
+            onTop={scrollPageToTop}
+            right={
+              (data.generatorLogs ?? []).some(
+                (log) =>
+                  log.gen1Hours != null ||
+                  log.gen2Hours != null ||
+                  log.gen3Hours != null ||
+                  log.gen4Hours != null,
+              ) ? (
+                <ClipboardIconButton
+                  accessibilityLabel="Copy generator log"
+                  color={colors.accentDark}
+                  getText={() => {
+                    const allLogs = data.generatorLogs ?? [];
+                    return formatGeneratorChartsCopy(
+                      allLogs.map((log) => {
+                        const hours: GeneratorHours = {
+                          gen1Hours: log.gen1Hours,
+                          gen2Hours: log.gen2Hours,
+                          gen3Hours: log.gen3Hours,
+                          gen4Hours: log.gen4Hours,
+                        };
+                        const priorFor = (hourKey: GenHourKey) => {
+                          let seen = false;
+                          for (const candidate of allLogs) {
+                            if (!seen) {
+                              if (candidate.id === log.id) seen = true;
+                              continue;
                             }
-                            return null;
-                          };
-                          const [y, m, d] = log.logDate.split("-").map(Number);
-                          return {
-                            dateLabel: `${m}-${d}-${y}`,
-                            hours,
-                            deltas: {
-                              gen1: hoursDelta(log.gen1Hours, priorFor("gen1Hours")),
-                              gen2: hoursDelta(log.gen2Hours, priorFor("gen2Hours")),
-                              gen3: hoursDelta(log.gen3Hours, priorFor("gen3Hours")),
-                              gen4: hoursDelta(log.gen4Hours, priorFor("gen4Hours")),
-                            },
-                          };
-                        }),
-                      );
-                    }}
-                  />
-                ) : null
-              }
-            />
+                            if (candidate[hourKey] != null) return candidate[hourKey];
+                          }
+                          return null;
+                        };
+                        const [y, m, d] = log.logDate.split("-").map(Number);
+                        return {
+                          dateLabel: `${m}-${d}-${y}`,
+                          hours,
+                          deltas: {
+                            gen1: hoursDelta(log.gen1Hours, priorFor("gen1Hours")),
+                            gen2: hoursDelta(log.gen2Hours, priorFor("gen2Hours")),
+                            gen3: hoursDelta(log.gen3Hours, priorFor("gen3Hours")),
+                            gen4: hoursDelta(log.gen4Hours, priorFor("gen4Hours")),
+                          },
+                        };
+                      }),
+                    );
+                  }}
+                />
+              ) : null
+            }
+          />
+          <Card>
             {(data.generatorLogs ?? []).every(
               (log) =>
                 log.gen1Hours == null &&
@@ -1856,7 +1857,7 @@ export default function FarmDetailScreen() {
                 log.gen3Hours == null &&
                 log.gen4Hours == null,
             ) ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
+              <Text style={styles.muted}>None yet</Text>
             ) : (
               <>
                 {GENERATOR_FIELD_DEFS.map((gen) => {
@@ -1898,18 +1899,18 @@ export default function FarmDetailScreen() {
 
         {/* ── Issues ── */}
         <View onLayout={onSectionLayout("issues")}>
+          <SectionHeading title="Recent Issues" onTop={scrollPageToTop} />
           <Card>
-            <SectionHeading title="Recent Issues" onTop={scrollPageToTop} />
             {data.issues.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
+              <Text style={styles.muted}>None yet</Text>
             ) : (
-              data.issues.map((issue) => (
+              data.issues.map((issue, i) => (
                 <View
                   key={issue.id}
                   style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
+                    marginTop: i === 0 ? 0 : 10,
+                    paddingTop: i === 0 ? 0 : 10,
+                    borderTopWidth: i === 0 ? 0 : 1,
                     borderTopColor: "#f5f5f4",
                     flexDirection: "row",
                     gap: 8,
@@ -1956,18 +1957,18 @@ export default function FarmDetailScreen() {
 
         {/* ── Litter ── */}
         <View onLayout={onSectionLayout("litter")}>
+          <SectionHeading title="Litter Events" onTop={scrollPageToTop} />
           <Card>
-            <SectionHeading title="Litter Events" onTop={scrollPageToTop} />
             {data.litterEvents.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
+              <Text style={styles.muted}>None yet</Text>
             ) : (
-              data.litterEvents.map((e) => (
+              data.litterEvents.map((e, i) => (
                 <View
                   key={e.id}
                   style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
+                    marginTop: i === 0 ? 0 : 10,
+                    paddingTop: i === 0 ? 0 : 10,
+                    borderTopWidth: i === 0 ? 0 : 1,
                     borderTopColor: "#f5f5f4",
                     flexDirection: "row",
                     gap: 8,
@@ -2009,18 +2010,18 @@ export default function FarmDetailScreen() {
 
         {/* ── Feed ── */}
         <View onLayout={onSectionLayout("feed")}>
+          <SectionHeading title="Feed Deliveries" onTop={scrollPageToTop} />
           <Card>
-            <SectionHeading title="Feed Deliveries" onTop={scrollPageToTop} />
             {data.feedDeliveries.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
+              <Text style={styles.muted}>None yet</Text>
             ) : (
-              data.feedDeliveries.map((d) => (
+              data.feedDeliveries.map((d, i) => (
                 <View
                   key={d.id}
                   style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
+                    marginTop: i === 0 ? 0 : 10,
+                    paddingTop: i === 0 ? 0 : 10,
+                    borderTopWidth: i === 0 ? 0 : 1,
                     borderTopColor: "#f5f5f4",
                     flexDirection: "row",
                     gap: 8,

@@ -74,18 +74,18 @@ export function FarmFeedSection({
 
   return (
     <div id="feed" className="scroll-mt-24">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="min-w-0 flex-1 font-bold">Feed Deliveries</h3>
+        <button
+          type="button"
+          onClick={closeSection}
+          className="shrink-0 text-sm font-semibold text-stone-500 hover:text-stone-800"
+        >
+          Close
+        </button>
+      </div>
       <Card>
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold">Feed Deliveries</h3>
-          <button
-            type="button"
-            onClick={closeSection}
-            className="text-sm font-semibold text-stone-500 hover:text-stone-800"
-          >
-            Close
-          </button>
-        </div>
-        <ul className="mt-3 space-y-2 text-sm">
+        <ul className="space-y-2 text-sm">
           {deliveries.length === 0 ? <li className="text-stone-500">None yet</li> : null}
           {deliveries.map((d) => (
             <li key={d.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">

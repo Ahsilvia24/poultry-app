@@ -566,21 +566,20 @@ export function FarmGeneratorLogSection({
 
   return (
     <div id="generators" className="scroll-mt-24">
-      <Card>
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold">Generator Log</h3>
-          <div className="flex items-center gap-3">
-            {chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
-            <button
-              type="button"
-              onClick={closeSection}
-              className="text-sm font-semibold text-stone-500 hover:text-stone-800"
-            >
-              Close
-            </button>
-          </div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="min-w-0 flex-1 font-bold">Generator Log</h3>
+        <div className="flex shrink-0 items-center gap-3">
+          {chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
+          <button
+            type="button"
+            onClick={closeSection}
+            className="text-sm font-semibold text-stone-500 hover:text-stone-800"
+          >
+            Close
+          </button>
         </div>
-
+      </div>
+      <Card>
         {editingLog && editingGen ? (
           <GeneratorLogForm
             farmId={farmId}
@@ -597,9 +596,9 @@ export function FarmGeneratorLogSection({
         ) : null}
 
         {!hasAnyChartRows ? (
-          <p className="mt-3 text-sm text-stone-500">None yet</p>
+          <p className="text-sm text-stone-500">None yet</p>
         ) : (
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-2">
             {chartRowsByGen
               .filter((gen) => gen.rows.length > 0)
               .map((gen) => (
