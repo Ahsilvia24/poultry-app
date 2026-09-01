@@ -251,13 +251,17 @@ export default function ToolsScreen() {
             onPress={() => router.push("/settings")}
             hitSlop={10}
             style={{
-              width: 40,
-              height: 40,
+              flexDirection: "row",
               alignItems: "center",
-              justifyContent: "center",
+              gap: 4,
+              minHeight: 40,
+              paddingHorizontal: 4,
             }}
           >
-            <Ionicons name="settings-outline" size={24} color={colors.text} />
+            <Ionicons name="settings-outline" size={22} color={colors.muted} />
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>
+              Settings
+            </Text>
           </Pressable>
         </View>
 

@@ -8,6 +8,7 @@ export default function FarmDetailLayout() {
         headerShown: false,
         contentStyle: { backgroundColor: colors.bg },
         animation: "slide_from_right",
+        animationTypeForReplace: "pop",
       }}
     />
   );

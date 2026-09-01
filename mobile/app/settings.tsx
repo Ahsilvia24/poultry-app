@@ -9,23 +9,18 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../src/auth";
 import { getFarmOrder, getServiceTech, setFarmOrder, setServiceTech } from "../src/lib/appSettings";
 import { FARM_ORDER_OPTIONS, parseFarmOrder, type FarmOrder } from "../src/lib/farmOrder";
 import { colors, styles } from "../src/theme";
-import { Card } from "../src/components/ui";
-import { OptionPicker } from "../src/components/OptionPicker";
+import { WheelPicker } from "../src/components/WheelPicker";
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
   const [serviceTech, setServiceTechName] = useState(getServiceTech);
   const [farmOrder, setFarmOrderValue] = useState<FarmOrder>(getFarmOrder);
-  const [farmOrderOpen, setFarmOrderOpen] = useState(false);
-  const farmOrderLabel =
-    FARM_ORDER_OPTIONS.find((option) => option.key === farmOrder)?.label ?? "Age high to low";
 
   function onChangeServiceTech(value: string) {
     setServiceTechName(value);
@@ -50,7 +45,7 @@ export default function SettingsScreen() {
         >
           <View
             style={{
-              marginBottom: 16,
+              marginBottom: 20,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
@@ -70,88 +65,76 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
-          <Card>
-            <Text style={styles.label}>Service Tech</Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 22,
+            }}
+          >
+            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>
+              Service Tech:
+            </Text>
             <TextInput
-              style={styles.input}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                fontSize: 17,
+                fontWeight: "600",
+                color: colors.text,
+                paddingVertical: 6,
+              }}
               value={serviceTech}
               onChangeText={onChangeServiceTech}
               autoCapitalize="words"
               autoCorrect={false}
               textContentType="name"
               autoComplete="name"
-              placeholder="Name on checklists"
+              placeholder="Name"
               placeholderTextColor={colors.muted}
+              accessibilityLabel="Service technician name"
             />
-          </Card>
+          </View>
 
-          <Card>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <Text style={[styles.label, { marginBottom: 0, flexShrink: 0 }]}>Order Farms By</Text>
-              {Platform.OS === "web" ? (
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  {createElement(
-                    "select",
-                    {
-                      value: farmOrder,
-                      "aria-label": "Order farms by",
-                      onChange: (e: { target: { value: string } }) =>
-                        onChangeFarmOrder(parseFarmOrder(e.target.value)),
-                      style: {
-                        width: "100%",
-                        minHeight: 52,
-                        border: "1px solid #d6d3d1",
-                        borderRadius: 12,
-                        paddingLeft: 14,
-                        paddingRight: 14,
-                        fontSize: 17,
-                        fontWeight: 600,
-                        backgroundColor: "#fff",
-                        color: colors.text,
-                      },
-                    },
-                    FARM_ORDER_OPTIONS.map((option) =>
-                      createElement("option", { key: option.key, value: option.key }, option.label),
-                    ),
-                  )}
-                </View>
-              ) : (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Order farms by, ${farmOrderLabel}`}
-                  onPress={() => setFarmOrderOpen(true)}
-                  style={[
-                    styles.input,
-                    {
-                      flex: 1,
-                      minWidth: 0,
-                      marginBottom: 0,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    },
-                  ]}
-                >
-                  <Text numberOfLines={1} style={{ color: colors.text, fontWeight: "600", flex: 1 }}>
-                    {farmOrderLabel}
-                  </Text>
-                  <Ionicons name="chevron-down" size={18} color={colors.muted} />
-                </Pressable>
-              )}
-            </View>
-          </Card>
-
-          <OptionPicker
-            open={farmOrderOpen}
-            title="Order Farms By"
-            options={FARM_ORDER_OPTIONS.map((option) => ({
-              value: option.key,
-              label: option.label,
-            }))}
-            value={farmOrder}
-            onSelect={(value) => onChangeFarmOrder(parseFarmOrder(value))}
-            onClose={() => setFarmOrderOpen(false)}
-          />
+          <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text, marginBottom: 8 }}>
+            Order Farms By:
+          </Text>
+          {Platform.OS === "web" ? (
+            createElement(
+              "select",
+              {
+                value: farmOrder,
+                "aria-label": "Order farms by",
+                onChange: (e: { target: { value: string } }) =>
+                  onChangeFarmOrder(parseFarmOrder(e.target.value)),
+                style: {
+                  width: "100%",
+                  minHeight: 44,
+                  border: "none",
+                  borderBottom: "1px solid #d6d3d1",
+                  paddingLeft: 0,
+                  paddingRight: 0,
+                  fontSize: 17,
+                  fontWeight: 600,
+                  backgroundColor: "transparent",
+                  color: colors.text,
+                },
+              },
+              FARM_ORDER_OPTIONS.map((option) =>
+                createElement("option", { key: option.key, value: option.key }, option.label),
+              ),
+            )
+          ) : (
+            <WheelPicker
+              options={FARM_ORDER_OPTIONS.map((option) => ({
+                value: option.key,
+                label: option.label,
+              }))}
+              value={farmOrder}
+              onChange={onChangeFarmOrder}
+            />
+          )}
 
           <View style={{ flex: 1, minHeight: 48 }} />
 

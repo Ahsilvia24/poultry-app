@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 import { useKeypadNav } from "@/components/KeypadNavContext";
 
 const tabs = [
-  { href: "/tools", label: "Tools", icon: "tools" },
-  { href: "/farms", label: "Farms", icon: "barn" },
-  { href: "/", label: "Dashboard", icon: "dashboard" },
-  { href: "/lfo", label: "LFO", icon: "feed-bin" },
   { href: "/reports", label: "Reports", icon: "reports" },
+  { href: "/lfo", label: "LFO", icon: "feed-bin" },
+  { href: "/", label: "Dashboard", icon: "dashboard" },
+  { href: "/farms", label: "Farms", icon: "barn" },
+  { href: "/tools", label: "Tools", icon: "tools" },
 ] as const;
 
 const dashboardTabClass = "border-emerald-800 bg-emerald-700 text-white";

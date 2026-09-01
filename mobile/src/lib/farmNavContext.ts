@@ -75,11 +75,22 @@ export function clearFarmReturnFromMortality() {
 export function showFarmList(navigation?: NavLike | null) {
   pendingFarmReturn = null;
   const farmsStack = findFarmsListNavigator(navigation);
-  if (farmsStack?.navigate) {
-    farmsStack.navigate("index");
+  if (farmsStack) {
+    const state = farmsStack.getState?.();
+    const current = state?.routes?.[state.index ?? 0]?.name;
+    if (current === "index") return;
+    if (farmsStack.replace) {
+      farmsStack.replace("index");
+      return;
+    }
+    if (farmsStack.popToTop && farmsStack.canGoBack?.()) {
+      farmsStack.popToTop();
+      return;
+    }
+    farmsStack.navigate?.("index");
     return;
   }
-  router.navigate("/(tabs)/farms");
+  router.replace("/(tabs)/farms");
 }
 
 /**

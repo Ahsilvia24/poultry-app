@@ -17,11 +17,11 @@ const TAB_ITEMS: {
   icon?: MciName;
   customIcon?: "feed-bin";
 }[] = [
-  { name: "tools", label: "Tools", icon: "tools" },
-  { name: "farms", label: "Farms", icon: "barn" },
-  { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
-  { name: "lfo", label: "LFO", customIcon: "feed-bin" },
   { name: "reports", label: "Reports", icon: "chart-box-outline" },
+  { name: "lfo", label: "LFO", customIcon: "feed-bin" },
+  { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
+  { name: "farms", label: "Farms", icon: "barn" },
+  { name: "tools", label: "Tools", icon: "tools" },
 ];
 
 const dashboardTabStyle = {
@@ -100,6 +100,13 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                   // `screen: "index"` is required: Service Farm lives in a nested
                   // [id] stack, so popToTop on that stack only returns to the farm.
                   if (route.name === "farms") {
+                    const nested = route.state;
+                    const current =
+                      nested?.routes?.[nested.index ?? 0]?.name ?? "index";
+                    if (current === "index") {
+                      requestTabScrollTop("farms");
+                      return;
+                    }
                     clearFarmReturnFromMortality();
                     navigation.navigate("farms", { screen: "index" });
                     requestTabScrollTop("farms");

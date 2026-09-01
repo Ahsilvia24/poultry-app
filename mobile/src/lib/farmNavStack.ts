@@ -1,7 +1,15 @@
 export type NavLike = {
-  getState?: () => { routeNames?: string[] } | undefined;
+  getState?: () => {
+    routeNames?: string[];
+    index?: number;
+    routes?: Array<{ name: string }>;
+  } | undefined;
   getParent?: () => NavLike | undefined;
   navigate?: (name: string) => void;
+  replace?: (name: string) => void;
+  canGoBack?: () => boolean;
+  popToTop?: () => void;
+  goBack?: () => void;
 };
 
 /** Farms stack is `index` (list) + `[id]` (detail). The farm-detail stack also has `index`. */
