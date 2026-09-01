@@ -1774,7 +1774,11 @@ export default function FarmDetailScreen() {
                       </Text>
                     ) : null}
                     {v.notes ? (
-                      <Text style={[styles.muted, { fontSize: 16, lineHeight: 22, marginTop: 2 }]}>
+                      <Text
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                        style={[styles.muted, { fontSize: 16, lineHeight: 22, marginTop: 2 }]}
+                      >
                         {v.notes}
                       </Text>
                     ) : null}

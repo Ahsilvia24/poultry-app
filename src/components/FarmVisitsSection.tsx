@@ -101,7 +101,9 @@ export function FarmVisitsSection({
                     {v.followUpRequired ? (
                       <span className="ml-2 text-amber-700">Follow-up due</span>
                     ) : null}
-                    {v.notes ? <p className="text-stone-600">{v.notes}</p> : null}
+                    {v.notes ? (
+                      <p className="line-clamp-2 break-words text-stone-600">{v.notes}</p>
+                    ) : null}
                   </div>
                   <EditRecordButton
                     label="Edit visit"
