@@ -129,7 +129,7 @@ function GeneratorHoursChart({
     <div className="text-base leading-snug">
       <h4 className="mb-1 text-base font-bold text-stone-900">{title}</h4>
       <div className="flex gap-3 text-sm leading-none text-stone-500">
-        <span className="w-[7.5rem] shrink-0 font-semibold">Date</span>
+        <span className="w-44 shrink-0 font-semibold">Date</span>
         <span className="w-14 shrink-0 font-semibold">Hours</span>
         <span className="w-[4.5rem] shrink-0 font-semibold">Exercised</span>
       </div>
@@ -159,7 +159,7 @@ function GeneratorHoursChart({
                   showActions ? "cursor-pointer rounded-sm hover:bg-stone-50" : ""
                 }`}
               >
-                <span className="w-[7.5rem] shrink-0 whitespace-nowrap font-semibold">{row.dateLabel}</span>
+                <span className="w-44 shrink-0 whitespace-nowrap font-semibold">{row.dateLabel}</span>
                 <span className="w-14 shrink-0 font-semibold">
                   {formatGeneratorHours(row.hours)}
                 </span>

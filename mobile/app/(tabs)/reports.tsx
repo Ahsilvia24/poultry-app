@@ -406,7 +406,7 @@ export default function ReportsScreen() {
                           {gen.label}
                         </Text>
                         <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-                          <Text style={{ width: 118, fontSize: 14, fontWeight: "600", color: colors.muted }}>
+                          <Text style={{ width: 168, fontSize: 14, fontWeight: "600", color: colors.muted }}>
                             Date
                           </Text>
                           <Text style={{ width: 60, fontSize: 14, fontWeight: "600", color: colors.muted }}>
@@ -421,7 +421,7 @@ export default function ReportsScreen() {
                             key={`${gen.key}-${row.logDate}`}
                             style={{ flexDirection: "row", gap: 12, alignItems: "center", paddingVertical: 3 }}
                           >
-                            <Text style={{ width: 118, fontSize: 16, fontWeight: "600", color: colors.text }}>
+                            <Text style={{ width: 168, fontSize: 16, fontWeight: "600", color: colors.text }}>
                               {formatGeneratorReportDate(row.logDate)}
                             </Text>
                             <Text style={{ width: 60, fontSize: 16, fontWeight: "600", color: colors.text }}>

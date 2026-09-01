@@ -48,18 +48,18 @@ export type GeneratorReportViewFarm = {
 };
 
 const GEN_LOG_MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
+  "January",
+  "February",
+  "March",
+  "April",
   "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ] as const;
 
 export function formatGeneratorReportDate(dateKey: string) {
@@ -67,7 +67,7 @@ export function formatGeneratorReportDate(dateKey: string) {
   if (!y || !m || !d) return dateKey;
   const mon = GEN_LOG_MONTHS[m - 1];
   if (!mon) return dateKey;
-  return `${String(d).padStart(2, "0")} ${mon} ${y}`;
+  return `${mon} ${d}, ${y}`;
 }
 
 function hoursDelta(

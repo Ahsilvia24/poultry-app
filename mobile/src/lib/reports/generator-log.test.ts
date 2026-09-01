@@ -205,6 +205,6 @@ describe("generatorReportToTsv", () => {
         }),
       ]),
     );
-    assert.match(tsv, /^Maple Grove\nGen 1\nDate\tHours\tExercised\n29 Aug 2026\t96.6\t—$/);
+    assert.match(tsv, /^Maple Grove\nGen 1\nDate\tHours\tExercised\nAugust 29, 2026\t96.6\t—$/);
   });
 });
