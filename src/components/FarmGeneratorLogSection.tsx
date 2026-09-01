@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
-import { format } from "date-fns";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createGeneratorLogAction,
@@ -9,11 +8,14 @@ import {
   updateGeneratorLogAction,
 } from "@/app/actions/ops";
 import { Button, Card, Input, Label } from "@/components/ui";
-import { ExclusiveSwipeGroup, useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
+import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
+import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSectionChrome";
+import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import {
   detectGeneratorHourSwap,
   formatGeneratorChartsCopy,
   formatGeneratorHours,
+  formatGeneratorLogDate,
   hoursDelta,
   GENERATOR_FIELD_DEFS,
   MAX_GENERATOR_HOUR_LOGS,
@@ -46,7 +48,7 @@ function generatorsHashActive() {
 }
 
 function dateLabelFromKey(logDate: string) {
-  return format(new Date(logDate + "T12:00:00"), "M-d-yyyy");
+  return formatGeneratorLogDate(logDate);
 }
 
 function hoursOrEmpty(value: number | null | undefined) {
@@ -111,123 +113,6 @@ function CopyLogButton({ text }: { text: string }) {
   );
 }
 
-function GearIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0 1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}
-
-function isActionTarget(target: EventTarget | null) {
-  return target instanceof Element && target.closest("button");
-}
-
-function SwipeDeleteRow({
-  rowId,
-  deleteLabel,
-  onDelete,
-  children,
-}: {
-  rowId: string;
-  deleteLabel: string;
-  onDelete: () => void;
-  children: ReactNode;
-}) {
-  const [swipeX, setSwipeX] = useState(0);
-  const startX = useRef<number | null>(null);
-  const actionWidth = 72;
-  const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(rowId);
-
-  useEffect(() => {
-    if (!isOpenOwner) setSwipeX(0);
-  }, [isOpenOwner]);
-
-  function begin(x: number) {
-    startX.current = x;
-  }
-
-  function move(x: number) {
-    if (startX.current == null) return;
-    setSwipeX(Math.max(-actionWidth, Math.min(0, x - startX.current)));
-  }
-
-  function end() {
-    if (startX.current == null) {
-      setSwipeX(0);
-      return;
-    }
-    if (swipeX <= -40) {
-      setSwipeX(-actionWidth);
-      requestOpen();
-    } else {
-      setSwipeX(0);
-      requestClose();
-    }
-    startX.current = null;
-  }
-
-  function cancel() {
-    startX.current = null;
-    setSwipeX(0);
-  }
-
-  return (
-    <div className="relative overflow-hidden">
-      {swipeX < -8 ? (
-        <div className="absolute inset-y-0 right-0 flex w-[72px] items-stretch">
-          <button
-            type="button"
-            onClick={() => {
-              setSwipeX(0);
-              onDelete();
-            }}
-            className="flex w-full items-center justify-center bg-red-700 text-xs font-bold text-white"
-            aria-label={deleteLabel}
-          >
-            Delete
-          </button>
-        </div>
-      ) : null}
-      <div
-        className="relative bg-white transition-transform duration-150 ease-out"
-        style={{ transform: `translateX(${swipeX}px)` }}
-        onTouchStart={(e) => {
-          if (isActionTarget(e.target)) return;
-          begin(e.touches[0]?.clientX ?? 0);
-        }}
-        onTouchMove={(e) => {
-          const x = e.touches[0]?.clientX;
-          if (x != null) move(x);
-        }}
-        onTouchEnd={end}
-        onTouchCancel={cancel}
-        onPointerDown={(e) => {
-          if (e.pointerType === "mouse" && e.button !== 0) return;
-          if (isActionTarget(e.target)) return;
-          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-          begin(e.clientX);
-        }}
-        onPointerMove={(e) => move(e.clientX)}
-        onPointerUp={end}
-        onPointerCancel={cancel}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function GeneratorHoursChart({
   title,
   rows,
@@ -244,10 +129,9 @@ function GeneratorHoursChart({
     <div className="text-base leading-snug">
       <h4 className="mb-1 text-base font-bold text-stone-900">{title}</h4>
       <div className="flex gap-3 text-sm leading-none text-stone-500">
-        <span className="w-24 shrink-0 font-semibold">Date</span>
+        <span className="w-44 shrink-0 font-semibold">Date</span>
         <span className="w-14 shrink-0 font-semibold">Hours</span>
         <span className="w-[4.5rem] shrink-0 font-semibold">Exercised</span>
-        {showActions ? <span className="w-7 shrink-0" aria-hidden /> : null}
       </div>
       {rows.length === 0 ? (
         <p className="text-stone-500">None yet</p>
@@ -256,41 +140,48 @@ function GeneratorHoursChart({
         <div>
           {rows.map((row) => {
             const cells = (
-              <div className="flex items-center gap-3 py-1 tabular-nums text-stone-800">
-                <span className="w-24 shrink-0 whitespace-nowrap font-semibold">{row.dateLabel}</span>
+              <div
+                role={showActions ? "button" : undefined}
+                tabIndex={showActions ? 0 : undefined}
+                aria-label={showActions ? "Edit generator entry" : undefined}
+                onClick={showActions ? () => onEdit(row.id) : undefined}
+                onKeyDown={
+                  showActions
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onEdit(row.id);
+                        }
+                      }
+                    : undefined
+                }
+                className={`flex min-h-[38px] items-center gap-3 py-1 tabular-nums text-stone-800 ${
+                  showActions ? "cursor-pointer rounded-sm hover:bg-stone-50" : ""
+                }`}
+              >
+                <span className="w-44 shrink-0 whitespace-nowrap font-semibold">{row.dateLabel}</span>
                 <span className="w-14 shrink-0 font-semibold">
                   {formatGeneratorHours(row.hours)}
                 </span>
                 <span className="w-[4.5rem] shrink-0 font-semibold">
                   {formatGeneratorHours(row.exercised)}
                 </span>
-                {showActions ? (
-                  <button
-                    type="button"
-                    onClick={() => onEdit(row.id)}
-                    className="rounded p-0.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
-                    aria-label="Edit generator entry"
-                    title="Edit generator entry"
-                  >
-                    <GearIcon className="h-4 w-4" />
-                  </button>
-                ) : null}
               </div>
             );
             if (!showActions) {
               return <div key={row.id}>{cells}</div>;
             }
             return (
-              <SwipeDeleteRow
+              <SwipeCommitDeleteRow
                 key={row.id}
                 rowId={row.id}
-                deleteLabel="Delete generator entry"
+                transparent
                 onDelete={() => {
                   void onDelete(row.id);
                 }}
               >
                 {cells}
-              </SwipeDeleteRow>
+              </SwipeCommitDeleteRow>
             );
           })}
         </div>
@@ -575,7 +466,7 @@ export function FarmGeneratorLogSection({
     // Match chart windows: up to 10 readings per gen, not 10 shared date rows.
     const byDate = new Map<
       string,
-      { dateLabel: string; hours: GeneratorHours; deltas: GeneratorDeltas }
+      { dateLabel: string; logDate: string; hours: GeneratorHours; deltas: GeneratorDeltas }
     >();
     for (const gen of chartRowsByGen) {
       for (const row of gen.rows) {
@@ -585,6 +476,7 @@ export function FarmGeneratorLogSection({
         if (!entry) {
           entry = {
             dateLabel: row.dateLabel,
+            logDate: log.logDate,
             hours: {
               gen1Hours: null,
               gen2Hours: null,
@@ -600,7 +492,7 @@ export function FarmGeneratorLogSection({
       }
     }
     return formatGeneratorChartsCopy(
-      [...byDate.values()].sort((a, b) => b.dateLabel.localeCompare(a.dateLabel)),
+      [...byDate.values()].sort((a, b) => b.logDate.localeCompare(a.logDate)),
     );
   }, [chartRowsByGen, allSorted]);
 
@@ -620,16 +512,6 @@ export function FarmGeneratorLogSection({
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
-
-  function closeSection() {
-    setOpen(false);
-    setFormOpen(false);
-    setEditingId(null);
-    setEditingGen(null);
-    if (generatorsHashActive()) {
-      history.replaceState(null, "", window.location.pathname + window.location.search);
-    }
-  }
 
   function afterSaved() {
     setFormOpen(false);
@@ -677,22 +559,18 @@ export function FarmGeneratorLogSection({
 
   return (
     <div id="generators" className="scroll-mt-24">
-      <Card>
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold">Generator Log</h3>
-          <div className="flex items-center gap-3">
-            {chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
-            <button
-              type="button"
-              onClick={closeSection}
-              className="text-sm font-semibold text-stone-500 hover:text-stone-800"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-
-        {editingLog && editingGen ? (
+      <FarmLogSectionHeader
+        title="Generator Log"
+        extraRight={chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
+        logLabel="Log Gen."
+        onLog={() => {
+          setEditingId(null);
+          setEditingGen(null);
+          setFormOpen((open) => !open);
+        }}
+      />
+      {editingLog && editingGen ? (
+        <Card className="mb-3">
           <GeneratorLogForm
             farmId={farmId}
             recordId={editingLog.id}
@@ -705,49 +583,35 @@ export function FarmGeneratorLogSection({
               setEditingGen(null);
             }}
           />
-        ) : null}
+        </Card>
+      ) : null}
 
-        {!hasAnyChartRows ? (
-          <p className="mt-3 text-sm text-stone-500">None yet</p>
-        ) : (
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {chartRowsByGen
-              .filter((gen) => gen.rows.length > 0)
-              .map((gen) => (
-              <GeneratorHoursChart
-                key={gen.key}
-                title={gen.label}
-                rows={gen.rows}
-                onEdit={(id) => {
-                  setFormOpen(false);
-                  setEditingId(id);
-                  setEditingGen(gen.hourKey);
-                }}
-                onDelete={async (id) => {
-                  await deleteGeneratorLogAction(id, gen.hourKey);
-                  router.refresh();
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {!formOpen ? (
-        <div className="mt-3 text-right">
-          <button
-            type="button"
-            onClick={() => {
-              setEditingId(null);
-              setEditingGen(null);
-              setFormOpen(true);
-            }}
-            className="text-sm text-emerald-800 hover:underline"
-          >
-            Log generators
-          </button>
-        </div>
+      {!hasAnyChartRows ? (
+        <p className="text-sm text-stone-500">None yet</p>
       ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {chartRowsByGen
+            .filter((gen) => gen.rows.length > 0)
+            .map((gen) => (
+            <GeneratorHoursChart
+              key={gen.key}
+              title={gen.label}
+              rows={gen.rows}
+              onEdit={(id) => {
+                setFormOpen(false);
+                setEditingId(id);
+                setEditingGen(gen.hourKey);
+              }}
+              onDelete={async (id) => {
+                await deleteGeneratorLogAction(id, gen.hourKey);
+                router.refresh();
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {formOpen ? (
         <Card className="mt-3">
           <GeneratorLogForm
             farmId={farmId}
@@ -756,7 +620,8 @@ export function FarmGeneratorLogSection({
             onCancel={() => setFormOpen(false)}
           />
         </Card>
-      )}
+      ) : null}
+      <FarmLogSectionTop />
     </div>
   );
 }

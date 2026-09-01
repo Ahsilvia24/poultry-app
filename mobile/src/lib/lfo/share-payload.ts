@@ -6,6 +6,7 @@ import {
   type LfoCalculateResult,
   type LfoHouseCalculateResult,
 } from "./calculate";
+import { formatConsumptionRate } from "./consumptionRate";
 import { halfHourTimeLabel } from "../time-slots";
 
 export type LfoShareField = {
@@ -124,7 +125,9 @@ export function buildLfoSharePayload(
   calc?: LfoCalculateResult,
 ): LfoSharePayload {
   const orderDate = inventory.orderDate.slice(0, 10);
-  const houses = inventory.houses.map((house, index) => {
+  const houses = inventory.houses
+    .filter((house) => Number(house.headCount) > 0)
+    .map((house, index) => {
     let catchDate = house.catchDate?.trim() ?? "";
     let catchTime = house.catchTime?.trim() ?? "";
     if ((!catchDate || !catchTime) && house.feedUpAt) {
@@ -171,13 +174,9 @@ export function buildLfoSharePayload(
       title: "Order",
       rows: [
         { label: "Farm", value: inventory.farmName },
-        { label: "Order date", value: orderDateLabel },
-        { label: "Order time", value: orderTimeLabel },
         {
           label: "Consumption rate",
-          value: `${inventory.consumptionRate.toLocaleString(undefined, {
-            maximumFractionDigits: 4,
-          })} lbs/bird/day`,
+          value: `${formatConsumptionRate(inventory.consumptionRate)} lbs/bird/day`,
         },
         { label: "Hours measured from", value: `${orderDateLabel}  ${orderTimeLabel}` },
         { label: "Head counts as of", value: calculatedAtLabel },
@@ -252,7 +251,7 @@ export function buildLfoSharePayload(
     orderDate,
     filename: lfoShareFilename(inventory.farmName, orderDate),
     title: `Last Feed Order — ${inventory.farmName}`,
-    subtitle: `${orderDateLabel}  ${orderTimeLabel}`,
+    subtitle: "",
     sections,
     houseSummaryLines,
   };

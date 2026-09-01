@@ -13,21 +13,61 @@ export const FIELD_LOG_WEEKDAYS = [
 export type FieldLogVisit = {
   id: string;
   farmName: string;
+  visitType: string;
   visitDate: string;
   loggedAt: string;
+};
+
+export type FieldLogFarmEntry = {
+  farmName: string;
+  visitType: string;
 };
 
 export type FieldLogDay = {
   dateKey: string;
   weekday: (typeof FIELD_LOG_WEEKDAYS)[number];
   inRange: boolean;
-  farms: string[];
+  farms: FieldLogFarmEntry[];
 };
 
 export type FieldLogWeek = {
   weekStart: string;
   days: FieldLogDay[];
 };
+
+/** Screen column is ~112px; keep one line with a single period. */
+export const FIELD_LOG_FARM_NAME_CHARS = 9;
+/** PDF day column is wider than the on-screen tile. */
+export const FIELD_LOG_PDF_FARM_NAME_CHARS = 15;
+
+/** Cut a farm name to one line and end with a single period. */
+export function truncateFarmName(name: string, maxChars: number): string {
+  const t = name.trim();
+  if (t.length <= maxChars) return t;
+  return `${t.slice(0, maxChars)}.`;
+}
+
+const FIELD_LOG_VISIT_TYPE_LABELS: Record<string, string> = {
+  ROUTINE_SERVICE: "Routine Service",
+  DELIVERY: "Delivery",
+  PREBROOD: "Prebrood",
+  PLACEMENT: "Placement",
+  WEIGH_DAY: "Weigh Day",
+  VACCINATION: "Vaccination",
+  MEDICATION: "Medication",
+  EQUIPMENT_ISSUE: "Equipment Issue",
+  MORTALITY_INVESTIGATION: "Mortality Investigation",
+  PRE_CATCH: "Pre-Catch Visit",
+  LAST_FEED_ORDER: "LFO",
+  CERTIFICATION: "Certification",
+  OTHER: "Other",
+  SEVEN_DAY: "7-day visit",
+};
+
+/** Field-log labels: Last Feed Order shortens to LFO. */
+export function fieldLogVisitTypeLabel(visitType: string): string {
+  return FIELD_LOG_VISIT_TYPE_LABELS[visitType] ?? visitType;
+}
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
@@ -102,7 +142,10 @@ export function buildFieldLogWeeks(
         dateKey,
         weekday,
         inRange: dateKey >= start && dateKey <= end,
-        farms: dayVisits.map((v) => v.farmName),
+        farms: dayVisits.map((v) => ({
+          farmName: v.farmName,
+          visitType: v.visitType,
+        })),
       };
     });
     weeks.push({ weekStart: cursor, days });
@@ -124,7 +167,16 @@ export function fieldLogWeeksToTsv(weeks: FieldLogWeek[]): string {
     const maxRows = Math.max(1, ...week.days.map((day) => day.farms.length));
     const lines = [header.join("\t")];
     for (let row = 0; row < maxRows; row++) {
-      lines.push(week.days.map((day) => day.farms[row] ?? "").join("\t"));
+      lines.push(
+        week.days
+          .map((day) => {
+            const entry = day.farms[row];
+            if (!entry) return "";
+            const name = truncateFarmName(entry.farmName, FIELD_LOG_PDF_FARM_NAME_CHARS);
+            return `${name}\n${fieldLogVisitTypeLabel(entry.visitType)}`;
+          })
+          .join("\t"),
+      );
     }
     blocks.push(lines.join("\n"));
   }
@@ -154,7 +206,13 @@ export function fieldLogWeeksToHtml(opts: {
           const farms =
             day.farms.length === 0
               ? `<p class="empty">—</p>`
-              : `<ol>${day.farms.map((farm) => `<li>${escapeHtml(farm)}</li>`).join("")}</ol>`;
+              : `<ol>${day.farms
+                  .map((farm) => {
+                    const name = truncateFarmName(farm.farmName, FIELD_LOG_PDF_FARM_NAME_CHARS);
+                    const type = fieldLogVisitTypeLabel(farm.visitType);
+                    return `<li><span class="farm">${escapeHtml(name)}</span><span class="type">${escapeHtml(type)}</span></li>`;
+                  })
+                  .join("")}</ol>`;
           return `<div class="day${weekend ? " weekend" : ""}${day.inRange ? "" : " out"}">
         <p class="wd">${escapeHtml(day.weekday)}</p>
         <p class="dt">${escapeHtml(formatFieldLogDayHeader(day.dateKey))}</p>
@@ -193,7 +251,9 @@ export function fieldLogWeeksToHtml(opts: {
   .wd { font-size: 11px; font-weight: 800; margin: 0; }
   .dt { font-size: 10px; color: #78716c; font-weight: 600; margin: 0 0 8px; }
   ol { list-style: none; margin: 0; padding: 0; }
-  li { font-size: 11px; font-weight: 700; margin: 0 0 6px; }
+  li { font-size: 11px; font-weight: 700; margin: 0 0 8px; }
+  .farm { display: block; }
+  .type { display: block; font-size: 10px; font-weight: 600; color: #78716c; }
   .empty { color: #a8a29e; font-size: 11px; margin: 0; }
 </style>
 </head>

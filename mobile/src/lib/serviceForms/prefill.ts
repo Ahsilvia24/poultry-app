@@ -7,6 +7,9 @@ function formatMinVentCycle(onSeconds: number, offSeconds: number) {
 import { emptyHouseRow } from "./defaults";
 import { mergeLiveHouseRows } from "./liveHouseMetrics";
 import type { ServiceHouseRow } from "./types";
+import { cfmPerFt2FromHouse } from "./cfmPerFt2";
+
+export { cfmPerFt2FromHouse } from "./cfmPerFt2";
 
 type FarmHouse = {
   houseNumber: number;
@@ -14,10 +17,24 @@ type FarmHouse = {
   placedBirdCount: number | null;
   cumulativeMortality: number;
   weeklyMortality: Array<{ week: number; total: number }>;
+  squareFootage?: number | null;
   totalFanCFM: number | null;
+  totalPowerCFM?: number | null;
   numberOfFans: number | null;
   loggedTemp?: string | null;
 };
+
+export function house1CfmPerFt2(detail: FarmDetailLike): {
+  minVent: string;
+  maxPower: string;
+} {
+  const house = [...detail.houses].sort((a, b) => a.houseNumber - b.houseNumber)[0];
+  if (!house) return { minVent: "", maxPower: "" };
+  return {
+    minVent: cfmPerFt2FromHouse(house.totalFanCFM, house.squareFootage),
+    maxPower: cfmPerFt2FromHouse(house.totalPowerCFM, house.squareFootage),
+  };
+}
 
 export type FarmDetailLike = {
   farm: { farmName: string };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { CopyShareRow } from "@/components/CopyShareIcons";
 import {
   Bar,
   BarChart,
@@ -60,8 +60,6 @@ export function MortalityCharts({
   byFarm: FarmRow[];
   filterLabel: string;
 }) {
-  const [copiedHouseByDate, setCopiedHouseByDate] = useState(false);
-
   function houseByDateTsv() {
     const header = ["House", ...byHouseByDate.dates.map(formatDateHeader), "Total"];
     const lines = byHouseByDate.rows.map((row) => {
@@ -92,13 +90,7 @@ export function MortalityCharts({
 
   async function copyHouseByDate() {
     if (byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0) return;
-    try {
-      await navigator.clipboard.writeText(houseByDateTsv());
-      setCopiedHouseByDate(true);
-      window.setTimeout(() => setCopiedHouseByDate(false), 2000);
-    } catch {
-      setCopiedHouseByDate(false);
-    }
+    await navigator.clipboard.writeText(houseByDateTsv());
   }
 
   function exportCsv() {
@@ -234,24 +226,14 @@ export function MortalityCharts({
               Total daily loss (mortality + culls) for the selected date range.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={copyHouseByDate}
-              disabled={byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0}
-            >
-              {copiedHouseByDate ? "Copied" : "Copy to clipboard"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={shareHouseByDatePdf}
-              disabled={!mortalityMatrixHasData(byHouseByDate)}
-            >
-              Share PDF
-            </Button>
-          </div>
+          <CopyShareRow
+            onCopy={() => void copyHouseByDate()}
+            onShare={shareHouseByDatePdf}
+            copyDisabled={byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0}
+            shareDisabled={!mortalityMatrixHasData(byHouseByDate)}
+            copyLabel="Copy mortality report"
+            shareLabel="Share mortality report PDF"
+          />
         </div>
         <div className="mt-3 overflow-x-auto">
           {byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0 ? (

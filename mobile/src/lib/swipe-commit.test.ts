@@ -3,9 +3,9 @@ import { describe, it } from "node:test";
 import { shouldCommitSwipeDelete, SWIPE_DELETE_COMMIT_PX } from "./swipe-commit.ts";
 
 describe("shouldCommitSwipeDelete", () => {
-  it("needs a good swipe left before delete", () => {
+  it("needs a 96px swipe left before delete", () => {
     assert.equal(shouldCommitSwipeDelete(-40), false);
-    assert.equal(shouldCommitSwipeDelete(-99), false);
+    assert.equal(shouldCommitSwipeDelete(-95), false);
     assert.equal(shouldCommitSwipeDelete(-SWIPE_DELETE_COMMIT_PX), true);
     assert.equal(shouldCommitSwipeDelete(-140), true);
   });

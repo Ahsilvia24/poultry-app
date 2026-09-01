@@ -572,7 +572,7 @@ export default function EditLfoScreen() {
                     >
                       <Text style={{ fontWeight: "800" }}>House {house.houseNumber}</Text>
                       <Text style={styles.muted}>
-                        Head count {house.headCount.toLocaleString()}
+                        Head Count {house.headCount.toLocaleString()}
                         {calculatedAt ? " at save" : ""}
                       </Text>
                     </View>

@@ -28,7 +28,7 @@ export function AddHouseForm({ farmId }: { farmId: string }) {
 
   if (!open) {
     return (
-      <div className="mt-3 text-right">
+      <div className="mt-3 text-left">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -42,7 +42,7 @@ export function AddHouseForm({ farmId }: { farmId: string }) {
 
   return (
     <div className="mt-3">
-      <div className="text-right">
+      <div className="text-left">
         <button
           type="button"
           onClick={() => !pending && setOpen(false)}

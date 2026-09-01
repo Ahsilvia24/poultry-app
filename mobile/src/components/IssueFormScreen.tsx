@@ -28,7 +28,6 @@ import { colors, styles } from "../theme";
 import { BackHeader, Card, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { OptionPicker, SelectField } from "./OptionPicker";
-import { ConfirmDialog } from "./ConfirmDialog";
 
 export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?: string }) {
   const router = useRouter();
@@ -63,7 +62,6 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (editing && !initial) {
     return (
@@ -177,7 +175,14 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
                 label="Delete issue"
                 secondary
                 style={{ marginTop: 10 }}
-                onPress={() => setDeleteOpen(true)}
+                onPress={() => {
+                  try {
+                    deleteIssue(farmId, issueId);
+                    router.back();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Could not delete issue");
+                  }
+                }}
               />
             ) : null}
           </Card>
@@ -218,20 +223,6 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
         options={[...ISSUE_STATUS_OPTIONS]}
         onSelect={setStatus}
         onClose={() => setPicker(null)}
-      />
-      <ConfirmDialog
-        visible={deleteOpen}
-        title="Delete issue?"
-        message="This cannot be undone."
-        confirmLabel="Delete"
-        danger
-        onConfirm={() => {
-          if (!issueId) return;
-          deleteIssue(farmId, issueId);
-          setDeleteOpen(false);
-          router.back();
-        }}
-        onCancel={() => setDeleteOpen(false)}
       />
     </SafeAreaView>
   );

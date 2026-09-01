@@ -40,6 +40,7 @@ import {
   applyLiveHouseMetrics,
   currentFlockWeek,
   flockAgeDaysFromHouses,
+  house1CfmPerFt2,
   minVentForWeek,
   prefillHouseRows,
 } from "../../../../../src/lib/serviceForms/prefill";
@@ -114,6 +115,18 @@ export default function ServiceReportScreen() {
       minVentRecommendedOff: minVent?.off ?? "",
     };
   });
+
+  const cfmPrefillDone = useRef(false);
+  useEffect(() => {
+    if (!detail || cfmPrefillDone.current) return;
+    cfmPrefillDone.current = true;
+    const { minVent, maxPower } = house1CfmPerFt2(detail);
+    setForm((prev) => ({
+      ...prev,
+      cfmPerFt2MinVent: prev.cfmPerFt2MinVent.trim() ? prev.cfmPerFt2MinVent : minVent,
+      maxCfm: prev.maxCfm.trim() ? prev.maxCfm : maxPower,
+    }));
+  }, [detail]);
 
   const [timePicker, setTimePicker] = useState<"date" | "on" | "off" | null>(null);
   const [optionPicker, setOptionPicker] = useState<"humidity" | "week" | null>(null);

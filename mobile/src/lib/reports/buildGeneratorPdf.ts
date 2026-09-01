@@ -50,8 +50,8 @@ export async function buildGeneratorPdfBytes(opts: {
       page.drawText(gen.label, { x: MARGIN, y: y - 11, size: 11, font: bold, color: ink });
       y -= 16;
       page.drawText("Date", { x: MARGIN, y: y - 9, size: 9, font: bold, color: muted });
-      page.drawText("Hours", { x: MARGIN + 110, y: y - 9, size: 9, font: bold, color: muted });
-      page.drawText("Exercised", { x: MARGIN + 180, y: y - 9, size: 9, font: bold, color: muted });
+      page.drawText("Hours", { x: MARGIN + 150, y: y - 9, size: 9, font: bold, color: muted });
+      page.drawText("Exercised", { x: MARGIN + 220, y: y - 9, size: 9, font: bold, color: muted });
       y -= 14;
 
       for (const row of gen.rows) {
@@ -64,14 +64,14 @@ export async function buildGeneratorPdfBytes(opts: {
           color: ink,
         });
         page.drawText(formatGeneratorReportHours(row.hours), {
-          x: MARGIN + 110,
+          x: MARGIN + 150,
           y: y - 9,
           size: 10,
           font: bold,
           color: ink,
         });
         page.drawText(formatGeneratorReportHours(row.exercised), {
-          x: MARGIN + 180,
+          x: MARGIN + 220,
           y: y - 9,
           size: 10,
           font: bold,

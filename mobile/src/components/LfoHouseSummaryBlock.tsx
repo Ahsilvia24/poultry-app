@@ -99,10 +99,10 @@ export function LfoHouseSummaryBlock({
             </Text>
           ))}
         </View>
+        <CopyHouseSummaryButton lines={lines} farmName={farmName} />
         {onSharePdf ? (
           <SharePdfIconButton onPress={onSharePdf} accessibilityLabel="Share full LFO PDF" />
         ) : null}
-        <CopyHouseSummaryButton lines={lines} farmName={farmName} />
       </View>
     </View>
   );

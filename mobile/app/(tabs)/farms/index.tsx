@@ -9,7 +9,6 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Swipeable } from "react-native-gesture-handler";
 import {
   deactivateFarm,
   deleteFarm,
@@ -17,10 +16,10 @@ import {
   reactivateFarm,
 } from "../../../src/repos/data";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
-import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
 import { colors, fonts, styles } from "../../../src/theme";
 import { Card, PageHeader } from "../../../src/components/ui";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
+import { SwipeCommitDeleteRow } from "../../../src/components/SwipeCommitDeleteRow";
 
 type ConfirmKind = "inactive" | "active" | "delete";
 
@@ -31,9 +30,6 @@ export default function FarmsScreen() {
   const [data, setData] = useState<ReturnType<typeof listFarms> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  /** Avoid mounting tall swipe Delete until open — on web it stretches short tiles. */
-  const [swipingFarmId, setSwipingFarmId] = useState<string | null>(null);
-  const swipe = useExclusiveSwipeables();
   const [confirm, setConfirm] = useState<{
     kind: ConfirmKind;
     farmId: string;
@@ -86,7 +82,6 @@ export default function FarmsScreen() {
         style={styles.screen}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-        onScrollBeginDrag={swipe.closeAll}
       >
         <PageHeader
           title="Farms"
@@ -129,61 +124,19 @@ export default function FarmsScreen() {
                 key={farm.id}
                 style={{ width: "50%", paddingHorizontal: 4, marginBottom: 8 }}
               >
-                <Swipeable
-                  ref={swipe.setRef(farm.id)}
-                  overshootRight={false}
-                  friction={2}
-                  rightThreshold={40}
-                  containerStyle={{ overflow: "hidden" }}
-                  onSwipeableWillOpen={() => {
-                    swipe.closeOthers(farm.id);
-                    setSwipingFarmId(farm.id);
-                  }}
-                  onSwipeableClose={() =>
-                    setSwipingFarmId((id) => (id === farm.id ? null : id))
-                  }
-                  renderRightActions={() =>
-                    swipingFarmId === farm.id ? (
-                      <Pressable
-                        accessibilityLabel={`Delete ${farm.farmName} permanently`}
-                        onPress={() =>
-                          setConfirm({
-                            kind: "delete",
-                            farmId: farm.id,
-                            farmName: farm.farmName,
-                          })
-                        }
-                        style={{
-                          backgroundColor: colors.danger,
-                          justifyContent: "center",
-                          alignItems: "center",
-                          width: 72,
-                          borderRadius: 14,
-                          marginLeft: 8,
-                          alignSelf: "stretch",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: "#fff",
-                            fontWeight: "800",
-                            fontSize: 12,
-                            textAlign: "center",
-                          }}
-                        >
-                          Delete
-                        </Text>
-                      </Pressable>
-                    ) : (
-                      <View style={{ width: 72, marginLeft: 8 }} />
-                    )
+                <SwipeCommitDeleteRow
+                  onDelete={() =>
+                    setConfirm({
+                      kind: "delete",
+                      farmId: farm.id,
+                      farmName: farm.farmName,
+                    })
                   }
                 >
                   <Card
                     style={{
                       padding: 10,
                       marginBottom: 0,
-                      overflow: "hidden",
                       borderWidth: 2,
                       borderColor: farm.isActive ? colors.accentDark : "#d6d3d1",
                     }}
@@ -253,7 +206,7 @@ export default function FarmsScreen() {
                       ) : null}
                     </Pressable>
                   </Card>
-                </Swipeable>
+                </SwipeCommitDeleteRow>
               </View>
             );
           })}

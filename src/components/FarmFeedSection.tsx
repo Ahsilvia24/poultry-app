@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 import { deleteFeedDeliveryAction } from "@/app/actions/ops";
-import { DeleteRecordButton, EditRecordButton } from "@/components/DeleteRecordButton";
+import { EditRecordButton } from "@/components/DeleteRecordButton";
+import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import {
   FeedDeliveryForm,
   type FeedDeliveryFormValues,
   type FeedFarmOption,
 } from "@/components/FeedDeliveryForm";
+import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSectionChrome";
+import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { Card } from "@/components/ui";
 import { formatNumber } from "@/lib/utils";
 
@@ -30,9 +34,11 @@ export function FarmFeedSection({
   farms: FeedFarmOption[];
   deliveries: DeliveryRow[];
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [, startDelete] = useTransition();
 
   useEffect(() => {
     if (feedHashActive()) setOpen(true);
@@ -47,15 +53,6 @@ export function FarmFeedSection({
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
-
-  function closeSection() {
-    setOpen(false);
-    setFormOpen(false);
-    setEditingId(null);
-    if (feedHashActive()) {
-      history.replaceState(null, "", window.location.pathname + window.location.search);
-    }
-  }
 
   function afterSaved() {
     setFormOpen(false);
@@ -74,22 +71,30 @@ export function FarmFeedSection({
 
   return (
     <div id="feed" className="scroll-mt-24">
-      <Card>
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold">Feed Deliveries</h3>
-          <button
-            type="button"
-            onClick={closeSection}
-            className="text-sm font-semibold text-stone-500 hover:text-stone-800"
-          >
-            Close
-          </button>
-        </div>
-        <ul className="mt-3 space-y-2 text-sm">
-          {deliveries.length === 0 ? <li className="text-stone-500">None yet</li> : null}
-          {deliveries.map((d) => (
-            <li key={d.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
-              <div className="flex items-start justify-between gap-3">
+      <FarmLogSectionHeader
+        title="Feed Deliveries"
+        logLabel="Log Feed"
+        onLog={() => {
+          setEditingId(null);
+          setFormOpen((open) => !open);
+        }}
+      />
+      <ExclusiveSwipeGroup>
+      <ul className="space-y-0.5 text-base">
+        {deliveries.length === 0 ? <li className="text-stone-500">None yet</li> : null}
+        {deliveries.map((d) => (
+          <li key={d.id} className="border-b border-stone-100 py-0.5 last:border-0">
+            <SwipeCommitDeleteRow
+              rowId={d.id}
+              transparent
+              onDelete={() => {
+                startDelete(async () => {
+                  await deleteFeedDeliveryAction(d.id);
+                  router.refresh();
+                });
+              }}
+            >
+              <div className="flex min-h-[38px] items-center justify-between gap-3 py-1">
                 <div className="min-w-0">
                   <span className="font-semibold">
                     {format(new Date(d.deliveryDate + "T12:00:00"), "MMM d, yyyy")}
@@ -100,68 +105,40 @@ export function FarmFeedSection({
                   {d.feedType ? ` · ${d.feedType}` : ""}
                   {d.feedMill ? ` · ${d.feedMill}` : ""}
                 </div>
-                <div className="flex shrink-0 items-center gap-0.5">
-                  <EditRecordButton
-                    label="Edit feed delivery"
-                    active={editingId === d.id}
-                    onClick={() => {
-                      setFormOpen(false);
-                      setEditingId((id) => (id === d.id ? null : d.id));
-                    }}
-                  />
-                  <DeleteRecordButton
-                    label="Delete feed delivery"
-                    onDelete={() => deleteFeedDeliveryAction(d.id)}
-                  />
-                </div>
-              </div>
-              {editingId === d.id ? (
-                <FeedDeliveryForm
-                  lockedFarmId={farmId}
-                  farms={farms}
-                  recordId={d.id}
-                  initial={d}
-                  onSuccess={afterSaved}
+                <EditRecordButton
+                  label="Edit feed delivery"
+                  active={editingId === d.id}
+                  onClick={() => {
+                    setFormOpen(false);
+                    setEditingId((id) => (id === d.id ? null : d.id));
+                  }}
                 />
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </Card>
+              </div>
+            </SwipeCommitDeleteRow>
+            {editingId === d.id ? (
+              <FeedDeliveryForm
+                lockedFarmId={farmId}
+                farms={farms}
+                recordId={d.id}
+                initial={d}
+                onSuccess={afterSaved}
+              />
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      </ExclusiveSwipeGroup>
 
-      {!formOpen ? (
-        <div className="mt-3 text-right">
-          <button
-            type="button"
-            onClick={() => {
-              setEditingId(null);
-              setFormOpen(true);
-            }}
-            className="text-sm text-emerald-800 hover:underline"
-          >
-            Record feed delivery
-          </button>
-        </div>
-      ) : (
-        <div className="mt-3">
-          <div className="text-right">
-            <button
-              type="button"
-              onClick={() => setFormOpen(false)}
-              className="text-sm text-emerald-800 hover:underline"
-            >
-              Record feed delivery
-            </button>
-          </div>
-          <Card className="mt-3">
-            <FeedDeliveryForm
-              lockedFarmId={farmId}
-              farms={farms}
-              onSuccess={afterSaved}
-            />
-          </Card>
-        </div>
-      )}
+      {formOpen ? (
+        <Card className="mt-3">
+          <FeedDeliveryForm
+            lockedFarmId={farmId}
+            farms={farms}
+            onSuccess={afterSaved}
+          />
+        </Card>
+      ) : null}
+      <FarmLogSectionTop />
     </div>
   );
 }

@@ -43,11 +43,10 @@ describe("buildLfoSharePayload", () => {
     );
 
     assert.equal(payload.title, "Last Feed Order — Sunrise 1");
-    assert.match(payload.subtitle, /8-29-2026/);
-    assert.match(payload.subtitle, /5:00 PM/);
+    assert.equal(payload.subtitle, "");
     assert.ok(labels.includes("Farm"));
-    assert.ok(labels.includes("Order date"));
-    assert.ok(labels.includes("Order time"));
+    assert.ok(!labels.includes("Order date"));
+    assert.ok(!labels.includes("Order time"));
     assert.ok(labels.includes("Consumption rate"));
     assert.ok(labels.includes("Hours measured from"));
     assert.ok(labels.includes("Head counts as of"));
@@ -70,6 +69,41 @@ describe("buildLfoSharePayload", () => {
     assert.ok(payload.sections.some((section) => section.title === "House 2"));
     assert.ok(payload.sections.some((section) => section.title === "Totals"));
     assert.ok(payload.houseSummaryLines.length > 0);
+  });
+
+  it("skips houses with zero headcount and trims consumption zeros", () => {
+    const payload = buildLfoSharePayload({
+      ...inventory,
+      consumptionRate: 0.45,
+      houses: [
+        ...inventory.houses,
+        {
+          houseId: "h3",
+          houseNumber: 3,
+          headCount: 0,
+          binAPounds: 0,
+          binBPounds: 0,
+          catchDate: "2026-09-07",
+          catchTime: "06:00",
+        },
+      ],
+    });
+    assert.ok(!payload.sections.some((section) => section.title === "House 3"));
+    const rate = payload.sections
+      .flatMap((section) => section.rows)
+      .find((row) => row.label === "Consumption rate")?.value;
+    assert.equal(rate, "0.45 lbs/bird/day");
+  });
+
+  it("keeps four digits when the rate needs them", () => {
+    const payload = buildLfoSharePayload({
+      ...inventory,
+      consumptionRate: 0.45354,
+    });
+    const rate = payload.sections
+      .flatMap((section) => section.rows)
+      .find((row) => row.label === "Consumption rate")?.value;
+    assert.equal(rate, "0.4535 lbs/bird/day");
   });
 });
 

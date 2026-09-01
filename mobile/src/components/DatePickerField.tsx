@@ -285,7 +285,7 @@ export function DatePickerField({
       mode="date"
       display={Platform.OS === "ios" ? "inline" : "default"}
       onChange={onPickerChange}
-      style={{ alignSelf: "center" }}
+      style={{ alignSelf: "stretch", width: "100%", minHeight: 360 }}
     />
   );
 

@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { HouseCardActions } from "@/components/HouseCardActions";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Card } from "@/components/ui";
+import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
-import { useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
 import { updateHouseLoggedTempAction } from "@/app/actions/farms";
 
 type HouseData = {
@@ -91,13 +91,6 @@ export function HouseCard({
   const { setKeypadOpen } = useKeypadNav();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [mode, setMode] = useState<"idle" | "edit" | "delete">("idle");
-  const [swipeX, setSwipeX] = useState(0);
-  const touchStartX = useRef<number | null>(null);
-  const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(house.id);
-
-  useEffect(() => {
-    if (!isOpenOwner) setSwipeX(0);
-  }, [isOpenOwner]);
   const [tempOpen, setTempOpen] = useState(false);
   const [tempValue, setTempValue] = useState("");
   const [tempError, setTempError] = useState<string | null>(null);
@@ -118,37 +111,6 @@ export function HouseCard({
     placementDateKey && catchDateKey
       ? daysBetweenKeys(placementDateKey, catchDateKey)
       : null;
-
-  function onTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0]?.clientX ?? null;
-  }
-
-  function onTouchMove(e: React.TouchEvent) {
-    if (touchStartX.current == null) return;
-    const x = e.touches[0]?.clientX;
-    if (x == null) return;
-    const dx = x - touchStartX.current;
-    // Only allow left swipe reveal
-    setSwipeX(Math.max(-88, Math.min(0, dx)));
-  }
-
-  function onTouchEnd() {
-    if (touchStartX.current == null) {
-      setSwipeX(0);
-      return;
-    }
-    // Snap open if swiped far enough left
-    if (swipeX <= -48) {
-      setSwipeX(-88);
-      requestOpen();
-    } else {
-      setSwipeX(0);
-      requestClose();
-    }
-    touchStartX.current = null;
-  }
-
-  const swipeOpen = swipeX < -8;
 
   useEffect(() => {
     setKeypadOpen(tempOpen);
@@ -181,39 +143,8 @@ export function HouseCard({
 
   return (
     <div className="self-start">
-    <div className="relative overflow-hidden rounded-xl">
-      {/* Only mount while swiping so a stretched grid row can't reveal it under a short tile */}
-      {swipeOpen ? (
-        <div
-          className="absolute inset-y-0 right-0 flex w-[88px] items-center justify-center rounded-xl bg-red-700"
-          aria-hidden={swipeX > -40}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              setSwipeX(0);
-              setMode("delete");
-            }}
-            className="flex h-full w-full flex-col items-center justify-center gap-1 text-sm font-bold text-white"
-            aria-label={`Delete house ${house.houseNumber}`}
-          >
-            Delete
-          </button>
-        </div>
-      ) : null}
-
-      <div
-        className="relative transition-transform duration-150 ease-out"
-        style={{ transform: `translateX(${swipeX}px)` }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={() => {
-          touchStartX.current = null;
-          setSwipeX(0);
-        }}
-      >
-        <Card>
+    <SwipeCommitDeleteRow rowId={house.id} onDelete={() => setMode("delete")}>
+        <Card className="rounded-xl">
           <div className="flex items-start justify-between gap-2">
             <button
               type="button"
@@ -275,7 +206,7 @@ export function HouseCard({
                 >
                   Enter
                   <br />
-                  mortality
+                  Mortality
                 </a>
               ) : null}
             </div>
@@ -377,8 +308,7 @@ export function HouseCard({
             </button>
           ) : null}
         </Card>
-      </div>
-    </div>
+    </SwipeCommitDeleteRow>
 
       <HouseCardActions
         farmId={farmId}

@@ -8,5 +8,7 @@ describe("VISIT_TYPE_OPTIONS", () => {
     assert.equal(values.at(-2), "CERTIFICATION");
     assert.equal(values.at(-1), "OTHER");
     assert.equal(VISIT_TYPE_LABELS.CERTIFICATION, "Certification");
+    assert.equal(VISIT_TYPE_LABELS.DELIVERY, "Delivery");
+    assert.ok(values.includes("DELIVERY"));
   });
 });

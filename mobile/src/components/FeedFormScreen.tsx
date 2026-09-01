@@ -23,7 +23,6 @@ import { colors, styles } from "../theme";
 import { BackHeader, Card, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { OptionPicker, SelectField } from "./OptionPicker";
-import { ConfirmDialog } from "./ConfirmDialog";
 
 export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliveryId?: string }) {
   const router = useRouter();
@@ -62,7 +61,6 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
   const [ticketNumber, setTicketNumber] = useState(initial?.ticketNumber ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [picker, setPicker] = useState<"date" | "flock" | "house" | "type" | "mill" | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -190,7 +188,14 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
                 label="Delete feed delivery"
                 secondary
                 style={{ marginTop: 10 }}
-                onPress={() => setDeleteOpen(true)}
+                onPress={() => {
+                  try {
+                    deleteFeedDelivery(deliveryId);
+                    router.back();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Could not delete feed delivery");
+                  }
+                }}
               />
             ) : null}
           </Card>
@@ -238,20 +243,6 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
         options={FEED_MILL_OPTIONS.map((v) => ({ value: v, label: v }))}
         onSelect={setFeedMill}
         onClose={() => setPicker(null)}
-      />
-      <ConfirmDialog
-        visible={deleteOpen}
-        title="Delete feed delivery?"
-        message="This cannot be undone."
-        confirmLabel="Delete"
-        danger
-        onConfirm={() => {
-          if (!deliveryId) return;
-          deleteFeedDelivery(deliveryId);
-          setDeleteOpen(false);
-          router.back();
-        }}
-        onCancel={() => setDeleteOpen(false)}
       />
     </SafeAreaView>
   );

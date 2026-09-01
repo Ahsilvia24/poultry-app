@@ -305,7 +305,7 @@ export function LfoInventoryForm({
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-sm font-bold text-stone-800">House {house.houseNumber}</p>
                 <p className="text-xs text-stone-500">
-                  Head count {house.headCount.toLocaleString()}
+                  Head Count {house.headCount.toLocaleString()}
                   {asOf ? " at save" : ""}
                 </p>
               </div>

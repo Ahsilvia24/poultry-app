@@ -1,13 +1,12 @@
 import { useCallback, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { Swipeable } from "react-native-gesture-handler";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../../../../../src/theme";
 import { BackHeader, Card } from "../../../../../src/components/ui";
 import { ConfirmDialog } from "../../../../../src/components/ConfirmDialog";
-import { useExclusiveSwipeables } from "../../../../../src/lib/useExclusiveSwipeables";
+import { SwipeCommitDeleteRow } from "../../../../../src/components/SwipeCommitDeleteRow";
 import {
   deleteServiceForm,
   deleteServiceFormDraft,
@@ -60,8 +59,6 @@ export default function ServiceFarmPickerScreen() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<StoredServiceForm | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const swipe = useExclusiveSwipeables();
-
   useFocusEffect(
     useCallback(() => {
       try {
@@ -118,7 +115,6 @@ export default function ServiceFarmPickerScreen() {
   }
 
   function confirmDelete(row: StoredServiceForm) {
-    swipe.closeAll();
     setPendingDelete(row);
   }
 
@@ -237,33 +233,21 @@ export default function ServiceFarmPickerScreen() {
           <Text style={{ color: colors.muted }}>No completed checklists yet.</Text>
         ) : (
           completed.map((row) => (
-            <Swipeable
+            <SwipeCommitDeleteRow
               key={row.id}
-              ref={swipe.setRef(row.id)}
-              overshootRight={false}
-              friction={2}
-              rightThreshold={40}
-              containerStyle={{ marginBottom: 10 }}
-              onSwipeableWillOpen={() => swipe.closeOthers(row.id)}
-              renderRightActions={() => (
-                <Pressable
+              onDelete={() => confirmDelete(row)}
+              style={{ marginBottom: 10 }}
+              deleteContent={
+                <View
                   accessibilityLabel={`Delete ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
-                  onPress={() => confirmDelete(row)}
-                  style={{
-                    backgroundColor: colors.danger,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    width: 88,
-                    borderRadius: 14,
-                    marginLeft: 8,
-                  }}
+                  style={{ alignItems: "center" }}
                 >
                   <Ionicons name="trash-outline" size={22} color="#fff" />
                   <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12, marginTop: 4 }}>
                     Delete
                   </Text>
-                </Pressable>
-              )}
+                </View>
+              }
             >
               <Card style={{ marginBottom: 0, paddingVertical: 12, paddingHorizontal: 14 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -299,7 +283,7 @@ export default function ServiceFarmPickerScreen() {
                   </Pressable>
                 </View>
               </Card>
-            </Swipeable>
+            </SwipeCommitDeleteRow>
           ))
         )}
       </ScrollView>

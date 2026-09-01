@@ -7,8 +7,9 @@ export default function FarmsLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.bg },
-        // Single push/pop slide — avoids left-then-right when returning to the list.
+        // Push from the right; replace/back uses pop so the page slides right.
         animation: "slide_from_right",
+        animationTypeForReplace: "pop",
       }}
     >
       <Stack.Screen name="index" />

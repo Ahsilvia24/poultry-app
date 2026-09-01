@@ -15,7 +15,6 @@ import {
   type LayoutChangeEvent,
   type ScrollView as ScrollViewType,
 } from "react-native";
-import { Swipeable } from "react-native-gesture-handler";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -51,6 +50,7 @@ import {
   detectGeneratorHourSwap,
   formatGeneratorChartsCopy,
   formatGeneratorHours,
+  formatGeneratorLogDate,
   hoursDelta,
   previousGeneratorHoursFromLogs,
   GENERATOR_FIELD_DEFS,
@@ -77,7 +77,6 @@ import { ClipboardIconButton } from "../../../../src/components/ClipboardIconBut
 import { compactCatchTimeLabel } from "../../../../src/lib/time-slots";
 import { ConfirmDialog } from "../../../../src/components/ConfirmDialog";
 import { SwipeCommitDeleteRow } from "../../../../src/components/SwipeCommitDeleteRow";
-import { useExclusiveSwipeables } from "../../../../src/lib/useExclusiveSwipeables";
 import {
   NumberKeypad,
   appendKeypadDigit,
@@ -133,10 +132,7 @@ function formatShortDate(dateKey: string) {
 
 function RecordLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={{ marginTop: 4, marginBottom: 16, alignSelf: "flex-end" }}
-    >
+    <Pressable onPress={onPress} hitSlop={8}>
       <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>{label}</Text>
     </Pressable>
   );
@@ -158,11 +154,9 @@ function TopLink({ onPress }: { onPress: () => void }) {
 
 function SectionHeading({
   title,
-  onTop,
   right,
 }: {
   title: string;
-  onTop: () => void;
   right?: ReactNode;
 }) {
   return (
@@ -172,48 +166,38 @@ function SectionHeading({
         alignItems: "center",
         justifyContent: "space-between",
         gap: 8,
+        marginBottom: 8,
       }}
     >
-      <Text style={{ fontWeight: "800", fontSize: 16, flex: 1, minWidth: 0 }}>{title}</Text>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
-        {right}
-        <TopLink onPress={onTop} />
-      </View>
+      <Text style={{ fontWeight: "800", fontSize: 20, flex: 1, minWidth: 0 }}>{title}</Text>
+      {right ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          {right}
+        </View>
+      ) : null}
     </View>
   );
 }
 
-function RowActions({
-  editLabel,
-  deleteLabel,
-  onEdit,
-  onDelete,
-}: {
-  editLabel?: string;
-  deleteLabel: string;
-  onEdit?: () => void;
-  onDelete: () => void;
-}) {
+/** Same size as generator hour readings. */
+const logEntryText = {
+  fontSize: 16,
+  lineHeight: 22,
+  fontWeight: "600" as const,
+  color: colors.text,
+};
+
+/** Same hit area as generator hour rows so the swipe Delete is the same size. */
+const logRowHit = {
+  minHeight: 38,
+  paddingVertical: 4,
+  justifyContent: "center" as const,
+};
+
+function SectionTop({ onPress }: { onPress: () => void }) {
   return (
-    <View style={{ flexDirection: "row", gap: 2 }}>
-      {onEdit ? (
-        <Pressable
-          accessibilityLabel={editLabel ?? "Edit"}
-          onPress={onEdit}
-          hitSlop={8}
-          style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
-        >
-          <Ionicons name="pencil-outline" size={20} color={colors.muted} />
-        </Pressable>
-      ) : null}
-      <Pressable
-        accessibilityLabel={deleteLabel}
-        onPress={onDelete}
-        hitSlop={8}
-        style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
-      >
-        <Ionicons name="trash-outline" size={20} color={colors.muted} />
-      </Pressable>
+    <View style={{ marginTop: 8, marginBottom: 16, alignSelf: "flex-start" }}>
+      <TopLink onPress={onPress} />
     </View>
   );
 }
@@ -365,110 +349,6 @@ type GeneratorChartRow = {
   exercised: number | null;
 };
 
-const GENERATOR_SWIPE_DELETE_W = 72;
-
-function GeneratorSwipeDeleteRow({
-  deleteLabel,
-  onDelete,
-  children,
-  isOpen,
-  onOpen,
-}: {
-  deleteLabel: string;
-  onDelete: () => void;
-  children: ReactNode;
-  isOpen: boolean;
-  onOpen: () => void;
-}) {
-  const [x, setX] = useState(0);
-  const startX = useRef<number | null>(null);
-  const startY = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) setX(0);
-  }, [isOpen]);
-
-  function begin(pageX: number, pageY: number) {
-    startX.current = pageX;
-    startY.current = pageY;
-  }
-
-  function move(pageX: number) {
-    if (startX.current == null) return;
-    setX(Math.max(-GENERATOR_SWIPE_DELETE_W, Math.min(0, pageX - startX.current)));
-  }
-
-  function end() {
-    if (startX.current == null) {
-      setX(0);
-      return;
-    }
-    setX((cur) => {
-      const next = cur <= -36 ? -GENERATOR_SWIPE_DELETE_W : 0;
-      if (next < 0) onOpen();
-      return next;
-    });
-    startX.current = null;
-    startY.current = null;
-  }
-
-  return (
-    <View style={{ overflow: "hidden" }}>
-      {x < -8 ? (
-        <Pressable
-          accessibilityLabel={deleteLabel}
-          onPress={onDelete}
-          style={{
-            position: "absolute",
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: GENERATOR_SWIPE_DELETE_W,
-            backgroundColor: colors.danger,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 13 }}>Delete</Text>
-        </Pressable>
-      ) : null}
-      <View
-        // Responder + mouse so swipe-left works on native and Expo web.
-        onStartShouldSetResponder={() => false}
-        onMoveShouldSetResponder={(e) => {
-          if (startX.current == null || startY.current == null) return false;
-          const dx = e.nativeEvent.pageX - startX.current;
-          const dy = e.nativeEvent.pageY - startY.current;
-          return Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy);
-        }}
-        onResponderGrant={(e) => begin(e.nativeEvent.pageX, e.nativeEvent.pageY)}
-        onResponderMove={(e) => move(e.nativeEvent.pageX)}
-        onResponderRelease={end}
-        onResponderTerminate={end}
-        onTouchStart={(e) => begin(e.nativeEvent.pageX, e.nativeEvent.pageY)}
-        {...(Platform.OS === "web"
-          ? {
-              onMouseDown: (e: { pageX: number; pageY: number }) => begin(e.pageX, e.pageY),
-              onMouseMove: (e: { pageX: number; buttons?: number }) => {
-                if (e.buttons === 1) move(e.pageX);
-              },
-              onMouseUp: end,
-              onMouseLeave: () => {
-                if (startX.current != null) end();
-              },
-            }
-          : {})}
-        style={{
-          transform: [{ translateX: x }],
-          backgroundColor: colors.card,
-        }}
-      >
-        {children}
-      </View>
-    </View>
-  );
-}
-
 function GeneratorHoursChart({
   title,
   rows,
@@ -481,7 +361,6 @@ function GeneratorHoursChart({
   onDelete?: (id: string) => void;
 }) {
   const showActions = onEdit != null && onDelete != null;
-  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const cell = {
     fontSize: 16,
     lineHeight: 22,
@@ -495,7 +374,7 @@ function GeneratorHoursChart({
         {title}
       </Text>
       <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-        <Text style={{ width: 96, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
+        <Text style={{ width: 168, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Date
         </Text>
         <Text style={{ width: 60, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
@@ -504,7 +383,6 @@ function GeneratorHoursChart({
         <Text style={{ width: 80, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Exercised
         </Text>
-        {showActions ? <View style={{ width: 28 }} /> : null}
       </View>
       {rows.length === 0 ? (
         <Text style={[styles.muted, { fontSize: 15 }]}>None yet</Text>
@@ -512,52 +390,37 @@ function GeneratorHoursChart({
         <View>
           {rows.map((row) => {
             const cells = (
-              <View
+              <Pressable
+                accessibilityRole={showActions ? "button" : undefined}
+                accessibilityLabel={showActions ? "Edit generator log" : undefined}
+                onPress={showActions ? () => onEdit(row.id) : undefined}
                 style={{
                   flexDirection: "row",
                   gap: 12,
                   alignItems: "center",
-                  minHeight: 30,
+                  minHeight: 38,
                   paddingVertical: 4,
-                  backgroundColor: colors.card,
                 }}
               >
-                <Text style={{ ...cell, width: 96 }} numberOfLines={1}>
+                <Text style={{ ...cell, width: 168 }} numberOfLines={1}>
                   {row.dateLabel}
                 </Text>
                 <Text style={{ ...cell, width: 60 }}>{formatGeneratorHours(row.hours)}</Text>
                 <Text style={{ ...cell, width: 80 }}>{formatGeneratorHours(row.exercised)}</Text>
-              </View>
+              </Pressable>
             );
             if (!showActions) {
               return <View key={row.id}>{cells}</View>;
             }
             return (
-              <View key={row.id} style={{ flexDirection: "row", alignItems: "center" }}>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <GeneratorSwipeDeleteRow
-                    deleteLabel="Delete generator log"
-                    onDelete={() => onDelete(row.id)}
-                    isOpen={openSwipeId === row.id}
-                    onOpen={() => setOpenSwipeId(row.id)}
-                  >
-                    {cells}
-                  </GeneratorSwipeDeleteRow>
-                </View>
-                <Pressable
-                  accessibilityLabel="Edit generator log"
-                  onPress={() => onEdit(row.id)}
-                  hitSlop={6}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="settings-outline" size={20} color={colors.muted} />
-                </Pressable>
-              </View>
+              <SwipeCommitDeleteRow
+                key={row.id}
+                onDelete={() => onDelete(row.id)}
+                radius={10}
+                transparent
+              >
+                {cells}
+              </SwipeCommitDeleteRow>
             );
           })}
         </View>
@@ -606,19 +469,18 @@ export default function FarmDetailScreen() {
   const [farmEditError, setFarmEditError] = useState<string | null>(null);
   const [farmSaving, setFarmSaving] = useState(false);
   const [farmEditKeyboardH, setFarmEditKeyboardH] = useState(0);
+  const farmEditScrollRef = useRef<ScrollViewType>(null);
+  const farmNotesWrapRef = useRef<View>(null);
   const [generatorModalOpen, setGeneratorModalOpen] = useState(false);
   const [generatorSaving, setGeneratorSaving] = useState(false);
   const [generatorError, setGeneratorError] = useState<string | null>(null);
   const [generatorEditingId, setGeneratorEditingId] = useState<string | null>(null);
   const [generatorEditingGen, setGeneratorEditingGen] = useState<GenHourKey | null>(null);
-  const [opsConfirm, setOpsConfirm] = useState<
-    | { kind: "house"; houseId: string; houseNumber: number }
-    | { kind: "issue"; issueId: string }
-    | { kind: "litter"; eventId: string }
-    | { kind: "feed"; deliveryId: string }
-    | { kind: "generator"; logId: string; hourKey: GenHourKey; label: string }
-    | null
-  >(null);
+  const [opsConfirm, setOpsConfirm] = useState<{
+    kind: "house";
+    houseId: string;
+    houseNumber: number;
+  } | null>(null);
   const [opsError, setOpsError] = useState<string | null>(null);
   const [completeConfirm, setCompleteConfirm] = useState<{
     flockId: string;
@@ -638,7 +500,6 @@ export default function FarmDetailScreen() {
   );
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("farms", scrollRef);
-  const houseSwipe = useExclusiveSwipeables();
   const sectionY = useRef<Record<string, number>>({});
 
   function scrollToSection(key: string) {
@@ -1155,14 +1016,46 @@ export default function FarmDetailScreen() {
     }
   }
 
+  function removeIssue(issueId: string) {
+    try {
+      deleteIssue(farm.id, issueId);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
+  function removeLitter(eventId: string) {
+    try {
+      deleteLitterEvent(farm.id, eventId);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
+  function removeFeed(deliveryId: string) {
+    try {
+      deleteFeedDelivery(deliveryId);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
+  function removeGenerator(logId: string, hourKey: GenHourKey) {
+    try {
+      deleteGeneratorLog(farm.id, logId, hourKey);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
   function runOpsConfirm() {
     if (!opsConfirm) return;
     try {
-      if (opsConfirm.kind === "house") deleteHouse(farm.id, opsConfirm.houseId);
-      else if (opsConfirm.kind === "issue") deleteIssue(farm.id, opsConfirm.issueId);
-      else if (opsConfirm.kind === "litter") deleteLitterEvent(farm.id, opsConfirm.eventId);
-      else if (opsConfirm.kind === "feed") deleteFeedDelivery(opsConfirm.deliveryId);
-      else deleteGeneratorLog(farm.id, opsConfirm.logId, opsConfirm.hourKey);
+      deleteHouse(farm.id, opsConfirm.houseId);
       load();
     } catch (e) {
       setOpsError(e instanceof Error ? e.message : "Could not delete");
@@ -1284,7 +1177,6 @@ export default function FarmDetailScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         keyboardShouldPersistTaps="handled"
-        onScrollBeginDrag={houseSwipe.closeAll}
       >
         <View
           style={{
@@ -1446,33 +1338,21 @@ export default function FarmDetailScreen() {
               onLayout={onSectionLayout(`house-${h.id}`)}
               style={{ marginBottom: 12 }}
             >
-            <Swipeable
-              ref={houseSwipe.setRef(h.id)}
-              overshootRight={false}
-              friction={2}
-              rightThreshold={40}
-              onSwipeableWillOpen={() => houseSwipe.closeOthers(h.id)}
-              renderRightActions={() => (
-                <Pressable
+            <SwipeCommitDeleteRow
+              onDelete={() => confirmDeleteHouse(h)}
+              deleteContent={
+                <View
                   accessibilityLabel={`Delete house ${h.houseNumber}`}
-                  onPress={() => confirmDeleteHouse(h)}
-                  style={{
-                    backgroundColor: colors.danger,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    width: 88,
-                    borderRadius: 14,
-                    marginLeft: 8,
-                  }}
+                  style={{ alignItems: "center" }}
                 >
                   <Ionicons name="trash-outline" size={22} color="#fff" />
                   <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12, marginTop: 4 }}>
                     Delete
                   </Text>
-                </Pressable>
-              )}
+                </View>
+              }
             >
-              <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
+              <Card style={{ marginBottom: 0, padding: 0 }}>
                 <View style={{ padding: 16, paddingBottom: 4 }}>
                   <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
                     <Pressable
@@ -1626,7 +1506,7 @@ export default function FarmDetailScreen() {
                             lineHeight: 16,
                           }}
                         >
-                          Enter{"\n"}mortality
+                          Enter{"\n"}Mortality
                         </Text>
                       </Pressable>
                     ) : null}
@@ -1822,7 +1702,7 @@ export default function FarmDetailScreen() {
                   </Pressable>
                 ) : null}
               </Card>
-            </Swipeable>
+            </SwipeCommitDeleteRow>
             </View>
           );
         })}
@@ -1833,7 +1713,7 @@ export default function FarmDetailScreen() {
         <Pressable
           onPress={openAddHouse}
           hitSlop={8}
-          style={{ marginBottom: 8, paddingVertical: 4, alignSelf: "flex-end" }}
+          style={{ marginBottom: 8, paddingVertical: 4, alignSelf: "flex-start" }}
         >
           <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
             Add House
@@ -1842,71 +1722,77 @@ export default function FarmDetailScreen() {
 
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
-          <Card>
-            <SectionHeading title="Recent Visits" onTop={scrollPageToTop} />
-            {data.visits.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
-            ) : (
-              data.visits.map((v) => (
-                <View
-                  key={v.id}
-                  style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
-                    borderTopColor: "#f5f5f4",
-                  }}
-                >
-                  <SwipeCommitDeleteRow
-                    onDelete={() => removeVisit(v.id)}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/visits/[visitId]",
-                        params: { id: farm.id, visitId: v.id },
-                      })
-                    }
-                  >
-                    <View
-                      accessibilityRole="button"
-                      accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
-                    >
-                      <Text style={{ fontWeight: "700" }}>
-                        {formatShortDate(v.visitDate)} —{" "}
-                        {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
-                      </Text>
-                      {v.followUpRequired ? (
-                        <Text style={{ color: "#b45309", fontWeight: "600", marginTop: 2 }}>
-                          Follow-up due
-                        </Text>
-                      ) : null}
-                      {v.notes ? (
-                        <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text>
-                      ) : null}
-                    </View>
-                  </SwipeCommitDeleteRow>
-                </View>
-              ))
-            )}
-          </Card>
-          <RecordLink
-            label="Log visit"
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/log-visit",
-                params: { id: farm.id },
-              })
+          <SectionHeading
+            title="Recent Visits"
+            right={
+              <RecordLink
+                label="Log Visit"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/log-visit",
+                    params: { id: farm.id },
+                  })
+                }
+              />
             }
           />
+          {data.visits.length === 0 ? (
+            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
+          ) : (
+            data.visits.map((v, i) => (
+              <View
+                key={v.id}
+                style={{
+                    marginTop: i === 0 ? 0 : 2,
+                    paddingTop: i === 0 ? 0 : 4,
+                    borderTopWidth: i === 0 ? 0 : 1,
+                    borderTopColor: "#f5f5f4",
+                }}
+              >
+                <SwipeCommitDeleteRow
+                  transparent
+                  onDelete={() => removeVisit(v.id)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/visits/[visitId]",
+                      params: { id: farm.id, visitId: v.id },
+                    })
+                  }
+                >
+                  <View
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
+                    style={logRowHit}
+                  >
+                    <Text style={logEntryText}>
+                      {formatShortDate(v.visitDate)} —{" "}
+                      {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
+                    </Text>
+                    {v.followUpRequired ? (
+                      <Text style={{ ...logEntryText, color: "#b45309", marginTop: 2 }}>
+                        Follow-up due
+                      </Text>
+                    ) : null}
+                    {v.notes ? (
+                      <Text style={[styles.muted, { fontSize: 13, lineHeight: 18, marginTop: 2 }]}>
+                        {v.notes}
+                      </Text>
+                    ) : null}
+                  </View>
+                </SwipeCommitDeleteRow>
+              </View>
+            ))
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
         {/* ── Generator log ── */}
         <View onLayout={onSectionLayout("generators")}>
-          <Card>
-            <SectionHeading
-              title="Generator Log"
-              onTop={scrollPageToTop}
-              right={
-                (data.generatorLogs ?? []).some(
+          <SectionHeading
+            title="Generator Log"
+            right={
+              <>
+                {(data.generatorLogs ?? []).some(
                   (log) =>
                     log.gen1Hours != null ||
                     log.gen2Hours != null ||
@@ -1937,9 +1823,8 @@ export default function FarmDetailScreen() {
                             }
                             return null;
                           };
-                          const [y, m, d] = log.logDate.split("-").map(Number);
                           return {
-                            dateLabel: `${m}-${d}-${y}`,
+                            dateLabel: formatGeneratorLogDate(log.logDate),
                             hours,
                             deltas: {
                               gen1: hoursDelta(log.gen1Hours, priorFor("gen1Hours")),
@@ -1952,225 +1837,237 @@ export default function FarmDetailScreen() {
                       );
                     }}
                   />
-                ) : null
-              }
-            />
-            {(data.generatorLogs ?? []).every(
-              (log) =>
-                log.gen1Hours == null &&
-                log.gen2Hours == null &&
-                log.gen3Hours == null &&
-                log.gen4Hours == null,
-            ) ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
-            ) : (
-              <>
-                {GENERATOR_FIELD_DEFS.map((gen) => {
-                  const allLogs = data.generatorLogs ?? [];
-                  const genLogs = allLogs
-                    .filter((log) => log[gen.hourKey] != null)
-                    .slice(0, MAX_GENERATOR_LOGS_DISPLAY);
-                  if (genLogs.length === 0) return null;
-                  const rows: GeneratorChartRow[] = genLogs.map((log, index) => {
-                    const previous = genLogs[index + 1] ?? null;
-                    const [y, m, d] = log.logDate.split("-").map(Number);
-                    return {
-                      id: log.id,
-                      dateLabel: `${m}-${d}-${y}`,
-                      hours: log[gen.hourKey] as number,
-                      exercised: hoursDelta(log[gen.hourKey], previous?.[gen.hourKey]),
-                    };
-                  });
-                  return (
-                    <GeneratorHoursChart
-                      key={gen.key}
-                      title={gen.label}
-                      rows={rows}
-                      onEdit={(id) => {
-                        const log = allLogs.find((l) => l.id === id);
-                        if (log) openGeneratorEditor(log, gen.hourKey);
-                      }}
-                      onDelete={(id) =>
-                        setOpsConfirm({
-                          kind: "generator",
-                          logId: id,
-                          hourKey: gen.hourKey,
-                          label: gen.label,
-                        })
-                      }
-                    />
-                  );
-                })}
+                ) : null}
+                {!generatorModalOpen ? (
+                  <RecordLink label="Log Gen." onPress={() => openGeneratorEditor()} />
+                ) : null}
               </>
-            )}
-          </Card>
-          {!generatorModalOpen ? (
-            <RecordLink label="Log generators" onPress={() => openGeneratorEditor()} />
-          ) : null}
+            }
+          />
+          {(data.generatorLogs ?? []).every(
+            (log) =>
+              log.gen1Hours == null &&
+              log.gen2Hours == null &&
+              log.gen3Hours == null &&
+              log.gen4Hours == null,
+          ) ? (
+            <Text style={styles.muted}>None yet</Text>
+          ) : (
+            <>
+              {GENERATOR_FIELD_DEFS.map((gen) => {
+                const allLogs = data.generatorLogs ?? [];
+                const genLogs = allLogs
+                  .filter((log) => log[gen.hourKey] != null)
+                  .slice(0, MAX_GENERATOR_LOGS_DISPLAY);
+                if (genLogs.length === 0) return null;
+                const rows: GeneratorChartRow[] = genLogs.map((log, index) => {
+                  const previous = genLogs[index + 1] ?? null;
+                  return {
+                    id: log.id,
+                    dateLabel: formatGeneratorLogDate(log.logDate),
+                    hours: log[gen.hourKey] as number,
+                    exercised: hoursDelta(log[gen.hourKey], previous?.[gen.hourKey]),
+                  };
+                });
+                return (
+                  <GeneratorHoursChart
+                    key={gen.key}
+                    title={gen.label}
+                    rows={rows}
+                    onEdit={(id) => {
+                      const log = allLogs.find((l) => l.id === id);
+                      if (log) openGeneratorEditor(log, gen.hourKey);
+                    }}
+                    onDelete={(id) => removeGenerator(id, gen.hourKey)}
+                  />
+                );
+              })}
+            </>
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
         {/* ── Issues ── */}
         <View onLayout={onSectionLayout("issues")}>
-          <Card>
-            <SectionHeading title="Recent Issues" onTop={scrollPageToTop} />
-            {data.issues.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
-            ) : (
-              data.issues.map((issue) => (
-                <View
-                  key={issue.id}
-                  style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
+          <SectionHeading
+            title="Recent Issues"
+            right={
+              <RecordLink
+                label="Log Issue"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/report-issue",
+                    params: { id: farm.id },
+                  })
+                }
+              />
+            }
+          />
+          {data.issues.length === 0 ? (
+            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
+          ) : (
+            data.issues.map((issue, i) => (
+              <View
+                key={issue.id}
+                style={{
+                    marginTop: i === 0 ? 0 : 2,
+                    paddingTop: i === 0 ? 0 : 4,
+                    borderTopWidth: i === 0 ? 0 : 1,
                     borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                  }}
+                }}
+              >
+                <SwipeCommitDeleteRow
+                  transparent
+                  onDelete={() => removeIssue(issue.id)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/issues/[issueId]",
+                      params: { id: farm.id, issueId: issue.id },
+                    })
+                  }
                 >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontWeight: "700" }}>
+                  <View
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit issue ${formatShortDate(issue.dateReported)}`}
+                    style={logRowHit}
+                  >
+                    <Text style={logEntryText}>
                       {formatShortDate(issue.dateReported)} · {issue.priority}
-                      <Text style={{ fontWeight: "600", color: colors.muted }}>
+                      <Text style={{ ...logEntryText, color: colors.muted }}>
                         {" "}
                         · {issue.status}
                       </Text>
                     </Text>
-                    <Text style={{ marginTop: 2 }}>
+                    <Text style={{ ...logEntryText, marginTop: 2 }}>
                       {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}:{" "}
                       {issue.description}
                     </Text>
                   </View>
-                  <RowActions
-                    editLabel="Edit issue"
-                    deleteLabel="Delete issue"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/issues/[issueId]",
-                        params: { id: farm.id, issueId: issue.id },
-                      })
-                    }
-                    onDelete={() => setOpsConfirm({ kind: "issue", issueId: issue.id })}
-                  />
-                </View>
-              ))
-            )}
-          </Card>
-          <RecordLink
-            label="Report issue"
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/report-issue",
-                params: { id: farm.id },
-              })
-            }
-          />
+                </SwipeCommitDeleteRow>
+              </View>
+            ))
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
         {/* ── Litter ── */}
         <View onLayout={onSectionLayout("litter")}>
-          <Card>
-            <SectionHeading title="Litter Events" onTop={scrollPageToTop} />
-            {data.litterEvents.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
-            ) : (
-              data.litterEvents.map((e) => (
-                <View
-                  key={e.id}
-                  style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
+          <SectionHeading
+            title="Litter Events"
+            right={
+              <RecordLink
+                label="Log Litter"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/record-litter",
+                    params: { id: farm.id },
+                  })
+                }
+              />
+            }
+          />
+          {data.litterEvents.length === 0 ? (
+            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
+          ) : (
+            data.litterEvents.map((e, i) => (
+              <View
+                key={e.id}
+                style={{
+                    marginTop: i === 0 ? 0 : 2,
+                    paddingTop: i === 0 ? 0 : 4,
+                    borderTopWidth: i === 0 ? 0 : 1,
                     borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                  }}
+                }}
+              >
+                <SwipeCommitDeleteRow
+                  transparent
+                  onDelete={() => removeLitter(e.id)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/litter/[eventId]",
+                      params: { id: farm.id, eventId: e.id },
+                    })
+                  }
                 >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontWeight: "700" }}>
+                  <View
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit litter event ${formatShortDate(e.eventDate)}`}
+                    style={logRowHit}
+                  >
+                    <Text style={logEntryText}>
                       {formatShortDate(e.eventDate)} —{" "}
                       {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
                       {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
                     </Text>
-                    {e.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{e.notes}</Text> : null}
+                    {e.notes ? (
+                      <Text style={[styles.muted, { fontSize: 16, lineHeight: 22, marginTop: 2 }]}>
+                        {e.notes}
+                      </Text>
+                    ) : null}
                   </View>
-                  <RowActions
-                    editLabel="Edit litter event"
-                    deleteLabel="Delete litter event"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/litter/[eventId]",
-                        params: { id: farm.id, eventId: e.id },
-                      })
-                    }
-                    onDelete={() => setOpsConfirm({ kind: "litter", eventId: e.id })}
-                  />
-                </View>
-              ))
-            )}
-          </Card>
-          <RecordLink
-            label="Record litter event"
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/record-litter",
-                params: { id: farm.id },
-              })
-            }
-          />
+                </SwipeCommitDeleteRow>
+              </View>
+            ))
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
         {/* ── Feed ── */}
         <View onLayout={onSectionLayout("feed")}>
-          <Card>
-            <SectionHeading title="Feed Deliveries" onTop={scrollPageToTop} />
-            {data.feedDeliveries.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
-            ) : (
-              data.feedDeliveries.map((d) => (
-                <View
-                  key={d.id}
-                  style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
+          <SectionHeading
+            title="Feed Deliveries"
+            right={
+              <RecordLink
+                label="Log Feed"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/record-feed",
+                    params: { id: farm.id },
+                  })
+                }
+              />
+            }
+          />
+          {data.feedDeliveries.length === 0 ? (
+            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
+          ) : (
+            data.feedDeliveries.map((d, i) => (
+              <View
+                key={d.id}
+                style={{
+                    marginTop: i === 0 ? 0 : 2,
+                    paddingTop: i === 0 ? 0 : 4,
+                    borderTopWidth: i === 0 ? 0 : 1,
                     borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                  }}
+                }}
+              >
+                <SwipeCommitDeleteRow
+                  transparent
+                  onDelete={() => removeFeed(d.id)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/feed/[deliveryId]",
+                      params: { id: farm.id, deliveryId: d.id },
+                    })
+                  }
                 >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontWeight: "700" }}>
+                  <View
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit feed delivery ${formatShortDate(d.deliveryDate)}`}
+                    style={logRowHit}
+                  >
+                    <Text style={logEntryText}>
                       {formatShortDate(d.deliveryDate)} — {formatNumber(d.poundsDelivered)} lbs
                       {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
                       {d.feedType ? ` · ${d.feedType}` : ""}
                       {d.feedMill ? ` · ${d.feedMill}` : ""}
                     </Text>
                   </View>
-                  <RowActions
-                    editLabel="Edit feed delivery"
-                    deleteLabel="Delete feed delivery"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/feed/[deliveryId]",
-                        params: { id: farm.id, deliveryId: d.id },
-                      })
-                    }
-                    onDelete={() => setOpsConfirm({ kind: "feed", deliveryId: d.id })}
-                  />
-                </View>
-              ))
-            )}
-          </Card>
-          <RecordLink
-            label="Record feed delivery"
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/record-feed",
-                params: { id: farm.id },
-              })
-            }
-          />
+                </SwipeCommitDeleteRow>
+              </View>
+            ))
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
       </ScrollView>
@@ -2343,139 +2240,134 @@ export default function FarmDetailScreen() {
                     </View>
                     {data.activeFlock ? (
                       <>
-                        <View style={{ flexDirection: "row", gap: 10 }}>
-                          <View style={{ flex: 1, marginBottom: 10 }}>
-                            <DatePickerField
-                              label="Placement date"
-                              value={editingHouse.placementDate}
-                              presentation={Platform.OS === "web" ? "modal" : "inline"}
-                              expanded={housePicker === "placement"}
-                              onOpen={() => setHousePicker("placement")}
-                              inputStyle={{ marginBottom: 0 }}
-                              onChange={(date) =>
-                                setEditingHouse((prev) => {
-                                  if (!prev) return prev;
-                                  const oldDefault = prev.placementDate
-                                    ? addDaysKey(prev.placementDate, 52)
-                                    : "";
-                                  const catchWasDefault =
-                                    !prev.catchDate || prev.catchDate === oldDefault;
-                                  return {
-                                    ...prev,
-                                    placementDate: date,
-                                    catchDate: catchWasDefault
-                                      ? addDaysKey(date, 52)
-                                      : prev.catchDate,
-                                  };
-                                })
-                              }
-                            />
-                            <PropagateCheck
-                              checked={editingHouse.applyPlacementToRemaining}
-                              onToggle={() =>
-                                setEditingHouse((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        applyPlacementToRemaining: !prev.applyPlacementToRemaining,
-                                      }
-                                    : prev,
-                                )
-                              }
-                            />
-                          </View>
-                          <NativeNumInput
-                            label="Birds placed"
-                            value={editingHouse.placedBirdCount}
-                            grouped
-                            style={{ flex: 1 }}
-                            onChangeText={(v) =>
-                              setEditingHouse((prev) =>
-                                prev ? { ...prev, placedBirdCount: v } : prev,
-                              )
+                        <View style={{ marginBottom: 10 }}>
+                          <DatePickerField
+                            label="Placement date"
+                            value={editingHouse.placementDate}
+                            presentation={Platform.OS === "web" ? "modal" : "inline"}
+                            expanded={housePicker === "placement"}
+                            onOpen={() => setHousePicker("placement")}
+                            inputStyle={{ marginBottom: 0 }}
+                            onChange={(date) =>
+                              setEditingHouse((prev) => {
+                                if (!prev) return prev;
+                                const oldDefault = prev.placementDate
+                                  ? addDaysKey(prev.placementDate, 52)
+                                  : "";
+                                const catchWasDefault =
+                                  !prev.catchDate || prev.catchDate === oldDefault;
+                                return {
+                                  ...prev,
+                                  placementDate: date,
+                                  catchDate: catchWasDefault
+                                    ? addDaysKey(date, 52)
+                                    : prev.catchDate,
+                                };
+                              })
                             }
-                            propagateChecked={editingHouse.applyBirdsToRemaining}
-                            onPropagateToggle={() =>
+                          />
+                          <PropagateCheck
+                            checked={editingHouse.applyPlacementToRemaining}
+                            onToggle={() =>
                               setEditingHouse((prev) =>
                                 prev
-                                  ? { ...prev, applyBirdsToRemaining: !prev.applyBirdsToRemaining }
+                                  ? {
+                                      ...prev,
+                                      applyPlacementToRemaining: !prev.applyPlacementToRemaining,
+                                    }
                                   : prev,
                               )
                             }
                           />
                         </View>
-                        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
-                          <View style={{ flex: 1 }}>
-                            <DatePickerField
-                              label="Catch date"
-                              value={editingHouse.catchDate}
-                              presentation={Platform.OS === "web" ? "modal" : "inline"}
-                              expanded={housePicker === "catch"}
-                              onOpen={() => setHousePicker("catch")}
-                              inputStyle={{ marginBottom: 0 }}
-                              onChange={(date) =>
+                        <NativeNumInput
+                          label="Birds placed"
+                          value={editingHouse.placedBirdCount}
+                          grouped
+                          onChangeText={(v) =>
+                            setEditingHouse((prev) =>
+                              prev ? { ...prev, placedBirdCount: v } : prev,
+                            )
+                          }
+                          propagateChecked={editingHouse.applyBirdsToRemaining}
+                          onPropagateToggle={() =>
+                            setEditingHouse((prev) =>
+                              prev
+                                ? { ...prev, applyBirdsToRemaining: !prev.applyBirdsToRemaining }
+                                : prev,
+                            )
+                          }
+                        />
+                        <View style={{ marginBottom: 10 }}>
+                          <DatePickerField
+                            label="Catch date"
+                            value={editingHouse.catchDate}
+                            presentation={Platform.OS === "web" ? "modal" : "inline"}
+                            expanded={housePicker === "catch"}
+                            onOpen={() => setHousePicker("catch")}
+                            inputStyle={{ marginBottom: 0 }}
+                            onChange={(date) =>
+                              setEditingHouse((prev) =>
+                                prev ? { ...prev, catchDate: date } : prev,
+                              )
+                            }
+                          />
+                          <PropagateCheck
+                            checked={editingHouse.applyCatchDateToRemaining}
+                            onToggle={() =>
+                              setEditingHouse((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      applyCatchDateToRemaining: !prev.applyCatchDateToRemaining,
+                                    }
+                                  : prev,
+                              )
+                            }
+                          />
+                        </View>
+                        <View style={{ marginBottom: 10 }}>
+                          <TimeScrollPickerField
+                            label="Catch time"
+                            value={editingHouse.catchTime}
+                            presentation={Platform.OS === "web" ? "modal" : "inline"}
+                            expanded={housePicker === "catchTime"}
+                            onOpen={() => setHousePicker("catchTime")}
+                            inputStyle={{ marginBottom: 0 }}
+                            onChange={(time) =>
+                              setEditingHouse((prev) =>
+                                prev ? { ...prev, catchTime: time } : prev,
+                              )
+                            }
+                          />
+                          <PropagateCheck
+                            checked={editingHouse.applyCatchTimeToRemaining}
+                            onToggle={() =>
+                              setEditingHouse((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      applyCatchTimeToRemaining: !prev.applyCatchTimeToRemaining,
+                                    }
+                                  : prev,
+                              )
+                            }
+                          />
+                          {editingHouse.catchTime ? (
+                            <Pressable
+                              onPress={() =>
                                 setEditingHouse((prev) =>
-                                  prev ? { ...prev, catchDate: date } : prev,
+                                  prev ? { ...prev, catchTime: "" } : prev,
                                 )
                               }
-                            />
-                            <PropagateCheck
-                              checked={editingHouse.applyCatchDateToRemaining}
-                              onToggle={() =>
-                                setEditingHouse((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        applyCatchDateToRemaining: !prev.applyCatchDateToRemaining,
-                                      }
-                                    : prev,
-                                )
-                              }
-                            />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <TimeScrollPickerField
-                              label="Catch time"
-                              value={editingHouse.catchTime}
-                              presentation={Platform.OS === "web" ? "modal" : "inline"}
-                              expanded={housePicker === "catchTime"}
-                              onOpen={() => setHousePicker("catchTime")}
-                              inputStyle={{ marginBottom: 0 }}
-                              onChange={(time) =>
-                                setEditingHouse((prev) =>
-                                  prev ? { ...prev, catchTime: time } : prev,
-                                )
-                              }
-                            />
-                            <PropagateCheck
-                              checked={editingHouse.applyCatchTimeToRemaining}
-                              onToggle={() =>
-                                setEditingHouse((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        applyCatchTimeToRemaining: !prev.applyCatchTimeToRemaining,
-                                      }
-                                    : prev,
-                                )
-                              }
-                            />
-                            {editingHouse.catchTime ? (
-                              <Pressable
-                                onPress={() =>
-                                  setEditingHouse((prev) =>
-                                    prev ? { ...prev, catchTime: "" } : prev,
-                                  )
-                                }
-                                style={{ alignSelf: "flex-start", marginTop: 2 }}
-                                hitSlop={8}
-                              >
-                                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 12 }}>
-                                  Clear
-                                </Text>
-                              </Pressable>
-                            ) : null}
-                          </View>
+                              style={{ alignSelf: "flex-start", marginTop: 2 }}
+                              hitSlop={8}
+                            >
+                              <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 12 }}>
+                                Clear
+                              </Text>
+                            </Pressable>
+                          ) : null}
                         </View>
                       </>
                     ) : null}
@@ -2692,6 +2584,7 @@ export default function FarmDetailScreen() {
             }}
           >
             <ScrollView
+              ref={farmEditScrollRef}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               contentContainerStyle={{
@@ -2736,27 +2629,45 @@ export default function FarmDetailScreen() {
                     }
                     autoCapitalize="words"
                   />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        minHeight: 110,
-                        paddingTop: 12,
-                        paddingBottom: 12,
-                        textAlignVertical: "top",
-                        color: colors.text,
-                      },
-                    ]}
-                    value={editingFarm.notes}
-                    onChangeText={(v) =>
-                      setEditingFarm((prev) => (prev ? { ...prev, notes: v } : prev))
-                    }
-                    multiline
-                    scrollEnabled
-                    placeholder="Notes"
-                    placeholderTextColor={colors.muted}
-                  />
+                  <View ref={farmNotesWrapRef} collapsable={false}>
+                    <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        {
+                          minHeight: 110,
+                          paddingTop: 12,
+                          paddingBottom: 12,
+                          textAlignVertical: "top",
+                          color: colors.text,
+                        },
+                      ]}
+                      value={editingFarm.notes}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, notes: v } : prev))
+                      }
+                      multiline
+                      scrollEnabled
+                      placeholder="Notes"
+                      placeholderTextColor={colors.muted}
+                      onFocus={() => {
+                        requestAnimationFrame(() => {
+                          const wrap = farmNotesWrapRef.current;
+                          const scroll = farmEditScrollRef.current;
+                          if (!wrap || !scroll) return;
+                          wrap.measureLayout(
+                            scroll as unknown as number,
+                            (_x, y) => {
+                              scroll.scrollTo({ y: Math.max(0, y - 20), animated: true });
+                            },
+                            () => {
+                              scroll.scrollToEnd({ animated: true });
+                            },
+                          );
+                        });
+                      }}
+                    />
+                  </View>
                 </View>
               ) : null}
             </ScrollView>
@@ -2898,25 +2809,11 @@ export default function FarmDetailScreen() {
       <ConfirmDialog
         visible={opsConfirm != null}
         title={
-          opsConfirm?.kind === "house"
+          opsConfirm
             ? `Delete house ${opsConfirm.houseNumber}?`
-            : opsConfirm?.kind === "issue"
-              ? "Delete issue?"
-              : opsConfirm?.kind === "litter"
-                ? "Delete litter event?"
-                : opsConfirm?.kind === "feed"
-                  ? "Delete feed delivery?"
-                  : opsConfirm?.kind === "generator"
-                    ? `Delete ${opsConfirm.label} entry?`
-                    : "Delete?"
+            : "Delete?"
         }
-        message={
-          opsConfirm?.kind === "house"
-            ? "This removes the house from the farm. It will no longer appear in your lists."
-            : opsConfirm?.kind === "generator"
-              ? "Only this generator reading will be removed. Other generators on this date stay."
-              : "This cannot be undone."
-        }
+        message="This removes the house from the farm. It will no longer appear in your lists."
         confirmLabel="Delete"
         danger
         onConfirm={runOpsConfirm}

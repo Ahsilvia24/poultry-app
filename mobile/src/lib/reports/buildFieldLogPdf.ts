@@ -1,6 +1,9 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import {
+  FIELD_LOG_PDF_FARM_NAME_CHARS,
+  fieldLogVisitTypeLabel,
   formatFieldLogDayHeader,
+  truncateFarmName,
   type FieldLogWeek,
 } from "./field-log";
 
@@ -44,7 +47,7 @@ export async function buildFieldLogPdfBytes(opts: {
   for (const week of opts.weeks) {
     const maxFarms = Math.max(1, ...week.days.map((day) => day.farms.length));
     const headerH = 28;
-    const rowH = 14;
+    const rowH = 22;
     const gridH = headerH + maxFarms * rowH + 10;
     if (y - gridH < MARGIN) newPage();
 
@@ -92,17 +95,35 @@ export async function buildFieldLogPdfBytes(opts: {
         font,
         color: muted,
       });
-      const names = day.farms.length > 0 ? day.farms : ["—"];
-      names.forEach((farm, row) => {
-        const label = farm.length > 16 ? `${farm.slice(0, 15)}…` : farm;
-        page.drawText(label, {
+      const entries = day.farms.length > 0 ? day.farms : null;
+      if (!entries) {
+        page.drawText("—", {
           x: x + 6,
-          y: top - headerH - 2 - row * rowH,
+          y: top - headerH - 2,
           size: 8,
           font: bold,
           color: ink,
         });
-      });
+      } else {
+        entries.forEach((farm, row) => {
+          const label = truncateFarmName(farm.farmName, FIELD_LOG_PDF_FARM_NAME_CHARS);
+          const type = fieldLogVisitTypeLabel(farm.visitType);
+          page.drawText(label, {
+            x: x + 6,
+            y: top - headerH - 2 - row * rowH,
+            size: 8,
+            font: bold,
+            color: ink,
+          });
+          page.drawText(type, {
+            x: x + 6,
+            y: top - headerH - 12 - row * rowH,
+            size: 7,
+            font,
+            color: muted,
+          });
+        });
+      }
     });
 
     y = top - gridH - 14;

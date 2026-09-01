@@ -23,7 +23,6 @@ import { colors, styles } from "../theme";
 import { BackHeader, Card, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { OptionPicker, SelectField } from "./OptionPicker";
-import { ConfirmDialog } from "./ConfirmDialog";
 
 export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?: string }) {
   const router = useRouter();
@@ -56,7 +55,6 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
   const [picker, setPicker] = useState<"date" | "house" | "type" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (editing && !initial) {
     return (
@@ -143,7 +141,6 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
               style={styles.input}
               value={litterDepth}
               onChangeText={setLitterDepth}
-              keyboardType="decimal-pad"
             />
             <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
             <TextInput
@@ -170,7 +167,14 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
                 label="Delete litter event"
                 secondary
                 style={{ marginTop: 10 }}
-                onPress={() => setDeleteOpen(true)}
+                onPress={() => {
+                  try {
+                    deleteLitterEvent(farmId, eventId);
+                    router.back();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Could not delete litter event");
+                  }
+                }}
               />
             ) : null}
           </Card>
@@ -195,20 +199,6 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
         ]}
         onSelect={setHouseId}
         onClose={() => setPicker(null)}
-      />
-      <ConfirmDialog
-        visible={deleteOpen}
-        title="Delete litter event?"
-        message="This cannot be undone."
-        confirmLabel="Delete"
-        danger
-        onConfirm={() => {
-          if (!eventId) return;
-          deleteLitterEvent(farmId, eventId);
-          setDeleteOpen(false);
-          router.back();
-        }}
-        onCancel={() => setDeleteOpen(false)}
       />
     </SafeAreaView>
   );

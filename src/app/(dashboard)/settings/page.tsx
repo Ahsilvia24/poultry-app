@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateSettingsAction } from "@/app/actions/ops";
-import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import { Button, Card, Input, Label, PageHeader } from "@/components/ui";
+import { FarmOrderStepper } from "@/components/FarmOrderStepper";
 import { FARM_ORDER_OPTIONS, parseFarmOrder } from "@/lib/farm-order";
 
 async function submitSettings(formData: FormData) {
@@ -31,9 +32,20 @@ export default async function SettingsPage() {
           <div>
             <h2 className="font-bold text-stone-900">Profile</h2>
             <div className="mt-3 space-y-3">
-              <div>
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" name="name" defaultValue={user.name} required />
+              <div className="flex items-center gap-3">
+                <label
+                  htmlFor="name"
+                  className="shrink-0 text-sm font-semibold text-stone-800"
+                >
+                  Service Tech:
+                </label>
+                <Input
+                  id="name"
+                  name="name"
+                  defaultValue={user.name}
+                  required
+                  className="flex-1 border-0 bg-transparent px-0 shadow-none focus:border-transparent focus:ring-0"
+                />
               </div>
               <div>
                 <Label htmlFor="email">Email</Label>
@@ -119,25 +131,13 @@ export default async function SettingsPage() {
                   required
                 />
               </div>
-              <div className="flex items-center gap-3 sm:col-span-2">
-                <label
-                  htmlFor="farmOrder"
-                  className="shrink-0 text-sm font-semibold text-stone-700"
-                >
-                  Order Farms By
-                </label>
-                <Select
-                  id="farmOrder"
+              <div className="flex items-start gap-2 sm:col-span-2">
+                <p className="shrink-0 pt-2 text-sm font-semibold text-stone-800">Order Farms By:</p>
+                <FarmOrderStepper
                   name="farmOrder"
                   defaultValue={parseFarmOrder(s?.farmOrder)}
-                  className="flex-1"
-                >
-                  {FARM_ORDER_OPTIONS.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
+                  options={FARM_ORDER_OPTIONS}
+                />
               </div>
             </div>
             {s?.notifyInApp !== false ? (

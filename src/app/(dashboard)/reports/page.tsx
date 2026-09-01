@@ -114,6 +114,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       },
       select: {
         id: true,
+        visitType: true,
         visitDate: true,
         loggedAt: true,
         createdAt: true,
@@ -126,6 +127,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       visits.map((v) => ({
         id: v.id,
         farmName: v.farm.farmName,
+        visitType: v.visitType,
         visitDate: dateKeyFromDb(v.visitDate),
         loggedAt: (v.loggedAt ?? v.createdAt).toISOString(),
       })),
@@ -160,7 +162,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
             </div>
           </form>
         </Card>
-        <FieldLogReport weeks={weeks} filterLabel={filterLabel} />
+        <FieldLogReport
+          weeks={weeks}
+          filterLabel={filterLabel}
+          technicianName={session.user.name ?? undefined}
+        />
       </div>
     );
   }

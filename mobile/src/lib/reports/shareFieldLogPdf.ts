@@ -5,13 +5,15 @@ import { savePdfBytes } from "./savePdf";
 export async function shareFieldLogPdf(opts: {
   weeks: FieldLogWeek[];
   subtitle: string;
+  technicianName?: string;
 }) {
   if (!fieldLogHasVisits(opts.weeks)) {
     throw new Error("No visits logged in this date range.");
   }
 
+  const tech = opts.technicianName?.trim();
   const bytes = await buildFieldLogPdfBytes({
-    title: "Field Log",
+    title: tech ? `Field Log - ${tech}` : "Field Log",
     subtitle: opts.subtitle,
     weeks: opts.weeks,
   });

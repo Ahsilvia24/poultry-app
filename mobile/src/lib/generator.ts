@@ -1,3 +1,27 @@
+const GEN_LOG_MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+/** Farm generator log date: `August 26, 2026`. */
+export function formatGeneratorLogDate(dateKey: string) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  if (!y || !m || !d) return dateKey;
+  const mon = GEN_LOG_MONTHS[m - 1];
+  if (!mon) return dateKey;
+  return `${mon} ${d}, ${y}`;
+}
+
 /** Format hour-meter / run hours like 235, 234.5, or .5 */
 export function formatGeneratorHours(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "—";

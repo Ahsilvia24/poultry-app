@@ -60,10 +60,10 @@ function formatFeedStamp(d: Date | null) {
 }
 
 function formatHeadCountLabel(raw: string) {
-  if (!raw) return "Head count";
+  if (!raw) return "Enter Head Count";
   const n = Number(raw);
-  if (!Number.isFinite(n)) return `Head count ${raw}`;
-  return `Head count ${n.toLocaleString()}`;
+  if (!Number.isFinite(n)) return `Head Count ${raw}`;
+  return `Head Count ${n.toLocaleString()}`;
 }
 
 type ActiveField = "rate" | "head" | "binA" | "binB" | "calcWater" | "calcHead";
@@ -132,7 +132,7 @@ export function ManualLfoScreen({
   const [orderDate, setOrderDate] = useState(todayKey);
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
-  const [headCount, setHeadCount] = useState("29000");
+  const [headCount, setHeadCount] = useState("");
   const [calcWaterGal, setCalcWaterGal] = useState(DEFAULT_WATER_GAL);
   const [calcHeadCount, setCalcHeadCount] = useState(DEFAULT_HEAD_COUNT);
   const [binAPounds, setBinAPounds] = useState("0");

@@ -393,7 +393,7 @@ export function FarmLfoScreen({
               >
                 <Text style={{ fontWeight: "800" }}>House {house.houseNumber}</Text>
                 <Text style={styles.muted}>
-                  Head count {house.headCount.toLocaleString()}
+                  Head Count {house.headCount.toLocaleString()}
                 </Text>
               </View>
               <View style={styles.row}>

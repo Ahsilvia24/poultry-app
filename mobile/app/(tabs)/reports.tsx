@@ -6,9 +6,12 @@ import { getFieldLog, getGeneratorLogReport, getReports, listFarms } from "../..
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
   defaultFieldLogRange,
+  FIELD_LOG_FARM_NAME_CHARS,
   fieldLogHasVisits,
+  fieldLogVisitTypeLabel,
   fieldLogWeeksToTsv,
   formatFieldLogDayHeader,
+  truncateFarmName,
   type FieldLogWeek,
 } from "../../src/lib/reports/field-log";
 import {
@@ -31,6 +34,8 @@ import {
 } from "../../src/components/ui";
 import { DatePickerField } from "../../src/components/DatePickerField";
 import { ClipboardIconButton } from "../../src/components/ClipboardIconButton";
+import { SharePdfIconButton } from "../../src/components/SharePdfIconButton";
+import { getServiceTech } from "../../src/lib/appSettings";
 import { FarmHistoryPanel } from "../../src/components/FarmHistoryPanel";
 import { userFacingMessage } from "../../src/lib/useKeyboardInset";
 
@@ -233,32 +238,34 @@ export default function ReportsScreen() {
                   </Text>
                   <Text style={[styles.muted, { marginTop: 2 }]}>{fieldFilterLabel}</Text>
                 </View>
-                <ClipboardIconButton
-                  accessibilityLabel="Copy field log"
-                  color={colors.accentDark}
-                  emptyMessage="No visits in this date range."
-                  onNotice={setShareNotice}
-                  getText={() => {
-                    if (!hasFieldFarms) return "";
-                    return fieldLogWeeksToTsv(fieldWeeks);
-                  }}
-                />
-                <PrimaryButton
-                  secondary
-                  label="Share PDF"
-                  onPress={() => {
-                    setShareNotice(null);
-                    void shareFieldLogPdf({
-                      weeks: fieldWeeks,
-                      subtitle: fieldFilterLabel,
-                    }).catch((e) => {
-                      setShareNotice(
-                        userFacingMessage(e, "Could not share PDF. Try again in a moment."),
-                      );
-                    });
-                  }}
-                  style={{ minWidth: 120 }}
-                />
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <ClipboardIconButton
+                    accessibilityLabel="Copy field log"
+                    color={colors.accentDark}
+                    emptyMessage="No visits in this date range."
+                    onNotice={setShareNotice}
+                    getText={() => {
+                      if (!hasFieldFarms) return "";
+                      return fieldLogWeeksToTsv(fieldWeeks);
+                    }}
+                  />
+                  <SharePdfIconButton
+                    onPress={() => {
+                      setShareNotice(null);
+                      void shareFieldLogPdf({
+                        weeks: fieldWeeks,
+                        subtitle: fieldFilterLabel,
+                        technicianName: getServiceTech(),
+                      }).catch((e) => {
+                        setShareNotice(
+                          userFacingMessage(e, "Could not share PDF. Try again in a moment."),
+                        );
+                      });
+                    }}
+                    accessibilityLabel="Share field log PDF"
+                    color={colors.accentDark}
+                  />
+                </View>
               </View>
               {fieldWeeks.map((week) => (
                 <ScrollView key={week.weekStart} horizontal style={{ marginBottom: 12 }}>
@@ -292,12 +299,19 @@ export default function ReportsScreen() {
                             <Text style={styles.muted}>—</Text>
                           ) : (
                             day.farms.map((farm, i) => (
-                              <Text
-                                key={`${day.dateKey}-${i}-${farm}`}
-                                style={{ fontWeight: "700", marginBottom: 6, fontSize: 13 }}
+                              <View
+                                key={`${day.dateKey}-${i}-${farm.farmName}-${farm.visitType}`}
+                                style={{ marginBottom: 8 }}
                               >
-                                {farm}
-                              </Text>
+                                <Text
+                                  style={{ fontWeight: "700", fontSize: 13, color: colors.text }}
+                                >
+                                  {truncateFarmName(farm.farmName, FIELD_LOG_FARM_NAME_CHARS)}
+                                </Text>
+                                <Text style={{ fontWeight: "600", fontSize: 11, color: colors.muted }}>
+                                  {fieldLogVisitTypeLabel(farm.visitType)}
+                                </Text>
+                              </View>
                             ))
                           )}
                         </View>
@@ -356,29 +370,30 @@ export default function ReportsScreen() {
                     </Text>
                     <Text style={[styles.muted, { marginTop: 2 }]}>{genFilterLabel}</Text>
                   </View>
-                  <ClipboardIconButton
-                    accessibilityLabel="Copy generator report"
-                    color={colors.accentDark}
-                    emptyMessage="No generator hours in this date range."
-                    onNotice={setShareNotice}
-                    getText={() => generatorReportToTsv(genView)}
-                  />
-                  <PrimaryButton
-                    secondary
-                    label="Share PDF"
-                    onPress={() => {
-                      setShareNotice(null);
-                      void shareGeneratorReportPdf({
-                        farms: genView,
-                        subtitle: genFilterLabel,
-                      }).catch((e) => {
-                        setShareNotice(
-                          userFacingMessage(e, "Could not share PDF. Try again in a moment."),
-                        );
-                      });
-                    }}
-                    style={{ minWidth: 120 }}
-                  />
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <ClipboardIconButton
+                      accessibilityLabel="Copy generator report"
+                      color={colors.accentDark}
+                      emptyMessage="No generator hours in this date range."
+                      onNotice={setShareNotice}
+                      getText={() => generatorReportToTsv(genView)}
+                    />
+                    <SharePdfIconButton
+                      onPress={() => {
+                        setShareNotice(null);
+                        void shareGeneratorReportPdf({
+                          farms: genView,
+                          subtitle: genFilterLabel,
+                        }).catch((e) => {
+                          setShareNotice(
+                            userFacingMessage(e, "Could not share PDF. Try again in a moment."),
+                          );
+                        });
+                      }}
+                      accessibilityLabel="Share generator report PDF"
+                      color={colors.accentDark}
+                    />
+                  </View>
                 </View>
                 {genView.map((farm) => (
                   <View key={farm.farmId} style={{ marginTop: 10 }}>
@@ -391,7 +406,7 @@ export default function ReportsScreen() {
                           {gen.label}
                         </Text>
                         <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-                          <Text style={{ width: 96, fontSize: 14, fontWeight: "600", color: colors.muted }}>
+                          <Text style={{ width: 168, fontSize: 14, fontWeight: "600", color: colors.muted }}>
                             Date
                           </Text>
                           <Text style={{ width: 60, fontSize: 14, fontWeight: "600", color: colors.muted }}>
@@ -406,7 +421,7 @@ export default function ReportsScreen() {
                             key={`${gen.key}-${row.logDate}`}
                             style={{ flexDirection: "row", gap: 12, alignItems: "center", paddingVertical: 3 }}
                           >
-                            <Text style={{ width: 96, fontSize: 16, fontWeight: "600", color: colors.text }}>
+                            <Text style={{ width: 168, fontSize: 16, fontWeight: "600", color: colors.text }}>
                               {formatGeneratorReportDate(row.logDate)}
                             </Text>
                             <Text style={{ width: 60, fontSize: 16, fontWeight: "600", color: colors.text }}>
@@ -506,33 +521,34 @@ export default function ReportsScreen() {
                   </Text>
                   <Text style={[styles.muted, { marginTop: 2 }]}>{mortFilterLabel}</Text>
                 </View>
-                <ClipboardIconButton
-                  accessibilityLabel="Copy mortality report"
-                  color={colors.accentDark}
-                  emptyMessage="Run a report with data first."
-                  onNotice={setShareNotice}
-                  getText={() => {
-                    if (matrix.rows.length === 0) return "";
-                    return matrixToTsv(matrix, rowHeaderLabel);
-                  }}
-                />
-                <PrimaryButton
-                  secondary
-                  label="Share PDF"
-                  onPress={() => {
-                    setShareNotice(null);
-                    void shareMortalityReportPdf({
-                      matrix,
-                      rowHeaderLabel,
-                      subtitle: mortFilterLabel,
-                    }).catch((e) => {
-                      setShareNotice(
-                        userFacingMessage(e, "Could not share PDF. Try again in a moment."),
-                      );
-                    });
-                  }}
-                  style={{ minWidth: 120 }}
-                />
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <ClipboardIconButton
+                    accessibilityLabel="Copy mortality report"
+                    color={colors.accentDark}
+                    emptyMessage="Run a report with data first."
+                    onNotice={setShareNotice}
+                    getText={() => {
+                      if (matrix.rows.length === 0) return "";
+                      return matrixToTsv(matrix, rowHeaderLabel);
+                    }}
+                  />
+                  <SharePdfIconButton
+                    onPress={() => {
+                      setShareNotice(null);
+                      void shareMortalityReportPdf({
+                        matrix,
+                        rowHeaderLabel,
+                        subtitle: mortFilterLabel,
+                      }).catch((e) => {
+                        setShareNotice(
+                          userFacingMessage(e, "Could not share PDF. Try again in a moment."),
+                        );
+                      });
+                    }}
+                    accessibilityLabel="Share mortality report PDF"
+                    color={colors.accentDark}
+                  />
+                </View>
               </View>
               <ScrollView horizontal>
                 <View>

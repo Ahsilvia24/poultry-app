@@ -40,7 +40,7 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={[styles.content, { maxWidth: 480, width: "100%", alignSelf: "center" }]}>
-          <Text style={styles.brand}>PoultryTech</Text>
+          <Text style={[styles.brand, { textAlign: "center", width: "100%" }]}>PoultryTech</Text>
 
           <Card style={{ marginTop: 24 }}>
             <Text style={styles.label}>Email</Text>
@@ -76,12 +76,21 @@ export default function LoginScreen() {
               )}
             </Pressable>
           </Card>
-          <View style={{ marginTop: 16, alignItems: "center", gap: 8 }}>
+          <View
+            style={{
+              marginTop: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
             <Pressable
               onPress={() => Linking.openURL("https://ahsilvia24.github.io/poultry-app/support/")}
             >
               <Text style={{ color: colors.accentDark, fontWeight: "700" }}>Support</Text>
             </Pressable>
+            <Text style={{ color: colors.muted, fontWeight: "600" }}>·</Text>
             <Pressable
               onPress={() => Linking.openURL("https://ahsilvia24.github.io/poultry-app/privacy/")}
             >

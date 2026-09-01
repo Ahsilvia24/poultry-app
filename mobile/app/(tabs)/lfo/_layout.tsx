@@ -8,6 +8,7 @@ export default function LfoLayout() {
         headerShown: false,
         contentStyle: { backgroundColor: colors.bg },
         animation: "slide_from_right",
+        animationTypeForReplace: "pop",
       }}
     >
       <Stack.Screen name="index" />
