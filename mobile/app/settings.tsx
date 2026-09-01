@@ -89,7 +89,7 @@ export default function SettingsScreen() {
               flexDirection: "row",
               alignItems: "center",
               gap: 8,
-              marginBottom: 22,
+              marginBottom: 12,
             }}
           >
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>
@@ -124,26 +124,18 @@ export default function SettingsScreen() {
             />
           </View>
 
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-            }}
-          >
+          <View>
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>
-              Order by:
+              Order Farms By:
             </Text>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <WheelPicker
-                options={FARM_ORDER_OPTIONS.map((option) => ({
-                  value: option.key,
-                  label: option.label,
-                }))}
-                value={farmOrder}
-                onChange={onChangeFarmOrder}
-              />
-            </View>
+            <WheelPicker
+              options={FARM_ORDER_OPTIONS.map((option) => ({
+                value: option.key,
+                label: option.label,
+              }))}
+              value={farmOrder}
+              onChange={onChangeFarmOrder}
+            />
           </View>
 
           <View style={{ flex: 1, minHeight: 48 }} />

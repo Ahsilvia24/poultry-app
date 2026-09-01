@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateSettingsAction } from "@/app/actions/ops";
-import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import { Button, Card, Input, Label, PageHeader } from "@/components/ui";
+import { FarmOrderStepper } from "@/components/FarmOrderStepper";
 import { FARM_ORDER_OPTIONS, parseFarmOrder } from "@/lib/farm-order";
 
 async function submitSettings(formData: FormData) {
@@ -130,25 +131,13 @@ export default async function SettingsPage() {
                   required
                 />
               </div>
-              <div className="flex items-center gap-3 sm:col-span-2">
-                <label
-                  htmlFor="farmOrder"
-                  className="shrink-0 text-sm font-semibold text-stone-700"
-                >
-                  Order by:
-                </label>
-                <Select
-                  id="farmOrder"
+              <div className="sm:col-span-2">
+                <p className="text-sm font-semibold text-stone-800">Order Farms By:</p>
+                <FarmOrderStepper
                   name="farmOrder"
                   defaultValue={parseFarmOrder(s?.farmOrder)}
-                  className="flex-1"
-                >
-                  {FARM_ORDER_OPTIONS.map((option) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
+                  options={FARM_ORDER_OPTIONS}
+                />
               </div>
             </div>
             {s?.notifyInApp !== false ? (
