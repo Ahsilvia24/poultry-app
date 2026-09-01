@@ -187,6 +187,16 @@ const logEntryText = {
   color: colors.text,
 };
 
+/** Two lines of visit comments, then two dots. */
+function clipVisitNotes(notes: string) {
+  const lines = notes.replace(/\r\n/g, "\n").split("\n");
+  const firstTwo = lines.slice(0, 2).join("\n").trimEnd();
+  if (lines.length > 2) return `${firstTwo}..`;
+  const flat = firstTwo.replace(/\s+/g, " ");
+  if (flat.length > 80) return `${flat.slice(0, 80).trimEnd()}..`;
+  return firstTwo;
+}
+
 /** Same hit area as generator hour rows so the swipe Delete is the same size. */
 const logRowHit = {
   minHeight: 38,
@@ -1776,10 +1786,10 @@ export default function FarmDetailScreen() {
                     {v.notes ? (
                       <Text
                         numberOfLines={2}
-                        ellipsizeMode="tail"
+                        ellipsizeMode="clip"
                         style={[styles.muted, { fontSize: 16, lineHeight: 22, marginTop: 2 }]}
                       >
-                        {v.notes}
+                        {clipVisitNotes(v.notes)}
                       </Text>
                     ) : null}
                   </View>
