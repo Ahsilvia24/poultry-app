@@ -37,6 +37,8 @@ export function SwipeCommitDeleteRow({
   const startY = useRef<number | null>(null);
   const committed = useRef(false);
   const didSwipe = useRef(false);
+  const onDeleteRef = useRef(onDelete);
+  onDeleteRef.current = onDelete;
   const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(rowId);
   const maxPx = Math.max(rowWidth || 1000, commitPx);
   const redWidth = Math.max(0, -swipeX);
@@ -77,22 +79,13 @@ export function SwipeCommitDeleteRow({
     if (startX.current == null) return;
     const dx = x - startX.current;
     const dy = y - (startY.current ?? y);
-    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-    if (Math.abs(dy) > Math.abs(dx)) {
-      if (didSwipe.current) cancel();
-      return;
+    if (!didSwipe.current) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (Math.abs(dy) > Math.abs(dx)) return;
+      didSwipe.current = true;
+      requestOpen();
     }
-    didSwipe.current = true;
-    requestOpen();
     setX(Math.max(-maxPx, Math.min(0, dx)));
-  }
-
-  function cancel() {
-    startX.current = null;
-    startY.current = null;
-    committed.current = false;
-    setX(0);
-    requestClose();
   }
 
   function release() {
@@ -102,13 +95,40 @@ export function SwipeCommitDeleteRow({
     }
     if (!committed.current && shouldCommitSwipeDelete(swipeXRef.current, commitPx)) {
       committed.current = true;
-      onDelete();
+      onDeleteRef.current();
     }
     setX(0);
     requestClose();
     startX.current = null;
     startY.current = null;
   }
+
+  useEffect(() => {
+    function onWinMove(e: PointerEvent | TouchEvent) {
+      if (startX.current == null) return;
+      if ("touches" in e) {
+        const t = e.touches[0];
+        if (t) move(t.clientX, t.clientY);
+        return;
+      }
+      if (e.buttons !== 1) return;
+      move(e.clientX, e.clientY);
+    }
+    function onWinUp() {
+      if (startX.current == null) return;
+      release();
+    }
+    window.addEventListener("pointermove", onWinMove);
+    window.addEventListener("pointerup", onWinUp);
+    window.addEventListener("touchmove", onWinMove, { passive: true });
+    window.addEventListener("touchend", onWinUp);
+    return () => {
+      window.removeEventListener("pointermove", onWinMove);
+      window.removeEventListener("pointerup", onWinUp);
+      window.removeEventListener("touchmove", onWinMove);
+      window.removeEventListener("touchend", onWinUp);
+    };
+  }, [commitPx, maxPx, requestClose, requestOpen]);
 
   return (
     <div className={cn("relative overflow-hidden", className)} ref={rootRef}>
@@ -131,12 +151,6 @@ export function SwipeCommitDeleteRow({
           if (isActionTarget(e.target)) return;
           begin(e.touches[0]?.clientX ?? 0, e.touches[0]?.clientY ?? 0);
         }}
-        onTouchMove={(e) => {
-          const t = e.touches[0];
-          if (t) move(t.clientX, t.clientY);
-        }}
-        onTouchEnd={release}
-        onTouchCancel={cancel}
         onPointerDown={(e) => {
           if (e.pointerType === "touch") return;
           if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -144,9 +158,6 @@ export function SwipeCommitDeleteRow({
           (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
           begin(e.clientX, e.clientY);
         }}
-        onPointerMove={(e) => move(e.clientX, e.clientY)}
-        onPointerUp={release}
-        onPointerCancel={cancel}
         onClickCapture={(e) => {
           if (!didSwipe.current) return;
           e.preventDefault();

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Platform,
   Pressable,
@@ -40,6 +40,8 @@ export function SwipeCommitDeleteRow({
   const startY = useRef<number | null>(null);
   const didSwipe = useRef(false);
   const committed = useRef(false);
+  const onDeleteRef = useRef(onDelete);
+  onDeleteRef.current = onDelete;
 
   const maxPx = Math.max(rowWidth || 1000, commitPx);
   const redWidth = Math.max(0, -x);
@@ -60,20 +62,12 @@ export function SwipeCommitDeleteRow({
     if (startX.current == null) return;
     const dx = pageX - startX.current;
     const dy = pageY != null && startY.current != null ? pageY - startY.current : 0;
-    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-    if (Math.abs(dy) > Math.abs(dx)) {
-      if (didSwipe.current) cancel();
-      return;
+    if (!didSwipe.current) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (Math.abs(dy) > Math.abs(dx)) return;
+      didSwipe.current = true;
     }
-    didSwipe.current = true;
     setOffset(Math.max(-maxPx, Math.min(0, dx)));
-  }
-
-  function cancel() {
-    startX.current = null;
-    startY.current = null;
-    committed.current = false;
-    setOffset(0);
   }
 
   function release() {
@@ -83,12 +77,30 @@ export function SwipeCommitDeleteRow({
     }
     if (!committed.current && shouldCommitSwipeDelete(xRef.current, commitPx)) {
       committed.current = true;
-      onDelete();
+      onDeleteRef.current();
     }
     setOffset(0);
     startX.current = null;
     startY.current = null;
   }
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    function onWinMove(e: MouseEvent) {
+      if (e.buttons !== 1 || startX.current == null) return;
+      move(e.pageX, e.pageY);
+    }
+    function onWinUp() {
+      if (startX.current == null) return;
+      release();
+    }
+    window.addEventListener("mousemove", onWinMove);
+    window.addEventListener("mouseup", onWinUp);
+    return () => {
+      window.removeEventListener("mousemove", onWinMove);
+      window.removeEventListener("mouseup", onWinUp);
+    };
+  }, [commitPx, maxPx]);
 
   const gesture = {
     onStartShouldSetResponder: () => false,
@@ -98,31 +110,18 @@ export function SwipeCommitDeleteRow({
       const dy = e.nativeEvent.pageY - startY.current;
       return Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy);
     },
+    onResponderTerminationRequest: () => !didSwipe.current,
     onResponderGrant: (e: { nativeEvent: { pageX: number; pageY: number } }) =>
       begin(e.nativeEvent.pageX, e.nativeEvent.pageY),
     onResponderMove: (e: { nativeEvent: { pageX: number; pageY: number } }) =>
       move(e.nativeEvent.pageX, e.nativeEvent.pageY),
     onResponderRelease: release,
-    onResponderTerminate: cancel,
     onTouchStart: (e: { nativeEvent: { pageX: number; pageY: number } }) =>
       begin(e.nativeEvent.pageX, e.nativeEvent.pageY),
   };
 
-  const webRow =
-    Platform.OS === "web"
-      ? {
-          onMouseDown: (e: { pageX: number; pageY: number }) => begin(e.pageX, e.pageY),
-          onMouseMove: (e: { pageX: number; buttons?: number; pageY: number }) => {
-            if (e.buttons === 1) move(e.pageX, e.pageY);
-          },
-          onMouseUp: release,
-          onMouseLeave: cancel,
-        }
-      : {};
-
   return (
     <View
-      {...webRow}
       style={[{ overflow: "hidden" }, style]}
       onLayout={(e) => {
         const w = e.nativeEvent.layout.width;
