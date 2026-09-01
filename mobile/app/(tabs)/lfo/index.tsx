@@ -7,11 +7,10 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Swipeable } from "react-native-gesture-handler";
 import { deleteLfo, getLfo, listFarms, listLfos } from "../../../src/repos/data";
 import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
 import { SharePdfIconButton } from "../../../src/components/SharePdfIconButton";
-import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
+import { SwipeCommitDeleteRow } from "../../../src/components/SwipeCommitDeleteRow";
 import { LFO_SWIPE_DELETE_COMMIT_PX } from "../../../src/lib/swipe-commit";
 import { colors, styles } from "../../../src/theme";
 import { Card } from "../../../src/components/ui";
@@ -60,7 +59,6 @@ function SavedLfoList({
   onDelete: (id: string) => void;
   onShareError?: (message: string) => void;
 }) {
-  const swipe = useExclusiveSwipeables();
   return (
     <>
       <View style={{ marginTop: 20, marginBottom: 10 }}>
@@ -94,44 +92,31 @@ function SavedLfoList({
         </Card>
       ) : null}
       {lfos.map((l) => (
-        <Swipeable
-          key={l.id}
-          ref={swipe.setRef(l.id)}
-          overshootRight={false}
-          friction={2}
-          rightThreshold={LFO_SWIPE_DELETE_COMMIT_PX}
-          containerStyle={{ marginBottom: 12 }}
-          onSwipeableWillOpen={() => swipe.closeOthers(l.id)}
-          onSwipeableOpen={(direction) => {
-            if (direction === "right") onDelete(l.id);
-          }}
-          renderRightActions={() => (
-            <View
-              accessibilityLabel={`Delete LFO for ${l.farmName}`}
-              style={{
-                backgroundColor: colors.danger,
-                justifyContent: "center",
-                alignItems: "center",
-                width: LFO_SWIPE_DELETE_COMMIT_PX,
-                borderRadius: 14,
-                marginLeft: 8,
-              }}
-            >
-              <Ionicons name="trash-outline" size={22} color="#fff" />
-              <Text
-                style={{
-                  color: "#fff",
-                  fontWeight: "800",
-                  fontSize: 12,
-                  marginTop: 4,
-                }}
+        <View key={l.id} style={{ marginBottom: 12 }}>
+          <SwipeCommitDeleteRow
+            onDelete={() => onDelete(l.id)}
+            commitPx={LFO_SWIPE_DELETE_COMMIT_PX}
+            stretchUntilRelease
+            deleteContent={
+              <View
+                accessibilityLabel={`Delete LFO for ${l.farmName}`}
+                style={{ alignItems: "center" }}
               >
-                Delete
-              </Text>
-            </View>
-          )}
-        >
-          <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
+                <Ionicons name="trash-outline" size={22} color="#fff" />
+                <Text
+                  style={{
+                    color: "#fff",
+                    fontWeight: "800",
+                    fontSize: 12,
+                    marginTop: 4,
+                  }}
+                >
+                  Delete
+                </Text>
+              </View>
+            }
+          >
+            <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
             <View style={{ padding: 16 }}>
               <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
                 <Pressable
@@ -186,7 +171,8 @@ function SavedLfoList({
               ) : null}
             </View>
           </Card>
-        </Swipeable>
+          </SwipeCommitDeleteRow>
+        </View>
       ))}
     </>
   );

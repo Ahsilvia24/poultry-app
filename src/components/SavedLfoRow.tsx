@@ -8,7 +8,14 @@ import { Card } from "@/components/ui";
 import { downloadLfoPdf } from "@/lib/exports/lfo-pdf";
 import type { LfoShareInventory } from "@/lib/lfo/share-payload";
 import { useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
-import { LFO_SWIPE_DELETE_COMMIT_PX } from "@/lib/swipe-commit";
+import {
+  LFO_SWIPE_DELETE_COMMIT_PX,
+  shouldCommitSwipeDelete,
+} from "@/lib/swipe-commit";
+
+function isActionTarget(target: EventTarget | null) {
+  return target instanceof Element && target.closest("button, input, textarea, select");
+}
 
 function CopyIcon({ className }: { className?: string }) {
   return (
@@ -116,87 +123,121 @@ export function SavedLfoRow({
   shareInventory: LfoShareInventory;
 }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [swipeX, setSwipeX] = useState(0);
+  const [rowWidth, setRowWidth] = useState(0);
+  const swipeXRef = useRef(0);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const touchStartX = useRef<number | null>(null);
+  const didSwipe = useRef(false);
   const lines = houseSummary ?? [];
-  const actionWidth = LFO_SWIPE_DELETE_COMMIT_PX;
   const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(id);
+  const maxPx = Math.max(rowWidth || 1000, LFO_SWIPE_DELETE_COMMIT_PX);
+  const redWidth = Math.max(0, -swipeX);
 
   useEffect(() => {
-    if (!isOpenOwner) setSwipeX(0);
+    if (!isOpenOwner) {
+      swipeXRef.current = 0;
+      setSwipeX(0);
+    }
   }, [isOpenOwner]);
 
-  function onTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0]?.clientX ?? null;
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return;
+    const update = () => {
+      const w = node.getBoundingClientRect().width;
+      if (w > 0) setRowWidth(w);
+    };
+    update();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    ro?.observe(node);
+    return () => ro?.disconnect();
+  }, []);
+
+  function setX(next: number) {
+    swipeXRef.current = next;
+    setSwipeX(next);
   }
 
-  function onTouchMove(e: React.TouchEvent) {
+  function begin(clientX: number) {
+    didSwipe.current = false;
+    touchStartX.current = clientX;
+  }
+
+  function move(clientX: number) {
     if (touchStartX.current == null) return;
-    const x = e.touches[0]?.clientX;
-    if (x == null) return;
-    const dx = x - touchStartX.current;
-    setSwipeX(Math.max(-actionWidth, Math.min(0, dx)));
+    const dx = clientX - touchStartX.current;
+    if (Math.abs(dx) < 8) return;
+    didSwipe.current = true;
+    requestOpen();
+    setX(Math.max(-maxPx, Math.min(0, dx)));
   }
 
-  function onTouchEnd() {
+  function end() {
     if (touchStartX.current == null) {
-      setSwipeX(0);
+      setX(0);
       return;
     }
-    if (swipeX <= -LFO_SWIPE_DELETE_COMMIT_PX) {
-      setSwipeX(0);
+    if (shouldCommitSwipeDelete(swipeXRef.current, LFO_SWIPE_DELETE_COMMIT_PX)) {
+      setX(0);
       requestClose();
       startTransition(async () => {
         await deleteLastFeedOrderAction(id);
         router.refresh();
       });
-    } else if (swipeX <= -48) {
-      setSwipeX(-actionWidth);
-      requestOpen();
     } else {
-      setSwipeX(0);
+      setX(0);
       requestClose();
     }
     touchStartX.current = null;
   }
 
-  function onDelete() {
-    startTransition(async () => {
-      await deleteLastFeedOrderAction(id);
-      router.refresh();
-    });
-  }
-
   return (
-    <div className="relative overflow-hidden rounded-xl">
-      <div
-        className="absolute inset-y-0 right-0 flex items-stretch"
-        style={{ width: actionWidth }}
-        aria-hidden={swipeX > -40}
-      >
-        <button
-          type="button"
-          onClick={() => {
-            setSwipeX(0);
-            onDelete();
-          }}
-          className="flex w-full flex-col items-center justify-center gap-1 rounded-xl bg-red-700 px-1 text-center text-xs font-bold text-white"
-          aria-label={`Delete LFO for ${farmName}`}
+    <div className="relative overflow-hidden rounded-xl" ref={rootRef}>
+      {swipeX < -8 ? (
+        <div
+          className="absolute inset-y-0 right-0 flex items-center justify-center rounded-xl bg-red-700 text-xs font-bold text-white"
+          style={{ width: redWidth }}
+          aria-hidden
         >
           Delete
-        </button>
-      </div>
+        </div>
+      ) : null}
 
       <div
-        className="relative transition-transform duration-150 ease-out"
+        className="relative"
         style={{ transform: `translateX(${swipeX}px)` }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
+        onTouchStart={(e) => {
+          if (isActionTarget(e.target)) return;
+          begin(e.touches[0]?.clientX ?? 0);
+        }}
+        onTouchMove={(e) => {
+          const x = e.touches[0]?.clientX;
+          if (x != null) move(x);
+        }}
+        onTouchEnd={end}
         onTouchCancel={() => {
           touchStartX.current = null;
-          setSwipeX(0);
+          setX(0);
+        }}
+        onPointerDown={(e) => {
+          if (e.pointerType === "touch") return;
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          if (isActionTarget(e.target)) return;
+          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+          begin(e.clientX);
+        }}
+        onPointerMove={(e) => move(e.clientX)}
+        onPointerUp={end}
+        onPointerCancel={() => {
+          touchStartX.current = null;
+          setX(0);
+        }}
+        onClickCapture={(e) => {
+          if (!didSwipe.current) return;
+          e.preventDefault();
+          e.stopPropagation();
         }}
       >
         <Card className="relative p-4 transition hover:border-emerald-400">

@@ -14,4 +14,9 @@ describe("shouldCommitSwipeDelete", () => {
     assert.equal(shouldCommitSwipeDelete(20), false);
     assert.equal(shouldCommitSwipeDelete(0), false);
   });
+
+  it("uses a shorter 80px commit for LFO tiles", () => {
+    assert.equal(shouldCommitSwipeDelete(-79, 80), false);
+    assert.equal(shouldCommitSwipeDelete(-80, 80), true);
+  });
 });
