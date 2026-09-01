@@ -124,18 +124,26 @@ export default function SettingsScreen() {
             />
           </View>
 
-          <View>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>
               Order Farms By:
             </Text>
-            <WheelPicker
-              options={FARM_ORDER_OPTIONS.map((option) => ({
-                value: option.key,
-                label: option.label,
-              }))}
-              value={farmOrder}
-              onChange={onChangeFarmOrder}
-            />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <WheelPicker
+                options={FARM_ORDER_OPTIONS.map((option) => ({
+                  value: option.key,
+                  label: option.label,
+                }))}
+                value={farmOrder}
+                onChange={onChangeFarmOrder}
+              />
+            </View>
           </View>
 
           <View style={{ flex: 1, minHeight: 48 }} />

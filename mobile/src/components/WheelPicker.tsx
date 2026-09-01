@@ -1,9 +1,20 @@
-import { Pressable, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme";
 
+const ROW_H = 36;
+
 /**
- * Compact Apple-style stepper: selected value only, up/down arrows on the right.
+ * One-row scroll picker: only the selected value is visible.
+ * Flick/scroll to change; chevrons on the right are the Apple affordance, not buttons.
  */
 export function WheelPicker<T extends string>({
   options,
@@ -14,71 +25,98 @@ export function WheelPicker<T extends string>({
   value: T;
   onChange: (value: T) => void;
 }) {
+  const scrollRef = useRef<ScrollView>(null);
   const index = Math.max(
     0,
     options.findIndex((option) => option.value === value),
   );
-  const selected = options[index] ?? options[0];
-  const last = options.length - 1;
+  const last = Math.max(0, options.length - 1);
   const canUp = index > 0;
   const canDown = index < last;
 
-  function step(delta: number) {
-    const next = index + delta;
-    if (next < 0 || next > last) return;
+  useEffect(() => {
+    const t = setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: index * ROW_H, animated: false });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [index]);
+
+  function commitOffset(y: number) {
+    const next = Math.min(last, Math.max(0, Math.round(y / ROW_H)));
     const option = options[next];
-    if (option) onChange(option.value);
+    if (option && option.value !== value) onChange(option.value);
+    scrollRef.current?.scrollTo({ y: next * ROW_H, animated: true });
+  }
+
+  function onScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    commitOffset(e.nativeEvent.contentOffset.y);
   }
 
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        minHeight: 36,
-      }}
-    >
-      <Text
+    <View style={{ flexDirection: "row", alignItems: "center", minHeight: ROW_H }}>
+      <View
         style={{
           flex: 1,
           minWidth: 0,
-          fontSize: 17,
-          fontWeight: "600",
-          color: colors.text,
+          height: ROW_H,
+          overflow: "hidden",
         }}
-        numberOfLines={1}
       >
-        {selected?.label ?? ""}
-      </Text>
-      <View style={{ marginLeft: 8 }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Previous option"
-          disabled={!canUp}
-          onPress={() => step(-1)}
-          hitSlop={{ top: 6, bottom: 2, left: 8, right: 8 }}
-          style={{ alignItems: "center", justifyContent: "center", height: 18 }}
+        <ScrollView
+          ref={scrollRef}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator={false}
+          snapToInterval={ROW_H}
+          snapToAlignment="start"
+          disableIntervalMomentum
+          decelerationRate="fast"
+          onMomentumScrollEnd={onScrollEnd}
+          onScrollEndDrag={onScrollEnd}
+          scrollEventThrottle={16}
+          style={
+            Platform.OS === "web"
+              ? ({
+                  height: ROW_H,
+                  overflowY: "auto",
+                  scrollSnapType: "y mandatory",
+                } as object)
+              : { height: ROW_H }
+          }
         >
-          <Ionicons
-            name="chevron-up"
-            size={16}
-            color={canUp ? colors.text : "#d6d3d1"}
-          />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Next option"
-          disabled={!canDown}
-          onPress={() => step(1)}
-          hitSlop={{ top: 2, bottom: 6, left: 8, right: 8 }}
-          style={{ alignItems: "center", justifyContent: "center", height: 18 }}
-        >
-          <Ionicons
-            name="chevron-down"
-            size={16}
-            color={canDown ? colors.text : "#d6d3d1"}
-          />
-        </Pressable>
+          {options.map((option) => (
+            <View
+              key={option.value}
+              style={
+                Platform.OS === "web"
+                  ? ({
+                      height: ROW_H,
+                      justifyContent: "center",
+                      scrollSnapAlign: "start",
+                    } as object)
+                  : { height: ROW_H, justifyContent: "center" }
+              }
+            >
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 17,
+                  fontWeight: "600",
+                  color: colors.text,
+                }}
+              >
+                {option.label}
+              </Text>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+      <View pointerEvents="none" style={{ marginLeft: 4 }}>
+        <View style={{ height: 16, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="chevron-up" size={14} color={canUp ? colors.text : "#d6d3d1"} />
+        </View>
+        <View style={{ height: 16, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="chevron-down" size={14} color={canDown ? colors.text : "#d6d3d1"} />
+        </View>
       </View>
     </View>
   );
