@@ -186,45 +186,17 @@ const logEntryText = {
   color: colors.text,
 };
 
+/** Same hit area as generator hour rows so the swipe Delete is the same size. */
+const logRowHit = {
+  minHeight: 38,
+  paddingVertical: 4,
+  justifyContent: "center" as const,
+};
+
 function SectionTop({ onPress }: { onPress: () => void }) {
   return (
     <View style={{ marginTop: 8, marginBottom: 16, alignSelf: "flex-start" }}>
       <TopLink onPress={onPress} />
-    </View>
-  );
-}
-
-function RowActions({
-  editLabel,
-  deleteLabel,
-  onEdit,
-  onDelete,
-}: {
-  editLabel?: string;
-  deleteLabel: string;
-  onEdit?: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <View style={{ flexDirection: "row", gap: 2 }}>
-      {onEdit ? (
-        <Pressable
-          accessibilityLabel={editLabel ?? "Edit"}
-          onPress={onEdit}
-          hitSlop={8}
-          style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
-        >
-          <Ionicons name="pencil-outline" size={20} color={colors.muted} />
-        </Pressable>
-      ) : null}
-      <Pressable
-        accessibilityLabel={deleteLabel}
-        onPress={onDelete}
-        hitSlop={8}
-        style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
-      >
-        <Ionicons name="trash-outline" size={20} color={colors.muted} />
-      </Pressable>
     </View>
   );
 }
@@ -425,7 +397,7 @@ function GeneratorHoursChart({
                   flexDirection: "row",
                   gap: 12,
                   alignItems: "center",
-                  minHeight: 30,
+                  minHeight: 38,
                   paddingVertical: 4,
                 }}
               >
@@ -1789,6 +1761,7 @@ export default function FarmDetailScreen() {
                   <View
                     accessibilityRole="button"
                     accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
+                    style={logRowHit}
                   >
                     <Text style={logEntryText}>
                       {formatShortDate(v.visitDate)} —{" "}
@@ -1942,34 +1915,36 @@ export default function FarmDetailScreen() {
                   paddingTop: i === 0 ? 0 : 10,
                   borderTopWidth: i === 0 ? 0 : 1,
                   borderTopColor: "#f5f5f4",
-                  flexDirection: "row",
-                  gap: 8,
                 }}
               >
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={logEntryText}>
-                    {formatShortDate(issue.dateReported)} · {issue.priority}
-                    <Text style={{ ...logEntryText, color: colors.muted }}>
-                      {" "}
-                      · {issue.status}
-                    </Text>
-                  </Text>
-                  <Text style={{ ...logEntryText, marginTop: 2 }}>
-                    {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}:{" "}
-                    {issue.description}
-                  </Text>
-                </View>
-                <RowActions
-                  editLabel="Edit issue"
-                  deleteLabel="Delete issue"
-                  onEdit={() =>
+                <SwipeCommitDeleteRow
+                  transparent
+                  onDelete={() => removeIssue(issue.id)}
+                  onPress={() =>
                     router.push({
                       pathname: "/(tabs)/farms/[id]/issues/[issueId]",
                       params: { id: farm.id, issueId: issue.id },
                     })
                   }
-                  onDelete={() => removeIssue(issue.id)}
-                />
+                >
+                  <View
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit issue ${formatShortDate(issue.dateReported)}`}
+                    style={logRowHit}
+                  >
+                    <Text style={logEntryText}>
+                      {formatShortDate(issue.dateReported)} · {issue.priority}
+                      <Text style={{ ...logEntryText, color: colors.muted }}>
+                        {" "}
+                        · {issue.status}
+                      </Text>
+                    </Text>
+                    <Text style={{ ...logEntryText, marginTop: 2 }}>
+                      {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}:{" "}
+                      {issue.description}
+                    </Text>
+                  </View>
+                </SwipeCommitDeleteRow>
               </View>
             ))
           )}
@@ -2003,33 +1978,35 @@ export default function FarmDetailScreen() {
                   paddingTop: i === 0 ? 0 : 10,
                   borderTopWidth: i === 0 ? 0 : 1,
                   borderTopColor: "#f5f5f4",
-                  flexDirection: "row",
-                  gap: 8,
                 }}
               >
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={logEntryText}>
-                    {formatShortDate(e.eventDate)} —{" "}
-                    {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
-                    {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
-                  </Text>
-                  {e.notes ? (
-                    <Text style={[styles.muted, { fontSize: 16, lineHeight: 22, marginTop: 2 }]}>
-                      {e.notes}
-                    </Text>
-                  ) : null}
-                </View>
-                <RowActions
-                  editLabel="Edit litter event"
-                  deleteLabel="Delete litter event"
-                  onEdit={() =>
+                <SwipeCommitDeleteRow
+                  transparent
+                  onDelete={() => removeLitter(e.id)}
+                  onPress={() =>
                     router.push({
                       pathname: "/(tabs)/farms/[id]/litter/[eventId]",
                       params: { id: farm.id, eventId: e.id },
                     })
                   }
-                  onDelete={() => removeLitter(e.id)}
-                />
+                >
+                  <View
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit litter event ${formatShortDate(e.eventDate)}`}
+                    style={logRowHit}
+                  >
+                    <Text style={logEntryText}>
+                      {formatShortDate(e.eventDate)} —{" "}
+                      {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
+                      {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
+                    </Text>
+                    {e.notes ? (
+                      <Text style={[styles.muted, { fontSize: 16, lineHeight: 22, marginTop: 2 }]}>
+                        {e.notes}
+                      </Text>
+                    ) : null}
+                  </View>
+                </SwipeCommitDeleteRow>
               </View>
             ))
           )}
@@ -2063,29 +2040,31 @@ export default function FarmDetailScreen() {
                   paddingTop: i === 0 ? 0 : 10,
                   borderTopWidth: i === 0 ? 0 : 1,
                   borderTopColor: "#f5f5f4",
-                  flexDirection: "row",
-                  gap: 8,
                 }}
               >
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={logEntryText}>
-                    {formatShortDate(d.deliveryDate)} — {formatNumber(d.poundsDelivered)} lbs
-                    {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
-                    {d.feedType ? ` · ${d.feedType}` : ""}
-                    {d.feedMill ? ` · ${d.feedMill}` : ""}
-                  </Text>
-                </View>
-                <RowActions
-                  editLabel="Edit feed delivery"
-                  deleteLabel="Delete feed delivery"
-                  onEdit={() =>
+                <SwipeCommitDeleteRow
+                  transparent
+                  onDelete={() => removeFeed(d.id)}
+                  onPress={() =>
                     router.push({
                       pathname: "/(tabs)/farms/[id]/feed/[deliveryId]",
                       params: { id: farm.id, deliveryId: d.id },
                     })
                   }
-                  onDelete={() => removeFeed(d.id)}
-                />
+                >
+                  <View
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit feed delivery ${formatShortDate(d.deliveryDate)}`}
+                    style={logRowHit}
+                  >
+                    <Text style={logEntryText}>
+                      {formatShortDate(d.deliveryDate)} — {formatNumber(d.poundsDelivered)} lbs
+                      {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
+                      {d.feedType ? ` · ${d.feedType}` : ""}
+                      {d.feedMill ? ` · ${d.feedMill}` : ""}
+                    </Text>
+                  </View>
+                </SwipeCommitDeleteRow>
               </View>
             ))
           )}

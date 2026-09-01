@@ -155,7 +155,7 @@ function GeneratorHoursChart({
                       }
                     : undefined
                 }
-                className={`flex items-center gap-3 py-1 tabular-nums text-stone-800 ${
+                className={`flex min-h-[38px] items-center gap-3 py-1 tabular-nums text-stone-800 ${
                   showActions ? "cursor-pointer rounded-sm hover:bg-stone-50" : ""
                 }`}
               >

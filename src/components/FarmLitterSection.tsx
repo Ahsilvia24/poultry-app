@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 import { deleteLitterEventAction } from "@/app/actions/ops";
-import { DeleteRecordButton, EditRecordButton } from "@/components/DeleteRecordButton";
+import { EditRecordButton } from "@/components/DeleteRecordButton";
+import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { LitterEventForm, type LitterFormValues } from "@/components/FarmOpsForms";
 import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSectionChrome";
+import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { Card } from "@/components/ui";
 import { LITTER_EVENT_LABELS } from "@/lib/utils";
 
@@ -27,9 +30,11 @@ export function FarmLitterSection({
   houses: Array<{ id: string; houseNumber: number }>;
   events: LitterRow[];
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [, startDelete] = useTransition();
 
   useEffect(() => {
     if (litterHashActive()) setOpen(true);
@@ -70,21 +75,31 @@ export function FarmLitterSection({
           setFormOpen((open) => !open);
         }}
       />
+      <ExclusiveSwipeGroup>
       <ul className="space-y-2 text-base">
         {events.length === 0 ? <li className="text-stone-500">None yet</li> : null}
         {events.map((e) => (
           <li key={e.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <span className="font-semibold">
-                  {format(new Date(e.eventDate + "T12:00:00"), "MMM d, yyyy")}
-                </span>
-                {" — "}
-                {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
-                {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
-                {e.notes ? <p className="text-stone-600">{e.notes}</p> : null}
-              </div>
-              <div className="flex shrink-0 items-center gap-0.5">
+            <SwipeCommitDeleteRow
+              rowId={e.id}
+              transparent
+              onDelete={() => {
+                startDelete(async () => {
+                  await deleteLitterEventAction(farmId, e.id);
+                  router.refresh();
+                });
+              }}
+            >
+              <div className="flex min-h-[38px] items-center justify-between gap-3 py-1">
+                <div className="min-w-0">
+                  <span className="font-semibold">
+                    {format(new Date(e.eventDate + "T12:00:00"), "MMM d, yyyy")}
+                  </span>
+                  {" — "}
+                  {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
+                  {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
+                  {e.notes ? <p className="text-stone-600">{e.notes}</p> : null}
+                </div>
                 <EditRecordButton
                   label="Edit litter event"
                   active={editingId === e.id}
@@ -93,12 +108,8 @@ export function FarmLitterSection({
                     setEditingId((id) => (id === e.id ? null : e.id));
                   }}
                 />
-                <DeleteRecordButton
-                  label="Delete litter event"
-                  onDelete={() => deleteLitterEventAction(farmId, e.id)}
-                />
               </div>
-            </div>
+            </SwipeCommitDeleteRow>
             {editingId === e.id ? (
               <LitterEventForm
                 farmId={farmId}
@@ -111,6 +122,7 @@ export function FarmLitterSection({
           </li>
         ))}
       </ul>
+      </ExclusiveSwipeGroup>
 
       {formOpen ? (
         <Card className="mt-3">

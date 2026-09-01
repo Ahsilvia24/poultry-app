@@ -147,7 +147,7 @@ export function SwipeCommitDeleteRow({
           }}
         >
           {deleteContent ?? (
-            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 13 }}>Delete</Text>
+            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Delete</Text>
           )}
         </View>
       ) : null}

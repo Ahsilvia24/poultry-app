@@ -91,7 +91,7 @@ export function FarmVisitsSection({
                   });
                 }}
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex min-h-[38px] items-center justify-between gap-3 py-1">
                   <div className="min-w-0">
                     <span className="font-semibold">
                       {format(new Date(v.visitDate + "T12:00:00"), "MMM d, yyyy")}
