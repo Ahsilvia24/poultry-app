@@ -394,8 +394,8 @@ export function LitterEventForm({
           <Input
             id={fid("litterDepth")}
             name="litterDepth"
-            type="number"
-            step="any"
+            type="text"
+            inputMode="text"
             defaultValue={initial?.litterDepth ?? undefined}
           />
         </div>

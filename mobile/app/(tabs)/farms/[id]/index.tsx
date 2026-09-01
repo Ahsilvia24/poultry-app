@@ -168,7 +168,7 @@ function SectionHeading({
         marginBottom: 8,
       }}
     >
-      <Text style={{ fontWeight: "800", fontSize: 16, flex: 1, minWidth: 0 }}>{title}</Text>
+      <Text style={{ fontWeight: "800", fontSize: 20, flex: 1, minWidth: 0 }}>{title}</Text>
       {right ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
           {right}
@@ -1742,10 +1742,10 @@ export default function FarmDetailScreen() {
               <View
                 key={v.id}
                 style={{
-                  marginTop: i === 0 ? 0 : 10,
-                  paddingTop: i === 0 ? 0 : 10,
-                  borderTopWidth: i === 0 ? 0 : 1,
-                  borderTopColor: "#f5f5f4",
+                    marginTop: i === 0 ? 0 : 2,
+                    paddingTop: i === 0 ? 0 : 4,
+                    borderTopWidth: i === 0 ? 0 : 1,
+                    borderTopColor: "#f5f5f4",
                 }}
               >
                 <SwipeCommitDeleteRow
@@ -1911,10 +1911,10 @@ export default function FarmDetailScreen() {
               <View
                 key={issue.id}
                 style={{
-                  marginTop: i === 0 ? 0 : 10,
-                  paddingTop: i === 0 ? 0 : 10,
-                  borderTopWidth: i === 0 ? 0 : 1,
-                  borderTopColor: "#f5f5f4",
+                    marginTop: i === 0 ? 0 : 2,
+                    paddingTop: i === 0 ? 0 : 4,
+                    borderTopWidth: i === 0 ? 0 : 1,
+                    borderTopColor: "#f5f5f4",
                 }}
               >
                 <SwipeCommitDeleteRow
@@ -1974,10 +1974,10 @@ export default function FarmDetailScreen() {
               <View
                 key={e.id}
                 style={{
-                  marginTop: i === 0 ? 0 : 10,
-                  paddingTop: i === 0 ? 0 : 10,
-                  borderTopWidth: i === 0 ? 0 : 1,
-                  borderTopColor: "#f5f5f4",
+                    marginTop: i === 0 ? 0 : 2,
+                    paddingTop: i === 0 ? 0 : 4,
+                    borderTopWidth: i === 0 ? 0 : 1,
+                    borderTopColor: "#f5f5f4",
                 }}
               >
                 <SwipeCommitDeleteRow
@@ -2036,10 +2036,10 @@ export default function FarmDetailScreen() {
               <View
                 key={d.id}
                 style={{
-                  marginTop: i === 0 ? 0 : 10,
-                  paddingTop: i === 0 ? 0 : 10,
-                  borderTopWidth: i === 0 ? 0 : 1,
-                  borderTopColor: "#f5f5f4",
+                    marginTop: i === 0 ? 0 : 2,
+                    paddingTop: i === 0 ? 0 : 4,
+                    borderTopWidth: i === 0 ? 0 : 1,
+                    borderTopColor: "#f5f5f4",
                 }}
               >
                 <SwipeCommitDeleteRow

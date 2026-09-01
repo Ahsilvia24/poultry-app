@@ -13,7 +13,7 @@ export function FarmLogSectionHeader({
 }) {
   return (
     <div className="mb-2 flex items-center justify-between gap-2">
-      <h3 className="min-w-0 flex-1 font-bold">{title}</h3>
+      <h3 className="min-w-0 flex-1 text-xl font-extrabold">{title}</h3>
       <div className="flex shrink-0 items-center gap-3">
         {extraRight}
         <button

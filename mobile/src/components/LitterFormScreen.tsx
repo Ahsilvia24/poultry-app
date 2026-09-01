@@ -141,7 +141,6 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
               style={styles.input}
               value={litterDepth}
               onChangeText={setLitterDepth}
-              keyboardType="decimal-pad"
             />
             <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
             <TextInput
