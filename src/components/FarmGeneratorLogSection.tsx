@@ -111,24 +111,6 @@ function CopyLogButton({ text }: { text: string }) {
   );
 }
 
-function GearIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0 1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}
-
 function isActionTarget(target: EventTarget | null) {
   return target instanceof Element && target.closest("button");
 }
@@ -247,7 +229,6 @@ function GeneratorHoursChart({
         <span className="w-24 shrink-0 font-semibold">Date</span>
         <span className="w-14 shrink-0 font-semibold">Hours</span>
         <span className="w-[4.5rem] shrink-0 font-semibold">Exercised</span>
-        {showActions ? <span className="w-7 shrink-0" aria-hidden /> : null}
       </div>
       {rows.length === 0 ? (
         <p className="text-stone-500">None yet</p>
@@ -256,7 +237,25 @@ function GeneratorHoursChart({
         <div>
           {rows.map((row) => {
             const cells = (
-              <div className="flex items-center gap-3 py-1 tabular-nums text-stone-800">
+              <div
+                role={showActions ? "button" : undefined}
+                tabIndex={showActions ? 0 : undefined}
+                aria-label={showActions ? "Edit generator entry" : undefined}
+                onClick={showActions ? () => onEdit(row.id) : undefined}
+                onKeyDown={
+                  showActions
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onEdit(row.id);
+                        }
+                      }
+                    : undefined
+                }
+                className={`flex items-center gap-3 py-1 tabular-nums text-stone-800 ${
+                  showActions ? "cursor-pointer rounded-sm hover:bg-stone-50" : ""
+                }`}
+              >
                 <span className="w-24 shrink-0 whitespace-nowrap font-semibold">{row.dateLabel}</span>
                 <span className="w-14 shrink-0 font-semibold">
                   {formatGeneratorHours(row.hours)}
@@ -264,17 +263,6 @@ function GeneratorHoursChart({
                 <span className="w-[4.5rem] shrink-0 font-semibold">
                   {formatGeneratorHours(row.exercised)}
                 </span>
-                {showActions ? (
-                  <button
-                    type="button"
-                    onClick={() => onEdit(row.id)}
-                    className="rounded p-0.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700"
-                    aria-label="Edit generator entry"
-                    title="Edit generator entry"
-                  >
-                    <GearIcon className="h-4 w-4" />
-                  </button>
-                ) : null}
               </div>
             );
             if (!showActions) {

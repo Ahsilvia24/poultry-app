@@ -504,7 +504,6 @@ function GeneratorHoursChart({
         <Text style={{ width: 80, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Exercised
         </Text>
-        {showActions ? <View style={{ width: 28 }} /> : null}
       </View>
       {rows.length === 0 ? (
         <Text style={[styles.muted, { fontSize: 15 }]}>None yet</Text>
@@ -512,7 +511,10 @@ function GeneratorHoursChart({
         <View>
           {rows.map((row) => {
             const cells = (
-              <View
+              <Pressable
+                accessibilityRole={showActions ? "button" : undefined}
+                accessibilityLabel={showActions ? "Edit generator log" : undefined}
+                onPress={showActions ? () => onEdit(row.id) : undefined}
                 style={{
                   flexDirection: "row",
                   gap: 12,
@@ -527,37 +529,21 @@ function GeneratorHoursChart({
                 </Text>
                 <Text style={{ ...cell, width: 60 }}>{formatGeneratorHours(row.hours)}</Text>
                 <Text style={{ ...cell, width: 80 }}>{formatGeneratorHours(row.exercised)}</Text>
-              </View>
+              </Pressable>
             );
             if (!showActions) {
               return <View key={row.id}>{cells}</View>;
             }
             return (
-              <View key={row.id} style={{ flexDirection: "row", alignItems: "center" }}>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <GeneratorSwipeDeleteRow
-                    deleteLabel="Delete generator log"
-                    onDelete={() => onDelete(row.id)}
-                    isOpen={openSwipeId === row.id}
-                    onOpen={() => setOpenSwipeId(row.id)}
-                  >
-                    {cells}
-                  </GeneratorSwipeDeleteRow>
-                </View>
-                <Pressable
-                  accessibilityLabel="Edit generator log"
-                  onPress={() => onEdit(row.id)}
-                  hitSlop={6}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="settings-outline" size={20} color={colors.muted} />
-                </Pressable>
-              </View>
+              <GeneratorSwipeDeleteRow
+                key={row.id}
+                deleteLabel="Delete generator log"
+                onDelete={() => onDelete(row.id)}
+                isOpen={openSwipeId === row.id}
+                onOpen={() => setOpenSwipeId(row.id)}
+              >
+                {cells}
+              </GeneratorSwipeDeleteRow>
             );
           })}
         </View>
