@@ -1537,10 +1537,11 @@ export function getFieldLog(from: string, to: string): FieldLogWeek[] {
   const visits = db.getAllSync<{
     id: string;
     farm_name: string;
+    visit_type: string;
     visit_date: string;
     logged_at: string | null;
   }>(
-    `SELECT v.id, f.farm_name, v.visit_date, v.logged_at
+    `SELECT v.id, f.farm_name, v.visit_type, v.visit_date, v.logged_at
      FROM farm_visits v
      JOIN farms f ON f.id = v.farm_id
      WHERE f.deleted_at IS NULL
@@ -1554,6 +1555,7 @@ export function getFieldLog(from: string, to: string): FieldLogWeek[] {
     visits.map((v) => ({
       id: v.id,
       farmName: v.farm_name,
+      visitType: v.visit_type,
       visitDate: v.visit_date,
       loggedAt: v.logged_at?.trim() || `${v.visit_date}T12:00:00.000Z`,
     })),

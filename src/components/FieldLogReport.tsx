@@ -2,25 +2,33 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Button, Card } from "@/components/ui";
+import { Card } from "@/components/ui";
+import { CopyShareRow } from "@/components/CopyShareIcons";
 import { downloadReportPdf } from "@/lib/exports/pdf";
 import {
+  FIELD_LOG_FARM_NAME_CHARS,
+  FIELD_LOG_PDF_FARM_NAME_CHARS,
   fieldLogHasVisits,
+  fieldLogVisitTypeLabel,
   fieldLogWeeksToTsv,
   formatFieldLogDayHeader,
+  truncateFarmName,
   type FieldLogWeek,
 } from "@/lib/reports/field-log";
 
 export function FieldLogReport({
   weeks,
   filterLabel,
+  technicianName,
 }: {
   weeks: FieldLogWeek[];
   filterLabel: string;
+  technicianName?: string;
 }) {
-  const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const hasFarms = fieldLogHasVisits(weeks);
+  const tech = technicianName?.trim();
+  const pdfTitle = tech ? `Field Log - ${tech}` : "Field Log";
 
   async function copy() {
     if (!hasFarms) {
@@ -29,11 +37,8 @@ export function FieldLogReport({
     }
     try {
       await navigator.clipboard.writeText(fieldLogWeeksToTsv(weeks));
-      setCopied(true);
       setNotice(null);
-      window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      setCopied(false);
       setNotice("Could not copy to clipboard on this device.");
     }
   }
@@ -44,14 +49,19 @@ export function FieldLogReport({
       return;
     }
     downloadReportPdf({
-      title: "Field Log",
+      title: pdfTitle,
       subtitle: filterLabel,
       filename: `field-log-${Date.now()}.pdf`,
       orientation: "landscape",
       blocks: weeks.map((week) => {
         const maxRows = Math.max(1, ...week.days.map((day) => day.farms.length));
         const rows = Array.from({ length: maxRows }, (_, row) =>
-          week.days.map((day) => day.farms[row] ?? (row === 0 ? "—" : "")),
+          week.days.map((day) => {
+            const entry = day.farms[row];
+            if (!entry) return row === 0 ? "—" : "";
+            const name = truncateFarmName(entry.farmName, FIELD_LOG_PDF_FARM_NAME_CHARS);
+            return `${name}\n${fieldLogVisitTypeLabel(entry.visitType)}`;
+          }),
         );
         return {
           type: "table" as const,
@@ -67,18 +77,18 @@ export function FieldLogReport({
   return (
     <Card>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-base font-extrabold text-stone-900">Field Log</p>
           <p className="text-sm text-stone-600">{filterLabel}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" onClick={copy} disabled={!hasFarms}>
-            {copied ? "Copied" : "Copy"}
-          </Button>
-          <Button type="button" variant="secondary" onClick={sharePdf} disabled={!hasFarms}>
-            Share PDF
-          </Button>
-        </div>
+        <CopyShareRow
+          onCopy={() => void copy()}
+          onShare={sharePdf}
+          copyDisabled={!hasFarms}
+          shareDisabled={!hasFarms}
+          copyLabel="Copy field log"
+          shareLabel="Share field log PDF"
+        />
       </div>
       {notice ? <p className="mb-3 text-sm font-semibold text-red-800">{notice}</p> : null}
 
@@ -104,13 +114,18 @@ export function FieldLogReport({
                     {day.farms.length === 0 ? (
                       <p className="text-sm text-stone-400">—</p>
                     ) : (
-                      <ol className="list-none space-y-1.5 p-0">
+                      <ol className="list-none space-y-2 p-0">
                         {day.farms.map((farm, i) => (
                           <li
-                            key={`${day.dateKey}-${i}-${farm}`}
-                            className="text-sm font-semibold leading-snug text-stone-900"
+                            key={`${day.dateKey}-${i}-${farm.farmName}-${farm.visitType}`}
+                            className="leading-snug"
                           >
-                            {farm}
+                            <p className="text-sm font-semibold text-stone-900">
+                              {truncateFarmName(farm.farmName, FIELD_LOG_FARM_NAME_CHARS)}
+                            </p>
+                            <p className="text-xs font-semibold text-stone-500">
+                              {fieldLogVisitTypeLabel(farm.visitType)}
+                            </p>
                           </li>
                         ))}
                       </ol>

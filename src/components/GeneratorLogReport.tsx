@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Button, Card } from "@/components/ui";
+import { useMemo } from "react";
+import { Card } from "@/components/ui";
+import { CopyShareRow } from "@/components/CopyShareIcons";
 import { downloadReportPdf } from "@/lib/exports/pdf";
 import {
   buildGeneratorReportView,
@@ -19,19 +20,12 @@ export function GeneratorLogReport({
   filterLabel: string;
   includeFarmColumn?: boolean;
 }) {
-  const [copied, setCopied] = useState(false);
   const view = useMemo(() => buildGeneratorReportView(farms), [farms]);
   const hasLogs = view.some((farm) => farm.generators.some((gen) => gen.rows.length > 0));
 
   async function copy() {
     if (!hasLogs) return;
-    try {
-      await navigator.clipboard.writeText(generatorReportToTsv(view));
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
+    await navigator.clipboard.writeText(generatorReportToTsv(view));
   }
 
   function exportPdf() {
@@ -67,14 +61,14 @@ export function GeneratorLogReport({
           <p className="text-base font-extrabold text-stone-900">Generator hours</p>
           <p className="text-sm text-stone-600">{filterLabel}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" onClick={copy}>
-            {copied ? "Copied" : "Copy"}
-          </Button>
-          <Button type="button" variant="secondary" onClick={exportPdf}>
-            Share PDF
-          </Button>
-        </div>
+        <CopyShareRow
+          onCopy={() => void copy()}
+          onShare={exportPdf}
+          copyDisabled={!hasLogs}
+          shareDisabled={!hasLogs}
+          copyLabel="Copy generator report"
+          shareLabel="Share generator report PDF"
+        />
       </div>
       <div className="space-y-6">
         {view.map((farm) => (

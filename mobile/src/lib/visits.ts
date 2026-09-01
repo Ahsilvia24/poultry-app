@@ -1,6 +1,7 @@
 /** Picker order and labels for a new/edited visit. */
 export const VISIT_TYPE_OPTIONS = [
   { value: "ROUTINE_SERVICE", label: "Routine Service" },
+  { value: "DELIVERY", label: "Delivery" },
   { value: "PREBROOD", label: "Prebrood" },
   { value: "PLACEMENT", label: "Placement" },
   { value: "WEIGH_DAY", label: "Weigh Day" },
