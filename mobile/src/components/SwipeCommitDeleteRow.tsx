@@ -130,8 +130,7 @@ export function SwipeCommitDeleteRow({
             backgroundColor: actionColor,
             justifyContent: "center",
             alignItems: "center",
-            borderTopRightRadius: radius,
-            borderBottomRightRadius: radius,
+            borderRadius: radius,
           }}
         >
           {deleteContent ?? (

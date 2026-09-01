@@ -110,7 +110,7 @@ export function SwipeCommitDeleteRow({
       {swipeX < -8 ? (
         <div
           className={cn(
-            "absolute inset-y-0 right-0 flex items-center justify-center rounded-r-xl text-xs font-bold text-white",
+            "absolute inset-y-0 right-0 flex items-center justify-center rounded-xl text-xs font-bold text-white",
             actionClassName,
           )}
           style={{ width: redWidth }}
