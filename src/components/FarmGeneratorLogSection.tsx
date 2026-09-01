@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import {
   createGeneratorLogAction,
@@ -16,6 +15,7 @@ import {
   detectGeneratorHourSwap,
   formatGeneratorChartsCopy,
   formatGeneratorHours,
+  formatGeneratorLogDate,
   hoursDelta,
   GENERATOR_FIELD_DEFS,
   MAX_GENERATOR_HOUR_LOGS,
@@ -48,7 +48,7 @@ function generatorsHashActive() {
 }
 
 function dateLabelFromKey(logDate: string) {
-  return format(new Date(logDate + "T12:00:00"), "M-d-yyyy");
+  return formatGeneratorLogDate(logDate);
 }
 
 function hoursOrEmpty(value: number | null | undefined) {
@@ -129,7 +129,7 @@ function GeneratorHoursChart({
     <div className="text-base leading-snug">
       <h4 className="mb-1 text-base font-bold text-stone-900">{title}</h4>
       <div className="flex gap-3 text-sm leading-none text-stone-500">
-        <span className="w-24 shrink-0 font-semibold">Date</span>
+        <span className="w-[7.5rem] shrink-0 font-semibold">Date</span>
         <span className="w-14 shrink-0 font-semibold">Hours</span>
         <span className="w-[4.5rem] shrink-0 font-semibold">Exercised</span>
       </div>
@@ -159,7 +159,7 @@ function GeneratorHoursChart({
                   showActions ? "cursor-pointer rounded-sm hover:bg-stone-50" : ""
                 }`}
               >
-                <span className="w-24 shrink-0 whitespace-nowrap font-semibold">{row.dateLabel}</span>
+                <span className="w-[7.5rem] shrink-0 whitespace-nowrap font-semibold">{row.dateLabel}</span>
                 <span className="w-14 shrink-0 font-semibold">
                   {formatGeneratorHours(row.hours)}
                 </span>
@@ -466,7 +466,7 @@ export function FarmGeneratorLogSection({
     // Match chart windows: up to 10 readings per gen, not 10 shared date rows.
     const byDate = new Map<
       string,
-      { dateLabel: string; hours: GeneratorHours; deltas: GeneratorDeltas }
+      { dateLabel: string; logDate: string; hours: GeneratorHours; deltas: GeneratorDeltas }
     >();
     for (const gen of chartRowsByGen) {
       for (const row of gen.rows) {
@@ -476,6 +476,7 @@ export function FarmGeneratorLogSection({
         if (!entry) {
           entry = {
             dateLabel: row.dateLabel,
+            logDate: log.logDate,
             hours: {
               gen1Hours: null,
               gen2Hours: null,
@@ -491,7 +492,7 @@ export function FarmGeneratorLogSection({
       }
     }
     return formatGeneratorChartsCopy(
-      [...byDate.values()].sort((a, b) => b.dateLabel.localeCompare(a.dateLabel)),
+      [...byDate.values()].sort((a, b) => b.logDate.localeCompare(a.logDate)),
     );
   }, [chartRowsByGen, allSorted]);
 

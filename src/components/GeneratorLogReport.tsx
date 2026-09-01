@@ -79,7 +79,7 @@ export function GeneratorLogReport({
                 <div key={gen.key}>
                   <h3 className="mb-1 text-base font-bold text-stone-900">{gen.label}</h3>
                   <div className="flex gap-3 text-sm leading-none text-stone-500">
-                    <span className="w-24 shrink-0 font-semibold">Date</span>
+                    <span className="w-[7.5rem] shrink-0 font-semibold">Date</span>
                     <span className="w-14 shrink-0 font-semibold">Hours</span>
                     <span className="w-[4.5rem] shrink-0 font-semibold">Exercised</span>
                   </div>
@@ -91,7 +91,7 @@ export function GeneratorLogReport({
                         key={`${gen.key}-${row.logDate}`}
                         className="flex items-center gap-3 py-1 text-base tabular-nums text-stone-800"
                       >
-                        <span className="w-24 shrink-0 whitespace-nowrap font-semibold">
+                        <span className="w-[7.5rem] shrink-0 whitespace-nowrap font-semibold">
                           {formatGeneratorReportDate(row.logDate)}
                         </span>
                         <span className="w-14 shrink-0 font-semibold">

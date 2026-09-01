@@ -50,6 +50,7 @@ import {
   detectGeneratorHourSwap,
   formatGeneratorChartsCopy,
   formatGeneratorHours,
+  formatGeneratorLogDate,
   hoursDelta,
   previousGeneratorHoursFromLogs,
   GENERATOR_FIELD_DEFS,
@@ -373,7 +374,7 @@ function GeneratorHoursChart({
         {title}
       </Text>
       <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-        <Text style={{ width: 96, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
+        <Text style={{ width: 118, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Date
         </Text>
         <Text style={{ width: 60, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
@@ -401,7 +402,7 @@ function GeneratorHoursChart({
                   paddingVertical: 4,
                 }}
               >
-                <Text style={{ ...cell, width: 96 }} numberOfLines={1}>
+                <Text style={{ ...cell, width: 118 }} numberOfLines={1}>
                   {row.dateLabel}
                 </Text>
                 <Text style={{ ...cell, width: 60 }}>{formatGeneratorHours(row.hours)}</Text>
@@ -1822,9 +1823,8 @@ export default function FarmDetailScreen() {
                             }
                             return null;
                           };
-                          const [y, m, d] = log.logDate.split("-").map(Number);
                           return {
-                            dateLabel: `${m}-${d}-${y}`,
+                            dateLabel: formatGeneratorLogDate(log.logDate),
                             hours,
                             deltas: {
                               gen1: hoursDelta(log.gen1Hours, priorFor("gen1Hours")),
@@ -1862,10 +1862,9 @@ export default function FarmDetailScreen() {
                 if (genLogs.length === 0) return null;
                 const rows: GeneratorChartRow[] = genLogs.map((log, index) => {
                   const previous = genLogs[index + 1] ?? null;
-                  const [y, m, d] = log.logDate.split("-").map(Number);
                   return {
                     id: log.id,
-                    dateLabel: `${m}-${d}-${y}`,
+                    dateLabel: formatGeneratorLogDate(log.logDate),
                     hours: log[gen.hourKey] as number,
                     exercised: hoursDelta(log[gen.hourKey], previous?.[gen.hourKey]),
                   };
