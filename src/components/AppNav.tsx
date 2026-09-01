@@ -13,9 +13,7 @@ const tabs = [
   { href: "/tools", label: "Tools", icon: "tools" },
 ] as const;
 
-const dashboardTabClass = "border-emerald-800 bg-emerald-700 text-white";
-
-const selectedSideTabClass =
+const selectedTabClass =
   "border-emerald-700/35 bg-emerald-50/70 text-stone-700";
 
 const extra = [
@@ -102,7 +100,6 @@ export function AppNav() {
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
           <nav className="flex items-center gap-1">
             {desktopNav.map((item) => {
-              const dashboard = item.href === "/";
               const active = isActive(pathname, item.href);
               return (
                 <Link
@@ -110,11 +107,9 @@ export function AppNav() {
                   href={item.href}
                   className={cn(
                     "rounded-lg px-3 py-2 text-base font-semibold",
-                    dashboard
-                      ? "bg-emerald-700 text-white"
-                      : active
-                        ? "border border-emerald-700/35 bg-emerald-50/70 text-stone-700"
-                        : "text-stone-700 hover:bg-stone-200",
+                    active
+                      ? "border border-emerald-700/35 bg-emerald-50/70 text-stone-700"
+                      : "text-stone-700 hover:bg-stone-200",
                   )}
                 >
                   {item.label}
@@ -130,15 +125,13 @@ export function AppNav() {
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))]">
             {tabs.map((item) => {
               const active = isActive(pathname, item.href);
-              const dashboard = item.href === "/";
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
                     "flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-[10px] border px-0.5 py-1.5 text-center text-[10px] font-extrabold leading-none text-stone-700",
-                    dashboard ? dashboardTabClass : "border-transparent",
-                    !dashboard && active && selectedSideTabClass,
+                    active ? selectedTabClass : "border-transparent",
                   )}
                 >
                   <TabIcon name={item.icon} size={18} />
