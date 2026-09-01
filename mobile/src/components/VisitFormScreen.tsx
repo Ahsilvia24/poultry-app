@@ -26,7 +26,6 @@ import { VISIT_TYPE_LABELS, VISIT_TYPE_OPTIONS } from "../lib/visits";
 import { colors, styles } from "../theme";
 import { BackHeader, Card, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
-import { ConfirmDialog } from "./ConfirmDialog";
 
 type Props = {
   farmId: string;
@@ -65,7 +64,6 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
   const [followUpDate, setFollowUpDate] = useState(initial?.followUpDate ?? "");
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [datePicker, setDatePicker] = useState<"visit" | "followUp" | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -116,19 +114,12 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
     }
   }
 
-  function confirmDelete() {
-    if (!visitId) return;
-    setDeleteOpen(true);
-  }
-
   function runDelete() {
     if (!visitId) return;
     try {
       deleteVisit(farmId, visitId);
-      setDeleteOpen(false);
       router.back();
     } catch (e) {
-      setDeleteOpen(false);
       setError(e instanceof Error ? e.message : "Could not delete visit");
     }
   }
@@ -274,7 +265,7 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
               <PrimaryButton
                 label="Delete visit"
                 secondary
-                onPress={confirmDelete}
+                onPress={runDelete}
                 style={{ marginTop: 10 }}
               />
             ) : null}
@@ -353,15 +344,6 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
           </Pressable>
         </Pressable>
       </Modal>
-      <ConfirmDialog
-        visible={deleteOpen}
-        title="Delete visit?"
-        message="This cannot be undone."
-        confirmLabel="Delete"
-        danger
-        onConfirm={runDelete}
-        onCancel={() => setDeleteOpen(false)}
-      />
     </SafeAreaView>
   );
 }

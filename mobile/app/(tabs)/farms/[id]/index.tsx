@@ -615,9 +615,6 @@ export default function FarmDetailScreen() {
   const [generatorEditingGen, setGeneratorEditingGen] = useState<GenHourKey | null>(null);
   const [opsConfirm, setOpsConfirm] = useState<
     | { kind: "house"; houseId: string; houseNumber: number }
-    | { kind: "issue"; issueId: string }
-    | { kind: "litter"; eventId: string }
-    | { kind: "feed"; deliveryId: string }
     | { kind: "generator"; logId: string; hourKey: GenHourKey; label: string }
     | null
   >(null);
@@ -1157,13 +1154,37 @@ export default function FarmDetailScreen() {
     }
   }
 
+  function removeIssue(issueId: string) {
+    try {
+      deleteIssue(farm.id, issueId);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
+  function removeLitter(eventId: string) {
+    try {
+      deleteLitterEvent(farm.id, eventId);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
+  function removeFeed(deliveryId: string) {
+    try {
+      deleteFeedDelivery(deliveryId);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
   function runOpsConfirm() {
     if (!opsConfirm) return;
     try {
       if (opsConfirm.kind === "house") deleteHouse(farm.id, opsConfirm.houseId);
-      else if (opsConfirm.kind === "issue") deleteIssue(farm.id, opsConfirm.issueId);
-      else if (opsConfirm.kind === "litter") deleteLitterEvent(farm.id, opsConfirm.eventId);
-      else if (opsConfirm.kind === "feed") deleteFeedDelivery(opsConfirm.deliveryId);
       else deleteGeneratorLog(farm.id, opsConfirm.logId, opsConfirm.hourKey);
       load();
     } catch (e) {
@@ -2052,7 +2073,7 @@ export default function FarmDetailScreen() {
                         params: { id: farm.id, issueId: issue.id },
                       })
                     }
-                    onDelete={() => setOpsConfirm({ kind: "issue", issueId: issue.id })}
+                    onDelete={() => removeIssue(issue.id)}
                   />
                 </View>
               ))
@@ -2105,7 +2126,7 @@ export default function FarmDetailScreen() {
                         params: { id: farm.id, eventId: e.id },
                       })
                     }
-                    onDelete={() => setOpsConfirm({ kind: "litter", eventId: e.id })}
+                    onDelete={() => removeLitter(e.id)}
                   />
                 </View>
               ))
@@ -2158,7 +2179,7 @@ export default function FarmDetailScreen() {
                         params: { id: farm.id, deliveryId: d.id },
                       })
                     }
-                    onDelete={() => setOpsConfirm({ kind: "feed", deliveryId: d.id })}
+                    onDelete={() => removeFeed(d.id)}
                   />
                 </View>
               ))
@@ -2916,15 +2937,9 @@ export default function FarmDetailScreen() {
         title={
           opsConfirm?.kind === "house"
             ? `Delete house ${opsConfirm.houseNumber}?`
-            : opsConfirm?.kind === "issue"
-              ? "Delete issue?"
-              : opsConfirm?.kind === "litter"
-                ? "Delete litter event?"
-                : opsConfirm?.kind === "feed"
-                  ? "Delete feed delivery?"
-                  : opsConfirm?.kind === "generator"
-                    ? `Delete ${opsConfirm.label} entry?`
-                    : "Delete?"
+            : opsConfirm?.kind === "generator"
+              ? `Delete ${opsConfirm.label} entry?`
+              : "Delete?"
         }
         message={
           opsConfirm?.kind === "house"
