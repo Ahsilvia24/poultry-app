@@ -12,9 +12,19 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../src/auth";
 import { getFarmOrder, getServiceTech, setFarmOrder, setServiceTech } from "../src/lib/appSettings";
-import { FARM_ORDER_OPTIONS, parseFarmOrder, type FarmOrder } from "../src/lib/farmOrder";
+import { FARM_ORDER_OPTIONS, type FarmOrder } from "../src/lib/farmOrder";
 import { colors, styles } from "../src/theme";
 import { WheelPicker } from "../src/components/WheelPicker";
+
+const noFocusRing =
+  Platform.OS === "web"
+    ? ({
+        outlineWidth: 0,
+        outlineStyle: "none",
+        outlineColor: "transparent",
+        boxShadow: "none",
+      } as const)
+    : null;
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -43,6 +53,15 @@ export default function SettingsScreen() {
           contentContainerStyle={[styles.content, { flexGrow: 1 }]}
           keyboardShouldPersistTaps="handled"
         >
+          {Platform.OS === "web"
+            ? createElement("style", {
+                dangerouslySetInnerHTML: {
+                  __html:
+                    "input:focus{outline:none!important;box-shadow:none!important;-webkit-tap-highlight-color:transparent}",
+                },
+              })
+            : null}
+
           <View
             style={{
               marginBottom: 20,
@@ -77,14 +96,20 @@ export default function SettingsScreen() {
               Service Tech:
             </Text>
             <TextInput
-              style={{
-                flex: 1,
-                minWidth: 0,
-                fontSize: 17,
-                fontWeight: "600",
-                color: colors.text,
-                paddingVertical: 6,
-              }}
+              style={[
+                {
+                  flex: 1,
+                  minWidth: 0,
+                  fontSize: 17,
+                  fontWeight: "600",
+                  color: colors.text,
+                  paddingVertical: 6,
+                  paddingHorizontal: 0,
+                  borderWidth: 0,
+                  backgroundColor: "transparent",
+                },
+                noFocusRing,
+              ]}
               value={serviceTech}
               onChangeText={onChangeServiceTech}
               autoCapitalize="words"
@@ -93,48 +118,33 @@ export default function SettingsScreen() {
               autoComplete="name"
               placeholder="Name"
               placeholderTextColor={colors.muted}
+              selectionColor={colors.muted}
+              underlineColorAndroid="transparent"
               accessibilityLabel="Service technician name"
             />
           </View>
 
-          <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text, marginBottom: 8 }}>
-            Order Farms By:
-          </Text>
-          {Platform.OS === "web" ? (
-            createElement(
-              "select",
-              {
-                value: farmOrder,
-                "aria-label": "Order farms by",
-                onChange: (e: { target: { value: string } }) =>
-                  onChangeFarmOrder(parseFarmOrder(e.target.value)),
-                style: {
-                  width: "100%",
-                  minHeight: 44,
-                  border: "none",
-                  borderBottom: "1px solid #d6d3d1",
-                  paddingLeft: 0,
-                  paddingRight: 0,
-                  fontSize: 17,
-                  fontWeight: 600,
-                  backgroundColor: "transparent",
-                  color: colors.text,
-                },
-              },
-              FARM_ORDER_OPTIONS.map((option) =>
-                createElement("option", { key: option.key, value: option.key }, option.label),
-              ),
-            )
-          ) : (
-            <WheelPicker
-              options={FARM_ORDER_OPTIONS.map((option) => ({
-                value: option.key,
-                label: option.label,
-              }))}
-              value={farmOrder}
-              onChange={onChangeFarmOrder}
-            />
-          )}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>
+              Order by:
+            </Text>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <WheelPicker
+                options={FARM_ORDER_OPTIONS.map((option) => ({
+                  value: option.key,
+                  label: option.label,
+                }))}
+                value={farmOrder}
+                onChange={onChangeFarmOrder}
+              />
+            </View>
+          </View>
 
           <View style={{ flex: 1, minHeight: 48 }} />
 

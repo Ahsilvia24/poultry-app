@@ -31,9 +31,20 @@ export default async function SettingsPage() {
           <div>
             <h2 className="font-bold text-stone-900">Profile</h2>
             <div className="mt-3 space-y-3">
-              <div>
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" name="name" defaultValue={user.name} required />
+              <div className="flex items-center gap-3">
+                <label
+                  htmlFor="name"
+                  className="shrink-0 text-sm font-semibold text-stone-800"
+                >
+                  Service Tech:
+                </label>
+                <Input
+                  id="name"
+                  name="name"
+                  defaultValue={user.name}
+                  required
+                  className="flex-1 border-0 bg-transparent px-0 shadow-none focus:border-transparent focus:ring-0"
+                />
               </div>
               <div>
                 <Label htmlFor="email">Email</Label>
@@ -124,7 +135,7 @@ export default async function SettingsPage() {
                   htmlFor="farmOrder"
                   className="shrink-0 text-sm font-semibold text-stone-700"
                 >
-                  Order Farms By
+                  Order by:
                 </label>
                 <Select
                   id="farmOrder"

@@ -17,7 +17,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-        <h1 className="font-serif text-xl font-extrabold tracking-tight text-emerald-900">
+        <h1 className="text-center font-serif text-xl font-extrabold tracking-tight text-emerald-900">
           PoultryTech
         </h1>
         <form action={onSubmit} className="mt-6 space-y-4">

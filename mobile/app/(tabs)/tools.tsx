@@ -258,10 +258,10 @@ export default function ToolsScreen() {
               paddingHorizontal: 4,
             }}
           >
-            <Ionicons name="settings-outline" size={22} color={colors.muted} />
             <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>
               Settings
             </Text>
+            <Ionicons name="settings-outline" size={22} color={colors.muted} />
           </Pressable>
         </View>
 
