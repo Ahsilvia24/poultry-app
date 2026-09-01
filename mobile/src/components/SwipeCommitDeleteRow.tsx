@@ -112,7 +112,7 @@ export function SwipeCommitDeleteRow({
 
   return (
     <View
-      style={[{ overflow: "hidden", borderRadius: radius }, style]}
+      style={[{ overflow: "hidden" }, style]}
       onLayout={(e) => {
         const w = e.nativeEvent.layout.width;
         if (w > 0 && w !== rowWidth) setRowWidth(w);

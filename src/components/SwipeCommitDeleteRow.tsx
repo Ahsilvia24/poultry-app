@@ -106,7 +106,7 @@ export function SwipeCommitDeleteRow({
   }
 
   return (
-    <div className={cn("relative overflow-hidden rounded-xl", className)} ref={rootRef}>
+    <div className={cn("relative overflow-hidden", className)} ref={rootRef}>
       {swipeX < -8 ? (
         <div
           className={cn(
