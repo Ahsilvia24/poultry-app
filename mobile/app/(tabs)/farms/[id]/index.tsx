@@ -606,6 +606,8 @@ export default function FarmDetailScreen() {
   const [farmEditError, setFarmEditError] = useState<string | null>(null);
   const [farmSaving, setFarmSaving] = useState(false);
   const [farmEditKeyboardH, setFarmEditKeyboardH] = useState(0);
+  const farmEditScrollRef = useRef<ScrollViewType>(null);
+  const farmNotesWrapRef = useRef<View>(null);
   const [generatorModalOpen, setGeneratorModalOpen] = useState(false);
   const [generatorSaving, setGeneratorSaving] = useState(false);
   const [generatorError, setGeneratorError] = useState<string | null>(null);
@@ -2343,139 +2345,134 @@ export default function FarmDetailScreen() {
                     </View>
                     {data.activeFlock ? (
                       <>
-                        <View style={{ flexDirection: "row", gap: 10 }}>
-                          <View style={{ flex: 1, marginBottom: 10 }}>
-                            <DatePickerField
-                              label="Placement date"
-                              value={editingHouse.placementDate}
-                              presentation={Platform.OS === "web" ? "modal" : "inline"}
-                              expanded={housePicker === "placement"}
-                              onOpen={() => setHousePicker("placement")}
-                              inputStyle={{ marginBottom: 0 }}
-                              onChange={(date) =>
-                                setEditingHouse((prev) => {
-                                  if (!prev) return prev;
-                                  const oldDefault = prev.placementDate
-                                    ? addDaysKey(prev.placementDate, 52)
-                                    : "";
-                                  const catchWasDefault =
-                                    !prev.catchDate || prev.catchDate === oldDefault;
-                                  return {
-                                    ...prev,
-                                    placementDate: date,
-                                    catchDate: catchWasDefault
-                                      ? addDaysKey(date, 52)
-                                      : prev.catchDate,
-                                  };
-                                })
-                              }
-                            />
-                            <PropagateCheck
-                              checked={editingHouse.applyPlacementToRemaining}
-                              onToggle={() =>
-                                setEditingHouse((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        applyPlacementToRemaining: !prev.applyPlacementToRemaining,
-                                      }
-                                    : prev,
-                                )
-                              }
-                            />
-                          </View>
-                          <NativeNumInput
-                            label="Birds placed"
-                            value={editingHouse.placedBirdCount}
-                            grouped
-                            style={{ flex: 1 }}
-                            onChangeText={(v) =>
-                              setEditingHouse((prev) =>
-                                prev ? { ...prev, placedBirdCount: v } : prev,
-                              )
+                        <View style={{ marginBottom: 10 }}>
+                          <DatePickerField
+                            label="Placement date"
+                            value={editingHouse.placementDate}
+                            presentation={Platform.OS === "web" ? "modal" : "inline"}
+                            expanded={housePicker === "placement"}
+                            onOpen={() => setHousePicker("placement")}
+                            inputStyle={{ marginBottom: 0 }}
+                            onChange={(date) =>
+                              setEditingHouse((prev) => {
+                                if (!prev) return prev;
+                                const oldDefault = prev.placementDate
+                                  ? addDaysKey(prev.placementDate, 52)
+                                  : "";
+                                const catchWasDefault =
+                                  !prev.catchDate || prev.catchDate === oldDefault;
+                                return {
+                                  ...prev,
+                                  placementDate: date,
+                                  catchDate: catchWasDefault
+                                    ? addDaysKey(date, 52)
+                                    : prev.catchDate,
+                                };
+                              })
                             }
-                            propagateChecked={editingHouse.applyBirdsToRemaining}
-                            onPropagateToggle={() =>
+                          />
+                          <PropagateCheck
+                            checked={editingHouse.applyPlacementToRemaining}
+                            onToggle={() =>
                               setEditingHouse((prev) =>
                                 prev
-                                  ? { ...prev, applyBirdsToRemaining: !prev.applyBirdsToRemaining }
+                                  ? {
+                                      ...prev,
+                                      applyPlacementToRemaining: !prev.applyPlacementToRemaining,
+                                    }
                                   : prev,
                               )
                             }
                           />
                         </View>
-                        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
-                          <View style={{ flex: 1 }}>
-                            <DatePickerField
-                              label="Catch date"
-                              value={editingHouse.catchDate}
-                              presentation={Platform.OS === "web" ? "modal" : "inline"}
-                              expanded={housePicker === "catch"}
-                              onOpen={() => setHousePicker("catch")}
-                              inputStyle={{ marginBottom: 0 }}
-                              onChange={(date) =>
+                        <NativeNumInput
+                          label="Birds placed"
+                          value={editingHouse.placedBirdCount}
+                          grouped
+                          onChangeText={(v) =>
+                            setEditingHouse((prev) =>
+                              prev ? { ...prev, placedBirdCount: v } : prev,
+                            )
+                          }
+                          propagateChecked={editingHouse.applyBirdsToRemaining}
+                          onPropagateToggle={() =>
+                            setEditingHouse((prev) =>
+                              prev
+                                ? { ...prev, applyBirdsToRemaining: !prev.applyBirdsToRemaining }
+                                : prev,
+                            )
+                          }
+                        />
+                        <View style={{ marginBottom: 10 }}>
+                          <DatePickerField
+                            label="Catch date"
+                            value={editingHouse.catchDate}
+                            presentation={Platform.OS === "web" ? "modal" : "inline"}
+                            expanded={housePicker === "catch"}
+                            onOpen={() => setHousePicker("catch")}
+                            inputStyle={{ marginBottom: 0 }}
+                            onChange={(date) =>
+                              setEditingHouse((prev) =>
+                                prev ? { ...prev, catchDate: date } : prev,
+                              )
+                            }
+                          />
+                          <PropagateCheck
+                            checked={editingHouse.applyCatchDateToRemaining}
+                            onToggle={() =>
+                              setEditingHouse((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      applyCatchDateToRemaining: !prev.applyCatchDateToRemaining,
+                                    }
+                                  : prev,
+                              )
+                            }
+                          />
+                        </View>
+                        <View style={{ marginBottom: 10 }}>
+                          <TimeScrollPickerField
+                            label="Catch time"
+                            value={editingHouse.catchTime}
+                            presentation={Platform.OS === "web" ? "modal" : "inline"}
+                            expanded={housePicker === "catchTime"}
+                            onOpen={() => setHousePicker("catchTime")}
+                            inputStyle={{ marginBottom: 0 }}
+                            onChange={(time) =>
+                              setEditingHouse((prev) =>
+                                prev ? { ...prev, catchTime: time } : prev,
+                              )
+                            }
+                          />
+                          <PropagateCheck
+                            checked={editingHouse.applyCatchTimeToRemaining}
+                            onToggle={() =>
+                              setEditingHouse((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      applyCatchTimeToRemaining: !prev.applyCatchTimeToRemaining,
+                                    }
+                                  : prev,
+                              )
+                            }
+                          />
+                          {editingHouse.catchTime ? (
+                            <Pressable
+                              onPress={() =>
                                 setEditingHouse((prev) =>
-                                  prev ? { ...prev, catchDate: date } : prev,
+                                  prev ? { ...prev, catchTime: "" } : prev,
                                 )
                               }
-                            />
-                            <PropagateCheck
-                              checked={editingHouse.applyCatchDateToRemaining}
-                              onToggle={() =>
-                                setEditingHouse((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        applyCatchDateToRemaining: !prev.applyCatchDateToRemaining,
-                                      }
-                                    : prev,
-                                )
-                              }
-                            />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <TimeScrollPickerField
-                              label="Catch time"
-                              value={editingHouse.catchTime}
-                              presentation={Platform.OS === "web" ? "modal" : "inline"}
-                              expanded={housePicker === "catchTime"}
-                              onOpen={() => setHousePicker("catchTime")}
-                              inputStyle={{ marginBottom: 0 }}
-                              onChange={(time) =>
-                                setEditingHouse((prev) =>
-                                  prev ? { ...prev, catchTime: time } : prev,
-                                )
-                              }
-                            />
-                            <PropagateCheck
-                              checked={editingHouse.applyCatchTimeToRemaining}
-                              onToggle={() =>
-                                setEditingHouse((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        applyCatchTimeToRemaining: !prev.applyCatchTimeToRemaining,
-                                      }
-                                    : prev,
-                                )
-                              }
-                            />
-                            {editingHouse.catchTime ? (
-                              <Pressable
-                                onPress={() =>
-                                  setEditingHouse((prev) =>
-                                    prev ? { ...prev, catchTime: "" } : prev,
-                                  )
-                                }
-                                style={{ alignSelf: "flex-start", marginTop: 2 }}
-                                hitSlop={8}
-                              >
-                                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 12 }}>
-                                  Clear
-                                </Text>
-                              </Pressable>
-                            ) : null}
-                          </View>
+                              style={{ alignSelf: "flex-start", marginTop: 2 }}
+                              hitSlop={8}
+                            >
+                              <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 12 }}>
+                                Clear
+                              </Text>
+                            </Pressable>
+                          ) : null}
                         </View>
                       </>
                     ) : null}
@@ -2692,6 +2689,7 @@ export default function FarmDetailScreen() {
             }}
           >
             <ScrollView
+              ref={farmEditScrollRef}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               contentContainerStyle={{
@@ -2736,27 +2734,45 @@ export default function FarmDetailScreen() {
                     }
                     autoCapitalize="words"
                   />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        minHeight: 110,
-                        paddingTop: 12,
-                        paddingBottom: 12,
-                        textAlignVertical: "top",
-                        color: colors.text,
-                      },
-                    ]}
-                    value={editingFarm.notes}
-                    onChangeText={(v) =>
-                      setEditingFarm((prev) => (prev ? { ...prev, notes: v } : prev))
-                    }
-                    multiline
-                    scrollEnabled
-                    placeholder="Notes"
-                    placeholderTextColor={colors.muted}
-                  />
+                  <View ref={farmNotesWrapRef} collapsable={false}>
+                    <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
+                    <TextInput
+                      style={[
+                        styles.input,
+                        {
+                          minHeight: 110,
+                          paddingTop: 12,
+                          paddingBottom: 12,
+                          textAlignVertical: "top",
+                          color: colors.text,
+                        },
+                      ]}
+                      value={editingFarm.notes}
+                      onChangeText={(v) =>
+                        setEditingFarm((prev) => (prev ? { ...prev, notes: v } : prev))
+                      }
+                      multiline
+                      scrollEnabled
+                      placeholder="Notes"
+                      placeholderTextColor={colors.muted}
+                      onFocus={() => {
+                        requestAnimationFrame(() => {
+                          const wrap = farmNotesWrapRef.current;
+                          const scroll = farmEditScrollRef.current;
+                          if (!wrap || !scroll) return;
+                          wrap.measureLayout(
+                            scroll as unknown as number,
+                            (_x, y) => {
+                              scroll.scrollTo({ y: Math.max(0, y - 20), animated: true });
+                            },
+                            () => {
+                              scroll.scrollToEnd({ animated: true });
+                            },
+                          );
+                        });
+                      }}
+                    />
+                  </View>
                 </View>
               ) : null}
             </ScrollView>
