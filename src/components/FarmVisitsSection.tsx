@@ -20,16 +20,6 @@ function visitsHashActive() {
   return typeof window !== "undefined" && window.location.hash === "#visits";
 }
 
-/** Two lines of visit comments, then two dots. */
-function clipVisitNotes(notes: string) {
-  const lines = notes.replace(/\r\n/g, "\n").split("\n");
-  const firstTwo = lines.slice(0, 2).join("\n").trimEnd();
-  if (lines.length > 2) return `${firstTwo}..`;
-  const flat = firstTwo.replace(/\s+/g, " ");
-  if (flat.length > 80) return `${flat.slice(0, 80).trimEnd()}..`;
-  return firstTwo;
-}
-
 export function FarmVisitsSection({
   farmId,
   flockId,
@@ -112,8 +102,8 @@ export function FarmVisitsSection({
                       <span className="ml-2 text-amber-700">Follow-up due</span>
                     ) : null}
                     {v.notes ? (
-                      <p className="max-h-11 overflow-hidden break-words text-stone-600">
-                        {clipVisitNotes(v.notes)}
+                      <p className="mt-0.5 break-words text-sm leading-snug text-stone-600">
+                        {v.notes}
                       </p>
                     ) : null}
                   </div>
