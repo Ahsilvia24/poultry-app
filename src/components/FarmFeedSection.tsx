@@ -74,7 +74,7 @@ export function FarmFeedSection({
           setFormOpen((open) => !open);
         }}
       />
-      <ul className="space-y-2 text-sm">
+      <ul className="space-y-2 text-base">
         {deliveries.length === 0 ? <li className="text-stone-500">None yet</li> : null}
         {deliveries.map((d) => (
           <li key={d.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">

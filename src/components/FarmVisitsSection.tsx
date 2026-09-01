@@ -77,7 +77,7 @@ export function FarmVisitsSection({
         }}
       />
       <ExclusiveSwipeGroup>
-        <ul className="space-y-2 text-sm">
+        <ul className="space-y-2 text-base">
           {visits.length === 0 ? <li className="text-stone-500">None yet</li> : null}
           {visits.map((v) => (
             <li key={v.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">

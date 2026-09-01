@@ -70,7 +70,7 @@ export function FarmLitterSection({
           setFormOpen((open) => !open);
         }}
       />
-      <ul className="space-y-2 text-sm">
+      <ul className="space-y-2 text-base">
         {events.length === 0 ? <li className="text-stone-500">None yet</li> : null}
         {events.map((e) => (
           <li key={e.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">

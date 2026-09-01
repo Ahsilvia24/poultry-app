@@ -178,6 +178,14 @@ function SectionHeading({
   );
 }
 
+/** Same size as generator hour readings. */
+const logEntryText = {
+  fontSize: 16,
+  lineHeight: 22,
+  fontWeight: "600" as const,
+  color: colors.text,
+};
+
 function SectionTop({ onPress }: { onPress: () => void }) {
   return (
     <View style={{ marginTop: 8, marginBottom: 16, alignSelf: "flex-start" }}>
@@ -1756,7 +1764,7 @@ export default function FarmDetailScreen() {
             }
           />
           {data.visits.length === 0 ? (
-            <Text style={styles.muted}>None yet</Text>
+            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
           ) : (
             data.visits.map((v, i) => (
               <View
@@ -1782,17 +1790,19 @@ export default function FarmDetailScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
                   >
-                    <Text style={{ fontWeight: "700" }}>
+                    <Text style={logEntryText}>
                       {formatShortDate(v.visitDate)} —{" "}
                       {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
                     </Text>
                     {v.followUpRequired ? (
-                      <Text style={{ color: "#b45309", fontWeight: "600", marginTop: 2 }}>
+                      <Text style={{ ...logEntryText, color: "#b45309", marginTop: 2 }}>
                         Follow-up due
                       </Text>
                     ) : null}
                     {v.notes ? (
-                      <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text>
+                      <Text style={[styles.muted, { fontSize: 16, lineHeight: 22, marginTop: 2 }]}>
+                        {v.notes}
+                      </Text>
                     ) : null}
                   </View>
                 </SwipeCommitDeleteRow>
@@ -1922,7 +1932,7 @@ export default function FarmDetailScreen() {
             }
           />
           {data.issues.length === 0 ? (
-            <Text style={styles.muted}>None yet</Text>
+            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
           ) : (
             data.issues.map((issue, i) => (
               <View
@@ -1937,14 +1947,14 @@ export default function FarmDetailScreen() {
                 }}
               >
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ fontWeight: "700" }}>
+                  <Text style={logEntryText}>
                     {formatShortDate(issue.dateReported)} · {issue.priority}
-                    <Text style={{ fontWeight: "600", color: colors.muted }}>
+                    <Text style={{ ...logEntryText, color: colors.muted }}>
                       {" "}
                       · {issue.status}
                     </Text>
                   </Text>
-                  <Text style={{ marginTop: 2 }}>
+                  <Text style={{ ...logEntryText, marginTop: 2 }}>
                     {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}:{" "}
                     {issue.description}
                   </Text>
@@ -1983,7 +1993,7 @@ export default function FarmDetailScreen() {
             }
           />
           {data.litterEvents.length === 0 ? (
-            <Text style={styles.muted}>None yet</Text>
+            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
           ) : (
             data.litterEvents.map((e, i) => (
               <View
@@ -1998,12 +2008,16 @@ export default function FarmDetailScreen() {
                 }}
               >
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ fontWeight: "700" }}>
+                  <Text style={logEntryText}>
                     {formatShortDate(e.eventDate)} —{" "}
                     {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
                     {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
                   </Text>
-                  {e.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{e.notes}</Text> : null}
+                  {e.notes ? (
+                    <Text style={[styles.muted, { fontSize: 16, lineHeight: 22, marginTop: 2 }]}>
+                      {e.notes}
+                    </Text>
+                  ) : null}
                 </View>
                 <RowActions
                   editLabel="Edit litter event"
@@ -2039,7 +2053,7 @@ export default function FarmDetailScreen() {
             }
           />
           {data.feedDeliveries.length === 0 ? (
-            <Text style={styles.muted}>None yet</Text>
+            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
           ) : (
             data.feedDeliveries.map((d, i) => (
               <View
@@ -2054,7 +2068,7 @@ export default function FarmDetailScreen() {
                 }}
               >
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={{ fontWeight: "700" }}>
+                  <Text style={logEntryText}>
                     {formatShortDate(d.deliveryDate)} — {formatNumber(d.poundsDelivered)} lbs
                     {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
                     {d.feedType ? ` · ${d.feedType}` : ""}
