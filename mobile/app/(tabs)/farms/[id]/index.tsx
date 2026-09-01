@@ -419,7 +419,6 @@ function GeneratorHoursChart({
                   alignItems: "center",
                   minHeight: 30,
                   paddingVertical: 4,
-                  backgroundColor: colors.card,
                 }}
               >
                 <Text style={{ ...cell, width: 96 }} numberOfLines={1}>
@@ -437,6 +436,7 @@ function GeneratorHoursChart({
                 key={row.id}
                 onDelete={() => onDelete(row.id)}
                 radius={10}
+                transparent
               >
                 {cells}
               </SwipeCommitDeleteRow>
@@ -1769,6 +1769,7 @@ export default function FarmDetailScreen() {
                 }}
               >
                 <SwipeCommitDeleteRow
+                  transparent
                   onDelete={() => removeVisit(v.id)}
                   onPress={() =>
                     router.push({

@@ -175,6 +175,7 @@ function GeneratorHoursChart({
               <SwipeCommitDeleteRow
                 key={row.id}
                 rowId={row.id}
+                transparent
                 onDelete={() => {
                   void onDelete(row.id);
                 }}

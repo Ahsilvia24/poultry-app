@@ -83,6 +83,7 @@ export function FarmVisitsSection({
             <li key={v.id} className="border-b border-stone-100 pb-2 last:border-0 last:pb-0">
               <SwipeCommitDeleteRow
                 rowId={v.id}
+                transparent
                 onDelete={() => {
                   startDelete(async () => {
                     await deleteVisitAction(farmId, v.id);

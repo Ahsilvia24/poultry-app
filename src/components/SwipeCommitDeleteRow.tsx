@@ -20,6 +20,7 @@ export function SwipeCommitDeleteRow({
   actionClassName = "bg-red-700",
   deleteLabel = "Delete",
   className,
+  transparent = false,
 }: {
   rowId: string;
   onDelete: () => void;
@@ -28,6 +29,8 @@ export function SwipeCommitDeleteRow({
   actionClassName?: string;
   deleteLabel?: string;
   className?: string;
+  /** Sit on the page background instead of a white card. */
+  transparent?: boolean;
 }) {
   const [swipeX, setSwipeX] = useState(0);
   const [rowWidth, setRowWidth] = useState(0);
@@ -145,7 +148,10 @@ export function SwipeCommitDeleteRow({
         </div>
       ) : null}
       <div
-        className="relative h-full overflow-hidden rounded-xl bg-white"
+        className={cn(
+          "relative h-full overflow-hidden",
+          transparent ? "bg-transparent" : "rounded-xl bg-white",
+        )}
         style={{ transform: `translateX(${swipeX}px)` }}
         onTouchStart={(e) => {
           if (isActionTarget(e.target)) return;

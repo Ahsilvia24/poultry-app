@@ -23,6 +23,7 @@ export function SwipeCommitDeleteRow({
   actionColor = colors.danger,
   deleteContent,
   style,
+  transparent = false,
 }: {
   onDelete: () => void;
   onPress?: () => void;
@@ -32,6 +33,8 @@ export function SwipeCommitDeleteRow({
   actionColor?: string;
   deleteContent?: ReactNode;
   style?: StyleProp<ViewStyle>;
+  /** Sit on the page background instead of a white card. */
+  transparent?: boolean;
 }) {
   const [x, setX] = useState(0);
   const [rowWidth, setRowWidth] = useState(0);
@@ -152,8 +155,8 @@ export function SwipeCommitDeleteRow({
         {...gesture}
         style={{
           transform: [{ translateX: x }],
-          backgroundColor: colors.card,
-          borderRadius: radius,
+          backgroundColor: transparent ? "transparent" : colors.card,
+          borderRadius: transparent ? 0 : radius,
           overflow: "hidden",
         }}
       >
