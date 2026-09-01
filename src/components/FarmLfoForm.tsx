@@ -215,7 +215,7 @@ export function FarmLfoForm({
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-sm font-bold text-stone-800">House {house.houseNumber}</p>
                 <p className="text-xs text-stone-500">
-                  Head count {house.headCount.toLocaleString()}
+                  Head Count {house.headCount.toLocaleString()}
                 </p>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">

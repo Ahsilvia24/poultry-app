@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { deleteLastFeedOrderAction } from "@/app/actions/lfo";
-import { Button, Card } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { downloadLfoPdf } from "@/lib/exports/lfo-pdf";
 import type { LfoShareInventory } from "@/lib/lfo/share-payload";
 import { useExclusiveSwipeRow } from "@/components/ExclusiveSwipeGroup";
+import { LFO_SWIPE_DELETE_COMMIT_PX } from "@/lib/swipe-commit";
 
 function CopyIcon({ className }: { className?: string }) {
   return (
@@ -116,11 +117,10 @@ export function SavedLfoRow({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const lines = houseSummary ?? [];
-  const actionWidth = 88;
+  const actionWidth = LFO_SWIPE_DELETE_COMMIT_PX;
   const { isOpenOwner, requestOpen, requestClose } = useExclusiveSwipeRow(id);
 
   useEffect(() => {
@@ -144,7 +144,14 @@ export function SavedLfoRow({
       setSwipeX(0);
       return;
     }
-    if (swipeX <= -48) {
+    if (swipeX <= -LFO_SWIPE_DELETE_COMMIT_PX) {
+      setSwipeX(0);
+      requestClose();
+      startTransition(async () => {
+        await deleteLastFeedOrderAction(id);
+        router.refresh();
+      });
+    } else if (swipeX <= -48) {
       setSwipeX(-actionWidth);
       requestOpen();
     } else {
@@ -157,7 +164,6 @@ export function SavedLfoRow({
   function onDelete() {
     startTransition(async () => {
       await deleteLastFeedOrderAction(id);
-      setConfirmOpen(false);
       router.refresh();
     });
   }
@@ -165,14 +171,15 @@ export function SavedLfoRow({
   return (
     <div className="relative overflow-hidden rounded-xl">
       <div
-        className="absolute inset-y-0 right-0 flex w-[88px] items-stretch"
+        className="absolute inset-y-0 right-0 flex items-stretch"
+        style={{ width: actionWidth }}
         aria-hidden={swipeX > -40}
       >
         <button
           type="button"
           onClick={() => {
             setSwipeX(0);
-            setConfirmOpen(true);
+            onDelete();
           }}
           className="flex w-full flex-col items-center justify-center gap-1 rounded-xl bg-red-700 px-1 text-center text-xs font-bold text-white"
           aria-label={`Delete LFO for ${farmName}`}
@@ -204,6 +211,9 @@ export function SavedLfoRow({
               <p className="text-sm text-stone-600">{dateLabel}</p>
             </div>
             <div className="pointer-events-auto relative z-10 flex items-center">
+              {lines.length > 0 ? (
+                <CopyHouseSummaryButton lines={lines} farmName={farmName} />
+              ) : null}
               <button
                 type="button"
                 aria-label={`Share PDF for ${farmName}`}
@@ -217,9 +227,6 @@ export function SavedLfoRow({
               >
                 <ShareIcon className="h-4 w-4" />
               </button>
-              {lines.length > 0 ? (
-                <CopyHouseSummaryButton lines={lines} farmName={farmName} />
-              ) : null}
             </div>
           </div>
           {lines.length > 0 ? (
@@ -234,43 +241,6 @@ export function SavedLfoRow({
         </Card>
       </div>
 
-      {confirmOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`delete-lfo-${id}`}
-            className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id={`delete-lfo-${id}`} className="text-lg font-bold text-stone-900">
-              Are you sure?
-            </h3>
-            <p className="mt-2 text-sm text-stone-600">
-              Delete LFO for {farmName}? This cannot be undone.
-            </p>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button type="button" variant="danger" disabled={pending} onClick={onDelete}>
-                {pending ? "Deleting…" : "Delete"}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={pending}
-                onClick={() => setConfirmOpen(false)}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

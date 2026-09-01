@@ -60,10 +60,10 @@ function formatFeedStamp(d: Date | null) {
 }
 
 function formatHeadCountLabel(raw: string) {
-  if (!raw) return "Head count";
+  if (!raw) return "Enter Head Count";
   const n = Number(raw);
-  if (!Number.isFinite(n)) return `Head count ${raw}`;
-  return `Head count ${n.toLocaleString()}`;
+  if (!Number.isFinite(n)) return `Head Count ${raw}`;
+  return `Head Count ${n.toLocaleString()}`;
 }
 
 type ActiveField = "rate" | "head" | "binA" | "binB" | "calcWater" | "calcHead";

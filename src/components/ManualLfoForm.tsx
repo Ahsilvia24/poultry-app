@@ -82,15 +82,15 @@ export function ManualLfoForm() {
       <Card>
         <div className="flex items-baseline justify-end">
           <label className="flex items-baseline gap-1.5 text-xs text-stone-500">
-            Head count
+            {headCount.trim() ? "Head Count" : "Enter Head Count"}
             <input
               type="text"
               name="headCount"
               inputMode="numeric"
               pattern="[0-9]*"
               value={headCount}
-              placeholder="0"
-              aria-label="Enter bird count"
+              placeholder=""
+              aria-label="Enter Head Count"
               onChange={(e) => setHeadCount(e.target.value.replace(/[^\d]/g, ""))}
               className="w-28 border-0 bg-transparent p-0 text-right text-xs font-semibold text-stone-800 caret-stone-900 outline-none placeholder:text-stone-400 focus:text-emerald-800"
             />

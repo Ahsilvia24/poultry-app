@@ -12,7 +12,7 @@ import { deleteLfo, getLfo, listFarms, listLfos } from "../../../src/repos/data"
 import { shareLfoPdf } from "../../../src/lib/reports/shareLfoPdf";
 import { SharePdfIconButton } from "../../../src/components/SharePdfIconButton";
 import { useExclusiveSwipeables } from "../../../src/lib/useExclusiveSwipeables";
-import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
+import { LFO_SWIPE_DELETE_COMMIT_PX } from "../../../src/lib/swipe-commit";
 import { colors, styles } from "../../../src/theme";
 import { Card } from "../../../src/components/ui";
 import { CopyHouseSummaryButton } from "../../../src/components/LfoHouseSummaryBlock";
@@ -57,7 +57,7 @@ function SavedLfoList({
 }: {
   lfos: ReturnType<typeof listLfos>;
   onOpen: (id: string) => void;
-  onDelete: (id: string, farmName: string) => void;
+  onDelete: (id: string) => void;
   onShareError?: (message: string) => void;
 }) {
   const swipe = useExclusiveSwipeables();
@@ -99,18 +99,20 @@ function SavedLfoList({
           ref={swipe.setRef(l.id)}
           overshootRight={false}
           friction={2}
-          rightThreshold={40}
+          rightThreshold={LFO_SWIPE_DELETE_COMMIT_PX}
           containerStyle={{ marginBottom: 12 }}
           onSwipeableWillOpen={() => swipe.closeOthers(l.id)}
+          onSwipeableOpen={(direction) => {
+            if (direction === "right") onDelete(l.id);
+          }}
           renderRightActions={() => (
-            <Pressable
+            <View
               accessibilityLabel={`Delete LFO for ${l.farmName}`}
-              onPress={() => onDelete(l.id, l.farmName)}
               style={{
                 backgroundColor: colors.danger,
                 justifyContent: "center",
                 alignItems: "center",
-                width: 88,
+                width: LFO_SWIPE_DELETE_COMMIT_PX,
                 borderRadius: 14,
                 marginLeft: 8,
               }}
@@ -126,29 +128,33 @@ function SavedLfoList({
               >
                 Delete
               </Text>
-            </Pressable>
+            </View>
           )}
         >
           <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
-            <Pressable
-              onPress={() => onOpen(l.id)}
-              accessibilityRole="button"
-              accessibilityLabel={`Edit LFO for ${l.farmName}`}
-              style={({ pressed }) => ({
-                padding: 16,
-                opacity: pressed ? 0.85 : 1,
-              })}
-            >
+            <View style={{ padding: 16 }}>
               <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                <View style={{ flex: 1, minWidth: 0 }}>
+                <Pressable
+                  onPress={() => onOpen(l.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit LFO for ${l.farmName}`}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    minWidth: 0,
+                    opacity: pressed ? 0.85 : 1,
+                  })}
+                >
                   <Text style={{ fontWeight: "800" }} numberOfLines={1}>
                     {l.farmName}
                   </Text>
                   <Text style={[styles.muted, { marginTop: 2 }]}>
                     {formatLfoDate(l.orderDate)}
                   </Text>
-                </View>
+                </Pressable>
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  {l.houseSummary.length > 0 ? (
+                    <CopyHouseSummaryButton lines={l.houseSummary} farmName={l.farmName} />
+                  ) : null}
                   <SharePdfIconButton
                     onPress={() => {
                       void shareSavedLfo(l.id).catch((e) => {
@@ -159,13 +165,15 @@ function SavedLfoList({
                     }}
                     accessibilityLabel={`Share PDF for ${l.farmName}`}
                   />
-                  {l.houseSummary.length > 0 ? (
-                    <CopyHouseSummaryButton lines={l.houseSummary} farmName={l.farmName} />
-                  ) : null}
                 </View>
               </View>
               {l.houseSummary.length > 0 ? (
-                <View style={{ marginTop: 8, gap: 2, flexShrink: 0 }}>
+                <Pressable
+                  onPress={() => onOpen(l.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Edit LFO for ${l.farmName}`}
+                  style={{ marginTop: 8, gap: 2, flexShrink: 0 }}
+                >
                   {l.houseSummary.map((line) => (
                     <Text
                       key={line}
@@ -174,9 +182,9 @@ function SavedLfoList({
                       {line}
                     </Text>
                   ))}
-                </View>
+                </Pressable>
               ) : null}
-            </Pressable>
+            </View>
           </Card>
         </Swipeable>
       ))}
@@ -200,9 +208,6 @@ export default function LfoListScreen() {
   );
   const appliedRouteFarmId = useRef(routeFarmId);
   const [msg, setMsg] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; farmName: string } | null>(
-    null,
-  );
 
   const load = useCallback(() => {
     const nextFarms = listFarms().farms;
@@ -237,8 +242,9 @@ export default function LfoListScreen() {
     setFarmId(id);
   }
 
-  function confirmDelete(id: string, farmName: string) {
-    setDeleteTarget({ id, farmName });
+  function removeLfo(id: string) {
+    deleteLfo(id);
+    setLfos(listLfos());
   }
 
   return (
@@ -267,7 +273,7 @@ export default function LfoListScreen() {
             <SavedLfoList
               lfos={lfos}
               onOpen={openLfo}
-              onDelete={confirmDelete}
+              onDelete={removeLfo}
               onShareError={setMsg}
             />
           }
@@ -285,31 +291,12 @@ export default function LfoListScreen() {
             <SavedLfoList
               lfos={lfos}
               onOpen={openLfo}
-              onDelete={confirmDelete}
+              onDelete={removeLfo}
               onShareError={setMsg}
             />
           }
         />
       )}
-      <ConfirmDialog
-        visible={deleteTarget != null}
-        title="Are you sure?"
-        message={
-          deleteTarget
-            ? `Delete LFO for ${deleteTarget.farmName}? This cannot be undone.`
-            : ""
-        }
-        confirmLabel="Delete"
-        danger
-        onConfirm={() => {
-          if (!deleteTarget) return;
-          deleteLfo(deleteTarget.id);
-          setLfos(listLfos());
-          setMsg("LFO deleted");
-          setDeleteTarget(null);
-        }}
-        onCancel={() => setDeleteTarget(null)}
-      />
     </SafeAreaView>
   );
 }
