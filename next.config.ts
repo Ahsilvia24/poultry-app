@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     "localhost",
     "*.loca.lt",
     "*.trycloudflare.com",
+    "*.onrender.com",
     "*.agent.cvm.dev",
     "*.cursorapi.com",
     "*.cursor.sh",
@@ -20,6 +21,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "20mb",
       allowedOrigins: [
         "*.trycloudflare.com",
+        "*.onrender.com",
         "*.loca.lt",
         "*.agent.cvm.dev",
         "*.cursorapi.com",
