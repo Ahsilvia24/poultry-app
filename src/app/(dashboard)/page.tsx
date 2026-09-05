@@ -1,4 +1,5 @@
 import { format, parseISO } from "date-fns";
+import Link from "next/link";
 import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { auth } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard";
@@ -8,7 +9,7 @@ import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { DashboardFarmCards } from "@/components/DashboardFarmCards";
 import { ScrollableFarmList } from "@/components/ScrollableFarmList";
 import { listScheduleImports } from "@/lib/schedule-imports";
-import { signOutAction } from "@/app/actions/auth";
+import { SignOutButton } from "@/components/SignOutButton";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
@@ -16,7 +17,7 @@ export default async function DashboardPage() {
   if (!session?.user?.id) redirect("/login");
 
   const data = await getDashboardData(session.user.id);
-  const scheduleImports = await listScheduleImports();
+  const scheduleImports = await listScheduleImports({ userId: session.user.id });
 
   return (
     <div>
@@ -25,15 +26,18 @@ export default async function DashboardPage() {
           <h1 className="text-xl font-bold tracking-tight text-stone-900 md:text-3xl">
             Dashboard
           </h1>
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              className="text-sm font-semibold text-stone-700 underline"
-            >
-              Sign out
-            </button>
-          </form>
+          <div className="flex items-center gap-4">
+            <Link href="/settings" className="text-sm font-semibold text-stone-700 underline">
+              Settings
+            </Link>
+            <SignOutButton />
+          </div>
         </div>
+        <p className="mt-1 text-sm text-stone-600">
+          Signed in as {session.user.name}{" "}
+          {session.user.email ? <span>({session.user.email})</span> : null}. Sign out only
+          ends this session — your farms stay saved to this login.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">

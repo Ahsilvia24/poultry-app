@@ -5,7 +5,7 @@ import {
   isScheduleImportType,
   type ScheduleImportMeta,
   type ScheduleImportType,
-} from "@/lib/schedule-import-types";
+} from "./schedule-import-types";
 
 export type { ScheduleImportMeta, ScheduleImportType };
 export { formatBytes, isScheduleImportType };
@@ -28,9 +28,10 @@ export async function ensureScheduleImportsDir() {
   await mkdir(SCHEDULE_IMPORTS_DIR, { recursive: true });
 }
 
-export async function listScheduleImports(
-  type?: ScheduleImportType,
-): Promise<ScheduleImportMeta[]> {
+export async function listScheduleImports(options?: {
+  type?: ScheduleImportType;
+  userId?: string;
+}): Promise<ScheduleImportMeta[]> {
   await ensureScheduleImportsDir();
   const names = await readdir(SCHEDULE_IMPORTS_DIR);
   const metas: ScheduleImportMeta[] = [];
@@ -43,7 +44,8 @@ export async function listScheduleImports(
       if (!parsed?.id || !parsed?.storedName || !isScheduleImportType(parsed.importType)) {
         continue;
       }
-      if (type && parsed.importType !== type) continue;
+      if (options?.type && parsed.importType !== options.type) continue;
+      if (options?.userId && parsed.uploadedByUserId !== options.userId) continue;
       metas.push(parsed);
     } catch {
       // skip corrupt metadata
