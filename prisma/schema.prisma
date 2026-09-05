@@ -170,6 +170,7 @@ model Farm {
   generatorLogs GeneratorLog[]
   followUpCompletions FollowUpCompletion[]
   lastFeedOrders LastFeedOrder[]
+  serviceForms   ServiceForm[]
 
   @@index([userId])
   @@index([farmName])
@@ -520,4 +521,21 @@ model GeneratorLog {
 
   @@index([farmId])
   @@index([logDate])
+}
+
+/** Mobile service-checklist payloads (prebrood / placement / report). */
+model ServiceForm {
+  id          String   @id @default(cuid())
+  farmId      String
+  flockId     String?
+  formKind    String
+  formDate    DateTime @db.Date
+  payloadJson String
+  visitId     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId])
 }

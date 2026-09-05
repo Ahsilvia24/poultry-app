@@ -17,19 +17,37 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-semibold">Create account</h1>
+        <img
+          src="/chick-icon.png"
+          alt=""
+          width={72}
+          height={72}
+          className="mx-auto h-[72px] w-[72px]"
+        />
+        <h1 className="mt-4 text-center text-xl font-semibold">Create your account</h1>
+        <p className="mt-2 text-center text-sm text-stone-600">
+          Use your own email on the website and the iPhone app. You start with an empty farm
+          list. Other technicians cannot see or change your data.
+        </p>
         <form action={onSubmit} className="mt-6 space-y-4">
           <div>
             <Label htmlFor="name">Name</Label>
-            <Input id="name" name="name" required />
+            <Input id="name" name="name" autoComplete="name" required />
           </div>
           <div>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required />
+            <Input id="email" name="email" type="email" autoComplete="email" required />
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" minLength={8} required />
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
           </div>
           {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
           <Button type="submit" className="w-full">

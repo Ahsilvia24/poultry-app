@@ -3,7 +3,7 @@ import path from "path";
 import {
   formatBytes,
   type SettlementExampleMeta,
-} from "@/lib/settlement-example-types";
+} from "./settlement-example-types";
 
 export type { SettlementExampleMeta };
 export { formatBytes };
@@ -26,7 +26,9 @@ export async function ensureSettlementExamplesDir() {
   await mkdir(SETTLEMENT_EXAMPLES_DIR, { recursive: true });
 }
 
-export async function listSettlementExamples(): Promise<SettlementExampleMeta[]> {
+export async function listSettlementExamples(
+  userId?: string,
+): Promise<SettlementExampleMeta[]> {
   await ensureSettlementExamplesDir();
   const names = await readdir(SETTLEMENT_EXAMPLES_DIR);
   const metas: SettlementExampleMeta[] = [];
@@ -36,7 +38,9 @@ export async function listSettlementExamples(): Promise<SettlementExampleMeta[]>
     try {
       const raw = await readFile(path.join(SETTLEMENT_EXAMPLES_DIR, name), "utf8");
       const parsed = JSON.parse(raw) as SettlementExampleMeta;
-      if (parsed?.id && parsed?.storedName) metas.push(parsed);
+      if (!parsed?.id || !parsed?.storedName) continue;
+      if (userId && parsed.uploadedByUserId !== userId) continue;
+      metas.push(parsed);
     } catch {
       // skip corrupt metadata
     }

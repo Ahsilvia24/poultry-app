@@ -1,0 +1,31 @@
+# PoultryTech on Render (free web + Postgres).
+# Deploy THIS branch (main does not have this file yet):
+# https://render.com/deploy?repo=https://github.com/Ahsilvia24/poultry-app/tree/cursor/web-pwa-per-tech-accounts-ef45
+databases:
+  - name: poultrytech-db
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: poultrytech
+    runtime: node
+    plan: free
+    branch: cursor/web-pwa-per-tech-accounts-ef45
+    buildCommand: npm ci && npx prisma generate && npm run build
+    preDeployCommand: npx prisma db push --skip-generate
+    startCommand: npm start
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: poultrytech-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: AUTH_TRUST_HOST
+        value: "true"
+      - key: AUTH_DEV_BYPASS
+        value: "false"

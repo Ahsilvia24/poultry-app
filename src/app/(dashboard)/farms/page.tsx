@@ -79,7 +79,11 @@ export default async function FarmsPage({ searchParams }: { searchParams: Search
 
       {farms.length === 0 ? (
         <Card>
-          <p className="text-stone-600">No farms found for this filter.</p>
+          <p className="text-stone-600">
+            {status === "active"
+              ? "No farms on this login yet."
+              : "No farms found for this filter."}
+          </p>
           <Link href="/farms/new" className="mt-3 inline-block">
             <Button>Add your first farm</Button>
           </Link>

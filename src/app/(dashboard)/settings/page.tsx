@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateSettingsAction } from "@/app/actions/ops";
 import { ImportPhoneBackupForm } from "@/components/ImportPhoneBackupForm";
+import { SignOutButton } from "@/components/SignOutButton";
 import { Button, Card, Input, Label, PageHeader } from "@/components/ui";
 
 async function submitSettings(formData: FormData) {
@@ -144,6 +145,18 @@ export default async function SettingsPage() {
 
           <Button type="submit">Save settings</Button>
         </form>
+      </Card>
+
+      <Card className="mt-4 max-w-2xl">
+        <h2 className="font-bold text-stone-900">This login</h2>
+        <p className="mt-2 text-sm text-stone-600">
+          You are signed in as {user.name} ({user.email}). Signing out does not delete farms,
+          mortality, or reports. Sign back in with this email to see them again. Other
+          technicians have their own logins and cannot see your farms.
+        </p>
+        <div className="mt-4">
+          <SignOutButton />
+        </div>
       </Card>
 
       <h2 className="mt-8 text-xl font-bold">Backup</h2>

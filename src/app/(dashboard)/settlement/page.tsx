@@ -65,7 +65,7 @@ export default async function SettlementPage({
       ? params.farmId
       : undefined;
 
-  const examples = await listSettlementExamples();
+  const examples = await listSettlementExamples(session.user.id);
 
   return (
     <div>

@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const { id } = await params;
   const found = await getSettlementExample(id);
-  if (!found) {
+  if (!found || found.meta.uploadedByUserId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

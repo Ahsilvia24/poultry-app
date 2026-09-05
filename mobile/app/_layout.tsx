@@ -10,7 +10,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading, dbReady, dbError } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const inAuth = segments[0] === "login";
+  const inAuth = segments[0] === "login" || segments[0] === "register";
 
   useEffect(() => {
     if (loading) return;
