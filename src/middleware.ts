@@ -24,9 +24,15 @@ export default auth((req) => {
   const origin = requestOrigin(req);
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
   const isDevBypassLogin = pathname.startsWith("/api/dev-bypass-login");
+  const isPwaAsset =
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/chick-icon.png" ||
+    pathname.startsWith("/icon") ||
+    pathname.startsWith("/apple-icon");
   const isPublic =
     isAuthPage ||
     isDevBypassLogin ||
+    isPwaAsset ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/mobile") ||
     pathname.startsWith("/preview") ||
@@ -38,6 +44,7 @@ export default auth((req) => {
     bypass &&
     !req.auth &&
     !isDevBypassLogin &&
+    !isPwaAsset &&
     !pathname.startsWith("/api/auth") &&
     !pathname.startsWith("/support") &&
     !pathname.startsWith("/privacy")
@@ -70,5 +77,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|chick-icon.png|manifest.webmanifest|icon.png|apple-icon.png).*)"],
 };
