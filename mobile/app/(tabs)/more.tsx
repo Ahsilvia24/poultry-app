@@ -14,7 +14,7 @@ const LINKS = [
 
 export default function MoreScreen() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut, cloudMode } = useAuth();
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -52,7 +52,9 @@ export default function MoreScreen() {
           <Text style={{ fontWeight: "700" }}>{user?.name ?? "Technician"}</Text>
           <Text style={[styles.muted, { marginTop: 4 }]}>{user?.email}</Text>
           <Text style={[styles.muted, { marginTop: 8 }]}>
-            Data is saved on this phone and works offline.
+            {cloudMode
+              ? "Signed in to the same account as the website. Farms stay with this email on every device. Signing out does not delete them."
+              : "Data is saved on this phone. Enter the website address on the sign-in screen to share farms with the web app."}
           </Text>
           <Pressable onPress={signOut} style={{ marginTop: 14 }}>
             <Text style={{ color: colors.danger, fontWeight: "800" }}>Sign out</Text>

@@ -2,12 +2,16 @@ import { NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { jsonError, signMobileToken } from "@/lib/mobile-auth";
+import { corsPreflight, jsonError, jsonOk, signMobileToken } from "@/lib/mobile-auth";
 
 const schema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(1),
 });
+
+export function OPTIONS() {
+  return corsPreflight();
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -28,7 +32,7 @@ export async function POST(req: NextRequest) {
     name: user.name,
   });
 
-  return Response.json({
+  return jsonOk({
     token,
     user: { id: user.id, name: user.name, email: user.email },
   });

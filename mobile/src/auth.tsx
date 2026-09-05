@@ -1,7 +1,19 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AppState } from "react-native";
 import { initOfflineDb, isDbReady } from "./db";
 import { getDb } from "./db/database";
 import { deleteSessionItem, getSessionItem, setSessionItem } from "./lib/sessionStore";
+import { isCloudUrl } from "./config";
+import {
+  api,
+  clearToken,
+  getApiBaseUrl,
+  getToken,
+  isCloudMode,
+  saveToken,
+  setApiBaseUrl,
+} from "./api";
+import { setCloudSyncEnabled, syncNow, syncOnLogin, wipeLocalFarmData } from "./sync";
 
 type User = { id: string; name: string; email: string };
 
@@ -10,18 +22,29 @@ type AuthContextValue = {
   loading: boolean;
   dbReady: boolean;
   dbError: string | null;
-  signIn: (email: string, password: string) => Promise<void>;
+  cloudMode: boolean;
+  apiBaseUrl: string;
+  signIn: (email: string, password: string, websiteUrl?: string) => Promise<void>;
+  signUp: (name: string, email: string, password: string, websiteUrl?: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
 const SESSION_KEY = "poultrytech_offline_session";
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+async function rememberWebsite(websiteUrl?: string) {
+  const typed = websiteUrl?.trim().replace(/\/$/, "") ?? "";
+  if (typed) await setApiBaseUrl(typed);
+  return getApiBaseUrl();
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [dbReady, setDbReady] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
+  const [cloudMode, setCloudMode] = useState(false);
+  const [apiBaseUrl, setApiBaseUrlState] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -38,6 +61,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
+        const base = await getApiBaseUrl();
+        setApiBaseUrlState(base);
+        const cloud = isCloudUrl(base);
+        setCloudMode(cloud);
+
+        if (cloud) {
+          const token = await getToken();
+          if (!token) {
+            setUser(null);
+            return;
+          }
+          const me = await api<{ user: User }>("/api/mobile/me");
+          setUser(me.user);
+          await setSessionItem(SESSION_KEY, JSON.stringify(me.user));
+          setCloudSyncEnabled(true);
+          await syncOnLogin();
+          return;
+        }
+
         const session = await getSessionItem(SESSION_KEY);
         if (!session) {
           setUser(null);
@@ -54,6 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
         setUser(row ? { id: row.id, name: row.name, email: row.email } : null);
       } catch {
+        await clearToken();
+        setCloudSyncEnabled(false);
         setUser(null);
       } finally {
         setLoading(false);
@@ -61,14 +105,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  useEffect(() => {
+    if (!user || !cloudMode) return;
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        syncNow().catch(() => {});
+      }
+    });
+    return () => sub.remove();
+  }, [user, cloudMode]);
+
+  const signIn = useCallback(async (email: string, password: string, websiteUrl?: string) => {
     await initOfflineDb();
+    const base = await rememberWebsite(websiteUrl);
+    setApiBaseUrlState(base);
+    const cloud = isCloudUrl(base);
+    setCloudMode(cloud);
+
+    if (cloud) {
+      const result = await api<{ token: string; user: User }>("/api/mobile/login", {
+        method: "POST",
+        auth: false,
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+      });
+      await saveToken(result.token);
+      await setSessionItem(SESSION_KEY, JSON.stringify(result.user));
+      setUser(result.user);
+      setCloudSyncEnabled(true);
+      await syncOnLogin();
+      return;
+    }
+
     const row = getDb().getFirstSync<{ id: string; name: string; email: string; password: string }>(
       "SELECT * FROM users WHERE email = ?",
       [email.trim().toLowerCase()],
     );
     if (!row || row.password !== password) {
-      // also allow exact email match as seeded
       const row2 = getDb().getFirstSync<{ id: string; name: string; email: string; password: string }>(
         "SELECT * FROM users WHERE email = ?",
         [email.trim()],
@@ -86,14 +158,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(next);
   }, []);
 
+  const signUp = useCallback(
+    async (name: string, email: string, password: string, websiteUrl?: string) => {
+      await initOfflineDb();
+      const base = await rememberWebsite(websiteUrl);
+      setApiBaseUrlState(base);
+      if (!isCloudUrl(base)) {
+        throw new Error("Enter the website address first so the new account is shared with the web app.");
+      }
+      setCloudMode(true);
+      const result = await api<{ token: string; user: User }>("/api/mobile/register", {
+        method: "POST",
+        auth: false,
+        body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase(), password }),
+      });
+      await saveToken(result.token);
+      await setSessionItem(SESSION_KEY, JSON.stringify(result.user));
+      setUser(result.user);
+      setCloudSyncEnabled(true);
+      await syncOnLogin();
+    },
+    [],
+  );
+
   const signOut = useCallback(async () => {
+    const cloud = await isCloudMode();
+    setCloudSyncEnabled(false);
+    await clearToken();
     await deleteSessionItem(SESSION_KEY);
+    if (cloud) {
+      try {
+        wipeLocalFarmData();
+      } catch {
+        // Local cache clear is best-effort; server farms stay.
+      }
+    }
     setUser(null);
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, dbReady, dbError, signIn, signOut }),
-    [user, loading, dbReady, dbError, signIn, signOut],
+    () => ({
+      user,
+      loading,
+      dbReady,
+      dbError,
+      cloudMode,
+      apiBaseUrl,
+      signIn,
+      signUp,
+      signOut,
+    }),
+    [user, loading, dbReady, dbError, cloudMode, apiBaseUrl, signIn, signUp, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

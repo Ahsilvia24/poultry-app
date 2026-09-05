@@ -26,8 +26,8 @@ export default function RegisterPage() {
         />
         <h1 className="mt-4 text-center text-xl font-semibold">Create your account</h1>
         <p className="mt-2 text-center text-sm text-stone-600">
-          Use your own email. You start with an empty farm list. Other technicians cannot see
-          or change your data.
+          Use your own email on the website and the iPhone app. You start with an empty farm
+          list. Other technicians cannot see or change your data.
         </p>
         <form action={onSubmit} className="mt-6 space-y-4">
           <div>

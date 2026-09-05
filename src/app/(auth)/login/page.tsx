@@ -26,8 +26,8 @@ export default function LoginPage() {
         />
         <h1 className="mt-4 text-center text-xl font-semibold text-stone-800">Sign in</h1>
         <p className="mt-2 text-center text-sm text-stone-600">
-          Each technician has their own login. Your farms stay saved to your account when you
-          sign out — they are not shared with other techs.
+          Same email on this website and the iPhone app. Your farms stay with your account on
+          every device — they are not shared with other techs.
         </p>
         <form action={onSubmit} className="mt-6 space-y-4">
           <div>

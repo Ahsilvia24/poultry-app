@@ -15,9 +15,10 @@ import { DEFAULT_API_BASE_URL } from "../src/config";
 import { colors, styles } from "../src/theme";
 import { Card } from "../src/components/ui";
 
-export default function LoginScreen() {
-  const { signIn, apiBaseUrl } = useAuth();
+export default function RegisterScreen() {
+  const { signUp, apiBaseUrl } = useAuth();
   const [website, setWebsite] = useState(apiBaseUrl || DEFAULT_API_BASE_URL);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,9 +28,9 @@ export default function LoginScreen() {
     setBusy(true);
     setError(null);
     try {
-      await signIn(email.trim(), password, website.trim());
+      await signUp(name.trim(), email.trim(), password, website.trim());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Sign in failed");
+      setError(e instanceof Error ? e.message : "Could not create account");
     } finally {
       setBusy(false);
     }
@@ -42,9 +43,10 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={[styles.content, { maxWidth: 480, width: "100%", alignSelf: "center" }]}>
-          <Text style={[styles.title, { fontSize: 26 }]}>Sign in</Text>
+          <Text style={[styles.title, { fontSize: 26 }]}>Create account</Text>
           <Text style={styles.subtitle}>
-            Use the same email as the website. Farms stay with your account on every device.
+            This is the same account as the website. Farms you add here show up there, and the
+            other way around.
           </Text>
 
           <Card style={{ marginTop: 24 }}>
@@ -59,6 +61,8 @@ export default function LoginScreen() {
               value={website}
               onChangeText={setWebsite}
             />
+            <Text style={styles.label}>Name</Text>
+            <TextInput style={styles.input} value={name} onChangeText={setName} />
             <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
@@ -68,7 +72,7 @@ export default function LoginScreen() {
               value={email}
               onChangeText={setEmail}
             />
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>Password (8+ characters)</Text>
             <TextInput
               style={styles.input}
               secureTextEntry
@@ -84,14 +88,14 @@ export default function LoginScreen() {
               {busy ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>Sign in</Text>
+                <Text style={styles.buttonText}>Create account</Text>
               )}
             </Pressable>
           </Card>
           <Text style={[styles.muted, { marginTop: 12 }]}>
-            No account yet?{" "}
-            <Link href="/register">
-              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>Create one</Text>
+            Already registered?{" "}
+            <Link href="/login">
+              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>Sign in</Text>
             </Link>
           </Text>
         </View>

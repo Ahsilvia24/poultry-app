@@ -15,6 +15,8 @@ const TABLES = [
   "follow_up_completions",
   "farm_issues",
   "litter_events",
+  "generator_logs",
+  "service_forms",
   "feed_deliveries",
 ] as const;
 

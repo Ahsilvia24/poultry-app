@@ -5,11 +5,42 @@ import {
   openSqlJsDatabase,
   type AppDatabase,
 } from "./sqlJsDatabase";
+import { noteSql } from "../sync/dirty";
 
 const DB_NAME = "poultrytech_offline.db";
 
 let db: AppDatabase | null = null;
 let opening: Promise<AppDatabase> | null = null;
+
+function trackWrites(database: AppDatabase): AppDatabase {
+  const runSync = database.runSync.bind(database);
+  const execSync = database.execSync.bind(database);
+  const execAsync = database.execAsync.bind(database);
+  return {
+    execSync: (source: string) => {
+      execSync(source);
+      noteSql(source);
+    },
+    execAsync: async (source: string) => {
+      await execAsync(source);
+      noteSql(source);
+    },
+    runSync: (source, params) => {
+      const result = runSync(source, params);
+      noteSql(source);
+      return result;
+    },
+    getFirstSync: database.getFirstSync.bind(database),
+    getAllSync: database.getAllSync.bind(database),
+    getAllAsync: database.getAllAsync.bind(database),
+    getFirstAsync: database.getFirstAsync.bind(database),
+  };
+}
+
+function remember(database: AppDatabase): AppDatabase {
+  db = trackWrites(database);
+  return db;
+}
 
 /** Prefer async open on web so the sqlite worker can finish booting. */
 export async function openDb(): Promise<AppDatabase> {
@@ -17,22 +48,18 @@ export async function openDb(): Promise<AppDatabase> {
   if (!opening) {
     opening = (async () => {
       if (Platform.OS === "web" && isSqlJsFallbackNeeded()) {
-        db = await openSqlJsDatabase();
-        return db;
+        return remember(await openSqlJsDatabase());
       }
       try {
-        db = await SQLite.openDatabaseAsync(DB_NAME);
-        return db;
+        return remember(await SQLite.openDatabaseAsync(DB_NAME));
       } catch (err) {
         // Last resort: sync open (works after WorkerChannel timeout patch).
         try {
-          db = SQLite.openDatabaseSync(DB_NAME);
-          return db;
+          return remember(SQLite.openDatabaseSync(DB_NAME));
         } catch {
           // iOS Safari / locked-down browsers: no SharedArrayBuffer for expo-sqlite.
           if (Platform.OS === "web") {
-            db = await openSqlJsDatabase();
-            return db;
+            return remember(await openSqlJsDatabase());
           }
           throw err instanceof Error ? err : new Error(String(err));
         }
@@ -49,7 +76,7 @@ export function getDb(): AppDatabase {
   if (Platform.OS === "web" && isSqlJsFallbackNeeded()) {
     throw new Error("Database not ready. Call initOfflineDb() first.");
   }
-  db = SQLite.openDatabaseSync(DB_NAME);
+  db = remember(SQLite.openDatabaseSync(DB_NAME));
   return db;
 }
 

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:user-isolation": "tsx scripts/test-user-isolation.ts",
+    "test:mobile-snapshot-sync": "tsx scripts/test-mobile-snapshot-sync.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

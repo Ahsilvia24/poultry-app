@@ -53,6 +53,21 @@ export async function requireMobileUser(req: NextRequest) {
   return user;
 }
 
+export const MOBILE_CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Max-Age": "86400",
+};
+
+export function jsonOk(data: unknown, status = 200) {
+  return Response.json(data, { status, headers: MOBILE_CORS_HEADERS });
+}
+
 export function jsonError(message: string, status = 400) {
-  return Response.json({ error: message }, { status });
+  return Response.json({ error: message }, { status, headers: MOBILE_CORS_HEADERS });
+}
+
+export function corsPreflight() {
+  return new Response(null, { status: 204, headers: MOBILE_CORS_HEADERS });
 }

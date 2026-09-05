@@ -54,6 +54,7 @@
     ],
     "extra": {
       "router": {},
+      "apiUrl": "",
       "eas": {
         "projectId": "5c1f0b36-5fb6-4604-b3fb-a535e0b9f94f"
       }
