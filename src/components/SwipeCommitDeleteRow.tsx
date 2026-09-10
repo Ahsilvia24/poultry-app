@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 
 function isActionTarget(target: EventTarget | null) {
-  return target instanceof Element && target.closest("button, input, textarea, select");
+  return target instanceof Element && target.closest("a, button, input, textarea, select");
 }
 
 export function SwipeCommitDeleteRow({

@@ -504,6 +504,16 @@ export default function DashboardScreen() {
                     <View style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
                       <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
                         <View style={{ flex: 1, minWidth: 0 }}>
+                          <Pressable
+                            onPress={() =>
+                              router.push({
+                                pathname: "/(tabs)/farms/[id]",
+                                params: { id: farm.id },
+                              })
+                            }
+                            accessibilityRole="link"
+                            accessibilityLabel={`Open ${farm.farmName}`}
+                          >
                           <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>
                             {farm.farmName}
                             {(() => {
@@ -522,6 +532,7 @@ export default function DashboardScreen() {
                               );
                             })()}
                           </Text>
+                          </Pressable>
                         </View>
                         <StatusBadge status={farm.status} />
                       </View>

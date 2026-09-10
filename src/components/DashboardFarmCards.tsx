@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { deactivateFarmAction } from "@/app/actions/farms";
 import { formatNumber, formatPct } from "@/lib/utils";
@@ -49,7 +50,13 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
             <div className="flex w-full items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <p className="text-base font-bold text-stone-900">
-                  {farm.farmName}
+                  <Link
+                    href={`/farms/${farm.id}`}
+                    className="text-inherit hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {farm.farmName}
+                  </Link>
                   {farm.flockAgeDays != null ? (
                     <span className="font-semibold text-stone-500"> {farm.flockAgeDays}d</span>
                   ) : null}
