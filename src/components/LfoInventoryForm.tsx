@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { DateKeyField } from "@/components/DateKeyField";
-import { Button, Input, Label, Select } from "@/components/ui";
+import { TimeKeyField } from "@/components/TimeKeyField";
+import { Button, Input, Label } from "@/components/ui";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
@@ -14,7 +15,7 @@ import {
 } from "@/lib/lfo/calculate";
 import { formatFeedMillData } from "@/lib/lfo/feedMillData";
 import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
-import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
+import { currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
 
 export type LfoHouseRow = {
   houseId: string;
@@ -252,20 +253,14 @@ export function LfoInventoryForm({
         </PairField>
         <PairField>
           <Label htmlFor="orderTime">Order time</Label>
-          <Select
+          <TimeKeyField
             id="orderTime"
             name="orderTime"
+            label="Order time"
             value={orderTime}
-            onChange={(e) => setOrderTime(e.target.value)}
+            onChange={setOrderTime}
             className="mt-0.5"
-            compact
-          >
-            {HALF_HOUR_TIME_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </Select>
+          />
         </PairField>
       </div>
       <div className="mt-2">
@@ -352,20 +347,13 @@ export function LfoInventoryForm({
                 </PairField>
                 <PairField>
                   <Label htmlFor={`catchTime-${house.houseId}`}>Catch time</Label>
-                  <Select
+                  <TimeKeyField
                     id={`catchTime-${house.houseId}`}
+                    label="Catch time"
                     value={house.catchTime}
-                    onChange={(e) => updateRow(house.houseId, { catchTime: e.target.value })}
+                    onChange={(next) => updateRow(house.houseId, { catchTime: next })}
                     className="mt-0.5"
-                    compact
-                  >
-                    <option value="">Select time</option>
-                    {HALF_HOUR_TIME_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </Select>
+                  />
                 </PairField>
               </div>
               {house.catchTime ? (

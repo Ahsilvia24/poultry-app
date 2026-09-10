@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { DateKeyField } from "@/components/DateKeyField";
-import { Button, Card, Input, Label, Select } from "@/components/ui";
+import { TimeKeyField } from "@/components/TimeKeyField";
+import { Button, Card, Input, Label } from "@/components/ui";
 import { saveFarmLfoHubAction } from "@/app/actions/lfo";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
@@ -14,7 +15,7 @@ import {
 } from "@/lib/lfo/calculate";
 import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
 import { formatFeedMillData } from "@/lib/lfo/feedMillData";
-import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime } from "@/lib/time-slots";
+import { currentHalfHourTime } from "@/lib/time-slots";
 
 export type FarmLfoHouseInput = {
   houseId: string;
@@ -262,20 +263,13 @@ export function FarmLfoForm({
                 </PairField>
                 <PairField>
                   <Label htmlFor={`catchTime-${house.houseId}`}>Catch time</Label>
-                  <Select
+                  <TimeKeyField
                     id={`catchTime-${house.houseId}`}
+                    label="Catch time"
                     value={house.catchTime}
-                    onChange={(e) => updateRow(house.houseId, { catchTime: e.target.value })}
+                    onChange={(next) => updateRow(house.houseId, { catchTime: next })}
                     className="mt-0.5"
-                    compact
-                  >
-                    <option value="">Select time</option>
-                    {HALF_HOUR_TIME_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </Select>
+                  />
                 </PairField>
               </div>
               {house.catchTime ? (
@@ -377,19 +371,13 @@ export function FarmLfoForm({
           </PairField>
           <PairField>
             <Label htmlFor="farm-orderTime">Order time</Label>
-            <Select
+            <TimeKeyField
               id="farm-orderTime"
+              label="Order time"
               value={orderTime}
-              onChange={(e) => setOrderTime(e.target.value)}
+              onChange={setOrderTime}
               className="mt-0.5"
-              compact
-            >
-              {HALF_HOUR_TIME_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
+            />
           </PairField>
         </div>
         {formatLfoOrderClock(orderDate, orderTime) ? (
