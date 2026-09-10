@@ -90,7 +90,7 @@ export function DateKeyField({
             role="dialog"
             aria-modal="true"
             aria-label={label}
-            className="flex h-[94vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-xl"
+            className="w-full max-w-[22rem] rounded-2xl bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
@@ -116,7 +116,7 @@ export function DateKeyField({
                 {value ? formatInputDate(value) : "Select date"}
               </p>
             </div>
-            <div className="flex-1 px-4 pb-5 pt-3">
+            <div className="px-4 pb-5 pt-3">
               <div className="mb-3 flex items-center justify-between">
                 <button
                   type="button"

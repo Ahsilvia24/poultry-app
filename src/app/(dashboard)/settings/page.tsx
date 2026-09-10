@@ -1,11 +1,34 @@
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateSettingsAction } from "@/app/actions/ops";
 import { signOutAction } from "@/app/actions/auth";
-import { Button, Card, Input, Label, PageHeader } from "@/components/ui";
+import { Button, Card, Input, PageHeader } from "@/components/ui";
 import { FarmOrderStepper } from "@/components/FarmOrderStepper";
 import { FARM_ORDER_OPTIONS, parseFarmOrder } from "@/lib/farm-order";
+
+const inlineInputClass =
+  "min-h-0 flex-1 border-0 bg-transparent px-0 py-1 text-base font-semibold shadow-none focus:border-transparent focus:ring-0";
+
+function SettingsLine({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <label htmlFor={htmlFor} className="shrink-0 text-sm font-semibold text-stone-800">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
 
 async function submitSettings(formData: FormData) {
   "use server";
@@ -32,34 +55,28 @@ export default async function SettingsPage() {
         <form action={submitSettings} className="space-y-5">
           <div>
             <h2 className="font-bold text-stone-900">Profile</h2>
-            <div className="mt-3 space-y-3">
-              <div className="flex items-center gap-3">
-                <label
-                  htmlFor="name"
-                  className="shrink-0 text-sm font-semibold text-stone-800"
-                >
-                  Service Tech:
-                </label>
+            <div className="mt-3 space-y-2">
+              <SettingsLine label="Service Tech:" htmlFor="name">
                 <Input
                   id="name"
                   name="name"
                   defaultValue={user.name}
                   required
-                  className="flex-1 border-0 bg-transparent px-0 shadow-none focus:border-transparent focus:ring-0"
+                  className={inlineInputClass}
                 />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" value={user.email} disabled />
-              </div>
+              </SettingsLine>
+              <SettingsLine label="Email:" htmlFor="email">
+                <p id="email" className="min-w-0 flex-1 py-1 text-base font-semibold text-stone-900">
+                  {user.email}
+                </p>
+              </SettingsLine>
             </div>
           </div>
 
           <div>
             <h2 className="font-bold text-stone-900">Mortality Thresholds (%)</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="dailyMortalityWarningPct">Daily warning</Label>
+            <div className="mt-3 space-y-2">
+              <SettingsLine label="Daily warning:" htmlFor="dailyMortalityWarningPct">
                 <Input
                   id="dailyMortalityWarningPct"
                   name="dailyMortalityWarningPct"
@@ -68,10 +85,10 @@ export default async function SettingsPage() {
                   min={0}
                   defaultValue={s?.dailyMortalityWarningPct ?? 0.15}
                   required
+                  className={inlineInputClass}
                 />
-              </div>
-              <div>
-                <Label htmlFor="dailyMortalityCriticalPct">Daily critical</Label>
+              </SettingsLine>
+              <SettingsLine label="Daily critical:" htmlFor="dailyMortalityCriticalPct">
                 <Input
                   id="dailyMortalityCriticalPct"
                   name="dailyMortalityCriticalPct"
@@ -80,10 +97,10 @@ export default async function SettingsPage() {
                   min={0}
                   defaultValue={s?.dailyMortalityCriticalPct ?? 0.3}
                   required
+                  className={inlineInputClass}
                 />
-              </div>
-              <div>
-                <Label htmlFor="sevenDayMortalityWarningPct">7-day warning</Label>
+              </SettingsLine>
+              <SettingsLine label="7-day warning:" htmlFor="sevenDayMortalityWarningPct">
                 <Input
                   id="sevenDayMortalityWarningPct"
                   name="sevenDayMortalityWarningPct"
@@ -92,10 +109,10 @@ export default async function SettingsPage() {
                   min={0}
                   defaultValue={s?.sevenDayMortalityWarningPct ?? 1}
                   required
+                  className={inlineInputClass}
                 />
-              </div>
-              <div>
-                <Label htmlFor="sevenDayMortalityCriticalPct">7-day critical</Label>
+              </SettingsLine>
+              <SettingsLine label="7-day critical:" htmlFor="sevenDayMortalityCriticalPct">
                 <Input
                   id="sevenDayMortalityCriticalPct"
                   name="sevenDayMortalityCriticalPct"
@@ -104,8 +121,9 @@ export default async function SettingsPage() {
                   min={0}
                   defaultValue={s?.sevenDayMortalityCriticalPct ?? 2}
                   required
+                  className={inlineInputClass}
                 />
-              </div>
+              </SettingsLine>
             </div>
             <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-stone-700">
               <input
@@ -120,9 +138,8 @@ export default async function SettingsPage() {
 
           <div>
             <h2 className="font-bold text-stone-900">Preferences</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="defaultMarketAgeDays">Default market age (days)</Label>
+            <div className="mt-3 space-y-2">
+              <SettingsLine label="Default market age (days):" htmlFor="defaultMarketAgeDays">
                 <Input
                   id="defaultMarketAgeDays"
                   name="defaultMarketAgeDays"
@@ -130,9 +147,10 @@ export default async function SettingsPage() {
                   min={1}
                   defaultValue={s?.defaultMarketAgeDays ?? 52}
                   required
+                  className={inlineInputClass}
                 />
-              </div>
-              <div className="flex items-start gap-2 sm:col-span-2">
+              </SettingsLine>
+              <div className="flex items-start gap-3">
                 <p className="shrink-0 pt-2 text-sm font-semibold text-stone-800">Order Farms By:</p>
                 <FarmOrderStepper
                   name="farmOrder"

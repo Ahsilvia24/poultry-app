@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Input, Textarea } from "@/components/ui";
 import { DateKeyField } from "@/components/DateKeyField";
+import { TimeKeyField } from "@/components/TimeKeyField";
 import { cn } from "@/lib/utils";
 import type { YesNo } from "@/lib/serviceForms/types";
 
@@ -222,23 +223,25 @@ export function SelectField({
 }
 
 export function TimeField({
+  id,
   label,
   value,
   onChange,
 }: {
+  id?: string;
   label: string;
   value: string;
   onChange: (v: string) => void;
 }) {
+  const fieldId = id ?? label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   return (
-    <div className="mb-2.5">
+    <div className="mb-3 mt-2">
       <label className="mb-1 block text-[13px] font-bold text-stone-500">{label}</label>
-      <Input
-        compact
-        type={value === "24/7" ? "text" : "time"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
+      {value === "24/7" ? (
+        <Input compact readOnly value="24/7" />
+      ) : (
+        <TimeKeyField id={fieldId} name={fieldId} label={label} value={value} onChange={onChange} />
+      )}
     </div>
   );
 }
