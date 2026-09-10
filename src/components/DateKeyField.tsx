@@ -25,12 +25,16 @@ export function DateKeyField({
   label,
   value,
   onChange,
+  className,
+  required,
 }: {
   id: string;
-  name: string;
+  name?: string;
   label: string;
   value: string;
   onChange: (next: string) => void;
+  className?: string;
+  required?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const selected = parseDateKey(value);
@@ -58,8 +62,8 @@ export function DateKeyField({
   const today = todayKey();
 
   return (
-    <div>
-      <input type="hidden" name={name} value={value} />
+    <div className={className}>
+      {name ? <input type="hidden" name={name} value={value} required={required} /> : null}
       <button
         id={id}
         type="button"
@@ -68,7 +72,7 @@ export function DateKeyField({
           setCursor(new Date(selected.getFullYear(), selected.getMonth(), 1));
           setOpen(true);
         }}
-        className="flex min-h-11 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-stone-300 bg-white px-2.5 text-left text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+        className="flex min-h-11 w-full min-w-0 max-w-full items-center justify-between gap-2 rounded-lg border border-stone-300 bg-white px-2.5 text-left text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
       >
         <span className={`min-w-0 truncate ${value ? "text-stone-900" : "text-stone-400"}`}>
           {value ? formatInputDate(value) : "Select date"}
@@ -187,5 +191,34 @@ export function DateKeyField({
         </div>
       ) : null}
     </div>
+  );
+}
+
+export function DateKeyInput({
+  id,
+  name,
+  label,
+  defaultValue = "",
+  required,
+  className,
+}: {
+  id: string;
+  name: string;
+  label: string;
+  defaultValue?: string;
+  required?: boolean;
+  className?: string;
+}) {
+  const [value, setValue] = useState(defaultValue);
+  return (
+    <DateKeyField
+      id={id}
+      name={name}
+      label={label}
+      value={value}
+      onChange={setValue}
+      required={required}
+      className={className}
+    />
   );
 }

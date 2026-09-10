@@ -24,6 +24,7 @@ import {
   VISIT_TYPE_LABELS,
   VISIT_TYPE_OPTIONS,
 } from "@/lib/utils";
+import { DateKeyField, DateKeyInput } from "@/components/DateKeyField";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 
 export type VisitFormValues = {
@@ -95,15 +96,15 @@ export function FarmVisitForm({
       <input type="hidden" name="farmId" value={farmId} />
       {flockId ? <input type="hidden" name="flockId" value={flockId} /> : null}
       <div className="grid gap-3 sm:grid-cols-2">
-        <div>
+        <div className="min-w-0 overflow-hidden">
           <Label htmlFor={fid("visitDate")}>Visit date</Label>
-          <Input
+          <DateKeyField
             id={fid("visitDate")}
             name="visitDate"
-            type="date"
-            required
+            label="Visit date"
             value={visitDate}
-            onChange={(e) => setVisitDate(e.target.value)}
+            onChange={setVisitDate}
+            required
           />
         </div>
         <div>
@@ -157,13 +158,13 @@ export function FarmVisitForm({
         />
         Follow-up required
       </label>
-      <div>
+      <div className="min-w-0 overflow-hidden">
         <Label htmlFor={fid("followUpDate")}>Follow-up date</Label>
-        <Input
+        <DateKeyInput
           id={fid("followUpDate")}
           name="followUpDate"
-          type="date"
-          defaultValue={initial?.followUpDate ?? undefined}
+          label="Follow-up date"
+          defaultValue={initial?.followUpDate ?? ""}
         />
       </div>
       <Button type="submit" disabled={pending}>
@@ -218,12 +219,12 @@ export function FarmIssueForm({
       <input type="hidden" name="farmId" value={farmId} />
       {flockId ? <input type="hidden" name="flockId" value={flockId} /> : null}
       <div className="grid gap-3 sm:grid-cols-2">
-        <div>
+        <div className="min-w-0 overflow-hidden">
           <Label htmlFor={fid("dateReported")}>Date reported</Label>
-          <Input
+          <DateKeyInput
             id={fid("dateReported")}
             name="dateReported"
-            type="date"
+            label="Date reported"
             required
             defaultValue={initial?.dateReported ?? new Date().toISOString().slice(0, 10)}
           />
@@ -342,12 +343,12 @@ export function LitterEventForm({
     >
       <input type="hidden" name="farmId" value={farmId} />
       <div className="grid gap-3 sm:grid-cols-2">
-        <div>
+        <div className="min-w-0 overflow-hidden">
           <Label htmlFor={fid("eventDate")}>Event date</Label>
-          <Input
+          <DateKeyInput
             id={fid("eventDate")}
             name="eventDate"
-            type="date"
+            label="Event date"
             required
             defaultValue={initial?.eventDate ?? new Date().toISOString().slice(0, 10)}
           />

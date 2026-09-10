@@ -35,9 +35,9 @@ export function TimeKeyField({
         type="button"
         aria-label={`${label}, ${value ? halfHourTimeLabel(value) : "Select time"}. Opens time picker`}
         onClick={() => setOpen(true)}
-        className="flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border border-stone-300 bg-white px-2.5 text-left text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+        className="flex min-h-11 w-full min-w-0 max-w-full items-center justify-between gap-2 rounded-lg border border-stone-300 bg-white px-2.5 text-left text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
       >
-        <span className={value ? "text-stone-900" : "text-stone-400"}>
+        <span className={`min-w-0 truncate ${value ? "text-stone-900" : "text-stone-400"}`}>
           {value ? halfHourTimeLabel(value) : "Select time"}
         </span>
         <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-stone-400">

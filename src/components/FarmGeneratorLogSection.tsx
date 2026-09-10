@@ -7,6 +7,7 @@ import {
   deleteGeneratorLogAction,
   updateGeneratorLogAction,
 } from "@/app/actions/ops";
+import { DateKeyField } from "@/components/DateKeyField";
 import { Button, Card, Input, Label } from "@/components/ui";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSectionChrome";
@@ -313,15 +314,15 @@ function GeneratorLogForm({
     >
       <input type="hidden" name="farmId" value={farmId} />
       {onlyGen ? <input type="hidden" name="onlyGen" value={onlyGen} /> : null}
-      <div>
+      <div className="min-w-0 overflow-hidden">
         <Label htmlFor="gen-logDate">Date logged</Label>
-        <Input
+        <DateKeyField
           id="gen-logDate"
           name="logDate"
-          type="date"
-          required
+          label="Date logged"
           value={logDate}
-          onChange={(e) => setLogDate(e.target.value)}
+          onChange={setLogDate}
+          required
         />
       </div>
       <div className={`grid gap-3 ${onlyGen ? "grid-cols-1" : "grid-cols-2"}`}>

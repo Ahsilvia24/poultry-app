@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
+import { DateKeyField } from "@/components/DateKeyField";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { ConsumptionRateCalculator } from "@/components/ConsumptionRateCalculator";
 import { createManualLastFeedOrderAction } from "@/app/actions/lfo";
@@ -25,7 +26,7 @@ function formatHours(n: number) {
 }
 
 function PairField({ children }: { children: React.ReactNode }) {
-  return <div className="min-w-0">{children}</div>;
+  return <div className="min-w-0 overflow-hidden">{children}</div>;
 }
 
 export function ManualLfoForm() {
@@ -129,14 +130,13 @@ export function ManualLfoForm() {
           </PairField>
           <PairField>
             <Label htmlFor="manual-catchDate">Catch date</Label>
-            <Input
+            <DateKeyField
               id="manual-catchDate"
               name="catchDate"
-              type="date"
+              label="Catch date"
               value={catchDate}
-              onChange={(e) => setCatchDate(e.target.value)}
+              onChange={setCatchDate}
               className="mt-0.5"
-              compact
             />
           </PairField>
           <PairField>
@@ -240,14 +240,13 @@ export function ManualLfoForm() {
         <div className="grid grid-cols-2 gap-2">
           <PairField>
             <Label htmlFor="manual-orderDate">Order date</Label>
-            <Input
+            <DateKeyField
               id="manual-orderDate"
               name="orderDate"
-              type="date"
+              label="Order date"
               value={orderDate}
-              onChange={(e) => setOrderDate(e.target.value)}
+              onChange={setOrderDate}
               className="mt-0.5"
-              compact
             />
           </PairField>
           <PairField>

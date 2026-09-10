@@ -6,6 +6,7 @@ import {
   updateFeedDeliveryAction,
 } from "@/app/actions/ops";
 import { FEED_MILL_OPTIONS, FEED_TYPE_OPTIONS } from "@/lib/utils";
+import { DateKeyInput } from "@/components/DateKeyField";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 
 export type FeedFarmOption = {
@@ -189,12 +190,12 @@ export function FeedDeliveryForm({
             ))}
           </Select>
         </div>
-        <div>
+        <div className="min-w-0 overflow-hidden">
           <Label htmlFor={fid("deliveryDate")}>Delivery date</Label>
-          <Input
+          <DateKeyInput
             id={fid("deliveryDate")}
             name="deliveryDate"
-            type="date"
+            label="Delivery date"
             required
             defaultValue={initial?.deliveryDate ?? new Date().toISOString().slice(0, 10)}
           />

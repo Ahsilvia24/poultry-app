@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
+import { DateKeyField } from "@/components/DateKeyField";
 import { Input, Label } from "@/components/ui";
 
 const DEFAULT_MARKET_AGE = 52;
@@ -61,15 +62,15 @@ export function FlockScheduleFields({
 
   return (
     <>
-      <div>
+      <div className="min-w-0 overflow-hidden">
         <Label htmlFor="placementDate">Placement date</Label>
-        <Input
+        <DateKeyField
           id="placementDate"
           name="placementDate"
-          type="date"
-          required
+          label="Placement date"
           value={placementDate}
-          onChange={(e) => onPlacementChange(e.target.value)}
+          onChange={onPlacementChange}
+          required
         />
       </div>
       <div>
@@ -84,15 +85,15 @@ export function FlockScheduleFields({
           onChange={(e) => onMarketAgeChange(e.target.value)}
         />
       </div>
-      <div>
+      <div className="min-w-0 overflow-hidden">
         <Label htmlFor="projectedCatchDate">Projected catch</Label>
-        <Input
+        <DateKeyField
           id="projectedCatchDate"
           name="projectedCatchDate"
-          type="date"
-          required
+          label="Projected catch"
           value={catchDate}
-          onChange={(e) => onCatchChange(e.target.value)}
+          onChange={onCatchChange}
+          required
         />
         <p className="mt-1 text-xs text-stone-500">
           Defaults to {DEFAULT_MARKET_AGE} days after placement. Market age and catch date stay linked.

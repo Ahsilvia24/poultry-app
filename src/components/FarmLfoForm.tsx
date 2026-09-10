@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import { DateKeyField } from "@/components/DateKeyField";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
 import { saveFarmLfoHubAction } from "@/app/actions/lfo";
 import {
@@ -32,7 +33,7 @@ function formatHours(n: number) {
 }
 
 function PairField({ children }: { children: React.ReactNode }) {
-  return <div className="min-w-0">{children}</div>;
+  return <div className="min-w-0 overflow-hidden">{children}</div>;
 }
 
 function FeedMillDataButton({
@@ -251,13 +252,12 @@ export function FarmLfoForm({
                 </PairField>
                 <PairField>
                   <Label htmlFor={`catchDate-${house.houseId}`}>Catch date</Label>
-                  <Input
+                  <DateKeyField
                     id={`catchDate-${house.houseId}`}
-                    type="date"
+                    label="Catch date"
                     value={house.catchDate}
-                    onChange={(e) => updateRow(house.houseId, { catchDate: e.target.value })}
+                    onChange={(next) => updateRow(house.houseId, { catchDate: next })}
                     className="mt-0.5"
-                    compact
                   />
                 </PairField>
                 <PairField>
@@ -367,13 +367,12 @@ export function FarmLfoForm({
         <div className="grid grid-cols-2 gap-2">
           <PairField>
             <Label htmlFor="farm-orderDate">Order date</Label>
-            <Input
+            <DateKeyField
               id="farm-orderDate"
-              type="date"
+              label="Order date"
               value={orderDate}
-              onChange={(e) => setOrderDate(e.target.value)}
+              onChange={setOrderDate}
               className="mt-0.5"
-              compact
             />
           </PairField>
           <PairField>

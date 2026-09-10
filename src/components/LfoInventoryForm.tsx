@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import { DateKeyField } from "@/components/DateKeyField";
 import { Button, Input, Label, Select } from "@/components/ui";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
@@ -68,7 +69,7 @@ function FeedMillDataButton({
 }
 
 function PairField({ children }: { children: React.ReactNode }) {
-  return <div className="min-w-0">{children}</div>;
+  return <div className="min-w-0 overflow-hidden">{children}</div>;
 }
 
 export function LfoInventoryForm({
@@ -239,15 +240,14 @@ export function LfoInventoryForm({
       <div className="grid grid-cols-2 gap-2">
         <PairField>
           <Label htmlFor="orderDate">Order date</Label>
-          <Input
+          <DateKeyField
             id="orderDate"
             name="orderDate"
-            type="date"
-            required
+            label="Order date"
             value={orderDate}
-            onChange={(e) => setOrderDate(e.target.value)}
+            onChange={setOrderDate}
+            required
             className="mt-0.5"
-            compact
           />
         </PairField>
         <PairField>
@@ -342,13 +342,12 @@ export function LfoInventoryForm({
                 </PairField>
                 <PairField>
                   <Label htmlFor={`catchDate-${house.houseId}`}>Catch date</Label>
-                  <Input
+                  <DateKeyField
                     id={`catchDate-${house.houseId}`}
-                    type="date"
+                    label="Catch date"
                     value={house.catchDate}
-                    onChange={(e) => updateRow(house.houseId, { catchDate: e.target.value })}
+                    onChange={(next) => updateRow(house.houseId, { catchDate: next })}
                     className="mt-0.5"
-                    compact
                   />
                 </PairField>
                 <PairField>

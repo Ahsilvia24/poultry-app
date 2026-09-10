@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { upsertPerformanceAction } from "@/app/actions/ops";
+import { DateKeyInput } from "@/components/DateKeyField";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 
 export function PerformanceForm({
@@ -60,9 +61,13 @@ export function PerformanceForm({
           <Label htmlFor="condemnationPercentage">Condemnation %</Label>
           <Input id="condemnationPercentage" name="condemnationPercentage" type="number" step="any" />
         </div>
-        <div>
+        <div className="min-w-0 overflow-hidden">
           <Label htmlFor="settlementDate">Settlement date</Label>
-          <Input id="settlementDate" name="settlementDate" type="date" />
+          <DateKeyInput
+            id="settlementDate"
+            name="settlementDate"
+            label="Settlement date"
+          />
         </div>
       </div>
       <div>
