@@ -23,9 +23,12 @@ const withAuth = auth((req) => {
   const { pathname } = req.nextUrl;
   const origin = requestOrigin(req);
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
+  const isPasswordReset =
+    pathname.startsWith("/forgot-password") || pathname.startsWith("/reset-password");
   const isDevBypassLogin = pathname.startsWith("/api/dev-bypass-login");
   const isPublic =
     isAuthPage ||
+    isPasswordReset ||
     isDevBypassLogin ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/mobile") ||

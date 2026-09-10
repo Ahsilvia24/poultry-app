@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { loginAction } from "@/app/actions/auth";
 import { Button, Input, Label } from "@/components/ui";
 
-export default function LoginPage() {
+function LoginForm() {
+  const params = useSearchParams();
+  const resetOk = params.get("reset") === "1";
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(formData: FormData) {
@@ -23,6 +26,11 @@ export default function LoginPage() {
         <p className="mt-2 text-center text-sm text-stone-600">
           Hosted accounts. Farms stay on this email. This is the computer site, not the phone app.
         </p>
+        {resetOk ? (
+          <p className="mt-3 text-center text-sm font-medium text-emerald-800">
+            Password saved. Sign in with your new password.
+          </p>
+        ) : null}
         <form action={onSubmit} className="mt-6 space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
@@ -37,6 +45,11 @@ export default function LoginPage() {
             Sign in
           </Button>
         </form>
+        <p className="mt-3 text-center text-sm text-stone-600">
+          <Link href="/forgot-password" className="font-semibold text-emerald-800 underline">
+            Forgot password
+          </Link>
+        </p>
         <p className="mt-4 text-center text-sm text-stone-600">
           Need an account?{" "}
           <Link href="/register" className="font-semibold text-emerald-800 underline">
@@ -60,5 +73,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

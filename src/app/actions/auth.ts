@@ -5,7 +5,8 @@ import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { registerSchema } from "@/lib/validations";
+import { issuePasswordReset, consumePasswordReset } from "@/lib/password-reset";
+import { forgotPasswordSchema, registerSchema, resetPasswordSchema } from "@/lib/validations";
 
 async function signInOnThisHost(email: string, password: string) {
   const result = await signIn("credentials", {
@@ -73,4 +74,28 @@ export async function loginAction(formData: FormData) {
 export async function signOutAction() {
   await signOut({ redirect: false });
   redirect("/login");
+}
+
+export async function forgotPasswordAction(formData: FormData) {
+  const parsed = forgotPasswordSchema.safeParse({
+    email: formData.get("email"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Enter a valid email" };
+  }
+  await issuePasswordReset(parsed.data.email);
+  return { sent: true };
+}
+
+export async function resetPasswordAction(formData: FormData) {
+  const parsed = resetPasswordSchema.safeParse({
+    token: formData.get("token"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const result = await consumePasswordReset(parsed.data.token, parsed.data.password);
+  if (result.error) return { error: result.error };
+  redirect("/login?reset=1");
 }
