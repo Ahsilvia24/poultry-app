@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Card, PageHeader } from "@/components/ui";
+import { BackHeader, Card } from "@/components/ui";
 
 export default async function NewLfoFarmSelectPage() {
   const session = await auth();
@@ -28,16 +28,7 @@ export default async function NewLfoFarmSelectPage() {
 
   return (
     <div>
-      <Link
-        href="/lfo"
-        className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
-      >
-        <span aria-hidden="true" className="text-xl leading-none">
-          ←
-        </span>
-        LFOs
-      </Link>
-      <PageHeader title="New LFO" />
+      <BackHeader href="/lfo" backLabel="LFOs" title="New LFO" />
 
       {eligible.length === 0 ? (
         <Card>

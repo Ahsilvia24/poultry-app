@@ -42,7 +42,7 @@ export function AddFlockSection({
       {open ? (
         <Card className="mt-4">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-bold">Add flock</h3>
+            <h3 className="font-bold">Add Flock</h3>
             <button
               type="button"
               onClick={() => {

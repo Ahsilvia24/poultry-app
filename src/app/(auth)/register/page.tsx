@@ -17,19 +17,30 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-semibold">Create account</h1>
+        <p className="font-serif text-xl font-extrabold tracking-tight text-emerald-900">
+          PoultryTech
+        </p>
+        <h1 className="mt-1.5 text-xl font-semibold">Create account</h1>
         <form action={onSubmit} className="mt-6 space-y-4">
           <div>
             <Label htmlFor="name">Name</Label>
-            <Input id="name" name="name" required />
+            <Input id="name" name="name" required autoComplete="name" />
           </div>
           <div>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required />
+            <Input id="email" name="email" type="email" required autoComplete="email" />
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" minLength={8} required />
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              minLength={8}
+              required
+              autoComplete="new-password"
+            />
+            <p className="mt-1 text-xs text-stone-500">At least 8 characters.</p>
           </div>
           {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
           <Button type="submit" className="w-full">

@@ -6,8 +6,18 @@ export const registerSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20, "This reset link is invalid or expired."),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 export const farmSchema = z.object({
   farmName: z.string().min(1, "Farm name is required"),
+  farmNumber: z.string().optional().nullable(),
   growerName: z.string().optional().nullable(),
   phoneNumber: z.string().optional().nullable(),
   email: z.preprocess(
@@ -33,6 +43,7 @@ export const houseSchema = z.object({
   houseNumber: z.coerce.number().int().positive(),
   squareFootage: z.coerce.number().positive("Square footage must be greater than zero"),
   totalFanCFM: z.coerce.number().min(0, "Total CFM cannot be negative").optional().nullable(),
+  totalPowerCFM: z.coerce.number().min(0, "Total CFM cannot be negative").optional().nullable(),
   numberOfFans: z.coerce.number().int().optional().nullable(),
   coolingPadSquareFootage: z.coerce.number().optional().nullable(),
   controllerType: z.string().optional().nullable(),
@@ -171,6 +182,8 @@ export const farmVisitSchema = z.object({
   birdAgeInDays: z.coerce.number().int().optional().nullable(),
   visitType: z.enum([
     "ROUTINE_SERVICE",
+    "DELIVERY",
+    "PREBROOD",
     "PLACEMENT",
     "SEVEN_DAY",
     "WEIGH_DAY",
@@ -179,6 +192,8 @@ export const farmVisitSchema = z.object({
     "EQUIPMENT_ISSUE",
     "MORTALITY_INVESTIGATION",
     "PRE_CATCH",
+    "LAST_FEED_ORDER",
+    "CERTIFICATION",
     "OTHER",
   ]),
   generalBirdCondition: z.string().optional().nullable(),
@@ -234,6 +249,7 @@ export const settingsSchema = z.object({
   defaultMarketAgeDays: z.coerce.number().int().positive(),
   notifyEmail: z.boolean(),
   notifyInApp: z.boolean(),
+  farmOrder: z.enum(["age_desc", "age_asc", "name_asc", "name_desc"]).optional(),
 });
 
 export const performanceSchema = z.object({
@@ -272,6 +288,7 @@ export const lastFeedOrderHouseInventorySchema = z.object({
 
 export const lastFeedOrderSchema = z.object({
   orderDate: z.string().min(1, "Order date is required"),
+  orderTime: z.string().optional().nullable(),
   consumptionRate: z.coerce
     .number()
     .positive("Consumption rate must be greater than zero")

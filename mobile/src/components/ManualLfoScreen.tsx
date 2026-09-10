@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -10,27 +9,34 @@ import {
   type ScrollView as ScrollViewType,
   type View as ViewType,
 } from "react-native";
-import { useNavigation, useRouter } from "expo-router";
+import { useNavigation } from "expo-router";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
   feedUpAtFromCatch,
-  formatHouseLfoSummary,
+  formatLfoOrderClock,
 } from "../lib/lfo/calculate";
 import { todayKey } from "../lib/ids";
-import { scrollFieldAboveKeypad } from "../lib/scrollField";
+import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../lib/scrollField";
 import { useTabScrollToTop } from "../lib/tabScroll";
 import { colors, fonts, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { TimeScrollPickerField } from "./TimeScrollPicker";
+import { currentHalfHourTime, normalizeHalfHourTime } from "../lib/time-slots";
 import {
   NumberKeypad,
   appendKeypadDigit,
   backspaceKeypadValue,
 } from "./NumberKeypad";
-import { LfoHouseSummaryBlock } from "./LfoHouseSummaryBlock";
 import { LfoFarmTabs } from "./LfoFarmTabs";
+import { ConsumptionRateCalculator } from "./ConsumptionRateCalculator";
+import {
+  DEFAULT_HEAD_COUNT,
+  DEFAULT_WATER_GAL,
+  consumptionRateFromWater,
+  formatConsumptionRate,
+} from "../lib/lfo/consumptionRate";
 import { createManualLfo } from "../repos/data";
 
 const MANUAL_HOUSE_ID = "manual";
@@ -54,13 +60,13 @@ function formatFeedStamp(d: Date | null) {
 }
 
 function formatHeadCountLabel(raw: string) {
-  if (!raw) return "Head count";
+  if (!raw) return "Enter Head Count";
   const n = Number(raw);
-  if (!Number.isFinite(n)) return `Head count ${raw}`;
-  return `Head count ${n.toLocaleString()}`;
+  if (!Number.isFinite(n)) return `Head Count ${raw}`;
+  return `Head Count ${n.toLocaleString()}`;
 }
 
-type ActiveField = "rate" | "head" | "binA" | "binB";
+type ActiveField = "rate" | "head" | "binA" | "binB" | "calcWater" | "calcHead";
 
 function FieldButton({
   label,
@@ -123,16 +129,22 @@ export function ManualLfoScreen({
   savedSection?: React.ReactNode;
 }) {
   const navigation = useNavigation();
-  const router = useRouter();
   const [orderDate, setOrderDate] = useState(todayKey);
+  const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [headCount, setHeadCount] = useState("");
+  const [calcWaterGal, setCalcWaterGal] = useState(DEFAULT_WATER_GAL);
+  const [calcHeadCount, setCalcHeadCount] = useState(DEFAULT_HEAD_COUNT);
   const [binAPounds, setBinAPounds] = useState("0");
   const [binBPounds, setBinBPounds] = useState("0");
   const [catchDate, setCatchDate] = useState("");
   const [catchTime, setCatchTime] = useState("");
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
+  const [openPicker, setOpenPicker] = useState<
+    "orderDate" | "orderTime" | "catchDate" | "catchTime" | null
+  >(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("lfo", scrollRef);
   const scrollYRef = useRef(0);
@@ -156,11 +168,17 @@ export function ManualLfoScreen({
     return () => clearTimeout(t);
   }, [activeField]);
 
+  useEffect(() => {
+    const next = consumptionRateFromWater(calcWaterGal, calcHeadCount);
+    if (next) setConsumptionRate(formatConsumptionRate(next.rate));
+  }, [calcWaterGal, calcHeadCount]);
+
   const heads = Number(headCount);
   const calc = useMemo(() => {
     const rate = Number(consumptionRate);
     return calculateLastFeedOrder({
       orderDate,
+      orderTime,
       consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
       houses: [
         {
@@ -173,16 +191,17 @@ export function ManualLfoScreen({
         },
       ],
     });
-  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate]);
+  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime]);
 
   const result = calc.houses[0];
-  const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
   function getActiveValue() {
     if (activeField === "rate") return consumptionRate;
     if (activeField === "head") return headCount;
     if (activeField === "binA") return binAPounds;
     if (activeField === "binB") return binBPounds;
+    if (activeField === "calcWater") return calcWaterGal;
+    if (activeField === "calcHead") return calcHeadCount;
     return "";
   }
 
@@ -191,6 +210,8 @@ export function ManualLfoScreen({
     else if (activeField === "head") setHeadCount(next);
     else if (activeField === "binA") setBinAPounds(next);
     else if (activeField === "binB") setBinBPounds(next);
+    else if (activeField === "calcWater") setCalcWaterGal(next);
+    else if (activeField === "calcHead") setCalcHeadCount(next);
   }
 
   function focusField(field: ActiveField) {
@@ -217,21 +238,32 @@ export function ManualLfoScreen({
     setActiveValue(appendKeypadDigit(base, d, allowDecimal));
   }
 
-  function onBackspace() {
-    setReplaceOnType(false);
-    setActiveValue(backspaceKeypadValue(getActiveValue()));
-  }
-
-  function onEnter() {
+  function dismissKeypad() {
     setActiveField(null);
     setReplaceOnType(false);
   }
 
+  function onBackspace() {
+    setReplaceOnType(false);
+    const current = getActiveValue();
+    if (!current) {
+      dismissKeypad();
+      return;
+    }
+    setActiveValue(backspaceKeypadValue(current));
+  }
+
+  function onEnter() {
+    dismissKeypad();
+  }
+
   function save() {
     try {
+      setError(null);
       const rate = Number(consumptionRate);
       const { id } = createManualLfo({
         orderDate: orderDate.trim() || todayKey(),
+        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(),
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         headCount: Number.isFinite(heads) && heads > 0 ? heads : 0,
         binAPounds: Number(binAPounds) || 0,
@@ -240,9 +272,8 @@ export function ManualLfoScreen({
       });
       setActiveField(null);
       if (onSaved) onSaved(id);
-      else router.push(`/(tabs)/lfo/${id}`);
     } catch (e) {
-      Alert.alert("Could not save LFO", e instanceof Error ? e.message : "Try again");
+      setError(e instanceof Error ? e.message : "Could not save LFO. Try again.");
     }
   }
 
@@ -251,49 +282,37 @@ export function ManualLfoScreen({
       <ScrollView
         ref={scrollRef}
         style={styles.screen}
-        contentContainerStyle={[styles.content, { paddingBottom: activeField ? 24 : 40 }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: activeField ? CUSTOM_KEYPAD_HEIGHT : 40 },
+        ]}
         keyboardShouldPersistTaps="handled"
         onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
           scrollYRef.current = e.nativeEvent.contentOffset.y;
         }}
+        onScrollBeginDrag={dismissKeypad}
         scrollEventThrottle={16}
       >
         <PageHeader title="Last Feed Order" />
+        {error ? (
+          <Text style={{ color: colors.danger, fontWeight: "700", marginBottom: 10 }}>
+            {error}
+          </Text>
+        ) : null}
         <LfoFarmTabs farms={farms} selectedId={farmId} onSelect={onSelectFarm} />
 
-        <Card>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-              gap: 10,
-            }}
-          >
-            <DatePickerField
-              label="Order date"
-              value={orderDate}
-              onChange={(date) => {
-                setActiveField(null);
-                setOrderDate(date);
-              }}
-              onOpen={() => setActiveField(null)}
-              style={{ flex: 1, minWidth: 0 }}
-            />
-            <FieldButton
-              label="Consumption rate"
-              value={consumptionRate}
-              active={activeField === "rate"}
-              onPress={() => focusField("rate")}
-              fieldRef={bindFieldRef("rate")}
-              style={{ flex: 1, minWidth: 0 }}
-            />
-          </View>
-          <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
-            Consumption rate in lbs/bird/day
-          </Text>
-        </Card>
+        <ConsumptionRateCalculator
+          waterGal={calcWaterGal}
+          headCount={calcHeadCount}
+          waterActive={activeField === "calcWater"}
+          headActive={activeField === "calcHead"}
+          onFocusWater={() => focusField("calcWater")}
+          onFocusHead={() => focusField("calcHead")}
+          waterRef={bindFieldRef("calcWater")}
+          headRef={bindFieldRef("calcHead")}
+        />
 
-        <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>
+        <Text style={styles.sectionTitle}>Bin Inventory & Feed Up</Text>
         <Card>
           <View
             ref={bindFieldRef("head")}
@@ -349,21 +368,29 @@ export function ManualLfoScreen({
             <DatePickerField
               label="Catch date"
               value={catchDate}
+              expanded={openPicker === "catchDate"}
               onChange={(date) => {
                 setActiveField(null);
                 setCatchDate(date);
               }}
-              onOpen={() => setActiveField(null)}
+              onOpen={() => {
+                setActiveField(null);
+                setOpenPicker("catchDate");
+              }}
               style={{ flex: 1, minWidth: 0 }}
             />
             <TimeScrollPickerField
               label="Catch time"
               value={catchTime}
+              expanded={openPicker === "catchTime"}
               onChange={(time) => {
                 setActiveField(null);
                 setCatchTime(time);
               }}
-              onOpen={() => setActiveField(null)}
+              onOpen={() => {
+                setActiveField(null);
+                setOpenPicker("catchTime");
+              }}
               style={{ flex: 1, minWidth: 0 }}
             />
           </View>
@@ -448,26 +475,72 @@ export function ManualLfoScreen({
           ) : null}
         </Card>
 
-        {houseSummary.length > 0 ? (
-          <Card>
-            <View style={{ marginTop: -4 }}>
-              <LfoHouseSummaryBlock lines={houseSummary} farmName="Manual" fontSize={15} />
+        <Card>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-start",
+              gap: 10,
+            }}
+          >
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <DatePickerField
+                label="Order date"
+                value={orderDate}
+                expanded={openPicker === "orderDate"}
+                onChange={(date) => {
+                  setActiveField(null);
+                  setOrderDate(date);
+                }}
+                onOpen={() => {
+                  setActiveField(null);
+                  setOpenPicker("orderDate");
+                }}
+              />
             </View>
-          </Card>
-        ) : null}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <TimeScrollPickerField
+                label="Order time"
+                value={orderTime}
+                expanded={openPicker === "orderTime"}
+                onChange={(time) => {
+                  setActiveField(null);
+                  setOrderTime(time);
+                }}
+                onOpen={() => {
+                  setActiveField(null);
+                  setOpenPicker("orderTime");
+                }}
+              />
+            </View>
+          </View>
+          {formatLfoOrderClock(orderDate, orderTime) ? (
+            <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
+              Hours from {formatLfoOrderClock(orderDate, orderTime)}
+            </Text>
+          ) : null}
+        </Card>
 
         <PrimaryButton label="Save LFO" onPress={save} />
         {savedSection}
       </ScrollView>
 
       {activeField ? (
-        <NumberKeypad
-          allowDecimal={activeField === "rate"}
-          allowTripleZero={activeField === "binA" || activeField === "binB" || activeField === "head"}
-          onDigit={onDigit}
-          onBackspace={onBackspace}
-          onEnter={onEnter}
-        />
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss keypad"
+            onPress={dismissKeypad}
+            style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
+          />
+          <NumberKeypad
+            allowDecimal={activeField === "rate"}
+            allowTripleZero={activeField === "binA" || activeField === "binB" || activeField === "head"}
+            onDigit={onDigit}
+            onBackspace={onBackspace}
+            onEnter={onEnter}
+          />
+        </>
       ) : null}
     </View>
   );

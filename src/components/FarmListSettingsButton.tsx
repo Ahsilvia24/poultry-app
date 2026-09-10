@@ -7,9 +7,8 @@ import { Button, Input, Label, Textarea } from "@/components/ui";
 type FarmInfo = {
   id: string;
   farmName: string;
+  farmNumber?: string | null;
   growerName: string;
-  phoneNumber: string | null;
-  email?: string | null;
   notes: string | null;
   numberOfGenerators?: number | null;
 };
@@ -73,14 +72,14 @@ export function FarmListSettingsButton({ farm }: { farm: FarmInfo }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby={`edit-farm-${farm.id}-title`}
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-stone-200 bg-white p-5 pb-8 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3
               id={`edit-farm-${farm.id}-title`}
               className="text-lg font-bold text-stone-900"
             >
-              Edit farm info
+              Edit Farm Info
             </h3>
             <form
               className="mt-4 space-y-4"
@@ -108,31 +107,20 @@ export function FarmListSettingsButton({ farm }: { farm: FarmInfo }) {
                     defaultValue={farm.farmName}
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor={`list-farmNumber-${farm.id}`}>Farm #</Label>
+                  <Input
+                    id={`list-farmNumber-${farm.id}`}
+                    name="farmNumber"
+                    defaultValue={farm.farmNumber ?? ""}
+                  />
+                </div>
+                <div className="sm:col-span-2">
                   <Label htmlFor={`list-growerName-${farm.id}`}>Grower name</Label>
                   <Input
                     id={`list-growerName-${farm.id}`}
                     name="growerName"
                     defaultValue={farm.growerName}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`list-phoneNumber-${farm.id}`}>Phone</Label>
-                  <Input
-                    id={`list-phoneNumber-${farm.id}`}
-                    name="phoneNumber"
-                    type="tel"
-                    defaultValue={farm.phoneNumber ?? ""}
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor={`list-email-${farm.id}`}>Email</Label>
-                  <Input
-                    id={`list-email-${farm.id}`}
-                    name="email"
-                    type="email"
-                    defaultValue={farm.email ?? ""}
-                    autoComplete="email"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -142,13 +130,17 @@ export function FarmListSettingsButton({ farm }: { farm: FarmInfo }) {
                     name="notes"
                     rows={3}
                     defaultValue={farm.notes ?? ""}
+                    className="scroll-mb-32"
+                    onFocus={(e) =>
+                      e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })
+                    }
                   />
                 </div>
               </div>
               {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={pending}>
-                  {pending ? "Saving…" : "Save farm changes"}
+                  {pending ? "Saving…" : "Save"}
                 </Button>
                 <Button type="button" variant="ghost" disabled={pending} onClick={close}>
                   Cancel

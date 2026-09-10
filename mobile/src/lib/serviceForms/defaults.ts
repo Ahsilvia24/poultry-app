@@ -1,3 +1,4 @@
+import { getServiceTech } from "../appSettings";
 import { todayKey } from "../ids";
 import type {
   PlacementForm,
@@ -34,7 +35,7 @@ export function createServiceReportDraft(input?: {
     farmNumber: input?.farmNumber ?? "",
     flockNumber: input?.flockNumber ?? "",
     date: todayKey(),
-    serviceTech: input?.serviceTech ?? "",
+    serviceTech: input?.serviceTech ?? getServiceTech(),
     houses: input?.houses?.length ? input.houses : [],
     feederHeightOk: "yes",
     feedingEquipmentOk: "yes",
@@ -50,7 +51,7 @@ export function createServiceReportDraft(input?: {
     humidityPct: "",
     ventModes: [],
     tunnelFanCount: "",
-    ventDoorType: "",
+    ventDoorTypes: [],
     ventOpeningInches: "",
     staticPressure: "",
     cfmPerFt2MinVent: "",
@@ -103,7 +104,7 @@ export function createPlacementDraft(input?: {
     farmNumber: input?.farmNumber ?? "",
     flockNumber: input?.flockNumber ?? "",
     date: todayKey(),
-    serviceTech: input?.serviceTech ?? "",
+    serviceTech: input?.serviceTech ?? getServiceTech(),
     supplementalLidsOk: "yes",
     feederPaperOk: "yes",
     feedTrayRibsOk: "yes",
@@ -117,7 +118,7 @@ export function createPlacementDraft(input?: {
     litterAmendmentType: "",
     heatersOk: "yes",
     sensorsBirdLevelOk: "yes",
-    ventDoorType: "",
+    ventDoorTypes: [],
     ventOpeningInches: "",
     staticPressure: "",
     cfmPerFt2MinVent: "",
@@ -165,7 +166,7 @@ export function createPrebroodDraft(input?: {
     farmNumber: input?.farmNumber ?? "",
     flockNumber: input?.flockNumber ?? "",
     date: todayKey(),
-    serviceTech: input?.serviceTech ?? "",
+    serviceTech: input?.serviceTech ?? getServiceTech(),
     windowHours: "48",
     feedDeliveredOk: "yes",
     feedPaperDeliveredOk: "yes",
@@ -194,6 +195,20 @@ export function createPrebroodDraft(input?: {
     dialerTestOk: "yes",
     generatorServicedOk: "yes",
     generatorServiceDate: "",
+    generatorHoursCheckedOk: "yes",
+    generatorHoursLogged: "",
     comments: "",
+  };
+}
+
+/** Fill fields added after a checklist was saved. */
+export function hydratePrebroodForm(form: PrebroodForm): PrebroodForm {
+  return {
+    ...form,
+    generatorHoursCheckedOk:
+      form.generatorHoursCheckedOk === "no" || form.generatorHoursCheckedOk === "yes"
+        ? form.generatorHoursCheckedOk
+        : "yes",
+    generatorHoursLogged: form.generatorHoursLogged ?? "",
   };
 }

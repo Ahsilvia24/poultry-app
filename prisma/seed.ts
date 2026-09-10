@@ -162,7 +162,7 @@ async function main() {
   const user = await prisma.user.upsert({
     where: { email: "tech@poultry.local" },
     update: {
-      name: "Alex Technician",
+      name: "Alex Silvia",
       passwordHash,
       settings: {
         upsert: {
@@ -182,7 +182,7 @@ async function main() {
       },
     },
     create: {
-      name: "Alex Technician",
+      name: "Alex Silvia",
       email: "tech@poultry.local",
       passwordHash,
       settings: {
@@ -202,7 +202,7 @@ async function main() {
   const today = startOfDay(new Date());
 
   // Catch dates chosen so Weight Projection / LFO land in the next week
-  const catchMon = upcomingWeekday(today, 1); // Mon → WP Tue before, LFO Fri before
+  const catchMon = upcomingWeekday(today, 1); // Mon → WP Tue before, LFO Thu before
   const catchThu = upcomingWeekday(today, 4); // Thu → WP Fri before, LFO Mon before
   const catchWed = upcomingWeekday(today, 3);
 
@@ -323,7 +323,6 @@ async function main() {
         growerName: demo.growerName,
         phoneNumber: demo.phoneNumber,
         numberOfHouses: demo.houses,
-        notes: demo.note,
       },
     });
     const houses = await createHouses(farm.id, demo.houses, 2014 + demos.indexOf(demo));
@@ -377,11 +376,10 @@ async function main() {
   const tripleFarm = await prisma.farm.create({
     data: {
       userId: user.id,
-      farmName: "Triple Place Demo",
+      farmName: "Triple Place",
       growerName: "Alex Silvia",
       phoneNumber: "410-555-0199",
       numberOfHouses: triplePlaceHouses,
-      notes: "Demo farm with 3 active flocks / place / catch dates",
     },
   });
   const tripleHouses = await createHouses(tripleFarm.id, triplePlaceHouses, 2020);
@@ -422,6 +420,7 @@ async function main() {
     { farm: "Cedar Creek", weekStart: lastMonday, offset: 1, hour: 7, minute: 20 },
     { farm: "Pine Ridge", weekStart: lastMonday, offset: 1, hour: 9, minute: 15 },
     { farm: "Willow Bend", weekStart: lastMonday, offset: 2, hour: 8, minute: 0 },
+    { farm: "Triple Place", weekStart: lastMonday, offset: 2, hour: 10, minute: 20 },
     { farm: "Sunrise Farms", weekStart: lastMonday, offset: 3, hour: 7, minute: 45 },
     { farm: "River Bend", weekStart: lastMonday, offset: 4, hour: 10, minute: 30 },
     { farm: "Ash Grove", weekStart: lastMonday, offset: 5, hour: 9, minute: 0 },
@@ -430,6 +429,11 @@ async function main() {
     { farm: "Bay View", weekStart: thisMonday, offset: 0, hour: 10, minute: 50 },
     { farm: "Cedar Creek", weekStart: thisMonday, offset: 1, hour: 7, minute: 40 },
     { farm: "Pine Ridge", weekStart: thisMonday, offset: 1, hour: 9, minute: 10 },
+    { farm: "Willow Bend", weekStart: thisMonday, offset: 2, hour: 8, minute: 15 },
+    { farm: "Triple Place", weekStart: thisMonday, offset: 2, hour: 10, minute: 5 },
+    { farm: "Sunrise Farms", weekStart: thisMonday, offset: 3, hour: 7, minute: 50 },
+    { farm: "River Bend", weekStart: thisMonday, offset: 4, hour: 10, minute: 20 },
+    { farm: "Ash Grove", weekStart: thisMonday, offset: 5, hour: 8, minute: 45 },
   ];
   for (const stop of fieldLogStops) {
     const day = addDays(stop.weekStart, stop.offset);
@@ -445,9 +449,49 @@ async function main() {
         loggedAt,
         visitType: VisitType.ROUTINE_SERVICE,
         generalBirdCondition: "Healthy",
-        notes: "Field log demo",
       },
     });
+  }
+
+  const exerciseHours = [0.8, 0.9, 1.0, 1.1] as const;
+  const seededFarms = await prisma.farm.findMany({
+    where: { userId: user.id, deletedAt: null },
+    orderBy: { farmName: "asc" },
+    select: { id: true, farmName: true },
+  });
+  for (const [farmIndex, farm] of seededFarms.entries()) {
+    const genCount = (farmIndex % 4) + 1;
+    await prisma.farm.update({
+      where: { id: farm.id },
+      data: { numberOfGenerators: genCount },
+    });
+    let nameHash = 0;
+    for (let i = 0; i < farm.farmName.length; i++) {
+      nameHash = (nameHash + farm.farmName.charCodeAt(i)) % 80;
+    }
+    const baseHours = 90 + nameHash;
+    for (let w = 5; w >= 0; w--) {
+      const weekFromOldest = 5 - w;
+      const logDate = subDays(today, 7 * w);
+      const hours: Array<number | null> = [null, null, null, null];
+      for (let g = 0; g < genCount; g++) {
+        let reading = baseHours + g * 18;
+        for (let i = 0; i < weekFromOldest; i++) {
+          reading = Math.round((reading + exerciseHours[(i + g) % 4]) * 10) / 10;
+        }
+        hours[g] = reading;
+      }
+      await prisma.generatorLog.create({
+        data: {
+          farmId: farm.id,
+          logDate,
+          gen1Hours: hours[0],
+          gen2Hours: hours[1],
+          gen3Hours: hours[2],
+          gen4Hours: hours[3],
+        },
+      });
+    }
   }
 
   console.log(`Seed complete — ${demos.length + 1} demo farms relative to ${format(today, "yyyy-MM-dd")}.`);
@@ -458,7 +502,7 @@ async function main() {
       `- ${d.farmName}: place ${format(d.placementDate, "EEE MMM d")} → catch ${format(d.projectedCatchDate, "EEE MMM d")} (${d.note})`,
     );
   }
-  console.log("- Triple Place Demo: 6 houses / 3 active flocks (26-01 H1–2, 26-02 H3–4, 26-03 H5–6)");
+  console.log("- Triple Place: 6 houses / 3 active flocks (26-01 H1–2, 26-02 H3–4, 26-03 H5–6)");
 }
 
 main()

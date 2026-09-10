@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -62,6 +63,8 @@ enum LitterEventType {
 
 enum VisitType {
   ROUTINE_SERVICE
+  DELIVERY
+  PREBROOD
   PLACEMENT
   SEVEN_DAY
   WEIGH_DAY
@@ -70,6 +73,8 @@ enum VisitType {
   EQUIPMENT_ISSUE
   MORTALITY_INVESTIGATION
   PRE_CATCH
+  LAST_FEED_ORDER
+  CERTIFICATION
   OTHER
 }
 
@@ -119,6 +124,19 @@ model User {
   farms            Farm[]
   settings         UserSettings?
   mortalityEntries DailyMortality[]
+  passwordResets   PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model UserSettings {
@@ -134,6 +152,7 @@ model UserSettings {
   defaultMarketAgeDays       Int             @default(52)
   notifyEmail                Boolean         @default(false)
   notifyInApp                Boolean         @default(true)
+  farmOrder                  String          @default("age_desc")
   ageBandThresholdsJson      String?
   createdAt                  DateTime        @default(now())
   updatedAt                  DateTime        @updatedAt
@@ -170,6 +189,8 @@ model Farm {
   generatorLogs GeneratorLog[]
   followUpCompletions FollowUpCompletion[]
   lastFeedOrders LastFeedOrder[]
+  serviceForms ServiceForm[]
+  serviceFormDrafts ServiceFormDraft[]
 
   @@index([userId])
   @@index([farmName])
@@ -184,6 +205,8 @@ model House {
   houseLength              Float?
   houseWidth               Float?
   totalFanCFM              Float?
+  /** Tunnel / power-vent total CFM (separate from min-vent totalFanCFM). */
+  totalPowerCFM            Float?
   numberOfFans             Int?
   coolingPadSquareFootage  Float?
   feederType               String?
@@ -257,6 +280,7 @@ model Flock {
   issues         FarmIssue[]
   followUpCompletions FollowUpCompletion[]
   lastFeedOrders LastFeedOrder[]
+  serviceForms ServiceForm[]
 
   @@index([farmId])
   @@index([flockStatus])
@@ -348,6 +372,8 @@ model LastFeedOrder {
   farmId           String
   flockId          String
   orderDate        DateTime @db.Date
+  /** Half-hour clock for the order (HH:mm). */
+  orderTime        String?
   /** Lbs feed per bird per day (used for hourly consumption). */
   consumptionRate  Float    @default(0.45)
   /** Clock used for hours-until-feed-off / order math. Frozen at save. */
@@ -451,6 +477,7 @@ model FarmVisit {
 
   farm  Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
   flock Flock? @relation(fields: [flockId], references: [id], onDelete: SetNull)
+  serviceForms ServiceForm[]
 
   @@index([farmId])
   @@index([visitDate])
@@ -520,4 +547,37 @@ model GeneratorLog {
 
   @@index([farmId])
   @@index([logDate])
+}
+
+/** Completed Service / Placement / Prebrood checklist (TestFlight Service Farm). */
+model ServiceForm {
+  id        String   @id @default(cuid())
+  farmId    String
+  flockId   String?
+  formKind  String
+  formDate  DateTime @db.Date
+  payload   Json
+  visitId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm  Farm       @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  flock Flock?     @relation(fields: [flockId], references: [id], onDelete: SetNull)
+  visit FarmVisit? @relation(fields: [visitId], references: [id], onDelete: SetNull)
+
+  @@index([farmId])
+  @@index([visitId])
+  @@index([formDate])
+}
+
+/** In-progress Service Farm checklist draft (one per farm + kind). */
+model ServiceFormDraft {
+  farmId    String
+  formKind  String
+  payload   Json
+  updatedAt DateTime @updatedAt
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@id([farmId, formKind])
 }

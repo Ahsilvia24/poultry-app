@@ -20,7 +20,7 @@ export function LfoFarmTabs({
       contentContainerStyle={{ flexDirection: "row", alignItems: "center", paddingRight: 8 }}
     >
       <Chip
-        label="Manual"
+        label="Quick Calc."
         active={selectedId === MANUAL_LFO_TAB_ID}
         onPress={() => onSelect(MANUAL_LFO_TAB_ID)}
       />

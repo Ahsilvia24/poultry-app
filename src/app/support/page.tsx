@@ -15,11 +15,15 @@ export default function SupportPage() {
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight">Support</h1>
         <p className="mt-3 text-base leading-relaxed text-stone-600">
-          Need help with the PoultryTech app for farm management, mortality entry, LFO, or
-          reports? Contact us and we&apos;ll get back to you as soon as we can.
+          PoultryTech is operated by Alex Silvia. Need help with farm management, mortality
+          entry, LFO, or reports? Contact us and we&apos;ll get back to you as soon as we can.
         </p>
 
         <div className="mt-8 space-y-4 text-base">
+          <div>
+            <p className="text-sm font-semibold text-stone-500">Operator</p>
+            <p className="font-medium text-stone-800">Alex Silvia</p>
+          </div>
           <div>
             <p className="text-sm font-semibold text-stone-500">Email</p>
             <a
@@ -40,8 +44,7 @@ export default function SupportPage() {
         </div>
 
         <p className="mt-10 text-sm text-stone-500">
-          For App Store review questions about demo access or account setup, email the address
-          above and mention Apple App Review.
+          For help with PoultryTech, email the address above.
         </p>
         <p className="mt-4 text-sm text-stone-500">
           <Link

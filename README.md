@@ -47,6 +47,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+The Safari / phone-style web app you own is published at [https://poultrytechapp.com](https://poultrytechapp.com).
+
 ### Seed login
 
 | Field    | Value                |

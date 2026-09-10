@@ -28,25 +28,29 @@ export function AddHouseForm({ farmId }: { farmId: string }) {
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-3 text-sm text-emerald-800 hover:underline"
-      >
-        Add house
-      </button>
+      <div className="mt-3 text-left">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-sm text-emerald-800 hover:underline"
+        >
+          Add House
+        </button>
+      </div>
     );
   }
 
   return (
     <div className="mt-3">
-      <button
-        type="button"
-        onClick={() => !pending && setOpen(false)}
-        className="text-sm text-emerald-800 hover:underline"
-      >
-        Add house
-      </button>
+      <div className="text-left">
+        <button
+          type="button"
+          onClick={() => !pending && setOpen(false)}
+          className="text-sm text-emerald-800 hover:underline"
+        >
+          Add House
+        </button>
+      </div>
       <Card className="mt-3">
         {error ? <p className="mb-3 text-sm text-red-700">{error}</p> : null}
         <form key={formKey} action={onSave} className="space-y-3">
@@ -70,6 +74,10 @@ export function AddHouseForm({ farmId }: { farmId: string }) {
             <div>
               <Label htmlFor="totalFanCFM">Total CFM (Min Vent)</Label>
               <Input id="totalFanCFM" name="totalFanCFM" type="number" min={0} step="any" />
+            </div>
+            <div>
+              <Label htmlFor="totalPowerCFM">Total CFM (Power)</Label>
+              <Input id="totalPowerCFM" name="totalPowerCFM" type="number" min={0} step="any" />
             </div>
           </div>
           <div>

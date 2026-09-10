@@ -7,3 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ## TestFlight / EAS submit
 
 Do not run EAS production iOS builds, `eas submit`, or TestFlight uploads unless the user explicitly asks in that turn.
+
+## Testing
+
+Do not run browser or computer-use verification for copy, layout, or other small UI tweaks unless the user asks. `/no-test` skips testing on a single request.

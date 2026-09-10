@@ -13,6 +13,7 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
+import { WebPortalOverlay } from "./WebPortalOverlay";
 
 /** Half-hour slots: top (:00) and bottom (:30) of each hour. */
 export const FEED_UP_TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
@@ -64,9 +65,13 @@ function toTimeKey(d: Date): string {
 function WebTimeOptions({
   value,
   onSelect,
+  maxHeight = 420,
+  fill = false,
 }: {
   value: string;
   onSelect: (time: string) => void;
+  maxHeight?: number;
+  fill?: boolean;
 }) {
   const listRef = useRef<ScrollViewType | null>(null);
   const selectedIndex = Math.max(
@@ -85,7 +90,7 @@ function WebTimeOptions({
   return (
     <ScrollView
       ref={listRef}
-      style={{ maxHeight: 280 }}
+      style={fill ? { flex: 1 } : { maxHeight }}
       contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 12 }}
       keyboardShouldPersistTaps="handled"
     >
@@ -126,26 +131,37 @@ export function TimeScrollPickerField({
   value,
   onChange,
   onOpen,
+  expanded,
   style,
   inputStyle,
+  presentation = "modal",
 }: {
   label: string;
   value: string;
   onChange: (time: string) => void;
   /** Fired when the picker is opened (e.g. to dismiss a keypad). */
   onOpen?: () => void;
+  /** When false, collapse an inline picker (exclusive accordion). */
+  expanded?: boolean;
   style?: object;
   /** Extra styles on the value box (e.g. drop bottom margin when a control sits under it). */
   inputStyle?: object;
+  /** `inline` expands under the field — required inside parent Modals. */
+  presentation?: "modal" | "inline";
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseTime(value || "06:00"));
   const isWeb = Platform.OS === "web";
+  const useInline = presentation === "inline";
+
+  useEffect(() => {
+    if (expanded === false) setOpen(false);
+  }, [expanded]);
 
   function openPicker() {
     onOpen?.();
     setDraft(parseTime(value || "06:00"));
-    setOpen(true);
+    setOpen((v) => (useInline ? !v : true));
   }
 
   function onPickerChange(event: DateTimePickerEvent, selected?: Date) {
@@ -203,7 +219,7 @@ export function TimeScrollPickerField({
         <Ionicons name="time-outline" size={20} color={colors.muted} />
       </Pressable>
 
-      {Platform.OS === "android" && open ? (
+      {Platform.OS === "android" && open && !useInline ? (
         <DateTimePicker
           value={pickerValue}
           mode="time"
@@ -213,7 +229,74 @@ export function TimeScrollPickerField({
         />
       ) : null}
 
-      {Platform.OS !== "android" && open ? (
+      {open && useInline ? (
+        <View
+          style={{
+            marginTop: 8,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: 12,
+            backgroundColor: "#fff",
+            overflow: "hidden",
+            paddingBottom: 8,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          >
+            <Text style={{ fontWeight: "700", color: colors.text }}>{timeLabel(draftKey)}</Text>
+            <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+              <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
+            </Pressable>
+          </View>
+          <WebTimeOptions value={draftKey} onSelect={selectWebTime} />
+        </View>
+      ) : null}
+
+      {isWeb && open && !useInline ? (
+        <WebPortalOverlay onDismiss={() => setOpen(false)}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          >
+            <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+              <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
+            </Pressable>
+            <Text style={{ fontWeight: "800", color: colors.text }}>{label}</Text>
+            <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+              <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
+            </Pressable>
+          </View>
+
+          <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
+            <Text style={{ fontSize: 13, color: colors.muted, fontWeight: "600" }}>
+              Selected
+            </Text>
+            <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, marginTop: 2 }}>
+              {timeLabel(draftKey)}
+            </Text>
+          </View>
+
+          <WebTimeOptions value={draftKey} onSelect={selectWebTime} fill />
+        </WebPortalOverlay>
+      ) : null}
+
+      {Platform.OS !== "android" && !isWeb && open && !useInline ? (
         <Modal
           transparent
           animationType="slide"
@@ -254,19 +337,15 @@ export function TimeScrollPickerField({
                   <Text style={{ fontWeight: "700", color: colors.muted }}>Cancel</Text>
                 </Pressable>
                 <Text style={{ fontWeight: "800", color: colors.text }}>{label}</Text>
-                {isWeb ? (
-                  <View style={{ width: 56 }} />
-                ) : (
-                  <Pressable
-                    onPress={() => {
-                      onChange(draftKey);
-                      setOpen(false);
-                    }}
-                    hitSlop={8}
-                  >
-                    <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
-                  </Pressable>
-                )}
+                <Pressable
+                  onPress={() => {
+                    onChange(draftKey);
+                    setOpen(false);
+                  }}
+                  hitSlop={8}
+                >
+                  <Text style={{ fontWeight: "800", color: colors.accentDark }}>Done</Text>
+                </Pressable>
               </View>
 
               <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
@@ -278,18 +357,14 @@ export function TimeScrollPickerField({
                 </Text>
               </View>
 
-              {isWeb ? (
-                <WebTimeOptions value={draftKey} onSelect={selectWebTime} />
-              ) : (
-                <DateTimePicker
-                  value={pickerValue}
-                  mode="time"
-                  display="spinner"
-                  minuteInterval={30}
-                  onChange={onPickerChange}
-                  style={{ alignSelf: "center" }}
-                />
-              )}
+              <DateTimePicker
+                value={pickerValue}
+                mode="time"
+                display="spinner"
+                minuteInterval={30}
+                onChange={onPickerChange}
+                style={{ alignSelf: "center" }}
+              />
             </Pressable>
           </Pressable>
         </Modal>

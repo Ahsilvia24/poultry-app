@@ -4,11 +4,13 @@ import { summarizeForDate } from "@/lib/mortality/calculations";
 import { cn, formatNumber } from "@/lib/utils";
 import { Card } from "@/components/ui";
 
-/** Temporary no-auth preview of the multi-flock farm tile. */
+/** Internal farm-tile check. Requires a signed-in session. */
+export const dynamic = "force-dynamic";
+
 export default async function TriplePlacePreviewPage() {
   const today = new Date();
   const farm = await prisma.farm.findFirst({
-    where: { farmName: "Triple Place Demo", deletedAt: null },
+    where: { farmName: "Triple Place", deletedAt: null },
     include: {
       houses: { where: { deletedAt: null }, select: { id: true } },
       flocks: {
@@ -38,14 +40,13 @@ export default async function TriplePlacePreviewPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-stone-200 p-6">
         <Card>
-          <p className="font-semibold">Triple Place Demo farm not found.</p>
+          <p className="font-semibold">Triple Place farm not found.</p>
         </Card>
       </div>
     );
   }
 
   const activeFlocks = farm.flocks;
-  const houseCount = farm.houses.length;
   const birdsPlaced = activeFlocks.reduce(
     (sum, fl) => sum + fl.houseFlocks.reduce((s, hf) => s + hf.placedBirdCount, 0),
     0,
@@ -78,14 +79,13 @@ export default async function TriplePlacePreviewPage() {
     <div className="flex min-h-screen items-center justify-center bg-[#d6d3d1] p-6">
       <div className="w-full max-w-md">
         <p className="mb-3 text-xs font-bold uppercase tracking-wide text-stone-500">
-          Farms list — live preview
+          Farm tile
         </p>
         <Card className="transition hover:border-emerald-400">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-lg font-bold text-stone-900">
                 {farm.farmName}
-                <span className="font-semibold text-stone-500"> ({houseCount})</span>
                 {flockAges.length > 0 ? (
                   <span className="font-semibold text-stone-500">
                     {" "}

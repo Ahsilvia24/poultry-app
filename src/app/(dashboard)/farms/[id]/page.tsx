@@ -14,8 +14,10 @@ import {
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
 import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
+import { ensureActiveFlockHouseFlocks } from "@/lib/ensureActiveFlockHouseFlocks";
 import { createFlockAction } from "@/app/actions/farms";
 import { HouseCard } from "@/components/HouseCard";
+import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { AddFlockSection } from "@/components/AddFlockSection";
 import { AddHouseForm } from "@/components/AddHouseForm";
 import { FarmInfoEditor } from "@/components/FarmInfoEditor";
@@ -36,36 +38,40 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
   const { id } = await params;
   const today = new Date();
 
-  const farm = await prisma.farm.findFirst({
-    where: { id, userId: session.user.id, deletedAt: null },
-    include: {
-      houses: { where: { deletedAt: null }, orderBy: { houseNumber: "asc" } },
-      flocks: {
-        where: { deletedAt: null },
-        orderBy: { placementDate: "desc" },
-        include: {
-          houseFlocks: {
-            include: {
-              house: true,
-              mortalities: { where: { isDraft: false }, orderBy: { mortalityDate: "asc" } },
-              feedDeliveries: true,
-              performance: true,
+  await ensureActiveFlockHouseFlocks(id, { userId: session.user.id });
+
+  const [farm, thresholds] = await Promise.all([
+    prisma.farm.findFirst({
+      where: { id, userId: session.user.id, deletedAt: null },
+      include: {
+        houses: { where: { deletedAt: null }, orderBy: { houseNumber: "asc" } },
+        flocks: {
+          where: { deletedAt: null },
+          orderBy: { placementDate: "desc" },
+          include: {
+            houseFlocks: {
+              include: {
+                house: true,
+                mortalities: { where: { isDraft: false }, orderBy: { mortalityDate: "asc" } },
+                feedDeliveries: true,
+                performance: true,
+              },
             },
+            feedDeliveries: true,
           },
-          feedDeliveries: true,
         },
+        visits: { orderBy: { visitDate: "desc" }, take: 8 },
+        generatorLogs: { orderBy: [{ logDate: "desc" }, { createdAt: "desc" }], take: 20 },
+        issues: { orderBy: { dateReported: "desc" }, take: 8 },
+        litterEvents: { orderBy: { eventDate: "desc" }, take: 8, include: { house: true } },
       },
-      visits: { orderBy: { visitDate: "desc" }, take: 8 },
-      generatorLogs: { orderBy: [{ logDate: "desc" }, { createdAt: "desc" }], take: 20 },
-      issues: { orderBy: { dateReported: "desc" }, take: 8 },
-      litterEvents: { orderBy: { eventDate: "desc" }, take: 8, include: { house: true } },
-    },
-  });
+    }),
+    getUserThresholds(session.user.id),
+  ]);
 
   if (!farm) notFound();
 
   const farmId = farm.id;
-  const thresholds = await getUserThresholds(session.user.id);
   const activeFlocks = farm.flocks
     .filter((f) => f.flockStatus === "ACTIVE")
     .slice()
@@ -180,9 +186,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           farm={{
             id: farm.id,
             farmName: farm.farmName,
+            farmNumber: farm.farmNumber,
             growerName: farm.growerName,
-            phoneNumber: farm.phoneNumber,
-            email: farm.email,
             notes: farm.notes,
             numberOfGenerators: farm.numberOfGenerators,
           }}
@@ -192,7 +197,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
       <div className="mb-6">
         <FarmQuickLinks
           farmId={farm.id}
-          hasActiveFlock={activeFlocks.length > 0}
           completeFlocks={activeFlocks.map((flock) => ({
             id: flock.id,
             flockNumber: flock.flockNumber,
@@ -201,6 +205,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         />
       </div>
 
+      <ExclusiveSwipeGroup>
       <div className="mt-3 grid items-start gap-3 md:grid-cols-2">
         {houseCards.map(
           ({
@@ -225,6 +230,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
               houseNumber: house.houseNumber,
               squareFootage: house.squareFootage,
               totalFanCFM: house.totalFanCFM,
+              totalPowerCFM: house.totalPowerCFM,
               numberOfFans: house.numberOfFans,
               notes: house.notes,
               loggedTemp: house.loggedTemp,
@@ -252,6 +258,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           </Card>
         ) : null}
       </div>
+      </ExclusiveSwipeGroup>
 
       <AddHouseForm farmId={farm.id} />
 
@@ -326,7 +333,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
             houseNumber: e.house?.houseNumber ?? null,
             contractor: e.contractor,
             litterDepth: e.litterDepth,
-            cost: e.cost,
             notes: e.notes,
           }))}
         />
@@ -363,14 +369,6 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
         />
       </div>
 
-      <div className="mt-8 flex justify-end">
-        <Link
-          href={`/history/${farm.id}`}
-          className="text-sm font-semibold text-emerald-800 hover:underline"
-        >
-          Farm History
-        </Link>
-      </div>
     </div>
   );
 }

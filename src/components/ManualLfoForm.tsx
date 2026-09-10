@@ -3,14 +3,16 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Button, Card, Input, Label, Select } from "@/components/ui";
+import { ConsumptionRateCalculator } from "@/components/ConsumptionRateCalculator";
 import { createManualLastFeedOrderAction } from "@/app/actions/lfo";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
   feedUpAtFromCatch,
-  formatHouseLfoSummary,
+  formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
-import { HALF_HOUR_TIME_OPTIONS } from "@/lib/time-slots";
+import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime } from "@/lib/time-slots";
+import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
 
 const MANUAL_HOUSE_ID = "manual";
 
@@ -28,6 +30,7 @@ function PairField({ children }: { children: React.ReactNode }) {
 
 export function ManualLfoForm() {
   const [orderDate, setOrderDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [headCount, setHeadCount] = useState("");
   const [binAPounds, setBinAPounds] = useState("0");
@@ -41,6 +44,7 @@ export function ManualLfoForm() {
     const rate = Number(consumptionRate);
     return calculateLastFeedOrder({
       orderDate,
+      orderTime,
       consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
       houses: [
         {
@@ -53,10 +57,9 @@ export function ManualLfoForm() {
         },
       ],
     });
-  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate]);
+  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime]);
 
   const result = calc.houses[0];
-  const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
 
   return (
     <form
@@ -70,52 +73,24 @@ export function ManualLfoForm() {
       {error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
       ) : null}
-      <Card>
-        <div className="grid grid-cols-2 gap-2">
-          <PairField>
-            <Label htmlFor="manual-orderDate">Order date</Label>
-            <Input
-              id="manual-orderDate"
-              name="orderDate"
-              type="date"
-              value={orderDate}
-              onChange={(e) => setOrderDate(e.target.value)}
-              className="mt-0.5"
-              compact
-            />
-          </PairField>
-          <PairField>
-            <Label htmlFor="manual-consumptionRate">Consumption rate</Label>
-            <Input
-              id="manual-consumptionRate"
-              name="consumptionRate"
-              type="number"
-              min={0}
-              step="0.01"
-              inputMode="decimal"
-              value={consumptionRate}
-              onChange={(e) => setConsumptionRate(e.target.value)}
-              className="mt-0.5"
-              compact
-            />
-          </PairField>
-        </div>
-        <p className="mt-1 text-xs text-stone-500">Consumption rate in lbs/bird/day</p>
-      </Card>
+      <input type="hidden" name="consumptionRate" value={consumptionRate} />
+      <ConsumptionRateCalculator
+        onRateChange={(rate) => setConsumptionRate(formatConsumptionRate(rate))}
+      />
 
-      <h2 className="text-lg font-bold text-stone-900">Bin inventory & feed up</h2>
+      <h2 className="text-lg font-bold text-stone-900">Bin Inventory & Feed Up</h2>
       <Card>
         <div className="flex items-baseline justify-end">
           <label className="flex items-baseline gap-1.5 text-xs text-stone-500">
-            Head count
+            {headCount.trim() ? "Head Count" : "Enter Head Count"}
             <input
               type="text"
               name="headCount"
               inputMode="numeric"
               pattern="[0-9]*"
               value={headCount}
-              placeholder="0"
-              aria-label="Enter bird count"
+              placeholder=""
+              aria-label="Enter Head Count"
               onChange={(e) => setHeadCount(e.target.value.replace(/[^\d]/g, ""))}
               className="w-28 border-0 bg-transparent p-0 text-right text-xs font-semibold text-stone-800 caret-stone-900 outline-none placeholder:text-stone-400 focus:text-emerald-800"
             />
@@ -261,17 +236,44 @@ export function ManualLfoForm() {
         ) : null}
       </Card>
 
-      {houseSummary.length > 0 ? (
-        <div className="rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-700">
-          <div className="space-y-0.5">
-            {houseSummary.map((line) => (
-              <p key={line} className="font-semibold text-stone-900">
-                {line}
-              </p>
-            ))}
-          </div>
+      <Card>
+        <div className="grid grid-cols-2 gap-2">
+          <PairField>
+            <Label htmlFor="manual-orderDate">Order date</Label>
+            <Input
+              id="manual-orderDate"
+              name="orderDate"
+              type="date"
+              value={orderDate}
+              onChange={(e) => setOrderDate(e.target.value)}
+              className="mt-0.5"
+              compact
+            />
+          </PairField>
+          <PairField>
+            <Label htmlFor="manual-orderTime">Order time</Label>
+            <Select
+              id="manual-orderTime"
+              name="orderTime"
+              value={orderTime}
+              onChange={(e) => setOrderTime(e.target.value)}
+              className="mt-0.5"
+              compact
+            >
+              {HALF_HOUR_TIME_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </PairField>
         </div>
-      ) : null}
+        {formatLfoOrderClock(orderDate, orderTime) ? (
+          <p className="mt-1 text-xs text-stone-500">
+            Hours from {formatLfoOrderClock(orderDate, orderTime)}
+          </p>
+        ) : null}
+      </Card>
 
       <Button type="submit">Save LFO</Button>
     </form>

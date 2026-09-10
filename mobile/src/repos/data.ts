@@ -1,5 +1,11 @@
 import { getDb } from "../db";
 import { newId, todayKey, addDaysKey } from "../lib/ids";
+import { planAttachMissingHousesToActiveFlock } from "../lib/attachHouseToActiveFlock";
+import {
+  dedupeScheduleRows,
+  planMergeDuplicateFlocks,
+  scheduleGroupsForFarm,
+} from "../lib/flockIdentity";
 import {
   birdAgeFromPlacement,
   daysSincePlacement,
@@ -17,8 +23,13 @@ import {
   formatHouseLfoSummary,
   formatLocalDateTime,
 } from "../lib/lfo/calculate";
+import { lfoDisplayName, nextCustomLfoName } from "../lib/lfo/customName";
 import { normalizeHalfHourTime } from "../lib/time-slots";
 import { buildFieldLogWeeks, type FieldLogWeek } from "../lib/reports/field-log";
+import {
+  collectPriorHours,
+  type GeneratorReportFarm,
+} from "../lib/reports/generator-log";
 import {
   buildFlockVisitSchedule,
   completionKey,
@@ -33,6 +44,17 @@ import {
   farmGroupKey as catchFarmGroupKey,
   type CatchRow,
 } from "../lib/catchImport/parse";
+import { getFarmOrder } from "../lib/appSettings";
+import { isHouseInPropagateRange } from "../lib/housePropagate";
+import { normalizeFlockNumber, planFlockNumberChange } from "../lib/houseFlockNumber";
+import { sortFarmsByOrder } from "../lib/farmOrder";
+import { VISIT_TYPE_LABELS } from "../lib/visits";
+import { normalizedLoggedTemp } from "../lib/serviceForms/liveHouseMetrics";
+import {
+  excessGeneratorHourCells,
+  lastLoggedGeneratorHours,
+  type GeneratorHours,
+} from "../lib/generator";
 
 type MortRow = {
   mortality_date: string;
@@ -181,8 +203,7 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
         : "SELECT * FROM farms WHERE is_active = 1 AND deleted_at IS NULL ORDER BY farm_name ASC",
   );
 
-  return {
-    farms: farms
+  const mapped = farms
       .filter((f) => f.id !== MANUAL_LFO_FARM_ID)
       .map((f) => {
       const flocks = db.getAllSync<{
@@ -283,7 +304,10 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
             }
           : null,
       };
-    }),
+    });
+
+  return {
+    farms: sortFarmsByOrder(mapped, getFarmOrder()),
   };
 }
 
@@ -302,6 +326,7 @@ export function getDashboard() {
     farmId: string;
     flockId: string;
     farmName: string;
+    flockNumber: string;
     flockAgeDays: number | null;
     date: string;
     label: string;
@@ -347,12 +372,14 @@ export function getDashboard() {
   }
 
   for (const farm of farms) {
+    ensureHousesOnActiveFlock(farm.id);
     const flocks = db.getAllSync<{
       id: string;
+      flock_number: string;
       placement_date: string;
       projected_catch_date: string | null;
     }>(
-      `SELECT id, placement_date, projected_catch_date FROM flocks
+      `SELECT id, flock_number, placement_date, projected_catch_date FROM flocks
        WHERE farm_id = ? AND flock_status = 'ACTIVE'
        ORDER BY placement_date ASC`,
       [farm.id],
@@ -515,37 +542,30 @@ export function getDashboard() {
     const projectedMortality = hasProjection ? projectedMortSum : null;
 
     const farmCompletions = completedByFarm.get(farm.id) ?? new Map();
-    // Build schedule from distinct house place/catch dates (staggered houses),
-    // falling back to flock-level dates when no houses are attached yet.
-    const scheduleGroups = new Map<
-      string,
-      { flockId: string; placement: string; catchDate: string }
-    >();
+    const housesByFlock = new Map<string, typeof hfs>();
     for (const hf of hfs) {
-      const placement = hf.placement_date?.trim() || hf.flock_placement;
-      const catchDate =
-        hf.catch_date?.trim() || hf.flock_catch || addDaysKey(placement, 52);
-      const key = `${hf.flock_id}|${placement}|${catchDate}`;
-      if (!scheduleGroups.has(key)) {
-        scheduleGroups.set(key, {
-          flockId: hf.flock_id,
-          placement,
-          catchDate,
-        });
-      }
+      const list = housesByFlock.get(hf.flock_id) ?? [];
+      list.push(hf);
+      housesByFlock.set(hf.flock_id, list);
     }
-    if (scheduleGroups.size === 0) {
-      for (const fl of flocks) {
+    const scheduleGroups = scheduleGroupsForFarm(
+      flocks.map((fl) => {
+        const flockHouses = housesByFlock.get(fl.id) ?? [];
         const catchDate = fl.projected_catch_date ?? addDaysKey(fl.placement_date, 52);
-        scheduleGroups.set(fl.id, {
-          flockId: fl.id,
-          placement: fl.placement_date,
+        return {
+          id: fl.id,
+          flockNumber: fl.flock_number,
+          placementDate: fl.placement_date,
           catchDate,
-        });
-      }
-    }
-    for (const group of scheduleGroups.values()) {
-      const schedule = buildFlockVisitSchedule(group.placement, group.catchDate);
+          houses: flockHouses.map((hf) => ({
+            placementDate: hf.placement_date,
+            catchDate: hf.catch_date?.trim() || hf.flock_catch || null,
+          })),
+        };
+      }),
+    );
+    for (const group of scheduleGroups) {
+      const schedule = buildFlockVisitSchedule(group.placementDate, group.catchDate);
       const { today: dueToday, upcoming } = splitScheduleForDashboard(
         schedule,
         today,
@@ -556,8 +576,9 @@ export function getDashboard() {
         farmId: farm.id,
         flockId: group.flockId,
         farmName: farm.farmName,
+        flockNumber: group.flockNumber,
         // Current flock age today (can be negative pre-place), not the event's target age.
-        flockAgeDays: daysSincePlacement(group.placement, today),
+        flockAgeDays: daysSincePlacement(group.placementDate, today),
         date: v.dateKey,
         label: v.label,
         completed: v.completed,
@@ -618,13 +639,15 @@ export function getDashboard() {
     });
   }
 
-  todaysSchedule.sort(
+  const todaysDeduped = dedupeScheduleRows(todaysSchedule);
+  const upcomingDeduped = dedupeScheduleRows(upcomingSchedule);
+  todaysDeduped.sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
       todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
       a.farmName.localeCompare(b.farmName),
   );
-  upcomingSchedule.sort(
+  upcomingDeduped.sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
       todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
@@ -650,8 +673,8 @@ export function getDashboard() {
     },
     farmCards,
     upcomingCatches: upcomingCatchesSorted,
-    todaysSchedule,
-    upcomingSchedule,
+    todaysSchedule: todaysDeduped,
+    upcomingSchedule: upcomingDeduped,
   };
 }
 
@@ -664,10 +687,13 @@ export function getFarmDetail(farmId: string) {
     grower_name: string;
     phone_number: string | null;
     email: string | null;
+    farm_number: string | null;
     notes: string | null;
     number_of_generators: number;
   }>("SELECT * FROM farms WHERE id = ?", [farmId]);
   if (!farm) throw new Error("Farm not found");
+
+  ensureHousesOnActiveFlock(farmId);
 
   const activeFlocksRaw = db.getAllSync<{
     id: string;
@@ -691,6 +717,7 @@ export function getFarmDetail(farmId: string) {
     house_number: number;
     square_footage: number;
     total_fan_cfm: number | null;
+    total_power_cfm: number | null;
     number_of_fans: number | null;
     logged_temp: string | null;
     logged_temp_at: string | null;
@@ -800,6 +827,7 @@ export function getFarmDetail(farmId: string) {
       houseNumber: h.house_number,
       squareFootage: h.square_footage,
       totalFanCFM: h.total_fan_cfm,
+      totalPowerCFM: h.total_power_cfm,
       numberOfFans: h.number_of_fans,
       cfmPerSqFt:
         h.total_fan_cfm != null && h.square_footage > 0
@@ -903,6 +931,7 @@ export function getFarmDetail(farmId: string) {
     farm: {
       id: farm.id,
       farmName: farm.farm_name,
+      farmNumber: farm.farm_number ?? null,
       growerName: farm.grower_name,
       phoneNumber: farm.phone_number,
       email: farm.email ?? null,
@@ -1113,6 +1142,7 @@ export function getMortalityForm(date: string, farmId?: string) {
     farms: farms
       .filter((f) => !farmId || f.id === farmId)
       .map((f) => {
+        ensureHousesOnActiveFlock(f.id);
         const flocks = db.getAllSync<{ id: string; flock_number: string; placement_date: string }>(
           `SELECT id, flock_number, placement_date FROM flocks
            WHERE farm_id = ? AND flock_status = 'ACTIVE'
@@ -1445,15 +1475,81 @@ export function getReports(from: string, to: string, farmId?: string) {
   return { dates, rows };
 }
 
+export function getGeneratorLogReport(
+  from: string,
+  to: string,
+  farmId?: string,
+): GeneratorReportFarm[] {
+  const db = getDb();
+  const farms = listFarms().farms.filter((f) => !farmId || f.id === farmId);
+  const rows: GeneratorReportFarm[] = [];
+
+  for (const farm of farms) {
+    const logs = db.getAllSync<{
+      id: string;
+      log_date: string;
+      gen1_hours: number | null;
+      gen2_hours: number | null;
+      gen3_hours: number | null;
+      gen4_hours: number | null;
+    }>(
+      `SELECT id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours
+       FROM generator_logs
+       WHERE farm_id = ? AND log_date >= ? AND log_date <= ?
+       ORDER BY log_date DESC, id DESC`,
+      [farm.id, from, to],
+    );
+    if (logs.length === 0) continue;
+    const older = db.getAllSync<{
+      gen1_hours: number | null;
+      gen2_hours: number | null;
+      gen3_hours: number | null;
+      gen4_hours: number | null;
+    }>(
+      `SELECT gen1_hours, gen2_hours, gen3_hours, gen4_hours
+       FROM generator_logs
+       WHERE farm_id = ? AND log_date < ?
+       ORDER BY log_date DESC, id DESC`,
+      [farm.id, from],
+    );
+    rows.push({
+      farmId: farm.id,
+      farmName: farm.farmName,
+      numberOfGenerators: farm.numberOfGenerators ?? null,
+      priorHours: collectPriorHours(
+        older.map((log) => ({
+          gen1Hours: log.gen1_hours,
+          gen2Hours: log.gen2_hours,
+          gen3Hours: log.gen3_hours,
+          gen4Hours: log.gen4_hours,
+        })),
+      ),
+      logs: logs.map((log) => ({
+        id: log.id,
+        farmId: farm.id,
+        farmName: farm.farmName,
+        logDate: log.log_date,
+        gen1Hours: log.gen1_hours,
+        gen2Hours: log.gen2_hours,
+        gen3Hours: log.gen3_hours,
+        gen4Hours: log.gen4_hours,
+      })),
+    });
+  }
+
+  return rows;
+}
+
 export function getFieldLog(from: string, to: string): FieldLogWeek[] {
   const db = getDb();
   const visits = db.getAllSync<{
     id: string;
     farm_name: string;
+    visit_type: string;
     visit_date: string;
     logged_at: string | null;
   }>(
-    `SELECT v.id, f.farm_name, v.visit_date, v.logged_at
+    `SELECT v.id, f.farm_name, v.visit_type, v.visit_date, v.logged_at
      FROM farm_visits v
      JOIN farms f ON f.id = v.farm_id
      WHERE f.deleted_at IS NULL
@@ -1467,6 +1563,7 @@ export function getFieldLog(from: string, to: string): FieldLogWeek[] {
     visits.map((v) => ({
       id: v.id,
       farmName: v.farm_name,
+      visitType: v.visit_type,
       visitDate: v.visit_date,
       loggedAt: v.logged_at?.trim() || `${v.visit_date}T12:00:00.000Z`,
     })),
@@ -1495,8 +1592,8 @@ export function listLfos() {
       const detail = getLfo(r.id);
       const calc = calculateLastFeedOrder({
         orderDate: detail.orderDate.slice(0, 10),
+        orderTime: detail.orderTime,
         consumptionRate: detail.consumptionRate,
-        now: detail.calculatedAt ? new Date(detail.calculatedAt) : undefined,
         houses: detail.houses.map((h) => ({
           houseId: h.houseId,
           houseNumber: h.houseNumber,
@@ -1513,7 +1610,7 @@ export function listLfos() {
     return {
       id: r.id,
       farmId: r.farm_id,
-      farmName: r.farm_name,
+      farmName: lfoDisplayName(r.farm_name, r.notes),
       orderDate: r.order_date,
       notes: r.notes,
       houseSummary,
@@ -1542,7 +1639,80 @@ function remainingHeadCountForHouse(farmId: string, houseId: string, today: stri
   return summarizeHouse(hf.placed_bird_count, records, today).remaining;
 }
 
-export function createLfo(farmId: string, orderDate: string, notes?: string) {
+export type FarmLfoHouse = {
+  houseId: string;
+  houseNumber: number;
+  headCount: number;
+  catchDate: string;
+  catchTime: string;
+};
+
+export function getFarmLfoHouses(farmId: string): FarmLfoHouse[] {
+  const db = getDb();
+  const today = todayKey();
+  const houses = db.getAllSync<{ id: string; house_number: number }>(
+    `SELECT id, house_number FROM houses
+     WHERE farm_id = ? AND deleted_at IS NULL
+     ORDER BY house_number ASC`,
+    [farmId],
+  );
+  return houses.map((h) => {
+    const hf = db.getFirstSync<{
+      catch_date: string | null;
+      catch_time: string | null;
+      flock_catch: string | null;
+    }>(
+      `SELECT hf.catch_date, hf.catch_time, f.projected_catch_date as flock_catch
+       FROM house_flocks hf
+       JOIN flocks f ON f.id = hf.flock_id
+       WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
+       ORDER BY f.placement_date DESC, f.id DESC
+       LIMIT 1`,
+      [h.id, farmId],
+    );
+    return {
+      houseId: h.id,
+      houseNumber: h.house_number,
+      headCount: remainingHeadCountForHouse(farmId, h.id, today),
+      catchDate: hf?.catch_date?.trim() || hf?.flock_catch?.trim() || "",
+      catchTime: hf?.catch_time?.trim() || "",
+    };
+  });
+}
+
+export function saveFarmLfo(input: {
+  farmId: string;
+  orderDate: string;
+  orderTime?: string | null;
+  consumptionRate: number;
+  houses: Array<{
+    houseId: string;
+    binAPounds: number;
+    binBPounds: number;
+    feedUpAt: string | null;
+    headCount: number;
+  }>;
+}) {
+  const { id } = createLfo(input.farmId, input.orderDate, undefined, input.orderTime ?? undefined);
+  updateLfo({
+    id,
+    orderDate: input.orderDate,
+    orderTime: input.orderTime,
+    notes: null,
+    consumptionRate: input.consumptionRate,
+    houses: input.houses.map((house) => ({
+      id: newId("lfoi"),
+      houseId: house.houseId,
+      binAPounds: house.binAPounds,
+      binBPounds: house.binBPounds,
+      feedUpAt: house.feedUpAt,
+      headCount: house.headCount,
+    })),
+  });
+  return { id };
+}
+
+export function createLfo(farmId: string, orderDate: string, notes?: string, orderTime?: string) {
   const db = getDb();
   const flock = db.getFirstSync<{ id: string }>(
     `SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE'
@@ -1552,8 +1722,8 @@ export function createLfo(farmId: string, orderDate: string, notes?: string) {
   const id = newId("lfo");
   const createdAt = new Date().toISOString();
   db.runSync(
-    `INSERT INTO last_feed_orders (id, farm_id, flock_id, order_date, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-    [id, farmId, flock?.id ?? null, orderDate, notes ?? null, createdAt],
+    `INSERT INTO last_feed_orders (id, farm_id, flock_id, order_date, order_time, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [id, farmId, flock?.id ?? null, orderDate, orderTime ?? null, notes ?? null, createdAt],
   );
   const houses = db.getAllSync<{ id: string }>(
     "SELECT id FROM houses WHERE farm_id = ? AND deleted_at IS NULL ORDER BY house_number ASC",
@@ -1582,7 +1752,33 @@ export function createLfo(farmId: string, orderDate: string, notes?: string) {
       [newId("lfoi"), id, h.id, feedUp ? formatLocalDateTime(feedUp) : null],
     );
   }
+  ensureLastFeedOrderVisit(farmId, orderDate);
   return { id };
+}
+
+/** One Last Feed Order visit per farm per order date. Manual LFOs never log a visit. */
+function ensureLastFeedOrderVisit(farmId: string, orderDate: string) {
+  if (!farmId || farmId === MANUAL_LFO_FARM_ID) return;
+  const dateKey = orderDate.trim().slice(0, 10);
+  if (!dateKey) return;
+  try {
+    const existing = getDb().getFirstSync<{ id: string }>(
+      `SELECT id FROM farm_visits
+       WHERE farm_id = ? AND visit_type = 'LAST_FEED_ORDER' AND visit_date = ?
+       LIMIT 1`,
+      [farmId, dateKey],
+    );
+    if (existing) return;
+    createVisit({
+      farmId,
+      visitDate: dateKey,
+      visitType: "LAST_FEED_ORDER",
+      notes: VISIT_TYPE_LABELS.LAST_FEED_ORDER,
+      generalBirdCondition: "Healthy",
+    });
+  } catch {
+    // LFO save still succeeds if visit logging fails.
+  }
 }
 
 function ensureManualLfoFarm() {
@@ -1615,6 +1811,7 @@ function ensureManualLfoFarm() {
 
 export function createManualLfo(input: {
   orderDate: string;
+  orderTime?: string | null;
   consumptionRate: number;
   headCount: number;
   binAPounds: number;
@@ -1630,10 +1827,15 @@ export function createManualLfo(input: {
     Number.isFinite(input.consumptionRate) && input.consumptionRate > 0
       ? input.consumptionRate
       : 0.45;
+  const customName =
+    input.notes?.trim() ||
+    nextCustomLfoName(
+      db.getAllSync<{ notes: string | null }>("SELECT notes FROM last_feed_orders").map((r) => r.notes),
+    );
   db.runSync(
-    `INSERT INTO last_feed_orders (id, farm_id, flock_id, order_date, notes, calculated_at, created_at)
-     VALUES (?, ?, NULL, ?, ?, ?, ?)`,
-    [id, MANUAL_LFO_FARM_ID, input.orderDate, input.notes ?? null, now, now],
+    `INSERT INTO last_feed_orders (id, farm_id, flock_id, order_date, order_time, notes, calculated_at, created_at)
+     VALUES (?, ?, NULL, ?, ?, ?, ?, ?)`,
+    [id, MANUAL_LFO_FARM_ID, input.orderDate, input.orderTime ?? null, customName, now, now],
   );
   db.runSync(
     `INSERT INTO lfo_house_inventory
@@ -1661,6 +1863,7 @@ export function getLfo(id: string) {
     farm_id: string;
     flock_id: string | null;
     order_date: string;
+    order_time: string | null;
     notes: string | null;
     calculated_at: string | null;
   }>("SELECT * FROM last_feed_orders WHERE id = ?", [id]);
@@ -1692,8 +1895,9 @@ export function getLfo(id: string) {
   return {
     id: lfo.id,
     farmId: lfo.farm_id,
-    farmName: farm.farm_name,
+    farmName: lfoDisplayName(farm.farm_name, lfo.notes),
     orderDate: lfo.order_date,
+    orderTime: lfo.order_time,
     notes: lfo.notes,
     consumptionRate,
     calculatedAt: lfo.calculated_at,
@@ -1741,6 +1945,7 @@ export function updateLfoInventory(
 export function updateLfo(input: {
   id: string;
   orderDate: string;
+  orderTime?: string | null;
   notes: string | null;
   consumptionRate: number;
   houses: Array<{
@@ -1762,12 +1967,10 @@ export function updateLfo(input: {
   // Stamp clock/heads once; later edits keep the original snapshot.
   const calculatedAt = existing.calculated_at ?? new Date().toISOString();
 
-  db.runSync(`UPDATE last_feed_orders SET order_date = ?, notes = ?, calculated_at = ? WHERE id = ?`, [
-    input.orderDate,
-    input.notes,
-    calculatedAt,
-    input.id,
-  ]);
+  db.runSync(
+    `UPDATE last_feed_orders SET order_date = ?, order_time = ?, notes = ?, calculated_at = ? WHERE id = ?`,
+    [input.orderDate, input.orderTime ?? null, input.notes, calculatedAt, input.id],
+  );
 
   const rate =
     Number.isFinite(input.consumptionRate) && input.consumptionRate > 0
@@ -1814,6 +2017,7 @@ export function updateLfo(input: {
       );
     }
   }
+  ensureLastFeedOrderVisit(existing.farm_id, input.orderDate);
   return { success: true };
 }
 
@@ -1821,6 +2025,7 @@ export function updateLfo(input: {
 export function saveLfoAsNew(input: {
   sourceId: string;
   orderDate: string;
+  orderTime?: string | null;
   notes: string | null;
   consumptionRate: number;
   houses: Array<{
@@ -1831,11 +2036,19 @@ export function saveLfoAsNew(input: {
   }>;
 }) {
   const source = dbFarmIdForLfo(input.sourceId);
-  const { id } = createLfo(source, input.orderDate, input.notes ?? undefined);
+  const db = getDb();
+  const notes =
+    source === MANUAL_LFO_FARM_ID
+      ? nextCustomLfoName(
+          db.getAllSync<{ notes: string | null }>("SELECT notes FROM last_feed_orders").map((r) => r.notes),
+        )
+      : input.notes;
+  const { id } = createLfo(source, input.orderDate, notes ?? undefined, input.orderTime ?? undefined);
   updateLfo({
     id,
     orderDate: input.orderDate,
-    notes: input.notes,
+    orderTime: input.orderTime,
+    notes,
     consumptionRate: input.consumptionRate,
     houses: input.houses.map((h) => ({
       id: newId("lfoi"),
@@ -1917,6 +2130,7 @@ export function updateFarm(
   input: {
     farmName: string;
     growerName?: string;
+    farmNumber?: string | null;
     phoneNumber?: string | null;
     email?: string | null;
     notes?: string | null;
@@ -1930,6 +2144,16 @@ export function updateFarm(
   const farmName = input.farmName.trim();
   if (!farmName) throw new Error("Farm name is required");
 
+  const farmNumber =
+    input.farmNumber === undefined ? undefined : input.farmNumber.trim() || null;
+  if (farmNumber) {
+    const taken = db.getFirstSync<{ id: string }>(
+      "SELECT id FROM farms WHERE id != ? AND deleted_at IS NULL AND upper(trim(farm_number)) = upper(?)",
+      [farmId, farmNumber],
+    );
+    if (taken) throw new Error("That Farm # is already used on another farm.");
+  }
+
   // Keep existing generator count unless explicitly provided — generator log
   // owns how many gens are recorded; farm settings no longer edit this.
   if (input.numberOfGenerators !== undefined) {
@@ -1937,30 +2161,55 @@ export function updateFarm(
       input.numberOfGenerators == null || input.numberOfGenerators === 0
         ? 0
         : Math.max(1, Math.min(4, Math.floor(Number(input.numberOfGenerators) || 0)));
+    if (farmNumber !== undefined) {
+      db.runSync(
+        `UPDATE farms
+         SET farm_name = ?, grower_name = ?, farm_number = ?, notes = ?, number_of_generators = ?
+         WHERE id = ?`,
+        [
+          farmName,
+          (input.growerName ?? "").trim(),
+          farmNumber,
+          input.notes?.trim() || null,
+          generatorCount,
+          farmId,
+        ],
+      );
+    } else {
+      db.runSync(
+        `UPDATE farms
+         SET farm_name = ?, grower_name = ?, notes = ?, number_of_generators = ?
+         WHERE id = ?`,
+        [
+          farmName,
+          (input.growerName ?? "").trim(),
+          input.notes?.trim() || null,
+          generatorCount,
+          farmId,
+        ],
+      );
+    }
+  } else if (farmNumber !== undefined) {
     db.runSync(
       `UPDATE farms
-       SET farm_name = ?, grower_name = ?, phone_number = ?, email = ?, notes = ?, number_of_generators = ?
+       SET farm_name = ?, grower_name = ?, farm_number = ?, notes = ?
        WHERE id = ?`,
       [
         farmName,
         (input.growerName ?? "").trim(),
-        input.phoneNumber?.trim() || null,
-        input.email?.trim() || null,
+        farmNumber,
         input.notes?.trim() || null,
-        generatorCount,
         farmId,
       ],
     );
   } else {
     db.runSync(
       `UPDATE farms
-       SET farm_name = ?, grower_name = ?, phone_number = ?, email = ?, notes = ?
+       SET farm_name = ?, grower_name = ?, notes = ?
        WHERE id = ?`,
       [
         farmName,
         (input.growerName ?? "").trim(),
-        input.phoneNumber?.trim() || null,
-        input.email?.trim() || null,
         input.notes?.trim() || null,
         farmId,
       ],
@@ -2136,7 +2385,10 @@ export function deleteVisit(farmId: string, visitId: string) {
     [visitId, farmId],
   );
   if (!existing) throw new Error("Visit not found");
-  db.runSync("DELETE FROM service_forms WHERE visit_id = ? AND farm_id = ?", [visitId, farmId]);
+  db.runSync(
+    "UPDATE service_forms SET visit_id = NULL WHERE visit_id = ? AND farm_id = ?",
+    [visitId, farmId],
+  );
   db.runSync("DELETE FROM farm_visits WHERE id = ? AND farm_id = ?", [visitId, farmId]);
   return { success: true as const };
 }
@@ -2191,12 +2443,21 @@ export function createFlock(input: {
     }
   }
 
-  const id = newId("flock");
-  db.runSync(
-    `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
-     VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
-    [id, input.farmId, flockNumber, input.placementDate, projectedCatchDate],
-  );
+  const existingSame = db
+    .getAllSync<{ id: string; flock_number: string }>(
+      `SELECT id, flock_number FROM flocks
+       WHERE farm_id = ? AND flock_status = 'ACTIVE'`,
+      [input.farmId],
+    )
+    .find((f) => normalizeFlockNumber(f.flock_number) === normalizeFlockNumber(flockNumber));
+  const id = existingSame?.id ?? newId("flock");
+  if (!existingSame) {
+    db.runSync(
+      `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
+       VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
+      [id, input.farmId, flockNumber, input.placementDate, projectedCatchDate],
+    );
+  }
   for (const hp of placements) {
     const housePlacement = hp.placementDate?.trim() || input.placementDate;
     const houseCatch = addDaysKey(housePlacement, marketAge);
@@ -2915,6 +3176,7 @@ export function createHouse(
     houseNumber: number;
     squareFootage?: number;
     totalFanCFM?: number | null;
+    totalPowerCFM?: number | null;
     numberOfFans?: number | null;
   },
 ) {
@@ -2945,6 +3207,10 @@ export function createHouse(
     input.totalFanCFM == null || !Number.isFinite(Number(input.totalFanCFM))
       ? null
       : Number(input.totalFanCFM);
+  const totalPowerCFM =
+    input.totalPowerCFM == null || !Number.isFinite(Number(input.totalPowerCFM))
+      ? null
+      : Number(input.totalPowerCFM);
   const numberOfFans =
     input.numberOfFans == null || !Number.isFinite(Number(input.numberOfFans))
       ? null
@@ -2952,9 +3218,9 @@ export function createHouse(
 
   const id = newId("house");
   db.runSync(
-    `INSERT INTO houses (id, farm_id, house_number, square_footage, total_fan_cfm, number_of_fans)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [id, farmId, houseNumber, squareFootage, totalFanCFM, numberOfFans],
+    `INSERT INTO houses (id, farm_id, house_number, square_footage, total_fan_cfm, total_power_cfm, number_of_fans)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [id, farmId, houseNumber, squareFootage, totalFanCFM, totalPowerCFM, numberOfFans],
   );
 
   const count = db.getFirstSync<{ c: number }>(
@@ -2966,7 +3232,146 @@ export function createHouse(
     farmId,
   ]);
 
+  ensureHousesOnActiveFlock(farmId);
+
   return { id };
+}
+
+/**
+ * Houses added after a flock is created never got a house_flocks row, so
+ * mortality skipped them. Attach any missing houses to the active flock.
+ */
+export function ensureHousesOnActiveFlock(farmId: string) {
+  const db = getDb();
+  const houses = db.getAllSync<{ id: string; house_number: number }>(
+    `SELECT id, house_number FROM houses
+     WHERE farm_id = ? AND deleted_at IS NULL
+     ORDER BY house_number ASC`,
+    [farmId],
+  );
+  let flocks = db.getAllSync<{
+    id: string;
+    flock_number: string;
+    placement_date: string;
+    projected_catch_date: string | null;
+    actual_catch_date: string | null;
+  }>(
+    `SELECT id, flock_number, placement_date, projected_catch_date, actual_catch_date
+     FROM flocks
+     WHERE farm_id = ? AND flock_status = 'ACTIVE'
+     ORDER BY placement_date ASC, flock_number ASC`,
+    [farmId],
+  );
+  if (flocks.length === 0) return 0;
+
+  const houseCounts = new Map<string, number>();
+  for (const flock of flocks) {
+    const count =
+      db.getFirstSync<{ c: number }>(
+        "SELECT COUNT(*) as c FROM house_flocks WHERE flock_id = ?",
+        [flock.id],
+      )?.c ?? 0;
+    houseCounts.set(flock.id, count);
+  }
+  const mergePlans = planMergeDuplicateFlocks(
+    flocks.map((flock) => ({
+      id: flock.id,
+      flockNumber: flock.flock_number,
+      houseCount: houseCounts.get(flock.id) ?? 0,
+      placementDate: flock.placement_date,
+    })),
+  );
+  for (const merge of mergePlans) {
+    for (const absorbId of merge.absorbIds) {
+      const absorbHfs = db.getAllSync<{ id: string; house_id: string }>(
+        "SELECT id, house_id FROM house_flocks WHERE flock_id = ?",
+        [absorbId],
+      );
+      for (const hf of absorbHfs) {
+        const clash = db.getFirstSync<{ id: string }>(
+          "SELECT id FROM house_flocks WHERE flock_id = ? AND house_id = ?",
+          [merge.keepId, hf.house_id],
+        );
+        if (clash) {
+          db.runSync("DELETE FROM house_flocks WHERE id = ?", [hf.id]);
+        } else {
+          db.runSync("UPDATE house_flocks SET flock_id = ? WHERE id = ?", [
+            merge.keepId,
+            hf.id,
+          ]);
+        }
+      }
+      db.runSync("DELETE FROM flocks WHERE id = ? AND flock_status = 'ACTIVE'", [absorbId]);
+    }
+    flocks = db.getAllSync<{
+      id: string;
+      flock_number: string;
+      placement_date: string;
+      projected_catch_date: string | null;
+      actual_catch_date: string | null;
+    }>(
+      `SELECT id, flock_number, placement_date, projected_catch_date, actual_catch_date
+       FROM flocks
+       WHERE farm_id = ? AND flock_status = 'ACTIVE'
+       ORDER BY placement_date ASC, flock_number ASC`,
+      [farmId],
+    );
+  }
+
+  if (houses.length === 0) return 0;
+
+  const hfs = db.getAllSync<{
+    house_id: string;
+    flock_id: string;
+    placement_date: string | null;
+    catch_date: string | null;
+    catch_time: string | null;
+  }>(
+    `SELECT hf.house_id, hf.flock_id, hf.placement_date, hf.catch_date, hf.catch_time
+     FROM house_flocks hf
+     JOIN flocks f ON f.id = hf.flock_id
+     WHERE f.farm_id = ? AND f.flock_status = 'ACTIVE'`,
+    [farmId],
+  );
+
+  const plans = planAttachMissingHousesToActiveFlock({
+    houses: houses.map((h) => ({ id: h.id, houseNumber: h.house_number })),
+    houseFlocks: hfs.map((hf) => ({
+      houseId: hf.house_id,
+      flockId: hf.flock_id,
+      placementDate: hf.placement_date,
+      catchDate: hf.catch_date,
+      catchTime: hf.catch_time,
+    })),
+    activeFlocks: flocks.map((flock) => ({
+      id: flock.id,
+      placementDate: flock.placement_date,
+      projectedCatchDate: flock.projected_catch_date,
+      actualCatchDate: flock.actual_catch_date,
+    })),
+  });
+
+  for (const plan of plans) {
+    const existing = db.getFirstSync<{ id: string }>(
+      "SELECT id FROM house_flocks WHERE flock_id = ? AND house_id = ?",
+      [plan.flockId, plan.houseId],
+    );
+    if (existing) continue;
+    db.runSync(
+      `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date, catch_time)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        newId("hf"),
+        plan.flockId,
+        plan.houseId,
+        plan.placedBirdCount,
+        plan.placementDate,
+        plan.catchDate,
+        plan.catchTime,
+      ],
+    );
+  }
+  return plans.length;
 }
 
 /** Sync flock-level placement/catch from its house_flocks; remove empty ACTIVE flocks. */
@@ -3043,6 +3448,22 @@ function resolveActiveFlockForPlacement(
   flockNumber?: string | null,
 ): { id: string; placement_date: string; projected_catch_date: string | null } {
   const db = getDb();
+  const preferred = flockNumber?.trim();
+  if (preferred) {
+    const byNumber = db
+      .getAllSync<{
+        id: string;
+        flock_number: string;
+        placement_date: string;
+        projected_catch_date: string | null;
+      }>(
+        `SELECT id, flock_number, placement_date, projected_catch_date FROM flocks
+         WHERE farm_id = ? AND flock_status = 'ACTIVE'`,
+        [farmId],
+      )
+      .find((f) => normalizeFlockNumber(f.flock_number) === normalizeFlockNumber(preferred));
+    if (byNumber) return byNumber;
+  }
   const existing = db.getFirstSync<{
     id: string;
     placement_date: string;
@@ -3110,6 +3531,85 @@ function realignMortalityForHouseFlock(
       [row.mortalityDate, row.age, row.id],
     );
   }
+}
+
+function assignHouseFlockNumber(
+  farmId: string,
+  houseId: string,
+  currentFlockId: string,
+  nextNumber: string,
+  placementDate: string,
+  catchDate: string,
+) {
+  const db = getDb();
+  const current = db.getFirstSync<{ flock_number: string }>(
+    "SELECT flock_number FROM flocks WHERE id = ?",
+    [currentFlockId],
+  );
+  const existing = db
+    .getAllSync<{ id: string; flock_number: string }>(
+      `SELECT id, flock_number FROM flocks
+       WHERE farm_id = ? AND flock_status = 'ACTIVE'`,
+      [farmId],
+    )
+    .find(
+      (f) =>
+        f.id !== currentFlockId &&
+        normalizeFlockNumber(f.flock_number) === normalizeFlockNumber(nextNumber),
+    );
+  const others =
+    db.getFirstSync<{ c: number }>(
+      `SELECT COUNT(*) as c
+       FROM house_flocks hf
+       JOIN houses h ON h.id = hf.house_id
+       WHERE hf.flock_id = ? AND h.deleted_at IS NULL AND hf.house_id != ?`,
+      [currentFlockId, houseId],
+    )?.c ?? 0;
+  const hf = db.getFirstSync<{ id: string }>(
+    `SELECT hf.id FROM house_flocks hf
+     JOIN flocks f ON f.id = hf.flock_id
+     WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
+     ORDER BY f.placement_date DESC LIMIT 1`,
+    [houseId, farmId],
+  );
+  const plan = planFlockNumberChange({
+    nextNumber,
+    currentFlockNumber: current?.flock_number ?? "",
+    currentFlockId,
+    otherHousesOnCurrentFlock: others,
+    existingFlockIdWithNumber: existing?.id ?? null,
+  });
+
+  if (plan.type === "keep") {
+    syncFlockDatesAndPrune(farmId, currentFlockId);
+    return;
+  }
+  if (plan.type === "rename") {
+    db.runSync(`UPDATE flocks SET flock_number = ? WHERE id = ?`, [nextNumber, currentFlockId]);
+    syncFlockDatesAndPrune(farmId, currentFlockId);
+    return;
+  }
+
+  const targetId =
+    plan.type === "move"
+      ? plan.flockId
+      : (() => {
+          const id = newId("flock");
+          db.runSync(
+            `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
+             VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
+            [id, farmId, nextNumber, placementDate, catchDate],
+          );
+          return id;
+        })();
+
+  if (hf) {
+    db.runSync(`UPDATE house_flocks SET flock_id = ? WHERE id = ?`, [targetId, hf.id]);
+  }
+  if (targetId !== currentFlockId) {
+    syncFlockDatesAndPrune(farmId, currentFlockId);
+  }
+  syncFlockDatesAndPrune(farmId, targetId);
 }
 
 function applyHouseFlockFields(
@@ -3238,16 +3738,31 @@ function applyHouseFlockFields(
   }
 
   if (input.flockNumber?.trim()) {
-    const nextNumber = input.flockNumber.trim();
-    const clash = db.getFirstSync<{ id: string }>(
-      `SELECT id FROM flocks WHERE farm_id = ? AND flock_number = ? AND id != ?`,
-      [farmId, nextNumber, flock.id],
-    );
-    if (clash) throw new Error(`Flock ${nextNumber} already exists on this farm`);
-    db.runSync(`UPDATE flocks SET flock_number = ? WHERE id = ?`, [nextNumber, flock.id]);
+    assignHouseFlockNumber(farmId, houseId, flock.id, input.flockNumber.trim(), nextPlacement, nextCatch);
+  } else {
+    syncFlockDatesAndPrune(farmId, flock.id);
   }
+}
 
-  syncFlockDatesAndPrune(farmId, flock.id);
+export function tryPushHouseLoggedTemp(
+  farmId: string,
+  houseNumber: number,
+  temp: string,
+): boolean {
+  const normalized = normalizedLoggedTemp(temp);
+  if (!normalized) return false;
+  const db = getDb();
+  const house = db.getFirstSync<{ id: string }>(
+    "SELECT id FROM houses WHERE farm_id = ? AND house_number = ? AND deleted_at IS NULL",
+    [farmId, houseNumber],
+  );
+  if (!house) return false;
+  try {
+    updateHouseLoggedTemp(farmId, house.id, normalized);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function updateHouseLoggedTemp(
@@ -3292,6 +3807,7 @@ export function updateHouse(
     houseNumber: number;
     squareFootage: number;
     totalFanCFM: number | null;
+    totalPowerCFM?: number | null;
     numberOfFans: number | null;
     /** When set, updates (or creates) placed birds on the active flock house_flock. */
     placedBirdCount?: number | null;
@@ -3314,16 +3830,18 @@ export function updateHouse(
      * higher house number (does not change earlier houses).
      */
     applyToRemainingHouses?: boolean;
-    /**
-     * Also apply square footage / total fan CFM to houses with
-     * a higher house number (does not change earlier houses).
-     */
-    applySpecsToRemainingHouses?: boolean;
+    applySquareFootageToRemainingHouses?: boolean;
+    applyMinVentCfmToRemainingHouses?: boolean;
+    applyPowerCfmToRemainingHouses?: boolean;
   },
 ) {
   const db = getDb();
-  const house = db.getFirstSync<{ id: string; house_number: number }>(
-    "SELECT id, house_number FROM houses WHERE id = ? AND farm_id = ? AND deleted_at IS NULL",
+  const house = db.getFirstSync<{
+    id: string;
+    house_number: number;
+    total_power_cfm: number | null;
+  }>(
+    "SELECT id, house_number, total_power_cfm FROM houses WHERE id = ? AND farm_id = ? AND deleted_at IS NULL",
     [houseId, farmId],
   );
   if (!house) throw new Error("House not found");
@@ -3344,27 +3862,61 @@ export function updateHouse(
   );
   if (conflict) throw new Error(`House ${houseNumber} already exists on this farm`);
 
+  const totalPowerCFM =
+    input.totalPowerCFM === undefined
+      ? house.total_power_cfm
+      : input.totalPowerCFM == null || !Number.isFinite(Number(input.totalPowerCFM))
+        ? null
+        : Number(input.totalPowerCFM);
+
   db.runSync(
     `UPDATE houses
-     SET house_number = ?, square_footage = ?, total_fan_cfm = ?, number_of_fans = ?
+     SET house_number = ?, square_footage = ?, total_fan_cfm = ?, total_power_cfm = ?, number_of_fans = ?
      WHERE id = ? AND farm_id = ?`,
     [
       houseNumber,
       squareFootage,
       input.totalFanCFM,
+      totalPowerCFM,
       input.numberOfFans,
       houseId,
       farmId,
     ],
   );
 
-  if (input.applySpecsToRemainingHouses) {
-    db.runSync(
-      `UPDATE houses
-       SET square_footage = ?, total_fan_cfm = ?
-       WHERE farm_id = ? AND deleted_at IS NULL AND house_number > ?`,
-      [squareFootage, input.totalFanCFM, farmId, houseNumber],
-    );
+  // Propagate from the house that was opened, not a house-number field the form may change.
+  const fromHouseNumber = Math.floor(Number(house.house_number));
+  const laterHouses = db
+    .getAllSync<{ id: string; house_number: number }>(
+      `SELECT id, house_number FROM houses
+       WHERE farm_id = ? AND deleted_at IS NULL AND id != ?`,
+      [farmId, houseId],
+    )
+    .filter((h) => isHouseInPropagateRange(h.house_number, fromHouseNumber));
+
+  if (input.applySquareFootageToRemainingHouses) {
+    for (const h of laterHouses) {
+      db.runSync(
+        "UPDATE houses SET square_footage = ? WHERE id = ? AND farm_id = ?",
+        [squareFootage, h.id, farmId],
+      );
+    }
+  }
+  if (input.applyMinVentCfmToRemainingHouses) {
+    for (const h of laterHouses) {
+      db.runSync(
+        "UPDATE houses SET total_fan_cfm = ? WHERE id = ? AND farm_id = ?",
+        [input.totalFanCFM, h.id, farmId],
+      );
+    }
+  }
+  if (input.applyPowerCfmToRemainingHouses) {
+    for (const h of laterHouses) {
+      db.runSync(
+        "UPDATE houses SET total_power_cfm = ? WHERE id = ? AND farm_id = ?",
+        [totalPowerCFM, h.id, farmId],
+      );
+    }
   }
 
   const touchesFlockPlacement =
@@ -3391,12 +3943,7 @@ export function updateHouse(
     const applyFlockId = input.applyFlockIdToRemainingHouses ?? applyAllLegacy;
 
     if (applyBirds || applyPlacement || applyCatchDate || applyCatchTime || applyFlockId) {
-      const remaining = db.getAllSync<{ id: string }>(
-        `SELECT id FROM houses
-         WHERE farm_id = ? AND deleted_at IS NULL AND house_number > ?
-         ORDER BY house_number ASC`,
-        [farmId, houseNumber],
-      );
+      const remaining = laterHouses;
       for (const h of remaining) {
         applyHouseFlockFields(farmId, h.id, {
           placedBirdCount: applyBirds ? input.placedBirdCount : undefined,
@@ -3608,6 +4155,30 @@ export function deleteIssue(farmId: string, issueId: string) {
   return { success: true as const };
 }
 
+/** Last hour-meter reading per generator (newest log that has that gen; dates may differ). */
+export function getLatestGeneratorHours(farmId: string): GeneratorHours {
+  const db = getDb();
+  const latestFor = (column: "gen1_hours" | "gen2_hours" | "gen3_hours" | "gen4_hours") => {
+    const row = db.getFirstSync<{ hours: number | null }>(
+      `SELECT ${column} AS hours
+       FROM generator_logs
+       WHERE farm_id = ? AND ${column} IS NOT NULL
+       ORDER BY log_date DESC, id DESC
+       LIMIT 1`,
+      [farmId],
+    );
+    return row?.hours ?? null;
+  };
+  return lastLoggedGeneratorHours([
+    {
+      gen1Hours: latestFor("gen1_hours"),
+      gen2Hours: latestFor("gen2_hours"),
+      gen3Hours: latestFor("gen3_hours"),
+      gen4Hours: latestFor("gen4_hours"),
+    },
+  ]);
+}
+
 /* ─── Generator logs ───────────────────────────────────────────────────── */
 
 type GeneratorLogInput = {
@@ -3680,6 +4251,60 @@ function clearGeneratorHourOnLog(
   );
 }
 
+/** Keep the last 10 hour readings per generator; drop older cells (and empty rows). */
+function pruneGeneratorLogs(db: ReturnType<typeof getDb>, farmId: string) {
+  const rows = db.getAllSync<{
+    id: string;
+    gen1_hours: number | null;
+    gen2_hours: number | null;
+    gen3_hours: number | null;
+    gen4_hours: number | null;
+  }>(
+    `SELECT id, gen1_hours, gen2_hours, gen3_hours, gen4_hours
+     FROM generator_logs WHERE farm_id = ?
+     ORDER BY log_date DESC, id DESC`,
+    [farmId],
+  );
+  const excess = excessGeneratorHourCells(
+    rows.map((row) => ({
+      id: row.id,
+      gen1Hours: row.gen1_hours,
+      gen2Hours: row.gen2_hours,
+      gen3Hours: row.gen3_hours,
+      gen4Hours: row.gen4_hours,
+    })),
+  );
+  if (excess.length === 0) return;
+
+  const clearById = new Map<string, Set<GenHourKey>>();
+  for (const cell of excess) {
+    const keys = clearById.get(cell.id) ?? new Set<GenHourKey>();
+    keys.add(cell.hourKey);
+    clearById.set(cell.id, keys);
+  }
+
+  for (const [id, keys] of clearById) {
+    const row = rows.find((r) => r.id === id);
+    if (!row) continue;
+    const next = {
+      gen1Hours: keys.has("gen1Hours") ? null : row.gen1_hours,
+      gen2Hours: keys.has("gen2Hours") ? null : row.gen2_hours,
+      gen3Hours: keys.has("gen3Hours") ? null : row.gen3_hours,
+      gen4Hours: keys.has("gen4Hours") ? null : row.gen4_hours,
+    };
+    if (!hasAnyGeneratorReading(next)) {
+      db.runSync("DELETE FROM generator_logs WHERE id = ? AND farm_id = ?", [id, farmId]);
+      continue;
+    }
+    db.runSync(
+      `UPDATE generator_logs
+       SET gen1_hours = ?, gen2_hours = ?, gen3_hours = ?, gen4_hours = ?, notes = NULL
+       WHERE id = ? AND farm_id = ?`,
+      [next.gen1Hours, next.gen2Hours, next.gen3Hours, next.gen4Hours, id, farmId],
+    );
+  }
+}
+
 export function createGeneratorLog(input: GeneratorLogInput) {
   const db = getDb();
   if (!input.logDate?.trim()) throw new Error("Date is required");
@@ -3742,17 +4367,7 @@ export function createGeneratorLog(input: GeneratorLogInput) {
     );
   }
 
-  // Keep at most 8 logs per farm — drop oldest when over the cap.
-  const keep = 8;
-  const ids = db.getAllSync<{ id: string }>(
-    `SELECT id FROM generator_logs WHERE farm_id = ?
-     ORDER BY log_date DESC, id DESC`,
-    [input.farmId],
-  );
-  for (const row of ids.slice(keep)) {
-    db.runSync("DELETE FROM generator_logs WHERE id = ? AND farm_id = ?", [row.id, input.farmId]);
-  }
-
+  pruneGeneratorLogs(db, input.farmId);
   return { id };
 }
 
@@ -3789,6 +4404,7 @@ export function updateGeneratorLog(
          WHERE id = ? AND farm_id = ?`,
         [hours, logId, farmId],
       );
+      pruneGeneratorLogs(db, farmId);
       return { success: true as const };
     }
 
@@ -3817,6 +4433,7 @@ export function updateGeneratorLog(
         gen4Hours: hourKey === "gen4Hours" ? hours : null,
       });
     }
+    pruneGeneratorLogs(db, farmId);
     return { success: true as const };
   }
 
@@ -3845,6 +4462,7 @@ export function updateGeneratorLog(
       farmId,
     ],
   );
+  pruneGeneratorLogs(db, farmId);
   return { success: true as const };
 }
 
@@ -4154,6 +4772,41 @@ export function getServiceFormForVisit(
   return row ? mapServiceFormRow(row) : null;
 }
 
+export function listServiceForms(farmId: string): StoredServiceForm[] {
+  const db = getDb();
+  const rows = db.getAllSync<{
+    id: string;
+    farm_id: string;
+    flock_id: string | null;
+    form_kind: string;
+    form_date: string;
+    payload_json: string;
+    visit_id: string | null;
+    created_at: string;
+  }>(
+    "SELECT * FROM service_forms WHERE farm_id = ? ORDER BY form_date DESC, created_at DESC",
+    [farmId],
+  );
+  return rows.map(mapServiceFormRow);
+}
+
+export function deleteServiceForm(farmId: string, formId: string) {
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string; visit_id: string | null }>(
+    "SELECT id, visit_id FROM service_forms WHERE id = ? AND farm_id = ?",
+    [formId, farmId],
+  );
+  if (!existing) throw new Error("Checklist not found");
+  db.runSync("DELETE FROM service_forms WHERE id = ? AND farm_id = ?", [formId, farmId]);
+  if (existing.visit_id) {
+    db.runSync("DELETE FROM farm_visits WHERE id = ? AND farm_id = ?", [
+      existing.visit_id,
+      farmId,
+    ]);
+  }
+  return { success: true as const };
+}
+
 function serviceFormVisitMeta(formKind: ServiceFormKind) {
   const visitType =
     formKind === "service_report"
@@ -4161,13 +4814,82 @@ function serviceFormVisitMeta(formKind: ServiceFormKind) {
       : formKind === "placement"
         ? "PLACEMENT"
         : "PREBROOD";
-  const visitLabel =
-    formKind === "service_report"
-      ? "Service report"
-      : formKind === "placement"
-        ? "Placement checklist"
-        : "Prebrood checklist";
-  return { visitType, visitLabel };
+  return { visitType };
+}
+
+function serviceFormVisitNotes(visitNotes?: string | null) {
+  const notes = visitNotes?.trim() || "";
+  return notes || null;
+}
+
+function readLiveVisit(farmId: string, visitId: string | null | undefined) {
+  const id = visitId?.trim();
+  if (!id) return null;
+  return (
+    getDb().getFirstSync<{
+      id: string;
+      flock_id: string | null;
+      visit_type: string;
+      general_bird_condition: string | null;
+      follow_up_required: number;
+      follow_up_date: string | null;
+    }>(
+      `SELECT id, flock_id, visit_type, general_bird_condition, follow_up_required, follow_up_date
+       FROM farm_visits WHERE id = ? AND farm_id = ?`,
+      [id, farmId],
+    ) ?? null
+  );
+}
+
+/** Update the linked visit when it still exists; otherwise log a new one and attach it. */
+function syncServiceFormVisit(input: {
+  serviceFormId: string;
+  farmId: string;
+  formKind: ServiceFormKind;
+  formDate: string;
+  visitNotes?: string | null;
+  linkedVisitId?: string | null;
+}) {
+  const db = getDb();
+  const { visitType } = serviceFormVisitMeta(input.formKind);
+  const notes = serviceFormVisitNotes(input.visitNotes);
+  const visitDate = input.formDate.trim();
+  if (!visitDate) throw new Error("Visit date is required");
+
+  const existingVisit = readLiveVisit(input.farmId, input.linkedVisitId);
+  if (existingVisit) {
+    updateVisit(existingVisit.id, {
+      farmId: input.farmId,
+      flockId: existingVisit.flock_id,
+      visitDate,
+      visitType: existingVisit.visit_type,
+      generalBirdCondition: existingVisit.general_bird_condition,
+      notes,
+      followUpRequired: existingVisit.follow_up_required === 1,
+      followUpDate: existingVisit.follow_up_date,
+    });
+    return existingVisit.id;
+  }
+
+  const visit = createVisit({
+    farmId: input.farmId,
+    visitDate,
+    visitType,
+    notes,
+    generalBirdCondition: "Healthy",
+  });
+  const flockId =
+    visit.birdAgeInDays != null
+      ? db.getFirstSync<{ id: string }>(
+          "SELECT id FROM flocks WHERE farm_id = ? AND flock_status = 'ACTIVE' LIMIT 1",
+          [input.farmId],
+        )?.id ?? null
+      : null;
+  db.runSync(
+    "UPDATE service_forms SET visit_id = ?, flock_id = COALESCE(flock_id, ?) WHERE id = ? AND farm_id = ?",
+    [visit.id, flockId, input.serviceFormId, input.farmId],
+  );
+  return visit.id;
 }
 
 /** Update an existing checklist payload and sync the linked visit date/notes. */
@@ -4180,54 +4902,34 @@ export function updateServiceForm(input: {
   visitNotes?: string | null;
 }) {
   const db = getDb();
-  const existing = db.getFirstSync<{ id: string; visit_id: string | null }>(
-    "SELECT id, visit_id FROM service_forms WHERE id = ? AND farm_id = ?",
+  const existing = db.getFirstSync<{
+    id: string;
+    visit_id: string | null;
+    form_date: string;
+  }>(
+    "SELECT id, visit_id, form_date FROM service_forms WHERE id = ? AND farm_id = ?",
     [input.serviceFormId, input.farmId],
   );
   if (!existing) throw new Error("Service form not found");
 
+  const formDate = input.formDate.trim() || existing.form_date;
   db.runSync(
     `UPDATE service_forms
        SET form_kind = ?, form_date = ?, payload_json = ?
      WHERE id = ? AND farm_id = ?`,
-    [
-      input.formKind,
-      input.formDate,
-      JSON.stringify(input.payload),
-      input.serviceFormId,
-      input.farmId,
-    ],
+    [input.formKind, formDate, JSON.stringify(input.payload), input.serviceFormId, input.farmId],
   );
 
-  if (existing.visit_id) {
-    const { visitLabel } = serviceFormVisitMeta(input.formKind);
-    const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n");
-    const visit = db.getFirstSync<{
-      id: string;
-      flock_id: string | null;
-      visit_type: string;
-      general_bird_condition: string | null;
-      follow_up_required: number;
-      follow_up_date: string | null;
-    }>("SELECT * FROM farm_visits WHERE id = ? AND farm_id = ?", [
-      existing.visit_id,
-      input.farmId,
-    ]);
-    if (visit) {
-      updateVisit(existing.visit_id, {
-        farmId: input.farmId,
-        flockId: visit.flock_id,
-        visitDate: input.formDate,
-        visitType: visit.visit_type,
-        generalBirdCondition: visit.general_bird_condition,
-        notes: notes || visitLabel,
-        followUpRequired: visit.follow_up_required === 1,
-        followUpDate: visit.follow_up_date,
-      });
-    }
-  }
+  const visitId = syncServiceFormVisit({
+    serviceFormId: input.serviceFormId,
+    farmId: input.farmId,
+    formKind: input.formKind,
+    formDate,
+    visitNotes: input.visitNotes,
+    linkedVisitId: existing.visit_id,
+  });
 
-  return { id: existing.id, visitId: existing.visit_id };
+  return { id: existing.id, visitId };
 }
 
 /** Persist a completed service checklist, log a visit, and optionally generator hours. */
@@ -4261,42 +4963,35 @@ export function completeServiceForm(input: {
     });
   }
 
-  const { visitType, visitLabel } = serviceFormVisitMeta(input.formKind);
-  const notes = [visitLabel, input.visitNotes?.trim()].filter(Boolean).join("\n");
+  const formDate = input.formDate.trim();
+  if (!formDate) throw new Error("Visit date is required");
+
+  const { visitType } = serviceFormVisitMeta(input.formKind);
+  const notes = serviceFormVisitNotes(input.visitNotes);
 
   let visitId: string;
   let flockId: string | null = null;
 
-  if (input.existingVisitId) {
-    const visit = db.getFirstSync<{
-      id: string;
-      flock_id: string | null;
-      general_bird_condition: string | null;
-      follow_up_required: number;
-      follow_up_date: string | null;
-    }>("SELECT id, flock_id, general_bird_condition, follow_up_required, follow_up_date FROM farm_visits WHERE id = ? AND farm_id = ?", [
-      input.existingVisitId,
-      input.farmId,
-    ]);
-    if (!visit) throw new Error("Visit not found");
-    visitId = visit.id;
-    flockId = visit.flock_id;
+  const liveVisit = readLiveVisit(input.farmId, input.existingVisitId);
+  if (liveVisit) {
+    visitId = liveVisit.id;
+    flockId = liveVisit.flock_id;
     updateVisit(visitId, {
       farmId: input.farmId,
       flockId,
-      visitDate: input.formDate,
+      visitDate: formDate,
       visitType,
-      generalBirdCondition: visit.general_bird_condition ?? "Healthy",
-      notes: notes || visitLabel,
-      followUpRequired: visit.follow_up_required === 1,
-      followUpDate: visit.follow_up_date,
+      generalBirdCondition: liveVisit.general_bird_condition ?? "Healthy",
+      notes,
+      followUpRequired: liveVisit.follow_up_required === 1,
+      followUpDate: liveVisit.follow_up_date,
     });
   } else {
     const visit = createVisit({
       farmId: input.farmId,
-      visitDate: input.formDate,
+      visitDate: formDate,
       visitType,
-      notes: notes || visitLabel,
+      notes,
       generalBirdCondition: "Healthy",
     });
     visitId = visit.id;
@@ -4312,7 +5007,7 @@ export function completeServiceForm(input: {
   if (input.generatorHours != null && Number.isFinite(input.generatorHours)) {
     createGeneratorLog({
       farmId: input.farmId,
-      logDate: input.formDate,
+      logDate: formDate,
       gen1Hours: input.generatorHours,
       gen2Hours: null,
       gen3Hours: null,
@@ -4330,12 +5025,94 @@ export function completeServiceForm(input: {
       input.farmId,
       flockId,
       input.formKind,
-      input.formDate,
+      formDate,
       JSON.stringify(input.payload),
       visitId,
       new Date().toISOString(),
     ],
   );
 
+  deleteServiceFormDraft(input.farmId, input.formKind);
   return { id, visitId };
+}
+
+const blockedDraftSaves = new Set<string>();
+
+function draftSaveKey(farmId: string, formKind: ServiceFormKind) {
+  return `${farmId}:${formKind}`;
+}
+
+export function blockServiceFormDraftSave(farmId: string, formKind: ServiceFormKind) {
+  blockedDraftSaves.add(draftSaveKey(farmId, formKind));
+}
+
+export function allowServiceFormDraftSave(farmId: string, formKind: ServiceFormKind) {
+  blockedDraftSaves.delete(draftSaveKey(farmId, formKind));
+}
+
+function ensureServiceFormDraftsTable() {
+  getDb().execSync(`
+    CREATE TABLE IF NOT EXISTS service_form_drafts (
+      farm_id TEXT NOT NULL,
+      form_kind TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (farm_id, form_kind)
+    );
+  `);
+}
+
+export function getServiceFormDraft(
+  farmId: string,
+  formKind: ServiceFormKind,
+): unknown | null {
+  ensureServiceFormDraftsTable();
+  const row = getDb().getFirstSync<{ payload_json: string }>(
+    "SELECT payload_json FROM service_form_drafts WHERE farm_id = ? AND form_kind = ?",
+    [farmId, formKind],
+  );
+  if (!row) return null;
+  try {
+    return JSON.parse(row.payload_json);
+  } catch {
+    return null;
+  }
+}
+
+export function listServiceFormDraftKinds(farmId: string): ServiceFormKind[] {
+  ensureServiceFormDraftsTable();
+  const rows = getDb().getAllSync<{ form_kind: string }>(
+    "SELECT form_kind FROM service_form_drafts WHERE farm_id = ?",
+    [farmId],
+  );
+  return rows
+    .map((r) => r.form_kind)
+    .filter((k): k is ServiceFormKind =>
+      k === "service_report" || k === "placement" || k === "prebrood",
+    );
+}
+
+export function saveServiceFormDraft(
+  farmId: string,
+  formKind: ServiceFormKind,
+  payload: unknown,
+) {
+  if (blockedDraftSaves.has(draftSaveKey(farmId, formKind))) return;
+  ensureServiceFormDraftsTable();
+  getDb().runSync(
+    `INSERT INTO service_form_drafts (farm_id, form_kind, payload_json, updated_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(farm_id, form_kind) DO UPDATE SET
+       payload_json = excluded.payload_json,
+       updated_at = excluded.updated_at`,
+    [farmId, formKind, JSON.stringify(payload), new Date().toISOString()],
+  );
+}
+
+export function deleteServiceFormDraft(farmId: string, formKind: ServiceFormKind) {
+  ensureServiceFormDraftsTable();
+  getDb().runSync(
+    "DELETE FROM service_form_drafts WHERE farm_id = ? AND form_kind = ?",
+    [farmId, formKind],
+  );
 }

@@ -1,6 +1,12 @@
 import { getDb, getMeta, setMeta } from "./database";
 import { newId, todayKey, addDaysKey, daysBetween } from "../lib/ids";
+import {
+  GENERATOR_DEMO_WEEKS,
+  isDemoGeneratorFarmName,
+  seededDemoHoursForWeek,
+} from "../lib/generatorDemoSeed";
 import { calcTotalDailyLoss } from "../lib/mortality";
+import { mondayOfWeek } from "../lib/reports/field-log";
 import { buildFlockVisitSchedule } from "../lib/schedule";
 
 /** Most recent scheduled visit on or before today (for demo last-visit dates). */
@@ -133,22 +139,13 @@ function refreshDemoScheduleAges() {
 
   const db = getDb();
   for (const demo of DEMOS) {
-    // Update only farms that already exist from the original demo seed.
-    // Prefer the offline-demo note, but also match known demo names so ages
-    // keep rolling after upgrades (never INSERT).
-    const farm =
-      db.getFirstSync<{ id: string }>(
-        `SELECT id FROM farms
-         WHERE farm_name = ? AND is_active = 1 AND notes = 'Offline demo farm'
-         LIMIT 1`,
-        [demo.farmName],
-      ) ??
-      db.getFirstSync<{ id: string }>(
-        `SELECT id FROM farms
-         WHERE farm_name = ? AND is_active = 1 AND grower_name = ?
-         LIMIT 1`,
-        [demo.farmName, demo.growerName],
-      );
+    // Match original seed farms by name + grower (never INSERT).
+    const farm = db.getFirstSync<{ id: string }>(
+      `SELECT id FROM farms
+       WHERE farm_name = ? AND is_active = 1 AND grower_name = ?
+       LIMIT 1`,
+      [demo.farmName, demo.growerName],
+    );
     if (!farm) continue;
 
     const flock = db.getFirstSync<{ id: string }>(
@@ -178,6 +175,7 @@ function refreshDemoScheduleAges() {
   setMeta("demo_schedule_day_v2", today);
   setMeta("demo_schedule_day", today);
 }
+
 function ensureDemoVisits() {
   if (getMeta("visits_v2") === "1") return;
   const db = getDb();
@@ -213,7 +211,7 @@ function ensureDemoVisits() {
           farm.flock_id,
           visitDate,
           age,
-          "Offline demo visit",
+          null,
           `${visitDate}T12:00:00.000Z`,
         ],
       );
@@ -237,8 +235,8 @@ function ensureMultiFlockDemoFarm() {
   const db = getDb();
   const today = todayKey();
   const existing = db.getFirstSync<{ id: string }>(
-    "SELECT id FROM farms WHERE farm_name = ? AND is_active = 1 LIMIT 1",
-    ["Triple Place Demo"],
+    "SELECT id FROM farms WHERE farm_name IN (?, ?) AND is_active = 1 LIMIT 1",
+    ["Triple Place", "Triple Place Demo"],
   );
   if (existing) {
     setMeta("multi_flock_demo_v1", "1");
@@ -251,10 +249,10 @@ function ensureMultiFlockDemoFarm() {
      VALUES (?, ?, ?, ?, ?, ?, 1)`,
     [
       farmId,
-      "Triple Place Demo",
+      "Triple Place",
       "Alex Silvia",
       "410-555-0199",
-      "Demo farm with 3 active flocks / place / catch dates",
+      null,
       6,
     ],
   );
@@ -419,11 +417,161 @@ function ensureSplitStaggeredActiveFlocks() {
   setMeta("split_staggered_active_flocks_v1", "1");
 }
 
+function generatorsForFarmIndex(index: number) {
+  return (index % 4) + 1;
+}
+
+/**
+ * Sample-farm hour-meter history only — never walk every farm.
+ * First-install seed may fill Oak Hollow / Triple Place / etc.
+ * Already-seeded installs must not call this.
+ */
+function ensureDemoGeneratorLogs() {
+  if (getMeta("generator_demo_logs_v1") === "1") return;
+
+  const db = getDb();
+  const today = todayKey();
+  const farms = db
+    .getAllSync<{ id: string; farm_name: string; number_of_generators: number | null }>(
+      `SELECT id, farm_name, number_of_generators FROM farms
+       WHERE deleted_at IS NULL AND is_active = 1
+       ORDER BY farm_name ASC`,
+    )
+    .filter((farm) => isDemoGeneratorFarmName(farm.farm_name));
+
+  farms.forEach((farm, farmIndex) => {
+    const existingGens = farm.number_of_generators;
+    const genCount =
+      existingGens != null && existingGens > 0
+        ? Math.min(4, existingGens)
+        : generatorsForFarmIndex(farmIndex);
+    if (existingGens == null || existingGens === 0) {
+      db.runSync("UPDATE farms SET number_of_generators = ? WHERE id = ?", [
+        genCount,
+        farm.id,
+      ]);
+    }
+
+    for (let w = GENERATOR_DEMO_WEEKS - 1; w >= 0; w--) {
+      const logDate = addDaysKey(today, -7 * w);
+      const weekFromOldest = GENERATOR_DEMO_WEEKS - 1 - w;
+      const hours = seededDemoHoursForWeek(farm.farm_name, genCount, weekFromOldest);
+
+      db.runSync(
+        "DELETE FROM generator_logs WHERE farm_id = ? AND log_date = ?",
+        [farm.id, logDate],
+      );
+      db.runSync(
+        `INSERT INTO generator_logs
+          (id, farm_id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [newId("genlog"), farm.id, logDate, hours[0], hours[1], hours[2], hours[3]],
+      );
+    }
+  });
+
+  setMeta("generator_demo_logs_v1", "1");
+}
+
+/** Mark content backfills done without writing farms, logs, or visits. */
+function skipContentBackfillsOnExistingInstall() {
+  if (getMeta("generator_demo_logs_v1") !== "1") {
+    setMeta("generator_demo_logs_v1", "1");
+  }
+  if (getMeta("field_log_demo_visits_v1") !== "1") {
+    setMeta("field_log_demo_visits_v1", "1");
+  }
+}
+
+type FieldLogDemoStop = {
+  farm: string;
+  weekStart: string;
+  offset: number;
+  hour: number;
+  minute: number;
+};
+
+/** First-install sample visits only. Never call on an already-seeded database. */
+function ensureDemoFieldLogVisits() {
+  if (getMeta("field_log_demo_visits_v1") === "1") return;
+
+  const db = getDb();
+  const today = todayKey();
+  const thisMonday = mondayOfWeek(today);
+  const lastMonday = addDaysKey(thisMonday, -7);
+  const stops: FieldLogDemoStop[] = [
+    { farm: "Oak Hollow", weekStart: lastMonday, offset: 0, hour: 7, minute: 10 },
+    { farm: "Maple Grove", weekStart: lastMonday, offset: 0, hour: 8, minute: 40 },
+    { farm: "Bay View", weekStart: lastMonday, offset: 0, hour: 11, minute: 5 },
+    { farm: "Cedar Creek", weekStart: lastMonday, offset: 1, hour: 7, minute: 20 },
+    { farm: "Pine Ridge", weekStart: lastMonday, offset: 1, hour: 9, minute: 15 },
+    { farm: "Willow Bend", weekStart: lastMonday, offset: 2, hour: 8, minute: 0 },
+    { farm: "Triple Place", weekStart: lastMonday, offset: 2, hour: 10, minute: 20 },
+    { farm: "Sunrise Farms", weekStart: lastMonday, offset: 3, hour: 7, minute: 45 },
+    { farm: "River Bend", weekStart: lastMonday, offset: 4, hour: 10, minute: 30 },
+    { farm: "Ash Grove", weekStart: lastMonday, offset: 5, hour: 9, minute: 0 },
+    { farm: "Oak Hollow", weekStart: thisMonday, offset: 0, hour: 7, minute: 5 },
+    { farm: "Maple Grove", weekStart: thisMonday, offset: 0, hour: 8, minute: 25 },
+    { farm: "Bay View", weekStart: thisMonday, offset: 0, hour: 10, minute: 50 },
+    { farm: "Cedar Creek", weekStart: thisMonday, offset: 1, hour: 7, minute: 40 },
+    { farm: "Pine Ridge", weekStart: thisMonday, offset: 1, hour: 9, minute: 10 },
+    { farm: "Willow Bend", weekStart: thisMonday, offset: 2, hour: 8, minute: 15 },
+    { farm: "Triple Place", weekStart: thisMonday, offset: 2, hour: 10, minute: 5 },
+    { farm: "Sunrise Farms", weekStart: thisMonday, offset: 3, hour: 7, minute: 50 },
+    { farm: "River Bend", weekStart: thisMonday, offset: 4, hour: 10, minute: 20 },
+    { farm: "Ash Grove", weekStart: thisMonday, offset: 5, hour: 8, minute: 45 },
+  ];
+
+  for (const stop of stops) {
+    const visitDate = addDaysKey(stop.weekStart, stop.offset);
+    if (visitDate > today) continue;
+    const farm = db.getFirstSync<{ id: string }>(
+      `SELECT id FROM farms
+       WHERE farm_name = ? AND deleted_at IS NULL AND is_active = 1`,
+      [stop.farm],
+    );
+    if (!farm) continue;
+    const already = db.getFirstSync<{ id: string }>(
+      "SELECT id FROM farm_visits WHERE farm_id = ? AND visit_date = ?",
+      [farm.id, visitDate],
+    );
+    if (already) continue;
+
+    const flock = db.getFirstSync<{ id: string; placement_date: string }>(
+      `SELECT id, placement_date FROM flocks
+       WHERE farm_id = ? AND flock_status = 'ACTIVE'
+       ORDER BY placement_date DESC LIMIT 1`,
+      [farm.id],
+    );
+    const age = flock
+      ? Math.max(0, daysBetween(flock.placement_date, visitDate))
+      : null;
+    const hh = String(stop.hour).padStart(2, "0");
+    const mm = String(stop.minute).padStart(2, "0");
+    db.runSync(
+      `INSERT INTO farm_visits
+        (id, farm_id, flock_id, visit_date, visit_type, bird_age_in_days, general_bird_condition, notes, follow_up_required, logged_at)
+       VALUES (?, ?, ?, ?, 'ROUTINE_SERVICE', ?, 'Healthy', ?, 0, ?)`,
+      [
+        newId("visit"),
+        farm.id,
+        flock?.id ?? null,
+        visitDate,
+        age,
+        null,
+        `${visitDate}T${hh}:${mm}:00.000Z`,
+      ],
+    );
+  }
+
+  setMeta("field_log_demo_visits_v1", "1");
+}
+
 export function seedIfNeeded() {
   if (getMeta("seeded") === "1") {
-    // Already has user/demo data — never inject new farms, visits, or mortality.
-    // Only re-anchor ages on farms that were originally seeded as demos.
+    // Existing install (TestFlight / production): never insert or delete rows.
     refreshDemoScheduleAges();
+    skipContentBackfillsOnExistingInstall();
     return;
   }
 
@@ -431,7 +579,7 @@ export function seedIfNeeded() {
   const userId = newId("user");
   db.runSync(
     "INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)",
-    [userId, "Alex Technician", "tech@poultry.local", "password123"],
+    [userId, "Alex Silvia", "tech@poultry.local", "password123"],
   );
 
   const today = todayKey();
@@ -446,7 +594,7 @@ export function seedIfNeeded() {
         demo.farmName,
         demo.growerName,
         demo.phone,
-        "Offline demo farm",
+        null,
         demo.houses,
       ],
     );
@@ -515,7 +663,7 @@ export function seedIfNeeded() {
         flockId,
         visitDate,
         visitAge,
-        `Offline demo visit for ${demo.farmName}`,
+        null,
         `${visitDate}T12:00:00.000Z`,
       ],
     );
@@ -527,4 +675,6 @@ export function seedIfNeeded() {
   setMeta("userId", userId);
   ensureMultiFlockDemoFarm();
   ensureSplitStaggeredActiveFlocks();
+  ensureDemoGeneratorLogs();
+  ensureDemoFieldLogVisits();
 }

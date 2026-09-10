@@ -16,6 +16,7 @@ import { useKeypadNav } from "@/components/KeypadNavContext";
 
 export type MortalityHousePayload = {
   houseFlockId: string;
+  flockId?: string;
   houseNumber: number;
   placedBirdCount: number;
   existingEntries: Array<{
@@ -300,7 +301,7 @@ export function MortalityEntryForm({
     }
 
     const result = await saveMortalityHouseSeriesAction({
-      flockId: currentFlock.id,
+      flockId: currentHouse.flockId || currentFlock.id,
       houseFlockId: currentHouse.houseFlockId,
       mortalityCause: "UNKNOWN",
       comments: null,
@@ -506,7 +507,10 @@ export function MortalityEntryForm({
     if (!activeField) return;
     const current = getActiveValue();
     if (current === "") {
-      focusPrevInColumn(activeField.kind, activeField.age);
+      const prevAge = activeField.age - 1;
+      if (rowsRef.current.some((r) => r.age === prevAge)) {
+        focusPrevInColumn(activeField.kind, activeField.age);
+      }
       return;
     }
     setReplaceOnType(false);
@@ -610,6 +614,10 @@ export function MortalityEntryForm({
             <p>
               House <span className="font-semibold">{house.houseNumber}</span> · Placed{" "}
               {formatNumber(house.placedBirdCount)} ·{" "}
+              <span className="font-semibold text-stone-900">
+                {format(parseLocalDate(flock.placementDate), "EEE M/d")}
+              </span>
+              {" · "}
               <span className="font-semibold text-stone-900">
                 {birdAgeFromPlacement(
                   parseLocalDate(flock.placementDate),
@@ -739,6 +747,16 @@ export function MortalityEntryForm({
 
       {activeField ? (
         <div className="fixed inset-x-0 bottom-0 z-50">
+          <button
+            type="button"
+            aria-label="Dismiss keypad"
+            className="fixed inset-0 z-40 bg-transparent"
+            onClick={() => {
+              flushSave();
+              setMortField(null);
+            }}
+          />
+          <div className="relative z-50">
           <NumberKeypad
             onDigit={onDigit}
             onBackspace={onBackspace}
@@ -756,6 +774,7 @@ export function MortalityEntryForm({
                 : undefined
             }
           />
+          </div>
         </div>
       ) : null}
     </div>

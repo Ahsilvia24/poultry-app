@@ -1,45 +1,42 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CompleteFlockPicker } from "@/components/CompleteFlockPicker";
 import { cn } from "@/lib/utils";
 
 const linkClass =
-  "flex min-h-10 w-full items-center justify-center rounded-lg border border-emerald-800/20 bg-emerald-700 px-2 text-center text-sm font-semibold text-white shadow-sm transition active:scale-[0.98] hover:bg-emerald-800";
+  "flex min-h-12 w-full items-center justify-center rounded-lg border border-emerald-800/20 bg-emerald-700 px-2 text-center text-[15px] font-semibold text-white shadow-sm transition active:scale-[0.98] hover:bg-emerald-800";
 
 type FlockOption = { id: string; flockNumber: string; ageDays: number };
 
 export function FarmQuickLinks({
   farmId,
-  hasActiveFlock,
   completeFlocks = [],
 }: {
   farmId: string;
-  hasActiveFlock: boolean;
   completeFlocks?: FlockOption[];
 }) {
-  const lfoHref = hasActiveFlock ? `/lfo/new/${farmId}` : "/lfo";
+  const router = useRouter();
+  const serviceHref = `/farms/${farmId}/service`;
+  useEffect(() => {
+    router.prefetch(serviceHref);
+    router.prefetch(`/lfo?farmId=${farmId}`);
+  }, [farmId, router, serviceHref]);
 
   const links: Array<{ key: string; href: string; label: string; external?: boolean }> = [
-    { key: "service", href: `/farms/${farmId}/service`, label: "Service Farm", external: true },
-    { key: "mortality", href: `/mortality?farmId=${farmId}`, label: "Mortality", external: true },
-    { key: "lfo", href: lfoHref, label: "LFO", external: true },
-    {
-      key: "weight",
-      href: `/tools?farmId=${farmId}#weight-projections`,
-      label: "Weight Proj.",
-      external: true,
-    },
-    { key: "generators", href: "#generators", label: "Generator Log" },
+    { key: "service", href: serviceHref, label: "Service Farm", external: true },
+    { key: "generators", href: "#generators", label: "Generator" },
     { key: "visits", href: "#visits", label: "Visits" },
     { key: "issues", href: "#issues", label: "Issues" },
     { key: "litter", href: "#litter", label: "Litter" },
     { key: "feed", href: "#feed", label: "Feed" },
-    { key: "reports", href: `/reports?farmId=${farmId}`, label: "Reports", external: true },
+    { key: "lfo", href: `/lfo?farmId=${farmId}`, label: "LFO", external: true },
     { key: "add-flock", href: "#add-flock", label: "Add Flock" },
   ];
 
-  // Append Complete Flock after Add Flock when there is an active flock.
+  // Append End Flock after Add Flock when there is an active flock.
   const items: Array<
     | { kind: "link"; key: string; href: string; label: string; external?: boolean }
     | { kind: "complete"; key: string }
@@ -53,8 +50,7 @@ export function FarmQuickLinks({
 
   return (
     <div className={cn("rounded-xl border border-stone-200 bg-white p-3 shadow-sm")}>
-      <h2 className="text-sm font-bold text-stone-900">Quick links</h2>
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {items.map((item) => {
           if (item.kind === "complete") {
             return (
@@ -67,7 +63,14 @@ export function FarmQuickLinks({
             );
           }
           return item.external ? (
-            <Link key={item.key} href={item.href} className={linkClass}>
+            <Link
+              key={item.key}
+              href={item.href}
+              prefetch
+              onTouchStart={() => router.prefetch(item.href)}
+              onPointerEnter={() => router.prefetch(item.href)}
+              className={linkClass}
+            >
               {item.label}
             </Link>
           ) : (

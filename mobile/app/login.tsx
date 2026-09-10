@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   Text,
@@ -15,8 +16,8 @@ import { Card } from "../src/components/ui";
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
-  const [email, setEmail] = useState("tech@poultry.local");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -39,8 +40,7 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={[styles.content, { maxWidth: 480, width: "100%", alignSelf: "center" }]}>
-          <Text style={[styles.title, { fontSize: 26 }]}>Sign in</Text>
-          <Text style={styles.subtitle}>Service technician farm management</Text>
+          <Text style={[styles.brand, { textAlign: "center", width: "100%" }]}>PoultryTech</Text>
 
           <Card style={{ marginTop: 24 }}>
             <Text style={styles.label}>Email</Text>
@@ -49,6 +49,8 @@ export default function LoginScreen() {
               autoCapitalize="none"
               keyboardType="email-address"
               autoCorrect={false}
+              autoComplete="email"
+              textContentType="username"
               value={email}
               onChangeText={setEmail}
             />
@@ -56,6 +58,8 @@ export default function LoginScreen() {
             <TextInput
               style={styles.input}
               secureTextEntry
+              autoComplete="password"
+              textContentType="password"
               value={password}
               onChangeText={setPassword}
             />
@@ -72,9 +76,27 @@ export default function LoginScreen() {
               )}
             </Pressable>
           </Card>
-          <Text style={[styles.muted, { marginTop: 12 }]}>
-            Demo: tech@poultry.local / password123
-          </Text>
+          <View
+            style={{
+              marginTop: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
+            <Pressable
+              onPress={() => Linking.openURL("https://poultrytechapp.com/support/")}
+            >
+              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>Support</Text>
+            </Pressable>
+            <Text style={{ color: colors.muted, fontWeight: "600" }}>·</Text>
+            <Pressable
+              onPress={() => Linking.openURL("https://poultrytechapp.com/privacy/")}
+            >
+              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>Privacy Policy</Text>
+            </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

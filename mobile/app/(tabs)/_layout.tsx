@@ -1,17 +1,13 @@
-import { Tabs, router } from "expo-router";
+import { Tabs } from "expo-router";
 import { Platform, Pressable, Text, View } from "react-native";
-import { StackActions } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
 import { colors } from "../../src/theme";
 import { FeedBinIcon } from "../../src/components/FeedBinIcon";
-import {
-  armFarmReturnFromMortality,
-  clearFarmReturnFromMortality,
-  getFarmNavContext,
-} from "../../src/lib/farmNavContext";
-import { requestTabScrollTop, tabStackIndex } from "../../src/lib/tabScroll";
+import { clearFarmReturnFromMortality } from "../../src/lib/farmNavContext";
+import { requestTabScrollTop } from "../../src/lib/tabScroll";
+import { MANUAL_LFO_TAB_ID } from "../../src/components/LfoFarmTabs";
 
 type MciName = ComponentProps<typeof MaterialCommunityIcons>["name"];
 
@@ -21,12 +17,17 @@ const TAB_ITEMS: {
   icon?: MciName;
   customIcon?: "feed-bin";
 }[] = [
+  { name: "reports", label: "Reports", icon: "chart-box-outline" },
+  { name: "lfo", label: "LFO", customIcon: "feed-bin" },
   { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
   { name: "farms", label: "Farms", icon: "barn" },
-  { name: "mortality", label: "Mortality", icon: "plus-circle" },
-  { name: "lfo", label: "LFO", customIcon: "feed-bin" },
   { name: "tools", label: "Tools", icon: "tools" },
 ];
+
+const selectedTabStyle = {
+  borderColor: "rgba(6, 95, 70, 0.35)",
+  backgroundColor: "rgba(4, 120, 87, 0.07)",
+} as const;
 
 function WebStyleTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -42,21 +43,9 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
     return null;
   }
 
-  const visibleRoutes = state.routes.filter((route: { name: string }) =>
-    TAB_ITEMS.some((t) => t.name === route.name),
-  );
-
-  function popNestedToRoot(tabRoute: { state?: { index?: number; key?: string } }) {
-    const nested = tabStackIndex(tabRoute);
-    if (nested.index > 0 && nested.key) {
-      navigation.dispatch({
-        ...StackActions.popToTop(),
-        target: nested.key,
-      });
-      return true;
-    }
-    return false;
-  }
+  const visibleRoutes = TAB_ITEMS.map((item) =>
+    state.routes.find((route: { name: string }) => route.name === item.name),
+  ).filter((route): route is { key: string; name: string; state?: any } => Boolean(route));
 
   return (
     <View
@@ -64,18 +53,17 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
         borderTopWidth: 1,
         borderTopColor: colors.border,
         backgroundColor: "#fff",
-        paddingTop: 8,
-        paddingBottom: Math.max(insets.bottom, 8),
+        paddingTop: 6,
+        paddingBottom: insets.bottom + 10,
         paddingHorizontal: 4,
       }}
     >
-      <View style={{ flexDirection: "row", gap: 4 }}>
+      <View style={{ flexDirection: "row", gap: 4, alignItems: "center" }}>
         {visibleRoutes.map((route: { key: string; name: string; state?: any }) => {
           const index = state.routes.findIndex((r: { key: string }) => r.key === route.key);
           const focused = state.index === index;
           const item = TAB_ITEMS.find((t) => t.name === route.name);
           const label = item?.label ?? descriptors[route.key]?.options?.title ?? route.name;
-          const tabRoute = state.routes[index] as { key: string; name: string; state?: any };
 
           return (
             <Pressable
@@ -83,22 +71,14 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
               accessibilityRole="button"
               accessibilityState={focused ? { selected: true } : {}}
               onPress={() => {
-                const ctx = getFarmNavContext();
                 const fromMortality = focusedRoute?.name === "mortality";
 
-                // Mortality → Farms: open the selected farm/house.
-                // Do not emit tabPress (nested stacks popToTop on that event).
-                // Do not navigate to farms/index — that was forcing the list.
-                // Open the selected farm, but do not snap to a house —
-                // only Mortality "Back to House" passes focusHouseFlockId.
-                if (!focused && route.name === "farms" && fromMortality && ctx.farmId) {
-                  armFarmReturnFromMortality();
-                  router.navigate({
-                    pathname: "/(tabs)/farms/[id]",
-                    params: {
-                      id: ctx.farmId,
-                    },
-                  });
+                // Mortality → Farms: always the farm list. Only Mortality
+                // "Back to House" opens a farm (via focusHouseFlockId).
+                if (!focused && route.name === "farms" && fromMortality) {
+                  clearFarmReturnFromMortality();
+                  navigation.navigate("farms", { screen: "index" });
+                  requestTabScrollTop("farms");
                   return;
                 }
 
@@ -111,23 +91,27 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
 
                 if (focused) {
                   // Re-tap Farms/LFO while already on that tab → root list.
+                  // `screen: "index"` is required: Service Farm lives in a nested
+                  // [id] stack, so popToTop on that stack only returns to the farm.
                   if (route.name === "farms") {
+                    const nested = route.state;
+                    const current =
+                      nested?.routes?.[nested.index ?? 0]?.name ?? "index";
+                    if (current === "index") {
+                      requestTabScrollTop("farms");
+                      return;
+                    }
                     clearFarmReturnFromMortality();
-                    popNestedToRoot(tabRoute);
+                    navigation.navigate("farms", { screen: "index" });
                     requestTabScrollTop("farms");
                     return;
                   }
                   if (route.name === "lfo") {
-                    popNestedToRoot(tabRoute);
-                    requestTabScrollTop("lfo");
-                    return;
-                  }
-                  if (route.name === "mortality") {
-                    navigation.navigate(route.name, {
-                      farmId: ctx.farmId ?? undefined,
-                      houseFlockId: ctx.houseFlockId ?? undefined,
+                    navigation.navigate("lfo", {
+                      screen: "index",
+                      params: { farmId: MANUAL_LFO_TAB_ID },
                     });
-                    requestTabScrollTop("mortality");
+                    requestTabScrollTop("lfo");
                     return;
                   }
                   requestTabScrollTop(route.name);
@@ -139,43 +123,50 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                   navigation.navigate("farms");
                   return;
                 }
-                if (route.name === "mortality") {
-                  navigation.navigate(route.name, {
-                    farmId: ctx.farmId ?? undefined,
-                    houseFlockId: ctx.houseFlockId ?? undefined,
+                // LFO tab always opens Quick Calc. A farm tab is only selected
+                // when LFO is opened from that farm's quick links.
+                if (route.name === "lfo") {
+                  navigation.navigate("lfo", {
+                    screen: "index",
+                    params: { farmId: MANUAL_LFO_TAB_ID },
                   });
-                } else {
-                  navigation.navigate(route.name);
+                  requestTabScrollTop("lfo");
+                  return;
                 }
+                navigation.navigate(route.name);
                 requestTabScrollTop(route.name);
               }}
               style={{
                 flex: 1,
+                minHeight: 48,
                 borderRadius: 10,
-                paddingVertical: 8,
+                paddingVertical: 6,
                 paddingHorizontal: 2,
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 2,
-                backgroundColor: focused ? colors.accentDark : "transparent",
+                borderWidth: 1,
+                borderColor: "transparent",
+                backgroundColor: "transparent",
+                ...(focused ? selectedTabStyle : null),
               }}
             >
               {item?.customIcon === "feed-bin" ? (
-                <FeedBinIcon color={focused ? "#fff" : "#44403c"} size={20} />
+                <FeedBinIcon color="#44403c" size={18} />
               ) : item?.icon ? (
                 <MaterialCommunityIcons
                   name={item.icon}
-                  size={20}
-                  color={focused ? "#fff" : "#44403c"}
+                  size={18}
+                  color="#44403c"
                 />
               ) : null}
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 style={{
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: "800",
-                  color: focused ? "#fff" : "#44403c",
+                  color: "#44403c",
                   textAlign: "center",
                 }}
               >
@@ -226,6 +217,7 @@ export default function TabsLayout() {
         options={{
           title: "Mortality",
           headerShown: false,
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -246,15 +238,6 @@ export default function TabsLayout() {
         name="reports"
         options={{
           title: "Reports",
-          href: null,
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: "More",
-          href: null,
           headerShown: false,
         }}
       />

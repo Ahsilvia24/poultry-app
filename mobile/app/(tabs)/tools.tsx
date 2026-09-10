@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  KeyboardAvoidingView,
   LayoutChangeEvent,
+  Platform,
   Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   listFarms,
@@ -28,7 +31,9 @@ import {
 } from "../../src/lib/weight/projections";
 import { colors, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
-import { Card, Chip, PageHeader } from "../../src/components/ui";
+import { useKeyboardInset } from "../../src/lib/useKeyboardInset";
+import { Card, Chip } from "../../src/components/ui";
+import { WeightProjectionManualTile } from "../../src/components/WeightProjectionManualTile";
 import { WeightProjectionTile } from "../../src/components/WeightProjectionTile";
 import {
   CoolCellsChart,
@@ -37,15 +42,15 @@ import {
   TempCurveChart,
 } from "../../src/components/toolsCharts";
 
-type SectionKey = "temp" | "cool" | "max" | "lights" | "weight" | "vent";
+type SectionKey = "temp" | "cool" | "max" | "lights" | "weight" | "weightManual" | "vent";
 
 const QUICK_LINKS: Array<{ key: SectionKey; label: string }> = [
   { key: "weight", label: "Weight Proj." },
+  { key: "vent", label: "Ventilation" },
   { key: "temp", label: "Temp Curve" },
   { key: "cool", label: "Cool Cells" },
   { key: "max", label: "Max Cooling" },
   { key: "lights", label: "Lights" },
-  { key: "vent", label: "Ventilation" },
 ];
 
 function paramValue(value: string | string[] | undefined) {
@@ -54,6 +59,7 @@ function paramValue(value: string | string[] | undefined) {
 }
 
 export default function ToolsScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams<{
     farmId?: string | string[];
     section?: string | string[];
@@ -63,6 +69,7 @@ export default function ToolsScreen() {
 
   const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("tools", scrollRef);
+  const keyboardInset = useKeyboardInset();
   const sectionY = useRef<Partial<Record<SectionKey, number>>>({});
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
     temp: true,
@@ -70,6 +77,7 @@ export default function ToolsScreen() {
     max: true,
     lights: true,
     weight: true,
+    weightManual: true,
     vent: true,
   });
   const [cfmOpen, setCfmOpen] = useState<"bird" | "fan" | null>(null);
@@ -147,7 +155,7 @@ export default function ToolsScreen() {
     setLocalGrowthRate(null);
   }, [selectedHouse?.id]);
 
-  /** Selected house → Catch day / +1 / +2 from that house’s catch (or flock). */
+  /** Selected house → Low / Catch Day / High (±0.20 lb) from that house’s catch (or flock). */
   const weightProjectionGroups = (() => {
     if (!detail || growthRate == null || !selectedHouse) return [];
     const catchDate =
@@ -198,6 +206,7 @@ export default function ToolsScreen() {
       paramSection === "max" ||
       paramSection === "lights" ||
       paramSection === "weight" ||
+      paramSection === "weightManual" ||
       paramSection === "vent"
         ? paramSection
         : paramFarmId
@@ -210,23 +219,58 @@ export default function ToolsScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
+      <KeyboardAvoidingView
+        style={styles.screen}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       <ScrollView
         ref={scrollRef}
         style={styles.screen}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          Platform.OS !== "ios" && keyboardInset > 0
+            ? { paddingBottom: keyboardInset + 32 }
+            : null,
+        ]}
+        keyboardShouldPersistTaps="always"
+        keyboardDismissMode="on-drag"
       >
-        <PageHeader title="Tools" />
+        <View
+          style={{
+            marginBottom: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <Text style={[styles.title, { flex: 1 }]}>Tools</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+            onPress={() => router.push("/settings")}
+            hitSlop={10}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              minHeight: 40,
+              paddingHorizontal: 4,
+            }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>
+              Settings
+            </Text>
+            <Ionicons name="settings-outline" size={22} color={colors.muted} />
+          </Pressable>
+        </View>
 
         <Card style={{ marginBottom: 12 }}>
-          <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text }}>
-            Quick links
-          </Text>
           <View
             style={{
               flexDirection: "row",
               flexWrap: "wrap",
               gap: 8,
-              marginTop: 10,
             }}
           >
             {QUICK_LINKS.map((item) => (
@@ -234,24 +278,24 @@ export default function ToolsScreen() {
                 key={item.key}
                 onPress={() => openAndScroll(item.key)}
                 style={{
-                  width: "48%",
-                  flexGrow: 1,
-                  minHeight: 40,
+                  width: "31.5%",
+                  minHeight: 44,
                   borderRadius: 10,
                   backgroundColor: colors.accentDark,
                   alignItems: "center",
                   justifyContent: "center",
-                  paddingHorizontal: 10,
-                  paddingVertical: 10,
+                  paddingHorizontal: 4,
+                  paddingVertical: 8,
                 }}
               >
                 <Text
                   style={{
                     color: "#fff",
-                    fontSize: 14,
-                    fontWeight: "700",
+                    fontSize: 12,
+                    fontWeight: "800",
                     textAlign: "center",
                   }}
+                  numberOfLines={2}
                 >
                   {item.label}
                 </Text>
@@ -262,7 +306,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("weight", e)} collapsable={false}>
           {open.weight ? (
-            <SectionPanel title="Weight projections" onTop={scrollToTop}>
+            <SectionPanel title="Weight Projections">
               {!useAgeOfBird ? (
                 <>
                   <ChipScroller style={{ marginBottom: 6 }}>
@@ -321,40 +365,10 @@ export default function ToolsScreen() {
           )}
         </View>
 
-        <View onLayout={(e) => onSectionLayout("temp", e)} collapsable={false}>
-          {open.temp ? (
-            <SectionPanel title="Temp Curve" onTop={scrollToTop}>
-              <TempCurveChart />
-            </SectionPanel>
-          ) : (
-            <SectionAnchor />
-          )}
-        </View>
-
-        <View onLayout={(e) => onSectionLayout("cool", e)} collapsable={false}>
-          {open.cool ? (
-            <SectionPanel title="Cool Cells" onTop={scrollToTop}>
-              <CoolCellsChart />
-            </SectionPanel>
-          ) : (
-            <SectionAnchor />
-          )}
-        </View>
-
-        <View onLayout={(e) => onSectionLayout("max", e)} collapsable={false}>
-          {open.max ? (
-            <SectionPanel title="Max Cooling" onTop={scrollToTop}>
-              <MaxCoolingChart />
-            </SectionPanel>
-          ) : (
-            <SectionAnchor />
-          )}
-        </View>
-
-        <View onLayout={(e) => onSectionLayout("lights", e)} collapsable={false}>
-          {open.lights ? (
-            <SectionPanel title="Lights" onTop={scrollToTop}>
-              <LightsChart />
+        <View onLayout={(e) => onSectionLayout("weightManual", e)} collapsable={false}>
+          {open.weightManual ? (
+            <SectionPanel title="Custom Weight Projection" onTop={scrollToTop}>
+              <WeightProjectionManualTile />
             </SectionPanel>
           ) : (
             <SectionAnchor />
@@ -433,14 +447,10 @@ export default function ToolsScreen() {
                         value={selectedHouse.placedBirdCount?.toLocaleString() ?? "—"}
                       />
                       <MetricTile
-                        label="Total CFM"
+                        label="Total CFM (Min Vent)"
                         value={
                           selectedHouse.totalFanCFM != null
-                            ? `${selectedHouse.totalFanCFM.toLocaleString()}${
-                                selectedHouse.numberOfFans != null
-                                  ? ` · ${selectedHouse.numberOfFans} fans`
-                                  : ""
-                              }`
+                            ? selectedHouse.totalFanCFM.toLocaleString()
                             : "—"
                         }
                       />
@@ -569,7 +579,7 @@ export default function ToolsScreen() {
                       </View>
                     ) : (
                       <Text style={{ color: colors.warn, marginTop: 10 }}>
-                        Need birds placed, flock week, and Total fan CFM on this house to calculate.
+                        Need birds placed, flock week, and Total CFM (Min Vent) on this house to calculate.
                       </Text>
                     )}
                   </View>
@@ -708,7 +718,49 @@ export default function ToolsScreen() {
             <SectionAnchor />
           )}
         </View>
+
+        <View onLayout={(e) => onSectionLayout("temp", e)} collapsable={false}>
+          {open.temp ? (
+            <SectionPanel title="Temp Curve" onTop={scrollToTop}>
+              <TempCurveChart />
+            </SectionPanel>
+          ) : (
+            <SectionAnchor />
+          )}
+        </View>
+
+        <View onLayout={(e) => onSectionLayout("cool", e)} collapsable={false}>
+          {open.cool ? (
+            <SectionPanel title="Cool Cells" onTop={scrollToTop}>
+              <CoolCellsChart />
+            </SectionPanel>
+          ) : (
+            <SectionAnchor />
+          )}
+        </View>
+
+        <View onLayout={(e) => onSectionLayout("max", e)} collapsable={false}>
+          {open.max ? (
+            <SectionPanel title="Max Cooling" onTop={scrollToTop}>
+              <MaxCoolingChart />
+            </SectionPanel>
+          ) : (
+            <SectionAnchor />
+          )}
+        </View>
+
+        <View onLayout={(e) => onSectionLayout("lights", e)} collapsable={false}>
+          {open.lights ? (
+            <SectionPanel title="Lights" onTop={scrollToTop}>
+              <LightsChart />
+            </SectionPanel>
+          ) : (
+            <SectionAnchor />
+          )}
+        </View>
+
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -761,7 +813,7 @@ function SectionPanel({
 }: {
   title: string;
   subtitle?: string;
-  onTop: () => void;
+  onTop?: () => void;
   children?: React.ReactNode;
 }) {
   return (
@@ -780,9 +832,11 @@ function SectionPanel({
             <Text style={[styles.muted, { marginTop: 4 }]}>{subtitle}</Text>
           ) : null}
         </View>
-        <Pressable onPress={onTop} hitSlop={8}>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Top</Text>
-        </Pressable>
+        {onTop ? (
+          <Pressable onPress={onTop} hitSlop={8}>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>Top</Text>
+          </Pressable>
+        ) : null}
       </View>
       {children ? <View style={{ marginTop: 12 }}>{children}</View> : null}
     </Card>

@@ -15,9 +15,8 @@ import {
   type LayoutChangeEvent,
   type ScrollView as ScrollViewType,
 } from "react-native";
-import { Swipeable } from "react-native-gesture-handler";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
   completeFlock,
@@ -48,14 +47,20 @@ import {
   LITTER_EVENT_LABELS,
 } from "../../../../src/lib/opsLabels";
 import {
+  detectGeneratorHourSwap,
   formatGeneratorChartsCopy,
   formatGeneratorHours,
+  formatGeneratorLogDate,
   hoursDelta,
+  previousGeneratorHoursFromLogs,
   GENERATOR_FIELD_DEFS,
+  MAX_GENERATOR_HOUR_LOGS,
   type GenHourKey,
+  type GeneratorHourSwapSuggestion,
   type GeneratorHours,
 } from "../../../../src/lib/generator";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
+import { formatGroupedInput, parseGroupedNumber, ungroupNumber } from "../../../../src/lib/grouped-number";
 import { colors, styles } from "../../../../src/theme";
 import {
   Card,
@@ -71,6 +76,12 @@ import { TimeScrollPickerField } from "../../../../src/components/TimeScrollPick
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
 import { compactCatchTimeLabel } from "../../../../src/lib/time-slots";
 import { ConfirmDialog } from "../../../../src/components/ConfirmDialog";
+import { SwipeCommitDeleteRow } from "../../../../src/components/SwipeCommitDeleteRow";
+import {
+  NumberKeypad,
+  appendKeypadDigit,
+  backspaceKeypadValue,
+} from "../../../../src/components/NumberKeypad";
 
 /** "2026-07-25" → "07-25-2026" */
 function formatUsDate(dateKey: string) {
@@ -79,7 +90,6 @@ function formatUsDate(dateKey: string) {
   return `${m}-${d}-${y}`;
 }
 
-const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MONTHS_SHORT = [
   "Jan",
   "Feb",
@@ -95,12 +105,20 @@ const MONTHS_SHORT = [
   "Dec",
 ] as const;
 
-/** e.g. Wed 29 Jul 26 */
+/** e.g. 2 Sep 26 */
 function formatHouseDetailDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
-  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
-  return `${WEEKDAYS_SHORT[dt.getDay()]} ${d} ${MONTHS_SHORT[m - 1]} ${String(y).slice(-2)}`;
+  return `${d} ${MONTHS_SHORT[m - 1]} ${String(y).slice(-2)}`;
+}
+
+function daysBetweenKeys(fromKey: string, toKey: string): number | null {
+  const [y1, m1, d1] = fromKey.split("-").map(Number);
+  const [y2, m2, d2] = toKey.split("-").map(Number);
+  if (!y1 || !m1 || !d1 || !y2 || !m2 || !d2) return null;
+  const a = new Date(y1, m1 - 1, d1, 12, 0, 0, 0).getTime();
+  const b = new Date(y2, m2 - 1, d2, 12, 0, 0, 0).getTime();
+  return Math.round((b - a) / 86400000);
 }
 
 function formatShortDate(dateKey: string) {
@@ -114,7 +132,7 @@ function formatShortDate(dateKey: string) {
 
 function RecordLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={{ marginTop: 4, marginBottom: 16 }}>
+    <Pressable onPress={onPress} hitSlop={8}>
       <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>{label}</Text>
     </Pressable>
   );
@@ -136,11 +154,9 @@ function TopLink({ onPress }: { onPress: () => void }) {
 
 function SectionHeading({
   title,
-  onTop,
   right,
 }: {
   title: string;
-  onTop: () => void;
   right?: ReactNode;
 }) {
   return (
@@ -150,48 +166,38 @@ function SectionHeading({
         alignItems: "center",
         justifyContent: "space-between",
         gap: 8,
+        marginBottom: 8,
       }}
     >
-      <Text style={{ fontWeight: "800", fontSize: 16, flex: 1, minWidth: 0 }}>{title}</Text>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
-        {right}
-        <TopLink onPress={onTop} />
-      </View>
+      <Text style={{ fontWeight: "800", fontSize: 20, flex: 1, minWidth: 0 }}>{title}</Text>
+      {right ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          {right}
+        </View>
+      ) : null}
     </View>
   );
 }
 
-function RowActions({
-  editLabel,
-  deleteLabel,
-  onEdit,
-  onDelete,
-}: {
-  editLabel?: string;
-  deleteLabel: string;
-  onEdit?: () => void;
-  onDelete: () => void;
-}) {
+/** Same size as generator hour readings. */
+const logEntryText = {
+  fontSize: 16,
+  lineHeight: 22,
+  fontWeight: "600" as const,
+  color: colors.text,
+};
+
+/** Same hit area as generator hour rows so the swipe Delete is the same size. */
+const logRowHit = {
+  minHeight: 38,
+  paddingVertical: 4,
+  justifyContent: "center" as const,
+};
+
+function SectionTop({ onPress }: { onPress: () => void }) {
   return (
-    <View style={{ flexDirection: "row", gap: 2 }}>
-      {onEdit ? (
-        <Pressable
-          accessibilityLabel={editLabel ?? "Edit"}
-          onPress={onEdit}
-          hitSlop={8}
-          style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
-        >
-          <Ionicons name="pencil-outline" size={20} color={colors.muted} />
-        </Pressable>
-      ) : null}
-      <Pressable
-        accessibilityLabel={deleteLabel}
-        onPress={onDelete}
-        hitSlop={8}
-        style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
-      >
-        <Ionicons name="trash-outline" size={20} color={colors.muted} />
-      </Pressable>
+    <View style={{ marginTop: 8, marginBottom: 16, alignSelf: "flex-start" }}>
+      <TopLink onPress={onPress} />
     </View>
   );
 }
@@ -209,9 +215,8 @@ type HouseEditDraft = {
   houseNumber: string;
   squareFootage: string;
   totalFanCFM: string;
+  totalPowerCFM: string;
   placedBirdCount: string;
-  /** Shown as placeholder while the field stays empty for easy retype. */
-  placedBirdCountPlaceholder: string;
   placementDate: string;
   catchDate: string;
   catchTime: string;
@@ -221,20 +226,22 @@ type HouseEditDraft = {
   applyCatchDateToRemaining: boolean;
   applyCatchTimeToRemaining: boolean;
   applyFlockIdToRemaining: boolean;
-  applySpecsToRemaining: boolean;
+  applySquareFootageToRemaining: boolean;
+  applyMinVentCfmToRemaining: boolean;
+  applyPowerCfmToRemaining: boolean;
 };
 
 type AddHouseDraft = {
   houseNumber: string;
   squareFootage: string;
   totalFanCFM: string;
+  totalPowerCFM: string;
 };
 
 type FarmEditDraft = {
   farmName: string;
+  farmNumber: string;
   growerName: string;
-  phoneNumber: string;
-  email: string;
   notes: string;
   numberOfGenerators: number | null;
 };
@@ -245,6 +252,7 @@ function NativeNumInput({
   value,
   onChangeText,
   decimal,
+  grouped,
   placeholder,
   style,
   autoFocus,
@@ -256,6 +264,7 @@ function NativeNumInput({
   value: string;
   onChangeText: (v: string) => void;
   decimal?: boolean;
+  grouped?: boolean;
   placeholder?: string;
   style?: object;
   autoFocus?: boolean;
@@ -274,8 +283,10 @@ function NativeNumInput({
           { fontSize: 20, fontWeight: "700", color: colors.text },
           onPropagateToggle ? { marginBottom: 0 } : null,
         ]}
-        value={value}
-        onChangeText={onChangeText}
+        value={grouped ? formatGroupedInput(value, !!decimal) : value}
+        onChangeText={(text) =>
+          onChangeText(grouped ? formatGroupedInput(text, !!decimal) : text)
+        }
         keyboardType={decimal ? "decimal-pad" : "number-pad"}
         placeholder={placeholder}
         placeholderTextColor={colors.muted}
@@ -303,11 +314,14 @@ function PropagateCheck({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        alignSelf: "flex-start",
+        alignSelf: "flex-end",
         gap: 6,
         marginTop: 2,
       }}
     >
+      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
+        Propagate
+      </Text>
       <View
         style={{
           width: 18,
@@ -322,14 +336,11 @@ function PropagateCheck({
       >
         {checked ? <Ionicons name="checkmark" size={13} color="#fff" /> : null}
       </View>
-      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
-        Propagate
-      </Text>
     </Pressable>
   );
 }
 
-const MAX_GENERATOR_LOGS_DISPLAY = 8;
+const MAX_GENERATOR_LOGS_DISPLAY = MAX_GENERATOR_HOUR_LOGS;
 
 type GeneratorChartRow = {
   id: string;
@@ -350,101 +361,68 @@ function GeneratorHoursChart({
   onDelete?: (id: string) => void;
 }) {
   const showActions = onEdit != null && onDelete != null;
+  const cell = {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "600" as const,
+    color: colors.text,
+    fontVariant: ["tabular-nums"] as const,
+  };
   return (
-    <View style={{ marginTop: 6 }}>
-      <Text style={{ fontWeight: "700", fontSize: 12, color: colors.text, marginBottom: 1 }}>
+    <View style={{ marginTop: 8 }}>
+      <Text style={{ fontWeight: "700", fontSize: 16, color: colors.text, marginBottom: 2 }}>
         {title}
       </Text>
       <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-        <Text style={{ width: 80, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 168, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Date
         </Text>
-        <Text style={{ width: 48, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 60, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Hours
         </Text>
-        <Text style={{ width: 56, fontSize: 11, fontWeight: "600", color: colors.muted, lineHeight: 14 }}>
+        <Text style={{ width: 80, fontSize: 14, fontWeight: "600", color: colors.muted, lineHeight: 18 }}>
           Exercised
         </Text>
-        {showActions ? <View style={{ width: 44 }} /> : null}
       </View>
       {rows.length === 0 ? (
-        <Text style={[styles.muted, { fontSize: 12 }]}>None yet</Text>
+        <Text style={[styles.muted, { fontSize: 15 }]}>None yet</Text>
       ) : (
         <View>
-          {rows.map((row) => (
-            <View
-              key={row.id}
-              style={{ flexDirection: "row", gap: 12, alignItems: "center", minHeight: 16 }}
-            >
-              <Text
+          {rows.map((row) => {
+            const cells = (
+              <Pressable
+                accessibilityRole={showActions ? "button" : undefined}
+                accessibilityLabel={showActions ? "Edit generator log" : undefined}
+                onPress={showActions ? () => onEdit(row.id) : undefined}
                 style={{
-                  width: 80,
-                  fontSize: 12,
-                  lineHeight: 16,
-                  fontWeight: "600",
-                  color: colors.text,
-                  fontVariant: ["tabular-nums"],
-                }}
-                numberOfLines={1}
-              >
-                {row.dateLabel}
-              </Text>
-              <Text
-                style={{
-                  width: 48,
-                  fontSize: 12,
-                  lineHeight: 16,
-                  fontWeight: "600",
-                  color: colors.text,
-                  fontVariant: ["tabular-nums"],
+                  flexDirection: "row",
+                  gap: 12,
+                  alignItems: "center",
+                  minHeight: 38,
+                  paddingVertical: 4,
                 }}
               >
-                {formatGeneratorHours(row.hours)}
-              </Text>
-              <Text
-                style={{
-                  width: 56,
-                  fontSize: 12,
-                  lineHeight: 16,
-                  fontWeight: "600",
-                  color: colors.text,
-                  fontVariant: ["tabular-nums"],
-                }}
+                <Text style={{ ...cell, width: 168 }} numberOfLines={1}>
+                  {row.dateLabel}
+                </Text>
+                <Text style={{ ...cell, width: 60 }}>{formatGeneratorHours(row.hours)}</Text>
+                <Text style={{ ...cell, width: 80 }}>{formatGeneratorHours(row.exercised)}</Text>
+              </Pressable>
+            );
+            if (!showActions) {
+              return <View key={row.id}>{cells}</View>;
+            }
+            return (
+              <SwipeCommitDeleteRow
+                key={row.id}
+                onDelete={() => onDelete(row.id)}
+                radius={10}
+                transparent
               >
-                {formatGeneratorHours(row.exercised)}
-              </Text>
-              {showActions ? (
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Pressable
-                    accessibilityLabel="Edit generator log"
-                    onPress={() => onEdit(row.id)}
-                    hitSlop={4}
-                    style={{
-                      width: 22,
-                      height: 16,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons name="pencil-outline" size={13} color={colors.muted} />
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel="Delete generator log"
-                    onPress={() => onDelete(row.id)}
-                    hitSlop={4}
-                    style={{
-                      width: 22,
-                      height: 16,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons name="trash-outline" size={13} color={colors.danger} />
-                  </Pressable>
-                </View>
-              ) : null}
-            </View>
-          ))}
+                {cells}
+              </SwipeCommitDeleteRow>
+            );
+          })}
         </View>
       )}
     </View>
@@ -462,10 +440,18 @@ export default function FarmDetailScreen() {
   const focusHouseFlockIdParam = paramId(params.focusHouseFlockId);
   const router = useRouter();
   const goToFarmList = useGoToFarmList();
+  const insets = useSafeAreaInsets();
+  const houseEditTopPad =
+    Platform.OS === "web"
+      ? (`max(${Math.max(insets.top, 12)}px, env(safe-area-inset-top, 12px))` as unknown as number)
+      : Math.max(insets.top, 12);
   const [data, setData] = useState<FarmDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingHouse, setEditingHouse] = useState<HouseEditDraft | null>(null);
+  const [housePicker, setHousePicker] = useState<"placement" | "catch" | "catchTime" | null>(
+    null,
+  );
   const [houseEditError, setHouseEditError] = useState<string | null>(null);
   const [houseSaving, setHouseSaving] = useState(false);
   const [tempHouse, setTempHouse] = useState<{
@@ -475,26 +461,27 @@ export default function FarmDetailScreen() {
   } | null>(null);
   const [tempSaving, setTempSaving] = useState(false);
   const [tempError, setTempError] = useState<string | null>(null);
-  const tempInputRef = useRef<TextInput>(null);
-
-  const tempHouseId = tempHouse?.id ?? null;
-  useEffect(() => {
-    if (!tempHouseId) return;
-    const t = setTimeout(() => tempInputRef.current?.focus(), 280);
-    return () => clearTimeout(t);
-  }, [tempHouseId]);
   const [addingHouse, setAddingHouse] = useState<AddHouseDraft | null>(null);
   const [addHouseError, setAddHouseError] = useState<string | null>(null);
   const [addHouseSaving, setAddHouseSaving] = useState(false);
-  const [expandedHouses, setExpandedHouses] = useState<Set<string>>(new Set());
+  const [collapsedHouses, setCollapsedHouses] = useState<Set<string>>(new Set());
   const [editingFarm, setEditingFarm] = useState<FarmEditDraft | null>(null);
   const [farmEditError, setFarmEditError] = useState<string | null>(null);
   const [farmSaving, setFarmSaving] = useState(false);
+  const [farmEditKeyboardH, setFarmEditKeyboardH] = useState(0);
+  const farmEditScrollRef = useRef<ScrollViewType>(null);
+  const farmNotesWrapRef = useRef<View>(null);
   const [generatorModalOpen, setGeneratorModalOpen] = useState(false);
   const [generatorSaving, setGeneratorSaving] = useState(false);
   const [generatorError, setGeneratorError] = useState<string | null>(null);
   const [generatorEditingId, setGeneratorEditingId] = useState<string | null>(null);
   const [generatorEditingGen, setGeneratorEditingGen] = useState<GenHourKey | null>(null);
+  const [opsConfirm, setOpsConfirm] = useState<{
+    kind: "house";
+    houseId: string;
+    houseNumber: number;
+  } | null>(null);
+  const [opsError, setOpsError] = useState<string | null>(null);
   const [completeConfirm, setCompleteConfirm] = useState<{
     flockId: string;
     flockNumber: string;
@@ -508,6 +495,9 @@ export default function FarmDetailScreen() {
     gen3Hours: "",
     gen4Hours: "",
   });
+  const [generatorSwap, setGeneratorSwap] = useState<GeneratorHourSwapSuggestion | null>(
+    null,
+  );
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("farms", scrollRef);
   const sectionY = useRef<Record<string, number>>({});
@@ -634,9 +624,8 @@ export default function FarmDetailScreen() {
     setFarmEditError(null);
     setEditingFarm({
       farmName: farm.farmName,
+      farmNumber: farm.farmNumber ?? "",
       growerName: farm.growerName ?? "",
-      phoneNumber: farm.phoneNumber ?? "",
-      email: farm.email ?? "",
       notes: farm.notes ?? "",
       numberOfGenerators: farm.numberOfGenerators ?? null,
     });
@@ -647,6 +636,34 @@ export default function FarmDetailScreen() {
     if (!openEdit || !data || data.farm.id !== farmId || editingFarm) return;
     openFarmEditor(data.farm);
   }, [openEdit, data, farmId, editingFarm]);
+
+  useEffect(() => {
+    if (!editingFarm) {
+      setFarmEditKeyboardH(0);
+      return;
+    }
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvent, (e) => {
+      setFarmEditKeyboardH(e.endCoordinates?.height ?? 0);
+    });
+    const hide = Keyboard.addListener(hideEvent, () => setFarmEditKeyboardH(0));
+
+    const vv = Platform.OS === "web" && typeof window !== "undefined" ? window.visualViewport : null;
+    const onViewport = () => {
+      if (!vv) return;
+      setFarmEditKeyboardH(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    };
+    vv?.addEventListener("resize", onViewport);
+    vv?.addEventListener("scroll", onViewport);
+
+    return () => {
+      show.remove();
+      hide.remove();
+      vv?.removeEventListener("resize", onViewport);
+      vv?.removeEventListener("scroll", onViewport);
+    };
+  }, [editingFarm]);
 
   // Never render a previous farm under a new id
   const ready = data != null && data.farm.id === farmId;
@@ -735,6 +752,7 @@ export default function FarmDetailScreen() {
       houseNumber: String(nextNum),
       squareFootage: "29700",
       totalFanCFM: "",
+      totalPowerCFM: "",
     });
   }
 
@@ -752,11 +770,17 @@ export default function FarmDetailScreen() {
       const sq = Number(addingHouse.squareFootage);
       const cfm =
         addingHouse.totalFanCFM.trim() === "" ? null : Number(addingHouse.totalFanCFM);
-      if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
+      const powerCfm =
+        addingHouse.totalPowerCFM.trim() === "" ? null : Number(addingHouse.totalPowerCFM);
+      if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total CFM (Min Vent) is invalid");
+      if (powerCfm != null && !Number.isFinite(powerCfm)) {
+        throw new Error("Total CFM (Power) is invalid");
+      }
       createHouse(data.farm.id, {
         houseNumber: Number(addingHouse.houseNumber),
         squareFootage: sq,
         totalFanCFM: cfm,
+        totalPowerCFM: powerCfm,
         numberOfFans: null,
       });
       setAddingHouse(null);
@@ -770,6 +794,7 @@ export default function FarmDetailScreen() {
 
   function openHouseEditor(h: HouseRow) {
     setHouseEditError(null);
+    setHousePicker(null);
     // Only prefill dates the house already has — don't inherit an old flock
     // date. Empty fields open the calendar on today via DatePickerField.
     const placementDate = h.placementDate ?? "";
@@ -779,11 +804,9 @@ export default function FarmDetailScreen() {
       houseNumber: String(h.houseNumber),
       squareFootage: String(h.squareFootage ?? 29700),
       totalFanCFM: h.totalFanCFM != null ? String(h.totalFanCFM) : "",
-      // Prefill 29700 when unset. If a count already exists, leave blank so the
-      // tech can type a new number without deleting first (placeholder shows it).
-      placedBirdCount: h.placedBirdCount != null ? "" : "29700",
-      placedBirdCountPlaceholder:
-        h.placedBirdCount != null ? String(h.placedBirdCount) : "29700",
+      totalPowerCFM: h.totalPowerCFM != null ? String(h.totalPowerCFM) : "",
+      // Only show a count that was already saved — never ghost-fill 23000/29700.
+      placedBirdCount: h.placedBirdCount != null ? String(h.placedBirdCount) : "",
       placementDate,
       catchDate,
       catchTime: h.catchTime ?? "",
@@ -793,13 +816,16 @@ export default function FarmDetailScreen() {
       applyCatchDateToRemaining: false,
       applyCatchTimeToRemaining: false,
       applyFlockIdToRemaining: false,
-      applySpecsToRemaining: false,
+      applySquareFootageToRemaining: false,
+      applyMinVentCfmToRemaining: false,
+      applyPowerCfmToRemaining: false,
     });
   }
 
   function closeHouseEditor() {
     if (houseSaving) return;
     setEditingHouse(null);
+    setHousePicker(null);
     setHouseEditError(null);
   }
 
@@ -851,6 +877,95 @@ export default function FarmDetailScreen() {
     setGeneratorError(null);
     setGeneratorEditingId(null);
     setGeneratorEditingGen(null);
+    setGeneratorSwap(null);
+  }
+
+  function parseGeneratorDraftHours() {
+    const parseHours = (raw: string) => {
+      const trimmed = raw.trim();
+      if (trimmed === "") return null;
+      const n = Number(trimmed);
+      if (!Number.isFinite(n) || n < 0) {
+        throw new Error("Generator hours must be 0 or greater");
+      }
+      return n;
+    };
+    return {
+      logDate: generatorDraft.logDate.trim(),
+      gen1Hours: parseHours(generatorDraft.gen1Hours),
+      gen2Hours: parseHours(generatorDraft.gen2Hours),
+      gen3Hours: parseHours(generatorDraft.gen3Hours),
+      gen4Hours: parseHours(generatorDraft.gen4Hours),
+    };
+  }
+
+  function persistGeneratorHours(
+    hours: {
+      logDate: string;
+      gen1Hours: number | null;
+      gen2Hours: number | null;
+      gen3Hours: number | null;
+      gen4Hours: number | null;
+    },
+    remapAll = false,
+  ) {
+    if (generatorEditingId) {
+      updateGeneratorLog(farm.id, generatorEditingId, {
+        ...hours,
+        onlyGen: remapAll ? undefined : generatorEditingGen ?? undefined,
+      });
+    } else {
+      createGeneratorLog({
+        farmId: farm.id,
+        ...hours,
+      });
+    }
+    setGeneratorModalOpen(false);
+    setGeneratorEditingId(null);
+    setGeneratorEditingGen(null);
+    setGeneratorSwap(null);
+    load();
+  }
+
+  function saveGeneratorLog(
+    hours?: {
+      logDate: string;
+      gen1Hours: number | null;
+      gen2Hours: number | null;
+      gen3Hours: number | null;
+      gen4Hours: number | null;
+    },
+    remapAll = false,
+  ) {
+    setGeneratorSaving(true);
+    setGeneratorError(null);
+    try {
+      const payload = hours ?? parseGeneratorDraftHours();
+      if (!hours) {
+        const previous = previousGeneratorHoursFromLogs(data?.generatorLogs ?? [], {
+          onOrBeforeDate: payload.logDate,
+          excludeLogId: generatorEditingId,
+        });
+        const entered = generatorEditingGen
+          ? {
+              gen1Hours: generatorEditingGen === "gen1Hours" ? payload.gen1Hours : null,
+              gen2Hours: generatorEditingGen === "gen2Hours" ? payload.gen2Hours : null,
+              gen3Hours: generatorEditingGen === "gen3Hours" ? payload.gen3Hours : null,
+              gen4Hours: generatorEditingGen === "gen4Hours" ? payload.gen4Hours : null,
+            }
+          : payload;
+        const swap = detectGeneratorHourSwap(previous, entered);
+        if (swap) {
+          setGeneratorSwap(swap);
+          return;
+        }
+      }
+      persistGeneratorHours(payload, remapAll);
+    } catch (e) {
+      setGeneratorError(e instanceof Error ? e.message : "Could not save generator log");
+    } finally {
+      setGeneratorSaving(false);
+    }
   }
 
   function openGeneratorEditor(
@@ -889,43 +1004,64 @@ export default function FarmDetailScreen() {
   }
 
   function confirmDeleteHouse(h: HouseRow) {
-    Alert.alert(
-      `Delete house ${h.houseNumber}?`,
-      "This removes the house from the farm. It will no longer appear in your lists.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            try {
-              deleteHouse(farm.id, h.id);
-              load();
-            } catch (e) {
-              Alert.alert("Error", e instanceof Error ? e.message : "Could not delete house");
-            }
-          },
-        },
-      ],
-    );
+    setOpsConfirm({ kind: "house", houseId: h.id, houseNumber: h.houseNumber });
   }
 
-  function confirmDeleteVisit(visitId: string, visitDate: string) {
-    Alert.alert("Delete visit?", `${visitDate} will be removed.`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          try {
-            deleteVisit(farm.id, visitId);
-            load();
-          } catch (e) {
-            Alert.alert("Error", e instanceof Error ? e.message : "Could not delete visit");
-          }
-        },
-      },
-    ]);
+  function removeVisit(visitId: string) {
+    try {
+      deleteVisit(farm.id, visitId);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
+  function removeIssue(issueId: string) {
+    try {
+      deleteIssue(farm.id, issueId);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
+  function removeLitter(eventId: string) {
+    try {
+      deleteLitterEvent(farm.id, eventId);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
+  function removeFeed(deliveryId: string) {
+    try {
+      deleteFeedDelivery(deliveryId);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
+  function removeGenerator(logId: string, hourKey: GenHourKey) {
+    try {
+      deleteGeneratorLog(farm.id, logId, hourKey);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    }
+  }
+
+  function runOpsConfirm() {
+    if (!opsConfirm) return;
+    try {
+      deleteHouse(farm.id, opsConfirm.houseId);
+      load();
+    } catch (e) {
+      setOpsError(e instanceof Error ? e.message : "Could not delete");
+    } finally {
+      setOpsConfirm(null);
+    }
   }
 
   function saveHouseEdit() {
@@ -933,15 +1069,24 @@ export default function FarmDetailScreen() {
     setHouseSaving(true);
     setHouseEditError(null);
     try {
-      const sq = Number(editingHouse.squareFootage);
+      const sq = parseGroupedNumber(editingHouse.squareFootage);
       const cfm =
-        editingHouse.totalFanCFM.trim() === "" ? null : Number(editingHouse.totalFanCFM);
+        editingHouse.totalFanCFM.trim() === ""
+          ? null
+          : parseGroupedNumber(editingHouse.totalFanCFM);
+      const powerCfm =
+        editingHouse.totalPowerCFM.trim() === ""
+          ? null
+          : parseGroupedNumber(editingHouse.totalPowerCFM);
       const existing = data?.houses.find((h) => h.id === editingHouse.id);
       const fans = existing?.numberOfFans ?? null;
-      const placedRaw = editingHouse.placedBirdCount.trim();
+      const placedRaw = ungroupNumber(editingHouse.placedBirdCount).trim();
       const placed =
-        placedRaw === "" ? null : Math.floor(Number(placedRaw));
-      if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total fan CFM is invalid");
+        placedRaw === "" ? null : Math.floor(parseGroupedNumber(placedRaw));
+      if (cfm != null && !Number.isFinite(cfm)) throw new Error("Total CFM (Min Vent) is invalid");
+      if (powerCfm != null && !Number.isFinite(powerCfm)) {
+        throw new Error("Total CFM (Power) is invalid");
+      }
       if (
         data?.activeFlock &&
         placedRaw !== "" &&
@@ -956,8 +1101,11 @@ export default function FarmDetailScreen() {
         houseNumber: Number(editingHouse.houseNumber),
         squareFootage: sq,
         totalFanCFM: cfm,
+        totalPowerCFM: powerCfm,
         numberOfFans: fans,
-        applySpecsToRemainingHouses: editingHouse.applySpecsToRemaining,
+        applySquareFootageToRemainingHouses: editingHouse.applySquareFootageToRemaining,
+        applyMinVentCfmToRemainingHouses: editingHouse.applyMinVentCfmToRemaining,
+        applyPowerCfmToRemainingHouses: editingHouse.applyPowerCfmToRemaining,
         ...(data?.activeFlock
           ? {
               ...(placedRaw !== ""
@@ -990,6 +1138,7 @@ export default function FarmDetailScreen() {
     if (farmSaving) return;
     setEditingFarm(null);
     setFarmEditError(null);
+    setFarmEditKeyboardH(0);
     if (openEdit) {
       // Opened from list gear — return to the farms list at the prior scroll position.
       goToFarmList();
@@ -1003,9 +1152,8 @@ export default function FarmDetailScreen() {
     try {
       updateFarm(farm.id, {
         farmName: editingFarm.farmName,
+        farmNumber: editingFarm.farmNumber,
         growerName: editingFarm.growerName,
-        phoneNumber: editingFarm.phoneNumber,
-        email: editingFarm.email,
         notes: editingFarm.notes,
       });
       setEditingFarm(null);
@@ -1100,7 +1248,6 @@ export default function FarmDetailScreen() {
 
         <View style={{ marginBottom: 16 }}>
           <Card>
-            <Text style={{ fontWeight: "800", fontSize: 14, marginBottom: 8 }}>Quick links</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {(
                 [
@@ -1114,37 +1261,8 @@ export default function FarmDetailScreen() {
                       }),
                   },
                   {
-                    key: "mortality",
-                    label: "Mortality",
-                    onPress: () => {
-                      setFarmNavContext({ farmId: farm.id, houseFlockId: null });
-                      router.navigate({
-                        pathname: "/(tabs)/mortality",
-                        params: { farmId: farm.id },
-                      });
-                    },
-                  },
-                  {
-                    key: "lfo",
-                    label: "LFO",
-                    onPress: () =>
-                      router.push({
-                        pathname: "/(tabs)/lfo",
-                        params: { farmId: farm.id },
-                      }),
-                  },
-                  {
-                    key: "weight",
-                    label: "Weight Proj.",
-                    onPress: () =>
-                      router.push({
-                        pathname: "/(tabs)/tools",
-                        params: { farmId: farm.id, section: "weight" },
-                      }),
-                  },
-                  {
                     key: "generators",
-                    label: "Generator Log",
+                    label: "Generator",
                     onPress: () => scrollToSection("generators"),
                   },
                   { key: "visits", label: "Visits", onPress: () => scrollToSection("visits") },
@@ -1152,11 +1270,11 @@ export default function FarmDetailScreen() {
                   { key: "litter", label: "Litter", onPress: () => scrollToSection("litter") },
                   { key: "feed", label: "Feed", onPress: () => scrollToSection("feed") },
                   {
-                    key: "reports",
-                    label: "Reports",
+                    key: "lfo",
+                    label: "LFO",
                     onPress: () =>
                       router.push({
-                        pathname: "/(tabs)/reports",
+                        pathname: "/(tabs)/lfo",
                         params: { farmId: farm.id },
                       }),
                   },
@@ -1173,7 +1291,7 @@ export default function FarmDetailScreen() {
                     ? [
                         {
                           key: "complete-flock",
-                          label: "Complete Flock",
+                          label: "End Flock",
                           onPress: promptCompleteFlock,
                         },
                       ]
@@ -1212,7 +1330,7 @@ export default function FarmDetailScreen() {
         </View>
 
         {data.houses.map((h) => {
-          const detailsOpen = expandedHouses.has(h.id);
+          const detailsOpen = !collapsedHouses.has(h.id);
           return (
             <View
               key={`${farm.id}-${h.id}`}
@@ -1220,31 +1338,21 @@ export default function FarmDetailScreen() {
               onLayout={onSectionLayout(`house-${h.id}`)}
               style={{ marginBottom: 12 }}
             >
-            <Swipeable
-              overshootRight={false}
-              friction={2}
-              rightThreshold={40}
-              renderRightActions={() => (
-                <Pressable
+            <SwipeCommitDeleteRow
+              onDelete={() => confirmDeleteHouse(h)}
+              deleteContent={
+                <View
                   accessibilityLabel={`Delete house ${h.houseNumber}`}
-                  onPress={() => confirmDeleteHouse(h)}
-                  style={{
-                    backgroundColor: colors.danger,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    width: 88,
-                    borderRadius: 14,
-                    marginLeft: 8,
-                  }}
+                  style={{ alignItems: "center" }}
                 >
                   <Ionicons name="trash-outline" size={22} color="#fff" />
                   <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12, marginTop: 4 }}>
                     Delete
                   </Text>
-                </Pressable>
-              )}
+                </View>
+              }
             >
-              <Card style={{ marginBottom: 0, padding: 0, overflow: "hidden" }}>
+              <Card style={{ marginBottom: 0, padding: 0 }}>
                 <View style={{ padding: 16, paddingBottom: 4 }}>
                   <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
                     <Pressable
@@ -1398,7 +1506,7 @@ export default function FarmDetailScreen() {
                             lineHeight: 16,
                           }}
                         >
-                          Enter{"\n"}mortality
+                          Enter{"\n"}Mortality
                         </Text>
                       </Pressable>
                     ) : null}
@@ -1436,7 +1544,7 @@ export default function FarmDetailScreen() {
 
                 <Pressable
                   onPress={() =>
-                    setExpandedHouses((prev) => {
+                    setCollapsedHouses((prev) => {
                       const next = new Set(prev);
                       if (next.has(h.id)) next.delete(h.id);
                       else next.add(h.id);
@@ -1461,7 +1569,7 @@ export default function FarmDetailScreen() {
                     {detailsOpen ? "▾" : "▸"}
                   </Text>
                   <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
-                    {detailsOpen ? "Hide details" : "Show details"}
+                    {detailsOpen ? "Hide Details" : "Show Details"}
                   </Text>
                 </Pressable>
 
@@ -1473,11 +1581,31 @@ export default function FarmDetailScreen() {
                   >
                     <View style={{ gap: 10 }}>
                       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                        <Metric
-                          columns={3}
-                          label="Placed"
-                          value={formatNumber(h.placedBirdCount)}
-                        />
+                        <View style={{ width: "33.333%", paddingRight: 8, marginBottom: 10 }}>
+                          <Text style={{ fontSize: 13, color: colors.muted }}>Placed</Text>
+                          <Text
+                            style={{
+                              fontSize: 15,
+                              fontWeight: "700",
+                              color: colors.text,
+                              marginTop: 2,
+                            }}
+                          >
+                            {formatNumber(h.placedBirdCount)}
+                          </Text>
+                          {h.placementDate ? (
+                            <Text
+                              style={{
+                                fontSize: 15,
+                                fontWeight: "700",
+                                color: colors.text,
+                                marginTop: 2,
+                              }}
+                            >
+                              {formatHouseDetailDate(h.placementDate)}
+                            </Text>
+                          ) : null}
+                        </View>
                         <Metric
                           columns={3}
                           label="Remaining"
@@ -1492,23 +1620,23 @@ export default function FarmDetailScreen() {
                       </View>
                       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                         <View style={{ width: "33.333%", paddingRight: 8, marginBottom: 10 }}>
-                          <Text style={{ fontSize: 13, color: colors.muted }}>Placed/Catch</Text>
-                          {h.placementDate ? (
+                          <Text style={{ fontSize: 13, color: colors.muted }}>Catch</Text>
+                          {h.catchDate ? (
                             <Text
                               style={{
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: "700",
                                 color: colors.text,
                                 marginTop: 2,
-                                lineHeight: 18,
+                                lineHeight: 20,
                               }}
                             >
-                              {formatHouseDetailDate(h.placementDate)}
+                              {formatHouseDetailDate(h.catchDate)}
                             </Text>
                           ) : (
                             <Text
                               style={{
-                                fontSize: 13,
+                                fontSize: 15,
                                 fontWeight: "700",
                                 color: colors.text,
                                 marginTop: 2,
@@ -1517,39 +1645,42 @@ export default function FarmDetailScreen() {
                               —
                             </Text>
                           )}
-                          {h.catchDate ? (
-                            <View style={{ marginTop: 2 }}>
-                              <Text
-                                style={{
-                                  fontSize: 13,
-                                  fontWeight: "700",
-                                  color: colors.text,
-                                  lineHeight: 18,
-                                }}
-                              >
-                                {formatHouseDetailDate(h.catchDate)}
-                              </Text>
-                              {h.catchTime ? (
-                                <Text
-                                  style={{
-                                    fontSize: 13,
-                                    fontWeight: "700",
-                                    color: colors.text,
-                                    lineHeight: 18,
-                                  }}
-                                >
-                                  {compactCatchTimeLabel(h.catchTime)}
-                                </Text>
-                              ) : null}
-                            </View>
+                          {h.catchTime ? (
+                            <Text
+                              style={{
+                                fontSize: 15,
+                                fontWeight: "700",
+                                color: colors.text,
+                                lineHeight: 20,
+                              }}
+                            >
+                              {compactCatchTimeLabel(h.catchTime)}
+                            </Text>
                           ) : null}
+                          {h.placementDate && h.catchDate
+                            ? (() => {
+                                const age = daysBetweenKeys(h.placementDate, h.catchDate);
+                                return age != null ? (
+                                  <Text
+                                    style={{
+                                      fontSize: 15,
+                                      fontWeight: "700",
+                                      color: colors.text,
+                                      lineHeight: 20,
+                                    }}
+                                  >
+                                    {age} days
+                                  </Text>
+                                ) : null;
+                              })()
+                            : null}
                         </View>
                         <Metric
                           columns={3}
                           label="Mortality"
                           value={
                             h.placedBirdCount != null
-                              ? `${formatNumber(h.cumulativeMortality)} (${formatPct(h.cumulativeMortalityPct)})`
+                              ? `${formatNumber(h.cumulativeMortality)}\n(${formatPct(h.cumulativeMortalityPct)})`
                               : formatNumber(h.cumulativeMortality)
                           }
                         />
@@ -1560,7 +1691,7 @@ export default function FarmDetailScreen() {
                             h.projectedMortality != null &&
                             h.placedBirdCount != null &&
                             h.placedBirdCount > 0
-                              ? `${formatNumber(h.projectedMortality)} (${formatPct(
+                              ? `${formatNumber(h.projectedMortality)}\n(${formatPct(
                                   (h.projectedMortality / h.placedBirdCount) * 100,
                                 )})`
                               : formatNumber(h.projectedMortality)
@@ -1571,7 +1702,7 @@ export default function FarmDetailScreen() {
                   </Pressable>
                 ) : null}
               </Card>
-            </Swipeable>
+            </SwipeCommitDeleteRow>
             </View>
           );
         })}
@@ -1579,81 +1710,89 @@ export default function FarmDetailScreen() {
         {data.houses.length === 0 ? (
           <Text style={[styles.muted, { marginBottom: 4 }]}>No houses yet.</Text>
         ) : null}
-        <Pressable onPress={openAddHouse} hitSlop={8} style={{ marginBottom: 8, paddingVertical: 4 }}>
+        <Pressable
+          onPress={openAddHouse}
+          hitSlop={8}
+          style={{ marginBottom: 8, paddingVertical: 4, alignSelf: "flex-start" }}
+        >
           <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 14 }}>
-            Add house
+            Add House
           </Text>
         </Pressable>
 
         {/* ── Visits ── */}
         <View onLayout={onSectionLayout("visits")}>
-          <Card>
-            <SectionHeading title="Recent visits" onTop={scrollPageToTop} />
-            {data.visits.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
-            ) : (
-              data.visits.map((v) => (
-                <View
-                  key={v.id}
-                  style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
+          <SectionHeading
+            title="Recent Visits"
+            right={
+              <RecordLink
+                label="Log Visit"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/log-visit",
+                    params: { id: farm.id },
+                  })
+                }
+              />
+            }
+          />
+          {data.visits.length === 0 ? (
+            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
+          ) : (
+            data.visits.map((v, i) => (
+              <View
+                key={v.id}
+                style={{
+                    marginTop: i === 0 ? 0 : 2,
+                    paddingTop: i === 0 ? 0 : 4,
+                    borderTopWidth: i === 0 ? 0 : 1,
                     borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                    alignItems: "flex-start",
-                  }}
+                }}
+              >
+                <SwipeCommitDeleteRow
+                  transparent
+                  onDelete={() => removeVisit(v.id)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/visits/[visitId]",
+                      params: { id: farm.id, visitId: v.id },
+                    })
+                  }
                 >
-                  <Pressable
+                  <View
                     accessibilityRole="button"
                     accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/visits/[visitId]",
-                        params: { id: farm.id, visitId: v.id },
-                      })
-                    }
-                    style={{ flex: 1, minWidth: 0 }}
+                    style={logRowHit}
                   >
-                    <Text style={{ fontWeight: "700" }}>
+                    <Text style={logEntryText}>
                       {formatShortDate(v.visitDate)} —{" "}
                       {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
                     </Text>
                     {v.followUpRequired ? (
-                      <Text style={{ color: "#b45309", fontWeight: "600", marginTop: 2 }}>
+                      <Text style={{ ...logEntryText, color: "#b45309", marginTop: 2 }}>
                         Follow-up due
                       </Text>
                     ) : null}
-                    {v.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{v.notes}</Text> : null}
-                  </Pressable>
-                  <RowActions
-                    deleteLabel="Delete visit"
-                    onDelete={() => confirmDeleteVisit(v.id, v.visitDate)}
-                  />
-                </View>
-              ))
-            )}
-          </Card>
-          <RecordLink
-            label="Log visit"
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/log-visit",
-                params: { id: farm.id },
-              })
-            }
-          />
+                    {v.notes ? (
+                      <Text style={[styles.muted, { fontSize: 13, lineHeight: 18, marginTop: 2 }]}>
+                        {v.notes}
+                      </Text>
+                    ) : null}
+                  </View>
+                </SwipeCommitDeleteRow>
+              </View>
+            ))
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
         {/* ── Generator log ── */}
         <View onLayout={onSectionLayout("generators")}>
-          <Card>
-            <SectionHeading
-              title="Generator log"
-              onTop={scrollPageToTop}
-              right={
-                (data.generatorLogs ?? []).some(
+          <SectionHeading
+            title="Generator Log"
+            right={
+              <>
+                {(data.generatorLogs ?? []).some(
                   (log) =>
                     log.gen1Hours != null ||
                     log.gen2Hours != null ||
@@ -1666,7 +1805,7 @@ export default function FarmDetailScreen() {
                     getText={() => {
                       const allLogs = data.generatorLogs ?? [];
                       return formatGeneratorChartsCopy(
-                        allLogs.slice(0, MAX_GENERATOR_LOGS_DISPLAY).map((log) => {
+                        allLogs.map((log) => {
                           const hours: GeneratorHours = {
                             gen1Hours: log.gen1Hours,
                             gen2Hours: log.gen2Hours,
@@ -1684,9 +1823,8 @@ export default function FarmDetailScreen() {
                             }
                             return null;
                           };
-                          const [y, m, d] = log.logDate.split("-").map(Number);
                           return {
-                            dateLabel: `${m}-${d}-${y}`,
+                            dateLabel: formatGeneratorLogDate(log.logDate),
                             hours,
                             deltas: {
                               gen1: hoursDelta(log.gen1Hours, priorFor("gen1Hours")),
@@ -1699,315 +1837,239 @@ export default function FarmDetailScreen() {
                       );
                     }}
                   />
-                ) : null
-              }
-            />
-            {(data.generatorLogs ?? []).every(
-              (log) =>
-                log.gen1Hours == null &&
-                log.gen2Hours == null &&
-                log.gen3Hours == null &&
-                log.gen4Hours == null,
-            ) ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
-            ) : (
-              <>
-                {GENERATOR_FIELD_DEFS.map((gen) => {
-                  const allLogs = data.generatorLogs ?? [];
-                  const genLogs = allLogs
-                    .filter((log) => log[gen.hourKey] != null)
-                    .slice(0, MAX_GENERATOR_LOGS_DISPLAY);
-                  if (genLogs.length === 0) return null;
-                  const rows: GeneratorChartRow[] = genLogs.map((log, index) => {
-                    const previous = genLogs[index + 1] ?? null;
-                    const [y, m, d] = log.logDate.split("-").map(Number);
-                    return {
-                      id: log.id,
-                      dateLabel: `${m}-${d}-${y}`,
-                      hours: log[gen.hourKey] as number,
-                      exercised: hoursDelta(log[gen.hourKey], previous?.[gen.hourKey]),
-                    };
-                  });
-                  return (
-                    <GeneratorHoursChart
-                      key={gen.key}
-                      title={gen.label}
-                      rows={rows}
-                      onEdit={(id) => {
-                        const log = allLogs.find((l) => l.id === id);
-                        if (log) openGeneratorEditor(log, gen.hourKey);
-                      }}
-                      onDelete={(id) =>
-                        Alert.alert(
-                          `Delete ${gen.label} entry?`,
-                          "Only this generator reading will be removed. Other generators on this date stay.",
-                          [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                              text: "Delete",
-                              style: "destructive",
-                              onPress: () => {
-                                deleteGeneratorLog(farm.id, id, gen.hourKey);
-                                load();
-                              },
-                            },
-                          ],
-                        )
-                      }
-                    />
-                  );
-                })}
+                ) : null}
+                {!generatorModalOpen ? (
+                  <RecordLink label="Log Gen." onPress={() => openGeneratorEditor()} />
+                ) : null}
               </>
-            )}
-          </Card>
-          {!generatorModalOpen ? (
-            <RecordLink label="Log generators" onPress={() => openGeneratorEditor()} />
-          ) : null}
+            }
+          />
+          {(data.generatorLogs ?? []).every(
+            (log) =>
+              log.gen1Hours == null &&
+              log.gen2Hours == null &&
+              log.gen3Hours == null &&
+              log.gen4Hours == null,
+          ) ? (
+            <Text style={styles.muted}>None yet</Text>
+          ) : (
+            <>
+              {GENERATOR_FIELD_DEFS.map((gen) => {
+                const allLogs = data.generatorLogs ?? [];
+                const genLogs = allLogs
+                  .filter((log) => log[gen.hourKey] != null)
+                  .slice(0, MAX_GENERATOR_LOGS_DISPLAY);
+                if (genLogs.length === 0) return null;
+                const rows: GeneratorChartRow[] = genLogs.map((log, index) => {
+                  const previous = genLogs[index + 1] ?? null;
+                  return {
+                    id: log.id,
+                    dateLabel: formatGeneratorLogDate(log.logDate),
+                    hours: log[gen.hourKey] as number,
+                    exercised: hoursDelta(log[gen.hourKey], previous?.[gen.hourKey]),
+                  };
+                });
+                return (
+                  <GeneratorHoursChart
+                    key={gen.key}
+                    title={gen.label}
+                    rows={rows}
+                    onEdit={(id) => {
+                      const log = allLogs.find((l) => l.id === id);
+                      if (log) openGeneratorEditor(log, gen.hourKey);
+                    }}
+                    onDelete={(id) => removeGenerator(id, gen.hourKey)}
+                  />
+                );
+              })}
+            </>
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
         {/* ── Issues ── */}
         <View onLayout={onSectionLayout("issues")}>
-          <Card>
-            <SectionHeading title="Recent issues" onTop={scrollPageToTop} />
-            {data.issues.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
-            ) : (
-              data.issues.map((issue) => (
-                <View
-                  key={issue.id}
-                  style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
+          <SectionHeading
+            title="Recent Issues"
+            right={
+              <RecordLink
+                label="Log Issue"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/report-issue",
+                    params: { id: farm.id },
+                  })
+                }
+              />
+            }
+          />
+          {data.issues.length === 0 ? (
+            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
+          ) : (
+            data.issues.map((issue, i) => (
+              <View
+                key={issue.id}
+                style={{
+                    marginTop: i === 0 ? 0 : 2,
+                    paddingTop: i === 0 ? 0 : 4,
+                    borderTopWidth: i === 0 ? 0 : 1,
                     borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                  }}
+                }}
+              >
+                <SwipeCommitDeleteRow
+                  transparent
+                  onDelete={() => removeIssue(issue.id)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/issues/[issueId]",
+                      params: { id: farm.id, issueId: issue.id },
+                    })
+                  }
                 >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontWeight: "700" }}>
+                  <View
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit issue ${formatShortDate(issue.dateReported)}`}
+                    style={logRowHit}
+                  >
+                    <Text style={logEntryText}>
                       {formatShortDate(issue.dateReported)} · {issue.priority}
-                      <Text style={{ fontWeight: "600", color: colors.muted }}>
+                      <Text style={{ ...logEntryText, color: colors.muted }}>
                         {" "}
                         · {issue.status}
                       </Text>
                     </Text>
-                    <Text style={{ marginTop: 2 }}>
+                    <Text style={{ ...logEntryText, marginTop: 2 }}>
                       {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}:{" "}
                       {issue.description}
                     </Text>
                   </View>
-                  <RowActions
-                    editLabel="Edit issue"
-                    deleteLabel="Delete issue"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/issues/[issueId]",
-                        params: { id: farm.id, issueId: issue.id },
-                      })
-                    }
-                    onDelete={() =>
-                      Alert.alert("Delete issue?", "This cannot be undone.", [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => {
-                            try {
-                              deleteIssue(farm.id, issue.id);
-                              load();
-                            } catch (e) {
-                              Alert.alert(
-                                "Error",
-                                e instanceof Error ? e.message : "Could not delete",
-                              );
-                            }
-                          },
-                        },
-                      ])
-                    }
-                  />
-                </View>
-              ))
-            )}
-          </Card>
-          <RecordLink
-            label="Report issue"
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/report-issue",
-                params: { id: farm.id },
-              })
-            }
-          />
+                </SwipeCommitDeleteRow>
+              </View>
+            ))
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
         {/* ── Litter ── */}
         <View onLayout={onSectionLayout("litter")}>
-          <Card>
-            <SectionHeading title="Litter events" onTop={scrollPageToTop} />
-            {data.litterEvents.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
-            ) : (
-              data.litterEvents.map((e) => (
-                <View
-                  key={e.id}
-                  style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
+          <SectionHeading
+            title="Litter Events"
+            right={
+              <RecordLink
+                label="Log Litter"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/record-litter",
+                    params: { id: farm.id },
+                  })
+                }
+              />
+            }
+          />
+          {data.litterEvents.length === 0 ? (
+            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
+          ) : (
+            data.litterEvents.map((e, i) => (
+              <View
+                key={e.id}
+                style={{
+                    marginTop: i === 0 ? 0 : 2,
+                    paddingTop: i === 0 ? 0 : 4,
+                    borderTopWidth: i === 0 ? 0 : 1,
                     borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                  }}
+                }}
+              >
+                <SwipeCommitDeleteRow
+                  transparent
+                  onDelete={() => removeLitter(e.id)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/litter/[eventId]",
+                      params: { id: farm.id, eventId: e.id },
+                    })
+                  }
                 >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontWeight: "700" }}>
+                  <View
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit litter event ${formatShortDate(e.eventDate)}`}
+                    style={logRowHit}
+                  >
+                    <Text style={logEntryText}>
                       {formatShortDate(e.eventDate)} —{" "}
                       {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
                       {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
                     </Text>
-                    {e.notes ? <Text style={[styles.muted, { marginTop: 2 }]}>{e.notes}</Text> : null}
+                    {e.notes ? (
+                      <Text style={[styles.muted, { fontSize: 16, lineHeight: 22, marginTop: 2 }]}>
+                        {e.notes}
+                      </Text>
+                    ) : null}
                   </View>
-                  <RowActions
-                    editLabel="Edit litter event"
-                    deleteLabel="Delete litter event"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/litter/[eventId]",
-                        params: { id: farm.id, eventId: e.id },
-                      })
-                    }
-                    onDelete={() =>
-                      Alert.alert("Delete litter event?", "This cannot be undone.", [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => {
-                            try {
-                              deleteLitterEvent(farm.id, e.id);
-                              load();
-                            } catch (err) {
-                              Alert.alert(
-                                "Error",
-                                err instanceof Error ? err.message : "Could not delete",
-                              );
-                            }
-                          },
-                        },
-                      ])
-                    }
-                  />
-                </View>
-              ))
-            )}
-          </Card>
-          <RecordLink
-            label="Record litter event"
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/record-litter",
-                params: { id: farm.id },
-              })
-            }
-          />
+                </SwipeCommitDeleteRow>
+              </View>
+            ))
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
         {/* ── Feed ── */}
         <View onLayout={onSectionLayout("feed")}>
-          <Card>
-            <SectionHeading title="Feed deliveries" onTop={scrollPageToTop} />
-            {data.feedDeliveries.length === 0 ? (
-              <Text style={[styles.muted, { marginTop: 10 }]}>None yet</Text>
-            ) : (
-              data.feedDeliveries.map((d) => (
-                <View
-                  key={d.id}
-                  style={{
-                    marginTop: 10,
-                    paddingTop: 10,
-                    borderTopWidth: 1,
+          <SectionHeading
+            title="Feed Deliveries"
+            right={
+              <RecordLink
+                label="Log Feed"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/farms/[id]/record-feed",
+                    params: { id: farm.id },
+                  })
+                }
+              />
+            }
+          />
+          {data.feedDeliveries.length === 0 ? (
+            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
+          ) : (
+            data.feedDeliveries.map((d, i) => (
+              <View
+                key={d.id}
+                style={{
+                    marginTop: i === 0 ? 0 : 2,
+                    paddingTop: i === 0 ? 0 : 4,
+                    borderTopWidth: i === 0 ? 0 : 1,
                     borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    gap: 8,
-                  }}
+                }}
+              >
+                <SwipeCommitDeleteRow
+                  transparent
+                  onDelete={() => removeFeed(d.id)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(tabs)/farms/[id]/feed/[deliveryId]",
+                      params: { id: farm.id, deliveryId: d.id },
+                    })
+                  }
                 >
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ fontWeight: "700" }}>
+                  <View
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit feed delivery ${formatShortDate(d.deliveryDate)}`}
+                    style={logRowHit}
+                  >
+                    <Text style={logEntryText}>
                       {formatShortDate(d.deliveryDate)} — {formatNumber(d.poundsDelivered)} lbs
                       {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
                       {d.feedType ? ` · ${d.feedType}` : ""}
                       {d.feedMill ? ` · ${d.feedMill}` : ""}
                     </Text>
                   </View>
-                  <RowActions
-                    editLabel="Edit feed delivery"
-                    deleteLabel="Delete feed delivery"
-                    onEdit={() =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/feed/[deliveryId]",
-                        params: { id: farm.id, deliveryId: d.id },
-                      })
-                    }
-                    onDelete={() =>
-                      Alert.alert("Delete feed delivery?", "This cannot be undone.", [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Delete",
-                          style: "destructive",
-                          onPress: () => {
-                            try {
-                              deleteFeedDelivery(d.id);
-                              load();
-                            } catch (err) {
-                              Alert.alert(
-                                "Error",
-                                err instanceof Error ? err.message : "Could not delete",
-                              );
-                            }
-                          },
-                        },
-                      ])
-                    }
-                  />
-                </View>
-              ))
-            )}
-          </Card>
-          <RecordLink
-            label="Record feed delivery"
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/record-feed",
-                params: { id: farm.id },
-              })
-            }
-          />
+                </SwipeCommitDeleteRow>
+              </View>
+            ))
+          )}
+          <SectionTop onPress={scrollPageToTop} />
         </View>
 
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            marginTop: 8,
-            marginBottom: 8,
-          }}
-        >
-          <Pressable
-            onPress={() =>
-              router.push({
-                pathname: "/(tabs)/farms/[id]/history",
-                params: { id: farm.id },
-              })
-            }
-            hitSlop={8}
-          >
-            <Text style={{ color: colors.accentDark, fontWeight: "600", fontSize: 14 }}>
-              Farm History
-            </Text>
-          </Pressable>
-        </View>
       </ScrollView>
 
       <Modal
@@ -2016,115 +2078,120 @@ export default function FarmDetailScreen() {
         transparent
         onRequestClose={closeTempModal}
       >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+          }}
         >
+          <Pressable style={{ flex: 1 }} onPress={closeTempModal} />
           <View
             style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              overflow: "hidden",
             }}
           >
-            <Pressable style={{ flex: 1 }} onPress={closeTempModal} />
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="none"
-              automaticallyAdjustKeyboardInsets
-              contentContainerStyle={{
-                backgroundColor: "#fff",
-                borderTopLeftRadius: 16,
-                borderTopRightRadius: 16,
-                padding: 20,
-                paddingBottom: Platform.OS === "ios" ? 28 : 24,
-              }}
-            >
+            <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
               <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
                 House {tempHouse?.houseNumber} temperature
               </Text>
-              <Text style={{ color: colors.muted, marginTop: 4, marginBottom: 14 }}>
-                Logged temps fill Current Temp on the Service Report and reset at midnight.
+              <Text
+                style={{
+                  marginTop: 12,
+                  fontSize: 40,
+                  fontWeight: "800",
+                  textAlign: "center",
+                  color: colors.text,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {tempHouse?.temp.trim() ? `${tempHouse.temp}°` : "—"}
               </Text>
-              <NativeNumInput
-                label="Temperature (°F)"
-                value={tempHouse?.temp ?? ""}
-                onChangeText={(v) =>
-                  setTempHouse((prev) => (prev ? { ...prev, temp: v } : prev))
-                }
-                decimal
-                placeholder="e.g. 78"
-                autoFocus
-                inputRef={tempInputRef}
-              />
               {tempError ? (
-                <Text style={{ color: colors.danger, fontWeight: "600", marginBottom: 10 }}>
+                <Text style={{ color: colors.danger, fontWeight: "600", marginTop: 8 }}>
                   {tempError}
                 </Text>
               ) : null}
-              {tempSaving ? (
-                <ActivityIndicator color={colors.accent} />
-              ) : (
-                <View style={{ gap: 10 }}>
-                  <PrimaryButton label="Save temperature" onPress={saveHouseTemp} />
-                  {tempHouse?.temp.trim() ? (
-                    <PrimaryButton
-                      label="Clear temperature"
-                      secondary
-                      onPress={clearHouseTemp}
-                    />
-                  ) : null}
-                  <PrimaryButton label="Cancel" secondary onPress={closeTempModal} />
-                </View>
-              )}
-            </ScrollView>
+              {tempHouse?.temp.trim() ? (
+                <Pressable
+                  onPress={clearHouseTemp}
+                  disabled={tempSaving}
+                  style={{ marginTop: 10, minHeight: 36, justifyContent: "center" }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear temperature"
+                >
+                  <Text style={{ textAlign: "center", fontWeight: "700", color: colors.muted }}>
+                    Clear temperature
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+            <NumberKeypad
+              allowDecimal
+              onDigit={(d) =>
+                setTempHouse((prev) =>
+                  prev ? { ...prev, temp: appendKeypadDigit(prev.temp, d, true) } : prev,
+                )
+              }
+              onBackspace={() => {
+                if (!tempHouse?.temp) closeTempModal();
+                else
+                  setTempHouse((prev) =>
+                    prev ? { ...prev, temp: backspaceKeypadValue(prev.temp) } : prev,
+                  );
+              }}
+              onEnter={() => {
+                if (tempHouse?.temp.trim()) saveHouseTemp();
+                else clearHouseTemp();
+              }}
+            />
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       <Modal
         visible={editingHouse != null}
         animationType="slide"
-        transparent
+        transparent={Platform.OS === "web"}
         onRequestClose={closeHouseEditor}
       >
+        <SafeAreaView
+          style={{
+            flex: 1,
+            backgroundColor: "#fff",
+            paddingTop: houseEditTopPad,
+            ...(Platform.OS === "web"
+              ? { position: "fixed" as const, top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }
+              : null),
+          }}
+          edges={["bottom"]}
+        >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
         >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
-            }}
-          >
-            <Pressable style={{ flex: 1 }} onPress={closeHouseEditor} />
-            <View
-              style={{
-                backgroundColor: "#fff",
-                borderTopLeftRadius: 16,
-                borderTopRightRadius: 16,
-                maxHeight: "92%",
-                overflow: "hidden",
-              }}
-            >
+          <View style={{ flex: 1, backgroundColor: "#fff" }}>
+            <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                Edit house {editingHouse?.houseNumber}
+              </Text>
+              {houseEditError ? (
+                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                  {houseEditError}
+                </Text>
+              ) : null}
+            </View>
               <ScrollView
                 keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ padding: 20, paddingBottom: Platform.OS === "ios" ? 28 : 24 }}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}
               >
-                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                  Edit house {editingHouse?.houseNumber}
-                </Text>
-                {houseEditError ? (
-                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
-                    {houseEditError}
-                  </Text>
-                ) : null}
                 {editingHouse ? (
-                  <View style={{ marginTop: 14 }}>
+                  <View>
                     <View style={{ flexDirection: "row", gap: 10 }}>
                       <NativeNumInput
                         label="House number"
@@ -2173,132 +2240,134 @@ export default function FarmDetailScreen() {
                     </View>
                     {data.activeFlock ? (
                       <>
-                        <View style={{ flexDirection: "row", gap: 10 }}>
-                          <View style={{ flex: 1, marginBottom: 10 }}>
-                            <DatePickerField
-                              label="Placement date"
-                              value={editingHouse.placementDate}
-                              presentation="inline"
-                              inputStyle={{ marginBottom: 0 }}
-                              onChange={(date) =>
-                                setEditingHouse((prev) => {
-                                  if (!prev) return prev;
-                                  const oldDefault = prev.placementDate
-                                    ? addDaysKey(prev.placementDate, 52)
-                                    : "";
-                                  const catchWasDefault =
-                                    !prev.catchDate || prev.catchDate === oldDefault;
-                                  return {
-                                    ...prev,
-                                    placementDate: date,
-                                    catchDate: catchWasDefault
-                                      ? addDaysKey(date, 52)
-                                      : prev.catchDate,
-                                  };
-                                })
-                              }
-                            />
-                            <PropagateCheck
-                              checked={editingHouse.applyPlacementToRemaining}
-                              onToggle={() =>
-                                setEditingHouse((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        applyPlacementToRemaining: !prev.applyPlacementToRemaining,
-                                      }
-                                    : prev,
-                                )
-                              }
-                            />
-                          </View>
-                          <NativeNumInput
-                            label="Birds placed"
-                            value={editingHouse.placedBirdCount}
-                            placeholder={editingHouse.placedBirdCountPlaceholder}
-                            style={{ flex: 1 }}
-                            onChangeText={(v) =>
-                              setEditingHouse((prev) =>
-                                prev ? { ...prev, placedBirdCount: v } : prev,
-                              )
+                        <View style={{ marginBottom: 10 }}>
+                          <DatePickerField
+                            label="Placement date"
+                            value={editingHouse.placementDate}
+                            presentation={Platform.OS === "web" ? "modal" : "inline"}
+                            expanded={housePicker === "placement"}
+                            onOpen={() => setHousePicker("placement")}
+                            inputStyle={{ marginBottom: 0 }}
+                            onChange={(date) =>
+                              setEditingHouse((prev) => {
+                                if (!prev) return prev;
+                                const oldDefault = prev.placementDate
+                                  ? addDaysKey(prev.placementDate, 52)
+                                  : "";
+                                const catchWasDefault =
+                                  !prev.catchDate || prev.catchDate === oldDefault;
+                                return {
+                                  ...prev,
+                                  placementDate: date,
+                                  catchDate: catchWasDefault
+                                    ? addDaysKey(date, 52)
+                                    : prev.catchDate,
+                                };
+                              })
                             }
-                            propagateChecked={editingHouse.applyBirdsToRemaining}
-                            onPropagateToggle={() =>
+                          />
+                          <PropagateCheck
+                            checked={editingHouse.applyPlacementToRemaining}
+                            onToggle={() =>
                               setEditingHouse((prev) =>
                                 prev
-                                  ? { ...prev, applyBirdsToRemaining: !prev.applyBirdsToRemaining }
+                                  ? {
+                                      ...prev,
+                                      applyPlacementToRemaining: !prev.applyPlacementToRemaining,
+                                    }
                                   : prev,
                               )
                             }
                           />
                         </View>
-                        <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
-                          <View style={{ flex: 1 }}>
-                            <DatePickerField
-                              label="Catch date"
-                              value={editingHouse.catchDate}
-                              presentation="inline"
-                              inputStyle={{ marginBottom: 0 }}
-                              onChange={(date) =>
+                        <NativeNumInput
+                          label="Birds placed"
+                          value={editingHouse.placedBirdCount}
+                          grouped
+                          onChangeText={(v) =>
+                            setEditingHouse((prev) =>
+                              prev ? { ...prev, placedBirdCount: v } : prev,
+                            )
+                          }
+                          propagateChecked={editingHouse.applyBirdsToRemaining}
+                          onPropagateToggle={() =>
+                            setEditingHouse((prev) =>
+                              prev
+                                ? { ...prev, applyBirdsToRemaining: !prev.applyBirdsToRemaining }
+                                : prev,
+                            )
+                          }
+                        />
+                        <View style={{ marginBottom: 10 }}>
+                          <DatePickerField
+                            label="Catch date"
+                            value={editingHouse.catchDate}
+                            presentation={Platform.OS === "web" ? "modal" : "inline"}
+                            expanded={housePicker === "catch"}
+                            onOpen={() => setHousePicker("catch")}
+                            inputStyle={{ marginBottom: 0 }}
+                            onChange={(date) =>
+                              setEditingHouse((prev) =>
+                                prev ? { ...prev, catchDate: date } : prev,
+                              )
+                            }
+                          />
+                          <PropagateCheck
+                            checked={editingHouse.applyCatchDateToRemaining}
+                            onToggle={() =>
+                              setEditingHouse((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      applyCatchDateToRemaining: !prev.applyCatchDateToRemaining,
+                                    }
+                                  : prev,
+                              )
+                            }
+                          />
+                        </View>
+                        <View style={{ marginBottom: 10 }}>
+                          <TimeScrollPickerField
+                            label="Catch time"
+                            value={editingHouse.catchTime}
+                            presentation={Platform.OS === "web" ? "modal" : "inline"}
+                            expanded={housePicker === "catchTime"}
+                            onOpen={() => setHousePicker("catchTime")}
+                            inputStyle={{ marginBottom: 0 }}
+                            onChange={(time) =>
+                              setEditingHouse((prev) =>
+                                prev ? { ...prev, catchTime: time } : prev,
+                              )
+                            }
+                          />
+                          <PropagateCheck
+                            checked={editingHouse.applyCatchTimeToRemaining}
+                            onToggle={() =>
+                              setEditingHouse((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      applyCatchTimeToRemaining: !prev.applyCatchTimeToRemaining,
+                                    }
+                                  : prev,
+                              )
+                            }
+                          />
+                          {editingHouse.catchTime ? (
+                            <Pressable
+                              onPress={() =>
                                 setEditingHouse((prev) =>
-                                  prev ? { ...prev, catchDate: date } : prev,
+                                  prev ? { ...prev, catchTime: "" } : prev,
                                 )
                               }
-                            />
-                            <PropagateCheck
-                              checked={editingHouse.applyCatchDateToRemaining}
-                              onToggle={() =>
-                                setEditingHouse((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        applyCatchDateToRemaining: !prev.applyCatchDateToRemaining,
-                                      }
-                                    : prev,
-                                )
-                              }
-                            />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <TimeScrollPickerField
-                              label="Catch time"
-                              value={editingHouse.catchTime}
-                              inputStyle={{ marginBottom: 0 }}
-                              onChange={(time) =>
-                                setEditingHouse((prev) =>
-                                  prev ? { ...prev, catchTime: time } : prev,
-                                )
-                              }
-                            />
-                            <PropagateCheck
-                              checked={editingHouse.applyCatchTimeToRemaining}
-                              onToggle={() =>
-                                setEditingHouse((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        applyCatchTimeToRemaining: !prev.applyCatchTimeToRemaining,
-                                      }
-                                    : prev,
-                                )
-                              }
-                            />
-                            {editingHouse.catchTime ? (
-                              <Pressable
-                                onPress={() =>
-                                  setEditingHouse((prev) =>
-                                    prev ? { ...prev, catchTime: "" } : prev,
-                                  )
-                                }
-                                style={{ alignSelf: "flex-start", marginTop: 2 }}
-                                hitSlop={8}
-                              >
-                                <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 12 }}>
-                                  Clear
-                                </Text>
-                              </Pressable>
-                            ) : null}
-                          </View>
+                              style={{ alignSelf: "flex-start", marginTop: 2 }}
+                              hitSlop={8}
+                            >
+                              <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 12 }}>
+                                Clear
+                              </Text>
+                            </Pressable>
+                          ) : null}
                         </View>
                       </>
                     ) : null}
@@ -2306,17 +2375,21 @@ export default function FarmDetailScreen() {
                       <NativeNumInput
                         label="Square footage"
                         value={editingHouse.squareFootage}
-                        placeholder="29700"
+                        placeholder="29,700"
                         decimal
+                        grouped
                         style={{ flex: 1 }}
                         onChangeText={(v) =>
                           setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
                         }
-                        propagateChecked={editingHouse.applySpecsToRemaining}
+                        propagateChecked={editingHouse.applySquareFootageToRemaining}
                         onPropagateToggle={() =>
                           setEditingHouse((prev) =>
                             prev
-                              ? { ...prev, applySpecsToRemaining: !prev.applySpecsToRemaining }
+                              ? {
+                                  ...prev,
+                                  applySquareFootageToRemaining: !prev.applySquareFootageToRemaining,
+                                }
                               : prev,
                           )
                         }
@@ -2325,39 +2398,74 @@ export default function FarmDetailScreen() {
                         label="Total CFM (Min Vent)"
                         value={editingHouse.totalFanCFM}
                         decimal
+                        grouped
                         style={{ flex: 1 }}
                         onChangeText={(v) =>
                           setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
                         }
-                        propagateChecked={editingHouse.applySpecsToRemaining}
+                        propagateChecked={editingHouse.applyMinVentCfmToRemaining}
                         onPropagateToggle={() =>
                           setEditingHouse((prev) =>
                             prev
-                              ? { ...prev, applySpecsToRemaining: !prev.applySpecsToRemaining }
+                              ? {
+                                  ...prev,
+                                  applyMinVentCfmToRemaining: !prev.applyMinVentCfmToRemaining,
+                                }
                               : prev,
                           )
                         }
                       />
                     </View>
-                    <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-                      <PrimaryButton
-                        label={houseSaving ? "Saving…" : "Save"}
-                        onPress={saveHouseEdit}
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <NativeNumInput
+                        label="Total CFM (Power)"
+                        value={editingHouse.totalPowerCFM}
+                        decimal
+                        grouped
                         style={{ flex: 1 }}
+                        onChangeText={(v) =>
+                          setEditingHouse((prev) => (prev ? { ...prev, totalPowerCFM: v } : prev))
+                        }
+                        propagateChecked={editingHouse.applyPowerCfmToRemaining}
+                        onPropagateToggle={() =>
+                          setEditingHouse((prev) =>
+                            prev
+                              ? { ...prev, applyPowerCfmToRemaining: !prev.applyPowerCfmToRemaining }
+                              : prev,
+                          )
+                        }
                       />
-                      <PrimaryButton
-                        label="Cancel"
-                        secondary
-                        onPress={closeHouseEditor}
-                        style={{ flex: 1 }}
-                      />
+                      <View style={{ flex: 1 }} />
                     </View>
                   </View>
                 ) : null}
               </ScrollView>
-            </View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 10,
+                  paddingHorizontal: 20,
+                  paddingTop: 12,
+                  paddingBottom: 12,
+                  borderTopWidth: 1,
+                  borderTopColor: colors.border,
+                }}
+              >
+                <PrimaryButton
+                  label={houseSaving ? "Saving…" : "Save"}
+                  onPress={saveHouseEdit}
+                  style={{ flex: 1 }}
+                />
+                <PrimaryButton
+                  label="Cancel"
+                  secondary
+                  onPress={closeHouseEditor}
+                  style={{ flex: 1 }}
+                />
+              </View>
           </View>
         </KeyboardAvoidingView>
+        </SafeAreaView>
       </Modal>
 
       <Modal
@@ -2390,7 +2498,7 @@ export default function FarmDetailScreen() {
               }}
             >
               <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                Add house
+                Add House
               </Text>
               {addHouseError ? (
                 <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
@@ -2422,6 +2530,14 @@ export default function FarmDetailScreen() {
                       setAddingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
                     }
                   />
+                  <NativeNumInput
+                    label="Total CFM (Power)"
+                    value={addingHouse.totalPowerCFM}
+                    decimal
+                    onChangeText={(v) =>
+                      setAddingHouse((prev) => (prev ? { ...prev, totalPowerCFM: v } : prev))
+                    }
+                  />
                   <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
                     <PrimaryButton
                       label={addHouseSaving ? "Saving…" : "Save house"}
@@ -2448,86 +2564,72 @@ export default function FarmDetailScreen() {
         transparent
         onRequestClose={closeFarmEditor}
       >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.4)",
+            justifyContent: "flex-end",
+            paddingBottom:
+              farmEditKeyboardH > 0 ? farmEditKeyboardH : Math.max(insets.bottom, 8),
+          }}
         >
-          <Pressable
+          <Pressable style={{ flex: 1 }} onPress={closeFarmEditor} />
+          <View
             style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              maxHeight: "90%",
+              overflow: "hidden",
             }}
-            onPress={closeFarmEditor}
           >
-            <Pressable
-              onPress={(e) => e.stopPropagation()}
-              style={{
-                backgroundColor: "#fff",
-                borderTopLeftRadius: 16,
-                borderTopRightRadius: 16,
+            <ScrollView
+              ref={farmEditScrollRef}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              contentContainerStyle={{
                 padding: 20,
-                paddingBottom: Platform.OS === "ios" ? 28 : 20,
-                maxHeight: "90%",
+                paddingBottom: 16,
               }}
             >
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="interactive"
-                contentContainerStyle={{ paddingBottom: 24 }}
-              >
-                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                  Edit farm info
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
+                Edit Farm Info
+              </Text>
+              {farmEditError ? (
+                <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
+                  {farmEditError}
                 </Text>
-                {farmEditError ? (
-                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
-                    {farmEditError}
-                  </Text>
-                ) : null}
-                {editingFarm ? (
-                  <View style={{ marginTop: 14, gap: 4 }}>
-                    <Text style={styles.label}>Farm name *</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={editingFarm.farmName}
-                      onChangeText={(v) =>
-                        setEditingFarm((prev) => (prev ? { ...prev, farmName: v } : prev))
-                      }
-                      autoCapitalize="words"
-                    />
-                    <Text style={[styles.label, { marginTop: 8 }]}>Grower name</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={editingFarm.growerName}
-                      onChangeText={(v) =>
-                        setEditingFarm((prev) => (prev ? { ...prev, growerName: v } : prev))
-                      }
-                      autoCapitalize="words"
-                    />
-                    <Text style={[styles.label, { marginTop: 8 }]}>Phone</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={editingFarm.phoneNumber}
-                      onChangeText={(v) =>
-                        setEditingFarm((prev) => (prev ? { ...prev, phoneNumber: v } : prev))
-                      }
-                      keyboardType="phone-pad"
-                      returnKeyType="done"
-                      blurOnSubmit
-                      onSubmitEditing={() => Keyboard.dismiss()}
-                    />
-                    <Text style={[styles.label, { marginTop: 8 }]}>Email</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={editingFarm.email}
-                      onChangeText={(v) =>
-                        setEditingFarm((prev) => (prev ? { ...prev, email: v } : prev))
-                      }
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                    />
+              ) : null}
+              {editingFarm ? (
+                <View style={{ marginTop: 14, gap: 4 }}>
+                  <Text style={styles.label}>Farm name *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editingFarm.farmName}
+                    onChangeText={(v) =>
+                      setEditingFarm((prev) => (prev ? { ...prev, farmName: v } : prev))
+                    }
+                    autoCapitalize="words"
+                  />
+                  <Text style={[styles.label, { marginTop: 8 }]}>Farm #</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editingFarm.farmNumber}
+                    onChangeText={(v) =>
+                      setEditingFarm((prev) => (prev ? { ...prev, farmNumber: v } : prev))
+                    }
+                    autoCapitalize="characters"
+                  />
+                  <Text style={[styles.label, { marginTop: 8 }]}>Grower name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editingFarm.growerName}
+                    onChangeText={(v) =>
+                      setEditingFarm((prev) => (prev ? { ...prev, growerName: v } : prev))
+                    }
+                    autoCapitalize="words"
+                  />
+                  <View ref={farmNotesWrapRef} collapsable={false}>
                     <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
                     <TextInput
                       style={[
@@ -2548,26 +2650,52 @@ export default function FarmDetailScreen() {
                       scrollEnabled
                       placeholder="Notes"
                       placeholderTextColor={colors.muted}
+                      onFocus={() => {
+                        requestAnimationFrame(() => {
+                          const wrap = farmNotesWrapRef.current;
+                          const scroll = farmEditScrollRef.current;
+                          if (!wrap || !scroll) return;
+                          wrap.measureLayout(
+                            scroll as unknown as number,
+                            (_x, y) => {
+                              scroll.scrollTo({ y: Math.max(0, y - 20), animated: true });
+                            },
+                            () => {
+                              scroll.scrollToEnd({ animated: true });
+                            },
+                          );
+                        });
+                      }}
                     />
-                    <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
-                      <PrimaryButton
-                        label={farmSaving ? "Saving…" : "Save farm changes"}
-                        onPress={saveFarmEdit}
-                        style={{ flex: 1 }}
-                      />
-                      <PrimaryButton
-                        label="Cancel"
-                        secondary
-                        onPress={closeFarmEditor}
-                        style={{ flex: 1 }}
-                      />
-                    </View>
                   </View>
-                ) : null}
-              </ScrollView>
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
+                </View>
+              ) : null}
+            </ScrollView>
+            <View
+              style={{
+                flexDirection: "row",
+                gap: 10,
+                paddingHorizontal: 20,
+                paddingTop: 12,
+                paddingBottom: 16,
+                borderTopWidth: 1,
+                borderTopColor: colors.border,
+              }}
+            >
+              <PrimaryButton
+                label={farmSaving ? "Saving…" : "Save"}
+                onPress={saveFarmEdit}
+                style={{ flex: 1 }}
+              />
+              <PrimaryButton
+                label="Cancel"
+                secondary
+                onPress={closeFarmEditor}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
       </Modal>
 
       <Modal
@@ -2645,49 +2773,7 @@ export default function FarmDetailScreen() {
                 <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
                   <PrimaryButton
                     label={generatorSaving ? "Saving…" : "Save"}
-                    onPress={() => {
-                      setGeneratorSaving(true);
-                      setGeneratorError(null);
-                      try {
-                        const parseHours = (raw: string) => {
-                          const trimmed = raw.trim();
-                          if (trimmed === "") return null;
-                          const n = Number(trimmed);
-                          if (!Number.isFinite(n) || n < 0) {
-                            throw new Error("Generator hours must be 0 or greater");
-                          }
-                          return n;
-                        };
-                        const payload = {
-                          logDate: generatorDraft.logDate.trim(),
-                          gen1Hours: parseHours(generatorDraft.gen1Hours),
-                          gen2Hours: parseHours(generatorDraft.gen2Hours),
-                          gen3Hours: parseHours(generatorDraft.gen3Hours),
-                          gen4Hours: parseHours(generatorDraft.gen4Hours),
-                        };
-                        if (generatorEditingId) {
-                          updateGeneratorLog(farm.id, generatorEditingId, {
-                            ...payload,
-                            onlyGen: generatorEditingGen ?? undefined,
-                          });
-                        } else {
-                          createGeneratorLog({
-                            farmId: farm.id,
-                            ...payload,
-                          });
-                        }
-                        setGeneratorModalOpen(false);
-                        setGeneratorEditingId(null);
-                        setGeneratorEditingGen(null);
-                        load();
-                      } catch (e) {
-                        setGeneratorError(
-                          e instanceof Error ? e.message : "Could not save generator log",
-                        );
-                      } finally {
-                        setGeneratorSaving(false);
-                      }
-                    }}
+                    onPress={() => saveGeneratorLog()}
                     style={{ flex: 1 }}
                   />
                   <PrimaryButton
@@ -2704,14 +2790,53 @@ export default function FarmDetailScreen() {
       </Modal>
 
       <ConfirmDialog
+        visible={generatorSwap != null}
+        title="Hours look swapped"
+        message={generatorSwap?.message ?? ""}
+        confirmLabel="Fix and save"
+        altLabel="Save as entered"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          if (!generatorSwap) return;
+          const draft = parseGeneratorDraftHours();
+          saveGeneratorLog({ ...draft, ...generatorSwap.suggested }, true);
+        }}
+        onAlt={() => {
+          saveGeneratorLog(parseGeneratorDraftHours(), false);
+        }}
+        onCancel={() => setGeneratorSwap(null)}
+      />
+      <ConfirmDialog
+        visible={opsConfirm != null}
+        title={
+          opsConfirm
+            ? `Delete house ${opsConfirm.houseNumber}?`
+            : "Delete?"
+        }
+        message="This removes the house from the farm. It will no longer appear in your lists."
+        confirmLabel="Delete"
+        danger
+        onConfirm={runOpsConfirm}
+        onCancel={() => setOpsConfirm(null)}
+      />
+      <ConfirmDialog
+        visible={opsError != null}
+        title="Error"
+        message={opsError ?? ""}
+        confirmLabel="OK"
+        cancelLabel="Dismiss"
+        onConfirm={() => setOpsError(null)}
+        onCancel={() => setOpsError(null)}
+      />
+      <ConfirmDialog
         visible={completeConfirm != null}
-        title="Complete flock?"
+        title="End flock?"
         message={
           completeConfirm
             ? `Mark flock ${completeConfirm.flockNumber} as completed? You can reactivate it later from Farm History.`
             : ""
         }
-        confirmLabel="Complete"
+        confirmLabel="End flock"
         onConfirm={runCompleteFlock}
         onCancel={() => setCompleteConfirm(null)}
       />
@@ -2757,10 +2882,10 @@ export default function FarmDetailScreen() {
             }}
           >
             <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-              Complete flock
+              End flock
             </Text>
             <Text style={{ marginTop: 8, fontSize: 14, lineHeight: 20, color: colors.muted }}>
-              Which flock do you want to complete?
+              Which flock do you want to end?
             </Text>
             <View style={{ marginTop: 16, gap: 8 }}>
               {activeFlocks.map((fl) => (

@@ -1,6 +1,10 @@
-import { Pressable, Text, TextInput, View, type ScrollView, type TextInputProps } from "react-native";
+import { Platform, Pressable, Text, TextInput, View, type ScrollView, type TextInputProps } from "react-native";
 import { useRef } from "react";
 import { colors, styles } from "../../theme";
+import {
+  commentsScrollYForFocus,
+  visualViewportOffsetTop,
+} from "../../lib/serviceForms/commentsScroll";
 import type { YesNo } from "../../lib/serviceForms/types";
 
 export function SectionTitle({ title }: { title: string }) {
@@ -16,6 +20,51 @@ export function SectionTitle({ title }: { title: string }) {
     >
       {title}
     </Text>
+  );
+}
+
+export function CheckField({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <Pressable
+      onPress={() => onChange(!checked)}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}
+      accessibilityLabel={label}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+      }}
+    >
+      <View
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 6,
+          borderWidth: 2,
+          borderColor: checked ? colors.accentDark : colors.border,
+          backgroundColor: checked ? colors.accentDark : "#fff",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {checked ? (
+          <Text style={{ color: "#fff", fontSize: 13, fontWeight: "800", lineHeight: 15 }}>✓</Text>
+        ) : null}
+      </View>
+      <Text style={{ flex: 1, fontWeight: "600", color: colors.text, fontSize: 14 }}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -139,6 +188,14 @@ export function MultiToggleField<T extends string>({
   );
 }
 
+function inputModeFor(
+  keyboardType: TextInputProps["keyboardType"],
+): TextInputProps["inputMode"] {
+  if (keyboardType === "decimal-pad") return "decimal";
+  if (keyboardType === "number-pad" || keyboardType === "numeric") return "numeric";
+  return undefined;
+}
+
 export function TextField({
   label,
   value,
@@ -147,6 +204,7 @@ export function TextField({
   keyboardType = "default",
   multiline,
   onFocus,
+  editable = true,
 }: {
   label: string;
   value: string;
@@ -155,6 +213,7 @@ export function TextField({
   keyboardType?: "default" | "numeric" | "decimal-pad" | "numbers-and-punctuation" | "number-pad";
   multiline?: boolean;
   onFocus?: TextInputProps["onFocus"];
+  editable?: boolean;
 }) {
   return (
     <View style={{ marginBottom: 10 }}>
@@ -167,12 +226,15 @@ export function TextField({
         placeholder={placeholder}
         placeholderTextColor="#a8a29e"
         keyboardType={keyboardType}
+        inputMode={inputModeFor(keyboardType)}
         multiline={multiline}
         onFocus={onFocus}
+        editable={editable}
         textAlignVertical={multiline ? "top" : "center"}
         style={[
           styles.input,
           multiline ? { minHeight: 96, paddingTop: 10 } : null,
+          !editable ? { backgroundColor: "#f5f5f4" } : null,
         ]}
       />
     </View>
@@ -247,6 +309,7 @@ function CompactCell({
         placeholder={placeholder}
         placeholderTextColor="#a8a29e"
         keyboardType={keyboardType}
+        inputMode={inputModeFor(keyboardType)}
         style={compactInputStyle}
       />
     </View>
@@ -315,12 +378,14 @@ export function CompactBackupSettings({
           label="Heat"
           value={heat}
           onChange={(backupHeat) => onChange({ backupHeat })}
+          keyboardType="decimal-pad"
           flexBasis="48%"
         />
         <CompactCell
           label="Cool"
           value={cool}
           onChange={(backupCool) => onChange({ backupCool })}
+          keyboardType="decimal-pad"
           flexBasis="48%"
         />
       </View>
@@ -329,16 +394,19 @@ export function CompactBackupSettings({
           label="Stage 1"
           value={stage1}
           onChange={(backupStage1) => onChange({ backupStage1 })}
+          keyboardType="decimal-pad"
         />
         <CompactCell
           label="Stage 2"
           value={stage2}
           onChange={(backupStage2) => onChange({ backupStage2 })}
+          keyboardType="decimal-pad"
         />
         <CompactCell
           label="Stage 3"
           value={stage3}
           onChange={(backupStage3) => onChange({ backupStage3 })}
+          keyboardType="decimal-pad"
         />
       </View>
     </View>
@@ -363,13 +431,32 @@ export function CommentsField({
 }) {
   const sectionY = useRef(0);
 
+  function pinCommentsToVisibleTop() {
+    if (Platform.OS === "web" && typeof window !== "undefined" && window.scrollY) {
+      window.scrollTo(0, 0);
+    }
+    scrollRef.current?.scrollTo({
+      y: commentsScrollYForFocus(sectionY.current, visualViewportOffsetTop()),
+      animated: true,
+    });
+  }
+
   function focusComments() {
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({
-        y: Math.max(0, sectionY.current - 8),
-        animated: true,
-      });
-    }, 300);
+    // Native iOS: pin under the header after KeyboardAvoidingView settles.
+    // Safari: wait for the visual viewport (keyboard) so we do not park
+    // Comments above the visible screen.
+    const delay = Platform.OS === "web" ? 450 : 300;
+    setTimeout(pinCommentsToVisibleTop, delay);
+
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onViewport = () => {
+      pinCommentsToVisibleTop();
+      vv.removeEventListener("resize", onViewport);
+    };
+    vv.addEventListener("resize", onViewport);
+    setTimeout(() => vv.removeEventListener("resize", onViewport), 1200);
   }
 
   return (

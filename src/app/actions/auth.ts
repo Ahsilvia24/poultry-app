@@ -5,7 +5,20 @@ import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { registerSchema } from "@/lib/validations";
+import { issuePasswordReset, consumePasswordReset } from "@/lib/password-reset";
+import { forgotPasswordSchema, registerSchema, resetPasswordSchema } from "@/lib/validations";
+
+async function signInOnThisHost(email: string, password: string) {
+  const result = await signIn("credentials", {
+    email,
+    password,
+    redirect: false,
+  });
+  if (result && "error" in result && result.error) {
+    return { error: "Invalid email or password" };
+  }
+  return null;
+}
 
 export async function registerAction(formData: FormData) {
   const parsed = registerSchema.safeParse({
@@ -31,28 +44,58 @@ export async function registerAction(formData: FormData) {
     },
   });
 
-  await signIn("credentials", {
-    email,
-    password: parsed.data.password,
-    redirectTo: "/",
-  });
+  try {
+    const failed = await signInOnThisHost(email, parsed.data.password);
+    if (failed) return failed;
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return { error: "Account created. Sign in with your email." };
+    }
+    throw error;
+  }
+  redirect("/");
 }
 
 export async function loginAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "").toLowerCase();
+  const password = String(formData.get("password") ?? "");
   try {
-    await signIn("credentials", {
-      email: String(formData.get("email") ?? "").toLowerCase(),
-      password: String(formData.get("password") ?? ""),
-      redirectTo: "/",
-    });
+    const failed = await signInOnThisHost(email, password);
+    if (failed) return failed;
   } catch (error) {
     if (error instanceof AuthError) {
       return { error: "Invalid email or password" };
     }
     throw error;
   }
+  redirect("/");
 }
 
 export async function signOutAction() {
-  await signOut({ redirectTo: "/login" });
+  await signOut({ redirect: false });
+  redirect("/login");
+}
+
+export async function forgotPasswordAction(formData: FormData) {
+  const parsed = forgotPasswordSchema.safeParse({
+    email: formData.get("email"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Enter a valid email" };
+  }
+  await issuePasswordReset(parsed.data.email);
+  return { sent: true };
+}
+
+export async function resetPasswordAction(formData: FormData) {
+  const parsed = resetPasswordSchema.safeParse({
+    token: formData.get("token"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const result = await consumePasswordReset(parsed.data.token, parsed.data.password);
+  if (result.error) return { error: result.error };
+  redirect("/login?reset=1");
 }

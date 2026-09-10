@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { ClipboardIconButton } from "./ClipboardIconButton";
+import { SharePdfIconButton } from "./SharePdfIconButton";
+import { PrimaryButton } from "./ui";
 import { colors, fonts } from "../theme";
 
 export function CopyHouseSummaryButton({
@@ -23,15 +26,63 @@ export function CopyHouseSummaryButton({
   );
 }
 
+export function FeedMillDataButton({
+  getText,
+  onBeforeCopy,
+}: {
+  getText: () => string;
+  onBeforeCopy?: () => boolean | Promise<boolean>;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!copied && !failed) return;
+    const t = setTimeout(() => {
+      setCopied(false);
+      setFailed(false);
+    }, 2200);
+    return () => clearTimeout(t);
+  }, [copied, failed]);
+
+  return (
+    <PrimaryButton
+      label={copied ? "Copied" : failed ? "Copy failed" : "Feed Mill Data"}
+      onPress={async () => {
+        try {
+          if (onBeforeCopy) {
+            const ok = await onBeforeCopy();
+            if (!ok) return;
+          }
+          const text = getText();
+          if (!text.trim()) {
+            setFailed(true);
+            return;
+          }
+          const Clipboard = await import("expo-clipboard");
+          await Clipboard.setStringAsync(text);
+          setFailed(false);
+          setCopied(true);
+        } catch {
+          setCopied(false);
+          setFailed(true);
+        }
+      }}
+    />
+  );
+}
+
 /** Stacked H1/H2/… summary with copy-to-clipboard. Shows every line (no truncation). */
 export function LfoHouseSummaryBlock({
   lines,
   farmName,
   fontSize = 13,
+  onSharePdf,
 }: {
   lines: string[];
   farmName?: string;
   fontSize?: number;
+  onSharePdf?: () => void;
 }) {
   if (lines.length === 0) return null;
 
@@ -49,6 +100,9 @@ export function LfoHouseSummaryBlock({
           ))}
         </View>
         <CopyHouseSummaryButton lines={lines} farmName={farmName} />
+        {onSharePdf ? (
+          <SharePdfIconButton onPress={onSharePdf} accessibilityLabel="Share full LFO PDF" />
+        ) : null}
       </View>
     </View>
   );

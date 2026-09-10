@@ -1,11 +1,13 @@
-import { addDays, format } from "date-fns";
+import { addDays, differenceInCalendarDays, format } from "date-fns";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   birdAgeFromPlacement,
   flockWeekFromAge,
+  summarizeForDate,
 } from "@/lib/mortality/calculations";
+import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
 import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
 import { CoolCellsChart } from "@/components/CoolCellsChart";
@@ -14,6 +16,7 @@ import { MaxCoolingChart } from "@/components/MaxCoolingChart";
 import { TempCurveChart } from "@/components/TempCurveChart";
 import { ToolsQuickLinks } from "@/components/ToolsQuickLinks";
 import { ToolsSectionPanel } from "@/components/ToolsSectionPanel";
+import { WeightProjectionManualTile } from "@/components/WeightProjectionManualTile";
 import {
   ToolsWeightProjections,
   type WeightFarmPayload,
@@ -23,7 +26,7 @@ import {
   VentilationLinks,
   type VentilationFarmPayload,
 } from "@/components/VentilationLinks";
-import { PageHeader } from "@/components/ui";
+import { SettingsGearLink } from "@/components/SettingsGearLink";
 
 /** Local noon from yyyy-MM-dd — safe for startOfDay / calendar math. */
 function localNoonFromKey(dateKey: string) {
@@ -43,7 +46,8 @@ export default async function ToolsPage({
 
   const sp = searchParams ? await searchParams : {};
   const today = new Date();
-  const farmsRaw = await prisma.farm.findMany({
+  const [farmsFetched, orderRow] = await Promise.all([
+    prisma.farm.findMany({
     where: { userId: session.user.id, deletedAt: null, isActive: true },
     orderBy: { farmName: "asc" },
     include: {
@@ -61,12 +65,35 @@ export default async function ToolsPage({
               placedBirdCount: true,
               placementDate: true,
               catchDate: true,
+              mortalities: {
+                where: { isDraft: false },
+                select: {
+                  mortalityDate: true,
+                  birdAgeInDays: true,
+                  dailyMortalityCount: true,
+                  cullCount: true,
+                  totalDailyLoss: true,
+                },
+              },
             },
           },
         },
       },
     },
-  });
+    }),
+    prisma.userSettings.findUnique({
+      where: { userId: session.user.id },
+      select: { farmOrder: true },
+    }),
+  ]);
+
+  const farmsRaw = sortFarmsByOrder(
+    farmsFetched.map((farm) => ({
+      ...farm,
+      flockAgesDays: farm.flocks.map((fl) => birdAgeFromPlacement(fl.placementDate, today)),
+    })),
+    parseFarmOrder(orderRow?.farmOrder),
+  );
 
   const farms: VentilationFarmPayload[] = farmsRaw.map((farm) => {
     const active = farm.flocks[0] ?? null;
@@ -148,14 +175,10 @@ export default async function ToolsPage({
                   catchDate: localNoonFromKey(catchKey),
                   growthRateLbsPerDay,
                 }).map((p) => ({
+                  key: p.key,
                   offsetDays: p.offsetDays,
                   dateKey: format(p.date, "yyyy-MM-dd"),
-                  label:
-                    p.offsetDays === 0
-                      ? "Catch day"
-                      : p.offsetDays === 1
-                        ? "Catch +1"
-                        : "Catch +2",
+                  label: p.label,
                   ageDays: p.ageDays,
                   weightLbs: p.weightLbs,
                 })),
@@ -169,6 +192,12 @@ export default async function ToolsPage({
         flockId: flock?.id ?? null,
         growthRateLbsPerDay,
         groups,
+        currentHeadCount: hf
+          ? summarizeForDate(hf.placedBirdCount, hf.mortalities, today).remaining
+          : null,
+        daysToKill: catchKey
+          ? Math.max(0, differenceInCalendarDays(localNoonFromKey(catchKey), today))
+          : null,
       };
     });
 
@@ -181,18 +210,51 @@ export default async function ToolsPage({
 
   return (
     <div>
-      <PageHeader title="Tools" />
+      <div className="mb-3 md:mb-6">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-stone-900 md:text-3xl">
+            Tools
+          </h1>
+          <SettingsGearLink />
+        </div>
+      </div>
 
       <div className="mb-6">
         <ToolsQuickLinks />
       </div>
 
       <div className="space-y-4">
-        <ToolsSectionPanel hashId="weight-projections" title="Weight projections">
+        <ToolsSectionPanel hashId="weight-projections" title="Weight Projections" showTop={false}>
           <ToolsWeightProjections
             farms={weightFarms}
             initialFarmId={sp.farmId ?? null}
           />
+        </ToolsSectionPanel>
+
+        <ToolsSectionPanel
+          hashId="weight-projections-manual"
+          title="Custom Weight Projection"
+        >
+          <WeightProjectionManualTile
+            farms={weightFarms.map((farm) => ({
+              id: farm.id,
+              farmName: farm.farmName,
+              houses: farm.houses.map((house) => ({
+                id: house.id,
+                houseNumber: house.houseNumber,
+                currentHeadCount: house.currentHeadCount,
+                daysToKill: house.daysToKill,
+              })),
+            }))}
+          />
+        </ToolsSectionPanel>
+
+        <ToolsSectionPanel
+          hashId="ventilation"
+          title="Ventilation"
+          footer={<VentilationCfmCharts />}
+        >
+          <VentilationLinks farms={farms} />
         </ToolsSectionPanel>
 
         <ToolsSectionPanel hashId="temp-curve" title="Temp Curve">
@@ -209,14 +271,6 @@ export default async function ToolsPage({
 
         <ToolsSectionPanel hashId="lights" title="Lights">
           <LightsChart />
-        </ToolsSectionPanel>
-
-        <ToolsSectionPanel
-          hashId="ventilation"
-          title="Ventilation"
-          footer={<VentilationCfmCharts />}
-        >
-          <VentilationLinks farms={farms} />
         </ToolsSectionPanel>
       </div>
     </div>

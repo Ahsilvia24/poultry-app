@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { format } from "date-fns";
 import { auth } from "@/lib/auth";
@@ -9,9 +8,10 @@ import {
   updateLastFeedOrderAction,
 } from "@/app/actions/lfo";
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
-import { Card, PageHeader } from "@/components/ui";
+import { BackHeader, Card } from "@/components/ui";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 import { catchPartsFromFeedUpAt } from "@/lib/lfo/calculate";
+import { lfoDisplayName } from "@/lib/lfo/customName";
 
 type Params = Promise<{ id: string }>;
 
@@ -36,6 +36,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
 
   if (!lfo) notFound();
 
+  const displayName = lfoDisplayName(lfo.farm.farmName, lfo.notes);
   const asOf = lfo.calculatedAt ?? lfo.createdAt;
   const needsLiveHeads = lfo.houseInventories.some((inv) => inv.headCount == null);
   const [houses, liveHeads] = await Promise.all([
@@ -82,17 +83,10 @@ export default async function EditLfoPage({ params }: { params: Params }) {
 
   return (
     <div>
-      <Link
+      <BackHeader
         href="/lfo"
-        className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
-      >
-        <span aria-hidden="true" className="text-xl leading-none">
-          ←
-        </span>
-        LFOs
-      </Link>
-      <PageHeader
-        title={lfo.farm.farmName}
+        backLabel="LFOs"
+        title={displayName}
         subtitle="Edit last feed order"
       />
 
@@ -100,10 +94,12 @@ export default async function EditLfoPage({ params }: { params: Params }) {
         <LfoInventoryForm
           action={submit}
           saveAsNewAction={saveAsNew}
-          farmName={lfo.farm.farmName}
+          farmName={displayName}
           orderDate={format(lfo.orderDate, "yyyy-MM-dd")}
+          orderTime={lfo.orderTime}
           consumptionRate={lfo.consumptionRate}
           asOf={asOf}
+          notes={lfo.notes}
           submitLabel="Save changes"
           deleteAction={remove}
           houses={houseRows}

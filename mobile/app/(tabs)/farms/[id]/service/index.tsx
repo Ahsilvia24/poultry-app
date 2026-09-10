@@ -1,9 +1,23 @@
-import { Pressable, Text, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getFarmDetail } from "../../../../../src/repos/data";
+import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../../../../../src/theme";
-import { Card, PageHeader } from "../../../../../src/components/ui";
+import { BackHeader, Card } from "../../../../../src/components/ui";
+import { ConfirmDialog } from "../../../../../src/components/ConfirmDialog";
+import { SwipeCommitDeleteRow } from "../../../../../src/components/SwipeCommitDeleteRow";
+import {
+  deleteServiceForm,
+  deleteServiceFormDraft,
+  listServiceFormDraftKinds,
+  listServiceForms,
+  type StoredServiceForm,
+} from "../../../../../src/repos/data";
+import type { AnyServiceForm, ServiceFormKind } from "../../../../../src/lib/serviceForms/types";
+import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/format";
+import { shareServiceFormPdf } from "../../../../../src/lib/serviceForms/sharePdf";
+import { goToFarmFromService } from "../../../../../src/lib/serviceForms/useServiceFarm";
 
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -12,80 +26,289 @@ function paramId(value: string | string[] | undefined) {
 
 const FORMS = [
   {
-    key: "report",
-    title: "Service Report",
-    subtitle: "Routine service checklist → visit + PDF",
+    key: "service_report" as const,
+    tab: "Service",
+    title: "Service",
     path: "/(tabs)/farms/[id]/service/report" as const,
   },
   {
-    key: "placement",
+    key: "placement" as const,
+    tab: "Placement",
     title: "Placement",
-    subtitle: "Placement day checklist → visit + PDF",
     path: "/(tabs)/farms/[id]/service/placement" as const,
   },
   {
-    key: "prebrood",
-    title: "Prebrood (48–72 hr)",
-    subtitle: "Prebrood checklist → visit + PDF",
+    key: "prebrood" as const,
+    tab: "Prebrood",
+    title: "Prebrood",
     path: "/(tabs)/farms/[id]/service/prebrood" as const,
   },
 ] as const;
+
+function kindTitle(kind: ServiceFormKind) {
+  return FORMS.find((f) => f.key === kind)?.title ?? kind;
+}
 
 export default function ServiceFarmPickerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const farmId = paramId(params.id);
+  const [draftKinds, setDraftKinds] = useState<ServiceFormKind[]>([]);
+  const [completed, setCompleted] = useState<StoredServiceForm[]>([]);
+  const [sharingId, setSharingId] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<StoredServiceForm | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      try {
+        setDraftKinds(farmId ? listServiceFormDraftKinds(farmId) : []);
+      } catch {
+        setDraftKinds([]);
+      }
+      try {
+        setCompleted(farmId ? listServiceForms(farmId) : []);
+      } catch {
+        setCompleted([]);
+      }
+    }, [farmId]),
+  );
 
-  let farmName = "Farm";
-  try {
-    farmName = getFarmDetail(farmId)?.farm.farmName ?? farmName;
-  } catch {
-    // keep placeholder
+  function openForm(path: (typeof FORMS)[number]["path"], extra?: Record<string, string>) {
+    router.push({
+      pathname: path,
+      params: { id: farmId, visitId: "", ...extra },
+    });
+  }
+
+  function startKind(form: (typeof FORMS)[number], fresh = false) {
+    openForm(form.path, fresh ? { fresh: "1" } : {});
+  }
+
+  function openSaved(row: StoredServiceForm) {
+    const form = FORMS.find((f) => f.key === row.formKind);
+    if (!form) return;
+    // Stay on the existing form route with formId. A nested [formId] path
+    // can drop the id on web, then a leftover deleted visitId opens nothing.
+    openForm(form.path, { formId: row.id });
+  }
+
+  async function shareSaved(row: StoredServiceForm) {
+    if (sharingId) return;
+    const payload = row.payload;
+    if (!payload || typeof payload !== "object") {
+      setShareError("Could not open this PDF.");
+      return;
+    }
+    setShareError(null);
+    setSharingId(row.id);
+    try {
+      await shareServiceFormPdf({
+        ...(payload as AnyServiceForm),
+        kind: row.formKind,
+      } as AnyServiceForm);
+    } catch (e) {
+      setShareError(e instanceof Error ? e.message : "Could not share PDF");
+    } finally {
+      setSharingId(null);
+    }
+  }
+
+  function confirmDelete(row: StoredServiceForm) {
+    setPendingDelete(row);
+  }
+
+  function runDelete() {
+    if (!pendingDelete) return;
+    try {
+      deleteServiceForm(farmId, pendingDelete.id);
+      setCompleted((prev) => prev.filter((row) => row.id !== pendingDelete.id));
+      setDeleteError(null);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Could not delete checklist");
+    } finally {
+      setPendingDelete(null);
+    }
   }
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
-      <View style={[styles.content, { flex: 1 }]}>
-        <Pressable
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else
-              router.replace({
-                pathname: "/(tabs)/farms/[id]",
-                params: { id: farmId },
-              });
-          }}
-          style={{ marginBottom: 8 }}
-          accessibilityRole="button"
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={[styles.content, { paddingBottom: 40 }]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <BackHeader
+          backLabel="Farm"
+          title="Service Farm"
           accessibilityLabel="Back to farm"
+          onBack={() => goToFarmFromService(farmId)}
+        />
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "stretch",
+            gap: 6,
+            marginBottom: 10,
+          }}
         >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← {farmName}</Text>
-        </Pressable>
-        <PageHeader title="Service Farm" subtitle="Choose a checklist" />
-        <View style={{ gap: 10 }}>
           {FORMS.map((form) => (
             <Pressable
               key={form.key}
-              onPress={() =>
-                router.push({
-                  pathname: form.path,
-                  params: { id: farmId },
-                })
+              onPress={() => startKind(form)}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                borderRadius: 10,
+                paddingVertical: 10,
+                paddingHorizontal: 4,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: colors.accentDark,
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={
+                draftKinds.includes(form.key) ? `Resume ${form.title}` : `Start ${form.title}`
               }
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.9 : 1,
-              })}
             >
-              <Card>
-                <Text style={{ fontWeight: "800", fontSize: 17, color: colors.text }}>
-                  {form.title}
-                </Text>
-                <Text style={[styles.muted, { marginTop: 4 }]}>{form.subtitle}</Text>
-              </Card>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+                style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: "#fff",
+                  textAlign: "center",
+                }}
+              >
+                {form.tab}
+              </Text>
             </Pressable>
           ))}
         </View>
-      </View>
+
+        {FORMS.filter((form) => draftKinds.includes(form.key)).map((form) => (
+          <View
+            key={`draft-${form.key}`}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 6,
+            }}
+          >
+            <Text style={{ color: colors.muted, fontWeight: "600" }}>
+              {form.title} in progress
+            </Text>
+            <Pressable
+              onPress={() => {
+                try {
+                  deleteServiceFormDraft(farmId, form.key);
+                } catch {
+                  // Open a blank form even if delete fails.
+                }
+                setDraftKinds((prev) => prev.filter((k) => k !== form.key));
+                startKind(form, true);
+              }}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`Start over ${form.title}`}
+            >
+              <Text style={{ color: colors.accentDark, fontWeight: "700" }}>Start over</Text>
+            </Pressable>
+          </View>
+        ))}
+
+        <Text style={{ fontWeight: "800", fontSize: 16, color: colors.text, marginTop: 14, marginBottom: 8 }}>
+          Completed
+        </Text>
+
+        {shareError ? (
+          <Text style={{ color: colors.danger, fontWeight: "600", marginBottom: 8 }}>{shareError}</Text>
+        ) : null}
+
+        {completed.length === 0 ? (
+          <Text style={{ color: colors.muted }}>No completed checklists yet.</Text>
+        ) : (
+          completed.map((row) => (
+            <SwipeCommitDeleteRow
+              key={row.id}
+              onDelete={() => confirmDelete(row)}
+              style={{ marginBottom: 10 }}
+              deleteContent={
+                <View
+                  accessibilityLabel={`Delete ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
+                  style={{ alignItems: "center" }}
+                >
+                  <Ionicons name="trash-outline" size={22} color="#fff" />
+                  <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12, marginTop: 4 }}>
+                    Delete
+                  </Text>
+                </View>
+              }
+            >
+              <Card style={{ marginBottom: 0, paddingVertical: 12, paddingHorizontal: 14 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Pressable
+                    onPress={() => openSaved(row)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`View or edit ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
+                    style={{ flex: 1, minWidth: 0 }}
+                  >
+                    <Text style={{ fontWeight: "800", fontSize: 16, color: colors.text }}>
+                      {kindTitle(row.formKind)}
+                    </Text>
+                    <Text style={{ marginTop: 2, color: colors.muted, fontWeight: "600" }}>
+                      {formatServiceShortDate(row.formDate)}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => void shareSaved(row)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Share PDF for ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
+                    style={{
+                      borderWidth: 1.5,
+                      borderColor: colors.accentDark,
+                      borderRadius: 8,
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                      alignSelf: "center",
+                    }}
+                  >
+                    <Text style={{ color: colors.accentDark, fontWeight: "700", fontSize: 12 }}>
+                      {sharingId === row.id ? "Sharing…" : "Share PDF"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </Card>
+            </SwipeCommitDeleteRow>
+          ))
+        )}
+      </ScrollView>
+      <ConfirmDialog
+        visible={pendingDelete != null}
+        title={`Delete ${pendingDelete ? kindTitle(pendingDelete.formKind) : "checklist"}?`}
+        message={
+          pendingDelete
+            ? `${formatServiceShortDate(pendingDelete.formDate)} will be removed from this farm.`
+            : ""
+        }
+        confirmLabel="Delete"
+        danger
+        onConfirm={runDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
+      <ConfirmDialog
+        visible={deleteError != null}
+        title="Error"
+        message={deleteError ?? ""}
+        confirmLabel="OK"
+        cancelLabel="Dismiss"
+        onConfirm={() => setDeleteError(null)}
+        onCancel={() => setDeleteError(null)}
+      />
     </SafeAreaView>
   );
 }

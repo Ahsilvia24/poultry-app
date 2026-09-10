@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -18,75 +17,19 @@ import {
   createVisit,
   deleteVisit,
   getFarmDetail,
-  getServiceFormForVisit,
   getVisit,
   updateVisit,
 } from "../repos/data";
 import { birdAgeFromPlacement } from "../lib/mortality";
 import { todayKey } from "../lib/ids";
 import { VISIT_TYPE_LABELS, VISIT_TYPE_OPTIONS } from "../lib/visits";
-import type { ServiceFormKind } from "../lib/serviceForms/types";
 import { colors, styles } from "../theme";
-import { Card, PageHeader, PrimaryButton } from "./ui";
+import { BackHeader, Card, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 
 type Props = {
   farmId: string;
   visitId?: string;
-};
-
-const VISIT_SERVICE_FORM: Partial<
-  Record<
-    string,
-    {
-      kind: ServiceFormKind;
-      label: string;
-      path:
-        | "/(tabs)/farms/[id]/service/report"
-        | "/(tabs)/farms/[id]/service/placement"
-        | "/(tabs)/farms/[id]/service/prebrood";
-    }
-  >
-> = {
-  ROUTINE_SERVICE: {
-    kind: "service_report",
-    label: "View/Edit Service Report",
-    path: "/(tabs)/farms/[id]/service/report",
-  },
-  PLACEMENT: {
-    kind: "placement",
-    label: "View/Edit Placement",
-    path: "/(tabs)/farms/[id]/service/placement",
-  },
-  PREBROOD: {
-    kind: "prebrood",
-    label: "View/Edit Prebrood",
-    path: "/(tabs)/farms/[id]/service/prebrood",
-  },
-};
-
-const FORM_KIND_CTA: Record<
-  ServiceFormKind,
-  {
-    label: string;
-    path:
-      | "/(tabs)/farms/[id]/service/report"
-      | "/(tabs)/farms/[id]/service/placement"
-      | "/(tabs)/farms/[id]/service/prebrood";
-  }
-> = {
-  service_report: {
-    label: "View/Edit Service Report",
-    path: "/(tabs)/farms/[id]/service/report",
-  },
-  placement: {
-    label: "View/Edit Placement",
-    path: "/(tabs)/farms/[id]/service/placement",
-  },
-  prebrood: {
-    label: "View/Edit Prebrood",
-    path: "/(tabs)/farms/[id]/service/prebrood",
-  },
 };
 
 export function VisitFormScreen({ farmId, visitId }: Props) {
@@ -110,15 +53,6 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
     }
   }, [farmId]);
 
-  const linkedServiceForm = useMemo(() => {
-    if (!visitId) return null;
-    try {
-      return getServiceFormForVisit(farmId, visitId);
-    } catch {
-      return null;
-    }
-  }, [farmId, visitId]);
-
   const placementDate = farmDetail?.activeFlock?.placementDate ?? null;
   const flockId = farmDetail?.activeFlock?.id ?? initial?.flockId ?? null;
 
@@ -129,6 +63,7 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
   const [followUpRequired, setFollowUpRequired] = useState(initial?.followUpRequired ?? false);
   const [followUpDate, setFollowUpDate] = useState(initial?.followUpDate ?? "");
   const [typePickerOpen, setTypePickerOpen] = useState(false);
+  const [datePicker, setDatePicker] = useState<"visit" | "followUp" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -137,32 +72,16 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
       ? birdAgeFromPlacement(placementDate, visitDate)
       : (initial?.birdAgeInDays ?? null);
 
-  const serviceFormCta = useMemo(() => {
-    if (!editing || !visitId) return null;
-    if (linkedServiceForm) {
-      const meta = FORM_KIND_CTA[linkedServiceForm.formKind];
-      return {
-        label: meta.label,
-        path: meta.path,
-        formId: linkedServiceForm.id,
-      };
-    }
-    const byType = VISIT_SERVICE_FORM[visitType];
-    if (!byType) return null;
-    return {
-      label: byType.label,
-      path: byType.path,
-      formId: null as string | null,
-    };
-  }, [editing, visitId, linkedServiceForm, visitType]);
-
   if (editing && !initial) {
     return (
       <SafeAreaView style={styles.screen} edges={["top"]}>
         <View style={styles.content}>
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 12 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-          </Pressable>
+          <BackHeader
+            backLabel="Farm"
+            title="Visit"
+            onBack={() => router.back()}
+            accessibilityLabel="Back to farm"
+          />
           <Text style={{ color: colors.danger }}>Visit not found</Text>
         </View>
       </SafeAreaView>
@@ -195,23 +114,14 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
     }
   }
 
-  function confirmDelete() {
+  function runDelete() {
     if (!visitId) return;
-    Alert.alert("Delete visit?", "This cannot be undone.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          try {
-            deleteVisit(farmId, visitId);
-            router.back();
-          } catch (e) {
-            Alert.alert("Error", e instanceof Error ? e.message : "Could not delete visit");
-          }
-        },
-      },
-    ]);
+    try {
+      deleteVisit(farmId, visitId);
+      router.back();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not delete visit");
+    }
   }
 
   return (
@@ -225,25 +135,28 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 8 }}>
-            <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Back</Text>
-          </Pressable>
-
-          <PageHeader
+          <BackHeader
+            backLabel="Farm"
             title={editing ? "Edit visit" : "Log visit"}
-            subtitle={farmDetail?.farm.farmName ?? "Farm visit"}
+            onBack={() => router.back()}
+            accessibilityLabel="Back to farm"
           />
 
           <Card>
             <DatePickerField
               label="Visit date"
               value={visitDate}
+              expanded={datePicker === "visit"}
+              onOpen={() => setDatePicker("visit")}
               onChange={setVisitDate}
             />
 
             <Text style={[styles.label, { marginTop: 8 }]}>Visit type</Text>
             <Pressable
-              onPress={() => setTypePickerOpen(true)}
+              onPress={() => {
+                setDatePicker(null);
+                setTypePickerOpen(true);
+              }}
               style={[
                 styles.input,
                 {
@@ -326,6 +239,8 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
                 <DatePickerField
                   label="Follow-up date"
                   value={followUpDate}
+                  expanded={datePicker === "followUp"}
+                  onOpen={() => setDatePicker("followUp")}
                   onChange={setFollowUpDate}
                 />
               </View>
@@ -350,38 +265,11 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
               <PrimaryButton
                 label="Delete visit"
                 secondary
-                onPress={confirmDelete}
+                onPress={runDelete}
                 style={{ marginTop: 10 }}
               />
             ) : null}
           </Card>
-
-          {serviceFormCta ? (
-            <Card style={{ marginTop: 14 }}>
-              <Text style={{ fontWeight: "800", fontSize: 16, color: colors.text, marginBottom: 6 }}>
-                Checklist
-              </Text>
-              <Text style={{ color: colors.muted, marginBottom: 12, lineHeight: 20 }}>
-                Open the saved checklist to make changes and export a new PDF.
-              </Text>
-              <PrimaryButton
-                label={serviceFormCta.label}
-                onPress={() =>
-                  router.push({
-                    pathname: serviceFormCta.path,
-                    params: {
-                      id: farmId,
-                      ...(serviceFormCta.formId
-                        ? { formId: serviceFormCta.formId }
-                        : visitId
-                          ? { visitId }
-                          : {}),
-                    },
-                  })
-                }
-              />
-            </Card>
-          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -413,7 +301,17 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
               Visit type
             </Text>
             <ScrollView>
-              {VISIT_TYPE_OPTIONS.map((opt) => (
+              {(
+                VISIT_TYPE_OPTIONS.some((opt) => opt.value === visitType)
+                  ? VISIT_TYPE_OPTIONS
+                  : [
+                      {
+                        value: visitType,
+                        label: VISIT_TYPE_LABELS[visitType] ?? visitType,
+                      },
+                      ...VISIT_TYPE_OPTIONS,
+                    ]
+              ).map((opt) => (
                 <Pressable
                   key={opt.value}
                   onPress={() => {

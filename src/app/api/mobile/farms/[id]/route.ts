@@ -60,6 +60,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       houseNumber: house.houseNumber,
       squareFootage: house.squareFootage,
       totalFanCFM: house.totalFanCFM,
+      totalPowerCFM: house.totalPowerCFM,
       cfmPerSqFt: cfmPerSquareFoot(house.totalFanCFM, house.squareFootage),
       houseFlockId: hf?.id ?? null,
       placedBirdCount: hf?.placedBirdCount ?? null,

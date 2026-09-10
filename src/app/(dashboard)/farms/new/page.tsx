@@ -11,7 +11,7 @@ export default function NewFarmPage() {
   return (
     <div>
       <PageHeader
-        title="New farm"
+        title="New Farm"
         actions={
           <Link href="/farms">
             <Button variant="secondary">Cancel</Button>
@@ -56,10 +56,6 @@ export default function NewFarmPage() {
             <div className="sm:col-span-2">
               <Label htmlFor="growerName">Grower name</Label>
               <Input id="growerName" name="growerName" />
-            </div>
-            <div className="sm:col-span-2">
-              <Label htmlFor="phoneNumber">Phone</Label>
-              <Input id="phoneNumber" name="phoneNumber" type="tel" />
             </div>
           </div>
           <Button type="submit" className="w-full sm:w-auto">

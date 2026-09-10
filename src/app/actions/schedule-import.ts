@@ -42,15 +42,14 @@ export async function uploadScheduleImportAction(
 
   const typeRaw = String(formData.get("importType") ?? "");
   if (!isScheduleImportType(typeRaw)) {
-    return { ok: false, error: "Choose Placement, Catch Schedule, or Settlements." };
+    return { ok: false, error: "Choose Placement or Catch Schedule." };
   }
   const importType: ScheduleImportType = typeRaw;
 
-  // Settlements still pending; Placement + Catch Schedule are live.
   if (importType === "settlement") {
     return {
       ok: false,
-      error: `${scheduleImportTypeLabel(importType)} import comes next.`,
+      error: `${scheduleImportTypeLabel(importType)} import is not available.`,
     };
   }
 

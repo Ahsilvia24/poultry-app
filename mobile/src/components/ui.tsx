@@ -1,4 +1,5 @@
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
 
 export function PageHeader({
@@ -12,9 +13,81 @@ export function PageHeader({
 }) {
   return (
     <View style={{ marginBottom: 16 }}>
-      <Text style={styles.title}>{title}</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <Text style={[styles.title, { flex: 1, minWidth: 0 }]}>{title}</Text>
+        {actions}
+      </View>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-      {actions ? <View style={{ marginTop: 12 }}>{actions}</View> : null}
+    </View>
+  );
+}
+
+/** Same row as farm / LFO: chevron + destination on the left, page title on the right. */
+export function BackHeader({
+  backLabel,
+  title,
+  subtitle,
+  onBack,
+  accessibilityLabel,
+}: {
+  backLabel: string;
+  title: string;
+  subtitle?: string;
+  onBack: () => void;
+  accessibilityLabel?: string;
+}) {
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+        }}
+      >
+        <Pressable
+          onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel ?? `Back to ${backLabel}`}
+          hitSlop={8}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 2,
+            flexShrink: 0,
+            minHeight: 44,
+          }}
+        >
+          <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
+          <Text
+            style={{
+              color: colors.accentDark,
+              fontWeight: "700",
+              fontSize: 17,
+              fontFamily: styles.title.fontFamily,
+            }}
+          >
+            {backLabel}
+          </Text>
+        </Pressable>
+        <Text
+          style={[styles.title, { flex: 1, minWidth: 0, textAlign: "right", fontSize: 24 }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {title}
+        </Text>
+      </View>
+      {subtitle ? <Text style={[styles.subtitle, { textAlign: "right" }]}>{subtitle}</Text> : null}
     </View>
   );
 }
@@ -80,11 +153,11 @@ export function Metric({
       <Text style={{ fontSize: 13, color: colors.muted }}>{label}</Text>
       <Text
         style={{
-          fontSize: multiline ? 13 : 15,
+          fontSize: 15,
           fontWeight: "700",
           color: colors.text,
           marginTop: 2,
-          lineHeight: multiline ? 18 : undefined,
+          lineHeight: multiline ? 20 : undefined,
         }}
       >
         {value}

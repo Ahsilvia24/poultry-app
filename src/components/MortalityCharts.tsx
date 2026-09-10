@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { CopyShareRow } from "@/components/CopyShareIcons";
 import {
   Bar,
   BarChart,
@@ -14,7 +14,11 @@ import {
   YAxis,
 } from "recharts";
 import { downloadCsv, toCsv } from "@/lib/exports/csv";
-import { downloadMortalityPdf } from "@/lib/exports/pdf";
+import { downloadMortalityPdf, downloadReportPdf } from "@/lib/exports/pdf";
+import {
+  mortalityMatrixHasData,
+  mortalityMatrixToTable,
+} from "@/lib/reports/mortality-matrix";
 import { MORTALITY_CAUSE_LABELS, formatNumber, formatPct } from "@/lib/utils";
 import { Button, Card } from "@/components/ui";
 
@@ -56,8 +60,6 @@ export function MortalityCharts({
   byFarm: FarmRow[];
   filterLabel: string;
 }) {
-  const [copiedHouseByDate, setCopiedHouseByDate] = useState(false);
-
   function houseByDateTsv() {
     const header = ["House", ...byHouseByDate.dates.map(formatDateHeader), "Total"];
     const lines = byHouseByDate.rows.map((row) => {
@@ -68,15 +70,27 @@ export function MortalityCharts({
     return [header.join("\t"), ...lines].join("\n");
   }
 
+  function shareHouseByDatePdf() {
+    if (!mortalityMatrixHasData(byHouseByDate)) return;
+    const table = mortalityMatrixToTable(byHouseByDate, "House");
+    downloadReportPdf({
+      title: "Mortality",
+      subtitle: filterLabel,
+      filename: `mortality-report-${Date.now()}.pdf`,
+      orientation: "landscape",
+      blocks: [
+        {
+          type: "table",
+          headers: table.headers,
+          rows: table.rows,
+        },
+      ],
+    });
+  }
+
   async function copyHouseByDate() {
     if (byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0) return;
-    try {
-      await navigator.clipboard.writeText(houseByDateTsv());
-      setCopiedHouseByDate(true);
-      window.setTimeout(() => setCopiedHouseByDate(false), 2000);
-    } catch {
-      setCopiedHouseByDate(false);
-    }
+    await navigator.clipboard.writeText(houseByDateTsv());
   }
 
   function exportCsv() {
@@ -212,14 +226,14 @@ export function MortalityCharts({
               Total daily loss (mortality + culls) for the selected date range.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={copyHouseByDate}
-            disabled={byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0}
-          >
-            {copiedHouseByDate ? "Copied" : "Copy to clipboard"}
-          </Button>
+          <CopyShareRow
+            onCopy={() => void copyHouseByDate()}
+            onShare={shareHouseByDatePdf}
+            copyDisabled={byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0}
+            shareDisabled={!mortalityMatrixHasData(byHouseByDate)}
+            copyLabel="Copy mortality report"
+            shareLabel="Share mortality report PDF"
+          />
         </div>
         <div className="mt-3 overflow-x-auto">
           {byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0 ? (

@@ -49,8 +49,7 @@ export function SettlementExampleUpload({
     <Card className="mb-6">
       <h2 className="text-base font-bold text-stone-900">Upload settlement example</h2>
       <p className="mt-1 text-sm text-stone-600">
-        Upload a sample settlement sheet (PDF, photo, or spreadsheet). We’ll use it to
-        build out this page.
+        Upload a settlement sheet (PDF, photo, or spreadsheet) to keep on file.
       </p>
 
       <form onSubmit={onSubmit} className="mt-4 space-y-4">

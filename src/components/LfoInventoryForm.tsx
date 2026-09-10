@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Button, Input, Label, Select } from "@/components/ui";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
   feedUpAtFromCatch,
-  formatHouseLfoSummary,
+  formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
-import { HALF_HOUR_TIME_OPTIONS } from "@/lib/time-slots";
+import { formatFeedMillData } from "@/lib/lfo/feedMillData";
+import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
+import { HALF_HOUR_TIME_OPTIONS, currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
 
 export type LfoHouseRow = {
   houseId: string;
@@ -30,12 +33,12 @@ function formatHours(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
-function CopySummaryButton({
-  lines,
-  farmName,
+function FeedMillDataButton({
+  getText,
+  onBeforeCopy,
 }: {
-  lines: string[];
-  farmName?: string;
+  getText: () => string;
+  onBeforeCopy?: () => Promise<boolean> | boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -46,18 +49,21 @@ function CopySummaryButton({
   }, [copied]);
 
   return (
-    <button
+    <Button
       type="button"
       onClick={async () => {
-        const name = farmName?.trim();
-        const text = name ? [name, ...lines].join("\n") : lines.join("\n");
+        if (onBeforeCopy) {
+          const ok = await onBeforeCopy();
+          if (!ok) return;
+        }
+        const text = getText();
+        if (!text.trim()) return;
         await navigator.clipboard.writeText(text);
         setCopied(true);
       }}
-      className="shrink-0 text-sm font-semibold text-emerald-800 hover:underline"
     >
-      {copied ? "Copied" : "Copy"}
-    </button>
+      {copied ? "Copied" : "Feed Mill Data"}
+    </Button>
   );
 }
 
@@ -69,10 +75,11 @@ export function LfoInventoryForm({
   action,
   saveAsNewAction,
   houses: initialHouses,
-  orderDate,
-  farmName,
+  orderDate: initialOrderDate,
+  orderTime: initialOrderTime,
   consumptionRate: initialRate = DEFAULT_LFO_CONSUMPTION_RATE,
   asOf = null,
+  notes = null,
   submitLabel,
   deleteAction,
 }: {
@@ -80,17 +87,36 @@ export function LfoInventoryForm({
   saveAsNewAction?: (formData: FormData) => Promise<{ error?: string; ok?: boolean } | void>;
   houses: LfoHouseRow[];
   orderDate: string;
+  orderTime?: string | null;
   farmName?: string;
   consumptionRate?: number;
   /** Frozen clock for hours-until-off / order math. Omit on a new LFO. */
   asOf?: Date | string | null;
+  notes?: string | null;
   submitLabel: string;
   deleteAction?: () => Promise<void>;
 }) {
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const returnAfterSave = Boolean(saveAsNewAction);
+
+  function leaveAfterSave() {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push("/lfo");
+  }
   const [pending, startTransition] = useTransition();
-  const [consumptionRate, setConsumptionRate] = useState(String(initialRate));
+  const [consumptionRate, setConsumptionRate] = useState(() =>
+    formatConsumptionRate(initialRate),
+  );
+  const [orderDate, setOrderDate] = useState(initialOrderDate);
+  const [orderTime, setOrderTime] = useState(
+    () => normalizeHalfHourTime(initialOrderTime) ?? currentHalfHourTime(),
+  );
   const [rows, setRows] = useState(
     initialHouses.map((h) => ({
       houseId: h.houseId,
@@ -107,8 +133,8 @@ export function LfoInventoryForm({
     const rate = Number(consumptionRate);
     return calculateLastFeedOrder({
       orderDate,
+      orderTime,
       consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
-      now: asOf ? new Date(asOf) : undefined,
       houses: rows.map((r) => ({
         houseId: r.houseId,
         houseNumber: r.houseNumber,
@@ -118,16 +144,46 @@ export function LfoInventoryForm({
         feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime),
       })),
     });
-  }, [asOf, consumptionRate, orderDate, rows]);
+  }, [consumptionRate, orderDate, orderTime, rows]);
 
-  const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
+  const feedMillText = useMemo(
+    () =>
+      formatFeedMillData(
+        rows.map((row) => {
+          const result = calc.houses.find((house) => house.houseId === row.houseId);
+          return {
+            houseNumber: row.houseNumber,
+            binAPounds: Number(row.binAPounds) || 0,
+            binBPounds: Number(row.binBPounds) || 0,
+            orderLbs: result?.orderLbs ?? null,
+            reclaimLbs: result?.reclaimLbs ?? null,
+          };
+        }),
+      ),
+    [calc.houses, rows],
+  );
 
   function updateRow(houseId: string, patch: Partial<(typeof rows)[number]>) {
     setRows((prev) => prev.map((r) => (r.houseId === houseId ? { ...r, ...patch } : r)));
   }
 
+  async function persistInPlace() {
+    const form = formRef.current;
+    if (!form) return false;
+    setError(null);
+    setSaved(false);
+    const result = await action(new FormData(form));
+    if (result?.error) {
+      setError(result.error);
+      return false;
+    }
+    setSaved(true);
+    return true;
+  }
+
   return (
     <form
+      ref={formRef}
       action={(formData) => {
         setError(null);
         setSaved(false);
@@ -137,11 +193,16 @@ export function LfoInventoryForm({
             setError(result.error);
             return;
           }
+          if (returnAfterSave) {
+            leaveAfterSave();
+            return;
+          }
           if (result?.ok) setSaved(true);
         });
       }}
       className="space-y-3"
     >
+      {notes ? <input type="hidden" name="notes" value={notes} /> : null}
       {error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
       ) : null}
@@ -149,14 +210,29 @@ export function LfoInventoryForm({
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>
       ) : null}
 
-      {asOf ? (
+      {formatLfoOrderClock(orderDate, orderTime) ? (
         <p className="text-sm text-stone-600">
-          Numbers as of{" "}
+          Hours until feed off are measured from{" "}
+          <span className="font-semibold text-stone-800">
+            {formatLfoOrderClock(orderDate, orderTime)}
+          </span>
+          {asOf ? (
+            <>
+              . Head counts stay frozen to{" "}
+              <span className="font-semibold text-stone-800">
+                {format(new Date(asOf), "MMM d, yyyy, h:mm a")}
+              </span>
+            </>
+          ) : null}
+          . Save as new LFO to capture current remaining birds.
+        </p>
+      ) : asOf ? (
+        <p className="text-sm text-stone-600">
+          Head counts stay frozen to{" "}
           <span className="font-semibold text-stone-800">
             {format(new Date(asOf), "MMM d, yyyy, h:mm a")}
           </span>
-          . Hours, head counts, and order/reclaim stay frozen to that time. Save as new
-          LFO to capture current time and remaining birds.
+          .
         </p>
       ) : null}
 
@@ -168,29 +244,52 @@ export function LfoInventoryForm({
             name="orderDate"
             type="date"
             required
-            defaultValue={orderDate}
+            value={orderDate}
+            onChange={(e) => setOrderDate(e.target.value)}
             className="mt-0.5"
             compact
           />
         </PairField>
         <PairField>
-          <Label htmlFor="consumptionRate">Consumption rate</Label>
-          <Input
-            id="consumptionRate"
-            name="consumptionRate"
-            type="number"
-            min={0}
-            step="0.01"
-            inputMode="decimal"
-            required
-            value={consumptionRate}
-            onChange={(e) => setConsumptionRate(e.target.value)}
+          <Label htmlFor="orderTime">Order time</Label>
+          <Select
+            id="orderTime"
+            name="orderTime"
+            value={orderTime}
+            onChange={(e) => setOrderTime(e.target.value)}
             className="mt-0.5"
             compact
-          />
+          >
+            {HALF_HOUR_TIME_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
         </PairField>
       </div>
+      <div className="mt-2">
+        <Label htmlFor="consumptionRate">Consumption rate</Label>
+        <Input
+          id="consumptionRate"
+          name="consumptionRate"
+          type="number"
+          min={0}
+          step="0.01"
+          inputMode="decimal"
+          required
+          value={consumptionRate}
+          onChange={(e) => setConsumptionRate(e.target.value)}
+          className="mt-0.5"
+          compact
+        />
+      </div>
       <p className="text-xs text-stone-500">Consumption rate in lbs/bird/day</p>
+      {formatLfoOrderClock(orderDate, orderTime) ? (
+        <p className="text-xs text-stone-500">
+          Hours from {formatLfoOrderClock(orderDate, orderTime)}
+        </p>
+      ) : null}
 
       <div className="space-y-3">
         {rows.map((house) => {
@@ -206,7 +305,7 @@ export function LfoInventoryForm({
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-sm font-bold text-stone-800">House {house.houseNumber}</p>
                 <p className="text-xs text-stone-500">
-                  Head count {house.headCount.toLocaleString()}
+                  Head Count {house.headCount.toLocaleString()}
                   {asOf ? " at save" : ""}
                 </p>
               </div>
@@ -355,21 +454,17 @@ export function LfoInventoryForm({
         })}
       </div>
 
-      {houseSummary.length > 0 ? (
-        <div className="flex items-start gap-2 rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-700">
-          <div className="min-w-0 flex-1 space-y-0.5">
-            {houseSummary.map((line) => (
-              <p key={line} className="font-semibold text-stone-900">
-                {line}
-              </p>
-            ))}
-          </div>
-          <CopySummaryButton lines={houseSummary} farmName={farmName} />
-        </div>
-      ) : null}
+      <FeedMillDataButton
+        getText={() => feedMillText}
+        onBeforeCopy={() => persistInPlace()}
+      />
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={pending}>
+        <Button
+          type="submit"
+          disabled={pending}
+          className="border-2 border-emerald-950"
+        >
           {pending ? "Saving…" : submitLabel}
         </Button>
         {saveAsNewAction ? (
@@ -377,6 +472,7 @@ export function LfoInventoryForm({
             type="submit"
             variant="secondary"
             disabled={pending}
+            className="border-2 border-emerald-800"
             formAction={(formData) => {
               setError(null);
               setSaved(false);
@@ -384,7 +480,9 @@ export function LfoInventoryForm({
                 const result = await saveAsNewAction(formData);
                 if (result?.error) {
                   setError(result.error);
+                  return;
                 }
+                leaveAfterSave();
               });
             }}
           >

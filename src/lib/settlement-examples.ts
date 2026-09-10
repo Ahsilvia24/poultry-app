@@ -9,7 +9,7 @@ export type { SettlementExampleMeta };
 export { formatBytes };
 
 export const SETTLEMENT_EXAMPLES_DIR = path.join(
-  process.cwd(),
+  process.env.VERCEL ? "/tmp" : process.cwd(),
   "uploads",
   "settlement-examples",
 );
@@ -27,8 +27,17 @@ export async function ensureSettlementExamplesDir() {
 }
 
 export async function listSettlementExamples(): Promise<SettlementExampleMeta[]> {
-  await ensureSettlementExamplesDir();
-  const names = await readdir(SETTLEMENT_EXAMPLES_DIR);
+  try {
+    await ensureSettlementExamplesDir();
+  } catch {
+    return [];
+  }
+  let names: string[] = [];
+  try {
+    names = await readdir(SETTLEMENT_EXAMPLES_DIR);
+  } catch {
+    return [];
+  }
   const metas: SettlementExampleMeta[] = [];
 
   for (const name of names) {

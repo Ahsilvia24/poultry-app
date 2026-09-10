@@ -7,9 +7,8 @@ import { Button, Card, Input, Label, Textarea } from "@/components/ui";
 type FarmInfo = {
   id: string;
   farmName: string;
+  farmNumber?: string | null;
   growerName: string;
-  phoneNumber: string | null;
-  email?: string | null;
   notes: string | null;
   numberOfGenerators?: number | null;
 };
@@ -42,6 +41,7 @@ export function FarmInfoEditor({
   actions?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <div className="contents">
@@ -54,7 +54,7 @@ export function FarmInfoEditor({
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Close farm settings" : "Edit farm info"}
           aria-expanded={open}
-          title="Edit farm info"
+          title="Edit Farm Info"
           className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
         >
           <GearIcon className="h-5 w-5" />
@@ -64,10 +64,15 @@ export function FarmInfoEditor({
 
       {open ? (
         <Card className="col-span-2 text-left">
-          <h2 className="font-bold text-stone-900">Edit farm info</h2>
+          <h2 className="font-bold text-stone-900">Edit Farm Info</h2>
           <form
             action={async (formData) => {
-              await updateFarmAction(farm.id, formData);
+              setError(null);
+              const result = await updateFarmAction(farm.id, formData);
+              if (result && "error" in result && result.error) {
+                setError(result.error);
+                return;
+              }
               setOpen(false);
             }}
             className="mt-4 space-y-4"
@@ -77,36 +82,29 @@ export function FarmInfoEditor({
                 <Label htmlFor="farmName">Farm name *</Label>
                 <Input id="farmName" name="farmName" required defaultValue={farm.farmName} />
               </div>
-              <div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="farmNumber">Farm #</Label>
+                <Input id="farmNumber" name="farmNumber" defaultValue={farm.farmNumber ?? ""} />
+              </div>
+              <div className="sm:col-span-2">
                 <Label htmlFor="growerName">Grower name</Label>
                 <Input id="growerName" name="growerName" defaultValue={farm.growerName} />
               </div>
-              <div>
-                <Label htmlFor="phoneNumber">Phone</Label>
-                <Input
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  type="tel"
-                  defaultValue={farm.phoneNumber ?? ""}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  defaultValue={farm.email ?? ""}
-                  autoComplete="email"
-                />
-              </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="notes">Notes</Label>
-                <Textarea id="notes" name="notes" rows={3} defaultValue={farm.notes ?? ""} />
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  rows={3}
+                  defaultValue={farm.notes ?? ""}
+                  className="scroll-mb-32"
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })}
+                />
               </div>
             </div>
+            {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
             <div className="flex flex-wrap gap-2">
-              <Button type="submit">Save farm changes</Button>
+              <Button type="submit">Save</Button>
               <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
                 Cancel
               </Button>

@@ -76,60 +76,34 @@ export function DeleteRecordButton({
   compact?: boolean;
 }) {
   const router = useRouter();
-  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  if (confirming) {
-    return (
-      <span className="flex shrink-0 flex-wrap items-center gap-2 text-xs">
-        <span className="text-stone-600">Delete?</span>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => {
-            setError(null);
-            startTransition(async () => {
-              const result = await onDelete();
-              if (result && "error" in result && result.error) {
-                setError(result.error);
-                return;
-              }
-              setConfirming(false);
-              router.refresh();
-            });
-          }}
-          className="font-semibold text-red-700 hover:underline disabled:opacity-50"
-        >
-          {pending ? "…" : "Yes"}
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => {
-            setConfirming(false);
-            setError(null);
-          }}
-          className="font-semibold text-stone-500 hover:underline disabled:opacity-50"
-        >
-          No
-        </button>
-        {error ? <span className="w-full text-red-700">{error}</span> : null}
-      </span>
-    );
-  }
-
   return (
-    <button
-      type="button"
-      onClick={() => setConfirming(true)}
-      className={`shrink-0 rounded text-stone-400 hover:bg-stone-100 hover:text-red-700 ${
-        compact ? "rounded p-0.5" : "rounded-lg p-1.5"
-      }`}
-      aria-label={label}
-      title={label}
-    >
-      <TrashIcon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
-    </button>
+    <span className="flex shrink-0 flex-col items-end">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          setError(null);
+          startTransition(async () => {
+            const result = await onDelete();
+            if (result && "error" in result && result.error) {
+              setError(result.error);
+              return;
+            }
+            router.refresh();
+          });
+        }}
+        className={`shrink-0 rounded text-stone-400 hover:bg-stone-100 hover:text-red-700 disabled:opacity-50 ${
+          compact ? "rounded p-0.5" : "rounded-lg p-1.5"
+        }`}
+        aria-label={label}
+        title={label}
+      >
+        <TrashIcon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+      </button>
+      {error ? <span className="text-xs text-red-700">{error}</span> : null}
+    </span>
   );
 }

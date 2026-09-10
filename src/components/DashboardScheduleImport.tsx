@@ -19,8 +19,6 @@ import {
 } from "@/app/actions/catch-import";
 import {
   SCHEDULE_IMPORT_TYPES,
-  formatBytes,
-  formatUploadedAt,
   scheduleImportTypeLabel,
   type ScheduleImportMeta,
   type ScheduleImportType,
@@ -58,7 +56,7 @@ function canUpload(type: ScheduleImportType) {
 }
 
 export function DashboardScheduleImport({
-  imports,
+  imports: _imports,
 }: {
   imports: ScheduleImportMeta[];
 }) {
@@ -71,8 +69,6 @@ export function DashboardScheduleImport({
   const [rename, setRename] = useState<Record<string, boolean>>({});
   const [onlyMyFarms, setOnlyMyFarms] = useState(false);
   const [applyResult, setApplyResult] = useState<ApplyState | null>(null);
-
-  const shownUploads = imports.filter((item) => item.importType === importType);
 
   const farms = preview?.farms ?? [];
   const myFarmKeys = useMemo(
@@ -168,7 +164,7 @@ export function DashboardScheduleImport({
     setPreview(null);
 
     if (!canUpload(importType)) {
-      setLocalError(`${scheduleImportTypeLabel(importType)} import comes next.`);
+      setLocalError(`${scheduleImportTypeLabel(importType)} import is not available.`);
       return;
     }
 
@@ -242,7 +238,7 @@ export function DashboardScheduleImport({
   return (
     <Card>
       <div className="flex flex-wrap gap-2">
-        {SCHEDULE_IMPORT_TYPES.map((type) => {
+        {SCHEDULE_IMPORT_TYPES.filter((type) => type.id !== "settlement").map((type) => {
           const active = importType === type.id;
           return (
             <button
@@ -284,25 +280,10 @@ export function DashboardScheduleImport({
             className="block w-full text-sm text-stone-700 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-700 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-emerald-800"
             disabled={pending || !uploadEnabled}
           />
-          {importType === "placement" ? (
-            <p className="mt-2 text-sm text-stone-500">
-              Weekly Chick Placement PDF (including scanned) or spreadsheet.
-            </p>
-          ) : importType === "catch" ? (
-            <p className="mt-2 text-sm text-stone-500">
-              Kill / Catch Schedule PDF (including scanned) or spreadsheet (Ending Kill Date or Catch Date, Farm Name,
-              House — Farm-Entity / Farm Code when available). Side-by-side Fort Smith / Heavener
-              sheets supported.
-            </p>
-          ) : (
-            <p className="mt-2 text-sm text-stone-500">
-              {scheduleImportTypeLabel(importType)} mapping comes next.
-            </p>
-          )}
         </div>
 
         <Button type="submit" disabled={pending || !uploadEnabled}>
-          {pending ? "Working…" : "Upload & read"}
+          {pending ? "Working…" : "Upload & Read"}
         </Button>
       </form>
 
@@ -474,49 +455,6 @@ export function DashboardScheduleImport({
       ) : null}
       {applyResult && !applyResult.ok ? (
         <p className="mt-3 text-sm font-semibold text-red-700">{applyResult.error}</p>
-      ) : null}
-
-      {shownUploads.length > 0 ? (
-        <div className="mt-5 border-t border-stone-200 pt-4">
-          <h3 className="text-sm font-bold text-stone-900">
-            Uploaded {scheduleImportTypeLabel(importType).toLowerCase()}
-          </h3>
-          <ul className="mt-2 space-y-2">
-            {shownUploads.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-wrap items-center justify-between gap-2 text-sm"
-              >
-                <a
-                  href={`/api/schedule-imports/${item.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-emerald-800 underline-offset-2 hover:underline"
-                >
-                  {item.originalName}
-                </a>
-                <span className="flex items-center gap-3 text-stone-500">
-                  {formatBytes(item.sizeBytes)} · {formatUploadedAt(item.uploadedAt)}
-                  {canUpload(item.importType) ? (
-                    <button
-                      type="button"
-                      className="font-semibold text-emerald-800 underline-offset-2 hover:underline"
-                      onClick={() =>
-                        loadPreview(
-                          item.id,
-                          item.importType === "catch" ? "catch" : "placement",
-                        )
-                      }
-                      disabled={pending}
-                    >
-                      Review farms
-                    </button>
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
       ) : null}
     </Card>
   );

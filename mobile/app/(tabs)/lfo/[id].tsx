@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -19,20 +18,24 @@ import {
   calculateLastFeedOrder,
   catchPartsFromFeedUpAt,
   feedUpAtFromCatch,
-  formatHouseLfoSummary,
+  formatLfoOrderClock,
 } from "../../../src/lib/lfo/calculate";
-import { scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
+import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, fonts, styles } from "../../../src/theme";
 import { Card, PrimaryButton } from "../../../src/components/ui";
 import { DatePickerField } from "../../../src/components/DatePickerField";
 import { TimeScrollPickerField } from "../../../src/components/TimeScrollPicker";
+import { currentHalfHourTime, normalizeHalfHourTime } from "../../../src/lib/time-slots";
 import {
   NumberKeypad,
   appendKeypadDigit,
   backspaceKeypadValue,
 } from "../../../src/components/NumberKeypad";
-import { LfoHouseSummaryBlock } from "../../../src/components/LfoHouseSummaryBlock";
+import { FeedMillDataButton } from "../../../src/components/LfoHouseSummaryBlock";
+import { formatFeedMillData } from "../../../src/lib/lfo/feedMillData";
+import { formatConsumptionRate } from "../../../src/lib/lfo/consumptionRate";
+import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 
 function formatLbs(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -83,8 +86,10 @@ function loadDraft(id: string) {
   return {
     farmName: lfo.farmName,
     orderDate: lfo.orderDate.slice(0, 10),
-    consumptionRate: String(lfo.consumptionRate ?? DEFAULT_LFO_CONSUMPTION_RATE),
+    orderTime: normalizeHalfHourTime(lfo.orderTime) ?? currentHalfHourTime(),
+    consumptionRate: formatConsumptionRate(lfo.consumptionRate ?? DEFAULT_LFO_CONSUMPTION_RATE),
     calculatedAt: lfo.calculatedAt,
+    notes: lfo.notes,
     houses: lfo.houses.map(
       (h): HouseDraft => {
         const parts = catchPartsFromFeedUpAt(h.feedUpAt);
@@ -164,14 +169,17 @@ export default function EditLfoScreen() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [error, setError] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
   const [farmName, setFarmName] = useState("");
   const [orderDate, setOrderDate] = useState("");
+  const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [calculatedAt, setCalculatedAt] = useState<string | null>(null);
+  const [notes, setNotes] = useState<string | null>(null);
   const [houses, setHouses] = useState<HouseDraft[]>([]);
   const [ready, setReady] = useState(false);
   const [activeField, setActiveField] = useState<ActiveField | null>(null);
+  const [openPicker, setOpenPicker] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [replaceOnType, setReplaceOnType] = useState(false);
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("lfo", scrollRef);
@@ -188,8 +196,10 @@ export default function EditLfoScreen() {
       const draft = loadDraft(id);
       setFarmName(draft.farmName);
       setOrderDate(draft.orderDate);
+      setOrderTime(draft.orderTime);
       setConsumptionRate(draft.consumptionRate);
       setCalculatedAt(draft.calculatedAt);
+      setNotes(draft.notes);
       setHouses(draft.houses);
       setError(null);
       setReady(true);
@@ -229,8 +239,8 @@ export default function EditLfoScreen() {
     const rate = Number(consumptionRate);
     return calculateLastFeedOrder({
       orderDate,
+      orderTime,
       consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
-      now: calculatedAt ? new Date(calculatedAt) : undefined,
       houses: houses.map((r) => ({
         houseId: r.houseId,
         houseNumber: r.houseNumber,
@@ -240,9 +250,24 @@ export default function EditLfoScreen() {
         feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime),
       })),
     });
-  }, [calculatedAt, consumptionRate, orderDate, houses]);
+  }, [consumptionRate, orderDate, orderTime, houses]);
 
-  const houseSummary = useMemo(() => formatHouseLfoSummary(calc.houses), [calc.houses]);
+  const feedMillText = useMemo(
+    () =>
+      formatFeedMillData(
+        houses.map((house) => {
+          const result = calc.houses.find((row) => row.houseId === house.houseId);
+          return {
+            houseNumber: house.houseNumber,
+            binAPounds: Number(house.binAPounds) || 0,
+            binBPounds: Number(house.binBPounds) || 0,
+            orderLbs: result?.orderLbs ?? null,
+            reclaimLbs: result?.reclaimLbs ?? null,
+          };
+        }),
+      ),
+    [calc.houses, houses],
+  );
 
   function updateHouse(houseId: string, patch: Partial<HouseDraft>) {
     setHouses((prev) => prev.map((h) => (h.houseId === houseId ? { ...h, ...patch } : h)));
@@ -295,9 +320,19 @@ export default function EditLfoScreen() {
     setActiveValue(appendKeypadDigit(base, d, allowDecimal));
   }
 
+  function dismissKeypad() {
+    setActiveField(null);
+    setReplaceOnType(false);
+  }
+
   function onBackspace() {
     setReplaceOnType(false);
-    setActiveValue(backspaceKeypadValue(getActiveValue()));
+    const current = getActiveValue();
+    if (!current) {
+      dismissKeypad();
+      return;
+    }
+    setActiveValue(backspaceKeypadValue(current));
   }
 
   function onEnter() {
@@ -305,14 +340,20 @@ export default function EditLfoScreen() {
     setReplaceOnType(false);
   }
 
-  function save() {
-    if (!id) return;
+  function leaveAfterSave() {
+    if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)/lfo");
+  }
+
+  function persistLfo(leave: boolean) {
+    if (!id) return false;
     try {
       const rate = Number(consumptionRate);
       updateLfo({
         id,
         orderDate: orderDate.trim() || orderDate,
-        notes: null,
+        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(),
+        notes,
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         houses: houses.map((h) => ({
           id: h.id,
@@ -322,23 +363,29 @@ export default function EditLfoScreen() {
           feedUpAt: feedUpAtFromCatch(h.catchDate, h.catchTime),
         })),
       });
-      setMsg("Saved");
       setError(null);
       setActiveField(null);
-      reload();
+      if (leave) leaveAfterSave();
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save LFO");
+      return false;
     }
+  }
+
+  function save() {
+    persistLfo(true);
   }
 
   function saveAsNew() {
     if (!id) return;
     try {
       const rate = Number(consumptionRate);
-      const created = saveLfoAsNew({
+      saveLfoAsNew({
         sourceId: id,
         orderDate: orderDate.trim() || orderDate,
-        notes: null,
+        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(),
+        notes,
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         houses: houses.map((h) => ({
           houseId: h.houseId,
@@ -349,7 +396,7 @@ export default function EditLfoScreen() {
       });
       setError(null);
       setActiveField(null);
-      router.replace(`/(tabs)/lfo/${created.id}`);
+      leaveAfterSave();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save new LFO");
     }
@@ -357,18 +404,7 @@ export default function EditLfoScreen() {
 
   function confirmDelete() {
     if (!id) return;
-    Alert.alert("Delete LFO", `Delete LFO for ${farmName || "this farm"}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          deleteLfo(id);
-          if (router.canGoBack()) router.back();
-          else router.replace("/(tabs)/lfo");
-        },
-      },
-    ]);
+    setDeleteOpen(true);
   }
 
   return (
@@ -377,11 +413,15 @@ export default function EditLfoScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.screen}
-          contentContainerStyle={[styles.content, { paddingBottom: activeField ? 24 : 40 }]}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: activeField ? CUSTOM_KEYPAD_HEIGHT : 40 },
+          ]}
           keyboardShouldPersistTaps="handled"
           onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
             scrollYRef.current = e.nativeEvent.contentOffset.y;
           }}
+          onScrollBeginDrag={dismissKeypad}
           scrollEventThrottle={16}
         >
           <View
@@ -441,19 +481,15 @@ export default function EditLfoScreen() {
             </Card>
           ) : null}
 
-          {msg ? (
-            <Text style={{ color: colors.accentDark, marginBottom: 8, fontWeight: "700" }}>
-              {msg}
-            </Text>
-          ) : null}
-
           {ready ? (
             <>
-              {calculatedAt ? (
+              {formatLfoOrderClock(orderDate, orderTime) ? (
                 <Text style={[styles.muted, { marginBottom: 10 }]}>
-                  Numbers as of {formatAsOf(calculatedAt)}. Hours, head counts, and
-                  order/reclaim stay frozen to that time. Save as new LFO to capture
-                  current time and remaining birds.
+                  Hours until feed off are measured from{" "}
+                  {formatLfoOrderClock(orderDate, orderTime)}.
+                  {calculatedAt
+                    ? ` Head counts stay frozen to ${formatAsOf(calculatedAt)}.`
+                    : ""}
                 </Text>
               ) : null}
 
@@ -465,31 +501,56 @@ export default function EditLfoScreen() {
                     gap: 10,
                   }}
                 >
-                  <DatePickerField
-                    label="Order date"
-                    value={orderDate}
-                    onChange={(date) => {
-                      setActiveField(null);
-                      setOrderDate(date);
-                    }}
-                    onOpen={() => setActiveField(null)}
-                    style={{ flex: 1, minWidth: 0 }}
-                  />
-                  <FieldButton
-                    label="Consumption rate"
-                    value={consumptionRate}
-                    active={activeField?.kind === "rate"}
-                    onPress={() => focusField({ kind: "rate" })}
-                    fieldRef={bindFieldRef("rate")}
-                    style={{ flex: 1, minWidth: 0 }}
-                  />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <DatePickerField
+                      label="Order date"
+                      value={orderDate}
+                      expanded={openPicker === "orderDate"}
+                      onChange={(date) => {
+                        setActiveField(null);
+                        setOrderDate(date);
+                      }}
+                      onOpen={() => {
+                        setActiveField(null);
+                        setOpenPicker("orderDate");
+                      }}
+                    />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <TimeScrollPickerField
+                      label="Order time"
+                      value={orderTime}
+                      expanded={openPicker === "orderTime"}
+                      onChange={(time) => {
+                        setActiveField(null);
+                        setOrderTime(time);
+                      }}
+                      onOpen={() => {
+                        setActiveField(null);
+                        setOpenPicker("orderTime");
+                      }}
+                    />
+                  </View>
                 </View>
+                <FieldButton
+                  label="Consumption rate"
+                  value={consumptionRate}
+                  active={activeField?.kind === "rate"}
+                  onPress={() => focusField({ kind: "rate" })}
+                  fieldRef={bindFieldRef("rate")}
+                  style={{ marginTop: 8 }}
+                />
                 <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
                   Consumption rate in lbs/bird/day
                 </Text>
+                {formatLfoOrderClock(orderDate, orderTime) ? (
+                  <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
+                    Hours from {formatLfoOrderClock(orderDate, orderTime)}
+                  </Text>
+                ) : null}
               </Card>
 
-              <Text style={styles.sectionTitle}>Bin inventory & feed up</Text>
+              <Text style={styles.sectionTitle}>Bin Inventory & Feed Up</Text>
               {houses.length === 0 ? (
                 <Card>
                   <Text style={styles.muted}>
@@ -511,7 +572,7 @@ export default function EditLfoScreen() {
                     >
                       <Text style={{ fontWeight: "800" }}>House {house.houseNumber}</Text>
                       <Text style={styles.muted}>
-                        Head count {house.headCount.toLocaleString()}
+                        Head Count {house.headCount.toLocaleString()}
                         {calculatedAt ? " at save" : ""}
                       </Text>
                     </View>
@@ -548,21 +609,29 @@ export default function EditLfoScreen() {
                       <DatePickerField
                         label="Catch date"
                         value={house.catchDate}
+                        expanded={openPicker === `catchDate:${house.houseId}`}
                         onChange={(date) => {
                           setActiveField(null);
                           updateHouse(house.houseId, { catchDate: date });
                         }}
-                        onOpen={() => setActiveField(null)}
+                        onOpen={() => {
+                          setActiveField(null);
+                          setOpenPicker(`catchDate:${house.houseId}`);
+                        }}
                         style={{ flex: 1, minWidth: 0 }}
                       />
                       <TimeScrollPickerField
                         label="Catch time"
                         value={house.catchTime}
+                        expanded={openPicker === `catchTime:${house.houseId}`}
                         onChange={(time) => {
                           setActiveField(null);
                           updateHouse(house.houseId, { catchTime: time });
                         }}
-                        onOpen={() => setActiveField(null)}
+                        onOpen={() => {
+                          setActiveField(null);
+                          setOpenPicker(`catchTime:${house.houseId}`);
+                        }}
                         style={{ flex: 1, minWidth: 0 }}
                       />
                     </View>
@@ -651,24 +720,28 @@ export default function EditLfoScreen() {
                 );
               })}
 
-              {houseSummary.length > 0 ? (
-                <Card>
-                  <View style={{ marginTop: -4 }}>
-                    <LfoHouseSummaryBlock
-                      lines={houseSummary}
-                      farmName={farmName}
-                      fontSize={15}
-                    />
-                  </View>
-                </Card>
-              ) : null}
-
-              <PrimaryButton label="Save changes" onPress={save} />
+              <FeedMillDataButton
+                getText={() => feedMillText}
+                onBeforeCopy={() => persistLfo(false)}
+              />
+              <PrimaryButton
+                label="Save changes"
+                onPress={save}
+                style={{
+                  marginTop: 8,
+                  borderWidth: 2,
+                  borderColor: "#022c22",
+                }}
+              />
               <PrimaryButton
                 label="Save as new LFO"
                 secondary
                 onPress={saveAsNew}
-                style={{ marginTop: 8 }}
+                style={{
+                  marginTop: 8,
+                  borderWidth: 2,
+                  borderColor: colors.accentDark,
+                }}
               />
               <Pressable
                 onPress={confirmDelete}
@@ -683,15 +756,38 @@ export default function EditLfoScreen() {
         </ScrollView>
 
         {activeField ? (
-          <NumberKeypad
-            allowDecimal={activeField.kind === "rate"}
-            allowTripleZero={activeField.kind === "binA" || activeField.kind === "binB"}
-            onDigit={onDigit}
-            onBackspace={onBackspace}
-            onEnter={onEnter}
-          />
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss keypad"
+              onPress={dismissKeypad}
+              style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
+            />
+            <NumberKeypad
+              allowDecimal={activeField.kind === "rate"}
+              allowTripleZero={activeField.kind === "binA" || activeField.kind === "binB"}
+              onDigit={onDigit}
+              onBackspace={onBackspace}
+              onEnter={onEnter}
+            />
+          </>
         ) : null}
       </View>
+      <ConfirmDialog
+        visible={deleteOpen}
+        title="Delete LFO"
+        message={`Delete LFO for ${farmName || "this farm"}?`}
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          if (!id) return;
+          deleteLfo(id);
+          setDeleteOpen(false);
+          if (router.canGoBack()) router.back();
+          else router.replace("/(tabs)/lfo");
+        }}
+        onCancel={() => setDeleteOpen(false)}
+      />
     </SafeAreaView>
   );
 }

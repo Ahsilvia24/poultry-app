@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { HouseCardActions } from "@/components/HouseCardActions";
 import { WeeklyMortalityList } from "@/components/WeeklyMortalityList";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Card } from "@/components/ui";
+import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
@@ -16,6 +17,7 @@ type HouseData = {
   houseNumber: number;
   squareFootage: number;
   totalFanCFM: number | null;
+  totalPowerCFM: number | null;
   numberOfFans: number | null;
   notes: string | null;
   placedBirdCount?: number | null;
@@ -29,15 +31,22 @@ type Metrics = {
   remaining: number;
 };
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
-/** e.g. Wed 29 Jul 26 */
+/** e.g. 2 Sep 26 */
 function formatHouseDetailDate(dateKey: string) {
   const [y, m, d] = dateKey.split("-").map(Number);
   if (!y || !m || !d) return dateKey;
-  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
-  return `${WEEKDAYS[dt.getDay()]} ${d} ${MONTHS[m - 1]} ${String(y).slice(-2)}`;
+  return `${d} ${MONTHS[m - 1]} ${String(y).slice(-2)}`;
+}
+
+function daysBetweenKeys(fromKey: string, toKey: string): number | null {
+  const [y1, m1, d1] = fromKey.split("-").map(Number);
+  const [y2, m2, d2] = toKey.split("-").map(Number);
+  if (!y1 || !m1 || !d1 || !y2 || !m2 || !d2) return null;
+  const a = new Date(y1, m1 - 1, d1, 12, 0, 0, 0).getTime();
+  const b = new Date(y2, m2 - 1, d2, 12, 0, 0, 0).getTime();
+  return Math.round((b - a) / 86400000);
 }
 
 function todayKey() {
@@ -80,10 +89,8 @@ export function HouseCard({
 }) {
   const router = useRouter();
   const { setKeypadOpen } = useKeypadNav();
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(true);
   const [mode, setMode] = useState<"idle" | "edit" | "delete">("idle");
-  const [swipeX, setSwipeX] = useState(0);
-  const touchStartX = useRef<number | null>(null);
   const [tempOpen, setTempOpen] = useState(false);
   const [tempValue, setTempValue] = useState("");
   const [tempError, setTempError] = useState<string | null>(null);
@@ -92,41 +99,18 @@ export function HouseCard({
   const loggedTempToday =
     house.loggedTemp && house.loggedTempAt === todayKey() ? house.loggedTemp : null;
 
-  const mortalityValue = metrics
-    ? `${formatNumber(metrics.cumulative)} (${formatPct(metrics.cumulativePct)})`
-    : "—";
+  const mortalityValue = metrics ? formatNumber(metrics.cumulative) : "—";
+  const mortalityPct = metrics ? formatPct(metrics.cumulativePct) : null;
   const projMortValue =
+    projectedMortality != null ? formatNumber(projectedMortality) : "—";
+  const projMortPct =
     projectedMortality != null && birdsPlaced != null && birdsPlaced > 0
-      ? `${formatNumber(projectedMortality)} (${formatPct((projectedMortality / birdsPlaced) * 100)})`
-      : projectedMortality != null
-        ? formatNumber(projectedMortality)
-        : "—";
-
-  function onTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0]?.clientX ?? null;
-  }
-
-  function onTouchMove(e: React.TouchEvent) {
-    if (touchStartX.current == null) return;
-    const x = e.touches[0]?.clientX;
-    if (x == null) return;
-    const dx = x - touchStartX.current;
-    // Only allow left swipe reveal
-    setSwipeX(Math.max(-88, Math.min(0, dx)));
-  }
-
-  function onTouchEnd() {
-    if (touchStartX.current == null) {
-      setSwipeX(0);
-      return;
-    }
-    // Snap open if swiped far enough left
-    if (swipeX <= -48) setSwipeX(-88);
-    else setSwipeX(0);
-    touchStartX.current = null;
-  }
-
-  const swipeOpen = swipeX < -8;
+      ? formatPct((projectedMortality / birdsPlaced) * 100)
+      : null;
+  const catchAgeDays =
+    placementDateKey && catchDateKey
+      ? daysBetweenKeys(placementDateKey, catchDateKey)
+      : null;
 
   useEffect(() => {
     setKeypadOpen(tempOpen);
@@ -159,39 +143,8 @@ export function HouseCard({
 
   return (
     <div className="self-start">
-    <div className="relative overflow-hidden rounded-xl">
-      {/* Only mount while swiping so a stretched grid row can't reveal it under a short tile */}
-      {swipeOpen ? (
-        <div
-          className="absolute inset-y-0 right-0 flex w-[88px] items-center justify-center rounded-xl bg-red-700"
-          aria-hidden={swipeX > -40}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              setSwipeX(0);
-              setMode("delete");
-            }}
-            className="flex h-full w-full flex-col items-center justify-center gap-1 text-sm font-bold text-white"
-            aria-label={`Delete house ${house.houseNumber}`}
-          >
-            Delete
-          </button>
-        </div>
-      ) : null}
-
-      <div
-        className="relative transition-transform duration-150 ease-out"
-        style={{ transform: `translateX(${swipeX}px)` }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={() => {
-          touchStartX.current = null;
-          setSwipeX(0);
-        }}
-      >
-        <Card>
+    <SwipeCommitDeleteRow rowId={house.id} onDelete={() => setMode("delete")}>
+        <Card className="rounded-xl">
           <div className="flex items-start justify-between gap-2">
             <button
               type="button"
@@ -253,7 +206,7 @@ export function HouseCard({
                 >
                   Enter
                   <br />
-                  mortality
+                  Mortality
                 </a>
               ) : null}
             </div>
@@ -286,32 +239,35 @@ export function HouseCard({
             <span className="w-4 text-stone-500" aria-hidden="true">
               {detailsOpen ? "▾" : "▸"}
             </span>
-            {detailsOpen ? "Hide details" : "Show details"}
+            {detailsOpen ? "Hide Details" : "Show Details"}
           </button>
 
           {detailsOpen ? (
             <button
               type="button"
               onClick={() => setMode("edit")}
-              className="mt-3 w-full space-y-3 text-left text-sm text-inherit"
+              className="mt-3 w-full space-y-3 text-left text-inherit"
               aria-label={`Edit house ${house.houseNumber} details`}
             >
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <p className="text-stone-500">Placed</p>
-                  <p className="font-semibold">
+                  <p className="text-[13px] text-stone-500">Placed</p>
+                  <p className="mt-0.5 text-[15px] font-bold">
                     {birdsPlaced != null ? formatNumber(birdsPlaced) : "—"}
                   </p>
+                  {placementDateKey ? (
+                    <p className="text-[15px] font-bold leading-snug">{formatHouseDetailDate(placementDateKey)}</p>
+                  ) : null}
                 </div>
                 <div>
-                  <p className="text-stone-500">Remaining</p>
-                  <p className="font-semibold">
+                  <p className="text-[13px] text-stone-500">Remaining</p>
+                  <p className="mt-0.5 text-[15px] font-bold">
                     {metrics ? formatNumber(metrics.remaining) : "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-stone-500">PHC</p>
-                  <p className="font-semibold">
+                  <p className="text-[13px] text-stone-500">PHC</p>
+                  <p className="mt-0.5 text-[15px] font-bold">
                     {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
                   </p>
                   <p className="mt-0.5 text-[11px] text-stone-400">150 catch crew</p>
@@ -319,37 +275,40 @@ export function HouseCard({
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <p className="text-stone-500">Placed/Catch</p>
-                  {placementDateKey ? (
-                    <p className="font-semibold leading-snug">
-                      {formatHouseDetailDate(placementDateKey)}
+                  <p className="text-[13px] text-stone-500">Catch</p>
+                  {catchDateKey ? (
+                    <p className="mt-0.5 text-[15px] font-bold leading-snug">
+                      {formatHouseDetailDate(catchDateKey)}
                     </p>
                   ) : (
-                    <p className="font-semibold">—</p>
+                    <p className="mt-0.5 text-[15px] font-bold">—</p>
                   )}
-                  {catchDateKey ? (
-                    <p className="font-semibold leading-snug">
-                      <span className="block">{formatHouseDetailDate(catchDateKey)}</span>
-                      {catchTime ? (
-                        <span className="block">{compactCatchTimeLabel(catchTime)}</span>
-                      ) : null}
-                    </p>
+                  {catchTime ? (
+                    <p className="text-[15px] font-bold leading-snug">{compactCatchTimeLabel(catchTime)}</p>
+                  ) : null}
+                  {catchAgeDays != null ? (
+                    <p className="text-[15px] font-bold leading-snug">{catchAgeDays} days</p>
                   ) : null}
                 </div>
                 <div>
-                  <p className="text-stone-500">Mortality</p>
-                  <p className="font-semibold">{mortalityValue}</p>
+                  <p className="text-[13px] text-stone-500">Mortality</p>
+                  <p className="mt-0.5 text-[15px] font-bold">{mortalityValue}</p>
+                  {mortalityPct ? (
+                    <p className="text-[15px] font-bold leading-snug">({mortalityPct})</p>
+                  ) : null}
                 </div>
                 <div>
-                  <p className="text-stone-500">Proj. Mort.</p>
-                  <p className="font-semibold">{projMortValue}</p>
+                  <p className="text-[13px] text-stone-500">Proj. Mort.</p>
+                  <p className="mt-0.5 text-[15px] font-bold">{projMortValue}</p>
+                  {projMortPct ? (
+                    <p className="text-[15px] font-bold leading-snug">({projMortPct})</p>
+                  ) : null}
                 </div>
               </div>
             </button>
           ) : null}
         </Card>
-      </div>
-    </div>
+    </SwipeCommitDeleteRow>
 
       <HouseCardActions
         farmId={farmId}
@@ -397,7 +356,10 @@ export function HouseCard({
             <NumberKeypad
               allowDecimal
               onDigit={(d) => setTempValue((v) => appendKeypadDigit(v, d, true))}
-              onBackspace={() => setTempValue((v) => backspaceKeypadValue(v))}
+              onBackspace={() => {
+                if (!tempValue) closeTemp();
+                else setTempValue((v) => backspaceKeypadValue(v));
+              }}
               onEnter={() => saveTemp(tempValue.trim() || null)}
             />
           </div>

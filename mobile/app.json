@@ -3,7 +3,7 @@
     "name": "PoultryTech",
     "slug": "poultry-team",
     "version": "1.0.9",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "scheme": "poultrytech",
     "userInterfaceStyle": "light",
@@ -13,14 +13,13 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.poultrytech.app",
-      "buildNumber": "133",
+      "buildNumber": "137",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {
-          "NSAllowsLocalNetworking": true,
-          "NSAllowsArbitraryLoads": true
+          "NSAllowsLocalNetworking": true
         }
       }
     },
@@ -36,7 +35,13 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "PoultryTech",
+      "shortName": "PoultryTech",
+      "description": "Poultry farm management for service technicians",
+      "themeColor": "#047857",
+      "backgroundColor": "#f3efe6",
+      "lang": "en"
     },
     "plugins": [
       [

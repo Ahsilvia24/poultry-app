@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { eachDayOfInterval, format, parseISO, subDays } from "date-fns";
@@ -5,7 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calcPercentage } from "@/lib/mortality/calculations";
 import { dateKeyFromDb } from "@/lib/visits/schedule";
-import { MORTALITY_CAUSE_LABELS } from "@/lib/utils";
+import { cn, MORTALITY_CAUSE_LABELS } from "@/lib/utils";
 import {
   MortalityCharts,
   type CauseRow,
@@ -16,12 +17,19 @@ import {
 } from "@/components/MortalityCharts";
 import { ReportsTypeTabs } from "@/components/ReportsTypeTabs";
 import { FieldLogReport } from "@/components/FieldLogReport";
-import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import { GeneratorLogReport } from "@/components/GeneratorLogReport";
+import { FarmHistoryView } from "@/components/FarmHistoryView";
+import { ReportDateRangeFields } from "@/components/ReportDateRangeFields";
+import { Button, Card, Label, PageHeader, Select } from "@/components/ui";
 import {
   buildFieldLogWeeks,
   defaultFieldLogRange,
 } from "@/lib/reports/field-log";
 import { resolveReportType } from "@/lib/reports/types";
+import {
+  collectPriorHours,
+  type GeneratorReportFarm,
+} from "@/lib/reports/generator-log";
 
 type SearchParams = Promise<{
   farmId?: string;
@@ -37,6 +45,56 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
 
   const params = await searchParams;
   const reportType = resolveReportType(params.type);
+
+  if (reportType === "history") {
+    const farms = await prisma.farm.findMany({
+      where: { userId: session.user.id, deletedAt: null },
+      orderBy: { farmName: "asc" },
+      select: { id: true, farmName: true },
+    });
+    const selectedFarmId =
+      (params.farmId && farms.some((f) => f.id === params.farmId)
+        ? params.farmId
+        : farms[0]?.id) ?? "";
+
+    return (
+      <div>
+        <PageHeader title="Reports" />
+        <Suspense fallback={<div className="mb-4 h-10" />}>
+          <ReportsTypeTabs active="history" />
+        </Suspense>
+        {farms.length === 0 ? (
+          <Card>
+            <p className="text-stone-600">No farms found.</p>
+          </Card>
+        ) : (
+          <>
+            <div className="mb-6">
+              <p className="mb-2 text-sm font-semibold text-stone-700">Farm</p>
+              <div className="flex flex-wrap gap-2">
+                {farms.map((farm) => (
+                  <Link
+                    key={farm.id}
+                    href={`/reports?type=history&farmId=${farm.id}`}
+                    className={cn(
+                      "rounded-lg px-4 py-2 text-sm font-semibold",
+                      selectedFarmId === farm.id
+                        ? "bg-emerald-700 text-white"
+                        : "bg-stone-200 text-stone-800",
+                    )}
+                  >
+                    {farm.farmName}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <FarmHistoryView farmId={selectedFarmId} userId={session.user.id} />
+          </>
+        )}
+      </div>
+    );
+  }
+
   const today = new Date();
   const fieldDefaults = defaultFieldLogRange(today);
   const from =
@@ -57,6 +115,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       },
       select: {
         id: true,
+        visitType: true,
         visitDate: true,
         loggedAt: true,
         createdAt: true,
@@ -69,6 +128,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       visits.map((v) => ({
         id: v.id,
         farmName: v.farm.farmName,
+        visitType: v.visitType,
         visitDate: dateKeyFromDb(v.visitDate),
         loggedAt: (v.loggedAt ?? v.createdAt).toISOString(),
       })),
@@ -88,22 +148,128 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           <ReportsTypeTabs active="field-log" />
         </Suspense>
         <Card className="mb-6">
-          <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <form className="grid gap-3">
             <input type="hidden" name="type" value="field-log" />
+            <ReportDateRangeFields fromLabel="Start" toLabel="Finish" from={from} to={to} />
             <div>
-              <Label htmlFor="from">Start</Label>
-              <Input id="from" name="from" type="date" defaultValue={from} />
-            </div>
-            <div>
-              <Label htmlFor="to">Finish</Label>
-              <Input id="to" name="to" type="date" defaultValue={to} />
-            </div>
-            <div className="flex items-end">
               <Button type="submit">Run report</Button>
             </div>
           </form>
         </Card>
-        <FieldLogReport weeks={weeks} filterLabel={filterLabel} />
+        <FieldLogReport
+          weeks={weeks}
+          filterLabel={filterLabel}
+          technicianName={session.user.name ?? undefined}
+        />
+      </div>
+    );
+  }
+
+  if (reportType === "generator") {
+    const farms = await prisma.farm.findMany({
+      where: { userId: session.user.id, deletedAt: null },
+      orderBy: { farmName: "asc" },
+      select: { id: true, farmName: true, numberOfGenerators: true },
+    });
+    const farmFilter = {
+      userId: session.user.id,
+      deletedAt: null,
+    };
+    const logs = await prisma.generatorLog.findMany({
+      where: {
+        logDate: { gte: fromDate, lte: toDate },
+        farm: farmFilter,
+      },
+      select: {
+        id: true,
+        farmId: true,
+        logDate: true,
+        gen1Hours: true,
+        gen2Hours: true,
+        gen3Hours: true,
+        gen4Hours: true,
+        farm: { select: { farmName: true, numberOfGenerators: true } },
+      },
+      orderBy: [{ logDate: "desc" }, { createdAt: "desc" }],
+    });
+    const priorLogs = await prisma.generatorLog.findMany({
+      where: {
+        logDate: { lt: fromDate },
+        farm: farmFilter,
+      },
+      select: {
+        farmId: true,
+        gen1Hours: true,
+        gen2Hours: true,
+        gen3Hours: true,
+        gen4Hours: true,
+      },
+      orderBy: [{ logDate: "desc" }, { createdAt: "desc" }],
+    });
+    const priorByFarm = new Map<string, ReturnType<typeof collectPriorHours>>();
+    const priorGrouped = new Map<string, typeof priorLogs>();
+    for (const log of priorLogs) {
+      const list = priorGrouped.get(log.farmId) ?? [];
+      list.push(log);
+      priorGrouped.set(log.farmId, list);
+    }
+    for (const [farmId, list] of priorGrouped) {
+      priorByFarm.set(
+        farmId,
+        collectPriorHours(
+          list.map((log) => ({
+            gen1Hours: log.gen1Hours,
+            gen2Hours: log.gen2Hours,
+            gen3Hours: log.gen3Hours,
+            gen4Hours: log.gen4Hours,
+          })),
+        ),
+      );
+    }
+
+    const byFarm = new Map<string, GeneratorReportFarm>();
+    for (const farm of farms) {
+      byFarm.set(farm.id, {
+        farmId: farm.id,
+        farmName: farm.farmName,
+        numberOfGenerators: farm.numberOfGenerators,
+        priorHours: priorByFarm.get(farm.id) ?? null,
+        logs: [],
+      });
+    }
+    for (const log of logs) {
+      const farm = byFarm.get(log.farmId);
+      if (!farm) continue;
+      farm.logs.push({
+        id: log.id,
+        farmId: log.farmId,
+        farmName: log.farm.farmName,
+        logDate: dateKeyFromDb(log.logDate),
+        gen1Hours: log.gen1Hours,
+        gen2Hours: log.gen2Hours,
+        gen3Hours: log.gen3Hours,
+        gen4Hours: log.gen4Hours,
+      });
+    }
+    const reportFarms = [...byFarm.values()].filter((farm) => farm.logs.length > 0);
+    const filterLabel = `${format(fromDate, "MMMM d, yyyy")} to ${format(toDate, "MMMM d, yyyy")}`;
+
+    return (
+      <div>
+        <PageHeader title="Reports" />
+        <Suspense fallback={<div className="mb-4 h-10" />}>
+          <ReportsTypeTabs active="generator" />
+        </Suspense>
+        <Card className="mb-6">
+          <form className="grid gap-3">
+            <input type="hidden" name="type" value="generator" />
+            <ReportDateRangeFields fromLabel="From" toLabel="To" from={from} to={to} />
+            <div>
+              <Button type="submit">Apply filters</Button>
+            </div>
+          </form>
+        </Card>
+        <GeneratorLogReport farms={reportFarms} filterLabel={filterLabel} />
       </div>
     );
   }
@@ -299,7 +465,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       </Suspense>
 
       <Card className="mb-6">
-        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <form className="grid gap-3">
           <input type="hidden" name="type" value="mortality" />
           <div>
             <Label htmlFor="farmId">Farm</Label>
@@ -312,16 +478,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
               ))}
             </Select>
           </div>
-          <div>
-            <Label htmlFor="from">From</Label>
-            <Input id="from" name="from" type="date" defaultValue={from} />
-            <p className="mt-1 text-xs text-stone-500">{format(fromDate, "MMMM d, yyyy")}</p>
-          </div>
-          <div>
-            <Label htmlFor="to">To</Label>
-            <Input id="to" name="to" type="date" defaultValue={to} />
-            <p className="mt-1 text-xs text-stone-500">{format(toDate, "MMMM d, yyyy")}</p>
-          </div>
+          <ReportDateRangeFields fromLabel="From" toLabel="To" from={from} to={to} />
           <div>
             <Label htmlFor="cause">Cause</Label>
             <Select id="cause" name="cause" defaultValue={selectedCause}>
@@ -333,7 +490,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
               ))}
             </Select>
           </div>
-          <div className="sm:col-span-2 lg:col-span-4">
+          <div>
             <Button type="submit">Apply filters</Button>
           </div>
         </form>

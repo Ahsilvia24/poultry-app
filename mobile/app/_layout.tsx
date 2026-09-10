@@ -38,7 +38,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         }}
       >
         <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text, textAlign: "center" }}>
-          Mobile web preview unavailable
+          This browser can’t run offline storage
         </Text>
         <Text style={{ marginTop: 10, fontSize: 14, color: colors.muted, textAlign: "center" }}>
           {dbError}

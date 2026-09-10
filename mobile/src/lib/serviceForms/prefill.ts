@@ -5,7 +5,11 @@ function formatMinVentCycle(onSeconds: number, offSeconds: number) {
   return `${onSeconds} ON / ${offSeconds} OFF`;
 }
 import { emptyHouseRow } from "./defaults";
+import { mergeLiveHouseRows } from "./liveHouseMetrics";
 import type { ServiceHouseRow } from "./types";
+import { cfmPerFt2FromHouse } from "./cfmPerFt2";
+
+export { cfmPerFt2FromHouse } from "./cfmPerFt2";
 
 type FarmHouse = {
   houseNumber: number;
@@ -13,12 +17,26 @@ type FarmHouse = {
   placedBirdCount: number | null;
   cumulativeMortality: number;
   weeklyMortality: Array<{ week: number; total: number }>;
+  squareFootage?: number | null;
   totalFanCFM: number | null;
+  totalPowerCFM?: number | null;
   numberOfFans: number | null;
   loggedTemp?: string | null;
 };
 
-type FarmDetailLike = {
+export function house1CfmPerFt2(detail: FarmDetailLike): {
+  minVent: string;
+  maxPower: string;
+} {
+  const house = [...detail.houses].sort((a, b) => a.houseNumber - b.houseNumber)[0];
+  if (!house) return { minVent: "", maxPower: "" };
+  return {
+    minVent: cfmPerFt2FromHouse(house.totalFanCFM, house.squareFootage),
+    maxPower: cfmPerFt2FromHouse(house.totalPowerCFM, house.squareFootage),
+  };
+}
+
+export type FarmDetailLike = {
   farm: { farmName: string };
   activeFlock: { flockNumber: string } | null;
   houses: FarmHouse[];
@@ -46,12 +64,12 @@ export function prefillHouseRows(detail: FarmDetailLike): ServiceHouseRow[] {
   });
 }
 
-/** House 1 (lowest house number with fan CFM) Total CFM for Max CFM prefill. */
-export function house1TotalCfm(detail: FarmDetailLike): string {
-  const sorted = [...detail.houses].sort((a, b) => a.houseNumber - b.houseNumber);
-  const h1 = sorted.find((h) => h.houseNumber === 1) ?? sorted[0];
-  if (!h1?.totalFanCFM || h1.totalFanCFM <= 0) return "";
-  return String(Math.round(h1.totalFanCFM));
+/** When resuming a draft, pull latest logged temps and mortality from the farm. */
+export function applyLiveHouseMetrics<T extends { houses: ServiceHouseRow[] }>(
+  form: T,
+  detail: FarmDetailLike,
+): T {
+  return { ...form, houses: mergeLiveHouseRows(form.houses, prefillHouseRows(detail)) };
 }
 
 export function minVentForWeek(
@@ -80,4 +98,17 @@ export function currentFlockWeek(detail: FarmDetailLike): number {
   const withAge = detail.houses.find((h) => h.ageDays != null);
   if (withAge?.ageDays == null) return 1;
   return flockWeekFromAge(Math.max(0, withAge.ageDays));
+}
+
+export function flockAgeDaysFromHouses(
+  houses: Array<{ age?: string; ageDays?: number | null }>,
+): number | null {
+  for (const house of houses) {
+    if (house.ageDays != null && Number.isFinite(house.ageDays)) return house.ageDays;
+    if (house.age != null && house.age.trim() !== "") {
+      const n = Number(house.age);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return null;
 }

@@ -3,14 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { deleteHouseAction, updateHouseAction } from "@/app/actions/farms";
-import { Button, Input, Label, Select } from "@/components/ui";
-import { HALF_HOUR_TIME_OPTIONS } from "@/lib/time-slots";
+import { DateKeyField } from "@/components/DateKeyField";
+import { GroupedNumberInput } from "@/components/GroupedNumberInput";
+import { TimeKeyField } from "@/components/TimeKeyField";
+import { Button, Input, Label } from "@/components/ui";
 
 export type HouseEditValues = {
   id: string;
   houseNumber: number;
   squareFootage: number;
   totalFanCFM: number | null;
+  totalPowerCFM: number | null;
   numberOfFans: number | null;
   notes: string | null;
   placedBirdCount: number | null;
@@ -41,7 +44,8 @@ function PropagateCheck({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <label className="mt-0.5 flex cursor-pointer items-center gap-1.5 leading-none">
+    <label className="mt-0.5 ml-auto flex w-fit cursor-pointer items-center gap-1.5 leading-none">
+      <span className="text-xs font-medium text-stone-600">Propagate</span>
       <input
         type="checkbox"
         name={name}
@@ -50,7 +54,6 @@ function PropagateCheck({
         onChange={(e) => onChange(e.target.checked)}
         className="h-3.5 w-3.5 shrink-0 rounded border-stone-300 text-emerald-700 focus:ring-emerald-700"
       />
-      <span className="text-xs font-medium text-stone-600">Propagate</span>
     </label>
   );
 }
@@ -79,7 +82,9 @@ export function HouseCardActions({
   const [applyCatchDateToRemaining, setApplyCatchDateToRemaining] = useState(false);
   const [applyCatchTimeToRemaining, setApplyCatchTimeToRemaining] = useState(false);
   const [applyFlockIdToRemaining, setApplyFlockIdToRemaining] = useState(false);
-  const [applySpecsToRemaining, setApplySpecsToRemaining] = useState(false);
+  const [applySquareFootageToRemaining, setApplySquareFootageToRemaining] = useState(false);
+  const [applyMinVentCfmToRemaining, setApplyMinVentCfmToRemaining] = useState(false);
+  const [applyPowerCfmToRemaining, setApplyPowerCfmToRemaining] = useState(false);
 
   useEffect(() => {
     if (mode === "edit") {
@@ -91,7 +96,9 @@ export function HouseCardActions({
       setApplyCatchDateToRemaining(false);
       setApplyCatchTimeToRemaining(false);
       setApplyFlockIdToRemaining(false);
-      setApplySpecsToRemaining(false);
+      setApplySquareFootageToRemaining(false);
+      setApplyMinVentCfmToRemaining(false);
+      setApplyPowerCfmToRemaining(false);
       setError(null);
     }
     if (mode === "delete") setError(null);
@@ -143,13 +150,13 @@ export function HouseCardActions({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex bg-black/40"
       onClick={close}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
+        className="flex h-full w-full flex-col bg-white shadow-lg"
         onClick={(e) => e.stopPropagation()}
         onFocusCapture={(e) => {
           const t = e.target;
@@ -161,12 +168,14 @@ export function HouseCardActions({
         }}
       >
         {mode === "edit" ? (
-          <>
-            <h3 className="text-lg font-bold text-stone-900">
-              Edit house {house.houseNumber}
-            </h3>
-            {error ? <p className="mt-2 text-sm text-red-700">{error}</p> : null}
-            <form action={onSave} className="mt-4 space-y-3">
+          <form action={onSave} className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0 px-5 pt-[max(1.25rem,env(safe-area-inset-top,1.25rem))]">
+              <h3 className="text-lg font-bold text-stone-900">
+                Edit house {house.houseNumber}
+              </h3>
+              {error ? <p className="mt-2 text-sm text-red-700">{error}</p> : null}
+            </div>
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor={`edit-houseNumber-${house.id}`}>House number</Label>
@@ -206,13 +215,12 @@ export function HouseCardActions({
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor={`edit-placementDate-${house.id}`}>Placement date</Label>
-                      <Input
+                      <DateKeyField
                         id={`edit-placementDate-${house.id}`}
                         name="placementDate"
-                        type="date"
-                        compact
+                        label="Placement date"
                         value={placementDate}
-                        onChange={(e) => onPlacementChange(e.target.value)}
+                        onChange={onPlacementChange}
                       />
                       <PropagateCheck
                         name="applyPlacementToRemaining"
@@ -222,15 +230,13 @@ export function HouseCardActions({
                     </div>
                     <div>
                       <Label htmlFor={`edit-placedBirdCount-${house.id}`}>Birds placed</Label>
-                      <Input
+                      <GroupedNumberInput
                         id={`edit-placedBirdCount-${house.id}`}
                         name="placedBirdCount"
-                        type="number"
                         min={1}
                         step={1}
                         compact
                         defaultValue={house.placedBirdCount ?? ""}
-                        placeholder="e.g. 29700"
                       />
                       <PropagateCheck
                         name="applyBirdsToRemaining"
@@ -242,13 +248,12 @@ export function HouseCardActions({
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor={`edit-catchDate-${house.id}`}>Catch date</Label>
-                      <Input
+                      <DateKeyField
                         id={`edit-catchDate-${house.id}`}
                         name="catchDate"
-                        type="date"
-                        compact
+                        label="Catch date"
                         value={catchDate}
-                        onChange={(e) => setCatchDate(e.target.value)}
+                        onChange={setCatchDate}
                       />
                       <PropagateCheck
                         name="applyCatchDateToRemaining"
@@ -258,20 +263,13 @@ export function HouseCardActions({
                     </div>
                     <div>
                       <Label htmlFor={`edit-catchTime-${house.id}`}>Catch time</Label>
-                      <Select
+                      <TimeKeyField
                         id={`edit-catchTime-${house.id}`}
                         name="catchTime"
-                        compact
+                        label="Catch time"
                         value={catchTime}
-                        onChange={(e) => setCatchTime(e.target.value)}
-                      >
-                        <option value="">Select time</option>
-                        {HALF_HOUR_TIME_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </Select>
+                        onChange={setCatchTime}
+                      />
                       <PropagateCheck
                         name="applyCatchTimeToRemaining"
                         checked={applyCatchTimeToRemaining}
@@ -284,60 +282,79 @@ export function HouseCardActions({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor={`edit-squareFootage-${house.id}`}>Square footage</Label>
-                  <Input
+                  <GroupedNumberInput
                     id={`edit-squareFootage-${house.id}`}
                     name="squareFootage"
-                    type="number"
+                    decimal
                     min={1}
                     step="any"
                     required
                     compact
                     defaultValue={house.squareFootage ?? 29700}
-                    placeholder="29700"
                   />
                   <PropagateCheck
-                    name="applySpecsToRemaining"
-                    checked={applySpecsToRemaining}
-                    onChange={setApplySpecsToRemaining}
+                    name="applySquareFootageToRemaining"
+                    checked={applySquareFootageToRemaining}
+                    onChange={setApplySquareFootageToRemaining}
                   />
                 </div>
                 <div>
                   <Label htmlFor={`edit-totalFanCFM-${house.id}`}>Total CFM (Min Vent)</Label>
-                  <Input
+                  <GroupedNumberInput
                     id={`edit-totalFanCFM-${house.id}`}
                     name="totalFanCFM"
-                    type="number"
+                    decimal
                     min={0}
                     step="any"
                     compact
                     defaultValue={house.totalFanCFM ?? ""}
                   />
                   <PropagateCheck
-                    checked={applySpecsToRemaining}
-                    onChange={setApplySpecsToRemaining}
+                    name="applyMinVentCfmToRemaining"
+                    checked={applyMinVentCfmToRemaining}
+                    onChange={setApplyMinVentCfmToRemaining}
                   />
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={pending}>
-                  {pending ? "Saving…" : "Save"}
-                </Button>
-                <Button type="button" variant="secondary" disabled={pending} onClick={close}>
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  variant="danger"
-                  disabled={pending}
-                  onClick={() => onModeChange("delete")}
-                >
-                  Delete House
-                </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor={`edit-totalPowerCFM-${house.id}`}>Total CFM (Power)</Label>
+                  <GroupedNumberInput
+                    id={`edit-totalPowerCFM-${house.id}`}
+                    name="totalPowerCFM"
+                    decimal
+                    min={0}
+                    step="any"
+                    compact
+                    defaultValue={house.totalPowerCFM ?? ""}
+                  />
+                  <PropagateCheck
+                    name="applyPowerCfmToRemaining"
+                    checked={applyPowerCfmToRemaining}
+                    onChange={setApplyPowerCfmToRemaining}
+                  />
+                </div>
               </div>
-            </form>
-          </>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2 border-t border-stone-200 px-5 py-4">
+              <Button type="submit" disabled={pending} className="flex-1">
+                {pending ? "Saving…" : "Save"}
+              </Button>
+              <Button type="button" variant="secondary" disabled={pending} onClick={close} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                disabled={pending}
+                onClick={() => onModeChange("delete")}
+              >
+                Delete House
+              </Button>
+            </div>
+          </form>
         ) : (
-          <>
+          <div className="flex h-full flex-col px-5 pt-5">
             <h3 className="text-lg font-bold text-stone-900">
               Delete house {house.houseNumber}?
             </h3>
@@ -345,15 +362,15 @@ export function HouseCardActions({
               This removes the house from the farm. It will no longer appear in your lists.
             </p>
             {error ? <p className="mt-2 text-sm text-red-700">{error}</p> : null}
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Button type="button" variant="danger" disabled={pending} onClick={onDelete}>
+            <div className="mt-auto flex flex-wrap gap-2 border-t border-stone-200 py-4">
+              <Button type="button" variant="danger" disabled={pending} onClick={onDelete} className="flex-1">
                 {pending ? "Deleting…" : "Delete house"}
               </Button>
-              <Button type="button" variant="secondary" disabled={pending} onClick={close}>
+              <Button type="button" variant="secondary" disabled={pending} onClick={close} className="flex-1">
                 Cancel
               </Button>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

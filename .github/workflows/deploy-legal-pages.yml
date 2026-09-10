@@ -1,13 +1,16 @@
-name: Deploy App Store legal pages
+name: Deploy PoultryTech website
 
 on:
   push:
     branches: [main]
     paths:
+      - "mobile/**"
       - "docs/privacy.html"
       - "docs/support.html"
-      - "docs/app-store/index.html"
+      - "docs/app-store/**"
+      - "scripts/stage-github-pages.sh"
       - ".github/workflows/deploy-legal-pages.yml"
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -20,22 +23,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install and export Expo web
+        working-directory: mobile
+        env:
+          CI: "1"
+          EXPO_NO_TELEMETRY: "1"
+        run: |
+          npm ci
+          npx expo export --platform web
+      - name: Stage static site
+        run: bash scripts/stage-github-pages.sh
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          path: _site
+
   deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Stage static site
-        run: |
-          mkdir -p _site/privacy _site/support
-          cp docs/privacy.html _site/privacy/index.html
-          cp docs/support.html _site/support/index.html
-          cp docs/app-store/index.html _site/index.html
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

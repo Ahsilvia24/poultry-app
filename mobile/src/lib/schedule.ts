@@ -1,5 +1,6 @@
 import { addDaysKey, daysBetween, parseDateKey, todayKey } from "./ids";
 import { format } from "date-fns";
+import { lfoTargetWeekday } from "./lfoSchedule";
 
 const SERVICE_DAY_AGES = [3, 7, 14, 21, 28, 35, 42] as const;
 
@@ -37,11 +38,10 @@ function weightProjectDate(catchDate: string): string {
   return previousWeekday(catchDate, 1);
 }
 
-function lfoDate(catchDate: string): string | null {
-  const dow = weekdayOf(catchDate);
-  if (dow >= 1 && dow <= 3) return previousWeekday(catchDate, 5); // Fri
-  if (dow === 4 || dow === 5) return previousWeekday(catchDate, 1); // Mon
-  return null;
+/** Catch Mon → Thu before; Tue/Wed → Fri before; Thu/Fri → Mon before; Sat/Sun → Tue before. */
+export function lfoDate(catchDate: string): string | null {
+  const target = lfoTargetWeekday(weekdayOf(catchDate));
+  return target == null ? null : previousWeekday(catchDate, target);
 }
 
 export function buildFlockVisitSchedule(

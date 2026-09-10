@@ -11,18 +11,22 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel,
+  altLabel,
   cancelLabel = "Cancel",
   danger = false,
   onConfirm,
+  onAlt,
   onCancel,
 }: {
   visible: boolean;
   title: string;
   message: string;
   confirmLabel: string;
+  altLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
   onConfirm: () => void;
+  onAlt?: () => void;
   onCancel: () => void;
 }) {
   return (
@@ -70,6 +74,24 @@ export function ConfirmDialog({
             >
               <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>{confirmLabel}</Text>
             </Pressable>
+            {altLabel && onAlt ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={altLabel}
+                onPress={onAlt}
+                style={{
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  backgroundColor: colors.border,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: colors.text, fontWeight: "800", fontSize: 15 }}>
+                  {altLabel}
+                </Text>
+              </Pressable>
+            ) : null}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={cancelLabel}

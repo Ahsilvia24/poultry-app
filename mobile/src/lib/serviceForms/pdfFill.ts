@@ -3,6 +3,7 @@
  * templates. Field positions come from a fillable AcroForm map (JSON), so the
  * shared PDF has no widget borders — only the printed form grid + stamped ink.
  */
+import { Platform } from "react-native";
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
 import {
@@ -21,6 +22,16 @@ import type {
   YesNo,
 } from "./types";
 import { formatMinVentPair, formatServiceShortDate } from "./format";
+import { minVentCenteredX, minVentSideBoxes } from "./minVentLabel";
+import {
+  MAX_PLACEMENT_COMMENT_PAGES,
+  PLACEMENT_COMMENT_FIELDS,
+  PREBROOD_COMMENT_FIELDS,
+  SERVICE_REPORT_COMMENT_FIELDS,
+  commentLineYNudge,
+  consumeCommentLines,
+} from "./commentFlow";
+import { continuationHouseNumberBox } from "./houseOverflow";
 
 type FieldWidget = {
   x: number;
@@ -40,6 +51,9 @@ type StampOpts = {
   xPad?: number;
   /** Extra baseline lift (pts) — positive scoots text up in the box. */
   yNudge?: number;
+  /** Extra horizontal shift (pts) — negative scoots text left. */
+  xNudge?: number;
+  align?: "left" | "center";
   /** White-out the whole widget rect (e.g. printed "/" under placement timers). */
   coverPrinted?: "field";
 };
@@ -102,21 +116,21 @@ function stampServiceReportHouseRow(ctx: Ctx, house: ServiceHouseRow, slot: numb
 function stampContinuationHouseNumber(ctx: Ctx, houseNumber: number, slot: number) {
   const ageR = widgetRect(ctx.map, `Age${slot}`);
   if (!ageR) return;
-  const houseLeft = 12;
-  const houseWidth = Math.max(18, ageR.x - houseLeft - 0.75);
+  const box = continuationHouseNumberBox(ageR.x, ageR.y, ageR.h);
   ctx.page.drawRectangle({
-    x: houseLeft,
-    y: ageR.y - 3,
-    width: houseWidth,
-    height: ageR.h + 6,
+    x: box.x,
+    y: box.y,
+    width: box.w,
+    height: box.h,
     color: rgb(1, 1, 1),
     borderWidth: 0,
   });
   const label = String(houseNumber);
   const size = label.length > 1 ? 7.5 : 8;
+  const tw = ctx.font.widthOfTextAtSize(label, size);
   ctx.page.drawText(label, {
-    x: houseLeft + (label.length > 1 ? 3 : 5),
-    y: ageR.y + Math.max(0.5, (ageR.h - size) * 0.35),
+    x: box.x + Math.max(0.5, (box.w - tw) / 2),
+    y: box.y + Math.max(0.5, (box.h - size) * 0.55),
     size,
     font: ctx.font,
     color: rgb(0, 0, 0),
@@ -147,13 +161,90 @@ function setText(
   const size = Math.min(fontSize, Math.max(5, r.h * 0.82));
   const xPad = opts?.xPad ?? 1.5;
   const yNudge = opts?.yNudge ?? 0;
+  const xNudge = opts?.xNudge ?? 0;
+  const tw = ctx.font.widthOfTextAtSize(v, size);
+  const x =
+    (opts?.align === "center" ? r.x + Math.max(0, (r.w - tw) / 2) : r.x + xPad) + xNudge;
   ctx.page.drawText(v, {
-    x: r.x + xPad,
+    x,
     y: r.y + Math.max(0.5, (r.h - size) * 0.35) + yNudge,
     size,
     font: ctx.font,
     color: rgb(0, 0, 0),
     maxWidth: Math.max(4, r.w - xPad - 2),
+  });
+}
+
+/** Stamp on/off into the two halves of a printed "n / n" box. Do not draw a slash. */
+function stampMinVentSides(
+  ctx: Ctx,
+  name: string,
+  on: string,
+  off: string,
+  fontSize = 7,
+  opts?: { yNudge?: number },
+) {
+  const left = String(on ?? "").trim();
+  const right = String(off ?? "").trim();
+  if (!left && !right) return;
+  const r = widgetRect(ctx.map, name);
+  if (!r) return;
+  const size = Math.min(fontSize, Math.max(5, r.h * 0.82));
+  const y = r.y + Math.max(0.5, (r.h - size) * 0.35) + (opts?.yNudge ?? 0);
+  const { left: leftBox, right: rightBox } = minVentSideBoxes(r);
+  if (left) {
+    const tw = ctx.font.widthOfTextAtSize(left, size);
+    ctx.page.drawText(left, {
+      x: minVentCenteredX(leftBox, tw),
+      y,
+      size,
+      font: ctx.font,
+      color: rgb(0, 0, 0),
+      maxWidth: Math.max(4, leftBox.w),
+    });
+  }
+  if (right) {
+    const tw = ctx.font.widthOfTextAtSize(right, size);
+    ctx.page.drawText(right, {
+      x: minVentCenteredX(rightBox, tw),
+      y,
+      size,
+      font: ctx.font,
+      color: rgb(0, 0, 0),
+      maxWidth: Math.max(4, rightBox.w),
+    });
+  }
+}
+
+const PLACEMENT_BACKUP_FIELDS = ["Text94", "Text95", "Text96", "Text97", "Text98"] as const;
+const SERVICE_REPORT_BACKUP_FIELDS = ["Text59", "Text60", "Text61", "Text62", "Text63"] as const;
+
+/** Center Heat/Cool/Stage values on one baseline inside the printed boxes. */
+function stampBackupSettings(ctx: Ctx, names: readonly string[], values: string[]) {
+  const size = 8;
+  const rects = names.map((name) => widgetRect(ctx.map, name));
+  const present = rects.filter((r): r is FieldWidget => r != null);
+  if (!present.length) return;
+  const midY = present.reduce((sum, r) => sum + r.y + r.h / 2, 0) / present.length;
+  const y = midY - size * 0.45;
+  values.forEach((value, i) => {
+    const v = String(value ?? "").trim();
+    const r = rects[i];
+    if (!v || !r) return;
+    let fit = size;
+    let tw = ctx.font.widthOfTextAtSize(v, fit);
+    if (tw > r.w - 2) {
+      fit = Math.max(5, fit * ((r.w - 2) / tw));
+      tw = ctx.font.widthOfTextAtSize(v, fit);
+    }
+    ctx.page.drawText(v, {
+      x: r.x + Math.max(1, (r.w - tw) / 2),
+      y,
+      size: fit,
+      font: ctx.font,
+      color: rgb(0, 0, 0),
+      maxWidth: Math.max(4, r.w - 2),
+    });
   });
 }
 
@@ -183,47 +274,55 @@ function markYesNo(
   markCheck(ctx, noName, value === "no", noWidget);
 }
 
-function takeCommentLine(
-  words: string[],
-  font: PDFFont,
-  fontSize: number,
-  maxWidth: number,
-): { line: string; rest: string[] } {
-  let cur = "";
-  let i = 0;
-  for (; i < words.length; i++) {
-    const word = words[i]!;
-    const next = cur ? `${cur} ${word}` : word;
-    if (cur && font.widthOfTextAtSize(next, fontSize) > maxWidth) break;
-    cur = next;
-  }
-  return { line: cur, rest: words.slice(i) };
+/** Stamp readings just after the printed Generator Hours label. */
+function stampBesideLabel(ctx: Ctx, value: string, rowName: string, afterX: number) {
+  const v = String(value ?? "").trim();
+  if (!v) return;
+  const row = widgetRect(ctx.map, rowName);
+  if (!row) return;
+  const size = 8;
+  const x = afterX;
+  const maxW = Math.max(4, row.x - 4 - x);
+  ctx.page.drawText(v, {
+    x,
+    y: row.y + Math.max(0.5, (row.h - size) * 0.35),
+    size,
+    font: ctx.font,
+    color: rgb(0, 0, 0),
+    maxWidth: maxW,
+  });
 }
 
 function fillCommentLines(ctx: Ctx, names: string[], text: string) {
   const fontSize = 8;
-  let words = String(text ?? "")
-    .split(/\s+/)
-    .filter(Boolean);
-  for (const name of names) {
-    if (words.length === 0) break;
+  const lineWidths = names.map((name) => {
     const r = widgetRect(ctx.map, name, 0);
-    const maxWidth = r ? Math.max(40, r.w * 0.92) : ctx.page.getWidth() * 0.9;
-    const { line, rest } = takeCommentLine(words, ctx.font, fontSize, maxWidth);
-    if (!line) {
-      setText(ctx, name, words[0]!, fontSize);
-      words = words.slice(1);
-      continue;
-    }
-    setText(ctx, name, line, fontSize);
-    words = rest;
-  }
+    return r ? Math.max(40, r.w * 0.92) : ctx.page.getWidth() * 0.9;
+  });
+  const { lines, rest } = consumeCommentLines(text, lineWidths, (value) =>
+    ctx.font.widthOfTextAtSize(value, fontSize),
+  );
+  lines.forEach((line, i) => {
+    const r = widgetRect(ctx.map, names[i]!, 0);
+    const yNudge = r ? commentLineYNudge(r.h, fontSize) : 0;
+    setText(ctx, names[i]!, line, fontSize, { yNudge });
+  });
+  return rest;
 }
 
 async function loadTemplate(moduleRef: number) {
   const asset = Asset.fromModule(moduleRef);
   await asset.downloadAsync();
   const uri = asset.localUri ?? asset.uri;
+  if (!uri) throw new Error("Could not load PDF template");
+
+  // expo-file-system read/write is native-only. Web must fetch the asset.
+  if (Platform.OS === "web") {
+    const res = await fetch(uri);
+    if (!res.ok) throw new Error("Could not load PDF template");
+    return PDFDocument.load(new Uint8Array(await res.arrayBuffer()));
+  }
+
   const b64 = await FileSystem.readAsStringAsync(uri, {
     encoding: FileSystem.EncodingType.Base64,
   });
@@ -235,9 +334,9 @@ function buildServiceReportFields(
   ctx: Ctx,
   data: ServiceReportForm,
   housesSlice: ServiceReportForm["houses"],
-) {
+): string {
   setText(ctx, "Farm Name", data.farmName, 10);
-  setText(ctx, "Date", formatServiceShortDate(data.date) || data.date, 10);
+  setText(ctx, "Date", formatServiceShortDate(data.date) || data.date, 10, { yNudge: 3 });
   setText(ctx, "Farm", data.farmNumber ?? "", 9, { yNudge: 2.5 });
   setText(ctx, "Flock", data.flockNumber ?? "", 9, { yNudge: 2.5 });
 
@@ -253,14 +352,12 @@ function buildServiceReportFields(
 
   markYesNo(ctx, "Check Box13", "Check Box15", data.lightIntensityOk);
   markYesNo(ctx, "Check Box14", "Check Box16", data.lightsOperationalOk);
-  setText(ctx, "Text44", data.lightsOnAt, 8);
-  setText(ctx, "Text45", data.lightsOffAt, 8);
+  setText(ctx, "Text44", data.lightsOnAt, 8, { align: "center", yNudge: 2.5 });
+  setText(ctx, "Text45", data.lightsOffAt, 8, { align: "center", xNudge: -14, yNudge: 2.5 });
 
   markYesNo(ctx, "Check Box9", "Check Box10", data.tempTargetsOk);
-  if (data.tempTargetsOk === "no") {
-    setText(ctx, "Text48", data.actualTempTarget, 8);
-    setText(ctx, "Text47", data.recommendedTempTarget, 8);
-  }
+  setText(ctx, "Text48", data.actualTempTarget, 8, { xPad: 6, yNudge: 1.5 });
+  setText(ctx, "Text47", data.recommendedTempTarget, 8, { xPad: 6, yNudge: 1.5 });
   markYesNo(ctx, "Check Box11", "Check Box12", data.ammoniaOk);
   setText(ctx, " Humidity", data.humidityPct ? `${data.humidityPct}%` : "", 8);
 
@@ -269,8 +366,8 @@ function buildServiceReportFields(
   markCheck(ctx, "Check Box19", data.ventModes.includes("tunnel"));
   setText(ctx, "Tunnel Fans", data.tunnelFanCount, 8);
 
-  markCheck(ctx, "Check Box20", data.ventDoorType === "ceiling");
-  markCheck(ctx, "Check Box21", data.ventDoorType === "sidewall");
+  markCheck(ctx, "Check Box20", data.ventDoorTypes.includes("ceiling"));
+  markCheck(ctx, "Check Box21", data.ventDoorTypes.includes("sidewall"));
   setText(ctx, "Text49", data.staticPressure, 8);
   setText(ctx, "Text50", data.ventOpeningInches, 8);
   setText(ctx, "CFM Ft2 Min Vent", data.cfmPerFt2MinVent, 8);
@@ -320,31 +417,20 @@ function buildServiceReportFields(
   markYesNo(ctx, "Check Box35", "Check Box37", data.dialerOnOk);
   setText(ctx, "Text57", data.alarmHi, 8);
   setText(ctx, "Text58", data.alarmLow, 8);
-  setText(ctx, "Text59", data.backupHeat, 8);
-  setText(ctx, "Text60", data.backupCool, 8);
-  setText(ctx, "Text61", data.backupStage1, 8);
-  setText(ctx, "Text62", data.backupStage2, 8);
-  setText(ctx, "Text63", data.backupStage3, 8);
+  stampBackupSettings(ctx, SERVICE_REPORT_BACKUP_FIELDS, [
+    data.backupHeat,
+    data.backupCool,
+    data.backupStage1,
+    data.backupStage2,
+    data.backupStage3,
+  ]);
 
-  fillCommentLines(
-    ctx,
-    [
-      "COMMENTS 1",
-      "COMMENTS 2",
-      "COMMENTS 3",
-      "Comments 4",
-      "Comments 5",
-      "Comments 6",
-      "Comments 7",
-      "Comments 8",
-      "Comments 9",
-    ],
-    data.comments,
-  );
+  const leftoverComments = fillCommentLines(ctx, [...SERVICE_REPORT_COMMENT_FIELDS], data.comments);
   setText(ctx, "Text64", data.serviceTech, 10);
+  return leftoverComments;
 }
 
-function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
+function buildPlacementFields(ctx: Ctx, data: PlacementForm): string {
   setText(ctx, "Farm Name_2", data.farmName, 9);
   setText(ctx, "Text65", data.farmNumber, 9, { yNudge: 2.5 });
   setText(ctx, "Text66", data.flockNumber, 9, { yNudge: 2.5 });
@@ -369,26 +455,17 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
   markYesNo(ctx, "Check Box133", "Check Box136", data.heatersOk);
   markYesNo(ctx, "Check Box127", "Check Box128", data.sensorsBirdLevelOk);
 
-  markCheck(ctx, "Check Box137", data.ventDoorType === "ceiling");
-  markCheck(ctx, "Check Box138", data.ventDoorType === "sidewall");
+  markCheck(ctx, "Check Box137", data.ventDoorTypes.includes("ceiling"));
+  markCheck(ctx, "Check Box138", data.ventDoorTypes.includes("sidewall"));
   setText(ctx, "Text68", data.staticPressure, 7);
   setText(ctx, "Text69", data.ventOpeningInches, 7);
   setText(ctx, "Text70", data.cfmPerFt2MinVent, 7);
   setText(ctx, "Text89", data.fansSizeAndCount, 7);
-  setText(
-    ctx,
-    "Text71",
-    formatMinVentPair(data.minVentActualOn, data.minVentActualOff),
-    6,
-    { coverPrinted: "field" },
-  );
-  setText(
-    ctx,
-    "Text88",
-    formatMinVentPair(data.minVentRecommendedOn, data.minVentRecommendedOff),
-    6,
-    { coverPrinted: "field" },
-  );
+  stampMinVentSides(ctx, "Text71", data.minVentActualOn, data.minVentActualOff);
+  // Recommended widget is taller/lower than the printed box — lift to match actual.
+  stampMinVentSides(ctx, "Text88", data.minVentRecommendedOn, data.minVentRecommendedOff, 7, {
+    yNudge: 3,
+  });
 
   const sorted = [...data.houses].sort((a, b) => a.houseNumber - b.houseNumber);
   const litterFields = [
@@ -435,29 +512,17 @@ function buildPlacementFields(ctx: Ctx, data: PlacementForm) {
 
   setText(ctx, "HIController Temp Alarm Setting", data.alarmHi, 8);
   setText(ctx, "LOWController Temp Alarm Setting", data.alarmLow, 8);
-  setText(ctx, "Text94", data.backupHeat, 8);
-  setText(ctx, "Text95", data.backupCool, 8);
-  setText(ctx, "Text96", data.backupStage1, 8);
-  setText(ctx, "Text97", data.backupStage2, 8);
-  setText(ctx, "Text98", data.backupStage3, 8);
+  stampBackupSettings(ctx, PLACEMENT_BACKUP_FIELDS, [
+    data.backupHeat,
+    data.backupCool,
+    data.backupStage1,
+    data.backupStage2,
+    data.backupStage3,
+  ]);
 
-  fillCommentLines(
-    ctx,
-    [
-      "Comments first line",
-      "Comments 1",
-      "Comments 2",
-      "Comments 3",
-      "Comments 4",
-      "Comments 5",
-      "Comments 6",
-      "Comments 7",
-      "Comments 8",
-      "Comments 9",
-    ],
-    data.comments,
-  );
+  const leftoverComments = fillCommentLines(ctx, [...PLACEMENT_COMMENT_FIELDS], data.comments);
   setText(ctx, "undefined", data.serviceTech, 10);
+  return leftoverComments;
 }
 
 function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
@@ -525,31 +590,24 @@ function buildPrebroodFields(ctx: Ctx, data: PrebroodForm) {
     8,
     { xPad: 12 },
   );
+  markYesNo(ctx, "Check Box201", "Check Box207", data.generatorHoursCheckedOk);
+  if (data.generatorHoursCheckedOk === "yes") {
+    // Just after the printed “Hours” (~95pt); leave a small gap before the numbers.
+    stampBesideLabel(ctx, data.generatorHoursLogged, "Check Box201", 101);
+  }
 
-  fillCommentLines(
-    ctx,
-    [
-      "Comments first line",
-      "Comments 1_2",
-      "Comments 2_2",
-      "Comments 3_2",
-      "Comments 4_2",
-      "Comments 5_2",
-      "Comments 6_2",
-      "Comments 7_2",
-      "Comments 8_2",
-      "comments 9",
-      "comments 10",
-      "comments 11",
-      "comments 12",
-      "comments 13",
-    ],
-    data.comments,
-  );
-  setText(ctx, "Text111", data.serviceTech, 10);
+  const leftoverComments = fillCommentLines(ctx, [...PREBROOD_COMMENT_FIELDS], data.comments);
+  setText(ctx, "Text111", data.serviceTech, 10, { yNudge: -3 });
+  return leftoverComments;
 }
 
-export async function buildServiceFormPdf(form: AnyServiceForm): Promise<string> {
+export type BuiltServicePdf = {
+  uri: string;
+  bytes: Uint8Array;
+  filename: string;
+};
+
+export async function buildServiceFormPdf(form: AnyServiceForm): Promise<BuiltServicePdf> {
   if (form.kind === "service_report") return buildServiceReportPdf(form);
   if (form.kind === "placement") return buildPlacementPdf(form);
   return buildPrebroodPdf(form);
@@ -567,40 +625,55 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const ctx: Ctx = { page: doc.getPages()[0]!, font, map };
-  buildServiceReportFields(ctx, form, pages[0] ?? []);
+  let leftoverComments = buildServiceReportFields(ctx, form, pages[0] ?? []);
 
   for (let p = 1; p < pages.length; p++) {
-    const templateDoc = await loadTemplate(template);
-    const [blank] = await doc.copyPages(templateDoc, [0]);
-    doc.addPage(blank);
-    const page = doc.getPages()[doc.getPageCount() - 1]!;
+    const page = await appendTemplatePage(doc, template);
     const slice = pages[p]!;
     const extraCtx: Ctx = { page, font, map };
 
-    // Header so the continuation page is identifiable.
+    // House overflow: header + 9–16 (etc.). Comments continue here; other fields stay blank.
     setText(extraCtx, "Farm Name", form.farmName, 10);
-    setText(extraCtx, "Date", formatServiceShortDate(form.date) || form.date, 10);
-    setText(extraCtx, "Farm", form.farmNumber ?? "", 9);
-    setText(extraCtx, "Flock", form.flockNumber ?? "", 9);
+    setText(extraCtx, "Date", formatServiceShortDate(form.date) || form.date, 10, { yNudge: 3 });
+    setText(extraCtx, "Farm", form.farmNumber ?? "", 9, { yNudge: 2.5 });
+    setText(extraCtx, "Flock", form.flockNumber ?? "", 9, { yNudge: 2.5 });
 
     for (let i = 0; i < 8; i++) {
       const h = slice[i];
       if (!h) continue;
       const slot = i + 1;
       stampContinuationHouseNumber(extraCtx, h.houseNumber, slot);
-      // Clear age / placed cells before fill (template may have guides).
-      coverWidget(extraCtx, `Age${slot}`);
-      coverWidget(extraCtx, `No Placed${slot}`);
-      for (const weekName of HOUSE_WEEK_FIELDS(slot)) {
-        coverWidget(extraCtx, weekName);
-      }
-      coverWidget(extraCtx, `Current Temp${slot}`);
-      coverWidget(extraCtx, `Mortality To Date${slot}`);
       stampServiceReportHouseRow(extraCtx, h, slot);
+    }
+    if (leftoverComments) {
+      leftoverComments = fillCommentLines(
+        extraCtx,
+        [...SERVICE_REPORT_COMMENT_FIELDS],
+        leftoverComments,
+      );
     }
   }
 
+  for (let pageIndex = 0; pageIndex < MAX_PLACEMENT_COMMENT_PAGES; pageIndex++) {
+    if (!leftoverComments) break;
+    const page = await appendTemplatePage(doc, template);
+    const next = fillCommentLines(
+      { page, font, map },
+      [...SERVICE_REPORT_COMMENT_FIELDS],
+      leftoverComments,
+    );
+    if (next === leftoverComments) break;
+    leftoverComments = next;
+  }
+
   return writePdfToCache(doc, pdfFileName("Service-Report", form.farmName, form.date));
+}
+
+async function appendTemplatePage(doc: PDFDocument, template: number) {
+  const templateDoc = await loadTemplate(template);
+  const [blank] = await doc.copyPages(templateDoc, [0]);
+  doc.addPage(blank);
+  return doc.getPages()[doc.getPageCount() - 1]!;
 }
 
 async function buildPlacementPdf(form: PlacementForm) {
@@ -608,7 +681,14 @@ async function buildPlacementPdf(form: PlacementForm) {
   const map = require("../../../assets/service-forms/placement-fields.json") as FieldMap;
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  buildPlacementFields({ page: doc.getPages()[0]!, font, map }, form);
+  let comments = form.comments;
+  for (let pageIndex = 0; pageIndex < MAX_PLACEMENT_COMMENT_PAGES; pageIndex++) {
+    const page =
+      pageIndex === 0 ? doc.getPages()[0]! : await appendTemplatePage(doc, template);
+    const leftover = buildPlacementFields({ page, font, map }, { ...form, comments });
+    if (!leftover || leftover === comments) break;
+    comments = leftover;
+  }
   return writePdfToCache(doc, pdfFileName("Placement", form.farmName, form.date));
 }
 
@@ -617,7 +697,14 @@ async function buildPrebroodPdf(form: PrebroodForm) {
   const map = require("../../../assets/service-forms/prebrood-fields.json") as FieldMap;
   const doc = await loadTemplate(template);
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  buildPrebroodFields({ page: doc.getPages()[0]!, font, map }, form);
+  let comments = form.comments;
+  for (let pageIndex = 0; pageIndex < MAX_PLACEMENT_COMMENT_PAGES; pageIndex++) {
+    const page =
+      pageIndex === 0 ? doc.getPages()[0]! : await appendTemplatePage(doc, template);
+    const leftover = buildPrebroodFields({ page, font, map }, { ...form, comments });
+    if (!leftover || leftover === comments) break;
+    comments = leftover;
+  }
   return writePdfToCache(doc, pdfFileName("Prebrood", form.farmName, form.date));
 }
 
@@ -632,15 +719,18 @@ function pdfFileName(kind: string, farmName: string, date: string) {
   return `${kind}-${farm}-${day}.pdf`;
 }
 
-async function writePdfToCache(doc: PDFDocument, filename: string) {
+async function writePdfToCache(doc: PDFDocument, filename: string): Promise<BuiltServicePdf> {
   const bytes = await doc.save({ updateFieldAppearances: false });
+  if (Platform.OS === "web") {
+    return { uri: "", bytes, filename };
+  }
   const base64 =
     typeof Buffer !== "undefined" ? Buffer.from(bytes).toString("base64") : uint8ToBase64(bytes);
   const uri = `${FileSystem.cacheDirectory}${filename}`;
   await FileSystem.writeAsStringAsync(uri, base64, {
     encoding: FileSystem.EncodingType.Base64,
   });
-  return uri;
+  return { uri, bytes, filename };
 }
 
 function uint8ToBase64(bytes: Uint8Array) {

@@ -18,6 +18,13 @@ export function formatMinVentPair(on: string, off: string) {
   return `${a || "—"} on / ${b || "—"} off`;
 }
 
+export {
+  minVentCenteredX,
+  minVentSideBoxes,
+  recommendedWeekLabel,
+  WEEK_OPTIONS,
+} from "./minVentLabel";
+
 export function yesNoLabel(v: string) {
   if (v === "yes") return "YES";
   if (v === "no") return "NO";
@@ -38,12 +45,13 @@ export const VENT_MODE_OPTIONS = [
   { value: "tunnel", label: "Tunnel" },
 ];
 
-export const VENT_DOOR_OPTIONS = [
-  { value: "ceiling", label: "Ceiling" },
-  { value: "sidewall", label: "Sidewall" },
-];
+export {
+  VENT_DOOR_OPTIONS,
+  normalizeVentDoorTypes,
+  ventDoorTypesFromPayload,
+  type VentDoorType,
+} from "./ventDoor";
 
-export const WEEK_OPTIONS = Array.from({ length: 8 }, (_, i) => ({
-  value: String(i + 1),
-  label: `Week ${i + 1}`,
-}));
+/** Checklist CFM labels — same C.F.M. spelling and Ft² on both fields. */
+export const CFM_FT2_MIN_VENT_LABEL = "C.F.M. / Ft² min vent";
+export const MAX_CFM_FT2_POWER_LABEL = "Max C.F.M. / Ft² Power";

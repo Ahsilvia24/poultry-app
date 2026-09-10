@@ -16,18 +16,17 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Swipeable } from "react-native-gesture-handler";
 import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
-import { useAuth } from "../../src/auth";
 import { colors, styles } from "../../src/theme";
 import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/schedule";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
+import { ConfirmDialog } from "../../src/components/ConfirmDialog";
+import { SwipeCommitDeleteRow } from "../../src/components/SwipeCommitDeleteRow";
 import {
   Card,
   Metric,
   SectionTitle,
   StatusBadge,
-  WeeklyMortalityList,
   formatNumber,
   formatPct,
 } from "../../src/components/ui";
@@ -38,7 +37,7 @@ type Dashboard = ReturnType<typeof getDashboard>;
 type ScheduleItem = Dashboard["todaysSchedule"][number];
 
 /** Visible farm rows before the list scrolls inside the tile. */
-const VISIBLE_SCHEDULE_ROWS = 8;
+const VISIBLE_SCHEDULE_ROWS = 6;
 /** marginTop 10 + ~22px row content (checkbox / single-line text). */
 const SCHEDULE_ROW_STEP = 32;
 const SCHEDULE_LIST_MAX_HEIGHT = VISIBLE_SCHEDULE_ROWS * SCHEDULE_ROW_STEP;
@@ -47,7 +46,7 @@ function scheduleItemKey(item: Pick<ScheduleItem, "farmId" | "date" | "label">) 
   return `${item.farmId}-${item.date}-${item.label}`;
 }
 
-/** One-finger scroll inside a dashboard schedule tile when there are more than 8 farms. */
+/** One-finger scroll inside a dashboard schedule tile when there are more than 6 farms. */
 function ScrollableScheduleList({ children }: { children: ReactNode }) {
   return (
     <ScrollView
@@ -223,7 +222,6 @@ function formatCatchDate(dateKey: string) {
 }
 
 export default function DashboardScreen() {
-  const { signOut } = useAuth();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   useTabScrollToTop("index", scrollRef);
@@ -232,20 +230,10 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const [upcomingOpen, setUpcomingOpen] = useState(false);
-  const [catchesOpen, setCatchesOpen] = useState(false);
-  const [expandedFarmIds, setExpandedFarmIds] = useState<Set<string>>(() => new Set());
-  /** Avoid mounting tall swipe actions until open — on web they stretch short tiles. */
-  const [swipingFarmId, setSwipingFarmId] = useState<string | null>(null);
-
-  function toggleFarmExpanded(farmId: string) {
-    setExpandedFarmIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(farmId)) next.delete(farmId);
-      else next.add(farmId);
-      return next;
-    });
-  }
+  const [inactiveConfirm, setInactiveConfirm] = useState<{
+    farmId: string;
+    farmName: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -261,11 +249,6 @@ export default function DashboardScreen() {
 
   function makeInactive(farmId: string) {
     deactivateFarm(farmId);
-    setExpandedFarmIds((prev) => {
-      const next = new Set(prev);
-      next.delete(farmId);
-      return next;
-    });
     load();
   }
 
@@ -337,27 +320,7 @@ export default function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       >
         <View style={{ marginBottom: 16 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
-            }}
-          >
-            <Text style={[styles.title, { flex: 1 }]}>Dashboard</Text>
-            <Pressable onPress={signOut} hitSlop={8}>
-              <Text
-                style={{
-                  color: colors.text,
-                  fontWeight: "700",
-                  textDecorationLine: "underline",
-                }}
-              >
-                Sign out
-              </Text>
-            </Pressable>
-          </View>
+          <Text style={styles.title}>Dashboard</Text>
         </View>
 
         {error ? <Text style={{ color: colors.danger, marginBottom: 12 }}>{error}</Text> : null}
@@ -366,7 +329,7 @@ export default function DashboardScreen() {
           <>
             <Card style={{ marginBottom: 8 }}>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
-                Today&apos;s schedule
+                Today&apos;s Schedule
               </Text>
               {data.todaysSchedule.length === 0 ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>Nothing due today</Text>
@@ -396,228 +359,161 @@ export default function DashboardScreen() {
             </Card>
 
             <Card style={{ marginBottom: 8 }}>
-              <Pressable
-                onPress={() => setUpcomingOpen((v) => !v)}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: upcomingOpen }}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 8,
-                }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted, flex: 1 }}>
-                  Upcoming Visits
-                  {!upcomingOpen ? (
-                    <Text style={{ fontWeight: "500", color: colors.muted }}>
-                      {" "}
-                      · {data.upcomingSchedule.length}
-                    </Text>
-                  ) : null}
-                </Text>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.accentDark }}>
-                  {upcomingOpen ? "Hide" : "Show"}
-                </Text>
-              </Pressable>
-              {upcomingOpen ? (
-                data.upcomingSchedule.length === 0 ? (
-                  <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 10 days</Text>
-                ) : (
-                  <ScrollableScheduleList>
-                    {data.upcomingSchedule.map((item) => {
-                      const key = scheduleItemKey(item);
-                      return (
-                        <ScheduleCheckRow
-                          key={key}
-                          item={item}
-                          showDate
-                          checked={checked[key] ?? item.completed}
-                          busy={pendingKey === key}
-                          onToggle={() => toggleScheduleItem(item)}
-                          onOpenFarm={() =>
-                            router.navigate({
-                              pathname: "/(tabs)/farms/[id]",
-                              params: { id: item.farmId },
-                            })
-                          }
-                        />
-                      );
-                    })}
-                  </ScrollableScheduleList>
-                )
-              ) : null}
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
+                Upcoming Visits
+              </Text>
+              {data.upcomingSchedule.length === 0 ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 10 days</Text>
+              ) : (
+                <ScrollableScheduleList>
+                  {data.upcomingSchedule.map((item) => {
+                    const key = scheduleItemKey(item);
+                    return (
+                      <ScheduleCheckRow
+                        key={key}
+                        item={item}
+                        showDate
+                        checked={checked[key] ?? item.completed}
+                        busy={pendingKey === key}
+                        onToggle={() => toggleScheduleItem(item)}
+                        onOpenFarm={() =>
+                          router.navigate({
+                            pathname: "/(tabs)/farms/[id]",
+                            params: { id: item.farmId },
+                          })
+                        }
+                      />
+                    );
+                  })}
+                </ScrollableScheduleList>
+              )}
             </Card>
 
             <Card style={{ marginBottom: 8 }}>
-              <Pressable
-                onPress={() => setCatchesOpen((v) => !v)}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: catchesOpen }}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 8,
-                }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted, flex: 1 }}>
-                  Upcoming catches
-                  {!catchesOpen ? (
-                    <Text style={{ fontWeight: "500", color: colors.muted }}>
-                      {" "}
-                      · {data.upcomingCatches.length}
-                    </Text>
-                  ) : null}
-                </Text>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.accentDark }}>
-                  {catchesOpen ? "Hide" : "Show"}
-                </Text>
-              </Pressable>
-              {catchesOpen ? (
-                data.upcomingCatches.length === 0 ? (
-                  <Text style={[styles.muted, { marginTop: 8 }]}>None</Text>
-                ) : (
-                  <ScrollableScheduleList>
-                    {data.upcomingCatches.map((c) => (
-                      <Pressable
-                        key={`${c.farmId}-${c.date}`}
-                        onPress={() =>
-                          router.navigate({
-                            pathname: "/(tabs)/farms/[id]",
-                            params: { id: c.farmId },
-                          })
-                        }
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
+                Upcoming Catches
+              </Text>
+              {data.upcomingCatches.length === 0 ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>None</Text>
+              ) : (
+                <ScrollableScheduleList>
+                  {data.upcomingCatches.map((c) => (
+                    <Pressable
+                      key={`${c.farmId}-${c.date}`}
+                      onPress={() =>
+                        router.navigate({
+                          pathname: "/(tabs)/farms/[id]",
+                          params: { id: c.farmId },
+                        })
+                      }
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "baseline",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        marginTop: 10,
+                        minHeight: 22,
+                      }}
+                    >
+                      <View
                         style={{
+                          flex: 1,
+                          minWidth: 0,
                           flexDirection: "row",
                           alignItems: "baseline",
-                          justifyContent: "space-between",
-                          gap: 8,
-                          marginTop: 10,
-                          minHeight: 22,
-                        }}
-                      >
-                        <View
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            flexDirection: "row",
-                            alignItems: "baseline",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontWeight: "700",
-                              color: colors.text,
-                              flexShrink: 1,
-                              minWidth: 0,
-                            }}
-                            numberOfLines={1}
-                          >
-                            {c.farmName}
-                          </Text>
-                          {c.flockAgeDays != null ? (
-                            <Text
-                              style={{
-                                fontWeight: "400",
-                                color: colors.muted,
-                                flexShrink: 0,
-                                marginLeft: 4,
-                              }}
-                              numberOfLines={1}
-                            >
-                              {c.flockAgeDays}d
-                            </Text>
-                          ) : null}
-                        </View>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "baseline",
-                            flexShrink: 0,
-                            gap: 6,
-                          }}
-                        >
-                          <Text style={{ color: colors.muted, fontSize: 13 }}>
-                            {formatCatchDate(c.date)}
-                          </Text>
-                          {c.catchTime ? (
-                            <Text style={{ color: colors.muted, fontSize: 13 }}>
-                              {compactCatchTimeLabel(c.catchTime)}
-                            </Text>
-                          ) : null}
-                          {c.catchAgeDays != null ? (
-                            <Text style={{ color: colors.muted, fontSize: 13 }}>
-                              ({c.catchAgeDays})
-                            </Text>
-                          ) : null}
-                        </View>
-                      </Pressable>
-                    ))}
-                  </ScrollableScheduleList>
-                )
-              ) : null}
-            </Card>
-
-            <SectionTitle>Active farms</SectionTitle>
-            {data.farmCards.map((farm) => {
-              const open = expandedFarmIds.has(farm.id);
-              return (
-                <Swipeable
-                  key={farm.id}
-                  overshootRight={false}
-                  friction={2}
-                  rightThreshold={40}
-                  containerStyle={{ marginBottom: 4, overflow: "hidden" }}
-                  onSwipeableWillOpen={() => setSwipingFarmId(farm.id)}
-                  onSwipeableClose={() =>
-                    setSwipingFarmId((id) => (id === farm.id ? null : id))
-                  }
-                  onSwipeableOpen={(direction) => {
-                    if (direction === "right") makeInactive(farm.id);
-                  }}
-                  renderRightActions={() =>
-                    swipingFarmId === farm.id ? (
-                      <Pressable
-                        accessibilityLabel={`Make ${farm.farmName} inactive`}
-                        onPress={() => makeInactive(farm.id)}
-                        style={{
-                          backgroundColor: "#57534e",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          width: 88,
-                          marginLeft: 8,
-                          borderRadius: 14,
-                          alignSelf: "stretch",
                         }}
                       >
                         <Text
                           style={{
-                            color: "#fff",
-                            fontWeight: "800",
-                            fontSize: 12,
-                            textAlign: "center",
-                            paddingHorizontal: 4,
+                            fontWeight: "700",
+                            color: colors.text,
+                            flexShrink: 1,
+                            minWidth: 0,
                           }}
+                          numberOfLines={1}
                         >
-                          Inactive
+                          {c.farmName}
                         </Text>
-                      </Pressable>
-                    ) : (
-                      <View style={{ width: 88, marginLeft: 8 }} />
-                    )
+                        {c.flockAgeDays != null ? (
+                          <Text
+                            style={{
+                              fontWeight: "400",
+                              color: colors.muted,
+                              flexShrink: 0,
+                              marginLeft: 4,
+                            }}
+                            numberOfLines={1}
+                          >
+                            {c.flockAgeDays}d
+                          </Text>
+                        ) : null}
+                      </View>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "baseline",
+                          flexShrink: 0,
+                          gap: 6,
+                        }}
+                      >
+                        <Text style={{ color: colors.muted, fontSize: 13 }}>
+                          {formatCatchDate(c.date)}
+                        </Text>
+                        {c.catchTime ? (
+                          <Text style={{ color: colors.muted, fontSize: 13 }}>
+                            {compactCatchTimeLabel(c.catchTime)}
+                          </Text>
+                        ) : null}
+                        {c.catchAgeDays != null ? (
+                          <Text style={{ color: colors.muted, fontSize: 13 }}>
+                            ({c.catchAgeDays}d)
+                          </Text>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  ))}
+                </ScrollableScheduleList>
+              )}
+            </Card>
+
+            <SectionTitle>Active Farms</SectionTitle>
+            {data.farmCards.map((farm) => {
+              return (
+                <SwipeCommitDeleteRow
+                  key={farm.id}
+                  onDelete={() =>
+                    setInactiveConfirm({ farmId: farm.id, farmName: farm.farmName })
                   }
-                >
-                  <Card style={{ padding: 0, overflow: "hidden", marginBottom: 0 }}>
-                    <Pressable
-                      onPress={() => toggleFarmExpanded(farm.id)}
-                      accessibilityRole="button"
-                      accessibilityState={{ expanded: open }}
-                      accessibilityLabel={`${open ? "Collapse" : "Expand"} ${farm.farmName} details`}
-                      style={{ paddingVertical: 10, paddingHorizontal: 12 }}
+                  actionColor="#57534e"
+                  deleteContent={
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontWeight: "800",
+                        fontSize: 12,
+                        textAlign: "center",
+                        paddingHorizontal: 4,
+                      }}
                     >
+                      Inactive
+                    </Text>
+                  }
+                  style={{ marginBottom: 4 }}
+                >
+                  <Card style={{ padding: 0, marginBottom: 0 }}>
+                    <View style={{ paddingVertical: 10, paddingHorizontal: 12 }}>
                       <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
                         <View style={{ flex: 1, minWidth: 0 }}>
+                          <Pressable
+                            onPress={() =>
+                              router.push({
+                                pathname: "/(tabs)/farms/[id]",
+                                params: { id: farm.id },
+                              })
+                            }
+                            accessibilityRole="link"
+                            accessibilityLabel={`Open ${farm.farmName}`}
+                          >
                           <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>
                             {farm.farmName}
                             {(() => {
@@ -636,103 +532,77 @@ export default function DashboardScreen() {
                               );
                             })()}
                           </Text>
+                          </Pressable>
                         </View>
                         <StatusBadge status={farm.status} />
                       </View>
 
-                      {open ? (
-                        <View style={{ paddingTop: 14 }}>
-                          <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                            <Metric
-                              columns={3}
-                              label="Birds placed"
-                              value={formatNumber(farm.birdsPlaced)}
-                            />
-                            <Metric
-                              columns={3}
-                              label="Birds remaining"
-                              value={formatNumber(farm.birdsRemaining)}
-                            />
-                            <Metric
-                              columns={3}
-                              label="Proj. Head Count"
-                              value={formatNumber(farm.projectedHeadCount)}
-                            />
-                            <Metric
-                              columns={3}
-                              label="7 Day Mort."
-                              value={String(farm.sevenDayMortality)}
-                            />
-                            <Metric
-                              columns={3}
-                              label="Total Mortality"
-                              value={`${farm.cumulativeMortality} (${formatPct(farm.cumulativeMortalityPct)})`}
-                            />
-                            <Metric
-                              columns={3}
-                              label="Proj. Mortality"
-                              value={
-                                farm.projectedMortality != null && farm.birdsPlaced > 0
-                                  ? `${formatNumber(farm.projectedMortality)} (${formatPct(
-                                      (farm.projectedMortality / farm.birdsPlaced) * 100,
-                                    )})`
-                                  : formatNumber(farm.projectedMortality)
-                              }
-                            />
-                          </View>
-
-                          {farm.weeklyMortality.length > 0 ? (
-                            <View
-                              style={{
-                                borderTopWidth: 1,
-                                borderTopColor: "#f5f5f4",
-                                paddingTop: 10,
-                                marginTop: 4,
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: "700",
-                                  color: colors.muted,
-                                  textTransform: "uppercase",
-                                  letterSpacing: 0.4,
-                                  marginBottom: 8,
-                                }}
-                              >
-                                Weekly mortality
-                              </Text>
-                              <WeeklyMortalityList weeks={farm.weeklyMortality} />
-                            </View>
-                          ) : null}
-
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              flexWrap: "wrap",
-                              gap: 12,
-                              marginTop: 10,
-                            }}
-                          >
-                            <Text style={[styles.muted, { fontSize: 12 }]}>
-                              Last visit:{" "}
-                              {farm.lastVisitDate
-                                ? formatLastVisitDate(farm.lastVisitDate)
-                                : "—"}
-                            </Text>
-                            <Text style={[styles.muted, { fontSize: 12 }]}>
-                              {farm.openIssues <= 0
-                                ? "No open issues"
-                                : farm.openIssues === 1
-                                  ? "1 open issue"
-                                  : `${farm.openIssues} open issues`}
-                            </Text>
-                          </View>
+                      <View style={{ paddingTop: 14 }}>
+                        <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                          <Metric
+                            columns={3}
+                            label="Birds placed"
+                            value={formatNumber(farm.birdsPlaced)}
+                          />
+                          <Metric
+                            columns={3}
+                            label="Birds remaining"
+                            value={formatNumber(farm.birdsRemaining)}
+                          />
+                          <Metric
+                            columns={3}
+                            label="Proj. Head Count"
+                            value={formatNumber(farm.projectedHeadCount)}
+                          />
+                          <Metric
+                            columns={3}
+                            label="7 Day Mort."
+                            value={String(farm.sevenDayMortality)}
+                          />
+                          <Metric
+                            columns={3}
+                            label="Total Mortality"
+                            value={`${farm.cumulativeMortality} (${formatPct(farm.cumulativeMortalityPct)})`}
+                          />
+                          <Metric
+                            columns={3}
+                            label="Proj. Mortality"
+                            value={
+                              farm.projectedMortality != null && farm.birdsPlaced > 0
+                                ? `${formatNumber(farm.projectedMortality)} (${formatPct(
+                                    (farm.projectedMortality / farm.birdsPlaced) * 100,
+                                  )})`
+                                : formatNumber(farm.projectedMortality)
+                            }
+                          />
                         </View>
-                      ) : null}
-                    </Pressable>
+
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            flexWrap: "wrap",
+                            gap: 12,
+                            marginTop: 10,
+                          }}
+                        >
+                          <Text style={[styles.muted, { fontSize: 12 }]}>
+                            Last visit:{" "}
+                            {farm.lastVisitDate
+                              ? formatLastVisitDate(farm.lastVisitDate)
+                              : "—"}
+                          </Text>
+                          <Text style={[styles.muted, { fontSize: 12 }]}>
+                            {farm.openIssues <= 0
+                              ? "No open issues"
+                              : farm.openIssues === 1
+                                ? "1 open issue"
+                                : `${farm.openIssues} open issues`}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
                   </Card>
-                </Swipeable>
+                </SwipeCommitDeleteRow>
               );
             })}
           </>
@@ -743,6 +613,22 @@ export default function DashboardScreen() {
           <ScheduleImportCard />
         </View>
       </ScrollView>
+      <ConfirmDialog
+        visible={inactiveConfirm != null}
+        title="Make this farm inactive?"
+        message={
+          inactiveConfirm
+            ? `${inactiveConfirm.farmName} will move to Inactive. You can make it active again later.`
+            : ""
+        }
+        confirmLabel="Make inactive"
+        onConfirm={() => {
+          if (!inactiveConfirm) return;
+          makeInactive(inactiveConfirm.farmId);
+          setInactiveConfirm(null);
+        }}
+        onCancel={() => setInactiveConfirm(null)}
+      />
     </SafeAreaView>
   );
 }

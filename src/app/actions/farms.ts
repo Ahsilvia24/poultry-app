@@ -4,13 +4,23 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { addDays } from "date-fns";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
+import { requireUserId } from "@/lib/session-user";
 import { prisma } from "@/lib/prisma";
 import { farmSchema, createFarmSchema, flockSchema, houseSchema } from "@/lib/validations";
+import { ungroupNumber } from "@/lib/grouped-number";
 import { normalizeHalfHourTime } from "@/lib/time-slots";
+import { isHouseInPropagateRange } from "@/lib/housePropagate";
+import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
+import { ensureActiveFlockHouseFlocks } from "@/lib/ensureActiveFlockHouseFlocks";
 
 function emptyToNull(value: FormDataEntryValue | null) {
   const s = String(value ?? "").trim();
   return s === "" ? null : s;
+}
+
+function groupedFormNumber(value: FormDataEntryValue | null) {
+  if (value == null) return value;
+  return ungroupNumber(String(value));
 }
 
 function formFlag(formData: FormData, name: string) {
@@ -27,6 +37,106 @@ function parseDateKey(value: string): Date | null {
   const d = Number(m[3]);
   if (!y || !mo || !d) return null;
   return new Date(y, mo - 1, d, 12, 0, 0, 0);
+}
+
+async function assignHouseFlockNumber(
+  farmId: string,
+  houseId: string,
+  currentFlockId: string,
+  nextNumber: string,
+  placementDate: Date,
+  catchDate: Date,
+  placedBirdCount: number,
+) {
+  const current = await prisma.flock.findFirst({
+    where: { id: currentFlockId },
+    select: { flockNumber: true },
+  });
+  const activeNumbers = await prisma.flock.findMany({
+    where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+    select: { id: true, flockNumber: true },
+  });
+  const existing =
+    activeNumbers.find(
+      (f) =>
+        f.id !== currentFlockId &&
+        normalizeFlockNumber(f.flockNumber) === normalizeFlockNumber(nextNumber),
+    ) ?? null;
+  const others = await prisma.houseFlock.count({
+    where: {
+      flockId: currentFlockId,
+      house: { deletedAt: null, NOT: { id: houseId } },
+    },
+  });
+  const hf = await prisma.houseFlock.findFirst({
+    where: {
+      houseId,
+      flock: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+    },
+    orderBy: { flock: { placementDate: "desc" } },
+    select: { id: true },
+  });
+  const plan = planFlockNumberChange({
+    nextNumber,
+    currentFlockNumber: current?.flockNumber ?? "",
+    currentFlockId,
+    otherHousesOnCurrentFlock: others,
+    existingFlockIdWithNumber: existing?.id ?? null,
+  });
+
+  if (plan.type === "keep") {
+    await syncFlockDatesFromHouses(currentFlockId);
+    return;
+  }
+  if (plan.type === "rename") {
+    await prisma.flock.update({
+      where: { id: currentFlockId },
+      data: { flockNumber: nextNumber },
+    });
+    await syncFlockDatesFromHouses(currentFlockId);
+    return;
+  }
+
+  const targetId =
+    plan.type === "move"
+      ? plan.flockId
+      : (
+          await prisma.flock.create({
+            data: {
+              farmId,
+              flockNumber: nextNumber,
+              placementDate,
+              projectedCatchDate: catchDate,
+              initialBirdCount: placedBirdCount > 0 ? placedBirdCount : 1,
+              flockStatus: "ACTIVE",
+            },
+            select: { id: true },
+          })
+        ).id;
+
+  if (hf && targetId !== currentFlockId) {
+    await prisma.houseFlock.update({
+      where: { id: hf.id },
+      data: { flockId: targetId },
+    });
+  }
+  if (targetId !== currentFlockId) {
+    await syncFlockDatesFromHouses(currentFlockId);
+    const leftover = await prisma.houseFlock.count({ where: { flockId: currentFlockId } });
+    if (leftover === 0) {
+      const otherActive = await prisma.flock.findFirst({
+        where: { farmId, flockStatus: "ACTIVE", deletedAt: null, NOT: { id: currentFlockId } },
+        select: { id: true },
+      });
+      if (otherActive) {
+        await prisma.flock.update({
+          where: { id: currentFlockId },
+          data: { deletedAt: new Date(), flockStatus: "COMPLETED" },
+        });
+      }
+    }
+  }
+  await syncFlockDatesFromHouses(targetId);
 }
 
 async function syncFlockDatesFromHouses(flockId: string) {
@@ -56,7 +166,6 @@ export async function createFarmAction(formData: FormData) {
   const parsed = createFarmSchema.safeParse({
     farmName: formData.get("farmName"),
     growerName: emptyToNull(formData.get("growerName")),
-    phoneNumber: emptyToNull(formData.get("phoneNumber")),
     notes: emptyToNull(formData.get("notes")),
     numberOfHouses: formData.get("numberOfHouses") || 0,
     numberOfGenerators: formData.get("numberOfGenerators") || null,
@@ -69,10 +178,9 @@ export async function createFarmAction(formData: FormData) {
   const farm = await prisma.$transaction(async (tx) => {
     const created = await tx.farm.create({
       data: {
-        userId: user.id!,
+        userId: requireUserId(user.id),
         farmName: parsed.data.farmName,
         growerName: parsed.data.growerName?.trim() || "",
-        phoneNumber: parsed.data.phoneNumber,
         notes: parsed.data.notes,
         numberOfHouses: houseCount,
         numberOfGenerators: parsed.data.numberOfGenerators ?? null,
@@ -101,25 +209,36 @@ export async function updateFarmAction(farmId: string, formData: FormData) {
   await assertFarmAccess(farmId, user.id!);
   const parsed = farmSchema.safeParse({
     farmName: formData.get("farmName"),
+    farmNumber: emptyToNull(formData.get("farmNumber")),
     growerName: emptyToNull(formData.get("growerName")),
-    phoneNumber: emptyToNull(formData.get("phoneNumber")),
-    email: emptyToNull(formData.get("email")),
     notes: emptyToNull(formData.get("notes")),
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid farm" };
+
+  const farmNumber = parsed.data.farmNumber?.trim() || null;
+  if (farmNumber) {
+    const taken = await prisma.farm.findFirst({
+      where: {
+        userId: user.id,
+        deletedAt: null,
+        id: { not: farmId },
+        farmNumber: { equals: farmNumber, mode: "insensitive" },
+      },
+      select: { id: true },
+    });
+    if (taken) return { error: "That Farm # is already used on another farm." };
+  }
 
   await prisma.farm.update({
     where: { id: farmId },
     data: {
       farmName: parsed.data.farmName,
       growerName: parsed.data.growerName?.trim() || "",
-      farmNumber: null,
+      farmNumber,
       address: null,
       city: null,
       state: null,
       zipCode: null,
-      phoneNumber: parsed.data.phoneNumber,
-      email: parsed.data.email || null,
       notes: parsed.data.notes,
     },
   });
@@ -139,7 +258,7 @@ export async function deactivateFarmAction(farmId: string, options?: { skipRedir
   revalidatePath(`/farms/${farmId}`);
   revalidatePath("/");
   if (!options?.skipRedirect) {
-    redirect("/farms?status=inactive");
+    redirect("/farms");
   }
 }
 
@@ -180,8 +299,9 @@ export async function archiveFarmAction(farmId: string) {
 function parseHouseForm(formData: FormData) {
   return houseSchema.safeParse({
     houseNumber: formData.get("houseNumber"),
-    squareFootage: formData.get("squareFootage"),
-    totalFanCFM: emptyToNull(formData.get("totalFanCFM")),
+    squareFootage: groupedFormNumber(formData.get("squareFootage")),
+    totalFanCFM: emptyToNull(groupedFormNumber(formData.get("totalFanCFM"))),
+    totalPowerCFM: emptyToNull(groupedFormNumber(formData.get("totalPowerCFM"))),
     numberOfFans: emptyToNull(formData.get("numberOfFans")),
     coolingPadSquareFootage: emptyToNull(formData.get("coolingPadSquareFootage")),
     controllerType: emptyToNull(formData.get("controllerType")),
@@ -203,9 +323,12 @@ export async function createHouseAction(farmId: string, formData: FormData) {
     await tx.house.create({ data: { farmId, ...parsed.data } });
     const count = await tx.house.count({ where: { farmId, deletedAt: null } });
     await tx.farm.update({ where: { id: farmId }, data: { numberOfHouses: count } });
+    await ensureActiveFlockHouseFlocks(farmId, { db: tx });
   });
 
   revalidatePath(`/farms/${farmId}`);
+  revalidatePath("/mortality");
+  revalidatePath("/");
 }
 
 export async function updateHouseAction(farmId: string, houseId: string, formData: FormData) {
@@ -236,24 +359,36 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
     data: houseFields,
   });
 
-  const applySpecsToRemaining =
-    formData.get("applySpecsToRemaining") === "true" ||
-    formData.get("applySpecsToRemaining") === "on";
-  if (applySpecsToRemaining) {
+  const fromHouseNumber = house.houseNumber;
+  const laterHouseRows = (
+    await prisma.house.findMany({
+      where: { farmId, deletedAt: null, NOT: { id: houseId } },
+      select: { id: true, houseNumber: true },
+      orderBy: { houseNumber: "asc" },
+    })
+  ).filter((h) => isHouseInPropagateRange(h.houseNumber, fromHouseNumber));
+  const laterHouseIds = laterHouseRows.map((h) => h.id);
+  const laterHouses = { id: { in: laterHouseIds } };
+  if (laterHouseIds.length > 0 && formFlag(formData, "applySquareFootageToRemaining")) {
     await prisma.house.updateMany({
-      where: {
-        farmId,
-        deletedAt: null,
-        houseNumber: { gt: parsed.data.houseNumber },
-      },
-      data: {
-        squareFootage: parsed.data.squareFootage,
-        totalFanCFM: parsed.data.totalFanCFM,
-      },
+      where: laterHouses,
+      data: { squareFootage: parsed.data.squareFootage },
+    });
+  }
+  if (laterHouseIds.length > 0 && formFlag(formData, "applyMinVentCfmToRemaining")) {
+    await prisma.house.updateMany({
+      where: laterHouses,
+      data: { totalFanCFM: parsed.data.totalFanCFM },
+    });
+  }
+  if (laterHouseIds.length > 0 && formFlag(formData, "applyPowerCfmToRemaining")) {
+    await prisma.house.updateMany({
+      where: laterHouses,
+      data: { totalPowerCFM: parsed.data.totalPowerCFM },
     });
   }
 
-  const placedRaw = emptyToNull(formData.get("placedBirdCount"));
+  const placedRaw = emptyToNull(groupedFormNumber(formData.get("placedBirdCount")));
   const placementRaw = emptyToNull(formData.get("placementDate"));
   const catchRaw = emptyToNull(formData.get("catchDate"));
   const catchTimeSubmitted = formData.get("catchTime") != null;
@@ -320,10 +455,6 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
       if (!nextNumber) {
         return { error: "Flock ID is required" };
       }
-      await prisma.flock.update({
-        where: { id: activeFlock.id },
-        data: { flockNumber: nextNumber },
-      });
     }
 
     async function upsertHouseFlockFields(
@@ -380,6 +511,29 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
         catchDate,
         catchTime: catchTimeSubmitted ? catchTime : undefined,
       });
+      if (flockNumberRaw != null) {
+        const place = placementDate ?? activeFlock.placementDate;
+        const catchResolved = catchDate ?? addDays(place, 52);
+        const thisHf = await prisma.houseFlock.findFirst({
+          where: {
+            houseId,
+            flock: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+          },
+          orderBy: { flock: { placementDate: "desc" } },
+          select: { flockId: true, placedBirdCount: true },
+        });
+        if (thisHf) {
+          await assignHouseFlockNumber(
+            farmId,
+            houseId,
+            thisHf.flockId,
+            flockNumberRaw.trim(),
+            place,
+            catchResolved,
+            thisHf.placedBirdCount,
+          );
+        }
+      }
       const remainingFlags =
         applyBirdsToRemaining ||
         applyPlacementToRemaining ||
@@ -387,15 +541,7 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
         applyCatchTimeToRemaining ||
         applyFlockIdToRemaining;
       if (remainingFlags) {
-        const remaining = await prisma.house.findMany({
-          where: {
-            farmId,
-            deletedAt: null,
-            houseNumber: { gt: parsed.data.houseNumber },
-          },
-          select: { id: true },
-          orderBy: { houseNumber: "asc" },
-        });
+        const remaining = laterHouseRows;
         for (const h of remaining) {
           await upsertHouseFlockFields(h.id, {
             ...(applyBirdsToRemaining ? { placedBirdCount } : {}),
@@ -409,13 +555,20 @@ export async function updateHouseAction(farmId: string, houseId: string, formDat
                 houseId: h.id,
                 flock: { farmId, flockStatus: "ACTIVE", deletedAt: null },
               },
-              select: { flockId: true },
+              select: { flockId: true, placedBirdCount: true },
             });
-            if (remainingHf && remainingHf.flockId !== activeFlock.id) {
-              await prisma.flock.update({
-                where: { id: remainingHf.flockId },
-                data: { flockNumber: flockNumberRaw.trim() },
-              });
+            if (remainingHf) {
+              const place = placementDate ?? activeFlock.placementDate;
+              const catchResolved = catchDate ?? addDays(place, 52);
+              await assignHouseFlockNumber(
+                farmId,
+                h.id,
+                remainingHf.flockId,
+                flockNumberRaw.trim(),
+                place,
+                catchResolved,
+                remainingHf.placedBirdCount,
+              );
             }
           }
         }
@@ -508,6 +661,15 @@ export async function createFlockAction(farmId: string, formData: FormData) {
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid flock" };
 
+  const existingSameNumber = (
+    await prisma.flock.findMany({
+      where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+      select: { id: true, flockNumber: true, initialBirdCount: true },
+    })
+  ).find(
+    (f) => normalizeFlockNumber(f.flockNumber) === normalizeFlockNumber(parsed.data.flockNumber),
+  );
+
   if (housePlacements.length > 0) {
     const occupied = await prisma.houseFlock.findFirst({
       where: {
@@ -524,34 +686,60 @@ export async function createFlockAction(farmId: string, formData: FormData) {
   }
 
   try {
-    await prisma.flock.create({
-      data: {
-        farmId,
-        flockNumber: parsed.data.flockNumber,
-        flockName: parsed.data.flockName,
-        placementDate: new Date(parsed.data.placementDate),
-        projectedCatchDate: parsed.data.projectedCatchDate
-          ? new Date(parsed.data.projectedCatchDate)
-          : null,
-        actualCatchDate: parsed.data.actualCatchDate ? new Date(parsed.data.actualCatchDate) : null,
-        processingPlant: parsed.data.processingPlant,
-        birdType: parsed.data.birdType,
-        sex: parsed.data.sex,
-        initialBirdCount: totalPlaced > 0 ? totalPlaced : 1,
-        flockStatus: parsed.data.flockStatus,
-        targetMarketAge: parsed.data.targetMarketAge,
-        targetMarketWeight: parsed.data.targetMarketWeight,
-        litterConditionAtPlacement: parsed.data.litterConditionAtPlacement,
-        notes: parsed.data.notes,
-        houseFlocks: {
-          create: housePlacements.map((hp) => ({
+    if (existingSameNumber) {
+      if (housePlacements.length > 0) {
+        await prisma.houseFlock.createMany({
+          data: housePlacements.map((hp) => ({
+            flockId: existingSameNumber.id,
             houseId: hp.houseId,
             placedBirdCount: hp.placedBirdCount,
             processingPlant: hp.processingPlant,
           })),
+          skipDuplicates: true,
+        });
+        const sum = await prisma.houseFlock.aggregate({
+          where: { flockId: existingSameNumber.id },
+          _sum: { placedBirdCount: true },
+        });
+        await prisma.flock.update({
+          where: { id: existingSameNumber.id },
+          data: {
+            initialBirdCount:
+              sum._sum.placedBirdCount ??
+              existingSameNumber.initialBirdCount + totalPlaced,
+          },
+        });
+      }
+    } else {
+      await prisma.flock.create({
+        data: {
+          farmId,
+          flockNumber: parsed.data.flockNumber,
+          flockName: parsed.data.flockName,
+          placementDate: new Date(parsed.data.placementDate),
+          projectedCatchDate: parsed.data.projectedCatchDate
+            ? new Date(parsed.data.projectedCatchDate)
+            : null,
+          actualCatchDate: parsed.data.actualCatchDate ? new Date(parsed.data.actualCatchDate) : null,
+          processingPlant: parsed.data.processingPlant,
+          birdType: parsed.data.birdType,
+          sex: parsed.data.sex,
+          initialBirdCount: totalPlaced > 0 ? totalPlaced : 1,
+          flockStatus: parsed.data.flockStatus,
+          targetMarketAge: parsed.data.targetMarketAge,
+          targetMarketWeight: parsed.data.targetMarketWeight,
+          litterConditionAtPlacement: parsed.data.litterConditionAtPlacement,
+          notes: parsed.data.notes,
+          houseFlocks: {
+            create: housePlacements.map((hp) => ({
+              houseId: hp.houseId,
+              placedBirdCount: hp.placedBirdCount,
+              processingPlant: hp.processingPlant,
+            })),
+          },
         },
-      },
-    });
+      });
+    }
   } catch {
     return { error: "Could not create flock. Try again." };
   }
@@ -575,7 +763,7 @@ export async function completeFlockAction(flockId: string) {
     },
   });
   revalidatePath(`/farms/${flock.farmId}`);
-  revalidatePath(`/history/${flock.farmId}`);
+  revalidatePath("/reports");
 }
 
 export async function reactivateFlockAction(flockId: string) {
@@ -625,7 +813,7 @@ export async function reactivateFlockAction(flockId: string) {
     },
   });
   revalidatePath(`/farms/${flock.farmId}`);
-  revalidatePath(`/history/${flock.farmId}`);
+  revalidatePath("/reports");
   revalidatePath("/");
   return { success: true };
 }
@@ -645,7 +833,7 @@ export async function deleteFlockAction(flockId: string) {
     data: { deletedAt: new Date() },
   });
   revalidatePath(`/farms/${flock.farmId}`);
-  revalidatePath(`/history/${flock.farmId}`);
+  revalidatePath("/reports");
   revalidatePath("/");
   return { success: true };
 }
@@ -664,7 +852,7 @@ export async function updateFlockNumberAction(flockId: string, flockNumber: stri
     data: { flockNumber: next },
   });
   revalidatePath(`/farms/${flock.farmId}`);
-  revalidatePath(`/history/${flock.farmId}`);
+  revalidatePath("/reports");
   revalidatePath("/");
   return { success: true };
 }

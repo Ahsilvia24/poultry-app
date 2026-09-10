@@ -94,6 +94,7 @@ export async function migrateDb() {
       house_number INTEGER NOT NULL,
       square_footage REAL NOT NULL DEFAULT 29700,
       total_fan_cfm REAL,
+      total_power_cfm REAL,
       number_of_fans INTEGER,
       logged_temp TEXT,
       logged_temp_at TEXT,
@@ -160,6 +161,7 @@ export async function migrateDb() {
       farm_id TEXT NOT NULL,
       flock_id TEXT,
       order_date TEXT NOT NULL,
+      order_time TEXT,
       notes TEXT,
       calculated_at TEXT,
       created_at TEXT,
@@ -267,6 +269,14 @@ export async function migrateDb() {
     CREATE INDEX IF NOT EXISTS idx_generator_farm ON generator_logs(farm_id);
     CREATE INDEX IF NOT EXISTS idx_feed_flock ON feed_deliveries(flock_id);
     CREATE INDEX IF NOT EXISTS idx_service_forms_farm ON service_forms(farm_id);
+
+    CREATE TABLE IF NOT EXISTS service_form_drafts (
+      farm_id TEXT NOT NULL,
+      form_kind TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (farm_id, form_kind)
+    );
   `);
 
   // Older installs may not have service_forms yet.
@@ -288,7 +298,24 @@ export async function migrateDb() {
       );
       CREATE INDEX IF NOT EXISTS idx_service_forms_farm ON service_forms(farm_id);
     `);
+  } else {
+    const serviceFormCols = await database.getAllAsync<{ name: string }>(
+      "PRAGMA table_info(service_forms)",
+    );
+    if (!serviceFormCols.some((c) => c.name === "visit_id")) {
+      await database.execAsync("ALTER TABLE service_forms ADD COLUMN visit_id TEXT");
+    }
   }
+
+  await database.execAsync(`
+    CREATE TABLE IF NOT EXISTS service_form_drafts (
+      farm_id TEXT NOT NULL,
+      form_kind TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (farm_id, form_kind)
+    );
+  `);
 
   // Existing installs created houses without deleted_at — add if missing
   const houseCols = await database.getAllAsync<{ name: string }>("PRAGMA table_info(houses)");
@@ -301,6 +328,9 @@ export async function migrateDb() {
   }
   if (!houseCols.some((c) => c.name === "logged_temp_at")) {
     await database.execAsync("ALTER TABLE houses ADD COLUMN logged_temp_at TEXT");
+  }
+  if (!houseCols.some((c) => c.name === "total_power_cfm")) {
+    await database.execAsync("ALTER TABLE houses ADD COLUMN total_power_cfm REAL");
   }
 
   // Schedule dismissals: COMPLETED (crossed out until midnight) vs DISMISSED (gone now)
@@ -366,6 +396,9 @@ export async function migrateDb() {
   const lfoCols = await database.getAllAsync<{ name: string }>("PRAGMA table_info(last_feed_orders)");
   if (lfoCols.length > 0 && !lfoCols.some((c) => c.name === "calculated_at")) {
     await database.execAsync("ALTER TABLE last_feed_orders ADD COLUMN calculated_at TEXT");
+  }
+  if (lfoCols.length > 0 && !lfoCols.some((c) => c.name === "order_time")) {
+    await database.execAsync("ALTER TABLE last_feed_orders ADD COLUMN order_time TEXT");
   }
   if (lfoCols.length > 0 && !lfoCols.some((c) => c.name === "created_at")) {
     await database.execAsync("ALTER TABLE last_feed_orders ADD COLUMN created_at TEXT");
@@ -443,6 +476,22 @@ export async function migrateDb() {
       await database.execAsync("DROP TABLE generator_logs_nullable");
     }
   }
+
+  // Strip leftover seed labels that looked like unfinished demo copy in the UI.
+  await database.execAsync(`
+    UPDATE farms SET notes = NULL
+    WHERE notes IN (
+      'Offline demo farm',
+      'Demo farm with 3 active flocks / place / catch dates'
+    );
+    UPDATE farms SET farm_name = 'Triple Place'
+    WHERE farm_name = 'Triple Place Demo';
+    UPDATE farm_visits SET notes = NULL
+    WHERE notes = 'Offline demo visit'
+       OR notes LIKE 'Offline demo visit for %';
+    UPDATE users SET name = 'Alex Silvia'
+    WHERE email = 'tech@poultry.local' AND name = 'Alex Technician';
+  `);
 }
 
 export function getMeta(key: string): string | null {

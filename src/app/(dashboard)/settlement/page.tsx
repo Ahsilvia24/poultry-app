@@ -1,9 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { SettlementExampleUpload } from "@/components/SettlementExampleUpload";
 import { SettlementForm } from "@/components/SettlementForm";
 import { PageHeader } from "@/components/ui";
-import { listSettlementExamples } from "@/lib/settlement-examples";
 import { redirect } from "next/navigation";
 
 type SearchParams = Promise<{ farmId?: string }>;
@@ -65,12 +63,9 @@ export default async function SettlementPage({
       ? params.farmId
       : undefined;
 
-  const examples = await listSettlementExamples();
-
   return (
     <div>
       <PageHeader title="Settlement" />
-      <SettlementExampleUpload examples={examples} />
       <SettlementForm farms={farmOptions} lockedFarmId={lockedFarmId} />
     </div>
   );

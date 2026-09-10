@@ -17,3 +17,25 @@ export const TEMP_CURVE: TempCurveRow[] = [
   { day: 49, summerF: 62, winterF: 62 },
   { day: 56, summerF: 60, winterF: 60 },
 ];
+
+export type TempSeason = "summer" | "winter";
+
+/** Apr–Sep uses the summer column; Oct–Mar uses winter. */
+export function tempSeasonForDate(date: Date = new Date()): TempSeason {
+  const month = date.getMonth();
+  return month >= 3 && month <= 8 ? "summer" : "winter";
+}
+
+/** Controller-style step: last Temp Curve day that the flock has reached. */
+export function recommendedHouseTempF(
+  ageDays: number,
+  season: TempSeason = tempSeasonForDate(),
+): number {
+  const age = Number.isFinite(ageDays) ? ageDays : 1;
+  let row = TEMP_CURVE[0]!;
+  for (const next of TEMP_CURVE) {
+    if (age >= next.day) row = next;
+    else break;
+  }
+  return season === "winter" ? row.winterF : row.summerF;
+}

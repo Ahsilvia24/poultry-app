@@ -1,5 +1,11 @@
 import type { AnyServiceForm, ServiceHouseRow, YesNo } from "./types";
-import { formatMinVentPair, formatServiceShortDate, yesNoLabel } from "./format";
+import {
+  CFM_FT2_MIN_VENT_LABEL,
+  formatMinVentPair,
+  formatServiceShortDate,
+  MAX_CFM_FT2_POWER_LABEL,
+  yesNoLabel,
+} from "./format";
 
 function esc(s: string) {
   return String(s ?? "")
@@ -137,21 +143,17 @@ export function serviceReportPdfHtml(form: Extract<AnyServiceForm, { kind: "serv
         <h2>AIR AND LITTER</h2>
         <table>
           ${checkRow("Temp Targets Are Per Recommended Program", form.tempTargetsOk)}
-          ${
-            form.tempTargetsOk === "no"
-              ? `<tr><td>Actual / Recommended Target</td><td>${esc(form.actualTempTarget)} / ${esc(form.recommendedTempTarget)}</td></tr>`
-              : ""
-          }
+          <tr><td>Set Temp / Recommended</td><td>${esc(form.actualTempTarget)} / ${esc(form.recommendedTempTarget)}</td></tr>
           ${checkRow("Ammonia Levels Are < 25 PPM In All Houses", form.ammoniaOk)}
           <tr><td>% Humidity</td><td>${esc(form.humidityPct ? `${form.humidityPct}%` : "")}</td></tr>
           <tr><td>Ventilation</td><td>${esc(form.ventModes.join(", "))}${form.ventModes.includes("tunnel") ? ` · fans ${esc(form.tunnelFanCount)}` : ""}</td></tr>
-          <tr><td>Vent Door Type</td><td>${esc(form.ventDoorType)}</td></tr>
+          <tr><td>Vent Door Type</td><td>${esc(form.ventDoorTypes.join(", "))}</td></tr>
           <tr><td>Opening / S.P.</td><td>${esc(form.ventOpeningInches)} / ${esc(form.staticPressure)}</td></tr>
-          <tr><td>C.F.M./Ft2 Min Vent</td><td>${esc(form.cfmPerFt2MinVent)}</td></tr>
+          <tr><td>${esc(CFM_FT2_MIN_VENT_LABEL)}</td><td>${esc(form.cfmPerFt2MinVent)}</td></tr>
           <tr><td>Size and Number Of Fans Used</td><td>${esc(form.fansSizeAndCount)}</td></tr>
           <tr><td>Min Vent Timer (Actual)</td><td>${esc(formatMinVentPair(form.minVentActualOn, form.minVentActualOff))}</td></tr>
-          <tr><td>Min Vent Timer (Recommended) Wk ${esc(String(form.minVentRecommendedWeek))}</td><td>${esc(formatMinVentPair(form.minVentRecommendedOn, form.minVentRecommendedOff))}</td></tr>
-          <tr><td>Max C.F.M. (House 1 Total CFM)</td><td>${esc(form.maxCfm)}</td></tr>
+          <tr><td>Min Vent Timer (Recommended)${form.minVentRecommendedWeek ? ` Wk ${esc(String(form.minVentRecommendedWeek))}` : ""}</td><td>${esc(formatMinVentPair(form.minVentRecommendedOn, form.minVentRecommendedOff))}</td></tr>
+          <tr><td>${esc(MAX_CFM_FT2_POWER_LABEL)}</td><td>${esc(form.maxCfm)}</td></tr>
           <tr><td>Cool Cell Off / On</td><td>${esc(form.coolCellOffTemp)} / ${esc(form.coolCellOnTemp)}</td></tr>
           <tr><td>Cool Cell Timer</td><td>${esc(form.coolCellTimerOn)}/${esc(form.coolCellTimerOff)}</td></tr>
         </table>
@@ -229,12 +231,12 @@ export function placementPdfHtml(form: Extract<AnyServiceForm, { kind: "placemen
           <tr><td>Amendment type</td><td>${esc(form.litterAmendmentType === "Pure7" ? "Pure 7" : form.litterAmendmentType)}</td></tr>
           ${checkRow("All Heaters Are On And Operational", form.heatersOk)}
           ${checkRow("Sensors at Bird Level", form.sensorsBirdLevelOk)}
-          <tr><td>Vent Door Type</td><td>${esc(form.ventDoorType)}</td></tr>
+          <tr><td>Vent Door Type</td><td>${esc(form.ventDoorTypes.join(", "))}</td></tr>
           <tr><td>Opening / S.P.</td><td>${esc(form.ventOpeningInches)} / ${esc(form.staticPressure)}</td></tr>
-          <tr><td>C.F.M./Ft2 Min Vent</td><td>${esc(form.cfmPerFt2MinVent)}</td></tr>
+          <tr><td>${esc(CFM_FT2_MIN_VENT_LABEL)}</td><td>${esc(form.cfmPerFt2MinVent)}</td></tr>
           <tr><td>Fans</td><td>${esc(form.fansSizeAndCount)}</td></tr>
           <tr><td>Min Vent Actual</td><td>${esc(formatMinVentPair(form.minVentActualOn, form.minVentActualOff))}</td></tr>
-          <tr><td>Min Vent Recommended (Wk ${esc(String(form.minVentRecommendedWeek))})</td><td>${esc(formatMinVentPair(form.minVentRecommendedOn, form.minVentRecommendedOff))}</td></tr>
+          <tr><td>Min Vent Recommended${form.minVentRecommendedWeek ? ` (Wk ${esc(String(form.minVentRecommendedWeek))})` : ""}</td><td>${esc(formatMinVentPair(form.minVentRecommendedOn, form.minVentRecommendedOff))}</td></tr>
         </table>
         <h2>SPACE / SANITATION / EMERGENCY</h2>
         <table>
@@ -321,6 +323,7 @@ export function prebroodPdfHtml(form: Extract<AnyServiceForm, { kind: "prebrood"
           ${checkRow("Performed Generator Test", form.generatorTestOk)}
           ${checkRow("Performed Dialer Alarm Test", form.dialerTestOk)}
           <tr><td>Generator Serviced</td><td>${esc(yn(form.generatorServicedOk))}${serviceDate ? ` · ${esc(serviceDate)}` : ""}</td></tr>
+          <tr><td>Generator hours checked</td><td>${esc(yn(form.generatorHoursCheckedOk))}${form.generatorHoursLogged?.trim() ? ` · ${esc(form.generatorHoursLogged)}` : ""}</td></tr>
         </table>
       </div>
     </div>

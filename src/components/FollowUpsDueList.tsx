@@ -46,7 +46,7 @@ export function FollowUpsDueList({
   }, [serverSignature, serverChecked]);
 
   if (items.length === 0) {
-    return <p className="mt-2 text-sm text-stone-500">None</p>;
+    return <p className="mt-2 text-[15px] text-stone-500">None</p>;
   }
 
   function toggle(item: FollowUpDueItem) {
@@ -78,7 +78,7 @@ export function FollowUpsDueList({
     <div className="mt-2">
       {error ? <p className="mb-2 text-sm text-red-700">{error}</p> : null}
       <ScrollableFarmList className="pr-2">
-        <ul className="space-y-1.5 text-sm">
+        <ul className="space-y-2.5 text-[15px]">
           {items.map((f) => {
             const key = itemKey(f);
             const isDone = checked[key] ?? f.completed;
@@ -86,9 +86,9 @@ export function FollowUpsDueList({
             return (
               <li
                 key={key}
-                className={`flex h-5 items-center justify-between gap-3 ${isDone ? "opacity-50" : ""}`}
+                className={`flex min-h-[22px] items-center justify-between gap-3 ${isDone ? "opacity-50" : ""}`}
               >
-                <div className="flex min-w-0 flex-1 items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
                   <button
                     type="button"
                     aria-label={
@@ -99,7 +99,7 @@ export function FollowUpsDueList({
                     aria-pressed={isDone}
                     disabled={isBusy}
                     onClick={() => toggle(f)}
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border text-[11px] font-bold leading-none ${
+                    className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-[5px] border text-[13px] font-black leading-none ${
                       isDone
                         ? "border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700"
                         : "border-stone-400 bg-white text-emerald-700 hover:border-emerald-600"

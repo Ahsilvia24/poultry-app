@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -9,7 +9,7 @@ import {
   View,
   type ScrollView as ScrollViewType,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DatePickerField } from "../../../../../src/components/DatePickerField";
 import {
@@ -20,16 +20,23 @@ import {
   CommentsField,
   CompactHouseValueGrid,
 } from "../../../../../src/components/serviceForms/fields";
-import { Card, PageHeader } from "../../../../../src/components/ui";
-import { createPrebroodDraft } from "../../../../../src/lib/serviceForms/defaults";
+import { BackHeader, Card } from "../../../../../src/components/ui";
+import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
+import { withPrebroodLoggedHours } from "../../../../../src/lib/generator";
+import { getLatestGeneratorHours } from "../../../../../src/repos/data";
+import { createPrebroodDraft, hydratePrebroodForm } from "../../../../../src/lib/serviceForms/defaults";
 import { formatServiceShortDate } from "../../../../../src/lib/serviceForms/format";
-import { prefillHouseRows } from "../../../../../src/lib/serviceForms/prefill";
+import { applyLiveHouseMetrics, prefillHouseRows } from "../../../../../src/lib/serviceForms/prefill";
 import type { PrebroodForm } from "../../../../../src/lib/serviceForms/types";
 import {
+  readInProgressDraft,
+  useAutosaveServiceFormDraft,
   useCompleteServiceForm,
   useEditVisitIdParam,
   useExistingServiceForm,
+  useRefreshDraftHouseMetrics,
   useServiceFarmContext,
+  goToServiceFarm,
 } from "../../../../../src/lib/serviceForms/useServiceFarm";
 import { colors, styles } from "../../../../../src/theme";
 
@@ -39,32 +46,59 @@ function paramId(value: string | string[] | undefined) {
 }
 
 export default function PrebroodChecklistScreen() {
-  const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; fresh?: string | string[] }>();
   const farmId = paramId(params.id);
-  const { detail, farmName, firstFlockNumber } = useServiceFarmContext(farmId);
+  const fresh = paramId(params.fresh) === "1";
+  const { detail, farmName, farmNumber, firstFlockNumber } = useServiceFarmContext(farmId);
   const existing = useExistingServiceForm(farmId, "prebrood");
-  const editVisitId = useEditVisitIdParam();
-  const { complete, saving, editing } = useCompleteServiceForm(farmId, {
+  const editVisitId = useEditVisitIdParam(farmId);
+  const { complete, saving, editing, error: completeError } = useCompleteServiceForm(farmId, {
     serviceFormId: existing?.id ?? null,
     existingVisitId: existing ? null : editVisitId,
   });
 
+  const [datePicker, setDatePicker] = useState<"form" | "generator" | null>(null);
   const [form, setForm] = useState<PrebroodForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
-      return existing.payload as PrebroodForm;
+      return withSavedServiceTech(hydratePrebroodForm(existing.payload as PrebroodForm));
+    }
+    const draft = readInProgressDraft<PrebroodForm>(farmId, "prebrood", fresh);
+    if (draft?.kind === "prebrood") {
+      const hydrated = withSavedServiceTech(hydratePrebroodForm(draft));
+      if (!hydrated.farmNumber?.trim() && farmNumber) hydrated.farmNumber = farmNumber;
+      return detail ? applyLiveHouseMetrics(hydrated, detail) : hydrated;
     }
     return createPrebroodDraft({
       farmName,
+      farmNumber,
       flockNumber: firstFlockNumber,
       houses: detail ? prefillHouseRows(detail) : [],
     });
   });
   const scrollRef = useRef<ScrollViewType>(null);
+  useAutosaveServiceFormDraft(farmId, "prebrood", form, !existing && !saving);
+  useRefreshDraftHouseMetrics(farmId, !existing && !saving, setForm);
+
+  function pullLoggedHours(next: PrebroodForm): PrebroodForm {
+    if (next.generatorHoursCheckedOk !== "yes" || !farmId) {
+      return { ...next, generatorHoursLogged: "" };
+    }
+    try {
+      return withPrebroodLoggedHours(next, getLatestGeneratorHours(farmId));
+    } catch {
+      return next;
+    }
+  }
 
   function patch(p: Partial<PrebroodForm>) {
-    setForm((prev) => ({ ...prev, ...p }));
+    setForm((prev) => pullLoggedHours({ ...prev, ...p }));
   }
+
+  useFocusEffect(
+    useCallback(() => {
+      setForm((prev) => pullLoggedHours(prev));
+    }, [farmId]),
+  );
 
   function patchHouse(houseNumber: number, p: Partial<PrebroodForm["houses"][number]>) {
     setForm((prev) => ({
@@ -86,24 +120,13 @@ export default function PrebroodChecklistScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: 280 }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
+        automaticallyAdjustKeyboardInsets={Platform.OS !== "web"}
       >
-        <Pressable
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else
-              router.replace({
-                pathname: "/(tabs)/farms/[id]/service",
-                params: { id: farmId },
-              });
-          }}
-          style={{ marginBottom: 8 }}
-        >
-          <Text style={{ color: colors.accentDark, fontWeight: "700" }}>← Checklists</Text>
-        </Pressable>
-        <PageHeader
+        <BackHeader
+          backLabel="Checklists"
           title={editing ? "Edit Prebrood Checklist" : "Prebrood Checklist"}
-          subtitle={farmName}
+          accessibilityLabel="Back to checklists"
+          onBack={() => goToServiceFarm(farmId)}
         />
 
         <Card>
@@ -116,7 +139,13 @@ export default function PrebroodChecklistScreen() {
               <TextField label="Flock" value={form.flockNumber} onChange={(flockNumber) => patch({ flockNumber })} />
             }
           />
-          <DatePickerField label="Date" value={form.date} onChange={(date) => patch({ date })} />
+          <DatePickerField
+            label="Date"
+            value={form.date}
+            expanded={datePicker === "form"}
+            onOpen={() => setDatePicker("form")}
+            onChange={(date) => patch({ date })}
+          />
           <Text style={{ fontWeight: "700", marginBottom: 6 }}>Window</Text>
           <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
             {(["48", "72"] as const).map((opt) => {
@@ -157,7 +186,7 @@ export default function PrebroodChecklistScreen() {
           <YesNoField label="All burnt bulbs replaced" value={form.bulbsReplacedOk} onChange={(bulbsReplacedOk) => patch({ bulbsReplacedOk })} />
           <YesNoField label="Lighting program is present" value={form.lightingProgramOk} onChange={(lightingProgramOk) => patch({ lightingProgramOk })} />
 
-          <SectionTitle title="Air and litter" />
+          <SectionTitle title="Air and Litter" />
           <YesNoField label="Moisture removal chart present" value={form.moistureChartOk} onChange={(moistureChartOk) => patch({ moistureChartOk })} />
           <YesNoField
             label="Litter amendment has been applied"
@@ -278,9 +307,21 @@ export default function PrebroodChecklistScreen() {
               <DatePickerField
                 label={`Service date (${formatServiceShortDate(form.generatorServiceDate || form.date) || "dd MMM yy"})`}
                 value={form.generatorServiceDate || form.date}
+                expanded={datePicker === "generator"}
+                onOpen={() => setDatePicker("generator")}
                 onChange={(generatorServiceDate) => patch({ generatorServiceDate })}
               />
             </View>
+          ) : null}
+          <YesNoField
+            label="Generator hours checked"
+            value={form.generatorHoursCheckedOk}
+            onChange={(generatorHoursCheckedOk) => patch({ generatorHoursCheckedOk })}
+          />
+          {form.generatorHoursCheckedOk === "yes" && form.generatorHoursLogged ? (
+            <Text style={{ color: colors.muted, fontWeight: "600", marginBottom: 8 }}>
+              {form.generatorHoursLogged}
+            </Text>
           ) : null}
         </Card>
 
@@ -290,6 +331,11 @@ export default function PrebroodChecklistScreen() {
           scrollRef={scrollRef}
         />
 
+        {completeError ? (
+          <Text style={{ color: colors.danger, fontWeight: "700", marginTop: 12 }}>
+            {completeError}
+          </Text>
+        ) : null}
         <Pressable
           disabled={saving}
           onPress={() => {
