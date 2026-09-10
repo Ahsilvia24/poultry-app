@@ -114,7 +114,7 @@ export function FollowUpsDueList({
                       isDone ? "line-through" : ""
                     }`}
                   >
-                    <OneDotName text={f.farmName} className="flex-1 font-semibold" />
+                    <OneDotName text={f.farmName} className="font-semibold" />
                     {f.flockAgeDays != null ? (
                       <span className="shrink-0 font-normal text-stone-500">
                         {f.flockAgeDays}d

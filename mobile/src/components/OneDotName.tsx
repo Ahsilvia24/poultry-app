@@ -21,7 +21,10 @@ export function OneDotName({
   }, [fontSize, text, width]);
 
   return (
-    <View style={{ flex: 1, minWidth: 0 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+    <View
+      style={{ flexGrow: 0, flexShrink: 1, minWidth: 0, maxWidth: "100%" }}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+    >
       <Text style={style} numberOfLines={1}>
         {shown}
       </Text>

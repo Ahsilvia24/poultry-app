@@ -39,7 +39,7 @@ export function OneDotName({
     <span
       ref={boxRef}
       title={text}
-      className={`relative min-w-0 overflow-hidden ${className ?? ""}`}
+      className={`relative min-w-0 max-w-full overflow-hidden ${className ?? ""}`}
     >
       <span
         ref={probeRef}

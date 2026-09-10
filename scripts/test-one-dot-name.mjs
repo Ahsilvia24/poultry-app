@@ -27,13 +27,20 @@ assert.doesNotMatch(fitOneDotName("WEYLIN GROOM", (value) => value.length <= 8),
 
 const list = readFileSync(join(root, "src/components/FollowUpsDueList.tsx"), "utf8");
 assert.match(list, /OneDotName/);
+assert.match(list, /OneDotName text=\{f\.farmName\} className="font-semibold"/);
+assert.doesNotMatch(list, /OneDotName text=\{f\.farmName\} className="flex-1/);
 assert.match(list, /ml-auto flex shrink-0 items-baseline gap-1\.5/);
 assert.doesNotMatch(list, /min-w-\[6\.5rem\]/);
 assert.doesNotMatch(list, /min-w-\[5\.5rem\]/);
 assert.doesNotMatch(list, /truncate/);
 
+const name = readFileSync(join(root, "src/components/OneDotName.tsx"), "utf8");
+assert.match(name, /min-w-0 max-w-full/);
+assert.doesNotMatch(name, /flex-1/);
+
 const page = readFileSync(join(root, "src/app/(dashboard)/page.tsx"), "utf8");
 assert.match(page, /OneDotName text=\{c\.farmName\}/);
+assert.doesNotMatch(page, /OneDotName text=\{c\.farmName\} className="flex-1"/);
 
 const mobile = readFileSync(join(root, "mobile/app/(tabs)/index.tsx"), "utf8");
 assert.match(mobile, /OneDotName/);

@@ -66,7 +66,7 @@ export default async function DashboardPage() {
                     className="flex min-h-[22px] items-baseline gap-2"
                   >
                     <span className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden font-semibold text-stone-900">
-                      <OneDotName text={c.farmName} className="flex-1" />
+                      <OneDotName text={c.farmName} />
                       {c.flockAgeDays != null ? (
                         <span className="shrink-0 font-normal text-stone-500">
                           {c.flockAgeDays}d
