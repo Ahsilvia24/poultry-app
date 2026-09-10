@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import NextAuth from "next-auth";
-import { authConfig, isAuthDevBypassEnabled } from "@/lib/auth.config";
+import { auth, isAuthDevBypassEnabled } from "@/lib/auth";
 
-const { auth } = NextAuth(authConfig);
-
-/** Prefer tunnel/proxy host so redirects work outside localhost. */
+/** Prefer the current host so redirects stay on Vercel, not poultrytechapp.com. */
 function requestOrigin(req: NextRequest) {
   const forwardedHost = req.headers.get("x-forwarded-host");
   const forwardedProto = req.headers.get("x-forwarded-proto");
@@ -22,7 +19,7 @@ function requestOrigin(req: NextRequest) {
 
 const withAuth = auth((req) => {
   const bypass = isAuthDevBypassEnabled();
-  const isLoggedIn = !!req.auth || bypass;
+  const isLoggedIn = !!req.auth?.user?.id || bypass;
   const { pathname } = req.nextUrl;
   const origin = requestOrigin(req);
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");

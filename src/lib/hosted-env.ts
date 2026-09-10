@@ -39,8 +39,16 @@ export function applyHostedEnv(env: NodeJS.ProcessEnv = process.env) {
     env.DIRECT_URL = postgresCandidates[0] || env.DATABASE_URL || "";
   }
 
-  if (!env.AUTH_URL?.trim()) {
-    env.AUTH_URL = "https://poultrytechapp.com";
+  // Never point Auth.js at the GitHub Pages Expo site. trustHost uses the current host
+  // (*.vercel.app now, poultrytechapp.com after DNS). A hardcoded AUTH_URL sends
+  // login redirects and cookies to the old tech@poultry.local website.
+  const authUrl = env.AUTH_URL?.trim() ?? "";
+  if (!authUrl || /poultrytechapp\.com|github\.io/i.test(authUrl)) {
+    if (env.VERCEL_URL?.trim()) {
+      env.AUTH_URL = `https://${env.VERCEL_URL.trim()}`;
+    } else {
+      delete env.AUTH_URL;
+    }
   }
 
   if (!env.AUTH_SECRET?.trim()) {
