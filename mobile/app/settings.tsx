@@ -29,11 +29,17 @@ const noFocusRing =
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { user, signOut, changePassword } = useAuth();
   const [serviceTech, setServiceTechName] = useState(getServiceTech);
   const [farmOrder, setFarmOrderValue] = useState<FarmOrder>(getFarmOrder);
   const [exporting, setExporting] = useState(false);
   const [exportNote, setExportNote] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordNote, setPasswordNote] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [savingPassword, setSavingPassword] = useState(false);
 
   function onChangeServiceTech(value: string) {
     setServiceTechName(value);
@@ -213,6 +219,159 @@ export default function SettingsScreen() {
               Safari keeps farms in this browser. Export to save a copy you own.
             </Text>
           )}
+
+          <View style={{ marginTop: 16, gap: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>Email:</Text>
+              <Text
+                style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: "600", color: colors.text }}
+              >
+                {user?.email ?? "—"}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>
+              Change password
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ width: 88, fontSize: 15, fontWeight: "700", color: colors.text }}>
+                Current:
+              </Text>
+              <TextInput
+                style={[
+                  {
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: 17,
+                    fontWeight: "600",
+                    color: colors.text,
+                    paddingVertical: 6,
+                    paddingHorizontal: 0,
+                    borderWidth: 0,
+                    backgroundColor: "transparent",
+                  },
+                  noFocusRing,
+                ]}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
+                autoComplete="password"
+                placeholder="Current password"
+                placeholderTextColor={colors.muted}
+                underlineColorAndroid="transparent"
+                accessibilityLabel="Current password"
+              />
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ width: 88, fontSize: 15, fontWeight: "700", color: colors.text }}>
+                New:
+              </Text>
+              <TextInput
+                style={[
+                  {
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: 17,
+                    fontWeight: "600",
+                    color: colors.text,
+                    paddingVertical: 6,
+                    paddingHorizontal: 0,
+                    borderWidth: 0,
+                    backgroundColor: "transparent",
+                  },
+                  noFocusRing,
+                ]}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="newPassword"
+                autoComplete="password-new"
+                placeholder="New password"
+                placeholderTextColor={colors.muted}
+                underlineColorAndroid="transparent"
+                accessibilityLabel="New password"
+              />
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ width: 88, fontSize: 15, fontWeight: "700", color: colors.text }}>
+                Confirm:
+              </Text>
+              <TextInput
+                style={[
+                  {
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: 17,
+                    fontWeight: "600",
+                    color: colors.text,
+                    paddingVertical: 6,
+                    paddingHorizontal: 0,
+                    borderWidth: 0,
+                    backgroundColor: "transparent",
+                  },
+                  noFocusRing,
+                ]}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="newPassword"
+                autoComplete="password-new"
+                placeholder="Confirm password"
+                placeholderTextColor={colors.muted}
+                underlineColorAndroid="transparent"
+                accessibilityLabel="Confirm new password"
+              />
+            </View>
+            {passwordError ? (
+              <Text style={{ color: colors.danger, fontSize: 13, fontWeight: "600" }}>
+                {passwordError}
+              </Text>
+            ) : null}
+            {passwordNote ? (
+              <Text style={{ color: colors.accentDark, fontSize: 13, fontWeight: "600" }}>
+                {passwordNote}
+              </Text>
+            ) : null}
+            <Pressable
+              disabled={savingPassword}
+              onPress={() => {
+                if (savingPassword) return;
+                setPasswordError(null);
+                setPasswordNote(null);
+                if (newPassword.length < 8) {
+                  setPasswordError("Password must be at least 8 characters.");
+                  return;
+                }
+                if (newPassword !== confirmPassword) {
+                  setPasswordError("New passwords do not match.");
+                  return;
+                }
+                setSavingPassword(true);
+                void changePassword(currentPassword, newPassword)
+                  .then(() => {
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    setPasswordNote("Password updated.");
+                  })
+                  .catch((e) => {
+                    setPasswordError(e instanceof Error ? e.message : "Could not change password.");
+                  })
+                  .finally(() => setSavingPassword(false));
+              }}
+              style={{ alignSelf: "flex-start", paddingVertical: 8 }}
+            >
+              <Text style={{ color: colors.text, fontWeight: "700", textDecorationLine: "underline" }}>
+                {savingPassword ? "Saving…" : "Change password"}
+              </Text>
+            </Pressable>
+          </View>
 
           <Pressable
             onPress={() => void signOut()}

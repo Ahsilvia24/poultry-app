@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateSettingsAction } from "@/app/actions/ops";
 import { signOutAction } from "@/app/actions/auth";
+import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { Button, Card, Input, PageHeader } from "@/components/ui";
 import { FarmOrderStepper } from "@/components/FarmOrderStepper";
 import { FARM_ORDER_OPTIONS, parseFarmOrder } from "@/lib/farm-order";
@@ -65,11 +66,14 @@ export default async function SettingsPage() {
                   className={inlineInputClass}
                 />
               </SettingsLine>
-              <SettingsLine label="Email:" htmlFor="email">
-                <p id="email" className="min-w-0 flex-1 py-1 text-base font-semibold text-stone-900">
-                  {user.email}
-                </p>
-              </SettingsLine>
+              <div className="flex items-start gap-3">
+                <p className="shrink-0 pt-2 text-sm font-semibold text-stone-800">Order Farms By:</p>
+                <FarmOrderStepper
+                  name="farmOrder"
+                  defaultValue={parseFarmOrder(s?.farmOrder)}
+                  options={FARM_ORDER_OPTIONS}
+                />
+              </div>
             </div>
           </div>
 
@@ -150,14 +154,6 @@ export default async function SettingsPage() {
                   className={inlineInputClass}
                 />
               </SettingsLine>
-              <div className="flex items-start gap-3">
-                <p className="shrink-0 pt-2 text-sm font-semibold text-stone-800">Order Farms By:</p>
-                <FarmOrderStepper
-                  name="farmOrder"
-                  defaultValue={parseFarmOrder(s?.farmOrder)}
-                  options={FARM_ORDER_OPTIONS}
-                />
-              </div>
             </div>
             {s?.notifyInApp !== false ? (
               <input type="hidden" name="notifyInApp" value="on" />
@@ -167,6 +163,16 @@ export default async function SettingsPage() {
 
           <Button type="submit">Save settings</Button>
         </form>
+
+        <div className="mt-8 space-y-5 border-t border-stone-200 pt-5">
+          <div className="flex items-center gap-3">
+            <p className="shrink-0 text-sm font-semibold text-stone-800">Email:</p>
+            <p id="email" className="min-w-0 flex-1 py-1 text-base font-semibold text-stone-900">
+              {user.email}
+            </p>
+          </div>
+          <ChangePasswordForm />
+        </div>
       </Card>
 
       <form action={signOutAction} className="mt-8 flex justify-center">

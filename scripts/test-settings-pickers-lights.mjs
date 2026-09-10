@@ -20,7 +20,9 @@ assert.match(serviceFields, /TimeKeyField/);
 
 assert.match(settings, /inlineInputClass/);
 assert.match(settings, /Service Tech:/);
+assert.match(settings, /Order Farms By:/);
 assert.match(settings, /Email:/);
+assert.match(settings, /ChangePasswordForm/);
 assert.match(settings, /Daily warning:/);
 assert.match(settings, /Daily critical:/);
 assert.match(settings, /7-day warning:/);
@@ -30,5 +32,13 @@ assert.doesNotMatch(settings, /<Label htmlFor="email">/);
 assert.match(settings, /name="dailyMortalityWarningPct"/);
 assert.match(settings, /name="defaultMarketAgeDays"/);
 assert.match(settings, /signOutAction/);
+
+const techAt = settings.indexOf("Service Tech:");
+const orderAt = settings.indexOf("Order Farms By:");
+const emailAt = settings.indexOf("Email:");
+const passwordAt = settings.indexOf("<ChangePasswordForm");
+assert.ok(techAt >= 0 && orderAt > techAt, "Order By should sit under Service Tech");
+assert.ok(emailAt > orderAt, "Email should sit below Order By");
+assert.ok(passwordAt > emailAt, "Change password should sit below Email");
 
 console.log("settings-pickers-lights: ok");

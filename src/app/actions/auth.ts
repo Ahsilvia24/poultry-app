@@ -3,10 +3,16 @@
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
-import { signIn, signOut } from "@/lib/auth";
+import { auth, signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isRegisterEmailAllowed } from "@/lib/allowedRegisterEmails";
 import { issuePasswordReset, consumePasswordReset } from "@/lib/password-reset";
-import { forgotPasswordSchema, registerSchema, resetPasswordSchema } from "@/lib/validations";
+import {
+  changePasswordSchema,
+  forgotPasswordSchema,
+  registerSchema,
+  resetPasswordSchema,
+} from "@/lib/validations";
 
 async function signInOnThisHost(email: string, password: string) {
   const result = await signIn("credentials", {
@@ -31,6 +37,9 @@ export async function registerAction(formData: FormData) {
   }
 
   const email = parsed.data.email.toLowerCase();
+  if (!isRegisterEmailAllowed(email)) {
+    return { error: "This email is not approved for an account." };
+  }
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return { error: "An account with this email already exists" };
 
@@ -85,6 +94,36 @@ export async function forgotPasswordAction(formData: FormData) {
   }
   await issuePasswordReset(parsed.data.email);
   return { sent: true };
+}
+
+export async function changePasswordAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Sign in to change your password." };
+
+  const parsed = changePasswordSchema.safeParse({
+    currentPassword: formData.get("currentPassword"),
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { passwordHash: true },
+  });
+  if (!user) return { error: "Sign in to change your password." };
+
+  const matches = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
+  if (!matches) return { error: "Current password is incorrect." };
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { passwordHash },
+  });
+  return { ok: true };
 }
 
 export async function resetPasswordAction(formData: FormData) {

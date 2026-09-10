@@ -21,6 +21,7 @@ export default function RegisterPage() {
           PoultryTech
         </p>
         <h1 className="mt-1.5 text-xl font-semibold">Create account</h1>
+        <p className="mt-1 text-sm text-stone-500">Only approved emails can create an account.</p>
         <form action={onSubmit} className="mt-6 space-y-4">
           <div>
             <Label htmlFor="name">Name</Label>
