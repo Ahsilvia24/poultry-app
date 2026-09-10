@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { listFarms, getFarmDetail } from "../repos/data";
-import { todayKey } from "../lib/ids";
+import { Pressable, Text, View } from "react-native";
 import { DEFAULT_LFO_CONSUMPTION_RATE } from "../lib/lfo/calculate";
 import { catchWeightBandFromLbs } from "../lib/weight/projections";
 import {
@@ -10,14 +8,11 @@ import {
   parseManualNumber,
 } from "../lib/weight/manualProjection";
 import { colors } from "../theme";
-import { Chip } from "./ui";
 import {
   NumberKeypad,
   appendKeypadDigit,
   backspaceKeypadValue,
 } from "./NumberKeypad";
-
-const MANUAL_TAB = "manual";
 
 type FieldKey = "tf" | "inv" | "chc" | "cr" | "dtk" | "efc";
 
@@ -36,19 +31,6 @@ const FIELDS: Array<{
   { key: "efc", label: "EFC", unit: "", decimal: true, tripleZero: false },
 ];
 
-function daysToKill(fromKey: string, catchKey: string) {
-  const [fy, fm, fd] = fromKey.split("-").map(Number);
-  const [ty, tm, td] = catchKey.split("-").map(Number);
-  return Math.max(
-    0,
-    Math.round(
-      (Date.UTC(ty!, (tm ?? 1) - 1, td ?? 1) -
-        Date.UTC(fy!, (fm ?? 1) - 1, fd ?? 1)) /
-        86400000,
-    ),
-  );
-}
-
 function formatField(key: FieldKey, raw: string) {
   if (raw.trim() === "") return "—";
   const n = Number(raw);
@@ -64,32 +46,14 @@ function formatField(key: FieldKey, raw: string) {
 }
 
 export function WeightProjectionManualTile() {
-  const farms = useMemo(() => listFarms().farms, []);
-  const [tab, setTab] = useState(MANUAL_TAB);
-  const [houseId, setHouseId] = useState("");
   const [tf, setTf] = useState("");
   const [inv, setInv] = useState("");
   const [chc, setChc] = useState("");
   const [cr, setCr] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [dtk, setDtk] = useState("");
   const [efc, setEfc] = useState(String(DEFAULT_EXPECTED_FEED_CONVERSION));
-  const [manualChc, setManualChc] = useState("");
-  const [manualDtk, setManualDtk] = useState("");
   const [active, setActive] = useState<FieldKey | null>(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
-
-  const isManual = tab === MANUAL_TAB;
-  const detail = useMemo(() => {
-    if (isManual || !tab) return null;
-    try {
-      return getFarmDetail(tab);
-    } catch {
-      return null;
-    }
-  }, [isManual, tab]);
-
-  const houses = detail?.houses ?? [];
-  const house = houses.find((h) => h.id === houseId) ?? houses[0] ?? null;
 
   const values: Record<FieldKey, string> = { tf, inv, chc, cr, dtk, efc };
   const setters: Record<FieldKey, (next: string) => void> = {
@@ -100,50 +64,6 @@ export function WeightProjectionManualTile() {
     dtk: setDtk,
     efc: setEfc,
   };
-
-  function houseDefaults(next: (typeof houses)[number] | null) {
-    const head =
-      next?.remainingBirdCount != null ? String(next.remainingBirdCount) : "";
-    const days =
-      next?.catchDate != null ? String(daysToKill(todayKey(), next.catchDate)) : "";
-    setChc(head);
-    setDtk(days);
-  }
-
-  function selectManual() {
-    if (!isManual) {
-      setTab(MANUAL_TAB);
-      setChc(manualChc);
-      setDtk(manualDtk);
-      setActive(null);
-    }
-  }
-
-  function selectFarm(id: string) {
-    if (isManual) {
-      setManualChc(chc);
-      setManualDtk(dtk);
-    }
-    let nextHouse: (typeof houses)[number] | null = null;
-    try {
-      const next = getFarmDetail(id);
-      nextHouse = next.houses[0] ?? null;
-      setHouseId(nextHouse?.id ?? "");
-      houseDefaults(nextHouse);
-    } catch {
-      setHouseId("");
-      houseDefaults(null);
-    }
-    setTab(id);
-    setActive(null);
-  }
-
-  function selectHouse(id: string) {
-    const next = houses.find((h) => h.id === id) ?? null;
-    setHouseId(id);
-    houseDefaults(next);
-    setActive(null);
-  }
 
   const projected = useMemo(() => {
     const totalFeedLbs = parseManualNumber(tf);
@@ -177,41 +97,6 @@ export function WeightProjectionManualTile() {
 
   return (
     <View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginBottom: 4 }}
-        contentContainerStyle={{ flexDirection: "row", alignItems: "center", paddingRight: 8 }}
-      >
-        <Chip label="Custom" active={isManual} onPress={selectManual} />
-        {farms.map((f) => (
-          <Chip
-            key={f.id}
-            label={f.farmName}
-            active={tab === f.id}
-            onPress={() => selectFarm(f.id)}
-          />
-        ))}
-      </ScrollView>
-
-      {!isManual && houses.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: 4 }}
-          contentContainerStyle={{ flexDirection: "row", alignItems: "center", paddingRight: 8 }}
-        >
-          {houses.map((h) => (
-            <Chip
-              key={h.id}
-              label={`House ${h.houseNumber}`}
-              active={(house?.id ?? "") === h.id}
-              onPress={() => selectHouse(h.id)}
-            />
-          ))}
-        </ScrollView>
-      ) : null}
-
       {FIELDS.map((field) => {
         const raw = values[field.key];
         const selected = active === field.key;

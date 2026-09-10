@@ -12,8 +12,6 @@ import {
 import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
 import { cn } from "@/lib/utils";
 
-const MANUAL_TAB = "manual";
-
 type FieldKey = "tf" | "inv" | "chc" | "cr" | "dtk" | "efc";
 
 const FIELDS: Array<{
@@ -31,19 +29,6 @@ const FIELDS: Array<{
   { key: "efc", label: "EFC", unit: "", decimal: true, tripleZero: false },
 ];
 
-export type ManualWeightHouse = {
-  id: string;
-  houseNumber: number;
-  currentHeadCount: number | null;
-  daysToKill: number | null;
-};
-
-export type ManualWeightFarm = {
-  id: string;
-  farmName: string;
-  houses: ManualWeightHouse[];
-};
-
 function formatField(key: FieldKey, raw: string) {
   if (raw.trim() === "") return "—";
   const n = Number(raw);
@@ -56,29 +41,16 @@ function formatField(key: FieldKey, raw: string) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
-export function WeightProjectionManualTile({
-  farms = [],
-}: {
-  farms?: ManualWeightFarm[];
-}) {
+export function WeightProjectionManualTile() {
   const { setKeypadOpen } = useKeypadNav();
-  const [tab, setTab] = useState(MANUAL_TAB);
-  const [houseId, setHouseId] = useState("");
   const [tf, setTf] = useState("");
   const [inv, setInv] = useState("");
   const [chc, setChc] = useState("");
   const [cr, setCr] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [dtk, setDtk] = useState("");
   const [efc, setEfc] = useState(String(DEFAULT_EXPECTED_FEED_CONVERSION));
-  const [manualChc, setManualChc] = useState("");
-  const [manualDtk, setManualDtk] = useState("");
   const [active, setActive] = useState<FieldKey | null>(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
-
-  const isManual = tab === MANUAL_TAB;
-  const farm = farms.find((f) => f.id === tab) ?? null;
-  const houses = farm?.houses ?? [];
-  const house = houses.find((h) => h.id === houseId) ?? houses[0] ?? null;
 
   const values: Record<FieldKey, string> = { tf, inv, chc, cr, dtk, efc };
   const setters: Record<FieldKey, (next: string) => void> = {
@@ -94,40 +66,6 @@ export function WeightProjectionManualTile({
     setKeypadOpen(active != null);
     return () => setKeypadOpen(false);
   }, [active, setKeypadOpen]);
-
-  function applyHouse(next: ManualWeightHouse | null) {
-    setChc(next?.currentHeadCount != null ? String(next.currentHeadCount) : "");
-    setDtk(next?.daysToKill != null ? String(next.daysToKill) : "");
-  }
-
-  function selectManual() {
-    if (!isManual) {
-      setTab(MANUAL_TAB);
-      setChc(manualChc);
-      setDtk(manualDtk);
-      setActive(null);
-    }
-  }
-
-  function selectFarm(id: string) {
-    if (isManual) {
-      setManualChc(chc);
-      setManualDtk(dtk);
-    }
-    const nextFarm = farms.find((f) => f.id === id) ?? null;
-    const nextHouse = nextFarm?.houses[0] ?? null;
-    setTab(id);
-    setHouseId(nextHouse?.id ?? "");
-    applyHouse(nextHouse);
-    setActive(null);
-  }
-
-  function selectHouse(id: string) {
-    const next = houses.find((h) => h.id === id) ?? null;
-    setHouseId(id);
-    applyHouse(next);
-    setActive(null);
-  }
 
   const projected = useMemo(() => {
     const totalFeedLbs = parseManualNumber(tf);
@@ -169,56 +107,6 @@ export function WeightProjectionManualTile({
 
   return (
     <div className="space-y-3">
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-        <button
-          type="button"
-          onClick={selectManual}
-          className={cn(
-            "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
-            isManual ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
-          )}
-        >
-          Custom
-        </button>
-        {farms.map((f) => {
-          const selected = tab === f.id;
-          return (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => selectFarm(f.id)}
-              className={cn(
-                "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
-                selected ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
-              )}
-            >
-              {f.farmName}
-            </button>
-          );
-        })}
-      </div>
-
-      {!isManual && houses.length > 0 ? (
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          {houses.map((h) => {
-            const selected = (house?.id ?? "") === h.id;
-            return (
-              <button
-                key={h.id}
-                type="button"
-                onClick={() => selectHouse(h.id)}
-                className={cn(
-                  "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
-                  selected ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
-                )}
-              >
-                House {h.houseNumber}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-
       <div className="divide-y divide-stone-100">
         {FIELDS.map((field) => {
           const raw = values[field.key];

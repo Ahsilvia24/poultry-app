@@ -235,18 +235,7 @@ export default async function ToolsPage({
           hashId="weight-projections-manual"
           title="Custom Weight Projection"
         >
-          <WeightProjectionManualTile
-            farms={weightFarms.map((farm) => ({
-              id: farm.id,
-              farmName: farm.farmName,
-              houses: farm.houses.map((house) => ({
-                id: house.id,
-                houseNumber: house.houseNumber,
-                currentHeadCount: house.currentHeadCount,
-                daysToKill: house.daysToKill,
-              })),
-            }))}
-          />
+          <WeightProjectionManualTile />
         </ToolsSectionPanel>
 
         <ToolsSectionPanel
