@@ -189,6 +189,8 @@ model Farm {
   generatorLogs GeneratorLog[]
   followUpCompletions FollowUpCompletion[]
   lastFeedOrders LastFeedOrder[]
+  serviceForms ServiceForm[]
+  serviceFormDrafts ServiceFormDraft[]
 
   @@index([userId])
   @@index([farmName])
@@ -278,6 +280,7 @@ model Flock {
   issues         FarmIssue[]
   followUpCompletions FollowUpCompletion[]
   lastFeedOrders LastFeedOrder[]
+  serviceForms ServiceForm[]
 
   @@index([farmId])
   @@index([flockStatus])
@@ -474,6 +477,7 @@ model FarmVisit {
 
   farm  Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
   flock Flock? @relation(fields: [flockId], references: [id], onDelete: SetNull)
+  serviceForms ServiceForm[]
 
   @@index([farmId])
   @@index([visitDate])
@@ -543,4 +547,37 @@ model GeneratorLog {
 
   @@index([farmId])
   @@index([logDate])
+}
+
+/** Completed Service / Placement / Prebrood checklist (TestFlight Service Farm). */
+model ServiceForm {
+  id        String   @id @default(cuid())
+  farmId    String
+  flockId   String?
+  formKind  String
+  formDate  DateTime @db.Date
+  payload   Json
+  visitId   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm  Farm       @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  flock Flock?     @relation(fields: [flockId], references: [id], onDelete: SetNull)
+  visit FarmVisit? @relation(fields: [visitId], references: [id], onDelete: SetNull)
+
+  @@index([farmId])
+  @@index([visitId])
+  @@index([formDate])
+}
+
+/** In-progress Service Farm checklist draft (one per farm + kind). */
+model ServiceFormDraft {
+  farmId    String
+  formKind  String
+  payload   Json
+  updatedAt DateTime @updatedAt
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@id([farmId, formKind])
 }

@@ -244,6 +244,41 @@ export function generatorDeltas(
   };
 }
 
+/** Newest-first logs → last reading for each generator (dates may differ). */
+export function lastLoggedGeneratorHours(
+  logsNewestFirst: Array<Partial<GeneratorHours>>,
+): GeneratorHours {
+  const last: GeneratorHours = emptyGeneratorHours();
+  for (const log of logsNewestFirst) {
+    for (const field of GENERATOR_FIELD_DEFS) {
+      if (last[field.hourKey] != null) continue;
+      const hours = asLoggedHours(log[field.hourKey]);
+      if (hours != null) last[field.hourKey] = hours;
+    }
+  }
+  return last;
+}
+
+/** Space-separated hours in gen 1… order. Skip gens with no log. */
+export function formatLoggedGeneratorHourList(hours: GeneratorHours): string {
+  return GENERATOR_FIELD_DEFS.map((field) => asLoggedHours(hours[field.hourKey]))
+    .filter((n): n is number => n != null)
+    .map((n) => formatGeneratorHours(n))
+    .join("  ");
+}
+
+export function withPrebroodLoggedHours<
+  T extends { generatorHoursCheckedOk?: string; generatorHoursLogged?: string },
+>(form: T, hours: GeneratorHours): T {
+  if (form.generatorHoursCheckedOk !== "yes") {
+    return { ...form, generatorHoursLogged: "" };
+  }
+  return {
+    ...form,
+    generatorHoursLogged: formatLoggedGeneratorHourList(hours),
+  };
+}
+
 /** Compact copy line: 234.5, .5, 235, .5 (reading, run hours × N gens). */
 export function formatGeneratorCopyLine(
   hours: GeneratorHours,

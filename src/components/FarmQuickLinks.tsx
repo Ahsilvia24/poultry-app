@@ -17,6 +17,7 @@ export function FarmQuickLinks({
   completeFlocks?: FlockOption[];
 }) {
   const links: Array<{ key: string; href: string; label: string; external?: boolean }> = [
+    { key: "service", href: `/farms/${farmId}/service`, label: "Service Farm", external: true },
     { key: "generators", href: "#generators", label: "Generator" },
     { key: "visits", href: "#visits", label: "Visits" },
     { key: "issues", href: "#issues", label: "Issues" },

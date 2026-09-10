@@ -81,6 +81,6 @@ export default async function proxy(...args: Parameters<typeof withAuth>) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|apple-touch-icon|apple-icon|icon-192|icon-512|manifest\\.webmanifest|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|apple-touch-icon|apple-icon|icon-192|icon-512|manifest\\.webmanifest|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|pdf)$).*)",
   ],
 };
