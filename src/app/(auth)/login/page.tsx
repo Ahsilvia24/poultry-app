@@ -21,7 +21,7 @@ function LoginForm() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-        <AuthBrand subtitle="Hosted accounts. Farms stay on this email. This is the computer site, not the phone app." />
+        <AuthBrand />
         {resetOk ? (
           <p className="mt-3 text-center text-sm font-medium text-emerald-800">
             Password saved. Sign in with your new password.
