@@ -5,6 +5,7 @@ import { getDashboardData } from "@/lib/dashboard";
 import { Card } from "@/components/ui";
 import { DashboardScheduleImport } from "@/components/DashboardScheduleImport";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
+import { OneDotName } from "@/components/OneDotName";
 import { DashboardFarmCards } from "@/components/DashboardFarmCards";
 import { ScrollableFarmList } from "@/components/ScrollableFarmList";
 import { listScheduleImports } from "@/lib/schedule-imports";
@@ -62,17 +63,17 @@ export default async function DashboardPage() {
                 {(data?.upcomingCatches ?? []).map((c) => (
                   <li
                     key={`${c.farmName}-${c.date}-${c.flockNumber}`}
-                    className="flex min-h-[22px] items-baseline justify-between gap-3"
+                    className="flex min-h-[22px] items-baseline gap-2"
                   >
                     <span className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden font-semibold text-stone-900">
-                      <span className="min-w-0 truncate">{c.farmName}</span>
+                      <OneDotName text={c.farmName} className="flex-1" />
                       {c.flockAgeDays != null ? (
                         <span className="shrink-0 font-normal text-stone-500">
                           {c.flockAgeDays}d
                         </span>
                       ) : null}
                     </span>
-                    <span className="flex shrink-0 items-baseline gap-1.5 text-stone-600">
+                    <span className="ml-auto flex shrink-0 items-baseline gap-1.5 whitespace-nowrap text-stone-600">
                       <span>{format(parseISO(c.date), "EEE, MMM d")}</span>
                       {c.catchTime ? (
                         <span>{compactCatchTimeLabel(c.catchTime)}</span>

@@ -5,6 +5,7 @@ import { format, parseISO } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toggleFollowUpCompletionAction } from "@/app/actions/follow-ups";
+import { OneDotName } from "@/components/OneDotName";
 import { ScrollableFarmList } from "@/components/ScrollableFarmList";
 
 export type FollowUpDueItem = {
@@ -86,7 +87,7 @@ export function FollowUpsDueList({
             return (
               <li
                 key={key}
-                className={`flex min-h-[22px] items-center justify-between gap-3 ${isDone ? "opacity-50" : ""}`}
+                className={`flex min-h-[22px] items-center gap-2 ${isDone ? "opacity-50" : ""}`}
               >
                 <div className="flex min-w-0 flex-1 items-center gap-2.5">
                   <button
@@ -113,7 +114,7 @@ export function FollowUpsDueList({
                       isDone ? "line-through" : ""
                     }`}
                   >
-                    <span className="min-w-0 truncate">{f.farmName}</span>
+                    <OneDotName text={f.farmName} className="flex-1 font-semibold" />
                     {f.flockAgeDays != null ? (
                       <span className="shrink-0 font-normal text-stone-500">
                         {f.flockAgeDays}d
@@ -121,12 +122,12 @@ export function FollowUpsDueList({
                     ) : null}
                   </Link>
                 </div>
-                <span className="flex shrink-0 items-baseline gap-3 text-stone-600">
-                  <span className="min-w-[6.5rem] text-right font-medium text-stone-800">
+                <span className="ml-auto flex shrink-0 items-baseline gap-1.5 text-stone-600">
+                  <span className="whitespace-nowrap font-medium text-stone-800">
                     {f.label}
                   </span>
                   {showDate ? (
-                    <span className="min-w-[5.5rem] text-right text-stone-500">
+                    <span className="whitespace-nowrap text-stone-500">
                       {format(parseISO(f.date), "EEE, MMM d")}
                     </span>
                   ) : null}

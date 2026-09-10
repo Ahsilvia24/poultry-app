@@ -31,6 +31,7 @@ import {
   formatPct,
 } from "../../src/components/ui";
 import { ScheduleImportCard } from "../../src/components/ScheduleImportCard";
+import { OneDotName } from "../../src/components/OneDotName";
 import { compactCatchTimeLabel } from "../../src/lib/time-slots";
 
 type Dashboard = ReturnType<typeof getDashboard>;
@@ -119,7 +120,7 @@ function ScheduleCheckRow({
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 10,
+          gap: 8,
         }}
       >
         <View
@@ -131,18 +132,14 @@ function ScheduleCheckRow({
             flexShrink: 1,
           }}
         >
-          <Text
+          <OneDotName
+            text={item.farmName}
             style={{
               fontWeight: "700",
               color: colors.text,
-              flexShrink: 1,
-              minWidth: 0,
               textDecorationLine: checked ? "line-through" : "none",
             }}
-            numberOfLines={1}
-          >
-            {item.farmName}
-          </Text>
+          />
           {item.flockAgeDays != null ? (
             <Text
               style={{
@@ -164,7 +161,7 @@ function ScheduleCheckRow({
               flexDirection: "row",
               alignItems: "center",
               flexShrink: 0,
-              gap: 10,
+              gap: 6,
             }}
           >
             <Text
@@ -172,8 +169,6 @@ function ScheduleCheckRow({
                 color: colors.muted,
                 fontSize: 13,
                 fontWeight: "600",
-                textAlign: "right",
-                minWidth: 78,
               }}
               numberOfLines={1}
             >
@@ -184,8 +179,6 @@ function ScheduleCheckRow({
                 color: colors.muted,
                 fontSize: 13,
                 fontWeight: "700",
-                textAlign: "right",
-                width: 92,
               }}
               numberOfLines={1}
             >
@@ -423,17 +416,13 @@ export default function DashboardScreen() {
                           alignItems: "baseline",
                         }}
                       >
-                        <Text
+                        <OneDotName
+                          text={c.farmName}
                           style={{
                             fontWeight: "700",
                             color: colors.text,
-                            flexShrink: 1,
-                            minWidth: 0,
                           }}
-                          numberOfLines={1}
-                        >
-                          {c.farmName}
-                        </Text>
+                        />
                         {c.flockAgeDays != null ? (
                           <Text
                             style={{
