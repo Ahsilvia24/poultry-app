@@ -23,9 +23,6 @@ function LoginForm() {
         <h1 className="text-center font-serif text-xl font-extrabold tracking-tight text-emerald-900">
           PoultryTech
         </h1>
-        <p className="mt-2 text-center text-sm text-stone-600">
-          Hosted accounts. Farms stay on this email. This is the computer site, not the phone app.
-        </p>
         {resetOk ? (
           <p className="mt-3 text-center text-sm font-medium text-emerald-800">
             Password saved. Sign in with your new password.
