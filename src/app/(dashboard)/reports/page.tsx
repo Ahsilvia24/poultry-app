@@ -19,7 +19,8 @@ import { ReportsTypeTabs } from "@/components/ReportsTypeTabs";
 import { FieldLogReport } from "@/components/FieldLogReport";
 import { GeneratorLogReport } from "@/components/GeneratorLogReport";
 import { FarmHistoryView } from "@/components/FarmHistoryView";
-import { Button, Card, Input, Label, PageHeader, Select } from "@/components/ui";
+import { ReportDateRangeFields } from "@/components/ReportDateRangeFields";
+import { Button, Card, Label, PageHeader, Select } from "@/components/ui";
 import {
   buildFieldLogWeeks,
   defaultFieldLogRange,
@@ -147,17 +148,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           <ReportsTypeTabs active="field-log" />
         </Suspense>
         <Card className="mb-6">
-          <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <form className="grid gap-3">
             <input type="hidden" name="type" value="field-log" />
+            <ReportDateRangeFields fromLabel="Start" toLabel="Finish" from={from} to={to} />
             <div>
-              <Label htmlFor="from">Start</Label>
-              <Input id="from" name="from" type="date" defaultValue={from} />
-            </div>
-            <div>
-              <Label htmlFor="to">Finish</Label>
-              <Input id="to" name="to" type="date" defaultValue={to} />
-            </div>
-            <div className="flex items-end">
               <Button type="submit">Run report</Button>
             </div>
           </form>
@@ -267,17 +261,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           <ReportsTypeTabs active="generator" />
         </Suspense>
         <Card className="mb-6">
-          <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <form className="grid gap-3">
             <input type="hidden" name="type" value="generator" />
+            <ReportDateRangeFields fromLabel="From" toLabel="To" from={from} to={to} />
             <div>
-              <Label htmlFor="from">From</Label>
-              <Input id="from" name="from" type="date" defaultValue={from} />
-            </div>
-            <div>
-              <Label htmlFor="to">To</Label>
-              <Input id="to" name="to" type="date" defaultValue={to} />
-            </div>
-            <div className="flex items-end">
               <Button type="submit">Apply filters</Button>
             </div>
           </form>
@@ -478,7 +465,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       </Suspense>
 
       <Card className="mb-6">
-        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <form className="grid gap-3">
           <input type="hidden" name="type" value="mortality" />
           <div>
             <Label htmlFor="farmId">Farm</Label>
@@ -491,16 +478,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
               ))}
             </Select>
           </div>
-          <div>
-            <Label htmlFor="from">From</Label>
-            <Input id="from" name="from" type="date" defaultValue={from} />
-            <p className="mt-1 text-xs text-stone-500">{format(fromDate, "MMMM d, yyyy")}</p>
-          </div>
-          <div>
-            <Label htmlFor="to">To</Label>
-            <Input id="to" name="to" type="date" defaultValue={to} />
-            <p className="mt-1 text-xs text-stone-500">{format(toDate, "MMMM d, yyyy")}</p>
-          </div>
+          <ReportDateRangeFields fromLabel="From" toLabel="To" from={from} to={to} />
           <div>
             <Label htmlFor="cause">Cause</Label>
             <Select id="cause" name="cause" defaultValue={selectedCause}>
@@ -512,7 +490,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
               ))}
             </Select>
           </div>
-          <div className="sm:col-span-2 lg:col-span-4">
+          <div>
             <Button type="submit">Apply filters</Button>
           </div>
         </form>
