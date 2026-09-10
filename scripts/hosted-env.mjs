@@ -37,13 +37,17 @@ export function applyHostedEnv(env = process.env) {
     env.DIRECT_URL = postgresCandidates[0] || env.DATABASE_URL || "";
   }
 
-  const authUrl = env.AUTH_URL?.trim() ?? "";
-  if (!authUrl || /poultrytechapp\.com|github\.io/i.test(authUrl)) {
+  if (env.VERCEL_ENV === "production" || /poultrytechapp\.com/i.test(env.AUTH_URL ?? "")) {
+    env.AUTH_URL = "https://poultrytechapp.com";
+  } else if (!env.AUTH_URL?.trim()) {
     if (env.VERCEL_URL?.trim()) {
       env.AUTH_URL = `https://${env.VERCEL_URL.trim()}`;
     } else {
       delete env.AUTH_URL;
     }
+  }
+  if (/github\.io/i.test(env.AUTH_URL ?? "")) {
+    delete env.AUTH_URL;
   }
 
   if (!env.AUTH_SECRET?.trim()) {

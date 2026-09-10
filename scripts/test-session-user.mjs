@@ -9,11 +9,12 @@ assert.throws(() => requireUserId("   "), /Unauthorized/);
 assert.deepEqual(farmOwnedBy("user_1"), { userId: "user_1", deletedAt: null });
 assert.throws(() => farmOwnedBy(undefined), /Unauthorized/);
 
-const vercelEnv = applyHostedEnv({
+const prodEnv = applyHostedEnv({
+  VERCEL_ENV: "production",
   AUTH_URL: "https://poultrytechapp.com",
   VERCEL_URL: "poultry-app.vercel.app",
 });
-assert.equal(vercelEnv.AUTH_URL, "https://poultry-app.vercel.app");
+assert.equal(prodEnv.AUTH_URL, "https://poultrytechapp.com");
 
 const unsetAuth = applyHostedEnv({ VERCEL_URL: "preview.vercel.app" });
 assert.equal(unsetAuth.AUTH_URL, "https://preview.vercel.app");
