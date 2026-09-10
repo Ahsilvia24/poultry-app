@@ -104,6 +104,33 @@ export function HouseCardActions({
     if (mode === "delete") setError(null);
   }, [mode, house.placementDateKey, house.catchDateKey, house.catchTime]);
 
+  useEffect(() => {
+    if (mode === "idle") return;
+    const html = document.documentElement;
+    const body = document.body;
+    const scrollY = window.scrollY;
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+    };
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    return () => {
+      html.style.overflow = prev.htmlOverflow;
+      body.style.overflow = prev.bodyOverflow;
+      body.style.position = prev.bodyPosition;
+      body.style.top = prev.bodyTop;
+      body.style.width = prev.bodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [mode]);
+
   function close() {
     if (pending) return;
     onModeChange("idle");
@@ -150,13 +177,13 @@ export function HouseCardActions({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex bg-black/40"
+      className="fixed inset-0 z-50 flex items-start overflow-hidden overscroll-none bg-black/40"
       onClick={close}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className="flex h-full w-full flex-col bg-white shadow-lg"
+        className="flex max-h-full w-full flex-col overflow-hidden bg-white shadow-lg"
         onClick={(e) => e.stopPropagation()}
         onFocusCapture={(e) => {
           const t = e.target;
@@ -175,7 +202,7 @@ export function HouseCardActions({
               </h3>
               {error ? <p className="mt-2 text-sm text-red-700">{error}</p> : null}
             </div>
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
+            <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-5 py-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor={`edit-houseNumber-${house.id}`}>House number</Label>
@@ -336,7 +363,7 @@ export function HouseCardActions({
                 </div>
               </div>
             </div>
-            <div className="flex shrink-0 flex-wrap gap-2 border-t border-stone-200 px-5 py-4">
+            <div className="flex shrink-0 flex-wrap gap-2 px-5 pt-2 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+1.5rem))]">
               <Button type="submit" disabled={pending} className="flex-1">
                 {pending ? "Saving…" : "Save"}
               </Button>
@@ -354,7 +381,7 @@ export function HouseCardActions({
             </div>
           </form>
         ) : (
-          <div className="flex h-full flex-col px-5 pt-5">
+          <div className="flex flex-col px-5 pt-5">
             <h3 className="text-lg font-bold text-stone-900">
               Delete house {house.houseNumber}?
             </h3>
@@ -362,7 +389,7 @@ export function HouseCardActions({
               This removes the house from the farm. It will no longer appear in your lists.
             </p>
             {error ? <p className="mt-2 text-sm text-red-700">{error}</p> : null}
-            <div className="mt-auto flex flex-wrap gap-2 border-t border-stone-200 py-4">
+            <div className="mt-4 flex flex-wrap gap-2 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+1.5rem))]">
               <Button type="button" variant="danger" disabled={pending} onClick={onDelete} className="flex-1">
                 {pending ? "Deleting…" : "Delete house"}
               </Button>
