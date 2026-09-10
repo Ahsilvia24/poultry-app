@@ -35,7 +35,13 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "PoultryTech",
+      "shortName": "PoultryTech",
+      "description": "Poultry farm management for service technicians",
+      "themeColor": "#047857",
+      "backgroundColor": "#f3efe6",
+      "lang": "en"
     },
     "plugins": [
       [

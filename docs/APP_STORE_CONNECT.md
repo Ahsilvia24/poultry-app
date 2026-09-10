@@ -47,7 +47,17 @@ Paste these into App Store Connect → App Information (replace the old TermsFee
 
 Contact on both pages is **Alex Silvia**, **talentpro024@gmail.com**.
 
-GitHub Pages publishes those files from `docs/privacy.html` and `docs/support.html` after they land on `main`.
+## Owned website (Safari)
+
+The farm app is the GitHub Pages site you own:
+
+**https://ahsilvia24.github.io/poultry-app/**
+
+Privacy and support stay at `/privacy/` and `/support/`. Safari: Share → Add to Home Screen. Farm data lives in that browser until you use Settings → Export data.
+
+To put a domain you buy (for example `yourname.com`) on this same site, add it under GitHub → repo Settings → Pages → Custom domain, then point the domain’s DNS at GitHub Pages. After that, rebuild with `EXPO_BASE_URL` empty so asset paths are `/` instead of `/poultry-app`.
+
+GitHub Pages publishes the Expo web export from `mobile/` plus `docs/privacy.html` and `docs/support.html`.
 
 ## App Review notes (paste into the submission)
 
@@ -60,7 +70,7 @@ Demo access for review (not shown in the app UI):
 
 Sign-in fields ship empty. There is no remote feature flag, no account-gated extra mode, and no content loaded after approval. All farm data stays in on-device SQLite.
 
-Reports is a visible tab. There is no phone-data export or backup-import feature. Import offers Placement and Catch Schedule only. Sample farms are included so Review can exercise the product; they are not labeled as demo or unfinished. The previous TermsFeed privacy URL was a generator page that did not describe this app; the live policy is https://ahsilvia24.github.io/poultry-app/privacy/
+Reports is a visible tab. Settings → Export data saves a JSON backup of farms on this device or in Safari. Import offers Placement and Catch Schedule only. Sample farms are included so Review can exercise the product; they are not labeled as demo or unfinished. The previous TermsFeed privacy URL was a generator page that did not describe this app; the live policy is https://ahsilvia24.github.io/poultry-app/privacy/
 
 This binary is iPhone-only. We are not claiming iPad support.
 

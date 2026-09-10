@@ -1,12 +1,16 @@
-name: Deploy App Store legal pages
+name: Deploy PoultryTech website
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - cursor/safari-website-e015
     paths:
+      - "mobile/**"
       - "docs/privacy.html"
       - "docs/support.html"
-      - "docs/app-store/index.html"
+      - "docs/app-store/**"
+      - "scripts/stage-github-pages.sh"
       - ".github/workflows/deploy-legal-pages.yml"
   workflow_dispatch:
 
@@ -27,12 +31,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Stage static site
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install and export Expo web
+        working-directory: mobile
+        env:
+          CI: "1"
+          EXPO_NO_TELEMETRY: "1"
+          EXPO_BASE_URL: /poultry-app
         run: |
-          mkdir -p _site/privacy _site/support
-          cp docs/privacy.html _site/privacy/index.html
-          cp docs/support.html _site/support/index.html
-          cp docs/app-store/index.html _site/index.html
+          npm ci
+          npx expo export --platform web
+      - name: Stage static site
+        run: bash scripts/stage-github-pages.sh
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
