@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateSettingsAction } from "@/app/actions/ops";
+import { signOutAction } from "@/app/actions/auth";
 import { Button, Card, Input, Label, PageHeader } from "@/components/ui";
 import { FarmOrderStepper } from "@/components/FarmOrderStepper";
 import { FARM_ORDER_OPTIONS, parseFarmOrder } from "@/lib/farm-order";
@@ -149,6 +150,15 @@ export default async function SettingsPage() {
           <Button type="submit">Save settings</Button>
         </form>
       </Card>
+
+      <form action={signOutAction} className="mt-8 flex justify-center">
+        <button
+          type="submit"
+          className="px-3 py-4 text-sm font-bold text-stone-800 underline"
+        >
+          Sign out
+        </button>
+      </form>
     </div>
   );
 }

@@ -8,7 +8,6 @@ import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { DashboardFarmCards } from "@/components/DashboardFarmCards";
 import { ScrollableFarmList } from "@/components/ScrollableFarmList";
 import { listScheduleImports } from "@/lib/schedule-imports";
-import { signOutAction } from "@/app/actions/auth";
 import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
@@ -26,32 +25,17 @@ export default async function DashboardPage() {
   return (
     <div>
       <div className="mb-3 md:mb-6">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-xl font-bold tracking-tight text-stone-900 md:text-3xl">
-            Dashboard
-          </h1>
-          <div className="flex items-center gap-3">
-            {session.user.email ? (
-              <p className="hidden max-w-[14rem] truncate text-xs font-medium text-stone-500 sm:block">
-                {session.user.email}
-              </p>
-            ) : null}
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                className="text-sm font-semibold text-stone-700 underline"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
-        </div>
+        <h1 className="text-xl font-bold tracking-tight text-stone-900 md:text-3xl">
+          Dashboard
+        </h1>
       </div>
 
       {!data ? (
         <Card>
           <p className="text-sm font-semibold text-stone-800">Could not load farms for this login.</p>
-          <p className="mt-1 text-sm text-stone-500">Sign out, then sign in with your email and try again.</p>
+          <p className="mt-1 text-sm text-stone-500">
+            Open Settings, sign out, then sign in with your email and try again.
+          </p>
         </Card>
       ) : null}
 
