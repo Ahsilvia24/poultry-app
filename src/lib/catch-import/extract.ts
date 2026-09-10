@@ -39,10 +39,16 @@ async function extractPdfText(bytes: Buffer): Promise<string> {
     }
 
     if (pdfTextNeedsOcr(text)) {
-      const ocr = await ocrPdfToText(bytes);
-      if (ocr.trim()) return ocr;
+      try {
+        const ocr = await ocrPdfToText(bytes);
+        if (ocr.trim()) return ocr;
+      } catch {
+        // Hosted deploys cannot OCR; keep whatever text we have.
+      }
     }
     return text;
+  } catch {
+    return "";
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => undefined);
   }
@@ -70,7 +76,12 @@ export async function extractCatchRows(input: {
     mime.includes("spreadsheet") ||
     mime.includes("excel")
   ) {
-    const workbook = XLSX.read(input.bytes, { type: "buffer", cellDates: true });
+    let workbook: XLSX.WorkBook;
+    try {
+      workbook = XLSX.read(input.bytes, { type: "buffer", cellDates: true });
+    } catch {
+      return [];
+    }
     const first = workbook.SheetNames[0];
     if (!first) return [];
     const sheet = XLSX.utils.sheet_to_json<(string | number | Date | null)[]>(
@@ -88,6 +99,10 @@ export async function extractCatchRows(input: {
     );
   }
 
-  const text = await extractPdfText(input.bytes);
-  return parseCatchPdfText(text);
+  try {
+    const text = await extractPdfText(input.bytes);
+    return parseCatchPdfText(text);
+  } catch {
+    return [];
+  }
 }

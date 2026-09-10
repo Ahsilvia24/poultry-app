@@ -24,6 +24,9 @@ export async function ocrPdfToText(
   bytes: Buffer,
   opts: { maxPages?: number; dpi?: number } = {},
 ): Promise<string> {
+  // Vercel images do not ship pdftoppm / tesseract. Skip instead of throwing.
+  if (process.env.VERCEL) return "";
+
   const maxPages = opts.maxPages ?? 6;
   const dpi = opts.dpi ?? 200;
   const dir = await mkdtemp(path.join(tmpdir(), "pdf-ocr-"));
@@ -56,6 +59,8 @@ export async function ocrPdfToText(
     }
 
     return parts.join("\n\n");
+  } catch {
+    return "";
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => undefined);
   }

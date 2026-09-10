@@ -2,7 +2,6 @@
 
 import { randomUUID } from "crypto";
 import path from "path";
-import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth-helpers";
 import { scheduleImportTypeLabel } from "@/lib/schedule-import-types";
 import {
@@ -77,16 +76,18 @@ export async function uploadScheduleImportAction(
   const storedName = `${importType}-${id}${ext || ""}`;
   const bytes = Buffer.from(await file.arrayBuffer());
 
-  const example = await saveScheduleImport({
-    id,
-    importType,
-    originalName,
-    storedName,
-    mimeType: file.type || "application/octet-stream",
-    bytes,
-    uploadedByUserId: user.id,
-  });
-
-  revalidatePath("/");
-  return { ok: true, example, sizeLabel: formatBytes(example.sizeBytes) };
+  try {
+    const example = await saveScheduleImport({
+      id,
+      importType,
+      originalName,
+      storedName,
+      mimeType: file.type || "application/octet-stream",
+      bytes,
+      uploadedByUserId: user.id,
+    });
+    return { ok: true, example, sizeLabel: formatBytes(example.sizeBytes) };
+  } catch {
+    return { ok: false, error: "Could not save that file. Try again." };
+  }
 }

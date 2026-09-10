@@ -65,12 +65,19 @@ export async function previewCatchImportAction(
 
   let rows = await loadParsedRows(importId);
   if (!rows) {
-    const bytes = await readFile(found.absolutePath);
-    rows = await extractCatchRows({
-      bytes,
-      fileName: found.meta.originalName,
-      mimeType: found.meta.mimeType,
-    });
+    try {
+      const bytes = await readFile(found.absolutePath);
+      rows = await extractCatchRows({
+        bytes,
+        fileName: found.meta.originalName,
+        mimeType: found.meta.mimeType,
+      });
+    } catch {
+      return {
+        ok: false,
+        error: "Could not read that catch file. Try again, or use a PDF or spreadsheet.",
+      };
+    }
     if (rows.length === 0) {
       return {
         ok: false,
@@ -78,7 +85,11 @@ export async function previewCatchImportAction(
           "Could not read catch rows yet. Use a Kill/Catch Schedule PDF or spreadsheet with Catch Date / Ending Kill Date, Farm Name, and House.",
       };
     }
-    await writeFile(parsedPath(importId), JSON.stringify(rows), "utf8");
+    try {
+      await writeFile(parsedPath(importId), JSON.stringify(rows), "utf8");
+    } catch {
+      // Preview can still succeed if the cache write fails.
+    }
   }
 
   const existing = await prisma.farm.findMany({

@@ -71,12 +71,19 @@ export async function previewPlacementImportAction(
 
   let rows = await loadParsedRows(importId);
   if (!rows) {
-    const bytes = await readFile(found.absolutePath);
-    rows = await extractPlacementRows({
-      bytes,
-      fileName: found.meta.originalName,
-      mimeType: found.meta.mimeType,
-    });
+    try {
+      const bytes = await readFile(found.absolutePath);
+      rows = await extractPlacementRows({
+        bytes,
+        fileName: found.meta.originalName,
+        mimeType: found.meta.mimeType,
+      });
+    } catch {
+      return {
+        ok: false,
+        error: "Could not read that placement file. Try again, or use a PDF or spreadsheet.",
+      };
+    }
     if (rows.length === 0) {
       return {
         ok: false,
@@ -84,7 +91,11 @@ export async function previewPlacementImportAction(
           "Could not read any placement rows. Use a Weekly Chick Placement PDF or a spreadsheet with Date Placed, Farm Code, Farm Name, Flock Code, House No, and Number Sent.",
       };
     }
-    await writeFile(parsedPath(importId), JSON.stringify(rows), "utf8");
+    try {
+      await writeFile(parsedPath(importId), JSON.stringify(rows), "utf8");
+    } catch {
+      // Preview can still succeed if the cache write fails.
+    }
   }
 
   const existing = await prisma.farm.findMany({
