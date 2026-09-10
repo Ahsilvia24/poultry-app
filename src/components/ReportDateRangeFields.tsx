@@ -1,7 +1,8 @@
-import { Input, Label } from "@/components/ui";
+"use client";
 
-const dateInputClass =
-  "min-h-11 px-2 text-base [color-scheme:light] [&::-webkit-date-and-time-value]:text-left";
+import { useState } from "react";
+import { DateKeyField } from "@/components/DateKeyField";
+import { Label } from "@/components/ui";
 
 export function ReportDateRangeFields({
   fromLabel,
@@ -14,28 +15,29 @@ export function ReportDateRangeFields({
   from: string;
   to: string;
 }) {
+  const [fromValue, setFromValue] = useState(from);
+  const [toValue, setToValue] = useState(to);
+
   return (
     <div className="grid grid-cols-2 gap-2">
-      <div className="min-w-0">
+      <div className="min-w-0 overflow-hidden">
         <Label htmlFor="from">{fromLabel}</Label>
-        <Input
+        <DateKeyField
           id="from"
           name="from"
-          type="date"
-          compact
-          defaultValue={from}
-          className={dateInputClass}
+          label={fromLabel}
+          value={fromValue}
+          onChange={setFromValue}
         />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 overflow-hidden">
         <Label htmlFor="to">{toLabel}</Label>
-        <Input
+        <DateKeyField
           id="to"
           name="to"
-          type="date"
-          compact
-          defaultValue={to}
-          className={dateInputClass}
+          label={toLabel}
+          value={toValue}
+          onChange={setToValue}
         />
       </div>
     </div>

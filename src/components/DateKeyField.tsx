@@ -68,9 +68,9 @@ export function DateKeyField({
           setCursor(new Date(selected.getFullYear(), selected.getMonth(), 1));
           setOpen(true);
         }}
-        className="flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border border-stone-300 bg-white px-2.5 text-left text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+        className="flex min-h-11 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-stone-300 bg-white px-2.5 text-left text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
       >
-        <span className={value ? "text-stone-900" : "text-stone-400"}>
+        <span className={`min-w-0 truncate ${value ? "text-stone-900" : "text-stone-400"}`}>
           {value ? formatInputDate(value) : "Select date"}
         </span>
         <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-stone-400">

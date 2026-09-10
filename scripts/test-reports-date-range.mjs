@@ -8,9 +8,9 @@ const page = readFileSync(join(root, "src/app/(dashboard)/reports/page.tsx"), "u
 const fields = readFileSync(join(root, "src/components/ReportDateRangeFields.tsx"), "utf8");
 
 assert.match(fields, /grid grid-cols-2/);
-assert.match(fields, /type="date"/);
-assert.match(fields, /compact/);
-assert.match(fields, /px-2/);
+assert.match(fields, /DateKeyField/);
+assert.match(fields, /min-w-0 overflow-hidden/);
+assert.doesNotMatch(fields, /type="date"/);
 assert.doesNotMatch(fields, /min-h-\[52px\]/);
 
 assert.match(page, /ReportDateRangeFields fromLabel="Start" toLabel="Finish"/);
