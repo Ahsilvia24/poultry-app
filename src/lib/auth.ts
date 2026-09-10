@@ -78,16 +78,20 @@ export const auth: AuthFn = ((...args: unknown[]) => {
     return (nextAuth.auth as (...a: unknown[]) => unknown)(...args);
   }
   return (async () => {
-    const session = await nextAuth.auth();
-    if (isAuthDevBypassEnabled()) {
-      const bypass = await resolveDevBypassSession();
-      if (bypass?.user?.id) {
-        if (!session?.user?.id || session.user.id !== bypass.user.id) {
-          return bypass;
+    try {
+      const session = await nextAuth.auth();
+      if (isAuthDevBypassEnabled()) {
+        const bypass = await resolveDevBypassSession();
+        if (bypass?.user?.id) {
+          if (!session?.user?.id || session.user.id !== bypass.user.id) {
+            return bypass;
+          }
         }
       }
+      if (!session?.user?.id) return null;
+      return session;
+    } catch {
+      return null;
     }
-    if (!session?.user?.id) return null;
-    return session;
   })();
 }) as AuthFn;
