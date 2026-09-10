@@ -81,9 +81,10 @@ The Expo GitHub Pages site stores farms in the browser. Per-email accounts live 
 
 1. Create a free [Vercel](https://vercel.com) account and import `Ahsilvia24/poultry-app`.
 2. Add a Postgres database. **Prisma Postgres** is fine (Vercel Storage → Prisma, or Neon). If Vercel already created `POSTGRES_URL`, `PRISMA_DATABASE_URL`, and `DATABASE_URL`, keep those — do not add extra copies.
-3. `AUTH_URL` defaults to `https://poultrytechapp.com`. `AUTH_SECRET` is filled in on Vercel if you did not add one.
+3. `AUTH_SECRET` is filled in on Vercel if you did not add one. Do not set `AUTH_URL` to poultrytechapp.com until Wix DNS points at Vercel.
 4. Do **not** set `AUTH_DEV_BYPASS` on Production.
-5. In Vercel → Domains, add `poultrytechapp.com`. Replace the GitHub A / `www` CNAME records in Wix with the values Vercel shows.
+5. Forgot password emails need `RESEND_API_KEY` (Resend free tier). Optional `EMAIL_FROM`.
+6. In Vercel → Domains, add `poultrytechapp.com`. In Wix DNS, replace the GitHub A / `www` CNAME records with the values Vercel shows (often A `@` → `76.76.21.21` and CNAME `www` → `cname.vercel-dns.com`).
 
 New techs use **Register**. Farms are scoped to `User.id`. Empty accounts start with no farms. Do not run `prisma/seed.ts` on production (that seed is demo data).
 
