@@ -1,5 +1,6 @@
 import { getDb } from "../db";
 import { newId, todayKey, addDaysKey } from "../lib/ids";
+import { planAttachMissingHousesToActiveFlock } from "../lib/attachHouseToActiveFlock";
 import {
   birdAgeFromPlacement,
   daysSincePlacement,
@@ -688,6 +689,8 @@ export function getFarmDetail(farmId: string) {
   }>("SELECT * FROM farms WHERE id = ?", [farmId]);
   if (!farm) throw new Error("Farm not found");
 
+  ensureHousesOnActiveFlock(farmId);
+
   const activeFlocksRaw = db.getAllSync<{
     id: string;
     flock_number: string;
@@ -1135,6 +1138,7 @@ export function getMortalityForm(date: string, farmId?: string) {
     farms: farms
       .filter((f) => !farmId || f.id === farmId)
       .map((f) => {
+        ensureHousesOnActiveFlock(f.id);
         const flocks = db.getAllSync<{ id: string; flock_number: string; placement_date: string }>(
           `SELECT id, flock_number, placement_date FROM flocks
            WHERE farm_id = ? AND flock_status = 'ACTIVE'
@@ -3215,7 +3219,89 @@ export function createHouse(
     farmId,
   ]);
 
+  ensureHousesOnActiveFlock(farmId);
+
   return { id };
+}
+
+/**
+ * Houses added after a flock is created never got a house_flocks row, so
+ * mortality skipped them. Attach any missing houses to the active flock.
+ */
+export function ensureHousesOnActiveFlock(farmId: string) {
+  const db = getDb();
+  const houses = db.getAllSync<{ id: string; house_number: number }>(
+    `SELECT id, house_number FROM houses
+     WHERE farm_id = ? AND deleted_at IS NULL
+     ORDER BY house_number ASC`,
+    [farmId],
+  );
+  const flocks = db.getAllSync<{
+    id: string;
+    placement_date: string;
+    projected_catch_date: string | null;
+    actual_catch_date: string | null;
+  }>(
+    `SELECT id, placement_date, projected_catch_date, actual_catch_date
+     FROM flocks
+     WHERE farm_id = ? AND flock_status = 'ACTIVE'
+     ORDER BY placement_date ASC, flock_number ASC`,
+    [farmId],
+  );
+  if (flocks.length === 0 || houses.length === 0) return 0;
+
+  const hfs = db.getAllSync<{
+    house_id: string;
+    flock_id: string;
+    placement_date: string | null;
+    catch_date: string | null;
+    catch_time: string | null;
+  }>(
+    `SELECT hf.house_id, hf.flock_id, hf.placement_date, hf.catch_date, hf.catch_time
+     FROM house_flocks hf
+     JOIN flocks f ON f.id = hf.flock_id
+     WHERE f.farm_id = ? AND f.flock_status = 'ACTIVE'`,
+    [farmId],
+  );
+
+  const plans = planAttachMissingHousesToActiveFlock({
+    houses: houses.map((h) => ({ id: h.id, houseNumber: h.house_number })),
+    houseFlocks: hfs.map((hf) => ({
+      houseId: hf.house_id,
+      flockId: hf.flock_id,
+      placementDate: hf.placement_date,
+      catchDate: hf.catch_date,
+      catchTime: hf.catch_time,
+    })),
+    activeFlocks: flocks.map((flock) => ({
+      id: flock.id,
+      placementDate: flock.placement_date,
+      projectedCatchDate: flock.projected_catch_date,
+      actualCatchDate: flock.actual_catch_date,
+    })),
+  });
+
+  for (const plan of plans) {
+    const existing = db.getFirstSync<{ id: string }>(
+      "SELECT id FROM house_flocks WHERE flock_id = ? AND house_id = ?",
+      [plan.flockId, plan.houseId],
+    );
+    if (existing) continue;
+    db.runSync(
+      `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date, catch_time)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        newId("hf"),
+        plan.flockId,
+        plan.houseId,
+        plan.placedBirdCount,
+        plan.placementDate,
+        plan.catchDate,
+        plan.catchTime,
+      ],
+    );
+  }
+  return plans.length;
 }
 
 /** Sync flock-level placement/catch from its house_flocks; remove empty ACTIVE flocks. */

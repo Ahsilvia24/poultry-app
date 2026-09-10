@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ensureActiveFlockHouseFlocksForUser } from "@/lib/ensureActiveFlockHouseFlocks";
 import { PageHeader } from "@/components/ui";
 import {
   MortalityEntryForm,
@@ -15,6 +16,9 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
   if (!session?.user?.id) redirect("/login");
 
   const params = await searchParams;
+
+  // Houses added after the flock was created never got a HouseFlock row.
+  await ensureActiveFlockHouseFlocksForUser(session.user.id);
 
   const farmsRaw = await prisma.farm.findMany({
     where: { userId: session.user.id, deletedAt: null, isActive: true },

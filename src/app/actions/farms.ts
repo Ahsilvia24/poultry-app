@@ -11,6 +11,7 @@ import { ungroupNumber } from "@/lib/grouped-number";
 import { normalizeHalfHourTime } from "@/lib/time-slots";
 import { isHouseInPropagateRange } from "@/lib/housePropagate";
 import { planFlockNumberChange } from "@/lib/houseFlockNumber";
+import { ensureActiveFlockHouseFlocks } from "@/lib/ensureActiveFlockHouseFlocks";
 
 function emptyToNull(value: FormDataEntryValue | null) {
   const s = String(value ?? "").trim();
@@ -316,9 +317,12 @@ export async function createHouseAction(farmId: string, formData: FormData) {
     await tx.house.create({ data: { farmId, ...parsed.data } });
     const count = await tx.house.count({ where: { farmId, deletedAt: null } });
     await tx.farm.update({ where: { id: farmId }, data: { numberOfHouses: count } });
+    await ensureActiveFlockHouseFlocks(farmId, { db: tx });
   });
 
   revalidatePath(`/farms/${farmId}`);
+  revalidatePath("/mortality");
+  revalidatePath("/");
 }
 
 export async function updateHouseAction(farmId: string, houseId: string, formData: FormData) {

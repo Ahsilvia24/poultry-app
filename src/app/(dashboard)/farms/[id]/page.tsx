@@ -14,6 +14,7 @@ import {
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
 import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
+import { ensureActiveFlockHouseFlocks } from "@/lib/ensureActiveFlockHouseFlocks";
 import { createFlockAction } from "@/app/actions/farms";
 import { HouseCard } from "@/components/HouseCard";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
@@ -36,6 +37,8 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
   const { id } = await params;
   const today = new Date();
+
+  await ensureActiveFlockHouseFlocks(id, { userId: session.user.id });
 
   const farm = await prisma.farm.findFirst({
     where: { id, userId: session.user.id, deletedAt: null },
