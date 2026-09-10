@@ -41,6 +41,7 @@ const withAuth = auth((req) => {
     bypass &&
     !req.auth &&
     !isDevBypassLogin &&
+    !isHomeScreenAsset(pathname) &&
     !pathname.startsWith("/api/auth") &&
     !pathname.startsWith("/support") &&
     !pathname.startsWith("/privacy")
