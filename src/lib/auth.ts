@@ -87,7 +87,7 @@ export const auth: AuthFn = ((...args: unknown[]) => {
         }
       }
     }
-    if (session?.user?.id) return session;
-    return (await resolveDevBypassSession()) ?? session;
+    if (!session?.user?.id) return null;
+    return session;
   })();
 }) as AuthFn;

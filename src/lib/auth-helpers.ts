@@ -1,12 +1,11 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/session-user";
 
 export async function requireUser() {
   const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
-  return session.user;
+  requireUserId(session?.user?.id);
+  return session!.user;
 }
 
 export async function getOwnedFarm(farmId: string, userId: string) {

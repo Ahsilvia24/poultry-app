@@ -26,6 +26,11 @@ export default async function DashboardPage() {
             Dashboard
           </h1>
           <div className="flex items-center gap-3">
+            {session.user.email ? (
+              <p className="hidden max-w-[14rem] truncate text-xs font-medium text-stone-500 sm:block">
+                {session.user.email}
+              </p>
+            ) : null}
             <form action={signOutAction}>
               <button
                 type="submit"

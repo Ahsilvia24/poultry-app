@@ -10,6 +10,7 @@ import {
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/session-user";
 import type { FarmCardSummary, ThresholdSettings } from "@/types";
 import { differenceInCalendarDays } from "date-fns";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
@@ -35,6 +36,7 @@ export async function getUserThresholds(userId: string): Promise<ThresholdSettin
 }
 
 export async function getDashboardData(userId: string) {
+  userId = requireUserId(userId);
   const today = new Date();
   const todayKey = format(today, "yyyy-MM-dd");
   const [thresholds, orderRow] = await Promise.all([
