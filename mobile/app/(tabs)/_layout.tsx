@@ -54,7 +54,7 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
         borderTopColor: colors.border,
         backgroundColor: "#fff",
         paddingTop: 6,
-        paddingBottom: Math.max(insets.bottom, 6),
+        paddingBottom: insets.bottom + 10,
         paddingHorizontal: 4,
       }}
     >

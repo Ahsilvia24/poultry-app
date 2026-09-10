@@ -122,7 +122,7 @@ export function AppNav() {
 
       {keypadOpen ? null : (
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white md:hidden">
-          <div className="flex items-center gap-1 px-1 pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))]">
+          <div className="flex items-center gap-1 px-1 pt-1.5 pb-[calc(0.7rem+env(safe-area-inset-bottom,0px))]">
             {tabs.map((item) => {
               const active = isActive(pathname, item.href);
               return (
