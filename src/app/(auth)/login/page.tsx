@@ -20,6 +20,9 @@ export default function LoginPage() {
         <h1 className="text-center font-serif text-xl font-extrabold tracking-tight text-emerald-900">
           PoultryTech
         </h1>
+        <p className="mt-2 text-center text-sm text-stone-600">
+          Hosted accounts. Farms stay on this email. This is the computer site, not the phone app.
+        </p>
         <form action={onSubmit} className="mt-6 space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
