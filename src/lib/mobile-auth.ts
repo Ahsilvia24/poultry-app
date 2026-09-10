@@ -1,10 +1,12 @@
 import { SignJWT, jwtVerify } from "jose";
 import { NextRequest } from "next/server";
+import { applyHostedEnv } from "@/lib/hosted-env";
 import { prisma } from "@/lib/prisma";
 
 const encoder = new TextEncoder();
 
 function getSecret() {
+  applyHostedEnv();
   const secret = process.env.AUTH_SECRET || process.env.MOBILE_JWT_SECRET;
   if (!secret) throw new Error("AUTH_SECRET is not set");
   return encoder.encode(secret);

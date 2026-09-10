@@ -3,7 +3,10 @@ import Credentials from "next-auth/providers/credentials";
 import type { Session } from "next-auth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { applyHostedEnv } from "@/lib/hosted-env";
 import { prisma } from "@/lib/prisma";
+
+applyHostedEnv();
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -33,6 +36,7 @@ async function resolveDevBypassSession(): Promise<Session | null> {
 
 const nextAuth = NextAuth({
   trustHost: true,
+  secret: process.env.AUTH_SECRET,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",

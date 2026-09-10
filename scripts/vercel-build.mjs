@@ -1,24 +1,43 @@
 import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { applyHostedEnv } from "./hosted-env.mjs";
 
-function run(command, args) {
+applyHostedEnv();
+
+const bin = (name) => path.join(process.cwd(), "node_modules", ".bin", name);
+
+function run(command, args, { allowFail = false } = {}) {
   const result = spawnSync(command, args, { stdio: "inherit", env: process.env });
-  if (result.status !== 0) {
+  if (result.status !== 0 && !allowFail) {
     process.exit(result.status ?? 1);
   }
+  return result.status ?? 1;
 }
 
-run("npx", ["prisma", "generate"]);
+function isPostgresUrl(value) {
+  return /^(postgres(ql)?:\/\/)/i.test(value?.trim() ?? "");
+}
 
-const databaseUrl = process.env.DATABASE_URL?.trim();
-if (databaseUrl) {
-  if (!process.env.DIRECT_URL?.trim()) {
-    process.env.DIRECT_URL = databaseUrl;
+run(bin("prisma"), ["generate"]);
+
+const migrateUrl = isPostgresUrl(process.env.DIRECT_URL)
+  ? process.env.DIRECT_URL
+  : isPostgresUrl(process.env.DATABASE_URL)
+    ? process.env.DATABASE_URL
+    : "";
+
+if (migrateUrl) {
+  process.env.DIRECT_URL = migrateUrl;
+  const migrateStatus = run(bin("prisma"), ["migrate", "deploy"], { allowFail: true });
+  if (migrateStatus !== 0) {
+    console.warn(
+      "prisma migrate deploy failed. Continuing with next build. Check POSTGRES_URL is a postgres:// string.",
+    );
   }
-  run("npx", ["prisma", "migrate", "deploy"]);
 } else {
   console.warn(
-    "DATABASE_URL is not set. Skipping database migrate. Add DATABASE_URL and DIRECT_URL on Vercel → Settings → Environment Variables (Production), then Redeploy.",
+    "No postgres:// URL on POSTGRES_URL, DATABASE_URL, or PRISMA_DATABASE_URL. Skipping migrate.",
   );
 }
 
-run("npx", ["next", "build"]);
+run(bin("next"), ["build"]);
