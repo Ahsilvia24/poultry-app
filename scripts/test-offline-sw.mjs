@@ -29,6 +29,7 @@ assert.match(html, /serviceWorker\.register\("\/sw\.js"/);
 
 const layout = read("src/app/layout.tsx");
 assert.match(layout, /RegisterServiceWorker/);
+assert.match(layout, /serviceWorker\.register\("\/sw\.js"/);
 
 const proxy = read("src/proxy.ts");
 assert.ok(proxy.includes(String.raw`sw\\.js`), "proxy matcher should skip sw.js");
