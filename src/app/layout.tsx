@@ -13,7 +13,7 @@ const serif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: "PoultryTech — Farm Management",
+  title: "PoultryTech",
   description: "Poultry farm management for service technicians",
   applicationName: "PoultryTech",
   manifest: "/manifest.webmanifest",
