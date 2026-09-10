@@ -24,6 +24,7 @@ cp "$root/mobile/public/icon-192.png" "$site/icon-192.png"
 cp "$root/mobile/public/icon-512.png" "$site/icon-512.png"
 cp "$root/mobile/public/favicon.png" "$site/favicon.png"
 cp "$root/mobile/public/manifest.json" "$site/manifest.json"
+cp "$root/mobile/public/sw.js" "$site/sw.js"
 # Deep links on GitHub Pages fall through to 404.html.
 cp "$site/index.html" "$site/404.html"
 # Apex custom domain — GitHub Pages reads this from the published site.

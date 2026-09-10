@@ -28,7 +28,7 @@ assert.match(layout, /manifest\.webmanifest/);
 const proxy = readFileSync(join(root, "src/proxy.ts"), "utf8");
 assert.match(proxy, /apple-touch-icon/);
 assert.ok(
-  proxy.includes(String.raw`.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$`),
+  proxy.includes(String.raw`.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|wasm|mjs|css|woff2)$`),
   "proxy matcher should skip image files",
 );
 assert.match(proxy, /isHomeScreenAsset/);

@@ -84,6 +84,6 @@ export const config = {
      * Skip static files so Safari can fetch the orange-chicken home-screen
      * icon without being sent to /login.
      */
-    "/((?!_next/static|_next/image|favicon.ico|apple-touch-icon|apple-icon|icon-192|icon-512|manifest\\.webmanifest|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|apple-touch-icon|apple-icon|icon-192|icon-512|sw\\.js|manifest\\.webmanifest|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|wasm|mjs|css|woff2)$).*)",
   ],
 };
