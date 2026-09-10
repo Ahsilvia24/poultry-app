@@ -89,7 +89,7 @@ export function HouseCard({
 }) {
   const router = useRouter();
   const { setKeypadOpen } = useKeypadNav();
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(true);
   const [mode, setMode] = useState<"idle" | "edit" | "delete">("idle");
   const [tempOpen, setTempOpen] = useState(false);
   const [tempValue, setTempValue] = useState("");

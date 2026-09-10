@@ -464,7 +464,7 @@ export default function FarmDetailScreen() {
   const [addingHouse, setAddingHouse] = useState<AddHouseDraft | null>(null);
   const [addHouseError, setAddHouseError] = useState<string | null>(null);
   const [addHouseSaving, setAddHouseSaving] = useState(false);
-  const [expandedHouses, setExpandedHouses] = useState<Set<string>>(new Set());
+  const [collapsedHouses, setCollapsedHouses] = useState<Set<string>>(new Set());
   const [editingFarm, setEditingFarm] = useState<FarmEditDraft | null>(null);
   const [farmEditError, setFarmEditError] = useState<string | null>(null);
   const [farmSaving, setFarmSaving] = useState(false);
@@ -1330,7 +1330,7 @@ export default function FarmDetailScreen() {
         </View>
 
         {data.houses.map((h) => {
-          const detailsOpen = expandedHouses.has(h.id);
+          const detailsOpen = !collapsedHouses.has(h.id);
           return (
             <View
               key={`${farm.id}-${h.id}`}
@@ -1544,7 +1544,7 @@ export default function FarmDetailScreen() {
 
                 <Pressable
                   onPress={() =>
-                    setExpandedHouses((prev) => {
+                    setCollapsedHouses((prev) => {
                       const next = new Set(prev);
                       if (next.has(h.id)) next.delete(h.id);
                       else next.add(h.id);
