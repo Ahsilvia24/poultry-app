@@ -16,6 +16,12 @@ describe("planFlockNumberChange", () => {
     });
   });
 
+  it("treats the same ID with different casing as the same flock", () => {
+    assert.deepEqual(planFlockNumberChange({ ...base, nextNumber: "3852hv2" }), {
+      type: "keep",
+    });
+  });
+
   it("creates a new flock when others still share this one", () => {
     assert.deepEqual(planFlockNumberChange({ ...base, nextNumber: "3852HV9" }), {
       type: "create",

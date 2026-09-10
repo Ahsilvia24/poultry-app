@@ -22,6 +22,8 @@ import {
   splitScheduleForDashboard,
   todayScheduleRankFromLabel,
 } from "@/lib/visits/schedule";
+import { dedupeScheduleRows, scheduleGroupsForFarm } from "@/lib/flockIdentity";
+import { ensureActiveFlockHouseFlocksForUser } from "@/lib/ensureActiveFlockHouseFlocks";
 
 export async function getUserThresholds(userId: string): Promise<ThresholdSettings> {
   const settings = await prisma.userSettings.findUnique({ where: { userId } });
@@ -37,6 +39,7 @@ export async function getUserThresholds(userId: string): Promise<ThresholdSettin
 
 export async function getDashboardData(userId: string) {
   userId = requireUserId(userId);
+  await ensureActiveFlockHouseFlocksForUser(userId);
   const today = new Date();
   const todayKey = format(today, "yyyy-MM-dd");
   const [thresholds, orderRow] = await Promise.all([
@@ -147,6 +150,47 @@ export async function getDashboardData(userId: string) {
     const weeklyTotals = new Map<number, number>();
     const farmCompletions = completedByFarm.get(farm.id) ?? new Map();
 
+    const scheduleGroups = scheduleGroupsForFarm(
+      activeFlocks.map((flock) => ({
+        id: flock.id,
+        flockNumber: flock.flockNumber,
+        placementDate: format(startOfDay(flock.placementDate), "yyyy-MM-dd"),
+        catchDate: format(resolveCatchDate(flock), "yyyy-MM-dd"),
+        houses: flock.houseFlocks.map((hf) => ({
+          placementDate: hf.placementDate
+            ? format(startOfDay(hf.placementDate), "yyyy-MM-dd")
+            : null,
+          catchDate: hf.catchDate ? format(startOfDay(hf.catchDate), "yyyy-MM-dd") : null,
+        })),
+      })),
+    );
+    for (const group of scheduleGroups) {
+      const [py, pm, pd] = group.placementDate.split("-").map(Number);
+      const [cy, cm, cd] = group.catchDate.split("-").map(Number);
+      const placement = new Date(py!, (pm ?? 1) - 1, pd ?? 1, 12, 0, 0, 0);
+      const groupCatch = new Date(cy!, (cm ?? 1) - 1, cd ?? 1, 12, 0, 0, 0);
+      const schedule = buildFlockVisitSchedule(placement, groupCatch);
+      const { today: dueToday, upcoming } = splitScheduleForDashboard(
+        schedule,
+        today,
+        horizon,
+        farmCompletions,
+      );
+      const toRow = (due: (typeof dueToday)[number]): FollowUpRow => ({
+        farmId: farm.id,
+        flockId: group.flockId,
+        farmName: farm.farmName,
+        date: due.dateKey,
+        label: due.label,
+        flockNumber: group.flockNumber,
+        completed: due.completed,
+        // Current flock age today (can be negative pre-place), not the event's target age.
+        flockAgeDays: differenceInCalendarDays(today, placement),
+      });
+      for (const due of dueToday) todaysSchedule.push(toRow(due));
+      for (const due of upcoming) upcomingSchedule.push(toRow(due));
+    }
+
     for (const flock of activeFlocks) {
       const flockCatchDates = new Map<
         string,
@@ -198,47 +242,6 @@ export async function getDashboardData(userId: string) {
 
       const catchDate = resolveCatchDate(flock);
       const daysUntilCatch = Math.max(0, differenceInCalendarDays(catchDate, today));
-
-      // Distinct house place/catch dates so staggered houses each drive service days.
-      const scheduleGroups = new Map<string, { placement: Date; catchDate: Date }>();
-      for (const hf of flock.houseFlocks) {
-        const placement = startOfDay(hf.placementDate ?? flock.placementDate);
-        const houseCatch = hf.catchDate
-          ? startOfDay(hf.catchDate)
-          : resolveCatchDate(flock);
-        const key = `${format(placement, "yyyy-MM-dd")}|${format(houseCatch, "yyyy-MM-dd")}`;
-        if (!scheduleGroups.has(key)) {
-          scheduleGroups.set(key, { placement, catchDate: houseCatch });
-        }
-      }
-      if (scheduleGroups.size === 0) {
-        scheduleGroups.set("flock", {
-          placement: startOfDay(flock.placementDate),
-          catchDate,
-        });
-      }
-      for (const group of scheduleGroups.values()) {
-        const schedule = buildFlockVisitSchedule(group.placement, group.catchDate);
-        const { today: dueToday, upcoming } = splitScheduleForDashboard(
-          schedule,
-          today,
-          horizon,
-          farmCompletions,
-        );
-        const toRow = (due: (typeof dueToday)[number]): FollowUpRow => ({
-          farmId: farm.id,
-          flockId: flock.id,
-          farmName: farm.farmName,
-          date: due.dateKey,
-          label: due.label,
-          flockNumber: flock.flockNumber,
-          completed: due.completed,
-          // Current flock age today (can be negative pre-place), not the event's target age.
-          flockAgeDays: differenceInCalendarDays(today, group.placement),
-        });
-        for (const due of dueToday) todaysSchedule.push(toRow(due));
-        for (const due of upcoming) upcomingSchedule.push(toRow(due));
-      }
 
       for (const hf of flock.houseFlocks) {
         activeHouseCount += 1;
@@ -306,13 +309,15 @@ export async function getDashboardData(userId: string) {
     });
   }
 
-  todaysSchedule.sort(
+  const todaysDeduped = dedupeScheduleRows(todaysSchedule);
+  const upcomingDeduped = dedupeScheduleRows(upcomingSchedule);
+  todaysDeduped.sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
       todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
       a.farmName.localeCompare(b.farmName),
   );
-  upcomingSchedule.sort(
+  upcomingDeduped.sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
       todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
@@ -349,8 +354,8 @@ export async function getDashboardData(userId: string) {
     upcomingCatches: upcomingCatches
       .filter((c) => c.date >= todayCatchKey && c.date <= catchHorizonEnd)
       .sort((a, b) => a.date.localeCompare(b.date) || a.farmName.localeCompare(b.farmName)),
-    todaysSchedule: todaysSchedule.slice(0, 30),
-    upcomingSchedule: upcomingSchedule.slice(0, 40),
+    todaysSchedule: todaysDeduped.slice(0, 30),
+    upcomingSchedule: upcomingDeduped.slice(0, 40),
     recentCleanouts: recentCleanouts.map((c) => ({
       farmName: c.farm.farmName,
       date: format(c.eventDate, "yyyy-MM-dd"),

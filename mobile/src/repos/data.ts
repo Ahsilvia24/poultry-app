@@ -2,6 +2,11 @@ import { getDb } from "../db";
 import { newId, todayKey, addDaysKey } from "../lib/ids";
 import { planAttachMissingHousesToActiveFlock } from "../lib/attachHouseToActiveFlock";
 import {
+  dedupeScheduleRows,
+  planMergeDuplicateFlocks,
+  scheduleGroupsForFarm,
+} from "../lib/flockIdentity";
+import {
   birdAgeFromPlacement,
   daysSincePlacement,
   calcPercentage,
@@ -41,7 +46,7 @@ import {
 } from "../lib/catchImport/parse";
 import { getFarmOrder } from "../lib/appSettings";
 import { isHouseInPropagateRange } from "../lib/housePropagate";
-import { planFlockNumberChange } from "../lib/houseFlockNumber";
+import { normalizeFlockNumber, planFlockNumberChange } from "../lib/houseFlockNumber";
 import { sortFarmsByOrder } from "../lib/farmOrder";
 import { VISIT_TYPE_LABELS } from "../lib/visits";
 import { normalizedLoggedTemp } from "../lib/serviceForms/liveHouseMetrics";
@@ -321,6 +326,7 @@ export function getDashboard() {
     farmId: string;
     flockId: string;
     farmName: string;
+    flockNumber: string;
     flockAgeDays: number | null;
     date: string;
     label: string;
@@ -366,12 +372,14 @@ export function getDashboard() {
   }
 
   for (const farm of farms) {
+    ensureHousesOnActiveFlock(farm.id);
     const flocks = db.getAllSync<{
       id: string;
+      flock_number: string;
       placement_date: string;
       projected_catch_date: string | null;
     }>(
-      `SELECT id, placement_date, projected_catch_date FROM flocks
+      `SELECT id, flock_number, placement_date, projected_catch_date FROM flocks
        WHERE farm_id = ? AND flock_status = 'ACTIVE'
        ORDER BY placement_date ASC`,
       [farm.id],
@@ -534,37 +542,30 @@ export function getDashboard() {
     const projectedMortality = hasProjection ? projectedMortSum : null;
 
     const farmCompletions = completedByFarm.get(farm.id) ?? new Map();
-    // Build schedule from distinct house place/catch dates (staggered houses),
-    // falling back to flock-level dates when no houses are attached yet.
-    const scheduleGroups = new Map<
-      string,
-      { flockId: string; placement: string; catchDate: string }
-    >();
+    const housesByFlock = new Map<string, typeof hfs>();
     for (const hf of hfs) {
-      const placement = hf.placement_date?.trim() || hf.flock_placement;
-      const catchDate =
-        hf.catch_date?.trim() || hf.flock_catch || addDaysKey(placement, 52);
-      const key = `${hf.flock_id}|${placement}|${catchDate}`;
-      if (!scheduleGroups.has(key)) {
-        scheduleGroups.set(key, {
-          flockId: hf.flock_id,
-          placement,
-          catchDate,
-        });
-      }
+      const list = housesByFlock.get(hf.flock_id) ?? [];
+      list.push(hf);
+      housesByFlock.set(hf.flock_id, list);
     }
-    if (scheduleGroups.size === 0) {
-      for (const fl of flocks) {
+    const scheduleGroups = scheduleGroupsForFarm(
+      flocks.map((fl) => {
+        const flockHouses = housesByFlock.get(fl.id) ?? [];
         const catchDate = fl.projected_catch_date ?? addDaysKey(fl.placement_date, 52);
-        scheduleGroups.set(fl.id, {
-          flockId: fl.id,
-          placement: fl.placement_date,
+        return {
+          id: fl.id,
+          flockNumber: fl.flock_number,
+          placementDate: fl.placement_date,
           catchDate,
-        });
-      }
-    }
-    for (const group of scheduleGroups.values()) {
-      const schedule = buildFlockVisitSchedule(group.placement, group.catchDate);
+          houses: flockHouses.map((hf) => ({
+            placementDate: hf.placement_date,
+            catchDate: hf.catch_date?.trim() || hf.flock_catch || null,
+          })),
+        };
+      }),
+    );
+    for (const group of scheduleGroups) {
+      const schedule = buildFlockVisitSchedule(group.placementDate, group.catchDate);
       const { today: dueToday, upcoming } = splitScheduleForDashboard(
         schedule,
         today,
@@ -575,8 +576,9 @@ export function getDashboard() {
         farmId: farm.id,
         flockId: group.flockId,
         farmName: farm.farmName,
+        flockNumber: group.flockNumber,
         // Current flock age today (can be negative pre-place), not the event's target age.
-        flockAgeDays: daysSincePlacement(group.placement, today),
+        flockAgeDays: daysSincePlacement(group.placementDate, today),
         date: v.dateKey,
         label: v.label,
         completed: v.completed,
@@ -637,13 +639,15 @@ export function getDashboard() {
     });
   }
 
-  todaysSchedule.sort(
+  const todaysDeduped = dedupeScheduleRows(todaysSchedule);
+  const upcomingDeduped = dedupeScheduleRows(upcomingSchedule);
+  todaysDeduped.sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
       todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
       a.farmName.localeCompare(b.farmName),
   );
-  upcomingSchedule.sort(
+  upcomingDeduped.sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
       todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
@@ -669,8 +673,8 @@ export function getDashboard() {
     },
     farmCards,
     upcomingCatches: upcomingCatchesSorted,
-    todaysSchedule,
-    upcomingSchedule,
+    todaysSchedule: todaysDeduped,
+    upcomingSchedule: upcomingDeduped,
   };
 }
 
@@ -2439,12 +2443,21 @@ export function createFlock(input: {
     }
   }
 
-  const id = newId("flock");
-  db.runSync(
-    `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
-     VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
-    [id, input.farmId, flockNumber, input.placementDate, projectedCatchDate],
-  );
+  const existingSame = db
+    .getAllSync<{ id: string; flock_number: string }>(
+      `SELECT id, flock_number FROM flocks
+       WHERE farm_id = ? AND flock_status = 'ACTIVE'`,
+      [input.farmId],
+    )
+    .find((f) => normalizeFlockNumber(f.flock_number) === normalizeFlockNumber(flockNumber));
+  const id = existingSame?.id ?? newId("flock");
+  if (!existingSame) {
+    db.runSync(
+      `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
+       VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
+      [id, input.farmId, flockNumber, input.placementDate, projectedCatchDate],
+    );
+  }
   for (const hp of placements) {
     const housePlacement = hp.placementDate?.trim() || input.placementDate;
     const houseCatch = addDaysKey(housePlacement, marketAge);
@@ -3236,19 +3249,76 @@ export function ensureHousesOnActiveFlock(farmId: string) {
      ORDER BY house_number ASC`,
     [farmId],
   );
-  const flocks = db.getAllSync<{
+  let flocks = db.getAllSync<{
     id: string;
+    flock_number: string;
     placement_date: string;
     projected_catch_date: string | null;
     actual_catch_date: string | null;
   }>(
-    `SELECT id, placement_date, projected_catch_date, actual_catch_date
+    `SELECT id, flock_number, placement_date, projected_catch_date, actual_catch_date
      FROM flocks
      WHERE farm_id = ? AND flock_status = 'ACTIVE'
      ORDER BY placement_date ASC, flock_number ASC`,
     [farmId],
   );
-  if (flocks.length === 0 || houses.length === 0) return 0;
+  if (flocks.length === 0) return 0;
+
+  const houseCounts = new Map<string, number>();
+  for (const flock of flocks) {
+    const count =
+      db.getFirstSync<{ c: number }>(
+        "SELECT COUNT(*) as c FROM house_flocks WHERE flock_id = ?",
+        [flock.id],
+      )?.c ?? 0;
+    houseCounts.set(flock.id, count);
+  }
+  const mergePlans = planMergeDuplicateFlocks(
+    flocks.map((flock) => ({
+      id: flock.id,
+      flockNumber: flock.flock_number,
+      houseCount: houseCounts.get(flock.id) ?? 0,
+      placementDate: flock.placement_date,
+    })),
+  );
+  for (const merge of mergePlans) {
+    for (const absorbId of merge.absorbIds) {
+      const absorbHfs = db.getAllSync<{ id: string; house_id: string }>(
+        "SELECT id, house_id FROM house_flocks WHERE flock_id = ?",
+        [absorbId],
+      );
+      for (const hf of absorbHfs) {
+        const clash = db.getFirstSync<{ id: string }>(
+          "SELECT id FROM house_flocks WHERE flock_id = ? AND house_id = ?",
+          [merge.keepId, hf.house_id],
+        );
+        if (clash) {
+          db.runSync("DELETE FROM house_flocks WHERE id = ?", [hf.id]);
+        } else {
+          db.runSync("UPDATE house_flocks SET flock_id = ? WHERE id = ?", [
+            merge.keepId,
+            hf.id,
+          ]);
+        }
+      }
+      db.runSync("DELETE FROM flocks WHERE id = ? AND flock_status = 'ACTIVE'", [absorbId]);
+    }
+    flocks = db.getAllSync<{
+      id: string;
+      flock_number: string;
+      placement_date: string;
+      projected_catch_date: string | null;
+      actual_catch_date: string | null;
+    }>(
+      `SELECT id, flock_number, placement_date, projected_catch_date, actual_catch_date
+       FROM flocks
+       WHERE farm_id = ? AND flock_status = 'ACTIVE'
+       ORDER BY placement_date ASC, flock_number ASC`,
+      [farmId],
+    );
+  }
+
+  if (houses.length === 0) return 0;
 
   const hfs = db.getAllSync<{
     house_id: string;
@@ -3378,6 +3448,22 @@ function resolveActiveFlockForPlacement(
   flockNumber?: string | null,
 ): { id: string; placement_date: string; projected_catch_date: string | null } {
   const db = getDb();
+  const preferred = flockNumber?.trim();
+  if (preferred) {
+    const byNumber = db
+      .getAllSync<{
+        id: string;
+        flock_number: string;
+        placement_date: string;
+        projected_catch_date: string | null;
+      }>(
+        `SELECT id, flock_number, placement_date, projected_catch_date FROM flocks
+         WHERE farm_id = ? AND flock_status = 'ACTIVE'`,
+        [farmId],
+      )
+      .find((f) => normalizeFlockNumber(f.flock_number) === normalizeFlockNumber(preferred));
+    if (byNumber) return byNumber;
+  }
   const existing = db.getFirstSync<{
     id: string;
     placement_date: string;
@@ -3460,11 +3546,17 @@ function assignHouseFlockNumber(
     "SELECT flock_number FROM flocks WHERE id = ?",
     [currentFlockId],
   );
-  const existing = db.getFirstSync<{ id: string }>(
-    `SELECT id FROM flocks
-     WHERE farm_id = ? AND flock_number = ? AND flock_status = 'ACTIVE'`,
-    [farmId, nextNumber],
-  );
+  const existing = db
+    .getAllSync<{ id: string; flock_number: string }>(
+      `SELECT id, flock_number FROM flocks
+       WHERE farm_id = ? AND flock_status = 'ACTIVE'`,
+      [farmId],
+    )
+    .find(
+      (f) =>
+        f.id !== currentFlockId &&
+        normalizeFlockNumber(f.flock_number) === normalizeFlockNumber(nextNumber),
+    );
   const others =
     db.getFirstSync<{ c: number }>(
       `SELECT COUNT(*) as c

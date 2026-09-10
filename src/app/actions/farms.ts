@@ -10,7 +10,7 @@ import { farmSchema, createFarmSchema, flockSchema, houseSchema } from "@/lib/va
 import { ungroupNumber } from "@/lib/grouped-number";
 import { normalizeHalfHourTime } from "@/lib/time-slots";
 import { isHouseInPropagateRange } from "@/lib/housePropagate";
-import { planFlockNumberChange } from "@/lib/houseFlockNumber";
+import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
 import { ensureActiveFlockHouseFlocks } from "@/lib/ensureActiveFlockHouseFlocks";
 
 function emptyToNull(value: FormDataEntryValue | null) {
@@ -52,10 +52,16 @@ async function assignHouseFlockNumber(
     where: { id: currentFlockId },
     select: { flockNumber: true },
   });
-  const existing = await prisma.flock.findFirst({
-    where: { farmId, flockNumber: nextNumber, flockStatus: "ACTIVE", deletedAt: null },
-    select: { id: true },
+  const activeNumbers = await prisma.flock.findMany({
+    where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+    select: { id: true, flockNumber: true },
   });
+  const existing =
+    activeNumbers.find(
+      (f) =>
+        f.id !== currentFlockId &&
+        normalizeFlockNumber(f.flockNumber) === normalizeFlockNumber(nextNumber),
+    ) ?? null;
   const others = await prisma.houseFlock.count({
     where: {
       flockId: currentFlockId,
@@ -655,6 +661,15 @@ export async function createFlockAction(farmId: string, formData: FormData) {
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid flock" };
 
+  const existingSameNumber = (
+    await prisma.flock.findMany({
+      where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+      select: { id: true, flockNumber: true, initialBirdCount: true },
+    })
+  ).find(
+    (f) => normalizeFlockNumber(f.flockNumber) === normalizeFlockNumber(parsed.data.flockNumber),
+  );
+
   if (housePlacements.length > 0) {
     const occupied = await prisma.houseFlock.findFirst({
       where: {
@@ -671,34 +686,60 @@ export async function createFlockAction(farmId: string, formData: FormData) {
   }
 
   try {
-    await prisma.flock.create({
-      data: {
-        farmId,
-        flockNumber: parsed.data.flockNumber,
-        flockName: parsed.data.flockName,
-        placementDate: new Date(parsed.data.placementDate),
-        projectedCatchDate: parsed.data.projectedCatchDate
-          ? new Date(parsed.data.projectedCatchDate)
-          : null,
-        actualCatchDate: parsed.data.actualCatchDate ? new Date(parsed.data.actualCatchDate) : null,
-        processingPlant: parsed.data.processingPlant,
-        birdType: parsed.data.birdType,
-        sex: parsed.data.sex,
-        initialBirdCount: totalPlaced > 0 ? totalPlaced : 1,
-        flockStatus: parsed.data.flockStatus,
-        targetMarketAge: parsed.data.targetMarketAge,
-        targetMarketWeight: parsed.data.targetMarketWeight,
-        litterConditionAtPlacement: parsed.data.litterConditionAtPlacement,
-        notes: parsed.data.notes,
-        houseFlocks: {
-          create: housePlacements.map((hp) => ({
+    if (existingSameNumber) {
+      if (housePlacements.length > 0) {
+        await prisma.houseFlock.createMany({
+          data: housePlacements.map((hp) => ({
+            flockId: existingSameNumber.id,
             houseId: hp.houseId,
             placedBirdCount: hp.placedBirdCount,
             processingPlant: hp.processingPlant,
           })),
+          skipDuplicates: true,
+        });
+        const sum = await prisma.houseFlock.aggregate({
+          where: { flockId: existingSameNumber.id },
+          _sum: { placedBirdCount: true },
+        });
+        await prisma.flock.update({
+          where: { id: existingSameNumber.id },
+          data: {
+            initialBirdCount:
+              sum._sum.placedBirdCount ??
+              existingSameNumber.initialBirdCount + totalPlaced,
+          },
+        });
+      }
+    } else {
+      await prisma.flock.create({
+        data: {
+          farmId,
+          flockNumber: parsed.data.flockNumber,
+          flockName: parsed.data.flockName,
+          placementDate: new Date(parsed.data.placementDate),
+          projectedCatchDate: parsed.data.projectedCatchDate
+            ? new Date(parsed.data.projectedCatchDate)
+            : null,
+          actualCatchDate: parsed.data.actualCatchDate ? new Date(parsed.data.actualCatchDate) : null,
+          processingPlant: parsed.data.processingPlant,
+          birdType: parsed.data.birdType,
+          sex: parsed.data.sex,
+          initialBirdCount: totalPlaced > 0 ? totalPlaced : 1,
+          flockStatus: parsed.data.flockStatus,
+          targetMarketAge: parsed.data.targetMarketAge,
+          targetMarketWeight: parsed.data.targetMarketWeight,
+          litterConditionAtPlacement: parsed.data.litterConditionAtPlacement,
+          notes: parsed.data.notes,
+          houseFlocks: {
+            create: housePlacements.map((hp) => ({
+              houseId: hp.houseId,
+              placedBirdCount: hp.placedBirdCount,
+              processingPlant: hp.processingPlant,
+            })),
+          },
         },
-      },
-    });
+      });
+    }
   } catch {
     return { error: "Could not create flock. Try again." };
   }
