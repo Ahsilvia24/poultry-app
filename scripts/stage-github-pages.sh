@@ -19,6 +19,7 @@ cp "$root/docs/privacy.html" "$site/privacy/index.html"
 cp "$root/docs/support.html" "$site/support/index.html"
 # Safari Add to Home Screen looks for these at the site root.
 cp "$root/mobile/public/apple-touch-icon.png" "$site/apple-touch-icon.png"
+cp "$root/mobile/public/apple-touch-icon-precomposed.png" "$site/apple-touch-icon-precomposed.png"
 cp "$root/mobile/public/icon-192.png" "$site/icon-192.png"
 cp "$root/mobile/public/icon-512.png" "$site/icon-512.png"
 cp "$root/mobile/public/favicon.png" "$site/favicon.png"

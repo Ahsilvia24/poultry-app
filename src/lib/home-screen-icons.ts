@@ -3,6 +3,7 @@ export const HOME_SCREEN_ICON_PATHS = [
   "/favicon.ico",
   "/favicon.png",
   "/apple-touch-icon.png",
+  "/apple-touch-icon-precomposed.png",
   "/icon-192.png",
   "/icon-512.png",
   "/manifest.webmanifest",

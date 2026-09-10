@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -40,7 +41,14 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={[styles.content, { maxWidth: 480, width: "100%", alignSelf: "center" }]}>
-          <Text style={[styles.brand, { textAlign: "center", width: "100%" }]}>PoultryTech</Text>
+          <Image
+            source={require("../assets/icon.png")}
+            style={{ width: 88, height: 88, alignSelf: "center" }}
+            accessibilityLabel="PoultryTech"
+          />
+          <Text style={[styles.brand, { textAlign: "center", width: "100%", marginTop: 12 }]}>
+            PoultryTech
+          </Text>
 
           <Card style={{ marginTop: 24 }}>
             <Text style={styles.label}>Email</Text>

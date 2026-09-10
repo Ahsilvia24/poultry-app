@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { loginAction } from "@/app/actions/auth";
+import { AuthBrand } from "@/components/AuthBrand";
 import { Button, Input, Label } from "@/components/ui";
 
 function LoginForm() {
@@ -20,12 +21,7 @@ function LoginForm() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-        <h1 className="text-center font-serif text-xl font-extrabold tracking-tight text-emerald-900">
-          PoultryTech
-        </h1>
-        <p className="mt-2 text-center text-sm text-stone-600">
-          Hosted accounts. Farms stay on this email. This is the computer site, not the phone app.
-        </p>
+        <AuthBrand subtitle="Hosted accounts. Farms stay on this email. This is the computer site, not the phone app." />
         {resetOk ? (
           <p className="mt-3 text-center text-sm font-medium text-emerald-800">
             Password saved. Sign in with your new password.

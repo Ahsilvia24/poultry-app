@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { forgotPasswordAction } from "@/app/actions/auth";
+import { AuthBrand } from "@/components/AuthBrand";
 import { Button, Input, Label } from "@/components/ui";
 
 export default function ForgotPasswordPage() {
@@ -22,9 +23,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
-        <p className="font-serif text-xl font-extrabold tracking-tight text-emerald-900">
-          PoultryTech
-        </p>
+        <AuthBrand />
         <h1 className="mt-1.5 text-xl font-semibold">Forgot password</h1>
         {sent ? (
           <p className="mt-4 text-sm text-stone-600">

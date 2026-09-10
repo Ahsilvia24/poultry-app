@@ -80,6 +80,10 @@ export default async function proxy(...args: Parameters<typeof withAuth>) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|favicon.png|apple-touch-icon.png|icon-192.png|icon-512.png|manifest.webmanifest|manifest.json|icon$|apple-icon$).*)",
+    /*
+     * Skip static files so Safari can fetch the orange-chicken home-screen
+     * icon without being sent to /login.
+     */
+    "/((?!_next/static|_next/image|favicon.ico|apple-touch-icon|apple-icon|icon-192|icon-512|manifest\\.webmanifest|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
