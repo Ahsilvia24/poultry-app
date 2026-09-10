@@ -11,7 +11,7 @@ export type { ScheduleImportMeta, ScheduleImportType };
 export { formatBytes, isScheduleImportType };
 
 export const SCHEDULE_IMPORTS_DIR = path.join(
-  process.cwd(),
+  process.env.VERCEL ? "/tmp" : process.cwd(),
   "uploads",
   "schedule-imports",
 );
@@ -31,8 +31,17 @@ export async function ensureScheduleImportsDir() {
 export async function listScheduleImports(
   type?: ScheduleImportType,
 ): Promise<ScheduleImportMeta[]> {
-  await ensureScheduleImportsDir();
-  const names = await readdir(SCHEDULE_IMPORTS_DIR);
+  try {
+    await ensureScheduleImportsDir();
+  } catch {
+    return [];
+  }
+  let names: string[] = [];
+  try {
+    names = await readdir(SCHEDULE_IMPORTS_DIR);
+  } catch {
+    return [];
+  }
   const metas: ScheduleImportMeta[] = [];
 
   for (const name of names) {

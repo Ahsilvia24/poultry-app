@@ -15,7 +15,12 @@ export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const data = await getDashboardData(session.user.id);
+  let data;
+  try {
+    data = await getDashboardData(session.user.id);
+  } catch {
+    data = null;
+  }
   const scheduleImports = await listScheduleImports();
 
   return (
@@ -43,27 +48,34 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {!data ? (
+        <Card>
+          <p className="text-sm font-semibold text-stone-800">Could not load farms for this login.</p>
+          <p className="mt-1 text-sm text-stone-500">Sign out, then sign in with your email and try again.</p>
+        </Card>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <Card>
           <p className="text-sm font-semibold text-stone-500">Today&apos;s Schedule</p>
-          <FollowUpsDueList items={data.todaysSchedule} showDate />
+          <FollowUpsDueList items={data?.todaysSchedule ?? []} showDate />
         </Card>
         <Card>
           <p className="text-sm font-semibold text-stone-500">Upcoming Visits</p>
-          {data.upcomingSchedule.length === 0 ? (
+          {(data?.upcomingSchedule.length ?? 0) === 0 ? (
             <p className="mt-2 text-sm text-stone-500">None in the next 10 days</p>
           ) : (
-            <FollowUpsDueList items={data.upcomingSchedule} showDate />
+            <FollowUpsDueList items={data?.upcomingSchedule ?? []} showDate />
           )}
         </Card>
         <Card>
           <p className="text-sm font-semibold text-stone-500">Upcoming Catches</p>
-          {data.upcomingCatches.length === 0 ? (
+          {(data?.upcomingCatches.length ?? 0) === 0 ? (
             <p className="mt-2 text-sm text-stone-500">None</p>
           ) : (
             <ScrollableFarmList className="mt-2 pr-2">
               <ul className="space-y-1.5 text-sm">
-                {data.upcomingCatches.map((c) => (
+                {(data?.upcomingCatches ?? []).map((c) => (
                   <li
                     key={`${c.farmName}-${c.date}-${c.flockNumber}`}
                     className="flex h-5 items-baseline justify-between gap-3"
@@ -92,7 +104,7 @@ export default async function DashboardPage() {
       </div>
 
       <h2 className="mt-8 text-xl font-bold">Active Farms</h2>
-      <DashboardFarmCards farms={data.farmCards} />
+      <DashboardFarmCards farms={data?.farmCards ?? []} />
 
       <h2 className="mt-8 text-xl font-bold">Import</h2>
       <div className="mt-3">

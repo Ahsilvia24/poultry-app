@@ -20,7 +20,7 @@ function requestOrigin(req: NextRequest) {
   return req.nextUrl.origin;
 }
 
-export default auth((req) => {
+const withAuth = auth((req) => {
   const bypass = isAuthDevBypassEnabled();
   const isLoggedIn = !!req.auth || bypass;
   const { pathname } = req.nextUrl;
@@ -67,6 +67,14 @@ export default auth((req) => {
 
   return NextResponse.next();
 });
+
+export default async function proxy(...args: Parameters<typeof withAuth>) {
+  try {
+    return await withAuth(...args);
+  } catch {
+    return NextResponse.next();
+  }
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
