@@ -19,6 +19,13 @@ const nextConfig: NextConfig = {
     "/*": ["./mobile/**/*"],
   },
   experimental: {
+    // Homescreen PWA tab switches were refetching every dynamic page (Next 15+
+    // default dynamic staleTime is 0). Keep a short client cache so Dashboard /
+    // Farms / LFO / Reports / Tools feel instant when flipping between them.
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
     serverActions: {
       bodySizeLimit: "20mb",
       allowedOrigins: [

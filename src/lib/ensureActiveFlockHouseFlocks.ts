@@ -163,7 +163,10 @@ export async function ensureActiveFlockHouseFlocksForUser(userId: string): Promi
     where: { userId, deletedAt: null, isActive: true },
     select: { id: true },
   });
-  for (const farm of farms) {
-    await ensureActiveFlockHouseFlocks(farm.id, { userId });
+  const concurrency = 6;
+  for (let i = 0; i < farms.length; i += concurrency) {
+    await Promise.all(
+      farms.slice(i, i + concurrency).map((farm) => ensureActiveFlockHouseFlocks(farm.id, { userId })),
+    );
   }
 }

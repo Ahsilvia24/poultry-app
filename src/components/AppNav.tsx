@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useKeypadNav } from "@/components/KeypadNavContext";
 
@@ -92,7 +93,33 @@ function isActive(pathname: string, href: string) {
 
 export function AppNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { keypadOpen } = useKeypadNav();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    for (const item of desktopNav) {
+      router.prefetch(item.href);
+    }
+  }, [router]);
+
+  function tabIsActive(href: string) {
+    if (pendingHref) return pendingHref === href;
+    return isActive(pathname, href);
+  }
+
+  function prefetchTab(href: string) {
+    router.prefetch(href);
+  }
+
+  function onTabPress(href: string) {
+    router.prefetch(href);
+    if (!isActive(pathname, href)) setPendingHref(href);
+  }
 
   return (
     <>
@@ -100,11 +127,15 @@ export function AppNav() {
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
           <nav className="flex items-center gap-1">
             {desktopNav.map((item) => {
-              const active = isActive(pathname, item.href);
+              const active = tabIsActive(item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch
+                  onPointerEnter={() => prefetchTab(item.href)}
+                  onTouchStart={() => onTabPress(item.href)}
+                  onClick={() => onTabPress(item.href)}
                   className={cn(
                     "rounded-lg px-3 py-2 text-base font-semibold",
                     active
@@ -124,11 +155,15 @@ export function AppNav() {
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white md:hidden">
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-[calc(0.7rem+env(safe-area-inset-bottom,0px))]">
             {tabs.map((item) => {
-              const active = isActive(pathname, item.href);
+              const active = tabIsActive(item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch
+                  onPointerEnter={() => prefetchTab(item.href)}
+                  onTouchStart={() => onTabPress(item.href)}
+                  onClick={() => onTabPress(item.href)}
                   className={cn(
                     "flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-[10px] border px-0.5 py-1.5 text-center text-[10px] font-extrabold leading-none text-stone-700",
                     active ? selectedTabClass : "border-transparent",

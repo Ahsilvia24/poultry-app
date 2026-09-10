@@ -42,38 +42,85 @@ export async function getDashboardData(userId: string) {
   await ensureActiveFlockHouseFlocksForUser(userId);
   const today = new Date();
   const todayKey = format(today, "yyyy-MM-dd");
-  const [thresholds, orderRow] = await Promise.all([
-    getUserThresholds(userId),
-    prisma.userSettings.findUnique({ where: { userId }, select: { farmOrder: true } }),
-  ]);
-  const farmOrder = parseFarmOrder(orderRow?.farmOrder);
-
-  const farms = await prisma.farm.findMany({
-    where: { userId, deletedAt: null, isActive: true },
-    include: {
-      houses: { where: { deletedAt: null } },
-      flocks: {
-        where: { deletedAt: null },
-        orderBy: { placementDate: "desc" },
-        include: {
-          houseFlocks: {
-            include: {
-              mortalities: { where: { isDraft: false }, orderBy: { mortalityDate: "asc" } },
-              house: true,
+  const [settings, farms, completions, recentCleanouts] = await Promise.all([
+    prisma.userSettings.findUnique({ where: { userId } }),
+    prisma.farm.findMany({
+      where: { userId, deletedAt: null, isActive: true },
+      select: {
+        id: true,
+        farmName: true,
+        growerName: true,
+        phoneNumber: true,
+        houses: { where: { deletedAt: null }, select: { id: true } },
+        flocks: {
+          where: { deletedAt: null },
+          orderBy: { placementDate: "desc" },
+          select: {
+            id: true,
+            flockNumber: true,
+            flockStatus: true,
+            placementDate: true,
+            projectedCatchDate: true,
+            actualCatchDate: true,
+            targetMarketAge: true,
+            houseFlocks: {
+              select: {
+                placedBirdCount: true,
+                placementDate: true,
+                catchDate: true,
+                catchTime: true,
+                mortalities: {
+                  where: { isDraft: false },
+                  orderBy: { mortalityDate: "asc" },
+                  select: {
+                    mortalityDate: true,
+                    birdAgeInDays: true,
+                    dailyMortalityCount: true,
+                    cullCount: true,
+                    totalDailyLoss: true,
+                  },
+                },
+              },
             },
           },
         },
+        issues: {
+          where: { status: { not: "RESOLVED" } },
+          select: { id: true, priority: true },
+        },
+        visits: { orderBy: { visitDate: "desc" }, take: 1, select: { visitDate: true } },
       },
-      issues: { where: { status: { not: "RESOLVED" } } },
-      visits: { orderBy: { visitDate: "desc" }, take: 1 },
-      litterEvents: {
-        where: { eventType: "FULL_LITTER_CLEANOUT" },
-        orderBy: { eventDate: "desc" },
-        take: 3,
+      orderBy: { farmName: "asc" },
+    }),
+    prisma.followUpCompletion.findMany({
+      where: {
+        farm: { userId, deletedAt: null, isActive: true },
+        // Ignore any leftover dismiss rows from the brief remove experiment
+        NOT: { status: "DISMISSED" },
       },
-    },
-    orderBy: { farmName: "asc" },
-  });
+      select: { farmId: true, scheduledDate: true, label: true, completedAt: true },
+    }),
+    prisma.litterEvent.findMany({
+      where: {
+        farm: { userId, deletedAt: null },
+        eventType: "FULL_LITTER_CLEANOUT",
+        eventDate: { gte: subDays(today, 90) },
+      },
+      include: { farm: { select: { farmName: true } } },
+      orderBy: { eventDate: "desc" },
+      take: 5,
+    }),
+  ]);
+  const thresholds: ThresholdSettings = settings
+    ? {
+        dailyMortalityWarningPct: settings.dailyMortalityWarningPct,
+        dailyMortalityCriticalPct: settings.dailyMortalityCriticalPct,
+        sevenDayMortalityWarningPct: settings.sevenDayMortalityWarningPct,
+        sevenDayMortalityCriticalPct: settings.sevenDayMortalityCriticalPct,
+        alertRisingThreeDays: settings.alertRisingThreeDays,
+      }
+    : DEFAULT_THRESHOLDS;
+  const farmOrder = parseFarmOrder(settings?.farmOrder);
 
   const farmCards: FarmCardSummary[] = [];
   let totalBirds = 0;
@@ -105,14 +152,6 @@ export async function getDashboardData(userId: string) {
   const upcomingSchedule: FollowUpRow[] = [];
   const horizon = addDays(startOfDay(today), UPCOMING_OUTLOOK_DAYS);
 
-  const completions = await prisma.followUpCompletion.findMany({
-    where: {
-      farm: { userId, deletedAt: null, isActive: true },
-      // Ignore any leftover dismiss rows from the brief remove experiment
-      NOT: { status: "DISMISSED" },
-    },
-    select: { farmId: true, scheduledDate: true, label: true, completedAt: true },
-  });
   const completedByFarm = new Map<string, Map<string, { completedAt: Date }>>();
   for (const c of completions) {
     const label = c.label === "Weight Projection" ? "Weight Proj." : c.label;
@@ -323,17 +362,6 @@ export async function getDashboardData(userId: string) {
       todayScheduleRankFromLabel(a.label) - todayScheduleRankFromLabel(b.label) ||
       a.farmName.localeCompare(b.farmName),
   );
-
-  const recentCleanouts = await prisma.litterEvent.findMany({
-    where: {
-      farm: { userId, deletedAt: null },
-      eventType: "FULL_LITTER_CLEANOUT",
-      eventDate: { gte: subDays(today, 90) },
-    },
-    include: { farm: true },
-    orderBy: { eventDate: "desc" },
-    take: 5,
-  });
 
   const totalHouses = farms.reduce((s, f) => s + f.houses.length, 0);
 

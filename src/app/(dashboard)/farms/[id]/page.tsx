@@ -40,36 +40,38 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
 
   await ensureActiveFlockHouseFlocks(id, { userId: session.user.id });
 
-  const farm = await prisma.farm.findFirst({
-    where: { id, userId: session.user.id, deletedAt: null },
-    include: {
-      houses: { where: { deletedAt: null }, orderBy: { houseNumber: "asc" } },
-      flocks: {
-        where: { deletedAt: null },
-        orderBy: { placementDate: "desc" },
-        include: {
-          houseFlocks: {
-            include: {
-              house: true,
-              mortalities: { where: { isDraft: false }, orderBy: { mortalityDate: "asc" } },
-              feedDeliveries: true,
-              performance: true,
+  const [farm, thresholds] = await Promise.all([
+    prisma.farm.findFirst({
+      where: { id, userId: session.user.id, deletedAt: null },
+      include: {
+        houses: { where: { deletedAt: null }, orderBy: { houseNumber: "asc" } },
+        flocks: {
+          where: { deletedAt: null },
+          orderBy: { placementDate: "desc" },
+          include: {
+            houseFlocks: {
+              include: {
+                house: true,
+                mortalities: { where: { isDraft: false }, orderBy: { mortalityDate: "asc" } },
+                feedDeliveries: true,
+                performance: true,
+              },
             },
+            feedDeliveries: true,
           },
-          feedDeliveries: true,
         },
+        visits: { orderBy: { visitDate: "desc" }, take: 8 },
+        generatorLogs: { orderBy: [{ logDate: "desc" }, { createdAt: "desc" }], take: 20 },
+        issues: { orderBy: { dateReported: "desc" }, take: 8 },
+        litterEvents: { orderBy: { eventDate: "desc" }, take: 8, include: { house: true } },
       },
-      visits: { orderBy: { visitDate: "desc" }, take: 8 },
-      generatorLogs: { orderBy: [{ logDate: "desc" }, { createdAt: "desc" }], take: 20 },
-      issues: { orderBy: { dateReported: "desc" }, take: 8 },
-      litterEvents: { orderBy: { eventDate: "desc" }, take: 8, include: { house: true } },
-    },
-  });
+    }),
+    getUserThresholds(session.user.id),
+  ]);
 
   if (!farm) notFound();
 
   const farmId = farm.id;
-  const thresholds = await getUserThresholds(session.user.id);
   const activeFlocks = farm.flocks
     .filter((f) => f.flockStatus === "ACTIVE")
     .slice()

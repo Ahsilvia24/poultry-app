@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CompleteFlockPicker } from "@/components/CompleteFlockPicker";
 import { cn } from "@/lib/utils";
 
@@ -16,8 +18,15 @@ export function FarmQuickLinks({
   farmId: string;
   completeFlocks?: FlockOption[];
 }) {
+  const router = useRouter();
+  const serviceHref = `/farms/${farmId}/service`;
+  useEffect(() => {
+    router.prefetch(serviceHref);
+    router.prefetch(`/lfo?farmId=${farmId}`);
+  }, [farmId, router, serviceHref]);
+
   const links: Array<{ key: string; href: string; label: string; external?: boolean }> = [
-    { key: "service", href: `/farms/${farmId}/service`, label: "Service Farm", external: true },
+    { key: "service", href: serviceHref, label: "Service Farm", external: true },
     { key: "generators", href: "#generators", label: "Generator" },
     { key: "visits", href: "#visits", label: "Visits" },
     { key: "issues", href: "#issues", label: "Issues" },
@@ -54,7 +63,14 @@ export function FarmQuickLinks({
             );
           }
           return item.external ? (
-            <Link key={item.key} href={item.href} className={linkClass}>
+            <Link
+              key={item.key}
+              href={item.href}
+              prefetch
+              onTouchStart={() => router.prefetch(item.href)}
+              onPointerEnter={() => router.prefetch(item.href)}
+              className={linkClass}
+            >
               {item.label}
             </Link>
           ) : (

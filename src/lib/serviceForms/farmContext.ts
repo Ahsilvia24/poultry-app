@@ -137,17 +137,27 @@ export async function loadServiceFarmContext(
 
 export async function listStoredServiceForms(
   farmId: string,
+  userId?: string,
 ): Promise<StoredServiceForm[]> {
   const rows = await prisma.serviceForm.findMany({
-    where: { farmId },
+    where: {
+      farmId,
+      ...(userId ? { farm: { userId, deletedAt: null } } : {}),
+    },
     orderBy: [{ formDate: "desc" }, { createdAt: "desc" }],
   });
   return rows.map(mapStored).filter((row): row is StoredServiceForm => row != null);
 }
 
-export async function listServiceFormDraftKinds(farmId: string): Promise<ServiceFormKind[]> {
+export async function listServiceFormDraftKinds(
+  farmId: string,
+  userId?: string,
+): Promise<ServiceFormKind[]> {
   const rows = await prisma.serviceFormDraft.findMany({
-    where: { farmId },
+    where: {
+      farmId,
+      ...(userId ? { farm: { userId, deletedAt: null } } : {}),
+    },
     select: { formKind: true },
   });
   return rows.map((r) => r.formKind).filter(isServiceFormKind);

@@ -122,6 +122,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
         >
           <Link
             href={`/farms/${farm.id}`}
+            prefetch
             className="absolute inset-0 z-0 rounded-[inherit]"
             aria-label={`Open ${farm.farmName}. Long press to ${farm.isActive ? "make inactive" : "make active"}`}
             onClick={(e) => {

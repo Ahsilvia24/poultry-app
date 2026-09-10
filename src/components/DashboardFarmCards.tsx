@@ -52,6 +52,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
                 <p className="text-base font-bold text-stone-900">
                   <Link
                     href={`/farms/${farm.id}`}
+                    prefetch
                     className="text-inherit hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >
