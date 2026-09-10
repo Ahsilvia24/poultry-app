@@ -22,7 +22,7 @@ export default function RegisterPage() {
         </p>
         <h1 className="mt-1.5 text-xl font-semibold">Create account</h1>
         <p className="mt-1 text-sm text-stone-600">
-          Farms you add stay on this login. Sign in from any phone or computer.
+          Farms you add stay on this email. This is the computer site, not the phone app.
         </p>
         <form action={onSubmit} className="mt-6 space-y-4">
           <div>
