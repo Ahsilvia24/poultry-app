@@ -6,6 +6,15 @@ export const registerSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20, "This reset link is invalid or expired."),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 export const farmSchema = z.object({
   farmName: z.string().min(1, "Farm name is required"),
   farmNumber: z.string().optional().nullable(),
