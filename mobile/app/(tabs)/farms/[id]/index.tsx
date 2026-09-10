@@ -314,11 +314,14 @@ function PropagateCheck({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        alignSelf: "flex-start",
+        alignSelf: "flex-end",
         gap: 6,
         marginTop: 2,
       }}
     >
+      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
+        Propagate
+      </Text>
       <View
         style={{
           width: 18,
@@ -333,9 +336,6 @@ function PropagateCheck({
       >
         {checked ? <Ionicons name="checkmark" size={13} color="#fff" /> : null}
       </View>
-      <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
-        Propagate
-      </Text>
     </Pressable>
   );
 }

@@ -44,7 +44,8 @@ function PropagateCheck({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <label className="mt-0.5 flex cursor-pointer items-center gap-1.5 leading-none">
+    <label className="mt-0.5 ml-auto flex w-fit cursor-pointer items-center gap-1.5 leading-none">
+      <span className="text-xs font-medium text-stone-600">Propagate</span>
       <input
         type="checkbox"
         name={name}
@@ -53,7 +54,6 @@ function PropagateCheck({
         onChange={(e) => onChange(e.target.checked)}
         className="h-3.5 w-3.5 shrink-0 rounded border-stone-300 text-emerald-700 focus:ring-emerald-700"
       />
-      <span className="text-xs font-medium text-stone-600">Propagate</span>
     </label>
   );
 }
