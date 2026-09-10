@@ -7,6 +7,18 @@ import { signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validations";
 
+async function signInOnThisHost(email: string, password: string) {
+  const result = await signIn("credentials", {
+    email,
+    password,
+    redirect: false,
+  });
+  if (result && "error" in result && result.error) {
+    return { error: "Invalid email or password" };
+  }
+  return null;
+}
+
 export async function registerAction(formData: FormData) {
   const parsed = registerSchema.safeParse({
     name: formData.get("name"),
@@ -31,28 +43,34 @@ export async function registerAction(formData: FormData) {
     },
   });
 
-  await signIn("credentials", {
-    email,
-    password: parsed.data.password,
-    redirectTo: "/",
-  });
+  try {
+    const failed = await signInOnThisHost(email, parsed.data.password);
+    if (failed) return failed;
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return { error: "Account created. Sign in with your email." };
+    }
+    throw error;
+  }
+  redirect("/");
 }
 
 export async function loginAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "").toLowerCase();
+  const password = String(formData.get("password") ?? "");
   try {
-    await signIn("credentials", {
-      email: String(formData.get("email") ?? "").toLowerCase(),
-      password: String(formData.get("password") ?? ""),
-      redirectTo: "/",
-    });
+    const failed = await signInOnThisHost(email, password);
+    if (failed) return failed;
   } catch (error) {
     if (error instanceof AuthError) {
       return { error: "Invalid email or password" };
     }
     throw error;
   }
+  redirect("/");
 }
 
 export async function signOutAction() {
-  await signOut({ redirectTo: "/login" });
+  await signOut({ redirect: false });
+  redirect("/login");
 }
