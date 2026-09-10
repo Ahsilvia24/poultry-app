@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { addDays } from "date-fns";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
+import { requireUserId } from "@/lib/session-user";
 import { prisma } from "@/lib/prisma";
 import { farmSchema, createFarmSchema, flockSchema, houseSchema } from "@/lib/validations";
 import { ungroupNumber } from "@/lib/grouped-number";
@@ -170,7 +171,7 @@ export async function createFarmAction(formData: FormData) {
   const farm = await prisma.$transaction(async (tx) => {
     const created = await tx.farm.create({
       data: {
-        userId: user.id!,
+        userId: requireUserId(user.id),
         farmName: parsed.data.farmName,
         growerName: parsed.data.growerName?.trim() || "",
         notes: parsed.data.notes,
