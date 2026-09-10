@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth, isAuthDevBypassEnabled } from "@/lib/auth";
+import { isHomeScreenAsset } from "@/lib/home-screen-icons";
 
 /** Prefer the current host so redirects stay on Vercel, not poultrytechapp.com. */
 function requestOrigin(req: NextRequest) {
@@ -30,6 +31,7 @@ const withAuth = auth((req) => {
     isAuthPage ||
     isPasswordReset ||
     isDevBypassLogin ||
+    isHomeScreenAsset(pathname) ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/mobile") ||
     pathname.startsWith("/support") ||
@@ -77,5 +79,7 @@ export default async function proxy(...args: Parameters<typeof withAuth>) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|apple-touch-icon|apple-icon|icon-192|icon-512|manifest\\.webmanifest|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+  ],
 };
