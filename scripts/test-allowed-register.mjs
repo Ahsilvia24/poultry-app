@@ -10,12 +10,12 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 assert.ok(ALLOWED_REGISTER_EMAILS.includes("tech@poultry.local"));
 assert.ok(ALLOWED_REGISTER_EMAILS.includes("alexsilvia24@yahoo.com"));
 assert.ok(ALLOWED_REGISTER_EMAILS.includes("lanetyler2004@gmail.com"));
-assert.ok(ALLOWED_REGISTER_EMAILS.includes("jeffreywalden@gmail.com"));
+assert.ok(ALLOWED_REGISTER_EMAILS.includes("jeffreywalden@ymail.com"));
 assert.equal(isRegisterEmailAllowed("tech@poultry.local"), true);
 assert.equal(isRegisterEmailAllowed("AlexSilvia24@yahoo.com"), true);
 assert.equal(isRegisterEmailAllowed("Lanetyler2004@gmail.com"), true);
-assert.equal(isRegisterEmailAllowed("jeffreywalden@gmail.com"), true);
-assert.equal(isRegisterEmailAllowed("jeffreywalden@ymail.com"), false);
+assert.equal(isRegisterEmailAllowed("jeffreywalden@ymail.com"), true);
+assert.equal(isRegisterEmailAllowed("jeffreywalden@gmail.com"), false);
 assert.equal(isRegisterEmailAllowed("stranger@example.com"), false);
 
 const auth = readFileSync(join(root, "src/app/actions/auth.ts"), "utf8");
