@@ -57,7 +57,7 @@ Privacy and support stay at `/privacy/` and `/support/`. Safari: Share → Add t
 
 To put a domain you buy (for example `yourname.com`) on this same site, add it under GitHub → repo Settings → Pages → Custom domain, then point the domain’s DNS at GitHub Pages. After that, rebuild with `EXPO_BASE_URL` empty so asset paths are `/` instead of `/poultry-app`.
 
-GitHub Pages publishes the Expo web export from `mobile/` plus `docs/privacy.html` and `docs/support.html`.
+GitHub Pages publishes the Expo web export from `mobile/` plus `docs/privacy.html` and `docs/support.html` when this workflow runs on `main`.
 
 ## App Review notes (paste into the submission)
 
