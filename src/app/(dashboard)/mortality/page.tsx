@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureActiveFlockHouseFlocksForUser } from "@/lib/ensureActiveFlockHouseFlocks";
+import { listMortalityHouses } from "@/lib/mortalityHouses";
 import { PageHeader } from "@/components/ui";
 import {
   MortalityEntryForm,
@@ -24,18 +25,18 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
     where: { userId: session.user.id, deletedAt: null, isActive: true },
     orderBy: { farmName: "asc" },
     include: {
+      houses: { where: { deletedAt: null }, orderBy: { houseNumber: "asc" } },
       flocks: {
         where: { flockStatus: "ACTIVE", deletedAt: null },
-        take: 1,
+        orderBy: [{ placementDate: "asc" }, { flockNumber: "asc" }],
         include: {
           houseFlocks: {
+            where: { house: { deletedAt: null } },
             include: {
-              house: true,
               mortalities: {
                 orderBy: { mortalityDate: "asc" },
               },
             },
-            orderBy: { house: { houseNumber: "asc" } },
           },
         },
       },
@@ -44,23 +45,33 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
 
   const farms: MortalityFarmPayload[] = farmsRaw.map((farm) => {
     const active = farm.flocks[0] ?? null;
+    const houses = listMortalityHouses(
+      farm.houses,
+      farm.flocks.flatMap((flock) =>
+        flock.houseFlocks.map((hf) => ({ ...hf, flockId: flock.id })),
+      ),
+    );
     return {
       id: farm.id,
       farmName: farm.farmName,
       activeFlock: active
         ? {
             id: active.id,
-            flockNumber: active.flockNumber,
+            flockNumber:
+              farm.flocks.length > 1
+                ? farm.flocks.map((flock) => flock.flockNumber).join(" · ")
+                : active.flockNumber,
             placementDate: format(active.placementDate, "yyyy-MM-dd"),
             projectedCatchDate: active.projectedCatchDate
               ? format(active.projectedCatchDate, "yyyy-MM-dd")
               : null,
             targetMarketAge: active.targetMarketAge,
-            houses: active.houseFlocks.map((hf) => ({
-              houseFlockId: hf.id,
-              houseNumber: hf.house.houseNumber,
-              placedBirdCount: hf.placedBirdCount,
-              existingEntries: hf.mortalities.map((m) => ({
+            houses: houses.map(({ house, houseFlock }) => ({
+              houseFlockId: houseFlock.id,
+              flockId: houseFlock.flockId,
+              houseNumber: house.houseNumber,
+              placedBirdCount: houseFlock.placedBirdCount,
+              existingEntries: houseFlock.mortalities.map((m) => ({
                 // Use UTC calendar date so keys match form day keys (avoid TZ off-by-one)
                 mortalityDate: m.mortalityDate.toISOString().slice(0, 10),
                 dailyMortalityCount: m.dailyMortalityCount,

@@ -16,6 +16,7 @@ import { useKeypadNav } from "@/components/KeypadNavContext";
 
 export type MortalityHousePayload = {
   houseFlockId: string;
+  flockId?: string;
   houseNumber: number;
   placedBirdCount: number;
   existingEntries: Array<{
@@ -300,7 +301,7 @@ export function MortalityEntryForm({
     }
 
     const result = await saveMortalityHouseSeriesAction({
-      flockId: currentFlock.id,
+      flockId: currentHouse.flockId || currentFlock.id,
       houseFlockId: currentHouse.houseFlockId,
       mortalityCause: "UNKNOWN",
       comments: null,
