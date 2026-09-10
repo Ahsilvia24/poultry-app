@@ -5,6 +5,8 @@ import { cn, formatNumber } from "@/lib/utils";
 import { Card } from "@/components/ui";
 
 /** Internal farm-tile check. Requires a signed-in session. */
+export const dynamic = "force-dynamic";
+
 export default async function TriplePlacePreviewPage() {
   const today = new Date();
   const farm = await prisma.farm.findFirst({
