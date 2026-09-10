@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
     "*.cursorapi.com",
     "*.cursor.sh",
   ],
+  outputFileTracingExcludes: {
+    "/*": ["./mobile/**/*"],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "20mb",

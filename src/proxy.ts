@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, isAuthDevBypassEnabled } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig, isAuthDevBypassEnabled } from "@/lib/auth.config";
+
+const { auth } = NextAuth(authConfig);
 
 /** Prefer tunnel/proxy host so redirects work outside localhost. */
 function requestOrigin(req: NextRequest) {
@@ -32,7 +35,6 @@ export default auth((req) => {
     pathname.startsWith("/support") ||
     pathname.startsWith("/privacy");
 
-  // Mint a real session cookie once so forms/Server Actions work through tunnels.
   if (
     bypass &&
     !req.auth &&
@@ -46,13 +48,11 @@ export default auth((req) => {
     return NextResponse.redirect(login);
   }
 
-  // Dev bypass: never force the login screen — go straight into the app.
   if (bypass && isAuthPage) {
     return NextResponse.redirect(new URL("/", origin));
   }
 
   if (!isLoggedIn && !isPublic) {
-    // API routes should return 401, not redirect HTML
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
