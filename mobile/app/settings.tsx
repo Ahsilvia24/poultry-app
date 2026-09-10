@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../src/auth";
 import { getFarmOrder, getServiceTech, setFarmOrder, setServiceTech } from "../src/lib/appSettings";
+import { shareMobileBackup } from "../src/lib/dataExport";
 import { FARM_ORDER_OPTIONS, type FarmOrder } from "../src/lib/farmOrder";
 import { colors, styles } from "../src/theme";
 import { WheelPicker } from "../src/components/WheelPicker";
@@ -31,6 +32,8 @@ export default function SettingsScreen() {
   const { signOut } = useAuth();
   const [serviceTech, setServiceTechName] = useState(getServiceTech);
   const [farmOrder, setFarmOrderValue] = useState<FarmOrder>(getFarmOrder);
+  const [exporting, setExporting] = useState(false);
+  const [exportNote, setExportNote] = useState<string | null>(null);
 
   function onChangeServiceTech(value: string) {
     setServiceTechName(value);
@@ -154,6 +157,62 @@ export default function SettingsScreen() {
           </View>
 
           <View style={{ flex: 1, minHeight: 48 }} />
+
+          <Pressable
+            disabled={exporting}
+            onPress={() => {
+              if (exporting) return;
+              setExporting(true);
+              setExportNote(null);
+              void shareMobileBackup()
+                .then(({ farmCount }) => {
+                  setExportNote(
+                    `Saved a backup of ${farmCount} farm${farmCount === 1 ? "" : "s"}. Keep that file.`,
+                  );
+                })
+                .catch((e) => {
+                  setExportNote(e instanceof Error ? e.message : "Export failed");
+                })
+                .finally(() => setExporting(false));
+            }}
+            style={{ alignSelf: "center", paddingVertical: 16, paddingHorizontal: 12 }}
+          >
+            <Text
+              style={{
+                color: colors.text,
+                fontWeight: "700",
+                textDecorationLine: "underline",
+              }}
+            >
+              {exporting ? "Exporting…" : "Export data"}
+            </Text>
+          </Pressable>
+          {exportNote ? (
+            <Text
+              style={{
+                alignSelf: "center",
+                maxWidth: 320,
+                textAlign: "center",
+                color: colors.muted,
+                fontSize: 13,
+                fontWeight: "600",
+              }}
+            >
+              {exportNote}
+            </Text>
+          ) : (
+            <Text
+              style={{
+                alignSelf: "center",
+                maxWidth: 320,
+                textAlign: "center",
+                color: colors.muted,
+                fontSize: 13,
+              }}
+            >
+              Safari keeps farms in this browser. Export to save a copy you own.
+            </Text>
+          )}
 
           <Pressable
             onPress={() => void signOut()}
