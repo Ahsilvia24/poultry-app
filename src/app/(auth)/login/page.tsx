@@ -42,14 +42,14 @@ export default function LoginPage() {
         </p>
         <p className="mt-3 text-center text-sm text-stone-600">
           <a
-            href="https://ahsilvia24.github.io/poultry-app/support/"
+            href="https://poultrytechapp.com/support/"
             className="font-semibold text-emerald-800 underline"
           >
             Support
           </a>
           {" · "}
           <a
-            href="https://ahsilvia24.github.io/poultry-app/privacy/"
+            href="https://poultrytechapp.com/privacy/"
             className="font-semibold text-emerald-800 underline"
           >
             Privacy Policy

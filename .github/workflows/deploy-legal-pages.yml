@@ -37,7 +37,6 @@ jobs:
         env:
           CI: "1"
           EXPO_NO_TELEMETRY: "1"
-          EXPO_BASE_URL: /poultry-app
         run: |
           npm ci
           npx expo export --platform web

@@ -42,22 +42,38 @@ Paste these into App Store Connect → App Information (replace the old TermsFee
 
 | ASC field | URL |
 |-----------|-----|
-| **Privacy Policy URL** | https://ahsilvia24.github.io/poultry-app/privacy/ |
-| **Support URL** | https://ahsilvia24.github.io/poultry-app/support/ |
+| **Privacy Policy URL** | https://poultrytechapp.com/privacy/ |
+| **Support URL** | https://poultrytechapp.com/support/ |
 
 Contact on both pages is **Alex Silvia**, **talentpro024@gmail.com**.
 
 ## Owned website (Safari)
 
-The farm app is the GitHub Pages site you own:
+The farm app is published on the domain you own:
 
-**https://ahsilvia24.github.io/poultry-app/**
+**https://poultrytechapp.com**
 
 Privacy and support stay at `/privacy/` and `/support/`. Safari: Share → Add to Home Screen. Farm data lives in that browser until you use Settings → Export data.
 
-To put a domain you buy (for example `yourname.com`) on this same site, add it under GitHub → repo Settings → Pages → Custom domain, then point the domain’s DNS at GitHub Pages. After that, rebuild with `EXPO_BASE_URL` empty so asset paths are `/` instead of `/poultry-app`.
+GitHub Pages publishes the Expo web export from `mobile/` plus `docs/privacy.html` and `docs/support.html` when this workflow runs on `main`. The published site includes a `CNAME` of `poultrytechapp.com`.
 
-GitHub Pages publishes the Expo web export from `mobile/` plus `docs/privacy.html` and `docs/support.html` when this workflow runs on `main`.
+### DNS for poultrytechapp.com
+
+At the registrar where you bought the domain, set:
+
+| Type | Name | Value |
+|------|------|-------|
+| A | `@` | `185.199.108.153` |
+| A | `@` | `185.199.109.153` |
+| A | `@` | `185.199.110.153` |
+| A | `@` | `185.199.111.153` |
+| AAAA | `@` | `2606:50c0:8000::153` |
+| AAAA | `@` | `2606:50c0:8001::153` |
+| AAAA | `@` | `2606:50c0:8002::153` |
+| AAAA | `@` | `2606:50c0:8003::153` |
+| CNAME | `www` | `ahsilvia24.github.io` |
+
+The domain currently points at Wix (`185.230.63.*` and `www` → `initial.wixdns.net`). In the Wix DNS editor, delete those and add the GitHub records above. HTTPS usually appears within an hour after DNS is correct; it can take up to a day.
 
 ## App Review notes (paste into the submission)
 
@@ -70,7 +86,7 @@ Demo access for review (not shown in the app UI):
 
 Sign-in fields ship empty. There is no remote feature flag, no account-gated extra mode, and no content loaded after approval. All farm data stays in on-device SQLite.
 
-Reports is a visible tab. Settings → Export data saves a JSON backup of farms on this device or in Safari. Import offers Placement and Catch Schedule only. Sample farms are included so Review can exercise the product; they are not labeled as demo or unfinished. The previous TermsFeed privacy URL was a generator page that did not describe this app; the live policy is https://ahsilvia24.github.io/poultry-app/privacy/
+Reports is a visible tab. Settings → Export data saves a JSON backup of farms on this device or in Safari. Import offers Placement and Catch Schedule only. Sample farms are included so Review can exercise the product; they are not labeled as demo or unfinished. The previous TermsFeed privacy URL was a generator page that did not describe this app; the live policy is https://poultrytechapp.com/privacy/
 
 This binary is iPhone-only. We are not claiming iPad support.
 

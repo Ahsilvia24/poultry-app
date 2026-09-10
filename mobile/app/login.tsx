@@ -86,13 +86,13 @@ export default function LoginScreen() {
             }}
           >
             <Pressable
-              onPress={() => Linking.openURL("https://ahsilvia24.github.io/poultry-app/support/")}
+              onPress={() => Linking.openURL("https://poultrytechapp.com/support/")}
             >
               <Text style={{ color: colors.accentDark, fontWeight: "700" }}>Support</Text>
             </Pressable>
             <Text style={{ color: colors.muted, fontWeight: "600" }}>·</Text>
             <Pressable
-              onPress={() => Linking.openURL("https://ahsilvia24.github.io/poultry-app/privacy/")}
+              onPress={() => Linking.openURL("https://poultrytechapp.com/privacy/")}
             >
               <Text style={{ color: colors.accentDark, fontWeight: "700" }}>Privacy Policy</Text>
             </Pressable>
