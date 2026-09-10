@@ -49,7 +49,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
           <div className="w-full px-3 py-2.5 text-left">
             <div className="flex w-full items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <p className="text-base font-bold text-stone-900">
+                <p className="text-[16px] font-extrabold text-stone-900">
                   <Link
                     href={`/farms/${farm.id}`}
                     prefetch
@@ -67,36 +67,36 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
             </div>
 
             <div className="mt-3 border-t border-stone-100 pt-3">
-              <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <p className="text-stone-500">Birds placed</p>
-                  <p className="font-semibold">{formatNumber(farm.totalBirdsPlaced)}</p>
+                  <p className="text-[13px] text-stone-500">Birds placed</p>
+                  <p className="text-[15px] font-bold">{formatNumber(farm.totalBirdsPlaced)}</p>
                 </div>
                 <div>
-                  <p className="text-stone-500">Birds remaining</p>
-                  <p className="font-semibold">{formatNumber(farm.birdsRemaining)}</p>
+                  <p className="text-[13px] text-stone-500">Birds remaining</p>
+                  <p className="text-[15px] font-bold">{formatNumber(farm.birdsRemaining)}</p>
                 </div>
                 <div>
-                  <p className="text-stone-500">Proj. Head Count</p>
-                  <p className="font-semibold">
+                  <p className="text-[13px] text-stone-500">Proj. Head Count</p>
+                  <p className="text-[15px] font-bold">
                     {farm.projectedHeadCount != null
                       ? formatNumber(farm.projectedHeadCount)
                       : "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-stone-500">7 Day Mort.</p>
-                  <p className="font-semibold">{formatNumber(farm.sevenDayMortality)}</p>
+                  <p className="text-[13px] text-stone-500">7 Day Mort.</p>
+                  <p className="text-[15px] font-bold">{formatNumber(farm.sevenDayMortality)}</p>
                 </div>
                 <div>
-                  <p className="text-stone-500">Total Mortality</p>
-                  <p className="font-semibold">
+                  <p className="text-[13px] text-stone-500">Total Mortality</p>
+                  <p className="text-[15px] font-bold">
                     {farm.cumulativeMortality} ({formatPct(farm.cumulativeMortalityPct)})
                   </p>
                 </div>
                 <div>
-                  <p className="text-stone-500">Proj. Mortality</p>
-                  <p className="font-semibold">
+                  <p className="text-[13px] text-stone-500">Proj. Mortality</p>
+                  <p className="text-[15px] font-bold">
                     {farm.projectedMortality != null
                       ? `${formatNumber(farm.projectedMortality)} (${formatPct(
                           farm.totalBirdsPlaced > 0
@@ -107,7 +107,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
                   </p>
                 </div>
               </div>
-              <div className="mt-3 flex flex-wrap gap-3 text-xs text-stone-500">
+              <div className="mt-3 flex flex-wrap gap-3 text-[12px] text-stone-500">
                 <span>
                   Last visit:{" "}
                   {farm.lastVisitDate ? formatLastVisitDate(farm.lastVisitDate) : "—"}

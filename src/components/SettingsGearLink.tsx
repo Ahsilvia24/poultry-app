@@ -5,12 +5,12 @@ export function SettingsGearLink() {
     <Link
       href="/settings"
       aria-label="Settings"
-      className="inline-flex h-10 items-center gap-1 rounded-lg px-1 text-stone-500 hover:bg-stone-200 hover:text-stone-600"
+      className="inline-flex h-11 items-center gap-1 rounded-lg px-1 text-stone-500 hover:bg-stone-200 hover:text-stone-600"
     >
-      <span className="text-xs font-semibold text-stone-500">Settings</span>
+      <span className="text-[15px] font-semibold text-stone-500">Settings</span>
       <svg
-        width="20"
-        height="20"
+        width="22"
+        height="22"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"

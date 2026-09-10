@@ -133,14 +133,14 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
             }}
           />
           <div className="relative z-10 min-w-0 pointer-events-none">
-            <p className="truncate text-[15px] font-bold leading-snug text-stone-900">
+            <p className="truncate text-[17px] font-extrabold leading-snug text-stone-900">
               {farm.farmName}
             </p>
             {farm.growerName ? (
-              <p className="mt-0.5 truncate text-[13px] leading-4 text-stone-600">{farm.growerName}</p>
+              <p className="mt-0.5 truncate text-[15px] leading-5 text-stone-600">{farm.growerName}</p>
             ) : null}
             {ageLabel ? (
-              <p className="mt-0.5 text-[13px] font-semibold leading-4 text-stone-500">
+              <p className="mt-0.5 text-[15px] font-semibold leading-5 text-stone-500">
                 Flock Age: {ageLabel}
               </p>
             ) : null}

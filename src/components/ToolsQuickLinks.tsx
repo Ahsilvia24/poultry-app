@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 const linkClass =
-  "flex min-h-10 items-center justify-center rounded-lg border border-emerald-800/20 bg-emerald-700 px-2.5 text-center text-sm font-semibold text-white shadow-sm transition active:scale-[0.98] hover:bg-emerald-800";
+  "flex min-h-12 items-center justify-center rounded-lg border border-emerald-800/20 bg-emerald-700 px-2.5 text-center text-[15px] font-semibold text-white shadow-sm transition active:scale-[0.98] hover:bg-emerald-800";
 
 const links = [
   { href: "#weight-projections", label: "Weight Proj." },

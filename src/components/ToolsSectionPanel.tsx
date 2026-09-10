@@ -45,7 +45,7 @@ export function ToolsSectionPanel({
       <Card>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="text-base font-bold text-stone-900">{title}</h2>
+            <h2 className="text-[20px] font-bold text-stone-900">{title}</h2>
             {subtitle ? <p className="mt-1 text-sm text-stone-500">{subtitle}</p> : null}
           </div>
           {showTop ? (

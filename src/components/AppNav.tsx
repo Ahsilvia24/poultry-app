@@ -165,11 +165,11 @@ export function AppNav() {
                   onTouchStart={() => onTabPress(item.href)}
                   onClick={() => onTabPress(item.href)}
                   className={cn(
-                    "flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-[10px] border px-0.5 py-1.5 text-center text-[10px] font-extrabold leading-none text-stone-700",
+                    "flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[10px] border px-0.5 py-1.5 text-center text-[12px] font-extrabold leading-none text-stone-700",
                     active ? selectedTabClass : "border-transparent",
                   )}
                 >
-                  <TabIcon name={item.icon} size={18} />
+                  <TabIcon name={item.icon} size={22} />
                   {item.label}
                 </Link>
               );

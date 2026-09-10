@@ -105,7 +105,7 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                     type="button"
                     onClick={() => changeFarm(f.id)}
                     className={cn(
-                      "shrink-0 rounded-[10px] px-3.5 py-2.5 text-sm font-bold",
+                      "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
                       active
                         ? "bg-emerald-800 text-white"
                         : "bg-stone-200 text-stone-800",
@@ -130,7 +130,7 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                       type="button"
                       onClick={() => setHouseId(h.id)}
                       className={cn(
-                        "shrink-0 rounded-[10px] px-3.5 py-2.5 text-sm font-bold",
+                        "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
                         active
                           ? "bg-emerald-800 text-white"
                           : "bg-stone-200 text-stone-800",

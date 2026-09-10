@@ -212,7 +212,7 @@ export default async function ToolsPage({
     <div>
       <div className="mb-3 md:mb-6">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-xl font-bold tracking-tight text-stone-900 md:text-3xl">
+          <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-stone-900 md:text-3xl">
             Tools
           </h1>
           <SettingsGearLink />

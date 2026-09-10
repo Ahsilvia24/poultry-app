@@ -18,7 +18,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex min-h-12 items-center justify-center rounded-lg px-5 text-base font-semibold transition disabled:opacity-50",
+        "inline-flex min-h-[52px] items-center justify-center rounded-xl px-5 text-[17px] font-semibold transition disabled:opacity-50",
         variants[variant],
         className,
       )}
@@ -36,7 +36,7 @@ export function Input({
     <input
       className={cn(
         "w-full rounded-lg border border-stone-300 bg-white font-semibold text-stone-900 caret-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200",
-        compact ? "min-h-11 px-2.5 text-base" : "min-h-12 px-4 text-lg",
+        compact ? "min-h-11 px-2.5 text-base" : "min-h-[52px] px-4 text-[17px]",
         className,
       )}
       {...props}
@@ -54,7 +54,7 @@ export function Select({
     <select
       className={cn(
         "w-full rounded-lg border border-stone-300 bg-white font-semibold text-stone-900 caret-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200",
-        compact ? "min-h-11 px-2.5 text-base" : "min-h-12 px-4 text-lg",
+        compact ? "min-h-11 px-2.5 text-base" : "min-h-[52px] px-4 text-[17px]",
         className,
       )}
       {...props}
@@ -78,7 +78,7 @@ export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTex
 
 export function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label htmlFor={htmlFor} className="mb-1 block text-sm font-semibold text-stone-700">
+    <label htmlFor={htmlFor} className="mb-1 block text-[15px] font-semibold text-stone-700">
       {children}
     </label>
   );
@@ -86,7 +86,7 @@ export function Label({ children, htmlFor }: { children: React.ReactNode; htmlFo
 
 export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("rounded-xl border border-stone-200 bg-white p-3 shadow-sm md:p-4", className)}>
+    <div className={cn("rounded-[14px] border border-stone-200 bg-white p-4 shadow-sm", className)}>
       {children}
     </div>
   );
@@ -100,7 +100,7 @@ export function StatusBadge({ status }: { status: string }) {
     Critical: "bg-red-100 text-red-900",
   };
   return (
-    <span className={cn("inline-flex rounded-md px-2.5 py-1 text-sm font-bold", colors[status] ?? "bg-stone-100")}>
+    <span className={cn("inline-flex rounded-lg px-2.5 py-1 text-[13px] font-extrabold", colors[status] ?? "bg-stone-100")}>
       {status}
     </span>
   );
@@ -116,10 +116,10 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="mb-3 flex items-center justify-between gap-3 md:mb-6">
+    <div className="mb-4 flex items-center justify-between gap-3 md:mb-6">
       <div className="min-w-0">
-        <h1 className="text-xl font-bold tracking-tight text-stone-900 md:text-3xl">{title}</h1>
-        {subtitle ? <p className="mt-0.5 text-sm text-stone-600 md:mt-1 md:text-base">{subtitle}</p> : null}
+        <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-stone-900 md:text-3xl">{title}</h1>
+        {subtitle ? <p className="mt-1 text-[15px] text-stone-600">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
@@ -142,14 +142,14 @@ export function BackHeader({
       <div className="flex items-center justify-between gap-3">
         <Link
           href={href}
-          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
+          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-1 text-[17px] font-bold text-emerald-800 hover:bg-emerald-50"
         >
           <span aria-hidden="true" className="text-xl leading-none">
             ←
           </span>
           {backLabel}
         </Link>
-        <h1 className="min-w-0 flex-1 text-right text-xl font-bold tracking-tight text-stone-900 md:text-3xl">
+        <h1 className="min-w-0 flex-1 text-right text-[28px] font-extrabold leading-tight tracking-tight text-stone-900 md:text-3xl">
           {title}
         </h1>
       </div>

@@ -17,6 +17,15 @@
   --font-serif: var(--font-serif);
 }
 
+/* Phone / homescreen PWA: iOS native (TestFlight) body is 17pt. */
+@media (max-width: 767px) {
+  html {
+    font-size: 17px;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+}
+
 body {
   background:
     radial-gradient(circle at top left, rgba(4, 120, 87, 0.08), transparent 40%),

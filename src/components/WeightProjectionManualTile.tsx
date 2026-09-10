@@ -174,7 +174,7 @@ export function WeightProjectionManualTile({
           type="button"
           onClick={selectManual}
           className={cn(
-            "shrink-0 rounded-[10px] px-3.5 py-2.5 text-sm font-bold",
+            "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
             isManual ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
           )}
         >
@@ -188,7 +188,7 @@ export function WeightProjectionManualTile({
               type="button"
               onClick={() => selectFarm(f.id)}
               className={cn(
-                "shrink-0 rounded-[10px] px-3.5 py-2.5 text-sm font-bold",
+                "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
                 selected ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
               )}
             >
@@ -208,7 +208,7 @@ export function WeightProjectionManualTile({
                 type="button"
                 onClick={() => selectHouse(h.id)}
                 className={cn(
-                  "shrink-0 rounded-[10px] px-3.5 py-2.5 text-sm font-bold",
+                  "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
                   selected ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
                 )}
               >

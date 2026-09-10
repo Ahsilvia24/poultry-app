@@ -25,7 +25,7 @@ export default async function DashboardPage() {
   return (
     <div>
       <div className="mb-3 md:mb-6">
-        <h1 className="text-xl font-bold tracking-tight text-stone-900 md:text-3xl">
+        <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-stone-900 md:text-3xl">
           Dashboard
         </h1>
       </div>
@@ -41,28 +41,28 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <Card>
-          <p className="text-sm font-semibold text-stone-500">Today&apos;s Schedule</p>
+          <p className="text-[15px] font-bold text-stone-500">Today&apos;s Schedule</p>
           <FollowUpsDueList items={data?.todaysSchedule ?? []} showDate />
         </Card>
         <Card>
-          <p className="text-sm font-semibold text-stone-500">Upcoming Visits</p>
+          <p className="text-[15px] font-bold text-stone-500">Upcoming Visits</p>
           {(data?.upcomingSchedule.length ?? 0) === 0 ? (
-            <p className="mt-2 text-sm text-stone-500">None in the next 10 days</p>
+            <p className="mt-2 text-[15px] text-stone-500">None in the next 10 days</p>
           ) : (
             <FollowUpsDueList items={data?.upcomingSchedule ?? []} showDate />
           )}
         </Card>
         <Card>
-          <p className="text-sm font-semibold text-stone-500">Upcoming Catches</p>
+          <p className="text-[15px] font-bold text-stone-500">Upcoming Catches</p>
           {(data?.upcomingCatches.length ?? 0) === 0 ? (
-            <p className="mt-2 text-sm text-stone-500">None</p>
+            <p className="mt-2 text-[15px] text-stone-500">None</p>
           ) : (
             <ScrollableFarmList className="mt-2 pr-2">
-              <ul className="space-y-1.5 text-sm">
+              <ul className="space-y-2.5 text-[15px]">
                 {(data?.upcomingCatches ?? []).map((c) => (
                   <li
                     key={`${c.farmName}-${c.date}-${c.flockNumber}`}
-                    className="flex h-5 items-baseline justify-between gap-3"
+                    className="flex min-h-[22px] items-baseline justify-between gap-3"
                   >
                     <span className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden font-semibold text-stone-900">
                       <span className="min-w-0 truncate">{c.farmName}</span>
@@ -87,10 +87,10 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <h2 className="mt-8 text-xl font-bold">Active Farms</h2>
+      <h2 className="mt-8 text-[20px] font-bold">Active Farms</h2>
       <DashboardFarmCards farms={data?.farmCards ?? []} />
 
-      <h2 className="mt-8 text-xl font-bold">Import</h2>
+      <h2 className="mt-8 text-[20px] font-bold">Import</h2>
       <div className="mt-3">
         <DashboardScheduleImport imports={scheduleImports} />
       </div>

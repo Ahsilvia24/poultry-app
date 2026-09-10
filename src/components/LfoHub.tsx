@@ -55,7 +55,7 @@ export function LfoHub({
           type="button"
           onClick={() => selectTab(MANUAL_LFO_TAB_ID)}
           className={cn(
-            "shrink-0 rounded-[10px] px-3.5 py-2.5 text-sm font-bold",
+            "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
             isManual ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
           )}
         >
@@ -69,7 +69,7 @@ export function LfoHub({
               type="button"
               onClick={() => selectTab(f.id)}
               className={cn(
-                "shrink-0 rounded-[10px] px-3.5 py-2.5 text-sm font-bold",
+                "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
                 active ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
               )}
             >
