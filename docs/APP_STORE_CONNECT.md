@@ -80,7 +80,7 @@ The domain currently points at Wix (`185.230.63.*` and `www` → `initial.wixdns
 The Expo GitHub Pages site stores farms in the browser. Per-email accounts live in the **Next.js** app (PostgreSQL). To put that on `poultrytechapp.com`:
 
 1. Create a free [Vercel](https://vercel.com) account and import `Ahsilvia24/poultry-app`.
-2. Add a Postgres database (Vercel Marketplace → Neon, or Neon.tech). Paste `DATABASE_URL`.
+2. Add a Postgres database. **Prisma Postgres** is fine (Vercel Storage → Prisma, or Neon). Paste `DATABASE_URL` (pooled) and `DIRECT_URL` (direct).
 3. Set `AUTH_SECRET` (`openssl rand -base64 32`) and `AUTH_URL` = `https://poultrytechapp.com`.
 4. Do **not** set `AUTH_DEV_BYPASS` on Production.
 5. In Vercel → Domains, add `poultrytechapp.com`. Replace the GitHub A / `www` CNAME records in Wix with the values Vercel shows.
