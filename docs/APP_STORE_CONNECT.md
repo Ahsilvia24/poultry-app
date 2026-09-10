@@ -75,6 +75,18 @@ At the registrar where you bought the domain, set:
 
 The domain currently points at Wix (`185.230.63.*` and `www` → `initial.wixdns.net`). In the Wix DNS editor, delete those and add the GitHub records above. HTTPS usually appears within an hour after DNS is correct; it can take up to a day.
 
+## Hosted accounts (any device)
+
+The Expo GitHub Pages site stores farms in the browser. Per-email accounts live in the **Next.js** app (PostgreSQL). To put that on `poultrytechapp.com`:
+
+1. Create a free [Vercel](https://vercel.com) account and import `Ahsilvia24/poultry-app`.
+2. Add a Postgres database (Vercel Marketplace → Neon, or Neon.tech). Paste `DATABASE_URL`.
+3. Set `AUTH_SECRET` (`openssl rand -base64 32`) and `AUTH_URL` = `https://poultrytechapp.com`.
+4. Do **not** set `AUTH_DEV_BYPASS` on Production.
+5. In Vercel → Domains, add `poultrytechapp.com`. Replace the GitHub A / `www` CNAME records in Wix with the values Vercel shows.
+
+New techs use **Register**. Farms are scoped to `User.id`. Empty accounts start with no farms. Do not run `prisma/seed.ts` on production (that seed is demo data).
+
 ## App Review notes (paste into the submission)
 
 PoultryTech is an offline farm-management tool for independent poultry service technicians. It is published by Alex Silvia. It is not a Bachoco app.

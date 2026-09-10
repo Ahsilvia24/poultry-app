@@ -21,7 +21,7 @@ function requestOrigin(request: Request) {
  * Visit once (middleware redirects here) so Server Actions work through tunnels.
  */
 export async function GET(request: Request) {
-  if (process.env.AUTH_DEV_BYPASS !== "true") {
+  if (process.env.NODE_ENV === "production" || process.env.AUTH_DEV_BYPASS !== "true") {
     return NextResponse.json({ error: "Dev bypass disabled" }, { status: 404 });
   }
 

@@ -10,7 +10,8 @@ const credentialsSchema = z.object({
   password: z.string().min(6),
 });
 
-const DEV_BYPASS = () => process.env.AUTH_DEV_BYPASS === "true";
+const DEV_BYPASS = () =>
+  process.env.NODE_ENV !== "production" && process.env.AUTH_DEV_BYPASS === "true";
 const DEV_USER_EMAIL = () =>
   (process.env.AUTH_DEV_USER_EMAIL ?? "tech@poultry.local").toLowerCase();
 
