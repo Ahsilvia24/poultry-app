@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { POST as loginPost } from "../src/app/api/login/route.ts";
-import { POST as registerPost } from "../src/app/api/register/route.ts";
+import { POST as loginPost } from "../src/app/api/login/route";
+import { POST as registerPost } from "../src/app/api/register/route";
 
 async function main() {
   const badLogin = await loginPost(new Request("http://localhost/api/login", { method: "POST", body: "nope" }));
