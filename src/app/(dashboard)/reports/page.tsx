@@ -6,10 +6,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calcPercentage } from "@/lib/mortality/calculations";
 import { dateKeyFromDb } from "@/lib/visits/schedule";
-import { cn, MORTALITY_CAUSE_LABELS } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
   MortalityCharts,
-  type CauseRow,
   type CumulativePoint,
   type FarmRow,
   type HouseBarPoint,
@@ -35,7 +34,6 @@ type SearchParams = Promise<{
   farmId?: string;
   from?: string;
   to?: string;
-  cause?: string;
   type?: string;
 }>;
 
@@ -171,9 +169,12 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       orderBy: { farmName: "asc" },
       select: { id: true, farmName: true, numberOfGenerators: true },
     });
+    const selectedFarmId =
+      params.farmId && farms.some((f) => f.id === params.farmId) ? params.farmId : "";
     const farmFilter = {
       userId: session.user.id,
       deletedAt: null,
+      ...(selectedFarmId ? { id: selectedFarmId } : {}),
     };
     const logs = await prisma.generatorLog.findMany({
       where: {
@@ -252,7 +253,12 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       });
     }
     const reportFarms = [...byFarm.values()].filter((farm) => farm.logs.length > 0);
-    const filterLabel = `${format(fromDate, "MMMM d, yyyy")} to ${format(toDate, "MMMM d, yyyy")}`;
+    const filterLabel = [
+      selectedFarmId
+        ? `Farm: ${farms.find((f) => f.id === selectedFarmId)?.farmName ?? selectedFarmId}`
+        : "All farms",
+      `${format(fromDate, "MMMM d, yyyy")} to ${format(toDate, "MMMM d, yyyy")}`,
+    ].join(" · ");
 
     return (
       <div>
@@ -263,6 +269,17 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
         <Card className="mb-6">
           <form className="grid gap-3">
             <input type="hidden" name="type" value="generator" />
+            <div>
+              <Label htmlFor="farmId">Farm</Label>
+              <Select id="farmId" name="farmId" defaultValue={selectedFarmId}>
+                <option value="">All farms</option>
+                {farms.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.farmName}
+                  </option>
+                ))}
+              </Select>
+            </div>
             <ReportDateRangeFields fromLabel="From" toLabel="To" from={from} to={to} />
             <div>
               <Button type="submit">Apply filters</Button>
@@ -281,13 +298,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
   });
 
   const selectedFarmId = params.farmId || "";
-  const selectedCause = params.cause || "";
 
   const mortalities = await prisma.dailyMortality.findMany({
     where: {
       isDraft: false,
       mortalityDate: { gte: fromDate, lte: toDate },
-      ...(selectedCause ? { mortalityCause: selectedCause as never } : {}),
       houseFlock: {
         flock: {
           farm: {
@@ -392,20 +407,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       .map(({ houseLabel, byDate }) => ({ houseLabel, byDate })),
   };
 
-  const causeMap = new Map<string, number>();
-  let causeTotal = 0;
-  for (const m of mortalities) {
-    causeMap.set(m.mortalityCause, (causeMap.get(m.mortalityCause) ?? 0) + m.dailyMortalityCount);
-    causeTotal += m.dailyMortalityCount;
-  }
-  const byCause: CauseRow[] = [...causeMap.entries()]
-    .map(([cause, count]) => ({
-      cause,
-      count,
-      pct: calcPercentage(count, causeTotal || 1),
-    }))
-    .sort((a, b) => b.count - a.count);
-
   const farmIdsInData = [...new Set(mortalities.map((m) => m.houseFlock.flock.farmId))];
   const placementByFarm = new Map<string, number>();
   if (farmIdsInData.length > 0) {
@@ -453,7 +454,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       ? `Farm: ${farms.find((f) => f.id === selectedFarmId)?.farmName ?? selectedFarmId}`
       : "All farms",
     `${format(fromDate, "MMMM d, yyyy")} to ${format(toDate, "MMMM d, yyyy")}`,
-    selectedCause ? `Cause: ${MORTALITY_CAUSE_LABELS[selectedCause] ?? selectedCause}` : "All causes",
   ].join(" · ");
 
   return (
@@ -480,17 +480,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           </div>
           <ReportDateRangeFields fromLabel="From" toLabel="To" from={from} to={to} />
           <div>
-            <Label htmlFor="cause">Cause</Label>
-            <Select id="cause" name="cause" defaultValue={selectedCause}>
-              <option value="">All causes</option>
-              {Object.entries(MORTALITY_CAUSE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
             <Button type="submit">Apply filters</Button>
           </div>
         </form>
@@ -500,7 +489,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
         cumulativeByAge={cumulativeByAge}
         byHouse={byHouse}
         byHouseByDate={byHouseByDate}
-        byCause={byCause}
         byFarm={byFarm}
         filterLabel={filterLabel}
       />

@@ -19,7 +19,7 @@ import {
   mortalityMatrixHasData,
   mortalityMatrixToTable,
 } from "@/lib/reports/mortality-matrix";
-import { MORTALITY_CAUSE_LABELS, formatNumber, formatPct } from "@/lib/utils";
+import { formatNumber, formatPct } from "@/lib/utils";
 import { Button, Card } from "@/components/ui";
 
 export type CumulativePoint = { birdAgeInDays: number; cumulative: number; label?: string };
@@ -28,7 +28,6 @@ export type HouseByDateMatrix = {
   dates: string[];
   rows: Array<{ houseLabel: string; byDate: Record<string, number> }>;
 };
-export type CauseRow = { cause: string; count: number; pct: number };
 export type FarmRow = {
   farmName: string;
   placed: number;
@@ -49,14 +48,12 @@ export function MortalityCharts({
   cumulativeByAge,
   byHouse,
   byHouseByDate,
-  byCause,
   byFarm,
   filterLabel,
 }: {
   cumulativeByAge: CumulativePoint[];
   byHouse: HouseBarPoint[];
   byHouseByDate: HouseByDateMatrix;
-  byCause: CauseRow[];
   byFarm: FarmRow[];
   filterLabel: string;
 }) {
@@ -115,11 +112,6 @@ export function MortalityCharts({
       toCsv(houseDateHeaders, houseDateRows),
       "",
       toCsv(
-        ["Cause", "Count", "Pct"],
-        byCause.map((c) => [MORTALITY_CAUSE_LABELS[c.cause] ?? c.cause, c.count, c.pct.toFixed(2)]),
-      ),
-      "",
-      toCsv(
         ["Farm", "Placed", "Mortality", "Culls", "Total", "Pct"],
         byFarm.map((f) => [f.farmName, f.placed, f.mortality, f.culls, f.total, f.pct.toFixed(2)]),
       ),
@@ -151,15 +143,6 @@ export function MortalityCharts({
             const total = values.reduce((sum, n) => sum + n, 0);
             return [row.houseLabel, ...values, total];
           }),
-        },
-        {
-          title: "By cause",
-          headers: ["Cause", "Count", "%"],
-          rows: byCause.map((c) => [
-            MORTALITY_CAUSE_LABELS[c.cause] ?? c.cause,
-            c.count,
-            c.pct.toFixed(2),
-          ]),
         },
         {
           title: "By farm",
@@ -311,39 +294,7 @@ export function MortalityCharts({
         </div>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <h3 className="font-bold">By cause</h3>
-          <div className="mt-3 overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="text-stone-500">
-                <tr>
-                  <th className="py-1 pr-3 font-semibold">Cause</th>
-                  <th className="py-1 pr-3 font-semibold">Count</th>
-                  <th className="py-1 font-semibold">%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {byCause.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="py-2 text-stone-500">
-                      No data
-                    </td>
-                  </tr>
-                ) : null}
-                {byCause.map((c) => (
-                  <tr key={c.cause} className="border-t border-stone-100">
-                    <td className="py-2 pr-3">{MORTALITY_CAUSE_LABELS[c.cause] ?? c.cause}</td>
-                    <td className="py-2 pr-3">{formatNumber(c.count)}</td>
-                    <td className="py-2">{formatPct(c.pct)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <Card>
+      <Card>
           <h3 className="font-bold">By farm</h3>
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -375,7 +326,6 @@ export function MortalityCharts({
             </table>
           </div>
         </Card>
-      </div>
     </div>
   );
 }
