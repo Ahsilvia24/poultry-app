@@ -1,0 +1,1 @@
+ALTER TABLE "UserSettings" ADD COLUMN IF NOT EXISTS "appTimeZone" TEXT NOT NULL DEFAULT 'America/Chicago';

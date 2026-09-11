@@ -8,14 +8,15 @@ import {
   summarizeForDate,
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
+import { appToday, appTodayKey } from "@/lib/app-calendar";
+import { getUserTimeZone } from "@/lib/user-time-zone";
 import { dateKeyFromDb } from "@/lib/visits/schedule";
 import type { FarmDetailLike } from "./prefill";
 import { isServiceFormKind, type StoredServiceForm } from "./stored";
 import type { ServiceFormKind } from "./types";
 
-function todayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function todayKey(timeZone?: string) {
+  return appTodayKey(undefined, timeZone);
 }
 
 export type ServiceFarmContext = {
@@ -56,7 +57,8 @@ export async function loadServiceFarmContext(
   farmId: string,
   userId: string,
 ): Promise<ServiceFarmContext | null> {
-  const today = new Date();
+  const timeZone = await getUserTimeZone(userId);
+  const today = appToday(undefined, timeZone);
   const farm = await prisma.farm.findFirst({
     where: { id: farmId, userId, deletedAt: null },
     include: {
@@ -101,10 +103,10 @@ export async function loadServiceFarmContext(
         ? weeklyMortalityByPlacement(placementDate, hf.mortalities, today)
         : [];
     const loggedToday =
-      house.loggedTemp && house.loggedTempAt === todayKey() ? house.loggedTemp : null;
+      house.loggedTemp && house.loggedTempAt === todayKey(timeZone) ? house.loggedTemp : null;
     return {
       houseNumber: house.houseNumber,
-      ageDays: placementDate ? daysSincePlacement(placementDate, today) : null,
+      ageDays: placementDate ? daysSincePlacement(placementDate, today, timeZone) : null,
       placedBirdCount: hf?.placedBirdCount ?? null,
       cumulativeMortality: metrics?.cumulative ?? 0,
       weeklyMortality,

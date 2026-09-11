@@ -261,6 +261,7 @@ export const settingsSchema = z.object({
   notifyEmail: z.boolean(),
   notifyInApp: z.boolean(),
   farmOrder: z.enum(["age_desc", "age_asc", "name_asc", "name_desc"]).optional(),
+  appTimeZone: z.string().min(1).optional(),
 });
 
 export const performanceSchema = z.object({

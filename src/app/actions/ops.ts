@@ -12,6 +12,7 @@ import {
 } from "@/lib/generator/format";
 import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
+import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { DEFAULT_FARM_ORDER } from "@/lib/farm-order";
 import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
 import {
@@ -612,6 +613,7 @@ export async function updateSettingsAction(formData: FormData) {
     notifyEmail: formData.get("notifyEmail") === "on",
     notifyInApp: formData.get("notifyInApp") === "on",
     farmOrder: formData.get("farmOrder") || DEFAULT_FARM_ORDER,
+    appTimeZone: formData.get("appTimeZone") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid settings" };
 
@@ -634,6 +636,7 @@ export async function updateSettingsAction(formData: FormData) {
       notifyEmail: parsed.data.notifyEmail,
       notifyInApp: parsed.data.notifyInApp,
       farmOrder: parsed.data.farmOrder ?? DEFAULT_FARM_ORDER,
+      appTimeZone: resolveAppTimeZone(parsed.data.appTimeZone),
     },
     update: {
       dailyMortalityWarningPct: parsed.data.dailyMortalityWarningPct,
@@ -645,12 +648,14 @@ export async function updateSettingsAction(formData: FormData) {
       notifyEmail: parsed.data.notifyEmail,
       notifyInApp: parsed.data.notifyInApp,
       farmOrder: parsed.data.farmOrder ?? DEFAULT_FARM_ORDER,
+      appTimeZone: resolveAppTimeZone(parsed.data.appTimeZone),
     },
   });
 
   revalidatePath("/settings");
   revalidatePath("/");
   revalidatePath("/farms");
+  revalidatePath("/tools");
   return { success: true };
 }
 

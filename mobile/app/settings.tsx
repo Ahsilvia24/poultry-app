@@ -11,7 +11,15 @@ import {
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../src/auth";
-import { getFarmOrder, getServiceTech, setFarmOrder, setServiceTech } from "../src/lib/appSettings";
+import {
+  getAppTimeZone,
+  getFarmOrder,
+  getServiceTech,
+  setAppTimeZone,
+  setFarmOrder,
+  setServiceTech,
+} from "../src/lib/appSettings";
+import { APP_TIME_ZONES } from "../src/lib/appTimeZones";
 import { shareMobileBackup } from "../src/lib/dataExport";
 import { FARM_ORDER_OPTIONS, type FarmOrder } from "../src/lib/farmOrder";
 import { colors, styles } from "../src/theme";
@@ -32,6 +40,7 @@ export default function SettingsScreen() {
   const { user, signOut, changePassword } = useAuth();
   const [serviceTech, setServiceTechName] = useState(getServiceTech);
   const [farmOrder, setFarmOrderValue] = useState<FarmOrder>(getFarmOrder);
+  const [timeZone, setTimeZoneValue] = useState(getAppTimeZone);
   const [exporting, setExporting] = useState(false);
   const [exportNote, setExportNote] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -49,6 +58,11 @@ export default function SettingsScreen() {
   function onChangeFarmOrder(value: FarmOrder) {
     setFarmOrderValue(value);
     setFarmOrder(value);
+  }
+
+  function onChangeTimeZone(value: string) {
+    setTimeZoneValue(value);
+    setAppTimeZone(value);
   }
 
   return (
@@ -98,7 +112,7 @@ export default function SettingsScreen() {
               flexDirection: "row",
               alignItems: "center",
               gap: 8,
-              marginBottom: 12,
+              marginBottom: 4,
             }}
           >
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>
@@ -112,7 +126,7 @@ export default function SettingsScreen() {
                   fontSize: 17,
                   fontWeight: "600",
                   color: colors.text,
-                  paddingVertical: 6,
+                  paddingVertical: 2,
                   paddingHorizontal: 0,
                   borderWidth: 0,
                   backgroundColor: "transparent",
@@ -145,7 +159,7 @@ export default function SettingsScreen() {
                 fontSize: 17,
                 fontWeight: "700",
                 color: colors.text,
-                paddingTop: 8,
+                paddingTop: 2,
               }}
             >
               Order Farms By:
@@ -158,6 +172,36 @@ export default function SettingsScreen() {
                 }))}
                 value={farmOrder}
                 onChange={onChangeFarmOrder}
+              />
+            </View>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-start",
+              gap: 8,
+              marginTop: 4,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 17,
+                fontWeight: "700",
+                color: colors.text,
+                paddingTop: 2,
+              }}
+            >
+              Timezone:
+            </Text>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <WheelPicker
+                options={APP_TIME_ZONES.map((zone) => ({
+                  value: zone.value,
+                  label: zone.label,
+                }))}
+                value={timeZone}
+                onChange={onChangeTimeZone}
               />
             </View>
           </View>
@@ -220,7 +264,7 @@ export default function SettingsScreen() {
             </Text>
           )}
 
-          <View style={{ marginTop: 16, gap: 10 }}>
+          <View style={{ marginTop: 12, gap: 4 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>Email:</Text>
               <Text
@@ -244,7 +288,7 @@ export default function SettingsScreen() {
                     fontSize: 17,
                     fontWeight: "600",
                     color: colors.text,
-                    paddingVertical: 6,
+                    paddingVertical: 2,
                     paddingHorizontal: 0,
                     borderWidth: 0,
                     backgroundColor: "transparent",
@@ -276,7 +320,7 @@ export default function SettingsScreen() {
                     fontSize: 17,
                     fontWeight: "600",
                     color: colors.text,
-                    paddingVertical: 6,
+                    paddingVertical: 2,
                     paddingHorizontal: 0,
                     borderWidth: 0,
                     backgroundColor: "transparent",
@@ -308,7 +352,7 @@ export default function SettingsScreen() {
                     fontSize: 17,
                     fontWeight: "600",
                     color: colors.text,
-                    paddingVertical: 6,
+                    paddingVertical: 2,
                     paddingHorizontal: 0,
                     borderWidth: 0,
                     backgroundColor: "transparent",

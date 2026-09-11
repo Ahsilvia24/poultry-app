@@ -1,9 +1,22 @@
+import { getAppTimeZone } from "./appSettings";
+
 /** Simple id for offline records. */
 export function newId(prefix = "id"): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function todayKey(d = new Date()): string {
+function farmDateKey(at: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: getAppTimeZone(),
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(at);
+}
+
+/** `yyyy-MM-dd`. No-arg “now” uses the Settings timezone. */
+export function todayKey(d?: Date): string {
+  if (d === undefined) return farmDateKey(new Date());
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 

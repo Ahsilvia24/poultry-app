@@ -1,4 +1,5 @@
-import { differenceInCalendarDays, format, parseISO, subDays } from "date-fns";
+import { format, parseISO, subDays } from "date-fns";
+import { calendarDaysBetween, dateKeyForAge } from "@/lib/app-calendar";
 import type {
   MortalityRecordLike,
   MortalityStatus,
@@ -21,8 +22,12 @@ export function calcPercentage(count: number, placed: number): number {
 }
 
 /** Calendar days from placement → onDate. Negative when onDate is before placement (pre-place). */
-export function daysSincePlacement(placementDate: Date, onDate: Date): number {
-  return differenceInCalendarDays(onDate, placementDate);
+export function daysSincePlacement(
+  placementDate: Date,
+  onDate: Date,
+  timeZone?: string | null,
+): number {
+  return calendarDaysBetween(dateKeyForAge(placementDate, timeZone), dateKeyForAge(onDate, timeZone));
 }
 
 /** Bird age for mortality / week math — never negative (pre-place counts as day 0). */

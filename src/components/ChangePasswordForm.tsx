@@ -5,7 +5,7 @@ import { changePasswordAction } from "@/app/actions/auth";
 import { Button, Input } from "@/components/ui";
 
 const inlineInputClass =
-  "min-h-0 flex-1 border-0 bg-transparent px-0 py-1 text-base font-semibold shadow-none focus:border-transparent focus:ring-0";
+  "!min-h-7 flex-1 border-0 bg-transparent px-0 py-0 leading-tight text-base font-semibold shadow-none focus:border-transparent focus:ring-0";
 
 function Line({
   label,
@@ -17,8 +17,8 @@ function Line({
   children: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <label htmlFor={htmlFor} className="shrink-0 text-sm font-semibold text-stone-800">
+    <div className="flex items-center gap-2 leading-tight">
+      <label htmlFor={htmlFor} className="shrink-0 text-sm font-semibold leading-tight text-stone-800">
         {label}
       </label>
       {children}
@@ -44,13 +44,14 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <form ref={formRef} action={onSubmit} className="space-y-2">
-      <h2 className="font-bold text-stone-900">Change password</h2>
+    <form ref={formRef} action={onSubmit} className="space-y-0">
+      <h2 className="font-bold leading-tight text-stone-900">Change password</h2>
       <Line label="Current:" htmlFor="currentPassword">
         <Input
           id="currentPassword"
           name="currentPassword"
           type="password"
+          compact
           required
           autoComplete="current-password"
           className={inlineInputClass}
@@ -62,6 +63,7 @@ export function ChangePasswordForm() {
           name="password"
           type="password"
           minLength={8}
+          compact
           required
           autoComplete="new-password"
           className={inlineInputClass}
@@ -73,6 +75,7 @@ export function ChangePasswordForm() {
           name="confirmPassword"
           type="password"
           minLength={8}
+          compact
           required
           autoComplete="new-password"
           className={inlineInputClass}
