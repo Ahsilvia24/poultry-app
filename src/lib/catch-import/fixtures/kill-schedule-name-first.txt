@@ -1,0 +1,5 @@
+Revised Kill Schedule
+Ending Kill Date    Farm Name         Farm-Entity  House  Projected Head Sold     Ending Kill Date    Farm Name    Farm-Entity  House  Projected Head Sold
+8/3/26 DMD FARMS 3901FS 1 22,000     8/3/26 RED FARMS 3902HV 1 18,000
+8/3/26 DMD FARMS 3901FS 2 22,000     8/4/26 RED FARMS 3902HV 2 18,000
+8/4/26 JONATHAN FARM 3862FS 3 33,600  8/4/26 VAN FARM 3906FS 1 33,000

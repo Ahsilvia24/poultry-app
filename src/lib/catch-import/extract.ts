@@ -1,6 +1,11 @@
 import * as XLSX from "xlsx";
 import { extractPdfTextCandidates } from "@/lib/pdf-text-extract";
-import { parseCatchPdfText, parseCatchSheetRows } from "@/lib/catch-import/parse";
+import {
+  catchCellText,
+  dedupeCatchRows,
+  parseCatchPdfText,
+  parseCatchSheetRows,
+} from "@/lib/catch-import/parse";
 import type { CatchRow } from "@/lib/catch-import/types";
 
 function bestCatchRows(candidates: CatchRow[][]): CatchRow[] {
@@ -9,6 +14,15 @@ function bestCatchRows(candidates: CatchRow[][]): CatchRow[] {
     if (rows.length > best.length) best = rows;
   }
   return best;
+}
+
+function sheetToTextRows(ws: XLSX.WorkSheet): unknown[][] {
+  const sheet = XLSX.utils.sheet_to_json<(string | number | Date | null)[]>(ws, {
+    header: 1,
+    raw: true,
+    defval: "",
+  });
+  return sheet.map((row) => row.map((c) => catchCellText(c)));
 }
 
 export async function extractCatchRows(input: {
@@ -40,21 +54,12 @@ export async function extractCatchRows(input: {
       } catch {
         return [];
       }
-      const first = workbook.SheetNames[0];
-      if (!first) return [];
-      const sheet = XLSX.utils.sheet_to_json<(string | number | Date | null)[]>(
-        workbook.Sheets[first]!,
-        {
-          header: 1,
-          raw: false,
-          defval: "",
-        },
-      );
-      return parseCatchSheetRows(
-        sheet.map((row: (string | number | Date | null)[]) =>
-          row.map((c: string | number | Date | null) => String(c ?? "")),
-        ),
-      );
+      const perSheet = workbook.SheetNames.map((sheetName) => {
+        const ws = workbook.Sheets[sheetName];
+        if (!ws) return [] as CatchRow[];
+        return parseCatchSheetRows(sheetToTextRows(ws));
+      });
+      return bestCatchRows([...perSheet, dedupeCatchRows(perSheet.flat())]);
     }
 
     const texts = await extractPdfTextCandidates(input.bytes);
