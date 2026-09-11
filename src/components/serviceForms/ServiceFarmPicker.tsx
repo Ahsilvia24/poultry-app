@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   deleteServiceFormAction,
   deleteServiceFormDraftAction,
 } from "@/app/actions/serviceForms";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
+import { ReplicaLink } from "@/components/ReplicaLink";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { BackHeader, Button, Card } from "@/components/ui";
+import { useOfflineNav } from "@/components/OfflineNavContext";
+import { formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import { formatServiceShortDate } from "@/lib/serviceForms/format";
 import { shareServiceFormPdf } from "@/lib/serviceForms/sharePdf";
 import type { StoredServiceForm } from "@/lib/serviceForms/stored";
@@ -41,6 +44,8 @@ export function ServiceFarmPicker({
   completed: StoredServiceForm[];
 }) {
   const router = useRouter();
+  const nav = useOfflineNav();
+  const { enabled, queue } = useReplicaWrite();
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<StoredServiceForm | null>(null);
@@ -49,9 +54,17 @@ export function ServiceFarmPicker({
 
   function startOver(form: (typeof FORMS)[number]) {
     start(async () => {
-      await deleteServiceFormDraftAction(farmId, form.key);
-      router.push(formHref(farmId, form.href, { fresh: "1" }));
-      router.refresh();
+      if (enabled) {
+        queue(formWrite("deleteServiceDraft", { farmId, fields: { formKind: form.key } }));
+      } else {
+        await deleteServiceFormDraftAction(farmId, form.key);
+      }
+      const href = formHref(farmId, form.href, { fresh: "1" });
+      if (nav) nav.navigate(href);
+      else {
+        router.push(href);
+        router.refresh();
+      }
     });
   }
 
@@ -80,6 +93,11 @@ export function ServiceFarmPicker({
     if (!pendingDelete) return;
     const row = pendingDelete;
     start(async () => {
+      if (enabled) {
+        queue(formWrite("deleteServiceForm", { id: row.id, farmId }));
+        setPendingDelete(null);
+        return;
+      }
       const result = await deleteServiceFormAction(farmId, row.id);
       if (result.error) setDeleteError(result.error);
       setPendingDelete(null);
@@ -93,14 +111,14 @@ export function ServiceFarmPicker({
 
       <div className="mb-2.5 flex items-stretch gap-1.5">
         {FORMS.map((form) => (
-          <Link
+          <ReplicaLink
             key={form.key}
             href={formHref(farmId, form.href)}
             className="flex min-h-10 flex-1 items-center justify-center rounded-[10px] bg-emerald-700 px-1 py-2.5 text-center text-[13px] font-bold text-white hover:bg-emerald-800"
             aria-label={draftKinds.includes(form.key) ? `Resume ${form.title}` : `Start ${form.title}`}
           >
             {form.tab}
-          </Link>
+          </ReplicaLink>
         ))}
       </div>
 
@@ -139,7 +157,7 @@ export function ServiceFarmPicker({
                 >
                   <Card className="!py-3">
                     <div className="flex items-center gap-2.5">
-                      <Link
+                      <ReplicaLink
                         href={form ? formHref(farmId, form.href, { formId: row.id }) : "#"}
                         className="min-w-0 flex-1"
                         aria-label={`View or edit ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
@@ -150,7 +168,7 @@ export function ServiceFarmPicker({
                         <p className="mt-0.5 font-semibold text-stone-500">
                           {formatServiceShortDate(row.formDate)}
                         </p>
-                      </Link>
+                      </ReplicaLink>
                       <button
                         type="button"
                         onClick={() => void shareSaved(row)}

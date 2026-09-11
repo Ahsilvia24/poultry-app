@@ -1,4 +1,5 @@
 import {
+  createFlockAction,
   createHouseAction,
   deactivateFarmAction,
   deleteFarmAction,
@@ -31,7 +32,15 @@ import {
   saveFarmLfoHubAction,
 } from "@/app/actions/lfo";
 import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
+import {
+  completeServiceFormAction,
+  deleteServiceFormAction,
+  deleteServiceFormDraftAction,
+  saveServiceFormDraftAction,
+} from "@/app/actions/serviceForms";
 import { isLocalRecordId, writeToFormData } from "@/lib/offline/formPairs";
+import { isServiceFormKind } from "@/lib/serviceForms/stored";
+import type { AnyServiceForm, ServiceFormKind } from "@/lib/serviceForms/types";
 import type { OfflineFormWrite } from "@/lib/offline/types";
 
 function failed(result: unknown) {
@@ -127,6 +136,42 @@ export async function flushFormWrite(write: OfflineFormWrite): Promise<boolean> 
         }),
       );
     }
+    case "createFlock":
+      return !failed(await createFlockAction(farmId, formData, { skipRedirect: true }));
+    case "saveServiceDraft": {
+      const formKind = write.fields?.formKind ?? "";
+      if (!isServiceFormKind(formKind)) return false;
+      return !failed(
+        await saveServiceFormDraftAction({
+          farmId,
+          formKind,
+          payload: write.extra,
+        }),
+      );
+    }
+    case "completeServiceForm": {
+      const form = write.extra as AnyServiceForm | undefined;
+      if (!form) return false;
+      const existingVisitId = write.fields?.existingVisitId?.trim();
+      return !failed(
+        await completeServiceFormAction({
+          farmId,
+          form,
+          serviceFormId: isLocalRecordId(write.id) ? undefined : write.id,
+          existingVisitId:
+            existingVisitId && !isLocalRecordId(existingVisitId) ? existingVisitId : undefined,
+        }),
+      );
+    }
+    case "deleteServiceDraft": {
+      const formKind = write.fields?.formKind as ServiceFormKind | undefined;
+      if (!formKind || !isServiceFormKind(formKind)) return false;
+      await deleteServiceFormDraftAction(farmId, formKind);
+      return true;
+    }
+    case "deleteServiceForm":
+      if (isLocalRecordId(write.id)) return true;
+      return !failed(await deleteServiceFormAction(farmId, id));
     default:
       return false;
   }

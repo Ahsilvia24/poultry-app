@@ -57,8 +57,17 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
   const farmIds = farms.map((farm) => farm.id);
   const flockIds = flocks.map((flock) => flock.id);
 
-  const [mortalities, visits, issues, litterEvents, feedDeliveries, lfos, generatorLogs] =
-    await Promise.all([
+  const [
+    mortalities,
+    visits,
+    issues,
+    litterEvents,
+    feedDeliveries,
+    lfos,
+    generatorLogs,
+    serviceForms,
+    serviceFormDrafts,
+  ] = await Promise.all([
       houseFlockIds.length
         ? prisma.dailyMortality.findMany({
             where: { houseFlockId: { in: houseFlockIds }, isDraft: false },
@@ -98,6 +107,17 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
         ? prisma.generatorLog.findMany({
             where: { farmId: { in: farmIds } },
             orderBy: [{ logDate: "desc" }, { createdAt: "desc" }],
+          })
+        : Promise.resolve([]),
+      farmIds.length
+        ? prisma.serviceForm.findMany({
+            where: { farmId: { in: farmIds } },
+            orderBy: [{ formDate: "desc" }, { createdAt: "desc" }],
+          })
+        : Promise.resolve([]),
+      farmIds.length
+        ? prisma.serviceFormDraft.findMany({
+            where: { farmId: { in: farmIds } },
           })
         : Promise.resolve([]),
     ]);
@@ -246,6 +266,22 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
       gen2Hours: row.gen2Hours,
       gen3Hours: row.gen3Hours,
       gen4Hours: row.gen4Hours,
+    })),
+    serviceFormDrafts: serviceFormDrafts.map((row) => ({
+      farmId: row.farmId,
+      formKind: row.formKind,
+      payload: row.payload,
+      updatedAt: row.updatedAt.toISOString(),
+    })),
+    serviceForms: serviceForms.map((row) => ({
+      id: row.id,
+      farmId: row.farmId,
+      flockId: row.flockId,
+      formKind: row.formKind,
+      formDate: dateKeyOrNull(row.formDate) ?? row.formDate.toISOString().slice(0, 10),
+      payload: row.payload,
+      visitId: row.visitId,
+      createdAt: row.createdAt.toISOString(),
     })),
     dashboard,
   });

@@ -87,6 +87,7 @@ export function FarmDetailView({
       <AddHouseForm farmId={farm.id} />
 
       <AddFlockSection
+        farmId={farm.id}
         action={submitFlock}
         hasActiveFlock={model.activeFlocks.length > 0}
         activeFlockCount={model.activeFlocks.length}

@@ -3,6 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { FlockScheduleFields } from "@/components/FlockScheduleFields";
 import { Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
+import { formDataToParts, formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import { PROCESSING_PLANT_OPTIONS } from "@/lib/utils";
 
 type HouseOption = {
@@ -12,18 +14,21 @@ type HouseOption = {
 };
 
 export function AddFlockSection({
+  farmId,
   action,
   hasActiveFlock,
   activeFlockCount = 0,
   houses,
   initialPlacement,
 }: {
+  farmId: string;
   action: (formData: FormData) => Promise<{ error?: string } | void>;
   hasActiveFlock: boolean;
   activeFlockCount?: number;
   houses: HouseOption[];
   initialPlacement: string;
 }) {
+  const { enabled, queue } = useReplicaWrite();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -63,6 +68,19 @@ export function AddFlockSection({
               action={(formData) => {
                 setError(null);
                 startTransition(async () => {
+                  if (enabled) {
+                    queue(
+                      formWrite("createFlock", {
+                        farmId,
+                        ...formDataToParts(formData),
+                      }),
+                    );
+                    setOpen(false);
+                    if (window.location.hash === "#add-flock") {
+                      history.replaceState(null, "", window.location.pathname + window.location.search);
+                    }
+                    return;
+                  }
                   const result = await action(formData);
                   if (result?.error) setError(result.error);
                 });

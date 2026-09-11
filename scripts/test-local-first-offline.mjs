@@ -95,7 +95,9 @@ assert.ok(preview.every((farm) => farm.isMyFarm === false));
 assert.equal(isReplicaHref("/farms"), true);
 assert.equal(isReplicaHref("/farms/abc"), true);
 assert.equal(isReplicaHref("/farms/new"), false);
-assert.equal(isReplicaHref("/farms/abc/service"), false);
+assert.equal(isReplicaHref("/farms/abc/service"), true);
+assert.equal(isReplicaHref("/farms/abc/service/report"), true);
+assert.equal(isReplicaHref("/farms/abc/service/prebrood"), true);
 assert.equal(isReplicaHref("/lfo?farmId=abc"), true);
 assert.equal(isReplicaHref("/reports"), true);
 assert.equal(isReplicaHref("/reports?type=mortality"), true);
@@ -347,6 +349,83 @@ const named = applyFormWrite(snapshot, {
 });
 assert.equal(named.farms[0].farmName, "Oak Ridge West");
 
+const emptyFarm = {
+  ...snapshot,
+  farms: [
+    ...snapshot.farms,
+    {
+      ...snapshot.farms[0],
+      id: "farm-2",
+      farmName: "Empty",
+      numberOfHouses: 1,
+    },
+  ],
+  houses: [
+    ...snapshot.houses,
+    { ...snapshot.houses[0], id: "house-3", farmId: "farm-2", houseNumber: 1 },
+  ],
+};
+const withFlock = applyFormWrite(emptyFarm, {
+  action: "createFlock",
+  farmId: "farm-2",
+  fields: {
+    flockNumber: "B2",
+    placementDate: "2026-09-11",
+    projectedCatchDate: "2026-11-02",
+    targetMarketAge: "52",
+    flockStatus: "ACTIVE",
+    houseId: "house-3",
+    placedBirdCount: "18000",
+  },
+});
+assert.equal(withFlock.flocks.some((flock) => flock.flockNumber === "B2"), true);
+assert.equal(
+  withFlock.houseFlocks.some((hf) => hf.houseId === "house-3" && hf.placedBirdCount === 18000),
+  true,
+);
+
+const draftSaved = applyFormWrite(snapshot, {
+  action: "saveServiceDraft",
+  farmId: "farm-1",
+  fields: { formKind: "service_report" },
+  extra: { kind: "service_report", date: "2026-09-11", comments: "Draft", farmName: "Oak Ridge" },
+});
+assert.equal(draftSaved.serviceFormDrafts?.length, 1);
+assert.equal(draftSaved.serviceFormDrafts?.[0].formKind, "service_report");
+
+const completed = applyFormWrite(draftSaved, {
+  action: "completeServiceForm",
+  id: "local-service-1",
+  farmId: "farm-1",
+  extra: { kind: "service_report", date: "2026-09-11", comments: "Done", farmName: "Oak Ridge" },
+});
+assert.equal(completed.serviceFormDrafts?.length, 0);
+assert.equal(completed.serviceForms?.[0].id, "local-service-1");
+assert.equal(completed.visits[0].visitType, "ROUTINE_SERVICE");
+assert.equal(completed.visits[0].notes, "Done");
+
+const { selectServiceFarmPicker, selectServiceFarmContext } = await import(
+  join(root, "src/lib/offline/selectServiceFarm.ts")
+);
+const picker = selectServiceFarmPicker(completed, "farm-1");
+assert.ok(picker);
+assert.equal(picker.completed.length, 1);
+assert.equal(picker.draftKinds.length, 0);
+const serviceCtx = selectServiceFarmContext(snapshot, "farm-1");
+assert.ok(serviceCtx);
+assert.equal(serviceCtx.farmName, "Oak Ridge");
+assert.equal(serviceCtx.detail.houses.length, 2);
+
+const nav = read("src/components/AppNav.tsx");
+assert.doesNotMatch(nav, /Settlement/);
+const settlementPage = read("src/app/(dashboard)/settlement/page.tsx");
+assert.match(settlementPage, /redirect\("\/"\)/);
+assert.doesNotMatch(read("src/components/FarmHistoryView.tsx"), /SettlementForm/);
+assert.match(read("src/lib/offline/buildSnapshot.ts"), /serviceForms/);
+assert.match(read("src/components/AddFlockSection.tsx"), /createFlock/);
+assert.match(read("src/components/serviceForms/useServiceFormSave.ts"), /saveServiceDraft/);
+assert.match(read("src/components/OfflineNav.tsx"), /selectServiceFarmPicker/);
+
 console.log(
-  `local-first-offline: ${rows.length} rows · ${farms.length} farms · farm detail ${detail.houseCards.length} houses · LFO ${lfo.savedLfos.length} · reports + writes`,
+  `local-first-offline: ${rows.length} rows · ${farms.length} farms · farm detail ${detail.houseCards.length} houses · LFO ${lfo.savedLfos.length} · reports + flock + service`,
 );

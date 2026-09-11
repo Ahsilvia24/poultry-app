@@ -150,6 +150,24 @@ export type OfflineGenLog = {
   gen4Hours: number | null;
 };
 
+export type OfflineServiceFormDraft = {
+  farmId: string;
+  formKind: string;
+  payload: unknown;
+  updatedAt: string;
+};
+
+export type OfflineServiceForm = {
+  id: string;
+  farmId: string;
+  flockId: string | null;
+  formKind: string;
+  formDate: string | null;
+  payload: unknown;
+  visitId: string | null;
+  createdAt: string;
+};
+
 export type OfflineSettings = {
   farmOrder: string;
   appTimeZone: string;
@@ -190,7 +208,12 @@ export type OfflineFormWriteAction =
   | "createManualLfo"
   | "deleteLfo"
   | "saveMortalitySeries"
-  | "toggleFollowUp";
+  | "toggleFollowUp"
+  | "createFlock"
+  | "saveServiceDraft"
+  | "completeServiceForm"
+  | "deleteServiceDraft"
+  | "deleteServiceForm";
 
 export type OfflineFormWrite = {
   action: OfflineFormWriteAction;
@@ -232,6 +255,8 @@ export type OfflineSnapshot = {
   lfos: OfflineLfo[];
   lfoInventories: OfflineLfoInv[];
   generatorLogs: OfflineGenLog[];
+  serviceFormDrafts?: OfflineServiceFormDraft[];
+  serviceForms?: OfflineServiceForm[];
   dashboard: Awaited<ReturnType<typeof getDashboardData>> | null;
 };
 

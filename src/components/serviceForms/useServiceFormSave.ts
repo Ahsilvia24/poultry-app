@@ -6,6 +6,9 @@ import {
   completeServiceFormAction,
   saveServiceFormDraftAction,
 } from "@/app/actions/serviceForms";
+import { useOfflineNav } from "@/components/OfflineNavContext";
+import { formWrite, localRecordId } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import { shareServiceFormPdf } from "@/lib/serviceForms/sharePdf";
 import type { AnyServiceForm, ServiceFormKind } from "@/lib/serviceForms/types";
 
@@ -15,6 +18,7 @@ export function useAutosaveServiceFormDraft(
   form: AnyServiceForm,
   enabled: boolean,
 ) {
+  const { enabled: replica, queue } = useReplicaWrite();
   const formRef = useRef(form);
   formRef.current = form;
   const enabledRef = useRef(enabled);
@@ -24,6 +28,16 @@ export function useAutosaveServiceFormDraft(
     if (!enabled || !farmId) return;
     const t = setTimeout(() => {
       if (!enabledRef.current) return;
+      if (replica) {
+        queue(
+          formWrite("saveServiceDraft", {
+            farmId,
+            fields: { formKind: kind },
+            extra: formRef.current,
+          }),
+        );
+        return;
+      }
       void saveServiceFormDraftAction({
         farmId,
         formKind: kind,
@@ -31,7 +45,7 @@ export function useAutosaveServiceFormDraft(
       });
     }, 400);
     return () => clearTimeout(t);
-  }, [enabled, farmId, kind, form]);
+  }, [enabled, farmId, kind, form, replica, queue]);
 }
 
 export function useCompleteServiceForm(
@@ -39,6 +53,8 @@ export function useCompleteServiceForm(
   opts: { serviceFormId?: string | null; existingVisitId?: string | null },
 ) {
   const router = useRouter();
+  const nav = useOfflineNav();
+  const { enabled, queue } = useReplicaWrite();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editing = Boolean(opts.serviceFormId);
@@ -48,23 +64,38 @@ export function useCompleteServiceForm(
     setSaving(true);
     setError(null);
     try {
-      const result = await completeServiceFormAction({
-        farmId,
-        form,
-        serviceFormId: opts.serviceFormId,
-        existingVisitId: opts.existingVisitId,
-      });
-      if ("error" in result && result.error) {
-        setError(result.error);
-        return;
+      if (enabled) {
+        queue(
+          formWrite("completeServiceForm", {
+            id: opts.serviceFormId ?? localRecordId(),
+            farmId,
+            fields: opts.existingVisitId ? { existingVisitId: opts.existingVisitId } : undefined,
+            extra: form,
+          }),
+        );
+      } else {
+        const result = await completeServiceFormAction({
+          farmId,
+          form,
+          serviceFormId: opts.serviceFormId,
+          existingVisitId: opts.existingVisitId,
+        });
+        if ("error" in result && result.error) {
+          setError(result.error);
+          return;
+        }
       }
       try {
         await shareServiceFormPdf(form);
       } catch {
         // Visit is saved even if the download is dismissed.
       }
-      router.push(`/farms/${farmId}/service`);
-      router.refresh();
+      const href = `/farms/${farmId}/service`;
+      if (nav) nav.navigate(href);
+      else {
+        router.push(href);
+        router.refresh();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {

@@ -624,7 +624,11 @@ export async function deleteHouseAction(farmId: string, houseId: string) {
   return { success: true };
 }
 
-export async function createFlockAction(farmId: string, formData: FormData) {
+export async function createFlockAction(
+  farmId: string,
+  formData: FormData,
+  options?: { skipRedirect?: boolean },
+) {
   const user = await requireUser();
   await assertFarmAccess(farmId, user.id!);
 
@@ -745,6 +749,7 @@ export async function createFlockAction(farmId: string, formData: FormData) {
   }
 
   revalidatePath(`/farms/${farmId}`);
+  if (options?.skipRedirect) return { success: true as const };
   redirect(`/farms/${farmId}`);
 }
 

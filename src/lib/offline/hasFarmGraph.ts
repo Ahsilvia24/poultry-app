@@ -28,6 +28,8 @@ export function isReplicaHref(href: string): boolean {
   ) {
     return true;
   }
-  const farm = /^\/farms\/([^/]+)$/.exec(pathname);
+  const farm = /^\/farms\/([^/]+)(?:\/service(?:\/(report|placement|prebrood))?)?$/.exec(
+    pathname,
+  );
   return Boolean(farm && farm[1] !== "new");
 }

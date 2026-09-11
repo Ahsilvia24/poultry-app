@@ -1,10 +1,17 @@
 import { nextCustomLfoName } from "@/lib/lfo/customName";
-import { calcTotalDailyLoss } from "@/lib/mortality/calculations";
-import { isLocalRecordId } from "@/lib/offline/formPairs";
+import { birdAgeFromPlacement, calcTotalDailyLoss } from "@/lib/mortality/calculations";
+import { normalizeFlockNumber } from "@/lib/houseFlockNumber";
+import { asDate } from "@/lib/offline/dates";
+import { isLocalRecordId, localRecordId } from "@/lib/offline/formPairs";
+import { isServiceFormKind } from "@/lib/serviceForms/stored";
+import type { AnyServiceForm } from "@/lib/serviceForms/types";
 import type {
   OfflineFormWrite,
   OfflineMortality,
+  OfflineServiceForm,
+  OfflineServiceFormDraft,
   OfflineSnapshot,
+  OfflineVisit,
 } from "@/lib/offline/types";
 
 function num(value: string | undefined, fallback = 0) {
@@ -15,6 +22,33 @@ function num(value: string | undefined, fallback = 0) {
 function emptyToNull(value: string | undefined) {
   const text = value?.trim() ?? "";
   return text ? text : null;
+}
+
+function listValues(
+  lists: Record<string, string[]>,
+  fields: Record<string, string>,
+  key: string,
+) {
+  if (lists[key]?.length) return lists[key];
+  if (fields[key] != null) return [fields[key]];
+  return [];
+}
+
+function visitTypeForKind(formKind: string) {
+  if (formKind === "placement") return "PLACEMENT";
+  if (formKind === "prebrood") return "PREBROOD";
+  return "ROUTINE_SERVICE";
+}
+
+function activeFarmFlockId(snapshot: OfflineSnapshot, farmId: string) {
+  return (
+    snapshot.flocks.find(
+      (flock) =>
+        flock.farmId === farmId &&
+        flock.flockStatus !== "COMPLETED" &&
+        !flock.deletedAt,
+    )?.id ?? null
+  );
 }
 
 function patchDashboardFollowUp(
@@ -477,9 +511,196 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
       };
       return patchDashboardFollowUp(snapshot, extra);
     }
+    case "createFlock": {
+      const farmId = write.farmId ?? fields.farmId ?? "";
+      const flockNumber = (fields.flockNumber ?? "").trim();
+      const placementDate = (fields.placementDate ?? "").trim();
+      if (!farmId || !flockNumber || !placementDate) return snapshot;
+
+      const houseIds = listValues(lists, fields, "houseId");
+      const placedCounts = listValues(lists, fields, "placedBirdCount");
+      const placements = houseIds
+        .map((houseId, i) => ({
+          houseId,
+          placedBirdCount: num(placedCounts[i]),
+        }))
+        .filter((row) => row.placedBirdCount > 0);
+
+      const activeFlockIds = new Set(
+        snapshot.flocks
+          .filter(
+            (flock) =>
+              flock.farmId === farmId &&
+              flock.flockStatus !== "COMPLETED" &&
+              !flock.deletedAt,
+          )
+          .map((flock) => flock.id),
+      );
+      const occupied = new Set(
+        snapshot.houseFlocks
+          .filter((hf) => activeFlockIds.has(hf.flockId))
+          .map((hf) => hf.houseId),
+      );
+      const openPlacements = placements.filter((row) => !occupied.has(row.houseId));
+      const catchDate = emptyToNull(fields.projectedCatchDate)?.slice(0, 10) ?? null;
+      const targetMarketAge = emptyToNull(fields.targetMarketAge)
+        ? num(fields.targetMarketAge)
+        : null;
+
+      const existing = snapshot.flocks.find(
+        (flock) =>
+          flock.farmId === farmId &&
+          flock.flockStatus !== "COMPLETED" &&
+          !flock.deletedAt &&
+          normalizeFlockNumber(flock.flockNumber) === normalizeFlockNumber(flockNumber),
+      );
+
+      const flockId = existing?.id ?? write.id ?? localRecordId();
+      const nextFlocks = existing
+        ? snapshot.flocks
+        : [
+            ...snapshot.flocks,
+            {
+              id: flockId,
+              farmId,
+              flockNumber,
+              flockStatus: fields.flockStatus || "ACTIVE",
+              placementDate,
+              projectedCatchDate: catchDate,
+              actualCatchDate: emptyToNull(fields.actualCatchDate),
+              targetMarketAge,
+              growthRateLbsPerDay: null,
+              deletedAt: null,
+            },
+          ];
+
+      const alreadyOnFlock = new Set(
+        snapshot.houseFlocks.filter((hf) => hf.flockId === flockId).map((hf) => hf.houseId),
+      );
+      const nextHouseFlocks = [
+        ...snapshot.houseFlocks,
+        ...openPlacements
+          .filter((row) => !alreadyOnFlock.has(row.houseId))
+          .map((row) => ({
+            id: localRecordId(),
+            flockId,
+            houseId: row.houseId,
+            placedBirdCount: row.placedBirdCount,
+            placementDate: placementDate.slice(0, 10),
+            catchDate,
+            catchTime: null,
+          })),
+      ];
+
+      return { ...snapshot, flocks: nextFlocks, houseFlocks: nextHouseFlocks };
+    }
+    case "saveServiceDraft": {
+      const farmId = write.farmId ?? "";
+      const formKind = fields.formKind ?? "";
+      if (!farmId || !formKind) return snapshot;
+      const drafts = (snapshot.serviceFormDrafts ?? []).filter(
+        (row) => !(row.farmId === farmId && row.formKind === formKind),
+      );
+      const next: OfflineServiceFormDraft = {
+        farmId,
+        formKind,
+        payload: write.extra,
+        updatedAt: now,
+      };
+      return { ...snapshot, serviceFormDrafts: [...drafts, next] };
+    }
+    case "completeServiceForm": {
+      const farmId = write.farmId ?? "";
+      const form = write.extra as AnyServiceForm | undefined;
+      if (!farmId || !form || !isServiceFormKind(form.kind)) return snapshot;
+      const formDate = form.date?.trim() || now.slice(0, 10);
+      const comments = typeof form.comments === "string" ? form.comments.trim() : "";
+      const formId = write.id ?? localRecordId();
+      const forms = snapshot.serviceForms ?? [];
+      const existing = forms.find((row) => row.id === formId);
+      const flockId = existing?.flockId ?? activeFarmFlockId(snapshot, farmId);
+      const visitId =
+        existing?.visitId ??
+        emptyToNull(fields.existingVisitId) ??
+        localRecordId();
+      const flock = snapshot.flocks.find((row) => row.id === flockId);
+      const placement = flock ? asDate(flock.placementDate) : null;
+      const visitDate = asDate(formDate);
+      const birdAgeInDays =
+        placement && visitDate ? birdAgeFromPlacement(placement, visitDate) : null;
+      const visit: OfflineVisit = {
+        id: visitId,
+        farmId,
+        flockId,
+        visitDate: formDate,
+        visitType: visitTypeForKind(form.kind),
+        birdAgeInDays,
+        generalBirdCondition: "Healthy",
+        followUpRequired: false,
+        followUpDate: null,
+        notes: comments || null,
+        loggedAt: now,
+      };
+      const visits = snapshot.visits.some((row) => row.id === visitId)
+        ? snapshot.visits.map((row) => (row.id === visitId ? { ...row, ...visit } : row))
+        : [visit, ...snapshot.visits];
+      const stored: OfflineServiceForm = {
+        id: formId,
+        farmId,
+        flockId,
+        formKind: form.kind,
+        formDate,
+        payload: form,
+        visitId,
+        createdAt: existing?.createdAt ?? now,
+      };
+      const nextForms = existing
+        ? forms.map((row) => (row.id === formId ? stored : row))
+        : [stored, ...forms];
+      return {
+        ...snapshot,
+        visits,
+        serviceForms: nextForms,
+        serviceFormDrafts: (snapshot.serviceFormDrafts ?? []).filter(
+          (row) => !(row.farmId === farmId && row.formKind === form.kind),
+        ),
+      };
+    }
+    case "deleteServiceDraft": {
+      const farmId = write.farmId ?? "";
+      const formKind = fields.formKind ?? "";
+      return {
+        ...snapshot,
+        serviceFormDrafts: (snapshot.serviceFormDrafts ?? []).filter(
+          (row) => !(row.farmId === farmId && row.formKind === formKind),
+        ),
+      };
+    }
+    case "deleteServiceForm": {
+      const existing = (snapshot.serviceForms ?? []).find((row) => row.id === write.id);
+      return {
+        ...snapshot,
+        serviceForms: (snapshot.serviceForms ?? []).filter((row) => row.id !== write.id),
+        visits: existing?.visitId
+          ? snapshot.visits.filter((row) => row.id !== existing.visitId)
+          : snapshot.visits,
+      };
+    }
     default:
       return snapshot;
   }
+}
+
+function asFormWrite(item: import("@/lib/offline/types").OfflineOutboxItem) {
+  if (item.kind !== "formWrite") return null;
+  return item.payload as OfflineFormWrite;
+}
+
+function sameServiceDraft(a: OfflineFormWrite, b: OfflineFormWrite) {
+  return (
+    a.farmId === b.farmId &&
+    (a.fields?.formKind ?? "") === (b.fields?.formKind ?? "")
+  );
 }
 
 export function coalesceFormWrite(
@@ -488,6 +709,35 @@ export function coalesceFormWrite(
 ): import("@/lib/offline/types").OfflineOutboxItem[] {
   if (next.kind !== "formWrite") return [...items, next];
   const write = next.payload as OfflineFormWrite;
+
+  if (write.action === "saveServiceDraft") {
+    const idx = items.findIndex((item) => {
+      const payload = asFormWrite(item);
+      return payload?.action === "saveServiceDraft" && sameServiceDraft(payload, write);
+    });
+    if (idx >= 0) {
+      const copy = items.slice();
+      copy[idx] = next;
+      return copy;
+    }
+    return [...items, next];
+  }
+
+  if (write.action === "deleteServiceDraft" || write.action === "completeServiceForm") {
+    const kept = items.filter((item) => {
+      const payload = asFormWrite(item);
+      if (!payload) return true;
+      if (payload.action !== "saveServiceDraft") return true;
+      const kind =
+        write.action === "completeServiceForm"
+          ? (write.extra as { kind?: string } | undefined)?.kind
+          : write.fields?.formKind;
+      return !(payload.farmId === write.farmId && payload.fields?.formKind === kind);
+    });
+    if (write.action === "deleteServiceDraft") return [...kept, next];
+    items = kept;
+  }
+
   if (!isLocalRecordId(write.id)) return [...items, next];
   if (write.action.startsWith("delete")) {
     return items.filter((item) => {

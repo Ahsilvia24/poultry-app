@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ReplicaLink } from "@/components/ReplicaLink";
 import { cn } from "@/lib/utils";
 import { ButtonHTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 
@@ -140,7 +140,7 @@ export function BackHeader({
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between gap-3">
-        <Link
+        <ReplicaLink
           href={href}
           className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-1 text-[17px] font-bold text-emerald-800 hover:bg-emerald-50"
         >
@@ -148,7 +148,7 @@ export function BackHeader({
             ←
           </span>
           {backLabel}
-        </Link>
+        </ReplicaLink>
         <h1 className="min-w-0 flex-1 text-right text-[28px] font-extrabold leading-tight tracking-tight text-stone-900 md:text-3xl">
           {title}
         </h1>
