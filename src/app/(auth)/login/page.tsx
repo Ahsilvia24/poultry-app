@@ -3,35 +3,13 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { postAuthJson } from "@/lib/client-auth-request";
 import { Button, Input, Label } from "@/components/ui";
 
 function LoginForm() {
   const params = useSearchParams();
   const resetOk = params.get("reset") === "1";
-  const [error, setError] = useState<string | null>(null);
+  const urlError = params.get("error") === "1";
   const [pending, setPending] = useState(false);
-
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setPending(true);
-    const formData = new FormData(event.currentTarget);
-    try {
-      const result = await postAuthJson("/api/login", {
-        email: String(formData.get("email") ?? ""),
-        password: String(formData.get("password") ?? ""),
-      });
-      if (result.error) {
-        setError(result.error);
-        setPending(false);
-        return;
-      }
-      window.location.assign("/");
-    } catch {
-      window.location.assign("/");
-    }
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -44,7 +22,12 @@ function LoginForm() {
             Password saved. Sign in with your new password.
           </p>
         ) : null}
-        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+        <form
+          action="/api/login"
+          method="post"
+          className="mt-6 space-y-4"
+          onSubmit={() => setPending(true)}
+        >
           <div>
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" type="email" required autoComplete="email" />
@@ -53,7 +36,7 @@ function LoginForm() {
             <Label htmlFor="password">Password</Label>
             <Input id="password" name="password" type="password" required autoComplete="current-password" />
           </div>
-          {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+          {urlError ? <p className="text-sm font-medium text-red-700">Invalid email or password</p> : null}
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? "Signing in…" : "Sign in"}
           </Button>

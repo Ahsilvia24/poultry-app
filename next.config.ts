@@ -3,6 +3,18 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // pdf-parse ships pdf.js workers — do not bundle them into server actions.
   serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  async headers() {
+    return [
+      {
+        source: "/login",
+        headers: [{ key: "Cache-Control", value: "no-store, must-revalidate" }],
+      },
+      {
+        source: "/register",
+        headers: [{ key: "Cache-Control", value: "no-store, must-revalidate" }],
+      },
+    ];
+  },
   // Bottom tabs sit at the left; keep the Next.js N badge off that control.
   devIndicators: {
     position: "top-right",

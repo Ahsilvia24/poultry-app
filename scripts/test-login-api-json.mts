@@ -21,6 +21,16 @@ async function main() {
   assert.equal(badRegister.status, 400);
   assert.deepEqual(await badRegister.json(), { error: "Invalid input" });
 
+  const formLogin = await loginPost(
+    new Request("http://localhost/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "email=&password=",
+    }),
+  );
+  assert.equal(formLogin.status, 303);
+  assert.equal(new URL(formLogin.headers.get("location") ?? "", "http://localhost").pathname, "/login");
+
   console.log("login-api-json: ok");
 }
 

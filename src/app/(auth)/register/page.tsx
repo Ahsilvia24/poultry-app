@@ -1,35 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { postAuthJson } from "@/lib/client-auth-request";
+import { useSearchParams } from "next/navigation";
 import { Button, Input, Label } from "@/components/ui";
 
-export default function RegisterPage() {
-  const [error, setError] = useState<string | null>(null);
+function RegisterForm() {
+  const params = useSearchParams();
+  const urlError = params.get("error") === "1";
   const [pending, setPending] = useState(false);
-
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setPending(true);
-    const formData = new FormData(event.currentTarget);
-    try {
-      const result = await postAuthJson("/api/register", {
-        name: String(formData.get("name") ?? ""),
-        email: String(formData.get("email") ?? ""),
-        password: String(formData.get("password") ?? ""),
-      });
-      if (result.error) {
-        setError(result.error);
-        setPending(false);
-        return;
-      }
-      window.location.assign("/");
-    } catch {
-      window.location.assign("/");
-    }
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -39,7 +18,12 @@ export default function RegisterPage() {
         </p>
         <h1 className="mt-1.5 text-xl font-semibold">Create account</h1>
         <p className="mt-1 text-sm text-stone-500">Only approved emails can create an account.</p>
-        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+        <form
+          action="/api/register"
+          method="post"
+          className="mt-6 space-y-4"
+          onSubmit={() => setPending(true)}
+        >
           <div>
             <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" required autoComplete="name" />
@@ -60,7 +44,9 @@ export default function RegisterPage() {
             />
             <p className="mt-1 text-xs text-stone-500">At least 8 characters.</p>
           </div>
-          {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+          {urlError ? (
+            <p className="text-sm font-medium text-red-700">Could not create that account.</p>
+          ) : null}
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? "Creating…" : "Create account"}
           </Button>
@@ -73,5 +59,13 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }
