@@ -1,7 +1,9 @@
 import { format, subDays, addDays, startOfDay } from "date-fns";
+import { appToday, appTodayKey } from "@/lib/app-calendar";
 import {
   DEFAULT_THRESHOLDS,
   averageDailyMortalityLast7Days,
+  daysSincePlacement,
   sumMortalityLast7Days,
   isRisingThreeDays,
   projectedHeadCountAtCatch,
@@ -12,7 +14,6 @@ import {
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/session-user";
 import type { FarmCardSummary, ThresholdSettings } from "@/types";
-import { differenceInCalendarDays } from "date-fns";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import {
   buildFlockVisitSchedule,
@@ -40,8 +41,8 @@ export async function getUserThresholds(userId: string): Promise<ThresholdSettin
 export async function getDashboardData(userId: string) {
   userId = requireUserId(userId);
   await ensureActiveFlockHouseFlocksForUser(userId);
-  const today = new Date();
-  const todayKey = format(today, "yyyy-MM-dd");
+  const today = appToday();
+  const todayKey = appTodayKey();
   const [settings, farms, completions, recentCleanouts] = await Promise.all([
     prisma.userSettings.findUnique({ where: { userId } }),
     prisma.farm.findMany({
@@ -224,7 +225,7 @@ export async function getDashboardData(userId: string) {
         flockNumber: group.flockNumber,
         completed: due.completed,
         // Current flock age today (can be negative pre-place), not the event's target age.
-        flockAgeDays: differenceInCalendarDays(today, placement),
+        flockAgeDays: daysSincePlacement(placement, today),
       });
       for (const due of dueToday) todaysSchedule.push(toRow(due));
       for (const due of upcoming) upcomingSchedule.push(toRow(due));
@@ -273,14 +274,14 @@ export async function getDashboardData(userId: string) {
           farmName: farm.farmName,
           date: dateKey,
           flockNumber: flock.flockNumber,
-          flockAgeDays: differenceInCalendarDays(today, placement),
-          catchAgeDays: differenceInCalendarDays(catchDate, placement),
+          flockAgeDays: daysSincePlacement(placement, today),
+          catchAgeDays: daysSincePlacement(placement, catchDate),
           catchTime,
         });
       }
 
       const catchDate = resolveCatchDate(flock);
-      const daysUntilCatch = Math.max(0, differenceInCalendarDays(catchDate, today));
+      const daysUntilCatch = Math.max(0, daysSincePlacement(today, catchDate));
 
       for (const hf of flock.houseFlocks) {
         activeHouseCount += 1;
@@ -326,10 +327,8 @@ export async function getDashboardData(userId: string) {
       growerName: farm.growerName,
       phoneNumber: farm.phoneNumber,
       houseCount: farm.houses?.length ?? activeHouseCount,
-      flockAgeDays: active
-        ? differenceInCalendarDays(today, active.placementDate)
-        : null,
-      flockAgesDays: activeFlocks.map((fl) => differenceInCalendarDays(today, fl.placementDate)),
+      flockAgeDays: active ? daysSincePlacement(active.placementDate, today) : null,
+      flockAgesDays: activeFlocks.map((fl) => daysSincePlacement(fl.placementDate, today)),
       totalBirdsPlaced: placed,
       birdsRemaining: remaining,
       todayMortality: todayMort,

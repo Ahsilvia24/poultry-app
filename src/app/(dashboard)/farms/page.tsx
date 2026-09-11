@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { differenceInCalendarDays } from "date-fns";
 import { redirect } from "next/navigation";
+import { appToday } from "@/lib/app-calendar";
+import { daysSincePlacement } from "@/lib/mortality/calculations";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FarmsListTiles } from "@/components/FarmsListTiles";
@@ -11,7 +12,7 @@ export default async function FarmsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const today = new Date();
+  const today = appToday();
 
   const [farms, orderRow] = await Promise.all([
     prisma.farm.findMany({
@@ -44,7 +45,7 @@ export default async function FarmsPage() {
       isActive: farm.isActive,
       houseCount: farm.houses.length,
       flockAges: Array.from(
-        new Set(farm.flocks.map((fl) => differenceInCalendarDays(today, fl.placementDate))),
+        new Set(farm.flocks.map((fl) => daysSincePlacement(fl.placementDate, today))),
       ).sort((a, b) => a - b),
     })),
     parseFarmOrder(orderRow?.farmOrder),

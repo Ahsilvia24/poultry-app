@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { format } from "date-fns";
+import { appTodayKey } from "@/lib/app-calendar";
 import { jsonError, requireMobileUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 import { getUserThresholds } from "@/lib/dashboard";
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (!user) return jsonError("Unauthorized", 401);
 
   const farmId = req.nextUrl.searchParams.get("farmId");
-  const date = req.nextUrl.searchParams.get("date") ?? format(new Date(), "yyyy-MM-dd");
+  const date = req.nextUrl.searchParams.get("date") ?? appTodayKey();
 
   const farms = await prisma.farm.findMany({
     where: {

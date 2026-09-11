@@ -1,4 +1,5 @@
-import { differenceInCalendarDays, format, parseISO, subDays } from "date-fns";
+import { format, parseISO, subDays } from "date-fns";
+import { calendarDaysBetween, dateKeyForAge } from "@/lib/app-calendar";
 import type {
   MortalityRecordLike,
   MortalityStatus,
@@ -22,7 +23,7 @@ export function calcPercentage(count: number, placed: number): number {
 
 /** Calendar days from placement → onDate. Negative when onDate is before placement (pre-place). */
 export function daysSincePlacement(placementDate: Date, onDate: Date): number {
-  return differenceInCalendarDays(onDate, placementDate);
+  return calendarDaysBetween(dateKeyForAge(placementDate), dateKeyForAge(onDate));
 }
 
 /** Bird age for mortality / week math — never negative (pre-place counts as day 0). */
@@ -55,10 +56,10 @@ export function weeklyMortalityByPlacement(
     totals.set(w, 0);
   }
 
-  const placementKey = format(placementDate, "yyyy-MM-dd");
+  const placementKey = dateKeyForAge(placementDate);
   for (const record of records) {
     const dateKey = toDateKey(record.mortalityDate);
-    if (dateKey > format(asOfDate, "yyyy-MM-dd")) continue;
+    if (dateKey > dateKeyForAge(asOfDate)) continue;
     // Drop orphan rows from before the current placement (stale after a place-date edit).
     if (dateKey < placementKey) continue;
     const age = birdAgeFromPlacement(placementDate, parseISO(dateKey));
@@ -138,7 +139,7 @@ export function getLatestSummary(
   const summaries = buildMortalitySummaries(placedBirdCount, records);
   if (summaries.length === 0) {
     return {
-      date: format(asOfDate ?? new Date(), "yyyy-MM-dd"),
+      date: dateKeyForAge(asOfDate ?? new Date()),
       birdAgeInDays: 0,
       dailyMortalityCount: 0,
       cullCount: 0,
@@ -154,7 +155,7 @@ export function getLatestSummary(
 
   if (!asOfDate) return summaries[summaries.length - 1];
 
-  const key = format(asOfDate, "yyyy-MM-dd");
+  const key = dateKeyForAge(asOfDate);
   const exact = summaries.find((s) => s.date === key);
   if (exact) return exact;
 
@@ -176,7 +177,7 @@ export function summarizeForDate(
   sevenDayPct: number;
 } {
   const summaries = buildMortalitySummaries(placedBirdCount, records);
-  const key = format(date, "yyyy-MM-dd");
+  const key = dateKeyForAge(date);
   const todayRow = summaries.find((s) => s.date === key);
   const latest = getLatestSummary(placedBirdCount, records, date);
 

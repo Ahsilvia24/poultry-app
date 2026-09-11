@@ -7,6 +7,7 @@ import {
   flockWeekFromAge,
   summarizeForDate,
 } from "@/lib/mortality/calculations";
+import { appToday } from "@/lib/app-calendar";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
 import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
@@ -45,7 +46,7 @@ export default async function ToolsPage({
   if (!session?.user?.id) redirect("/login");
 
   const sp = searchParams ? await searchParams : {};
-  const today = new Date();
+  const today = appToday();
   const [farmsFetched, orderRow] = await Promise.all([
     prisma.farm.findMany({
     where: { userId: session.user.id, deletedAt: null, isActive: true },

@@ -1,0 +1,52 @@
+/** Farm civil calendar. Ages and “today” roll at midnight here (CST/CDT). */
+export const APP_TIME_ZONE = "America/Chicago";
+
+function utcDateKey(value: Date): string {
+  const y = value.getUTCFullYear();
+  const m = String(value.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(value.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** `yyyy-MM-dd` for an instant in America/Chicago. */
+export function appTodayKey(at: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(at);
+}
+
+/** UTC midnight of today’s farm calendar date — safe for `@db.Date` math. */
+export function appToday(at: Date = new Date()): Date {
+  const [y, m, d] = appTodayKey(at).split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!));
+}
+
+export function calendarDaysBetween(fromKey: string, toKey: string): number {
+  const [fy, fm, fd] = fromKey.split("-").map(Number);
+  const [ty, tm, td] = toKey.split("-").map(Number);
+  const from = Date.UTC(fy!, (fm ?? 1) - 1, fd ?? 1);
+  const to = Date.UTC(ty!, (tm ?? 1) - 1, td ?? 1);
+  return Math.round((to - from) / 86_400_000);
+}
+
+function isUtcDateOnly(value: Date): boolean {
+  return (
+    value.getUTCHours() === 0 &&
+    value.getUTCMinutes() === 0 &&
+    value.getUTCSeconds() === 0 &&
+    value.getUTCMilliseconds() === 0
+  );
+}
+
+/**
+ * Civil date for age math.
+ * Prisma `@db.Date` values are UTC midnight — keep that Y-M-D.
+ * Live timestamps use America/Chicago so the day does not roll at UTC midnight.
+ */
+export function dateKeyForAge(value: Date): string {
+  if (isUtcDateOnly(value)) return utcDateKey(value);
+  return appTodayKey(value);
+}

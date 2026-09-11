@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { differenceInCalendarDays, format } from "date-fns";
+import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { appToday, appTodayKey } from "@/lib/app-calendar";
 import { getUserThresholds } from "@/lib/dashboard";
 import {
   averageDailyMortalityLast7Days,
@@ -36,7 +37,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
   if (!session?.user?.id) redirect("/login");
 
   const { id } = await params;
-  const today = new Date();
+  const today = appToday();
 
   await ensureActiveFlockHouseFlocks(id, { userId: session.user.id });
 
@@ -108,7 +109,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           ? resolveCatchDate(houseFlock)
           : null;
     const daysUntilCatch =
-      catchDate != null ? Math.max(0, differenceInCalendarDays(catchDate, today)) : null;
+      catchDate != null ? Math.max(0, daysSincePlacement(today, catchDate)) : null;
     const metrics = hf
       ? summarizeForDate(hf.placedBirdCount, hf.mortalities, today)
       : null;
@@ -200,7 +201,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           completeFlocks={activeFlocks.map((flock) => ({
             id: flock.id,
             flockNumber: flock.flockNumber,
-            ageDays: differenceInCalendarDays(today, flock.placementDate),
+            ageDays: daysSincePlacement(flock.placementDate, today),
           }))}
         />
       </div>
@@ -271,7 +272,7 @@ export default async function FarmDetailPage({ params }: { params: Params }) {
           houseNumber: h.houseNumber,
           occupiedByFlock: hfByHouseId.get(h.id)?.flock.flockNumber ?? null,
         }))}
-        initialPlacement={format(today, "yyyy-MM-dd")}
+        initialPlacement={appTodayKey()}
       />
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">

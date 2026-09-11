@@ -1,6 +1,7 @@
-import { addDays, differenceInCalendarDays, format } from "date-fns";
+import { addDays, format } from "date-fns";
+import { appToday } from "@/lib/app-calendar";
 import { prisma } from "@/lib/prisma";
-import { summarizeForDate } from "@/lib/mortality/calculations";
+import { daysSincePlacement, summarizeForDate } from "@/lib/mortality/calculations";
 import { cn, formatNumber } from "@/lib/utils";
 import { Card } from "@/components/ui";
 
@@ -8,7 +9,7 @@ import { Card } from "@/components/ui";
 export const dynamic = "force-dynamic";
 
 export default async function TriplePlacePreviewPage() {
-  const today = new Date();
+  const today = appToday();
   const farm = await prisma.farm.findFirst({
     where: { farmName: "Triple Place", deletedAt: null },
     include: {
@@ -71,7 +72,7 @@ export default async function TriplePlacePreviewPage() {
     ),
   ).sort();
   const flockAges = placementDates
-    .map((d) => differenceInCalendarDays(today, new Date(`${d}T12:00:00`)))
+    .map((d) => daysSincePlacement(new Date(`${d}T12:00:00`), today))
     .filter((a, i, arr) => arr.indexOf(a) === i)
     .sort((a, b) => a - b);
 
@@ -161,7 +162,7 @@ export default async function TriplePlacePreviewPage() {
             {activeFlocks
               .map(
                 (fl) =>
-                  `${fl.flockNumber} (${differenceInCalendarDays(today, fl.placementDate)}d)`,
+                  `${fl.flockNumber} (${daysSincePlacement(fl.placementDate, today)}d)`,
               )
               .join(" ")}
           </div>

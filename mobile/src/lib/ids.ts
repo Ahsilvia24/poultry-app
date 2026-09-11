@@ -3,7 +3,21 @@ export function newId(prefix = "id"): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function todayKey(d = new Date()): string {
+/** Farm civil calendar. Ages and “today” roll at midnight here (CST/CDT). */
+const APP_TIME_ZONE = "America/Chicago";
+
+function chicagoDateKey(at: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(at);
+}
+
+/** `yyyy-MM-dd`. No-arg “now” uses Central midnight, not the device clock’s zone. */
+export function todayKey(d?: Date): string {
+  if (d === undefined) return chicagoDateKey(new Date());
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 

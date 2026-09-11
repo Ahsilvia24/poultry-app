@@ -1,3 +1,4 @@
+import { appTodayKey } from "@/lib/app-calendar";
 import type {
   PlacementForm,
   PrebroodForm,
@@ -6,8 +7,7 @@ import type {
 } from "./types";
 
 function todayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return appTodayKey();
 }
 
 export function emptyHouseRow(houseNumber: number): ServiceHouseRow {
