@@ -79,14 +79,16 @@ assert.match(extract, /catch \{\s*return \[\];\s*\}/);
 const pdfPath = join(root, "src/lib/placement-import/fixtures/weekly-chick-placement-9-5-26.pdf");
 assert.equal(existsSync(pdfPath), true, "9-5-26 placement PDF fixture missing");
 const { extractPlacementRows } = await import(join(root, "src/lib/placement-import/extract.ts"));
-const { extractWithUnpdf, extractWithPdfJs } = await import(join(root, "src/lib/pdf-text-extract.ts"));
+const { extractWithUnpdf } = await import(join(root, "src/lib/pdf-text-extract.ts"));
 const pdfBytes = readFileSync(pdfPath);
 const unpdfTexts = await extractWithUnpdf(pdfBytes);
 assert.ok(unpdfTexts.some((text) => /PROJECTED/.test(text)), "unpdf missed PROJECTED");
 assert.ok(unpdfTexts.some((text) => /3950FS/.test(text)), "unpdf missed 3950FS");
-const jsText = await extractWithPdfJs(pdfBytes);
-assert.match(jsText, /PROJECTED/);
-assert.match(jsText, /3950FS/);
+const unpdfRows = unpdfTexts
+  .map((text) => parsePlacementPdfText(text))
+  .reduce((best, rows) => (rows.length > best.length ? rows : best), []);
+assert.equal(unpdfRows.length, 94, `unpdf parse rows ${unpdfRows.length}`);
+assert.equal(groupPlacementFarms(unpdfRows).length, 21);
 const fromPdf = await extractPlacementRows({
   bytes: pdfBytes,
   fileName: "9-5-26 Placement Schedule (2).pdf",

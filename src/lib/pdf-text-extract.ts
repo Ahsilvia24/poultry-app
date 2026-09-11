@@ -115,7 +115,7 @@ export async function extractWithUnpdf(bytes: Buffer): Promise<string[]> {
     if (fromItems.trim()) texts.push(fromItems);
     return texts;
   } finally {
-    await pdf.destroy().catch(() => undefined);
+    await pdf.loadingTask.destroy().catch(() => undefined);
   }
 }
 
