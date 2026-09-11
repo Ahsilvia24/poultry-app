@@ -7,7 +7,9 @@ import {
   matchPlacementFarmGroups,
 } from "@/lib/placement-import/match";
 import { extractCatchRows } from "@/lib/catch-import/extract";
-import { farmGroupKey, groupCatchFarms } from "@/lib/catch-import/parse";
+import { farmGroupKey } from "@/lib/catch-import/parse";
+import { coerceCatchRows } from "@/lib/catch-import/rows";
+import { buildCatchFarmPreview } from "@/lib/schedule-import-preview";
 import type { CatchFarmPreview, CatchRow } from "@/lib/catch-import/types";
 import { getScheduleImport, SCHEDULE_IMPORTS_DIR } from "@/lib/schedule-imports";
 import { readFile, writeFile } from "fs/promises";
@@ -45,8 +47,8 @@ function parsedPath(importId: string) {
 async function loadParsedRows(importId: string): Promise<CatchRow[] | null> {
   try {
     const raw = await readFile(parsedPath(importId), "utf8");
-    const parsed = JSON.parse(raw) as CatchRow[];
-    return Array.isArray(parsed) ? parsed : null;
+    const parsed = coerceCatchRows(JSON.parse(raw));
+    return parsed.length ? parsed : null;
   } catch {
     return null;
   }
@@ -92,33 +94,20 @@ export async function previewCatchImportAction(
     }
   }
 
-  const existing = await prisma.farm.findMany({
-    where: { userId: user.id, deletedAt: null },
-    select: { id: true, farmName: true, farmNumber: true },
-  });
-
-  const grouped = groupCatchFarms(rows);
-  const matches = matchPlacementFarmGroups(grouped, existing);
-  const farms: CatchFarmPreview[] = grouped.map((group, i) => {
-    const match = matches[i]!;
-    return {
-      ...group,
-      match,
-      isMyFarm: match.kind !== "none",
-    };
-  });
-
+  const farms = await buildCatchFarmPreview(user.id, rows);
   return { ok: true, importId, farms, totalRows: rows.length };
 }
 
 export async function applyCatchImportAction(input: {
   importId: string;
   selections: CatchSelection[];
+  rows?: CatchRow[];
 }): Promise<CatchApplyResult> {
   const user = await requireUser();
   if (!user.id) return { ok: false, error: "Unauthorized" };
 
-  const rows = await loadParsedRows(input.importId);
+  const fromClient = coerceCatchRows(input.rows);
+  const rows = fromClient.length > 0 ? fromClient : await loadParsedRows(input.importId);
   if (!rows?.length) {
     return { ok: false, error: "Parsed catch data missing. Upload and preview again." };
   }

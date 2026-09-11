@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // pdf-parse ships pdf.js workers — do not bundle them into server actions.
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
   // Bottom tabs sit at the left; keep the Next.js N badge off that control.
   devIndicators: {
     position: "top-right",

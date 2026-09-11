@@ -13,6 +13,7 @@ assert.match(ocr, /catch \{\s*return "";\s*\}/);
 const upload = read("src/app/actions/schedule-import.ts");
 assert.doesNotMatch(upload, /revalidatePath/);
 assert.match(upload, /Could not save that file/);
+assert.match(upload, /extractPlacementRows/);
 
 const placement = read("src/app/actions/placement-import.ts");
 assert.match(placement, /Could not read that placement file/);

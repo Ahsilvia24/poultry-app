@@ -5,7 +5,9 @@ import { requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { matchPlacementFarmGroups } from "@/lib/placement-import/match";
 import { extractPlacementRows } from "@/lib/placement-import/extract";
-import { farmGroupKey, groupPlacementFarms } from "@/lib/placement-import/parse";
+import { farmGroupKey } from "@/lib/placement-import/parse";
+import { coercePlacementRows } from "@/lib/placement-import/rows";
+import { buildPlacementFarmPreview } from "@/lib/schedule-import-preview";
 import type {
   PlacementFarmPreview,
   PlacementRow,
@@ -51,8 +53,8 @@ function parsedPath(importId: string) {
 async function loadParsedRows(importId: string): Promise<PlacementRow[] | null> {
   try {
     const raw = await readFile(parsedPath(importId), "utf8");
-    const parsed = JSON.parse(raw) as PlacementRow[];
-    return Array.isArray(parsed) ? parsed : null;
+    const parsed = coercePlacementRows(JSON.parse(raw));
+    return parsed.length ? parsed : null;
   } catch {
     return null;
   }
@@ -98,33 +100,20 @@ export async function previewPlacementImportAction(
     }
   }
 
-  const existing = await prisma.farm.findMany({
-    where: { userId: user.id, deletedAt: null },
-    select: { id: true, farmName: true, farmNumber: true },
-  });
-
-  const grouped = groupPlacementFarms(rows);
-  const matches = matchPlacementFarmGroups(grouped, existing);
-  const farms: PlacementFarmPreview[] = grouped.map((group, i) => {
-    const match = matches[i]!;
-    return {
-      ...group,
-      match,
-      isMyFarm: match.kind !== "none",
-    };
-  });
-
+  const farms = await buildPlacementFarmPreview(user.id, rows);
   return { ok: true, importId, farms, totalRows: rows.length };
 }
 
 export async function applyPlacementImportAction(input: {
   importId: string;
   selections: PlacementSelection[];
+  rows?: PlacementRow[];
 }): Promise<PlacementApplyResult> {
   const user = await requireUser();
   if (!user.id) return { ok: false, error: "Unauthorized" };
 
-  const rows = await loadParsedRows(input.importId);
+  const fromClient = coercePlacementRows(input.rows);
+  const rows = fromClient.length > 0 ? fromClient : await loadParsedRows(input.importId);
   if (!rows?.length) {
     return { ok: false, error: "Parsed placement data missing. Upload and preview again." };
   }

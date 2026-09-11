@@ -23,7 +23,8 @@ import {
   type ScheduleImportMeta,
   type ScheduleImportType,
 } from "@/lib/schedule-import-types";
-import type { PlacementFarmMatch } from "@/lib/placement-import/types";
+import type { PlacementFarmMatch, PlacementRow } from "@/lib/placement-import/types";
+import type { CatchRow } from "@/lib/catch-import/types";
 import { Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +70,8 @@ export function DashboardScheduleImport({
   const [rename, setRename] = useState<Record<string, boolean>>({});
   const [onlyMyFarms, setOnlyMyFarms] = useState(false);
   const [applyResult, setApplyResult] = useState<ApplyState | null>(null);
+  const [placementRows, setPlacementRows] = useState<PlacementRow[] | null>(null);
+  const [catchRows, setCatchRows] = useState<CatchRow[] | null>(null);
 
   const farms = preview?.farms ?? [];
   const myFarmKeys = useMemo(
@@ -184,6 +187,46 @@ export function DashboardScheduleImport({
         setUploadResult(res);
         if (!res.ok) return;
         form.reset();
+        if (res.placement) {
+          setPlacementRows(res.placement.rows);
+          setCatchRows(null);
+          setPreview({
+            kind: "placement",
+            importId: res.example.id,
+            totalRows: res.placement.totalRows,
+            farms: res.placement.farms,
+          });
+          const nextSelected: Record<string, boolean> = {};
+          const nextRename: Record<string, boolean> = {};
+          for (const farm of res.placement.farms) {
+            nextSelected[farm.key] = farm.isMyFarm;
+            nextRename[farm.key] = false;
+          }
+          setSelected(nextSelected);
+          setRename(nextRename);
+          setOnlyMyFarms(true);
+          return;
+        }
+        if (res.catchSchedule) {
+          setCatchRows(res.catchSchedule.rows);
+          setPlacementRows(null);
+          setPreview({
+            kind: "catch",
+            importId: res.example.id,
+            totalRows: res.catchSchedule.totalRows,
+            farms: res.catchSchedule.farms,
+          });
+          const nextSelected: Record<string, boolean> = {};
+          const nextRename: Record<string, boolean> = {};
+          for (const farm of res.catchSchedule.farms) {
+            nextSelected[farm.key] = farm.isMyFarm;
+            nextRename[farm.key] = false;
+          }
+          setSelected(nextSelected);
+          setRename(nextRename);
+          setOnlyMyFarms(true);
+          return;
+        }
         if (importType === "placement" || importType === "catch") {
           loadPreview(res.example.id, importType);
         }
@@ -207,6 +250,7 @@ export function DashboardScheduleImport({
         const res = await applyCatchImportAction({
           importId: preview.importId,
           selections: selections as CatchSelection[],
+          rows: catchRows ?? undefined,
         });
         if (!res.ok) {
           setApplyResult(res);
@@ -221,6 +265,7 @@ export function DashboardScheduleImport({
       const res = await applyPlacementImportAction({
         importId: preview.importId,
         selections: selections as PlacementSelection[],
+        rows: placementRows ?? undefined,
       });
       if (!res.ok) {
         setApplyResult(res);
@@ -250,6 +295,8 @@ export function DashboardScheduleImport({
                 setUploadResult(null);
                 setPreview(null);
                 setApplyResult(null);
+                setPlacementRows(null);
+                setCatchRows(null);
               }}
               className={cn(
                 "min-h-10 rounded-lg px-3 text-sm font-semibold transition",
@@ -412,6 +459,8 @@ export function DashboardScheduleImport({
               onClick={() => {
                 setPreview(null);
                 setOnlyMyFarms(false);
+                setPlacementRows(null);
+                setCatchRows(null);
               }}
             >
               Cancel

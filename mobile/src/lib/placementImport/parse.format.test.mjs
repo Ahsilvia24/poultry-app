@@ -85,6 +85,10 @@ checkFixture(
   "pdfkit-address",
   readFileSync(join(fixturesDir, "weekly-chick-placement-pdfkit-address.txt"), "utf8"),
 );
+checkFixture(
+  "9-5-26-schedule",
+  readFileSync(join(fixturesDir, "weekly-chick-placement-9-5-26.txt"), "utf8"),
+);
 
 // Build 111 regression: Address between Name and Date/Zip must still yield ~full sheet.
 {
