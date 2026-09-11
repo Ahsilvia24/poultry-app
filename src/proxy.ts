@@ -33,6 +33,8 @@ const withAuth = auth((req) => {
     isDevBypassLogin ||
     isHomeScreenAsset(pathname) ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/login") ||
+    pathname.startsWith("/api/register") ||
     pathname.startsWith("/api/mobile") ||
     pathname.startsWith("/support") ||
     pathname.startsWith("/privacy");

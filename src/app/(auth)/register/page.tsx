@@ -2,19 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { registerAction } from "@/app/actions/auth";
+import { postAuthJson } from "@/lib/client-auth-request";
 import { Button, Input, Label } from "@/components/ui";
 
 export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function onSubmit(formData: FormData) {
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError(null);
     setPending(true);
+    const formData = new FormData(event.currentTarget);
     try {
-      const result = await registerAction(formData);
-      if (result?.error) {
+      const result = await postAuthJson("/api/register", {
+        name: String(formData.get("name") ?? ""),
+        email: String(formData.get("email") ?? ""),
+        password: String(formData.get("password") ?? ""),
+      });
+      if (result.error) {
         setError(result.error);
         setPending(false);
         return;
@@ -33,7 +39,7 @@ export default function RegisterPage() {
         </p>
         <h1 className="mt-1.5 text-xl font-semibold">Create account</h1>
         <p className="mt-1 text-sm text-stone-500">Only approved emails can create an account.</p>
-        <form action={onSubmit} className="mt-6 space-y-4">
+        <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
             <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" required autoComplete="name" />

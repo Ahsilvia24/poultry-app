@@ -1,30 +1,18 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
-import { auth, signIn, signOut } from "@/lib/auth";
+import { auth, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isRegisterEmailAllowed } from "@/lib/allowedRegisterEmails";
 import { issuePasswordReset, consumePasswordReset } from "@/lib/password-reset";
+import { establishWebSession } from "@/lib/web-session";
 import {
   changePasswordSchema,
   forgotPasswordSchema,
   registerSchema,
   resetPasswordSchema,
 } from "@/lib/validations";
-
-async function signInOnThisHost(email: string, password: string) {
-  const result = await signIn("credentials", {
-    email,
-    password,
-    redirect: false,
-  });
-  if (result && "error" in result && result.error) {
-    return { error: "Invalid email or password" };
-  }
-  return null;
-}
 
 export async function registerAction(formData: FormData) {
   const parsed = registerSchema.safeParse({
@@ -53,34 +41,16 @@ export async function registerAction(formData: FormData) {
     },
   });
 
-  try {
-    const failed = await signInOnThisHost(email, parsed.data.password);
-    if (failed) return failed;
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return { error: "Account created. Sign in with your email." };
-    }
-    throw error;
-  }
-  // Full navigation happens on the client so the homescreen PWA does not
-  // show Next's "This page couldn't load" after a server-action redirect.
+  const failed = await establishWebSession(email, parsed.data.password);
+  if (failed.error) return { error: "Account created. Sign in with your email." };
   return { ok: true as const };
 }
 
 export async function loginAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").toLowerCase();
   const password = String(formData.get("password") ?? "");
-  try {
-    const failed = await signInOnThisHost(email, password);
-    if (failed) return failed;
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return { error: "Invalid email or password" };
-    }
-    throw error;
-  }
-  // Full navigation happens on the client so the homescreen PWA does not
-  // show Next's "This page couldn't load" after a server-action redirect.
+  const failed = await establishWebSession(email, password);
+  if (failed.error) return failed;
   return { ok: true as const };
 }
 

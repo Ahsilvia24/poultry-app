@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { loginAction } from "@/app/actions/auth";
+import { postAuthJson } from "@/lib/client-auth-request";
 import { Button, Input, Label } from "@/components/ui";
 
 function LoginForm() {
@@ -12,12 +12,17 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function onSubmit(formData: FormData) {
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError(null);
     setPending(true);
+    const formData = new FormData(event.currentTarget);
     try {
-      const result = await loginAction(formData);
-      if (result?.error) {
+      const result = await postAuthJson("/api/login", {
+        email: String(formData.get("email") ?? ""),
+        password: String(formData.get("password") ?? ""),
+      });
+      if (result.error) {
         setError(result.error);
         setPending(false);
         return;
@@ -39,7 +44,7 @@ function LoginForm() {
             Password saved. Sign in with your new password.
           </p>
         ) : null}
-        <form action={onSubmit} className="mt-6 space-y-4">
+        <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" type="email" required autoComplete="email" />
