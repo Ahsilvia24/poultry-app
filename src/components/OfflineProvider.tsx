@@ -1,0 +1,152 @@
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { applyCatchImportAction } from "@/app/actions/catch-import";
+import { applyPlacementImportAction } from "@/app/actions/placement-import";
+import {
+  loadLocalSnapshot,
+  loadOutbox,
+  saveLocalSnapshot,
+  saveOutbox,
+} from "@/lib/offline/idb";
+import type { CatchSelection } from "@/app/actions/catch-import";
+import type { PlacementSelection } from "@/app/actions/placement-import";
+import type { OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
+
+type OfflineContextValue = {
+  snapshot: OfflineSnapshot | null;
+  ready: boolean;
+  syncing: boolean;
+  enqueue: (item: Omit<OfflineOutboxItem, "id" | "createdAt">) => void;
+  replaceSnapshot: (snapshot: OfflineSnapshot) => void;
+};
+
+const OfflineContext = createContext<OfflineContextValue | null>(null);
+
+async function flushOutbox() {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+  const items = await loadOutbox();
+  if (items.length === 0) return;
+  const remain: OfflineOutboxItem[] = [];
+  for (const item of items) {
+    try {
+      const payload = item.payload as {
+        selections?: Array<PlacementSelection | CatchSelection>;
+        rows?: unknown;
+      };
+      if (item.kind === "applyPlacement") {
+        const res = await applyPlacementImportAction({
+          importId: item.id,
+          selections: (payload.selections ?? []) as PlacementSelection[],
+          rows: payload.rows as never,
+        });
+        if (!res.ok) remain.push(item);
+        continue;
+      }
+      if (item.kind === "applyCatch") {
+        const res = await applyCatchImportAction({
+          importId: item.id,
+          selections: (payload.selections ?? []) as CatchSelection[],
+          rows: payload.rows as never,
+        });
+        if (!res.ok) remain.push(item);
+        continue;
+      }
+    } catch {
+      remain.push(item);
+    }
+  }
+  await saveOutbox(remain);
+}
+
+async function pullRemoteSnapshot(): Promise<OfflineSnapshot | null> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
+  const res = await fetch("/api/offline/snapshot", { cache: "no-store" });
+  if (!res.ok) return null;
+  const body = (await res.json()) as { ok?: boolean; snapshot?: OfflineSnapshot };
+  return body.ok && body.snapshot ? body.snapshot : null;
+}
+
+export function OfflineProvider({ children }: { children: ReactNode }) {
+  const [snapshot, setSnapshot] = useState<OfflineSnapshot | null>(null);
+  const [ready, setReady] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const replaceSnapshot = useCallback((next: OfflineSnapshot) => {
+    setSnapshot(next);
+    void saveLocalSnapshot(next);
+  }, []);
+
+  const enqueue = useCallback((item: Omit<OfflineOutboxItem, "id" | "createdAt">) => {
+    const full: OfflineOutboxItem = {
+      ...item,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+    };
+    void loadOutbox().then((items) => saveOutbox([...items, full]));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const local = await loadLocalSnapshot();
+      if (!cancelled && local) setSnapshot(local);
+      if (!cancelled) setReady(true);
+      if (cancelled) return;
+      setSyncing(true);
+      try {
+        await flushOutbox();
+        const remote = await pullRemoteSnapshot();
+        if (!cancelled && remote) replaceSnapshot(remote);
+      } catch {
+        // Stay on the local replica. Never block the UI on sync.
+      } finally {
+        if (!cancelled) setSyncing(false);
+      }
+    })();
+    const onOnline = () => {
+      setSyncing(true);
+      void flushOutbox()
+        .then(() => pullRemoteSnapshot())
+        .then((remote) => {
+          if (remote) replaceSnapshot(remote);
+        })
+        .catch(() => undefined)
+        .finally(() => setSyncing(false));
+    };
+    window.addEventListener("online", onOnline);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("online", onOnline);
+    };
+  }, [replaceSnapshot]);
+
+  const value = useMemo(
+    () => ({ snapshot, ready, syncing, enqueue, replaceSnapshot }),
+    [snapshot, ready, syncing, enqueue, replaceSnapshot],
+  );
+
+  return <OfflineContext.Provider value={value}>{children}</OfflineContext.Provider>;
+}
+
+export function useOffline() {
+  const ctx = useContext(OfflineContext);
+  if (!ctx) {
+    return {
+      snapshot: null,
+      ready: true,
+      syncing: false,
+      enqueue: () => undefined,
+      replaceSnapshot: () => undefined,
+    } satisfies OfflineContextValue;
+  }
+  return ctx;
+}

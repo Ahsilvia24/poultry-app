@@ -1,13 +1,11 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { appToday } from "@/lib/app-calendar";
 import { daysSincePlacement } from "@/lib/mortality/calculations";
 import { getUserTimeZone } from "@/lib/user-time-zone";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { FarmsListTiles } from "@/components/FarmsListTiles";
+import { FarmsPageClient } from "@/components/FarmsPageClient";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
-import { Button, Card, PageHeader } from "@/components/ui";
 
 export default async function FarmsPage() {
   const session = await auth();
@@ -53,27 +51,5 @@ export default async function FarmsPage() {
     parseFarmOrder(orderRow?.farmOrder),
   );
 
-  return (
-    <div>
-      <PageHeader
-        title="Farms"
-        actions={
-          <Link href="/farms/new">
-            <Button className="min-h-10 px-4 text-sm">Add Farm</Button>
-          </Link>
-        }
-      />
-
-      {farms.length === 0 ? (
-        <Card>
-          <p className="text-stone-600">No farms found.</p>
-          <Link href="/farms/new" className="mt-3 inline-block">
-            <Button>Add your first farm</Button>
-          </Link>
-        </Card>
-      ) : (
-        <FarmsListTiles farms={tiles} />
-      )}
-    </div>
-  );
+  return <FarmsPageClient initial={tiles} />;
 }

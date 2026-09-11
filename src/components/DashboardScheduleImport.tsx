@@ -25,6 +25,10 @@ import {
 } from "@/lib/schedule-import-types";
 import type { PlacementFarmMatch, PlacementRow } from "@/lib/placement-import/types";
 import type { CatchRow } from "@/lib/catch-import/types";
+import { extractPlacementRowsOnDevice } from "@/lib/placement-import/extract-client";
+import { extractCatchRowsOnDevice } from "@/lib/catch-import/extract-client";
+import { previewCatchRowsLocal, previewPlacementRowsLocal } from "@/lib/offline/previewImport";
+import { useOffline } from "@/components/OfflineProvider";
 import { Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +65,7 @@ export function DashboardScheduleImport({
 }: {
   imports: ScheduleImportMeta[];
 }) {
+  const { snapshot, enqueue } = useOffline();
   const [importType, setImportType] = useState<ScheduleImportType>("placement");
   const [pending, startTransition] = useTransition();
   const [uploadResult, setUploadResult] = useState<UploadScheduleImportResult | null>(null);
@@ -180,9 +185,94 @@ export function DashboardScheduleImport({
 
     const formData = new FormData(form);
     formData.set("importType", importType);
+    const file = input.files[0];
 
     startTransition(async () => {
       try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        if (importType === "placement") {
+          const rows = await extractPlacementRowsOnDevice({
+            bytes,
+            fileName: file.name,
+            mimeType: file.type,
+          });
+          if (rows.length > 0) {
+            const farms = previewPlacementRowsLocal(rows, snapshot?.farms ?? []);
+            setPlacementRows(rows);
+            setCatchRows(null);
+            setPreview({
+              kind: "placement",
+              importId: `local-${crypto.randomUUID()}`,
+              totalRows: rows.length,
+              farms,
+            });
+            const nextSelected: Record<string, boolean> = {};
+            const nextRename: Record<string, boolean> = {};
+            for (const farm of farms) {
+              nextSelected[farm.key] = farm.isMyFarm;
+              nextRename[farm.key] = false;
+            }
+            setSelected(nextSelected);
+            setRename(nextRename);
+            setOnlyMyFarms(true);
+            form.reset();
+            if (navigator.onLine) {
+              void uploadScheduleImportAction(formData).then((res) => {
+                setUploadResult(res);
+                if (res.ok && res.placement) {
+                  setPreview((prev) =>
+                    prev
+                      ? { ...prev, importId: res.example.id, farms: res.placement!.farms }
+                      : prev,
+                  );
+                }
+              });
+            }
+            return;
+          }
+        }
+        if (importType === "catch") {
+          const rows = await extractCatchRowsOnDevice({
+            bytes,
+            fileName: file.name,
+            mimeType: file.type,
+          });
+          if (rows.length > 0) {
+            const farms = previewCatchRowsLocal(rows, snapshot?.farms ?? []);
+            setCatchRows(rows);
+            setPlacementRows(null);
+            setPreview({
+              kind: "catch",
+              importId: `local-${crypto.randomUUID()}`,
+              totalRows: rows.length,
+              farms,
+            });
+            const nextSelected: Record<string, boolean> = {};
+            const nextRename: Record<string, boolean> = {};
+            for (const farm of farms) {
+              nextSelected[farm.key] = farm.isMyFarm;
+              nextRename[farm.key] = false;
+            }
+            setSelected(nextSelected);
+            setRename(nextRename);
+            setOnlyMyFarms(true);
+            form.reset();
+            if (navigator.onLine) {
+              void uploadScheduleImportAction(formData).then((res) => {
+                setUploadResult(res);
+                if (res.ok && res.catchSchedule) {
+                  setPreview((prev) =>
+                    prev
+                      ? { ...prev, importId: res.example.id, farms: res.catchSchedule!.farms }
+                      : prev,
+                  );
+                }
+              });
+            }
+            return;
+          }
+        }
+
         const res = await uploadScheduleImportAction(formData);
         setUploadResult(res);
         if (!res.ok) return;
@@ -246,6 +336,21 @@ export function DashboardScheduleImport({
 
     startTransition(async () => {
       setLocalError(null);
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        enqueue({
+          kind: preview.kind === "catch" ? "applyCatch" : "applyPlacement",
+          payload: {
+            selections,
+            rows: preview.kind === "catch" ? catchRows : placementRows,
+          },
+        });
+        setApplyResult({
+          ok: false,
+          error:
+            "Saved on this phone. Open PoultryTech once you have a signal to finish the import.",
+        });
+        return;
+      }
       if (preview.kind === "catch") {
         const res = await applyCatchImportAction({
           importId: preview.importId,
