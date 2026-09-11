@@ -24,6 +24,10 @@ assert.match(catchAction, /Could not read that catch file/);
 const placeExtract = read("src/lib/placement-import/extract.ts");
 assert.match(placeExtract, /catch \{\s*return \[\];\s*\}/);
 
+const pdfExtract = read("src/lib/pdf-text-extract.ts");
+assert.match(pdfExtract, /extractWithPdfJs/);
+assert.match(pdfExtract, /copyPdfBytes/);
+
 const catchExtract = read("src/lib/catch-import/extract.ts");
 assert.match(catchExtract, /catch \{\s*return \[\];\s*\}/);
 

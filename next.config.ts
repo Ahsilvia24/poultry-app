@@ -1,8 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // pdf-parse ships pdf.js workers — do not bundle them into server actions.
+  // pdf-parse / pdf.js workers + cmaps must stay on disk for Vercel serverless.
   serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  outputFileTracingIncludes: {
+    "/*": [
+      "./node_modules/pdf-parse/dist/**/*",
+      "./node_modules/pdfjs-dist/legacy/build/**/*",
+      "./node_modules/pdfjs-dist/build/**/*",
+    ],
+  },
   async headers() {
     return [
       {

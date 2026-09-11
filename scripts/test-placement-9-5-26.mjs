@@ -52,6 +52,13 @@ assert.match(upload, /placement: \{ farms, totalRows: rows.length, rows \}/);
 const nextConfig = readFileSync(join(root, "next.config.ts"), "utf8");
 assert.match(nextConfig, /serverExternalPackages/);
 assert.match(nextConfig, /pdf-parse/);
+assert.match(nextConfig, /outputFileTracingIncludes/);
+assert.match(nextConfig, /pdfjs-dist\/legacy\/build/);
+
+const extractSrc = readFileSync(join(root, "src/lib/pdf-text-extract.ts"), "utf8");
+assert.match(extractSrc, /extractWithPdfJs/);
+assert.match(extractSrc, /resolvePdfWorkerSrc/);
+assert.match(extractSrc, /copyPdfBytes/);
 
 const ui = readFileSync(join(root, "src/components/DashboardScheduleImport.tsx"), "utf8");
 assert.match(ui, /res\.placement/);
@@ -61,26 +68,23 @@ const extract = readFileSync(join(root, "src/lib/placement-import/extract.ts"), 
 assert.match(extract, /extractPdfTextCandidates/);
 assert.match(extract, /catch \{\s*return \[\];\s*\}/);
 
-const pdfCandidates = [
-  join(root, "src/lib/placement-import/fixtures/weekly-chick-placement-9-5-26.pdf"),
-  "/tmp/placement-9-5-26.pdf",
-  "/home/ubuntu/.cursor/projects/workspace/uploads/9-5-26_Placement_Schedule_2__a9f4.pdf",
-];
-const pdfPath = pdfCandidates.find((p) => existsSync(p));
-if (pdfPath) {
-  const { extractPlacementRows } = await import(join(root, "src/lib/placement-import/extract.ts"));
-  const fromPdf = await extractPlacementRows({
-    bytes: readFileSync(pdfPath),
-    fileName: "9-5-26 Placement Schedule 2.pdf",
-    mimeType: "application/pdf",
-  });
-  assert.equal(fromPdf.length, 94, `PDF extract rows ${fromPdf.length}`);
-  const pdfFarms = groupPlacementFarms(fromPdf);
-  assert.equal(pdfFarms.length, 21);
-  console.log(`placement-9-5-26 PDF extract: ${fromPdf.length} rows · ${pdfFarms.length} farms`);
-} else {
-  console.log("placement-9-5-26: skipped live PDF extract (file not in workspace)");
-}
+const pdfPath = join(root, "src/lib/placement-import/fixtures/weekly-chick-placement-9-5-26.pdf");
+assert.equal(existsSync(pdfPath), true, "9-5-26 placement PDF fixture missing");
+const { extractPlacementRows } = await import(join(root, "src/lib/placement-import/extract.ts"));
+const { extractWithPdfJs } = await import(join(root, "src/lib/pdf-text-extract.ts"));
+const pdfBytes = readFileSync(pdfPath);
+const jsText = await extractWithPdfJs(pdfBytes);
+assert.match(jsText, /PROJECTED/);
+assert.match(jsText, /3950FS/);
+const fromPdf = await extractPlacementRows({
+  bytes: pdfBytes,
+  fileName: "9-5-26 Placement Schedule (2).pdf",
+  mimeType: "application/pdf",
+});
+assert.equal(fromPdf.length, 94, `PDF extract rows ${fromPdf.length}`);
+const pdfFarms = groupPlacementFarms(fromPdf);
+assert.equal(pdfFarms.length, 21);
+console.log(`placement-9-5-26 PDF extract: ${fromPdf.length} rows · ${pdfFarms.length} farms`);
 
 console.log(
   `placement-9-5-26: ${summary.farmCount} farms · ${summary.houseCount} houses · ${summary.birdsSent} birds`,

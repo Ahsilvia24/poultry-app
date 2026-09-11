@@ -1,8 +1,11 @@
 import { execFile } from "child_process";
-import { promisify } from "util";
+import { existsSync } from "fs";
+import { createRequire } from "module";
 import { mkdtemp, writeFile, rm } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
+import { pathToFileURL } from "url";
+import { promisify } from "util";
 import { ocrPdfToText, pdfTextNeedsOcr } from "@/lib/pdf-ocr";
 
 const execFileAsync = promisify(execFile);
@@ -21,9 +24,98 @@ function uniqueTexts(texts: string[]): string[] {
   return out;
 }
 
+/** Fresh copy so pdf.js cannot transfer/detach the upload Buffer. */
+function copyPdfBytes(bytes: Buffer): Uint8Array {
+  return Uint8Array.from(bytes);
+}
+
+function resolvePdfWorkerSrc(): string | undefined {
+  const require = createRequire(import.meta.url);
+  const specs = [
+    "pdfjs-dist/legacy/build/pdf.worker.mjs",
+    "pdfjs-dist/build/pdf.worker.mjs",
+    "pdf-parse/dist/pdf-parse/web/pdf.worker.mjs",
+  ];
+  for (const spec of specs) {
+    try {
+      const resolved = require.resolve(spec);
+      if (existsSync(resolved)) return pathToFileURL(resolved).href;
+    } catch {
+      // try the next spec
+    }
+  }
+  const fromCwd = path.join(
+    process.cwd(),
+    "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+  );
+  if (existsSync(fromCwd)) return pathToFileURL(fromCwd).href;
+  return undefined;
+}
+
+type PdfTextItem = {
+  str?: string;
+  transform?: number[];
+  hasEOL?: boolean;
+};
+
+function textFromPdfItems(items: PdfTextItem[]): string {
+  const lines: string[] = [];
+  let current = "";
+  let lastY: number | undefined;
+  for (const item of items) {
+    const str = item.str ?? "";
+    const y = item.transform?.[5];
+    if (lastY != null && y != null && Math.abs(y - lastY) > 2 && current.trim()) {
+      lines.push(current.replace(/[ \t]+/g, " ").trimEnd());
+      current = "";
+    }
+    if (current && str && !current.endsWith(" ") && !str.startsWith(" ")) current += " ";
+    current += str;
+    if (item.hasEOL) {
+      lines.push(current.replace(/[ \t]+/g, " ").trimEnd());
+      current = "";
+      lastY = undefined;
+      continue;
+    }
+    if (y != null) lastY = y;
+  }
+  if (current.trim()) lines.push(current.replace(/[ \t]+/g, " ").trimEnd());
+  return lines.join("\n");
+}
+
+/** pdf.js on a copied buffer with a local worker — works on Vercel Node. */
+export async function extractWithPdfJs(bytes: Buffer): Promise<string> {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const workerSrc = resolvePdfWorkerSrc();
+  if (workerSrc) {
+    pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+  }
+  const loadingTask = pdfjs.getDocument({
+    data: copyPdfBytes(bytes),
+    verbosity: 0,
+    isEvalSupported: false,
+    useSystemFonts: true,
+    disableFontFace: true,
+  });
+  const doc = await loadingTask.promise;
+  try {
+    const pages: string[] = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      pages.push(textFromPdfItems(content.items as PdfTextItem[]));
+    }
+    return pages.join("\n\n---PAGE---\n\n");
+  } finally {
+    await doc.destroy();
+  }
+}
+
 async function extractWithPdfParse(bytes: Buffer): Promise<string> {
   const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: bytes });
+  const workerSrc = resolvePdfWorkerSrc();
+  if (workerSrc) PDFParse.setWorker(workerSrc);
+  const parser = new PDFParse({ data: copyPdfBytes(bytes) });
   try {
     const result = await parser.getText();
     return result.text ?? "";
@@ -49,11 +141,18 @@ async function extractWithPdftotext(bytes: Buffer): Promise<string> {
 }
 
 /**
- * Collect PDF text layers the same way TestFlight did (pdf.js via pdf-parse),
- * then optional pdftotext / OCR. Hosted Vercel has no pdftotext/tesseract.
+ * Collect PDF text layers. Hosted Vercel has no pdftotext/tesseract, so
+ * pdf.js (local worker + copied bytes) has to succeed on its own.
  */
 export async function extractPdfTextCandidates(bytes: Buffer): Promise<string[]> {
   const texts: string[] = [];
+
+  try {
+    const fromJs = await extractWithPdfJs(bytes);
+    if (fromJs.trim()) texts.push(fromJs);
+  } catch {
+    // worker/path issues — try pdf-parse next
+  }
 
   try {
     const parsed = await extractWithPdfParse(bytes);
