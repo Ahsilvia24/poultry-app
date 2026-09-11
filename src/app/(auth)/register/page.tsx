@@ -7,11 +7,22 @@ import { Button, Input, Label } from "@/components/ui";
 
 export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   async function onSubmit(formData: FormData) {
     setError(null);
-    const result = await registerAction(formData);
-    if (result?.error) setError(result.error);
+    setPending(true);
+    try {
+      const result = await registerAction(formData);
+      if (result?.error) {
+        setError(result.error);
+        setPending(false);
+        return;
+      }
+      window.location.assign("/");
+    } catch {
+      window.location.assign("/");
+    }
   }
 
   return (
@@ -44,8 +55,8 @@ export default function RegisterPage() {
             <p className="mt-1 text-xs text-stone-500">At least 8 characters.</p>
           </div>
           {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
-          <Button type="submit" className="w-full">
-            Create account
+          <Button type="submit" className="w-full" disabled={pending}>
+            {pending ? "Creating…" : "Create account"}
           </Button>
         </form>
         <p className="mt-4 text-center text-sm text-stone-600">

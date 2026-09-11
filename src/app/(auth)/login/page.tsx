@@ -10,11 +10,22 @@ function LoginForm() {
   const params = useSearchParams();
   const resetOk = params.get("reset") === "1";
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   async function onSubmit(formData: FormData) {
     setError(null);
-    const result = await loginAction(formData);
-    if (result?.error) setError(result.error);
+    setPending(true);
+    try {
+      const result = await loginAction(formData);
+      if (result?.error) {
+        setError(result.error);
+        setPending(false);
+        return;
+      }
+      window.location.assign("/");
+    } catch {
+      window.location.assign("/");
+    }
   }
 
   return (
@@ -38,8 +49,8 @@ function LoginForm() {
             <Input id="password" name="password" type="password" required autoComplete="current-password" />
           </div>
           {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
-          <Button type="submit" className="w-full">
-            Sign in
+          <Button type="submit" className="w-full" disabled={pending}>
+            {pending ? "Signing in…" : "Sign in"}
           </Button>
         </form>
         <p className="mt-3 text-center text-sm text-stone-600">

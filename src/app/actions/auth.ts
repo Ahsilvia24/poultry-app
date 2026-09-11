@@ -62,7 +62,9 @@ export async function registerAction(formData: FormData) {
     }
     throw error;
   }
-  redirect("/");
+  // Full navigation happens on the client so the homescreen PWA does not
+  // show Next's "This page couldn't load" after a server-action redirect.
+  return { ok: true as const };
 }
 
 export async function loginAction(formData: FormData) {
@@ -77,7 +79,9 @@ export async function loginAction(formData: FormData) {
     }
     throw error;
   }
-  redirect("/");
+  // Full navigation happens on the client so the homescreen PWA does not
+  // show Next's "This page couldn't load" after a server-action redirect.
+  return { ok: true as const };
 }
 
 export async function signOutAction() {

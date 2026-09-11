@@ -11,6 +11,14 @@ import { ScrollableFarmList } from "@/components/ScrollableFarmList";
 import { listScheduleImports } from "@/lib/schedule-imports";
 import { redirect } from "next/navigation";
 
+function catchDateLabel(date: string) {
+  try {
+    return format(parseISO(date), "EEE, MMM d");
+  } catch {
+    return date;
+  }
+}
+
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -21,7 +29,12 @@ export default async function DashboardPage() {
   } catch {
     data = null;
   }
-  const scheduleImports = await listScheduleImports();
+  let scheduleImports: Awaited<ReturnType<typeof listScheduleImports>> = [];
+  try {
+    scheduleImports = await listScheduleImports();
+  } catch {
+    scheduleImports = [];
+  }
 
   return (
     <div>
@@ -74,7 +87,7 @@ export default async function DashboardPage() {
                       ) : null}
                     </span>
                     <span className="ml-auto flex shrink-0 items-baseline gap-1.5 whitespace-nowrap text-stone-600">
-                      <span>{format(parseISO(c.date), "EEE, MMM d")}</span>
+                      <span>{catchDateLabel(c.date)}</span>
                       {c.catchTime ? (
                         <span>{compactCatchTimeLabel(c.catchTime)}</span>
                       ) : null}
