@@ -25,6 +25,7 @@ const placeExtract = read("src/lib/placement-import/extract.ts");
 assert.match(placeExtract, /catch \{\s*return \[\];\s*\}/);
 
 const pdfExtract = read("src/lib/pdf-text-extract.ts");
+assert.match(pdfExtract, /extractWithUnpdf/);
 assert.match(pdfExtract, /extractWithPdfJs/);
 assert.match(pdfExtract, /copyPdfBytes/);
 

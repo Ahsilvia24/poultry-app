@@ -1,10 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // pdf-parse / pdf.js workers + cmaps must stay on disk for Vercel serverless.
-  serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  // unpdf ships an inlined pdf.js worker. Keep it (and the older
+  // pdf-parse / pdf.js fallbacks) on disk for Vercel serverless.
+  serverExternalPackages: ["unpdf", "pdf-parse", "pdfjs-dist"],
   outputFileTracingIncludes: {
     "/*": [
+      "./node_modules/unpdf/dist/**/*",
       "./node_modules/pdf-parse/dist/**/*",
       "./node_modules/pdfjs-dist/legacy/build/**/*",
       "./node_modules/pdfjs-dist/build/**/*",

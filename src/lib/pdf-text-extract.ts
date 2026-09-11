@@ -83,7 +83,43 @@ function textFromPdfItems(items: PdfTextItem[]): string {
   return lines.join("\n");
 }
 
-/** pdf.js on a copied buffer with a local worker — works on Vercel Node. */
+function textFromUnpdfPages(
+  pages: Array<Array<{ str: string; x: number; y: number; hasEOL: boolean }>>,
+): string {
+  return pages
+    .map((page) =>
+      textFromPdfItems(
+        page.map((item) => ({
+          str: item.str,
+          transform: [1, 0, 0, 1, item.x, item.y],
+          hasEOL: item.hasEOL,
+        })),
+      ),
+    )
+    .join("\n\n---PAGE---\n\n");
+}
+
+/**
+ * Serverless pdf.js with the worker inlined. Hosted Vercel cannot load
+ * pdfjs-dist's separate worker file, so this has to succeed on its own.
+ */
+export async function extractWithUnpdf(bytes: Buffer): Promise<string[]> {
+  const { extractText, extractTextItems, getDocumentProxy } = await import("unpdf");
+  const pdf = await getDocumentProxy(copyPdfBytes(bytes));
+  try {
+    const texts: string[] = [];
+    const merged = await extractText(pdf, { mergePages: true });
+    if (merged.text.trim()) texts.push(merged.text);
+    const structured = await extractTextItems(pdf);
+    const fromItems = textFromUnpdfPages(structured.items);
+    if (fromItems.trim()) texts.push(fromItems);
+    return texts;
+  } finally {
+    await pdf.destroy().catch(() => undefined);
+  }
+}
+
+/** pdf.js on a copied buffer with a local worker — local / fallback only. */
 export async function extractWithPdfJs(bytes: Buffer): Promise<string> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const workerSrc = resolvePdfWorkerSrc();
@@ -141,11 +177,30 @@ async function extractWithPdftotext(bytes: Buffer): Promise<string> {
 }
 
 /**
- * Collect PDF text layers. Hosted Vercel has no pdftotext/tesseract, so
- * pdf.js (local worker + copied bytes) has to succeed on its own.
+ * Collect PDF text layers. Hosted Vercel has no pdftotext/tesseract and
+ * cannot load a pdf.js worker file, so unpdf (inlined worker) goes first.
  */
 export async function extractPdfTextCandidates(bytes: Buffer): Promise<string[]> {
   const texts: string[] = [];
+
+  try {
+    const fromUnpdf = await extractWithUnpdf(bytes);
+    for (const text of fromUnpdf) {
+      if (text.trim()) texts.push(text);
+    }
+  } catch {
+    // bundled pdf.js missing — try other extractors
+  }
+
+  if (texts.some((text) => !pdfTextNeedsOcr(text))) {
+    try {
+      const layout = await extractWithPdftotext(bytes);
+      if (layout.trim()) texts.push(layout);
+    } catch {
+      // Binary is missing on Vercel; ignore.
+    }
+    return uniqueTexts(texts);
+  }
 
   try {
     const fromJs = await extractWithPdfJs(bytes);

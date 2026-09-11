@@ -51,14 +51,22 @@ assert.match(upload, /placement: \{ farms, totalRows: rows.length, rows \}/);
 
 const nextConfig = readFileSync(join(root, "next.config.ts"), "utf8");
 assert.match(nextConfig, /serverExternalPackages/);
+assert.match(nextConfig, /unpdf/);
 assert.match(nextConfig, /pdf-parse/);
 assert.match(nextConfig, /outputFileTracingIncludes/);
+assert.match(nextConfig, /unpdf\/dist/);
 assert.match(nextConfig, /pdfjs-dist\/legacy\/build/);
 
 const extractSrc = readFileSync(join(root, "src/lib/pdf-text-extract.ts"), "utf8");
+assert.match(extractSrc, /extractWithUnpdf/);
+assert.match(extractSrc, /import\("unpdf"\)/);
 assert.match(extractSrc, /extractWithPdfJs/);
 assert.match(extractSrc, /resolvePdfWorkerSrc/);
 assert.match(extractSrc, /copyPdfBytes/);
+assert.ok(
+  extractSrc.indexOf("extractWithUnpdf") < extractSrc.indexOf("extractWithPdfJs(bytes)"),
+  "unpdf must run before pdf.js on Vercel",
+);
 
 const ui = readFileSync(join(root, "src/components/DashboardScheduleImport.tsx"), "utf8");
 assert.match(ui, /res\.placement/);
@@ -71,8 +79,11 @@ assert.match(extract, /catch \{\s*return \[\];\s*\}/);
 const pdfPath = join(root, "src/lib/placement-import/fixtures/weekly-chick-placement-9-5-26.pdf");
 assert.equal(existsSync(pdfPath), true, "9-5-26 placement PDF fixture missing");
 const { extractPlacementRows } = await import(join(root, "src/lib/placement-import/extract.ts"));
-const { extractWithPdfJs } = await import(join(root, "src/lib/pdf-text-extract.ts"));
+const { extractWithUnpdf, extractWithPdfJs } = await import(join(root, "src/lib/pdf-text-extract.ts"));
 const pdfBytes = readFileSync(pdfPath);
+const unpdfTexts = await extractWithUnpdf(pdfBytes);
+assert.ok(unpdfTexts.some((text) => /PROJECTED/.test(text)), "unpdf missed PROJECTED");
+assert.ok(unpdfTexts.some((text) => /3950FS/.test(text)), "unpdf missed 3950FS");
 const jsText = await extractWithPdfJs(pdfBytes);
 assert.match(jsText, /PROJECTED/);
 assert.match(jsText, /3950FS/);
@@ -85,6 +96,21 @@ assert.equal(fromPdf.length, 94, `PDF extract rows ${fromPdf.length}`);
 const pdfFarms = groupPlacementFarms(fromPdf);
 assert.equal(pdfFarms.length, 21);
 console.log(`placement-9-5-26 PDF extract: ${fromPdf.length} rows · ${pdfFarms.length} farms`);
+
+const prevVercel = process.env.VERCEL;
+process.env.VERCEL = "1";
+try {
+  const hosted = await extractPlacementRows({
+    bytes: pdfBytes,
+    fileName: "9-5-26 Placement Schedule (2).pdf",
+    mimeType: "application/pdf",
+  });
+  assert.equal(hosted.length, 94, `VERCEL extract rows ${hosted.length}`);
+  assert.equal(groupPlacementFarms(hosted).length, 21);
+} finally {
+  if (prevVercel === undefined) delete process.env.VERCEL;
+  else process.env.VERCEL = prevVercel;
+}
 
 console.log(
   `placement-9-5-26: ${summary.farmCount} farms · ${summary.houseCount} houses · ${summary.birdsSent} birds`,
