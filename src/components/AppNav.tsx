@@ -19,10 +19,7 @@ const tabs = [
 const selectedTabClass =
   "border-emerald-700/35 bg-emerald-50/70 text-stone-700";
 
-const extra = [
-  { href: "/settlement", label: "Settlement" },
-  { href: "/settings", label: "Settings" },
-] as const;
+const extra = [{ href: "/settings", label: "Settings" }] as const;
 
 const desktopNav = [...tabs, ...extra];
 

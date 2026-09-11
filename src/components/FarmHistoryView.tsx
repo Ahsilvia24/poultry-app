@@ -7,7 +7,6 @@ import {
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Card } from "@/components/ui";
 import { DeleteFlockButton, ReactivateFlockButton } from "@/components/FarmOpsForms";
-import { SettlementForm } from "@/components/SettlementForm";
 
 function avg(values: Array<number | null | undefined>): number | null {
   const nums = values.filter((v): v is number => v != null && !Number.isNaN(v));
@@ -299,36 +298,6 @@ export async function FarmHistoryView({
         </table>
       </div>
 
-      <div className="mt-8">
-        <h2 className="font-bold text-stone-900">Settlement</h2>
-        <p className="mt-1 text-sm text-stone-600">
-          Enter settlement sheet info for this farm&apos;s flocks.
-        </p>
-        <div className="mt-3">
-          <SettlementForm
-            lockedFarmId={farm.id}
-            farms={[
-              {
-                id: farm.id,
-                farmName: farm.farmName,
-                flocks: farm.flocks.map((fl) => ({
-                  id: fl.id,
-                  flockNumber: fl.flockNumber,
-                  status: fl.flockStatus,
-                  birdType: fl.birdType,
-                  growthRateLbsPerDay: fl.growthRateLbsPerDay,
-                  settlementMarketAgeInDays: fl.settlementMarketAgeInDays,
-                  settlementWeightLbs: fl.settlementWeightLbs,
-                  settlementFeedConversion: fl.settlementFeedConversion,
-                  settlementAdjustedFeedConversion: fl.settlementAdjustedFeedConversion,
-                  settlementGoodPoundsSold: fl.settlementGoodPoundsSold,
-                  settlementNo: fl.settlementNo,
-                })),
-              },
-            ]}
-          />
-        </div>
-      </div>
     </div>
   );
 }
