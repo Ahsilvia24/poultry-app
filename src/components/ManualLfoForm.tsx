@@ -15,6 +15,8 @@ import {
 } from "@/lib/lfo/calculate";
 import { currentHalfHourTime } from "@/lib/time-slots";
 import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
+import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 const MANUAL_HOUSE_ID = "manual";
 
@@ -31,6 +33,7 @@ function PairField({ children }: { children: React.ReactNode }) {
 }
 
 export function ManualLfoForm() {
+  const { enabled, queue } = useReplicaWrite();
   const [orderDate, setOrderDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
@@ -67,6 +70,15 @@ export function ManualLfoForm() {
     <form
       action={async (formData) => {
         setError(null);
+        if (enabled) {
+          queue(
+            formWrite("createManualLfo", {
+              id: localRecordId(),
+              ...formDataToParts(formData),
+            }),
+          );
+          return;
+        }
         const result = await createManualLastFeedOrderAction(formData);
         if (result?.error) setError(result.error);
       }}

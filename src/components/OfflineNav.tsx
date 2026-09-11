@@ -6,6 +6,7 @@ import { FarmsPageClient } from "@/components/FarmsPageClient";
 import { LfoHub } from "@/components/LfoHub";
 import { SettingsScreen } from "@/components/SettingsScreen";
 import { ToolsView } from "@/components/ToolsView";
+import { ReportsView } from "@/components/ReportsView";
 import { PageHeader } from "@/components/ui";
 import { useOffline } from "@/components/OfflineProvider";
 import { useOfflineNav } from "@/components/OfflineNavContext";
@@ -14,6 +15,7 @@ import { selectFarmDetail } from "@/lib/offline/selectFarmDetail";
 import { selectFarmTiles } from "@/lib/offline/selectFarms";
 import { selectLfo } from "@/lib/offline/selectLfo";
 import { selectTools } from "@/lib/offline/selectTools";
+import { selectReports } from "@/lib/offline/selectReports";
 
 export { OfflineNavProvider, useOfflineNav } from "@/components/OfflineNavContext";
 
@@ -82,6 +84,20 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
         farms={data.farms}
         weightFarms={data.weightFarms}
         initialFarmId={data.initialFarmId}
+      />
+    );
+  }
+
+  if (pathname === "/reports") {
+    const params = new URLSearchParams(search);
+    return (
+      <ReportsView
+        model={selectReports(snapshot, {
+          type: params.get("type") ?? undefined,
+          farmId: params.get("farmId") ?? undefined,
+          from: params.get("from") ?? undefined,
+          to: params.get("to") ?? undefined,
+        })}
       />
     );
   }

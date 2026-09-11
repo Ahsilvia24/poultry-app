@@ -180,6 +180,7 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
       followUpRequired: row.followUpRequired,
       followUpDate: dateKeyOrNull(row.followUpDate),
       notes: row.notes,
+      loggedAt: isoOrNull(row.loggedAt) ?? row.createdAt.toISOString(),
     })),
     issues: issues.map((row) => ({
       id: row.id,

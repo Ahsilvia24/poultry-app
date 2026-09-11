@@ -7,7 +7,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dateField = readFileSync(join(root, "src/components/DateKeyField.tsx"), "utf8");
 const timeField = readFileSync(join(root, "src/components/TimeKeyField.tsx"), "utf8");
 const serviceFields = readFileSync(join(root, "src/components/serviceForms/fields.tsx"), "utf8");
-const settings = readFileSync(join(root, "src/app/(dashboard)/settings/page.tsx"), "utf8");
+const settings = readFileSync(join(root, "src/components/SettingsScreen.tsx"), "utf8");
 
 assert.doesNotMatch(dateField, /h-\[94vh\]/);
 assert.doesNotMatch(timeField, /h-\[92vh\]/);

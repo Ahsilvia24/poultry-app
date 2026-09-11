@@ -13,6 +13,8 @@ import { Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { NumberKeypad } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
+import { formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 export type MortalityHousePayload = {
   houseFlockId: string;
@@ -216,6 +218,7 @@ export function MortalityEntryForm({
   asOfDateKey: string;
 }) {
   const router = useRouter();
+  const { enabled, queue } = useReplicaWrite();
   const [farmId, setFarmId] = useState(
     initialFarmId && farms.some((f) => f.id === initialFarmId)
       ? initialFarmId
@@ -300,7 +303,7 @@ export function MortalityEntryForm({
       return;
     }
 
-    const result = await saveMortalityHouseSeriesAction({
+    const payload = {
       flockId: currentHouse.flockId || currentFlock.id,
       houseFlockId: currentHouse.houseFlockId,
       mortalityCause: "UNKNOWN",
@@ -312,7 +315,19 @@ export function MortalityEntryForm({
         cullCount: Number(r.cullCount || 0),
       })),
       clearDates,
-    });
+    };
+    if (enabled) {
+      queue(
+        formWrite("saveMortalitySeries", {
+          farmId,
+          extra: payload,
+        }),
+      );
+      if (gen !== saveGenRef.current) return;
+      setSaveStatus("saved");
+      return;
+    }
+    const result = await saveMortalityHouseSeriesAction(payload);
 
     if (gen !== saveGenRef.current) return;
 

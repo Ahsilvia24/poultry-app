@@ -51,7 +51,7 @@ export function SettingsScreen() {
         sevenDayMortalityCriticalPct: 2,
         alertRisingThreeDays: true,
         defaultMarketAgeDays: 52,
-        notifyEmail: false,
+        notifyEmail : false,
         notifyInApp: true,
       };
 

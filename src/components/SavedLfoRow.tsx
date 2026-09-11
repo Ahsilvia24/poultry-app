@@ -8,6 +8,8 @@ import { Card } from "@/components/ui";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { downloadLfoPdf } from "@/lib/exports/lfo-pdf";
 import type { LfoShareInventory } from "@/lib/lfo/share-payload";
+import { formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 function CopyIcon({ className }: { className?: string }) {
   return (
@@ -115,6 +117,7 @@ export function SavedLfoRow({
   shareInventory: LfoShareInventory;
 }) {
   const router = useRouter();
+  const { enabled, queue } = useReplicaWrite();
   const [, startTransition] = useTransition();
   const lines = houseSummary ?? [];
 
@@ -123,6 +126,10 @@ export function SavedLfoRow({
       rowId={id}
       onDelete={() => {
         startTransition(async () => {
+          if (enabled) {
+            queue(formWrite("deleteLfo", { id }));
+            return;
+          }
           await deleteLastFeedOrderAction(id);
           router.refresh();
         });

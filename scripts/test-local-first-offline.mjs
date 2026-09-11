@@ -13,6 +13,8 @@ assert.ok(existsSync(join(root, "src/lib/offline/selectFarmDetail.ts")));
 assert.ok(existsSync(join(root, "src/lib/offline/selectLfo.ts")));
 assert.ok(existsSync(join(root, "src/lib/offline/selectTools.ts")));
 assert.ok(existsSync(join(root, "src/lib/offline/applyLocal.ts")));
+assert.ok(existsSync(join(root, "src/lib/offline/selectReports.ts")));
+assert.ok(existsSync(join(root, "src/lib/offline/applyWrites.ts")));
 
 const layout = read("src/app/(dashboard)/layout.tsx");
 assert.match(layout, /OfflineProvider/);
@@ -25,6 +27,8 @@ assert.match(provider, /flushOutbox/);
 assert.match(provider, /patchSnapshot/);
 assert.match(provider, /updateHouseTemp/);
 assert.match(provider, /updateSettings/);
+assert.match(provider, /formWrite/);
+assert.match(provider, /flushFormWrite/);
 
 const farmPage = read("src/app/(dashboard)/farms/[id]/page.tsx");
 assert.match(farmPage, /FarmDetailClient/);
@@ -38,6 +42,10 @@ assert.match(lfoPage, /LfoPageClient/);
 
 const toolsPage = read("src/app/(dashboard)/tools/page.tsx");
 assert.match(toolsPage, /ToolsPageClient/);
+
+const reportsPage = read("src/app/(dashboard)/reports/page.tsx");
+assert.match(reportsPage, /ReportsPageClient/);
+assert.doesNotMatch(reportsPage, /prisma\./);
 
 const houseCard = read("src/components/HouseCard.tsx");
 assert.match(houseCard, /applyHouseTemp/);
@@ -66,6 +74,8 @@ const { selectFarmDetail } = await import(join(root, "src/lib/offline/selectFarm
 const { selectFarmTiles } = await import(join(root, "src/lib/offline/selectFarms.ts"));
 const { selectLfo } = await import(join(root, "src/lib/offline/selectLfo.ts"));
 const { selectTools } = await import(join(root, "src/lib/offline/selectTools.ts"));
+const { selectReports } = await import(join(root, "src/lib/offline/selectReports.ts"));
+const { applyFormWrite } = await import(join(root, "src/lib/offline/applyWrites.ts"));
 
 const pdfBytes = readFileSync(
   join(root, "src/lib/placement-import/fixtures/weekly-chick-placement-9-5-26.pdf"),
@@ -87,7 +97,8 @@ assert.equal(isReplicaHref("/farms/abc"), true);
 assert.equal(isReplicaHref("/farms/new"), false);
 assert.equal(isReplicaHref("/farms/abc/service"), false);
 assert.equal(isReplicaHref("/lfo?farmId=abc"), true);
-assert.equal(isReplicaHref("/reports"), false);
+assert.equal(isReplicaHref("/reports"), true);
+assert.equal(isReplicaHref("/reports?type=mortality"), true);
 
 const snapshot = {
   version: 2,
@@ -199,7 +210,21 @@ const snapshot = {
       isDraft: false,
     },
   ],
-  visits: [],
+  visits: [
+    {
+      id: "visit-1",
+      farmId: "farm-1",
+      flockId: "flock-1",
+      visitDate: "2026-09-10",
+      visitType: "ROUTINE_SERVICE",
+      birdAgeInDays: 40,
+      generalBirdCondition: "Healthy",
+      followUpRequired: false,
+      followUpDate: null,
+      notes: null,
+      loggedAt: "2026-09-10T14:00:00.000Z",
+    },
+  ],
   issues: [],
   litterEvents: [],
   feedDeliveries: [],
@@ -289,6 +314,39 @@ assert.equal(tools.weightFarms.length, 1);
 assert.equal(tools.weightFarms[0].houses.length, 2);
 assert.equal(tools.initialFarmId, "farm-1");
 
+const fieldLog = selectReports(snapshot, { type: "field-log", from: "2026-09-08", to: "2026-09-14" });
+assert.equal(fieldLog.type, "field-log");
+assert.ok((fieldLog.fieldLog?.weeks.length ?? 0) >= 1);
+
+const mortReport = selectReports(snapshot, { type: "mortality", from: "2026-08-01", to: "2026-09-11" });
+assert.ok((mortReport.mortality?.byHouse.length ?? 0) >= 1);
+
+const history = selectReports(snapshot, { type: "history", farmId: "farm-1" });
+assert.equal(history.history?.rows.length, 1);
+assert.equal(history.history?.rows[0].flockNumber, "A1");
+
+const withVisit = applyFormWrite(snapshot, {
+  action: "createVisit",
+  id: "local-visit-1",
+  farmId: "farm-1",
+  fields: {
+    farmId: "farm-1",
+    visitDate: "2026-09-11",
+    visitType: "PREBROOD",
+    notes: "Walked houses",
+  },
+});
+assert.equal(withVisit.visits[0].id, "local-visit-1");
+assert.equal(withVisit.visits[0].visitType, "PREBROOD");
+assert.equal(snapshot.visits.length, 1);
+
+const named = applyFormWrite(snapshot, {
+  action: "updateFarm",
+  farmId: "farm-1",
+  fields: { farmName: "Oak Ridge West", growerName: "Pat", farmNumber: "12" },
+});
+assert.equal(named.farms[0].farmName, "Oak Ridge West");
+
 console.log(
-  `local-first-offline: ${rows.length} rows · ${farms.length} farms · farm detail ${detail.houseCards.length} houses · LFO ${lfo.savedLfos.length}`,
+  `local-first-offline: ${rows.length} rows · ${farms.length} farms · farm detail ${detail.houseCards.length} houses · LFO ${lfo.savedLfos.length} · reports + writes`,
 );

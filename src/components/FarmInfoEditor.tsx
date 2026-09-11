@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { updateFarmAction } from "@/app/actions/farms";
 import { Button, Card, Input, Label, Textarea } from "@/components/ui";
+import { formDataToParts, formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 type FarmInfo = {
   id: string;
@@ -40,6 +42,7 @@ export function FarmInfoEditor({
   subtitle?: string;
   actions?: React.ReactNode;
 }) {
+  const { enabled, queue } = useReplicaWrite();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,6 +71,16 @@ export function FarmInfoEditor({
           <form
             action={async (formData) => {
               setError(null);
+              if (enabled) {
+                queue(
+                  formWrite("updateFarm", {
+                    farmId: farm.id,
+                    ...formDataToParts(formData),
+                  }),
+                );
+                setOpen(false);
+                return;
+              }
               const result = await updateFarmAction(farm.id, formData);
               if (result && "error" in result && result.error) {
                 setError(result.error);

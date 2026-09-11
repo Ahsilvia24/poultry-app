@@ -12,6 +12,8 @@ import { Button, Card, Input, Label } from "@/components/ui";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSectionChrome";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
+import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import {
   detectGeneratorHourSwap,
   formatGeneratorChartsCopy,
@@ -209,6 +211,7 @@ function GeneratorLogForm({
   onSuccess?: () => void;
   onCancel?: () => void;
 }) {
+  const { enabled, queue } = useReplicaWrite();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [swap, setSwap] = useState<GeneratorHourSwapSuggestion | null>(null);
@@ -274,6 +277,18 @@ function GeneratorLogForm({
     appendHours(fd, hours);
     if (remapAll) fd.delete("onlyGen");
     start(async () => {
+      if (enabled) {
+        queue(
+          formWrite(recordId ? "updateGeneratorLog" : "createGeneratorLog", {
+            id: recordId ?? localRecordId(),
+            farmId,
+            ...formDataToParts(fd),
+          }),
+        );
+        setSwap(null);
+        onSuccess?.();
+        return;
+      }
       const result = recordId
         ? await updateGeneratorLogAction(recordId, fd)
         : await createGeneratorLogAction(fd);
@@ -433,6 +448,7 @@ export function FarmGeneratorLogSection({
   logs: GeneratorLogRow[];
 }) {
   const router = useRouter();
+  const { enabled, queue } = useReplicaWrite();
   const [open, setOpen] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -604,6 +620,10 @@ export function FarmGeneratorLogSection({
                 setEditingGen(gen.hourKey);
               }}
               onDelete={async (id) => {
+                if (enabled) {
+                  queue(formWrite("deleteGeneratorLog", { id, farmId }));
+                  return;
+                }
                 await deleteGeneratorLogAction(id, gen.hourKey);
                 router.refresh();
               }}

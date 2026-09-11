@@ -11,6 +11,8 @@ import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSec
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { Card } from "@/components/ui";
 import { ISSUE_CATEGORY_LABELS } from "@/lib/utils";
+import { formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 type IssueRow = IssueFormValues & {
   id: string;
@@ -32,6 +34,7 @@ export function FarmIssuesSection({
   issues: IssueRow[];
 }) {
   const router = useRouter();
+  const { enabled, queue } = useReplicaWrite();
   const [open, setOpen] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -86,6 +89,10 @@ export function FarmIssuesSection({
               transparent
               onDelete={() => {
                 startDelete(async () => {
+                  if (enabled) {
+                    queue(formWrite("deleteIssue", { id: issue.id, farmId }));
+                    return;
+                  }
                   await deleteIssueAction(farmId, issue.id);
                   router.refresh();
                 });

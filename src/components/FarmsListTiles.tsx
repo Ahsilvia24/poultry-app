@@ -2,6 +2,8 @@
 
 import { useRef, useState, useTransition } from "react";
 import { ReplicaLink } from "@/components/ReplicaLink";
+import { formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import {
   deactivateFarmAction,
   deleteFarmAction,
@@ -27,6 +29,7 @@ const LONG_PRESS_MS = 500;
 const MOVE_CANCEL_PX = 12;
 
 function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
+  const { enabled, queue } = useReplicaWrite();
   const [confirm, setConfirm] = useState<ConfirmKind>(null);
   const [pending, start] = useTransition();
   const longPressTimer = useRef<number | null>(null);
@@ -202,6 +205,20 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
                 disabled={pending}
                 onClick={() => {
                   start(async () => {
+                    if (enabled) {
+                      queue(
+                        formWrite(
+                          confirm === "inactive"
+                            ? "deactivateFarm"
+                            : confirm === "active"
+                              ? "reactivateFarm"
+                              : "deleteFarm",
+                          { farmId: farm.id },
+                        ),
+                      );
+                      setConfirm(null);
+                      return;
+                    }
                     if (confirm === "inactive") {
                       await deactivateFarmAction(farm.id, { skipRedirect: true });
                     } else if (confirm === "active") {

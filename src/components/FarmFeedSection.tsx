@@ -15,6 +15,8 @@ import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSec
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { Card } from "@/components/ui";
 import { formatNumber } from "@/lib/utils";
+import { formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 type DeliveryRow = FeedDeliveryFormValues & {
   id: string;
@@ -35,6 +37,7 @@ export function FarmFeedSection({
   deliveries: DeliveryRow[];
 }) {
   const router = useRouter();
+  const { enabled, queue } = useReplicaWrite();
   const [open, setOpen] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -89,6 +92,10 @@ export function FarmFeedSection({
               transparent
               onDelete={() => {
                 startDelete(async () => {
+                  if (enabled) {
+                    queue(formWrite("deleteFeed", { id: d.id, farmId }));
+                    return;
+                  }
                   await deleteFeedDeliveryAction(d.id);
                   router.refresh();
                 });

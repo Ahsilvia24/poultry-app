@@ -19,7 +19,13 @@ export function replicaPath(href: string): { pathname: string; search: string } 
 
 export function isReplicaHref(href: string): boolean {
   const { pathname } = replicaPath(href);
-  if (pathname === "/farms" || pathname === "/settings" || pathname === "/lfo" || pathname === "/tools") {
+  if (
+    pathname === "/farms" ||
+    pathname === "/settings" ||
+    pathname === "/lfo" ||
+    pathname === "/tools" ||
+    pathname === "/reports"
+  ) {
     return true;
   }
   const farm = /^\/farms\/([^/]+)$/.exec(pathname);

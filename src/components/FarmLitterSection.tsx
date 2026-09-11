@@ -11,6 +11,8 @@ import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSec
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { Card } from "@/components/ui";
 import { LITTER_EVENT_LABELS } from "@/lib/utils";
+import { formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 type LitterRow = LitterFormValues & {
   id: string;
@@ -31,6 +33,7 @@ export function FarmLitterSection({
   events: LitterRow[];
 }) {
   const router = useRouter();
+  const { enabled, queue } = useReplicaWrite();
   const [open, setOpen] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -85,6 +88,10 @@ export function FarmLitterSection({
               transparent
               onDelete={() => {
                 startDelete(async () => {
+                  if (enabled) {
+                    queue(formWrite("deleteLitter", { id: e.id, farmId }));
+                    return;
+                  }
                   await deleteLitterEventAction(farmId, e.id);
                   router.refresh();
                 });

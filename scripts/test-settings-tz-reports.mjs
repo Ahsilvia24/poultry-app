@@ -4,8 +4,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const settings = readFileSync(join(root, "src/app/(dashboard)/settings/page.tsx"), "utf8");
-const reports = readFileSync(join(root, "src/app/(dashboard)/reports/page.tsx"), "utf8");
+const settings = readFileSync(join(root, "src/components/SettingsScreen.tsx"), "utf8");
+const reports = readFileSync(join(root, "src/components/ReportsView.tsx"), "utf8");
+const selectReports = readFileSync(join(root, "src/lib/offline/selectReports.ts"), "utf8");
 const charts = readFileSync(join(root, "src/components/MortalityCharts.tsx"), "utf8");
 const tabs = readFileSync(join(root, "src/components/ReportsTypeTabs.tsx"), "utf8");
 const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8");
@@ -23,9 +24,9 @@ assert.match(schema, /appTimeZone/);
 assert.match(schema, /America\/Chicago/);
 
 assert.match(reports, /<option value="">All farms<\/option>/);
-assert.match(reports, /reportType === "generator"/);
 assert.match(reports, /name="farmId"/);
-assert.match(reports, /\.\.\.\(selectedFarmId \? \{ id: selectedFarmId \} : \{\}\)/);
+assert.match(selectReports, /type === "generator"/);
+assert.match(selectReports, /selected && farm.id !== selected/);
 assert.doesNotMatch(reports, /name="cause"/);
 assert.doesNotMatch(reports, /htmlFor="cause"/);
 assert.doesNotMatch(reports, /byCause/);

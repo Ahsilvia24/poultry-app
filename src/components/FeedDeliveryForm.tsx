@@ -8,6 +8,8 @@ import {
 import { FEED_MILL_OPTIONS, FEED_TYPE_OPTIONS } from "@/lib/utils";
 import { DateKeyInput } from "@/components/DateKeyField";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
+import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 export type FeedFarmOption = {
   id: string;
@@ -48,6 +50,7 @@ export function FeedDeliveryForm({
   initial?: FeedDeliveryFormValues;
   onSuccess?: () => void;
 }) {
+  const { enabled, queue } = useReplicaWrite();
   const [pending, startTransition] = useTransition();
   const initialFarmId = lockedFarmId ?? farms[0]?.id ?? "";
   const [farmId, setFarmId] = useState(initialFarmId);
@@ -113,6 +116,17 @@ export function FeedDeliveryForm({
     formData.set("houseFlockId", houseFlockId);
 
     startTransition(async () => {
+      if (enabled) {
+        queue(
+          formWrite(recordId ? "updateFeed" : "createFeed", {
+            id: recordId ?? localRecordId(),
+            farmId: lockedFarmId ?? farmId,
+            ...formDataToParts(formData),
+          }),
+        );
+        onSuccess?.();
+        return;
+      }
       const result = recordId
         ? await updateFeedDeliveryAction(recordId, formData)
         : await createFeedDeliveryAction(formData);

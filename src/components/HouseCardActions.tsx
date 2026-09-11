@@ -7,6 +7,8 @@ import { DateKeyField } from "@/components/DateKeyField";
 import { GroupedNumberInput } from "@/components/GroupedNumberInput";
 import { TimeKeyField } from "@/components/TimeKeyField";
 import { Button, Input, Label } from "@/components/ui";
+import { formDataToParts, formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 export type HouseEditValues = {
   id: string;
@@ -72,6 +74,7 @@ export function HouseCardActions({
   onModeChange: (mode: "idle" | "edit" | "delete") => void;
 }) {
   const router = useRouter();
+  const { enabled, queue } = useReplicaWrite();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [placementDate, setPlacementDate] = useState(house.placementDateKey ?? "");
@@ -150,6 +153,17 @@ export function HouseCardActions({
   function onSave(formData: FormData) {
     setError(null);
     startTransition(async () => {
+      if (enabled) {
+        queue(
+          formWrite("updateHouse", {
+            id: house.id,
+            farmId,
+            ...formDataToParts(formData),
+          }),
+        );
+        onModeChange("idle");
+        return;
+      }
       const result = await updateHouseAction(farmId, house.id, formData);
       if (result?.error) {
         setError(result.error);
@@ -163,6 +177,11 @@ export function HouseCardActions({
   function onDelete() {
     setError(null);
     startTransition(async () => {
+      if (enabled) {
+        queue(formWrite("deleteHouse", { id: house.id, farmId }));
+        onModeChange("idle");
+        return;
+      }
       const result = await deleteHouseAction(farmId, house.id);
       if (result?.error) {
         setError(result.error);

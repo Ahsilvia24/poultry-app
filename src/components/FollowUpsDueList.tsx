@@ -7,6 +7,8 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { toggleFollowUpCompletionAction } from "@/app/actions/follow-ups";
 import { OneDotName } from "@/components/OneDotName";
 import { ScrollableFarmList } from "@/components/ScrollableFarmList";
+import { formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 export type FollowUpDueItem = {
   farmId: string;
@@ -31,6 +33,7 @@ export function FollowUpsDueList({
   showDate?: boolean;
 }) {
   const router = useRouter();
+  const { enabled, queue } = useReplicaWrite();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +61,22 @@ export function FollowUpsDueList({
     setChecked((prev) => ({ ...prev, [key]: next }));
     setPendingKey(key);
     startTransition(async () => {
+      if (enabled) {
+        queue(
+          formWrite("toggleFollowUp", {
+            farmId: item.farmId,
+            extra: {
+              farmId: item.farmId,
+              flockId: item.flockId,
+              date: item.date,
+              label: item.label,
+              completed: next,
+            },
+          }),
+        );
+        setPendingKey(null);
+        return;
+      }
       const result = await toggleFollowUpCompletionAction({
         farmId: item.farmId,
         flockId: item.flockId,

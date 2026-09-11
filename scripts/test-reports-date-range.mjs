@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const page = readFileSync(join(root, "src/app/(dashboard)/reports/page.tsx"), "utf8");
+const page = readFileSync(join(root, "src/components/ReportsView.tsx"), "utf8");
 const fields = readFileSync(join(root, "src/components/ReportDateRangeFields.tsx"), "utf8");
 
 assert.match(fields, /grid grid-cols-2/);
@@ -14,7 +14,7 @@ assert.doesNotMatch(fields, /type="date"/);
 assert.doesNotMatch(fields, /min-h-\[52px\]/);
 
 assert.match(page, /ReportDateRangeFields fromLabel="Start" toLabel="Finish"/);
-assert.match(page, /ReportDateRangeFields fromLabel="From" toLabel="To" from=\{from\} to=\{to\}/);
+assert.match(page, /ReportDateRangeFields fromLabel="From" toLabel="To" from=\{model.from\} to=\{model.to\}/);
 assert.equal(
   (page.match(/<ReportDateRangeFields /g) ?? []).length,
   3,

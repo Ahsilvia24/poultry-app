@@ -11,6 +11,8 @@ import { FarmVisitForm, type VisitFormValues } from "@/components/FarmOpsForms";
 import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSectionChrome";
 import { Card } from "@/components/ui";
 import { VISIT_TYPE_LABELS } from "@/lib/utils";
+import { formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 type VisitRow = VisitFormValues & {
   id: string;
@@ -32,6 +34,7 @@ export function FarmVisitsSection({
   visits: VisitRow[];
 }) {
   const router = useRouter();
+  const { enabled, queue } = useReplicaWrite();
   const [open, setOpen] = useState(true);
   const [logOpen, setLogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -86,6 +89,10 @@ export function FarmVisitsSection({
                 transparent
                 onDelete={() => {
                   startDelete(async () => {
+                    if (enabled) {
+                      queue(formWrite("deleteVisit", { id: v.id, farmId }));
+                      return;
+                    }
                     await deleteVisitAction(farmId, v.id);
                     router.refresh();
                   });

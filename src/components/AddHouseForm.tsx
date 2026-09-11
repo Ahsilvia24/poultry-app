@@ -4,9 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { createHouseAction } from "@/app/actions/farms";
 import { Button, Card, Input, Label, Textarea } from "@/components/ui";
+import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 export function AddHouseForm({ farmId }: { farmId: string }) {
   const router = useRouter();
+  const { enabled, queue } = useReplicaWrite();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -15,6 +18,18 @@ export function AddHouseForm({ farmId }: { farmId: string }) {
   function onSave(formData: FormData) {
     setError(null);
     startTransition(async () => {
+      if (enabled) {
+        queue(
+          formWrite("createHouse", {
+            id: localRecordId(),
+            farmId,
+            ...formDataToParts(formData),
+          }),
+        );
+        setOpen(false);
+        setFormKey((k) => k + 1);
+        return;
+      }
       const result = await createHouseAction(farmId, formData);
       if (result?.error) {
         setError(result.error);

@@ -78,6 +78,7 @@ export type OfflineVisit = {
   followUpRequired: boolean;
   followUpDate: string | null;
   notes: string | null;
+  loggedAt: string | null;
 };
 
 export type OfflineIssue = {
@@ -162,10 +163,53 @@ export type OfflineSettings = {
   notifyInApp: boolean;
 };
 
+export type OfflineFormWriteAction =
+  | "updateFarm"
+  | "deactivateFarm"
+  | "reactivateFarm"
+  | "deleteFarm"
+  | "createHouse"
+  | "updateHouse"
+  | "deleteHouse"
+  | "createVisit"
+  | "updateVisit"
+  | "deleteVisit"
+  | "createIssue"
+  | "updateIssue"
+  | "deleteIssue"
+  | "createLitter"
+  | "updateLitter"
+  | "deleteLitter"
+  | "createFeed"
+  | "updateFeed"
+  | "deleteFeed"
+  | "createGeneratorLog"
+  | "updateGeneratorLog"
+  | "deleteGeneratorLog"
+  | "saveFarmLfo"
+  | "createManualLfo"
+  | "deleteLfo"
+  | "saveMortalitySeries"
+  | "toggleFollowUp";
+
+export type OfflineFormWrite = {
+  action: OfflineFormWriteAction;
+  id?: string;
+  farmId?: string;
+  fields?: Record<string, string>;
+  listFields?: Record<string, string[]>;
+  extra?: unknown;
+};
+
 export type OfflineOutboxItem = {
   id: string;
   createdAt: string;
-  kind: "applyPlacement" | "applyCatch" | "updateHouseTemp" | "updateSettings";
+  kind:
+    | "applyPlacement"
+    | "applyCatch"
+    | "updateHouseTemp"
+    | "updateSettings"
+    | "formWrite";
   payload: unknown;
 };
 

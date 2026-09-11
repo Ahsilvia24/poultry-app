@@ -26,6 +26,8 @@ import {
 } from "@/lib/utils";
 import { DateKeyField, DateKeyInput } from "@/components/DateKeyField";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
+import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 export type VisitFormValues = {
   visitDate: string;
@@ -57,6 +59,7 @@ export function FarmVisitForm({
   recordId?: string;
   initial?: VisitFormValues;
 }) {
+  const { enabled, queue } = useReplicaWrite();
   const [pending, start] = useTransition();
   const [visitDate, setVisitDate] = useState(
     initial?.visitDate ?? new Date().toISOString().slice(0, 10),
@@ -84,6 +87,17 @@ export function FarmVisitForm({
       className="mt-4 space-y-3"
       action={(fd) => {
         start(async () => {
+          if (enabled) {
+            queue(
+              formWrite(recordId ? "updateVisit" : "createVisit", {
+                id: recordId ?? localRecordId(),
+                farmId,
+                ...formDataToParts(fd),
+              }),
+            );
+            onSuccess?.();
+            return;
+          }
           const result = recordId
             ? await updateVisitAction(recordId, fd)
             : await createVisitAction(fd);
@@ -200,6 +214,7 @@ export function FarmIssueForm({
   recordId?: string;
   initial?: IssueFormValues;
 }) {
+  const { enabled, queue } = useReplicaWrite();
   const [pending, start] = useTransition();
   const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
   return (
@@ -207,6 +222,17 @@ export function FarmIssueForm({
       className="mt-4 space-y-3"
       action={(fd) => {
         start(async () => {
+          if (enabled) {
+            queue(
+              formWrite(recordId ? "updateIssue" : "createIssue", {
+                id: recordId ?? localRecordId(),
+                farmId,
+                ...formDataToParts(fd),
+              }),
+            );
+            onSuccess?.();
+            return;
+          }
           const result = recordId
             ? await updateIssueAction(recordId, fd)
             : await createIssueAction(fd);
@@ -325,6 +351,7 @@ export function LitterEventForm({
   recordId?: string;
   initial?: LitterFormValues;
 }) {
+  const { enabled, queue } = useReplicaWrite();
   const [pending, start] = useTransition();
   const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
   return (
@@ -332,6 +359,17 @@ export function LitterEventForm({
       className="mt-4 space-y-3"
       action={(fd) => {
         start(async () => {
+          if (enabled) {
+            queue(
+              formWrite(recordId ? "updateLitter" : "createLitter", {
+                id: recordId ?? localRecordId(),
+                farmId,
+                ...formDataToParts(fd),
+              }),
+            );
+            onSuccess?.();
+            return;
+          }
           const result = recordId
             ? await updateLitterEventAction(recordId, fd)
             : await createLitterEventAction(fd);

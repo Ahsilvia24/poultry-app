@@ -16,6 +16,8 @@ import {
 import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
 import { formatFeedMillData } from "@/lib/lfo/feedMillData";
 import { currentHalfHourTime } from "@/lib/time-slots";
+import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 export type FarmLfoHouseInput = {
   houseId: string;
@@ -87,6 +89,7 @@ export function FarmLfoForm({
   farmId: string;
   houses: FarmLfoHouseInput[];
 }) {
+  const { enabled, queue } = useReplicaWrite();
   const [orderDate, setOrderDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(
@@ -152,7 +155,20 @@ export function FarmLfoForm({
   async function persistLfo(resetBins: boolean) {
     setError(null);
     setSaved(false);
-    const result = await saveFarmLfoHubAction(farmId, buildFormData());
+    const formData = buildFormData();
+    if (enabled) {
+      queue(
+        formWrite("saveFarmLfo", {
+          id: localRecordId(),
+          farmId,
+          ...formDataToParts(formData),
+        }),
+      );
+      setSaved(true);
+      if (resetBins) setRows(emptyHouses(initialHouses));
+      return true;
+    }
+    const result = await saveFarmLfoHubAction(farmId, formData);
     if (result && "error" in result && result.error) {
       setError(result.error);
       return false;

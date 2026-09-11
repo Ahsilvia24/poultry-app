@@ -26,7 +26,9 @@ import {
 } from "@/lib/offline/applyLocal";
 import type { CatchSelection } from "@/app/actions/catch-import";
 import type { PlacementSelection } from "@/app/actions/placement-import";
-import type { OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
+import { coalesceFormWrite } from "@/lib/offline/applyWrites";
+import { flushFormWrite } from "@/lib/offline/flushWrites";
+import type { OfflineFormWrite, OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
 
 type OfflineContextValue = {
   snapshot: OfflineSnapshot | null;
@@ -90,6 +92,11 @@ async function flushOutbox() {
         if (res && "error" in res && res.error) remain.push(item);
         continue;
       }
+      if (item.kind === "formWrite") {
+        const ok = await flushFormWrite(item.payload as OfflineFormWrite);
+        if (!ok) remain.push(item);
+        continue;
+      }
       remain.push(item);
     } catch {
       remain.push(item);
@@ -132,7 +139,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       createdAt: new Date().toISOString(),
     };
     void loadOutbox()
-      .then((items) => saveOutbox([...items, full]))
+      .then((items) => saveOutbox(coalesceFormWrite(items, full)))
       .then(() => {
         if (typeof navigator === "undefined" || navigator.onLine === false) return;
         return flushOutbox();
