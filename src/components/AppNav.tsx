@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useKeypadNav } from "@/components/KeypadNavContext";
+import { ReplicaLink } from "@/components/ReplicaLink";
+import { useOfflineNav } from "@/components/OfflineNavContext";
+import { replicaPath } from "@/lib/offline/hasFarmGraph";
 
 const tabs = [
   { href: "/reports", label: "Reports", icon: "reports" },
@@ -91,11 +93,17 @@ function isActive(pathname: string, href: string) {
   return pathname === href || (href !== "/" && pathname.startsWith(href));
 }
 
+function pathOnly(href: string) {
+  return replicaPath(href).pathname;
+}
+
 export function AppNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const offlineNav = useOfflineNav();
   const { keypadOpen } = useKeypadNav();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const viewPath = offlineNav ? pathOnly(offlineNav.viewHref) : pathname;
 
   useEffect(() => {
     setPendingHref(null);
@@ -114,7 +122,7 @@ export function AppNav() {
 
   function tabIsActive(href: string) {
     if (pendingHref) return pendingHref === href;
-    return isActive(pathname, href);
+    return isActive(viewPath, href);
   }
 
   function prefetchTab(href: string) {
@@ -134,7 +142,7 @@ export function AppNav() {
             {desktopNav.map((item) => {
               const active = tabIsActive(item.href);
               return (
-                <Link
+                <ReplicaLink
                   key={item.href}
                   href={item.href}
                   prefetch
@@ -149,7 +157,7 @@ export function AppNav() {
                   )}
                 >
                   {item.label}
-                </Link>
+                </ReplicaLink>
               );
             })}
           </nav>
@@ -162,7 +170,7 @@ export function AppNav() {
             {tabs.map((item) => {
               const active = tabIsActive(item.href);
               return (
-                <Link
+                <ReplicaLink
                   key={item.href}
                   href={item.href}
                   prefetch
@@ -176,7 +184,7 @@ export function AppNav() {
                 >
                   <TabIcon name={item.icon} size={22} />
                   {item.label}
-                </Link>
+                </ReplicaLink>
               );
             })}
           </div>

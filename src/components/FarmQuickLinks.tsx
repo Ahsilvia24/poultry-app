@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
+import { ReplicaLink } from "@/components/ReplicaLink";
 import { useRouter } from "next/navigation";
 import { CompleteFlockPicker } from "@/components/CompleteFlockPicker";
 import { cn } from "@/lib/utils";
@@ -63,7 +63,7 @@ export function FarmQuickLinks({
             );
           }
           return item.external ? (
-            <Link
+            <ReplicaLink
               key={item.key}
               href={item.href}
               prefetch
@@ -72,7 +72,7 @@ export function FarmQuickLinks({
               className={linkClass}
             >
               {item.label}
-            </Link>
+            </ReplicaLink>
           ) : (
             <a key={item.key} href={item.href} className={linkClass}>
               {item.label}

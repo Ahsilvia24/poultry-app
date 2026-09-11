@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { DashboardShell } from "@/components/DashboardShell";
+import { OfflineNavProvider } from "@/components/OfflineNavContext";
 import { OfflineProvider } from "@/components/OfflineProvider";
 import { redirect } from "next/navigation";
 
@@ -9,7 +10,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <OfflineProvider>
-      <DashboardShell>{children}</DashboardShell>
+      <OfflineNavProvider>
+        <DashboardShell>{children}</DashboardShell>
+      </OfflineNavProvider>
     </OfflineProvider>
   );
 }

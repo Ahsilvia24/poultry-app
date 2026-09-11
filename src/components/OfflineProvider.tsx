@@ -11,12 +11,19 @@ import {
 } from "react";
 import { applyCatchImportAction } from "@/app/actions/catch-import";
 import { applyPlacementImportAction } from "@/app/actions/placement-import";
+import { updateHouseLoggedTempAction } from "@/app/actions/farms";
+import { updateSettingsAction } from "@/app/actions/ops";
 import {
   loadLocalSnapshot,
   loadOutbox,
   saveLocalSnapshot,
   saveOutbox,
 } from "@/lib/offline/idb";
+import {
+  formDataFromSettingsWrite,
+  type HouseTempWrite,
+  type SettingsWrite,
+} from "@/lib/offline/applyLocal";
 import type { CatchSelection } from "@/app/actions/catch-import";
 import type { PlacementSelection } from "@/app/actions/placement-import";
 import type { OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
@@ -27,6 +34,7 @@ type OfflineContextValue = {
   syncing: boolean;
   enqueue: (item: Omit<OfflineOutboxItem, "id" | "createdAt">) => void;
   replaceSnapshot: (snapshot: OfflineSnapshot) => void;
+  patchSnapshot: (fn: (snapshot: OfflineSnapshot) => OfflineSnapshot) => void;
 };
 
 const OfflineContext = createContext<OfflineContextValue | null>(null);
@@ -38,28 +46,51 @@ async function flushOutbox() {
   const remain: OfflineOutboxItem[] = [];
   for (const item of items) {
     try {
-      const payload = item.payload as {
-        selections?: Array<PlacementSelection | CatchSelection>;
-        rows?: unknown;
-      };
       if (item.kind === "applyPlacement") {
+        const payload = item.payload as {
+          selections?: PlacementSelection[];
+          rows?: unknown;
+        };
         const res = await applyPlacementImportAction({
           importId: item.id,
-          selections: (payload.selections ?? []) as PlacementSelection[],
+          selections: payload.selections ?? [],
           rows: payload.rows as never,
         });
         if (!res.ok) remain.push(item);
         continue;
       }
       if (item.kind === "applyCatch") {
+        const payload = item.payload as {
+          selections?: CatchSelection[];
+          rows?: unknown;
+        };
         const res = await applyCatchImportAction({
           importId: item.id,
-          selections: (payload.selections ?? []) as CatchSelection[],
+          selections: payload.selections ?? [],
           rows: payload.rows as never,
         });
         if (!res.ok) remain.push(item);
         continue;
       }
+      if (item.kind === "updateHouseTemp") {
+        const payload = item.payload as HouseTempWrite;
+        const res = await updateHouseLoggedTempAction(
+          payload.farmId,
+          payload.houseId,
+          payload.temp,
+          payload.dateKey,
+        );
+        if (res?.error) remain.push(item);
+        continue;
+      }
+      if (item.kind === "updateSettings") {
+        const res = await updateSettingsAction(
+          formDataFromSettingsWrite(item.payload as SettingsWrite),
+        );
+        if (res && "error" in res && res.error) remain.push(item);
+        continue;
+      }
+      remain.push(item);
     } catch {
       remain.push(item);
     }
@@ -85,13 +116,27 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     void saveLocalSnapshot(next);
   }, []);
 
+  const patchSnapshot = useCallback((fn: (current: OfflineSnapshot) => OfflineSnapshot) => {
+    setSnapshot((current) => {
+      if (!current) return current;
+      const next = fn(current);
+      void saveLocalSnapshot(next);
+      return next;
+    });
+  }, []);
+
   const enqueue = useCallback((item: Omit<OfflineOutboxItem, "id" | "createdAt">) => {
     const full: OfflineOutboxItem = {
       ...item,
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
     };
-    void loadOutbox().then((items) => saveOutbox([...items, full]));
+    void loadOutbox()
+      .then((items) => saveOutbox([...items, full]))
+      .then(() => {
+        if (typeof navigator === "undefined" || navigator.onLine === false) return;
+        return flushOutbox();
+      });
   }, []);
 
   useEffect(() => {
@@ -130,23 +175,22 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   }, [replaceSnapshot]);
 
   const value = useMemo(
-    () => ({ snapshot, ready, syncing, enqueue, replaceSnapshot }),
-    [snapshot, ready, syncing, enqueue, replaceSnapshot],
+    () => ({ snapshot, ready, syncing, enqueue, replaceSnapshot, patchSnapshot }),
+    [snapshot, ready, syncing, enqueue, replaceSnapshot, patchSnapshot],
   );
 
   return <OfflineContext.Provider value={value}>{children}</OfflineContext.Provider>;
 }
 
+const missingOffline: OfflineContextValue = {
+  snapshot: null,
+  ready: true,
+  syncing: false,
+  enqueue: () => undefined,
+  replaceSnapshot: () => undefined,
+  patchSnapshot: () => undefined,
+};
+
 export function useOffline() {
-  const ctx = useContext(OfflineContext);
-  if (!ctx) {
-    return {
-      snapshot: null,
-      ready: true,
-      syncing: false,
-      enqueue: () => undefined,
-      replaceSnapshot: () => undefined,
-    } satisfies OfflineContextValue;
-  }
-  return ctx;
+  return useContext(OfflineContext) ?? missingOffline;
 }

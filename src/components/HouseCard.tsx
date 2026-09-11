@@ -11,6 +11,9 @@ import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
 import { updateHouseLoggedTempAction } from "@/app/actions/farms";
+import { useOffline } from "@/components/OfflineProvider";
+import { applyHouseTemp } from "@/lib/offline/applyLocal";
+import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 
 type HouseData = {
   id: string;
@@ -88,6 +91,7 @@ export function HouseCard({
   birdAgeDays?: number | null;
 }) {
   const router = useRouter();
+  const { snapshot, patchSnapshot, enqueue } = useOffline();
   const { setKeypadOpen } = useKeypadNav();
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [mode, setMode] = useState<"idle" | "edit" | "delete">("idle");
@@ -130,8 +134,27 @@ export function HouseCard({
   }
 
   function saveTemp(next: string | null) {
+    const day = todayKey();
+    const trimmed = next?.trim() ?? "";
+    if (trimmed && !Number.isFinite(Number(trimmed))) {
+      setTempError("Enter a valid temperature");
+      return;
+    }
+    const payload = {
+      farmId,
+      houseId: house.id,
+      temp: trimmed || null,
+      dateKey: day,
+    };
+    if (snapshotHasFarmGraph(snapshot)) {
+      patchSnapshot((current) => applyHouseTemp(current, payload));
+      enqueue({ kind: "updateHouseTemp", payload });
+      setTempOpen(false);
+      setTempError(null);
+      return;
+    }
     startTemp(async () => {
-      const result = await updateHouseLoggedTempAction(farmId, house.id, next, todayKey());
+      const result = await updateHouseLoggedTempAction(farmId, house.id, payload.temp, day);
       if (result?.error) {
         setTempError(result.error);
         return;

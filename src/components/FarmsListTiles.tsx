@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import Link from "next/link";
+import { ReplicaLink } from "@/components/ReplicaLink";
 import {
   deactivateFarmAction,
   deleteFarmAction,
@@ -120,7 +120,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
               : "relative flex h-full flex-col rounded-xl border-2 border-stone-300 bg-white p-2.5 shadow-sm"
           }
         >
-          <Link
+          <ReplicaLink
             href={`/farms/${farm.id}`}
             prefetch
             className="absolute inset-0 z-0 rounded-[inherit]"

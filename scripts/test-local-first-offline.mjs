@@ -9,31 +9,63 @@ const read = (rel) => readFileSync(join(root, rel), "utf8");
 assert.ok(existsSync(join(root, "src/lib/offline/buildSnapshot.ts")));
 assert.ok(existsSync(join(root, "src/app/api/offline/snapshot/route.ts")));
 assert.ok(existsSync(join(root, "src/lib/pdf-text-extract-client.ts")));
+assert.ok(existsSync(join(root, "src/lib/offline/selectFarmDetail.ts")));
+assert.ok(existsSync(join(root, "src/lib/offline/selectLfo.ts")));
+assert.ok(existsSync(join(root, "src/lib/offline/selectTools.ts")));
+assert.ok(existsSync(join(root, "src/lib/offline/applyLocal.ts")));
 
 const layout = read("src/app/(dashboard)/layout.tsx");
 assert.match(layout, /OfflineProvider/);
+assert.match(layout, /OfflineNavProvider/);
 
 const provider = read("src/components/OfflineProvider.tsx");
 assert.match(provider, /loadLocalSnapshot/);
 assert.match(provider, /Never block the UI on sync/);
 assert.match(provider, /flushOutbox/);
+assert.match(provider, /patchSnapshot/);
+assert.match(provider, /updateHouseTemp/);
+assert.match(provider, /updateSettings/);
+
+const farmPage = read("src/app/(dashboard)/farms/[id]/page.tsx");
+assert.match(farmPage, /FarmDetailClient/);
+assert.doesNotMatch(farmPage, /prisma\.farm\.findFirst/);
+
+const settingsPage = read("src/app/(dashboard)/settings/page.tsx");
+assert.match(settingsPage, /SettingsScreen/);
+
+const lfoPage = read("src/app/(dashboard)/lfo/page.tsx");
+assert.match(lfoPage, /LfoPageClient/);
+
+const toolsPage = read("src/app/(dashboard)/tools/page.tsx");
+assert.match(toolsPage, /ToolsPageClient/);
+
+const houseCard = read("src/components/HouseCard.tsx");
+assert.match(houseCard, /applyHouseTemp/);
+assert.match(houseCard, /updateHouseTemp/);
+
+const types = read("src/lib/offline/types.ts");
+assert.match(types, /OFFLINE_SNAPSHOT_VERSION = 2/);
+assert.match(types, /houses: OfflineHouse/);
+assert.match(types, /lfos: OfflineLfo/);
 
 const importUi = read("src/components/DashboardScheduleImport.tsx");
 assert.match(importUi, /extractPlacementRowsOnDevice/);
 assert.match(importUi, /extractCatchRowsOnDevice/);
 assert.match(importUi, /previewPlacementRowsLocal/);
 
-const farmsPage = read("src/app/(dashboard)/farms/page.tsx");
-assert.match(farmsPage, /FarmsPageClient/);
-
-const dash = read("src/app/(dashboard)/page.tsx");
-assert.match(dash, /DashboardHome/);
-
 const { extractPlacementRowsOnDevice } = await import(
   join(root, "src/lib/placement-import/extract-client.ts")
 );
 const { groupPlacementFarms } = await import(join(root, "src/lib/placement-import/parse.ts"));
 const { previewPlacementRowsLocal } = await import(join(root, "src/lib/offline/previewImport.ts"));
+const { snapshotHasFarmGraph, isReplicaHref } = await import(
+  join(root, "src/lib/offline/hasFarmGraph.ts")
+);
+const { applyHouseTemp, applySettings } = await import(join(root, "src/lib/offline/applyLocal.ts"));
+const { selectFarmDetail } = await import(join(root, "src/lib/offline/selectFarmDetail.ts"));
+const { selectFarmTiles } = await import(join(root, "src/lib/offline/selectFarms.ts"));
+const { selectLfo } = await import(join(root, "src/lib/offline/selectLfo.ts"));
+const { selectTools } = await import(join(root, "src/lib/offline/selectTools.ts"));
 
 const pdfBytes = readFileSync(
   join(root, "src/lib/placement-import/fixtures/weekly-chick-placement-9-5-26.pdf"),
@@ -50,4 +82,213 @@ const preview = previewPlacementRowsLocal(rows, []);
 assert.equal(preview.length, 21);
 assert.ok(preview.every((farm) => farm.isMyFarm === false));
 
-console.log(`local-first-offline: ${rows.length} rows · ${farms.length} farms from on-device PDF`);
+assert.equal(isReplicaHref("/farms"), true);
+assert.equal(isReplicaHref("/farms/abc"), true);
+assert.equal(isReplicaHref("/farms/new"), false);
+assert.equal(isReplicaHref("/farms/abc/service"), false);
+assert.equal(isReplicaHref("/lfo?farmId=abc"), true);
+assert.equal(isReplicaHref("/reports"), false);
+
+const snapshot = {
+  version: 2,
+  userId: "user-1",
+  userName: "Alex",
+  userEmail: "alex@example.com",
+  pulledAt: "2026-09-11T12:00:00.000Z",
+  settings: {
+    farmOrder: "name_asc",
+    appTimeZone: "America/Chicago",
+    dailyMortalityWarningPct: 0.15,
+    dailyMortalityCriticalPct: 0.3,
+    sevenDayMortalityWarningPct: 1,
+    sevenDayMortalityCriticalPct: 2,
+    alertRisingThreeDays: true,
+    defaultMarketAgeDays: 52,
+    notifyEmail: false,
+    notifyInApp: true,
+  },
+  farms: [
+    {
+      id: "farm-1",
+      farmName: "Oak Ridge",
+      growerName: "Pat",
+      farmNumber: "12",
+      phoneNumber: null,
+      isActive: true,
+      deletedAt: null,
+      notes: null,
+      numberOfHouses: 2,
+      numberOfGenerators: 2,
+      address: null,
+      city: null,
+      state: null,
+      zipCode: null,
+    },
+  ],
+  houses: [
+    {
+      id: "house-1",
+      farmId: "farm-1",
+      houseNumber: 1,
+      squareFootage: 20000,
+      totalFanCFM: 100000,
+      totalPowerCFM: null,
+      numberOfFans: 10,
+      notes: null,
+      loggedTemp: null,
+      loggedTempAt: null,
+      deletedAt: null,
+    },
+    {
+      id: "house-2",
+      farmId: "farm-1",
+      houseNumber: 2,
+      squareFootage: 20000,
+      totalFanCFM: 100000,
+      totalPowerCFM: null,
+      numberOfFans: 10,
+      notes: null,
+      loggedTemp: null,
+      loggedTempAt: null,
+      deletedAt: null,
+    },
+  ],
+  flocks: [
+    {
+      id: "flock-1",
+      farmId: "farm-1",
+      flockNumber: "A1",
+      flockStatus: "ACTIVE",
+      placementDate: "2026-08-01T00:00:00.000Z",
+      projectedCatchDate: "2026-09-22T00:00:00.000Z",
+      actualCatchDate: null,
+      targetMarketAge: 52,
+      growthRateLbsPerDay: 0.15,
+      deletedAt: null,
+    },
+  ],
+  houseFlocks: [
+    {
+      id: "hf-1",
+      flockId: "flock-1",
+      houseId: "house-1",
+      placedBirdCount: 20000,
+      placementDate: "2026-08-01",
+      catchDate: "2026-09-22",
+      catchTime: "22:00",
+    },
+    {
+      id: "hf-2",
+      flockId: "flock-1",
+      houseId: "house-2",
+      placedBirdCount: 20000,
+      placementDate: "2026-08-01",
+      catchDate: "2026-09-22",
+      catchTime: "23:00",
+    },
+  ],
+  mortalities: [
+    {
+      id: "m-1",
+      houseFlockId: "hf-1",
+      mortalityDate: "2026-08-02",
+      birdAgeInDays: 1,
+      dailyMortalityCount: 10,
+      cullCount: 0,
+      totalDailyLoss: 10,
+      isDraft: false,
+    },
+  ],
+  visits: [],
+  issues: [],
+  litterEvents: [],
+  feedDeliveries: [],
+  lfos: [
+    {
+      id: "lfo-1",
+      farmId: "farm-1",
+      flockId: "flock-1",
+      orderDate: "2026-09-10",
+      orderTime: "08:00",
+      consumptionRate: 0.45,
+      calculatedAt: "2026-09-10T13:00:00.000Z",
+      notes: null,
+      createdAt: "2026-09-10T13:00:00.000Z",
+    },
+  ],
+  lfoInventories: [
+    {
+      id: "inv-1",
+      lastFeedOrderId: "lfo-1",
+      houseId: "house-1",
+      binAPounds: 8000,
+      binBPounds: 8000,
+      headCount: 19990,
+      feedUpAt: "2026-09-21T17:00:00.000Z",
+    },
+  ],
+  generatorLogs: [],
+  dashboard: null,
+};
+
+assert.equal(snapshotHasFarmGraph(snapshot), true);
+assert.equal(snapshotHasFarmGraph({ ...snapshot, houses: undefined }), false);
+
+const tiles = selectFarmTiles(snapshot);
+assert.equal(tiles.length, 1);
+assert.equal(tiles[0].houseCount, 2);
+assert.ok(tiles[0].flockAges.length > 0);
+
+const detail = selectFarmDetail(snapshot, "farm-1");
+assert.ok(detail);
+assert.equal(detail.farm.farmName, "Oak Ridge");
+assert.equal(detail.houses.length, 2);
+assert.equal(detail.houseCards.length, 2);
+assert.equal(detail.houseCards[0].hasFlock, true);
+assert.equal(detail.houseCards[0].birdsPlaced, 20000);
+assert.equal(selectFarmDetail(snapshot, "missing"), null);
+
+const warmed = applyHouseTemp(snapshot, {
+  farmId: "farm-1",
+  houseId: "house-1",
+  temp: "86",
+  dateKey: "2026-09-11",
+});
+assert.equal(warmed.houses[0].loggedTemp, "86");
+assert.equal(warmed.houses[0].loggedTempAt, "2026-09-11");
+assert.equal(snapshot.houses[0].loggedTemp, null);
+
+const renamed = applySettings(snapshot, {
+  name: "Alex Silvia",
+  farmOrder: "age_desc",
+  dailyMortalityWarningPct: 0.2,
+  dailyMortalityCriticalPct: 0.4,
+  sevenDayMortalityWarningPct: 1.1,
+  sevenDayMortalityCriticalPct: 2.2,
+  alertRisingThreeDays: false,
+  appTimeZone: "America/New_York",
+  defaultMarketAgeDays: 49,
+  notifyEmail: false,
+  notifyInApp: true,
+});
+assert.equal(renamed.userName, "Alex Silvia");
+assert.equal(renamed.settings.appTimeZone, "America/New_York");
+assert.equal(renamed.settings.defaultMarketAgeDays, 49);
+assert.equal(renamed.settings.alertRisingThreeDays, false);
+
+const lfo = selectLfo(snapshot, "farm-1");
+assert.equal(lfo.farms.length, 1);
+assert.equal(lfo.farms[0].houses.length, 2);
+assert.equal(lfo.savedLfos.length, 1);
+assert.equal(lfo.savedLfos[0].farmName, "Oak Ridge");
+assert.equal(lfo.initialFarmId, "farm-1");
+
+const tools = selectTools(snapshot, "farm-1");
+assert.equal(tools.farms.length, 1);
+assert.equal(tools.weightFarms.length, 1);
+assert.equal(tools.weightFarms[0].houses.length, 2);
+assert.equal(tools.initialFarmId, "farm-1");
+
+console.log(
+  `local-first-offline: ${rows.length} rows · ${farms.length} farms · farm detail ${detail.houseCards.length} houses · LFO ${lfo.savedLfos.length}`,
+);

@@ -27,7 +27,9 @@ export function selectFarmTiles(snapshot: OfflineSnapshot): OfflineFarmTile[] {
       growerName: farm.growerName,
       phoneNumber: farm.phoneNumber,
       isActive: farm.isActive,
-      houseCount: farm.numberOfHouses,
+      houseCount:
+        snapshot.houses?.filter((house) => house.farmId === farm.id && !house.deletedAt).length ||
+        farm.numberOfHouses,
       flockAges: Array.from(new Set(ages)).sort((a, b) => a - b),
     };
   });
