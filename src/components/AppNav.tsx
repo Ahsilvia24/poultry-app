@@ -102,9 +102,14 @@ export function AppNav() {
   }, [pathname]);
 
   useEffect(() => {
-    for (const item of desktopNav) {
-      router.prefetch(item.href);
-    }
+    const prefetchTabs = () => {
+      for (const item of desktopNav) {
+        router.prefetch(item.href);
+      }
+    };
+    prefetchTabs();
+    window.addEventListener("online", prefetchTabs);
+    return () => window.removeEventListener("online", prefetchTabs);
   }, [router]);
 
   function tabIsActive(href: string) {

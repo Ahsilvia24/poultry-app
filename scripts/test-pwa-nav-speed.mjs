@@ -8,8 +8,8 @@ const read = (rel) => readFileSync(join(root, rel), "utf8");
 
 const nextConfig = read("next.config.ts");
 assert.match(nextConfig, /staleTimes/);
-assert.match(nextConfig, /dynamic:\s*30/);
-assert.match(nextConfig, /static:\s*180/);
+assert.match(nextConfig, /dynamic:\s*180/);
+assert.match(nextConfig, /static:\s*600/);
 
 const servicePage = read("src/app/(dashboard)/farms/[id]/service/page.tsx");
 assert.doesNotMatch(servicePage, /loadServiceFarmContext/);

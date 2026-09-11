@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Source_Sans_3, Source_Serif_4 } from "next/font/google";
+import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import "./globals.css";
 
 const sans = Source_Sans_3({
@@ -43,7 +44,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${sans.variable} ${serif.variable} h-full`}>
-      <body className="min-h-full bg-[#f3efe6] font-sans text-stone-900 antialiased">{children}</body>
+      <body className="min-h-full bg-[#f3efe6] font-sans text-stone-900 antialiased">
+        <RegisterServiceWorker />
+        {children}
+      </body>
     </html>
   );
 }

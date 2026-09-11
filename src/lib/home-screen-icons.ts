@@ -8,6 +8,8 @@ export const HOME_SCREEN_ICON_PATHS = [
   "/icon-512.png",
   "/manifest.webmanifest",
   "/manifest.json",
+  "/sw.js",
+  "/offline.html",
 ] as const;
 
 export function isHomeScreenAsset(pathname: string) {

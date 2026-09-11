@@ -15,6 +15,14 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      {
         source: "/login",
         headers: [{ key: "Cache-Control", value: "no-store, must-revalidate" }],
       },
@@ -43,11 +51,11 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     // Homescreen PWA tab switches were refetching every dynamic page (Next 15+
-    // default dynamic staleTime is 0). Keep a short client cache so Dashboard /
-    // Farms / LFO / Reports / Tools feel instant when flipping between them.
+    // default dynamic staleTime is 0). Keep a longer client cache so Dashboard /
+    // Farms / LFO / Reports / Tools stay usable on spotty phone service.
     staleTimes: {
-      dynamic: 30,
-      static: 180,
+      dynamic: 180,
+      static: 600,
     },
     serverActions: {
       bodySizeLimit: "20mb",
