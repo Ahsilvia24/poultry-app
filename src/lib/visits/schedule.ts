@@ -6,6 +6,7 @@ import {
   startOfDay,
   subDays,
 } from "date-fns";
+import { appTodayKey } from "../app-calendar";
 import { lfoTargetWeekday } from "../lfoSchedule";
 
 const DEFAULT_MARKET_AGE = 52;
@@ -165,9 +166,10 @@ export function splitScheduleForDashboard(
   horizon: Date,
   completions: Map<string, CompletionInfo>,
   _now: Date = new Date(),
+  timeZone?: string | null,
 ): { today: DueScheduledVisit[]; upcoming: DueScheduledVisit[] } {
   const todayStart = startOfDay(today);
-  const todayKey = format(todayStart, "yyyy-MM-dd");
+  const todayKey = dateKeyFromDb(today);
   const endKey = format(startOfDay(horizon), "yyyy-MM-dd");
   const horizonDays = Math.max(0, differenceInCalendarDays(startOfDay(horizon), todayStart));
   const overdueStart = format(subDays(todayStart, horizonDays), "yyyy-MM-dd");
@@ -182,8 +184,10 @@ export function splitScheduleForDashboard(
     const key = completionKey(v.dateKey, v.label);
     const info = completions.get(key);
     if (info) {
-      // Local calendar day the tech checked it off — not the visit's scheduled date.
-      const completedDayKey = format(info.completedAt, "yyyy-MM-dd");
+      // Farm-timezone calendar day the tech checked it off — not UTC, and not
+      // the visit's scheduled date. Evening Central checkoffs are still
+      // “yesterday” after midnight UTC.
+      const completedDayKey = appTodayKey(info.completedAt, timeZone);
       if (completedDayKey < todayKey) continue;
     }
 

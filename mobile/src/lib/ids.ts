@@ -14,6 +14,11 @@ function farmDateKey(at: Date): string {
   }).format(at);
 }
 
+/** `yyyy-MM-dd` for a live timestamp in the Settings timezone. */
+export function dateKeyInAppZone(at: Date): string {
+  return farmDateKey(at);
+}
+
 /** `yyyy-MM-dd`. No-arg “now” uses the Settings timezone. */
 export function todayKey(d?: Date): string {
   if (d === undefined) return farmDateKey(new Date());

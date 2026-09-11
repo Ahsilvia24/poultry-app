@@ -217,6 +217,8 @@ export async function getDashboardData(userId: string) {
         today,
         horizon,
         farmCompletions,
+        undefined,
+        timeZone,
       );
       const toRow = (due: (typeof dueToday)[number]): FollowUpRow => ({
         farmId: farm.id,

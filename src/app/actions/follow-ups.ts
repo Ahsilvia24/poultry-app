@@ -55,6 +55,7 @@ export async function toggleFollowUpCompletionAction(raw: unknown) {
         scheduledDate,
         label: parsed.data.label,
         status: "COMPLETED",
+        completedAt: new Date(),
         completedByUserId: user.id!,
       },
       update: {

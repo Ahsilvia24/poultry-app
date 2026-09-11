@@ -1,4 +1,4 @@
-import { addDaysKey, daysBetween, parseDateKey, todayKey } from "./ids";
+import { addDaysKey, dateKeyInAppZone, daysBetween, parseDateKey, todayKey } from "./ids";
 import { format } from "date-fns";
 import { lfoTargetWeekday } from "./lfoSchedule";
 
@@ -139,7 +139,7 @@ export function splitScheduleForDashboard(
     const info = completions.get(key);
     if (info) {
       // Local calendar day the tech checked it off — not the visit's scheduled date.
-      const completedDayKey = todayKey(info.completedAt);
+      const completedDayKey = dateKeyInAppZone(info.completedAt);
       if (completedDayKey < today) continue;
     }
 
