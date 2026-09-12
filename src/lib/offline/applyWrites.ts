@@ -274,7 +274,11 @@ function dropFarmFromDashboard(snapshot: OfflineSnapshot, farmId: string): Offli
       todaysSchedule: dashboard.todaysSchedule.filter((row) => row.farmId !== farmId),
       upcomingSchedule: dashboard.upcomingSchedule.filter((row) => row.farmId !== farmId),
       upcomingCatches: dashboard.upcomingCatches.filter((row) =>
-        farmName ? row.farmName !== farmName : true,
+        "farmId" in row && row.farmId
+          ? row.farmId !== farmId
+          : farmName
+            ? row.farmName !== farmName
+            : true,
       ),
     },
   };

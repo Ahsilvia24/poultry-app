@@ -8,9 +8,20 @@ import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { OneDotName } from "@/components/OneDotName";
 import { DashboardFarmCards } from "@/components/DashboardFarmCards";
 import { ScrollableFarmList } from "@/components/ScrollableFarmList";
+import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOffline } from "@/components/OfflineProvider";
 import type { getDashboardData } from "@/lib/dashboard";
 import type { ScheduleImportMeta } from "@/lib/schedule-import-types";
+
+function catchFarmHref(
+  farmId: string | undefined,
+  farmName: string,
+  farms: { id: string; farmName: string }[] | undefined,
+) {
+  if (farmId) return `/farms/${farmId}`;
+  const match = farms?.find((farm) => farm.farmName === farmName);
+  return match ? `/farms/${match.id}` : null;
+}
 
 function catchDateLabel(date: string) {
   try {
@@ -69,28 +80,50 @@ export function DashboardHome({
           ) : (
             <ScrollableFarmList className="mt-2 pr-2">
               <ul className="space-y-2.5 text-[15px]">
-                {(data?.upcomingCatches ?? []).map((c) => (
-                  <li
-                    key={`${c.farmName}-${c.date}-${c.flockNumber}`}
-                    className="flex min-h-[22px] items-baseline gap-2"
-                  >
-                    <span className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden font-semibold text-stone-900">
+                {(data?.upcomingCatches ?? []).map((c) => {
+                  const href = catchFarmHref(
+                    "farmId" in c ? c.farmId : undefined,
+                    c.farmName,
+                    snapshot?.farms,
+                  );
+                  const name = (
+                    <>
                       <OneDotName text={c.farmName} />
                       {c.flockAgeDays != null ? (
                         <span className="shrink-0 font-normal text-stone-500">
                           {c.flockAgeDays}d
                         </span>
                       ) : null}
-                    </span>
-                    <span className="ml-auto flex shrink-0 items-baseline gap-1.5 whitespace-nowrap text-stone-600">
-                      <span>{catchDateLabel(c.date)}</span>
-                      {c.catchTime ? (
-                        <span>{compactCatchTimeLabel(c.catchTime)}</span>
-                      ) : null}
-                      {c.catchAgeDays != null ? <span>({c.catchAgeDays}d)</span> : null}
-                    </span>
-                  </li>
-                ))}
+                    </>
+                  );
+                  return (
+                    <li
+                      key={`${c.farmName}-${c.date}-${c.flockNumber}`}
+                      className="flex min-h-[22px] items-baseline gap-2"
+                    >
+                      {href ? (
+                        <ReplicaLink
+                          href={href}
+                          prefetch
+                          className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden font-semibold text-stone-900 hover:underline"
+                        >
+                          {name}
+                        </ReplicaLink>
+                      ) : (
+                        <span className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden font-semibold text-stone-900">
+                          {name}
+                        </span>
+                      )}
+                      <span className="ml-auto flex shrink-0 items-baseline gap-1.5 whitespace-nowrap text-stone-600">
+                        <span>{catchDateLabel(c.date)}</span>
+                        {c.catchTime ? (
+                          <span>{compactCatchTimeLabel(c.catchTime)}</span>
+                        ) : null}
+                        {c.catchAgeDays != null ? <span>({c.catchAgeDays}d)</span> : null}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </ScrollableFarmList>
           )}

@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { format, parseISO } from "date-fns";
+import { ReplicaLink } from "@/components/ReplicaLink";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toggleFollowUpCompletionAction } from "@/app/actions/follow-ups";
@@ -127,8 +127,9 @@ export function FollowUpsDueList({
                   >
                     {isDone ? "✓" : null}
                   </button>
-                  <Link
+                  <ReplicaLink
                     href={`/farms/${f.farmId}`}
+                    prefetch
                     className={`flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden font-semibold text-stone-900 hover:underline ${
                       isDone ? "line-through" : ""
                     }`}
@@ -139,7 +140,7 @@ export function FollowUpsDueList({
                         {f.flockAgeDays}d
                       </span>
                     ) : null}
-                  </Link>
+                  </ReplicaLink>
                 </div>
                 <span className="ml-auto flex shrink-0 items-baseline gap-1.5 text-stone-600">
                   <span className="whitespace-nowrap font-medium text-stone-800">

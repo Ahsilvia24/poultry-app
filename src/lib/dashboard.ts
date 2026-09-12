@@ -132,6 +132,7 @@ export async function getDashboardData(userId: string) {
   let openIssues = 0;
   let highPriorityIssues = 0;
   const upcomingCatches: Array<{
+    farmId: string;
     farmName: string;
     date: string;
     flockNumber: string;
@@ -275,6 +276,7 @@ export async function getDashboardData(userId: string) {
         }
         seenFarmCatchKeys.add(farmCatchKey);
         upcomingCatches.push({
+          farmId: farm.id,
           farmName: farm.farmName,
           date: dateKey,
           flockNumber: flock.flockNumber,

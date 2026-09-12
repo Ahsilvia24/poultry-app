@@ -244,6 +244,7 @@ function patchDashboardCatchDates(
     upcoming = upcoming.filter((row) => row.farmName !== farm.farmName || row.flockNumber !== flock.flockNumber);
     if (date >= todayKey && date <= horizonKey) {
       upcoming.push({
+        farmId: farm.id,
         farmName: farm.farmName,
         date,
         flockNumber: flock.flockNumber,
