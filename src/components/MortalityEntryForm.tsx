@@ -402,6 +402,8 @@ export function MortalityEntryForm({
     setExpandedWeeks(new Set([openWeek]));
     if (jumpTo) {
       pendingJumpRef.current = { age: jumpTo.age, field: "mortality" };
+      setMortField({ kind: "mortality", age: jumpTo.age });
+      setReplaceOnType(true);
       setFocusToken((t) => t + 1);
     }
   }, [
