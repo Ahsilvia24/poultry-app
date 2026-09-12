@@ -24,6 +24,7 @@ assert.match(button, /bg-emerald-700/);
 const screen = read("src/components/FarmHistoryScreen.tsx");
 assert.match(screen, /BackHeader href="\/reports"/);
 assert.match(screen, /<select/);
+assert.match(screen, /border-emerald-700/);
 assert.doesNotMatch(screen, /ReportsTypeTabs/);
 
 const page = read("src/app/(dashboard)/history/page.tsx");
@@ -44,7 +45,9 @@ assert.doesNotMatch(mobileReports, /FarmHistoryPanel/);
 
 const mobileHistory = read("mobile/app/farm-history.tsx");
 assert.match(mobileHistory, /Farm History/);
-assert.match(mobileHistory, /WheelPicker/);
+assert.match(mobileHistory, /Modal/);
+assert.match(mobileHistory, /accentDark/);
 assert.match(mobileHistory, /FarmHistoryPanel/);
+assert.doesNotMatch(mobileHistory, /WheelPicker/);
 
 console.log("farm-history-page: ok");

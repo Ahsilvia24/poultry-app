@@ -14,8 +14,11 @@ import {
   settingsFormValues,
   settingsWriteFromForm,
 } from "@/lib/offline/applyLocal";
+
 const inlineInputClass =
   "!min-h-7 flex-1 border-0 bg-transparent px-0 py-0 leading-tight text-base font-semibold shadow-none focus:border-transparent focus:ring-0";
+const shadedNumberClass =
+  "!h-9 !min-h-9 !w-[4.75rem] shrink-0 border-0 bg-stone-100 px-2.5 py-0 text-right text-base font-semibold leading-none shadow-none focus:border-transparent focus:ring-2 focus:ring-emerald-200";
 
 function SettingsLine({
   label,
@@ -29,6 +32,25 @@ function SettingsLine({
   return (
     <div className="flex items-center gap-2 leading-tight">
       <label htmlFor={htmlFor} className="shrink-0 text-sm font-semibold leading-tight text-stone-800">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function SettingsNumberLine({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-0.5 leading-tight">
+      <label htmlFor={htmlFor} className="min-w-0 flex-1 text-sm font-semibold leading-tight text-stone-800">
         {label}
       </label>
       {children}
@@ -107,7 +129,7 @@ export function SettingsScreen() {
           <div>
             <h2 className="font-bold leading-tight text-stone-900">Mortality Thresholds (%)</h2>
             <div className="mt-1 space-y-0">
-              <SettingsLine label="Daily warning:" htmlFor="dailyMortalityWarningPct">
+              <SettingsNumberLine label="Daily warning:" htmlFor="dailyMortalityWarningPct">
                 <Input
                   id="dailyMortalityWarningPct"
                   name="dailyMortalityWarningPct"
@@ -117,10 +139,10 @@ export function SettingsScreen() {
                   compact
                   defaultValue={values.dailyMortalityWarningPct}
                   required
-                  className={inlineInputClass}
+                  className={shadedNumberClass}
                 />
-              </SettingsLine>
-              <SettingsLine label="Daily critical:" htmlFor="dailyMortalityCriticalPct">
+              </SettingsNumberLine>
+              <SettingsNumberLine label="Daily critical:" htmlFor="dailyMortalityCriticalPct">
                 <Input
                   id="dailyMortalityCriticalPct"
                   name="dailyMortalityCriticalPct"
@@ -130,10 +152,10 @@ export function SettingsScreen() {
                   compact
                   defaultValue={values.dailyMortalityCriticalPct}
                   required
-                  className={inlineInputClass}
+                  className={shadedNumberClass}
                 />
-              </SettingsLine>
-              <SettingsLine label="7-day warning:" htmlFor="sevenDayMortalityWarningPct">
+              </SettingsNumberLine>
+              <SettingsNumberLine label="7-day warning:" htmlFor="sevenDayMortalityWarningPct">
                 <Input
                   id="sevenDayMortalityWarningPct"
                   name="sevenDayMortalityWarningPct"
@@ -143,10 +165,10 @@ export function SettingsScreen() {
                   compact
                   defaultValue={values.sevenDayMortalityWarningPct}
                   required
-                  className={inlineInputClass}
+                  className={shadedNumberClass}
                 />
-              </SettingsLine>
-              <SettingsLine label="7-day critical:" htmlFor="sevenDayMortalityCriticalPct">
+              </SettingsNumberLine>
+              <SettingsNumberLine label="7-day critical:" htmlFor="sevenDayMortalityCriticalPct">
                 <Input
                   id="sevenDayMortalityCriticalPct"
                   name="sevenDayMortalityCriticalPct"
@@ -156,9 +178,9 @@ export function SettingsScreen() {
                   compact
                   defaultValue={values.sevenDayMortalityCriticalPct}
                   required
-                  className={inlineInputClass}
+                  className={shadedNumberClass}
                 />
-              </SettingsLine>
+              </SettingsNumberLine>
             </div>
             <label className="mt-1 flex items-center gap-2 text-sm font-semibold leading-tight text-stone-700">
               <input
@@ -189,7 +211,7 @@ export function SettingsScreen() {
                   ))}
                 </Select>
               </SettingsLine>
-              <SettingsLine label="Default market age (days):" htmlFor="defaultMarketAgeDays">
+              <SettingsNumberLine label="Default market age (days):" htmlFor="defaultMarketAgeDays">
                 <Input
                   id="defaultMarketAgeDays"
                   name="defaultMarketAgeDays"
@@ -198,10 +220,10 @@ export function SettingsScreen() {
                   compact
                   defaultValue={values.defaultMarketAgeDays}
                   required
-                  className={inlineInputClass}
+                  className={shadedNumberClass}
                 />
-              </SettingsLine>
-              <SettingsLine label="Feed up hours before catch:" htmlFor="lfoFeedUpHoursBeforeCatch">
+              </SettingsNumberLine>
+              <SettingsNumberLine label="Feed up hours before catch:" htmlFor="lfoFeedUpHoursBeforeCatch">
                 <Input
                   id="lfoFeedUpHoursBeforeCatch"
                   name="lfoFeedUpHoursBeforeCatch"
@@ -211,10 +233,10 @@ export function SettingsScreen() {
                   compact
                   defaultValue={values.lfoFeedUpHoursBeforeCatch ?? 5}
                   required
-                  className={inlineInputClass}
+                  className={shadedNumberClass}
                 />
-              </SettingsLine>
-              <SettingsLine label="Feed off hours before catch:" htmlFor="lfoFeedOffHoursBeforeCatch">
+              </SettingsNumberLine>
+              <SettingsNumberLine label="Feed off hours before catch:" htmlFor="lfoFeedOffHoursBeforeCatch">
                 <Input
                   id="lfoFeedOffHoursBeforeCatch"
                   name="lfoFeedOffHoursBeforeCatch"
@@ -224,9 +246,9 @@ export function SettingsScreen() {
                   compact
                   defaultValue={values.lfoFeedOffHoursBeforeCatch ?? 10}
                   required
-                  className={inlineInputClass}
+                  className={shadedNumberClass}
                 />
-              </SettingsLine>
+              </SettingsNumberLine>
             </div>
             {values.notifyInApp !== false ? (
               <input type="hidden" name="notifyInApp" value="on" />

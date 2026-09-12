@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { FarmHistoryReplica } from "@/components/FarmHistoryReplica";
-import { BackHeader, Card, Label } from "@/components/ui";
+import { BackHeader, Card } from "@/components/ui";
 import { selectFarmHistoryRows } from "@/lib/offline/selectReports";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 
@@ -39,25 +39,23 @@ export function FarmHistoryScreen({
         </Card>
       ) : (
         <>
-          <div className="mb-6 rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm">
-            <Label htmlFor="historyFarm">Farm</Label>
-            <div className="relative mt-1">
-              <select
-                id="historyFarm"
-                value={farmId}
-                onChange={(event) => setFarmId(event.target.value)}
-                className="w-full appearance-none border-0 bg-transparent py-1 pr-8 text-[17px] font-bold text-stone-900 outline-none"
-              >
-                {farms.map((farm) => (
-                  <option key={farm.id} value={farm.id}>
-                    {farm.farmName}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center text-stone-400">
-                ▾
-              </span>
-            </div>
+          <div className="relative mb-6 rounded-2xl border border-emerald-700 bg-white px-4 py-3">
+            <select
+              id="historyFarm"
+              aria-label="Farm"
+              value={farmId}
+              onChange={(event) => setFarmId(event.target.value)}
+              className="w-full appearance-none border-0 bg-transparent py-1 pr-8 text-[17px] font-bold text-stone-900 outline-none"
+            >
+              {farms.map((farm) => (
+                <option key={farm.id} value={farm.id}>
+                  {farm.farmName}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-emerald-700">
+              ▾
+            </span>
           </div>
           <FarmHistoryReplica rows={rows} />
         </>

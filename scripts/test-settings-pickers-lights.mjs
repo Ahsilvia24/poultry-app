@@ -19,6 +19,9 @@ assert.doesNotMatch(serviceFields, /type=\{value === "24\/7" \? "text" : "time"\
 assert.match(serviceFields, /TimeKeyField/);
 
 assert.match(settings, /inlineInputClass/);
+assert.match(settings, /shadedNumberClass/);
+assert.match(settings, /bg-stone-100/);
+assert.match(settings, /SettingsNumberLine/);
 assert.match(settings, /Service Tech:/);
 assert.match(settings, /Order Farms By:/);
 assert.match(settings, /Email:/);

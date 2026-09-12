@@ -39,6 +39,19 @@ const noFocusRing =
       } as const)
     : null;
 
+const shadedNumberStyle = {
+  width: 68,
+  backgroundColor: "#e7e5e4",
+  borderRadius: 10,
+  fontSize: 17,
+  fontWeight: "600" as const,
+  color: colors.text,
+  textAlign: "right" as const,
+  paddingVertical: 6,
+  paddingHorizontal: 10,
+  borderWidth: 0,
+};
+
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, signOut, changePassword } = useAuth();
@@ -242,19 +255,7 @@ export default function SettingsScreen() {
               Feed up hours before catch:
             </Text>
             <TextInput
-              style={[
-                {
-                  width: 64,
-                  fontSize: 17,
-                  fontWeight: "600",
-                  color: colors.text,
-                  textAlign: "right",
-                  paddingVertical: 2,
-                  borderWidth: 0,
-                  backgroundColor: "transparent",
-                },
-                noFocusRing,
-              ]}
+              style={[shadedNumberStyle, noFocusRing]}
               value={feedUpHours}
               onChangeText={onChangeFeedUpHours}
               keyboardType="number-pad"
@@ -273,19 +274,7 @@ export default function SettingsScreen() {
               Feed off hours before catch:
             </Text>
             <TextInput
-              style={[
-                {
-                  width: 64,
-                  fontSize: 17,
-                  fontWeight: "600",
-                  color: colors.text,
-                  textAlign: "right",
-                  paddingVertical: 2,
-                  borderWidth: 0,
-                  backgroundColor: "transparent",
-                },
-                noFocusRing,
-              ]}
+              style={[shadedNumberStyle, noFocusRing]}
               value={feedOffHours}
               onChangeText={onChangeFeedOffHours}
               keyboardType="number-pad"
