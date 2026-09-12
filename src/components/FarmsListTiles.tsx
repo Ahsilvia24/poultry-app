@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { ReplicaLink } from "@/components/ReplicaLink";
+import { useReplicaNavigate } from "@/components/ReplicaLink";
 import { formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import {
@@ -29,6 +29,7 @@ const LONG_PRESS_MS = 500;
 const MOVE_CANCEL_PX = 12;
 
 function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
+  const openFarm = useReplicaNavigate();
   const { enabled, queue } = useReplicaWrite();
   const [confirm, setConfirm] = useState<ConfirmKind>(null);
   const [pending, start] = useTransition();
@@ -119,20 +120,20 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
         <div
           className={
             farm.isActive
-              ? "relative flex h-full flex-col rounded-xl border-2 border-emerald-700 bg-white p-2.5 shadow-sm"
-              : "relative flex h-full flex-col rounded-xl border-2 border-stone-300 bg-white p-2.5 shadow-sm"
+              ? "relative flex h-full flex-col rounded-xl border-2 border-emerald-700 bg-white p-2.5 shadow-sm [-webkit-touch-callout:none] select-none"
+              : "relative flex h-full flex-col rounded-xl border-2 border-stone-300 bg-white p-2.5 shadow-sm [-webkit-touch-callout:none] select-none"
           }
         >
-          <ReplicaLink
-            href={`/farms/${farm.id}`}
-            prefetch
-            className="absolute inset-0 z-0 rounded-[inherit]"
+          <button
+            type="button"
+            className="absolute inset-0 z-0 rounded-[inherit] [-webkit-touch-callout:none]"
             aria-label={`Open ${farm.farmName}. Long press to ${farm.isActive ? "make inactive" : "make active"}`}
-            onClick={(e) => {
+            onClick={() => {
               if (didLongPress.current) {
-                e.preventDefault();
                 didLongPress.current = false;
+                return;
               }
+              openFarm(`/farms/${farm.id}`);
             }}
           />
           <div className="relative z-10 min-w-0 pointer-events-none">
