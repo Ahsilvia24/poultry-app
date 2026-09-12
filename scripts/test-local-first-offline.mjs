@@ -72,7 +72,7 @@ const { snapshotHasFarmGraph, isReplicaHref } = await import(
 const { applyHouseTemp, applySettings } = await import(join(root, "src/lib/offline/applyLocal.ts"));
 const { selectFarmDetail } = await import(join(root, "src/lib/offline/selectFarmDetail.ts"));
 const { selectFarmTiles } = await import(join(root, "src/lib/offline/selectFarms.ts"));
-const { selectLfo } = await import(join(root, "src/lib/offline/selectLfo.ts"));
+const { selectLfo, selectLfoEdit } = await import(join(root, "src/lib/offline/selectLfo.ts"));
 const { selectTools } = await import(join(root, "src/lib/offline/selectTools.ts"));
 const { selectReports } = await import(join(root, "src/lib/offline/selectReports.ts"));
 const { applyFormWrite } = await import(join(root, "src/lib/offline/applyWrites.ts"));
@@ -101,6 +101,8 @@ assert.equal(isReplicaHref("/farms/abc/service/prebrood"), true);
 assert.equal(isReplicaHref("/lfo?farmId=abc"), true);
 assert.equal(isReplicaHref("/lfo/new"), true);
 assert.equal(isReplicaHref("/lfo/new/farm-1"), true);
+assert.equal(isReplicaHref("/lfo/abc"), true);
+assert.equal(isReplicaHref("/lfo/lfo-1"), true);
 assert.equal(isReplicaHref("/mortality"), true);
 assert.equal(isReplicaHref("/reports"), true);
 assert.equal(isReplicaHref("/reports?type=mortality"), true);
@@ -433,6 +435,11 @@ assert.match(read("src/components/CompleteFlockPicker.tsx"), /completeFlock/);
 assert.match(read("src/components/WeightProjectionTile.tsx"), /updateWeightProjection/);
 assert.match(read("src/components/DashboardFarmCards.tsx"), /deactivateFarm/);
 assert.match(read("src/components/OfflineNav.tsx"), /selectMortality/);
+assert.match(read("src/components/OfflineNav.tsx"), /selectLfoEdit/);
+assert.match(read("src/components/SavedLfoRow.tsx"), /ReplicaLink/);
+assert.match(read("src/components/LfoEditView.tsx"), /updateLfo/);
+assert.match(read("src/components/FarmOpsForms.tsx"), /deleteFlock/);
+assert.match(read("src/components/FarmHistoryReplica.tsx"), /DeleteFlockButton/);
 
 const createdFarm = applyFormWrite(snapshot, {
   action: "createFarm",
@@ -447,6 +454,57 @@ const ended = applyFormWrite(snapshot, { action: "completeFlock", id: "flock-1" 
 assert.equal(ended.flocks[0].flockStatus, "COMPLETED");
 const revived = applyFormWrite(ended, { action: "reactivateFlock", id: "flock-1" });
 assert.equal(revived.flocks[0].flockStatus, "ACTIVE");
+const stillActive = applyFormWrite(snapshot, { action: "deleteFlock", id: "flock-1" });
+assert.equal(stillActive.flocks[0].deletedAt, null);
+const removedFlock = applyFormWrite(ended, { action: "deleteFlock", id: "flock-1" });
+assert.ok(removedFlock.flocks[0].deletedAt);
+assert.equal(
+  selectReports(removedFlock, { type: "history", farmId: "farm-1" }).history?.rows.length,
+  0,
+);
+
+const lfoEdit = selectLfoEdit(snapshot, "lfo-1");
+assert.ok(lfoEdit);
+assert.equal(lfoEdit.displayName, "Oak Ridge");
+assert.equal(lfoEdit.houses.length, 2);
+assert.equal(lfoEdit.houses[0].binAPounds, 8000);
+assert.equal(lfoEdit.houses[0].headCount, 19990);
+const editedLfo = applyFormWrite(snapshot, {
+  action: "updateLfo",
+  id: "lfo-1",
+  farmId: "farm-1",
+  fields: {
+    orderDate: "2026-09-11",
+    orderTime: "09:00",
+    consumptionRate: "0.5",
+    houseId: "house-1",
+    binAPounds: "7000",
+    binBPounds: "6000",
+    feedUpAt: "2026-09-21T17:00",
+  },
+});
+assert.equal(editedLfo.lfos[0].orderDate, "2026-09-11");
+assert.equal(editedLfo.lfos[0].consumptionRate, 0.5);
+assert.equal(editedLfo.lfoInventories.find((inv) => inv.houseId === "house-1")?.binAPounds, 7000);
+assert.equal(editedLfo.lfoInventories.find((inv) => inv.houseId === "house-1")?.headCount, 19990);
+const copiedLfo = applyFormWrite(snapshot, {
+  action: "saveAsNewLfo",
+  id: "local-lfo-2",
+  farmId: "farm-1",
+  fields: {
+    orderDate: "2026-09-12",
+    orderTime: "10:00",
+    consumptionRate: "0.45",
+    houseId: "house-1",
+    binAPounds: "5000",
+    binBPounds: "5000",
+  },
+  extra: { fromLfoId: "lfo-1" },
+});
+assert.equal(copiedLfo.lfos.length, 2);
+assert.equal(copiedLfo.lfos[0].id, "local-lfo-2");
+assert.equal(copiedLfo.lfos[0].orderDate, "2026-09-12");
+assert.equal(selectLfoEdit(copiedLfo, "local-lfo-2")?.orderDate, "2026-09-12");
 
 const renamedHouse = applyFormWrite(snapshot, {
   action: "updateHouse",

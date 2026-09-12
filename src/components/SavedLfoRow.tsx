@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ReplicaLink } from "@/components/ReplicaLink";
 import { useEffect, useState, useTransition } from "react";
 import { deleteLastFeedOrderAction } from "@/app/actions/lfo";
 import { Card } from "@/components/ui";
@@ -136,7 +136,7 @@ export function SavedLfoRow({
       }}
     >
       <Card className="relative rounded-xl p-4 transition hover:border-emerald-400">
-        <Link
+        <ReplicaLink
           href={`/lfo/${id}`}
           className="absolute inset-0 z-0 rounded-[inherit]"
           aria-label={`Edit LFO for ${farmName}`}

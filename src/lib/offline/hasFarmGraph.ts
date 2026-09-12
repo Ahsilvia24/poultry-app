@@ -32,6 +32,8 @@ export function isReplicaHref(href: string): boolean {
     return true;
   }
   if (pathname.startsWith("/lfo/new/")) return true;
+  const lfoEdit = /^\/lfo\/([^/]+)$/.exec(pathname);
+  if (lfoEdit && lfoEdit[1] !== "new") return true;
   const farm = /^\/farms\/([^/]+)(?:\/service(?:\/(report|placement|prebrood))?)?$/.exec(
     pathname,
   );

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { FarmDetailView } from "@/components/FarmDetailView";
 import { FarmsPageClient } from "@/components/FarmsPageClient";
+import { LfoEditView } from "@/components/LfoEditView";
 import { LfoHub } from "@/components/LfoHub";
 import { MortalityEntryForm } from "@/components/MortalityEntryForm";
 import { NewFarmForm } from "@/components/NewFarmForm";
@@ -21,7 +22,7 @@ import { useOfflineNav } from "@/components/OfflineNavContext";
 import { replicaPath, snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import { selectFarmDetail } from "@/lib/offline/selectFarmDetail";
 import { selectFarmTiles } from "@/lib/offline/selectFarms";
-import { selectLfo } from "@/lib/offline/selectLfo";
+import { selectLfo, selectLfoEdit } from "@/lib/offline/selectLfo";
 import { selectTools } from "@/lib/offline/selectTools";
 import { selectReports } from "@/lib/offline/selectReports";
 import { selectMortality } from "@/lib/offline/selectMortality";
@@ -113,6 +114,28 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
         />
       </div>
     );
+  }
+
+  const lfoEdit = /^\/lfo\/([^/]+)$/.exec(pathname);
+  if (lfoEdit && lfoEdit[1] !== "new") {
+    const data = selectLfoEdit(snapshot, lfoEdit[1]);
+    if (!data) {
+      return (
+        <div>
+          <PageHeader title="Last Feed Order" />
+          <Card>
+            <p className="text-sm font-semibold text-stone-800">This LFO is not on the phone yet.</p>
+            <p className="mt-1 text-sm text-stone-500">
+              Open it once with a connection and it will stay available offline.
+            </p>
+            <ReplicaLink href="/lfo" className="mt-3 inline-flex text-sm font-semibold text-emerald-800">
+              ← LFOs
+            </ReplicaLink>
+          </Card>
+        </div>
+      );
+    }
+    return <LfoEditView key={data.id} model={data} />;
   }
 
   if (pathname === "/mortality") {

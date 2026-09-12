@@ -1,5 +1,5 @@
 import { format, parseISO } from "date-fns";
-import { ReactivateFlockButton } from "@/components/FarmOpsForms";
+import { DeleteFlockButton, ReactivateFlockButton } from "@/components/FarmOpsForms";
 import { Card } from "@/components/ui";
 import { formatNumber, formatPct } from "@/lib/utils";
 import type { ReplicaHistoryRow } from "@/lib/offline/selectReports";
@@ -60,8 +60,9 @@ export function FarmHistoryReplica({ rows }: { rows: ReplicaHistoryRow[] }) {
           </h2>
           <FlockMetrics row={current} />
           {current.flockStatus !== "ACTIVE" ? (
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               <ReactivateFlockButton flockId={current.flockId} flockNumber={current.flockNumber} />
+              <DeleteFlockButton flockId={current.flockId} flockNumber={current.flockNumber} />
             </div>
           ) : null}
         </Card>
@@ -82,8 +83,9 @@ export function FarmHistoryReplica({ rows }: { rows: ReplicaHistoryRow[] }) {
             <Card key={row.flockId}>
               <h3 className="font-bold">Flock {row.flockNumber}</h3>
               <FlockMetrics row={row} />
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 <ReactivateFlockButton flockId={row.flockId} flockNumber={row.flockNumber} />
+                <DeleteFlockButton flockId={row.flockId} flockNumber={row.flockNumber} />
               </div>
             </Card>
           ))}

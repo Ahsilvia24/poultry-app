@@ -167,3 +167,91 @@ export function selectLfo(snapshot: OfflineSnapshot, initialFarmId?: string) {
       : undefined,
   };
 }
+
+export type LfoEditHouseRow = {
+  houseId: string;
+  houseNumber: number;
+  binAPounds: number;
+  binBPounds: number;
+  catchDate: string;
+  catchTime: string;
+  headCount: number;
+};
+
+export type LfoEditModel = {
+  id: string;
+  farmId: string;
+  displayName: string;
+  orderDate: string;
+  orderTime: string | null;
+  consumptionRate: number;
+  asOf: string | null;
+  notes: string | null;
+  houses: LfoEditHouseRow[];
+};
+
+export function selectLfoEdit(snapshot: OfflineSnapshot, lfoId: string): LfoEditModel | null {
+  const lfo = (snapshot.lfos ?? []).find((row) => row.id === lfoId);
+  if (!lfo) return null;
+
+  const farmName =
+    (snapshot.farms ?? []).find((farm) => farm.id === lfo.farmId)?.farmName ?? "Farm";
+  const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
+  const today = appToday(undefined, timeZone);
+  const liveHeads = headCountsForFarm(snapshot, lfo.farmId, today);
+  const invByHouse = new Map(
+    (snapshot.lfoInventories ?? [])
+      .filter((inv) => inv.lastFeedOrderId === lfo.id)
+      .map((inv) => [inv.houseId, inv] as const),
+  );
+
+  let houses: LfoEditHouseRow[] = (snapshot.houses ?? [])
+    .filter((house) => house.farmId === lfo.farmId && !house.deletedAt)
+    .slice()
+    .sort((a, b) => a.houseNumber - b.houseNumber)
+    .map((house) => {
+      const inv = invByHouse.get(house.id);
+      const catchParts = catchPartsFromFeedUpAt(inv?.feedUpAt);
+      return {
+        houseId: house.id,
+        houseNumber: house.houseNumber,
+        binAPounds: inv?.binAPounds ?? 0,
+        binBPounds: inv?.binBPounds ?? 0,
+        catchDate: catchParts.date,
+        catchTime: catchParts.time,
+        headCount: inv?.headCount ?? liveHeads.get(house.id) ?? 0,
+      };
+    });
+
+  if (houses.length === 0 && invByHouse.size > 0) {
+    const houseNumberById = new Map(
+      (snapshot.houses ?? []).map((house) => [house.id, house.houseNumber]),
+    );
+    houses = [...invByHouse.values()]
+      .map((inv) => {
+        const catchParts = catchPartsFromFeedUpAt(inv.feedUpAt);
+        return {
+          houseId: inv.houseId,
+          houseNumber: houseNumberById.get(inv.houseId) ?? 0,
+          binAPounds: inv.binAPounds,
+          binBPounds: inv.binBPounds,
+          catchDate: catchParts.date,
+          catchTime: catchParts.time,
+          headCount: inv.headCount ?? 0,
+        };
+      })
+      .sort((a, b) => a.houseNumber - b.houseNumber);
+  }
+
+  return {
+    id: lfo.id,
+    farmId: lfo.farmId,
+    displayName: lfoDisplayName(farmName, lfo.notes),
+    orderDate: asDateKey(lfo.orderDate) ?? lfo.orderDate.slice(0, 10),
+    orderTime: lfo.orderTime,
+    consumptionRate: lfo.consumptionRate,
+    asOf: lfo.calculatedAt ?? lfo.createdAt,
+    notes: lfo.notes,
+    houses,
+  };
+}

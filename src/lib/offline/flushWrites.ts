@@ -5,6 +5,7 @@ import {
   createHouseAction,
   deactivateFarmAction,
   deleteFarmAction,
+  deleteFlockAction,
   deleteHouseAction,
   reactivateFarmAction,
   reactivateFlockAction,
@@ -34,7 +35,9 @@ import {
 import {
   createManualLastFeedOrderAction,
   deleteLastFeedOrderAction,
+  saveAsNewLastFeedOrderAction,
   saveFarmLfoHubAction,
+  updateLastFeedOrderAction,
 } from "@/app/actions/lfo";
 import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
 import {
@@ -118,6 +121,16 @@ export async function flushFormWrite(write: OfflineFormWrite): Promise<boolean> 
       return !failed(await saveFarmLfoHubAction(farmId, formData));
     case "createManualLfo":
       return !failed(await createManualLastFeedOrderAction(formData));
+    case "updateLfo":
+      if (isLocalRecordId(id)) return true;
+      return !failed(await updateLastFeedOrderAction(id, formData));
+    case "saveAsNewLfo": {
+      const fromId = (write.extra as { fromLfoId?: string } | undefined)?.fromLfoId ?? "";
+      if (!fromId || isLocalRecordId(fromId)) {
+        return !failed(await saveFarmLfoHubAction(farmId, formData));
+      }
+      return !failed(await saveAsNewLastFeedOrderAction(fromId, formData));
+    }
     case "deleteLfo":
       await deleteLastFeedOrderAction(id);
       return true;
@@ -152,6 +165,9 @@ export async function flushFormWrite(write: OfflineFormWrite): Promise<boolean> 
     case "reactivateFlock":
       if (isLocalRecordId(id)) return true;
       return !failed(await reactivateFlockAction(id));
+    case "deleteFlock":
+      if (isLocalRecordId(id)) return true;
+      return !failed(await deleteFlockAction(id));
     case "updateFlockNumber":
       if (isLocalRecordId(id)) return true;
       return !failed(await updateFlockNumberAction(id, write.fields?.flockNumber ?? ""));

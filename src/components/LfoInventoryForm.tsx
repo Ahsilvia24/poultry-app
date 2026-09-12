@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ReplicaLink } from "@/components/ReplicaLink";
+import { useOfflineNav } from "@/components/OfflineNavContext";
 import { format } from "date-fns";
 import { DateKeyField } from "@/components/DateKeyField";
 import { TimeKeyField } from "@/components/TimeKeyField";
@@ -99,12 +100,17 @@ export function LfoInventoryForm({
   deleteAction?: () => Promise<void>;
 }) {
   const router = useRouter();
+  const nav = useOfflineNav();
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const returnAfterSave = Boolean(saveAsNewAction);
 
   function leaveAfterSave() {
+    if (nav) {
+      nav.navigate("/lfo");
+      return;
+    }
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
       return;
@@ -476,9 +482,9 @@ export function LfoInventoryForm({
             {pending ? "Saving…" : "Save as new LFO"}
           </Button>
         ) : null}
-        <Link href="/lfo" className="text-sm font-semibold text-stone-600 hover:text-stone-900">
+        <ReplicaLink href="/lfo" className="text-sm font-semibold text-stone-600 hover:text-stone-900">
           Back to LFOs
-        </Link>
+        </ReplicaLink>
         {deleteAction ? (
           <button
             type="button"

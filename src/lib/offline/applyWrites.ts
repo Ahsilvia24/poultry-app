@@ -1,5 +1,5 @@
 import { addDays, format } from "date-fns";
-import { nextCustomLfoName } from "@/lib/lfo/customName";
+import { nextCustomLfoName, parseCustomLfoNumber } from "@/lib/lfo/customName";
 import { birdAgeFromPlacement, calcTotalDailyLoss } from "@/lib/mortality/calculations";
 import { isHouseInPropagateRange } from "@/lib/housePropagate";
 import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
@@ -34,6 +34,33 @@ function listValues(
   if (lists[key]?.length) return lists[key];
   if (fields[key] != null) return [fields[key]];
   return [];
+}
+
+function lfoInventoriesFromForm(
+  snapshot: OfflineSnapshot,
+  lfoId: string,
+  lists: Record<string, string[]>,
+  fields: Record<string, string>,
+  keepStoredHeads: boolean,
+) {
+  const houseIds = listValues(lists, fields, "houseId");
+  const stored = new Map(
+    snapshot.lfoInventories
+      .filter((inv) => inv.lastFeedOrderId === lfoId)
+      .map((inv) => [inv.houseId, inv]),
+  );
+  return houseIds.map((houseId, index) => {
+    const prev = stored.get(houseId);
+    return {
+      id: prev?.id ?? `${lfoId}-inv-${index}`,
+      lastFeedOrderId: lfoId,
+      houseId,
+      binAPounds: num((lists.binAPounds ?? [])[index] ?? fields.binAPounds),
+      binBPounds: num((lists.binBPounds ?? [])[index] ?? fields.binBPounds),
+      headCount: keepStoredHeads && prev ? prev.headCount : null,
+      feedUpAt: emptyToNull((lists.feedUpAt ?? [])[index] ?? fields.feedUpAt),
+    };
+  });
 }
 
 function visitTypeForKind(formKind: string) {
@@ -754,16 +781,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
           ?.id ??
         snapshot.flocks.find((flock) => flock.farmId === farmId)?.id ??
         "";
-      const houseIds = lists.houseId ?? (fields.houseId ? [fields.houseId] : []);
-      const inventories = houseIds.map((houseId, index) => ({
-        id: `${id}-inv-${index}`,
-        lastFeedOrderId: id,
-        houseId,
-        binAPounds: num((lists.binAPounds ?? [])[index] ?? fields.binAPounds),
-        binBPounds: num((lists.binBPounds ?? [])[index] ?? fields.binBPounds),
-        headCount: null,
-        feedUpAt: emptyToNull((lists.feedUpAt ?? [])[index] ?? fields.feedUpAt),
-      }));
+      const inventories = lfoInventoriesFromForm(snapshot, id, lists, fields, false);
       return {
         ...snapshot,
         lfos: [
@@ -776,6 +794,69 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
             consumptionRate: num(fields.consumptionRate, 0.45),
             calculatedAt: now,
             notes: emptyToNull(fields.notes),
+            createdAt: now,
+          },
+          ...snapshot.lfos,
+        ],
+        lfoInventories: [...inventories, ...snapshot.lfoInventories],
+      };
+    }
+    case "updateLfo": {
+      const lfoId = write.id ?? "";
+      const existing = snapshot.lfos.find((row) => row.id === lfoId);
+      if (!existing) return snapshot;
+      const inventories = lfoInventoriesFromForm(snapshot, lfoId, lists, fields, true);
+      return {
+        ...snapshot,
+        lfos: snapshot.lfos.map((row) =>
+          row.id === lfoId
+            ? {
+                ...row,
+                orderDate: fields.orderDate ?? row.orderDate,
+                orderTime:
+                  fields.orderTime !== undefined ? emptyToNull(fields.orderTime) : row.orderTime,
+                consumptionRate:
+                  fields.consumptionRate != null
+                    ? num(fields.consumptionRate, row.consumptionRate)
+                    : row.consumptionRate,
+                notes: fields.notes !== undefined ? emptyToNull(fields.notes) : row.notes,
+              }
+            : row,
+        ),
+        lfoInventories: [
+          ...snapshot.lfoInventories.filter((inv) => inv.lastFeedOrderId !== lfoId),
+          ...inventories,
+        ],
+      };
+    }
+    case "saveAsNewLfo": {
+      const id = write.id ?? `local-lfo`;
+      const fromId = (write.extra as { fromLfoId?: string } | undefined)?.fromLfoId;
+      const source = snapshot.lfos.find((row) => row.id === fromId);
+      const farmId = write.farmId ?? source?.farmId ?? fields.farmId ?? "";
+      const flockId =
+        source?.flockId ||
+        snapshot.flocks.find((flock) => flock.farmId === farmId && flock.flockStatus === "ACTIVE")
+          ?.id ||
+        snapshot.flocks.find((flock) => flock.farmId === farmId)?.id ||
+        "";
+      const notes =
+        parseCustomLfoNumber(source?.notes) != null
+          ? nextCustomLfoName(snapshot.lfos.map((row) => row.notes))
+          : emptyToNull(fields.notes);
+      const inventories = lfoInventoriesFromForm(snapshot, id, lists, fields, false);
+      return {
+        ...snapshot,
+        lfos: [
+          {
+            id,
+            farmId,
+            flockId,
+            orderDate: fields.orderDate ?? now.slice(0, 10),
+            orderTime: emptyToNull(fields.orderTime),
+            consumptionRate: num(fields.consumptionRate, source?.consumptionRate ?? 0.45),
+            calculatedAt: now,
+            notes,
             createdAt: now,
           },
           ...snapshot.lfos,
@@ -1008,6 +1089,17 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
                 actualCatchDate: flock.actualCatchDate ?? now.slice(0, 10),
               }
             : flock,
+        ),
+      };
+    }
+    case "deleteFlock": {
+      const flockId = write.id ?? "";
+      const flock = snapshot.flocks.find((row) => row.id === flockId);
+      if (!flock || flock.flockStatus === "ACTIVE") return snapshot;
+      return {
+        ...snapshot,
+        flocks: snapshot.flocks.map((row) =>
+          row.id === flockId ? { ...row, deletedAt: now } : row,
         ),
       };
     }

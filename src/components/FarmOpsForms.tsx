@@ -865,6 +865,7 @@ export function DeleteFlockButton({
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const { enabled, queue } = useReplicaWrite();
 
   return (
     <div className="inline-flex flex-col items-start gap-1">
@@ -883,6 +884,10 @@ export function DeleteFlockButton({
           }
           setError(null);
           start(async () => {
+            if (enabled) {
+              queue(formWrite("deleteFlock", { id: flockId }));
+              return;
+            }
             const result = await deleteFlockAction(flockId);
             if (result?.error) setError(result.error);
           });
