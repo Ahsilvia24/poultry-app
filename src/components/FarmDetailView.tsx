@@ -11,7 +11,7 @@ import { FarmGeneratorLogSection } from "@/components/FarmGeneratorLogSection";
 import { FarmIssuesSection } from "@/components/FarmIssuesSection";
 import { FarmLitterSection } from "@/components/FarmLitterSection";
 import { FarmVisitsSection } from "@/components/FarmVisitsSection";
-import { Card } from "@/components/ui";
+import { BackCaret, Card } from "@/components/ui";
 import { appTodayKey } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import type { FarmDetailModel } from "@/lib/offline/selectFarmDetail";
@@ -36,11 +36,9 @@ export function FarmDetailView({
       <div className="mb-6 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-3">
         <ReplicaLink
           href="/farms"
-          className="inline-flex min-h-11 items-center gap-2 justify-self-start rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
+          className="inline-flex min-h-11 items-center gap-1 justify-self-start rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
         >
-          <span aria-hidden="true" className="text-xl leading-none">
-            ←
-          </span>
+          <BackCaret />
           Farms
         </ReplicaLink>
         <FarmInfoEditor farm={farm} />

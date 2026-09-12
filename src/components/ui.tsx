@@ -126,6 +126,23 @@ export function PageHeader({
   );
 }
 
+export function BackCaret({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className ?? "h-5 w-5 shrink-0"}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M15 5 8 12l7 7" />
+    </svg>
+  );
+}
+
 export function BackHeader({
   href,
   backLabel,
@@ -142,11 +159,9 @@ export function BackHeader({
       <div className="flex items-center justify-between gap-3">
         <ReplicaLink
           href={href}
-          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-1 text-[17px] font-bold text-emerald-800 hover:bg-emerald-50"
+          className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-1 text-[17px] font-bold text-emerald-800 hover:bg-emerald-50"
         >
-          <span aria-hidden="true" className="text-xl leading-none">
-            ←
-          </span>
+          <BackCaret />
           {backLabel}
         </ReplicaLink>
         <h1 className="min-w-0 flex-1 text-right text-[28px] font-extrabold leading-tight tracking-tight text-stone-900 md:text-3xl">
