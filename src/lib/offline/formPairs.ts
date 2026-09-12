@@ -41,6 +41,16 @@ export function localCreatedHouseFlockId(flockId: string, houseId: string) {
   return `${flockId}-hf-${houseId}`;
 }
 
+export function localCreatedFlockId(farmId: string, flockNumber: string) {
+  const slug = flockNumber.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return `${farmId}-flock-${slug || "1"}`;
+}
+
+export function localImportFarmId(key: string) {
+  const slug = key.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return `local-import-${slug || "farm"}`;
+}
+
 export function isLocalRecordId(id: string | undefined) {
   return Boolean(id?.startsWith("local-"));
 }

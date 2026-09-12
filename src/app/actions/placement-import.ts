@@ -16,6 +16,7 @@ import { getScheduleImport } from "@/lib/schedule-imports";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
 import { SCHEDULE_IMPORTS_DIR } from "@/lib/schedule-imports";
+import type { ImportEntityGraph } from "@/lib/offline/remapIds";
 
 const DEFAULT_SQ_FT = 29700;
 
@@ -43,8 +44,49 @@ export type PlacementApplyResult =
       createdFlocks: number;
       createdHouses: number;
       warnings: string[];
+      graph: ImportEntityGraph;
     }
   | { ok: false; error: string };
+
+async function buildServerImportGraph(keysByFarmId: Map<string, string>): Promise<ImportEntityGraph> {
+  const farmIds = [...keysByFarmId.keys()];
+  if (farmIds.length === 0) return { farms: [] };
+  const farms = await prisma.farm.findMany({
+    where: { id: { in: farmIds } },
+    select: {
+      id: true,
+      farmName: true,
+      farmNumber: true,
+      houses: {
+        where: { deletedAt: null },
+        select: { id: true, houseNumber: true },
+        orderBy: { houseNumber: "asc" },
+      },
+      flocks: {
+        where: { deletedAt: null },
+        select: {
+          id: true,
+          flockNumber: true,
+          houseFlocks: { select: { id: true, houseId: true } },
+        },
+      },
+    },
+  });
+  return {
+    farms: farms.map((farm) => ({
+      key: keysByFarmId.get(farm.id) ?? "",
+      farmId: farm.id,
+      farmName: farm.farmName,
+      farmNumber: farm.farmNumber,
+      houses: farm.houses,
+      flocks: farm.flocks.map((flock) => ({
+        id: flock.id,
+        flockNumber: flock.flockNumber,
+        houseFlocks: flock.houseFlocks,
+      })),
+    })),
+  };
+}
 
 function parsedPath(importId: string) {
   return path.join(SCHEDULE_IMPORTS_DIR, `${importId}.placement.json`);
@@ -137,6 +179,7 @@ export async function applyPlacementImportAction(input: {
   let createdFlocks = 0;
   let createdHouses = 0;
   const warnings: string[] = [];
+  const keysByFarmId = new Map<string, string>();
 
   const selectedRows = rows.filter((r) =>
     selectedKeys.has(farmGroupKey(r.farmCode, r.farmName)),
@@ -219,6 +262,7 @@ export async function applyPlacementImportAction(input: {
         houses: created.houses,
       } as (typeof existing)[number]);
     }
+    keysByFarmId.set(farmId, key);
 
     // Ensure every referenced house exists (gap-tolerant).
     const needed = Array.from(new Set(farmRows.map((r) => r.houseNo)));
@@ -372,5 +416,6 @@ export async function applyPlacementImportAction(input: {
     createdFlocks,
     createdHouses,
     warnings,
+    graph: await buildServerImportGraph(keysByFarmId),
   };
 }

@@ -1,3 +1,4 @@
+import { localImportFarmId } from "@/lib/offline/formPairs";
 import type { OfflineFormWrite, OfflineOutboxItem } from "@/lib/offline/types";
 
 export type IdAliases = Record<string, string>;
@@ -69,6 +70,128 @@ export function aliasesFromCreateFarm(options: {
     if (local && local.id !== server.id) aliases[local.id] = server.id;
   }
   return aliases;
+}
+
+export type ImportEntityGraph = {
+  farms: Array<{
+    key: string;
+    farmId: string;
+    farmName: string;
+    farmNumber: string | null;
+    houses: Array<{ id: string; houseNumber: number }>;
+    flocks: Array<{
+      id: string;
+      flockNumber: string;
+      houseFlocks: Array<{ id: string; houseId: string }>;
+    }>;
+  }>;
+};
+
+export function aliasesFromImportGraph(
+  local: ImportEntityGraph | undefined,
+  server: ImportEntityGraph | undefined,
+): IdAliases {
+  const aliases: IdAliases = {};
+  if (!local?.farms?.length || !server?.farms?.length) return aliases;
+
+  for (const localFarm of local.farms) {
+    const serverFarm =
+      server.farms.find((farm) => farm.key && farm.key === localFarm.key) ??
+      server.farms.find(
+        (farm) =>
+          Boolean(farm.farmNumber) &&
+          Boolean(localFarm.farmNumber) &&
+          farm.farmNumber === localFarm.farmNumber,
+      ) ??
+      server.farms.find(
+        (farm) =>
+          farm.farmName.trim().toUpperCase() === localFarm.farmName.trim().toUpperCase(),
+      );
+    if (!serverFarm) continue;
+    if (localFarm.farmId !== serverFarm.farmId) aliases[localFarm.farmId] = serverFarm.farmId;
+
+    for (const localHouse of localFarm.houses) {
+      const serverHouse = serverFarm.houses.find(
+        (house) => house.houseNumber === localHouse.houseNumber,
+      );
+      if (serverHouse && localHouse.id !== serverHouse.id) {
+        aliases[localHouse.id] = serverHouse.id;
+      }
+    }
+
+    for (const localFlock of localFarm.flocks) {
+      const serverFlock = serverFarm.flocks.find(
+        (flock) =>
+          flock.flockNumber.trim().toUpperCase() === localFlock.flockNumber.trim().toUpperCase(),
+      );
+      if (!serverFlock) continue;
+      if (localFlock.id !== serverFlock.id) aliases[localFlock.id] = serverFlock.id;
+      for (const localHf of localFlock.houseFlocks) {
+        const serverHouseId = resolveAlias(aliases, localHf.houseId);
+        const serverHf =
+          serverFlock.houseFlocks.find((hf) => hf.houseId === serverHouseId) ??
+          serverFlock.houseFlocks.find((hf) => hf.houseId === localHf.houseId);
+        if (serverHf && localHf.id !== serverHf.id) aliases[localHf.id] = serverHf.id;
+      }
+    }
+  }
+  return aliases;
+}
+
+export function inferImportGraphFromSnapshot(
+  snapshot: {
+    farms: Array<{
+      id: string;
+      farmName: string;
+      farmNumber: string | null;
+      deletedAt: string | null;
+    }>;
+    houses: Array<{ id: string; farmId: string; houseNumber: number; deletedAt: string | null }>;
+    flocks: Array<{
+      id: string;
+      farmId: string;
+      flockNumber: string;
+      deletedAt: string | null;
+    }>;
+    houseFlocks: Array<{ id: string; flockId: string; houseId: string }>;
+  },
+  groups: Array<{ key: string; farmCode: string; farmName: string }>,
+): ImportEntityGraph {
+  const farms: ImportEntityGraph["farms"] = [];
+  for (const group of groups) {
+    const farm =
+      snapshot.farms.find((row) => !row.deletedAt && row.id === localImportFarmId(group.key)) ??
+      snapshot.farms.find(
+        (row) =>
+          !row.deletedAt &&
+          group.farmCode &&
+          row.farmNumber === group.farmCode,
+      ) ??
+      snapshot.farms.find(
+        (row) =>
+          !row.deletedAt &&
+          row.farmName.trim().toUpperCase() === group.farmName.trim().toUpperCase(),
+      );
+    if (!farm) continue;
+    const flocks = snapshot.flocks.filter((flock) => flock.farmId === farm.id && !flock.deletedAt);
+    farms.push({
+      key: group.key,
+      farmId: farm.id,
+      farmName: farm.farmName,
+      farmNumber: farm.farmNumber,
+      houses: snapshot.houses
+        .filter((house) => house.farmId === farm.id && !house.deletedAt)
+        .map((house) => ({ id: house.id, houseNumber: house.houseNumber })),
+      flocks: flocks.map((flock) => ({
+        id: flock.id,
+        flockNumber: flock.flockNumber,
+        houseFlocks: snapshot.houseFlocks
+          .filter((hf) => hf.flockId === flock.id)
+          .map((hf) => ({ id: hf.id, houseId: hf.houseId })),
+      })),
+    });
+  }
+  return { farms };
 }
 
 export function aliasesFromCreateFlock(options: {

@@ -67,6 +67,8 @@ assert.match(importUi, /extractCatchRowsOnDevice/);
 assert.match(importUi, /previewPlacementRowsLocal/);
 assert.match(importUi, /applyPlacementToSnapshot/);
 assert.match(importUi, /applyCatchToSnapshot/);
+assert.match(importUi, /graph: result\.graph/);
+assert.match(provider, /aliasesFromImportGraph/);
 
 const { extractPlacementRowsOnDevice } = await import(
   join(root, "src/lib/placement-import/extract-client.ts")
@@ -85,11 +87,14 @@ const { selectReports } = await import(join(root, "src/lib/offline/selectReports
 const { applyFormWrite } = await import(join(root, "src/lib/offline/applyWrites.ts"));
 const {
   aliasesFromCreateFarm,
+  aliasesFromImportGraph,
   canReplaceReplicaWithRemote,
+  inferImportGraphFromSnapshot,
   remapFormWrite,
   remapOutboxItem,
   resolveAlias,
 } = await import(join(root, "src/lib/offline/remapIds.ts"));
+const { localImportFarmId } = await import(join(root, "src/lib/offline/formPairs.ts"));
 const { applyCatchToSnapshot, applyPlacementToSnapshot } = await import(
   join(root, "src/lib/offline/applyImport.ts")
 );
@@ -658,6 +663,56 @@ assert.equal(imported.ok, true);
 assert.equal(imported.createdFarms, 1);
 assert.ok(imported.snapshot.farms.some((farm) => farm.farmName === unmatched.farmName));
 assert.ok(imported.snapshot.houses.some((house) => house.farmId !== "farm-1"));
+const importedFarmId = localImportFarmId(unmatched.key);
+assert.ok(imported.snapshot.farms.some((farm) => farm.id === importedFarmId));
+assert.ok(imported.graph.farms.some((farm) => farm.farmId === importedFarmId));
+assert.ok(
+  imported.snapshot.houses.some((house) => house.id === `${importedFarmId}-h-1`),
+);
+const renamedImported = applyFormWrite(imported.snapshot, {
+  action: "updateFarm",
+  farmId: importedFarmId,
+  fields: { farmName: "Imported East", growerName: "", farmNumber: unmatched.farmCode },
+});
+assert.equal(
+  renamedImported.farms.find((farm) => farm.id === importedFarmId)?.farmName,
+  "Imported East",
+);
+const importAliases = aliasesFromImportGraph(imported.graph, {
+  farms: imported.graph.farms.map((farm) => ({
+    ...farm,
+    farmId: "farm-server-import",
+    houses: farm.houses.map((house, index) => ({
+      ...house,
+      id: `house-server-import-${index + 1}`,
+    })),
+    flocks: farm.flocks.map((flock, flockIndex) => ({
+      ...flock,
+      id: `flock-server-import-${flockIndex + 1}`,
+      houseFlocks: flock.houseFlocks.map((hf, hfIndex) => ({
+        ...hf,
+        id: `hf-server-import-${hfIndex + 1}`,
+        houseId: `house-server-import-${farm.houses.findIndex((house) => house.id === hf.houseId) + 1}`,
+      })),
+    })),
+  })),
+});
+assert.equal(resolveAlias(importAliases, importedFarmId), "farm-server-import");
+assert.equal(resolveAlias(importAliases, `${importedFarmId}-h-1`), "house-server-import-1");
+const remappedImportedEdit = remapFormWrite(
+  {
+    action: "updateFarm",
+    farmId: importedFarmId,
+    fields: { farmName: "Imported East" },
+  },
+  importAliases,
+);
+assert.equal(remappedImportedEdit.farmId, "farm-server-import");
+const inferred = inferImportGraphFromSnapshot(renamedImported, [
+  { key: unmatched.key, farmCode: unmatched.farmCode, farmName: unmatched.farmName },
+]);
+assert.equal(inferred.farms[0]?.farmId, importedFarmId);
+assert.equal(inferred.farms[0]?.farmName, "Imported East");
 
 const matchedPlacement = applyPlacementToSnapshot(snapshot, {
   selections: [{ key: "12::OAK RIDGE", selected: true }],

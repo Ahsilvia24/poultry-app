@@ -31,11 +31,16 @@ import type { PlacementSelection } from "@/app/actions/placement-import";
 import { coalesceFormWrite } from "@/lib/offline/applyWrites";
 import { flushFormWrite } from "@/lib/offline/flushWrites";
 import {
+  aliasesFromImportGraph,
   canReplaceReplicaWithRemote,
+  inferImportGraphFromSnapshot,
   mergeAliases,
   remapOutboxItem,
   type IdAliases,
+  type ImportEntityGraph,
 } from "@/lib/offline/remapIds";
+import { farmGroupKey as placementFarmGroupKey } from "@/lib/placement-import/parse";
+import type { PlacementRow } from "@/lib/placement-import/types";
 import type { OfflineFormWrite, OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
 
 type OfflineContextValue = {
@@ -80,6 +85,11 @@ async function flushOutbox(): Promise<{ pending: number; aliases: IdAliases }> {
     const remapped = remapOutboxItem(item, aliases);
     try {
       if (remapped.kind === "applyPlacement") {
+        const originalPayload = item.payload as {
+          selections?: PlacementSelection[];
+          rows?: PlacementRow[];
+          graph?: ImportEntityGraph;
+        };
         const payload = remapped.payload as {
           selections?: PlacementSelection[];
           rows?: unknown;
@@ -89,7 +99,29 @@ async function flushOutbox(): Promise<{ pending: number; aliases: IdAliases }> {
           selections: payload.selections ?? [],
           rows: payload.rows as never,
         });
-        if (!res.ok) remain.push(remapped);
+        if (!res.ok) {
+          remain.push(remapped);
+          continue;
+        }
+        let localGraph = originalPayload.graph;
+        if (!localGraph?.farms?.length) {
+          const snap = await loadLocalSnapshot();
+          if (snap) {
+            const selected = new Set(
+              (payload.selections ?? []).filter((row) => row.selected).map((row) => row.key),
+            );
+            const groups: Array<{ key: string; farmCode: string; farmName: string }> = [];
+            const seen = new Set<string>();
+            for (const row of (payload.rows as PlacementRow[] | undefined) ?? []) {
+              const key = placementFarmGroupKey(row.farmCode, row.farmName);
+              if (!selected.has(key) || seen.has(key)) continue;
+              seen.add(key);
+              groups.push({ key, farmCode: row.farmCode, farmName: row.farmName });
+            }
+            localGraph = inferImportGraphFromSnapshot(snap, groups);
+          }
+        }
+        aliases = mergeAliases(aliases, aliasesFromImportGraph(localGraph, res.graph));
         continue;
       }
       if (remapped.kind === "applyCatch") {

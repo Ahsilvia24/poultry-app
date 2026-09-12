@@ -1,7 +1,13 @@
 import { daysSincePlacement } from "@/lib/mortality/calculations";
 import { farmGroupKey as catchFarmGroupKey } from "@/lib/catch-import/parse";
 import type { CatchRow } from "@/lib/catch-import/types";
-import { localRecordId } from "@/lib/offline/formPairs";
+import {
+  localCreatedFlockId,
+  localCreatedHouseFlockId,
+  localCreatedHouseId,
+  localImportFarmId,
+} from "@/lib/offline/formPairs";
+import type { ImportEntityGraph } from "@/lib/offline/remapIds";
 import { asDateKey, localNoonFromKey } from "@/lib/offline/dates";
 import { matchPlacementFarmGroups } from "@/lib/placement-import/match";
 import { farmGroupKey as placementFarmGroupKey } from "@/lib/placement-import/parse";
@@ -31,6 +37,7 @@ export type PlacementApplyLocalResult =
       createdFlocks: number;
       createdHouses: number;
       warnings: string[];
+      graph: ImportEntityGraph;
     }
   | { ok: false; error: string };
 
@@ -59,7 +66,7 @@ function farmRefs(farms: OfflineFarmRef[]) {
 
 function emptyHouse(farmId: string, houseNumber: number): OfflineHouse {
   return {
-    id: localRecordId(),
+    id: localCreatedHouseId(farmId, houseNumber),
     farmId,
     houseNumber,
     squareFootage: DEFAULT_SQ_FT,
@@ -73,9 +80,14 @@ function emptyHouse(farmId: string, houseNumber: number): OfflineHouse {
   };
 }
 
-function emptyFarm(farmName: string, farmNumber: string, houseCount: number): OfflineFarmRef {
+function emptyFarm(
+  farmId: string,
+  farmName: string,
+  farmNumber: string,
+  houseCount: number,
+): OfflineFarmRef {
   return {
-    id: localRecordId(),
+    id: farmId,
     farmName,
     growerName: "",
     farmNumber: farmNumber || null,
@@ -94,7 +106,7 @@ function emptyFarm(farmName: string, farmNumber: string, houseCount: number): Of
 
 function emptyFlock(farmId: string, flockNumber: string, placementDate: string): OfflineFlockRef {
   return {
-    id: localRecordId(),
+    id: localCreatedFlockId(farmId, flockNumber),
     farmId,
     flockNumber,
     flockStatus: "ACTIVE",
@@ -293,8 +305,10 @@ export function applyPlacementToSnapshot(
   const warnings: string[] = [];
   const touchedFarmIds: string[] = [];
 
+  const graphFarms: ImportEntityGraph["farms"] = [];
+
   for (let farmIndex = 0; farmIndex < farmEntries.length; farmIndex++) {
-    const [, farmRows] = farmEntries[farmIndex]!;
+    const [key, farmRows] = farmEntries[farmIndex]!;
     const sample = farmRows[0]!;
     const match = farmMatches[farmIndex]!;
     let farmId: string;
@@ -322,7 +336,12 @@ export function applyPlacementToSnapshot(
       farms[idx] = next;
     } else {
       const maxHouse = Math.max(...farmRows.map((row) => row.houseNo), 1);
-      const created = emptyFarm(sample.farmName, sample.farmCode, maxHouse);
+      const created = emptyFarm(
+        localImportFarmId(key),
+        sample.farmName,
+        sample.farmCode,
+        maxHouse,
+      );
       farmId = created.id;
       const newHouses = Array.from({ length: maxHouse }, (_, i) => emptyHouse(farmId, i + 1));
       farms = [...farms, created];
@@ -420,7 +439,7 @@ export function applyPlacementToSnapshot(
         houseFlocks = [
           ...houseFlocks,
           {
-            id: localRecordId(),
+            id: localCreatedHouseFlockId(target.id, houseId),
             flockId: target.id,
             houseId,
             placedBirdCount: row.numberSent,
@@ -444,6 +463,26 @@ export function applyPlacementToSnapshot(
     }
 
     touchedFarmIds.push(farmId);
+    const farm = farms.find((row) => row.id === farmId);
+    if (farm) {
+      const farmFlocks = flocks.filter((flock) => flock.farmId === farmId && !flock.deletedAt);
+      graphFarms.push({
+        key,
+        farmId,
+        farmName: farm.farmName,
+        farmNumber: farm.farmNumber,
+        houses: houses
+          .filter((house) => house.farmId === farmId && !house.deletedAt)
+          .map((house) => ({ id: house.id, houseNumber: house.houseNumber })),
+        flocks: farmFlocks.map((flock) => ({
+          id: flock.id,
+          flockNumber: flock.flockNumber,
+          houseFlocks: houseFlocks
+            .filter((hf) => hf.flockId === flock.id)
+            .map((hf) => ({ id: hf.id, houseId: hf.houseId })),
+        })),
+      });
+    }
   }
 
   return {
@@ -461,6 +500,7 @@ export function applyPlacementToSnapshot(
     createdFlocks,
     createdHouses,
     warnings,
+    graph: { farms: graphFarms },
   };
 }
 

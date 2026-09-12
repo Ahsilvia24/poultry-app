@@ -362,7 +362,7 @@ export function DashboardScheduleImport({
             return;
           }
           patchSnapshot(() => result.snapshot);
-          enqueue({ kind: "applyPlacement", payload: { selections, rows } });
+          enqueue({ kind: "applyPlacement", payload: { selections, rows, graph: result.graph } });
           setApplyResult({ kind: "placement", ...result });
         }
         setPreview(null);
