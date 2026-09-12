@@ -607,7 +607,7 @@ const caught = applyCatchToSnapshot(snapshot, {
   selections: [{ key: "12|OAK RIDGE", selected: true }],
   rows: [
     {
-      catchDate: "2026-09-20",
+      catchDate: "2026-09-25",
       farmCode: "12",
       farmName: "Oak Ridge",
       flockId: "A1",
@@ -618,8 +618,8 @@ const caught = applyCatchToSnapshot(snapshot, {
 });
 assert.equal(caught.ok, true);
 assert.equal(caught.updatedHouses, 1);
-assert.equal(caught.snapshot.houseFlocks.find((hf) => hf.id === "hf-1")?.catchDate, "2026-09-20");
-assert.equal(caught.snapshot.flocks[0].projectedCatchDate, "2026-09-20");
+assert.equal(caught.snapshot.houseFlocks.find((hf) => hf.id === "hf-1")?.catchDate, "2026-09-25");
+assert.equal(caught.snapshot.flocks[0].projectedCatchDate, "2026-09-25");
 
 const missedCatch = applyCatchToSnapshot(snapshot, {
   selections: [{ key: "ZZ|NO FARM", selected: true }],
