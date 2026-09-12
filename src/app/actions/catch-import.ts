@@ -184,24 +184,6 @@ export async function applyCatchImportAction(input: {
       updatedNames += 1;
     }
 
-    if (!match.farm.farmNumber && sample.farmCode) {
-      const taken = await prisma.farm.findFirst({
-        where: {
-          userId: user.id,
-          deletedAt: null,
-          id: { not: farm.id },
-          farmNumber: sample.farmCode,
-        },
-        select: { id: true },
-      });
-      if (!taken) {
-        await prisma.farm.update({
-          where: { id: farm.id },
-          data: { farmNumber: sample.farmCode },
-        });
-      }
-    }
-
     const houseByNumber = new Map(farm.houses.map((h) => [h.houseNumber, h.id]));
 
     // Collapse duplicate house rows — keep latest catch date in file order.

@@ -214,23 +214,12 @@ export async function applyPlacementImportAction(input: {
 
     if (match.farm) {
       farmId = match.farm.id;
-      const data: { farmName?: string; farmNumber?: string | null } = {};
-      // Placement import overwrites farm name + code from the sheet.
+      const data: { farmName?: string } = {};
+      // Placement import updates the farm name from the sheet. Farm # stays
+      // whatever was entered on Farm Info — never the sheet flock/farm code.
       if (match.farm.farmName.trim() !== sample.farmName.trim()) {
         data.farmName = sample.farmName;
         updatedNames += 1;
-      }
-      if (sample.farmCode) {
-        const taken = await prisma.farm.findFirst({
-          where: {
-            userId: user.id,
-            deletedAt: null,
-            id: { not: farmId },
-            farmNumber: sample.farmCode,
-          },
-          select: { id: true },
-        });
-        if (!taken) data.farmNumber = sample.farmCode;
       }
       if (Object.keys(data).length > 0) {
         await prisma.farm.update({ where: { id: farmId }, data });
@@ -242,7 +231,7 @@ export async function applyPlacementImportAction(input: {
           userId: user.id,
           farmName: sample.farmName,
           growerName: "",
-          farmNumber: sample.farmCode,
+          farmNumber: null,
           numberOfHouses: maxHouse,
           houses: {
             create: Array.from({ length: maxHouse }, (_, i) => ({

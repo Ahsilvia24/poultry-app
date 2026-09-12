@@ -2639,12 +2639,11 @@ export function importPlacementRows(input: {
         renameFarmOnly(farmId, sample.farmName);
         updatedNames += 1;
       }
-      setFarmNumberFromPlacement(farmId, sample.farmCode);
     } else {
       const maxHouse = Math.max(...farmRows.map((r) => r.houseNo), 1);
       const created = createFarm({
         farmName: sample.farmName,
-        farmNumber: sample.farmCode,
+        farmNumber: null,
         numberOfHouses: maxHouse,
       });
       farmId = created.id;
@@ -2654,7 +2653,7 @@ export function importPlacementRows(input: {
       existing.push({
         id: farmId,
         farmName: sample.farmName,
-        farmNumber: sample.farmCode,
+        farmNumber: null,
       });
     }
 
@@ -2880,7 +2879,6 @@ export function importCatchRows(input: {
       renameFarmOnly(farmId, sample.farmName);
       updatedNames += 1;
     }
-    setFarmNumberIfEmpty(farmId, sample.farmCode);
 
     const houses = db.getAllSync<{ id: string; house_number: number }>(
       "SELECT id, house_number FROM houses WHERE farm_id = ? AND deleted_at IS NULL",

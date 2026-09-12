@@ -326,20 +326,13 @@ export function applyPlacementToSnapshot(
         next = { ...next, farmName: sample.farmName };
         updatedNames += 1;
       }
-      if (sample.farmCode) {
-        const taken = farms.some(
-          (farm) =>
-            !farm.deletedAt && farm.id !== farmId && farm.farmNumber === sample.farmCode,
-        );
-        if (!taken) next = { ...next, farmNumber: sample.farmCode };
-      }
       farms[idx] = next;
     } else {
       const maxHouse = Math.max(...farmRows.map((row) => row.houseNo), 1);
       const created = emptyFarm(
         localImportFarmId(key),
         sample.farmName,
-        sample.farmCode,
+        "",
         maxHouse,
       );
       farmId = created.id;
@@ -556,17 +549,6 @@ export function applyCatchToSnapshot(
       );
       match.farm.farmName = sample.farmName;
       updatedNames += 1;
-    }
-
-    if (!match.farm.farmNumber && sample.farmCode) {
-      const taken = farms.some(
-        (row) => !row.deletedAt && row.id !== farm.id && row.farmNumber === sample.farmCode,
-      );
-      if (!taken) {
-        farms = farms.map((row) =>
-          row.id === farm.id ? { ...row, farmNumber: sample.farmCode } : row,
-        );
-      }
     }
 
     const houseByNumber = new Map(
