@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { FlockScheduleFields } from "@/components/FlockScheduleFields";
-import { Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
+import { Button, Card, Input, Label, Textarea } from "@/components/ui";
 import { formDataToParts, formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
-import { PROCESSING_PLANT_OPTIONS } from "@/lib/utils";
 
 type HouseOption = {
   id: string;
   houseNumber: number;
   occupiedByFlock?: string | null;
 };
+
+const DEFAULT_PLACED = "29700";
 
 export function AddFlockSection({
   farmId,
@@ -32,6 +33,19 @@ export function AddFlockSection({
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const openHouses = useMemo(
+    () => houses.filter((house) => !house.occupiedByFlock),
+    [houses],
+  );
+  const firstOpenHouse = openHouses[0] ?? null;
+  const [counts, setCounts] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    for (const house of houses) {
+      if (!house.occupiedByFlock) init[house.id] = DEFAULT_PLACED;
+    }
+    return init;
+  });
+  const [propagate, setPropagate] = useState(false);
 
   useEffect(() => {
     function syncFromHash() {
@@ -41,6 +55,29 @@ export function AddFlockSection({
     window.addEventListener("hashchange", syncFromHash);
     return () => window.removeEventListener("hashchange", syncFromHash);
   }, []);
+
+  function setHouseCount(houseId: string, value: string) {
+    setCounts((prev) => {
+      const next = { ...prev, [houseId]: value };
+      if (propagate && firstOpenHouse && houseId === firstOpenHouse.id) {
+        for (const house of openHouses) {
+          if (house.id !== houseId) next[house.id] = value;
+        }
+      }
+      return next;
+    });
+  }
+
+  function onPropagateChange(checked: boolean) {
+    setPropagate(checked);
+    if (!checked || !firstOpenHouse) return;
+    const value = counts[firstOpenHouse.id] ?? DEFAULT_PLACED;
+    setCounts((prev) => {
+      const next = { ...prev };
+      for (const house of openHouses) next[house.id] = value;
+      return next;
+    });
+  }
 
   return (
     <div id="add-flock" className="scroll-mt-24">
@@ -115,6 +152,7 @@ export function AddFlockSection({
                 <div className="space-y-3">
                   {houses.map((house) => {
                     const occupied = Boolean(house.occupiedByFlock);
+                    const isFirstOpen = firstOpenHouse?.id === house.id;
                     return (
                       <div
                         key={house.id}
@@ -140,28 +178,22 @@ export function AddFlockSection({
                               name="placedBirdCount"
                               type="number"
                               min={0}
-                              defaultValue={29700}
+                              value={counts[house.id] ?? DEFAULT_PLACED}
+                              onChange={(event) => setHouseCount(house.id, event.target.value)}
                               className="mt-1 max-w-[10rem]"
                             />
                           )}
                         </div>
-                        {!occupied ? (
-                          <div className="min-w-[10rem] flex-1 sm:max-w-[14rem]">
-                            <Label htmlFor={`plant-${house.id}`}>Processing plant</Label>
-                            <Select
-                              id={`plant-${house.id}`}
-                              name="houseProcessingPlant"
-                              defaultValue=""
-                              className="mt-1"
-                            >
-                              <option value="" />
-                              {PROCESSING_PLANT_OPTIONS.map((plant) => (
-                                <option key={plant} value={plant}>
-                                  {plant}
-                                </option>
-                              ))}
-                            </Select>
-                          </div>
+                        {isFirstOpen ? (
+                          <label className="mb-2 flex min-h-11 items-center gap-2 text-sm font-semibold text-stone-800">
+                            <input
+                              type="checkbox"
+                              checked={propagate}
+                              onChange={(event) => onPropagateChange(event.target.checked)}
+                              className="h-4 w-4 accent-emerald-800"
+                            />
+                            Propagate (to the rest of the houses)
+                          </label>
                         ) : null}
                       </div>
                     );

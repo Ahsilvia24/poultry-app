@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -62,6 +63,8 @@ export default function AddFlockScreen() {
   });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const firstOpenHouse = availableHouses[0] ?? null;
+  const [propagate, setPropagate] = useState(false);
 
   function onPlacementChange(value: string) {
     setPlacementDate(value);
@@ -224,6 +227,7 @@ export default function AddFlockScreen() {
               </Text>
               {houses.map((h) => {
                 const occupied = occupiedHouseIds.has(h.id);
+                const isFirstOpen = firstOpenHouse?.id === h.id;
                 return (
                   <View key={h.id} style={{ marginBottom: 8 }}>
                     <Text style={styles.label}>
@@ -235,16 +239,56 @@ export default function AddFlockScreen() {
                         Already placed — skip for this flock.
                       </Text>
                     ) : (
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="number-pad"
-                        value={placements[h.id] ?? ""}
-                        onChangeText={(v) =>
-                          setPlacements((prev) => ({ ...prev, [h.id]: v }))
-                        }
-                        placeholder="0 = empty"
-                        placeholderTextColor={colors.muted}
-                      />
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <TextInput
+                          style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                          keyboardType="number-pad"
+                          value={placements[h.id] ?? ""}
+                          onChangeText={(v) =>
+                            setPlacements((prev) => {
+                              const next = { ...prev, [h.id]: v };
+                              if (propagate && firstOpenHouse && h.id === firstOpenHouse.id) {
+                                for (const house of availableHouses) {
+                                  if (house.id !== h.id) next[house.id] = v;
+                                }
+                              }
+                              return next;
+                            })
+                          }
+                          placeholder="0 = empty"
+                          placeholderTextColor={colors.muted}
+                        />
+                        {isFirstOpen ? (
+                          <Pressable
+                            onPress={() => {
+                              const nextChecked = !propagate;
+                              setPropagate(nextChecked);
+                              if (!nextChecked || !firstOpenHouse) return;
+                              const value = placements[firstOpenHouse.id] ?? String(DEFAULT_PLACED);
+                              setPlacements((prev) => {
+                                const next = { ...prev };
+                                for (const house of availableHouses) next[house.id] = value;
+                                return next;
+                              });
+                            }}
+                            style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 44 }}
+                          >
+                            <View
+                              style={{
+                                width: 20,
+                                height: 20,
+                                borderRadius: 4,
+                                borderWidth: 1.5,
+                                borderColor: colors.accentDark,
+                                backgroundColor: propagate ? colors.accentDark : "transparent",
+                              }}
+                            />
+                            <Text style={[styles.muted, { color: colors.text, fontWeight: "700", maxWidth: 120 }]}>
+                              Propagate (to the rest of the houses)
+                            </Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
                     )}
                   </View>
                 );
