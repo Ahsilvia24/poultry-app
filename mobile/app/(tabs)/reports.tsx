@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   getFieldLog,
   getGeneratorLogReport,
@@ -44,14 +44,12 @@ import { DatePickerField } from "../../src/components/DatePickerField";
 import { ClipboardIconButton } from "../../src/components/ClipboardIconButton";
 import { SharePdfIconButton } from "../../src/components/SharePdfIconButton";
 import { getServiceTech } from "../../src/lib/appSettings";
-import { FarmHistoryPanel } from "../../src/components/FarmHistoryPanel";
 import { userFacingMessage } from "../../src/lib/useKeyboardInset";
 
 const REPORT_TYPES = [
   { key: "field-log", label: "Field Log" },
   { key: "generator", label: "Generator" },
   { key: "mortality", label: "Mortality" },
-  { key: "history", label: "Farm History" },
 ] as const;
 
 type ReportType = (typeof REPORT_TYPES)[number]["key"];
@@ -81,11 +79,12 @@ function matrixToTsv(
 }
 
 function resolveMobileReportType(raw: string): ReportType {
-  if (raw === "generator" || raw === "mortality" || raw === "history") return raw;
+  if (raw === "generator" || raw === "mortality") return raw;
   return "field-log";
 }
 
 export default function ReportsScreen() {
+  const router = useRouter();
   const params = useLocalSearchParams<{
     farmId?: string | string[];
     type?: string | string[];
@@ -93,7 +92,6 @@ export default function ReportsScreen() {
   const farmIdParam = paramId(params.farmId);
   const typeParam = paramId(params.type);
   const farms = useMemo(() => listFarms().farms, []);
-  const historyFarms = useMemo(() => listFarms("all").farms, []);
   const weekDefaults = useMemo(() => defaultFieldLogRange(), []);
   const initialFarmId = farmIdParam || farms[0]?.id || "";
   const initialMortFrom =
@@ -150,8 +148,15 @@ export default function ReportsScreen() {
   const rowHeaderLabel = selectedFarmName || "Farm Name";
 
   useEffect(() => {
+    if (typeParam === "history") {
+      router.replace({
+        pathname: "/farm-history",
+        params: farmIdParam ? { farmId: farmIdParam } : {},
+      });
+      return;
+    }
     if (typeParam) setReportType(resolveMobileReportType(typeParam));
-  }, [typeParam]);
+  }, [typeParam, farmIdParam, router]);
 
   useEffect(() => {
     if (farmIdParam) {
@@ -159,8 +164,6 @@ export default function ReportsScreen() {
       setMatrix(getReports(from, to, farmIdParam));
     }
   }, [farmIdParam, from, to]);
-
-  const historyFarmId = farmId || historyFarms[0]?.id || "";
 
   function applyMortality(nextFarmId = farmId, nextFrom = from, nextTo = to) {
     setMatrix(getReports(nextFrom, nextTo, nextFarmId || undefined));
@@ -203,7 +206,28 @@ export default function ReportsScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <PageHeader title="Reports" />
+        <PageHeader
+          title="Reports"
+          actions={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Farm History"
+              onPress={() => router.push("/farm-history")}
+              style={{
+                minHeight: 44,
+                paddingHorizontal: 16,
+                borderRadius: 10,
+                backgroundColor: colors.accentDark,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>
+                Farm History
+              </Text>
+            </Pressable>
+          }
+        />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ flexDirection: "row", marginBottom: 12 }}>
@@ -216,9 +240,6 @@ export default function ReportsScreen() {
                   setReportType(t.key);
                   setOpenDate(null);
                   if (t.key === "generator") applyGenerator();
-                  if (t.key === "history" && !farmId && historyFarms[0]?.id) {
-                    setFarmId(historyFarms[0].id);
-                  }
                 }}
               />
             ))}
@@ -487,31 +508,6 @@ export default function ReportsScreen() {
                   </View>
                 ))}
               </Card>
-            )}
-          </>
-        ) : reportType === "history" ? (
-          <>
-            <Text style={styles.label}>Farm</Text>
-            {historyFarms.length === 0 ? (
-              <Card>
-                <Text style={styles.muted}>No farms found.</Text>
-              </Card>
-            ) : (
-              <>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: "row", marginBottom: 8 }}>
-                    {historyFarms.map((f) => (
-                      <Chip
-                        key={f.id}
-                        label={f.farmName}
-                        active={historyFarmId === f.id}
-                        onPress={() => setFarmId(f.id)}
-                      />
-                    ))}
-                  </View>
-                </ScrollView>
-                <FarmHistoryPanel farmId={historyFarmId} />
-              </>
             )}
           </>
         ) : (

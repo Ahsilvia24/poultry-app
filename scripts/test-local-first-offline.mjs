@@ -131,6 +131,9 @@ assert.equal(isReplicaHref("/lfo/lfo-1"), true);
 assert.equal(isReplicaHref("/mortality"), true);
 assert.equal(isReplicaHref("/reports"), true);
 assert.equal(isReplicaHref("/reports?type=mortality"), true);
+assert.equal(isReplicaHref("/history"), true);
+assert.equal(isReplicaHref("/history?farmId=farm-1"), true);
+assert.equal(isReplicaHref("/history/farm-1"), true);
 
 const snapshot = {
   version: 2,

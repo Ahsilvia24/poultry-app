@@ -28,11 +28,13 @@ export function isReplicaHref(href: string): boolean {
     pathname === "/lfo/new" ||
     pathname === "/tools" ||
     pathname === "/reports" ||
+    pathname === "/history" ||
     pathname === "/mortality"
   ) {
     return true;
   }
   if (pathname.startsWith("/lfo/new/")) return true;
+  if (/^\/history\/[^/]+$/.test(pathname)) return true;
   const lfoEdit = /^\/lfo\/([^/]+)$/.exec(pathname);
   if (lfoEdit && lfoEdit[1] !== "new") return true;
   const farm = /^\/farms\/([^/]+)(?:\/service(?:\/(report|placement|prebrood))?)?$/.exec(

@@ -11,6 +11,7 @@ import { NewFarmForm } from "@/components/NewFarmForm";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { SettingsScreen } from "@/components/SettingsScreen";
 import { ToolsView } from "@/components/ToolsView";
+import { FarmHistoryScreen } from "@/components/FarmHistoryScreen";
 import { ReportsView } from "@/components/ReportsView";
 import { PlacementFormView } from "@/components/serviceForms/PlacementFormView";
 import { PrebroodFormView } from "@/components/serviceForms/PrebroodFormView";
@@ -270,6 +271,14 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   if (pathname === "/reports") {
     const params = new URLSearchParams(search);
+    if (params.get("type") === "history") {
+      return (
+        <FarmHistoryScreen
+          snapshot={snapshot}
+          initialFarmId={params.get("farmId") ?? farmIdParam ?? undefined}
+        />
+      );
+    }
     return (
       <ReportsView
         snapshot={snapshot}
@@ -279,6 +288,21 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
           from: params.get("from") ?? undefined,
           to: params.get("to") ?? undefined,
         }}
+      />
+    );
+  }
+
+  const historyFarm = /^\/history\/([^/]+)$/.exec(pathname);
+  if (pathname === "/history" || historyFarm) {
+    const params = new URLSearchParams(search);
+    return (
+      <FarmHistoryScreen
+        snapshot={snapshot}
+        initialFarmId={
+          historyFarm
+            ? resolveAlias(aliases, historyFarm[1])
+            : (params.get("farmId") ?? farmIdParam ?? undefined)
+        }
       />
     );
   }

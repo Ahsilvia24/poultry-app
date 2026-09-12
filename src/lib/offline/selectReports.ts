@@ -38,7 +38,7 @@ export type ReplicaHistoryRow = {
 };
 
 export type ReplicaReportsModel = {
-  type: ReportTypeKey;
+  type: ReportTypeKey | "history";
   from: string;
   to: string;
   farmId: string;
@@ -111,7 +111,7 @@ export function selectReports(
   snapshot: OfflineSnapshot,
   search: { type?: string; farmId?: string; from?: string; to?: string },
 ): ReplicaReportsModel {
-  const type = resolveReportType(search.type);
+  const type = search.type === "history" ? "history" : resolveReportType(search.type);
   const today = new Date();
   const fieldDefaults = defaultFieldLogRange(today);
   const generatorDefaults = defaultGeneratorRange(today);

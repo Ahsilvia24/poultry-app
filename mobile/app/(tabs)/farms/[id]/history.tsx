@@ -8,7 +8,7 @@ function paramId(value: string | string[] | undefined) {
   return value ?? "";
 }
 
-/** Old farm History route — Farm History now lives under Reports. */
+/** Old farm History route — Farm History now has its own page. */
 export default function FarmHistoryRedirect() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -16,8 +16,8 @@ export default function FarmHistoryRedirect() {
 
   useEffect(() => {
     router.replace({
-      pathname: "/(tabs)/reports",
-      params: farmId ? { type: "history", farmId } : { type: "history" },
+      pathname: "/farm-history",
+      params: farmId ? { farmId } : {},
     });
   }, [farmId, router]);
 

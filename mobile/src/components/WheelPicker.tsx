@@ -13,10 +13,12 @@ export function WheelPicker<T extends string>({
   options,
   value,
   onChange,
+  accessibilityLabel = "Order farms by",
 }: {
   options: Array<{ value: T; label: string }>;
   value: T;
   onChange: (value: T) => void;
+  accessibilityLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.value === value) ?? options[0];
@@ -25,7 +27,7 @@ export function WheelPicker<T extends string>({
     <View style={{ zIndex: open ? 20 : 1 }}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Order farms by"
+        accessibilityLabel={accessibilityLabel}
         accessibilityState={{ expanded: open }}
         onPress={() => setOpen((prev) => !prev)}
         style={{

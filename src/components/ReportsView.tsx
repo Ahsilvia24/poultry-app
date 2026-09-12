@@ -2,14 +2,13 @@
 
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
-import { FarmHistoryReplica } from "@/components/FarmHistoryReplica";
+import { FarmHistoryButton } from "@/components/FarmHistoryButton";
 import { FieldLogReport } from "@/components/FieldLogReport";
 import { GeneratorLogReport } from "@/components/GeneratorLogReport";
 import { MortalityCharts } from "@/components/MortalityCharts";
 import { ReportDateRangeFields } from "@/components/ReportDateRangeFields";
 import { ReportsTypeTabs } from "@/components/ReportsTypeTabs";
 import { Button, Card, Label, PageHeader, Select } from "@/components/ui";
-import { cn } from "@/lib/utils";
 import { defaultFieldLogRange } from "@/lib/reports/field-log";
 import { resolveReportType, type ReportTypeKey } from "@/lib/reports/types";
 import type { OfflineSnapshot } from "@/lib/offline/types";
@@ -106,50 +105,13 @@ export function ReportsView({
     });
   }
 
-  if (model.type === "history") {
-    return (
-      <div>
-        <PageHeader title="Reports" />
-        <ReportsTypeTabs active="history" onSelect={onSelectType} />
-        {model.farms.length === 0 ? (
-          <Card>
-            <p className="text-stone-600">No farms found.</p>
-          </Card>
-        ) : (
-          <>
-            <div className="mb-6">
-              <p className="mb-2 text-sm font-semibold text-stone-700">Farm</p>
-              <div className="flex flex-wrap gap-2">
-                {model.farms.map((farm) => (
-                  <button
-                    key={farm.id}
-                    type="button"
-                    onClick={() => setFarmId(farm.id)}
-                    className={cn(
-                      "rounded-lg px-4 py-2 text-sm font-semibold",
-                      model.history?.selectedFarmId === farm.id
-                        ? "bg-emerald-700 text-white"
-                        : "bg-stone-200 text-stone-800",
-                    )}
-                  >
-                    {farm.farmName}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <FarmHistoryReplica rows={model.history?.rows ?? []} />
-          </>
-        )}
-      </div>
-    );
-  }
-
   if (model.type === "field-log") {
     return (
       <div>
         <PageHeader
           title="Reports"
           subtitle="Farms visited each day, in the order you logged them"
+          actions={<FarmHistoryButton />}
         />
         <ReportsTypeTabs active="field-log" onSelect={onSelectType} />
         <Card className="mb-6">
@@ -179,7 +141,7 @@ export function ReportsView({
   if (model.type === "generator") {
     return (
       <div>
-        <PageHeader title="Reports" />
+        <PageHeader title="Reports" actions={<FarmHistoryButton />} />
         <ReportsTypeTabs active="generator" onSelect={onSelectType} />
         <Card className="mb-6">
           <form className="grid gap-3" onSubmit={onFilter}>
@@ -217,7 +179,7 @@ export function ReportsView({
 
   return (
     <div>
-      <PageHeader title="Reports" />
+      <PageHeader title="Reports" actions={<FarmHistoryButton />} />
       <ReportsTypeTabs active="mortality" onSelect={onSelectType} />
       <Card className="mb-6">
         <form className="grid gap-3" onSubmit={onFilter}>
