@@ -4,6 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { format, parseISO } from "date-fns";
 import { deactivateFarmAction } from "@/app/actions/farms";
+import { formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Button, Card, StatusBadge } from "@/components/ui";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
@@ -24,12 +26,17 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, start] = useTransition();
   const deactivatingRef = useRef(false);
+  const { enabled, queue } = useReplicaWrite();
 
   function makeInactive() {
     if (pending || deactivatingRef.current) return;
     deactivatingRef.current = true;
     start(async () => {
       try {
+        if (enabled) {
+          queue(formWrite("deactivateFarm", { farmId: farm.id }));
+          return;
+        }
         await deactivateFarmAction(farm.id, { skipRedirect: true });
       } finally {
         deactivatingRef.current = false;

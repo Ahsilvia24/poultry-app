@@ -21,13 +21,17 @@ export function isReplicaHref(href: string): boolean {
   const { pathname } = replicaPath(href);
   if (
     pathname === "/farms" ||
+    pathname === "/farms/new" ||
     pathname === "/settings" ||
     pathname === "/lfo" ||
+    pathname === "/lfo/new" ||
     pathname === "/tools" ||
-    pathname === "/reports"
+    pathname === "/reports" ||
+    pathname === "/mortality"
   ) {
     return true;
   }
+  if (pathname.startsWith("/lfo/new/")) return true;
   const farm = /^\/farms\/([^/]+)(?:\/service(?:\/(report|placement|prebrood))?)?$/.exec(
     pathname,
   );

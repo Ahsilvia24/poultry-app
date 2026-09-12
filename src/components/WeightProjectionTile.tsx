@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { updateFlockWeightProjectionAction } from "@/app/actions/farms";
+import { formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import {
   DEFAULT_GROWTH_RATE_LBS_PER_DAY,
   weightBandAround,
@@ -57,6 +59,7 @@ export function WeightProjectionTile({
   onGrowthRateChange?: (rate: number) => void;
 }) {
   const router = useRouter();
+  const { enabled, queue } = useReplicaWrite();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -98,6 +101,17 @@ export function WeightProjectionTile({
     }
 
     startTransition(async () => {
+      if (enabled) {
+        queue(
+          formWrite("updateWeightProjection", {
+            id: flockId,
+            fields: { growthRateLbsPerDay: String(raw) },
+          }),
+        );
+        onGrowthRateChange?.(raw);
+        setEditing(false);
+        return;
+      }
       const result = await updateFlockWeightProjectionAction(flockId, formData);
       if (result?.error) {
         setError(result.error);

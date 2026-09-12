@@ -94,11 +94,14 @@ assert.ok(preview.every((farm) => farm.isMyFarm === false));
 
 assert.equal(isReplicaHref("/farms"), true);
 assert.equal(isReplicaHref("/farms/abc"), true);
-assert.equal(isReplicaHref("/farms/new"), false);
+assert.equal(isReplicaHref("/farms/new"), true);
 assert.equal(isReplicaHref("/farms/abc/service"), true);
 assert.equal(isReplicaHref("/farms/abc/service/report"), true);
 assert.equal(isReplicaHref("/farms/abc/service/prebrood"), true);
 assert.equal(isReplicaHref("/lfo?farmId=abc"), true);
+assert.equal(isReplicaHref("/lfo/new"), true);
+assert.equal(isReplicaHref("/lfo/new/farm-1"), true);
+assert.equal(isReplicaHref("/mortality"), true);
 assert.equal(isReplicaHref("/reports"), true);
 assert.equal(isReplicaHref("/reports?type=mortality"), true);
 
@@ -425,7 +428,79 @@ assert.match(read("src/lib/offline/buildSnapshot.ts"), /serviceForms/);
 assert.match(read("src/components/AddFlockSection.tsx"), /createFlock/);
 assert.match(read("src/components/serviceForms/useServiceFormSave.ts"), /saveServiceDraft/);
 assert.match(read("src/components/OfflineNav.tsx"), /selectServiceFarmPicker/);
+assert.match(read("src/components/NewFarmForm.tsx"), /createFarm/);
+assert.match(read("src/components/CompleteFlockPicker.tsx"), /completeFlock/);
+assert.match(read("src/components/WeightProjectionTile.tsx"), /updateWeightProjection/);
+assert.match(read("src/components/DashboardFarmCards.tsx"), /deactivateFarm/);
+assert.match(read("src/components/OfflineNav.tsx"), /selectMortality/);
+
+const createdFarm = applyFormWrite(snapshot, {
+  action: "createFarm",
+  id: "local-farm-9",
+  farmId: "local-farm-9",
+  fields: { farmName: "New Place", growerName: "Pat", numberOfHouses: "3" },
+});
+assert.equal(createdFarm.farms.some((farm) => farm.id === "local-farm-9"), true);
+assert.equal(createdFarm.houses.filter((house) => house.farmId === "local-farm-9").length, 3);
+
+const ended = applyFormWrite(snapshot, { action: "completeFlock", id: "flock-1" });
+assert.equal(ended.flocks[0].flockStatus, "COMPLETED");
+const revived = applyFormWrite(ended, { action: "reactivateFlock", id: "flock-1" });
+assert.equal(revived.flocks[0].flockStatus, "ACTIVE");
+
+const renamedHouse = applyFormWrite(snapshot, {
+  action: "updateHouse",
+  id: "house-2",
+  farmId: "farm-1",
+  fields: { flockNumber: "B9", houseNumber: "2", squareFootage: "20000" },
+});
+assert.equal(
+  renamedHouse.houseFlocks.find((hf) => hf.houseId === "house-2")?.flockId !== "flock-1",
+  true,
+);
+assert.equal(
+  renamedHouse.flocks.some((flock) => flock.flockNumber === "B9" && flock.flockStatus === "ACTIVE"),
+  true,
+);
+
+const weighted = applyFormWrite(snapshot, {
+  action: "updateWeightProjection",
+  id: "flock-1",
+  fields: { growthRateLbsPerDay: "0.18" },
+});
+assert.equal(weighted.flocks[0].growthRateLbsPerDay, 0.18);
+
+const inactive = applyFormWrite(
+  {
+    ...snapshot,
+    dashboard: {
+      stats: {
+        activeFarms: 1,
+        activeHouses: 2,
+        totalBirdsPlaced: 0,
+        mortalityEnteredToday: 0,
+        farmsMissingToday: 0,
+        openIssues: 0,
+        highPriorityIssues: 0,
+      },
+      farmCards: [{ id: "farm-1", farmName: "Oak Ridge" }],
+      upcomingCatches: [{ farmName: "Oak Ridge", date: "2026-09-22" }],
+      todaysSchedule: [{ farmId: "farm-1", date: "2026-09-11", label: "Visit" }],
+      upcomingSchedule: [],
+      recentCleanouts: [],
+      thresholds: null,
+    },
+  },
+  { action: "deactivateFarm", farmId: "farm-1" },
+);
+assert.equal(inactive.farms[0].isActive, false);
+assert.equal(inactive.dashboard.farmCards.length, 0);
+
+const { selectMortality } = await import(join(root, "src/lib/offline/selectMortality.ts"));
+const mort = selectMortality(snapshot, "farm-1", "hf-1");
+assert.equal(mort.farms.length, 1);
+assert.equal(mort.farms[0].activeFlock?.houses.length, 2);
 
 console.log(
-  `local-first-offline: ${rows.length} rows · ${farms.length} farms · farm detail ${detail.houseCards.length} houses · LFO ${lfo.savedLfos.length} · reports + flock + service`,
+  `local-first-offline: ${rows.length} rows · ${farms.length} farms · farm detail ${detail.houseCards.length} houses · LFO ${lfo.savedLfos.length} · reports + flock + service + leftover writes`,
 );

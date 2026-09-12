@@ -1,7 +1,9 @@
+import { addDays, format } from "date-fns";
 import { nextCustomLfoName } from "@/lib/lfo/customName";
 import { birdAgeFromPlacement, calcTotalDailyLoss } from "@/lib/mortality/calculations";
-import { normalizeFlockNumber } from "@/lib/houseFlockNumber";
-import { asDate } from "@/lib/offline/dates";
+import { isHouseInPropagateRange } from "@/lib/housePropagate";
+import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
+import { asDate, asDateKey } from "@/lib/offline/dates";
 import { isLocalRecordId, localRecordId } from "@/lib/offline/formPairs";
 import { isServiceFormKind } from "@/lib/serviceForms/stored";
 import type { AnyServiceForm } from "@/lib/serviceForms/types";
@@ -75,6 +77,377 @@ function patchDashboardFollowUp(
   return { ...snapshot, dashboard };
 }
 
+function formFlag(fields: Record<string, string>, name: string) {
+  return fields[name] === "on" || fields[name] === "true";
+}
+
+function addDaysKey(key: string, days: number) {
+  const [y, m, d] = key.split("-").map(Number);
+  if (!y || !m || !d) return key;
+  return format(addDays(new Date(y, m - 1, d, 12), days), "yyyy-MM-dd");
+}
+
+function activeFlockIdsForFarm(snapshot: OfflineSnapshot, farmId: string) {
+  return new Set(
+    snapshot.flocks
+      .filter(
+        (flock) =>
+          flock.farmId === farmId && flock.flockStatus !== "COMPLETED" && !flock.deletedAt,
+      )
+      .map((flock) => flock.id),
+  );
+}
+
+function activeHouseFlock(snapshot: OfflineSnapshot, farmId: string, houseId: string) {
+  const active = activeFlockIdsForFarm(snapshot, farmId);
+  return snapshot.houseFlocks.find((hf) => hf.houseId === houseId && active.has(hf.flockId));
+}
+
+function syncFlockDatesFromHouses(snapshot: OfflineSnapshot, flockId: string): OfflineSnapshot {
+  const hfs = snapshot.houseFlocks.filter((hf) => hf.flockId === flockId);
+  const places = hfs
+    .map((hf) => hf.placementDate)
+    .filter((value): value is string => Boolean(value))
+    .slice()
+    .sort();
+  const catches = hfs
+    .map((hf) => hf.catchDate)
+    .filter((value): value is string => Boolean(value))
+    .slice()
+    .sort();
+  if (!places[0]) return snapshot;
+  return {
+    ...snapshot,
+    flocks: snapshot.flocks.map((flock) =>
+      flock.id === flockId
+        ? {
+            ...flock,
+            placementDate: places[0]!,
+            projectedCatchDate: catches[0] ?? addDaysKey(places[0]!, 52),
+          }
+        : flock,
+    ),
+  };
+}
+
+function assignHouseFlockNumber(
+  snapshot: OfflineSnapshot,
+  farmId: string,
+  houseId: string,
+  currentFlockId: string,
+  nextNumber: string,
+  placementDate: string,
+  catchDate: string,
+  placedBirdCount: number,
+): OfflineSnapshot {
+  const current = snapshot.flocks.find((flock) => flock.id === currentFlockId);
+  const existing =
+    snapshot.flocks.find(
+      (flock) =>
+        flock.farmId === farmId &&
+        flock.id !== currentFlockId &&
+        flock.flockStatus !== "COMPLETED" &&
+        !flock.deletedAt &&
+        normalizeFlockNumber(flock.flockNumber) === normalizeFlockNumber(nextNumber),
+    ) ?? null;
+  const others = snapshot.houseFlocks.filter(
+    (hf) => hf.flockId === currentFlockId && hf.houseId !== houseId,
+  ).length;
+  const plan = planFlockNumberChange({
+    nextNumber,
+    currentFlockNumber: current?.flockNumber ?? "",
+    currentFlockId,
+    otherHousesOnCurrentFlock: others,
+    existingFlockIdWithNumber: existing?.id ?? null,
+  });
+  if (plan.type === "keep") return syncFlockDatesFromHouses(snapshot, currentFlockId);
+  if (plan.type === "rename") {
+    return syncFlockDatesFromHouses(
+      {
+        ...snapshot,
+        flocks: snapshot.flocks.map((flock) =>
+          flock.id === currentFlockId ? { ...flock, flockNumber: nextNumber } : flock,
+        ),
+      },
+      currentFlockId,
+    );
+  }
+
+  const targetId =
+    plan.type === "move"
+      ? plan.flockId
+      : localRecordId();
+  let next = snapshot;
+  if (plan.type === "create") {
+    next = {
+      ...next,
+      flocks: [
+        ...next.flocks,
+        {
+          id: targetId,
+          farmId,
+          flockNumber: nextNumber,
+          flockStatus: "ACTIVE",
+          placementDate,
+          projectedCatchDate: catchDate,
+          actualCatchDate: null,
+          targetMarketAge: current?.targetMarketAge ?? null,
+          growthRateLbsPerDay: current?.growthRateLbsPerDay ?? null,
+          deletedAt: null,
+        },
+      ],
+    };
+  }
+  if (targetId !== currentFlockId) {
+    next = {
+      ...next,
+      houseFlocks: next.houseFlocks.map((hf) =>
+        hf.houseId === houseId && hf.flockId === currentFlockId
+          ? { ...hf, flockId: targetId, placedBirdCount: placedBirdCount || hf.placedBirdCount }
+          : hf,
+      ),
+    };
+    next = syncFlockDatesFromHouses(next, currentFlockId);
+    const leftover = next.houseFlocks.filter((hf) => hf.flockId === currentFlockId).length;
+    const otherActive = next.flocks.some(
+      (flock) =>
+        flock.farmId === farmId &&
+        flock.id !== currentFlockId &&
+        flock.flockStatus !== "COMPLETED" &&
+        !flock.deletedAt,
+    );
+    if (leftover === 0 && otherActive) {
+      next = {
+        ...next,
+        flocks: next.flocks.map((flock) =>
+          flock.id === currentFlockId
+            ? { ...flock, deletedAt: new Date().toISOString(), flockStatus: "COMPLETED" }
+            : flock,
+        ),
+      };
+    }
+  }
+  return syncFlockDatesFromHouses(next, targetId);
+}
+
+function dropFarmFromDashboard(snapshot: OfflineSnapshot, farmId: string): OfflineSnapshot {
+  if (!snapshot.dashboard) return snapshot;
+  const farmName = snapshot.farms.find((farm) => farm.id === farmId)?.farmName;
+  const dashboard = snapshot.dashboard;
+  return {
+    ...snapshot,
+    dashboard: {
+      ...dashboard,
+      farmCards: dashboard.farmCards.filter((card) => card.id !== farmId),
+      todaysSchedule: dashboard.todaysSchedule.filter((row) => row.farmId !== farmId),
+      upcomingSchedule: dashboard.upcomingSchedule.filter((row) => row.farmId !== farmId),
+      upcomingCatches: dashboard.upcomingCatches.filter((row) =>
+        farmName ? row.farmName !== farmName : true,
+      ),
+    },
+  };
+}
+
+function applyUpdateHouse(snapshot: OfflineSnapshot, write: OfflineFormWrite): OfflineSnapshot {
+  const fields = write.fields ?? {};
+  const houseId = write.id ?? "";
+  const farmId = write.farmId ?? fields.farmId ?? "";
+  const house = snapshot.houses.find((row) => row.id === houseId);
+  if (!house) return snapshot;
+
+  let next: OfflineSnapshot = {
+    ...snapshot,
+    houses: snapshot.houses.map((row) =>
+      row.id === houseId
+        ? {
+            ...row,
+            houseNumber: num(fields.houseNumber, row.houseNumber),
+            squareFootage: num(fields.squareFootage, row.squareFootage),
+            totalFanCFM: emptyToNull(fields.totalFanCFM) ? num(fields.totalFanCFM) : row.totalFanCFM,
+            totalPowerCFM: emptyToNull(fields.totalPowerCFM)
+              ? num(fields.totalPowerCFM)
+              : row.totalPowerCFM,
+            numberOfFans: emptyToNull(fields.numberOfFans) ? num(fields.numberOfFans) : row.numberOfFans,
+            notes: fields.notes !== undefined ? emptyToNull(fields.notes) : row.notes,
+          }
+        : row,
+    ),
+  };
+
+  const remaining = next.houses.filter(
+    (row) =>
+      row.farmId === farmId &&
+      !row.deletedAt &&
+      row.id !== houseId &&
+      isHouseInPropagateRange(row.houseNumber, house.houseNumber),
+  );
+  if (remaining.length > 0) {
+    const remainingIds = new Set(remaining.map((row) => row.id));
+    next = {
+      ...next,
+      houses: next.houses.map((row) => {
+        if (!remainingIds.has(row.id)) return row;
+        return {
+          ...row,
+          squareFootage: formFlag(fields, "applySquareFootageToRemaining")
+            ? num(fields.squareFootage, row.squareFootage)
+            : row.squareFootage,
+          totalFanCFM: formFlag(fields, "applyMinVentCfmToRemaining")
+            ? emptyToNull(fields.totalFanCFM)
+              ? num(fields.totalFanCFM)
+              : row.totalFanCFM
+            : row.totalFanCFM,
+          totalPowerCFM: formFlag(fields, "applyPowerCfmToRemaining")
+            ? emptyToNull(fields.totalPowerCFM)
+              ? num(fields.totalPowerCFM)
+              : row.totalPowerCFM
+            : row.totalPowerCFM,
+        };
+      }),
+    };
+  }
+
+  const placedRaw = emptyToNull(fields.placedBirdCount);
+  const placementRaw = emptyToNull(fields.placementDate);
+  const catchRaw = emptyToNull(fields.catchDate);
+  const catchTimeSubmitted = fields.catchTime !== undefined;
+  const flockNumberRaw = emptyToNull(fields.flockNumber);
+  if (
+    placedRaw == null &&
+    placementRaw == null &&
+    catchRaw == null &&
+    !catchTimeSubmitted &&
+    flockNumberRaw == null
+  ) {
+    return next;
+  }
+
+  const activeIds = activeFlockIdsForFarm(next, farmId);
+  const activeFlock =
+    next.flocks.find(
+      (flock) =>
+        activeIds.has(flock.id) &&
+        next.houseFlocks.some((hf) => hf.houseId === houseId && hf.flockId === flock.id),
+    ) ?? next.flocks.find((flock) => activeIds.has(flock.id));
+  if (!activeFlock) return next;
+
+  function upsertHf(
+    current: OfflineSnapshot,
+    targetHouseId: string,
+    patch: {
+      placedBirdCount?: number;
+      placementDate?: string | null;
+      catchDate?: string | null;
+      catchTime?: string | null;
+    },
+  ) {
+    const existing = activeHouseFlock(current, farmId, targetHouseId);
+    if (existing) {
+      return {
+        ...current,
+        houseFlocks: current.houseFlocks.map((hf) =>
+          hf.id === existing.id
+            ? {
+                ...hf,
+                placedBirdCount: patch.placedBirdCount ?? hf.placedBirdCount,
+                placementDate:
+                  patch.placementDate !== undefined ? patch.placementDate : hf.placementDate,
+                catchDate: patch.catchDate !== undefined ? patch.catchDate : hf.catchDate,
+                catchTime: patch.catchTime !== undefined ? patch.catchTime : hf.catchTime,
+              }
+            : hf,
+        ),
+      };
+    }
+    if (patch.placedBirdCount == null && patch.placementDate == null && patch.catchDate == null) {
+      return current;
+    }
+    const place =
+      patch.placementDate ?? asDateKey(activeFlock!.placementDate) ?? activeFlock!.placementDate.slice(0, 10);
+    return {
+      ...current,
+      houseFlocks: [
+        ...current.houseFlocks,
+        {
+          id: localRecordId(),
+          flockId: activeFlock!.id,
+          houseId: targetHouseId,
+          placedBirdCount: patch.placedBirdCount ?? 1,
+          placementDate: place,
+          catchDate: patch.catchDate ?? addDaysKey(place, 52),
+          catchTime: patch.catchTime ?? null,
+        },
+      ],
+    };
+  }
+
+  const placedBirdCount = placedRaw != null ? num(placedRaw) : undefined;
+  const placementDate = placementRaw;
+  const catchDate = catchRaw ?? (placementDate ? addDaysKey(placementDate, 52) : undefined);
+  next = upsertHf(next, houseId, {
+    placedBirdCount,
+    placementDate,
+    catchDate,
+    catchTime: catchTimeSubmitted ? emptyToNull(fields.catchTime) : undefined,
+  });
+
+  if (flockNumberRaw) {
+    const hf = activeHouseFlock(next, farmId, houseId);
+    if (hf) {
+      const place = placementDate ?? hf.placementDate ?? asDateKey(activeFlock.placementDate) ?? "";
+      const catchResolved = catchDate ?? hf.catchDate ?? addDaysKey(place, 52);
+      next = assignHouseFlockNumber(
+        next,
+        farmId,
+        houseId,
+        hf.flockId,
+        flockNumberRaw,
+        place,
+        catchResolved,
+        hf.placedBirdCount,
+      );
+    }
+  }
+
+  const remainingFlags =
+    formFlag(fields, "applyBirdsToRemaining") ||
+    formFlag(fields, "applyPlacementToRemaining") ||
+    formFlag(fields, "applyCatchDateToRemaining") ||
+    formFlag(fields, "applyCatchTimeToRemaining") ||
+    formFlag(fields, "applyFlockIdToRemaining");
+  if (remainingFlags) {
+    for (const row of remaining) {
+      next = upsertHf(next, row.id, {
+        ...(formFlag(fields, "applyBirdsToRemaining") ? { placedBirdCount } : {}),
+        ...(formFlag(fields, "applyPlacementToRemaining") ? { placementDate } : {}),
+        ...(formFlag(fields, "applyCatchDateToRemaining") ? { catchDate } : {}),
+        ...(formFlag(fields, "applyCatchTimeToRemaining") && catchTimeSubmitted
+          ? { catchTime: emptyToNull(fields.catchTime) }
+          : {}),
+      });
+      if (formFlag(fields, "applyFlockIdToRemaining") && flockNumberRaw) {
+        const hf = activeHouseFlock(next, farmId, row.id);
+        if (hf) {
+          const place = placementDate ?? hf.placementDate ?? asDateKey(activeFlock.placementDate) ?? "";
+          const catchResolved = catchDate ?? hf.catchDate ?? addDaysKey(place, 52);
+          next = assignHouseFlockNumber(
+            next,
+            farmId,
+            row.id,
+            hf.flockId,
+            flockNumberRaw,
+            place,
+            catchResolved,
+            hf.placedBirdCount,
+          );
+        }
+      }
+    }
+  }
+
+  return next;
+}
+
 export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrite): OfflineSnapshot {
   const fields = write.fields ?? {};
   const lists = write.listFields ?? {};
@@ -97,12 +470,15 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
         ),
       };
     case "deactivateFarm":
-      return {
-        ...snapshot,
-        farms: snapshot.farms.map((farm) =>
-          farm.id === write.farmId ? { ...farm, isActive: false } : farm,
-        ),
-      };
+      return dropFarmFromDashboard(
+        {
+          ...snapshot,
+          farms: snapshot.farms.map((farm) =>
+            farm.id === write.farmId ? { ...farm, isActive: false } : farm,
+          ),
+        },
+        write.farmId ?? "",
+      );
     case "reactivateFarm":
       return {
         ...snapshot,
@@ -111,14 +487,17 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
         ),
       };
     case "deleteFarm":
-      return {
-        ...snapshot,
-        farms: snapshot.farms.map((farm) =>
-          farm.id === write.farmId
-            ? { ...farm, isActive: false, deletedAt: now }
-            : farm,
-        ),
-      };
+      return dropFarmFromDashboard(
+        {
+          ...snapshot,
+          farms: snapshot.farms.map((farm) =>
+            farm.id === write.farmId
+              ? { ...farm, isActive: false, deletedAt: now }
+              : farm,
+          ),
+        },
+        write.farmId ?? "",
+      );
     case "createHouse": {
       const id = write.id ?? `local-house`;
       return {
@@ -147,28 +526,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
       };
     }
     case "updateHouse":
-      return {
-        ...snapshot,
-        houses: snapshot.houses.map((house) =>
-          house.id === write.id
-            ? {
-                ...house,
-                houseNumber: num(fields.houseNumber, house.houseNumber),
-                squareFootage: num(fields.squareFootage, house.squareFootage),
-                totalFanCFM: emptyToNull(fields.totalFanCFM)
-                  ? num(fields.totalFanCFM)
-                  : house.totalFanCFM,
-                totalPowerCFM: emptyToNull(fields.totalPowerCFM)
-                  ? num(fields.totalPowerCFM)
-                  : house.totalPowerCFM,
-                numberOfFans: emptyToNull(fields.numberOfFans)
-                  ? num(fields.numberOfFans)
-                  : house.numberOfFans,
-                notes: fields.notes !== undefined ? emptyToNull(fields.notes) : house.notes,
-              }
-            : house,
-        ),
-      };
+      return applyUpdateHouse(snapshot, write);
     case "deleteHouse":
       return {
         ...snapshot,
@@ -593,6 +951,114 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
       ];
 
       return { ...snapshot, flocks: nextFlocks, houseFlocks: nextHouseFlocks };
+    }
+    case "createFarm": {
+      const farmId = write.id ?? write.farmId ?? localRecordId();
+      const farmName = (fields.farmName ?? "").trim();
+      if (!farmName) return snapshot;
+      const houseCount = Math.min(40, Math.max(0, Math.floor(num(fields.numberOfHouses, 0))));
+      const houses = Array.from({ length: houseCount }, (_, i) => ({
+        id: localRecordId(),
+        farmId,
+        houseNumber: i + 1,
+        squareFootage: 29700,
+        totalFanCFM: null,
+        totalPowerCFM: null,
+        numberOfFans: null,
+        notes: null,
+        loggedTemp: null,
+        loggedTempAt: null,
+        deletedAt: null,
+      }));
+      return {
+        ...snapshot,
+        farms: [
+          ...snapshot.farms,
+          {
+            id: farmId,
+            farmName,
+            growerName: (fields.growerName ?? "").trim(),
+            farmNumber: null,
+            phoneNumber: null,
+            isActive: true,
+            deletedAt: null,
+            notes: emptyToNull(fields.notes),
+            numberOfHouses: houseCount,
+            numberOfGenerators: emptyToNull(fields.numberOfGenerators)
+              ? num(fields.numberOfGenerators)
+              : null,
+            address: null,
+            city: null,
+            state: null,
+            zipCode: null,
+          },
+        ],
+        houses: [...snapshot.houses, ...houses],
+      };
+    }
+    case "completeFlock": {
+      const flockId = write.id ?? "";
+      return {
+        ...snapshot,
+        flocks: snapshot.flocks.map((flock) =>
+          flock.id === flockId
+            ? {
+                ...flock,
+                flockStatus: "COMPLETED",
+                actualCatchDate: flock.actualCatchDate ?? now.slice(0, 10),
+              }
+            : flock,
+        ),
+      };
+    }
+    case "reactivateFlock": {
+      const flockId = write.id ?? "";
+      const flock = snapshot.flocks.find((row) => row.id === flockId);
+      if (!flock) return snapshot;
+      const houseIds = new Set(
+        snapshot.houseFlocks.filter((hf) => hf.flockId === flockId).map((hf) => hf.houseId),
+      );
+      const overlap = snapshot.houseFlocks.some((hf) => {
+        if (!houseIds.has(hf.houseId) || hf.flockId === flockId) return false;
+        const other = snapshot.flocks.find((row) => row.id === hf.flockId);
+        return Boolean(
+          other &&
+            other.farmId === flock.farmId &&
+            other.flockStatus !== "COMPLETED" &&
+            !other.deletedAt,
+        );
+      });
+      if (overlap) return snapshot;
+      return {
+        ...snapshot,
+        flocks: snapshot.flocks.map((row) =>
+          row.id === flockId ? { ...row, flockStatus: "ACTIVE", actualCatchDate: null } : row,
+        ),
+      };
+    }
+    case "updateFlockNumber": {
+      const nextNumber = (fields.flockNumber ?? "").trim();
+      if (!nextNumber || !write.id) return snapshot;
+      return {
+        ...snapshot,
+        flocks: snapshot.flocks.map((flock) =>
+          flock.id === write.id ? { ...flock, flockNumber: nextNumber } : flock,
+        ),
+      };
+    }
+    case "updateWeightProjection": {
+      const rate = num(fields.growthRateLbsPerDay, NaN);
+      if (!Number.isFinite(rate) || rate < 0 || !write.id) return snapshot;
+      const flock = snapshot.flocks.find((row) => row.id === write.id);
+      if (!flock) return snapshot;
+      return {
+        ...snapshot,
+        flocks: snapshot.flocks.map((row) =>
+          row.farmId === flock.farmId && row.flockStatus !== "COMPLETED" && !row.deletedAt
+            ? { ...row, growthRateLbsPerDay: rate }
+            : row,
+        ),
+      };
     }
     case "saveServiceDraft": {
       const farmId = write.farmId ?? "";

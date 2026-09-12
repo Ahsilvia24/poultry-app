@@ -11,6 +11,7 @@ import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
 import { updateHouseLoggedTempAction } from "@/app/actions/farms";
+import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOffline } from "@/components/OfflineProvider";
 import { applyHouseTemp } from "@/lib/offline/applyLocal";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
@@ -222,7 +223,7 @@ export function HouseCard({
                 )}
               </button>
               {hasFlock && houseFlockId ? (
-                <a
+                <ReplicaLink
                   href={`/mortality?farmId=${encodeURIComponent(farmId)}&houseFlockId=${encodeURIComponent(houseFlockId)}`}
                   className="inline-flex min-h-14 min-w-24 items-center justify-center rounded-xl bg-emerald-800 px-3 py-3 text-center text-sm font-extrabold leading-tight text-white hover:bg-emerald-900"
                   aria-label={`Enter mortality for house ${house.houseNumber}`}
@@ -230,7 +231,7 @@ export function HouseCard({
                   Enter
                   <br />
                   Mortality
-                </a>
+                </ReplicaLink>
               ) : null}
             </div>
           </div>

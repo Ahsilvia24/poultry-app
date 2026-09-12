@@ -795,6 +795,7 @@ export function CompleteFlockButton({
   label?: string;
 }) {
   const [pending, start] = useTransition();
+  const { enabled, queue } = useReplicaWrite();
   return (
     <Button
       type="button"
@@ -803,6 +804,10 @@ export function CompleteFlockButton({
       onClick={() => {
         if (confirm("Mark this flock as completed?")) {
           start(async () => {
+            if (enabled) {
+              queue(formWrite("completeFlock", { id: flockId }));
+              return;
+            }
             await completeFlockAction(flockId);
           });
         }
@@ -822,6 +827,7 @@ export function ReactivateFlockButton({
 }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const { enabled, queue } = useReplicaWrite();
 
   return (
     <div className="inline-flex flex-col items-start gap-1">
@@ -834,6 +840,10 @@ export function ReactivateFlockButton({
           if (!confirm(`Make ${label} active again?`)) return;
           setError(null);
           start(async () => {
+            if (enabled) {
+              queue(formWrite("reactivateFlock", { id: flockId }));
+              return;
+            }
             const result = await reactivateFlockAction(flockId);
             if (result?.error) setError(result.error);
           });

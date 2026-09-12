@@ -4,9 +4,13 @@ import type { ReactNode } from "react";
 import { FarmDetailView } from "@/components/FarmDetailView";
 import { FarmsPageClient } from "@/components/FarmsPageClient";
 import { LfoHub } from "@/components/LfoHub";
+import { MortalityEntryForm } from "@/components/MortalityEntryForm";
+import { NewFarmForm } from "@/components/NewFarmForm";
+import { ReplicaLink } from "@/components/ReplicaLink";
 import { SettingsScreen } from "@/components/SettingsScreen";
 import { ToolsView } from "@/components/ToolsView";
 import { ReportsView } from "@/components/ReportsView";
+import { Card } from "@/components/ui";
 import { PlacementFormView } from "@/components/serviceForms/PlacementFormView";
 import { PrebroodFormView } from "@/components/serviceForms/PrebroodFormView";
 import { ServiceFarmPicker } from "@/components/serviceForms/ServiceFarmPicker";
@@ -20,6 +24,7 @@ import { selectFarmTiles } from "@/lib/offline/selectFarms";
 import { selectLfo } from "@/lib/offline/selectLfo";
 import { selectTools } from "@/lib/offline/selectTools";
 import { selectReports } from "@/lib/offline/selectReports";
+import { selectMortality } from "@/lib/offline/selectMortality";
 import {
   selectServiceFarmPicker,
   selectServiceFormPage,
@@ -58,6 +63,76 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   if (pathname === "/farms") {
     return <FarmsPageClient initial={selectFarmTiles(snapshot)} />;
+  }
+
+  if (pathname === "/farms/new") {
+    return <NewFarmForm />;
+  }
+
+  if (pathname === "/lfo/new") {
+    const data = selectLfo(snapshot);
+    return (
+      <div>
+        <PageHeader title="New LFO" />
+        {data.farms.length === 0 ? (
+          <Card>
+            <p className="text-sm text-stone-600">
+              No farms with an active flock and houses. Add a flock on a farm first.
+            </p>
+          </Card>
+        ) : (
+          <ul className="divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
+            {data.farms.map((farm) => (
+              <li key={farm.id}>
+                <ReplicaLink
+                  href={`/lfo?farmId=${farm.id}`}
+                  className="flex items-baseline justify-between gap-2 px-4 py-3 hover:bg-stone-50"
+                >
+                  <p className="font-semibold text-stone-900">{farm.farmName}</p>
+                  <span className="text-sm font-semibold text-emerald-800">Select →</span>
+                </ReplicaLink>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
+  const lfoNewFarm = /^\/lfo\/new\/([^/]+)$/.exec(pathname);
+  if (lfoNewFarm) {
+    const data = selectLfo(snapshot, lfoNewFarm[1]);
+    return (
+      <div>
+        <PageHeader title="Last Feed Order" />
+        <LfoHub
+          key={data.initialFarmId ?? "manual"}
+          farms={data.farms}
+          savedLfos={data.savedLfos}
+          initialFarmId={data.initialFarmId}
+        />
+      </div>
+    );
+  }
+
+  if (pathname === "/mortality") {
+    const params = new URLSearchParams(search);
+    const model = selectMortality(snapshot, params.get("farmId"), params.get("houseFlockId"));
+    return (
+      <div>
+        <PageHeader title="Mortality Entry" />
+        {model.farms.length === 0 ? (
+          <p className="text-stone-600">Add an active farm with a flock to enter mortality.</p>
+        ) : (
+          <MortalityEntryForm
+            farms={model.farms}
+            initialFarmId={model.initialFarmId}
+            initialHouseFlockId={model.initialHouseFlockId}
+            asOfDateKey={model.asOfDateKey}
+          />
+        )}
+      </div>
+    );
   }
 
   const serviceForm = /^\/farms\/([^/]+)\/service\/(report|placement|prebrood)$/.exec(pathname);

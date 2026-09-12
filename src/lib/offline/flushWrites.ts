@@ -1,11 +1,16 @@
 import {
+  completeFlockAction,
+  createFarmAction,
   createFlockAction,
   createHouseAction,
   deactivateFarmAction,
   deleteFarmAction,
   deleteHouseAction,
   reactivateFarmAction,
+  reactivateFlockAction,
   updateFarmAction,
+  updateFlockNumberAction,
+  updateFlockWeightProjectionAction,
   updateHouseAction,
 } from "@/app/actions/farms";
 import { toggleFollowUpCompletionAction } from "@/app/actions/follow-ups";
@@ -138,6 +143,21 @@ export async function flushFormWrite(write: OfflineFormWrite): Promise<boolean> 
     }
     case "createFlock":
       return !failed(await createFlockAction(farmId, formData, { skipRedirect: true }));
+    case "createFarm":
+      return !failed(await createFarmAction(formData, { skipRedirect: true }));
+    case "completeFlock":
+      if (isLocalRecordId(id)) return true;
+      await completeFlockAction(id);
+      return true;
+    case "reactivateFlock":
+      if (isLocalRecordId(id)) return true;
+      return !failed(await reactivateFlockAction(id));
+    case "updateFlockNumber":
+      if (isLocalRecordId(id)) return true;
+      return !failed(await updateFlockNumberAction(id, write.fields?.flockNumber ?? ""));
+    case "updateWeightProjection":
+      if (isLocalRecordId(id)) return true;
+      return !failed(await updateFlockWeightProjectionAction(id, formData));
     case "saveServiceDraft": {
       const formKind = write.fields?.formKind ?? "";
       if (!isServiceFormKind(formKind)) return false;

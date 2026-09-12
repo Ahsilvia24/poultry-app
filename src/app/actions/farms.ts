@@ -161,7 +161,10 @@ async function syncFlockDatesFromHouses(flockId: string) {
   });
 }
 
-export async function createFarmAction(formData: FormData) {
+export async function createFarmAction(
+  formData: FormData,
+  options?: { skipRedirect?: boolean },
+) {
   const user = await requireUser();
   const parsed = createFarmSchema.safeParse({
     farmName: formData.get("farmName"),
@@ -201,6 +204,7 @@ export async function createFarmAction(formData: FormData) {
   });
 
   revalidatePath("/farms");
+  if (options?.skipRedirect) return { success: true as const, id: farm.id };
   redirect(`/farms/${farm.id}`);
 }
 

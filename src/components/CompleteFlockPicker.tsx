@@ -4,20 +4,25 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { completeFlockAction } from "@/app/actions/farms";
 import { Button } from "@/components/ui";
+import { formWrite } from "@/lib/offline/formPairs";
+import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import { cn } from "@/lib/utils";
 
 type FlockOption = { id: string; flockNumber: string; ageDays: number };
 
 export function CompleteFlockPicker({
+  farmId,
   flocks,
   appearance = "button",
   className,
 }: {
+  farmId: string;
   flocks: FlockOption[];
   appearance?: "button" | "quickLink";
   className?: string;
 }) {
   const router = useRouter();
+  const { enabled, queue } = useReplicaWrite();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
 
@@ -31,6 +36,10 @@ export function CompleteFlockPicker({
     if (!confirm(label)) return;
     setOpen(false);
     start(async () => {
+      if (enabled) {
+        queue(formWrite("completeFlock", { id: flock.id, farmId }));
+        return;
+      }
       await completeFlockAction(flock.id);
       router.refresh();
     });

@@ -56,6 +56,7 @@ export function FarmQuickLinks({
             return (
               <CompleteFlockPicker
                 key={item.key}
+                farmId={farmId}
                 flocks={completeFlocks}
                 appearance="quickLink"
                 className={linkClass}
