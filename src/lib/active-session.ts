@@ -13,9 +13,16 @@ export async function rotateActiveSession(userId: string) {
   const sessionId = crypto.randomUUID();
   await prisma.user.update({
     where: { id: userId },
-    data: { activeSessionId: sessionId },
+    data: { activeSessionId: sessionId, unsyncedAt: null },
   });
   return sessionId;
+}
+
+export async function markUnsynced(userId: string, pending: boolean) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { unsyncedAt: pending ? new Date() : null },
+  });
 }
 
 export async function isActiveSession(
@@ -34,6 +41,6 @@ export async function clearActiveSession(userId: string, presented: string | nul
   if (!presented) return;
   await prisma.user.updateMany({
     where: { id: userId, activeSessionId: presented },
-    data: { activeSessionId: null },
+    data: { activeSessionId: null, unsyncedAt: null },
   });
 }

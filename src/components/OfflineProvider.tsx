@@ -41,10 +41,27 @@ type OfflineContextValue = {
 
 const OfflineContext = createContext<OfflineContextValue | null>(null);
 
+async function reportUnsynced(pending: boolean) {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+  try {
+    await fetch("/api/offline/pending", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pending }),
+      keepalive: true,
+    });
+  } catch {
+    // Best-effort. Login can still warn when another device is signed in.
+  }
+}
+
 async function flushOutbox() {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return;
   const items = await loadOutbox();
-  if (items.length === 0) return;
+  if (items.length === 0) {
+    await reportUnsynced(false);
+    return;
+  }
   const remain: OfflineOutboxItem[] = [];
   for (const item of items) {
     try {
@@ -103,6 +120,7 @@ async function flushOutbox() {
     }
   }
   await saveOutbox(remain);
+  await reportUnsynced(remain.length > 0);
 }
 
 async function pullRemoteSnapshot(): Promise<OfflineSnapshot | null> {
@@ -141,6 +159,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     void loadOutbox()
       .then((items) => saveOutbox(coalesceFormWrite(items, full)))
       .then(() => {
+        void reportUnsynced(true);
         if (typeof navigator === "undefined" || navigator.onLine === false) return;
         return flushOutbox();
       });
@@ -155,6 +174,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       setSyncing(true);
       try {
+        const queued = await loadOutbox();
+        if (queued.length) await reportUnsynced(true);
         await flushOutbox();
         const remote = await pullRemoteSnapshot();
         if (!cancelled && remote) replaceSnapshot(remote);

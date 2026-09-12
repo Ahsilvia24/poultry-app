@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { replaceLoginStatus } from "@/lib/replace-login";
+import { verifyEmailPassword } from "@/lib/verify-credentials";
 import { establishWebSession } from "@/lib/web-session";
 
 export const dynamic = "force-dynamic";
@@ -13,17 +16,27 @@ function requestOrigin(req: Request) {
   return url.origin;
 }
 
+function truthy(value: unknown) {
+  return value === true || value === "1" || value === "true";
+}
+
 async function readCredentials(req: Request): Promise<{
   email: string;
   password: string;
+  confirmReplace: boolean;
   json: boolean;
 }> {
   const ct = req.headers.get("content-type") ?? "";
   if (ct.includes("application/json")) {
-    const body = (await req.json()) as { email?: unknown; password?: unknown };
+    const body = (await req.json()) as {
+      email?: unknown;
+      password?: unknown;
+      confirmReplace?: unknown;
+    };
     return {
       email: String(body.email ?? "").trim().toLowerCase(),
       password: String(body.password ?? ""),
+      confirmReplace: truthy(body.confirmReplace),
       json: true,
     };
   }
@@ -32,24 +45,30 @@ async function readCredentials(req: Request): Promise<{
     return {
       email: String(form.get("email") ?? "").trim().toLowerCase(),
       password: String(form.get("password") ?? ""),
+      confirmReplace: truthy(form.get("confirmReplace")),
       json: false,
     };
   }
   try {
-    const body = (await req.json()) as { email?: unknown; password?: unknown };
+    const body = (await req.json()) as {
+      email?: unknown;
+      password?: unknown;
+      confirmReplace?: unknown;
+    };
     return {
       email: String(body.email ?? "").trim().toLowerCase(),
       password: String(body.password ?? ""),
+      confirmReplace: truthy(body.confirmReplace),
       json: true,
     };
   } catch {
-    return { email: "", password: "", json: true };
+    return { email: "", password: "", confirmReplace: false, json: true };
   }
 }
 
 export async function POST(req: Request) {
   const origin = requestOrigin(req);
-  let parsed: { email: string; password: string; json: boolean };
+  let parsed: { email: string; password: string; confirmReplace: boolean; json: boolean };
   try {
     parsed = await readCredentials(req);
   } catch {
@@ -65,6 +84,26 @@ export async function POST(req: Request) {
 
   if (!parsed.email || !parsed.password) {
     return fail("Invalid email or password", 400);
+  }
+
+  const user = await verifyEmailPassword(parsed.email, parsed.password);
+  if (!user) return fail("Invalid email or password", 401);
+
+  if (!parsed.confirmReplace) {
+    const session = await auth();
+    const status = replaceLoginStatus({
+      activeSessionId: user.activeSessionId,
+      unsyncedAt: user.unsyncedAt,
+      currentSessionId: session?.user?.sessionId,
+    });
+    if (status.otherDevice) {
+      if (parsed.json) {
+        return NextResponse.json({ needsConfirm: true, unsynced: status.unsynced });
+      }
+      const url = new URL("/login", origin);
+      url.searchParams.set("confirm", status.unsynced ? "unsynced" : "replace");
+      return NextResponse.redirect(url, 303);
+    }
   }
 
   const result = await establishWebSession(parsed.email, parsed.password);
