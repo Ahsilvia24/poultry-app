@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { DashboardHome } from "@/components/DashboardHome";
 import { FarmDetailView } from "@/components/FarmDetailView";
 import { FarmsPageClient } from "@/components/FarmsPageClient";
 import { LfoEditView } from "@/components/LfoEditView";
@@ -11,12 +12,11 @@ import { ReplicaLink } from "@/components/ReplicaLink";
 import { SettingsScreen } from "@/components/SettingsScreen";
 import { ToolsView } from "@/components/ToolsView";
 import { ReportsView } from "@/components/ReportsView";
-import { Card } from "@/components/ui";
 import { PlacementFormView } from "@/components/serviceForms/PlacementFormView";
 import { PrebroodFormView } from "@/components/serviceForms/PrebroodFormView";
 import { ServiceFarmPicker } from "@/components/serviceForms/ServiceFarmPicker";
 import { ServiceReportFormView } from "@/components/serviceForms/ServiceReportFormView";
-import { PageHeader } from "@/components/ui";
+import { BackCaret, Card, PageHeader } from "@/components/ui";
 import { useOffline } from "@/components/OfflineProvider";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { replicaPath, snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
@@ -41,10 +41,11 @@ function ReplicaFarmMissing({ farmId }: { farmId: string }) {
     <div>
       <button
         type="button"
-        className="inline-flex min-h-11 items-center gap-2 text-base font-semibold text-emerald-800"
+        className="inline-flex min-h-11 items-center gap-1 text-base font-semibold text-emerald-800"
         onClick={() => nav?.navigate("/farms")}
       >
-        ← Farms
+        <BackCaret />
+        Farms
       </button>
       <p className="mt-4 text-sm font-semibold text-stone-800">This farm is not on the phone yet.</p>
       <p className="mt-1 text-sm text-stone-500">
@@ -63,6 +64,10 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
   const { pathname, search } = replicaPath(viewHref);
   const rawFarmId = new URLSearchParams(search).get("farmId");
   const farmIdParam = rawFarmId ? resolveAlias(aliases, rawFarmId) : null;
+
+  if (pathname === "/") {
+    return <DashboardHome initial={snapshot.dashboard} scheduleImports={[]} />;
+  }
 
   if (pathname === "/farms") {
     return <FarmsPageClient initial={selectFarmTiles(snapshot)} />;
@@ -130,8 +135,9 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
             <p className="mt-1 text-sm text-stone-500">
               Open it once with a connection and it will stay available offline.
             </p>
-            <ReplicaLink href="/lfo" className="mt-3 inline-flex text-sm font-semibold text-emerald-800">
-              ← LFOs
+            <ReplicaLink href="/lfo" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-emerald-800">
+              <BackCaret />
+              LFOs
             </ReplicaLink>
           </Card>
         </div>

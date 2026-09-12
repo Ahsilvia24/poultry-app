@@ -116,6 +116,7 @@ assert.ok(preview.every((farm) => farm.isMyFarm === false));
 const unmatched = preview[0];
 assert.ok(unmatched);
 
+assert.equal(isReplicaHref("/"), true);
 assert.equal(isReplicaHref("/farms"), true);
 assert.equal(isReplicaHref("/farms/abc"), true);
 assert.equal(isReplicaHref("/farms/new"), true);
@@ -459,6 +460,13 @@ assert.match(read("src/components/CompleteFlockPicker.tsx"), /completeFlock/);
 assert.match(read("src/components/WeightProjectionTile.tsx"), /updateWeightProjection/);
 assert.match(read("src/components/DashboardFarmCards.tsx"), /deactivateFarm/);
 assert.match(read("src/components/OfflineNav.tsx"), /selectMortality/);
+assert.match(read("src/components/OfflineNav.tsx"), /DashboardHome/);
+assert.match(read("src/components/OfflineNav.tsx"), /pathname === "\/"/);
+assert.match(read("src/components/ui.tsx"), /export function BackCaret/);
+assert.match(read("src/components/FarmDetailView.tsx"), /BackCaret/);
+assert.doesNotMatch(read("src/components/AddFlockSection.tsx"), /Processing plant/);
+assert.match(read("src/components/AddFlockSection.tsx"), /Propagate \(to the rest of the houses\)/);
+assert.match(read("src/components/MortalityEntryForm.tsx"), /setMortField\(\{ kind: "mortality", age: jumpTo\.age \}\)/);
 assert.match(read("src/components/OfflineNav.tsx"), /selectLfoEdit/);
 assert.match(read("src/components/SavedLfoRow.tsx"), /ReplicaLink/);
 assert.match(read("src/components/LfoEditView.tsx"), /updateLfo/);
@@ -662,6 +670,10 @@ const imported = applyPlacementToSnapshot(snapshot, {
 assert.equal(imported.ok, true);
 assert.equal(imported.createdFarms, 1);
 assert.ok(imported.snapshot.farms.some((farm) => farm.farmName === unmatched.farmName));
+assert.equal(
+  imported.snapshot.farms.find((farm) => farm.farmName === unmatched.farmName)?.farmNumber,
+  null,
+);
 assert.ok(imported.snapshot.houses.some((house) => house.farmId !== "farm-1"));
 const importedFarmId = localImportFarmId(unmatched.key);
 assert.ok(imported.snapshot.farms.some((farm) => farm.id === importedFarmId));

@@ -20,6 +20,7 @@ export function replicaPath(href: string): { pathname: string; search: string } 
 export function isReplicaHref(href: string): boolean {
   const { pathname } = replicaPath(href);
   if (
+    pathname === "/" ||
     pathname === "/farms" ||
     pathname === "/farms/new" ||
     pathname === "/settings" ||
