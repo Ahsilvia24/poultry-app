@@ -32,7 +32,9 @@ export function TabGlyph({
             width={el.width}
             height={el.height}
             rx={el.rx}
-            fill={color}
+            fill={el.fill === "none" ? "none" : color}
+            stroke={el.fill === "none" ? color : undefined}
+            strokeWidth={el.strokeWidth}
           />
         ),
       )}

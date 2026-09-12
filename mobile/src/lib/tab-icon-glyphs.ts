@@ -37,10 +37,10 @@ export const TAB_ICON_ELEMENTS: Record<TabIconName, TabIconEl[]> = {
     },
   ],
   dashboard: [
-    { tag: "rect", x: 4.6, y: 4.6, width: 6.05, height: 6.05, rx: 1.25 },
-    { tag: "rect", x: 13.35, y: 4.6, width: 6.05, height: 6.05, rx: 1.25 },
-    { tag: "rect", x: 4.6, y: 13.35, width: 6.05, height: 6.05, rx: 1.25 },
-    { tag: "rect", x: 13.35, y: 13.35, width: 6.05, height: 6.05, rx: 1.25 },
+    { tag: "rect", x: 4.7, y: 4.7, width: 6.1, height: 6.1, rx: 0.95, fill: "none", strokeWidth: 1.7 },
+    { tag: "rect", x: 13.2, y: 4.7, width: 6.1, height: 6.1, rx: 0.95, fill: "none", strokeWidth: 1.7 },
+    { tag: "rect", x: 4.7, y: 13.2, width: 6.1, height: 6.1, rx: 0.95, fill: "none", strokeWidth: 1.7 },
+    { tag: "rect", x: 13.2, y: 13.2, width: 6.1, height: 6.1, rx: 0.95, fill: "none", strokeWidth: 1.7 },
   ],
   farms: [
     {

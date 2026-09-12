@@ -38,7 +38,11 @@ assert.match(lfo.d, /15\.3/);
 
 const dashboard = TAB_ICON_ELEMENTS.dashboard;
 assert.equal(dashboard.length, 4);
-assert.ok(dashboard.every((el) => el.tag === "rect" && el.width === el.height));
+assert.ok(
+  dashboard.every(
+    (el) => el.tag === "rect" && el.fill === "none" && el.width === el.height,
+  ),
+);
 
 const farms = TAB_ICON_ELEMENTS.farms[0];
 assert.equal(farms?.tag, "path");
