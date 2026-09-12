@@ -20,6 +20,7 @@ import { PageHeader } from "@/components/ui";
 import { useOffline } from "@/components/OfflineProvider";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { replicaPath, snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
+import { resolveAlias } from "@/lib/offline/remapIds";
 import { selectFarmDetail } from "@/lib/offline/selectFarmDetail";
 import { selectFarmTiles } from "@/lib/offline/selectFarms";
 import { selectLfo, selectLfoEdit } from "@/lib/offline/selectLfo";
@@ -54,13 +55,14 @@ function ReplicaFarmMissing({ farmId }: { farmId: string }) {
 }
 
 export function OfflineRoutes({ children }: { children: ReactNode }) {
-  const { snapshot } = useOffline();
+  const { snapshot, aliases } = useOffline();
   const nav = useOfflineNav();
   const viewHref = nav?.viewHref ?? "/";
   if (!snapshotHasFarmGraph(snapshot)) return children;
 
   const { pathname, search } = replicaPath(viewHref);
-  const farmIdParam = new URLSearchParams(search).get("farmId");
+  const rawFarmId = new URLSearchParams(search).get("farmId");
+  const farmIdParam = rawFarmId ? resolveAlias(aliases, rawFarmId) : null;
 
   if (pathname === "/farms") {
     return <FarmsPageClient initial={selectFarmTiles(snapshot)} />;
@@ -102,7 +104,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const lfoNewFarm = /^\/lfo\/new\/([^/]+)$/.exec(pathname);
   if (lfoNewFarm) {
-    const data = selectLfo(snapshot, lfoNewFarm[1]);
+    const data = selectLfo(snapshot, resolveAlias(aliases, lfoNewFarm[1]));
     return (
       <div>
         <PageHeader title="Last Feed Order" />
@@ -118,7 +120,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const lfoEdit = /^\/lfo\/([^/]+)$/.exec(pathname);
   if (lfoEdit && lfoEdit[1] !== "new") {
-    const data = selectLfoEdit(snapshot, lfoEdit[1]);
+    const data = selectLfoEdit(snapshot, resolveAlias(aliases, lfoEdit[1]));
     if (!data) {
       return (
         <div>
@@ -140,7 +142,11 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   if (pathname === "/mortality") {
     const params = new URLSearchParams(search);
-    const model = selectMortality(snapshot, params.get("farmId"), params.get("houseFlockId"));
+    const model = selectMortality(
+      snapshot,
+      params.get("farmId") ? resolveAlias(aliases, params.get("farmId")) : null,
+      params.get("houseFlockId") ? resolveAlias(aliases, params.get("houseFlockId")) : null,
+    );
     return (
       <div>
         <PageHeader title="Mortality Entry" />
@@ -160,7 +166,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const serviceForm = /^\/farms\/([^/]+)\/service\/(report|placement|prebrood)$/.exec(pathname);
   if (serviceForm && serviceForm[1] !== "new") {
-    const farmId = serviceForm[1];
+    const farmId = resolveAlias(aliases, serviceForm[1]);
     const kind =
       serviceForm[2] === "report"
         ? "service_report"
@@ -207,7 +213,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const serviceHome = /^\/farms\/([^/]+)\/service$/.exec(pathname);
   if (serviceHome && serviceHome[1] !== "new") {
-    const farmId = serviceHome[1];
+    const farmId = resolveAlias(aliases, serviceHome[1]);
     const model = selectServiceFarmPicker(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return (
@@ -221,7 +227,8 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const farmDetail = /^\/farms\/([^/]+)$/.exec(pathname);
   if (farmDetail && farmDetail[1] !== "new") {
-    const model = selectFarmDetail(snapshot, farmDetail[1]);
+    const farmId = resolveAlias(aliases, farmDetail[1]);
+    const model = selectFarmDetail(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmDetail[1]} />;
     return <FarmDetailView model={model} timeZone={snapshot.settings?.appTimeZone} />;
   }

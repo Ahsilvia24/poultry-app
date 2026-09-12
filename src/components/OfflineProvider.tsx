@@ -14,8 +14,10 @@ import { applyPlacementImportAction } from "@/app/actions/placement-import";
 import { updateHouseLoggedTempAction } from "@/app/actions/farms";
 import { updateSettingsAction } from "@/app/actions/ops";
 import {
+  loadIdAliases,
   loadLocalSnapshot,
   loadOutbox,
+  saveIdAliases,
   saveLocalSnapshot,
   saveOutbox,
 } from "@/lib/offline/idb";
@@ -28,12 +30,19 @@ import type { CatchSelection } from "@/app/actions/catch-import";
 import type { PlacementSelection } from "@/app/actions/placement-import";
 import { coalesceFormWrite } from "@/lib/offline/applyWrites";
 import { flushFormWrite } from "@/lib/offline/flushWrites";
+import {
+  canReplaceReplicaWithRemote,
+  mergeAliases,
+  remapOutboxItem,
+  type IdAliases,
+} from "@/lib/offline/remapIds";
 import type { OfflineFormWrite, OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
 
 type OfflineContextValue = {
   snapshot: OfflineSnapshot | null;
   ready: boolean;
   syncing: boolean;
+  aliases: IdAliases;
   enqueue: (item: Omit<OfflineOutboxItem, "id" | "createdAt">) => void;
   replaceSnapshot: (snapshot: OfflineSnapshot) => void;
   patchSnapshot: (fn: (snapshot: OfflineSnapshot) => OfflineSnapshot) => void;
@@ -55,72 +64,81 @@ async function reportUnsynced(pending: boolean) {
   }
 }
 
-async function flushOutbox() {
-  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+async function flushOutbox(): Promise<{ pending: number; aliases: IdAliases }> {
+  let aliases = await loadIdAliases();
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    const items = await loadOutbox();
+    return { pending: items.length, aliases };
+  }
   const items = await loadOutbox();
   if (items.length === 0) {
     await reportUnsynced(false);
-    return;
+    return { pending: 0, aliases };
   }
   const remain: OfflineOutboxItem[] = [];
   for (const item of items) {
+    const remapped = remapOutboxItem(item, aliases);
     try {
-      if (item.kind === "applyPlacement") {
-        const payload = item.payload as {
+      if (remapped.kind === "applyPlacement") {
+        const payload = remapped.payload as {
           selections?: PlacementSelection[];
           rows?: unknown;
         };
         const res = await applyPlacementImportAction({
-          importId: item.id,
+          importId: remapped.id,
           selections: payload.selections ?? [],
           rows: payload.rows as never,
         });
-        if (!res.ok) remain.push(item);
+        if (!res.ok) remain.push(remapped);
         continue;
       }
-      if (item.kind === "applyCatch") {
-        const payload = item.payload as {
+      if (remapped.kind === "applyCatch") {
+        const payload = remapped.payload as {
           selections?: CatchSelection[];
           rows?: unknown;
         };
         const res = await applyCatchImportAction({
-          importId: item.id,
+          importId: remapped.id,
           selections: payload.selections ?? [],
           rows: payload.rows as never,
         });
-        if (!res.ok) remain.push(item);
+        if (!res.ok) remain.push(remapped);
         continue;
       }
-      if (item.kind === "updateHouseTemp") {
-        const payload = item.payload as HouseTempWrite;
+      if (remapped.kind === "updateHouseTemp") {
+        const payload = remapped.payload as HouseTempWrite;
         const res = await updateHouseLoggedTempAction(
           payload.farmId,
           payload.houseId,
           payload.temp,
           payload.dateKey,
         );
-        if (res?.error) remain.push(item);
+        if (res?.error) remain.push(remapped);
         continue;
       }
-      if (item.kind === "updateSettings") {
+      if (remapped.kind === "updateSettings") {
         const res = await updateSettingsAction(
-          formDataFromSettingsWrite(item.payload as SettingsWrite),
+          formDataFromSettingsWrite(remapped.payload as SettingsWrite),
         );
-        if (res && "error" in res && res.error) remain.push(item);
+        if (res && "error" in res && res.error) remain.push(remapped);
         continue;
       }
-      if (item.kind === "formWrite") {
-        const ok = await flushFormWrite(item.payload as OfflineFormWrite);
-        if (!ok) remain.push(item);
+      if (remapped.kind === "formWrite") {
+        const result = await flushFormWrite(remapped.payload as OfflineFormWrite, aliases);
+        aliases = mergeAliases(aliases, result.aliases);
+        if (!result.ok) remain.push(remapOutboxItem(remapped, aliases));
         continue;
       }
-      remain.push(item);
+      remain.push(remapped);
     } catch {
-      remain.push(item);
+      remain.push(remapOutboxItem(remapped, aliases));
     }
   }
-  await saveOutbox(remain);
-  await reportUnsynced(remain.length > 0);
+  const leftover = remain.map((item) => remapOutboxItem(item, aliases));
+  await saveIdAliases(aliases);
+  await saveOutbox(leftover);
+  await reportUnsynced(leftover.length > 0);
+  return { pending: leftover.length, aliases };
 }
 
 async function pullRemoteSnapshot(): Promise<OfflineSnapshot | null> {
@@ -135,6 +153,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<OfflineSnapshot | null>(null);
   const [ready, setReady] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [aliases, setAliases] = useState<IdAliases>({});
 
   const replaceSnapshot = useCallback((next: OfflineSnapshot) => {
     setSnapshot(next);
@@ -161,7 +180,9 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       .then(() => {
         void reportUnsynced(true);
         if (typeof navigator === "undefined" || navigator.onLine === false) return;
-        return flushOutbox();
+        return flushOutbox().then((flushed) => {
+          setAliases(flushed.aliases);
+        });
       });
   }, []);
 
@@ -169,16 +190,21 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     (async () => {
       const local = await loadLocalSnapshot();
+      const storedAliases = await loadIdAliases();
       if (!cancelled && local) setSnapshot(local);
+      if (!cancelled) setAliases(storedAliases);
       if (!cancelled) setReady(true);
       if (cancelled) return;
       setSyncing(true);
       try {
         const queued = await loadOutbox();
         if (queued.length) await reportUnsynced(true);
-        await flushOutbox();
-        const remote = await pullRemoteSnapshot();
-        if (!cancelled && remote) replaceSnapshot(remote);
+        const flushed = await flushOutbox();
+        if (!cancelled) setAliases(flushed.aliases);
+        if (canReplaceReplicaWithRemote(flushed.pending)) {
+          const remote = await pullRemoteSnapshot();
+          if (!cancelled && remote) replaceSnapshot(remote);
+        }
       } catch {
         // Stay on the local replica. Never block the UI on sync.
       } finally {
@@ -188,8 +214,10 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     const onOnline = () => {
       setSyncing(true);
       void flushOutbox()
-        .then(() => pullRemoteSnapshot())
-        .then((remote) => {
+        .then(async (flushed) => {
+          setAliases(flushed.aliases);
+          if (!canReplaceReplicaWithRemote(flushed.pending)) return;
+          const remote = await pullRemoteSnapshot();
           if (remote) replaceSnapshot(remote);
         })
         .catch(() => undefined)
@@ -203,8 +231,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   }, [replaceSnapshot]);
 
   const value = useMemo(
-    () => ({ snapshot, ready, syncing, enqueue, replaceSnapshot, patchSnapshot }),
-    [snapshot, ready, syncing, enqueue, replaceSnapshot, patchSnapshot],
+    () => ({ snapshot, ready, syncing, aliases, enqueue, replaceSnapshot, patchSnapshot }),
+    [snapshot, ready, syncing, aliases, enqueue, replaceSnapshot, patchSnapshot],
   );
 
   return <OfflineContext.Provider value={value}>{children}</OfflineContext.Provider>;
@@ -214,6 +242,7 @@ const missingOffline: OfflineContextValue = {
   snapshot: null,
   ready: true,
   syncing: false,
+  aliases: {},
   enqueue: () => undefined,
   replaceSnapshot: () => undefined,
   patchSnapshot: () => undefined,

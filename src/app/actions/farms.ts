@@ -178,7 +178,7 @@ export async function createFarmAction(
   const houseCount = parsed.data.numberOfHouses;
   const defaultSquareFootage = 29700;
 
-  const farm = await prisma.$transaction(async (tx) => {
+  const { farm, houses } = await prisma.$transaction(async (tx) => {
     const created = await tx.farm.create({
       data: {
         userId: requireUserId(user.id),
@@ -200,11 +200,20 @@ export async function createFarmAction(
       });
     }
 
-    return created;
+    const houses =
+      houseCount > 0
+        ? await tx.house.findMany({
+            where: { farmId: created.id, deletedAt: null },
+            select: { id: true, houseNumber: true },
+            orderBy: { houseNumber: "asc" },
+          })
+        : [];
+
+    return { farm: created, houses };
   });
 
   revalidatePath("/farms");
-  if (options?.skipRedirect) return { success: true as const, id: farm.id };
+  if (options?.skipRedirect) return { success: true as const, id: farm.id, houses };
   redirect(`/farms/${farm.id}`);
 }
 
@@ -323,16 +332,18 @@ export async function createHouseAction(farmId: string, formData: FormData) {
   const parsed = parseHouseForm(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid house" };
 
-  await prisma.$transaction(async (tx) => {
-    await tx.house.create({ data: { farmId, ...parsed.data } });
+  const house = await prisma.$transaction(async (tx) => {
+    const created = await tx.house.create({ data: { farmId, ...parsed.data } });
     const count = await tx.house.count({ where: { farmId, deletedAt: null } });
     await tx.farm.update({ where: { id: farmId }, data: { numberOfHouses: count } });
     await ensureActiveFlockHouseFlocks(farmId, { db: tx });
+    return created;
   });
 
   revalidatePath(`/farms/${farmId}`);
   revalidatePath("/mortality");
   revalidatePath("/");
+  return { success: true as const, id: house.id };
 }
 
 export async function updateHouseAction(farmId: string, houseId: string, formData: FormData) {
@@ -693,6 +704,7 @@ export async function createFlockAction(
     }
   }
 
+  let flockId = existingSameNumber?.id ?? "";
   try {
     if (existingSameNumber) {
       if (housePlacements.length > 0) {
@@ -719,7 +731,7 @@ export async function createFlockAction(
         });
       }
     } else {
-      await prisma.flock.create({
+      const created = await prisma.flock.create({
         data: {
           farmId,
           flockNumber: parsed.data.flockNumber,
@@ -747,13 +759,21 @@ export async function createFlockAction(
           },
         },
       });
+      flockId = created.id;
     }
   } catch {
     return { error: "Could not create flock. Try again." };
   }
 
+  const houseFlocks = flockId
+    ? await prisma.houseFlock.findMany({
+        where: { flockId },
+        select: { id: true, houseId: true },
+      })
+    : [];
+
   revalidatePath(`/farms/${farmId}`);
-  if (options?.skipRedirect) return { success: true as const };
+  if (options?.skipRedirect) return { success: true as const, id: flockId, houseFlocks };
   redirect(`/farms/${farmId}`);
 }
 

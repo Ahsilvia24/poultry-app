@@ -4,7 +4,12 @@ import { birdAgeFromPlacement, calcTotalDailyLoss } from "@/lib/mortality/calcul
 import { isHouseInPropagateRange } from "@/lib/housePropagate";
 import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
 import { asDate, asDateKey } from "@/lib/offline/dates";
-import { isLocalRecordId, localRecordId } from "@/lib/offline/formPairs";
+import {
+  isLocalRecordId,
+  localCreatedHouseFlockId,
+  localCreatedHouseId,
+  localRecordId,
+} from "@/lib/offline/formPairs";
 import { isServiceFormKind } from "@/lib/serviceForms/stored";
 import type { AnyServiceForm } from "@/lib/serviceForms/types";
 import type {
@@ -1021,7 +1026,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
         ...openPlacements
           .filter((row) => !alreadyOnFlock.has(row.houseId))
           .map((row) => ({
-            id: localRecordId(),
+            id: localCreatedHouseFlockId(flockId, row.houseId),
             flockId,
             houseId: row.houseId,
             placedBirdCount: row.placedBirdCount,
@@ -1039,7 +1044,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
       if (!farmName) return snapshot;
       const houseCount = Math.min(40, Math.max(0, Math.floor(num(fields.numberOfHouses, 0))));
       const houses = Array.from({ length: houseCount }, (_, i) => ({
-        id: localRecordId(),
+        id: localCreatedHouseId(farmId, i + 1),
         farmId,
         houseNumber: i + 1,
         squareFootage: 29700,

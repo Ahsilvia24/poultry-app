@@ -65,3 +65,15 @@ export async function loadOutbox(): Promise<OfflineOutboxItem[]> {
 export async function saveOutbox(items: OfflineOutboxItem[]): Promise<void> {
   await idbSet("outbox", items);
 }
+
+export async function loadIdAliases(): Promise<Record<string, string>> {
+  try {
+    return (await idbGet<Record<string, string>>("idAliases")) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+export async function saveIdAliases(aliases: Record<string, string>): Promise<void> {
+  await idbSet("idAliases", aliases);
+}

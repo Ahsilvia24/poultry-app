@@ -33,6 +33,14 @@ export function localRecordId() {
   return `local-${crypto.randomUUID()}`;
 }
 
+export function localCreatedHouseId(farmId: string, houseNumber: number) {
+  return `${farmId}-h-${houseNumber}`;
+}
+
+export function localCreatedHouseFlockId(flockId: string, houseId: string) {
+  return `${flockId}-hf-${houseId}`;
+}
+
 export function isLocalRecordId(id: string | undefined) {
   return Boolean(id?.startsWith("local-"));
 }

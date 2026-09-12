@@ -15,6 +15,7 @@ assert.ok(existsSync(join(root, "src/lib/offline/selectTools.ts")));
 assert.ok(existsSync(join(root, "src/lib/offline/applyLocal.ts")));
 assert.ok(existsSync(join(root, "src/lib/offline/selectReports.ts")));
 assert.ok(existsSync(join(root, "src/lib/offline/applyWrites.ts")));
+assert.ok(existsSync(join(root, "src/lib/offline/remapIds.ts")));
 
 const layout = read("src/app/(dashboard)/layout.tsx");
 assert.match(layout, /OfflineProvider/);
@@ -29,6 +30,10 @@ assert.match(provider, /updateHouseTemp/);
 assert.match(provider, /updateSettings/);
 assert.match(provider, /formWrite/);
 assert.match(provider, /flushFormWrite/);
+assert.match(provider, /canReplaceReplicaWithRemote/);
+assert.match(provider, /remapOutboxItem/);
+assert.match(provider, /loadIdAliases/);
+assert.match(provider, /saveIdAliases/);
 
 const farmPage = read("src/app/(dashboard)/farms/[id]/page.tsx");
 assert.match(farmPage, /FarmDetailClient/);
@@ -78,6 +83,13 @@ const { selectLfo, selectLfoEdit } = await import(join(root, "src/lib/offline/se
 const { selectTools } = await import(join(root, "src/lib/offline/selectTools.ts"));
 const { selectReports } = await import(join(root, "src/lib/offline/selectReports.ts"));
 const { applyFormWrite } = await import(join(root, "src/lib/offline/applyWrites.ts"));
+const {
+  aliasesFromCreateFarm,
+  canReplaceReplicaWithRemote,
+  remapFormWrite,
+  remapOutboxItem,
+  resolveAlias,
+} = await import(join(root, "src/lib/offline/remapIds.ts"));
 const { applyCatchToSnapshot, applyPlacementToSnapshot } = await import(
   join(root, "src/lib/offline/applyImport.ts")
 );
@@ -456,6 +468,78 @@ const createdFarm = applyFormWrite(snapshot, {
 });
 assert.equal(createdFarm.farms.some((farm) => farm.id === "local-farm-9"), true);
 assert.equal(createdFarm.houses.filter((house) => house.farmId === "local-farm-9").length, 3);
+assert.ok(createdFarm.houses.some((house) => house.id === "local-farm-9-h-1"));
+assert.ok(createdFarm.houses.some((house) => house.id === "local-farm-9-h-3"));
+
+const renamedOffline = applyFormWrite(createdFarm, {
+  action: "updateFarm",
+  farmId: "local-farm-9",
+  fields: { farmName: "New Place East", growerName: "Pat", farmNumber: "88" },
+});
+assert.equal(
+  renamedOffline.farms.find((farm) => farm.id === "local-farm-9")?.farmName,
+  "New Place East",
+);
+
+const createAliases = aliasesFromCreateFarm({
+  localFarmId: "local-farm-9",
+  serverFarmId: "farm-server-9",
+  localHouses: createdFarm.houses.filter((house) => house.farmId === "local-farm-9"),
+  serverHouses: [
+    { id: "house-server-1", houseNumber: 1 },
+    { id: "house-server-2", houseNumber: 2 },
+    { id: "house-server-3", houseNumber: 3 },
+  ],
+});
+assert.equal(resolveAlias(createAliases, "local-farm-9"), "farm-server-9");
+assert.equal(resolveAlias(createAliases, "local-farm-9-h-2"), "house-server-2");
+
+const remappedEdit = remapFormWrite(
+  {
+    action: "updateFarm",
+    farmId: "local-farm-9",
+    fields: { farmName: "New Place East", farmId: "local-farm-9" },
+  },
+  createAliases,
+);
+assert.equal(remappedEdit.farmId, "farm-server-9");
+assert.equal(remappedEdit.fields?.farmId, "farm-server-9");
+
+const remappedHouse = remapFormWrite(
+  {
+    action: "updateHouse",
+    id: "local-farm-9-h-1",
+    farmId: "local-farm-9",
+    fields: { houseNumber: "1", squareFootage: "31000" },
+  },
+  createAliases,
+);
+assert.equal(remappedHouse.id, "house-server-1");
+assert.equal(remappedHouse.farmId, "farm-server-9");
+
+const remappedOutbox = remapOutboxItem(
+  {
+    id: "outbox-1",
+    createdAt: "2026-09-12T00:00:00.000Z",
+    kind: "formWrite",
+    payload: {
+      action: "updateFarm",
+      farmId: "local-farm-9",
+      fields: { farmName: "New Place East" },
+    },
+  },
+  createAliases,
+);
+assert.equal(remappedOutbox.payload.farmId, "farm-server-9");
+assert.equal(canReplaceReplicaWithRemote(1), false);
+assert.equal(canReplaceReplicaWithRemote(0), true);
+
+const farmActions = read("src/app/actions/farms.ts");
+assert.match(farmActions, /if \(options\?\.skipRedirect\) return \{ success: true as const, id: farm\.id, houses \}/);
+assert.match(farmActions, /return \{ success: true as const, id: house\.id \}/);
+assert.match(farmActions, /houseFlocks/);
+assert.match(read("src/components/OfflineNav.tsx"), /resolveAlias/);
+assert.match(read("src/components/FarmDetailClient.tsx"), /resolveAlias/);
 
 const ended = applyFormWrite(snapshot, { action: "completeFlock", id: "flock-1" });
 assert.equal(ended.flocks[0].flockStatus, "COMPLETED");
