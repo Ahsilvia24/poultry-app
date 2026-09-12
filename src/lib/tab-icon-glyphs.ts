@@ -14,40 +14,46 @@ export type TabIconEl =
       width: number;
       height: number;
       rx?: number;
+      fill?: "none";
+      strokeWidth?: number;
     };
 
-/** Filled silhouettes matching the phone tab-bar reference. */
+/**
+ * Shapes taken from the phone tab-bar screenshot:
+ * chart-in-a-box, home-plate hopper, 2x2 tiles, X-braced barn,
+ * crossed wrench and screwdriver.
+ */
 export const TAB_ICON_ELEMENTS: Record<TabIconName, TabIconEl[]> = {
   reports: [
-    { tag: "rect", x: 2, y: 19.2, width: 20, height: 1.65, rx: 0.35 },
-    { tag: "rect", x: 4.15, y: 12.15, width: 3.7, height: 7.05, rx: 0.55 },
-    { tag: "rect", x: 10.15, y: 8.1, width: 3.7, height: 11.1, rx: 0.55 },
-    { tag: "rect", x: 16.15, y: 4.25, width: 3.7, height: 14.95, rx: 0.55 },
+    {
+      tag: "path",
+      d: "M9 17H7V10H9V17M13 17H11V7H13V17M17 17H15V13H17V17M19 19H5V5H19V19.1M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3Z",
+    },
   ],
   lfo: [
     {
       tag: "path",
-      d: "M3.35 5.2h17.3c.58 0 .9.66.55 1.12L12.72 19.55c-.36.5-1.08.5-1.44 0L2.8 6.32c-.35-.46-.03-1.12.55-1.12z",
+      d: "M4.35 3.9h15.3c.75 0 1.35.6 1.35 1.35v6.55L12 21.05 3 11.8V5.25c0-.75.6-1.35 1.35-1.35z",
     },
   ],
   dashboard: [
-    { tag: "rect", x: 3.35, y: 3.35, width: 7.15, height: 7.15, rx: 1.2 },
-    { tag: "rect", x: 13.5, y: 3.35, width: 7.15, height: 7.15, rx: 1.2 },
-    { tag: "rect", x: 3.35, y: 13.5, width: 7.15, height: 7.15, rx: 1.2 },
-    { tag: "rect", x: 13.5, y: 13.5, width: 7.15, height: 7.15, rx: 1.2 },
+    { tag: "rect", x: 4.6, y: 4.6, width: 6.05, height: 6.05, rx: 1.25 },
+    { tag: "rect", x: 13.35, y: 4.6, width: 6.05, height: 6.05, rx: 1.25 },
+    { tag: "rect", x: 4.6, y: 13.35, width: 6.05, height: 6.05, rx: 1.25 },
+    { tag: "rect", x: 13.35, y: 13.35, width: 6.05, height: 6.05, rx: 1.25 },
   ],
   farms: [
     {
       tag: "path",
-      fillRule: "evenodd",
-      d: "M12 4.05 3.85 9.15H5.05v11c0 .66.54 1.2 1.2 1.2h11.5c.66 0 1.2-.54 1.2-1.2v-11h1.2L12 4.05Zm-1.45 10.85h2.9v9.5h-2.9v-9.5Z",
+      d: "M12 3 3 8.2V21H9l2.9-3L15 21h6V8.2L12 3M7.9 20v-6l3 3-3 3M8.9 13h6L11.9 16 8.9 13M15.9 20l-3-3 3-3v6M15 11H8.8V9H15v2Z",
     },
   ],
   tools: [
     {
       tag: "path",
-      transform: "rotate(22 12 12)",
-      d: "M10.55 2.55H7.2c-.45 0-.8.36-.8.8v3.05c0 .24.1.47.27.64L10.2 10.3v8.15c0 1.05.85 1.9 1.9 1.9s1.9-.85 1.9-1.9V10.3l3.53-3.26c.17-.17.27-.4.27-.64V3.35c0-.44-.36-.8-.8-.8H13.45V5.7h-2.9V2.55z",
+      // Bootstrap Tools — open wrench crossed with a screwdriver
+      transform: "translate(12 12) scale(1.35) translate(-8 -8)",
+      d: "M1 0 0 1l2.2 3.081a1 1 0 0 0 .815.419h.07a1 1 0 0 1 .708.293l2.675 2.675-2.617 2.654A3.003 3.003 0 0 0 0 13a3 3 0 1 0 5.878-.851l2.654-2.617.968.968-.305.914a1 1 0 0 0 .242 1.023l3.27 3.27a.997.997 0 0 0 1.414 0l1.586-1.586a.997.997 0 0 0 0-1.414l-3.27-3.27a1 1 0 0 0-1.023-.242L10.5 9.5l-.96-.96 2.68-2.643A3.005 3.005 0 0 0 16 3q0-.405-.102-.777l-2.14 2.141L12 4l-.364-1.757L13.777.102a3 3 0 0 0-3.675 3.68L7.462 6.46 4.793 3.793a1 1 0 0 1-.293-.707v-.071a1 1 0 0 0-.419-.814zm9.646 10.646a.5.5 0 0 1 .708 0l2.914 2.915a.5.5 0 0 1-.707.707l-2.915-2.914a.5.5 0 0 1 0-.708M3 11l.471.242.529.026.287.445.445.287.026.529L5 13l-.242.471-.026.529-.445.287-.287.445-.529.026L3 15l-.471-.242L2 14.732l-.287-.445L1.268 14l-.026-.529L1 13l.242-.471.026-.529.445-.287.287-.445.529-.026z",
     },
   ],
 };

@@ -25,27 +25,27 @@ for (const name of names) {
 
 assert.match(nav, /<TabGlyph name=\{item\.icon\}/);
 assert.match(expoTabs, /<TabGlyph name=\{item\.icon\}/);
-assert.doesNotMatch(nav, /feed-bin|chart-box|view-dashboard|FeedBinIcon/);
-assert.doesNotMatch(expoTabs, /FeedBinIcon|MaterialCommunityIcons|chart-box|view-dashboard/);
+assert.doesNotMatch(nav, /feed-bin|FeedBinIcon/);
+assert.doesNotMatch(expoTabs, /FeedBinIcon|MaterialCommunityIcons|chart-box-outline|view-dashboard/);
+
+const reports = TAB_ICON_ELEMENTS.reports[0];
+assert.equal(reports?.tag, "path");
+assert.match(reports.d, /H5V5H19/);
+
+const lfo = TAB_ICON_ELEMENTS.lfo[0];
+assert.equal(lfo?.tag, "path");
+assert.match(lfo.d, /15\.3/);
 
 const dashboard = TAB_ICON_ELEMENTS.dashboard;
 assert.equal(dashboard.length, 4);
 assert.ok(dashboard.every((el) => el.tag === "rect" && el.width === el.height));
 
-const reports = TAB_ICON_ELEMENTS.reports;
-assert.equal(reports[0]?.tag, "rect");
-assert.ok(reports[0].tag === "rect" && reports[0].width > reports[0].height);
-
-const lfo = TAB_ICON_ELEMENTS.lfo[0];
-assert.equal(lfo?.tag, "path");
-assert.match(lfo.d, /19\.55/);
-
 const farms = TAB_ICON_ELEMENTS.farms[0];
 assert.equal(farms?.tag, "path");
-assert.equal(farms.fillRule, "evenodd");
+assert.match(farms.d, /8\.2/);
 
 const tools = TAB_ICON_ELEMENTS.tools[0];
 assert.equal(tools?.tag, "path");
-assert.match(tools.transform ?? "", /rotate/);
+assert.match(tools.d, /2\.675/);
 
 console.log("tab-icons: ok");
