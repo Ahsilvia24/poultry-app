@@ -1,26 +1,22 @@
 import { Tabs } from "expo-router";
 import { Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import type { ComponentProps } from "react";
 import { colors } from "../../src/theme";
-import { FeedBinIcon } from "../../src/components/FeedBinIcon";
+import { TabGlyph } from "../../src/components/TabGlyph";
+import type { TabIconName } from "../../src/lib/tab-icon-glyphs";
 import { clearFarmReturnFromMortality } from "../../src/lib/farmNavContext";
 import { requestTabScrollTop } from "../../src/lib/tabScroll";
 import { MANUAL_LFO_TAB_ID } from "../../src/components/LfoFarmTabs";
 
-type MciName = ComponentProps<typeof MaterialCommunityIcons>["name"];
-
 const TAB_ITEMS: {
   name: string;
   label: string;
-  icon?: MciName;
-  customIcon?: "feed-bin";
+  icon: TabIconName;
 }[] = [
-  { name: "reports", label: "Reports", icon: "chart-box-outline" },
-  { name: "lfo", label: "LFO", customIcon: "feed-bin" },
-  { name: "index", label: "Dashboard", icon: "view-dashboard-outline" },
-  { name: "farms", label: "Farms", icon: "barn" },
+  { name: "reports", label: "Reports", icon: "reports" },
+  { name: "lfo", label: "LFO", icon: "lfo" },
+  { name: "index", label: "Dashboard", icon: "dashboard" },
+  { name: "farms", label: "Farms", icon: "farms" },
   { name: "tools", label: "Tools", icon: "tools" },
 ];
 
@@ -151,14 +147,8 @@ function WebStyleTabBar({ state, descriptors, navigation }: any) {
                 ...(focused ? selectedTabStyle : null),
               }}
             >
-              {item?.customIcon === "feed-bin" ? (
-                <FeedBinIcon color="#44403c" size={18} />
-              ) : item?.icon ? (
-                <MaterialCommunityIcons
-                  name={item.icon}
-                  size={18}
-                  color="#44403c"
-                />
+              {item ? (
+                <TabGlyph name={item.icon} color="#44403c" size={22} />
               ) : null}
               <Text
                 numberOfLines={1}
