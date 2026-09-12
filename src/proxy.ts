@@ -66,10 +66,6 @@ const withAuth = auth((req) => {
     return NextResponse.redirect(url);
   }
 
-  if (isLoggedIn && isAuthPage) {
-    return NextResponse.redirect(new URL("/", origin));
-  }
-
   return NextResponse.next();
 });
 

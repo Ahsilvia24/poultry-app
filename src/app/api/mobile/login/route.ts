@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { rotateActiveSession } from "@/lib/active-session";
 import { jsonError, signMobileToken } from "@/lib/mobile-auth";
 
 const schema = z.object({
@@ -22,10 +23,12 @@ export async function POST(req: NextRequest) {
   const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
   if (!valid) return jsonError("Invalid email or password", 401);
 
+  const sid = await rotateActiveSession(user.id);
   const token = await signMobileToken({
     sub: user.id,
     email: user.email,
     name: user.name,
+    sid,
   });
 
   return Response.json({

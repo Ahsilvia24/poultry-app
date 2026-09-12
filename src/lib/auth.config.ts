@@ -25,6 +25,7 @@ export const authConfig = {
       if (user?.id) {
         token.sub = user.id;
         token.email = user.email;
+        if (user.sessionId) token.sid = user.sessionId;
       }
       return token;
     },
@@ -33,6 +34,9 @@ export const authConfig = {
         session.user.id = token.sub;
         if (typeof token.email === "string") {
           session.user.email = token.email;
+        }
+        if (typeof token.sid === "string") {
+          session.user.sessionId = token.sid;
         }
       }
       return session;

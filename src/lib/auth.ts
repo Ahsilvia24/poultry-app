@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import type { Session } from "next-auth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { clearActiveSession, isActiveSession, rotateActiveSession } from "@/lib/active-session";
 import { applyHostedEnv } from "@/lib/hosted-env";
 import { authConfig, isAuthDevBypassEnabled } from "@/lib/auth.config";
 import { prisma } from "@/lib/prisma";
@@ -54,14 +55,25 @@ const nextAuth = NextAuth({
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
         if (!valid) return null;
 
+        const sessionId = await rotateActiveSession(user.id);
         return {
           id: user.id,
           email: user.email,
           name: user.name,
+          sessionId,
         };
       },
     }),
   ],
+  events: {
+    async signOut(message) {
+      const token = "token" in message ? message.token : null;
+      const userId = token?.sub;
+      const sid = typeof token?.sid === "string" ? token.sid : undefined;
+      if (!userId) return;
+      await clearActiveSession(userId, sid);
+    },
+  },
 });
 
 export const { handlers, signIn, signOut } = nextAuth;
@@ -89,6 +101,9 @@ export const auth: AuthFn = ((...args: unknown[]) => {
         }
       }
       if (!session?.user?.id) return null;
+      if (isAuthDevBypassEnabled()) return session;
+      const active = await isActiveSession(session.user.id, session.user.sessionId);
+      if (!active) return null;
       return session;
     } catch {
       return null;

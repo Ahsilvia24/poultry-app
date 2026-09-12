@@ -8,6 +8,7 @@ import { Button, Input, Label } from "@/components/ui";
 function LoginForm() {
   const params = useSearchParams();
   const resetOk = params.get("reset") === "1";
+  const replaced = params.get("replaced") === "1";
   const urlError = params.get("error") === "1";
   const [pending, setPending] = useState(false);
 
@@ -20,6 +21,11 @@ function LoginForm() {
         {resetOk ? (
           <p className="mt-3 text-center text-sm font-medium text-emerald-800">
             Password saved. Sign in with your new password.
+          </p>
+        ) : null}
+        {replaced ? (
+          <p className="mt-3 text-center text-sm font-medium text-stone-800">
+            This account is signed in on another device. Sign in here to use this one.
           </p>
         ) : null}
         <form
@@ -37,6 +43,9 @@ function LoginForm() {
             <Input id="password" name="password" type="password" required autoComplete="current-password" />
           </div>
           {urlError ? <p className="text-sm font-medium text-red-700">Invalid email or password</p> : null}
+          <p className="text-sm text-stone-600">
+            One device at a time. Signing in here signs out any other phone.
+          </p>
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? "Signing in…" : "Sign in"}
           </Button>
