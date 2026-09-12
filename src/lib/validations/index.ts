@@ -262,6 +262,8 @@ export const settingsSchema = z.object({
   notifyInApp: z.boolean(),
   farmOrder: z.enum(["age_desc", "age_asc", "name_asc", "name_desc"]).optional(),
   appTimeZone: z.string().min(1).optional(),
+  lfoFeedUpHoursBeforeCatch: z.coerce.number().int().min(1).max(48).optional(),
+  lfoFeedOffHoursBeforeCatch: z.coerce.number().int().min(1).max(72).optional(),
 });
 
 export const performanceSchema = z.object({

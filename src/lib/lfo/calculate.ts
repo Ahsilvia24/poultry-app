@@ -5,6 +5,58 @@ export const FEED_OFF_HOURS_BEFORE_UP = 5;
 /** Catch is 5 hours after feed up (10 hours after feed off). */
 export const FEED_UP_HOURS_BEFORE_CATCH = 5;
 
+export type LfoFeedTiming = {
+  feedUpHoursBeforeCatch: number;
+  feedOffHoursBeforeCatch: number;
+};
+
+export const DEFAULT_LFO_FEED_TIMING: LfoFeedTiming = {
+  feedUpHoursBeforeCatch: FEED_UP_HOURS_BEFORE_CATCH,
+  feedOffHoursBeforeCatch: FEED_UP_HOURS_BEFORE_CATCH + FEED_OFF_HOURS_BEFORE_UP,
+};
+
+export function resolveLfoFeedTiming(
+  feedUpHoursBeforeCatch?: number | null,
+  feedOffHoursBeforeCatch?: number | null,
+): LfoFeedTiming {
+  const up =
+    Number.isFinite(feedUpHoursBeforeCatch) && (feedUpHoursBeforeCatch as number) >= 1
+      ? Math.round(feedUpHoursBeforeCatch as number)
+      : DEFAULT_LFO_FEED_TIMING.feedUpHoursBeforeCatch;
+  const offRaw =
+    Number.isFinite(feedOffHoursBeforeCatch) && (feedOffHoursBeforeCatch as number) >= 1
+      ? Math.round(feedOffHoursBeforeCatch as number)
+      : DEFAULT_LFO_FEED_TIMING.feedOffHoursBeforeCatch;
+  return {
+    feedUpHoursBeforeCatch: up,
+    feedOffHoursBeforeCatch: offRaw > up ? offRaw : up + FEED_OFF_HOURS_BEFORE_UP,
+  };
+}
+
+export function lfoTimingFromSettings(
+  settings?: {
+    lfoFeedUpHoursBeforeCatch?: number | null;
+    lfoFeedOffHoursBeforeCatch?: number | null;
+  } | null,
+): LfoFeedTiming {
+  return resolveLfoFeedTiming(
+    settings?.lfoFeedUpHoursBeforeCatch,
+    settings?.lfoFeedOffHoursBeforeCatch,
+  );
+}
+
+export function feedUpLabel(timing: LfoFeedTiming = DEFAULT_LFO_FEED_TIMING): string {
+  return `Feed up (−${timing.feedUpHoursBeforeCatch})`;
+}
+
+export function feedOffLabel(timing: LfoFeedTiming = DEFAULT_LFO_FEED_TIMING): string {
+  return `Feed off (−${timing.feedOffHoursBeforeCatch})`;
+}
+
+function hoursBeforeUp(timing: LfoFeedTiming = DEFAULT_LFO_FEED_TIMING): number {
+  return timing.feedOffHoursBeforeCatch - timing.feedUpHoursBeforeCatch;
+}
+
 export type LfoHouseInventoryInput = {
   houseId: string;
   houseNumber: number;
@@ -23,6 +75,7 @@ export type LfoCalculateInput = {
   consumptionRate: number;
   now?: Date;
   houses: LfoHouseInventoryInput[];
+  timing?: LfoFeedTiming;
 };
 
 export type LfoHouseCalculateResult = {
@@ -69,8 +122,11 @@ function toDate(value: string | Date | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export function feedOffFromFeedUp(feedUpAt: Date): Date {
-  return new Date(feedUpAt.getTime() - FEED_OFF_HOURS_BEFORE_UP * 60 * 60 * 1000);
+export function feedOffFromFeedUp(
+  feedUpAt: Date,
+  timing: LfoFeedTiming = DEFAULT_LFO_FEED_TIMING,
+): Date {
+  return new Date(feedUpAt.getTime() - hoursBeforeUp(timing) * 60 * 60 * 1000);
 }
 
 /** Local `yyyy-MM-dd` + `HH:mm` → Date. */
@@ -105,16 +161,23 @@ export function formatLocalDateTime(d: Date): string {
   return `${y}-${m}-${day}T${hh}:${mm}`;
 }
 
-/** Feed up is 5 hours before catch (e.g. catch 11:00 PM → feed up 6:00 PM). */
-export function feedUpFromCatch(catchDateKey: string, catchTimeHHmm: string): Date | null {
+/** Feed up is N hours before catch (default 5; catch 11:00 PM → feed up 6:00 PM). */
+export function feedUpFromCatch(
+  catchDateKey: string,
+  catchTimeHHmm: string,
+  timing: LfoFeedTiming = DEFAULT_LFO_FEED_TIMING,
+): Date | null {
   const catchAt = combineDateAndTime(catchDateKey, catchTimeHHmm);
   if (!catchAt) return null;
-  return new Date(catchAt.getTime() - FEED_UP_HOURS_BEFORE_CATCH * 60 * 60 * 1000);
+  return new Date(catchAt.getTime() - timing.feedUpHoursBeforeCatch * 60 * 60 * 1000);
 }
 
-/** Catch is 5 hours after feed up (10 hours after feed off). */
-export function catchFromFeedUp(feedUpAt: Date): Date {
-  return new Date(feedUpAt.getTime() + FEED_UP_HOURS_BEFORE_CATCH * 60 * 60 * 1000);
+/** Catch is N hours after feed up (default 5; 10 hours after feed off). */
+export function catchFromFeedUp(
+  feedUpAt: Date,
+  timing: LfoFeedTiming = DEFAULT_LFO_FEED_TIMING,
+): Date {
+  return new Date(feedUpAt.getTime() + timing.feedUpHoursBeforeCatch * 60 * 60 * 1000);
 }
 
 /** Split a local `yyyy-MM-ddTHH:mm` (or Date) into date + :00/:30 time. */
@@ -142,7 +205,10 @@ export function splitLocalDateTime(value: string | Date | null | undefined): {
 }
 
 /** Stored feed-up datetime → catch date/time for the LFO form. */
-export function catchPartsFromFeedUpAt(feedUpAt: string | Date | null | undefined): {
+export function catchPartsFromFeedUpAt(
+  feedUpAt: string | Date | null | undefined,
+  timing: LfoFeedTiming = DEFAULT_LFO_FEED_TIMING,
+): {
   date: string;
   time: string;
 } {
@@ -150,11 +216,15 @@ export function catchPartsFromFeedUpAt(feedUpAt: string | Date | null | undefine
   const parts = splitLocalDateTime(feedUpAt);
   const feedUp = combineDateAndTime(parts.date, parts.time);
   if (!feedUp) return { date: "", time: "" };
-  return splitLocalDateTime(catchFromFeedUp(feedUp));
+  return splitLocalDateTime(catchFromFeedUp(feedUp, timing));
 }
 
-export function feedUpAtFromCatch(catchDate: string, catchTime: string): string | null {
-  const feedUp = feedUpFromCatch(catchDate, catchTime);
+export function feedUpAtFromCatch(
+  catchDate: string,
+  catchTime: string,
+  timing: LfoFeedTiming = DEFAULT_LFO_FEED_TIMING,
+): string | null {
+  const feedUp = feedUpFromCatch(catchDate, catchTime, timing);
   return feedUp ? formatLocalDateTime(feedUp) : null;
 }
 
@@ -172,15 +242,21 @@ export function roundUpToNearest500(lbs: number): number {
   return Math.ceil(lbs / 500) * 500;
 }
 
-/** Order (excess / LFO shortfall): round up to nearest 500, then add 2000. */
-export function roundOrderLbs(rawLbs: number): number {
-  if (!Number.isFinite(rawLbs) || rawLbs <= 0) return 0;
-  return roundUpToNearest500(rawLbs) + 2000;
+/** Drop a leftover 500 so results land on thousands (16500 → 16000). */
+export function snapAwayFrom500(lbs: number): number {
+  if (!Number.isFinite(lbs) || lbs <= 0) return 0;
+  return lbs % 1000 === 500 ? lbs - 500 : lbs;
 }
 
-/** Reclaim surplus: round up to nearest 500 only. */
+/** Order (excess / LFO shortfall): round up to nearest 500, add 2000, never end in 500. */
+export function roundOrderLbs(rawLbs: number): number {
+  if (!Number.isFinite(rawLbs) || rawLbs <= 0) return 0;
+  return snapAwayFrom500(roundUpToNearest500(rawLbs) + 2000);
+}
+
+/** Reclaim surplus: round up to nearest 500, never end in 500. */
 export function roundReclaimLbs(rawLbs: number): number {
-  return roundUpToNearest500(rawLbs);
+  return snapAwayFrom500(roundUpToNearest500(rawLbs));
 }
 
 /**
@@ -191,8 +267,8 @@ export function roundReclaimLbs(rawLbs: number): number {
  * hourlyRate = (headCount × consumptionRate) / 24
  * feedConsumed = hoursConsumed × hourlyRate
  * balance = inventory − feedConsumed
- *   balance < 0 → order (LFO) = roundUp500(|balance|) + 2000
- *   balance > 0 → reclaim = roundUp500(balance)
+ *   balance < 0 → order (LFO) = snapAwayFrom500(roundUp500(|balance|) + 2000)
+ *   balance > 0 → reclaim = snapAwayFrom500(roundUp500(balance))
  */
 /** Per-house summary lines: "H1-4000 lbs.", "H2-5000 Rec." (one per house). */
 export function formatHouseLfoSummary(
@@ -248,10 +324,11 @@ export function calculateLastFeedOrder(input: LfoCalculateInput): LfoCalculateRe
   const rate = Number.isFinite(input.consumptionRate)
     ? input.consumptionRate
     : DEFAULT_LFO_CONSUMPTION_RATE;
+  const timing = input.timing ?? DEFAULT_LFO_FEED_TIMING;
 
   const houses: LfoHouseCalculateResult[] = input.houses.map((h) => {
     const feedUpAt = toDate(h.feedUpAt);
-    const feedOffAt = feedUpAt ? feedOffFromFeedUp(feedUpAt) : null;
+    const feedOffAt = feedUpAt ? feedOffFromFeedUp(feedUpAt, timing) : null;
     const hoursUntilFeedOff =
       feedOffAt == null ? null : Math.max(0, hoursBetween(now, feedOffAt));
     const hourly = hourlyConsumptionLbs(h.headCount, rate);

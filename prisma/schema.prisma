@@ -156,6 +156,8 @@ model UserSettings {
   notifyInApp                Boolean         @default(true)
   farmOrder                  String          @default("age_desc")
   appTimeZone                String          @default("America/Chicago")
+  lfoFeedUpHoursBeforeCatch  Int             @default(5)
+  lfoFeedOffHoursBeforeCatch Int             @default(10)
   ageBandThresholdsJson      String?
   createdAt                  DateTime        @default(now())
   updatedAt                  DateTime        @updatedAt

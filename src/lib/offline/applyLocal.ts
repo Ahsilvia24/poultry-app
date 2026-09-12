@@ -2,6 +2,16 @@ import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { parseFarmOrder } from "@/lib/farm-order";
 import type { OfflineSettings, OfflineSnapshot } from "@/lib/offline/types";
 
+function resolveLfoHours(
+  writeValue: number | undefined,
+  previous: number | undefined,
+  fallback: number,
+): number {
+  const value = writeValue ?? previous ?? fallback;
+  if (!Number.isFinite(value) || value < 1) return fallback;
+  return Math.round(value);
+}
+
 export type HouseTempWrite = {
   farmId: string;
   houseId: string;
@@ -21,6 +31,8 @@ export type SettingsWrite = {
   defaultMarketAgeDays: number;
   notifyEmail: boolean;
   notifyInApp: boolean;
+  lfoFeedUpHoursBeforeCatch?: number;
+  lfoFeedOffHoursBeforeCatch?: number;
 };
 
 const DEFAULT_SETTINGS: OfflineSettings = {
@@ -34,6 +46,8 @@ const DEFAULT_SETTINGS: OfflineSettings = {
   defaultMarketAgeDays: 52,
   notifyEmail: false,
   notifyInApp: true,
+  lfoFeedUpHoursBeforeCatch: 5,
+  lfoFeedOffHoursBeforeCatch: 10,
 };
 
 export function applyHouseTemp(snapshot: OfflineSnapshot, write: HouseTempWrite): OfflineSnapshot {
@@ -65,7 +79,22 @@ export function applySettings(snapshot: OfflineSnapshot, write: SettingsWrite): 
     defaultMarketAgeDays: write.defaultMarketAgeDays,
     notifyEmail: write.notifyEmail,
     notifyInApp: write.notifyInApp,
+    lfoFeedUpHoursBeforeCatch: resolveLfoHours(
+      write.lfoFeedUpHoursBeforeCatch,
+      snapshot.settings?.lfoFeedUpHoursBeforeCatch,
+      5,
+    ),
+    lfoFeedOffHoursBeforeCatch: resolveLfoHours(
+      write.lfoFeedOffHoursBeforeCatch,
+      snapshot.settings?.lfoFeedOffHoursBeforeCatch,
+      10,
+    ),
   };
+  const upHours = next.lfoFeedUpHoursBeforeCatch ?? 5;
+  const offHours = next.lfoFeedOffHoursBeforeCatch ?? 10;
+  if (offHours <= upHours) {
+    next.lfoFeedOffHoursBeforeCatch = upHours + 5;
+  }
   return {
     ...snapshot,
     userName: write.name.trim() || snapshot.userName,
@@ -86,6 +115,8 @@ export function settingsWriteFromForm(formData: FormData): SettingsWrite {
     defaultMarketAgeDays: Number(formData.get("defaultMarketAgeDays")),
     notifyEmail: formData.get("notifyEmail") === "on",
     notifyInApp: formData.get("notifyInApp") === "on",
+    lfoFeedUpHoursBeforeCatch: Number(formData.get("lfoFeedUpHoursBeforeCatch") || 5),
+    lfoFeedOffHoursBeforeCatch: Number(formData.get("lfoFeedOffHoursBeforeCatch") || 10),
   };
 }
 
@@ -102,6 +133,14 @@ export function formDataFromSettingsWrite(write: SettingsWrite): FormData {
   formData.set("defaultMarketAgeDays", String(write.defaultMarketAgeDays));
   if (write.notifyEmail) formData.set("notifyEmail", "on");
   if (write.notifyInApp) formData.set("notifyInApp", "on");
+  formData.set(
+    "lfoFeedUpHoursBeforeCatch",
+    String(write.lfoFeedUpHoursBeforeCatch ?? 5),
+  );
+  formData.set(
+    "lfoFeedOffHoursBeforeCatch",
+    String(write.lfoFeedOffHoursBeforeCatch ?? 10),
+  );
   return formData;
 }
 

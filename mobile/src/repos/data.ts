@@ -23,6 +23,7 @@ import {
   formatHouseLfoSummary,
   formatLocalDateTime,
 } from "../lib/lfo/calculate";
+import { getLfoFeedTiming } from "../lib/appSettings";
 import { lfoDisplayName, nextCustomLfoName } from "../lib/lfo/customName";
 import { normalizeHalfHourTime } from "../lib/time-slots";
 import { buildFieldLogWeeks, type FieldLogWeek } from "../lib/reports/field-log";
@@ -1475,6 +1476,71 @@ export function getReports(from: string, to: string, farmId?: string) {
   return { dates, rows };
 }
 
+export type MortalityPctRow = {
+  label: string;
+  kind: "farm" | "house";
+  placed: number;
+  total: number;
+  pct: number;
+};
+
+export function getMortalityByPercentage(
+  from: string,
+  to: string,
+  farmId?: string,
+): MortalityPctRow[] {
+  const db = getDb();
+  const farms = listFarms().farms.filter((f) => !farmId || f.id === farmId);
+  const rows: MortalityPctRow[] = [];
+
+  for (const farm of farms) {
+    const hfs = db.getAllSync<{
+      id: string;
+      house_number: number;
+      placed_bird_count: number;
+    }>(
+      `SELECT hf.id, h.house_number, hf.placed_bird_count FROM house_flocks hf
+       JOIN houses h ON h.id = hf.house_id
+       JOIN flocks f ON f.id = hf.flock_id
+       WHERE f.farm_id = ? AND f.flock_status = 'ACTIVE' AND h.deleted_at IS NULL
+       ORDER BY h.house_number ASC`,
+      [farm.id],
+    );
+    const houseRows: MortalityPctRow[] = [];
+    let farmPlaced = 0;
+    let farmTotal = 0;
+    for (const hf of hfs) {
+      const placed = Math.max(0, hf.placed_bird_count);
+      const rec = db.getFirstSync<{ total: number }>(
+        `SELECT COALESCE(SUM(daily_mortality_count), 0) as total FROM daily_mortality
+         WHERE house_flock_id = ? AND is_draft = 0 AND mortality_date >= ? AND mortality_date <= ?`,
+        [hf.id, from, to],
+      );
+      const total = Math.max(0, rec?.total ?? 0);
+      farmPlaced += placed;
+      farmTotal += total;
+      if (farmId) {
+        houseRows.push({
+          label: `House ${hf.house_number}`,
+          kind: "house",
+          placed,
+          total,
+          pct: calcPercentage(total, placed || 1),
+        });
+      }
+    }
+    rows.push({
+      label: farm.farmName,
+      kind: "farm",
+      placed: farmPlaced,
+      total: farmTotal,
+      pct: calcPercentage(farmTotal, farmPlaced || 1),
+    });
+    rows.push(...houseRows);
+  }
+  return rows;
+}
+
 export function getGeneratorLogReport(
   from: string,
   to: string,
@@ -1594,6 +1660,7 @@ export function listLfos() {
         orderDate: detail.orderDate.slice(0, 10),
         orderTime: detail.orderTime,
         consumptionRate: detail.consumptionRate,
+        timing: getLfoFeedTiming(),
         houses: detail.houses.map((h) => ({
           houseId: h.houseId,
           houseNumber: h.houseNumber,
@@ -1745,7 +1812,7 @@ export function createLfo(farmId: string, orderDate: string, notes?: string, ord
     );
     const catchTime = hf?.catch_time?.trim() || null;
     const catchDate = hf?.catch_date?.trim() || hf?.flock_catch?.trim() || null;
-    const feedUp = catchTime && catchDate ? feedUpFromCatch(catchDate, catchTime) : null;
+    const feedUp = catchTime && catchDate ? feedUpFromCatch(catchDate, catchTime, getLfoFeedTiming()) : null;
     db.runSync(
       `INSERT INTO lfo_house_inventory (id, lfo_id, house_id, bin_a_pounds, bin_b_pounds, feed_up_at, consumption_rate)
        VALUES (?, ?, ?, 0, 0, ?, 0.45)`,

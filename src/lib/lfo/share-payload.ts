@@ -1,9 +1,13 @@
 import {
   calculateLastFeedOrder,
   catchPartsFromFeedUpAt,
+  DEFAULT_LFO_FEED_TIMING,
+  feedOffLabel,
   feedUpAtFromCatch,
+  feedUpLabel,
   formatHouseLfoSummary,
   type LfoCalculateResult,
+  type LfoFeedTiming,
   type LfoHouseCalculateResult,
 } from "@/lib/lfo/calculate";
 import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
@@ -48,6 +52,7 @@ export type LfoShareInventory = {
   calculatedAt?: string | Date | null;
   notes?: string | null;
   houses: LfoShareInventoryHouse[];
+  timing?: LfoFeedTiming;
 };
 
 function formatOrderDate(dateKey: string): string {
@@ -124,6 +129,7 @@ export function buildLfoSharePayload(
   inventory: LfoShareInventory,
   calc?: LfoCalculateResult,
 ): LfoSharePayload {
+  const timing = inventory.timing ?? DEFAULT_LFO_FEED_TIMING;
   const orderDate = inventory.orderDate.slice(0, 10);
   const houses = inventory.houses
     .filter((house) => Number(house.headCount) > 0)
@@ -131,7 +137,7 @@ export function buildLfoSharePayload(
     let catchDate = house.catchDate?.trim() ?? "";
     let catchTime = house.catchTime?.trim() ?? "";
     if ((!catchDate || !catchTime) && house.feedUpAt) {
-      const parts = catchPartsFromFeedUpAt(house.feedUpAt);
+      const parts = catchPartsFromFeedUpAt(house.feedUpAt, timing);
       catchDate = catchDate || parts.date;
       catchTime = catchTime || parts.time;
     }
@@ -143,7 +149,7 @@ export function buildLfoSharePayload(
       binBPounds: house.binBPounds,
       catchDate,
       catchTime,
-      feedUpAt: house.feedUpAt ?? feedUpAtFromCatch(catchDate, catchTime),
+      feedUpAt: house.feedUpAt ?? feedUpAtFromCatch(catchDate, catchTime, timing),
     };
   });
 
@@ -153,6 +159,7 @@ export function buildLfoSharePayload(
       orderDate,
       orderTime: inventory.orderTime,
       consumptionRate: inventory.consumptionRate,
+      timing,
       houses: houses.map((house) => ({
         houseId: house.houseId,
         houseNumber: house.houseNumber,
@@ -201,8 +208,8 @@ export function buildLfoSharePayload(
         { label: "Bin B (lbs)", value: formatLbs(house.binBPounds) },
         { label: "Catch date", value: house.catchDate ? formatOrderDate(house.catchDate) : "—" },
         { label: "Catch time", value: dash(halfHourTimeLabel(house.catchTime)) },
-        { label: "Feed up (−5)", value: formatFeedStamp(houseResult?.feedUpAt ?? null) },
-        { label: "Feed off (−10)", value: formatFeedStamp(houseResult?.feedOffAt ?? null) },
+        { label: feedUpLabel(timing), value: formatFeedStamp(houseResult?.feedUpAt ?? null) },
+        { label: feedOffLabel(timing), value: formatFeedStamp(houseResult?.feedOffAt ?? null) },
         {
           label: "Hours until feed off",
           value:

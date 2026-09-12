@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
-import { getFieldLog, getGeneratorLogReport, getReports, listFarms } from "../../src/repos/data";
+import {
+  getFieldLog,
+  getGeneratorLogReport,
+  getMortalityByPercentage,
+  getReports,
+  listFarms,
+  type MortalityPctRow,
+} from "../../src/repos/data";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
   defaultFieldLogRange,
@@ -29,6 +36,7 @@ import { colors, styles } from "../../src/theme";
 import {
   Card,
   Chip,
+  formatPct,
   PageHeader,
   PrimaryButton,
 } from "../../src/components/ui";
@@ -87,21 +95,28 @@ export default function ReportsScreen() {
   const farms = useMemo(() => listFarms().farms, []);
   const historyFarms = useMemo(() => listFarms("all").farms, []);
   const weekDefaults = useMemo(() => defaultFieldLogRange(), []);
+  const initialFarmId = farmIdParam || farms[0]?.id || "";
+  const initialMortFrom =
+    farms.find((farm) => farm.id === initialFarmId)?.placementDate ??
+    addDaysKey(todayKey(), -14);
   const [reportType, setReportType] = useState<ReportType>(() =>
     resolveMobileReportType(typeParam),
   );
-  const [farmId, setFarmId] = useState(farmIdParam || farms[0]?.id || "");
+  const [farmId, setFarmId] = useState(initialFarmId);
   const [genFarmId, setGenFarmId] = useState("");
-  const [from, setFrom] = useState(addDaysKey(todayKey(), -14));
+  const [from, setFrom] = useState(initialMortFrom);
   const [to, setTo] = useState(todayKey());
-  const [genFrom, setGenFrom] = useState(addDaysKey(todayKey(), -42));
+  const [genFrom, setGenFrom] = useState(addDaysKey(todayKey(), -28));
   const [genTo, setGenTo] = useState(todayKey());
   const [fieldFrom, setFieldFrom] = useState(weekDefaults.from);
   const [fieldTo, setFieldTo] = useState(weekDefaults.to);
   const [openDate, setOpenDate] = useState<string | null>(null);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [matrix, setMatrix] = useState(() =>
-    getReports(from, to, (farmIdParam || farms[0]?.id) || undefined),
+    getReports(initialMortFrom, todayKey(), initialFarmId || undefined),
+  );
+  const [pctRows, setPctRows] = useState<MortalityPctRow[]>(() =>
+    getMortalityByPercentage(initialMortFrom, todayKey(), initialFarmId || undefined),
   );
   const [fieldWeeks, setFieldWeeks] = useState<FieldLogWeek[]>(() =>
     getFieldLog(weekDefaults.from, weekDefaults.to),
@@ -147,8 +162,23 @@ export default function ReportsScreen() {
 
   const historyFarmId = farmId || historyFarms[0]?.id || "";
 
-  function applyMortality() {
-    setMatrix(getReports(from, to, farmId || undefined));
+  function applyMortality(nextFarmId = farmId, nextFrom = from, nextTo = to) {
+    setMatrix(getReports(nextFrom, nextTo, nextFarmId || undefined));
+    setPctRows(getMortalityByPercentage(nextFrom, nextTo, nextFarmId || undefined));
+  }
+
+  function selectMortalityFarm(nextFarmId: string) {
+    setFarmId(nextFarmId);
+    if (!nextFarmId) {
+      applyMortality("", from, to);
+      return;
+    }
+    const start =
+      farms.find((farm) => farm.id === nextFarmId)?.placementDate ?? from;
+    const end = todayKey();
+    setFrom(start);
+    setTo(end);
+    applyMortality(nextFarmId, start, end);
   }
 
   function applyFieldLog() {
@@ -489,13 +519,13 @@ export default function ReportsScreen() {
             <Text style={styles.label}>Farm</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: "row", marginBottom: 8 }}>
-                <Chip label="All" active={farmId === ""} onPress={() => setFarmId("")} />
+                <Chip label="All" active={farmId === ""} onPress={() => selectMortalityFarm("")} />
                 {farms.map((f) => (
                   <Chip
                     key={f.id}
                     label={f.farmName}
                     active={farmId === f.id}
-                    onPress={() => setFarmId(f.id)}
+                    onPress={() => selectMortalityFarm(f.id)}
                   />
                 ))}
               </View>
@@ -522,7 +552,42 @@ export default function ReportsScreen() {
                   />
                 </View>
               </View>
-              <PrimaryButton label="Apply filters" onPress={applyMortality} />
+              <PrimaryButton label="Apply filters" onPress={() => applyMortality()} />
+            </Card>
+
+            <Card style={{ paddingVertical: 12, marginBottom: 12 }}>
+              <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text }}>
+                Mortality by Percentage
+              </Text>
+              {pctRows.length === 0 ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>No data for current filters.</Text>
+              ) : (
+                pctRows.map((row, index) => (
+                  <View
+                    key={`${row.kind}-${row.label}-${index}`}
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      marginTop: 8,
+                      paddingLeft: row.kind === "house" ? 12 : 0,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        flex: 1,
+                        fontWeight: row.kind === "farm" ? "800" : "600",
+                        color: colors.text,
+                      }}
+                    >
+                      {row.label}
+                    </Text>
+                    <Text style={{ fontWeight: "700", color: colors.text }}>
+                      {formatPct(row.pct)}
+                    </Text>
+                  </View>
+                ))
+              )}
             </Card>
 
             <Card style={{ paddingVertical: 12 }}>
@@ -537,7 +602,7 @@ export default function ReportsScreen() {
               >
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text }}>
-                    Mortality
+                    Mortality by Date
                   </Text>
                   <Text style={[styles.muted, { marginTop: 2 }]}>{mortFilterLabel}</Text>
                 </View>

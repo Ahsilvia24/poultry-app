@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useReplicaNavigate } from "@/components/ReplicaLink";
 import { addDays, format } from "date-fns";
 import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
 import {
@@ -218,6 +219,7 @@ export function MortalityEntryForm({
   asOfDateKey: string;
 }) {
   const router = useRouter();
+  const openReplica = useReplicaNavigate();
   const { enabled, queue } = useReplicaWrite();
   const [farmId, setFarmId] = useState(
     initialFarmId && farms.some((f) => f.id === initialFarmId)
@@ -556,7 +558,7 @@ export function MortalityEntryForm({
     setHouseFlockId("");
     setRows([]);
     setExpandedWeeks(new Set());
-    router.replace(`/mortality?farmId=${nextFarmId}`);
+    openReplica(`/mortality?farmId=${nextFarmId}`);
   }
 
   function changeHouse(nextHouseId: string) {
@@ -572,7 +574,7 @@ export function MortalityEntryForm({
       return;
     }
     setHouseFlockId(nextHouseId);
-    router.replace(`/mortality?farmId=${farmId}&houseFlockId=${nextHouseId}`);
+    openReplica(`/mortality?farmId=${farmId}&houseFlockId=${nextHouseId}`);
   }
 
   return (
@@ -785,7 +787,7 @@ export function MortalityEntryForm({
                     onPress: () => {
                       flushSave();
                       setMortField(null);
-                      router.push(`/farms/${farmId}`);
+                      openReplica(`/farms/${farmId}`);
                     },
                   }
                 : undefined

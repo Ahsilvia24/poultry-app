@@ -30,6 +30,7 @@ export type HouseByDateMatrix = {
 };
 export type FarmRow = {
   farmName: string;
+  kind?: "farm" | "house";
   placed: number;
   mortality: number;
   culls: number;
@@ -49,12 +50,14 @@ export function MortalityCharts({
   byHouse,
   byHouseByDate,
   byFarm,
+  farmTitle,
   filterLabel,
 }: {
   cumulativeByAge: CumulativePoint[];
   byHouse: HouseBarPoint[];
   byHouseByDate: HouseByDateMatrix;
   byFarm: FarmRow[];
+  farmTitle?: string | null;
   filterLabel: string;
 }) {
   function houseByDateTsv() {
@@ -126,27 +129,8 @@ export function MortalityCharts({
       filename: `mortality-report-${Date.now()}.pdf`,
       sections: [
         {
-          title: "Cumulative by bird age",
-          headers: ["Age (days)", "Cumulative"],
-          rows: cumulativeByAge.map((p) => [p.birdAgeInDays, p.cumulative]),
-        },
-        {
-          title: "By house",
-          headers: ["House", "Mortality", "Culls", "Total"],
-          rows: byHouse.map((h) => [h.houseLabel, h.mortality, h.culls, h.total]),
-        },
-        {
-          title: "By house and date",
-          headers: ["House", ...byHouseByDate.dates.map(formatDateHeader), "Total"],
-          rows: byHouseByDate.rows.map((row) => {
-            const values = byHouseByDate.dates.map((d) => row.byDate[d] ?? 0);
-            const total = values.reduce((sum, n) => sum + n, 0);
-            return [row.houseLabel, ...values, total];
-          }),
-        },
-        {
-          title: "By farm",
-          headers: ["Farm", "Placed", "Mortality", "Culls", "Total", "%"],
+          title: "Mortality by Percentage",
+          headers: ["Farm / House", "Placed", "Mortality", "Culls", "Total", "%"],
           rows: byFarm.map((f) => [
             f.farmName,
             f.placed,
@@ -155,6 +139,25 @@ export function MortalityCharts({
             f.total,
             f.pct.toFixed(2),
           ]),
+        },
+        {
+          title: "Mortality by Date",
+          headers: ["House", ...byHouseByDate.dates.map(formatDateHeader), "Total"],
+          rows: byHouseByDate.rows.map((row) => {
+            const values = byHouseByDate.dates.map((d) => row.byDate[d] ?? 0);
+            const total = values.reduce((sum, n) => sum + n, 0);
+            return [row.houseLabel, ...values, total];
+          }),
+        },
+        {
+          title: "Mortality by House",
+          headers: ["House", "Mortality", "Culls", "Total"],
+          rows: byHouse.map((h) => [h.houseLabel, h.mortality, h.culls, h.total]),
+        },
+        {
+          title: "Cumulative Mortality by Bird Age",
+          headers: ["Age (days)", "Cumulative"],
+          rows: cumulativeByAge.map((p) => [p.birdAgeInDays, p.cumulative]),
         },
       ],
     });
@@ -172,39 +175,48 @@ export function MortalityCharts({
       </div>
 
       <Card>
-        <h3 className="font-bold">Cumulative mortality by bird age</h3>
-        <div className="mt-4 h-72 w-full">
-          {cumulativeByAge.length === 0 ? (
-            <p className="text-sm text-stone-500">No data for current filters.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={cumulativeByAge}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                <XAxis
-                  dataKey="birdAgeInDays"
-                  label={{ value: "Bird age (days)", position: "insideBottom", offset: -2 }}
-                />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="cumulative"
-                  name="Cumulative loss"
-                  stroke="#047857"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </Card>
+          <h3 className="font-bold">Mortality by Percentage</h3>
+          <div className="mt-3 overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="text-stone-500">
+                <tr>
+                  <th className="py-1 pr-3 font-semibold">Farm / House</th>
+                  <th className="py-1 pr-3 font-semibold">Placed</th>
+                  <th className="py-1 pr-3 font-semibold">Total</th>
+                  <th className="py-1 font-semibold">%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byFarm.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-2 text-stone-500">
+                      No data
+                    </td>
+                  </tr>
+                ) : null}
+                {byFarm.map((f, index) => (
+                  <tr key={`${f.kind ?? "farm"}-${f.farmName}-${index}`} className="border-t border-stone-100">
+                    <td
+                      className={`py-2 pr-3 ${
+                        f.kind === "house" ? "pl-4 font-medium text-stone-700" : "font-semibold"
+                      }`}
+                    >
+                      {f.farmName}
+                    </td>
+                    <td className="py-2 pr-3">{formatNumber(f.placed)}</td>
+                    <td className="py-2 pr-3">{formatNumber(f.total)}</td>
+                    <td className="py-2">{formatPct(f.pct)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
 
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h3 className="font-bold">Mortality by house and date</h3>
+            <h3 className="font-bold">Mortality by Date</h3>
             <p className="mt-1 text-sm text-stone-500">
               Total daily loss (mortality + culls) for the selected date range.
             </p>
@@ -274,7 +286,8 @@ export function MortalityCharts({
       </Card>
 
       <Card>
-        <h3 className="font-bold">Mortality by house</h3>
+        <h3 className="font-bold">Mortality by House</h3>
+        {farmTitle ? <p className="mt-1 text-sm font-semibold text-stone-600">{farmTitle}</p> : null}
         <div className="mt-4 h-72 w-full">
           {byHouse.length === 0 ? (
             <p className="text-sm text-stone-500">No data for current filters.</p>
@@ -295,37 +308,34 @@ export function MortalityCharts({
       </Card>
 
       <Card>
-          <h3 className="font-bold">By farm</h3>
-          <div className="mt-3 overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="text-stone-500">
-                <tr>
-                  <th className="py-1 pr-3 font-semibold">Farm</th>
-                  <th className="py-1 pr-3 font-semibold">Placed</th>
-                  <th className="py-1 pr-3 font-semibold">Total</th>
-                  <th className="py-1 font-semibold">%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {byFarm.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="py-2 text-stone-500">
-                      No data
-                    </td>
-                  </tr>
-                ) : null}
-                {byFarm.map((f) => (
-                  <tr key={f.farmName} className="border-t border-stone-100">
-                    <td className="py-2 pr-3 font-semibold">{f.farmName}</td>
-                    <td className="py-2 pr-3">{formatNumber(f.placed)}</td>
-                    <td className="py-2 pr-3">{formatNumber(f.total)}</td>
-                    <td className="py-2">{formatPct(f.pct)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <h3 className="font-bold">Cumulative Mortality by Bird Age</h3>
+        <div className="mt-4 h-72 w-full">
+          {cumulativeByAge.length === 0 ? (
+            <p className="text-sm text-stone-500">No data for current filters.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={cumulativeByAge}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
+                <XAxis
+                  dataKey="birdAgeInDays"
+                  label={{ value: "Bird age (days)", position: "insideBottom", offset: -2 }}
+                />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="cumulative"
+                  name="Cumulative loss"
+                  stroke="#047857"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

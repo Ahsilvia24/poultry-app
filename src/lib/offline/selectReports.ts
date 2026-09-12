@@ -54,6 +54,7 @@ export type ReplicaReportsModel = {
     byHouse: HouseBarPoint[];
     byHouseByDate: HouseByDateMatrix;
     byFarm: FarmRow[];
+    farmTitle: string | null;
     filterLabel: string;
   } | null;
   history: { selectedFarmId: string; rows: ReplicaHistoryRow[] } | null;
@@ -68,6 +69,44 @@ function formatRangeLabel(from: string, to: string) {
   return `${format(parseISO(from), "MMMM d, yyyy")} to ${format(parseISO(to), "MMMM d, yyyy")}`;
 }
 
+export function defaultGeneratorRange(today = new Date()): { from: string; to: string } {
+  return { from: format(subDays(today, 28), "yyyy-MM-dd"), to: format(today, "yyyy-MM-dd") };
+}
+
+export function defaultMortalityRange(today = new Date()): { from: string; to: string } {
+  return { from: format(subDays(today, 42), "yyyy-MM-dd"), to: format(today, "yyyy-MM-dd") };
+}
+
+export function activeFlockPlacementKey(
+  snapshot: OfflineSnapshot,
+  farmId: string,
+): string | null {
+  const flocks = (snapshot.flocks ?? [])
+    .filter((flock) => flock.farmId === farmId && !flock.deletedAt)
+    .slice()
+    .sort((a, b) => {
+      const active = Number(b.flockStatus === "ACTIVE") - Number(a.flockStatus === "ACTIVE");
+      if (active !== 0) return active;
+      return (asDateKey(a.placementDate) ?? "").localeCompare(asDateKey(b.placementDate) ?? "");
+    });
+  const first = flocks[0];
+  if (!first) return null;
+  return asDateKey(first.placementDate) ?? first.placementDate.slice(0, 10);
+}
+
+export function mortalityRangeForFarm(
+  snapshot: OfflineSnapshot,
+  farmId: string,
+  today = new Date(),
+): { from: string; to: string } {
+  const fallback = defaultMortalityRange(today);
+  if (!farmId) return fallback;
+  return {
+    from: activeFlockPlacementKey(snapshot, farmId) ?? fallback.from,
+    to: fallback.to,
+  };
+}
+
 export function selectReports(
   snapshot: OfflineSnapshot,
   search: { type?: string; farmId?: string; from?: string; to?: string },
@@ -75,11 +114,20 @@ export function selectReports(
   const type = resolveReportType(search.type);
   const today = new Date();
   const fieldDefaults = defaultFieldLogRange(today);
-  const from =
-    search.from ??
-    (type === "field-log" ? fieldDefaults.from : format(subDays(today, 42), "yyyy-MM-dd"));
-  const to =
-    search.to ?? (type === "field-log" ? fieldDefaults.to : format(today, "yyyy-MM-dd"));
+  const generatorDefaults = defaultGeneratorRange(today);
+  const requestedFarmId = search.farmId ?? "";
+  const mortalityDefaults =
+    type === "mortality" && requestedFarmId
+      ? mortalityRangeForFarm(snapshot, requestedFarmId, today)
+      : defaultMortalityRange(today);
+  const typeDefaults =
+    type === "field-log"
+      ? fieldDefaults
+      : type === "generator"
+        ? generatorDefaults
+        : mortalityDefaults;
+  const from = search.from ?? typeDefaults.from;
+  const to = search.to ?? typeDefaults.to;
   const farms = (snapshot.farms ?? [])
     .filter((farm) => !farm.deletedAt)
     .slice()
@@ -213,19 +261,30 @@ export function selectReports(
     return { birdAgeInDays: age, cumulative: running };
   });
 
-  const houseMap = new Map<string, HouseBarPoint>();
+  const houseMap = new Map<string, HouseBarPoint & { sortKey: string }>();
   for (const row of mortalities) {
     const hf = hfById.get(row.houseFlockId)!;
     const flock = flockById.get(hf.flockId)!;
     const house = houseById.get(hf.houseId);
-    const key = `${farmNameById.get(flock.farmId) ?? "Farm"} H${house?.houseNumber ?? "?"}`;
-    const rec = houseMap.get(key) ?? { houseLabel: key, mortality: 0, culls: 0, total: 0 };
+    const farmName = farmNameById.get(flock.farmId) ?? "Farm";
+    const houseNumber = house?.houseNumber ?? 0;
+    const houseLabel = farmId ? `H${houseNumber || "?"}` : `${farmName} H${houseNumber || "?"}`;
+    const sortKey = `${farmName}\0${String(houseNumber).padStart(4, "0")}`;
+    const rec = houseMap.get(sortKey) ?? {
+      houseLabel,
+      mortality: 0,
+      culls: 0,
+      total: 0,
+      sortKey,
+    };
     rec.mortality += row.dailyMortalityCount;
     rec.culls += row.cullCount;
     rec.total += row.dailyMortalityCount;
-    houseMap.set(key, rec);
+    houseMap.set(sortKey, rec);
   }
-  const byHouse = [...houseMap.values()].sort((a, b) => b.total - a.total);
+  const byHouse = [...houseMap.values()]
+    .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+    .map(({ houseLabel, mortality, culls, total }) => ({ houseLabel, mortality, culls, total }));
 
   const dateKeys =
     fromDate <= toDate
@@ -284,6 +343,7 @@ export function selectReports(
     const name = farmNameById.get(flock.farmId) ?? "Farm";
     const rec = farmAgg.get(name) ?? {
       farmName: name,
+      kind: "farm",
       placed: placementByFarm.get(name) ?? 0,
       mortality: 0,
       culls: 0,
@@ -295,13 +355,62 @@ export function selectReports(
     rec.total += row.dailyMortalityCount;
     farmAgg.set(name, rec);
   }
-  const byFarm: FarmRow[] = [...farmAgg.values()]
+  const farmTotals: FarmRow[] = [...farmAgg.values()]
     .map((row) => ({
       ...row,
+      kind: "farm" as const,
       placed: row.placed || placementByFarm.get(row.farmName) || 0,
       pct: calcPercentage(row.total, row.placed || placementByFarm.get(row.farmName) || 1),
     }))
     .sort((a, b) => b.total - a.total);
+
+  const byFarm: FarmRow[] = [];
+  if (farmId) {
+    const farmName = farmNameById.get(farmId) ?? "Farm";
+    const farmRow =
+      farmTotals.find((row) => row.farmName === farmName) ??
+      ({
+        farmName,
+        kind: "farm" as const,
+        placed: placementByFarm.get(farmName) ?? 0,
+        mortality: 0,
+        culls: 0,
+        total: 0,
+        pct: 0,
+      } satisfies FarmRow);
+    byFarm.push(farmRow);
+    const houses = (snapshot.houses ?? [])
+      .filter((house) => house.farmId === farmId && !house.deletedAt)
+      .slice()
+      .sort((a, b) => a.houseNumber - b.houseNumber);
+    for (const house of houses) {
+      const hfs = (snapshot.houseFlocks ?? []).filter((hf) => {
+        if (hf.houseId !== house.id) return false;
+        const flock = flockById.get(hf.flockId);
+        return Boolean(flock && !flock.deletedAt);
+      });
+      const placed = hfs.reduce((sum, hf) => sum + hf.placedBirdCount, 0);
+      const hfIds = new Set(hfs.map((hf) => hf.id));
+      let mortality = 0;
+      let culls = 0;
+      for (const row of mortalities) {
+        if (!hfIds.has(row.houseFlockId)) continue;
+        mortality += row.dailyMortalityCount;
+        culls += row.cullCount;
+      }
+      byFarm.push({
+        farmName: `House ${house.houseNumber}`,
+        kind: "house",
+        placed,
+        mortality,
+        culls,
+        total: mortality,
+        pct: calcPercentage(mortality, placed || 1),
+      });
+    }
+  } else {
+    byFarm.push(...farmTotals);
+  }
 
   model.mortality = {
     cumulativeByAge,
@@ -313,6 +422,7 @@ export function selectReports(
         .map(({ houseLabel, byDate }) => ({ houseLabel, byDate })),
     },
     byFarm,
+    farmTitle: farmId ? (farmNameById.get(farmId) ?? null) : "All farms",
     filterLabel: [
       farmId ? `Farm: ${farmNameById.get(farmId) ?? farmId}` : "All farms",
       formatRangeLabel(from, to),

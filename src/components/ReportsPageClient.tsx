@@ -3,7 +3,6 @@
 import { ReportsView } from "@/components/ReportsView";
 import { useOffline } from "@/components/OfflineProvider";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
-import { selectReports } from "@/lib/offline/selectReports";
 
 export function ReportsPageClient({
   type,
@@ -30,5 +29,10 @@ export function ReportsPageClient({
     );
   }
 
-  return <ReportsView model={selectReports(snapshot, { type, farmId, from, to })} />;
+  return (
+    <ReportsView
+      snapshot={snapshot}
+      initial={{ type, farmId, from, to }}
+    />
+  );
 }

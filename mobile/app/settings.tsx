@@ -14,9 +14,13 @@ import { useAuth } from "../src/auth";
 import {
   getAppTimeZone,
   getFarmOrder,
+  getLfoFeedOffHoursBeforeCatch,
+  getLfoFeedUpHoursBeforeCatch,
   getServiceTech,
   setAppTimeZone,
   setFarmOrder,
+  setLfoFeedOffHoursBeforeCatch,
+  setLfoFeedUpHoursBeforeCatch,
   setServiceTech,
 } from "../src/lib/appSettings";
 import { APP_TIME_ZONES } from "../src/lib/appTimeZones";
@@ -41,6 +45,8 @@ export default function SettingsScreen() {
   const [serviceTech, setServiceTechName] = useState(getServiceTech);
   const [farmOrder, setFarmOrderValue] = useState<FarmOrder>(getFarmOrder);
   const [timeZone, setTimeZoneValue] = useState(getAppTimeZone);
+  const [feedUpHours, setFeedUpHours] = useState(() => String(getLfoFeedUpHoursBeforeCatch()));
+  const [feedOffHours, setFeedOffHours] = useState(() => String(getLfoFeedOffHoursBeforeCatch()));
   const [exporting, setExporting] = useState(false);
   const [exportNote, setExportNote] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -63,6 +69,24 @@ export default function SettingsScreen() {
   function onChangeTimeZone(value: string) {
     setTimeZoneValue(value);
     setAppTimeZone(value);
+  }
+
+  function onChangeFeedUpHours(value: string) {
+    setFeedUpHours(value);
+    const hours = Number(value);
+    if (Number.isFinite(hours) && hours >= 1) {
+      setLfoFeedUpHoursBeforeCatch(hours);
+      setFeedOffHours(String(getLfoFeedOffHoursBeforeCatch()));
+    }
+  }
+
+  function onChangeFeedOffHours(value: string) {
+    setFeedOffHours(value);
+    const hours = Number(value);
+    if (Number.isFinite(hours) && hours >= 1) {
+      setLfoFeedOffHoursBeforeCatch(hours);
+      setFeedUpHours(String(getLfoFeedUpHoursBeforeCatch()));
+    }
   }
 
   return (
@@ -204,6 +228,69 @@ export default function SettingsScreen() {
                 onChange={onChangeTimeZone}
               />
             </View>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text, flex: 1 }}>
+              Feed up hours before catch:
+            </Text>
+            <TextInput
+              style={[
+                {
+                  width: 64,
+                  fontSize: 17,
+                  fontWeight: "600",
+                  color: colors.text,
+                  textAlign: "right",
+                  paddingVertical: 2,
+                  borderWidth: 0,
+                  backgroundColor: "transparent",
+                },
+                noFocusRing,
+              ]}
+              value={feedUpHours}
+              onChangeText={onChangeFeedUpHours}
+              keyboardType="number-pad"
+              accessibilityLabel="Feed up hours before catch"
+            />
+          </View>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              marginTop: 4,
+            }}
+          >
+            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text, flex: 1 }}>
+              Feed off hours before catch:
+            </Text>
+            <TextInput
+              style={[
+                {
+                  width: 64,
+                  fontSize: 17,
+                  fontWeight: "600",
+                  color: colors.text,
+                  textAlign: "right",
+                  paddingVertical: 2,
+                  borderWidth: 0,
+                  backgroundColor: "transparent",
+                },
+                noFocusRing,
+              ]}
+              value={feedOffHours}
+              onChangeText={onChangeFeedOffHours}
+              keyboardType="number-pad"
+              accessibilityLabel="Feed off hours before catch"
+            />
           </View>
 
           <View style={{ flex: 1, minHeight: 48 }} />

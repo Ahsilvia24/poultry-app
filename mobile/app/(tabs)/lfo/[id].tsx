@@ -17,9 +17,12 @@ import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
   catchPartsFromFeedUpAt,
+  feedOffLabel,
   feedUpAtFromCatch,
+  feedUpLabel,
   formatLfoOrderClock,
 } from "../../../src/lib/lfo/calculate";
+import { getLfoFeedTiming } from "../../../src/lib/appSettings";
 import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, fonts, styles } from "../../../src/theme";
@@ -92,7 +95,7 @@ function loadDraft(id: string) {
     notes: lfo.notes,
     houses: lfo.houses.map(
       (h): HouseDraft => {
-        const parts = catchPartsFromFeedUpAt(h.feedUpAt);
+        const parts = catchPartsFromFeedUpAt(h.feedUpAt, getLfoFeedTiming());
         return {
           id: h.id,
           houseId: h.houseId,
@@ -169,6 +172,7 @@ export default function EditLfoScreen() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [error, setError] = useState<string | null>(null);
+  const timing = getLfoFeedTiming();
   const [farmName, setFarmName] = useState("");
   const [orderDate, setOrderDate] = useState("");
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
@@ -247,10 +251,11 @@ export default function EditLfoScreen() {
         headCount: r.headCount,
         binAPounds: Number(r.binAPounds) || 0,
         binBPounds: Number(r.binBPounds) || 0,
-        feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime),
+        feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime, timing),
       })),
+      timing,
     });
-  }, [consumptionRate, orderDate, orderTime, houses]);
+  }, [consumptionRate, orderDate, orderTime, houses, timing]);
 
   const feedMillText = useMemo(
     () =>
@@ -360,7 +365,7 @@ export default function EditLfoScreen() {
           houseId: h.houseId,
           binAPounds: Number(h.binAPounds) || 0,
           binBPounds: Number(h.binBPounds) || 0,
-          feedUpAt: feedUpAtFromCatch(h.catchDate, h.catchTime),
+          feedUpAt: feedUpAtFromCatch(h.catchDate, h.catchTime, timing),
         })),
       });
       setError(null);
@@ -391,7 +396,7 @@ export default function EditLfoScreen() {
           houseId: h.houseId,
           binAPounds: Number(h.binAPounds) || 0,
           binBPounds: Number(h.binBPounds) || 0,
-          feedUpAt: feedUpAtFromCatch(h.catchDate, h.catchTime),
+          feedUpAt: feedUpAtFromCatch(h.catchDate, h.catchTime, timing),
         })),
       });
       setError(null);
@@ -648,13 +653,13 @@ export default function EditLfoScreen() {
                     {result ? (
                       <View style={{ marginTop: 12, gap: 4 }}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                          <Text style={styles.muted}>Feed up (−5)</Text>
+                          <Text style={styles.muted}>{feedUpLabel(timing)}</Text>
                           <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
                             {formatFeedStamp(result.feedUpAt)}
                           </Text>
                         </View>
                         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                          <Text style={styles.muted}>Feed off (−10)</Text>
+                          <Text style={styles.muted}>{feedOffLabel(timing)}</Text>
                           <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
                             {formatFeedStamp(result.feedOffAt)}
                           </Text>

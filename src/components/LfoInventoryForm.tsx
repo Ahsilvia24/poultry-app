@@ -11,9 +11,12 @@ import { Button, Input, Label } from "@/components/ui";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
+  feedOffLabel,
   feedUpAtFromCatch,
+  feedUpLabel,
   formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
+import { useLfoFeedTiming } from "@/lib/lfo/useLfoFeedTiming";
 import { formatFeedMillData } from "@/lib/lfo/feedMillData";
 import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
 import { currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
@@ -101,6 +104,7 @@ export function LfoInventoryForm({
 }) {
   const router = useRouter();
   const nav = useOfflineNav();
+  const timing = useLfoFeedTiming();
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -149,10 +153,11 @@ export function LfoInventoryForm({
         headCount: r.headCount,
         binAPounds: Number(r.binAPounds) || 0,
         binBPounds: Number(r.binBPounds) || 0,
-        feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime),
+        feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime, timing),
       })),
+      timing,
     });
-  }, [consumptionRate, orderDate, orderTime, rows]);
+  }, [consumptionRate, orderDate, orderTime, rows, timing]);
 
   const feedMillText = useMemo(
     () =>
@@ -295,7 +300,7 @@ export function LfoInventoryForm({
       <div className="space-y-3">
         {rows.map((house) => {
           const result = calc.houses.find((h) => h.houseId === house.houseId);
-          const feedUpAt = feedUpAtFromCatch(house.catchDate, house.catchTime) ?? "";
+          const feedUpAt = feedUpAtFromCatch(house.catchDate, house.catchTime, timing) ?? "";
           return (
             <div
               key={house.houseId}
@@ -374,13 +379,13 @@ export function LfoInventoryForm({
               {result ? (
                 <dl className="space-y-1 text-sm text-stone-600">
                   <div className="flex justify-between gap-2">
-                    <dt className="text-stone-500">Feed up (−5)</dt>
+                    <dt className="text-stone-500">{feedUpLabel(timing)}</dt>
                     <dd className="font-medium text-stone-800">
                       {result.feedUpAt ? format(result.feedUpAt, "MMM d, h:mm a") : "—"}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt className="text-stone-500">Feed off (−10)</dt>
+                    <dt className="text-stone-500">{feedOffLabel(timing)}</dt>
                     <dd className="font-medium text-stone-800">
                       {result.feedOffAt ? format(result.feedOffAt, "MMM d, h:mm a") : "—"}
                     </dd>

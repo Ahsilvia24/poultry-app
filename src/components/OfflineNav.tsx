@@ -25,7 +25,6 @@ import { selectFarmDetail } from "@/lib/offline/selectFarmDetail";
 import { selectFarmTiles } from "@/lib/offline/selectFarms";
 import { selectLfo, selectLfoEdit } from "@/lib/offline/selectLfo";
 import { selectTools } from "@/lib/offline/selectTools";
-import { selectReports } from "@/lib/offline/selectReports";
 import { selectMortality } from "@/lib/offline/selectMortality";
 import {
   selectServiceFarmPicker,
@@ -273,12 +272,13 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     const params = new URLSearchParams(search);
     return (
       <ReportsView
-        model={selectReports(snapshot, {
+        snapshot={snapshot}
+        initial={{
           type: params.get("type") ?? undefined,
           farmId: params.get("farmId") ?? undefined,
           from: params.get("from") ?? undefined,
           to: params.get("to") ?? undefined,
-        })}
+        }}
       />
     );
   }

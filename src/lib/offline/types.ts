@@ -179,6 +179,8 @@ export type OfflineSettings = {
   defaultMarketAgeDays: number;
   notifyEmail: boolean;
   notifyInApp: boolean;
+  lfoFeedUpHoursBeforeCatch?: number;
+  lfoFeedOffHoursBeforeCatch?: number;
 };
 
 export type OfflineFormWriteAction =

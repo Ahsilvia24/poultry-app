@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_LFO_CONSUMPTION_RATE, feedUpAtFromCatch } from "@/lib/lfo/calculate";
+import {
+  DEFAULT_LFO_CONSUMPTION_RATE,
+  feedUpAtFromCatch,
+  lfoTimingFromSettings,
+} from "@/lib/lfo/calculate";
 import { nextCustomLfoName, parseCustomLfoNumber } from "@/lib/lfo/customName";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 import { lastFeedOrderSchema } from "@/lib/validations";
@@ -399,7 +403,12 @@ export async function createManualLastFeedOrderAction(formData: FormData) {
   const binBPounds = Math.max(0, Number(formData.get("binBPounds")) || 0);
   const catchDate = String(formData.get("catchDate") ?? "").trim();
   const catchTime = String(formData.get("catchTime") ?? "").trim();
-  const feedUpAt = parseFeedUpDate(feedUpAtFromCatch(catchDate, catchTime));
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId: user.id! },
+    select: { lfoFeedUpHoursBeforeCatch: true, lfoFeedOffHoursBeforeCatch: true },
+  });
+  const timing = lfoTimingFromSettings(settings);
+  const feedUpAt = parseFeedUpDate(feedUpAtFromCatch(catchDate, catchTime, timing));
 
   const prior = await prisma.lastFeedOrder.findMany({
     where: { farm: { userId: user.id } },

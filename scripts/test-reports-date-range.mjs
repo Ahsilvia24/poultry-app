@@ -13,12 +13,13 @@ assert.match(fields, /min-w-0 overflow-hidden/);
 assert.doesNotMatch(fields, /type="date"/);
 assert.doesNotMatch(fields, /min-h-\[52px\]/);
 
-assert.match(page, /ReportDateRangeFields fromLabel="Start" toLabel="Finish"/);
-assert.match(page, /ReportDateRangeFields fromLabel="From" toLabel="To" from=\{model.from\} to=\{model.to\}/);
-assert.equal(
-  (page.match(/<ReportDateRangeFields /g) ?? []).length,
-  3,
-);
+assert.match(page, /fromLabel="Start"/);
+assert.match(page, /toLabel="Finish"/);
+assert.match(page, /fromLabel="From"/);
+assert.match(page, /toLabel="To"/);
+assert.match(page, /from=\{model.from\}/);
+assert.match(page, /to=\{model.to\}/);
+assert.equal((page.match(/<ReportDateRangeFields/g) ?? []).length, 3);
 assert.doesNotMatch(page, /<p className="mt-1 text-xs text-stone-500">\{format\((fromDate|toDate)/);
 
 console.log("reports-date-range: ok");

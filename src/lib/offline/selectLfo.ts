@@ -5,6 +5,7 @@ import {
   calculateLastFeedOrder,
   catchPartsFromFeedUpAt,
   formatHouseLfoSummary,
+  lfoTimingFromSettings,
 } from "@/lib/lfo/calculate";
 import { lfoDisplayName } from "@/lib/lfo/customName";
 import type { LfoShareInventory } from "@/lib/lfo/share-payload";
@@ -44,6 +45,7 @@ function headCountsForFarm(snapshot: OfflineSnapshot, farmId: string, today: Dat
 export function selectLfo(snapshot: OfflineSnapshot, initialFarmId?: string) {
   const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
   const today = appToday(undefined, timeZone);
+  const timing = lfoTimingFromSettings(snapshot.settings);
 
   const farms = (snapshot.farms ?? [])
     .filter((farm) => farm.isActive && !farm.deletedAt)
@@ -114,7 +116,7 @@ export function selectLfo(snapshot: OfflineSnapshot, initialFarmId?: string) {
       );
       const houses = inventories
         .map((inv) => {
-          const catchParts = catchPartsFromFeedUpAt(inv.feedUpAt);
+          const catchParts = catchPartsFromFeedUpAt(inv.feedUpAt, timing);
           return {
             houseId: inv.houseId,
             houseNumber: houseNumberById.get(inv.houseId) ?? 0,
@@ -130,6 +132,7 @@ export function selectLfo(snapshot: OfflineSnapshot, initialFarmId?: string) {
         orderDate: orderDateKey,
         orderTime: lfo.orderTime,
         consumptionRate: lfo.consumptionRate,
+        timing,
         houses: inventories.map((inv) => ({
           houseId: inv.houseId,
           houseNumber: houseNumberById.get(inv.houseId) ?? 0,
@@ -148,6 +151,7 @@ export function selectLfo(snapshot: OfflineSnapshot, initialFarmId?: string) {
         consumptionRate: lfo.consumptionRate,
         calculatedAt: lfo.calculatedAt ?? lfo.createdAt,
         notes: lfo.notes,
+        timing,
         houses,
       };
       return {
@@ -198,6 +202,7 @@ export function selectLfoEdit(snapshot: OfflineSnapshot, lfoId: string): LfoEdit
     (snapshot.farms ?? []).find((farm) => farm.id === lfo.farmId)?.farmName ?? "Farm";
   const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
   const today = appToday(undefined, timeZone);
+  const timing = lfoTimingFromSettings(snapshot.settings);
   const liveHeads = headCountsForFarm(snapshot, lfo.farmId, today);
   const invByHouse = new Map(
     (snapshot.lfoInventories ?? [])
@@ -211,7 +216,7 @@ export function selectLfoEdit(snapshot: OfflineSnapshot, lfoId: string): LfoEdit
     .sort((a, b) => a.houseNumber - b.houseNumber)
     .map((house) => {
       const inv = invByHouse.get(house.id);
-      const catchParts = catchPartsFromFeedUpAt(inv?.feedUpAt);
+      const catchParts = catchPartsFromFeedUpAt(inv?.feedUpAt, timing);
       return {
         houseId: house.id,
         houseNumber: house.houseNumber,
@@ -229,7 +234,7 @@ export function selectLfoEdit(snapshot: OfflineSnapshot, lfoId: string): LfoEdit
     );
     houses = [...invByHouse.values()]
       .map((inv) => {
-        const catchParts = catchPartsFromFeedUpAt(inv.feedUpAt);
+        const catchParts = catchPartsFromFeedUpAt(inv.feedUpAt, timing);
         return {
           houseId: inv.houseId,
           houseNumber: houseNumberById.get(inv.houseId) ?? 0,

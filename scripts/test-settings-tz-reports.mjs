@@ -33,9 +33,13 @@ assert.doesNotMatch(reports, /byCause/);
 
 assert.doesNotMatch(charts, /byCause/);
 assert.doesNotMatch(charts, /By cause/);
-assert.match(charts, /By farm/);
+assert.match(charts, /Mortality by Percentage/);
+assert.match(charts, /Mortality by Date/);
+assert.match(charts, /Mortality by House/);
+assert.match(charts, /Cumulative Mortality by Bird Age/);
 
-assert.match(tabs, /key === "generator"/);
+assert.match(tabs, /onSelect/);
+assert.match(tabs, /REPORT_TYPES/);
 
 assert.match(mobileSettings, /Timezone:/);
 assert.match(mobileSettings, /setAppTimeZone/);

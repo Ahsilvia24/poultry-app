@@ -10,9 +10,12 @@ import { createManualLastFeedOrderAction } from "@/app/actions/lfo";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
+  feedOffLabel,
   feedUpAtFromCatch,
+  feedUpLabel,
   formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
+import { useLfoFeedTiming } from "@/lib/lfo/useLfoFeedTiming";
 import { currentHalfHourTime } from "@/lib/time-slots";
 import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
 import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
@@ -34,6 +37,7 @@ function PairField({ children }: { children: React.ReactNode }) {
 
 export function ManualLfoForm() {
   const { enabled, queue } = useReplicaWrite();
+  const timing = useLfoFeedTiming();
   const [orderDate, setOrderDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
@@ -58,11 +62,12 @@ export function ManualLfoForm() {
           headCount: Number.isFinite(heads) && heads > 0 ? heads : 0,
           binAPounds: Number(binAPounds) || 0,
           binBPounds: Number(binBPounds) || 0,
-          feedUpAt: feedUpAtFromCatch(catchDate, catchTime),
+          feedUpAt: feedUpAtFromCatch(catchDate, catchTime, timing),
         },
       ],
+      timing,
     });
-  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime]);
+  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime, timing]);
 
   const result = calc.houses[0];
 
@@ -176,13 +181,13 @@ export function ManualLfoForm() {
         {result ? (
           <dl className="mt-3 space-y-1 text-sm text-stone-600">
             <div className="flex justify-between gap-2">
-              <dt className="text-stone-500">Feed up (−5)</dt>
+              <dt className="text-stone-500">{feedUpLabel(timing)}</dt>
               <dd className="font-medium text-stone-800">
                 {result.feedUpAt ? format(result.feedUpAt, "MMM d, h:mm a") : "—"}
               </dd>
             </div>
             <div className="flex justify-between gap-2">
-              <dt className="text-stone-500">Feed off (−10)</dt>
+              <dt className="text-stone-500">{feedOffLabel(timing)}</dt>
               <dd className="font-medium text-stone-800">
                 {result.feedOffAt ? format(result.feedOffAt, "MMM d, h:mm a") : "—"}
               </dd>

@@ -96,9 +96,11 @@ export function LfoHub({
           save as a new LFO for a fresh snapshot.
         </p>
         <p className="mt-1 text-xs leading-snug text-stone-500">
-          Rounds up to nearest 500 & adds 2000
+          Rounds up to nearest 500, adds 2000, then drops any leftover 500
         </p>
-        <p className="text-xs leading-snug text-stone-500">Reclaim rounds to nearest 500</p>
+        <p className="text-xs leading-snug text-stone-500">
+          Reclaim rounds to nearest 500, then drops any leftover 500
+        </p>
       </div>
 
       {savedLfos.length === 0 ? (

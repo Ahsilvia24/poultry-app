@@ -614,6 +614,8 @@ export async function updateSettingsAction(formData: FormData) {
     notifyInApp: formData.get("notifyInApp") === "on",
     farmOrder: formData.get("farmOrder") || DEFAULT_FARM_ORDER,
     appTimeZone: formData.get("appTimeZone") || undefined,
+    lfoFeedUpHoursBeforeCatch: formData.get("lfoFeedUpHoursBeforeCatch") || 5,
+    lfoFeedOffHoursBeforeCatch: formData.get("lfoFeedOffHoursBeforeCatch") || 10,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid settings" };
 
@@ -637,6 +639,8 @@ export async function updateSettingsAction(formData: FormData) {
       notifyInApp: parsed.data.notifyInApp,
       farmOrder: parsed.data.farmOrder ?? DEFAULT_FARM_ORDER,
       appTimeZone: resolveAppTimeZone(parsed.data.appTimeZone),
+      lfoFeedUpHoursBeforeCatch: parsed.data.lfoFeedUpHoursBeforeCatch ?? 5,
+      lfoFeedOffHoursBeforeCatch: parsed.data.lfoFeedOffHoursBeforeCatch ?? 10,
     },
     update: {
       dailyMortalityWarningPct: parsed.data.dailyMortalityWarningPct,
@@ -649,6 +653,8 @@ export async function updateSettingsAction(formData: FormData) {
       notifyInApp: parsed.data.notifyInApp,
       farmOrder: parsed.data.farmOrder ?? DEFAULT_FARM_ORDER,
       appTimeZone: resolveAppTimeZone(parsed.data.appTimeZone),
+      lfoFeedUpHoursBeforeCatch: parsed.data.lfoFeedUpHoursBeforeCatch ?? 5,
+      lfoFeedOffHoursBeforeCatch: parsed.data.lfoFeedOffHoursBeforeCatch ?? 10,
     },
   });
 

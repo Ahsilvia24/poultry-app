@@ -72,7 +72,7 @@ function SavedLfoList({
             fontWeight: "600",
           }}
         >
-          Rounds up to nearest 500 & adds 2000
+          Rounds up to nearest 500, adds 2000, then drops any leftover 500
         </Text>
         <Text
           style={{
@@ -82,7 +82,7 @@ function SavedLfoList({
             fontWeight: "600",
           }}
         >
-          Reclaim rounds to nearest 500
+          Reclaim rounds to nearest 500, then drops any leftover 500
         </Text>
       </View>
       {lfos.length === 0 ? (

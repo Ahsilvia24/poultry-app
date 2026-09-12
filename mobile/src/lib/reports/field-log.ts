@@ -93,8 +93,8 @@ export function mondayOfWeek(dateKey: string): string {
 }
 
 export function defaultFieldLogRange(today = new Date()): { from: string; to: string } {
-  const monday = mondayOfWeek(localDateKey(today));
-  return { from: monday, to: addDaysToDateKey(monday, 6) };
+  const todayKey = localDateKey(today);
+  return { from: mondayOfWeek(todayKey), to: todayKey };
 }
 
 export function formatFieldLogDayHeader(dateKey: string): string {

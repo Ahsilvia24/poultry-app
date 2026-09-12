@@ -10,9 +10,12 @@ import { saveFarmLfoHubAction } from "@/app/actions/lfo";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
+  feedOffLabel,
   feedUpAtFromCatch,
+  feedUpLabel,
   formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
+import { useLfoFeedTiming } from "@/lib/lfo/useLfoFeedTiming";
 import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
 import { formatFeedMillData } from "@/lib/lfo/feedMillData";
 import { currentHalfHourTime } from "@/lib/time-slots";
@@ -90,6 +93,7 @@ export function FarmLfoForm({
   houses: FarmLfoHouseInput[];
 }) {
   const { enabled, queue } = useReplicaWrite();
+  const timing = useLfoFeedTiming();
   const [orderDate, setOrderDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(
@@ -112,10 +116,11 @@ export function FarmLfoForm({
         headCount: row.headCount,
         binAPounds: Number(row.binAPounds) || 0,
         binBPounds: Number(row.binBPounds) || 0,
-        feedUpAt: feedUpAtFromCatch(row.catchDate, row.catchTime),
+        feedUpAt: feedUpAtFromCatch(row.catchDate, row.catchTime, timing),
       })),
+      timing,
     });
-  }, [consumptionRate, orderDate, orderTime, rows]);
+  }, [consumptionRate, orderDate, orderTime, rows, timing]);
 
   const feedMillText = useMemo(
     () =>
@@ -147,7 +152,7 @@ export function FarmLfoForm({
       formData.append("houseId", row.houseId);
       formData.append("binAPounds", row.binAPounds);
       formData.append("binBPounds", row.binBPounds);
-      formData.append("feedUpAt", feedUpAtFromCatch(row.catchDate, row.catchTime) ?? "");
+      formData.append("feedUpAt", feedUpAtFromCatch(row.catchDate, row.catchTime, timing) ?? "");
     }
     return formData;
   }
@@ -225,7 +230,7 @@ export function FarmLfoForm({
       ) : (
         rows.map((house) => {
           const result = calc.houses.find((row) => row.houseId === house.houseId);
-          const feedUpAt = feedUpAtFromCatch(house.catchDate, house.catchTime) ?? "";
+          const feedUpAt = feedUpAtFromCatch(house.catchDate, house.catchTime, timing) ?? "";
           return (
             <Card key={house.houseId}>
               <input type="hidden" name="houseId" value={house.houseId} />
@@ -300,13 +305,13 @@ export function FarmLfoForm({
               {result ? (
                 <dl className="mt-3 space-y-1 text-sm text-stone-600">
                   <div className="flex justify-between gap-2">
-                    <dt className="text-stone-500">Feed up (−5)</dt>
+                    <dt className="text-stone-500">{feedUpLabel(timing)}</dt>
                     <dd className="font-medium text-stone-800">
                       {result.feedUpAt ? format(result.feedUpAt, "MMM d, h:mm a") : "—"}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <dt className="text-stone-500">Feed off (−10)</dt>
+                    <dt className="text-stone-500">{feedOffLabel(timing)}</dt>
                     <dd className="font-medium text-stone-800">
                       {result.feedOffAt ? format(result.feedOffAt, "MMM d, h:mm a") : "—"}
                     </dd>

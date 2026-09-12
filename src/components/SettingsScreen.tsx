@@ -53,6 +53,8 @@ export function SettingsScreen() {
         defaultMarketAgeDays: 52,
         notifyEmail : false,
         notifyInApp: true,
+        lfoFeedUpHoursBeforeCatch: 5,
+        lfoFeedOffHoursBeforeCatch: 10,
       };
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -195,6 +197,32 @@ export function SettingsScreen() {
                   min={1}
                   compact
                   defaultValue={values.defaultMarketAgeDays}
+                  required
+                  className={inlineInputClass}
+                />
+              </SettingsLine>
+              <SettingsLine label="Feed up hours before catch:" htmlFor="lfoFeedUpHoursBeforeCatch">
+                <Input
+                  id="lfoFeedUpHoursBeforeCatch"
+                  name="lfoFeedUpHoursBeforeCatch"
+                  type="number"
+                  min={1}
+                  max={48}
+                  compact
+                  defaultValue={values.lfoFeedUpHoursBeforeCatch ?? 5}
+                  required
+                  className={inlineInputClass}
+                />
+              </SettingsLine>
+              <SettingsLine label="Feed off hours before catch:" htmlFor="lfoFeedOffHoursBeforeCatch">
+                <Input
+                  id="lfoFeedOffHoursBeforeCatch"
+                  name="lfoFeedOffHoursBeforeCatch"
+                  type="number"
+                  min={1}
+                  max={72}
+                  compact
+                  defaultValue={values.lfoFeedOffHoursBeforeCatch ?? 10}
                   required
                   className={inlineInputClass}
                 />

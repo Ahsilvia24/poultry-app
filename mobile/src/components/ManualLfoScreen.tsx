@@ -13,9 +13,12 @@ import { useNavigation } from "expo-router";
 import {
   DEFAULT_LFO_CONSUMPTION_RATE,
   calculateLastFeedOrder,
+  feedOffLabel,
   feedUpAtFromCatch,
+  feedUpLabel,
   formatLfoOrderClock,
 } from "../lib/lfo/calculate";
+import { getLfoFeedTiming } from "../lib/appSettings";
 import { todayKey } from "../lib/ids";
 import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../lib/scrollField";
 import { useTabScrollToTop } from "../lib/tabScroll";
@@ -145,6 +148,7 @@ export function ManualLfoScreen({
   >(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const timing = getLfoFeedTiming();
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("lfo", scrollRef);
   const scrollYRef = useRef(0);
@@ -187,11 +191,12 @@ export function ManualLfoScreen({
           headCount: Number.isFinite(heads) && heads > 0 ? heads : 0,
           binAPounds: Number(binAPounds) || 0,
           binBPounds: Number(binBPounds) || 0,
-          feedUpAt: feedUpAtFromCatch(catchDate, catchTime),
+          feedUpAt: feedUpAtFromCatch(catchDate, catchTime, timing),
         },
       ],
+      timing,
     });
-  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime]);
+  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime, timing]);
 
   const result = calc.houses[0];
 
@@ -268,7 +273,7 @@ export function ManualLfoScreen({
         headCount: Number.isFinite(heads) && heads > 0 ? heads : 0,
         binAPounds: Number(binAPounds) || 0,
         binBPounds: Number(binBPounds) || 0,
-        feedUpAt: feedUpAtFromCatch(catchDate, catchTime),
+        feedUpAt: feedUpAtFromCatch(catchDate, catchTime, timing),
       });
       setActiveField(null);
       if (onSaved) onSaved(id);
@@ -407,13 +412,13 @@ export function ManualLfoScreen({
           {result ? (
             <View style={{ marginTop: 12, gap: 4 }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={styles.muted}>Feed up (−5)</Text>
+                <Text style={styles.muted}>{feedUpLabel(timing)}</Text>
                 <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
                   {formatFeedStamp(result.feedUpAt)}
                 </Text>
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={styles.muted}>Feed off (−10)</Text>
+                <Text style={styles.muted}>{feedOffLabel(timing)}</Text>
                 <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
                   {formatFeedStamp(result.feedOffAt)}
                 </Text>
