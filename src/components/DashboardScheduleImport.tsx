@@ -27,6 +27,8 @@ import type { PlacementFarmMatch, PlacementRow } from "@/lib/placement-import/ty
 import type { CatchRow } from "@/lib/catch-import/types";
 import { extractPlacementRowsOnDevice } from "@/lib/placement-import/extract-client";
 import { extractCatchRowsOnDevice } from "@/lib/catch-import/extract-client";
+import { applyCatchToSnapshot, applyPlacementToSnapshot } from "@/lib/offline/applyImport";
+import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import { previewCatchRowsLocal, previewPlacementRowsLocal } from "@/lib/offline/previewImport";
 import { useOffline } from "@/components/OfflineProvider";
 import { Button, Card } from "@/components/ui";
@@ -65,7 +67,7 @@ export function DashboardScheduleImport({
 }: {
   imports: ScheduleImportMeta[];
 }) {
-  const { snapshot, enqueue } = useOffline();
+  const { snapshot, enqueue, patchSnapshot } = useOffline();
   const [importType, setImportType] = useState<ScheduleImportType>("placement");
   const [pending, startTransition] = useTransition();
   const [uploadResult, setUploadResult] = useState<UploadScheduleImportResult | null>(null);
@@ -336,13 +338,48 @@ export function DashboardScheduleImport({
 
     startTransition(async () => {
       setLocalError(null);
+      const rows = preview.kind === "catch" ? catchRows : placementRows;
+      if (snapshotHasFarmGraph(snapshot) && rows?.length) {
+        if (preview.kind === "catch") {
+          const result = applyCatchToSnapshot(snapshot, {
+            selections: selections as CatchSelection[],
+            rows: catchRows ?? [],
+          });
+          if (!result.ok) {
+            setApplyResult(result);
+            return;
+          }
+          patchSnapshot(() => result.snapshot);
+          enqueue({ kind: "applyCatch", payload: { selections, rows } });
+          setApplyResult({ kind: "catch", ...result });
+        } else {
+          const result = applyPlacementToSnapshot(snapshot, {
+            selections: selections as PlacementSelection[],
+            rows: placementRows ?? [],
+          });
+          if (!result.ok) {
+            setApplyResult(result);
+            return;
+          }
+          patchSnapshot(() => result.snapshot);
+          enqueue({ kind: "applyPlacement", payload: { selections, rows } });
+          setApplyResult({ kind: "placement", ...result });
+        }
+        setPreview(null);
+        setOnlyMyFarms(false);
+        return;
+      }
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        if (!rows?.length) {
+          setApplyResult({
+            ok: false,
+            error: "Read the file again on this phone, then import.",
+          });
+          return;
+        }
         enqueue({
           kind: preview.kind === "catch" ? "applyCatch" : "applyPlacement",
-          payload: {
-            selections,
-            rows: preview.kind === "catch" ? catchRows : placementRows,
-          },
+          payload: { selections, rows },
         });
         setApplyResult({
           ok: false,

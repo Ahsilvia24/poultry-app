@@ -60,6 +60,8 @@ const importUi = read("src/components/DashboardScheduleImport.tsx");
 assert.match(importUi, /extractPlacementRowsOnDevice/);
 assert.match(importUi, /extractCatchRowsOnDevice/);
 assert.match(importUi, /previewPlacementRowsLocal/);
+assert.match(importUi, /applyPlacementToSnapshot/);
+assert.match(importUi, /applyCatchToSnapshot/);
 
 const { extractPlacementRowsOnDevice } = await import(
   join(root, "src/lib/placement-import/extract-client.ts")
@@ -76,6 +78,9 @@ const { selectLfo, selectLfoEdit } = await import(join(root, "src/lib/offline/se
 const { selectTools } = await import(join(root, "src/lib/offline/selectTools.ts"));
 const { selectReports } = await import(join(root, "src/lib/offline/selectReports.ts"));
 const { applyFormWrite } = await import(join(root, "src/lib/offline/applyWrites.ts"));
+const { applyCatchToSnapshot, applyPlacementToSnapshot } = await import(
+  join(root, "src/lib/offline/applyImport.ts")
+);
 
 const pdfBytes = readFileSync(
   join(root, "src/lib/placement-import/fixtures/weekly-chick-placement-9-5-26.pdf"),
@@ -91,6 +96,8 @@ assert.equal(farms.length, 21);
 const preview = previewPlacementRowsLocal(rows, []);
 assert.equal(preview.length, 21);
 assert.ok(preview.every((farm) => farm.isMyFarm === false));
+const unmatched = preview[0];
+assert.ok(unmatched);
 
 assert.equal(isReplicaHref("/farms"), true);
 assert.equal(isReplicaHref("/farms/abc"), true);
@@ -558,6 +565,78 @@ const { selectMortality } = await import(join(root, "src/lib/offline/selectMorta
 const mort = selectMortality(snapshot, "farm-1", "hf-1");
 assert.equal(mort.farms.length, 1);
 assert.equal(mort.farms[0].activeFlock?.houses.length, 2);
+
+const imported = applyPlacementToSnapshot(snapshot, {
+  selections: [{ key: unmatched.key, selected: true }],
+  rows,
+});
+assert.equal(imported.ok, true);
+assert.equal(imported.createdFarms, 1);
+assert.ok(imported.snapshot.farms.some((farm) => farm.farmName === unmatched.farmName));
+assert.ok(imported.snapshot.houses.some((house) => house.farmId !== "farm-1"));
+
+const matchedPlacement = applyPlacementToSnapshot(snapshot, {
+  selections: [{ key: "12::OAK RIDGE", selected: true }],
+  rows: [
+    {
+      datePlaced: "2026-09-01",
+      farmCode: "12",
+      farmName: "Oak Ridge",
+      flockId: "B2",
+      houseNo: 1,
+      numberSent: 21000,
+    },
+    {
+      datePlaced: "2026-09-01",
+      farmCode: "12",
+      farmName: "Oak Ridge",
+      flockId: "B2",
+      houseNo: 2,
+      numberSent: 20500,
+    },
+  ],
+});
+assert.equal(matchedPlacement.ok, true);
+assert.equal(matchedPlacement.createdFarms, 0);
+assert.equal(
+  matchedPlacement.snapshot.houseFlocks.find((hf) => hf.id === "hf-1")?.placedBirdCount,
+  21000,
+);
+
+const caught = applyCatchToSnapshot(snapshot, {
+  selections: [{ key: "12|OAK RIDGE", selected: true }],
+  rows: [
+    {
+      catchDate: "2026-09-20",
+      farmCode: "12",
+      farmName: "Oak Ridge",
+      flockId: "A1",
+      houseNo: 1,
+      headCount: null,
+    },
+  ],
+});
+assert.equal(caught.ok, true);
+assert.equal(caught.updatedHouses, 1);
+assert.equal(caught.snapshot.houseFlocks.find((hf) => hf.id === "hf-1")?.catchDate, "2026-09-20");
+assert.equal(caught.snapshot.flocks[0].projectedCatchDate, "2026-09-20");
+
+const missedCatch = applyCatchToSnapshot(snapshot, {
+  selections: [{ key: "ZZ|NO FARM", selected: true }],
+  rows: [
+    {
+      catchDate: "2026-09-20",
+      farmCode: "ZZ",
+      farmName: "No Farm",
+      flockId: "",
+      houseNo: 1,
+      headCount: null,
+    },
+  ],
+});
+assert.equal(missedCatch.ok, true);
+assert.equal(missedCatch.updatedHouses, 0);
+assert.ok(missedCatch.warnings.length > 0);
 
 console.log(
   `local-first-offline: ${rows.length} rows · ${farms.length} farms · farm detail ${detail.houseCards.length} houses · LFO ${lfo.savedLfos.length} · reports + flock + service + leftover writes`,
