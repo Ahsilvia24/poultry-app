@@ -157,7 +157,7 @@ export function SavedLfoRow({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                downloadLfoPdf(shareInventory);
+                void downloadLfoPdf(shareInventory);
               }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
             >
