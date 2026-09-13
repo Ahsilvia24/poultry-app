@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const web = readFileSync(join(root, "src/components/WeightProjectionManualTile.tsx"), "utf8");
 const expo = readFileSync(join(root, "mobile/src/components/WeightProjectionManualTile.tsx"), "utf8");
-const page = readFileSync(join(root, "src/app/(dashboard)/tools/page.tsx"), "utf8");
+const view = readFileSync(join(root, "src/components/ToolsView.tsx"), "utf8");
 
 assert.match(web, /Tap the numbers to calculate/);
 assert.match(web, /label: "TF"/);
@@ -26,7 +26,7 @@ assert.doesNotMatch(expo, /Chip/);
 assert.doesNotMatch(expo, /selectFarm/);
 assert.doesNotMatch(expo, /listFarms/);
 
-assert.match(page, /<WeightProjectionManualTile \/>/);
-assert.doesNotMatch(page, /WeightProjectionManualTile\s*\n\s*farms=/);
+assert.match(view, /<WeightProjectionManualTile \/>/);
+assert.doesNotMatch(view, /WeightProjectionManualTile\s*\n\s*farms=/);
 
 console.log("custom-weight-no-pickers: ok");
