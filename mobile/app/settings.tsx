@@ -1,6 +1,7 @@
-import { createElement, useState } from "react";
+import { createElement, useState, type ReactNode } from "react";
 import {
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -9,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../src/auth";
 import {
@@ -27,7 +29,6 @@ import { APP_TIME_ZONES } from "../src/lib/appTimeZones";
 import { shareMobileBackup } from "../src/lib/dataExport";
 import { FARM_ORDER_OPTIONS, type FarmOrder } from "../src/lib/farmOrder";
 import { colors, styles } from "../src/theme";
-import { WheelPicker } from "../src/components/WheelPicker";
 
 const noFocusRing =
   Platform.OS === "web"
@@ -39,18 +40,142 @@ const noFocusRing =
       } as const)
     : null;
 
-const shadedNumberStyle = {
-  width: 68,
-  backgroundColor: "#e7e5e4",
+const valueChip = {
+  minHeight: 36,
   borderRadius: 10,
-  fontSize: 17,
+  backgroundColor: "#e7e5e4",
+  paddingHorizontal: 10,
+  justifyContent: "center" as const,
+};
+
+const valueText = {
+  fontSize: 15,
   fontWeight: "600" as const,
   color: colors.text,
   textAlign: "right" as const,
-  paddingVertical: 6,
-  paddingHorizontal: 10,
-  borderWidth: 0,
 };
+
+function SettingsRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        minHeight: 44,
+      }}
+    >
+      <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text, flexShrink: 0 }}>
+        {label}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function SettingsSelect<T extends string>({
+  title,
+  value,
+  options,
+  onChange,
+}: {
+  title: string;
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.value === value) ?? options[0];
+
+  if (Platform.OS === "web") {
+    return createElement(
+      "select",
+      {
+        value,
+        "aria-label": title,
+        onChange: (event: { target: { value: string } }) => onChange(event.target.value as T),
+        style: {
+          ...valueChip,
+          ...valueText,
+          minWidth: 152,
+          maxWidth: 224,
+          borderWidth: 0,
+          appearance: "auto",
+        },
+      },
+      options.map((option) =>
+        createElement("option", { key: option.value, value: option.value }, option.label),
+      ),
+    );
+  }
+
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        onPress={() => setOpen(true)}
+        style={[valueChip, { minWidth: 152, maxWidth: 224 }]}
+      >
+        <Text numberOfLines={1} style={valueText}>
+          {selected?.label ?? ""}
+        </Text>
+      </Pressable>
+      <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}
+          onPress={() => setOpen(false)}
+        >
+          <Pressable
+            onPress={(event) => event.stopPropagation()}
+            style={{
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              padding: 16,
+              maxHeight: "70%",
+            }}
+          >
+            <Text style={{ fontSize: 17, fontWeight: "800", marginBottom: 8 }}>{title}</Text>
+            <ScrollView>
+              {options.map((option) => (
+                <Pressable
+                  key={option.value}
+                  onPress={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  style={{
+                    paddingVertical: 14,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#f5f5f4",
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ fontWeight: value === option.value ? "800" : "600", color: colors.text }}>
+                    {option.label}
+                  </Text>
+                  {value === option.value ? (
+                    <Ionicons name="checkmark" size={18} color={colors.accentDark} />
+                  ) : null}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -126,161 +251,106 @@ export default function SettingsScreen() {
             style={{
               marginBottom: 20,
               flexDirection: "row",
-              alignItems: "center",
+              alignItems: "flex-start",
               justifyContent: "space-between",
               gap: 12,
             }}
           >
             <Text style={[styles.title, { flex: 1 }]}>Settings</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Done"
-              onPress={() => router.back()}
-              hitSlop={10}
-            >
-              <Text style={{ color: colors.text, fontWeight: "700", textDecorationLine: "underline" }}>
-                Done
-              </Text>
-            </Pressable>
+            <View style={{ alignItems: "flex-end", gap: 4, maxWidth: "52%" }}>
+              {user?.email ? (
+                <Text
+                  accessibilityLabel="Email"
+                  numberOfLines={1}
+                  style={{ fontSize: 12, fontWeight: "500", color: colors.muted, textAlign: "right" }}
+                >
+                  {user.email}
+                </Text>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Done"
+                onPress={() => router.back()}
+                hitSlop={10}
+              >
+                <Text style={{ color: colors.text, fontWeight: "700", textDecorationLine: "underline" }}>
+                  Done
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 4,
-            }}
-          >
-            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>
-              Service Tech:
-            </Text>
+          <SettingsRow label="Service Tech:">
+            <View style={[valueChip, { minWidth: 152, maxWidth: 224, flex: 1 }]}>
+              <TextInput
+                style={[valueText, { paddingVertical: 6, borderWidth: 0 }, noFocusRing]}
+                value={serviceTech}
+                onChangeText={onChangeServiceTech}
+                autoCapitalize="words"
+                autoCorrect={false}
+                textContentType="name"
+                autoComplete="name"
+                placeholder="Name"
+                placeholderTextColor={colors.muted}
+                selectionColor={colors.muted}
+                underlineColorAndroid="transparent"
+                accessibilityLabel="Service technician name"
+              />
+            </View>
+          </SettingsRow>
+
+          <SettingsRow label="Order Farms By:">
+            <SettingsSelect
+              title="Order Farms By"
+              value={farmOrder}
+              options={FARM_ORDER_OPTIONS.map((option) => ({
+                value: option.key,
+                label: option.label,
+              }))}
+              onChange={onChangeFarmOrder}
+            />
+          </SettingsRow>
+
+          <SettingsRow label="Timezone:">
+            <SettingsSelect
+              title="Timezone"
+              value={timeZone}
+              options={APP_TIME_ZONES.map((zone) => ({
+                value: zone.value,
+                label: zone.label,
+              }))}
+              onChange={onChangeTimeZone}
+            />
+          </SettingsRow>
+
+          <SettingsRow label="Feed up hours before catch:">
             <TextInput
               style={[
-                {
-                  flex: 1,
-                  minWidth: 0,
-                  fontSize: 17,
-                  fontWeight: "600",
-                  color: colors.text,
-                  paddingVertical: 2,
-                  paddingHorizontal: 0,
-                  borderWidth: 0,
-                  backgroundColor: "transparent",
-                },
+                valueChip,
+                valueText,
+                { width: 76, paddingVertical: 6, borderWidth: 0 },
                 noFocusRing,
               ]}
-              value={serviceTech}
-              onChangeText={onChangeServiceTech}
-              autoCapitalize="words"
-              autoCorrect={false}
-              textContentType="name"
-              autoComplete="name"
-              placeholder="Name"
-              placeholderTextColor={colors.muted}
-              selectionColor={colors.muted}
-              underlineColorAndroid="transparent"
-              accessibilityLabel="Service technician name"
-            />
-          </View>
-
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-              gap: 8,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 17,
-                fontWeight: "700",
-                color: colors.text,
-                paddingTop: 2,
-              }}
-            >
-              Order Farms By:
-            </Text>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <WheelPicker
-                options={FARM_ORDER_OPTIONS.map((option) => ({
-                  value: option.key,
-                  label: option.label,
-                }))}
-                value={farmOrder}
-                onChange={onChangeFarmOrder}
-              />
-            </View>
-          </View>
-
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-              gap: 8,
-              marginTop: 4,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 17,
-                fontWeight: "700",
-                color: colors.text,
-                paddingTop: 2,
-              }}
-            >
-              Timezone:
-            </Text>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <WheelPicker
-                options={APP_TIME_ZONES.map((zone) => ({
-                  value: zone.value,
-                  label: zone.label,
-                }))}
-                value={timeZone}
-                onChange={onChangeTimeZone}
-              />
-            </View>
-          </View>
-
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              marginTop: 8,
-            }}
-          >
-            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text, flex: 1 }}>
-              Feed up hours before catch:
-            </Text>
-            <TextInput
-              style={[shadedNumberStyle, noFocusRing]}
               value={feedUpHours}
               onChangeText={onChangeFeedUpHours}
               keyboardType="number-pad"
               accessibilityLabel="Feed up hours before catch"
             />
-          </View>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              marginTop: 4,
-            }}
-          >
-            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text, flex: 1 }}>
-              Feed off hours before catch:
-            </Text>
+          </SettingsRow>
+          <SettingsRow label="Feed off hours before catch:">
             <TextInput
-              style={[shadedNumberStyle, noFocusRing]}
+              style={[
+                valueChip,
+                valueText,
+                { width: 76, paddingVertical: 6, borderWidth: 0 },
+                noFocusRing,
+              ]}
               value={feedOffHours}
               onChangeText={onChangeFeedOffHours}
               keyboardType="number-pad"
               accessibilityLabel="Feed off hours before catch"
             />
-          </View>
+          </SettingsRow>
 
           <View style={{ flex: 1, minHeight: 48 }} />
 
@@ -340,19 +410,11 @@ export default function SettingsScreen() {
             </Text>
           )}
 
-          <View style={{ marginTop: 12, gap: 4 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>Email:</Text>
-              <Text
-                style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: "600", color: colors.text }}
-              >
-                {user?.email ?? "—"}
-              </Text>
-            </View>
+          <View style={{ marginTop: 12, gap: 12 }}>
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>
               Change password
             </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <Text style={{ width: 88, fontSize: 15, fontWeight: "700", color: colors.text }}>
                 Current:
               </Text>
@@ -361,13 +423,16 @@ export default function SettingsScreen() {
                   {
                     flex: 1,
                     minWidth: 0,
-                    fontSize: 17,
+                    minHeight: 44,
+                    fontSize: 15,
                     fontWeight: "600",
                     color: colors.text,
-                    paddingVertical: 2,
-                    paddingHorizontal: 0,
-                    borderWidth: 0,
-                    backgroundColor: "transparent",
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 10,
+                    backgroundColor: "#fff",
                   },
                   noFocusRing,
                 ]}
@@ -378,13 +443,13 @@ export default function SettingsScreen() {
                 autoCorrect={false}
                 textContentType="password"
                 autoComplete="password"
-                placeholder="Current password"
+                placeholder="********"
                 placeholderTextColor={colors.muted}
                 underlineColorAndroid="transparent"
                 accessibilityLabel="Current password"
               />
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <Text style={{ width: 88, fontSize: 15, fontWeight: "700", color: colors.text }}>
                 New:
               </Text>
@@ -393,13 +458,16 @@ export default function SettingsScreen() {
                   {
                     flex: 1,
                     minWidth: 0,
-                    fontSize: 17,
+                    minHeight: 44,
+                    fontSize: 15,
                     fontWeight: "600",
                     color: colors.text,
-                    paddingVertical: 2,
-                    paddingHorizontal: 0,
-                    borderWidth: 0,
-                    backgroundColor: "transparent",
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 10,
+                    backgroundColor: "#fff",
                   },
                   noFocusRing,
                 ]}
@@ -410,13 +478,13 @@ export default function SettingsScreen() {
                 autoCorrect={false}
                 textContentType="newPassword"
                 autoComplete="password-new"
-                placeholder="New password"
+                placeholder="********"
                 placeholderTextColor={colors.muted}
                 underlineColorAndroid="transparent"
                 accessibilityLabel="New password"
               />
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <Text style={{ width: 88, fontSize: 15, fontWeight: "700", color: colors.text }}>
                 Confirm:
               </Text>
@@ -425,13 +493,16 @@ export default function SettingsScreen() {
                   {
                     flex: 1,
                     minWidth: 0,
-                    fontSize: 17,
+                    minHeight: 44,
+                    fontSize: 15,
                     fontWeight: "600",
                     color: colors.text,
-                    paddingVertical: 2,
-                    paddingHorizontal: 0,
-                    borderWidth: 0,
-                    backgroundColor: "transparent",
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 10,
+                    backgroundColor: "#fff",
                   },
                   noFocusRing,
                 ]}
@@ -442,7 +513,7 @@ export default function SettingsScreen() {
                 autoCorrect={false}
                 textContentType="newPassword"
                 autoComplete="password-new"
-                placeholder="Confirm password"
+                placeholder="********"
                 placeholderTextColor={colors.muted}
                 underlineColorAndroid="transparent"
                 accessibilityLabel="Confirm new password"

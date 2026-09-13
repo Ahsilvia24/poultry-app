@@ -47,15 +47,17 @@ assert.equal(
 
 const mobileSettings = readFileSync(join(root, "mobile/app/settings.tsx"), "utf8");
 assert.match(mobileSettings, /Order Farms By:/);
-assert.match(mobileSettings, /Email:/);
+assert.match(mobileSettings, /accessibilityLabel="Email"/);
+assert.doesNotMatch(mobileSettings, />Email:</);
 assert.match(mobileSettings, /Change password/);
+assert.match(mobileSettings, /placeholder="\*\*\*\*\*\*\*\*"/);
 assert.ok(
-  mobileSettings.indexOf("Order Farms By:") < mobileSettings.indexOf("Email:"),
-  "mobile email should sit below Order By",
+  mobileSettings.indexOf("accessibilityLabel=\"Email\"") < mobileSettings.indexOf("Order Farms By:"),
+  "mobile email should sit in the header",
 );
 assert.ok(
-  mobileSettings.indexOf("Email:") < mobileSettings.indexOf("Change password"),
-  "mobile change password should sit below email",
+  mobileSettings.indexOf("Order Farms By:") < mobileSettings.indexOf("Change password"),
+  "mobile change password should sit below Order By",
 );
 
 console.log("allowed-register: ok");
