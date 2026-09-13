@@ -41,6 +41,7 @@ export function ManualLfoForm() {
   const [orderDate, setOrderDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [orderTime, setOrderTime] = useState(currentHalfHourTime);
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
+  const [rateFocused, setRateFocused] = useState(false);
   const [headCount, setHeadCount] = useState("");
   const [binAPounds, setBinAPounds] = useState("0");
   const [binBPounds, setBinBPounds] = useState("0");
@@ -94,13 +95,30 @@ export function ManualLfoForm() {
       ) : null}
       <input type="hidden" name="consumptionRate" value={consumptionRate} />
       <ConsumptionRateCalculator
-        onRateChange={(rate) => setConsumptionRate(formatConsumptionRate(rate))}
+        onRateChange={(rate) => {
+          if (rateFocused) return;
+          setConsumptionRate(formatConsumptionRate(rate));
+        }}
       />
 
       <h2 className="text-lg font-bold text-stone-900">Bin Inventory & Feed Up</h2>
       <Card>
-        <div className="flex items-baseline justify-end">
-          <label className="flex items-baseline gap-1.5 text-xs text-stone-500">
+        <div className="flex items-baseline justify-between gap-2">
+          <input
+            type="text"
+            inputMode="decimal"
+            value={consumptionRate}
+            aria-label="Consumption rate"
+            onFocus={() => setRateFocused(true)}
+            onChange={(e) => setConsumptionRate(e.target.value.replace(/[^\d.]/g, ""))}
+            onBlur={() => {
+              setRateFocused(false);
+              const n = Number(consumptionRate);
+              if (Number.isFinite(n) && n > 0) setConsumptionRate(formatConsumptionRate(n));
+            }}
+            className="min-w-[4ch] max-w-[8ch] border-0 bg-transparent p-0 text-left text-sm font-bold text-stone-800 underline decoration-stone-300 underline-offset-2 caret-stone-900 outline-none focus:text-emerald-800 focus:decoration-emerald-700"
+          />
+          <label className="ml-auto flex items-baseline gap-1 text-xs text-stone-500">
             {headCount.trim() ? "Head Count" : "Enter Head Count"}
             <input
               type="text"
@@ -111,7 +129,8 @@ export function ManualLfoForm() {
               placeholder=""
               aria-label="Enter Head Count"
               onChange={(e) => setHeadCount(e.target.value.replace(/[^\d]/g, ""))}
-              className="w-28 border-0 bg-transparent p-0 text-right text-xs font-semibold text-stone-800 caret-stone-900 outline-none placeholder:text-stone-400 focus:text-emerald-800"
+              style={{ width: `${Math.max(headCount.length, 1)}ch` }}
+              className="min-w-[1ch] border-0 bg-transparent p-0 text-left text-xs font-semibold text-stone-800 caret-stone-900 outline-none placeholder:text-stone-400 focus:text-emerald-800"
             />
           </label>
         </div>

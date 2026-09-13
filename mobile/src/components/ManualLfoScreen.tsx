@@ -62,13 +62,6 @@ function formatFeedStamp(d: Date | null) {
   });
 }
 
-function formatHeadCountLabel(raw: string) {
-  if (!raw) return "Enter Head Count";
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return `Head Count ${raw}`;
-  return `Head Count ${n.toLocaleString()}`;
-}
-
 type ActiveField = "rate" | "head" | "binA" | "binB" | "calcWater" | "calcHead";
 
 function FieldButton({
@@ -320,29 +313,62 @@ export function ManualLfoScreen({
         <Text style={styles.sectionTitle}>Bin Inventory & Feed Up</Text>
         <Card>
           <View
-            ref={bindFieldRef("head")}
-            collapsable={false}
             style={{
               flexDirection: "row",
-              justifyContent: "flex-end",
+              alignItems: "baseline",
+              justifyContent: "space-between",
+              gap: 8,
               marginBottom: 8,
             }}
           >
-            <Pressable
-              onPress={() => focusField("head")}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Enter bird count"
-            >
-              <Text
-                style={{
-                  color: activeField === "head" ? colors.accentDark : colors.muted,
-                  fontWeight: activeField === "head" ? "800" : "600",
-                }}
+            <View ref={bindFieldRef("rate")} collapsable={false}>
+              <Pressable
+                onPress={() => focusField("rate")}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Consumption rate"
               >
-                {formatHeadCountLabel(headCount)}
-              </Text>
-            </Pressable>
+                <Text
+                  style={{
+                    color: activeField === "rate" ? colors.accentDark : colors.text,
+                    fontWeight: "800",
+                    textDecorationLine: "underline",
+                  }}
+                >
+                  {consumptionRate || "—"}
+                </Text>
+              </Pressable>
+            </View>
+            <View ref={bindFieldRef("head")} collapsable={false} style={{ marginLeft: "auto" }}>
+              <Pressable
+                onPress={() => focusField("head")}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Enter bird count"
+                style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}
+              >
+                <Text
+                  style={{
+                    color: activeField === "head" ? colors.accentDark : colors.muted,
+                    fontWeight: activeField === "head" ? "800" : "600",
+                  }}
+                >
+                  {headCount.trim() ? "Head Count" : "Enter Head Count"}
+                </Text>
+                {headCount.trim() ? (
+                  <Text
+                    style={{
+                      color: activeField === "head" ? colors.accentDark : colors.text,
+                      fontWeight: "700",
+                    }}
+                  >
+                    {Number.isFinite(Number(headCount))
+                      ? Number(headCount).toLocaleString()
+                      : headCount}
+                  </Text>
+                ) : null}
+              </Pressable>
+            </View>
           </View>
           <View style={styles.row}>
             <FieldButton
