@@ -55,6 +55,8 @@ assert.match(mobileSettings, /APP_TIME_ZONES/);
 assert.match(mobileSettings, />Profile</);
 assert.match(mobileSettings, />Preferences</);
 assert.match(mobileSettings, /placeCaretAtEnd/);
+assert.match(mobileSettings, /PrimaryButton/);
+assert.match(mobileSettings, /alignItems: "flex-end"/);
 assert.ok(
   mobileSettings.indexOf(">Profile<") < mobileSettings.indexOf("Timezone:") &&
     mobileSettings.indexOf("Timezone:") < mobileSettings.indexOf(">Preferences<"),

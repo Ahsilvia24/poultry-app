@@ -83,9 +83,11 @@ export function ChangePasswordForm() {
       </Line>
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
       {ok ? <p className="text-sm font-medium text-emerald-800">Password updated.</p> : null}
-      <Button type="submit" className="mt-3">
-        Change password
-      </Button>
+      <div className="flex justify-end pt-2">
+        <Button type="submit" compact>
+          Change password
+        </Button>
+      </div>
     </form>
   );
 }

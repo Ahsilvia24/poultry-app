@@ -28,6 +28,7 @@ import {
 import { APP_TIME_ZONES } from "../src/lib/appTimeZones";
 import { shareMobileBackup } from "../src/lib/dataExport";
 import { FARM_ORDER_OPTIONS, type FarmOrder } from "../src/lib/farmOrder";
+import { PrimaryButton } from "../src/components/ui";
 import { colors, styles } from "../src/theme";
 
 const noFocusRing =
@@ -590,39 +591,37 @@ export default function SettingsScreen() {
                 {passwordNote}
               </Text>
             ) : null}
-            <Pressable
-              disabled={savingPassword}
-              onPress={() => {
-                if (savingPassword) return;
-                setPasswordError(null);
-                setPasswordNote(null);
-                if (newPassword.length < 8) {
-                  setPasswordError("Password must be at least 8 characters.");
-                  return;
-                }
-                if (newPassword !== confirmPassword) {
-                  setPasswordError("New passwords do not match.");
-                  return;
-                }
-                setSavingPassword(true);
-                void changePassword(currentPassword, newPassword)
-                  .then(() => {
-                    setCurrentPassword("");
-                    setNewPassword("");
-                    setConfirmPassword("");
-                    setPasswordNote("Password updated.");
-                  })
-                  .catch((e) => {
-                    setPasswordError(e instanceof Error ? e.message : "Could not change password.");
-                  })
-                  .finally(() => setSavingPassword(false));
-              }}
-              style={{ alignSelf: "flex-start", paddingVertical: 8 }}
-            >
-              <Text style={{ color: colors.text, fontWeight: "700", textDecorationLine: "underline" }}>
-                {savingPassword ? "Saving…" : "Change password"}
-              </Text>
-            </Pressable>
+            <View style={{ alignItems: "flex-end", paddingTop: 8 }}>
+              <PrimaryButton
+                compact
+                label={savingPassword ? "Saving…" : "Change password"}
+                onPress={() => {
+                  if (savingPassword) return;
+                  setPasswordError(null);
+                  setPasswordNote(null);
+                  if (newPassword.length < 8) {
+                    setPasswordError("Password must be at least 8 characters.");
+                    return;
+                  }
+                  if (newPassword !== confirmPassword) {
+                    setPasswordError("New passwords do not match.");
+                    return;
+                  }
+                  setSavingPassword(true);
+                  void changePassword(currentPassword, newPassword)
+                    .then(() => {
+                      setCurrentPassword("");
+                      setNewPassword("");
+                      setConfirmPassword("");
+                      setPasswordNote("Password updated.");
+                    })
+                    .catch((e) => {
+                      setPasswordError(e instanceof Error ? e.message : "Could not change password.");
+                    })
+                    .finally(() => setSavingPassword(false));
+                }}
+              />
+            </View>
           </View>
 
           <Pressable

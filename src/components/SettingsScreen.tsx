@@ -319,13 +319,15 @@ export function SettingsScreen() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit">{saved ? "Saved" : "Save settings"}</Button>
+          <div className="flex flex-wrap items-center justify-end gap-3">
             {saved ? (
               <p className="text-sm font-semibold text-emerald-800" role="status">
                 Settings saved.
               </p>
             ) : null}
+            <Button type="submit" compact>
+              {saved ? "Saved" : "Save settings"}
+            </Button>
           </div>
         </form>
 
