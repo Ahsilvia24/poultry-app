@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Keyboard,
@@ -14,14 +14,111 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { createFarm } from "../../../src/repos/data";
 import { colors, styles } from "../../../src/theme";
-import { Card, Chip, PageHeader, PrimaryButton } from "../../../src/components/ui";
+import { Card, PageHeader } from "../../../src/components/ui";
+
+const noFocusRing =
+  Platform.OS === "web"
+    ? ({
+        outlineWidth: 0,
+        outlineStyle: "none",
+        outlineColor: "transparent",
+        boxShadow: "none",
+      } as const)
+    : null;
+
+const valueChip = {
+  minHeight: 36,
+  borderRadius: 10,
+  backgroundColor: "#e7e5e4",
+  paddingHorizontal: 10,
+  justifyContent: "center" as const,
+};
+
+const valueText = {
+  fontSize: 15,
+  fontWeight: "600" as const,
+  color: colors.text,
+  textAlign: "right" as const,
+};
+
+function FieldRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        minHeight: 44,
+      }}
+    >
+      <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text, flex: 1, flexShrink: 1 }}>
+        {label}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function ChipInput({
+  value,
+  onChangeText,
+  accessibilityLabel,
+  keyboardType,
+  autoCapitalize,
+  wide,
+  placeholder,
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  accessibilityLabel: string;
+  keyboardType?: "number-pad";
+  autoCapitalize?: "words" | "none";
+  wide?: boolean;
+  placeholder?: string;
+}) {
+  const chipStyle = wide
+    ? [valueChip, { minWidth: 152, maxWidth: 224, flex: 1 }]
+    : [valueChip, valueText, { width: 76, paddingVertical: 6, borderWidth: 0 }, noFocusRing];
+
+  return (
+    <View style={wide ? chipStyle : undefined}>
+      <TextInput
+        style={
+          wide
+            ? [valueText, { paddingVertical: 6, borderWidth: 0 }, noFocusRing]
+            : chipStyle
+        }
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        placeholder={placeholder}
+        placeholderTextColor={colors.muted}
+        underlineColorAndroid="transparent"
+        accessibilityLabel={accessibilityLabel}
+        returnKeyType="done"
+        blurOnSubmit
+        onSubmitEditing={() => Keyboard.dismiss()}
+      />
+    </View>
+  );
+}
+
+function parseOptionalCount(raw: string) {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.max(1, Math.min(4, Math.floor(n)));
+}
 
 export default function NewFarmScreen() {
   const router = useRouter();
   const [farmName, setFarmName] = useState("");
   const [growerName, setGrowerName] = useState("");
   const [numberOfHouses, setNumberOfHouses] = useState("4");
-  const [numberOfGenerators, setNumberOfGenerators] = useState<number | null>(null);
+  const [numberOfGenerators, setNumberOfGenerators] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -33,9 +130,9 @@ export default function NewFarmScreen() {
         farmName,
         growerName,
         numberOfHouses: Number(numberOfHouses) || 0,
-        numberOfGenerators,
+        numberOfGenerators: parseOptionalCount(numberOfGenerators),
       });
-      router.replace({ pathname: '/(tabs)/farms/[id]', params: { id } });
+      router.replace({ pathname: "/(tabs)/farms/[id]", params: { id } });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create farm");
       setBusy(false);
@@ -49,77 +146,72 @@ export default function NewFarmScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-          <Pressable onPress={() => router.back()} style={{ alignSelf: "flex-end", marginBottom: 8 }}>
-            <Text style={{ color: colors.text, fontWeight: "700", textDecorationLine: "underline" }}>
-              Cancel
-            </Text>
-          </Pressable>
-          <PageHeader title="Add Farm" />
+          <PageHeader
+            title="Add Farm"
+            actions={
+              <Pressable onPress={() => router.back()} hitSlop={8}>
+                <Text style={{ color: colors.text, fontWeight: "700" }}>Cancel</Text>
+              </Pressable>
+            }
+          />
 
           <Card>
-            <Text style={styles.label}>Farm name *</Text>
-            <TextInput
-              style={styles.input}
-              value={farmName}
-              onChangeText={setFarmName}
-              autoCapitalize="words"
-              placeholder="Farm name"
-              placeholderTextColor={colors.muted}
-            />
-
-            <Text style={styles.label}>Number of houses</Text>
-            <TextInput
-              style={styles.input}
-              value={numberOfHouses}
-              onChangeText={setNumberOfHouses}
-              keyboardType="number-pad"
-            />
-            <Text style={[styles.muted, { marginTop: -8, marginBottom: 12, fontSize: 12 }]}>
-              Creates houses 1–N with default 29,700 sq ft (editable later)
-            </Text>
-
-            <Text style={styles.label}>Number of generators</Text>
-            <View style={[styles.row, { marginBottom: 4, flexWrap: "wrap" }]}>
-              <Chip
-                label="Not set"
-                active={numberOfGenerators == null}
-                onPress={() => setNumberOfGenerators(null)}
+            <FieldRow label="Farm name">
+              <ChipInput
+                value={farmName}
+                onChangeText={setFarmName}
+                accessibilityLabel="Farm name"
+                autoCapitalize="words"
+                wide
               />
-              {([1, 2, 3, 4] as const).map((n) => (
-                <Chip
-                  key={n}
-                  label={String(n)}
-                  active={numberOfGenerators === n}
-                  onPress={() => setNumberOfGenerators(n)}
-                />
-              ))}
-            </View>
-            <Text style={[styles.muted, { marginBottom: 12, fontSize: 12 }]}>
-              Optional — you can set this later
-            </Text>
-
-            <Text style={styles.label}>Grower name</Text>
-            <TextInput
-              style={styles.input}
-              value={growerName}
-              onChangeText={setGrowerName}
-              autoCapitalize="words"
-              returnKeyType="done"
-              blurOnSubmit
-              onSubmitEditing={() => Keyboard.dismiss()}
-            />
+            </FieldRow>
+            <FieldRow label="Number of houses">
+              <ChipInput
+                value={numberOfHouses}
+                onChangeText={(next) => setNumberOfHouses(next.replace(/[^\d]/g, ""))}
+                accessibilityLabel="Number of houses"
+                keyboardType="number-pad"
+              />
+            </FieldRow>
+            <FieldRow label="Number of generators">
+              <ChipInput
+                value={numberOfGenerators}
+                onChangeText={(next) => setNumberOfGenerators(next.replace(/[^\d]/g, ""))}
+                accessibilityLabel="Number of generators"
+                keyboardType="number-pad"
+              />
+            </FieldRow>
+            <FieldRow label="Grower name">
+              <ChipInput
+                value={growerName}
+                onChangeText={setGrowerName}
+                accessibilityLabel="Grower name"
+                autoCapitalize="words"
+                wide
+              />
+            </FieldRow>
 
             {error ? (
-              <Text style={{ color: colors.danger, marginBottom: 12, fontWeight: "600" }}>
+              <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "600" }}>
                 {error}
               </Text>
             ) : null}
 
-            <View style={{ marginTop: 4 }}>
+            <View style={{ marginTop: 12, alignItems: "flex-end" }}>
               {busy ? (
                 <ActivityIndicator color={colors.accent} />
               ) : (
-                <PrimaryButton label="Create farm" onPress={onSubmit} />
+                <Pressable
+                  onPress={onSubmit}
+                  style={{
+                    backgroundColor: colors.accent,
+                    borderRadius: 10,
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Create farm</Text>
+                </Pressable>
               )}
             </View>
           </Card>
