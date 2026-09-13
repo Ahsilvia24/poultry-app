@@ -60,6 +60,9 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
   const [visitType, setVisitType] = useState(initial?.visitType ?? "ROUTINE_SERVICE");
   const [condition, setCondition] = useState(initial?.generalBirdCondition ?? "Healthy");
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [otherReason, setOtherReason] = useState(
+    initial?.visitType === "OTHER" ? (initial?.notes ?? "") : "",
+  );
   const [followUpRequired, setFollowUpRequired] = useState(initial?.followUpRequired ?? false);
   const [followUpDate, setFollowUpDate] = useState(initial?.followUpDate ?? "");
   const [typePickerOpen, setTypePickerOpen] = useState(false);
@@ -92,13 +95,18 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
     setBusy(true);
     setError(null);
     try {
+      if (visitType === "OTHER" && !otherReason.trim()) {
+        setError("Enter a reason for this visit");
+        setBusy(false);
+        return;
+      }
       const payload = {
         farmId,
         flockId,
         visitDate: visitDate.trim(),
         visitType,
         generalBirdCondition: condition,
-        notes: notes.trim() || null,
+        notes: (visitType === "OTHER" ? otherReason : notes).trim() || null,
         followUpRequired,
         followUpDate: followUpRequired ? followUpDate.trim() || null : null,
       };
@@ -167,7 +175,9 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
               ]}
             >
               <Text style={{ color: colors.text, fontWeight: "600" }}>
-                {VISIT_TYPE_LABELS[visitType] ?? visitType}
+                {visitType === "OTHER" && otherReason.trim()
+                  ? otherReason.trim()
+                  : (VISIT_TYPE_LABELS[visitType] ?? visitType)}
               </Text>
               <Ionicons name="chevron-down" size={18} color={colors.muted} />
             </Pressable>
@@ -184,6 +194,19 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
               </Text>
             </View>
 
+            {visitType === "OTHER" ? (
+              <>
+                <Text style={[styles.label, { marginTop: 8 }]}>Reason</Text>
+                <TextInput
+                  style={styles.input}
+                  value={otherReason}
+                  onChangeText={setOtherReason}
+                  placeholder="Reason for this visit"
+                  placeholderTextColor={colors.muted}
+                />
+              </>
+            ) : null}
+
             <Text style={[styles.label, { marginTop: 8 }]}>Bird condition</Text>
             <TextInput
               style={styles.input}
@@ -193,15 +216,19 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
               placeholderTextColor={colors.muted}
             />
 
-            <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
-            <TextInput
-              style={[styles.input, { minHeight: 72, textAlignVertical: "top" }]}
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              placeholder="Optional notes"
-              placeholderTextColor={colors.muted}
-            />
+            {visitType === "OTHER" ? null : (
+              <>
+                <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>
+                <TextInput
+                  style={[styles.input, { minHeight: 72, textAlignVertical: "top" }]}
+                  value={notes}
+                  onChangeText={setNotes}
+                  multiline
+                  placeholder="Optional notes"
+                  placeholderTextColor={colors.muted}
+                />
+              </>
+            )}
 
             <Pressable
               onPress={() => setFollowUpRequired((v) => !v)}

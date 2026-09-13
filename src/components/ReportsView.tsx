@@ -120,7 +120,7 @@ export function ReportsView({
               from={model.from}
               to={model.to}
             />
-            <div>
+            <div className="flex justify-end">
               <Button type="submit">Run report</Button>
             </div>
           </form>
@@ -160,7 +160,7 @@ export function ReportsView({
               from={model.from}
               to={model.to}
             />
-            <div>
+            <div className="flex justify-end">
               <Button type="submit">Apply filters</Button>
             </div>
           </form>
@@ -203,7 +203,7 @@ export function ReportsView({
             from={model.from}
             to={model.to}
           />
-          <div>
+          <div className="flex justify-end">
             <Button type="submit">Apply filters</Button>
           </div>
         </form>
@@ -213,7 +213,11 @@ export function ReportsView({
         byHouse={model.mortality?.byHouse ?? []}
         byHouseByDate={model.mortality?.byHouseByDate ?? { dates: [], rows: [] }}
         byFarm={model.mortality?.byFarm ?? []}
-        farmTitle={model.mortality?.farmTitle ?? null}
+        displayCumulativeByAge={model.mortality?.displayCumulativeByAge}
+        displayByHouse={model.mortality?.displayByHouse}
+        displayByHouseByDate={model.mortality?.displayByHouseByDate}
+        allFarms={model.mortality?.allFarms ?? !model.farmId}
+        displayFarmName={model.mortality?.displayFarmName ?? null}
         filterLabel={model.mortality?.filterLabel ?? ""}
       />
     </div>

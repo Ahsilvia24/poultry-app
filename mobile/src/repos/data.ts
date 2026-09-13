@@ -1443,7 +1443,13 @@ export function getReports(from: string, to: string, farmId?: string) {
     if (dates.length > 120) break;
   }
 
-  const rows: Array<{ houseLabel: string; byDate: Record<string, number> }> = [];
+  const rows: Array<{
+    farmId: string;
+    farmName: string;
+    houseNumber: number;
+    houseLabel: string;
+    byDate: Record<string, number>;
+  }> = [];
 
   for (const farm of farms) {
     const hfs = db.getAllSync<{ id: string; house_number: number }>(
@@ -1467,6 +1473,9 @@ export function getReports(from: string, to: string, farmId?: string) {
           (byDate[r.mortality_date] ?? 0) + Math.max(0, r.daily_mortality_count);
       }
       rows.push({
+        farmId: farm.id,
+        farmName: farm.farmName,
+        houseNumber: hf.house_number,
         houseLabel: farmId ? `House ${hf.house_number}` : `${farm.farmName} H${hf.house_number}`,
         byDate,
       });
@@ -1539,6 +1548,100 @@ export function getMortalityByPercentage(
     rows.push(...houseRows);
   }
   return rows;
+}
+
+export type MortalityHouseRow = {
+  farmId: string;
+  farmName: string;
+  houseNumber: number;
+  houseLabel: string;
+  mortality: number;
+  culls: number;
+  total: number;
+};
+
+export function getMortalityByHouse(
+  from: string,
+  to: string,
+  farmId?: string,
+): MortalityHouseRow[] {
+  const db = getDb();
+  const farms = listFarms().farms.filter((f) => !farmId || f.id === farmId);
+  const rows: MortalityHouseRow[] = [];
+
+  for (const farm of farms) {
+    const hfs = db.getAllSync<{ id: string; house_number: number }>(
+      `SELECT hf.id, h.house_number FROM house_flocks hf
+       JOIN houses h ON h.id = hf.house_id
+       JOIN flocks f ON f.id = hf.flock_id
+       WHERE f.farm_id = ? AND f.flock_status = 'ACTIVE' AND h.deleted_at IS NULL
+       ORDER BY h.house_number ASC`,
+      [farm.id],
+    );
+    for (const hf of hfs) {
+      const rec = db.getFirstSync<{ mortality: number; culls: number }>(
+        `SELECT COALESCE(SUM(daily_mortality_count), 0) as mortality,
+                COALESCE(SUM(cull_count), 0) as culls
+         FROM daily_mortality
+         WHERE house_flock_id = ? AND is_draft = 0 AND mortality_date >= ? AND mortality_date <= ?`,
+        [hf.id, from, to],
+      );
+      const mortality = Math.max(0, rec?.mortality ?? 0);
+      const culls = Math.max(0, rec?.culls ?? 0);
+      rows.push({
+        farmId: farm.id,
+        farmName: farm.farmName,
+        houseNumber: hf.house_number,
+        houseLabel: farmId ? `House ${hf.house_number}` : `${farm.farmName} H${hf.house_number}`,
+        mortality,
+        culls,
+        total: mortality,
+      });
+    }
+  }
+  return rows;
+}
+
+export type MortalityAgePoint = { birdAgeInDays: number; cumulative: number };
+
+export function getMortalityCumulativeByAge(
+  from: string,
+  to: string,
+  farmId?: string,
+): { farmId: string; farmName: string; points: MortalityAgePoint[] }[] {
+  const db = getDb();
+  const farms = listFarms().farms.filter((f) => !farmId || f.id === farmId);
+  const series: { farmId: string; farmName: string; points: MortalityAgePoint[] }[] = [];
+
+  for (const farm of farms) {
+    const records = db.getAllSync<{ bird_age_in_days: number; daily_mortality_count: number }>(
+      `SELECT m.bird_age_in_days, m.daily_mortality_count
+       FROM daily_mortality m
+       JOIN house_flocks hf ON hf.id = m.house_flock_id
+       JOIN flocks f ON f.id = hf.flock_id
+       WHERE f.farm_id = ? AND f.flock_status = 'ACTIVE' AND m.is_draft = 0
+         AND m.mortality_date >= ? AND m.mortality_date <= ?`,
+      [farm.id, from, to],
+    );
+    const byAge = new Map<number, number>();
+    for (const row of records) {
+      byAge.set(
+        row.bird_age_in_days,
+        (byAge.get(row.bird_age_in_days) ?? 0) + Math.max(0, row.daily_mortality_count),
+      );
+    }
+    const ages = [...byAge.keys()].sort((a, b) => a - b);
+    let running = 0;
+    series.push({
+      farmId: farm.id,
+      farmName: farm.farmName,
+      points: ages.map((age) => {
+        running += byAge.get(age) ?? 0;
+        return { birdAgeInDays: age, cumulative: running };
+      }),
+    });
+  }
+  return series;
 }
 
 export function getGeneratorLogReport(
@@ -1614,8 +1717,9 @@ export function getFieldLog(from: string, to: string): FieldLogWeek[] {
     visit_type: string;
     visit_date: string;
     logged_at: string | null;
+    notes: string | null;
   }>(
-    `SELECT v.id, f.farm_name, v.visit_type, v.visit_date, v.logged_at
+    `SELECT v.id, f.farm_name, v.visit_type, v.visit_date, v.logged_at, v.notes
      FROM farm_visits v
      JOIN farms f ON f.id = v.farm_id
      WHERE f.deleted_at IS NULL
@@ -1632,6 +1736,7 @@ export function getFieldLog(from: string, to: string): FieldLogWeek[] {
       visitType: v.visit_type,
       visitDate: v.visit_date,
       loggedAt: v.logged_at?.trim() || `${v.visit_date}T12:00:00.000Z`,
+      notes: v.notes,
     })),
     from,
     to,

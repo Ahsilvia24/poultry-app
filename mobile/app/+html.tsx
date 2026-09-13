@@ -18,7 +18,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="apple-mobile-web-app-title" content="PoultryTech" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#047857" />
+        <meta name="theme-color" content="#ffffff" />
         <ScrollViewStyleReset />
       </head>
       <body>{children}</body>

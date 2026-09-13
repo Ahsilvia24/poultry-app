@@ -72,7 +72,7 @@ export function AppNav() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 hidden border-b border-stone-200 bg-[#f7f4ef]/90 backdrop-blur md:block">
+      <header className="sticky top-0 z-40 hidden border-b border-stone-200 bg-white md:block">
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
           <nav className="flex items-center gap-1">
             {desktopNav.map((item) => {

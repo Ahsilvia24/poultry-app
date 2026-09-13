@@ -16,11 +16,13 @@ export type FieldLogVisit = {
   visitType: string;
   visitDate: string;
   loggedAt: string;
+  notes?: string | null;
 };
 
 export type FieldLogFarmEntry = {
   farmName: string;
   visitType: string;
+  notes?: string | null;
 };
 
 export type FieldLogDay = {
@@ -60,12 +62,16 @@ const FIELD_LOG_VISIT_TYPE_LABELS: Record<string, string> = {
   PRE_CATCH: "Pre-Catch Visit",
   LAST_FEED_ORDER: "LFO",
   CERTIFICATION: "Certification",
-  OTHER: "Other",
+  OTHER: "Enter Other",
   SEVEN_DAY: "7-day visit",
 };
 
-/** Field-log labels: Last Feed Order shortens to LFO. */
-export function fieldLogVisitTypeLabel(visitType: string): string {
+/** Field-log labels: Last Feed Order shortens to LFO. Other shows the typed reason. */
+export function fieldLogVisitTypeLabel(visitType: string, notes?: string | null): string {
+  if (visitType === "OTHER") {
+    const reason = notes?.trim();
+    return reason || "Enter Other";
+  }
   return FIELD_LOG_VISIT_TYPE_LABELS[visitType] ?? visitType;
 }
 
@@ -145,6 +151,7 @@ export function buildFieldLogWeeks(
         farms: dayVisits.map((v) => ({
           farmName: v.farmName,
           visitType: v.visitType,
+          notes: v.notes,
         })),
       };
     });
@@ -173,7 +180,7 @@ export function fieldLogWeeksToTsv(weeks: FieldLogWeek[]): string {
             const entry = day.farms[row];
             if (!entry) return "";
             const name = truncateFarmName(entry.farmName, FIELD_LOG_PDF_FARM_NAME_CHARS);
-            return `${name}\n${fieldLogVisitTypeLabel(entry.visitType)}`;
+            return `${name}\n${fieldLogVisitTypeLabel(entry.visitType, entry.notes)}`;
           })
           .join("\t"),
       );
@@ -209,7 +216,7 @@ export function fieldLogWeeksToHtml(opts: {
               : `<ol>${day.farms
                   .map((farm) => {
                     const name = truncateFarmName(farm.farmName, FIELD_LOG_PDF_FARM_NAME_CHARS);
-                    const type = fieldLogVisitTypeLabel(farm.visitType);
+                    const type = fieldLogVisitTypeLabel(farm.visitType, farm.notes);
                     return `<li><span class="farm">${escapeHtml(name)}</span><span class="type">${escapeHtml(type)}</span></li>`;
                   })
                   .join("")}</ol>`;
