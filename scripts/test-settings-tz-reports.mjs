@@ -16,8 +16,7 @@ const mobileReports = readFileSync(join(root, "mobile/app/(tabs)/reports.tsx"), 
 assert.match(settings, /Timezone:/);
 assert.match(settings, /name="appTimeZone"/);
 assert.match(settings, /APP_TIME_ZONES/);
-assert.match(settings, /space-y-0/);
-assert.match(settings, /!min-h-7/);
+assert.match(settings, /justify-between/);
 assert.doesNotMatch(settings, /space-y-6/);
 
 assert.match(schema, /appTimeZone/);
