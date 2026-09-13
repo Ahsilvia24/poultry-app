@@ -5,8 +5,7 @@ import { updateSettingsAction } from "@/app/actions/ops";
 import { signOutAction } from "@/app/actions/auth";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { useOffline } from "@/components/OfflineProvider";
-import { Button, Card, Input, PageHeader, Select } from "@/components/ui";
-import { FarmOrderStepper } from "@/components/FarmOrderStepper";
+import { Button, Card, PageHeader } from "@/components/ui";
 import { APP_TIME_ZONES, resolveAppTimeZone } from "@/lib/app-time-zones";
 import { FARM_ORDER_OPTIONS, parseFarmOrder } from "@/lib/farm-order";
 import {
@@ -14,32 +13,15 @@ import {
   settingsFormValues,
   settingsWriteFromForm,
 } from "@/lib/offline/applyLocal";
+import { cn } from "@/lib/utils";
 
-const inlineInputClass =
-  "!min-h-7 flex-1 border-0 bg-transparent px-0 py-0 leading-tight text-base font-semibold shadow-none focus:border-transparent focus:ring-0";
-const shadedNumberClass =
-  "!h-9 !min-h-9 !w-[4.75rem] shrink-0 border-0 bg-stone-100 px-2.5 py-0 text-right text-base font-semibold leading-none shadow-none focus:border-transparent focus:ring-2 focus:ring-emerald-200";
+const labelClass = "shrink-0 text-[15px] font-semibold leading-none text-stone-800";
+const valueTextClass =
+  "w-full border-0 bg-transparent p-0 text-right text-[15px] font-semibold leading-none text-stone-900 outline-none focus:ring-0";
+const valueChipClass =
+  "flex h-9 items-center justify-end rounded-lg bg-stone-200 px-2.5";
 
-function SettingsLine({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  htmlFor?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-2 leading-tight">
-      <label htmlFor={htmlFor} className="shrink-0 text-sm font-semibold leading-tight text-stone-800">
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-function SettingsNumberLine({
+function SettingsRow({
   label,
   htmlFor,
   children,
@@ -49,13 +31,23 @@ function SettingsNumberLine({
   children: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-0.5 leading-tight">
-      <label htmlFor={htmlFor} className="min-w-0 flex-1 text-sm font-semibold leading-tight text-stone-800">
+    <div className="flex min-h-11 items-center justify-between gap-3">
+      <label htmlFor={htmlFor} className={labelClass}>
         {label}
       </label>
       {children}
     </div>
   );
+}
+
+function ValueChip({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  return <div className={cn(valueChipClass, className)}>{children}</div>;
 }
 
 export function SettingsScreen() {
@@ -73,7 +65,7 @@ export function SettingsScreen() {
         sevenDayMortalityCriticalPct: 2,
         alertRisingThreeDays: true,
         defaultMarketAgeDays: 52,
-        notifyEmail : false,
+        notifyEmail: false,
         notifyInApp: true,
         lfoFeedUpHoursBeforeCatch: 5,
         lfoFeedOffHoursBeforeCatch: 10,
@@ -89,7 +81,20 @@ export function SettingsScreen() {
 
   return (
     <div>
-      <PageHeader title="Settings" />
+      <PageHeader
+        title="Settings"
+        actions={
+          values.email ? (
+            <p
+              id="email"
+              aria-label="Email"
+              className="max-w-[min(16rem,52vw)] truncate text-right text-xs font-medium text-stone-400"
+            >
+              {values.email}
+            </p>
+          ) : null
+        }
+      />
 
       <Card className="max-w-2xl">
         <form
@@ -102,87 +107,99 @@ export function SettingsScreen() {
         >
           <div>
             <h2 className="font-bold leading-tight text-stone-900">Profile</h2>
-            <div className="mt-1 space-y-0">
-              <SettingsLine label="Service Tech:" htmlFor="name">
-                <Input
-                  id="name"
-                  name="name"
-                  compact
-                  defaultValue={values.name}
-                  required
-                  className={inlineInputClass}
-                />
-              </SettingsLine>
-              <div className="flex items-start gap-2">
-                <p className="shrink-0 pt-1 text-sm font-semibold leading-tight text-stone-800">
-                  Order Farms By:
-                </p>
-                <FarmOrderStepper
-                  name="farmOrder"
-                  defaultValue={parseFarmOrder(values.farmOrder)}
-                  options={FARM_ORDER_OPTIONS}
-                />
-              </div>
+            <div className="mt-1">
+              <SettingsRow label="Service Tech:" htmlFor="name">
+                <ValueChip className="min-w-[9.5rem] max-w-[14rem] flex-1">
+                  <input
+                    id="name"
+                    name="name"
+                    defaultValue={values.name}
+                    required
+                    autoComplete="name"
+                    className={valueTextClass}
+                  />
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="Order Farms By:" htmlFor="farmOrder">
+                <ValueChip className="min-w-[9.5rem] max-w-[14rem]">
+                  <select
+                    id="farmOrder"
+                    name="farmOrder"
+                    defaultValue={parseFarmOrder(values.farmOrder)}
+                    className={valueTextClass}
+                  >
+                    {FARM_ORDER_OPTIONS.map((option) => (
+                      <option key={option.key} value={option.key}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </ValueChip>
+              </SettingsRow>
             </div>
           </div>
 
           <div>
             <h2 className="font-bold leading-tight text-stone-900">Mortality Thresholds (%)</h2>
-            <div className="mt-1 space-y-0">
-              <SettingsNumberLine label="Daily warning:" htmlFor="dailyMortalityWarningPct">
-                <Input
-                  id="dailyMortalityWarningPct"
-                  name="dailyMortalityWarningPct"
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  compact
-                  defaultValue={values.dailyMortalityWarningPct}
-                  required
-                  className={shadedNumberClass}
-                />
-              </SettingsNumberLine>
-              <SettingsNumberLine label="Daily critical:" htmlFor="dailyMortalityCriticalPct">
-                <Input
-                  id="dailyMortalityCriticalPct"
-                  name="dailyMortalityCriticalPct"
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  compact
-                  defaultValue={values.dailyMortalityCriticalPct}
-                  required
-                  className={shadedNumberClass}
-                />
-              </SettingsNumberLine>
-              <SettingsNumberLine label="7-day warning:" htmlFor="sevenDayMortalityWarningPct">
-                <Input
-                  id="sevenDayMortalityWarningPct"
-                  name="sevenDayMortalityWarningPct"
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  compact
-                  defaultValue={values.sevenDayMortalityWarningPct}
-                  required
-                  className={shadedNumberClass}
-                />
-              </SettingsNumberLine>
-              <SettingsNumberLine label="7-day critical:" htmlFor="sevenDayMortalityCriticalPct">
-                <Input
-                  id="sevenDayMortalityCriticalPct"
-                  name="sevenDayMortalityCriticalPct"
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  compact
-                  defaultValue={values.sevenDayMortalityCriticalPct}
-                  required
-                  className={shadedNumberClass}
-                />
-              </SettingsNumberLine>
+            <div className="mt-1">
+              <SettingsRow label="Daily warning:" htmlFor="dailyMortalityWarningPct">
+                <ValueChip className="w-[4.75rem]">
+                  <input
+                    id="dailyMortalityWarningPct"
+                    name="dailyMortalityWarningPct"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    defaultValue={values.dailyMortalityWarningPct}
+                    required
+                    className={valueTextClass}
+                  />
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="Daily critical:" htmlFor="dailyMortalityCriticalPct">
+                <ValueChip className="w-[4.75rem]">
+                  <input
+                    id="dailyMortalityCriticalPct"
+                    name="dailyMortalityCriticalPct"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    defaultValue={values.dailyMortalityCriticalPct}
+                    required
+                    className={valueTextClass}
+                  />
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="7-day warning:" htmlFor="sevenDayMortalityWarningPct">
+                <ValueChip className="w-[4.75rem]">
+                  <input
+                    id="sevenDayMortalityWarningPct"
+                    name="sevenDayMortalityWarningPct"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    defaultValue={values.sevenDayMortalityWarningPct}
+                    required
+                    className={valueTextClass}
+                  />
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="7-day critical:" htmlFor="sevenDayMortalityCriticalPct">
+                <ValueChip className="w-[4.75rem]">
+                  <input
+                    id="sevenDayMortalityCriticalPct"
+                    name="sevenDayMortalityCriticalPct"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    defaultValue={values.sevenDayMortalityCriticalPct}
+                    required
+                    className={valueTextClass}
+                  />
+                </ValueChip>
+              </SettingsRow>
             </div>
-            <label className="mt-1 flex items-center gap-2 text-sm font-semibold leading-tight text-stone-700">
+            <label className="mt-1 flex items-center gap-2 text-[15px] font-semibold leading-tight text-stone-700">
               <input
                 type="checkbox"
                 name="alertRisingThreeDays"
@@ -195,60 +212,64 @@ export function SettingsScreen() {
 
           <div>
             <h2 className="font-bold leading-tight text-stone-900">Preferences</h2>
-            <div className="mt-1 space-y-0">
-              <SettingsLine label="Timezone:" htmlFor="appTimeZone">
-                <Select
-                  id="appTimeZone"
-                  name="appTimeZone"
-                  compact
-                  defaultValue={values.appTimeZone}
-                  className="!min-h-7 max-w-56 border-0 bg-transparent px-0 py-0 text-base font-semibold shadow-none focus:border-transparent focus:ring-0"
-                >
-                  {APP_TIME_ZONES.map((zone) => (
-                    <option key={zone.value} value={zone.value}>
-                      {zone.label}
-                    </option>
-                  ))}
-                </Select>
-              </SettingsLine>
-              <SettingsNumberLine label="Default market age (days):" htmlFor="defaultMarketAgeDays">
-                <Input
-                  id="defaultMarketAgeDays"
-                  name="defaultMarketAgeDays"
-                  type="number"
-                  min={1}
-                  compact
-                  defaultValue={values.defaultMarketAgeDays}
-                  required
-                  className={shadedNumberClass}
-                />
-              </SettingsNumberLine>
-              <SettingsNumberLine label="Feed up hours before catch:" htmlFor="lfoFeedUpHoursBeforeCatch">
-                <Input
-                  id="lfoFeedUpHoursBeforeCatch"
-                  name="lfoFeedUpHoursBeforeCatch"
-                  type="number"
-                  min={1}
-                  max={48}
-                  compact
-                  defaultValue={values.lfoFeedUpHoursBeforeCatch ?? 5}
-                  required
-                  className={shadedNumberClass}
-                />
-              </SettingsNumberLine>
-              <SettingsNumberLine label="Feed off hours before catch:" htmlFor="lfoFeedOffHoursBeforeCatch">
-                <Input
-                  id="lfoFeedOffHoursBeforeCatch"
-                  name="lfoFeedOffHoursBeforeCatch"
-                  type="number"
-                  min={1}
-                  max={72}
-                  compact
-                  defaultValue={values.lfoFeedOffHoursBeforeCatch ?? 10}
-                  required
-                  className={shadedNumberClass}
-                />
-              </SettingsNumberLine>
+            <div className="mt-1">
+              <SettingsRow label="Timezone:" htmlFor="appTimeZone">
+                <ValueChip className="min-w-[9.5rem] max-w-[14rem]">
+                  <select
+                    id="appTimeZone"
+                    name="appTimeZone"
+                    defaultValue={values.appTimeZone}
+                    className={valueTextClass}
+                  >
+                    {APP_TIME_ZONES.map((zone) => (
+                      <option key={zone.value} value={zone.value}>
+                        {zone.label}
+                      </option>
+                    ))}
+                  </select>
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="Default market age (days):" htmlFor="defaultMarketAgeDays">
+                <ValueChip className="w-[4.75rem]">
+                  <input
+                    id="defaultMarketAgeDays"
+                    name="defaultMarketAgeDays"
+                    type="number"
+                    min={1}
+                    defaultValue={values.defaultMarketAgeDays}
+                    required
+                    className={valueTextClass}
+                  />
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="Feed up hours before catch:" htmlFor="lfoFeedUpHoursBeforeCatch">
+                <ValueChip className="w-[4.75rem]">
+                  <input
+                    id="lfoFeedUpHoursBeforeCatch"
+                    name="lfoFeedUpHoursBeforeCatch"
+                    type="number"
+                    min={1}
+                    max={48}
+                    defaultValue={values.lfoFeedUpHoursBeforeCatch ?? 5}
+                    required
+                    className={valueTextClass}
+                  />
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="Feed off hours before catch:" htmlFor="lfoFeedOffHoursBeforeCatch">
+                <ValueChip className="w-[4.75rem]">
+                  <input
+                    id="lfoFeedOffHoursBeforeCatch"
+                    name="lfoFeedOffHoursBeforeCatch"
+                    type="number"
+                    min={1}
+                    max={72}
+                    defaultValue={values.lfoFeedOffHoursBeforeCatch ?? 10}
+                    required
+                    className={valueTextClass}
+                  />
+                </ValueChip>
+              </SettingsRow>
             </div>
             {values.notifyInApp !== false ? (
               <input type="hidden" name="notifyInApp" value="on" />
@@ -259,13 +280,7 @@ export function SettingsScreen() {
           <Button type="submit">Save settings</Button>
         </form>
 
-        <div className="mt-5 space-y-2 border-t border-stone-200 pt-3">
-          <div className="flex items-center gap-2">
-            <p className="shrink-0 text-sm font-semibold leading-tight text-stone-800">Email:</p>
-            <p id="email" className="min-w-0 flex-1 py-0 text-base font-semibold leading-tight text-stone-900">
-              {values.email || "—"}
-            </p>
-          </div>
+        <div className="mt-5 border-t border-stone-200 pt-3">
           <ChangePasswordForm />
         </div>
       </Card>
