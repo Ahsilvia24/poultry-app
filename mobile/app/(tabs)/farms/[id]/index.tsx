@@ -62,7 +62,7 @@ import {
 } from "../../../../src/lib/generator";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { formatGroupedInput, parseGroupedNumber, ungroupNumber } from "../../../../src/lib/grouped-number";
-import { colors, styles } from "../../../../src/theme";
+import { appScrollProps, colors, styles } from "../../../../src/theme";
 import {
   Card,
   Chip,
@@ -1178,6 +1178,7 @@ export default function FarmDetailScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
         keyboardShouldPersistTaps="handled"
+        {...appScrollProps}
       >
         <View
           style={{

@@ -6,9 +6,15 @@ import {
   farmHouseBackScrollTopInScroller,
 } from "@/lib/farm-house-scroll";
 
+function isScrollPort(node: Element | null): node is HTMLElement {
+  if (!(node instanceof HTMLElement)) return false;
+  const overflowY = getComputedStyle(node).overflowY;
+  return overflowY === "auto" || overflowY === "scroll";
+}
+
 function scrollHouseIntoContext(el: HTMLElement) {
   const scroller = el.closest("[data-app-scroll]");
-  if (scroller instanceof HTMLElement) {
+  if (isScrollPort(scroller)) {
     const nextTop = farmHouseBackScrollTopInScroller(
       el.getBoundingClientRect().top,
       scroller.getBoundingClientRect().top,
