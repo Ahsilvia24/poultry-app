@@ -140,7 +140,7 @@ export function NewFarmForm() {
               <ChipInput
                 id="numberOfHouses"
                 name="numberOfHouses"
-                defaultValue="4"
+                defaultValue=""
                 inputMode="numeric"
               />
             </ValueChip>

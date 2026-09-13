@@ -117,7 +117,7 @@ export default function NewFarmScreen() {
   const router = useRouter();
   const [farmName, setFarmName] = useState("");
   const [growerName, setGrowerName] = useState("");
-  const [numberOfHouses, setNumberOfHouses] = useState("4");
+  const [numberOfHouses, setNumberOfHouses] = useState("");
   const [numberOfGenerators, setNumberOfGenerators] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
