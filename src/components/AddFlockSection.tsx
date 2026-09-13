@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { FlockScheduleFields } from "@/components/FlockScheduleFields";
-import { Button, Card, Input, Label, Textarea } from "@/components/ui";
+import { addDays, format, parseISO } from "date-fns";
+import { DateKeyField } from "@/components/DateKeyField";
+import { useOffline } from "@/components/OfflineProvider";
+import { Button, Card, Input, Label } from "@/components/ui";
 import { formDataToParts, formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
+import { settingsFormValues } from "@/lib/offline/applyLocal";
 
 type HouseOption = {
   id: string;
@@ -13,6 +16,12 @@ type HouseOption = {
 };
 
 const DEFAULT_PLACED = "29700";
+const DEFAULT_MARKET_AGE = 52;
+
+function catchFromPlacement(placement: string, marketAge: number) {
+  if (!placement || !Number.isFinite(marketAge) || marketAge < 0) return "";
+  return format(addDays(parseISO(placement), marketAge), "yyyy-MM-dd");
+}
 
 export function AddFlockSection({
   farmId,
@@ -30,6 +39,11 @@ export function AddFlockSection({
   initialPlacement: string;
 }) {
   const { enabled, queue } = useReplicaWrite();
+  const { snapshot } = useOffline();
+  const settingsAge = snapshot ? settingsFormValues(snapshot).defaultMarketAgeDays : DEFAULT_MARKET_AGE;
+  const marketAge = settingsAge > 0 ? settingsAge : DEFAULT_MARKET_AGE;
+  const [placementDate, setPlacementDate] = useState(initialPlacement);
+  const projectedCatchDate = catchFromPlacement(placementDate, marketAge);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -139,8 +153,20 @@ export function AddFlockSection({
                   <Label htmlFor="flockNumber">Flock number</Label>
                   <Input id="flockNumber" name="flockNumber" required />
                 </div>
-                <FlockScheduleFields initialPlacement={initialPlacement} />
+                <div className="min-w-0 overflow-hidden">
+                  <Label htmlFor="placementDate">Placement date</Label>
+                  <DateKeyField
+                    id="placementDate"
+                    name="placementDate"
+                    label="Placement date"
+                    value={placementDate}
+                    onChange={setPlacementDate}
+                    required
+                  />
+                </div>
               </div>
+              <input type="hidden" name="targetMarketAge" value={marketAge} />
+              <input type="hidden" name="projectedCatchDate" value={projectedCatchDate} />
               <input type="hidden" name="flockStatus" value="ACTIVE" />
               <input type="hidden" name="sex" value="STRAIGHT_RUN" />
               <input type="hidden" name="initialBirdCount" value="1" />
@@ -199,10 +225,6 @@ export function AddFlockSection({
                     );
                   })}
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="flockNotes">Notes</Label>
-                <Textarea id="flockNotes" name="notes" rows={2} />
               </div>
               <Button type="submit" disabled={pending}>
                 {pending ? "Creating…" : "Create flock"}

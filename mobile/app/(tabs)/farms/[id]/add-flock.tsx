@@ -12,6 +12,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { createFlock, getFarmDetail } from "../../../../src/repos/data";
+import { getDefaultMarketAgeDays } from "../../../../src/lib/appSettings";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { colors, styles } from "../../../../src/theme";
 import { BackHeader, Card, PrimaryButton } from "../../../../src/components/ui";
@@ -22,14 +23,13 @@ function paramId(value: string | string[] | undefined) {
   return value ?? "";
 }
 
-const DEFAULT_MARKET_AGE = 52;
 const DEFAULT_PLACED = 29700;
 
 export default function AddFlockScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const farmId = paramId(params.id);
-  const [datePicker, setDatePicker] = useState<"placement" | "catch" | null>(null);
+  const [datePicker, setDatePicker] = useState<"placement" | null>(null);
 
   const detail = useMemo(() => {
     try {
@@ -49,10 +49,6 @@ export default function AddFlockScreen() {
 
   const [flockNumber, setFlockNumber] = useState("");
   const [placementDate, setPlacementDate] = useState(todayKey());
-  const [marketAge, setMarketAge] = useState(String(DEFAULT_MARKET_AGE));
-  const [catchDate, setCatchDate] = useState(
-    addDaysKey(todayKey(), DEFAULT_MARKET_AGE),
-  );
   const [placements, setPlacements] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     for (const h of houses) {
@@ -68,35 +64,6 @@ export default function AddFlockScreen() {
 
   function onPlacementChange(value: string) {
     setPlacementDate(value);
-    const age = Number(marketAge);
-    const days = Number.isFinite(age) && age >= 0 ? Math.floor(age) : DEFAULT_MARKET_AGE;
-    if (value) setCatchDate(addDaysKey(value, days));
-  }
-
-  function onMarketAgeChange(value: string) {
-    setMarketAge(value);
-    const age = Number(value);
-    if (placementDate && Number.isFinite(age) && age >= 0) {
-      setCatchDate(addDaysKey(placementDate, Math.floor(age)));
-    }
-  }
-
-  function onCatchChange(value: string) {
-    setCatchDate(value);
-    if (placementDate && value) {
-      try {
-        const [py, pm, pd] = placementDate.split("-").map(Number);
-        const [cy, cm, cd] = value.split("-").map(Number);
-        const days = Math.round(
-          (Date.UTC(cy!, (cm ?? 1) - 1, cd ?? 1) -
-            Date.UTC(py!, (pm ?? 1) - 1, pd ?? 1)) /
-            86400000,
-        );
-        if (Number.isFinite(days) && days >= 0) setMarketAge(String(days));
-      } catch {
-        /* ignore */
-      }
-    }
   }
 
   function onSubmit() {
@@ -113,12 +80,13 @@ export default function AddFlockScreen() {
         }))
         .filter((hp) => Number.isFinite(hp.placedBirdCount) && hp.placedBirdCount > 0);
 
+      const marketAge = getDefaultMarketAgeDays();
       createFlock({
         farmId,
         flockNumber,
         placementDate: placementDate.trim(),
-        targetMarketAge: Number(marketAge) || DEFAULT_MARKET_AGE,
-        projectedCatchDate: catchDate.trim() || null,
+        targetMarketAge: marketAge,
+        projectedCatchDate: addDaysKey(placementDate.trim(), marketAge),
         housePlacements,
       });
       router.replace({ pathname: "/(tabs)/farms/[id]", params: { id: farmId } });
@@ -193,24 +161,6 @@ export default function AddFlockScreen() {
                   expanded={datePicker === "placement"}
                   onOpen={() => setDatePicker("placement")}
                   onChange={onPlacementChange}
-                />
-              </View>
-
-              <Text style={[styles.label, { marginTop: 8 }]}>Market age (days)</Text>
-              <TextInput
-                style={styles.input}
-                value={marketAge}
-                onChangeText={onMarketAgeChange}
-                keyboardType="number-pad"
-              />
-
-              <View style={{ marginTop: 8 }}>
-                <DatePickerField
-                  label="Catch date"
-                  value={catchDate}
-                  expanded={datePicker === "catch"}
-                  onOpen={() => setDatePicker("catch")}
-                  onChange={onCatchChange}
                 />
               </View>
 

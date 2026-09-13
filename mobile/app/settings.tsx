@@ -18,12 +18,14 @@ import {
   getFarmOrder,
   getDefaultConsumptionRate,
   getDefaultEfc,
+  getDefaultMarketAgeDays,
   getLfoFeedOffHoursBeforeCatch,
   getLfoFeedUpHoursBeforeCatch,
   getServiceTech,
   setAppTimeZone,
   setDefaultConsumptionRate,
   setDefaultEfc,
+  setDefaultMarketAgeDays,
   setFarmOrder,
   setLfoFeedOffHoursBeforeCatch,
   setLfoFeedUpHoursBeforeCatch,
@@ -269,6 +271,7 @@ export default function SettingsScreen() {
   const [feedOffHours, setFeedOffHours] = useState(() => String(getLfoFeedOffHoursBeforeCatch()));
   const [defaultCr, setDefaultCr] = useState(() => String(getDefaultConsumptionRate()));
   const [defaultEfc, setDefaultEfcValue] = useState(() => String(getDefaultEfc()));
+  const [defaultMarketAge, setDefaultMarketAge] = useState(() => String(getDefaultMarketAgeDays()));
   const [exporting, setExporting] = useState(false);
   const [exportNote, setExportNote] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -291,6 +294,12 @@ export default function SettingsScreen() {
   function onChangeTimeZone(value: string) {
     setTimeZoneValue(value);
     setAppTimeZone(value);
+  }
+
+  function onChangeDefaultMarketAge(value: string) {
+    setDefaultMarketAge(value);
+    const days = Number(value);
+    if (Number.isFinite(days) && days >= 1) setDefaultMarketAgeDays(days);
   }
 
   function onChangeDefaultCr(value: string) {
@@ -415,6 +424,14 @@ export default function SettingsScreen() {
           </SettingsRow>
 
           <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text, marginTop: 12 }}>Preferences</Text>
+          <SettingsRow label="Default market age (days):">
+            <SettingsChipInput
+              value={defaultMarketAge}
+              onChangeText={onChangeDefaultMarketAge}
+              keyboardType="number-pad"
+              accessibilityLabel="Default market age in days"
+            />
+          </SettingsRow>
           <SettingsRow label="Default Consumption Rate:">
             <SettingsChipInput
               value={defaultCr}

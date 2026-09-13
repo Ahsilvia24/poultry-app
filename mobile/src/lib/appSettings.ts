@@ -11,6 +11,8 @@ const LFO_FEED_UP_HOURS_KEY = "lfo_feed_up_hours";
 const LFO_FEED_OFF_HOURS_KEY = "lfo_feed_off_hours";
 const DEFAULT_CONSUMPTION_RATE_KEY = "default_consumption_rate";
 const DEFAULT_EFC_KEY = "default_efc";
+const DEFAULT_MARKET_AGE_KEY = "default_market_age_days";
+const DEFAULT_MARKET_AGE_DAYS = 52;
 
 export function getServiceTech(): string {
   return getMeta(SERVICE_TECH_KEY)?.trim() ?? "";
@@ -82,6 +84,17 @@ export function getDefaultEfc(): number {
 export function setDefaultEfc(value: number) {
   const next = resolveDefaultEfc(value);
   setMeta(DEFAULT_EFC_KEY, String(next));
+}
+
+export function getDefaultMarketAgeDays(): number {
+  const raw = Number(getMeta(DEFAULT_MARKET_AGE_KEY));
+  if (!Number.isFinite(raw) || raw < 1) return DEFAULT_MARKET_AGE_DAYS;
+  return Math.round(raw);
+}
+
+export function setDefaultMarketAgeDays(days: number) {
+  if (!Number.isFinite(days) || days < 1) return;
+  setMeta(DEFAULT_MARKET_AGE_KEY, String(Math.round(days)));
 }
 
 /** Use the saved Settings name when a checklist field is still empty. */

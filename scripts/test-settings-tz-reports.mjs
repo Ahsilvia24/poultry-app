@@ -54,13 +54,16 @@ assert.match(mobileSettings, /setAppTimeZone/);
 assert.match(mobileSettings, /APP_TIME_ZONES/);
 assert.match(mobileSettings, />Profile</);
 assert.match(mobileSettings, />Preferences</);
+assert.match(mobileSettings, /Default market age \(days\):/);
 assert.match(mobileSettings, /Default Consumption Rate:/);
 assert.match(mobileSettings, /Default EFC:/);
 assert.ok(
-  mobileSettings.indexOf(">Preferences<") < mobileSettings.indexOf("Default Consumption Rate:") &&
+  mobileSettings.indexOf(">Preferences<") < mobileSettings.indexOf("Default market age (days):") &&
+    mobileSettings.indexOf("Default market age (days):") <
+      mobileSettings.indexOf("Default Consumption Rate:") &&
     mobileSettings.indexOf("Default Consumption Rate:") < mobileSettings.indexOf("Default EFC:") &&
     mobileSettings.indexOf("Default EFC:") < mobileSettings.indexOf("Feed up hours before catch:"),
-  "Expo WP defaults sit at the top of Preferences",
+  "Expo WP defaults sit under Preferences after market age",
 );
 assert.match(mobileSettings, /placeCaretAtEnd/);
 assert.match(mobileSettings, /PrimaryButton/);

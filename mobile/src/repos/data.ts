@@ -23,7 +23,7 @@ import {
   formatHouseLfoSummary,
   formatLocalDateTime,
 } from "../lib/lfo/calculate";
-import { getLfoFeedTiming } from "../lib/appSettings";
+import { getDefaultMarketAgeDays, getLfoFeedTiming } from "../lib/appSettings";
 import { lfoDisplayName, nextCustomLfoName } from "../lib/lfo/customName";
 import { normalizeHalfHourTime } from "../lib/time-slots";
 import { buildFieldLogWeeks, type FieldLogWeek } from "../lib/reports/field-log";
@@ -2591,7 +2591,7 @@ export function createFlock(input: {
   const marketAge =
     input.targetMarketAge != null && Number.isFinite(input.targetMarketAge) && input.targetMarketAge > 0
       ? Math.floor(input.targetMarketAge)
-      : 52;
+      : getDefaultMarketAgeDays();
   const projectedCatchDate =
     input.projectedCatchDate?.trim() || addDaysKey(input.placementDate, marketAge);
 
