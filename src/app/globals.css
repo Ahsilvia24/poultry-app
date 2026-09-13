@@ -28,10 +28,13 @@
 
 html,
 body {
+  height: 100%;
   background: #ffffff;
+  overscroll-behavior: none;
 }
 
 body {
+  overflow: hidden;
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   color-scheme: light;

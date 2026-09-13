@@ -58,7 +58,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f3efe6] px-4">
+    <div className="flex min-h-full items-center justify-center overflow-y-auto overscroll-none bg-[#f3efe6] px-4">
       <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
         <h1 className="text-center font-serif text-xl font-extrabold tracking-tight text-emerald-900">
           PoultryTech

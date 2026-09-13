@@ -45,7 +45,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${sans.variable} ${serif.variable} h-full`}>
-      <body className="min-h-full bg-white font-sans text-stone-900 antialiased">
+      <body className="h-full overflow-hidden bg-white font-sans text-stone-900 antialiased">
         <RegisterServiceWorker />
         {children}
       </body>

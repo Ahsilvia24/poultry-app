@@ -63,12 +63,14 @@ const pctAt = charts.indexOf("Mortality by Percentage");
 assert.ok(exportCsvAt > pctAt, "export buttons belong under the tiles");
 
 const shell = read("src/components/DashboardShell.tsx");
-assert.match(shell, /fixed inset-x-0 top-0 z-\[60\] bg-white/);
-assert.match(shell, /h-0\.5 bg-white/);
+assert.match(shell, /h-dvh max-h-dvh flex-col overflow-hidden/);
+assert.match(shell, /env\(safe-area-inset-top/);
+assert.match(shell, /overscroll-none/);
 assert.match(shell, /bg-\[#f3efe6\]/);
 
 const globals = read("src/app/globals.css");
 assert.match(globals, /background: #ffffff;/);
+assert.match(globals, /overscroll-behavior: none/);
 assert.doesNotMatch(globals, /radial-gradient/);
 
 const nav = read("src/components/AppNav.tsx");

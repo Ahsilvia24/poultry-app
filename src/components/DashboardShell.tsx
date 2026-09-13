@@ -9,22 +9,24 @@ import { OfflineRoutes } from "@/components/OfflineNav";
 function ShellBody({ children }: { children: React.ReactNode }) {
   const { keypadOpen } = useKeypadNav();
   return (
-    <div
-      className={cn(
-        "min-h-screen bg-[#f3efe6]",
-        keypadOpen ? "pb-0" : "pb-28 md:pb-8",
-      )}
-    >
-      <div className="fixed inset-x-0 top-0 z-[60] bg-white">
-        <div className="h-[env(safe-area-inset-top,0px)] bg-white" />
-        <div className="h-0.5 bg-white" />
+    <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-[#f3efe6]">
+      <div
+        aria-hidden
+        className="shrink-0 bg-white"
+        style={{ height: "env(safe-area-inset-top, 0px)" }}
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-none">
+        <OfflineBanner />
+        <AppNav />
+        <main
+          className={cn(
+            "mx-auto max-w-7xl px-4 py-4 md:py-6",
+            keypadOpen ? "pb-4" : "pb-28 md:pb-8",
+          )}
+        >
+          <OfflineRoutes>{children}</OfflineRoutes>
+        </main>
       </div>
-      <div className="h-[env(safe-area-inset-top,0px)]" />
-      <OfflineBanner />
-      <AppNav />
-      <main className="mx-auto max-w-7xl px-4 py-4 md:py-6">
-        <OfflineRoutes>{children}</OfflineRoutes>
-      </main>
     </div>
   );
 }

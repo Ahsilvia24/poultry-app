@@ -28,7 +28,7 @@ export default function ErrorPage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f3efe6] px-4">
+    <div className="flex min-h-full items-center justify-center overflow-y-auto overscroll-none bg-[#f3efe6] px-4">
       <div className="text-center">
         <p className="font-serif text-xl font-extrabold tracking-tight text-emerald-900">
           PoultryTech
