@@ -21,7 +21,8 @@ assert.doesNotMatch(reports, /FarmHistoryReplica/);
 
 const button = read("src/components/FarmHistoryButton.tsx");
 assert.match(button, /href="\/history"/);
-assert.match(button, /min-h-10 px-4 text-sm/);
+assert.match(button, /<Button compact>/);
+assert.doesNotMatch(button, /min-h-10/);
 
 const screen = read("src/components/FarmHistoryScreen.tsx");
 assert.match(screen, /BackHeader href="\/reports"/);
@@ -42,11 +43,19 @@ assert.match(offline, /pathname === "\/history"/);
 const mobileReports = read("mobile/app/(tabs)/reports.tsx");
 assert.match(mobileReports, /Farm History/);
 assert.match(mobileReports, /\/farm-history/);
-assert.match(mobileReports, /paddingVertical: 8/);
-assert.match(mobileReports, /paddingHorizontal: 14/);
+assert.match(mobileReports, /minHeight: 36/);
+assert.match(mobileReports, /paddingVertical: 6/);
+assert.match(mobileReports, /paddingHorizontal: 12/);
 assert.doesNotMatch(mobileReports, /Farms visited each day/);
 assert.doesNotMatch(mobileReports, /key: "history"/);
 assert.doesNotMatch(mobileReports, /FarmHistoryPanel/);
+
+const farmsPage = read("src/components/FarmsPageClient.tsx");
+assert.match(farmsPage, /<Button compact>Add Farm<\/Button>/);
+
+const mobileFarms = read("mobile/app/(tabs)/farms/index.tsx");
+assert.match(mobileFarms, /Add Farm/);
+assert.match(mobileFarms, /minHeight: 36/);
 
 const mobileHistory = read("mobile/app/farm-history.tsx");
 assert.match(mobileHistory, /Farm History/);

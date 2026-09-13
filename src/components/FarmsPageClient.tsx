@@ -16,7 +16,7 @@ export function FarmsPageClient({ initial }: { initial: OfflineFarmTile[] }) {
         title="Farms"
         actions={
           <ReplicaLink href="/farms/new">
-            <Button className="min-h-10 px-4 text-sm">Add Farm</Button>
+            <Button compact>Add Farm</Button>
           </ReplicaLink>
         }
       />

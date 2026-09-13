@@ -91,13 +91,15 @@ export default function FarmsScreen() {
               accessibilityRole="button"
               accessibilityLabel="Add Farm"
               style={{
+                minHeight: 36,
                 borderRadius: 10,
-                paddingVertical: 8,
-                paddingHorizontal: 14,
+                paddingVertical: 6,
+                paddingHorizontal: 12,
                 backgroundColor: colors.accentDark,
+                justifyContent: "center",
               }}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>Add Farm</Text>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: "#fff" }}>Add Farm</Text>
             </Pressable>
           }
         />

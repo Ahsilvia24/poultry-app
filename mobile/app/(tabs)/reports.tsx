@@ -261,13 +261,15 @@ export default function ReportsScreen() {
               accessibilityLabel="Farm History"
               onPress={() => router.push("/farm-history")}
               style={{
+                minHeight: 36,
                 borderRadius: 10,
-                paddingVertical: 8,
-                paddingHorizontal: 14,
+                paddingVertical: 6,
+                paddingHorizontal: 12,
                 backgroundColor: colors.accentDark,
+                justifyContent: "center",
               }}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: "#fff" }}>
                 Farm History
               </Text>
             </Pressable>
