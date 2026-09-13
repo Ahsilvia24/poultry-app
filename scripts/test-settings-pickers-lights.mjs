@@ -51,6 +51,9 @@ assert.match(settings, /<option value="on">Yes<\/option>/);
 assert.match(settings, /<option value="off">No<\/option>/);
 assert.doesNotMatch(settings, /type="checkbox"/);
 assert.doesNotMatch(settings, /Mortality Thresholds/);
+assert.match(settings, /3-day rising alert:/);
+assert.doesNotMatch(settings, /Alert if mortality rises/);
+assert.doesNotMatch(settings, /Alert when mortality rises/);
 
 const emailAt = settings.indexOf('aria-label="Email"');
 const techAt = settings.indexOf("Service Tech:");

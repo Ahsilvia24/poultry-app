@@ -21,12 +21,6 @@ const valueTextClass =
 const valueChipClass =
   "flex h-9 items-center justify-end rounded-lg bg-stone-200 px-2.5";
 
-/**
- * Three looks for the 3-day rising alert, all with the same Yes/No chip.
- * 1 = short one-line. 2 = two-line (default). 3 = original words, smaller type.
- */
-const ALERT_RISING_LOOK = 2 as 1 | 2 | 3;
-
 function placeCaretAtEnd(el: HTMLInputElement) {
   const move = () => {
     const n = el.value.length;
@@ -101,30 +95,6 @@ function ValueChip({
   children: ReactNode;
 }) {
   return <div className={cn(valueChipClass, className)}>{children}</div>;
-}
-
-function AlertRisingLabel({ look }: { look: 1 | 2 | 3 }) {
-  if (look === 1) {
-    return <>3-day rising alert:</>;
-  }
-  if (look === 3) {
-    return (
-      <>
-        Alert when mortality rises
-        <span className="block text-[13px] font-medium leading-snug text-stone-600">
-          three consecutive days
-        </span>
-      </>
-    );
-  }
-  return (
-    <>
-      Alert if mortality rises
-      <span className="block font-medium leading-snug text-stone-600">
-        three days in a row
-      </span>
-    </>
-  );
 }
 
 export function SettingsScreen() {
@@ -332,18 +302,14 @@ export function SettingsScreen() {
                   />
                 </ValueChip>
               </SettingsRow>
-              <SettingsRow
-                htmlFor="alertRisingThreeDays"
-                labelClassName="leading-snug"
-                label={<AlertRisingLabel look={ALERT_RISING_LOOK} />}
-              >
+              <SettingsRow label="3-day rising alert:" htmlFor="alertRisingThreeDays">
                 <ValueChip className="w-[4.75rem]">
                   <select
                     id="alertRisingThreeDays"
                     name="alertRisingThreeDays"
                     defaultValue={values.alertRisingThreeDays ? "on" : "off"}
                     className={valueTextClass}
-                    aria-label="Alert if mortality rises three days in a row"
+                    aria-label="3-day rising alert"
                   >
                     <option value="on">Yes</option>
                     <option value="off">No</option>
