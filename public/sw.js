@@ -1,14 +1,16 @@
 /* PoultryTech home-screen cache.
- * First open needs a connection. After that, the saved app can open
- * without phone service and reuse the last downloaded files / pages.
+ * First open needs a connection. After that, tap should paint the last
+ * saved page immediately and refresh in the background.
  *
- * Poor signal used to freeze the app because fetch waited until the
- * radio timed out. Wait a few seconds, then open the last saved page.
+ * Network-first used to leave a black screen for several seconds on a
+ * slow radio. Only wait on the network when this phone has never saved
+ * that page.
  */
-const CACHE = "poultrytech-offline-v2";
-const NETWORK_MS = 4000;
+const CACHE = "poultrytech-offline-v3";
+const NETWORK_MS = 1500;
 
 const PRECACHE = [
+  "/",
   "/login",
   "/offline.html",
   "/manifest.webmanifest",
@@ -28,6 +30,19 @@ function isStaticAsset(url) {
   return (
     path.startsWith("/_next/static/") ||
     /\.(?:js|mjs|css|png|ico|woff2|webmanifest)$/.test(path)
+  );
+}
+
+function isNavigation(request) {
+  return request.mode === "navigate" || request.destination === "document";
+}
+
+function isRsc(request, url) {
+  return (
+    url.searchParams.has("_rsc") ||
+    request.headers.get("RSC") === "1" ||
+    request.headers.get("Next-Router-State-Tree") != null ||
+    (request.headers.get("accept") || "").includes("text/x-component")
   );
 }
 
@@ -61,16 +76,22 @@ function fetchWithTimeout(request, ms) {
   return fetch(request, { signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
-async function cachedFallback(request) {
-  const cache = await caches.open(CACHE);
+async function matchCachedPage(cache, request) {
   const exact = await cache.match(request);
   if (exact) return exact;
-  if (request.mode === "navigate") {
-    const page =
-      (await cache.match("/")) ||
-      (await cache.match("/login")) ||
-      (await cache.match("/offline.html"));
-    if (page) return page;
+  if (!isNavigation(request)) return null;
+  const path = new URL(request.url).pathname;
+  return (await cache.match(path)) || (await cache.match("/")) || null;
+}
+
+async function cachedFallback(request) {
+  const cache = await caches.open(CACHE);
+  const page = await matchCachedPage(cache, request);
+  if (page) return page;
+  if (isNavigation(request)) {
+    const fallback =
+      (await cache.match("/login")) || (await cache.match("/offline.html"));
+    if (fallback) return fallback;
     return new Response(
       "PoultryTech needs to download once on Wi-Fi, then it can open without service.",
       { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } },
@@ -104,6 +125,46 @@ async function cacheFirst(request) {
   }
 }
 
+async function staleWhileRevalidate(request, event) {
+  const cache = await caches.open(CACHE);
+  const cached = await matchCachedPage(cache, request);
+  const refresh = (async () => {
+    try {
+      const fresh = await fetch(request);
+      await putOk(cache, request, fresh);
+    } catch {
+      /* keep showing the saved page */
+    }
+  })();
+  event.waitUntil(refresh);
+  if (cached) return cached;
+  if (self.navigator && self.navigator.onLine === false) {
+    return cachedFallback(request);
+  }
+  try {
+    const fresh = await fetchWithTimeout(request, NETWORK_MS);
+    return putOk(cache, request, fresh);
+  } catch {
+    return cachedFallback(request);
+  }
+}
+
+async function adoptOldCaches(cache) {
+  const keys = await caches.keys();
+  for (const key of keys) {
+    if (key === CACHE || !key.startsWith("poultrytech-offline-")) continue;
+    const old = await caches.open(key);
+    const reqs = await old.keys();
+    await Promise.all(
+      reqs.map(async (req) => {
+        if (await cache.match(req)) return;
+        const res = await old.match(req);
+        if (res) await cache.put(req, res);
+      }),
+    );
+  }
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
@@ -117,6 +178,8 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
+      const cache = await caches.open(CACHE);
+      await adoptOldCaches(cache);
       const keys = await caches.keys();
       await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
       await self.clients.claim();
@@ -133,6 +196,10 @@ self.addEventListener("fetch", (event) => {
 
   if (isStaticAsset(url)) {
     event.respondWith(cacheFirst(request));
+    return;
+  }
+  if (isNavigation(request) || isRsc(request, url)) {
+    event.respondWith(staleWhileRevalidate(request, event));
     return;
   }
   event.respondWith(networkFirst(request));

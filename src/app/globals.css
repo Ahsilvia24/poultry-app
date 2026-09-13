@@ -29,7 +29,7 @@
 html,
 body {
   height: 100%;
-  background: #ffffff;
+  background: #f3efe6;
   overscroll-behavior: none;
   touch-action: pan-x pan-y;
 }

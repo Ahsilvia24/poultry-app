@@ -11,18 +11,23 @@ assert.ok(existsSync(join(root, "public/sw.js")), "missing public/sw.js");
 assert.ok(existsSync(join(root, "public/offline.html")), "missing public/offline.html");
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v2/);
-assert.match(sw, /NETWORK_MS = 4000/);
+assert.match(sw, /poultrytech-offline-v3/);
+assert.match(sw, /NETWORK_MS = 1500/);
 assert.match(sw, /addEventListener\("fetch"/);
 assert.match(sw, /request\.method !== "GET"/);
 assert.match(sw, /networkFirst/);
 assert.match(sw, /cacheFirst/);
+assert.match(sw, /staleWhileRevalidate/);
+assert.match(sw, /isNavigation/);
+assert.match(sw, /adoptOldCaches/);
 assert.match(sw, /fetchWithTimeout/);
 assert.match(sw, /navigator\.onLine === false/);
 assert.match(sw, /\/offline\.html/);
 assert.match(sw, /apple-touch-icon\.png/);
+assert.match(sw, /PRECACHE[\s\S]*"\/"/);
 assert.doesNotMatch(sw, /sql-wasm/);
 assert.match(sw, /path\.startsWith\("\/api\/"\)/);
+assert.match(sw, /isNavigation\(request\) \|\| isRsc\(request, url\)/);
 
 const offline = read("public/offline.html");
 assert.match(offline, /No phone service/);
@@ -31,11 +36,19 @@ assert.match(offline, /href="\/"/);
 const layout = read("src/app/layout.tsx");
 assert.match(layout, /RegisterServiceWorker/);
 assert.match(layout, /LockPinchZoom/);
+assert.match(layout, /themeColor: "#f3efe6"/);
+assert.match(layout, /backgroundColor: "#f3efe6"/);
+assert.match(layout, /updateViaCache:"none"/);
+
+const manifest = read("public/manifest.webmanifest");
+assert.match(manifest, /"background_color": "#f3efe6"/);
+assert.match(manifest, /"theme_color": "#f3efe6"/);
 assert.match(offline, /user-scalable=no/);
 assert.match(offline, /maximum-scale=1/);
 
 const register = read("src/components/RegisterServiceWorker.tsx");
 assert.match(register, /serviceWorker\.register\("\/sw\.js"/);
+assert.match(register, /updateViaCache: "none"/);
 assert.match(register, /NODE_ENV !== "production"/);
 
 const banner = read("src/components/OfflineBanner.tsx");

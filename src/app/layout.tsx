@@ -42,13 +42,28 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#ffffff",
+  themeColor: "#f3efe6",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${sans.variable} ${serif.variable} h-full`}>
-      <body className="h-full overflow-hidden bg-white font-sans text-stone-900 antialiased">
+    <html
+      lang="en"
+      className={`${sans.variable} ${serif.variable} h-full`}
+      style={{ backgroundColor: "#f3efe6" }}
+    >
+      <body
+        className="h-full overflow-hidden bg-[#f3efe6] font-sans text-stone-900 antialiased"
+        style={{ backgroundColor: "#f3efe6" }}
+      >
+        {process.env.NODE_ENV === "production" ? (
+          <script
+            dangerouslySetInnerHTML={{
+              __html:
+                'if("serviceWorker"in navigator){navigator.serviceWorker.register("/sw.js",{scope:"/",updateViaCache:"none"})}',
+            }}
+          />
+        ) : null}
         <RegisterServiceWorker />
         <LockPinchZoom />
         {children}

@@ -69,7 +69,7 @@ assert.match(shell, /overscroll-none/);
 assert.match(shell, /bg-\[#f3efe6\]/);
 
 const globals = read("src/app/globals.css");
-assert.match(globals, /background: #ffffff;/);
+assert.match(globals, /background: #f3efe6;/);
 assert.match(globals, /overscroll-behavior: none/);
 assert.doesNotMatch(globals, /radial-gradient/);
 
@@ -78,10 +78,10 @@ assert.match(nav, /bg-white/);
 assert.doesNotMatch(nav, /backdrop-blur/);
 
 const layout = read("src/app/layout.tsx");
-assert.match(layout, /themeColor: "#ffffff"/);
+assert.match(layout, /themeColor: "#f3efe6"/);
 
 const manifest = read("public/manifest.webmanifest");
-assert.match(manifest, /"theme_color": "#ffffff"/);
+assert.match(manifest, /"theme_color": "#f3efe6"/);
 
 const mobileReports = read("mobile/app/(tabs)/reports.tsx");
 assert.match(mobileReports, /alignItems: "flex-end"/);
