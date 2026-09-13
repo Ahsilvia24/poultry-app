@@ -2,10 +2,10 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { changePasswordAction } from "@/app/actions/auth";
-import { Button, Input } from "@/components/ui";
+import { Button } from "@/components/ui";
 
-const inlineInputClass =
-  "!min-h-7 flex-1 border-0 bg-transparent px-0 py-0 leading-tight text-base font-semibold shadow-none focus:border-transparent focus:ring-0";
+const fieldClass =
+  "h-11 min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 text-[15px] font-semibold text-stone-900 outline-none placeholder:font-semibold placeholder:tracking-wide placeholder:text-stone-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200";
 
 function Line({
   label,
@@ -17,8 +17,8 @@ function Line({
   children: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2 leading-tight">
-      <label htmlFor={htmlFor} className="shrink-0 text-sm font-semibold leading-tight text-stone-800">
+    <div className="flex items-center gap-3 py-1.5">
+      <label htmlFor={htmlFor} className="w-[4.75rem] shrink-0 text-[15px] font-semibold leading-none text-stone-800">
         {label}
       </label>
       {children}
@@ -44,46 +44,46 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <form ref={formRef} action={onSubmit} className="space-y-0">
+    <form ref={formRef} action={onSubmit} className="space-y-1 overflow-visible">
       <h2 className="font-bold leading-tight text-stone-900">Change password</h2>
       <Line label="Current:" htmlFor="currentPassword">
-        <Input
+        <input
           id="currentPassword"
           name="currentPassword"
           type="password"
-          compact
           required
           autoComplete="current-password"
-          className={inlineInputClass}
+          placeholder="********"
+          className={fieldClass}
         />
       </Line>
       <Line label="New:" htmlFor="newPassword">
-        <Input
+        <input
           id="newPassword"
           name="password"
           type="password"
           minLength={8}
-          compact
           required
           autoComplete="new-password"
-          className={inlineInputClass}
+          placeholder="********"
+          className={fieldClass}
         />
       </Line>
       <Line label="Confirm:" htmlFor="confirmPassword">
-        <Input
+        <input
           id="confirmPassword"
           name="confirmPassword"
           type="password"
           minLength={8}
-          compact
           required
           autoComplete="new-password"
-          className={inlineInputClass}
+          placeholder="********"
+          className={fieldClass}
         />
       </Line>
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
       {ok ? <p className="text-sm font-medium text-emerald-800">Password updated.</p> : null}
-      <Button type="submit" className="mt-2">
+      <Button type="submit" className="mt-3">
         Change password
       </Button>
     </form>

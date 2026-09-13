@@ -50,6 +50,7 @@ assert.match(mobileSettings, /Order Farms By:/);
 assert.match(mobileSettings, /accessibilityLabel="Email"/);
 assert.doesNotMatch(mobileSettings, />Email:</);
 assert.match(mobileSettings, /Change password/);
+assert.match(mobileSettings, /placeholder="\*\*\*\*\*\*\*\*"/);
 assert.ok(
   mobileSettings.indexOf("accessibilityLabel=\"Email\"") < mobileSettings.indexOf("Order Farms By:"),
   "mobile email should sit in the header",

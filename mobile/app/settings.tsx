@@ -410,11 +410,11 @@ export default function SettingsScreen() {
             </Text>
           )}
 
-          <View style={{ marginTop: 12, gap: 4 }}>
+          <View style={{ marginTop: 12, gap: 12 }}>
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>
               Change password
             </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <Text style={{ width: 88, fontSize: 15, fontWeight: "700", color: colors.text }}>
                 Current:
               </Text>
@@ -423,13 +423,16 @@ export default function SettingsScreen() {
                   {
                     flex: 1,
                     minWidth: 0,
-                    fontSize: 17,
+                    minHeight: 44,
+                    fontSize: 15,
                     fontWeight: "600",
                     color: colors.text,
-                    paddingVertical: 2,
-                    paddingHorizontal: 0,
-                    borderWidth: 0,
-                    backgroundColor: "transparent",
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 10,
+                    backgroundColor: "#fff",
                   },
                   noFocusRing,
                 ]}
@@ -440,13 +443,13 @@ export default function SettingsScreen() {
                 autoCorrect={false}
                 textContentType="password"
                 autoComplete="password"
-                placeholder="Current password"
+                placeholder="********"
                 placeholderTextColor={colors.muted}
                 underlineColorAndroid="transparent"
                 accessibilityLabel="Current password"
               />
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <Text style={{ width: 88, fontSize: 15, fontWeight: "700", color: colors.text }}>
                 New:
               </Text>
@@ -455,13 +458,16 @@ export default function SettingsScreen() {
                   {
                     flex: 1,
                     minWidth: 0,
-                    fontSize: 17,
+                    minHeight: 44,
+                    fontSize: 15,
                     fontWeight: "600",
                     color: colors.text,
-                    paddingVertical: 2,
-                    paddingHorizontal: 0,
-                    borderWidth: 0,
-                    backgroundColor: "transparent",
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 10,
+                    backgroundColor: "#fff",
                   },
                   noFocusRing,
                 ]}
@@ -472,13 +478,13 @@ export default function SettingsScreen() {
                 autoCorrect={false}
                 textContentType="newPassword"
                 autoComplete="password-new"
-                placeholder="New password"
+                placeholder="********"
                 placeholderTextColor={colors.muted}
                 underlineColorAndroid="transparent"
                 accessibilityLabel="New password"
               />
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <Text style={{ width: 88, fontSize: 15, fontWeight: "700", color: colors.text }}>
                 Confirm:
               </Text>
@@ -487,13 +493,16 @@ export default function SettingsScreen() {
                   {
                     flex: 1,
                     minWidth: 0,
-                    fontSize: 17,
+                    minHeight: 44,
+                    fontSize: 15,
                     fontWeight: "600",
                     color: colors.text,
-                    paddingVertical: 2,
-                    paddingHorizontal: 0,
-                    borderWidth: 0,
-                    backgroundColor: "transparent",
+                    paddingVertical: 10,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 10,
+                    backgroundColor: "#fff",
                   },
                   noFocusRing,
                 ]}
@@ -504,7 +513,7 @@ export default function SettingsScreen() {
                 autoCorrect={false}
                 textContentType="newPassword"
                 autoComplete="password-new"
-                placeholder="Confirm password"
+                placeholder="********"
                 placeholderTextColor={colors.muted}
                 underlineColorAndroid="transparent"
                 accessibilityLabel="Confirm new password"

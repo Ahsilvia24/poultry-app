@@ -280,7 +280,7 @@ export function SettingsScreen() {
           <Button type="submit">Save settings</Button>
         </form>
 
-        <div className="mt-5 border-t border-stone-200 pt-3">
+        <div className="mt-5 overflow-visible border-t border-stone-200 pt-3">
           <ChangePasswordForm />
         </div>
       </Card>
