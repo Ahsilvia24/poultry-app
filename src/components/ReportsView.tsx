@@ -108,11 +108,7 @@ export function ReportsView({
   if (model.type === "field-log") {
     return (
       <div>
-        <PageHeader
-          title="Reports"
-          subtitle="Farms visited each day, in the order you logged them"
-          actions={<FarmHistoryButton />}
-        />
+        <PageHeader title="Reports" actions={<FarmHistoryButton />} />
         <ReportsTypeTabs active="field-log" onSelect={onSelectType} />
         <Card className="mb-6">
           <form className="grid gap-3" onSubmit={onFilter}>

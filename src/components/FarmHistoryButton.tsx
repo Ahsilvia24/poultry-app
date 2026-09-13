@@ -1,14 +1,12 @@
 "use client";
 
 import { ReplicaLink } from "@/components/ReplicaLink";
+import { Button } from "@/components/ui";
 
 export function FarmHistoryButton() {
   return (
-    <ReplicaLink
-      href="/history"
-      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800"
-    >
-      Farm History
+    <ReplicaLink href="/history">
+      <Button className="min-h-10 px-4 text-sm">Farm History</Button>
     </ReplicaLink>
   );
 }

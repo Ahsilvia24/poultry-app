@@ -14,12 +14,14 @@ assert.doesNotMatch(types, /key: "history"/);
 
 const reports = read("src/components/ReportsView.tsx");
 assert.match(reports, /FarmHistoryButton/);
+assert.doesNotMatch(reports, /Farms visited each day/);
+assert.doesNotMatch(reports, /subtitle=/);
 assert.doesNotMatch(reports, /model.type === "history"/);
 assert.doesNotMatch(reports, /FarmHistoryReplica/);
 
 const button = read("src/components/FarmHistoryButton.tsx");
 assert.match(button, /href="\/history"/);
-assert.match(button, /bg-emerald-700/);
+assert.match(button, /min-h-10 px-4 text-sm/);
 
 const screen = read("src/components/FarmHistoryScreen.tsx");
 assert.match(screen, /BackHeader href="\/reports"/);
@@ -40,6 +42,9 @@ assert.match(offline, /pathname === "\/history"/);
 const mobileReports = read("mobile/app/(tabs)/reports.tsx");
 assert.match(mobileReports, /Farm History/);
 assert.match(mobileReports, /\/farm-history/);
+assert.match(mobileReports, /paddingVertical: 8/);
+assert.match(mobileReports, /paddingHorizontal: 14/);
+assert.doesNotMatch(mobileReports, /Farms visited each day/);
 assert.doesNotMatch(mobileReports, /key: "history"/);
 assert.doesNotMatch(mobileReports, /FarmHistoryPanel/);
 
