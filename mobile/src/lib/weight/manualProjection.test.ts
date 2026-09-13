@@ -9,8 +9,9 @@ describe("manualProjectedWeightLbs", () => {
   });
 
   it("projects catch weight from feed math", () => {
-    // TF 50,000 − INV 5,000 = 45,000 / CHC 20,000 = 2.25 FCPB
-    // (2.25 + 0.45 × 8) / 1.6 = 3.65625
+    // still = 0.45 × 8 = 3.6
+    // FCPB = (50,000 − 5,000) / 20,000 = 2.25
+    // (2.25 + 3.6) / 1.6 = 3.65625
     const weight = manualProjectedWeightLbs({
       totalFeedLbs: 50_000,
       inventoryLbs: 5_000,

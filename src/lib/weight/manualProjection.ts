@@ -3,8 +3,9 @@ export const DEFAULT_EXPECTED_FEED_CONVERSION = 1.8;
 
 /**
  * Manual catch-weight projection from feed:
+ *   still = CR × DTK
  *   FCPB = (TF − INV) / CHC
- *   projected = (FCPB + CR × DTK) / EFC
+ *   projected = (FCPB + still) / EFC
  */
 export function parseManualNumber(value: string): number | null {
   const n = Number(value.trim());
@@ -41,7 +42,8 @@ export function manualProjectedWeightLbs(input: {
   if (currentHeadCount <= 0 || expectedFeedConversion <= 0) return null;
   if (totalFeedLbs < 0 || inventoryLbs < 0) return null;
   if (consumptionRateLbsPerBirdDay < 0 || daysToKill < 0) return null;
-  const feedConsumedPerBird = (totalFeedLbs - inventoryLbs) / currentHeadCount;
-  if (feedConsumedPerBird < 0) return null;
-  return (feedConsumedPerBird + consumptionRateLbsPerBirdDay * daysToKill) / expectedFeedConversion;
+  const still = consumptionRateLbsPerBirdDay * daysToKill;
+  const fcpb = (totalFeedLbs - inventoryLbs) / currentHeadCount;
+  if (fcpb < 0) return null;
+  return (fcpb + still) / expectedFeedConversion;
 }
