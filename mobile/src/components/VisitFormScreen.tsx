@@ -182,18 +182,6 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
               <Ionicons name="chevron-down" size={18} color={colors.muted} />
             </Pressable>
 
-            <Text style={[styles.label, { marginTop: 8 }]}>Bird age (days)</Text>
-            <View
-              style={[
-                styles.input,
-                { backgroundColor: "#f5f5f4", justifyContent: "center" },
-              ]}
-            >
-              <Text style={{ color: colors.muted, fontWeight: "600" }}>
-                {birdAge != null ? String(birdAge) : "—"}
-              </Text>
-            </View>
-
             {visitType === "OTHER" ? (
               <>
                 <Text style={[styles.label, { marginTop: 8 }]}>Reason</Text>
@@ -206,6 +194,18 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
                 />
               </>
             ) : null}
+
+            <Text style={[styles.label, { marginTop: 8 }]}>Bird age (days)</Text>
+            <View
+              style={[
+                styles.input,
+                { backgroundColor: "#f5f5f4", justifyContent: "center" },
+              ]}
+            >
+              <Text style={{ color: colors.muted, fontWeight: "600" }}>
+                {birdAge != null ? String(birdAge) : "—"}
+              </Text>
+            </View>
 
             <Text style={[styles.label, { marginTop: 8 }]}>Bird condition</Text>
             <TextInput

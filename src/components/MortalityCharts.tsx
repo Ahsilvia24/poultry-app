@@ -109,7 +109,13 @@ export function MortalityCharts({
   const shownCumulative = displayCumulativeByAge ?? cumulativeByAge;
   const shownByHouse = displayByHouse ?? byHouse;
   const shownByDate = displayByHouseByDate ?? byHouseByDate;
-  const entityHeader = allFarms ? "Farm" : "House";
+  const entityHeader = allFarms ? "Farm" : "";
+  const farmNameOnTiles = displayFarmName ?? null;
+
+  function percentageRowLabel(row: FarmRow) {
+    if (!allFarms && row.kind === "farm") return "Total farm";
+    return row.farmName;
+  }
 
   function houseByDateTsv() {
     const header = ["House", ...byHouseByDate.dates.map(formatDateHeader), "Total"];
@@ -146,9 +152,9 @@ export function MortalityCharts({
 
   async function copyPercentage() {
     if (byFarm.length === 0) return;
-    const header = [entityHeader, "Placed", "Mortality", "Culls", "Total", "%"].join("\t");
+    const header = [entityHeader || "Farm", "Placed", "Mortality", "Culls", "Total", "%"].join("\t");
     const lines = byFarm.map((f) =>
-      [f.farmName, f.placed, f.mortality, f.culls, f.total, f.pct.toFixed(2)].join("\t"),
+      [percentageRowLabel(f), f.placed, f.mortality, f.culls, f.total, f.pct.toFixed(2)].join("\t"),
     );
     await navigator.clipboard.writeText([header, ...lines].join("\n"));
   }
@@ -162,9 +168,9 @@ export function MortalityCharts({
       blocks: [
         {
           type: "table",
-          headers: [entityHeader, "Placed", "Mortality", "Culls", "Total", "%"],
+          headers: [entityHeader || "Farm", "Placed", "Mortality", "Culls", "Total", "%"],
           rows: byFarm.map((f) => [
-            f.farmName,
+            percentageRowLabel(f),
             f.placed,
             f.mortality,
             f.culls,
@@ -244,8 +250,15 @@ export function MortalityCharts({
       toCsv(houseDateHeaders, houseDateRows),
       "",
       toCsv(
-        [entityHeader, "Placed", "Mortality", "Culls", "Total", "Pct"],
-        byFarm.map((f) => [f.farmName, f.placed, f.mortality, f.culls, f.total, f.pct.toFixed(2)]),
+        [entityHeader || "Farm", "Placed", "Mortality", "Culls", "Total", "Pct"],
+        byFarm.map((f) => [
+          percentageRowLabel(f),
+          f.placed,
+          f.mortality,
+          f.culls,
+          f.total,
+          f.pct.toFixed(2),
+        ]),
       ),
     ].join("\n");
     downloadCsv(`mortality-report-${Date.now()}.csv`, csv);
@@ -259,9 +272,9 @@ export function MortalityCharts({
       sections: [
         {
           title: "Mortality by Percentage",
-          headers: [entityHeader, "Placed", "Mortality", "Culls", "Total", "%"],
+          headers: [entityHeader || "Farm", "Placed", "Mortality", "Culls", "Total", "%"],
           rows: byFarm.map((f) => [
-            f.farmName,
+            percentageRowLabel(f),
             f.placed,
             f.mortality,
             f.culls,
@@ -297,6 +310,11 @@ export function MortalityCharts({
       <Card>
         <TileHeader
           title="Mortality by Percentage"
+          extra={
+            !allFarms && farmNameOnTiles ? (
+              <p className="mt-1 text-sm font-semibold text-stone-800">{farmNameOnTiles}</p>
+            ) : null
+          }
           onCopy={() => void copyPercentage()}
           onShare={sharePercentagePdf}
           copyDisabled={byFarm.length === 0}
@@ -308,7 +326,7 @@ export function MortalityCharts({
           <table className="min-w-full text-left text-sm">
             <thead className="text-stone-500">
               <tr>
-                <th className="py-1 pr-3 font-semibold">{entityHeader}</th>
+                <th className="py-1 pr-3 font-semibold">{entityHeader || "\u00a0"}</th>
                 <th className="py-1 pr-3 font-semibold">Placed</th>
                 <th className="py-1 pr-3 font-semibold">Total</th>
                 <th className="py-1 font-semibold">%</th>
@@ -329,7 +347,7 @@ export function MortalityCharts({
                       f.kind === "house" ? "pl-4 font-medium text-stone-700" : "font-semibold"
                     }`}
                   >
-                    {f.farmName}
+                      {percentageRowLabel(f)}
                   </td>
                   <td className="py-2 pr-3">{formatNumber(f.placed)}</td>
                   <td className="py-2 pr-3">{formatNumber(f.total)}</td>
@@ -344,6 +362,11 @@ export function MortalityCharts({
       <Card>
         <TileHeader
           title="Mortality by Date"
+          extra={
+            farmNameOnTiles ? (
+              <p className="mt-1 text-sm font-semibold text-stone-800">{farmNameOnTiles}</p>
+            ) : null
+          }
           onCopy={() => void copyHouseByDate()}
           onShare={shareHouseByDatePdf}
           copyDisabled={byHouseByDate.rows.length === 0 || byHouseByDate.dates.length === 0}
@@ -409,6 +432,11 @@ export function MortalityCharts({
       <Card>
         <TileHeader
           title="Mortality by House"
+          extra={
+            farmNameOnTiles ? (
+              <p className="mt-1 text-sm font-semibold text-stone-800">{farmNameOnTiles}</p>
+            ) : null
+          }
           onCopy={() => void copyByHouse()}
           onShare={shareByHousePdf}
           copyDisabled={byHouse.length === 0}

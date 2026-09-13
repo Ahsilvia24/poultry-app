@@ -5,9 +5,11 @@ import { ButtonHTMLAttributes, InputHTMLAttributes, SelectHTMLAttributes, Textar
 export function Button({
   className,
   variant = "primary",
+  compact = false,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "danger" | "ghost";
+  compact?: boolean;
 }) {
   const variants = {
     primary: "bg-emerald-700 text-white hover:bg-emerald-800",
@@ -18,7 +20,9 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex min-h-[52px] items-center justify-center rounded-xl px-5 text-[17px] font-semibold transition disabled:opacity-50",
+        compact
+          ? "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-50"
+          : "inline-flex min-h-[52px] items-center justify-center rounded-xl px-5 text-[17px] font-semibold transition disabled:opacity-50",
         variants[variant],
         className,
       )}

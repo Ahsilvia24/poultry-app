@@ -26,10 +26,12 @@
   }
 }
 
+html,
 body {
-  background:
-    radial-gradient(circle at top left, rgba(4, 120, 87, 0.08), transparent 40%),
-    linear-gradient(180deg, #efe8da 0%, #f3efe6 40%, #e9e2d4 100%);
+  background: #ffffff;
+}
+
+body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   color-scheme: light;

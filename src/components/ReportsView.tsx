@@ -121,7 +121,9 @@ export function ReportsView({
               to={model.to}
             />
             <div className="flex justify-end">
-              <Button type="submit">Run report</Button>
+              <Button type="submit" compact>
+                Apply filters
+              </Button>
             </div>
           </form>
         </Card>
@@ -161,7 +163,9 @@ export function ReportsView({
               to={model.to}
             />
             <div className="flex justify-end">
-              <Button type="submit">Apply filters</Button>
+              <Button type="submit" compact>
+                Apply filters
+              </Button>
             </div>
           </form>
         </Card>
@@ -204,7 +208,9 @@ export function ReportsView({
             to={model.to}
           />
           <div className="flex justify-end">
-            <Button type="submit">Apply filters</Button>
+            <Button type="submit" compact>
+              Apply filters
+            </Button>
           </div>
         </form>
       </Card>

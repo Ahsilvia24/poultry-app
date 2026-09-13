@@ -168,8 +168,12 @@ export default function ReportsScreen() {
   const displayFarmId = allFarms ? oldestFarmId(farms) : farmId;
   const displayFarmName =
     farms.find((farm) => farm.id === displayFarmId)?.farmName ?? selectedFarmName;
-  const entityHeader = allFarms ? "Farm" : "House";
+  const entityHeader = allFarms ? "Farm" : "";
   const rowHeaderLabel = "House";
+  function percentageRowLabel(row: MortalityPctRow) {
+    if (!allFarms && row.kind === "farm") return "Total farm";
+    return row.label;
+  }
   const displayMatrix = {
     dates: matrix.dates,
     rows: allFarms
@@ -318,9 +322,10 @@ export default function ReportsScreen() {
               </View>
               <View style={{ alignItems: "flex-end" }}>
                 <PrimaryButton
-                  label="Run report"
+                  compact
+                  label="Apply filters"
                   onPress={applyFieldLog}
-                  style={{ alignSelf: "flex-end", minWidth: 148 }}
+                  style={{ alignSelf: "flex-end", minWidth: 128 }}
                 />
               </View>
             </Card>
@@ -468,9 +473,10 @@ export default function ReportsScreen() {
               </View>
               <View style={{ alignItems: "flex-end" }}>
                 <PrimaryButton
+                  compact
                   label="Apply filters"
                   onPress={applyGenerator}
-                  style={{ alignSelf: "flex-end", minWidth: 148 }}
+                  style={{ alignSelf: "flex-end", minWidth: 128 }}
                 />
               </View>
             </Card>
@@ -602,9 +608,10 @@ export default function ReportsScreen() {
               </View>
               <View style={{ alignItems: "flex-end" }}>
                 <PrimaryButton
+                  compact
                   label="Apply filters"
                   onPress={() => applyMortality()}
-                  style={{ alignSelf: "flex-end", minWidth: 148 }}
+                  style={{ alignSelf: "flex-end", minWidth: 128 }}
                 />
               </View>
             </Card>
@@ -619,9 +626,16 @@ export default function ReportsScreen() {
                   gap: 8,
                 }}
               >
-                <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text, flex: 1 }}>
-                  Mortality by Percentage
-                </Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text }}>
+                    Mortality by Percentage
+                  </Text>
+                  {!allFarms && selectedFarmName ? (
+                    <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text, marginTop: 4 }}>
+                      {selectedFarmName}
+                    </Text>
+                  ) : null}
+                </View>
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <ClipboardIconButton
                     accessibilityLabel="Copy mortality by percentage"
@@ -630,9 +644,9 @@ export default function ReportsScreen() {
                     onNotice={setShareNotice}
                     getText={() => {
                       if (pctRows.length === 0) return "";
-                      const header = [entityHeader, "Placed", "Total", "%"].join("\t");
+                      const header = [entityHeader || "Farm", "Placed", "Total", "%"].join("\t");
                       const lines = pctRows.map((row) =>
-                        [row.label, row.placed, row.total, row.pct.toFixed(2)].join("\t"),
+                        [percentageRowLabel(row), row.placed, row.total, row.pct.toFixed(2)].join("\t"),
                       );
                       return [header, ...lines].join("\n");
                     }}
@@ -643,9 +657,9 @@ export default function ReportsScreen() {
                       void shareTablePdf({
                         title: "Mortality by Percentage",
                         filename: `mortality-by-percentage-${Date.now()}.pdf`,
-                        headers: [entityHeader, "Placed", "Total", "%"],
+                        headers: [entityHeader || "Farm", "Placed", "Total", "%"],
                         rows: pctRows.map((row) => [
-                          row.label,
+                          percentageRowLabel(row),
                           row.placed,
                           row.total,
                           row.pct.toFixed(2),
@@ -661,7 +675,9 @@ export default function ReportsScreen() {
                   />
                 </View>
               </View>
-              <Text style={[styles.muted, { marginBottom: 4 }]}>{entityHeader}</Text>
+              {entityHeader ? (
+                <Text style={[styles.muted, { marginBottom: 4 }]}>{entityHeader}</Text>
+              ) : null}
               {pctRows.length === 0 ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>No data for current filters.</Text>
               ) : (
@@ -683,7 +699,7 @@ export default function ReportsScreen() {
                         color: colors.text,
                       }}
                     >
-                      {row.label}
+                      {percentageRowLabel(row)}
                     </Text>
                     <Text style={{ fontWeight: "700", color: colors.text }}>
                       {formatPct(row.pct)}
@@ -703,9 +719,16 @@ export default function ReportsScreen() {
                   gap: 8,
                 }}
               >
-                <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text, flex: 1 }}>
-                  Mortality by Date
-                </Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text }}>
+                    Mortality by Date
+                  </Text>
+                  {displayFarmName ? (
+                    <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text, marginTop: 4 }}>
+                      {displayFarmName}
+                    </Text>
+                  ) : null}
+                </View>
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <ClipboardIconButton
                     accessibilityLabel="Copy mortality by date"
@@ -824,9 +847,16 @@ export default function ReportsScreen() {
                   gap: 8,
                 }}
               >
-                <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text, flex: 1 }}>
-                  Mortality by House
-                </Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontWeight: "800", fontSize: 15, color: colors.text }}>
+                    Mortality by House
+                  </Text>
+                  {displayFarmName ? (
+                    <Text style={{ fontWeight: "700", fontSize: 14, color: colors.text, marginTop: 4 }}>
+                      {displayFarmName}
+                    </Text>
+                  ) : null}
+                </View>
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <ClipboardIconButton
                     accessibilityLabel="Copy mortality by house"
@@ -974,9 +1004,9 @@ export default function ReportsScreen() {
               <PrimaryButton
                 label="Export CSV"
                 onPress={() => {
-                  const header = [entityHeader, "Placed", "Total", "%"].join(",");
+                  const header = [entityHeader || "Farm", "Placed", "Total", "%"].join(",");
                   const pct = pctRows.map((row) =>
-                    [row.label, row.placed, row.total, row.pct.toFixed(2)].join(","),
+                    [percentageRowLabel(row), row.placed, row.total, row.pct.toFixed(2)].join(","),
                   );
                   const house = [
                     "House,Mortality,Culls,Total",

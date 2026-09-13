@@ -16,6 +16,9 @@ const visitForm = read("src/components/FarmOpsForms.tsx");
 assert.match(visitForm, /visitType === "OTHER"/);
 assert.match(visitForm, /name="notes"/);
 assert.match(visitForm, /Reason for this visit/);
+const reasonAt = visitForm.indexOf("Reason for this visit");
+const ageAt = visitForm.indexOf("Bird age (days)");
+assert.ok(reasonAt > -1 && ageAt > reasonAt, "reason field sits above bird age");
 
 const mobileVisit = read("mobile/src/components/VisitFormScreen.tsx");
 assert.match(mobileVisit, /Enter a reason for this visit/);
@@ -30,6 +33,9 @@ assert.match(reports, /flex justify-end/);
 assert.match(reports, /displayByHouse/);
 assert.match(reports, /displayFarmName/);
 assert.match(reports, /allFarms/);
+assert.match(reports, /compact/);
+assert.equal((reports.match(/Apply filters/g) ?? []).length, 3);
+assert.doesNotMatch(reports, /Run report/);
 
 const gen = read("src/components/GeneratorLogReport.tsx");
 assert.match(gen, /CopyShareRow/);
@@ -40,10 +46,14 @@ assert.match(charts, /Mortality by Percentage/);
 assert.match(charts, /Mortality by Date/);
 assert.match(charts, /Mortality by House/);
 assert.match(charts, /Cumulative Mortality by Bird Age/);
-assert.match(charts, /entityHeader = allFarms \? "Farm" : "House"/);
+assert.match(charts, /entityHeader = allFarms \? "Farm" : ""/);
+assert.match(charts, /Total farm/);
 assert.match(charts, /shownByDate/);
 assert.match(charts, /shownByHouse/);
 assert.match(charts, /displayFarmName/);
+assert.match(charts, /title="Mortality by Date"/);
+assert.match(charts, /title="Mortality by House"/);
+assert.match(charts, /farmNameOnTiles/);
 assert.match(charts, /Export CSV/);
 assert.match(charts, /Export PDF/);
 assert.doesNotMatch(charts, /Farm \/ House/);
@@ -53,8 +63,13 @@ const pctAt = charts.indexOf("Mortality by Percentage");
 assert.ok(exportCsvAt > pctAt, "export buttons belong under the tiles");
 
 const shell = read("src/components/DashboardShell.tsx");
-assert.match(shell, /h-\[env\(safe-area-inset-top,0px\)\] bg-white/);
-assert.match(shell, /h-px bg-white/);
+assert.match(shell, /fixed inset-x-0 top-0 z-\[60\] bg-white/);
+assert.match(shell, /h-0\.5 bg-white/);
+assert.match(shell, /bg-\[#f3efe6\]/);
+
+const globals = read("src/app/globals.css");
+assert.match(globals, /background: #ffffff;/);
+assert.doesNotMatch(globals, /radial-gradient/);
 
 const nav = read("src/components/AppNav.tsx");
 assert.match(nav, /bg-white/);
@@ -68,6 +83,10 @@ assert.match(manifest, /"theme_color": "#ffffff"/);
 
 const mobileReports = read("mobile/app/(tabs)/reports.tsx");
 assert.match(mobileReports, /alignItems: "flex-end"/);
+assert.match(mobileReports, /compact/);
+assert.doesNotMatch(mobileReports, /Run report/);
+assert.match(mobileReports, /Total farm/);
+assert.match(mobileReports, /selectedFarmName/);
 assert.match(mobileReports, /Mortality by House/);
 assert.match(mobileReports, /Cumulative Mortality by Bird Age/);
 assert.match(mobileReports, /entityHeader/);

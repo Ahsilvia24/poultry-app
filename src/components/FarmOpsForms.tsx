@@ -140,6 +140,19 @@ export function FarmVisitForm({
             ))}
           </Select>
         </div>
+        {visitType === "OTHER" ? (
+          <div className="sm:col-span-2">
+            <Label htmlFor={fid("otherReason")}>Reason</Label>
+            <Input
+              id={fid("otherReason")}
+              name="notes"
+              value={otherReason}
+              onChange={(event) => setOtherReason(event.target.value)}
+              placeholder="Reason for this visit"
+              required
+            />
+          </div>
+        ) : null}
         <div>
           <Label htmlFor={fid("birdAgeInDays")}>Bird age (days)</Label>
           <Input
@@ -159,19 +172,7 @@ export function FarmVisitForm({
           />
         </div>
       </div>
-      {visitType === "OTHER" ? (
-        <div>
-          <Label htmlFor={fid("otherReason")}>Reason</Label>
-          <Input
-            id={fid("otherReason")}
-            name="notes"
-            value={otherReason}
-            onChange={(event) => setOtherReason(event.target.value)}
-            placeholder="Reason for this visit"
-            required
-          />
-        </div>
-      ) : (
+      {visitType === "OTHER" ? null : (
         <div>
           <Label htmlFor={fid("visitNotes")}>Notes</Label>
           <Textarea
