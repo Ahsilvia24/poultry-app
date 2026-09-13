@@ -15,24 +15,71 @@ import {
 } from "@/lib/offline/applyLocal";
 import { cn } from "@/lib/utils";
 
-const labelClass = "shrink-0 text-[15px] font-semibold leading-none text-stone-800";
+const labelClass = "min-w-0 flex-1 text-[15px] font-semibold leading-none text-stone-800";
 const valueTextClass =
   "w-full border-0 bg-transparent p-0 text-right text-[15px] font-semibold leading-none text-stone-900 outline-none focus:ring-0";
 const valueChipClass =
   "flex h-9 items-center justify-end rounded-lg bg-stone-200 px-2.5";
 
+function placeCaretAtEnd(el: HTMLInputElement) {
+  const move = () => {
+    const n = el.value.length;
+    try {
+      el.setSelectionRange(n, n);
+    } catch {
+      /* iOS may ignore selection on some input types */
+    }
+  };
+  move();
+  requestAnimationFrame(move);
+  window.setTimeout(move, 0);
+  window.setTimeout(move, 50);
+}
+
+function SettingsChipInput({
+  id,
+  name,
+  defaultValue,
+  required,
+  autoComplete,
+  inputMode = "text",
+}: {
+  id: string;
+  name: string;
+  defaultValue: string | number;
+  required?: boolean;
+  autoComplete?: string;
+  inputMode?: "text" | "numeric" | "decimal";
+}) {
+  return (
+    <input
+      id={id}
+      name={name}
+      type="text"
+      inputMode={inputMode}
+      autoComplete={autoComplete ?? "off"}
+      defaultValue={defaultValue}
+      required={required}
+      onFocus={(event) => placeCaretAtEnd(event.currentTarget)}
+      className={valueTextClass}
+    />
+  );
+}
+
 function SettingsRow({
   label,
   htmlFor,
   children,
+  labelClassName,
 }: {
-  label: string;
+  label: ReactNode;
   htmlFor: string;
   children: ReactNode;
+  labelClassName?: string;
 }) {
   return (
     <div className="flex min-h-11 items-center justify-between gap-3">
-      <label htmlFor={htmlFor} className={labelClass}>
+      <label htmlFor={htmlFor} className={cn(labelClass, labelClassName)}>
         {label}
       </label>
       {children}
@@ -121,13 +168,12 @@ export function SettingsScreen() {
             <div className="mt-1">
               <SettingsRow label="Service Tech:" htmlFor="name">
                 <ValueChip className="min-w-[9.5rem] max-w-[14rem] flex-1">
-                  <input
+                  <SettingsChipInput
                     id="name"
                     name="name"
                     defaultValue={values.name}
                     required
                     autoComplete="name"
-                    className={valueTextClass}
                   />
                 </ValueChip>
               </SettingsRow>
@@ -147,83 +193,6 @@ export function SettingsScreen() {
                   </select>
                 </ValueChip>
               </SettingsRow>
-            </div>
-          </div>
-
-          <div>
-            <h2 className="font-bold leading-tight text-stone-900">Mortality Thresholds (%)</h2>
-            <div className="mt-1">
-              <SettingsRow label="Daily warning:" htmlFor="dailyMortalityWarningPct">
-                <ValueChip className="w-[4.75rem]">
-                  <input
-                    id="dailyMortalityWarningPct"
-                    name="dailyMortalityWarningPct"
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    defaultValue={values.dailyMortalityWarningPct}
-                    required
-                    className={valueTextClass}
-                  />
-                </ValueChip>
-              </SettingsRow>
-              <SettingsRow label="Daily critical:" htmlFor="dailyMortalityCriticalPct">
-                <ValueChip className="w-[4.75rem]">
-                  <input
-                    id="dailyMortalityCriticalPct"
-                    name="dailyMortalityCriticalPct"
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    defaultValue={values.dailyMortalityCriticalPct}
-                    required
-                    className={valueTextClass}
-                  />
-                </ValueChip>
-              </SettingsRow>
-              <SettingsRow label="7-day warning:" htmlFor="sevenDayMortalityWarningPct">
-                <ValueChip className="w-[4.75rem]">
-                  <input
-                    id="sevenDayMortalityWarningPct"
-                    name="sevenDayMortalityWarningPct"
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    defaultValue={values.sevenDayMortalityWarningPct}
-                    required
-                    className={valueTextClass}
-                  />
-                </ValueChip>
-              </SettingsRow>
-              <SettingsRow label="7-day critical:" htmlFor="sevenDayMortalityCriticalPct">
-                <ValueChip className="w-[4.75rem]">
-                  <input
-                    id="sevenDayMortalityCriticalPct"
-                    name="sevenDayMortalityCriticalPct"
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    defaultValue={values.sevenDayMortalityCriticalPct}
-                    required
-                    className={valueTextClass}
-                  />
-                </ValueChip>
-              </SettingsRow>
-            </div>
-            <label className="mt-1 flex items-center gap-2 text-[15px] font-semibold leading-tight text-stone-700">
-              <input
-                type="checkbox"
-                name="alertRisingThreeDays"
-                defaultChecked={values.alertRisingThreeDays}
-                className="h-4 w-4"
-              />
-              Alert when mortality rises three consecutive days
-            </label>
-          </div>
-
-          <div>
-            <h2 className="font-bold leading-tight text-stone-900">Preferences</h2>
-            <div className="mt-1">
               <SettingsRow label="Timezone:" htmlFor="appTimeZone">
                 <ValueChip className="min-w-[9.5rem] max-w-[14rem]">
                   <select
@@ -240,44 +209,42 @@ export function SettingsScreen() {
                   </select>
                 </ValueChip>
               </SettingsRow>
+            </div>
+          </div>
+
+          <div>
+            <h2 className="font-bold leading-tight text-stone-900">Preferences</h2>
+            <div className="mt-1">
               <SettingsRow label="Default market age (days):" htmlFor="defaultMarketAgeDays">
                 <ValueChip className="w-[4.75rem]">
-                  <input
+                  <SettingsChipInput
                     id="defaultMarketAgeDays"
                     name="defaultMarketAgeDays"
-                    type="number"
-                    min={1}
                     defaultValue={values.defaultMarketAgeDays}
                     required
-                    className={valueTextClass}
+                    inputMode="numeric"
                   />
                 </ValueChip>
               </SettingsRow>
               <SettingsRow label="Feed up hours before catch:" htmlFor="lfoFeedUpHoursBeforeCatch">
                 <ValueChip className="w-[4.75rem]">
-                  <input
+                  <SettingsChipInput
                     id="lfoFeedUpHoursBeforeCatch"
                     name="lfoFeedUpHoursBeforeCatch"
-                    type="number"
-                    min={1}
-                    max={48}
                     defaultValue={values.lfoFeedUpHoursBeforeCatch ?? 5}
                     required
-                    className={valueTextClass}
+                    inputMode="numeric"
                   />
                 </ValueChip>
               </SettingsRow>
               <SettingsRow label="Feed off hours before catch:" htmlFor="lfoFeedOffHoursBeforeCatch">
                 <ValueChip className="w-[4.75rem]">
-                  <input
+                  <SettingsChipInput
                     id="lfoFeedOffHoursBeforeCatch"
                     name="lfoFeedOffHoursBeforeCatch"
-                    type="number"
-                    min={1}
-                    max={72}
                     defaultValue={values.lfoFeedOffHoursBeforeCatch ?? 10}
                     required
-                    className={valueTextClass}
+                    inputMode="numeric"
                   />
                 </ValueChip>
               </SettingsRow>
@@ -288,13 +255,79 @@ export function SettingsScreen() {
             {values.notifyEmail ? <input type="hidden" name="notifyEmail" value="on" /> : null}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit">{saved ? "Saved" : "Save settings"}</Button>
+          <div>
+            <h2 className="font-bold leading-tight text-stone-900">Mortality settings</h2>
+            <div className="mt-1">
+              <SettingsRow label="Daily warning:" htmlFor="dailyMortalityWarningPct">
+                <ValueChip className="w-[4.75rem]">
+                  <SettingsChipInput
+                    id="dailyMortalityWarningPct"
+                    name="dailyMortalityWarningPct"
+                    defaultValue={values.dailyMortalityWarningPct}
+                    required
+                    inputMode="decimal"
+                  />
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="Daily critical:" htmlFor="dailyMortalityCriticalPct">
+                <ValueChip className="w-[4.75rem]">
+                  <SettingsChipInput
+                    id="dailyMortalityCriticalPct"
+                    name="dailyMortalityCriticalPct"
+                    defaultValue={values.dailyMortalityCriticalPct}
+                    required
+                    inputMode="decimal"
+                  />
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="7-day warning:" htmlFor="sevenDayMortalityWarningPct">
+                <ValueChip className="w-[4.75rem]">
+                  <SettingsChipInput
+                    id="sevenDayMortalityWarningPct"
+                    name="sevenDayMortalityWarningPct"
+                    defaultValue={values.sevenDayMortalityWarningPct}
+                    required
+                    inputMode="decimal"
+                  />
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="7-day critical:" htmlFor="sevenDayMortalityCriticalPct">
+                <ValueChip className="w-[4.75rem]">
+                  <SettingsChipInput
+                    id="sevenDayMortalityCriticalPct"
+                    name="sevenDayMortalityCriticalPct"
+                    defaultValue={values.sevenDayMortalityCriticalPct}
+                    required
+                    inputMode="decimal"
+                  />
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="3-day rising alert:" htmlFor="alertRisingThreeDays">
+                <ValueChip className="w-[4.75rem]">
+                  <select
+                    id="alertRisingThreeDays"
+                    name="alertRisingThreeDays"
+                    defaultValue={values.alertRisingThreeDays ? "on" : "off"}
+                    className={valueTextClass}
+                    aria-label="3-day rising alert"
+                  >
+                    <option value="on">Yes</option>
+                    <option value="off">No</option>
+                  </select>
+                </ValueChip>
+              </SettingsRow>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-3">
             {saved ? (
               <p className="text-sm font-semibold text-emerald-800" role="status">
                 Settings saved.
               </p>
             ) : null}
+            <Button type="submit" compact>
+              {saved ? "Saved" : "Save settings"}
+            </Button>
           </div>
         </form>
 

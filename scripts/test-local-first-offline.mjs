@@ -78,7 +78,9 @@ const { previewPlacementRowsLocal } = await import(join(root, "src/lib/offline/p
 const { snapshotHasFarmGraph, isReplicaHref } = await import(
   join(root, "src/lib/offline/hasFarmGraph.ts")
 );
-const { applyHouseTemp, applySettings } = await import(join(root, "src/lib/offline/applyLocal.ts"));
+const { applyHouseTemp, applySettings, settingsWriteFromForm } = await import(
+  join(root, "src/lib/offline/applyLocal.ts")
+);
 const { selectFarmDetail } = await import(join(root, "src/lib/offline/selectFarmDetail.ts"));
 const { selectFarmTiles } = await import(join(root, "src/lib/offline/selectFarms.ts"));
 const { selectLfo, selectLfoEdit } = await import(join(root, "src/lib/offline/selectLfo.ts"));
@@ -335,6 +337,25 @@ assert.equal(renamed.userName, "Alex Silvia");
 assert.equal(renamed.settings.appTimeZone, "America/New_York");
 assert.equal(renamed.settings.defaultMarketAgeDays, 49);
 assert.equal(renamed.settings.alertRisingThreeDays, false);
+
+function sampleSettingsForm(alert) {
+  const form = new FormData();
+  form.set("name", "Alex");
+  form.set("farmOrder", "age_desc");
+  form.set("dailyMortalityWarningPct", "0.15");
+  form.set("dailyMortalityCriticalPct", "0.3");
+  form.set("sevenDayMortalityWarningPct", "1");
+  form.set("sevenDayMortalityCriticalPct", "2");
+  form.set("alertRisingThreeDays", alert);
+  form.set("appTimeZone", "America/Chicago");
+  form.set("defaultMarketAgeDays", "52");
+  form.set("notifyInApp", "on");
+  form.set("lfoFeedUpHoursBeforeCatch", "5");
+  form.set("lfoFeedOffHoursBeforeCatch", "10");
+  return form;
+}
+assert.equal(settingsWriteFromForm(sampleSettingsForm("on")).alertRisingThreeDays, true);
+assert.equal(settingsWriteFromForm(sampleSettingsForm("off")).alertRisingThreeDays, false);
 
 const lfo = selectLfo(snapshot, "farm-1");
 assert.equal(lfo.farms.length, 1);

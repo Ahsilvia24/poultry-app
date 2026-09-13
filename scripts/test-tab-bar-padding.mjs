@@ -11,6 +11,9 @@ const expoTabs = readFileSync(join(root, "mobile/app/(tabs)/_layout.tsx"), "utf8
 assert.match(nav, /0\.7rem\+env\(safe-area-inset-bottom/);
 assert.match(layout, /viewportFit: "cover"/);
 assert.match(layout, /overflow-hidden/);
+assert.match(layout, /maximumScale: 1/);
+assert.match(layout, /userScalable: false/);
+assert.match(layout, /LockPinchZoom/);
 assert.match(expoTabs, /insets\.bottom \+ 10/);
 
 console.log("tab-bar-padding: ok");

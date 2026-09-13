@@ -31,6 +31,7 @@ body {
   height: 100%;
   background: #ffffff;
   overscroll-behavior: none;
+  touch-action: pan-x pan-y;
 }
 
 body {
