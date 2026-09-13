@@ -29,6 +29,7 @@
 html,
 body {
   background: #ffffff;
+  touch-action: pan-x pan-y;
 }
 
 body {

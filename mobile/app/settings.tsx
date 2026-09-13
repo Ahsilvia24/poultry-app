@@ -80,6 +80,83 @@ function SettingsRow({
   );
 }
 
+function placeCaretAtEnd(
+  value: string,
+  target?: { setSelectionRange?: (start: number, end: number) => void },
+) {
+  const n = value.length;
+  const move = () => {
+    try {
+      target?.setSelectionRange?.(n, n);
+    } catch {
+      /* ignore */
+    }
+  };
+  move();
+  requestAnimationFrame(move);
+}
+
+function SettingsChipInput({
+  value,
+  onChangeText,
+  accessibilityLabel,
+  keyboardType,
+  autoCapitalize,
+  autoCorrect,
+  textContentType,
+  autoComplete,
+  placeholder,
+  wide,
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  accessibilityLabel: string;
+  keyboardType?: "number-pad" | "decimal-pad";
+  autoCapitalize?: "words" | "none";
+  autoCorrect?: boolean;
+  textContentType?: "name";
+  autoComplete?: "name";
+  placeholder?: string;
+  wide?: boolean;
+}) {
+  const [selection, setSelection] = useState<{ start: number; end: number } | undefined>();
+  const chipStyle = wide
+    ? [valueChip, { minWidth: 152, maxWidth: 224, flex: 1 }]
+    : [valueChip, valueText, { width: 76, paddingVertical: 6, borderWidth: 0 }, noFocusRing];
+
+  return (
+    <View style={wide ? chipStyle : undefined}>
+      <TextInput
+        style={
+          wide
+            ? [valueText, { paddingVertical: 6, borderWidth: 0 }, noFocusRing]
+            : chipStyle
+        }
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
+        textContentType={textContentType}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        placeholderTextColor={colors.muted}
+        selectionColor={colors.muted}
+        underlineColorAndroid="transparent"
+        selectTextOnFocus={false}
+        selection={selection}
+        accessibilityLabel={accessibilityLabel}
+        onFocus={(event) => {
+          const n = value.length;
+          setSelection({ start: n, end: n });
+          placeCaretAtEnd(value, event.target as { setSelectionRange?: (start: number, end: number) => void });
+          setTimeout(() => setSelection(undefined), 80);
+        }}
+      />
+    </View>
+  );
+}
+
 function SettingsSelect<T extends string>({
   title,
   value,
@@ -279,23 +356,19 @@ export default function SettingsScreen() {
             </View>
           </View>
 
+          <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>Profile</Text>
           <SettingsRow label="Service Tech:">
-            <View style={[valueChip, { minWidth: 152, maxWidth: 224, flex: 1 }]}>
-              <TextInput
-                style={[valueText, { paddingVertical: 6, borderWidth: 0 }, noFocusRing]}
-                value={serviceTech}
-                onChangeText={onChangeServiceTech}
-                autoCapitalize="words"
-                autoCorrect={false}
-                textContentType="name"
-                autoComplete="name"
-                placeholder="Name"
-                placeholderTextColor={colors.muted}
-                selectionColor={colors.muted}
-                underlineColorAndroid="transparent"
-                accessibilityLabel="Service technician name"
-              />
-            </View>
+            <SettingsChipInput
+              wide
+              value={serviceTech}
+              onChangeText={onChangeServiceTech}
+              autoCapitalize="words"
+              autoCorrect={false}
+              textContentType="name"
+              autoComplete="name"
+              placeholder="Name"
+              accessibilityLabel="Service technician name"
+            />
           </SettingsRow>
 
           <SettingsRow label="Order Farms By:">
@@ -322,14 +395,9 @@ export default function SettingsScreen() {
             />
           </SettingsRow>
 
+          <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text, marginTop: 12 }}>Preferences</Text>
           <SettingsRow label="Feed up hours before catch:">
-            <TextInput
-              style={[
-                valueChip,
-                valueText,
-                { width: 76, paddingVertical: 6, borderWidth: 0 },
-                noFocusRing,
-              ]}
+            <SettingsChipInput
               value={feedUpHours}
               onChangeText={onChangeFeedUpHours}
               keyboardType="number-pad"
@@ -337,13 +405,7 @@ export default function SettingsScreen() {
             />
           </SettingsRow>
           <SettingsRow label="Feed off hours before catch:">
-            <TextInput
-              style={[
-                valueChip,
-                valueText,
-                { width: 76, paddingVertical: 6, borderWidth: 0 },
-                noFocusRing,
-              ]}
+            <SettingsChipInput
               value={feedOffHours}
               onChangeText={onChangeFeedOffHours}
               keyboardType="number-pad"

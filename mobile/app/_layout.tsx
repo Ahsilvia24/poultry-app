@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { AuthProvider, useAuth } from "../src/auth";
+import { LockPinchZoom } from "../src/components/LockPinchZoom";
 import { colors } from "../src/theme";
 import { StatusBar } from "expo-status-bar";
 
@@ -62,6 +63,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
   return (
     <AuthProvider>
+      <LockPinchZoom />
       <StatusBar style="dark" />
       <AuthGate>
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />

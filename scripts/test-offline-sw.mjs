@@ -30,6 +30,9 @@ assert.match(offline, /href="\/"/);
 
 const layout = read("src/app/layout.tsx");
 assert.match(layout, /RegisterServiceWorker/);
+assert.match(layout, /LockPinchZoom/);
+assert.match(offline, /user-scalable=no/);
+assert.match(offline, /maximum-scale=1/);
 
 const register = read("src/components/RegisterServiceWorker.tsx");
 assert.match(register, /serviceWorker\.register\("\/sw\.js"/);
