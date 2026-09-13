@@ -337,6 +337,26 @@ assert.equal(renamed.userName, "Alex Silvia");
 assert.equal(renamed.settings.appTimeZone, "America/New_York");
 assert.equal(renamed.settings.defaultMarketAgeDays, 49);
 assert.equal(renamed.settings.alertRisingThreeDays, false);
+assert.equal(renamed.settings.defaultConsumptionRate, 0.45);
+assert.equal(renamed.settings.defaultEfc, 1.75);
+
+const wpDefaults = applySettings(snapshot, {
+  name: "Alex Silvia",
+  farmOrder: "age_desc",
+  dailyMortalityWarningPct: 0.2,
+  dailyMortalityCriticalPct: 0.4,
+  sevenDayMortalityWarningPct: 1.1,
+  sevenDayMortalityCriticalPct: 2.2,
+  alertRisingThreeDays: false,
+  appTimeZone: "America/New_York",
+  defaultMarketAgeDays: 49,
+  notifyEmail: false,
+  notifyInApp: true,
+  defaultConsumptionRate: 0.5,
+  defaultEfc: 1.7,
+});
+assert.equal(wpDefaults.settings.defaultConsumptionRate, 0.5);
+assert.equal(wpDefaults.settings.defaultEfc, 1.7);
 
 function sampleSettingsForm(alert) {
   const form = new FormData();
@@ -356,6 +376,8 @@ function sampleSettingsForm(alert) {
 }
 assert.equal(settingsWriteFromForm(sampleSettingsForm("on")).alertRisingThreeDays, true);
 assert.equal(settingsWriteFromForm(sampleSettingsForm("off")).alertRisingThreeDays, false);
+assert.equal(settingsWriteFromForm(sampleSettingsForm("on")).defaultConsumptionRate, 0.45);
+assert.equal(settingsWriteFromForm(sampleSettingsForm("on")).defaultEfc, 1.75);
 
 const lfo = selectLfo(snapshot, "farm-1");
 assert.equal(lfo.farms.length, 1);

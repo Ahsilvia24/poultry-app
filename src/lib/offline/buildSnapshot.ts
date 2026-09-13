@@ -29,6 +29,8 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
         notifyInApp: true,
         lfoFeedUpHoursBeforeCatch: true,
         lfoFeedOffHoursBeforeCatch: true,
+        defaultConsumptionRate: true,
+        defaultEfc: true,
       },
     }),
     prisma.farm.findMany({

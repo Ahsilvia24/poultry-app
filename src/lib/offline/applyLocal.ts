@@ -1,6 +1,12 @@
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { parseFarmOrder } from "@/lib/farm-order";
 import type { OfflineSettings, OfflineSnapshot } from "@/lib/offline/types";
+import {
+  DEFAULT_CONSUMPTION_RATE,
+  DEFAULT_EXPECTED_FEED_CONVERSION,
+  resolveDefaultConsumptionRate,
+  resolveDefaultEfc,
+} from "@/lib/weight/manualProjection";
 
 function resolveLfoHours(
   writeValue: number | undefined,
@@ -33,6 +39,8 @@ export type SettingsWrite = {
   notifyInApp: boolean;
   lfoFeedUpHoursBeforeCatch?: number;
   lfoFeedOffHoursBeforeCatch?: number;
+  defaultConsumptionRate?: number;
+  defaultEfc?: number;
 };
 
 const DEFAULT_SETTINGS: OfflineSettings = {
@@ -48,6 +56,8 @@ const DEFAULT_SETTINGS: OfflineSettings = {
   notifyInApp: true,
   lfoFeedUpHoursBeforeCatch: 5,
   lfoFeedOffHoursBeforeCatch: 10,
+  defaultConsumptionRate: DEFAULT_CONSUMPTION_RATE,
+  defaultEfc: DEFAULT_EXPECTED_FEED_CONVERSION,
 };
 
 export function applyHouseTemp(snapshot: OfflineSnapshot, write: HouseTempWrite): OfflineSnapshot {
@@ -89,6 +99,10 @@ export function applySettings(snapshot: OfflineSnapshot, write: SettingsWrite): 
       snapshot.settings?.lfoFeedOffHoursBeforeCatch,
       10,
     ),
+    defaultConsumptionRate: resolveDefaultConsumptionRate(
+      write.defaultConsumptionRate ?? snapshot.settings?.defaultConsumptionRate,
+    ),
+    defaultEfc: resolveDefaultEfc(write.defaultEfc ?? snapshot.settings?.defaultEfc),
   };
   const upHours = next.lfoFeedUpHoursBeforeCatch ?? 5;
   const offHours = next.lfoFeedOffHoursBeforeCatch ?? 10;
@@ -117,6 +131,8 @@ export function settingsWriteFromForm(formData: FormData): SettingsWrite {
     notifyInApp: formData.get("notifyInApp") === "on",
     lfoFeedUpHoursBeforeCatch: Number(formData.get("lfoFeedUpHoursBeforeCatch") || 5),
     lfoFeedOffHoursBeforeCatch: Number(formData.get("lfoFeedOffHoursBeforeCatch") || 10),
+    defaultConsumptionRate: Number(formData.get("defaultConsumptionRate") || DEFAULT_CONSUMPTION_RATE),
+    defaultEfc: Number(formData.get("defaultEfc") || DEFAULT_EXPECTED_FEED_CONVERSION),
   };
 }
 
@@ -141,6 +157,11 @@ export function formDataFromSettingsWrite(write: SettingsWrite): FormData {
     "lfoFeedOffHoursBeforeCatch",
     String(write.lfoFeedOffHoursBeforeCatch ?? 10),
   );
+  formData.set(
+    "defaultConsumptionRate",
+    String(write.defaultConsumptionRate ?? DEFAULT_CONSUMPTION_RATE),
+  );
+  formData.set("defaultEfc", String(write.defaultEfc ?? DEFAULT_EXPECTED_FEED_CONVERSION));
   return formData;
 }
 
@@ -152,5 +173,7 @@ export function settingsFormValues(snapshot: OfflineSnapshot) {
     ...settings,
     farmOrder: parseFarmOrder(settings.farmOrder),
     appTimeZone: resolveAppTimeZone(settings.appTimeZone),
+    defaultConsumptionRate: resolveDefaultConsumptionRate(settings.defaultConsumptionRate),
+    defaultEfc: resolveDefaultEfc(settings.defaultEfc),
   };
 }

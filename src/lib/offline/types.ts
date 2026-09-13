@@ -181,6 +181,8 @@ export type OfflineSettings = {
   notifyInApp: boolean;
   lfoFeedUpHoursBeforeCatch?: number;
   lfoFeedOffHoursBeforeCatch?: number;
+  defaultConsumptionRate?: number;
+  defaultEfc?: number;
 };
 
 export type OfflineFormWriteAction =

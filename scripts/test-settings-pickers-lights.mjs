@@ -44,6 +44,10 @@ assert.match(settings, /Daily critical:/);
 assert.match(settings, /7-day warning:/);
 assert.match(settings, /7-day critical:/);
 assert.match(settings, /Default market age \(days\):/);
+assert.match(settings, /Default Consumption Rate:/);
+assert.match(settings, /Default EFC:/);
+assert.match(settings, /name="defaultConsumptionRate"/);
+assert.match(settings, /name="defaultEfc"/);
 assert.doesNotMatch(settings, /<Label htmlFor="email">/);
 assert.match(settings, /name="dailyMortalityWarningPct"/);
 assert.match(settings, /name="defaultMarketAgeDays"/);
@@ -67,10 +71,17 @@ const profileAt = settings.indexOf(">Profile<");
 const prefsAt = settings.indexOf(">Preferences<");
 const mortAt = settings.indexOf(">Mortality settings<");
 const passwordAt = settings.indexOf("<ChangePasswordForm");
+const crAt = settings.indexOf("Default Consumption Rate:");
+const efcAt = settings.indexOf("Default EFC:");
+const marketAt = settings.indexOf("Default market age (days):");
 assert.ok(emailAt >= 0 && emailAt < techAt, "Email should sit in the header");
 assert.ok(techAt >= 0 && orderAt > techAt, "Order By should sit under Service Tech");
 assert.ok(profileAt >= 0 && prefsAt > profileAt && mortAt > prefsAt, "Profile, then Preferences, then Mortality");
 assert.ok(orderAt < tzAt && tzAt < prefsAt, "Timezone should sit at the bottom of Profile");
+assert.ok(
+  prefsAt < marketAt && marketAt < crAt && crAt < efcAt && efcAt < mortAt,
+  "WP defaults sit under Preferences after market age",
+);
 assert.ok(passwordAt > mortAt, "Change password should sit below the form");
 assert.doesNotMatch(passwordForm, /setSelectionRange/);
 assert.doesNotMatch(passwordForm, /placeCaretAtEnd/);

@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
 import { catchWeightBandFromLbs } from "@/lib/weight/projections";
+import { useOffline } from "@/components/OfflineProvider";
 import {
-  DEFAULT_EXPECTED_FEED_CONVERSION,
   manualProjectedWeightLbs,
   parseManualNumber,
+  resolveDefaultConsumptionRate,
+  resolveDefaultEfc,
 } from "@/lib/weight/manualProjection";
-import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
 import { cn } from "@/lib/utils";
 
 type FieldKey = "tf" | "inv" | "chc" | "cr" | "dtk" | "efc";
@@ -43,14 +44,26 @@ function formatField(key: FieldKey, raw: string) {
 
 export function WeightProjectionManualTile() {
   const { setKeypadOpen } = useKeypadNav();
+  const { snapshot } = useOffline();
+  const defaultCr = resolveDefaultConsumptionRate(snapshot?.settings?.defaultConsumptionRate);
+  const defaultEfc = resolveDefaultEfc(snapshot?.settings?.defaultEfc);
   const [tf, setTf] = useState("");
   const [inv, setInv] = useState("");
   const [chc, setChc] = useState("");
-  const [cr, setCr] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
+  const [cr, setCr] = useState(() => String(defaultCr));
   const [dtk, setDtk] = useState("");
-  const [efc, setEfc] = useState(String(DEFAULT_EXPECTED_FEED_CONVERSION));
+  const [efc, setEfc] = useState(() => String(defaultEfc));
   const [active, setActive] = useState<FieldKey | null>(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
+  const seededDefaults = useRef(false);
+
+  useEffect(() => {
+    if (seededDefaults.current) return;
+    if (!snapshot) return;
+    setCr(String(defaultCr));
+    setEfc(String(defaultEfc));
+    seededDefaults.current = true;
+  }, [snapshot, defaultCr, defaultEfc]);
 
   const values: Record<FieldKey, string> = { tf, inv, chc, cr, dtk, efc };
   const setters: Record<FieldKey, (next: string) => void> = {

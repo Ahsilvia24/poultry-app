@@ -54,6 +54,14 @@ assert.match(mobileSettings, /setAppTimeZone/);
 assert.match(mobileSettings, /APP_TIME_ZONES/);
 assert.match(mobileSettings, />Profile</);
 assert.match(mobileSettings, />Preferences</);
+assert.match(mobileSettings, /Default Consumption Rate:/);
+assert.match(mobileSettings, /Default EFC:/);
+assert.ok(
+  mobileSettings.indexOf(">Preferences<") < mobileSettings.indexOf("Default Consumption Rate:") &&
+    mobileSettings.indexOf("Default Consumption Rate:") < mobileSettings.indexOf("Default EFC:") &&
+    mobileSettings.indexOf("Default EFC:") < mobileSettings.indexOf("Feed up hours before catch:"),
+  "Expo WP defaults sit at the top of Preferences",
+);
 assert.match(mobileSettings, /placeCaretAtEnd/);
 assert.match(mobileSettings, /PrimaryButton/);
 assert.match(mobileSettings, /alignItems: "flex-end"/);

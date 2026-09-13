@@ -1,12 +1,8 @@
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { DEFAULT_LFO_CONSUMPTION_RATE } from "../lib/lfo/calculate";
+import { getDefaultConsumptionRate, getDefaultEfc } from "../lib/appSettings";
 import { catchWeightBandFromLbs } from "../lib/weight/projections";
-import {
-  DEFAULT_EXPECTED_FEED_CONVERSION,
-  manualProjectedWeightLbs,
-  parseManualNumber,
-} from "../lib/weight/manualProjection";
+import { manualProjectedWeightLbs, parseManualNumber } from "../lib/weight/manualProjection";
 import { colors } from "../theme";
 import {
   NumberKeypad,
@@ -49,9 +45,9 @@ export function WeightProjectionManualTile() {
   const [tf, setTf] = useState("");
   const [inv, setInv] = useState("");
   const [chc, setChc] = useState("");
-  const [cr, setCr] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
+  const [cr, setCr] = useState(() => String(getDefaultConsumptionRate()));
   const [dtk, setDtk] = useState("");
-  const [efc, setEfc] = useState(String(DEFAULT_EXPECTED_FEED_CONVERSION));
+  const [efc, setEfc] = useState(() => String(getDefaultEfc()));
   const [active, setActive] = useState<FieldKey | null>(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
 

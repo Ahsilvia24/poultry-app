@@ -16,10 +16,14 @@ import { useAuth } from "../src/auth";
 import {
   getAppTimeZone,
   getFarmOrder,
+  getDefaultConsumptionRate,
+  getDefaultEfc,
   getLfoFeedOffHoursBeforeCatch,
   getLfoFeedUpHoursBeforeCatch,
   getServiceTech,
   setAppTimeZone,
+  setDefaultConsumptionRate,
+  setDefaultEfc,
   setFarmOrder,
   setLfoFeedOffHoursBeforeCatch,
   setLfoFeedUpHoursBeforeCatch,
@@ -263,6 +267,8 @@ export default function SettingsScreen() {
   const [timeZone, setTimeZoneValue] = useState(getAppTimeZone);
   const [feedUpHours, setFeedUpHours] = useState(() => String(getLfoFeedUpHoursBeforeCatch()));
   const [feedOffHours, setFeedOffHours] = useState(() => String(getLfoFeedOffHoursBeforeCatch()));
+  const [defaultCr, setDefaultCr] = useState(() => String(getDefaultConsumptionRate()));
+  const [defaultEfc, setDefaultEfcValue] = useState(() => String(getDefaultEfc()));
   const [exporting, setExporting] = useState(false);
   const [exportNote, setExportNote] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -285,6 +291,18 @@ export default function SettingsScreen() {
   function onChangeTimeZone(value: string) {
     setTimeZoneValue(value);
     setAppTimeZone(value);
+  }
+
+  function onChangeDefaultCr(value: string) {
+    setDefaultCr(value);
+    const rate = Number(value);
+    if (Number.isFinite(rate) && rate > 0) setDefaultConsumptionRate(rate);
+  }
+
+  function onChangeDefaultEfc(value: string) {
+    setDefaultEfcValue(value);
+    const efc = Number(value);
+    if (Number.isFinite(efc) && efc > 0) setDefaultEfc(efc);
   }
 
   function onChangeFeedUpHours(value: string) {
@@ -397,6 +415,22 @@ export default function SettingsScreen() {
           </SettingsRow>
 
           <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text, marginTop: 12 }}>Preferences</Text>
+          <SettingsRow label="Default Consumption Rate:">
+            <SettingsChipInput
+              value={defaultCr}
+              onChangeText={onChangeDefaultCr}
+              keyboardType="decimal-pad"
+              accessibilityLabel="Default consumption rate"
+            />
+          </SettingsRow>
+          <SettingsRow label="Default EFC:">
+            <SettingsChipInput
+              value={defaultEfc}
+              onChangeText={onChangeDefaultEfc}
+              keyboardType="decimal-pad"
+              accessibilityLabel="Default EFC"
+            />
+          </SettingsRow>
           <SettingsRow label="Feed up hours before catch:">
             <SettingsChipInput
               value={feedUpHours}

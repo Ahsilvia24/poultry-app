@@ -1,11 +1,22 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { catchWeightBandFromLbs } from "./projections.ts";
-import { DEFAULT_EXPECTED_FEED_CONVERSION, manualProjectedWeightLbs } from "./manualProjection.ts";
+import {
+  DEFAULT_CONSUMPTION_RATE,
+  DEFAULT_EXPECTED_FEED_CONVERSION,
+  manualProjectedWeightLbs,
+  resolveDefaultConsumptionRate,
+  resolveDefaultEfc,
+} from "./manualProjection.ts";
 
 describe("manualProjectedWeightLbs", () => {
-  it("defaults expected feed conversion to 1.8", () => {
-    assert.equal(DEFAULT_EXPECTED_FEED_CONVERSION, 1.8);
+  it("defaults consumption rate to 0.45 and EFC to 1.75", () => {
+    assert.equal(DEFAULT_CONSUMPTION_RATE, 0.45);
+    assert.equal(DEFAULT_EXPECTED_FEED_CONVERSION, 1.75);
+    assert.equal(resolveDefaultConsumptionRate(undefined), 0.45);
+    assert.equal(resolveDefaultEfc(undefined), 1.75);
+    assert.equal(resolveDefaultConsumptionRate(0.5), 0.5);
+    assert.equal(resolveDefaultEfc(1.7), 1.7);
   });
 
   it("projects catch weight from feed math", () => {

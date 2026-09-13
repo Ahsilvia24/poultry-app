@@ -2,12 +2,15 @@ import { getMeta, setMeta } from "../db/database";
 import { resolveAppTimeZone } from "./appTimeZones";
 import { parseFarmOrder, type FarmOrder } from "./farmOrder";
 import { resolveLfoFeedTiming, type LfoFeedTiming } from "./lfo/calculate";
+import { resolveDefaultConsumptionRate, resolveDefaultEfc } from "./weight/manualProjection";
 
 const SERVICE_TECH_KEY = "service_tech";
 const FARM_ORDER_KEY = "farm_order";
 const TIME_ZONE_KEY = "app_time_zone";
 const LFO_FEED_UP_HOURS_KEY = "lfo_feed_up_hours";
 const LFO_FEED_OFF_HOURS_KEY = "lfo_feed_off_hours";
+const DEFAULT_CONSUMPTION_RATE_KEY = "default_consumption_rate";
+const DEFAULT_EFC_KEY = "default_efc";
 
 export function getServiceTech(): string {
   return getMeta(SERVICE_TECH_KEY)?.trim() ?? "";
@@ -61,6 +64,24 @@ export function setLfoFeedOffHoursBeforeCatch(hours: number) {
 
 export function getLfoFeedTiming(): LfoFeedTiming {
   return resolveLfoFeedTiming(getLfoFeedUpHoursBeforeCatch(), getLfoFeedOffHoursBeforeCatch());
+}
+
+export function getDefaultConsumptionRate(): number {
+  return resolveDefaultConsumptionRate(Number(getMeta(DEFAULT_CONSUMPTION_RATE_KEY)));
+}
+
+export function setDefaultConsumptionRate(value: number) {
+  const next = resolveDefaultConsumptionRate(value);
+  setMeta(DEFAULT_CONSUMPTION_RATE_KEY, String(next));
+}
+
+export function getDefaultEfc(): number {
+  return resolveDefaultEfc(Number(getMeta(DEFAULT_EFC_KEY)));
+}
+
+export function setDefaultEfc(value: number) {
+  const next = resolveDefaultEfc(value);
+  setMeta(DEFAULT_EFC_KEY, String(next));
 }
 
 /** Use the saved Settings name when a checklist field is still empty. */

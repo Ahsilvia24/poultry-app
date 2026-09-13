@@ -116,6 +116,8 @@ export function SettingsScreen() {
         notifyInApp: true,
         lfoFeedUpHoursBeforeCatch: 5,
         lfoFeedOffHoursBeforeCatch: 10,
+        defaultConsumptionRate: 0.45,
+        defaultEfc: 1.75,
       };
   const [saved, setSaved] = useState(false);
   const savedTimer = useRef<number | null>(null);
@@ -223,6 +225,28 @@ export function SettingsScreen() {
                     defaultValue={values.defaultMarketAgeDays}
                     required
                     inputMode="numeric"
+                  />
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="Default Consumption Rate:" htmlFor="defaultConsumptionRate">
+                <ValueChip className="w-[4.75rem]">
+                  <SettingsChipInput
+                    id="defaultConsumptionRate"
+                    name="defaultConsumptionRate"
+                    defaultValue={values.defaultConsumptionRate ?? 0.45}
+                    required
+                    inputMode="decimal"
+                  />
+                </ValueChip>
+              </SettingsRow>
+              <SettingsRow label="Default EFC:" htmlFor="defaultEfc">
+                <ValueChip className="w-[4.75rem]">
+                  <SettingsChipInput
+                    id="defaultEfc"
+                    name="defaultEfc"
+                    defaultValue={values.defaultEfc ?? 1.75}
+                    required
+                    inputMode="decimal"
                   />
                 </ValueChip>
               </SettingsRow>

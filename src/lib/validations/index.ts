@@ -264,6 +264,8 @@ export const settingsSchema = z.object({
   appTimeZone: z.string().min(1).optional(),
   lfoFeedUpHoursBeforeCatch: z.coerce.number().int().min(1).max(48).optional(),
   lfoFeedOffHoursBeforeCatch: z.coerce.number().int().min(1).max(72).optional(),
+  defaultConsumptionRate: z.coerce.number().positive().max(10).optional(),
+  defaultEfc: z.coerce.number().positive().max(10).optional(),
 });
 
 export const performanceSchema = z.object({

@@ -1,5 +1,18 @@
+/** Default consumption rate (lb/bird/day) on the manual weight tile. */
+export const DEFAULT_CONSUMPTION_RATE = 0.45;
+
 /** Default expected feed conversion on the manual weight tile. */
-export const DEFAULT_EXPECTED_FEED_CONVERSION = 1.8;
+export const DEFAULT_EXPECTED_FEED_CONVERSION = 1.75;
+
+export function resolveDefaultConsumptionRate(value?: number | null): number {
+  if (value == null || !Number.isFinite(value) || value <= 0) return DEFAULT_CONSUMPTION_RATE;
+  return value;
+}
+
+export function resolveDefaultEfc(value?: number | null): number {
+  if (value == null || !Number.isFinite(value) || value <= 0) return DEFAULT_EXPECTED_FEED_CONVERSION;
+  return value;
+}
 
 /**
  * Manual catch-weight projection from feed:

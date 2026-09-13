@@ -57,14 +57,24 @@ const settings = read("src/components/SettingsScreen.tsx");
 assert.match(settings, /lfoFeedUpHoursBeforeCatch/);
 assert.match(settings, /lfoFeedOffHoursBeforeCatch/);
 assert.match(settings, /Feed up hours before catch/);
+assert.match(settings, /Default Consumption Rate:/);
+assert.match(settings, /Default EFC:/);
+assert.match(settings, /defaultConsumptionRate/);
+assert.match(settings, /defaultEfc/);
 
 const schema = read("prisma/schema.prisma");
 assert.match(schema, /lfoFeedUpHoursBeforeCatch/);
 assert.match(schema, /lfoFeedOffHoursBeforeCatch/);
+assert.match(schema, /defaultConsumptionRate/);
+assert.match(schema, /defaultEfc/);
 
 const mobileSettings = read("mobile/app/settings.tsx");
 assert.match(mobileSettings, /Feed up hours before catch/);
 assert.match(mobileSettings, /setLfoFeedUpHoursBeforeCatch/);
+assert.match(mobileSettings, /Default Consumption Rate:/);
+assert.match(mobileSettings, /Default EFC:/);
+assert.match(mobileSettings, /setDefaultConsumptionRate/);
+assert.match(mobileSettings, /setDefaultEfc/);
 
 const mobileReports = read("mobile/app/(tabs)/reports.tsx");
 assert.match(mobileReports, /addDaysKey\(todayKey\(\), -28\)/);

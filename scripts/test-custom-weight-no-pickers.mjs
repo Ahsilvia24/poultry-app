@@ -10,12 +10,18 @@ const page = readFileSync(join(root, "src/app/(dashboard)/tools/page.tsx"), "utf
 
 assert.match(web, /Tap the numbers to calculate/);
 assert.match(web, /label: "TF"/);
+assert.match(web, /resolveDefaultConsumptionRate/);
+assert.match(web, /resolveDefaultEfc/);
+assert.match(web, /defaultConsumptionRate/);
+assert.match(web, /defaultEfc/);
 assert.doesNotMatch(web, /selectFarm/);
 assert.doesNotMatch(web, /House \{h\.houseNumber\}/);
 assert.doesNotMatch(web, /overflow-x-auto/);
 assert.doesNotMatch(web, /farms\?/);
 
 assert.match(expo, /Tap the numbers to calculate/);
+assert.match(expo, /getDefaultConsumptionRate/);
+assert.match(expo, /getDefaultEfc/);
 assert.doesNotMatch(expo, /Chip/);
 assert.doesNotMatch(expo, /selectFarm/);
 assert.doesNotMatch(expo, /listFarms/);

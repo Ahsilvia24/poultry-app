@@ -14,6 +14,10 @@ import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { DEFAULT_FARM_ORDER } from "@/lib/farm-order";
+import {
+  DEFAULT_CONSUMPTION_RATE,
+  DEFAULT_EXPECTED_FEED_CONVERSION,
+} from "@/lib/weight/manualProjection";
 import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
 import {
   farmIssueSchema,
@@ -616,6 +620,8 @@ export async function updateSettingsAction(formData: FormData) {
     appTimeZone: formData.get("appTimeZone") || undefined,
     lfoFeedUpHoursBeforeCatch: formData.get("lfoFeedUpHoursBeforeCatch") || 5,
     lfoFeedOffHoursBeforeCatch: formData.get("lfoFeedOffHoursBeforeCatch") || 10,
+    defaultConsumptionRate: formData.get("defaultConsumptionRate") || DEFAULT_CONSUMPTION_RATE,
+    defaultEfc: formData.get("defaultEfc") || DEFAULT_EXPECTED_FEED_CONVERSION,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid settings" };
 
@@ -641,6 +647,8 @@ export async function updateSettingsAction(formData: FormData) {
       appTimeZone: resolveAppTimeZone(parsed.data.appTimeZone),
       lfoFeedUpHoursBeforeCatch: parsed.data.lfoFeedUpHoursBeforeCatch ?? 5,
       lfoFeedOffHoursBeforeCatch: parsed.data.lfoFeedOffHoursBeforeCatch ?? 10,
+      defaultConsumptionRate: parsed.data.defaultConsumptionRate ?? DEFAULT_CONSUMPTION_RATE,
+      defaultEfc: parsed.data.defaultEfc ?? DEFAULT_EXPECTED_FEED_CONVERSION,
     },
     update: {
       dailyMortalityWarningPct: parsed.data.dailyMortalityWarningPct,
@@ -655,6 +663,8 @@ export async function updateSettingsAction(formData: FormData) {
       appTimeZone: resolveAppTimeZone(parsed.data.appTimeZone),
       lfoFeedUpHoursBeforeCatch: parsed.data.lfoFeedUpHoursBeforeCatch ?? 5,
       lfoFeedOffHoursBeforeCatch: parsed.data.lfoFeedOffHoursBeforeCatch ?? 10,
+      defaultConsumptionRate: parsed.data.defaultConsumptionRate ?? DEFAULT_CONSUMPTION_RATE,
+      defaultEfc: parsed.data.defaultEfc ?? DEFAULT_EXPECTED_FEED_CONVERSION,
     },
   });
 
