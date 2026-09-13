@@ -492,7 +492,8 @@ assert.doesNotMatch(read("src/components/AddFlockSection.tsx"), /Processing plan
 assert.match(read("src/components/AddFlockSection.tsx"), /Propagate \(to the rest of the houses\)/);
 assert.match(read("src/components/MortalityEntryForm.tsx"), /setMortField\(\{ kind: "mortality", age: jumpTo\.age \}\)/);
 assert.match(read("src/components/MortalityEntryForm.tsx"), /useReplicaNavigate/);
-assert.match(read("src/components/MortalityEntryForm.tsx"), /openReplica\(`\/farms\/\$\{farmId\}`\)/);
+assert.match(read("src/components/MortalityEntryForm.tsx"), /openReplica\(`/);
+assert.match(read("src/components/MortalityEntryForm.tsx"), /focusHouseFlockId=/);
 assert.doesNotMatch(read("src/components/MortalityEntryForm.tsx"), /router\.push\(`\/farms\//);
 assert.match(read("src/components/OfflineNav.tsx"), /selectLfoEdit/);
 assert.match(read("src/components/SavedLfoRow.tsx"), /ReplicaLink/);

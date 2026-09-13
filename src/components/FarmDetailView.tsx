@@ -1,5 +1,6 @@
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { createFlockAction } from "@/app/actions/farms";
+import { FarmHouseFocus } from "@/components/FarmHouseFocus";
 import { HouseCard } from "@/components/HouseCard";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { AddFlockSection } from "@/components/AddFlockSection";
@@ -20,12 +21,17 @@ import type { VisitType } from "@prisma/client";
 export function FarmDetailView({
   model,
   timeZone,
+  focusHouseFlockId,
 }: {
   model: FarmDetailModel;
   timeZone?: string;
+  focusHouseFlockId?: string | null;
 }) {
   const farm = model.farm;
   const houseById = new Map(model.houses.map((house) => [house.id, house]));
+  const focusHouseId = focusHouseFlockId
+    ? model.houseCards.find((card) => card.houseFlockId === focusHouseFlockId)?.houseId
+    : null;
 
   async function submitFlock(formData: FormData) {
     return createFlockAction(farm.id, formData);
@@ -33,6 +39,7 @@ export function FarmDetailView({
 
   return (
     <div>
+      <FarmHouseFocus houseId={focusHouseId} />
       <div className="mb-6 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-3">
         <ReplicaLink
           href="/farms"
@@ -54,24 +61,25 @@ export function FarmDetailView({
             const house = houseById.get(card.houseId);
             if (!house) return null;
             return (
-              <HouseCard
-                key={house.id}
-                farmId={farm.id}
-                house={house}
-                hasFlock={card.hasFlock}
-                status={card.status}
-                birdsPlaced={card.birdsPlaced}
-                metrics={card.metrics}
-                projectedHeadCount={card.projectedHeadCount}
-                projectedMortality={card.projectedMortality}
-                weeklyMortality={card.weeklyMortality}
-                flockLabel={card.flockLabel}
-                houseFlockId={card.houseFlockId}
-                placementDateKey={card.placementDateKey}
-                catchDateKey={card.catchDateKey}
-                catchTime={card.catchTime}
-                birdAgeDays={card.birdAgeDays}
-              />
+              <div key={house.id} id={`house-${house.id}`}>
+                <HouseCard
+                  farmId={farm.id}
+                  house={house}
+                  hasFlock={card.hasFlock}
+                  status={card.status}
+                  birdsPlaced={card.birdsPlaced}
+                  metrics={card.metrics}
+                  projectedHeadCount={card.projectedHeadCount}
+                  projectedMortality={card.projectedMortality}
+                  weeklyMortality={card.weeklyMortality}
+                  flockLabel={card.flockLabel}
+                  houseFlockId={card.houseFlockId}
+                  placementDateKey={card.placementDateKey}
+                  catchDateKey={card.catchDateKey}
+                  catchTime={card.catchTime}
+                  birdAgeDays={card.birdAgeDays}
+                />
+              </div>
             );
           })}
           {model.houses.length === 0 ? (

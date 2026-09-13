@@ -15,7 +15,7 @@ function ShellBody({ children }: { children: React.ReactNode }) {
         className="shrink-0 bg-white"
         style={{ height: "env(safe-area-inset-top, 0px)" }}
       />
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-none">
+      <div data-app-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-none">
         <OfflineBanner />
         <AppNav />
         <main

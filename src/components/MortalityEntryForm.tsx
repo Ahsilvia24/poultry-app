@@ -787,7 +787,9 @@ export function MortalityEntryForm({
                     onPress: () => {
                       flushSave();
                       setMortField(null);
-                      openReplica(`/farms/${farmId}`);
+                      openReplica(
+                        `/farms/${farmId}?focusHouseFlockId=${encodeURIComponent(house.houseFlockId)}`,
+                      );
                     },
                   }
                 : undefined

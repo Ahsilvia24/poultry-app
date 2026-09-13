@@ -40,6 +40,7 @@ import {
   setFarmNavContext,
   useGoToFarmList,
 } from "../../../../src/lib/farmNavContext";
+import { FARM_HOUSE_BACK_PEEK_PX, farmHouseBackScrollTop } from "../../../../src/lib/farmHouseScroll";
 import { useTabScrollToTop } from "../../../../src/lib/tabScroll";
 import { VISIT_TYPE_LABELS } from "../../../../src/lib/visits";
 import {
@@ -559,7 +560,7 @@ export default function FarmDetailScreen() {
     const tryScroll = () => {
       const y = sectionY.current[key];
       if (y != null) {
-        scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
+        scrollRef.current?.scrollTo({ y: farmHouseBackScrollTop(y), animated: true });
         return;
       }
       if (attempts++ < 12) setTimeout(tryScroll, 50);

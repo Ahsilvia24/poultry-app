@@ -236,7 +236,14 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     const farmId = resolveAlias(aliases, farmDetail[1]);
     const model = selectFarmDetail(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmDetail[1]} />;
-    return <FarmDetailView model={model} timeZone={snapshot.settings?.appTimeZone} />;
+    const focusHouseFlockId = new URLSearchParams(search).get("focusHouseFlockId");
+    return (
+      <FarmDetailView
+        model={model}
+        timeZone={snapshot.settings?.appTimeZone}
+        focusHouseFlockId={focusHouseFlockId}
+      />
+    );
   }
 
   if (pathname === "/settings") {

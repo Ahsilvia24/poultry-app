@@ -6,13 +6,25 @@ import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import { resolveAlias } from "@/lib/offline/remapIds";
 import { selectFarmDetail } from "@/lib/offline/selectFarmDetail";
 
-export function FarmDetailClient({ farmId }: { farmId: string }) {
+export function FarmDetailClient({
+  farmId,
+  focusHouseFlockId,
+}: {
+  farmId: string;
+  focusHouseFlockId?: string;
+}) {
   const { snapshot, ready, aliases } = useOffline();
 
   if (snapshotHasFarmGraph(snapshot)) {
     const model = selectFarmDetail(snapshot, resolveAlias(aliases, farmId));
     if (model) {
-      return <FarmDetailView model={model} timeZone={snapshot.settings?.appTimeZone} />;
+      return (
+        <FarmDetailView
+          model={model}
+          timeZone={snapshot.settings?.appTimeZone}
+          focusHouseFlockId={focusHouseFlockId}
+        />
+      );
     }
     return (
       <div>
