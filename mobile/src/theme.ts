@@ -25,6 +25,12 @@ const sans = Platform.select({
 
 export const fonts = { serif, sans };
 
+/** Keep tab scroll edges a hard clip, not the iOS 26 soft fade. */
+export const appScrollProps = {
+  contentInsetAdjustmentBehavior: "never" as const,
+  automaticallyAdjustsScrollIndicatorInsets: false,
+};
+
 export const styles = StyleSheet.create({
   screen: {
     flex: 1,

@@ -17,7 +17,7 @@ import {
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
-import { colors, styles } from "../../src/theme";
+import { appScrollProps, colors, styles } from "../../src/theme";
 import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/schedule";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { ConfirmDialog } from "../../src/components/ConfirmDialog";
@@ -310,6 +310,7 @@ export default function DashboardScreen() {
         ref={scrollRef}
         style={styles.screen}
         contentContainerStyle={styles.content}
+        {...appScrollProps}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       >
         <View style={{ marginBottom: 16 }}>

@@ -36,7 +36,7 @@ import { shareFieldLogPdf } from "../../src/lib/reports/shareFieldLogPdf";
 import { shareGeneratorReportPdf } from "../../src/lib/reports/shareGeneratorPdf";
 import { shareMortalityReportPdf } from "../../src/lib/reports/shareMortalityPdf";
 import { shareTablePdf } from "../../src/lib/reports/shareTablePdf";
-import { colors, styles } from "../../src/theme";
+import { appScrollProps, colors, styles } from "../../src/theme";
 import {
   Card,
   Chip,
@@ -252,6 +252,7 @@ export default function ReportsScreen() {
         style={styles.screen}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        {...appScrollProps}
       >
         <PageHeader
           title="Reports"

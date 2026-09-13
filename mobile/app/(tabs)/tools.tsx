@@ -29,7 +29,7 @@ import {
   DEFAULT_GROWTH_RATE_LBS_PER_DAY,
   resolveGrowthRate,
 } from "../../src/lib/weight/projections";
-import { colors, styles } from "../../src/theme";
+import { appScrollProps, colors, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { useKeyboardInset } from "../../src/lib/useKeyboardInset";
 import { Card, Chip } from "../../src/components/ui";
@@ -234,6 +234,7 @@ export default function ToolsScreen() {
         ]}
         keyboardShouldPersistTaps="always"
         keyboardDismissMode="on-drag"
+        {...appScrollProps}
       >
         <View
           style={{

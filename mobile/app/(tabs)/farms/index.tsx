@@ -16,7 +16,7 @@ import {
   reactivateFarm,
 } from "../../../src/repos/data";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
-import { colors, fonts, styles } from "../../../src/theme";
+import { appScrollProps, colors, fonts, styles } from "../../../src/theme";
 import { Card, PageHeader } from "../../../src/components/ui";
 import { ConfirmDialog } from "../../../src/components/ConfirmDialog";
 import { SwipeCommitDeleteRow } from "../../../src/components/SwipeCommitDeleteRow";
@@ -81,6 +81,7 @@ export default function FarmsScreen() {
         ref={scrollRef}
         style={styles.screen}
         contentContainerStyle={styles.content}
+        {...appScrollProps}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       >
         <PageHeader

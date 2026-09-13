@@ -22,7 +22,7 @@ import { getLfoFeedTiming } from "../lib/appSettings";
 import { todayKey } from "../lib/ids";
 import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../lib/scrollField";
 import { useTabScrollToTop } from "../lib/tabScroll";
-import { colors, fonts, styles } from "../theme";
+import { appScrollProps, colors, fonts, styles } from "../theme";
 import { Card, PageHeader, PrimaryButton } from "./ui";
 import { DatePickerField } from "./DatePickerField";
 import { TimeScrollPickerField } from "./TimeScrollPicker";
@@ -334,6 +334,7 @@ export function FarmLfoScreen({
         }}
         onScrollBeginDrag={dismissKeypad}
         scrollEventThrottle={16}
+        {...appScrollProps}
       >
         <PageHeader title="Last Feed Order" />
         {error ? (
