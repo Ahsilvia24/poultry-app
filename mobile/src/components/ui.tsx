@@ -215,11 +215,13 @@ export function PrimaryButton({
   label,
   onPress,
   secondary,
+  compact,
   style,
 }: {
   label: string;
   onPress: () => void;
   secondary?: boolean;
+  compact?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   return (
@@ -228,10 +230,25 @@ export function PrimaryButton({
       style={[
         styles.button,
         secondary ? styles.buttonSecondary : null,
+        compact
+          ? {
+              minHeight: 36,
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderRadius: 10,
+            }
+          : null,
         style,
       ]}
     >
-      <Text style={secondary ? styles.buttonSecondaryText : styles.buttonText}>{label}</Text>
+      <Text
+        style={[
+          secondary ? styles.buttonSecondaryText : styles.buttonText,
+          compact ? { fontSize: 14, fontWeight: "700" } : null,
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }

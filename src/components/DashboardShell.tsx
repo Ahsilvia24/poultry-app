@@ -9,7 +9,17 @@ import { OfflineRoutes } from "@/components/OfflineNav";
 function ShellBody({ children }: { children: React.ReactNode }) {
   const { keypadOpen } = useKeypadNav();
   return (
-    <div className={cn("min-h-screen", keypadOpen ? "pb-0" : "pb-28 md:pb-8")}>
+    <div
+      className={cn(
+        "min-h-screen bg-[#f3efe6]",
+        keypadOpen ? "pb-0" : "pb-28 md:pb-8",
+      )}
+    >
+      <div className="fixed inset-x-0 top-0 z-[60] bg-white">
+        <div className="h-[env(safe-area-inset-top,0px)] bg-white" />
+        <div className="h-0.5 bg-white" />
+      </div>
+      <div className="h-[env(safe-area-inset-top,0px)]" />
       <OfflineBanner />
       <AppNav />
       <main className="mx-auto max-w-7xl px-4 py-4 md:py-6">

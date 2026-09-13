@@ -65,6 +65,10 @@ export function FarmVisitForm({
     initial?.visitDate ?? new Date().toISOString().slice(0, 10),
   );
   const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
+  const [visitType, setVisitType] = useState(initial?.visitType ?? "ROUTINE_SERVICE");
+  const [otherReason, setOtherReason] = useState(
+    initial?.visitType === "OTHER" ? (initial?.notes ?? "") : "",
+  );
   const visitTypeOptions =
     initial?.visitType &&
     !VISIT_TYPE_OPTIONS.some((opt) => opt.value === initial.visitType)
@@ -126,7 +130,8 @@ export function FarmVisitForm({
           <Select
             id={fid("visitType")}
             name="visitType"
-            defaultValue={initial?.visitType ?? "ROUTINE_SERVICE"}
+            value={visitType}
+            onChange={(event) => setVisitType(event.target.value)}
           >
             {visitTypeOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -135,6 +140,19 @@ export function FarmVisitForm({
             ))}
           </Select>
         </div>
+        {visitType === "OTHER" ? (
+          <div className="sm:col-span-2">
+            <Label htmlFor={fid("otherReason")}>Reason</Label>
+            <Input
+              id={fid("otherReason")}
+              name="notes"
+              value={otherReason}
+              onChange={(event) => setOtherReason(event.target.value)}
+              placeholder="Reason for this visit"
+              required
+            />
+          </div>
+        ) : null}
         <div>
           <Label htmlFor={fid("birdAgeInDays")}>Bird age (days)</Label>
           <Input
@@ -154,15 +172,17 @@ export function FarmVisitForm({
           />
         </div>
       </div>
-      <div>
-        <Label htmlFor={fid("visitNotes")}>Notes</Label>
-        <Textarea
-          id={fid("visitNotes")}
-          name="notes"
-          rows={2}
-          defaultValue={initial?.notes ?? undefined}
-        />
-      </div>
+      {visitType === "OTHER" ? null : (
+        <div>
+          <Label htmlFor={fid("visitNotes")}>Notes</Label>
+          <Textarea
+            id={fid("visitNotes")}
+            name="notes"
+            rows={2}
+            defaultValue={initial?.notes ?? undefined}
+          />
+        </div>
+      )}
       <label className="flex items-center gap-2 text-sm font-semibold">
         <input
           type="checkbox"

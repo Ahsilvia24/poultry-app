@@ -107,7 +107,7 @@ export async function buildFieldLogPdfBytes(opts: {
       } else {
         entries.forEach((farm, row) => {
           const label = truncateFarmName(farm.farmName, FIELD_LOG_PDF_FARM_NAME_CHARS);
-          const type = fieldLogVisitTypeLabel(farm.visitType);
+          const type = fieldLogVisitTypeLabel(farm.visitType, farm.notes);
           page.drawText(label, {
             x: x + 6,
             y: top - headerH - 2 - row * rowH,

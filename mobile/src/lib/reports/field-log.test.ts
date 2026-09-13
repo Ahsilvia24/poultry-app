@@ -53,6 +53,8 @@ describe("fieldLogVisitTypeLabel", () => {
     assert.equal(fieldLogVisitTypeLabel("LAST_FEED_ORDER"), "LFO");
     assert.equal(fieldLogVisitTypeLabel("ROUTINE_SERVICE"), "Routine Service");
     assert.equal(fieldLogVisitTypeLabel("DELIVERY"), "Delivery");
+    assert.equal(fieldLogVisitTypeLabel("OTHER"), "Enter Other");
+    assert.equal(fieldLogVisitTypeLabel("OTHER", "Controller alarm"), "Controller alarm");
   });
 });
 

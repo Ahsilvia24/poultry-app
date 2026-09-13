@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Source_Sans_3, Source_Serif_4 } from "next/font/google";
+import { LockPinchZoom } from "@/components/LockPinchZoom";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import "./globals.css";
 
@@ -38,14 +39,18 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${sans.variable} ${serif.variable} h-full`}>
-      <body className="min-h-full bg-[#f3efe6] font-sans text-stone-900 antialiased">
+      <body className="min-h-full bg-white font-sans text-stone-900 antialiased">
         <RegisterServiceWorker />
+        <LockPinchZoom />
         {children}
       </body>
     </html>

@@ -16,9 +16,12 @@ const mobileReports = readFileSync(join(root, "mobile/app/(tabs)/reports.tsx"), 
 assert.match(settings, /Timezone:/);
 assert.match(settings, /name="appTimeZone"/);
 assert.match(settings, /APP_TIME_ZONES/);
-assert.match(settings, /space-y-0/);
-assert.match(settings, /!min-h-7/);
+assert.match(settings, /justify-between/);
 assert.doesNotMatch(settings, /space-y-6/);
+assert.ok(
+  settings.indexOf("Timezone:") < settings.indexOf(">Preferences<"),
+  "Timezone belongs under Profile, before Preferences",
+);
 
 assert.match(schema, /appTimeZone/);
 assert.match(schema, /America\/Chicago/);
@@ -41,9 +44,24 @@ assert.match(charts, /Cumulative Mortality by Bird Age/);
 assert.match(tabs, /onSelect/);
 assert.match(tabs, /REPORT_TYPES/);
 
+const mobileHtml = readFileSync(join(root, "mobile/app/+html.tsx"), "utf8");
+assert.match(mobileHtml, /user-scalable=no/);
+assert.match(mobileHtml, /maximum-scale=1/);
+assert.match(mobileHtml, /touch-action:pan-x pan-y/);
+
 assert.match(mobileSettings, /Timezone:/);
 assert.match(mobileSettings, /setAppTimeZone/);
 assert.match(mobileSettings, /APP_TIME_ZONES/);
+assert.match(mobileSettings, />Profile</);
+assert.match(mobileSettings, />Preferences</);
+assert.match(mobileSettings, /placeCaretAtEnd/);
+assert.match(mobileSettings, /PrimaryButton/);
+assert.match(mobileSettings, /alignItems: "flex-end"/);
+assert.ok(
+  mobileSettings.indexOf(">Profile<") < mobileSettings.indexOf("Timezone:") &&
+    mobileSettings.indexOf("Timezone:") < mobileSettings.indexOf(">Preferences<"),
+  "Expo Timezone sits at the bottom of Profile",
+);
 
 assert.match(mobileReports, /const \[genFarmId, setGenFarmId\] = useState\(""\)/);
 assert.match(mobileReports, /getGeneratorLogReport\(genFrom, genTo, genFarmId \|\| undefined\)/);

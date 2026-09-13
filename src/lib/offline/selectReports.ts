@@ -56,6 +56,11 @@ export type ReplicaReportsModel = {
     byFarm: FarmRow[];
     farmTitle: string | null;
     filterLabel: string;
+    allFarms: boolean;
+    displayFarmName: string | null;
+    displayByHouse: HouseBarPoint[];
+    displayByHouseByDate: HouseByDateMatrix;
+    displayCumulativeByAge: CumulativePoint[];
   } | null;
   history: { selectedFarmId: string; rows: ReplicaHistoryRow[] } | null;
 };
@@ -67,6 +72,21 @@ function inRange(key: string, from: string, to: string) {
 
 function formatRangeLabel(from: string, to: string) {
   return `${format(parseISO(from), "MMMM d, yyyy")} to ${format(parseISO(to), "MMMM d, yyyy")}`;
+}
+
+function oldestFarmId(snapshot: OfflineSnapshot, farmIds?: string[]) {
+  let best = "";
+  let bestTime = Infinity;
+  for (const flock of snapshot.flocks ?? []) {
+    if (flock.deletedAt) continue;
+    if (farmIds?.length && !farmIds.includes(flock.farmId)) continue;
+    const time = asDateRequired(flock.placementDate).getTime();
+    if (time < bestTime) {
+      bestTime = time;
+      best = flock.farmId;
+    }
+  }
+  return best;
 }
 
 export function defaultGeneratorRange(today = new Date()): { from: string; to: string } {
@@ -166,6 +186,7 @@ export function selectReports(
         visitType: visit.visitType,
         visitDate: visit.visitDate.slice(0, 10),
         loggedAt: visit.loggedAt ?? `${visit.visitDate.slice(0, 10)}T12:00:00.000Z`,
+        notes: visit.notes,
       }));
     model.fieldLog = {
       weeks: buildFieldLogWeeks(visits, from, to),
@@ -261,7 +282,7 @@ export function selectReports(
     return { birdAgeInDays: age, cumulative: running };
   });
 
-  const houseMap = new Map<string, HouseBarPoint & { sortKey: string }>();
+  const houseMap = new Map<string, HouseBarPoint & { sortKey: string; farmId: string; houseNumber: number }>();
   for (const row of mortalities) {
     const hf = hfById.get(row.houseFlockId)!;
     const flock = flockById.get(hf.flockId)!;
@@ -272,6 +293,8 @@ export function selectReports(
     const sortKey = `${farmName}\0${String(houseNumber).padStart(4, "0")}`;
     const rec = houseMap.get(sortKey) ?? {
       houseLabel,
+      farmId: flock.farmId,
+      houseNumber,
       mortality: 0,
       culls: 0,
       total: 0,
@@ -282,15 +305,31 @@ export function selectReports(
     rec.total += row.dailyMortalityCount;
     houseMap.set(sortKey, rec);
   }
-  const byHouse = [...houseMap.values()]
+  const byHouseFull = [...houseMap.values()]
     .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
-    .map(({ houseLabel, mortality, culls, total }) => ({ houseLabel, mortality, culls, total }));
+    .map(({ houseLabel, farmId: rowFarmId, houseNumber, mortality, culls, total }) => ({
+      houseLabel,
+      farmId: rowFarmId,
+      houseNumber,
+      mortality,
+      culls,
+      total,
+    }));
+  const byHouse: HouseBarPoint[] = byHouseFull.map(({ houseLabel, mortality, culls, total }) => ({
+    houseLabel,
+    mortality,
+    culls,
+    total,
+  }));
 
   const dateKeys =
     fromDate <= toDate
       ? eachDayOfInterval({ start: fromDate, end: toDate }).map((d) => dateKeyFromDb(d))
       : [];
-  const houseDateMap = new Map<string, { houseLabel: string; sortKey: string; byDate: Record<string, number> }>();
+  const houseDateMap = new Map<
+    string,
+    { houseLabel: string; farmId: string; houseNumber: number; sortKey: string; byDate: Record<string, number> }
+  >();
   for (const row of mortalities) {
     const hf = hfById.get(row.houseFlockId)!;
     const flock = flockById.get(hf.flockId)!;
@@ -300,6 +339,8 @@ export function selectReports(
     const sortKey = `${farmName}\0${String(houseNumber).padStart(4, "0")}`;
     const rec = houseDateMap.get(sortKey) ?? {
       houseLabel,
+      farmId: flock.farmId,
+      houseNumber,
       sortKey,
       byDate: Object.fromEntries(dateKeys.map((d) => [d, 0])),
     };
@@ -315,6 +356,8 @@ export function selectReports(
       if (!houseDateMap.has(sortKey)) {
         houseDateMap.set(sortKey, {
           houseLabel: `House ${house.houseNumber}`,
+          farmId,
+          houseNumber: house.houseNumber,
           sortKey,
           byDate: Object.fromEntries(dateKeys.map((d) => [d, 0])),
         });
@@ -412,21 +455,80 @@ export function selectReports(
     byFarm.push(...farmTotals);
   }
 
+  const houseDateRows = [...houseDateMap.values()]
+    .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+    .map(({ houseLabel, farmId: rowFarmId, houseNumber, byDate }) => ({
+      houseLabel,
+      farmId: rowFarmId,
+      houseNumber,
+      byDate,
+    }));
+  const byHouseByDate: HouseByDateMatrix = {
+    dates: dateKeys,
+    rows: houseDateRows.map(({ houseLabel, byDate }) => ({ houseLabel, byDate })),
+  };
+
+  const allFarms = !farmId;
+  const displayFarmId = allFarms
+    ? oldestFarmId(snapshot, farmIdsInData.length ? farmIdsInData : undefined)
+    : farmId;
+  const displayFarmName = displayFarmId ? (farmNameById.get(displayFarmId) ?? null) : null;
+  const displayByHouse: HouseBarPoint[] = allFarms
+    ? byHouseFull
+        .filter((row) => row.farmId === displayFarmId)
+        .map((row) => ({
+          houseLabel: `House ${row.houseNumber}`,
+          mortality: row.mortality,
+          culls: row.culls,
+          total: row.total,
+        }))
+    : byHouse;
+  const displayByHouseByDate: HouseByDateMatrix = allFarms
+    ? {
+        dates: dateKeys,
+        rows: houseDateRows
+          .filter((row) => row.farmId === displayFarmId)
+          .map((row) => ({
+            houseLabel: `House ${row.houseNumber}`,
+            byDate: row.byDate,
+          })),
+      }
+    : byHouseByDate;
+
+  let displayCumulativeByAge = cumulativeByAge;
+  if (allFarms && displayFarmId) {
+    const displayAgeMap = new Map<number, number>();
+    for (const row of mortalities) {
+      const flock = flockById.get(hfById.get(row.houseFlockId)!.flockId);
+      if (!flock || flock.farmId !== displayFarmId) continue;
+      displayAgeMap.set(
+        row.birdAgeInDays,
+        (displayAgeMap.get(row.birdAgeInDays) ?? 0) + row.dailyMortalityCount,
+      );
+    }
+    const displayAges = [...displayAgeMap.keys()].sort((a, b) => a - b);
+    let displayRunning = 0;
+    displayCumulativeByAge = displayAges.map((age) => {
+      displayRunning += displayAgeMap.get(age) ?? 0;
+      return { birdAgeInDays: age, cumulative: displayRunning };
+    });
+  }
+
   model.mortality = {
     cumulativeByAge,
     byHouse,
-    byHouseByDate: {
-      dates: dateKeys,
-      rows: [...houseDateMap.values()]
-        .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
-        .map(({ houseLabel, byDate }) => ({ houseLabel, byDate })),
-    },
+    byHouseByDate,
     byFarm,
     farmTitle: farmId ? (farmNameById.get(farmId) ?? null) : "All farms",
     filterLabel: [
       farmId ? `Farm: ${farmNameById.get(farmId) ?? farmId}` : "All farms",
       formatRangeLabel(from, to),
     ].join(" · "),
+    allFarms,
+    displayFarmName,
+    displayByHouse,
+    displayByHouseByDate,
+    displayCumulativeByAge,
   };
   return model;
 }

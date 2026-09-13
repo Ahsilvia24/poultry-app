@@ -60,7 +60,7 @@ export function FieldLogReport({
             const entry = day.farms[row];
             if (!entry) return row === 0 ? "—" : "";
             const name = truncateFarmName(entry.farmName, FIELD_LOG_PDF_FARM_NAME_CHARS);
-            return `${name}\n${fieldLogVisitTypeLabel(entry.visitType)}`;
+            return `${name}\n${fieldLogVisitTypeLabel(entry.visitType, entry.notes)}`;
           }),
         );
         return {
@@ -124,7 +124,7 @@ export function FieldLogReport({
                               {truncateFarmName(farm.farmName, FIELD_LOG_FARM_NAME_CHARS)}
                             </p>
                             <p className="text-xs font-semibold text-stone-500">
-                              {fieldLogVisitTypeLabel(farm.visitType)}
+                              {fieldLogVisitTypeLabel(farm.visitType, farm.notes)}
                             </p>
                           </li>
                         ))}

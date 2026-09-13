@@ -57,10 +57,7 @@ export function GeneratorLogReport({
   return (
     <Card>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-base font-extrabold text-stone-900">Generator hours</p>
-          <p className="text-sm text-stone-600">{filterLabel}</p>
-        </div>
+        <p className="text-base font-extrabold text-stone-900">Generator hours</p>
         <CopyShareRow
           onCopy={() => void copy()}
           onShare={exportPdf}
