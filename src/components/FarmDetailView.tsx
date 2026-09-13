@@ -1,4 +1,8 @@
+"use client";
+
+import { useLayoutEffect } from "react";
 import { ReplicaLink } from "@/components/ReplicaLink";
+import { resetAppScroll } from "@/lib/app-scroll";
 import { createFlockAction } from "@/app/actions/farms";
 import { FarmHouseFocus } from "@/components/FarmHouseFocus";
 import { HouseCard } from "@/components/HouseCard";
@@ -32,6 +36,11 @@ export function FarmDetailView({
   const focusHouseId = focusHouseFlockId
     ? model.houseCards.find((card) => card.houseFlockId === focusHouseFlockId)?.houseId
     : null;
+
+  useLayoutEffect(() => {
+    if (focusHouseId) return;
+    resetAppScroll();
+  }, [model.farm.id, focusHouseId]);
 
   async function submitFlock(formData: FormData) {
     return createFlockAction(farm.id, formData);

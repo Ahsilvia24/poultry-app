@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { hrefHasHouseFocus, resetAppScroll } from "@/lib/app-scroll";
 import { replicaPath } from "@/lib/offline/hasFarmGraph";
 
 type OfflineNavValue = {
@@ -43,6 +44,7 @@ export function OfflineNavProvider({ children }: { children: ReactNode }) {
 
   const navigate = useCallback(
     (href: string) => {
+      if (!hrefHasHouseFocus(href)) resetAppScroll();
       setPendingHref(href);
       router.push(href);
     },
