@@ -11,7 +11,7 @@ assert.ok(existsSync(join(root, "public/sw.js")), "missing public/sw.js");
 assert.ok(existsSync(join(root, "public/offline.html")), "missing public/offline.html");
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v6/);
+assert.match(sw, /poultrytech-offline-v7/);
 assert.match(sw, /type !== "precache"/);
 assert.match(sw, /NETWORK_MS = 1500/);
 assert.match(sw, /addEventListener\("fetch"/);

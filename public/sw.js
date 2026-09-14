@@ -6,7 +6,7 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v6";
+const CACHE = "poultrytech-offline-v7";
 const NETWORK_MS = 1500;
 
 const PRECACHE = [

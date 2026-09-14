@@ -38,6 +38,19 @@ assert.deepEqual(
   empty.flat().map((week) => week.week),
 );
 
+const zerosLater = groupWeeklyMortalityRows([
+  { week: 1, total: 14 },
+  { week: 9, total: 0 },
+  { week: 10, total: 0 },
+  { week: 11, total: 0 },
+  { week: 12, total: 0 },
+]);
+assert.equal(zerosLater.length, 2, "empty weeks 9–12 do not paint a third row");
+assert.deepEqual(
+  zerosLater.flat().map((week) => week.week),
+  [1, 2, 3, 4, 5, 6, 7, 8],
+);
+
 const extended = groupWeeklyMortalityRows([
   { week: 1, total: 14 },
   { week: 9, total: 3 },

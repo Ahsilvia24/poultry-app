@@ -139,6 +139,7 @@ function summarizeHouse(
       : r.bird_age_in_days;
     const week = flockWeekFromAge(age);
     if (week >= 1 && week <= 16 && (week <= currentWeek || pinned)) {
+      if (week > 8 && loss === 0 && !weekTotals.has(week)) continue;
       weekTotals.set(week, (weekTotals.get(week) ?? 0) + loss);
     }
     if (r.mortality_date === asOf) today += loss;

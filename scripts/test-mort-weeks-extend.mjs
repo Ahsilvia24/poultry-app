@@ -68,6 +68,16 @@ const withWeek9 = weeklyMortalityByPlacement(
   asOf,
 );
 assert.ok(withWeek9.some((week) => week.week === 9 && week.total === 4));
+assert.equal(
+  groupWeeklyMortalityRows(withWeek9).length,
+  3,
+  "real week-9 loss paints Wk9–Wk12",
+);
+assert.equal(
+  groupWeeklyMortalityRows(early).length,
+  2,
+  "no later-week loss stays at Wk1–Wk8",
+);
 
 const form = read("src/components/MortalityEntryForm.tsx");
 assert.match(form, /mortalityGridMaxAge/);

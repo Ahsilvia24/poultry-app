@@ -74,8 +74,8 @@ export function mortalityGridMaxAge(
 }
 
 /**
- * Two fixed rows (1–4 / 5–8). A 9–12 row appears once any week past 8 is present.
- * Missing weeks in a painted row stay 0 so numbers keep the same slot.
+ * Two fixed rows (1–4 / 5–8). A 9–12 row appears only when a later week
+ * has a real total. Empty or remapped week-9 keys must not unlock it.
  */
 export function groupWeeklyMortalityRows(weeks: WeekTotal[]): WeekTotal[][] {
   const byWeek = new Map(
@@ -83,7 +83,12 @@ export function groupWeeklyMortalityRows(weeks: WeekTotal[]): WeekTotal[][] {
       .filter((week) => week.week >= 1 && week.week <= WEEKLY_MORTALITY_MAX_WEEK)
       .map((week) => [week.week, week]),
   );
-  const highest = Math.max(WEEKLY_MORTALITY_BASE_WEEKS, ...byWeek.keys(), 0);
+  const laterWithData = [...byWeek.values()].filter(
+    (week) => week.week > WEEKLY_MORTALITY_BASE_WEEKS && week.total > 0,
+  );
+  const highest = laterWithData.length
+    ? Math.max(WEEKLY_MORTALITY_BASE_WEEKS, ...laterWithData.map((week) => week.week))
+    : WEEKLY_MORTALITY_BASE_WEEKS;
   const last =
     Math.ceil(highest / WEEKLY_MORTALITY_COLUMNS) * WEEKLY_MORTALITY_COLUMNS;
   const rows: WeekTotal[][] = [];

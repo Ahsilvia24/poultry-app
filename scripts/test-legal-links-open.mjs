@@ -19,7 +19,7 @@ assert.match(link, /standalone/);
 assert.match(link, /target="_blank"/);
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v6/);
+assert.match(sw, /poultrytech-offline-v7/);
 assert.match(sw, /path\.startsWith\("\/support"\)/);
 assert.match(sw, /path\.startsWith\("\/privacy"\)/);
 

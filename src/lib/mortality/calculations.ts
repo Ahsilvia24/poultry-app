@@ -104,6 +104,8 @@ export function weeklyMortalityByPlacement(
     if (week < 1 || week > 16) continue;
     if (week > currentWeek && !pinned) continue;
     const loss = calcTotalDailyLoss(record.dailyMortalityCount, record.cullCount);
+    // Zero/empty later weeks must not paint Wk9–Wk12 on house tiles.
+    if (week > 8 && loss === 0 && !totals.has(week)) continue;
     totals.set(week, (totals.get(week) ?? 0) + loss);
   }
 
