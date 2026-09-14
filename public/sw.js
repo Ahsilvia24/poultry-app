@@ -6,7 +6,7 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v3";
+const CACHE = "poultrytech-offline-v4";
 const NETWORK_MS = 1500;
 
 const PRECACHE = [
@@ -50,6 +50,8 @@ function skipRequest(url) {
   const path = url.pathname;
   return (
     path === "/sw.js" ||
+    path.startsWith("/support") ||
+    path.startsWith("/privacy") ||
     path.startsWith("/api/") ||
     path.startsWith("/_next/webpack") ||
     path.startsWith("/_next/src")

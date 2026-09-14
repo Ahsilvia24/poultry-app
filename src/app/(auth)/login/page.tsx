@@ -4,6 +4,7 @@ import { FormEvent, Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button, Input, Label } from "@/components/ui";
+import { SafariLink } from "@/components/SafariLink";
 import { ensureDeviceId } from "@/lib/device-id";
 import { replaceLoginWarning } from "@/lib/replace-login";
 
@@ -125,19 +126,13 @@ function LoginForm() {
           </Link>
         </p>
         <p className="mt-3 text-center text-sm text-stone-600">
-          <a
-            href="https://poultrytechapp.com/support/"
-            className="font-semibold text-emerald-800 underline"
-          >
+          <SafariLink href="/support" className="font-semibold text-emerald-800 underline">
             Support
-          </a>
+          </SafariLink>
           {" · "}
-          <a
-            href="https://poultrytechapp.com/privacy/"
-            className="font-semibold text-emerald-800 underline"
-          >
+          <SafariLink href="/privacy" className="font-semibold text-emerald-800 underline">
             Privacy Policy
-          </a>
+          </SafariLink>
         </p>
       </div>
     </div>
