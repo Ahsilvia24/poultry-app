@@ -128,6 +128,7 @@ assert.equal(isReplicaHref("/farms/abc/service/prebrood"), true);
 assert.equal(isReplicaHref("/farms/abc/visits"), true);
 assert.equal(isReplicaHref("/farms/abc/visits/new"), true);
 assert.equal(isReplicaHref("/farms/abc/visits/visit-1"), true);
+assert.equal(isReplicaHref("/farms/abc/generators"), true);
 assert.equal(isReplicaHref("/lfo?farmId=abc"), true);
 assert.equal(isReplicaHref("/lfo/new"), true);
 assert.equal(isReplicaHref("/lfo/new/farm-1"), true);

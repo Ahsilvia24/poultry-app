@@ -12,6 +12,7 @@ import { ReplicaLink } from "@/components/ReplicaLink";
 import { SettingsScreen } from "@/components/SettingsScreen";
 import { ToolsView } from "@/components/ToolsView";
 import { FarmHistoryScreen } from "@/components/FarmHistoryScreen";
+import { FarmGeneratorsView } from "@/components/FarmGeneratorsView";
 import { FarmVisitFormView } from "@/components/FarmVisitFormView";
 import { FarmVisitsView } from "@/components/FarmVisitsView";
 import { ReportsView } from "@/components/ReportsView";
@@ -34,6 +35,7 @@ import {
   selectServiceFarmPicker,
   selectServiceFormPage,
 } from "@/lib/offline/selectServiceFarm";
+import { selectGenerators } from "@/lib/offline/selectGenerators";
 import { selectVisit, selectVisits } from "@/lib/offline/selectVisits";
 import type { PlacementForm, PrebroodForm, ServiceReportForm } from "@/lib/serviceForms/types";
 
@@ -271,6 +273,14 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     const model = selectVisits(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return <FarmVisitsView model={model} />;
+  }
+
+  const generators = /^\/farms\/([^/]+)\/generators$/.exec(pathname);
+  if (generators && generators[1] !== "new") {
+    const farmId = resolveAlias(aliases, generators[1]);
+    const model = selectGenerators(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    return <FarmGeneratorsView model={model} />;
   }
 
   const serviceHome = /^\/farms\/([^/]+)\/service$/.exec(pathname);

@@ -21,15 +21,17 @@ export function FarmQuickLinks({
   const router = useRouter();
   const serviceHref = `/farms/${farmId}/service`;
   const visitsHref = `/farms/${farmId}/visits`;
+  const generatorsHref = `/farms/${farmId}/generators`;
   useEffect(() => {
     router.prefetch(serviceHref);
     router.prefetch(visitsHref);
+    router.prefetch(generatorsHref);
     router.prefetch(`/lfo?farmId=${farmId}`);
-  }, [farmId, router, serviceHref, visitsHref]);
+  }, [farmId, router, serviceHref, visitsHref, generatorsHref]);
 
   const links: Array<{ key: string; href: string; label: string; external?: boolean }> = [
     { key: "service", href: serviceHref, label: "Service Farm", external: true },
-    { key: "generators", href: "#generators", label: "Generator" },
+    { key: "generators", href: generatorsHref, label: "Generator", external: true },
     { key: "visits", href: visitsHref, label: "Visits", external: true },
     { key: "issues", href: "#issues", label: "Issues" },
     { key: "litter", href: "#litter", label: "Litter" },

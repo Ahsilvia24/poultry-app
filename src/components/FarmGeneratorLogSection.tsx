@@ -452,9 +452,11 @@ function previousReadingForGen(
 export function FarmGeneratorLogSection({
   farmId,
   logs,
+  pageMode = false,
 }: {
   farmId: string;
   logs: GeneratorLogRow[];
+  pageMode?: boolean;
 }) {
   const router = useRouter();
   const { enabled, queue } = useReplicaWrite();
@@ -544,7 +546,7 @@ export function FarmGeneratorLogSection({
     setEditingId(null);
     setEditingGen(null);
     setOpen(true);
-    if (!generatorsHashActive()) {
+    if (!pageMode && !generatorsHashActive()) {
       history.replaceState(
         null,
         "",
@@ -583,18 +585,33 @@ export function FarmGeneratorLogSection({
       }
     : undefined;
 
+  function openCreate() {
+    setEditingId(null);
+    setEditingGen(null);
+    setFormOpen((open) => !open);
+  }
+
   return (
     <div id="generators" className="scroll-mt-24">
-      <FarmLogSectionHeader
-        title="Generator Log"
-        extraRight={chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
-        logLabel="Log Gen."
-        onLog={() => {
-          setEditingId(null);
-          setEditingGen(null);
-          setFormOpen((open) => !open);
-        }}
-      />
+      {pageMode ? (
+        <div className="mb-2 flex items-center justify-end gap-3">
+          {chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
+          <button
+            type="button"
+            onClick={openCreate}
+            className="text-sm text-emerald-800 hover:underline"
+          >
+            Log Gen.
+          </button>
+        </div>
+      ) : (
+        <FarmLogSectionHeader
+          title="Generator Log"
+          extraRight={chartsCopyText ? <CopyLogButton text={chartsCopyText} /> : null}
+          logLabel="Log Gen."
+          onLog={openCreate}
+        />
+      )}
       {editingLog && editingGen ? (
         <Card className="mb-3">
           <GeneratorLogForm
@@ -651,7 +668,7 @@ export function FarmGeneratorLogSection({
           />
         </Card>
       ) : null}
-      <FarmLogSectionTop />
+      {pageMode ? null : <FarmLogSectionTop />}
     </div>
   );
 }

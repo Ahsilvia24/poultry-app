@@ -12,7 +12,6 @@ import { AddHouseForm } from "@/components/AddHouseForm";
 import { FarmInfoEditor } from "@/components/FarmInfoEditor";
 import { FarmQuickLinks } from "@/components/FarmQuickLinks";
 import { FarmFeedSection } from "@/components/FarmFeedSection";
-import { FarmGeneratorLogSection } from "@/components/FarmGeneratorLogSection";
 import { FarmIssuesSection } from "@/components/FarmIssuesSection";
 import { FarmLitterSection } from "@/components/FarmLitterSection";
 import { BackCaret, Card } from "@/components/ui";
@@ -109,8 +108,6 @@ export function FarmDetailView({
       />
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <FarmGeneratorLogSection farmId={farm.id} logs={model.generatorLogs} />
-
         <FarmIssuesSection
           farmId={farm.id}
           flockId={model.activeFlockId ?? undefined}

@@ -75,6 +75,55 @@ function visitTypeForKind(formKind: string) {
   return "ROUTINE_SERVICE";
 }
 
+const LAST_FEED_ORDER_VISIT_NOTES = "Last Feed Order";
+
+function newestActiveFlock(snapshot: OfflineSnapshot, farmId: string) {
+  return (
+    (snapshot.flocks ?? [])
+      .filter((flock) => flock.farmId === farmId && flock.flockStatus === "ACTIVE" && !flock.deletedAt)
+      .slice()
+      .sort((a, b) => {
+        const bt = asDate(b.placementDate)?.getTime() ?? 0;
+        const at = asDate(a.placementDate)?.getTime() ?? 0;
+        return bt - at;
+      })[0] ?? null
+  );
+}
+
+function withLastFeedOrderVisit(
+  snapshot: OfflineSnapshot,
+  farmId: string,
+  orderDate: string | undefined,
+  now: string,
+): OfflineSnapshot {
+  const dateKey = (orderDate ?? "").trim().slice(0, 10);
+  if (!farmId || farmId === "local-manual" || !dateKey) return snapshot;
+  const exists = (snapshot.visits ?? []).some(
+    (visit) =>
+      visit.farmId === farmId &&
+      visit.visitType === "LAST_FEED_ORDER" &&
+      visit.visitDate.slice(0, 10) === dateKey,
+  );
+  if (exists) return snapshot;
+  const flock = newestActiveFlock(snapshot, farmId);
+  const placement = flock ? asDate(flock.placementDate) : null;
+  const visitDate = asDate(dateKey);
+  const visit: OfflineVisit = {
+    id: localRecordId(),
+    farmId,
+    flockId: flock?.id ?? null,
+    visitDate: dateKey,
+    visitType: "LAST_FEED_ORDER",
+    birdAgeInDays: placement && visitDate ? birdAgeFromPlacement(placement, visitDate) : null,
+    generalBirdCondition: "Healthy",
+    followUpRequired: false,
+    followUpDate: null,
+    notes: LAST_FEED_ORDER_VISIT_NOTES,
+    loggedAt: now,
+  };
+  return { ...snapshot, visits: [visit, ...snapshot.visits] };
+}
+
 function activeFarmFlockId(snapshot: OfflineSnapshot, farmId: string) {
   return (
     snapshot.flocks.find(
@@ -647,8 +696,16 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
             : visit,
         ),
       };
-    case "deleteVisit":
-      return { ...snapshot, visits: snapshot.visits.filter((visit) => visit.id !== write.id) };
+    case "deleteVisit": {
+      const visitId = write.id;
+      return {
+        ...snapshot,
+        visits: snapshot.visits.filter((visit) => visit.id !== visitId),
+        serviceForms: (snapshot.serviceForms ?? []).map((form) =>
+          form.visitId === visitId ? { ...form, visitId: null } : form,
+        ),
+      };
+    }
     case "createIssue": {
       const id = write.id ?? `local-issue`;
       return {
@@ -825,52 +882,62 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
         snapshot.flocks.find((flock) => flock.farmId === farmId)?.id ??
         "";
       const inventories = lfoInventoriesFromForm(snapshot, id, lists, fields, false);
-      return {
-        ...snapshot,
-        lfos: [
-          {
-            id,
-            farmId,
-            flockId,
-            orderDate: fields.orderDate ?? now.slice(0, 10),
-            orderTime: emptyToNull(fields.orderTime),
-            consumptionRate: num(fields.consumptionRate, 0.45),
-            calculatedAt: now,
-            notes: emptyToNull(fields.notes),
-            createdAt: now,
-          },
-          ...snapshot.lfos,
-        ],
-        lfoInventories: [...inventories, ...snapshot.lfoInventories],
-      };
+      return withLastFeedOrderVisit(
+        {
+          ...snapshot,
+          lfos: [
+            {
+              id,
+              farmId,
+              flockId,
+              orderDate: fields.orderDate ?? now.slice(0, 10),
+              orderTime: emptyToNull(fields.orderTime),
+              consumptionRate: num(fields.consumptionRate, 0.45),
+              calculatedAt: now,
+              notes: emptyToNull(fields.notes),
+              createdAt: now,
+            },
+            ...snapshot.lfos,
+          ],
+          lfoInventories: [...inventories, ...snapshot.lfoInventories],
+        },
+        farmId,
+        fields.orderDate ?? now.slice(0, 10),
+        now,
+      );
     }
     case "updateLfo": {
       const lfoId = write.id ?? "";
       const existing = snapshot.lfos.find((row) => row.id === lfoId);
       if (!existing) return snapshot;
       const inventories = lfoInventoriesFromForm(snapshot, lfoId, lists, fields, true);
-      return {
-        ...snapshot,
-        lfos: snapshot.lfos.map((row) =>
-          row.id === lfoId
-            ? {
-                ...row,
-                orderDate: fields.orderDate ?? row.orderDate,
-                orderTime:
-                  fields.orderTime !== undefined ? emptyToNull(fields.orderTime) : row.orderTime,
-                consumptionRate:
-                  fields.consumptionRate != null
-                    ? num(fields.consumptionRate, row.consumptionRate)
-                    : row.consumptionRate,
-                notes: fields.notes !== undefined ? emptyToNull(fields.notes) : row.notes,
-              }
-            : row,
-        ),
-        lfoInventories: [
-          ...snapshot.lfoInventories.filter((inv) => inv.lastFeedOrderId !== lfoId),
-          ...inventories,
-        ],
-      };
+      return withLastFeedOrderVisit(
+        {
+          ...snapshot,
+          lfos: snapshot.lfos.map((row) =>
+            row.id === lfoId
+              ? {
+                  ...row,
+                  orderDate: fields.orderDate ?? row.orderDate,
+                  orderTime:
+                    fields.orderTime !== undefined ? emptyToNull(fields.orderTime) : row.orderTime,
+                  consumptionRate:
+                    fields.consumptionRate != null
+                      ? num(fields.consumptionRate, row.consumptionRate)
+                      : row.consumptionRate,
+                  notes: fields.notes !== undefined ? emptyToNull(fields.notes) : row.notes,
+                }
+              : row,
+          ),
+          lfoInventories: [
+            ...snapshot.lfoInventories.filter((inv) => inv.lastFeedOrderId !== lfoId),
+            ...inventories,
+          ],
+        },
+        existing.farmId,
+        fields.orderDate ?? existing.orderDate,
+        now,
+      );
     }
     case "saveAsNewLfo": {
       const id = write.id ?? `local-lfo`;
@@ -888,24 +955,29 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
           ? nextCustomLfoName(snapshot.lfos.map((row) => row.notes))
           : emptyToNull(fields.notes);
       const inventories = lfoInventoriesFromForm(snapshot, id, lists, fields, false);
-      return {
-        ...snapshot,
-        lfos: [
-          {
-            id,
-            farmId,
-            flockId,
-            orderDate: fields.orderDate ?? now.slice(0, 10),
-            orderTime: emptyToNull(fields.orderTime),
-            consumptionRate: num(fields.consumptionRate, source?.consumptionRate ?? 0.45),
-            calculatedAt: now,
-            notes,
-            createdAt: now,
-          },
-          ...snapshot.lfos,
-        ],
-        lfoInventories: [...inventories, ...snapshot.lfoInventories],
-      };
+      return withLastFeedOrderVisit(
+        {
+          ...snapshot,
+          lfos: [
+            {
+              id,
+              farmId,
+              flockId,
+              orderDate: fields.orderDate ?? now.slice(0, 10),
+              orderTime: emptyToNull(fields.orderTime),
+              consumptionRate: num(fields.consumptionRate, source?.consumptionRate ?? 0.45),
+              calculatedAt: now,
+              notes,
+              createdAt: now,
+            },
+            ...snapshot.lfos,
+          ],
+          lfoInventories: [...inventories, ...snapshot.lfoInventories],
+        },
+        farmId,
+        fields.orderDate ?? now.slice(0, 10),
+        now,
+      );
     }
     case "createManualLfo": {
       const id = write.id ?? `local-lfo`;
@@ -1221,10 +1293,11 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
       const forms = snapshot.serviceForms ?? [];
       const existing = forms.find((row) => row.id === formId);
       const flockId = existing?.flockId ?? activeFarmFlockId(snapshot, farmId);
-      const visitId =
-        existing?.visitId ??
-        emptyToNull(fields.existingVisitId) ??
-        localRecordId();
+      const linkedVisitId = existing?.visitId ?? emptyToNull(fields.existingVisitId);
+      const visitStillThere = Boolean(
+        linkedVisitId && snapshot.visits.some((row) => row.id === linkedVisitId),
+      );
+      const visitId = visitStillThere ? linkedVisitId! : localRecordId();
       const flock = snapshot.flocks.find((row) => row.id === flockId);
       const placement = flock ? asDate(flock.placementDate) : null;
       const visitDate = asDate(formDate);
