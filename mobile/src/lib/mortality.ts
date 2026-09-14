@@ -25,6 +25,32 @@ export function birdAgeFromPlacement(placementDateKey: string, onDateKey: string
   return Math.max(0, daysSincePlacement(placementDateKey, onDateKey));
 }
 
+/**
+ * Age slot a saved mortality row belongs to. Once a real age was stored,
+ * keep that slot — do not follow a later placement-date edit.
+ * Offline used `0` as "unknown" for new rows, so 0 is only trusted on day 0.
+ */
+export function pinnedBirdAge(
+  placementDateKey: string,
+  mortalityDateKey: string,
+  storedAge?: number | null,
+): number {
+  const fromDate = birdAgeFromPlacement(placementDateKey, mortalityDateKey);
+  if (storedAge == null || !Number.isFinite(storedAge)) return fromDate;
+  if (storedAge === 0 && fromDate !== 0) return fromDate;
+  return storedAge;
+}
+
+/** Keep a saved age on write. Repair the offline `0` placeholder only. */
+export function keepPinnedBirdAge(
+  storedAge: number | null | undefined,
+  computedAge: number,
+): number {
+  if (storedAge == null || !Number.isFinite(storedAge)) return computedAge;
+  if (storedAge === 0 && computedAge !== 0) return computedAge;
+  return storedAge;
+}
+
 export function flockWeekFromAge(birdAgeInDays: number): number {
   const age = Math.max(0, birdAgeInDays);
   if (age <= 7) return 1;

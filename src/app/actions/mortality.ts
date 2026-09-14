@@ -6,6 +6,7 @@ import {
   birdAgeFromPlacement,
   calcTotalDailyLoss,
   getLatestSummary,
+  keepPinnedBirdAge,
 } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
 import { mortalityBatchSchema, mortalityHouseSeriesSchema } from "@/lib/validations";
@@ -31,7 +32,6 @@ export async function saveMortalityBatchAction(raw: unknown) {
   if (!flock) return { error: "Flock not found or access denied" };
 
   const mortalityDate = new Date(parsed.data.mortalityDate);
-  const birdAge = birdAgeFromPlacement(flock.placementDate, mortalityDate);
   const hfMap = new Map(flock.houseFlocks.map((hf) => [hf.id, hf]));
 
   for (const entry of parsed.data.entries) {
@@ -54,6 +54,13 @@ export async function saveMortalityBatchAction(raw: unknown) {
 
   const results = [];
   for (const entry of parsed.data.entries) {
+    const hf = hfMap.get(entry.houseFlockId);
+    const place = hf?.placementDate ?? flock.placementDate;
+    const computed = birdAgeFromPlacement(place, mortalityDate);
+    const existingAge = hf?.mortalities.find(
+      (row) => row.mortalityDate.toISOString().slice(0, 10) === parsed.data.mortalityDate,
+    )?.birdAgeInDays;
+    const birdAge = keepPinnedBirdAge(existingAge, computed);
     const loss = calcTotalDailyLoss(entry.dailyMortalityCount, entry.cullCount);
     const row = await prisma.dailyMortality.upsert({
       where: {
@@ -92,7 +99,8 @@ export async function saveMortalityBatchAction(raw: unknown) {
   revalidatePath("/mortality");
   revalidatePath(`/farms/${flock.farmId}`);
 
-  return { success: true, count: results.length, birdAgeInDays: birdAge };
+  const lastAge = results[results.length - 1]?.birdAgeInDays ?? 0;
+  return { success: true, count: results.length, birdAgeInDays: lastAge };
 }
 
 export async function saveMortalityHouseSeriesAction(raw: unknown) {
@@ -167,9 +175,14 @@ export async function saveMortalityHouseSeriesAction(raw: unknown) {
   }
 
   const results = [];
+  const place = hf.placementDate ?? flock.placementDate;
   for (const entry of entries) {
     const mortalityDate = new Date(entry.mortalityDate);
-    const birdAge = birdAgeFromPlacement(flock.placementDate, mortalityDate);
+    const computed = birdAgeFromPlacement(place, mortalityDate);
+    const birdAge = keepPinnedBirdAge(
+      entry.birdAgeInDays ?? existingByDate.get(entry.mortalityDate)?.birdAgeInDays,
+      computed,
+    );
     const loss = calcTotalDailyLoss(entry.dailyMortalityCount, entry.cullCount);
     const row = await prisma.dailyMortality.upsert({
       where: {

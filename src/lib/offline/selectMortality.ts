@@ -34,6 +34,7 @@ export function selectMortality(
       );
       const listed = listMortalityHouses(houses, houseFlocks);
       const active = flocks[0] ?? null;
+      const flockById = new Map(flocks.map((flock) => [flock.id, flock]));
       return {
         id: farm.id,
         farmName: farm.farmName,
@@ -45,22 +46,30 @@ export function selectMortality(
               placementDate: asDateKey(active.placementDate) ?? active.placementDate.slice(0, 10),
               projectedCatchDate: asDateKey(active.projectedCatchDate),
               targetMarketAge: active.targetMarketAge,
-              houses: listed.map(({ house, houseFlock }) => ({
+              houses: listed.map(({ house, houseFlock }) => {
+                const houseFlockRecord = flockById.get(houseFlock.flockId);
+                return {
                 houseFlockId: houseFlock.id,
                 flockId: houseFlock.flockId,
                 houseNumber: house.houseNumber,
                 placedBirdCount: houseFlock.placedBirdCount,
+                placementDate:
+                  asDateKey(houseFlock.placementDate) ??
+                  asDateKey(houseFlockRecord?.placementDate) ??
+                  (asDateKey(active.placementDate) ?? active.placementDate.slice(0, 10)),
                 existingEntries: (snapshot.mortalities ?? [])
                   .filter((row) => row.houseFlockId === houseFlock.id)
                   .map((row) => ({
                     mortalityDate: row.mortalityDate.slice(0, 10),
                     dailyMortalityCount: row.dailyMortalityCount,
                     cullCount: row.cullCount,
+                    birdAgeInDays: row.birdAgeInDays,
                     mortalityCause: "UNKNOWN",
                     comments: null,
                     isDraft: row.isDraft,
                   })),
-              })),
+                };
+              }),
             }
           : null,
       };

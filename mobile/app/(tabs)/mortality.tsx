@@ -16,7 +16,7 @@ import {
   getHouseMortalitySeries,
   saveHouseMortalitySeries,
 } from "../../src/repos/data";
-import { birdAgeFromPlacement, flockWeekFromAge } from "../../src/lib/mortality";
+import { birdAgeFromPlacement, flockWeekFromAge, pinnedBirdAge } from "../../src/lib/mortality";
 import { mortalityGridMaxAge } from "../../src/lib/weeklyMortalityLayout";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
@@ -293,6 +293,7 @@ export default function MortalityScreen() {
             mortalityDate: r.mortalityDate,
             dailyMortalityCount: Number(r.dailyMortalityCount || 0),
             cullCount: Number(r.cullCount || 0),
+            birdAgeInDays: r.age,
           })),
         clearDates: snapshot.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
       });
@@ -506,10 +507,20 @@ export default function MortalityScreen() {
       const catchEnd = series.projectedCatchDate ?? todayKey();
       const todayAge = birdAgeFromPlacement(series.placementDate, todayKey());
       const catchAge = birdAgeFromPlacement(series.placementDate, catchEnd);
-      const byDate = new Map(series.records.map((r) => [r.mortality_date, r]));
+      const byAge = new Map<number, (typeof series.records)[number]>();
+      for (const record of series.records) {
+        const age = pinnedBirdAge(
+          series.placementDate,
+          record.mortality_date,
+          record.bird_age_in_days,
+        );
+        const expectedDate = addDaysKey(series.placementDate, age);
+        const current = byAge.get(age);
+        if (!current || record.mortality_date === expectedDate) byAge.set(age, record);
+      }
       function rowForAge(age: number): DayRow {
         const mortalityDate = addDaysKey(series.placementDate, age);
-        const existing = byDate.get(mortalityDate);
+        const existing = byAge.get(age);
         return {
           age,
           mortalityDate,
@@ -519,14 +530,13 @@ export default function MortalityScreen() {
           hasEntry: Boolean(existing),
         };
       }
-      const seed: DayRow[] = [];
-      const baseMax = Math.max(todayAge, catchAge);
-      for (let age = 0; age <= baseMax; age++) seed.push(rowForAge(age));
-      const known = series.records.map((record) => ({
-        age: birdAgeFromPlacement(series.placementDate, record.mortality_date),
+      const known = [...byAge.keys()].map((age) => ({
+        age,
         hasEntry: true,
+        dailyMortalityCount: String(byAge.get(age)?.daily_mortality_count ?? ""),
+        cullCount: String(byAge.get(age)?.cull_count ?? ""),
       }));
-      const maxAge = mortalityGridMaxAge(todayAge, catchAge, [...seed, ...known]);
+      const maxAge = mortalityGridMaxAge(todayAge, catchAge, known);
       const next: DayRow[] = [];
       for (let age = 0; age <= maxAge; age++) next.push(rowForAge(age));
       setRows(next);
@@ -665,6 +675,7 @@ export default function MortalityScreen() {
             mortalityDate: r.mortalityDate,
             dailyMortalityCount: Number(r.dailyMortalityCount || 0),
             cullCount: Number(r.cullCount || 0),
+            birdAgeInDays: r.age,
           })),
         clearDates: snapshot.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
       });

@@ -35,6 +35,32 @@ export function birdAgeFromPlacement(placementDate: Date, onDate: Date): number 
   return Math.max(0, daysSincePlacement(placementDate, onDate));
 }
 
+/**
+ * Age slot a saved mortality row belongs to. Once a real age was stored,
+ * keep that slot — do not follow a later placement-date edit.
+ * Offline used `0` as "unknown" for new rows, so 0 is only trusted on day 0.
+ */
+export function pinnedBirdAge(
+  placementDate: Date,
+  mortalityDate: Date,
+  storedAge?: number | null,
+): number {
+  const fromDate = birdAgeFromPlacement(placementDate, mortalityDate);
+  if (storedAge == null || !Number.isFinite(storedAge)) return fromDate;
+  if (storedAge === 0 && fromDate !== 0) return fromDate;
+  return storedAge;
+}
+
+/** Keep a saved age on write. Repair the offline `0` placeholder only. */
+export function keepPinnedBirdAge(
+  storedAge: number | null | undefined,
+  computedAge: number,
+): number {
+  if (storedAge == null || !Number.isFinite(storedAge)) return computedAge;
+  if (storedAge === 0 && computedAge !== 0) return computedAge;
+  return storedAge;
+}
+
 /** Flock week from bird age: days 0–7 → week 1, 8–14 → week 2, 15–21 → week 3, etc. */
 export function flockWeekFromAge(birdAgeInDays: number): number {
   const age = Math.max(0, birdAgeInDays);
@@ -63,14 +89,20 @@ export function weeklyMortalityByPlacement(
   }
 
   const placementKey = format(placementDate, "yyyy-MM-dd");
+  const asOfKey = format(asOfDate, "yyyy-MM-dd");
   for (const record of records) {
     const dateKey = toDateKey(record.mortalityDate);
-    if (dateKey > format(asOfDate, "yyyy-MM-dd")) continue;
-    // Drop orphan rows from before the current placement (stale after a place-date edit).
-    if (dateKey < placementKey) continue;
-    const age = birdAgeFromPlacement(placementDate, parseISO(dateKey));
+    const fromDate = birdAgeFromPlacement(placementDate, parseISO(dateKey));
+    const stored = record.birdAgeInDays;
+    const pinned = typeof stored === "number" && !(stored === 0 && fromDate !== 0);
+    if (!pinned) {
+      if (dateKey > asOfKey) continue;
+      if (dateKey < placementKey) continue;
+    }
+    const age = pinnedBirdAge(placementDate, parseISO(dateKey), stored);
     const week = flockWeekFromAge(age);
-    if (week < 1 || week > currentWeek) continue;
+    if (week < 1 || week > 16) continue;
+    if (week > currentWeek && !pinned) continue;
     const loss = calcTotalDailyLoss(record.dailyMortalityCount, record.cullCount);
     totals.set(week, (totals.get(week) ?? 0) + loss);
   }

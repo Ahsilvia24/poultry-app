@@ -8,6 +8,8 @@ import {
 } from "../lib/flockIdentity";
 import {
   birdAgeFromPlacement,
+  keepPinnedBirdAge,
+  pinnedBirdAge,
   daysSincePlacement,
   calcPercentage,
   calcTotalDailyLoss,
@@ -122,16 +124,21 @@ function summarizeHouse(
   for (let w = 1; w <= fillThrough; w++) weekTotals.set(w, 0);
 
   for (const r of records) {
-    if (r.mortality_date > asOf) continue;
-    // Stale rows from before a placement-date edit must not inflate week totals.
-    if (place && r.mortality_date < place) continue;
+    const fromDate = place ? birdAgeFromPlacement(place, r.mortality_date) : r.bird_age_in_days;
+    const pinned =
+      typeof r.bird_age_in_days === "number" &&
+      !(r.bird_age_in_days === 0 && fromDate !== 0);
+    if (!pinned) {
+      if (r.mortality_date > asOf) continue;
+      if (place && r.mortality_date < place) continue;
+    }
     const loss = calcTotalDailyLoss(r.daily_mortality_count, r.cull_count);
     cumulative += loss;
     const age = place
-      ? birdAgeFromPlacement(place, r.mortality_date)
+      ? pinnedBirdAge(place, r.mortality_date, r.bird_age_in_days)
       : r.bird_age_in_days;
     const week = flockWeekFromAge(age);
-    if (week >= 1 && week <= currentWeek) {
+    if (week >= 1 && week <= 16 && (week <= currentWeek || pinned)) {
       weekTotals.set(week, (weekTotals.get(week) ?? 0) + loss);
     }
     if (r.mortality_date === asOf) today += loss;
@@ -1377,6 +1384,7 @@ export function saveHouseMortalitySeries(input: {
     mortalityDate: string;
     dailyMortalityCount: number;
     cullCount: number;
+    birdAgeInDays?: number;
   }>;
   clearDates?: string[];
 }) {
@@ -1401,10 +1409,14 @@ export function saveHouseMortalitySeries(input: {
 
   for (const e of input.entries) {
     const loss = calcTotalDailyLoss(e.dailyMortalityCount, e.cullCount);
-    const age = birdAgeFromPlacement(placementDate, e.mortalityDate);
-    const existing = db.getFirstSync<{ id: string }>(
-      "SELECT id FROM daily_mortality WHERE house_flock_id = ? AND mortality_date = ?",
+    const computed = birdAgeFromPlacement(placementDate, e.mortalityDate);
+    const existing = db.getFirstSync<{ id: string; bird_age_in_days: number }>(
+      "SELECT id, bird_age_in_days FROM daily_mortality WHERE house_flock_id = ? AND mortality_date = ?",
       [input.houseFlockId, e.mortalityDate],
+    );
+    const age = keepPinnedBirdAge(
+      e.birdAgeInDays ?? existing?.bird_age_in_days,
+      computed,
     );
     // Allow 0/0 — entering zero counts as a confirmed day entry
     if (existing) {

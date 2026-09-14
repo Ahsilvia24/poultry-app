@@ -29,7 +29,8 @@ const throughCatch = Array.from({ length: 53 }, (_, age) => ({
   cullCount: "",
 }));
 assert.equal(shouldUnlockExtendedMortalityWeeks(throughCatch), false);
-assert.equal(mortalityGridMaxAge(20, 52, throughCatch), 52);
+assert.equal(mortalityGridMaxAge(20, 52, throughCatch), 21);
+assert.equal(mortalityGridMaxAge(39, 52, []), 42);
 
 const lastWeek8Filled = throughCatch.map((row) =>
   row.age === 52 ? { ...row, dailyMortalityCount: "2", hasEntry: true } : row,

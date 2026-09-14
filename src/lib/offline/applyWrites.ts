@@ -1,9 +1,13 @@
 import { addDays, format } from "date-fns";
 import { nextCustomLfoName, parseCustomLfoNumber } from "@/lib/lfo/customName";
-import { birdAgeFromPlacement, calcTotalDailyLoss } from "@/lib/mortality/calculations";
+import {
+  birdAgeFromPlacement,
+  calcTotalDailyLoss,
+  keepPinnedBirdAge,
+} from "@/lib/mortality/calculations";
 import { isHouseInPropagateRange } from "@/lib/housePropagate";
 import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
-import { asDate, asDateKey } from "@/lib/offline/dates";
+import { asDate, asDateKey, localNoonFromKey } from "@/lib/offline/dates";
 import { upsertFollowUpCompletion } from "@/lib/offline/followUpCompletions";
 import {
   isLocalRecordId,
@@ -1028,9 +1032,14 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
           mortalityDate: string;
           dailyMortalityCount: number;
           cullCount: number;
+          birdAgeInDays?: number;
         }>;
         clearDates?: string[];
       };
+      const hf = snapshot.houseFlocks.find((row) => row.id === extra.houseFlockId);
+      const flock = snapshot.flocks.find((row) => row.id === hf?.flockId);
+      const placeKey =
+        (hf?.placementDate ?? "").trim() || asDateKey(flock?.placementDate) || "";
       const clear = new Set(extra.clearDates ?? []);
       const kept = snapshot.mortalities.filter(
         (row) =>
@@ -1044,11 +1053,21 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
             row.mortalityDate.slice(0, 10) === entry.mortalityDate,
         );
         const loss = calcTotalDailyLoss(entry.dailyMortalityCount, entry.cullCount);
+        const computed =
+          placeKey && entry.mortalityDate
+            ? birdAgeFromPlacement(
+                localNoonFromKey(placeKey),
+                localNoonFromKey(entry.mortalityDate.slice(0, 10)),
+              )
+            : 0;
         const row: OfflineMortality = {
           id: idx >= 0 ? next[idx]!.id : `local-mort-${extra.houseFlockId}-${entry.mortalityDate}`,
           houseFlockId: extra.houseFlockId,
           mortalityDate: entry.mortalityDate,
-          birdAgeInDays: idx >= 0 ? next[idx]!.birdAgeInDays : 0,
+          birdAgeInDays: keepPinnedBirdAge(
+            entry.birdAgeInDays ?? (idx >= 0 ? next[idx]!.birdAgeInDays : null),
+            computed,
+          ),
           dailyMortalityCount: entry.dailyMortalityCount,
           cullCount: entry.cullCount,
           totalDailyLoss: loss,

@@ -24,6 +24,22 @@ export function lastAgeOfFlockWeek(week: number): number {
   return Math.max(1, week) * 7;
 }
 
+/**
+ * Entry grid paints the current week only. Later weeks appear after a
+ * number is already pinned there — never because catch is day 52.
+ */
+export function mortalityEntryVisibleMaxAge(
+  todayAge: number,
+  pinnedAges: number[] = [],
+): number {
+  const today = Math.max(0, todayAge);
+  const currentWeekEnd = lastAgeOfFlockWeek(flockWeekFromAge(today));
+  const latestPinned = pinnedAges.reduce((max, age) => Math.max(max, age), 0);
+  const pinnedWeekEnd =
+    latestPinned > 0 ? lastAgeOfFlockWeek(flockWeekFromAge(latestPinned)) : 0;
+  return Math.max(today, currentWeekEnd, pinnedWeekEnd);
+}
+
 export function mortalityDayHasData(row: MortalityDayLike): boolean {
   return Boolean(
     row.hasEntry ||
@@ -48,12 +64,13 @@ export function shouldUnlockExtendedMortalityWeeks(rows: MortalityDayLike[]): bo
 
 export function mortalityGridMaxAge(
   todayAge: number,
-  catchAge: number,
+  _catchAge: number,
   rows: MortalityDayLike[],
 ): number {
-  const base = Math.max(0, todayAge, catchAge);
-  if (!shouldUnlockExtendedMortalityWeeks(rows)) return base;
-  return Math.max(base, lastAgeOfFlockWeek(WEEKLY_MORTALITY_EXTENDED_WEEKS));
+  const pinned = rows.filter(mortalityDayHasData).map((row) => row.age);
+  const visible = mortalityEntryVisibleMaxAge(todayAge, pinned);
+  if (!shouldUnlockExtendedMortalityWeeks(rows)) return visible;
+  return Math.max(visible, lastAgeOfFlockWeek(WEEKLY_MORTALITY_EXTENDED_WEEKS));
 }
 
 /**

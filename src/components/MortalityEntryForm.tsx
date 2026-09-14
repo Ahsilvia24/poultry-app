@@ -8,6 +8,7 @@ import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
 import {
   birdAgeFromPlacement,
   flockWeekFromAge,
+  pinnedBirdAge,
 } from "@/lib/mortality/calculations";
 import { mortalityGridMaxAge } from "@/lib/weeklyMortalityLayout";
 import { formatNumber } from "@/lib/utils";
@@ -23,10 +24,13 @@ export type MortalityHousePayload = {
   flockId?: string;
   houseNumber: number;
   placedBirdCount: number;
+  /** This house's place date — not the farm's oldest flock. */
+  placementDate?: string;
   existingEntries: Array<{
     mortalityDate: string;
     dailyMortalityCount: number;
     cullCount: number;
+    birdAgeInDays?: number;
     mortalityCause: string;
     comments: string | null;
     isDraft: boolean;
@@ -131,6 +135,13 @@ function parseLocalDate(iso: string) {
   return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
 }
 
+function housePlacementDate(
+  house: MortalityHousePayload | null | undefined,
+  flock: MortalityFarmPayload["activeFlock"],
+): string {
+  return house?.placementDate || flock?.placementDate || "";
+}
+
 function buildRows(
   placementDate: string,
   catchDate: string,
@@ -142,11 +153,21 @@ function buildRows(
   const asOf = parseLocalDate(asOfDateKey);
   const todayAge = birdAgeFromPlacement(placement, asOf);
   const catchAge = birdAgeFromPlacement(placement, catchEnd);
-  const byDate = new Map(house.existingEntries.map((e) => [e.mortalityDate, e]));
+  const byAge = new Map<number, MortalityHousePayload["existingEntries"][number]>();
+  for (const entry of house.existingEntries) {
+    const age = pinnedBirdAge(
+      placement,
+      parseLocalDate(entry.mortalityDate),
+      entry.birdAgeInDays,
+    );
+    const expectedDate = format(addDays(placement, age), "yyyy-MM-dd");
+    const current = byAge.get(age);
+    if (!current || entry.mortalityDate === expectedDate) byAge.set(age, entry);
+  }
 
   function rowForAge(age: number): DayRow {
     const mortalityDate = format(addDays(placement, age), "yyyy-MM-dd");
-    const existing = byDate.get(mortalityDate);
+    const existing = byAge.get(age);
     return {
       age,
       mortalityDate,
@@ -157,14 +178,13 @@ function buildRows(
     };
   }
 
-  const seed: DayRow[] = [];
-  const baseMax = Math.max(todayAge, catchAge);
-  for (let age = 0; age <= baseMax; age++) seed.push(rowForAge(age));
-  const known = house.existingEntries.map((entry) => ({
-    age: birdAgeFromPlacement(placement, parseLocalDate(entry.mortalityDate)),
+  const known = [...byAge.keys()].map((age) => ({
+    age,
     hasEntry: true,
+    dailyMortalityCount: String(byAge.get(age)?.dailyMortalityCount ?? ""),
+    cullCount: String(byAge.get(age)?.cullCount ?? ""),
   }));
-  const maxAge = mortalityGridMaxAge(todayAge, catchAge, [...seed, ...known]);
+  const maxAge = mortalityGridMaxAge(todayAge, catchAge, known);
 
   const rows: DayRow[] = [];
   for (let age = 0; age <= maxAge; age++) rows.push(rowForAge(age));
@@ -325,6 +345,7 @@ export function MortalityEntryForm({
         mortalityDate: r.mortalityDate,
         dailyMortalityCount: Number(r.dailyMortalityCount || 0),
         cullCount: Number(r.cullCount || 0),
+        birdAgeInDays: r.age,
       })),
       clearDates,
     };
@@ -393,13 +414,14 @@ export function MortalityEntryForm({
       return;
     }
 
+    const placementDate = housePlacementDate(house, flock);
     const catchDate = resolveCatchDateKey(flock);
-    const built = buildRows(flock.placementDate, catchDate, house, asOfDateKey);
+    const built = buildRows(placementDate, catchDate, house, asOfDateKey);
     setRows(built);
     const shouldJump = jumpOnHouseLoadRef.current;
     jumpOnHouseLoadRef.current = true;
     const currentWeek = flockWeekFromAge(
-      birdAgeFromPlacement(parseLocalDate(flock.placementDate), parseLocalDate(asOfDateKey)),
+      birdAgeFromPlacement(parseLocalDate(placementDate), parseLocalDate(asOfDateKey)),
     );
     if (!shouldJump) {
       setExpandedWeeks(new Set([currentWeek]));
@@ -422,6 +444,7 @@ export function MortalityEntryForm({
     farmId,
     flock?.id,
     flock?.placementDate,
+    house?.placementDate,
     flock?.projectedCatchDate,
     flock?.targetMarketAge,
     house?.houseFlockId,
@@ -484,7 +507,8 @@ export function MortalityEntryForm({
           hasEntry: hasMort || hasCull,
         };
       });
-      const placement = flock ? parseLocalDate(flock.placementDate) : null;
+      const placementKey = housePlacementDate(house, flock);
+      const placement = placementKey ? parseLocalDate(placementKey) : null;
       const catchDate = flock ? resolveCatchDateKey(flock) : null;
       if (placement && catchDate) {
         const todayAge = birdAgeFromPlacement(placement, parseLocalDate(asOfDateKey));
@@ -663,12 +687,12 @@ export function MortalityEntryForm({
               House <span className="font-semibold">{house.houseNumber}</span> · Placed{" "}
               {formatNumber(house.placedBirdCount)} ·{" "}
               <span className="font-semibold text-stone-900">
-                {format(parseLocalDate(flock.placementDate), "EEE M/d")}
+                {format(parseLocalDate(housePlacementDate(house, flock)), "EEE M/d")}
               </span>
               {" · "}
               <span className="font-semibold text-stone-900">
                 {birdAgeFromPlacement(
-                  parseLocalDate(flock.placementDate),
+                  parseLocalDate(housePlacementDate(house, flock)),
                   parseLocalDate(asOfDateKey),
                 )}
                 d

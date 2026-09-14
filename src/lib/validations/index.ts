@@ -137,6 +137,7 @@ export const mortalityHouseSeriesEntrySchema = z.object({
   mortalityDate: z.string().min(1),
   dailyMortalityCount: z.coerce.number().int().min(0, "Mortality cannot be negative"),
   cullCount: z.coerce.number().int().min(0, "Culls cannot be negative"),
+  birdAgeInDays: z.coerce.number().int().min(0).optional(),
 });
 
 export const mortalityHouseSeriesSchema = z

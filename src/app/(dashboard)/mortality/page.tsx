@@ -66,21 +66,28 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
               ? format(active.projectedCatchDate, "yyyy-MM-dd")
               : null,
             targetMarketAge: active.targetMarketAge,
-            houses: houses.map(({ house, houseFlock }) => ({
+            houses: houses.map(({ house, houseFlock }) => {
+              const houseFlockRecord = farm.flocks.find((row) => row.id === houseFlock.flockId) ?? active;
+              return {
               houseFlockId: houseFlock.id,
               flockId: houseFlock.flockId,
               houseNumber: house.houseNumber,
               placedBirdCount: houseFlock.placedBirdCount,
+              placementDate: houseFlock.placementDate
+                ? format(houseFlock.placementDate, "yyyy-MM-dd")
+                : format(houseFlockRecord.placementDate, "yyyy-MM-dd"),
               existingEntries: houseFlock.mortalities.map((m) => ({
                 // Use UTC calendar date so keys match form day keys (avoid TZ off-by-one)
                 mortalityDate: m.mortalityDate.toISOString().slice(0, 10),
                 dailyMortalityCount: m.dailyMortalityCount,
                 cullCount: m.cullCount,
+                birdAgeInDays: m.birdAgeInDays,
                 mortalityCause: m.mortalityCause,
                 comments: m.comments,
                 isDraft: m.isDraft,
               })),
-            })),
+              };
+            }),
           }
         : null,
     };
