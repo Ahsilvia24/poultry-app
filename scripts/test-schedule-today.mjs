@@ -78,6 +78,10 @@ assert.equal(
   true,
 );
 
+const selectDash = read("src/lib/offline/selectDashboard.ts");
+assert.match(selectDash, /rebuildDashboardScheduleFromReplica/);
+assert.match(selectDash, /snapshotHasFarmGraph/);
+
 const home = read("src/components/DashboardHome.tsx");
 assert.match(home, /selectDashboard/);
 assert.doesNotMatch(home, /snapshot\?\.dashboard \?\? initial/);
