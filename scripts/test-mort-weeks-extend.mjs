@@ -7,6 +7,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(root, rel), "utf8");
 
 const {
+  groupWeeklyMortalityRows,
   lastAgeOfFlockWeek,
   mortalityGridMaxAge,
   shouldUnlockExtendedMortalityWeeks,
@@ -46,6 +47,13 @@ assert.deepEqual(
   early.map((week) => week.week),
   [1, 2, 3, 4, 5, 6, 7, 8],
 );
+const houseTile = groupWeeklyMortalityRows(early);
+assert.equal(houseTile.length, 2, "house tiles stay at Wk1–Wk8 when later weeks have no data");
+assert.deepEqual(
+  houseTile.flat().map((week) => week.week),
+  [1, 2, 3, 4, 5, 6, 7, 8],
+);
+assert.ok(!houseTile.flat().some((week) => week.week >= 9));
 
 const withWeek9 = weeklyMortalityByPlacement(
   placement,
