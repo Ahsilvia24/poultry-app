@@ -149,7 +149,8 @@ const nav = read("src/components/OfflineNav.tsx");
 assert.match(nav, /selectVisits/);
 assert.match(nav, /FarmVisitsView/);
 assert.match(nav, /FarmVisitFormView/);
-assert.match(nav, /\/visits\/new/);
+assert.match(nav, /visitsNew/);
+assert.match(nav, /visitsList/);
 
 const links = read("src/components/FarmQuickLinks.tsx");
 assert.match(links, /visitsHref = `\/farms\/\$\{farmId\}\/visits`/);
