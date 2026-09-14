@@ -262,7 +262,7 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Weeks 1–4 / 5–8 / 9–12 per row.
+ * Weeks 1–4 / 5–8, then 9–12 once later-week data exists.
  * Label + total stack vertically so 4–5 digit counts stay readable (no auto-shrink).
  */
 export function WeeklyMortalityList({ weeks }: { weeks: WeekTotal[] }) {

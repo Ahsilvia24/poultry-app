@@ -9,6 +9,7 @@ import {
   birdAgeFromPlacement,
   flockWeekFromAge,
 } from "@/lib/mortality/calculations";
+import { mortalityGridMaxAge } from "@/lib/weeklyMortalityLayout";
 import { formatNumber } from "@/lib/utils";
 import { Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -139,25 +140,34 @@ function buildRows(
   const placement = parseLocalDate(placementDate);
   const catchEnd = parseLocalDate(catchDate);
   const asOf = parseLocalDate(asOfDateKey);
-  const maxAge = Math.max(
-    birdAgeFromPlacement(placement, asOf),
-    birdAgeFromPlacement(placement, catchEnd),
-  );
+  const todayAge = birdAgeFromPlacement(placement, asOf);
+  const catchAge = birdAgeFromPlacement(placement, catchEnd);
   const byDate = new Map(house.existingEntries.map((e) => [e.mortalityDate, e]));
 
-  const rows: DayRow[] = [];
-  for (let age = 0; age <= maxAge; age++) {
+  function rowForAge(age: number): DayRow {
     const mortalityDate = format(addDays(placement, age), "yyyy-MM-dd");
     const existing = byDate.get(mortalityDate);
-    rows.push({
+    return {
       age,
       mortalityDate,
       // Blank until entered — don't seed "0" or clearing one cell leaves a phantom zero
       dailyMortalityCount: existing ? String(existing.dailyMortalityCount) : "",
       cullCount: existing ? String(existing.cullCount) : "",
       hasEntry: Boolean(existing),
-    });
+    };
   }
+
+  const seed: DayRow[] = [];
+  const baseMax = Math.max(todayAge, catchAge);
+  for (let age = 0; age <= baseMax; age++) seed.push(rowForAge(age));
+  const known = house.existingEntries.map((entry) => ({
+    age: birdAgeFromPlacement(placement, parseLocalDate(entry.mortalityDate)),
+    hasEntry: true,
+  }));
+  const maxAge = mortalityGridMaxAge(todayAge, catchAge, [...seed, ...known]);
+
+  const rows: DayRow[] = [];
+  for (let age = 0; age <= maxAge; age++) rows.push(rowForAge(age));
   return rows;
 }
 
@@ -474,6 +484,25 @@ export function MortalityEntryForm({
           hasEntry: hasMort || hasCull,
         };
       });
+      const placement = flock ? parseLocalDate(flock.placementDate) : null;
+      const catchDate = flock ? resolveCatchDateKey(flock) : null;
+      if (placement && catchDate) {
+        const todayAge = birdAgeFromPlacement(placement, parseLocalDate(asOfDateKey));
+        const catchAge = birdAgeFromPlacement(placement, parseLocalDate(catchDate));
+        const maxAge = mortalityGridMaxAge(todayAge, catchAge, next);
+        const have = new Set(next.map((row) => row.age));
+        for (let extraAge = 0; extraAge <= maxAge; extraAge++) {
+          if (have.has(extraAge)) continue;
+          next.push({
+            age: extraAge,
+            mortalityDate: format(addDays(placement, extraAge), "yyyy-MM-dd"),
+            dailyMortalityCount: "",
+            cullCount: "",
+            hasEntry: false,
+          });
+        }
+        next.sort((a, b) => a.age - b.age);
+      }
       rowsRef.current = next;
       return next;
     });

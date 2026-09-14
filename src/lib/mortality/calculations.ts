@@ -55,8 +55,10 @@ export function weeklyMortalityByPlacement(
   // Cap so a bad/old placement can't inflate the week grid into tiny unreadables.
   const currentWeek = Math.min(flockWeekFromAge(ageToday), 16);
   const totals = new Map<number, number>();
+  // House tiles always show Wk1–Wk8. Weeks 9+ appear only after that week has rows.
+  const fillThrough = Math.min(currentWeek, 8);
 
-  for (let w = 1; w <= currentWeek; w++) {
+  for (let w = 1; w <= fillThrough; w++) {
     totals.set(w, 0);
   }
 
