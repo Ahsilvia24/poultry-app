@@ -700,7 +700,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
       const visitId = write.id;
       return {
         ...snapshot,
-        visits: snapshot.visits.filter((visit) => visit.id !== visitId),
+        visits: (snapshot.visits ?? []).filter((visit) => visit.id !== visitId),
         serviceForms: (snapshot.serviceForms ?? []).map((form) =>
           form.visitId === visitId ? { ...form, visitId: null } : form,
         ),
@@ -748,7 +748,10 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
         ),
       };
     case "deleteIssue":
-      return { ...snapshot, issues: snapshot.issues.filter((issue) => issue.id !== write.id) };
+      return {
+        ...snapshot,
+        issues: (snapshot.issues ?? []).filter((issue) => issue.id !== write.id),
+      };
     case "createLitter": {
       const id = write.id ?? `local-litter`;
       return {
@@ -788,7 +791,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
     case "deleteLitter":
       return {
         ...snapshot,
-        litterEvents: snapshot.litterEvents.filter((row) => row.id !== write.id),
+        litterEvents: (snapshot.litterEvents ?? []).filter((row) => row.id !== write.id),
       };
     case "createFeed": {
       const id = write.id ?? `local-feed`;
@@ -832,7 +835,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
     case "deleteFeed":
       return {
         ...snapshot,
-        feedDeliveries: snapshot.feedDeliveries.filter((row) => row.id !== write.id),
+        feedDeliveries: (snapshot.feedDeliveries ?? []).filter((row) => row.id !== write.id),
       };
     case "createGeneratorLog": {
       const id = write.id ?? `local-gen`;

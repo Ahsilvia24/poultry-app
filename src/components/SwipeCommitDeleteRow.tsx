@@ -49,10 +49,10 @@ export function SwipeCommitDeleteRow({
   const redWidth = Math.max(0, -swipeX);
 
   useEffect(() => {
-    if (!isOpenOwner) {
-      swipeXRef.current = 0;
-      setSwipeX(0);
-    }
+    if (isOpenOwner) return;
+    if (startX.current != null) return;
+    swipeXRef.current = 0;
+    setSwipeX(0);
   }, [isOpenOwner]);
 
   useEffect(() => {
@@ -109,11 +109,13 @@ export function SwipeCommitDeleteRow({
   }
 
   useEffect(() => {
+    const node = rootRef.current;
     function onWinMove(e: PointerEvent | TouchEvent) {
       if (startX.current == null) return;
       if ("touches" in e) {
         const t = e.touches[0];
         if (t) move(t.clientX, t.clientY);
+        if (didSwipe.current && e.cancelable) e.preventDefault();
         return;
       }
       if (e.buttons !== 1) return;
@@ -125,18 +127,26 @@ export function SwipeCommitDeleteRow({
     }
     window.addEventListener("pointermove", onWinMove);
     window.addEventListener("pointerup", onWinUp);
-    window.addEventListener("touchmove", onWinMove, { passive: true });
+    window.addEventListener("touchmove", onWinMove, { passive: false });
     window.addEventListener("touchend", onWinUp);
+    node?.addEventListener("touchmove", onWinMove, { passive: false });
+    node?.addEventListener("touchend", onWinUp);
     return () => {
       window.removeEventListener("pointermove", onWinMove);
       window.removeEventListener("pointerup", onWinUp);
       window.removeEventListener("touchmove", onWinMove);
       window.removeEventListener("touchend", onWinUp);
+      node?.removeEventListener("touchmove", onWinMove);
+      node?.removeEventListener("touchend", onWinUp);
     };
   }, [commitPx, maxPx, requestClose, requestOpen]);
 
   return (
-    <div className={cn("relative overflow-hidden", className)} ref={rootRef}>
+    <div
+      className={cn("relative overflow-hidden", className)}
+      ref={rootRef}
+      style={{ touchAction: "pan-y" }}
+    >
       {swipeX < -8 ? (
         <div
           className={cn(
@@ -154,7 +164,7 @@ export function SwipeCommitDeleteRow({
           "relative h-full overflow-hidden",
           transparent ? "bg-transparent" : "rounded-xl bg-white",
         )}
-        style={{ transform: `translateX(${swipeX}px)` }}
+        style={{ transform: `translateX(${swipeX}px)`, touchAction: "pan-y" }}
         onTouchStart={(e) => {
           if (isActionTarget(e.target)) return;
           begin(e.touches[0]?.clientX ?? 0, e.touches[0]?.clientY ?? 0);

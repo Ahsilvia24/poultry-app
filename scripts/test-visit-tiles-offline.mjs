@@ -158,15 +158,20 @@ assert.doesNotMatch(links, /#visits/);
 
 const tile = read("src/components/LoggedVisitTile.tsx");
 assert.match(tile, /FarmLogListTile/);
-assert.match(tile, /deleteVisit/);
 assert.doesNotMatch(tile, /<ReplicaLink/);
 
 const swipe = read("src/components/SwipeCommitDeleteRow.tsx");
 assert.doesNotMatch(swipe, /closest\("a, button/);
+assert.match(swipe, /passive: false/);
+assert.match(swipe, /touchAction: "pan-y"/);
 
 const list = read("src/components/FarmVisitsView.tsx");
 assert.match(list, /LoggedVisitTile/);
 assert.match(list, /space-y-2.5/);
+assert.match(list, /useHiddenReplicaDeletes/);
+assert.match(list, /deleteVisit/);
+assert.doesNotMatch(list, /startDelete/);
+assert.doesNotMatch(list, /startTransition/);
 
 const farm = read("src/components/FarmDetailView.tsx");
 assert.doesNotMatch(farm, /FarmVisitsSection/);

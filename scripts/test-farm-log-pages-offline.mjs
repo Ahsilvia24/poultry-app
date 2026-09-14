@@ -253,17 +253,43 @@ assert.equal(
 const swipe = read("src/components/SwipeCommitDeleteRow.tsx");
 assert.match(swipe, /button, input, textarea, select, \[data-no-swipe\]/);
 assert.doesNotMatch(swipe, /closest\("a, button/);
+assert.match(swipe, /passive: false/);
+assert.match(swipe, /touchAction: "pan-y"/);
 
 const tile = read("src/components/FarmLogListTile.tsx");
 assert.match(tile, /useReplicaNavigate/);
 assert.match(tile, /SwipeCommitDeleteRow/);
 assert.match(tile, /role="link"/);
+assert.match(tile, /setGone\(true\)/);
 assert.doesNotMatch(tile, /<ReplicaLink/);
 assert.doesNotMatch(tile, /<a /);
 
+const hook = read("src/lib/offline/useHiddenReplicaDeletes.ts");
+assert.match(hook, /setHiddenIds/);
+assert.match(hook, /queue\(formWrite/);
+assert.doesNotMatch(hook, /startTransition\(async \(\) => \{\s*if \(enabled\)/);
+
 const visitTile = read("src/components/LoggedVisitTile.tsx");
 assert.match(visitTile, /FarmLogListTile/);
-assert.doesNotMatch(visitTile, /ReplicaLink/);
+assert.doesNotMatch(visitTile, /<ReplicaLink/);
+
+for (const file of [
+  "src/components/FarmVisitsView.tsx",
+  "src/components/FarmIssuesView.tsx",
+  "src/components/FarmLitterView.tsx",
+  "src/components/FarmFeedView.tsx",
+]) {
+  const src = read(file);
+  assert.match(src, /useHiddenReplicaDeletes/);
+  assert.doesNotMatch(src, /startTransition/);
+  assert.doesNotMatch(src, /startDelete/);
+}
+
+const missingVisits = applyFormWrite(
+  { ...snapshot(), visits: undefined },
+  { action: "deleteVisit", id: "visit-1", farmId: "farm-1" },
+);
+assert.equal(Array.isArray(missingVisits.visits), true);
 
 const nav = read("src/components/OfflineNav.tsx");
 assert.match(nav, /selectIssues/);

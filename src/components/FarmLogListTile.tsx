@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useReplicaNavigate } from "@/components/ReplicaLink";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { Card } from "@/components/ui";
@@ -20,9 +21,18 @@ export function FarmLogListTile({
   onDelete: () => void;
 }) {
   const navigate = useReplicaNavigate();
+  const [gone, setGone] = useState(false);
+
+  if (gone) return null;
 
   return (
-    <SwipeCommitDeleteRow rowId={rowId} onDelete={onDelete}>
+    <SwipeCommitDeleteRow
+      rowId={rowId}
+      onDelete={() => {
+        setGone(true);
+        onDelete();
+      }}
+    >
       <Card className="!py-3">
         <div
           role="link"

@@ -1,7 +1,5 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { deleteLitterEventAction } from "@/app/actions/ops";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { FarmLogListTile } from "@/components/FarmLogListTile";
@@ -9,14 +7,12 @@ import { ReplicaLink } from "@/components/ReplicaLink";
 import { BackHeader } from "@/components/ui";
 import { formatServiceShortDate } from "@/lib/serviceForms/format";
 import { LITTER_EVENT_LABELS } from "@/lib/utils";
-import { formWrite } from "@/lib/offline/formPairs";
-import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
+import { useHiddenReplicaDeletes } from "@/lib/offline/useHiddenReplicaDeletes";
 import type { LitterPageModel } from "@/lib/offline/selectLitter";
 
 export function FarmLitterView({ model }: { model: LitterPageModel }) {
-  const router = useRouter();
-  const { enabled, queue } = useReplicaWrite();
-  const [, startDelete] = useTransition();
+  const { visible, remove } = useHiddenReplicaDeletes();
+  const events = visible(model.events);
 
   return (
     <div>
@@ -29,12 +25,12 @@ export function FarmLitterView({ model }: { model: LitterPageModel }) {
         Log Litter
       </ReplicaLink>
 
-      {model.events.length === 0 ? (
+      {events.length === 0 ? (
         <p className="text-stone-500">No litter events yet.</p>
       ) : (
         <ExclusiveSwipeGroup>
           <div className="space-y-2.5">
-            {model.events.map((event) => {
+            {events.map((event) => {
               const title = LITTER_EVENT_LABELS[event.eventType] ?? event.eventType;
               const dateLabel = formatServiceShortDate(event.eventDate);
               return (
@@ -45,16 +41,14 @@ export function FarmLitterView({ model }: { model: LitterPageModel }) {
                   title={title}
                   subtitle={dateLabel}
                   ariaLabel={`View or edit ${title} ${dateLabel}`}
-                  onDelete={() => {
-                    startDelete(async () => {
-                      if (enabled) {
-                        queue(formWrite("deleteLitter", { id: event.id, farmId: model.farmId }));
-                        return;
-                      }
-                      await deleteLitterEventAction(model.farmId, event.id);
-                      router.refresh();
-                    });
-                  }}
+                  onDelete={() =>
+                    remove(
+                      event.id,
+                      "deleteLitter",
+                      { id: event.id, farmId: model.farmId },
+                      () => deleteLitterEventAction(model.farmId, event.id),
+                    )
+                  }
                 />
               );
             })}

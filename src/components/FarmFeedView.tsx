@@ -1,7 +1,5 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { deleteFeedDeliveryAction } from "@/app/actions/ops";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { FarmLogListTile } from "@/components/FarmLogListTile";
@@ -9,14 +7,12 @@ import { ReplicaLink } from "@/components/ReplicaLink";
 import { BackHeader } from "@/components/ui";
 import { formatServiceShortDate } from "@/lib/serviceForms/format";
 import { formatNumber } from "@/lib/utils";
-import { formWrite } from "@/lib/offline/formPairs";
-import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
+import { useHiddenReplicaDeletes } from "@/lib/offline/useHiddenReplicaDeletes";
 import type { FeedPageModel } from "@/lib/offline/selectFeed";
 
 export function FarmFeedView({ model }: { model: FeedPageModel }) {
-  const router = useRouter();
-  const { enabled, queue } = useReplicaWrite();
-  const [, startDelete] = useTransition();
+  const { visible, remove } = useHiddenReplicaDeletes();
+  const deliveries = visible(model.deliveries);
 
   return (
     <div>
@@ -29,12 +25,12 @@ export function FarmFeedView({ model }: { model: FeedPageModel }) {
         Log Feed
       </ReplicaLink>
 
-      {model.deliveries.length === 0 ? (
+      {deliveries.length === 0 ? (
         <p className="text-stone-500">No feed deliveries yet.</p>
       ) : (
         <ExclusiveSwipeGroup>
           <div className="space-y-2.5">
-            {model.deliveries.map((delivery) => {
+            {deliveries.map((delivery) => {
               const title = delivery.feedType?.trim()
                 ? delivery.feedType
                 : `${formatNumber(delivery.poundsDelivered)} lbs`;
@@ -47,16 +43,14 @@ export function FarmFeedView({ model }: { model: FeedPageModel }) {
                   title={title}
                   subtitle={dateLabel}
                   ariaLabel={`View or edit ${title} ${dateLabel}`}
-                  onDelete={() => {
-                    startDelete(async () => {
-                      if (enabled) {
-                        queue(formWrite("deleteFeed", { id: delivery.id, farmId: model.farmId }));
-                        return;
-                      }
-                      await deleteFeedDeliveryAction(delivery.id);
-                      router.refresh();
-                    });
-                  }}
+                  onDelete={() =>
+                    remove(
+                      delivery.id,
+                      "deleteFeed",
+                      { id: delivery.id, farmId: model.farmId },
+                      () => deleteFeedDeliveryAction(delivery.id),
+                    )
+                  }
                 />
               );
             })}

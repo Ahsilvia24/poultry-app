@@ -1,7 +1,5 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { deleteIssueAction } from "@/app/actions/ops";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { FarmLogListTile } from "@/components/FarmLogListTile";
@@ -9,14 +7,12 @@ import { ReplicaLink } from "@/components/ReplicaLink";
 import { BackHeader } from "@/components/ui";
 import { formatServiceShortDate } from "@/lib/serviceForms/format";
 import { ISSUE_CATEGORY_LABELS } from "@/lib/utils";
-import { formWrite } from "@/lib/offline/formPairs";
-import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
+import { useHiddenReplicaDeletes } from "@/lib/offline/useHiddenReplicaDeletes";
 import type { IssuesPageModel } from "@/lib/offline/selectIssues";
 
 export function FarmIssuesView({ model }: { model: IssuesPageModel }) {
-  const router = useRouter();
-  const { enabled, queue } = useReplicaWrite();
-  const [, startDelete] = useTransition();
+  const { visible, remove } = useHiddenReplicaDeletes();
+  const issues = visible(model.issues);
 
   return (
     <div>
@@ -29,12 +25,12 @@ export function FarmIssuesView({ model }: { model: IssuesPageModel }) {
         Log Issue
       </ReplicaLink>
 
-      {model.issues.length === 0 ? (
+      {issues.length === 0 ? (
         <p className="text-stone-500">No issues yet.</p>
       ) : (
         <ExclusiveSwipeGroup>
           <div className="space-y-2.5">
-            {model.issues.map((issue) => {
+            {issues.map((issue) => {
               const title = ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category;
               const dateLabel = formatServiceShortDate(issue.dateReported);
               return (
@@ -45,16 +41,14 @@ export function FarmIssuesView({ model }: { model: IssuesPageModel }) {
                   title={title}
                   subtitle={dateLabel}
                   ariaLabel={`View or edit ${title} ${dateLabel}`}
-                  onDelete={() => {
-                    startDelete(async () => {
-                      if (enabled) {
-                        queue(formWrite("deleteIssue", { id: issue.id, farmId: model.farmId }));
-                        return;
-                      }
-                      await deleteIssueAction(model.farmId, issue.id);
-                      router.refresh();
-                    });
-                  }}
+                  onDelete={() =>
+                    remove(
+                      issue.id,
+                      "deleteIssue",
+                      { id: issue.id, farmId: model.farmId },
+                      () => deleteIssueAction(model.farmId, issue.id),
+                    )
+                  }
                 />
               );
             })}
