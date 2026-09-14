@@ -22,20 +22,35 @@ export function FarmQuickLinks({
   const serviceHref = `/farms/${farmId}/service`;
   const visitsHref = `/farms/${farmId}/visits`;
   const generatorsHref = `/farms/${farmId}/generators`;
+  const issuesHref = `/farms/${farmId}/issues`;
+  const litterHref = `/farms/${farmId}/litter`;
+  const feedHref = `/farms/${farmId}/feed`;
   useEffect(() => {
     router.prefetch(serviceHref);
     router.prefetch(visitsHref);
     router.prefetch(generatorsHref);
+    router.prefetch(issuesHref);
+    router.prefetch(litterHref);
+    router.prefetch(feedHref);
     router.prefetch(`/lfo?farmId=${farmId}`);
-  }, [farmId, router, serviceHref, visitsHref, generatorsHref]);
+  }, [
+    farmId,
+    router,
+    serviceHref,
+    visitsHref,
+    generatorsHref,
+    issuesHref,
+    litterHref,
+    feedHref,
+  ]);
 
   const links: Array<{ key: string; href: string; label: string; external?: boolean }> = [
     { key: "service", href: serviceHref, label: "Service Farm", external: true },
     { key: "generators", href: generatorsHref, label: "Generator", external: true },
     { key: "visits", href: visitsHref, label: "Visits", external: true },
-    { key: "issues", href: "#issues", label: "Issues" },
-    { key: "litter", href: "#litter", label: "Litter" },
-    { key: "feed", href: "#feed", label: "Feed" },
+    { key: "issues", href: issuesHref, label: "Issues", external: true },
+    { key: "litter", href: litterHref, label: "Litter", external: true },
+    { key: "feed", href: feedHref, label: "Feed", external: true },
     { key: "lfo", href: `/lfo?farmId=${farmId}`, label: "LFO", external: true },
     { key: "add-flock", href: "#add-flock", label: "Add Flock" },
   ];

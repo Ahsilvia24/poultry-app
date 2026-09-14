@@ -13,7 +13,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   createIssue,
   deleteIssue,
-  getFarmDetail,
+  getFarmActiveFlockId,
+  getFarmLogHouses,
   getIssue,
   updateIssue,
 } from "../repos/data";
@@ -32,13 +33,27 @@ import { OptionPicker, SelectField } from "./OptionPicker";
 export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?: string }) {
   const router = useRouter();
   const editing = Boolean(issueId);
-  const detail = useMemo(() => {
+  const houses = useMemo(() => {
     try {
-      return getFarmDetail(farmId);
+      return getFarmLogHouses(farmId);
+    } catch {
+      return [];
+    }
+  }, [farmId]);
+  const activeFlockId = useMemo(() => {
+    try {
+      return getFarmActiveFlockId(farmId);
     } catch {
       return null;
     }
   }, [farmId]);
+
+  function goToList() {
+    router.replace({
+      pathname: "/(tabs)/farms/[id]/issues",
+      params: { id: farmId },
+    });
+  }
   const initial = useMemo(() => {
     if (!issueId) return null;
     try {
@@ -48,7 +63,6 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
     }
   }, [farmId, issueId]);
 
-  const houses = detail?.houses ?? [];
   const [dateReported, setDateReported] = useState(initial?.dateReported ?? todayKey());
   const [houseId, setHouseId] = useState(initial?.houseId ?? "");
   const [category, setCategory] = useState(initial?.category ?? "OTHER");
@@ -79,7 +93,7 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
     try {
       const payload = {
         farmId,
-        flockId: detail?.activeFlock?.id,
+        flockId: activeFlockId,
         houseId: houseId || null,
         dateReported: dateReported.trim(),
         category,
@@ -91,7 +105,7 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
       };
       if (issueId) updateIssue(issueId, payload);
       else createIssue(payload);
-      router.back();
+      goToList();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save issue");
       setBusy(false);
@@ -115,10 +129,10 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
           keyboardShouldPersistTaps="handled"
         >
           <BackHeader
-            backLabel="Farm"
-            title={editing ? "Edit issue" : "Report issue"}
-            onBack={() => router.back()}
-            accessibilityLabel="Back to farm"
+            backLabel="Issues"
+            title={editing ? "Edit issue" : "Log issue"}
+            onBack={goToList}
+            accessibilityLabel="Back to issues"
           />
           <Card>
             <DatePickerField
@@ -178,7 +192,7 @@ export function IssueFormScreen({ farmId, issueId }: { farmId: string; issueId?:
                 onPress={() => {
                   try {
                     deleteIssue(farmId, issueId);
-                    router.back();
+                    goToList();
                   } catch (e) {
                     setError(e instanceof Error ? e.message : "Could not delete issue");
                   }

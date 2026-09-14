@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   createLitterEvent,
   deleteLitterEvent,
-  getFarmDetail,
+  getFarmLogHouses,
   getLitterEvent,
   updateLitterEvent,
 } from "../repos/data";
@@ -27,13 +27,21 @@ import { OptionPicker, SelectField } from "./OptionPicker";
 export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?: string }) {
   const router = useRouter();
   const editing = Boolean(eventId);
-  const detail = useMemo(() => {
+  const houses = useMemo(() => {
     try {
-      return getFarmDetail(farmId);
+      return getFarmLogHouses(farmId);
     } catch {
-      return null;
+      return [];
     }
   }, [farmId]);
+
+  function goToList() {
+    router.replace({
+      pathname: "/(tabs)/farms/[id]/litter",
+      params: { id: farmId },
+    });
+  }
+
   const initial = useMemo(() => {
     if (!eventId) return null;
     try {
@@ -43,7 +51,6 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
     }
   }, [farmId, eventId]);
 
-  const houses = detail?.houses ?? [];
   const [eventDate, setEventDate] = useState(initial?.eventDate ?? todayKey());
   const [eventType, setEventType] = useState(initial?.eventType ?? "FULL_LITTER_CLEANOUT");
   const [houseId, setHouseId] = useState(initial?.houseId ?? "");
@@ -61,10 +68,10 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
       <SafeAreaView style={styles.screen} edges={["top"]}>
         <View style={styles.content}>
           <BackHeader
-            backLabel="Farm"
+            backLabel="Litter"
             title="Litter event"
-            onBack={() => router.back()}
-            accessibilityLabel="Back to farm"
+            onBack={goToList}
+            accessibilityLabel="Back to litter"
           />
           <Text style={{ color: colors.danger }}>Litter event not found</Text>
         </View>
@@ -91,7 +98,7 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
       };
       if (eventId) updateLitterEvent(eventId, payload);
       else createLitterEvent(payload);
-      router.back();
+      goToList();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save litter event");
       setBusy(false);
@@ -115,10 +122,10 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
           keyboardShouldPersistTaps="handled"
         >
           <BackHeader
-            backLabel="Farm"
-            title={editing ? "Edit litter event" : "Record litter event"}
-            onBack={() => router.back()}
-            accessibilityLabel="Back to farm"
+            backLabel="Litter"
+            title={editing ? "Edit litter event" : "Log litter"}
+            onBack={goToList}
+            accessibilityLabel="Back to litter"
           />
           <Card>
             <DatePickerField
@@ -170,7 +177,7 @@ export function LitterFormScreen({ farmId, eventId }: { farmId: string; eventId?
                 onPress={() => {
                   try {
                     deleteLitterEvent(farmId, eventId);
-                    router.back();
+                    goToList();
                   } catch (e) {
                     setError(e instanceof Error ? e.message : "Could not delete litter event");
                   }

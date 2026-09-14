@@ -11,9 +11,6 @@ import { AddFlockSection } from "@/components/AddFlockSection";
 import { AddHouseForm } from "@/components/AddHouseForm";
 import { FarmInfoEditor } from "@/components/FarmInfoEditor";
 import { FarmQuickLinks } from "@/components/FarmQuickLinks";
-import { FarmFeedSection } from "@/components/FarmFeedSection";
-import { FarmIssuesSection } from "@/components/FarmIssuesSection";
-import { FarmLitterSection } from "@/components/FarmLitterSection";
 import { BackCaret, Card } from "@/components/ui";
 import { appTodayKey } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
@@ -106,27 +103,6 @@ export function FarmDetailView({
         houses={model.addFlockHouses}
         initialPlacement={appTodayKey(undefined, resolveAppTimeZone(timeZone))}
       />
-
-      <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <FarmIssuesSection
-          farmId={farm.id}
-          flockId={model.activeFlockId ?? undefined}
-          houses={model.houses.map((house) => ({ id: house.id, houseNumber: house.houseNumber }))}
-          issues={model.issues}
-        />
-
-        <FarmLitterSection
-          farmId={farm.id}
-          houses={model.houses.map((house) => ({ id: house.id, houseNumber: house.houseNumber }))}
-          events={model.litterEvents}
-        />
-
-        <FarmFeedSection
-          farmId={farm.id}
-          farms={model.feedFarms}
-          deliveries={model.deliveries}
-        />
-      </div>
     </div>
   );
 }

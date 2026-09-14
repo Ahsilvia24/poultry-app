@@ -157,9 +157,12 @@ assert.match(links, /visitsHref = `\/farms\/\$\{farmId\}\/visits`/);
 assert.doesNotMatch(links, /#visits/);
 
 const tile = read("src/components/LoggedVisitTile.tsx");
-assert.match(tile, /SwipeCommitDeleteRow/);
-assert.match(tile, /Card className="!py-3"/);
+assert.match(tile, /FarmLogListTile/);
 assert.match(tile, /deleteVisit/);
+assert.doesNotMatch(tile, /<ReplicaLink/);
+
+const swipe = read("src/components/SwipeCommitDeleteRow.tsx");
+assert.doesNotMatch(swipe, /closest\("a, button/);
 
 const list = read("src/components/FarmVisitsView.tsx");
 assert.match(list, /LoggedVisitTile/);

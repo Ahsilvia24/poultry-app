@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   createFeedDelivery,
   deleteFeedDelivery,
-  getFarmDetail,
+  getFarmFeedContext,
   getFeedDelivery,
   updateFeedDelivery,
 } from "../repos/data";
@@ -27,13 +27,26 @@ import { OptionPicker, SelectField } from "./OptionPicker";
 export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliveryId?: string }) {
   const router = useRouter();
   const editing = Boolean(deliveryId);
-  const detail = useMemo(() => {
+  const context = useMemo(() => {
     try {
-      return getFarmDetail(farmId);
+      return getFarmFeedContext(farmId);
     } catch {
-      return null;
+      return { flocks: [] as Array<{
+        id: string;
+        flockNumber: string;
+        status: string;
+        houses: Array<{ houseFlockId: string; houseNumber: number }>;
+      }> };
     }
   }, [farmId]);
+
+  function goToList() {
+    router.replace({
+      pathname: "/(tabs)/farms/[id]/feed",
+      params: { id: farmId },
+    });
+  }
+
   const initial = useMemo(() => {
     if (!deliveryId) return null;
     try {
@@ -43,7 +56,7 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
     }
   }, [deliveryId]);
 
-  const flocks = detail?.flocks ?? [];
+  const flocks = context.flocks;
   const defaultFlock =
     flocks.find((f) => f.status === "ACTIVE") ?? flocks[0] ?? null;
 
@@ -91,7 +104,7 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
       };
       if (deliveryId) updateFeedDelivery(deliveryId, payload);
       else createFeedDelivery(payload);
-      router.back();
+      goToList();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save feed delivery");
       setBusy(false);
@@ -110,10 +123,10 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
           keyboardShouldPersistTaps="handled"
         >
           <BackHeader
-            backLabel="Farm"
-            title={editing ? "Edit feed delivery" : "Record feed delivery"}
-            onBack={() => router.back()}
-            accessibilityLabel="Back to farm"
+            backLabel="Feed"
+            title={editing ? "Edit feed delivery" : "Log feed"}
+            onBack={goToList}
+            accessibilityLabel="Back to feed"
           />
           <Card>
             <DatePickerField
@@ -191,7 +204,7 @@ export function FeedFormScreen({ farmId, deliveryId }: { farmId: string; deliver
                 onPress={() => {
                   try {
                     deleteFeedDelivery(deliveryId);
-                    router.back();
+                    goToList();
                   } catch (e) {
                     setError(e instanceof Error ? e.message : "Could not delete feed delivery");
                   }

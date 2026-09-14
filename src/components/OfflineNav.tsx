@@ -12,7 +12,13 @@ import { ReplicaLink } from "@/components/ReplicaLink";
 import { SettingsScreen } from "@/components/SettingsScreen";
 import { ToolsView } from "@/components/ToolsView";
 import { FarmHistoryScreen } from "@/components/FarmHistoryScreen";
+import { FarmFeedFormView } from "@/components/FarmFeedFormView";
+import { FarmFeedView } from "@/components/FarmFeedView";
 import { FarmGeneratorsView } from "@/components/FarmGeneratorsView";
+import { FarmIssueFormView } from "@/components/FarmIssueFormView";
+import { FarmIssuesView } from "@/components/FarmIssuesView";
+import { FarmLitterFormView } from "@/components/FarmLitterFormView";
+import { FarmLitterView } from "@/components/FarmLitterView";
 import { FarmVisitFormView } from "@/components/FarmVisitFormView";
 import { FarmVisitsView } from "@/components/FarmVisitsView";
 import { ReportsView } from "@/components/ReportsView";
@@ -35,7 +41,10 @@ import {
   selectServiceFarmPicker,
   selectServiceFormPage,
 } from "@/lib/offline/selectServiceFarm";
+import { selectFeed, selectFeedDelivery } from "@/lib/offline/selectFeed";
 import { selectGenerators } from "@/lib/offline/selectGenerators";
+import { selectIssue, selectIssues } from "@/lib/offline/selectIssues";
+import { selectLitter, selectLitterEvent } from "@/lib/offline/selectLitter";
 import { selectVisit, selectVisits } from "@/lib/offline/selectVisits";
 import type { PlacementForm, PrebroodForm, ServiceReportForm } from "@/lib/serviceForms/types";
 
@@ -281,6 +290,136 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     const model = selectGenerators(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return <FarmGeneratorsView model={model} />;
+  }
+
+  const issuesNew = /^\/farms\/([^/]+)\/issues\/new$/.exec(pathname);
+  if (issuesNew && issuesNew[1] !== "new") {
+    const farmId = resolveAlias(aliases, issuesNew[1]);
+    const model = selectIssues(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    return (
+      <FarmIssueFormView farmId={model.farmId} flockId={model.activeFlockId} houses={model.houses} />
+    );
+  }
+
+  const issuesEdit = /^\/farms\/([^/]+)\/issues\/([^/]+)$/.exec(pathname);
+  if (issuesEdit && issuesEdit[1] !== "new" && issuesEdit[2] !== "new") {
+    const farmId = resolveAlias(aliases, issuesEdit[1]);
+    const model = selectIssues(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    const issue = selectIssue(snapshot, farmId, resolveAlias(aliases, issuesEdit[2]));
+    if (!issue) {
+      return (
+        <div>
+          <ReplicaLink
+            href={`/farms/${model.farmId}/issues`}
+            className="inline-flex min-h-11 items-center gap-1 text-base font-semibold text-emerald-800"
+          >
+            <BackCaret />
+            Issues
+          </ReplicaLink>
+          <p className="mt-4 text-sm font-semibold text-stone-800">This issue is not on the phone yet.</p>
+        </div>
+      );
+    }
+    return (
+      <FarmIssueFormView
+        farmId={model.farmId}
+        flockId={model.activeFlockId}
+        houses={model.houses}
+        issue={issue}
+      />
+    );
+  }
+
+  const issuesList = /^\/farms\/([^/]+)\/issues$/.exec(pathname);
+  if (issuesList && issuesList[1] !== "new") {
+    const farmId = resolveAlias(aliases, issuesList[1]);
+    const model = selectIssues(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    return <FarmIssuesView model={model} />;
+  }
+
+  const litterNew = /^\/farms\/([^/]+)\/litter\/new$/.exec(pathname);
+  if (litterNew && litterNew[1] !== "new") {
+    const farmId = resolveAlias(aliases, litterNew[1]);
+    const model = selectLitter(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    return <FarmLitterFormView farmId={model.farmId} houses={model.houses} />;
+  }
+
+  const litterEdit = /^\/farms\/([^/]+)\/litter\/([^/]+)$/.exec(pathname);
+  if (litterEdit && litterEdit[1] !== "new" && litterEdit[2] !== "new") {
+    const farmId = resolveAlias(aliases, litterEdit[1]);
+    const model = selectLitter(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    const event = selectLitterEvent(snapshot, farmId, resolveAlias(aliases, litterEdit[2]));
+    if (!event) {
+      return (
+        <div>
+          <ReplicaLink
+            href={`/farms/${model.farmId}/litter`}
+            className="inline-flex min-h-11 items-center gap-1 text-base font-semibold text-emerald-800"
+          >
+            <BackCaret />
+            Litter
+          </ReplicaLink>
+          <p className="mt-4 text-sm font-semibold text-stone-800">
+            This litter event is not on the phone yet.
+          </p>
+        </div>
+      );
+    }
+    return <FarmLitterFormView farmId={model.farmId} houses={model.houses} event={event} />;
+  }
+
+  const litterList = /^\/farms\/([^/]+)\/litter$/.exec(pathname);
+  if (litterList && litterList[1] !== "new") {
+    const farmId = resolveAlias(aliases, litterList[1]);
+    const model = selectLitter(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    return <FarmLitterView model={model} />;
+  }
+
+  const feedNew = /^\/farms\/([^/]+)\/feed\/new$/.exec(pathname);
+  if (feedNew && feedNew[1] !== "new") {
+    const farmId = resolveAlias(aliases, feedNew[1]);
+    const model = selectFeed(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    return <FarmFeedFormView farmId={model.farmId} farms={model.feedFarms} />;
+  }
+
+  const feedEdit = /^\/farms\/([^/]+)\/feed\/([^/]+)$/.exec(pathname);
+  if (feedEdit && feedEdit[1] !== "new" && feedEdit[2] !== "new") {
+    const farmId = resolveAlias(aliases, feedEdit[1]);
+    const model = selectFeed(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    const delivery = selectFeedDelivery(snapshot, farmId, resolveAlias(aliases, feedEdit[2]));
+    if (!delivery) {
+      return (
+        <div>
+          <ReplicaLink
+            href={`/farms/${model.farmId}/feed`}
+            className="inline-flex min-h-11 items-center gap-1 text-base font-semibold text-emerald-800"
+          >
+            <BackCaret />
+            Feed
+          </ReplicaLink>
+          <p className="mt-4 text-sm font-semibold text-stone-800">
+            This feed delivery is not on the phone yet.
+          </p>
+        </div>
+      );
+    }
+    return <FarmFeedFormView farmId={model.farmId} farms={model.feedFarms} delivery={delivery} />;
+  }
+
+  const feedList = /^\/farms\/([^/]+)\/feed$/.exec(pathname);
+  if (feedList && feedList[1] !== "new") {
+    const farmId = resolveAlias(aliases, feedList[1]);
+    const model = selectFeed(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    return <FarmFeedView model={model} />;
   }
 
   const serviceHome = /^\/farms\/([^/]+)\/service$/.exec(pathname);

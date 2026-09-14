@@ -2517,6 +2517,142 @@ export function listFarmVisits(farmId: string) {
     }));
 }
 
+export function listFarmIssues(farmId: string) {
+  const db = getDb();
+  return db
+    .getAllSync<{
+      id: string;
+      date_reported: string;
+      category: string;
+      priority: string;
+      status: string;
+      description: string;
+    }>(
+      "SELECT id, date_reported, category, priority, status, description FROM farm_issues WHERE farm_id = ? ORDER BY date_reported DESC, id DESC",
+      [farmId],
+    )
+    .map((issue) => ({
+      id: issue.id,
+      dateReported: issue.date_reported,
+      category: issue.category,
+      priority: issue.priority,
+      status: issue.status,
+      description: issue.description,
+    }));
+}
+
+export function listFarmLitterEvents(farmId: string) {
+  const db = getDb();
+  return db
+    .getAllSync<{
+      id: string;
+      event_date: string;
+      event_type: string;
+      house_number: number | null;
+    }>(
+      `SELECT e.id, e.event_date, e.event_type, h.house_number
+       FROM litter_events e
+       LEFT JOIN houses h ON h.id = e.house_id
+       WHERE e.farm_id = ?
+       ORDER BY e.event_date DESC, e.id DESC`,
+      [farmId],
+    )
+    .map((event) => ({
+      id: event.id,
+      eventDate: event.event_date,
+      eventType: event.event_type,
+      houseNumber: event.house_number,
+    }));
+}
+
+export function listFarmFeedDeliveries(farmId: string) {
+  const db = getDb();
+  return db
+    .getAllSync<{
+      id: string;
+      delivery_date: string;
+      pounds_delivered: number;
+      feed_type: string | null;
+    }>(
+      `SELECT d.id, d.delivery_date, d.pounds_delivered, d.feed_type
+       FROM feed_deliveries d
+       LEFT JOIN house_flocks hf ON hf.id = d.house_flock_id
+       LEFT JOIN flocks f ON f.id = COALESCE(d.flock_id, hf.flock_id)
+       WHERE f.farm_id = ?
+       ORDER BY d.delivery_date DESC, d.id DESC`,
+      [farmId],
+    )
+    .map((delivery) => ({
+      id: delivery.id,
+      deliveryDate: delivery.delivery_date,
+      poundsDelivered: delivery.pounds_delivered,
+      feedType: delivery.feed_type,
+    }));
+}
+
+export function getFarmLogHouses(farmId: string) {
+  const db = getDb();
+  return db
+    .getAllSync<{ id: string; house_number: number }>(
+      "SELECT id, house_number FROM houses WHERE farm_id = ? AND deleted_at IS NULL ORDER BY house_number ASC",
+      [farmId],
+    )
+    .map((house) => ({ id: house.id, houseNumber: house.house_number }));
+}
+
+export function getFarmActiveFlockId(farmId: string) {
+  const db = getDb();
+  return (
+    db.getFirstSync<{ id: string }>(
+      `SELECT id FROM flocks
+       WHERE farm_id = ? AND flock_status = 'ACTIVE'
+       ORDER BY placement_date ASC, flock_number ASC
+       LIMIT 1`,
+      [farmId],
+    )?.id ?? null
+  );
+}
+
+export function getFarmFeedContext(farmId: string) {
+  const db = getDb();
+  const farm = db.getFirstSync<{ id: string }>("SELECT id FROM farms WHERE id = ?", [farmId]);
+  if (!farm) throw new Error("Farm not found");
+  return {
+    flocks: db
+      .getAllSync<{
+        id: string;
+        flock_number: string;
+        flock_status: string;
+      }>(
+        `SELECT id, flock_number, flock_status FROM flocks
+         WHERE farm_id = ? ORDER BY placement_date DESC`,
+        [farmId],
+      )
+      .map((flock) => {
+        const houses = db.getAllSync<{
+          house_flock_id: string;
+          house_number: number;
+        }>(
+          `SELECT hf.id as house_flock_id, h.house_number
+           FROM house_flocks hf
+           JOIN houses h ON h.id = hf.house_id
+           WHERE hf.flock_id = ? AND h.deleted_at IS NULL
+           ORDER BY h.house_number ASC`,
+          [flock.id],
+        );
+        return {
+          id: flock.id,
+          flockNumber: flock.flock_number,
+          status: flock.flock_status,
+          houses: houses.map((house) => ({
+            houseFlockId: house.house_flock_id,
+            houseNumber: house.house_number,
+          })),
+        };
+      }),
+  };
+}
+
 export function getFarmVisitContext(farmId: string) {
   const db = getDb();
   const farm = db.getFirstSync<{ id: string }>("SELECT id FROM farms WHERE id = ?", [farmId]);

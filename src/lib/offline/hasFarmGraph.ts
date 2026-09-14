@@ -41,8 +41,7 @@ export function isReplicaHref(href: string): boolean {
     pathname,
   );
   if (farm && farm[1] !== "new") return true;
-  const visits = /^\/farms\/([^/]+)\/visits(?:\/([^/]+))?$/.exec(pathname);
-  if (visits && visits[1] !== "new") return true;
-  const generators = /^\/farms\/([^/]+)\/generators$/.exec(pathname);
-  return Boolean(generators && generators[1] !== "new");
+  const farmLogs =
+    /^\/farms\/([^/]+)\/(visits|generators|issues|litter|feed)(?:\/([^/]+))?$/.exec(pathname);
+  return Boolean(farmLogs && farmLogs[1] !== "new");
 }

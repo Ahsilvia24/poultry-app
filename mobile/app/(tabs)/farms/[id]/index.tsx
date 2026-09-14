@@ -22,11 +22,8 @@ import {
   completeFlock,
   createGeneratorLog,
   createHouse,
-  deleteFeedDelivery,
   deleteGeneratorLog,
   deleteHouse,
-  deleteIssue,
-  deleteLitterEvent,
   getFarmDetail,
   updateFarm,
   updateGeneratorLog,
@@ -41,10 +38,6 @@ import {
 } from "../../../../src/lib/farmNavContext";
 import { FARM_HOUSE_BACK_PEEK_PX, farmHouseBackScrollTop } from "../../../../src/lib/farmHouseScroll";
 import { useTabScrollToTop } from "../../../../src/lib/tabScroll";
-import {
-  ISSUE_CATEGORY_LABELS,
-  LITTER_EVENT_LABELS,
-} from "../../../../src/lib/opsLabels";
 import {
   detectGeneratorHourSwap,
   formatGeneratorChartsCopy,
@@ -121,15 +114,6 @@ function daysBetweenKeys(fromKey: string, toKey: string): number | null {
   return Math.round((b - a) / 86400000);
 }
 
-function formatShortDate(dateKey: string) {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  return new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0).toLocaleDateString(undefined, {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 function RecordLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} hitSlop={8}>
@@ -178,21 +162,6 @@ function SectionHeading({
     </View>
   );
 }
-
-/** Same size as generator hour readings. */
-const logEntryText = {
-  fontSize: 16,
-  lineHeight: 22,
-  fontWeight: "600" as const,
-  color: colors.text,
-};
-
-/** Same hit area as generator hour rows so the swipe Delete is the same size. */
-const logRowHit = {
-  minHeight: 38,
-  paddingVertical: 4,
-  justifyContent: "center" as const,
-};
 
 function SectionTop({ onPress }: { onPress: () => void }) {
   return (
@@ -1005,33 +974,6 @@ export default function FarmDetailScreen() {
     setOpsConfirm({ kind: "house", houseId: h.id, houseNumber: h.houseNumber });
   }
 
-  function removeIssue(issueId: string) {
-    try {
-      deleteIssue(farm.id, issueId);
-      load();
-    } catch (e) {
-      setOpsError(e instanceof Error ? e.message : "Could not delete");
-    }
-  }
-
-  function removeLitter(eventId: string) {
-    try {
-      deleteLitterEvent(farm.id, eventId);
-      load();
-    } catch (e) {
-      setOpsError(e instanceof Error ? e.message : "Could not delete");
-    }
-  }
-
-  function removeFeed(deliveryId: string) {
-    try {
-      deleteFeedDelivery(deliveryId);
-      load();
-    } catch (e) {
-      setOpsError(e instanceof Error ? e.message : "Could not delete");
-    }
-  }
-
   function removeGenerator(logId: string, hourKey: GenHourKey) {
     try {
       deleteGeneratorLog(farm.id, logId, hourKey);
@@ -1264,9 +1206,33 @@ export default function FarmDetailScreen() {
                         params: { id: farm.id },
                       }),
                   },
-                  { key: "issues", label: "Issues", onPress: () => scrollToSection("issues") },
-                  { key: "litter", label: "Litter", onPress: () => scrollToSection("litter") },
-                  { key: "feed", label: "Feed", onPress: () => scrollToSection("feed") },
+                  {
+                    key: "issues",
+                    label: "Issues",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/issues",
+                        params: { id: farm.id },
+                      }),
+                  },
+                  {
+                    key: "litter",
+                    label: "Litter",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/litter",
+                        params: { id: farm.id },
+                      }),
+                  },
+                  {
+                    key: "feed",
+                    label: "Feed",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/feed",
+                        params: { id: farm.id },
+                      }),
+                  },
                   {
                     key: "lfo",
                     label: "LFO",
@@ -1810,189 +1776,6 @@ export default function FarmDetailScreen() {
                 );
               })}
             </>
-          )}
-          <SectionTop onPress={scrollPageToTop} />
-        </View>
-
-        {/* ── Issues ── */}
-        <View onLayout={onSectionLayout("issues")}>
-          <SectionHeading
-            title="Recent Issues"
-            right={
-              <RecordLink
-                label="Log Issue"
-                onPress={() =>
-                  router.push({
-                    pathname: "/(tabs)/farms/[id]/report-issue",
-                    params: { id: farm.id },
-                  })
-                }
-              />
-            }
-          />
-          {data.issues.length === 0 ? (
-            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
-          ) : (
-            data.issues.map((issue, i) => (
-              <View
-                key={issue.id}
-                style={{
-                    marginTop: i === 0 ? 0 : 2,
-                    paddingTop: i === 0 ? 0 : 4,
-                    borderTopWidth: i === 0 ? 0 : 1,
-                    borderTopColor: "#f5f5f4",
-                }}
-              >
-                <SwipeCommitDeleteRow
-                  transparent
-                  onDelete={() => removeIssue(issue.id)}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(tabs)/farms/[id]/issues/[issueId]",
-                      params: { id: farm.id, issueId: issue.id },
-                    })
-                  }
-                >
-                  <View
-                    accessibilityRole="button"
-                    accessibilityLabel={`Edit issue ${formatShortDate(issue.dateReported)}`}
-                    style={logRowHit}
-                  >
-                    <Text style={logEntryText}>
-                      {formatShortDate(issue.dateReported)} · {issue.priority}
-                      <Text style={{ ...logEntryText, color: colors.muted }}>
-                        {" "}
-                        · {issue.status}
-                      </Text>
-                    </Text>
-                    <Text style={{ ...logEntryText, marginTop: 2 }}>
-                      {ISSUE_CATEGORY_LABELS[issue.category] ?? issue.category}:{" "}
-                      {issue.description}
-                    </Text>
-                  </View>
-                </SwipeCommitDeleteRow>
-              </View>
-            ))
-          )}
-          <SectionTop onPress={scrollPageToTop} />
-        </View>
-
-        {/* ── Litter ── */}
-        <View onLayout={onSectionLayout("litter")}>
-          <SectionHeading
-            title="Litter Events"
-            right={
-              <RecordLink
-                label="Log Litter"
-                onPress={() =>
-                  router.push({
-                    pathname: "/(tabs)/farms/[id]/record-litter",
-                    params: { id: farm.id },
-                  })
-                }
-              />
-            }
-          />
-          {data.litterEvents.length === 0 ? (
-            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
-          ) : (
-            data.litterEvents.map((e, i) => (
-              <View
-                key={e.id}
-                style={{
-                    marginTop: i === 0 ? 0 : 2,
-                    paddingTop: i === 0 ? 0 : 4,
-                    borderTopWidth: i === 0 ? 0 : 1,
-                    borderTopColor: "#f5f5f4",
-                }}
-              >
-                <SwipeCommitDeleteRow
-                  transparent
-                  onDelete={() => removeLitter(e.id)}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(tabs)/farms/[id]/litter/[eventId]",
-                      params: { id: farm.id, eventId: e.id },
-                    })
-                  }
-                >
-                  <View
-                    accessibilityRole="button"
-                    accessibilityLabel={`Edit litter event ${formatShortDate(e.eventDate)}`}
-                    style={logRowHit}
-                  >
-                    <Text style={logEntryText}>
-                      {formatShortDate(e.eventDate)} —{" "}
-                      {LITTER_EVENT_LABELS[e.eventType] ?? e.eventType}
-                      {e.houseNumber != null ? ` · House ${e.houseNumber}` : ""}
-                    </Text>
-                    {e.notes ? (
-                      <Text style={[styles.muted, { fontSize: 16, lineHeight: 22, marginTop: 2 }]}>
-                        {e.notes}
-                      </Text>
-                    ) : null}
-                  </View>
-                </SwipeCommitDeleteRow>
-              </View>
-            ))
-          )}
-          <SectionTop onPress={scrollPageToTop} />
-        </View>
-
-        {/* ── Feed ── */}
-        <View onLayout={onSectionLayout("feed")}>
-          <SectionHeading
-            title="Feed Deliveries"
-            right={
-              <RecordLink
-                label="Log Feed"
-                onPress={() =>
-                  router.push({
-                    pathname: "/(tabs)/farms/[id]/record-feed",
-                    params: { id: farm.id },
-                  })
-                }
-              />
-            }
-          />
-          {data.feedDeliveries.length === 0 ? (
-            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
-          ) : (
-            data.feedDeliveries.map((d, i) => (
-              <View
-                key={d.id}
-                style={{
-                    marginTop: i === 0 ? 0 : 2,
-                    paddingTop: i === 0 ? 0 : 4,
-                    borderTopWidth: i === 0 ? 0 : 1,
-                    borderTopColor: "#f5f5f4",
-                }}
-              >
-                <SwipeCommitDeleteRow
-                  transparent
-                  onDelete={() => removeFeed(d.id)}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(tabs)/farms/[id]/feed/[deliveryId]",
-                      params: { id: farm.id, deliveryId: d.id },
-                    })
-                  }
-                >
-                  <View
-                    accessibilityRole="button"
-                    accessibilityLabel={`Edit feed delivery ${formatShortDate(d.deliveryDate)}`}
-                    style={logRowHit}
-                  >
-                    <Text style={logEntryText}>
-                      {formatShortDate(d.deliveryDate)} — {formatNumber(d.poundsDelivered)} lbs
-                      {d.houseNumber != null ? ` · House ${d.houseNumber}` : ""}
-                      {d.feedType ? ` · ${d.feedType}` : ""}
-                      {d.feedMill ? ` · ${d.feedMill}` : ""}
-                    </Text>
-                  </View>
-                </SwipeCommitDeleteRow>
-              </View>
-            ))
           )}
           <SectionTop onPress={scrollPageToTop} />
         </View>
