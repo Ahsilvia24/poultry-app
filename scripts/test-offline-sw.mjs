@@ -11,7 +11,7 @@ assert.ok(existsSync(join(root, "public/sw.js")), "missing public/sw.js");
 assert.ok(existsSync(join(root, "public/offline.html")), "missing public/offline.html");
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v4/);
+assert.match(sw, /poultrytech-offline-v5/);
 assert.match(sw, /NETWORK_MS = 1500/);
 assert.match(sw, /addEventListener\("fetch"/);
 assert.match(sw, /request\.method !== "GET"/);
@@ -23,6 +23,8 @@ assert.match(sw, /adoptOldCaches/);
 assert.match(sw, /fetchWithTimeout/);
 assert.match(sw, /navigator\.onLine === false/);
 assert.match(sw, /\/offline\.html/);
+assert.match(sw, /cache\.match\("\/"\)\) \|\| \(await cache\.match\("\/offline\.html"\)\)/);
+assert.doesNotMatch(sw, /cache\.match\("\/login"\)/);
 assert.match(sw, /apple-touch-icon\.png/);
 assert.match(sw, /PRECACHE[\s\S]*"\/"/);
 assert.doesNotMatch(sw, /sql-wasm/);

@@ -11,11 +11,14 @@ export function isAuthDevBypassEnabled() {
   );
 }
 
+/** Stay signed in on this phone. Field techs should not re-enter a password every month. */
+export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 400;
+
 /** Edge/proxy-safe Auth.js config. No Prisma or bcrypt here. */
 export const authConfig = {
   trustHost: true,
   secret: process.env.AUTH_SECRET,
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS },
   pages: {
     signIn: "/login",
   },

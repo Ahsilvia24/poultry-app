@@ -107,8 +107,12 @@ export const auth: AuthFn = ((...args: unknown[]) => {
       }
       if (!session?.user?.id) return null;
       if (isAuthDevBypassEnabled()) return session;
-      const active = await isActiveSession(session.user.id, session.user.sessionId);
-      if (!active) return null;
+      try {
+        const active = await isActiveSession(session.user.id, session.user.sessionId);
+        if (!active) return null;
+      } catch {
+        return session;
+      }
       return session;
     } catch {
       return null;

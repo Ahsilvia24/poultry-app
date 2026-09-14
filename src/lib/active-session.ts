@@ -10,7 +10,47 @@ export function sessionMatches(
   return Boolean(presented && presented === activeSessionId);
 }
 
+export type SessionLookup = { ok: true; activeSessionId: string | null } | { ok: false };
+
+/** DB blips must not look like a sign-out. Only a proven mismatch kicks the phone. */
+export function decideActiveSession(
+  lookup: SessionLookup,
+  presented: string | null | undefined,
+) {
+  if (!lookup.ok) return true;
+  return sessionMatches(lookup.activeSessionId, presented);
+}
+
+/** Same phone signing in again keeps the current session so this app stays logged in. */
+export function reuseExistingSessionId(
+  activeSessionId: string | null | undefined,
+  activeDeviceId: string | null | undefined,
+  deviceId: string | null | undefined,
+) {
+  if (
+    typeof activeSessionId === "string" &&
+    activeSessionId.length > 0 &&
+    isDeviceId(deviceId) &&
+    activeDeviceId === deviceId
+  ) {
+    return activeSessionId;
+  }
+  return null;
+}
+
 export async function rotateActiveSession(userId: string, deviceId?: string | null) {
+  if (isDeviceId(deviceId)) {
+    const current = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { activeSessionId: true, activeDeviceId: true },
+    });
+    const reuse = reuseExistingSessionId(
+      current?.activeSessionId,
+      current?.activeDeviceId,
+      deviceId,
+    );
+    if (reuse) return reuse;
+  }
   const sessionId = crypto.randomUUID();
   await prisma.user.update({
     where: { id: userId },
@@ -46,12 +86,16 @@ export async function isActiveSession(
   userId: string,
   presented: string | null | undefined,
 ) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { activeSessionId: true },
-  });
-  if (!user) return false;
-  return sessionMatches(user.activeSessionId, presented);
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { activeSessionId: true },
+    });
+    if (!user) return false;
+    return decideActiveSession({ ok: true, activeSessionId: user.activeSessionId }, presented);
+  } catch {
+    return decideActiveSession({ ok: false }, presented);
+  }
 }
 
 export async function clearActiveSession(userId: string, presented: string | null | undefined) {

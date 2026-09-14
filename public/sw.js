@@ -6,7 +6,7 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v4";
+const CACHE = "poultrytech-offline-v5";
 const NETWORK_MS = 1500;
 
 const PRECACHE = [
@@ -92,7 +92,7 @@ async function cachedFallback(request) {
   if (page) return page;
   if (isNavigation(request)) {
     const fallback =
-      (await cache.match("/login")) || (await cache.match("/offline.html"));
+      (await cache.match("/")) || (await cache.match("/offline.html"));
     if (fallback) return fallback;
     return new Response(
       "PoultryTech needs to download once on Wi-Fi, then it can open without service.",
