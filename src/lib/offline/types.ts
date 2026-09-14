@@ -168,6 +168,14 @@ export type OfflineServiceForm = {
   createdAt: string;
 };
 
+export type OfflineFollowUpCompletion = {
+  farmId: string;
+  flockId?: string | null;
+  date: string;
+  label: string;
+  completedAt: string;
+};
+
 export type OfflineSettings = {
   farmOrder: string;
   appTimeZone: string;
@@ -269,6 +277,7 @@ export type OfflineSnapshot = {
   generatorLogs: OfflineGenLog[];
   serviceFormDrafts?: OfflineServiceFormDraft[];
   serviceForms?: OfflineServiceForm[];
+  followUpCompletions?: OfflineFollowUpCompletion[];
   dashboard: Awaited<ReturnType<typeof getDashboardData>> | null;
 };
 

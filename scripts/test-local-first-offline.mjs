@@ -503,6 +503,7 @@ const settlementPage = read("src/app/(dashboard)/settlement/page.tsx");
 assert.match(settlementPage, /redirect\("\/"\)/);
 assert.doesNotMatch(read("src/components/FarmHistoryView.tsx"), /SettlementForm/);
 assert.match(read("src/lib/offline/buildSnapshot.ts"), /serviceForms/);
+assert.match(read("src/lib/offline/buildSnapshot.ts"), /followUpCompletions/);
 assert.match(read("src/components/AddFlockSection.tsx"), /createFlock/);
 assert.match(read("src/components/serviceForms/useServiceFormSave.ts"), /saveServiceDraft/);
 assert.match(read("src/components/OfflineNav.tsx"), /selectServiceFarmPicker/);

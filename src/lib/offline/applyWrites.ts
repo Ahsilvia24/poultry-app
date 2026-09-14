@@ -4,6 +4,7 @@ import { birdAgeFromPlacement, calcTotalDailyLoss } from "@/lib/mortality/calcul
 import { isHouseInPropagateRange } from "@/lib/housePropagate";
 import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
 import { asDate, asDateKey } from "@/lib/offline/dates";
+import { upsertFollowUpCompletion } from "@/lib/offline/followUpCompletions";
 import {
   isLocalRecordId,
   localCreatedHouseFlockId,
@@ -107,6 +108,23 @@ function patchDashboardFollowUp(
     }) as typeof list;
   }
   return { ...snapshot, dashboard };
+}
+
+function applyFollowUpToggle(
+  snapshot: OfflineSnapshot,
+  extra: {
+    farmId: string;
+    date: string;
+    label: string;
+    completed: boolean;
+    flockId?: string | null;
+  },
+): OfflineSnapshot {
+  const next = {
+    ...snapshot,
+    followUpCompletions: upsertFollowUpCompletion(snapshot.followUpCompletions, extra),
+  };
+  return patchDashboardFollowUp(next, extra);
 }
 
 function formFlag(fields: Record<string, string>, name: string) {
@@ -956,8 +974,9 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
         date: string;
         label: string;
         completed: boolean;
+        flockId?: string | null;
       };
-      return patchDashboardFollowUp(snapshot, extra);
+      return applyFollowUpToggle(snapshot, extra);
     }
     case "createFlock": {
       const farmId = write.farmId ?? fields.farmId ?? "";

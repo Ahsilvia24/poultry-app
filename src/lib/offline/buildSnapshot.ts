@@ -2,6 +2,7 @@ import { getDashboardData } from "@/lib/dashboard";
 import { ensureActiveFlockHouseFlocks } from "@/lib/ensureActiveFlockHouseFlocks";
 import { prisma } from "@/lib/prisma";
 import { dateKeyOrNull, isoOrNull } from "@/lib/offline/dates";
+import { dateKeyFromDb } from "@/lib/visits/schedule";
 import { jsonSafe } from "@/lib/offline/json";
 import {
   OFFLINE_SNAPSHOT_VERSION,
@@ -71,6 +72,7 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
     generatorLogs,
     serviceForms,
     serviceFormDrafts,
+    followUpCompletions,
   ] = await Promise.all([
       houseFlockIds.length
         ? prisma.dailyMortality.findMany({
@@ -122,6 +124,11 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
       farmIds.length
         ? prisma.serviceFormDraft.findMany({
             where: { farmId: { in: farmIds } },
+          })
+        : Promise.resolve([]),
+      farmIds.length
+        ? prisma.followUpCompletion.findMany({
+            where: { farmId: { in: farmIds }, NOT: { status: "DISMISSED" } },
           })
         : Promise.resolve([]),
     ]);
@@ -286,6 +293,13 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
       payload: row.payload,
       visitId: row.visitId,
       createdAt: row.createdAt.toISOString(),
+    })),
+    followUpCompletions: followUpCompletions.map((row) => ({
+      farmId: row.farmId,
+      flockId: row.flockId,
+      date: dateKeyFromDb(row.scheduledDate),
+      label: row.label,
+      completedAt: row.completedAt.toISOString(),
     })),
     dashboard,
   });

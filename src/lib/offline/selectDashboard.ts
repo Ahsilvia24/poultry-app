@@ -1,15 +1,18 @@
-import { addDays, format, startOfDay } from "date-fns";
+import { addDays, differenceInCalendarDays, format, startOfDay, subDays } from "date-fns";
 import { appToday, appTodayKey } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { dedupeScheduleRows, scheduleGroupsForFarm } from "@/lib/flockIdentity";
 import type { getDashboardData } from "@/lib/dashboard";
 import { asDateKey, localNoonFromKey } from "@/lib/offline/dates";
+import {
+  bindCompletionsToSchedule,
+  gatherFollowUpCompletions,
+} from "@/lib/offline/followUpCompletions";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import type { OfflineFlockRef, OfflineSnapshot } from "@/lib/offline/types";
 import { DEFAULT_THRESHOLDS, daysSincePlacement } from "@/lib/mortality/calculations";
 import {
   buildFlockVisitSchedule,
-  completionKey,
   resolveCatchDate,
   splitScheduleForDashboard,
   todayScheduleRankFromLabel,
@@ -69,18 +72,6 @@ function flockCatchKey(flock: OfflineFlockRef) {
   );
 }
 
-function completionsForFarm(dashboard: DashboardData | null | undefined, farmId: string) {
-  const map = new Map<string, { completedAt: Date }>();
-  if (!dashboard) return map;
-  const stamped = new Date();
-  for (const row of [...dashboard.todaysSchedule, ...dashboard.upcomingSchedule]) {
-    if (row.farmId !== farmId || !row.completed) continue;
-    const label = row.label === "Weight Projection" ? "Weight Proj." : row.label;
-    map.set(completionKey(row.date, label), { completedAt: stamped });
-  }
-  return map;
-}
-
 function liveFarms(snapshot: OfflineSnapshot) {
   return snapshot.farms.filter((farm) => farm.isActive && !farm.deletedAt);
 }
@@ -110,10 +101,17 @@ export function rebuildDashboardScheduleFromReplica(
   const upcomingSchedule: ScheduleRow[] = [];
   const upcomingCatches: CatchRow[] = [];
   const seenFarmCatchKeys = new Set<string>();
+  const gathered = gatherFollowUpCompletions(snapshot.followUpCompletions, [
+    ...(source?.todaysSchedule ?? []),
+    ...(source?.upcomingSchedule ?? []),
+  ]);
+  const todayStart = startOfDay(today);
+  const horizonDays = Math.max(0, differenceInCalendarDays(horizon, todayStart));
+  const overdueStart = format(subDays(todayStart, horizonDays), "yyyy-MM-dd");
+  const endKey = format(startOfDay(horizon), "yyyy-MM-dd");
 
   for (const farm of liveFarms(snapshot)) {
     const activeFlocks = activeFlocksForFarm(snapshot, farm.id);
-    const farmCompletions = completionsForFarm(source, farm.id);
     const scheduleGroups = scheduleGroupsForFarm(
       activeFlocks.map((flock) => ({
         id: flock.id,
@@ -128,10 +126,26 @@ export function rebuildDashboardScheduleFromReplica(
           })),
       })),
     );
-    for (const group of scheduleGroups) {
+    const groupSchedules = scheduleGroups.map((group) => {
       const placement = localNoonFromKey(group.placementDate);
       const groupCatch = localNoonFromKey(group.catchDate);
-      const schedule = buildFlockVisitSchedule(placement, groupCatch);
+      return {
+        group,
+        placement,
+        schedule: buildFlockVisitSchedule(placement, groupCatch),
+      };
+    });
+    const windowItems = groupSchedules.flatMap(({ group, schedule }) =>
+      schedule
+        .filter((visit) => visit.dateKey >= overdueStart && visit.dateKey <= endKey)
+        .map((visit) => ({
+          dateKey: visit.dateKey,
+          label: visit.label,
+          flockId: group.flockId,
+        })),
+    );
+    const farmCompletions = bindCompletionsToSchedule(windowItems, gathered, farm.id);
+    for (const { group, placement, schedule } of groupSchedules) {
       const { today: dueToday, upcoming } = splitScheduleForDashboard(
         schedule,
         today,
