@@ -14,7 +14,7 @@ import {
   SettingsValueChip,
   handleSettingsLayoutEnter,
 } from "@/components/SettingsLayout";
-import { Button, Card, Label } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSectionChrome";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
@@ -62,6 +62,11 @@ function dateLabelFromKey(logDate: string) {
 
 function hoursOrEmpty(value: number | null | undefined) {
   return value == null ? "" : String(value);
+}
+
+function localTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function ClipboardIcon({ className }: { className?: string }) {
@@ -221,9 +226,7 @@ function GeneratorLogForm({
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [swap, setSwap] = useState<GeneratorHourSwapSuggestion | null>(null);
-  const [logDate, setLogDate] = useState(
-    initial?.logDate ?? new Date().toISOString().slice(0, 10),
-  );
+  const [logDate, setLogDate] = useState(initial?.logDate ?? localTodayKey());
   const [gen1, setGen1] = useState(hoursOrEmpty(initial?.gen1Hours));
   const [gen2, setGen2] = useState(hoursOrEmpty(initial?.gen2Hours));
   const [gen3, setGen3] = useState(hoursOrEmpty(initial?.gen3Hours));
@@ -336,18 +339,18 @@ function GeneratorLogForm({
     >
       <input type="hidden" name="farmId" value={farmId} />
       {onlyGen ? <input type="hidden" name="onlyGen" value={onlyGen} /> : null}
-      <div className="min-w-0 overflow-hidden">
-        <Label htmlFor="gen-logDate">Date logged</Label>
-        <DateKeyField
-          id="gen-logDate"
-          name="logDate"
-          label="Date logged"
-          value={logDate}
-          onChange={setLogDate}
-          required
-        />
-      </div>
       <div className="space-y-1">
+        <SettingsFieldRow label="Date logged" htmlFor="gen-logDate">
+          <DateKeyField
+            id="gen-logDate"
+            name="logDate"
+            label="Date logged"
+            value={logDate}
+            onChange={setLogDate}
+            required
+            variant="settings"
+          />
+        </SettingsFieldRow>
         {visibleFields.map((field) => {
           const [value, setValue] = fieldState[field.hourKey];
           const delta = hoursDelta(

@@ -2749,9 +2749,10 @@ export default function FarmDetailScreen() {
                     {generatorError}
                   </Text>
                 ) : null}
-                <View style={{ marginTop: 14, marginBottom: 10 }}>
+                <View style={{ marginTop: 14, marginBottom: 4 }}>
                   <DatePickerField
                     label="Date logged"
+                    layout="settings"
                     value={generatorDraft.logDate}
                     presentation="inline"
                     onChange={(date) =>

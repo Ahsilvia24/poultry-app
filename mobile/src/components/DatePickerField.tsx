@@ -6,6 +6,7 @@ import DateTimePicker, {
 import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
 import { todayKey } from "../lib/ids";
+import { SettingsRow, settingsValueChip, settingsValueText } from "./SettingsLayout";
 import { WebPortalOverlay } from "./WebPortalOverlay";
 
 const MONTHS_SHORT = [
@@ -222,6 +223,7 @@ export function DatePickerField({
   expanded,
   style,
   inputStyle,
+  layout = "default",
 }: {
   label: string;
   value: string;
@@ -235,6 +237,8 @@ export function DatePickerField({
   style?: object;
   /** Extra styles on the value box (e.g. drop bottom margin when a control sits under it). */
   inputStyle?: object;
+  /** Settings layout: label left, grey date chip right. Calendar still pops up. */
+  layout?: "default" | "settings";
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseDateKey(value));
@@ -276,6 +280,7 @@ export function DatePickerField({
 
   const draftKey = toDateKey(draft);
   const pickerValue = safePickerDate(draft);
+  const isSettings = layout === "settings";
 
   const calendarBody = isWeb ? (
     <WebMonthCalendar value={pickerValue} onSelect={selectWebDate} />
@@ -289,42 +294,60 @@ export function DatePickerField({
     />
   );
 
+  const trigger = (
+    <Pressable
+      onPress={openPicker}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${formatDisplayDate(value)}. Opens calendar`}
+      style={
+        isSettings
+          ? [settingsValueChip, { minWidth: 116 }]
+          : [
+              styles.input,
+              {
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 6,
+              },
+              inputStyle,
+            ]
+      }
+    >
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+        style={
+          isSettings
+            ? settingsValueText
+            : {
+                flex: 1,
+                minWidth: 0,
+                fontWeight: "700",
+                color: value ? colors.text : colors.muted,
+                fontSize: 16,
+              }
+        }
+      >
+        {formatDisplayDate(value)}
+      </Text>
+      {isSettings ? null : <Ionicons name="calendar-outline" size={20} color={colors.muted} />}
+    </Pressable>
+  );
+
   return (
     <View style={style}>
-      <Text style={styles.label} numberOfLines={2}>
-        {label}
-      </Text>
-      <Pressable
-        onPress={openPicker}
-        accessibilityRole="button"
-        accessibilityLabel={`${label}, ${formatDisplayDate(value)}. Opens calendar`}
-        style={[
-          styles.input,
-          {
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 6,
-          },
-          inputStyle,
-        ]}
-      >
-        <Text
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.75}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            fontWeight: "700",
-            color: value ? colors.text : colors.muted,
-            fontSize: 16,
-          }}
-        >
-          {formatDisplayDate(value)}
-        </Text>
-        <Ionicons name="calendar-outline" size={20} color={colors.muted} />
-      </Pressable>
+      {isSettings ? (
+        <SettingsRow label={label}>{trigger}</SettingsRow>
+      ) : (
+        <>
+          <Text style={styles.label} numberOfLines={2}>
+            {label}
+          </Text>
+          {trigger}
+        </>
+      )}
 
       {Platform.OS === "android" && open ? (
         <DateTimePicker

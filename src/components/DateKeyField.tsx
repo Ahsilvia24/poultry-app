@@ -27,6 +27,7 @@ export function DateKeyField({
   onChange,
   className,
   required,
+  variant = "default",
 }: {
   id: string;
   name?: string;
@@ -35,6 +36,8 @@ export function DateKeyField({
   onChange: (next: string) => void;
   className?: string;
   required?: boolean;
+  /** Settings layout: grey chip on the right. Calendar still pops up. */
+  variant?: "default" | "settings";
 }) {
   const [open, setOpen] = useState(false);
   const selected = parseDateKey(value);
@@ -60,6 +63,7 @@ export function DateKeyField({
   const monthLabel = cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" });
   const selectedKey = value || "";
   const today = todayKey();
+  const isSettings = variant === "settings";
 
   return (
     <div className={className}>
@@ -72,17 +76,23 @@ export function DateKeyField({
           setCursor(new Date(selected.getFullYear(), selected.getMonth(), 1));
           setOpen(true);
         }}
-        className="flex h-11 w-full min-w-0 max-w-full items-center justify-between gap-2 rounded-lg border border-stone-300 bg-white px-2.5 text-left text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+        className={
+          isSettings
+            ? "flex h-9 min-w-[7.25rem] items-center justify-end rounded-lg bg-stone-200 px-2.5 text-right text-[15px] font-semibold leading-none text-stone-900 outline-none"
+            : "flex h-11 w-full min-w-0 max-w-full items-center justify-between gap-2 rounded-lg border border-stone-300 bg-white px-2.5 text-left text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+        }
       >
         <span className={`min-w-0 truncate ${value ? "text-stone-900" : "text-stone-400"}`}>
           {value ? formatInputDate(value) : "Select date"}
         </span>
-        <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-stone-400">
-          <path
-            fill="currentColor"
-            d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Zm12 8H5v10h14V10Z"
-          />
-        </svg>
+        {isSettings ? null : (
+          <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-stone-400">
+            <path
+              fill="currentColor"
+              d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Zm12 8H5v10h14V10Z"
+            />
+          </svg>
+        )}
       </button>
 
       {open ? (
