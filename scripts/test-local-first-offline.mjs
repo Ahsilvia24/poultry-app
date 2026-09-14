@@ -512,6 +512,8 @@ assert.match(read("src/components/WeightProjectionTile.tsx"), /updateWeightProje
 assert.match(read("src/components/DashboardFarmCards.tsx"), /deactivateFarm/);
 assert.match(read("src/components/OfflineNav.tsx"), /selectMortality/);
 assert.match(read("src/components/OfflineNav.tsx"), /DashboardHome/);
+assert.match(read("src/components/OfflineNav.tsx"), /selectDashboard/);
+assert.match(read("src/components/DashboardHome.tsx"), /selectDashboard/);
 assert.match(read("src/components/OfflineNav.tsx"), /pathname === "\/"/);
 assert.match(read("src/components/ui.tsx"), /export function BackCaret/);
 assert.match(read("src/components/FarmDetailView.tsx"), /BackCaret/);
