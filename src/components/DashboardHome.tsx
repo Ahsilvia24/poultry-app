@@ -11,6 +11,7 @@ import { ScrollableFarmList } from "@/components/ScrollableFarmList";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOffline } from "@/components/OfflineProvider";
 import type { getDashboardData } from "@/lib/dashboard";
+import { selectDashboard } from "@/lib/offline/selectDashboard";
 import type { ScheduleImportMeta } from "@/lib/schedule-import-types";
 
 function catchFarmHref(
@@ -41,7 +42,7 @@ export function DashboardHome({
   scheduleImports: ScheduleImportMeta[];
 }) {
   const { snapshot } = useOffline();
-  const data = snapshot?.dashboard ?? initial;
+  const data = selectDashboard(snapshot, initial);
 
   return (
     <div>

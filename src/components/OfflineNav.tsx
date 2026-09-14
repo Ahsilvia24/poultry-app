@@ -22,6 +22,7 @@ import { useOffline } from "@/components/OfflineProvider";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { replicaPath, snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import { resolveAlias } from "@/lib/offline/remapIds";
+import { selectDashboard } from "@/lib/offline/selectDashboard";
 import { selectFarmDetail } from "@/lib/offline/selectFarmDetail";
 import { selectFarmTiles } from "@/lib/offline/selectFarms";
 import { selectLfo, selectLfoEdit } from "@/lib/offline/selectLfo";
@@ -66,7 +67,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
   const farmIdParam = rawFarmId ? resolveAlias(aliases, rawFarmId) : null;
 
   if (pathname === "/") {
-    return <DashboardHome initial={snapshot.dashboard} scheduleImports={[]} />;
+    return <DashboardHome initial={selectDashboard(snapshot)} scheduleImports={[]} />;
   }
 
   if (pathname === "/farms") {
