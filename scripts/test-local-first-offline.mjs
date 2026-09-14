@@ -301,6 +301,11 @@ assert.equal(tiles.length, 1);
 assert.equal(tiles[0].houseCount, 2);
 assert.ok(tiles[0].flockAges.length > 0);
 
+const deletedFarm = applyFormWrite(snapshot, { action: "deleteFarm", farmId: "farm-1" });
+assert.ok(deletedFarm.farms[0]?.deletedAt);
+assert.equal(selectFarmTiles(deletedFarm).length, 0);
+assert.equal(selectFarmDetail(deletedFarm, "farm-1"), null);
+
 const detail = selectFarmDetail(snapshot, "farm-1");
 assert.ok(detail);
 assert.equal(detail.farm.farmName, "Oak Ridge");
@@ -511,7 +516,8 @@ assert.match(read("src/components/OfflineNav.tsx"), /pathname === "\/"/);
 assert.match(read("src/components/ui.tsx"), /export function BackCaret/);
 assert.match(read("src/components/FarmDetailView.tsx"), /BackCaret/);
 assert.doesNotMatch(read("src/components/AddFlockSection.tsx"), /Processing plant/);
-assert.match(read("src/components/AddFlockSection.tsx"), /Propagate \(to the rest of the houses\)/);
+assert.match(read("src/components/AddFlockSection.tsx"), />Propagate</);
+assert.match(read("src/components/AddFlockSection.tsx"), /onPropagateChange/);
 assert.match(read("src/components/MortalityEntryForm.tsx"), /setMortField\(\{ kind: "mortality", age: jumpTo\.age \}\)/);
 assert.match(read("src/components/MortalityEntryForm.tsx"), /useReplicaNavigate/);
 assert.match(read("src/components/MortalityEntryForm.tsx"), /openReplica\(`/);

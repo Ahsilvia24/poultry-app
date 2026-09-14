@@ -27,6 +27,7 @@ import {
 import { DateKeyField, DateKeyInput } from "@/components/DateKeyField";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
+import { useOfflineNav } from "@/components/OfflineNavContext";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 export type VisitFormValues = {
@@ -691,6 +692,8 @@ export function DeleteFarmButton({
 }) {
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
+  const { enabled, queue } = useReplicaWrite();
+  const nav = useOfflineNav();
 
   return (
     <>
@@ -741,6 +744,12 @@ export function DeleteFarmButton({
                 disabled={pending}
                 onClick={() => {
                   start(async () => {
+                    if (enabled) {
+                      queue(formWrite("deleteFarm", { farmId }));
+                      setOpen(false);
+                      nav?.navigate("/farms");
+                      return;
+                    }
                     await deleteFarmAction(farmId);
                   });
                 }}

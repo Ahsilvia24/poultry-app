@@ -17,21 +17,23 @@ export type OfflineFarmTile = {
 export function selectFarmTiles(snapshot: OfflineSnapshot): OfflineFarmTile[] {
   const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
   const today = appToday(undefined, timeZone);
-  const tiles = snapshot.farms.map((farm) => {
-    const ages = snapshot.flocks
-      .filter((flock) => flock.farmId === farm.id && flock.flockStatus === "ACTIVE" && !flock.deletedAt)
-      .map((flock) => daysSincePlacement(new Date(flock.placementDate), today, timeZone));
-    return {
-      id: farm.id,
-      farmName: farm.farmName,
-      growerName: farm.growerName,
-      phoneNumber: farm.phoneNumber,
-      isActive: farm.isActive,
-      houseCount:
-        snapshot.houses?.filter((house) => house.farmId === farm.id && !house.deletedAt).length ||
-        farm.numberOfHouses,
-      flockAges: Array.from(new Set(ages)).sort((a, b) => a - b),
-    };
-  });
+  const tiles = snapshot.farms
+    .filter((farm) => !farm.deletedAt)
+    .map((farm) => {
+      const ages = snapshot.flocks
+        .filter((flock) => flock.farmId === farm.id && flock.flockStatus === "ACTIVE" && !flock.deletedAt)
+        .map((flock) => daysSincePlacement(new Date(flock.placementDate), today, timeZone));
+      return {
+        id: farm.id,
+        farmName: farm.farmName,
+        growerName: farm.growerName,
+        phoneNumber: farm.phoneNumber,
+        isActive: farm.isActive,
+        houseCount:
+          snapshot.houses?.filter((house) => house.farmId === farm.id && !house.deletedAt).length ||
+          farm.numberOfHouses,
+        flockAges: Array.from(new Set(ages)).sort((a, b) => a - b),
+      };
+    });
   return sortFarmsByOrder(tiles, parseFarmOrder(snapshot.settings?.farmOrder));
 }
