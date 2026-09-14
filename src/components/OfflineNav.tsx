@@ -12,6 +12,8 @@ import { ReplicaLink } from "@/components/ReplicaLink";
 import { SettingsScreen } from "@/components/SettingsScreen";
 import { ToolsView } from "@/components/ToolsView";
 import { FarmHistoryScreen } from "@/components/FarmHistoryScreen";
+import { FarmVisitFormView } from "@/components/FarmVisitFormView";
+import { FarmVisitsView } from "@/components/FarmVisitsView";
 import { ReportsView } from "@/components/ReportsView";
 import { PlacementFormView } from "@/components/serviceForms/PlacementFormView";
 import { PrebroodFormView } from "@/components/serviceForms/PrebroodFormView";
@@ -32,6 +34,7 @@ import {
   selectServiceFarmPicker,
   selectServiceFormPage,
 } from "@/lib/offline/selectServiceFarm";
+import { selectVisit, selectVisits } from "@/lib/offline/selectVisits";
 import type { PlacementForm, PrebroodForm, ServiceReportForm } from "@/lib/serviceForms/types";
 
 export { OfflineNavProvider, useOfflineNav } from "@/components/OfflineNavContext";
@@ -216,6 +219,58 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
         fresh={page.fresh}
       />
     );
+  }
+
+  const visitsNew = /^\/farms\/([^/]+)\/visits\/new$/.exec(pathname);
+  if (visitsNew && visitsNew[1] !== "new") {
+    const farmId = resolveAlias(aliases, visitsNew[1]);
+    const model = selectVisits(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    return (
+      <FarmVisitFormView
+        farmId={model.farmId}
+        flockId={model.activeFlockId}
+        placementDate={model.activePlacementDate}
+      />
+    );
+  }
+
+  const visitsEdit = /^\/farms\/([^/]+)\/visits\/([^/]+)$/.exec(pathname);
+  if (visitsEdit && visitsEdit[1] !== "new" && visitsEdit[2] !== "new") {
+    const farmId = resolveAlias(aliases, visitsEdit[1]);
+    const model = selectVisits(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    const visit = selectVisit(snapshot, farmId, resolveAlias(aliases, visitsEdit[2]));
+    if (!visit) {
+      return (
+        <div>
+          <ReplicaLink
+            href={`/farms/${model.farmId}/visits`}
+            className="inline-flex min-h-11 items-center gap-1 text-base font-semibold text-emerald-800"
+          >
+            <BackCaret />
+            Visits
+          </ReplicaLink>
+          <p className="mt-4 text-sm font-semibold text-stone-800">This visit is not on the phone yet.</p>
+        </div>
+      );
+    }
+    return (
+      <FarmVisitFormView
+        farmId={model.farmId}
+        flockId={model.activeFlockId}
+        placementDate={model.activePlacementDate}
+        visit={visit}
+      />
+    );
+  }
+
+  const visitsList = /^\/farms\/([^/]+)\/visits$/.exec(pathname);
+  if (visitsList && visitsList[1] !== "new") {
+    const farmId = resolveAlias(aliases, visitsList[1]);
+    const model = selectVisits(snapshot, farmId);
+    if (!model) return <ReplicaFarmMissing farmId={farmId} />;
+    return <FarmVisitsView model={model} />;
   }
 
   const serviceHome = /^\/farms\/([^/]+)\/service$/.exec(pathname);

@@ -2489,6 +2489,56 @@ export function createVisit(input: VisitInput) {
   return { id, birdAgeInDays: age };
 }
 
+export function listFarmVisits(farmId: string) {
+  const db = getDb();
+  return db
+    .getAllSync<{
+      id: string;
+      visit_date: string;
+      visit_type: string;
+      bird_age_in_days: number | null;
+      general_bird_condition: string | null;
+      notes: string | null;
+      follow_up_required: number;
+      follow_up_date: string | null;
+    }>(
+      "SELECT * FROM farm_visits WHERE farm_id = ? ORDER BY visit_date DESC, id DESC",
+      [farmId],
+    )
+    .map((v) => ({
+      id: v.id,
+      visitDate: v.visit_date,
+      visitType: v.visit_type,
+      birdAgeInDays: v.bird_age_in_days,
+      generalBirdCondition: v.general_bird_condition,
+      notes: v.notes,
+      followUpRequired: v.follow_up_required === 1,
+      followUpDate: v.follow_up_date,
+    }));
+}
+
+export function getFarmVisitContext(farmId: string) {
+  const db = getDb();
+  const farm = db.getFirstSync<{ id: string }>("SELECT id FROM farms WHERE id = ?", [farmId]);
+  if (!farm) throw new Error("Farm not found");
+  const flock = db.getFirstSync<{
+    id: string;
+    placement_date: string;
+  }>(
+    `SELECT id, placement_date FROM flocks
+     WHERE farm_id = ? AND flock_status = 'ACTIVE'
+     ORDER BY placement_date ASC, flock_number ASC
+     LIMIT 1`,
+    [farmId],
+  );
+  return {
+    farmId,
+    activeFlock: flock
+      ? { id: flock.id, placementDate: flock.placement_date }
+      : null,
+  };
+}
+
 export function getVisit(farmId: string, visitId: string) {
   const db = getDb();
   const v = db.getFirstSync<{

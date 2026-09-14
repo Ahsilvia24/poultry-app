@@ -15,12 +15,10 @@ import { FarmFeedSection } from "@/components/FarmFeedSection";
 import { FarmGeneratorLogSection } from "@/components/FarmGeneratorLogSection";
 import { FarmIssuesSection } from "@/components/FarmIssuesSection";
 import { FarmLitterSection } from "@/components/FarmLitterSection";
-import { FarmVisitsSection } from "@/components/FarmVisitsSection";
 import { BackCaret, Card } from "@/components/ui";
 import { appTodayKey } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import type { FarmDetailModel } from "@/lib/offline/selectFarmDetail";
-import type { VisitType } from "@prisma/client";
 
 export function FarmDetailView({
   model,
@@ -111,16 +109,6 @@ export function FarmDetailView({
       />
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <FarmVisitsSection
-          farmId={farm.id}
-          flockId={model.activeFlockId ?? undefined}
-          placementDate={model.activePlacementDate}
-          visits={model.visits.map((visit) => ({
-            ...visit,
-            visitType: visit.visitType as VisitType,
-          }))}
-        />
-
         <FarmGeneratorLogSection farmId={farm.id} logs={model.generatorLogs} />
 
         <FarmIssuesSection

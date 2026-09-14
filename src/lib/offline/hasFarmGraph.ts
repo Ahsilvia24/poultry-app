@@ -40,5 +40,7 @@ export function isReplicaHref(href: string): boolean {
   const farm = /^\/farms\/([^/]+)(?:\/service(?:\/(report|placement|prebrood))?)?$/.exec(
     pathname,
   );
-  return Boolean(farm && farm[1] !== "new");
+  if (farm && farm[1] !== "new") return true;
+  const visits = /^\/farms\/([^/]+)\/visits(?:\/([^/]+))?$/.exec(pathname);
+  return Boolean(visits && visits[1] !== "new");
 }

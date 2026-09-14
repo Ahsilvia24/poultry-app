@@ -17,6 +17,7 @@ import {
   reactivateFlockAction,
   deleteFlockAction,
 } from "@/app/actions/farms";
+import { appTodayKey } from "@/lib/app-calendar";
 import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import {
   ISSUE_CATEGORY_LABELS,
@@ -63,7 +64,7 @@ export function FarmVisitForm({
   const { enabled, queue } = useReplicaWrite();
   const [pending, start] = useTransition();
   const [visitDate, setVisitDate] = useState(
-    initial?.visitDate ?? new Date().toISOString().slice(0, 10),
+    initial?.visitDate ?? appTodayKey(),
   );
   const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
   const [visitType, setVisitType] = useState(initial?.visitType ?? "ROUTINE_SERVICE");

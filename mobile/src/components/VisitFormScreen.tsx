@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   createVisit,
   deleteVisit,
-  getFarmDetail,
+  getFarmVisitContext,
   getVisit,
   updateVisit,
 } from "../repos/data";
@@ -45,16 +45,16 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
     }
   }, [farmId, visitId]);
 
-  const farmDetail = useMemo(() => {
+  const farmContext = useMemo(() => {
     try {
-      return getFarmDetail(farmId);
+      return getFarmVisitContext(farmId);
     } catch {
       return null;
     }
   }, [farmId]);
 
-  const placementDate = farmDetail?.activeFlock?.placementDate ?? null;
-  const flockId = farmDetail?.activeFlock?.id ?? initial?.flockId ?? null;
+  const placementDate = farmContext?.activeFlock?.placementDate ?? null;
+  const flockId = farmContext?.activeFlock?.id ?? initial?.flockId ?? null;
 
   const [visitDate, setVisitDate] = useState(initial?.visitDate ?? todayKey());
   const [visitType, setVisitType] = useState(initial?.visitType ?? "ROUTINE_SERVICE");
@@ -80,10 +80,10 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
       <SafeAreaView style={styles.screen} edges={["top"]}>
         <View style={styles.content}>
           <BackHeader
-            backLabel="Farm"
+            backLabel="Visits"
             title="Visit"
             onBack={() => router.back()}
-            accessibilityLabel="Back to farm"
+            accessibilityLabel="Back to visits"
           />
           <Text style={{ color: colors.danger }}>Visit not found</Text>
         </View>
@@ -144,10 +144,10 @@ export function VisitFormScreen({ farmId, visitId }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <BackHeader
-            backLabel="Farm"
+            backLabel="Visits"
             title={editing ? "Edit visit" : "Log visit"}
             onBack={() => router.back()}
-            accessibilityLabel="Back to farm"
+            accessibilityLabel="Back to visits"
           />
 
           <Card>

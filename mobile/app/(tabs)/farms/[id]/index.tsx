@@ -27,7 +27,6 @@ import {
   deleteHouse,
   deleteIssue,
   deleteLitterEvent,
-  deleteVisit,
   getFarmDetail,
   updateFarm,
   updateGeneratorLog,
@@ -42,7 +41,6 @@ import {
 } from "../../../../src/lib/farmNavContext";
 import { FARM_HOUSE_BACK_PEEK_PX, farmHouseBackScrollTop } from "../../../../src/lib/farmHouseScroll";
 import { useTabScrollToTop } from "../../../../src/lib/tabScroll";
-import { VISIT_TYPE_LABELS } from "../../../../src/lib/visits";
 import {
   ISSUE_CATEGORY_LABELS,
   LITTER_EVENT_LABELS,
@@ -1007,15 +1005,6 @@ export default function FarmDetailScreen() {
     setOpsConfirm({ kind: "house", houseId: h.id, houseNumber: h.houseNumber });
   }
 
-  function removeVisit(visitId: string) {
-    try {
-      deleteVisit(farm.id, visitId);
-      load();
-    } catch (e) {
-      setOpsError(e instanceof Error ? e.message : "Could not delete");
-    }
-  }
-
   function removeIssue(issueId: string) {
     try {
       deleteIssue(farm.id, issueId);
@@ -1266,7 +1255,15 @@ export default function FarmDetailScreen() {
                     label: "Generator",
                     onPress: () => scrollToSection("generators"),
                   },
-                  { key: "visits", label: "Visits", onPress: () => scrollToSection("visits") },
+                  {
+                    key: "visits",
+                    label: "Visits",
+                    onPress: () =>
+                      router.push({
+                        pathname: "/(tabs)/farms/[id]/visits",
+                        params: { id: farm.id },
+                      }),
+                  },
                   { key: "issues", label: "Issues", onPress: () => scrollToSection("issues") },
                   { key: "litter", label: "Litter", onPress: () => scrollToSection("litter") },
                   { key: "feed", label: "Feed", onPress: () => scrollToSection("feed") },
@@ -1715,72 +1712,6 @@ export default function FarmDetailScreen() {
             Add House
           </Text>
         </Pressable>
-
-        {/* ── Visits ── */}
-        <View onLayout={onSectionLayout("visits")}>
-          <SectionHeading
-            title="Recent Visits"
-            right={
-              <RecordLink
-                label="Log Visit"
-                onPress={() =>
-                  router.push({
-                    pathname: "/(tabs)/farms/[id]/log-visit",
-                    params: { id: farm.id },
-                  })
-                }
-              />
-            }
-          />
-          {data.visits.length === 0 ? (
-            <Text style={[styles.muted, { fontSize: 16, lineHeight: 22 }]}>None yet</Text>
-          ) : (
-            data.visits.map((v, i) => (
-              <View
-                key={v.id}
-                style={{
-                    marginTop: i === 0 ? 0 : 2,
-                    paddingTop: i === 0 ? 0 : 4,
-                    borderTopWidth: i === 0 ? 0 : 1,
-                    borderTopColor: "#f5f5f4",
-                }}
-              >
-                <SwipeCommitDeleteRow
-                  transparent
-                  onDelete={() => removeVisit(v.id)}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(tabs)/farms/[id]/visits/[visitId]",
-                      params: { id: farm.id, visitId: v.id },
-                    })
-                  }
-                >
-                  <View
-                    accessibilityRole="button"
-                    accessibilityLabel={`Edit visit ${formatShortDate(v.visitDate)}`}
-                    style={logRowHit}
-                  >
-                    <Text style={logEntryText}>
-                      {formatShortDate(v.visitDate)} —{" "}
-                      {VISIT_TYPE_LABELS[v.visitType] ?? v.visitType}
-                    </Text>
-                    {v.followUpRequired ? (
-                      <Text style={{ ...logEntryText, color: "#b45309", marginTop: 2 }}>
-                        Follow-up due
-                      </Text>
-                    ) : null}
-                    {v.notes ? (
-                      <Text style={[styles.muted, { fontSize: 13, lineHeight: 18, marginTop: 2 }]}>
-                        {v.notes}
-                      </Text>
-                    ) : null}
-                  </View>
-                </SwipeCommitDeleteRow>
-              </View>
-            ))
-          )}
-          <SectionTop onPress={scrollPageToTop} />
-        </View>
 
         {/* ── Generator log ── */}
         <View onLayout={onSectionLayout("generators")}>
