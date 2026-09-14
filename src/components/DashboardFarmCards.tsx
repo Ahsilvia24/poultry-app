@@ -22,11 +22,21 @@ function openIssuesLabel(count: number) {
   return `${count} open issues`;
 }
 
+function farmAgeLabel(farm: FarmCardSummary) {
+  const ages = farm.flockAgesDays?.length
+    ? farm.flockAgesDays
+    : farm.flockAgeDays != null
+      ? [farm.flockAgeDays]
+      : [];
+  return ages.length ? ages.map((age) => `${age}d`).join(" ") : null;
+}
+
 function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, start] = useTransition();
   const deactivatingRef = useRef(false);
   const { enabled, queue } = useReplicaWrite();
+  const ageLabel = farmAgeLabel(farm);
 
   function makeInactive() {
     if (pending || deactivatingRef.current) return;
@@ -65,8 +75,8 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
                   >
                     {farm.farmName}
                   </ReplicaLink>
-                  {farm.flockAgeDays != null ? (
-                    <span className="font-semibold text-stone-500"> {farm.flockAgeDays}d</span>
+                  {ageLabel ? (
+                    <span className="font-semibold text-stone-500"> {ageLabel}</span>
                   ) : null}
                 </p>
               </div>

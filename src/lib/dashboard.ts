@@ -334,9 +334,11 @@ export async function getDashboardData(userId: string) {
       phoneNumber: farm.phoneNumber,
       houseCount: farm.houses?.length ?? activeHouseCount,
       flockAgeDays: active ? daysSincePlacement(active.placementDate, today, timeZone) : null,
-      flockAgesDays: activeFlocks.map((fl) =>
-        daysSincePlacement(fl.placementDate, today, timeZone),
-      ),
+      flockAgesDays: Array.from(
+        new Set(
+          activeFlocks.map((fl) => daysSincePlacement(fl.placementDate, today, timeZone)),
+        ),
+      ).sort((a, b) => a - b),
       totalBirdsPlaced: placed,
       birdsRemaining: remaining,
       todayMortality: todayMort,
@@ -351,7 +353,7 @@ export async function getDashboardData(userId: string) {
       openIssues: farm.issues.length,
       lastVisitDate: farm.visits[0] ? format(farm.visits[0].visitDate, "yyyy-MM-dd") : null,
       status,
-      missingTodayMortality: Boolean(active && !hasTodayEntry && active.houseFlocks.length > 0),
+      missingTodayMortality: Boolean(active && !hasTodayEntry && activeHouseCount > 0),
     });
   }
 

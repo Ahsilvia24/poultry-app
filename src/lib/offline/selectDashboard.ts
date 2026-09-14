@@ -1,16 +1,27 @@
 import { addDays, differenceInCalendarDays, format, startOfDay, subDays } from "date-fns";
 import { appToday, appTodayKey } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
+import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import { dedupeScheduleRows, scheduleGroupsForFarm } from "@/lib/flockIdentity";
 import type { getDashboardData } from "@/lib/dashboard";
-import { asDateKey, localNoonFromKey } from "@/lib/offline/dates";
+import { asDateKey, asDateRequired, localNoonFromKey } from "@/lib/offline/dates";
 import {
   bindCompletionsToSchedule,
   gatherFollowUpCompletions,
 } from "@/lib/offline/followUpCompletions";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import type { OfflineFlockRef, OfflineSnapshot } from "@/lib/offline/types";
-import { DEFAULT_THRESHOLDS, daysSincePlacement } from "@/lib/mortality/calculations";
+import {
+  DEFAULT_THRESHOLDS,
+  averageDailyMortalityLast7Days,
+  daysSincePlacement,
+  isRisingThreeDays,
+  projectedHeadCountAtCatch,
+  resolveMortalityStatus,
+  summarizeForDate,
+  sumMortalityLast7Days,
+  weeklyMortalityByPlacement,
+} from "@/lib/mortality/calculations";
 import {
   buildFlockVisitSchedule,
   resolveCatchDate,
@@ -21,6 +32,7 @@ import {
 export type DashboardData = NonNullable<Awaited<ReturnType<typeof getDashboardData>>>;
 type ScheduleRow = DashboardData["todaysSchedule"][number];
 type CatchRow = DashboardData["upcomingCatches"][number];
+type FarmCard = DashboardData["farmCards"][number];
 
 const UPCOMING_OUTLOOK_DAYS = 10;
 const CATCH_HORIZON_DAYS = 12;
@@ -84,6 +96,177 @@ function activeFlocksForFarm(snapshot: OfflineSnapshot, farmId: string) {
     )
     .slice()
     .sort((a, b) => flockPlaceKey(a).localeCompare(flockPlaceKey(b)));
+}
+
+function uniqueSortedAges(ages: number[]) {
+  return Array.from(new Set(ages)).sort((a, b) => a - b);
+}
+
+function snapshotThresholds(snapshot: OfflineSnapshot, fallback: DashboardData["thresholds"]) {
+  const settings = snapshot.settings;
+  if (!settings) return fallback;
+  return {
+    dailyMortalityWarningPct: settings.dailyMortalityWarningPct,
+    dailyMortalityCriticalPct: settings.dailyMortalityCriticalPct,
+    sevenDayMortalityWarningPct: settings.sevenDayMortalityWarningPct,
+    sevenDayMortalityCriticalPct: settings.sevenDayMortalityCriticalPct,
+    alertRisingThreeDays: settings.alertRisingThreeDays,
+  };
+}
+
+function housesForFarm(snapshot: OfflineSnapshot, farmId: string) {
+  return (snapshot.houses ?? []).filter((house) => house.farmId === farmId && !house.deletedAt);
+}
+
+function mortalitiesForHouseFlock(snapshot: OfflineSnapshot, houseFlockId: string) {
+  return (snapshot.mortalities ?? [])
+    .filter((row) => row.houseFlockId === houseFlockId && !row.isDraft)
+    .map((row) => ({
+      mortalityDate: asDateRequired(row.mortalityDate),
+      birdAgeInDays: row.birdAgeInDays,
+      dailyMortalityCount: row.dailyMortalityCount,
+      cullCount: row.cullCount,
+      totalDailyLoss: row.totalDailyLoss,
+    }));
+}
+
+/** Build Active Farms cards from every replica flock and house, not the last server card. */
+export function rebuildFarmCardsFromReplica(
+  snapshot: OfflineSnapshot,
+  source: DashboardData,
+): { farmCards: FarmCard[]; stats: DashboardData["stats"] } {
+  const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
+  const today = appToday(undefined, timeZone);
+  const todayKey = appTodayKey(undefined, timeZone);
+  const thresholds = snapshotThresholds(snapshot, source.thresholds ?? DEFAULT_THRESHOLDS);
+  const farmOrder = parseFarmOrder(snapshot.settings?.farmOrder);
+  const farms = liveFarms(snapshot);
+  const farmCards: FarmCard[] = [];
+  let totalBirds = 0;
+  let todayMortalityTotal = 0;
+  let missingMortalityFarms = 0;
+  let openIssues = 0;
+  let highPriorityIssues = 0;
+  let activeHouses = 0;
+
+  for (const farm of farms) {
+    const activeFlocks = activeFlocksForFarm(snapshot, farm.id);
+    const houses = housesForFarm(snapshot, farm.id);
+    const farmIssues = (snapshot.issues ?? []).filter(
+      (issue) => issue.farmId === farm.id && issue.status !== "RESOLVED",
+    );
+    openIssues += farmIssues.length;
+    highPriorityIssues += farmIssues.filter(
+      (issue) => issue.priority === "HIGH" || issue.priority === "CRITICAL",
+    ).length;
+    activeHouses += houses.length || farm.numberOfHouses;
+
+    let placed = 0;
+    let remaining = 0;
+    let todayMort = 0;
+    let sevenMort = 0;
+    let cum = 0;
+    let dailyPct = 0;
+    let sevenPct = 0;
+    let rising = false;
+    let hasTodayEntry = false;
+    let projectedHead = 0;
+    let projectedMortExtra = 0;
+    let activeHouseCount = 0;
+    const weeklyTotals = new Map<number, number>();
+
+    for (const flock of activeFlocks) {
+      const catchDate = localNoonFromKey(flockCatchKey(flock));
+      const daysUntilCatch = Math.max(0, daysSincePlacement(today, catchDate, timeZone));
+      const hfs = (snapshot.houseFlocks ?? []).filter((hf) => hf.flockId === flock.id);
+      for (const hf of hfs) {
+        activeHouseCount += 1;
+        placed += hf.placedBirdCount;
+        const morts = mortalitiesForHouseFlock(snapshot, hf.id);
+        const metrics = summarizeForDate(hf.placedBirdCount, morts, today);
+        todayMort += metrics.today;
+        sevenMort += sumMortalityLast7Days(morts, today);
+        cum += metrics.cumulative;
+        remaining += metrics.remaining;
+        dailyPct = Math.max(dailyPct, metrics.dailyPct);
+        sevenPct = Math.max(sevenPct, metrics.sevenDayPct);
+        if (isRisingThreeDays(morts, today)) rising = true;
+        if (morts.some((row) => format(row.mortalityDate, "yyyy-MM-dd") === todayKey)) {
+          hasTodayEntry = true;
+        }
+        const avgDaily = averageDailyMortalityLast7Days(morts, today);
+        projectedHead += projectedHeadCountAtCatch(metrics.remaining, avgDaily, daysUntilCatch);
+        projectedMortExtra += avgDaily * daysUntilCatch;
+        const housePlacement = localNoonFromKey(
+          asDateKey(hf.placementDate) ?? flockPlaceKey(flock),
+        );
+        for (const week of weeklyMortalityByPlacement(housePlacement, morts, today)) {
+          weeklyTotals.set(week.week, (weeklyTotals.get(week.week) ?? 0) + week.total);
+        }
+      }
+    }
+
+    if (activeFlocks.length > 0) {
+      if (!hasTodayEntry && activeHouseCount > 0) missingMortalityFarms += 1;
+      totalBirds += placed;
+      todayMortalityTotal += todayMort;
+    }
+
+    const lastVisit = (snapshot.visits ?? [])
+      .filter((visit) => visit.farmId === farm.id)
+      .map((visit) => asDateKey(visit.visitDate) ?? visit.visitDate.slice(0, 10))
+      .filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key))
+      .sort()
+      .at(-1) ?? null;
+
+    const flockAgesDays = uniqueSortedAges(
+      activeFlocks.map((flock) =>
+        daysSincePlacement(localNoonFromKey(flockPlaceKey(flock)), today, timeZone),
+      ),
+    );
+
+    farmCards.push({
+      id: farm.id,
+      farmName: farm.farmName,
+      growerName: farm.growerName,
+      phoneNumber: farm.phoneNumber,
+      houseCount: houses.length || farm.numberOfHouses || activeHouseCount,
+      flockAgeDays: flockAgesDays[0] ?? null,
+      flockAgesDays,
+      totalBirdsPlaced: placed,
+      birdsRemaining: remaining,
+      todayMortality: todayMort,
+      sevenDayMortality: sevenMort,
+      projectedHeadCount: activeFlocks.length > 0 ? projectedHead : null,
+      projectedMortality:
+        activeFlocks.length > 0 ? Math.max(0, Math.round(cum + projectedMortExtra)) : null,
+      weeklyMortality: Array.from(weeklyTotals.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([week, total]) => ({ week, total })),
+      cumulativeMortality: cum,
+      cumulativeMortalityPct: placed > 0 ? (cum / placed) * 100 : 0,
+      openIssues: farmIssues.length,
+      lastVisitDate: lastVisit,
+      status: resolveMortalityStatus(
+        { dailyPct, sevenDayPct: sevenPct, risingThreeDays: rising },
+        thresholds,
+      ),
+      missingTodayMortality: Boolean(activeFlocks.length > 0 && !hasTodayEntry && activeHouseCount > 0),
+    });
+  }
+
+  return {
+    farmCards: sortFarmsByOrder(farmCards, farmOrder),
+    stats: {
+      activeFarms: farms.length,
+      activeHouses,
+      totalBirdsPlaced: totalBirds,
+      mortalityEnteredToday: todayMortalityTotal,
+      farmsMissingToday: missingMortalityFarms,
+      openIssues,
+      highPriorityIssues,
+    },
+  };
 }
 
 /** Build Today / Upcoming / catches from the replica flocks, not the last server list. */
@@ -228,19 +411,11 @@ export function rebuildDashboardScheduleFromReplica(
   }
 
   const base = source ?? emptyDashboard();
-  const farmCards = base.farmCards.map((card) => {
-    const flocks = activeFlocksForFarm(snapshot, card.id);
-    if (flocks.length === 0) {
-      return { ...card, flockAgeDays: null, flockAgesDays: [] };
-    }
-    const flockAgesDays = flocks.map((flock) =>
-      daysSincePlacement(localNoonFromKey(flockPlaceKey(flock)), today, timeZone),
-    );
-    return { ...card, flockAgeDays: flockAgesDays[0] ?? null, flockAgesDays };
-  });
+  const { farmCards, stats } = rebuildFarmCardsFromReplica(snapshot, base);
 
   return {
     ...base,
+    stats,
     farmCards,
     todaysSchedule: dedupeScheduleRows(todaysSchedule).sort(bySchedule).slice(0, 30),
     upcomingSchedule: dedupeScheduleRows(upcomingSchedule).sort(bySchedule).slice(0, 40),
