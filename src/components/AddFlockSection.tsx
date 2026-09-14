@@ -7,6 +7,7 @@ import { useOffline } from "@/components/OfflineProvider";
 import {
   SettingsChipInput,
   SettingsFieldRow,
+  SettingsTrailing,
   SettingsValueChip,
   handleSettingsLayoutEnter,
 } from "@/components/SettingsLayout";
@@ -156,7 +157,7 @@ export function AddFlockSection({
                 </p>
               ) : null}
               <SettingsFieldRow label="Flock number" htmlFor="flockNumber">
-                <SettingsValueChip className="min-w-[6rem] max-w-[9rem]">
+                <SettingsValueChip className="w-[5.5rem]">
                   <SettingsChipInput
                     id="flockNumber"
                     name="flockNumber"
@@ -207,28 +208,30 @@ export function AddFlockSection({
                           {occupied ? (
                             <span className="text-sm font-medium text-stone-500">Already placed</span>
                           ) : (
-                            <SettingsValueChip className="min-w-[5.5rem]">
-                              <SettingsChipInput
-                                id={`placed-${house.id}`}
-                                name="placedBirdCount"
-                                inputMode="numeric"
-                                value={counts[house.id] ?? DEFAULT_PLACED}
-                                onChange={(event) => setHouseCount(house.id, event.target.value)}
-                              />
-                            </SettingsValueChip>
+                            <SettingsTrailing>
+                              {isFirstOpen ? (
+                                <label className="flex w-fit shrink-0 cursor-pointer items-center gap-1.5 leading-none">
+                                  <span className="text-xs font-medium text-stone-600">Propagate</span>
+                                  <input
+                                    type="checkbox"
+                                    checked={propagate}
+                                    onChange={(event) => onPropagateChange(event.target.checked)}
+                                    className="h-3.5 w-3.5 shrink-0 rounded border-stone-300 text-emerald-700 focus:ring-emerald-700"
+                                  />
+                                </label>
+                              ) : null}
+                              <SettingsValueChip className="w-[4.75rem]">
+                                <SettingsChipInput
+                                  id={`placed-${house.id}`}
+                                  name="placedBirdCount"
+                                  inputMode="numeric"
+                                  value={counts[house.id] ?? DEFAULT_PLACED}
+                                  onChange={(event) => setHouseCount(house.id, event.target.value)}
+                                />
+                              </SettingsValueChip>
+                            </SettingsTrailing>
                           )}
                         </SettingsFieldRow>
-                        {isFirstOpen ? (
-                          <label className="mt-0.5 ml-auto flex w-fit cursor-pointer items-center gap-1.5 leading-none">
-                            <span className="text-xs font-medium text-stone-600">Propagate</span>
-                            <input
-                              type="checkbox"
-                              checked={propagate}
-                              onChange={(event) => onPropagateChange(event.target.checked)}
-                              className="h-3.5 w-3.5 shrink-0 rounded border-stone-300 text-emerald-700 focus:ring-emerald-700"
-                            />
-                          </label>
-                        ) : null}
                       </div>
                     );
                   })}

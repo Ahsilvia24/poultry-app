@@ -272,25 +272,30 @@ function SettingsNumRow({
   propagateChecked?: boolean;
   onPropagateToggle?: () => void;
 }) {
+  const chip = (
+    <SettingsChipInput
+      value={grouped ? formatGroupedInput(value, !!decimal) : value}
+      onChangeText={(text) =>
+        onChangeText(grouped ? formatGroupedInput(text, !!decimal) : text)
+      }
+      accessibilityLabel={label}
+      keyboardType={decimal ? "decimal-pad" : wide ? undefined : "number-pad"}
+      wide={wide}
+      autoCapitalize={autoCapitalize}
+      placeholder={placeholder}
+    />
+  );
   return (
-    <View>
-      <SettingsRow label={label}>
-        <SettingsChipInput
-          value={grouped ? formatGroupedInput(value, !!decimal) : value}
-          onChangeText={(text) =>
-            onChangeText(grouped ? formatGroupedInput(text, !!decimal) : text)
-          }
-          accessibilityLabel={label}
-          keyboardType={decimal ? "decimal-pad" : wide ? undefined : "number-pad"}
-          wide={wide}
-          autoCapitalize={autoCapitalize}
-          placeholder={placeholder}
-        />
-      </SettingsRow>
+    <SettingsRow label={label}>
       {onPropagateToggle ? (
-        <PropagateCheck checked={!!propagateChecked} onToggle={onPropagateToggle} />
-      ) : null}
-    </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <PropagateCheck checked={!!propagateChecked} onToggle={onPropagateToggle} />
+          {chip}
+        </View>
+      ) : (
+        chip
+      )}
+    </SettingsRow>
   );
 }
 
@@ -310,9 +315,7 @@ function PropagateCheck({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        alignSelf: "flex-end",
         gap: 6,
-        marginTop: 2,
       }}
     >
       <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, lineHeight: 16 }}>
@@ -2202,7 +2205,6 @@ export default function FarmDetailScreen() {
                         <SettingsNumRow
                           label="Flock ID"
                           value={editingHouse.flockNumber}
-                          wide
                           autoCapitalize="characters"
                           placeholder="e.g. 26-07"
                           onChangeText={(v) =>
@@ -2220,46 +2222,47 @@ export default function FarmDetailScreen() {
                             )
                           }
                         />
-                        <View>
-                          <DatePickerField
-                            label="Placement date"
-                            layout="settings"
-                            value={editingHouse.placementDate}
-                            presentation={Platform.OS === "web" ? "modal" : "inline"}
-                            expanded={housePicker === "placement"}
-                            onOpen={() => setHousePicker("placement")}
-                            onChange={(date) =>
-                              setEditingHouse((prev) => {
-                                if (!prev) return prev;
-                                const oldDefault = prev.placementDate
-                                  ? addDaysKey(prev.placementDate, 52)
-                                  : "";
-                                const catchWasDefault =
-                                  !prev.catchDate || prev.catchDate === oldDefault;
-                                return {
-                                  ...prev,
-                                  placementDate: date,
-                                  catchDate: catchWasDefault
-                                    ? addDaysKey(date, 52)
-                                    : prev.catchDate,
-                                };
-                              })
-                            }
-                          />
-                          <PropagateCheck
-                            checked={editingHouse.applyPlacementToRemaining}
-                            onToggle={() =>
-                              setEditingHouse((prev) =>
-                                prev
-                                  ? {
-                                      ...prev,
-                                      applyPlacementToRemaining: !prev.applyPlacementToRemaining,
-                                    }
-                                  : prev,
-                              )
-                            }
-                          />
-                        </View>
+                        <DatePickerField
+                          label="Placement date"
+                          layout="settings"
+                          compactChip
+                          value={editingHouse.placementDate}
+                          presentation={Platform.OS === "web" ? "modal" : "inline"}
+                          expanded={housePicker === "placement"}
+                          onOpen={() => setHousePicker("placement")}
+                          leading={
+                            <PropagateCheck
+                              checked={editingHouse.applyPlacementToRemaining}
+                              onToggle={() =>
+                                setEditingHouse((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        applyPlacementToRemaining: !prev.applyPlacementToRemaining,
+                                      }
+                                    : prev,
+                                )
+                              }
+                            />
+                          }
+                          onChange={(date) =>
+                            setEditingHouse((prev) => {
+                              if (!prev) return prev;
+                              const oldDefault = prev.placementDate
+                                ? addDaysKey(prev.placementDate, 52)
+                                : "";
+                              const catchWasDefault =
+                                !prev.catchDate || prev.catchDate === oldDefault;
+                              return {
+                                ...prev,
+                                placementDate: date,
+                                catchDate: catchWasDefault
+                                  ? addDaysKey(date, 52)
+                                  : prev.catchDate,
+                              };
+                            })
+                          }
+                        />
                         <SettingsNumRow
                           label="Birds placed"
                           value={editingHouse.placedBirdCount}
@@ -2278,58 +2281,62 @@ export default function FarmDetailScreen() {
                             )
                           }
                         />
-                        <View>
-                          <DatePickerField
-                            label="Catch date"
-                            layout="settings"
-                            value={editingHouse.catchDate}
-                            presentation={Platform.OS === "web" ? "modal" : "inline"}
-                            expanded={housePicker === "catch"}
-                            onOpen={() => setHousePicker("catch")}
-                            onChange={(date) =>
-                              setEditingHouse((prev) =>
-                                prev ? { ...prev, catchDate: date } : prev,
-                              )
-                            }
-                          />
-                          <PropagateCheck
-                            checked={editingHouse.applyCatchDateToRemaining}
-                            onToggle={() =>
-                              setEditingHouse((prev) =>
-                                prev
-                                  ? {
-                                      ...prev,
-                                      applyCatchDateToRemaining: !prev.applyCatchDateToRemaining,
-                                    }
-                                  : prev,
-                              )
-                            }
-                          />
-                        </View>
+                        <DatePickerField
+                          label="Catch date"
+                          layout="settings"
+                          compactChip
+                          value={editingHouse.catchDate}
+                          presentation={Platform.OS === "web" ? "modal" : "inline"}
+                          expanded={housePicker === "catch"}
+                          onOpen={() => setHousePicker("catch")}
+                          leading={
+                            <PropagateCheck
+                              checked={editingHouse.applyCatchDateToRemaining}
+                              onToggle={() =>
+                                setEditingHouse((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        applyCatchDateToRemaining: !prev.applyCatchDateToRemaining,
+                                      }
+                                    : prev,
+                                )
+                              }
+                            />
+                          }
+                          onChange={(date) =>
+                            setEditingHouse((prev) =>
+                              prev ? { ...prev, catchDate: date } : prev,
+                            )
+                          }
+                        />
                         <View>
                           <TimeScrollPickerField
                             label="Catch time"
                             layout="settings"
+                            compactChip
                             value={editingHouse.catchTime}
                             presentation={Platform.OS === "web" ? "modal" : "inline"}
                             expanded={housePicker === "catchTime"}
                             onOpen={() => setHousePicker("catchTime")}
+                            leading={
+                              <PropagateCheck
+                                checked={editingHouse.applyCatchTimeToRemaining}
+                                onToggle={() =>
+                                  setEditingHouse((prev) =>
+                                    prev
+                                      ? {
+                                          ...prev,
+                                          applyCatchTimeToRemaining: !prev.applyCatchTimeToRemaining,
+                                        }
+                                      : prev,
+                                  )
+                                }
+                              />
+                            }
                             onChange={(time) =>
                               setEditingHouse((prev) =>
                                 prev ? { ...prev, catchTime: time } : prev,
-                              )
-                            }
-                          />
-                          <PropagateCheck
-                            checked={editingHouse.applyCatchTimeToRemaining}
-                            onToggle={() =>
-                              setEditingHouse((prev) =>
-                                prev
-                                  ? {
-                                      ...prev,
-                                      applyCatchTimeToRemaining: !prev.applyCatchTimeToRemaining,
-                                    }
-                                  : prev,
                               )
                             }
                           />

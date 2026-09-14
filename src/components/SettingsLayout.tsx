@@ -64,6 +64,11 @@ export function SettingsValueChip({
   return <div className={cn(settingsValueChipClass, className)}>{children}</div>;
 }
 
+/** Grey chip plus a control that sits immediately to its left (Propagate). */
+export function SettingsTrailing({ children }: { children: ReactNode }) {
+  return <div className="flex shrink-0 items-center gap-1.5">{children}</div>;
+}
+
 export function SettingsChipInput({
   id,
   name,

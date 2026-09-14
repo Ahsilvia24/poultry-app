@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Modal, Platform, Pressable, Text, View } from "react-native";
 import DateTimePicker, {
   type DateTimePickerEvent,
@@ -224,6 +224,8 @@ export function DatePickerField({
   style,
   inputStyle,
   layout = "default",
+  leading,
+  compactChip,
 }: {
   label: string;
   value: string;
@@ -239,6 +241,8 @@ export function DatePickerField({
   inputStyle?: object;
   /** Settings layout: label left, grey date chip right. Calendar still pops up. */
   layout?: "default" | "settings";
+  leading?: ReactNode;
+  compactChip?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseDateKey(value));
@@ -301,7 +305,7 @@ export function DatePickerField({
       accessibilityLabel={`${label}, ${formatDisplayDate(value)}. Opens calendar`}
       style={
         isSettings
-          ? [settingsValueChip, { minWidth: 116 }]
+          ? [settingsValueChip, { minWidth: compactChip ? 96 : 116, width: compactChip ? 96 : undefined }]
           : [
               styles.input,
               {
@@ -339,7 +343,16 @@ export function DatePickerField({
   return (
     <View style={style}>
       {isSettings ? (
-        <SettingsRow label={label}>{trigger}</SettingsRow>
+        <SettingsRow label={label}>
+          {leading ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              {leading}
+              {trigger}
+            </View>
+          ) : (
+            trigger
+          )}
+        </SettingsRow>
       ) : (
         <>
           <Text style={styles.label} numberOfLines={2}>

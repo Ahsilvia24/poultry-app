@@ -194,65 +194,64 @@ export default function AddFlockScreen() {
                           Already placed
                         </Text>
                       ) : (
-                        <SettingsChipInput
-                          value={placements[h.id] ?? ""}
-                          keyboardType="number-pad"
-                          accessibilityLabel={`House ${h.houseNumber} birds placed`}
-                          placeholder="0"
-                          onChangeText={(v) =>
-                            setPlacements((prev) => {
-                              const next = { ...prev, [h.id]: v };
-                              if (propagate && firstOpenHouse && h.id === firstOpenHouse.id) {
-                                for (const house of availableHouses) {
-                                  if (house.id !== h.id) next[house.id] = v;
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          {isFirstOpen ? (
+                            <Pressable
+                              onPress={() => {
+                                const nextChecked = !propagate;
+                                setPropagate(nextChecked);
+                                if (!nextChecked || !firstOpenHouse) return;
+                                const value = placements[firstOpenHouse.id] ?? String(DEFAULT_PLACED);
+                                setPlacements((prev) => {
+                                  const next = { ...prev };
+                                  for (const house of availableHouses) next[house.id] = value;
+                                  return next;
+                                });
+                              }}
+                              accessibilityRole="checkbox"
+                              accessibilityState={{ checked: propagate }}
+                              accessibilityLabel="Propagate"
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 6,
+                              }}
+                            >
+                              <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>
+                                Propagate
+                              </Text>
+                              <View
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: 4,
+                                  borderWidth: 2,
+                                  borderColor: propagate ? colors.accentDark : colors.border,
+                                  backgroundColor: propagate ? colors.accentDark : "#fff",
+                                }}
+                              />
+                            </Pressable>
+                          ) : null}
+                          <SettingsChipInput
+                            value={placements[h.id] ?? ""}
+                            keyboardType="number-pad"
+                            accessibilityLabel={`House ${h.houseNumber} birds placed`}
+                            placeholder="0"
+                            onChangeText={(v) =>
+                              setPlacements((prev) => {
+                                const next = { ...prev, [h.id]: v };
+                                if (propagate && firstOpenHouse && h.id === firstOpenHouse.id) {
+                                  for (const house of availableHouses) {
+                                    if (house.id !== h.id) next[house.id] = v;
+                                  }
                                 }
-                              }
-                              return next;
-                            })
-                          }
-                        />
+                                return next;
+                              })
+                            }
+                          />
+                        </View>
                       )}
                     </SettingsRow>
-                    {isFirstOpen ? (
-                      <Pressable
-                        onPress={() => {
-                          const nextChecked = !propagate;
-                          setPropagate(nextChecked);
-                          if (!nextChecked || !firstOpenHouse) return;
-                          const value = placements[firstOpenHouse.id] ?? String(DEFAULT_PLACED);
-                          setPlacements((prev) => {
-                            const next = { ...prev };
-                            for (const house of availableHouses) next[house.id] = value;
-                            return next;
-                          });
-                        }}
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked: propagate }}
-                        accessibilityLabel="Propagate"
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          alignSelf: "flex-end",
-                          gap: 6,
-                          minHeight: 28,
-                          marginBottom: 4,
-                        }}
-                      >
-                        <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>
-                          Propagate
-                        </Text>
-                        <View
-                          style={{
-                            width: 18,
-                            height: 18,
-                            borderRadius: 4,
-                            borderWidth: 2,
-                            borderColor: propagate ? colors.accentDark : colors.border,
-                            backgroundColor: propagate ? colors.accentDark : "#fff",
-                          }}
-                        />
-                      </Pressable>
-                    ) : null}
                   </View>
                 );
               })}

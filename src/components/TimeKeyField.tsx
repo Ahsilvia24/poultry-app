@@ -11,6 +11,7 @@ export function TimeKeyField({
   onChange,
   className,
   variant = "default",
+  chipClassName,
 }: {
   id: string;
   name?: string;
@@ -20,6 +21,7 @@ export function TimeKeyField({
   className?: string;
   /** Settings layout: grey chip on the right. Picker still pops up. */
   variant?: "default" | "settings";
+  chipClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const selectedRef = useRef<HTMLButtonElement | null>(null);
@@ -44,7 +46,7 @@ export function TimeKeyField({
         onClick={() => setOpen(true)}
         className={
           isSettings
-            ? "flex h-9 min-w-[7.25rem] items-center justify-end rounded-lg bg-stone-200 px-2.5 text-right text-[15px] font-semibold leading-none text-stone-900 outline-none"
+            ? `flex h-9 ${chipClassName ?? "min-w-[7.25rem]"} items-center justify-end rounded-lg bg-stone-200 px-2.5 text-right text-[15px] font-semibold leading-none text-stone-900 outline-none`
             : "flex h-11 w-full min-w-0 max-w-full items-center justify-between gap-2 rounded-lg border border-stone-300 bg-white px-2.5 text-left text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
         }
       >

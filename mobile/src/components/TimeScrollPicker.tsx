@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Modal,
   Platform,
@@ -137,6 +137,8 @@ export function TimeScrollPickerField({
   inputStyle,
   presentation = "modal",
   layout = "default",
+  leading,
+  compactChip,
 }: {
   label: string;
   value: string;
@@ -152,6 +154,8 @@ export function TimeScrollPickerField({
   presentation?: "modal" | "inline";
   /** Settings layout: label left, grey time chip right. */
   layout?: "default" | "settings";
+  leading?: ReactNode;
+  compactChip?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseTime(value || "06:00"));
@@ -194,7 +198,7 @@ export function TimeScrollPickerField({
       accessibilityLabel={`${label}, ${value ? timeLabel(value) : "Select time"}. Opens time picker`}
       style={
         isSettings
-          ? [settingsValueChip, { minWidth: 116 }]
+          ? [settingsValueChip, { minWidth: compactChip ? 96 : 116, width: compactChip ? 96 : undefined }]
           : [
               styles.input,
               {
@@ -232,7 +236,16 @@ export function TimeScrollPickerField({
   return (
     <View style={style}>
       {isSettings ? (
-        <SettingsRow label={label}>{trigger}</SettingsRow>
+        <SettingsRow label={label}>
+          {leading ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              {leading}
+              {trigger}
+            </View>
+          ) : (
+            trigger
+          )}
+        </SettingsRow>
       ) : (
         <>
           <Text style={styles.label} numberOfLines={2}>

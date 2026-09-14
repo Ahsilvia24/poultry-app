@@ -4,22 +4,35 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const web = readFileSync(join(root, "src/components/HouseCardActions.tsx"), "utf8");
-const expo = readFileSync(join(root, "mobile/app/(tabs)/farms/[id]/index.tsx"), "utf8");
+const read = (rel) => readFileSync(join(root, rel), "utf8");
 
-const webBlock = web.slice(web.indexOf("function PropagateCheck"), web.indexOf("export function HouseCardActions"));
-assert.match(webBlock, /ml-auto/);
-assert.match(webBlock, /w-fit/);
-assert.ok(
-  webBlock.indexOf(">Propagate<") < webBlock.indexOf('type="checkbox"'),
-  "web: Propagate label must come before the checkbox",
-);
+const web = read("src/components/HouseCardActions.tsx");
+assert.match(web, /SettingsTrailing/);
+assert.match(web, /chipClassName="w-\[6rem\]"/);
+assert.match(web, /SettingsValueChip className="w-\[4\.75rem\]"/);
+assert.doesNotMatch(web, /ml-auto/);
+const flockIdAt = web.indexOf('label="Flock ID"');
+const flockPropAt = web.indexOf("<PropagateCheck", flockIdAt);
+const flockChipAt = web.indexOf("SettingsValueChip", flockIdAt);
+assert.ok(flockPropAt > 0 && flockPropAt < flockChipAt, "web house: Propagate sits left of the Flock ID chip");
 
-const expoBlock = expo.slice(expo.indexOf("function PropagateCheck"), expo.indexOf("const MAX_GENERATOR_LOGS_DISPLAY"));
-assert.match(expoBlock, /alignSelf:\s*"flex-end"/);
-assert.ok(
-  expoBlock.indexOf("Propagate") < expoBlock.indexOf("Ionicons name=\"checkmark\""),
-  "expo: Propagate label must come before the checkbox",
-);
+const addFlock = read("src/components/AddFlockSection.tsx");
+assert.match(addFlock, /SettingsTrailing/);
+assert.match(addFlock, />Propagate</);
+const firstOpenAt = addFlock.indexOf("isFirstOpen");
+const propAt = addFlock.indexOf(">Propagate<", firstOpenAt);
+const birdsChipAt = addFlock.indexOf('className="w-[4.75rem]"', firstOpenAt);
+assert.ok(propAt > 0 && propAt < birdsChipAt, "web add flock: Propagate sits left of the birds chip");
 
-console.log("propagate-right: ok");
+const expo = read("mobile/app/(tabs)/farms/[id]/index.tsx");
+const expoProp = expo.slice(expo.indexOf("function PropagateCheck"), expo.indexOf("const MAX_GENERATOR_LOGS_DISPLAY"));
+assert.match(expoProp, /flexDirection: "row"/);
+assert.doesNotMatch(expoProp, /alignSelf:\s*"flex-end"/);
+assert.match(expo, /leading=\{/);
+assert.match(expo, /compactChip/);
+
+const expoAdd = read("mobile/app/(tabs)/farms/[id]/add-flock.tsx");
+assert.match(expoAdd, /accessibilityLabel="Propagate"/);
+assert.match(expoAdd, /flexDirection: "row", alignItems: "center", gap: 6/);
+
+console.log("propagate-beside-chip: ok");

@@ -8,6 +8,7 @@ import { GroupedNumberInput } from "@/components/GroupedNumberInput";
 import {
   SettingsChipInput,
   SettingsFieldRow,
+  SettingsTrailing,
   SettingsValueChip,
   handleSettingsLayoutEnter,
 } from "@/components/SettingsLayout";
@@ -52,7 +53,7 @@ function PropagateCheck({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <label className="mt-0.5 ml-auto flex w-fit cursor-pointer items-center gap-1.5 leading-none">
+    <label className="flex w-fit shrink-0 cursor-pointer items-center gap-1.5 leading-none">
       <span className="text-xs font-medium text-stone-600">Propagate</span>
       <input
         type="checkbox"
@@ -241,9 +242,14 @@ export function HouseCardActions({
               </SettingsFieldRow>
               {hasActiveFlock ? (
                 <>
-                  <div>
-                    <SettingsFieldRow label="Flock ID" htmlFor={`edit-flockNumber-${house.id}`}>
-                      <SettingsValueChip className="min-w-[6rem]">
+                  <SettingsFieldRow label="Flock ID" htmlFor={`edit-flockNumber-${house.id}`}>
+                    <SettingsTrailing>
+                      <PropagateCheck
+                        name="applyFlockIdToRemaining"
+                        checked={applyFlockIdToRemaining}
+                        onChange={setApplyFlockIdToRemaining}
+                      />
+                      <SettingsValueChip className="w-[5.5rem]">
                         <SettingsChipInput
                           id={`edit-flockNumber-${house.id}`}
                           name="flockNumber"
@@ -252,15 +258,15 @@ export function HouseCardActions({
                           autoCapitalize="characters"
                         />
                       </SettingsValueChip>
-                    </SettingsFieldRow>
-                    <PropagateCheck
-                      name="applyFlockIdToRemaining"
-                      checked={applyFlockIdToRemaining}
-                      onChange={setApplyFlockIdToRemaining}
-                    />
-                  </div>
-                  <div>
-                    <SettingsFieldRow label="Placement date" htmlFor={`edit-placementDate-${house.id}`}>
+                    </SettingsTrailing>
+                  </SettingsFieldRow>
+                  <SettingsFieldRow label="Placement date" htmlFor={`edit-placementDate-${house.id}`}>
+                    <SettingsTrailing>
+                      <PropagateCheck
+                        name="applyPlacementToRemaining"
+                        checked={applyPlacementToRemaining}
+                        onChange={setApplyPlacementToRemaining}
+                      />
                       <DateKeyField
                         id={`edit-placementDate-${house.id}`}
                         name="placementDate"
@@ -268,17 +274,18 @@ export function HouseCardActions({
                         value={placementDate}
                         onChange={onPlacementChange}
                         variant="settings"
+                        chipClassName="w-[6rem]"
                       />
-                    </SettingsFieldRow>
-                    <PropagateCheck
-                      name="applyPlacementToRemaining"
-                      checked={applyPlacementToRemaining}
-                      onChange={setApplyPlacementToRemaining}
-                    />
-                  </div>
-                  <div>
-                    <SettingsFieldRow label="Birds placed" htmlFor={`edit-placedBirdCount-${house.id}`}>
-                      <SettingsValueChip className="min-w-[5.5rem]">
+                    </SettingsTrailing>
+                  </SettingsFieldRow>
+                  <SettingsFieldRow label="Birds placed" htmlFor={`edit-placedBirdCount-${house.id}`}>
+                    <SettingsTrailing>
+                      <PropagateCheck
+                        name="applyBirdsToRemaining"
+                        checked={applyBirdsToRemaining}
+                        onChange={setApplyBirdsToRemaining}
+                      />
+                      <SettingsValueChip className="w-[4.75rem]">
                         <GroupedNumberInput
                           id={`edit-placedBirdCount-${house.id}`}
                           name="placedBirdCount"
@@ -288,15 +295,15 @@ export function HouseCardActions({
                           defaultValue={house.placedBirdCount ?? ""}
                         />
                       </SettingsValueChip>
-                    </SettingsFieldRow>
-                    <PropagateCheck
-                      name="applyBirdsToRemaining"
-                      checked={applyBirdsToRemaining}
-                      onChange={setApplyBirdsToRemaining}
-                    />
-                  </div>
-                  <div>
-                    <SettingsFieldRow label="Catch date" htmlFor={`edit-catchDate-${house.id}`}>
+                    </SettingsTrailing>
+                  </SettingsFieldRow>
+                  <SettingsFieldRow label="Catch date" htmlFor={`edit-catchDate-${house.id}`}>
+                    <SettingsTrailing>
+                      <PropagateCheck
+                        name="applyCatchDateToRemaining"
+                        checked={applyCatchDateToRemaining}
+                        onChange={setApplyCatchDateToRemaining}
+                      />
                       <DateKeyField
                         id={`edit-catchDate-${house.id}`}
                         name="catchDate"
@@ -304,16 +311,17 @@ export function HouseCardActions({
                         value={catchDate}
                         onChange={setCatchDate}
                         variant="settings"
+                        chipClassName="w-[6rem]"
                       />
-                    </SettingsFieldRow>
-                    <PropagateCheck
-                      name="applyCatchDateToRemaining"
-                      checked={applyCatchDateToRemaining}
-                      onChange={setApplyCatchDateToRemaining}
-                    />
-                  </div>
-                  <div>
-                    <SettingsFieldRow label="Catch time" htmlFor={`edit-catchTime-${house.id}`}>
+                    </SettingsTrailing>
+                  </SettingsFieldRow>
+                  <SettingsFieldRow label="Catch time" htmlFor={`edit-catchTime-${house.id}`}>
+                    <SettingsTrailing>
+                      <PropagateCheck
+                        name="applyCatchTimeToRemaining"
+                        checked={applyCatchTimeToRemaining}
+                        onChange={setApplyCatchTimeToRemaining}
+                      />
                       <TimeKeyField
                         id={`edit-catchTime-${house.id}`}
                         name="catchTime"
@@ -321,19 +329,20 @@ export function HouseCardActions({
                         value={catchTime}
                         onChange={setCatchTime}
                         variant="settings"
+                        chipClassName="w-[6rem]"
                       />
-                    </SettingsFieldRow>
-                    <PropagateCheck
-                      name="applyCatchTimeToRemaining"
-                      checked={applyCatchTimeToRemaining}
-                      onChange={setApplyCatchTimeToRemaining}
-                    />
-                  </div>
+                    </SettingsTrailing>
+                  </SettingsFieldRow>
                 </>
               ) : null}
-              <div>
-                <SettingsFieldRow label="Square footage" htmlFor={`edit-squareFootage-${house.id}`}>
-                  <SettingsValueChip className="min-w-[5.5rem]">
+              <SettingsFieldRow label="Square footage" htmlFor={`edit-squareFootage-${house.id}`}>
+                <SettingsTrailing>
+                  <PropagateCheck
+                    name="applySquareFootageToRemaining"
+                    checked={applySquareFootageToRemaining}
+                    onChange={setApplySquareFootageToRemaining}
+                  />
+                  <SettingsValueChip className="w-[4.75rem]">
                     <GroupedNumberInput
                       id={`edit-squareFootage-${house.id}`}
                       name="squareFootage"
@@ -345,16 +354,16 @@ export function HouseCardActions({
                       defaultValue={house.squareFootage ?? 29700}
                     />
                   </SettingsValueChip>
-                </SettingsFieldRow>
-                <PropagateCheck
-                  name="applySquareFootageToRemaining"
-                  checked={applySquareFootageToRemaining}
-                  onChange={setApplySquareFootageToRemaining}
-                />
-              </div>
-              <div>
-                <SettingsFieldRow label="Total CFM (Min Vent)" htmlFor={`edit-totalFanCFM-${house.id}`}>
-                  <SettingsValueChip className="min-w-[5.5rem]">
+                </SettingsTrailing>
+              </SettingsFieldRow>
+              <SettingsFieldRow label="Total CFM (Min Vent)" htmlFor={`edit-totalFanCFM-${house.id}`}>
+                <SettingsTrailing>
+                  <PropagateCheck
+                    name="applyMinVentCfmToRemaining"
+                    checked={applyMinVentCfmToRemaining}
+                    onChange={setApplyMinVentCfmToRemaining}
+                  />
+                  <SettingsValueChip className="w-[4.75rem]">
                     <GroupedNumberInput
                       id={`edit-totalFanCFM-${house.id}`}
                       name="totalFanCFM"
@@ -365,16 +374,16 @@ export function HouseCardActions({
                       defaultValue={house.totalFanCFM ?? ""}
                     />
                   </SettingsValueChip>
-                </SettingsFieldRow>
-                <PropagateCheck
-                  name="applyMinVentCfmToRemaining"
-                  checked={applyMinVentCfmToRemaining}
-                  onChange={setApplyMinVentCfmToRemaining}
-                />
-              </div>
-              <div>
-                <SettingsFieldRow label="Total CFM (Power)" htmlFor={`edit-totalPowerCFM-${house.id}`}>
-                  <SettingsValueChip className="min-w-[5.5rem]">
+                </SettingsTrailing>
+              </SettingsFieldRow>
+              <SettingsFieldRow label="Total CFM (Power)" htmlFor={`edit-totalPowerCFM-${house.id}`}>
+                <SettingsTrailing>
+                  <PropagateCheck
+                    name="applyPowerCfmToRemaining"
+                    checked={applyPowerCfmToRemaining}
+                    onChange={setApplyPowerCfmToRemaining}
+                  />
+                  <SettingsValueChip className="w-[4.75rem]">
                     <GroupedNumberInput
                       id={`edit-totalPowerCFM-${house.id}`}
                       name="totalPowerCFM"
@@ -385,13 +394,8 @@ export function HouseCardActions({
                       defaultValue={house.totalPowerCFM ?? ""}
                     />
                   </SettingsValueChip>
-                </SettingsFieldRow>
-                <PropagateCheck
-                  name="applyPowerCfmToRemaining"
-                  checked={applyPowerCfmToRemaining}
-                  onChange={setApplyPowerCfmToRemaining}
-                />
-              </div>
+                </SettingsTrailing>
+              </SettingsFieldRow>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2 px-5 pt-2 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+1.5rem))]">
               <Button type="submit" disabled={pending} className="flex-1">

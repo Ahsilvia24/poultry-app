@@ -31,6 +31,7 @@ assert.match(houseEdit, /SettingsFieldRow label="House number"/);
 assert.match(houseEdit, /SettingsFieldRow label="Flock ID"/);
 assert.match(houseEdit, /variant="settings"/);
 assert.match(houseEdit, /PropagateCheck/);
+assert.match(houseEdit, /SettingsTrailing/);
 assert.match(houseEdit, /applyBirdsToRemaining/);
 assert.doesNotMatch(houseEdit, /grid-cols-2 gap-3/);
 
@@ -40,6 +41,7 @@ assert.match(addFlock, /variant="settings"/);
 assert.match(addFlock, /Birds placed per house/);
 assert.match(addFlock, /name="placedBirdCount"/);
 assert.match(addFlock, />Propagate</);
+assert.match(addFlock, /SettingsTrailing/);
 assert.match(addFlock, /onPropagateChange/);
 
 const timeField = read("src/components/TimeKeyField.tsx");
