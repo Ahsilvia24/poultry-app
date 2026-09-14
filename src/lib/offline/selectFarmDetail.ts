@@ -11,9 +11,15 @@ import {
   summarizeForDate,
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
-import { asDate, asDateRequired } from "@/lib/offline/dates";
+import { asDate, asDateKey, asDateRequired, localNoonFromKey } from "@/lib/offline/dates";
+import { indexHouseFlocksByHouseId } from "@/lib/mortalityHouses";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
+
+function noonFromKey(value: string | Date | null | undefined) {
+  const key = asDateKey(value);
+  return key ? localNoonFromKey(key) : asDate(value);
+}
 
 export type FarmDetailModel = {
   farm: {
@@ -159,11 +165,13 @@ export function selectFarmDetail(
     string,
     { flock: (typeof activeFlocks)[number]; hf: (typeof snapshot.houseFlocks)[number] }
   >();
-  for (const flock of activeFlocks) {
-    for (const hf of snapshot.houseFlocks ?? []) {
-      if (hf.flockId !== flock.id) continue;
-      if (!hfByHouseId.has(hf.houseId)) hfByHouseId.set(hf.houseId, { flock, hf });
-    }
+  const flockById = new Map(activeFlocks.map((flock) => [flock.id, flock]));
+  const orderedHouseFlocks = activeFlocks.flatMap((flock) =>
+    (snapshot.houseFlocks ?? []).filter((hf) => hf.flockId === flock.id),
+  );
+  for (const [houseId, hf] of indexHouseFlocksByHouseId(orderedHouseFlocks)) {
+    const flock = flockById.get(hf.flockId);
+    if (flock) hfByHouseId.set(houseId, { flock, hf });
   }
 
   const houseCards = houses.map((house) => {
@@ -171,9 +179,9 @@ export function selectFarmDetail(
     const hf = matched?.hf ?? null;
     const houseFlock = matched?.flock ?? null;
     const placementDate =
-      asDate(hf?.placementDate) ?? asDate(houseFlock?.placementDate) ?? null;
+      noonFromKey(hf?.placementDate) ?? noonFromKey(houseFlock?.placementDate) ?? null;
     const catchDate = hf?.catchDate
-      ? asDate(hf.catchDate)
+      ? noonFromKey(hf.catchDate)
       : houseFlock && placementDate
         ? resolveCatchDate({
             placementDate,
@@ -193,7 +201,7 @@ export function selectFarmDetail(
       .filter((row) => row.houseFlockId === hf?.id && !row.isDraft)
       .map((row) => ({
         ...row,
-        mortalityDate: asDateRequired(row.mortalityDate),
+        mortalityDate: noonFromKey(row.mortalityDate) ?? asDateRequired(row.mortalityDate),
       }));
     const daysUntilCatch =
       catchDate != null ? Math.max(0, daysSincePlacement(today, catchDate, timeZone)) : null;

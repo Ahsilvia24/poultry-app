@@ -123,7 +123,7 @@ export function selectServiceFarmContext(
   for (const flock of activeFlocks) {
     for (const hf of snapshot.houseFlocks ?? []) {
       if (hf.flockId !== flock.id) continue;
-      if (!hfByHouseId.has(hf.houseId)) hfByHouseId.set(hf.houseId, { flock, hf });
+      hfByHouseId.set(hf.houseId, { flock, hf });
     }
   }
 

@@ -150,7 +150,15 @@ function activeFlockIdsForFarm(snapshot: OfflineSnapshot, farmId: string) {
 
 function activeHouseFlock(snapshot: OfflineSnapshot, farmId: string, houseId: string) {
   const active = activeFlockIdsForFarm(snapshot, farmId);
-  return snapshot.houseFlocks.find((hf) => hf.houseId === houseId && active.has(hf.flockId));
+  const matches = snapshot.houseFlocks.filter(
+    (hf) => hf.houseId === houseId && active.has(hf.flockId),
+  );
+  if (matches.length <= 1) return matches[0];
+  const placeKey = (flockId: string) => {
+    const flock = snapshot.flocks.find((row) => row.id === flockId);
+    return asDateKey(flock?.placementDate) ?? flock?.placementDate?.slice(0, 10) ?? "";
+  };
+  return [...matches].sort((a, b) => placeKey(a.flockId).localeCompare(placeKey(b.flockId))).at(-1);
 }
 
 function syncFlockDatesFromHouses(snapshot: OfflineSnapshot, flockId: string): OfflineSnapshot {
@@ -377,12 +385,20 @@ function applyUpdateHouse(snapshot: OfflineSnapshot, write: OfflineFormWrite): O
   }
 
   const activeIds = activeFlockIdsForFarm(next, farmId);
+  const houseFlock = activeHouseFlock(next, farmId, houseId);
   const activeFlock =
-    next.flocks.find(
-      (flock) =>
-        activeIds.has(flock.id) &&
-        next.houseFlocks.some((hf) => hf.houseId === houseId && hf.flockId === flock.id),
-    ) ?? next.flocks.find((flock) => activeIds.has(flock.id));
+    (houseFlock && next.flocks.find((flock) => flock.id === houseFlock.flockId)) ??
+    next.flocks
+      .filter((flock) => activeIds.has(flock.id))
+      .slice()
+      .sort(
+        (a, b) =>
+          (asDateKey(a.placementDate) ?? a.placementDate.slice(0, 10)).localeCompare(
+            asDateKey(b.placementDate) ?? b.placementDate.slice(0, 10),
+          ),
+      )
+      .at(-1) ??
+    next.flocks.find((flock) => activeIds.has(flock.id));
   if (!activeFlock) return next;
 
   function upsertHf(

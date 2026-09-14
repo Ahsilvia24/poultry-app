@@ -42,4 +42,15 @@ describe("listMortalityHouses", () => {
       ["hf1", "hf2", "hf4"],
     );
   });
+
+  it("keeps the later flock when two house-flocks share a house", () => {
+    const listed = listMortalityHouses(
+      [{ id: "h3", houseNumber: 3 }],
+      [
+        { id: "hf-old", houseId: "h3" },
+        { id: "hf-new", houseId: "h3" },
+      ],
+    );
+    assert.equal(listed[0]?.houseFlock.id, "hf-new");
+  });
 });

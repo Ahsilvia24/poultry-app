@@ -88,7 +88,7 @@ export async function loadServiceFarmContext(
   >();
   for (const flock of activeFlocks) {
     for (const hf of flock.houseFlocks) {
-      if (!hfByHouseId.has(hf.houseId)) hfByHouseId.set(hf.houseId, { flock, hf });
+      hfByHouseId.set(hf.houseId, { flock, hf });
     }
   }
 

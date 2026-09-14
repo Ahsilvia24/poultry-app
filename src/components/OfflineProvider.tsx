@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -28,6 +29,7 @@ import {
 } from "@/lib/offline/applyLocal";
 import type { CatchSelection } from "@/app/actions/catch-import";
 import type { PlacementSelection } from "@/app/actions/placement-import";
+import { applyPendingOutboxItems } from "@/lib/offline/applyOutbox";
 import { coalesceFormWrite } from "@/lib/offline/applyWrites";
 import { flushFormWrite } from "@/lib/offline/flushWrites";
 import {
@@ -202,6 +204,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const [syncing, setSyncing] = useState(false);
   const [aliases, setAliases] = useState<IdAliases>({});
 
+  const replicaGen = useRef(0);
+
   const replaceSnapshot = useCallback((next: OfflineSnapshot) => {
     setSnapshot((current) => {
       const merged = seedAndMergeFollowUpCompletions(next, current);
@@ -213,6 +217,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const patchSnapshot = useCallback((fn: (current: OfflineSnapshot) => OfflineSnapshot) => {
     setSnapshot((current) => {
       if (!current) return current;
+      replicaGen.current += 1;
       const next = fn(current);
       void saveLocalSnapshot(next);
       return next;
@@ -253,8 +258,13 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         const flushed = await flushOutbox();
         if (!cancelled) setAliases(flushed.aliases);
         if (canReplaceReplicaWithRemote(flushed.pending)) {
+          const gen = replicaGen.current;
           const remote = await pullRemoteSnapshot();
-          if (!cancelled && remote) replaceSnapshot(remote);
+          if (cancelled || !remote || replicaGen.current !== gen) return;
+          const leftover = await loadOutbox();
+          replaceSnapshot(
+            leftover.length ? applyPendingOutboxItems(remote, leftover) : remote,
+          );
         }
       } catch {
         // Stay on the local replica. Never block the UI on sync.
@@ -268,8 +278,13 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         .then(async (flushed) => {
           setAliases(flushed.aliases);
           if (!canReplaceReplicaWithRemote(flushed.pending)) return;
+          const gen = replicaGen.current;
           const remote = await pullRemoteSnapshot();
-          if (remote) replaceSnapshot(remote);
+          if (!remote || replicaGen.current !== gen) return;
+          const leftover = await loadOutbox();
+          replaceSnapshot(
+            leftover.length ? applyPendingOutboxItems(remote, leftover) : remote,
+          );
         })
         .catch(() => undefined)
         .finally(() => setSyncing(false));

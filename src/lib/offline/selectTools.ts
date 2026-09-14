@@ -83,7 +83,7 @@ export function selectTools(snapshot: OfflineSnapshot, initialFarmId?: string | 
     >();
     for (const flock of activeFlocks) {
       for (const hf of snapshot.houseFlocks ?? []) {
-        if (hf.flockId !== flock.id || hfByHouseId.has(hf.houseId)) continue;
+        if (hf.flockId !== flock.id) continue;
         hfByHouseId.set(hf.houseId, { flock, hf });
       }
     }

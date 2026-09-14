@@ -15,6 +15,8 @@ import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOffline } from "@/components/OfflineProvider";
 import { applyHouseTemp } from "@/lib/offline/applyLocal";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
+import { appTodayKey } from "@/lib/app-calendar";
+import { resolveAppTimeZone } from "@/lib/app-time-zones";
 
 type HouseData = {
   id: string;
@@ -51,11 +53,6 @@ function daysBetweenKeys(fromKey: string, toKey: string): number | null {
   const a = new Date(y1, m1 - 1, d1, 12, 0, 0, 0).getTime();
   const b = new Date(y2, m2 - 1, d2, 12, 0, 0, 0).getTime();
   return Math.round((b - a) / 86400000);
-}
-
-function todayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function HouseCard({
@@ -101,8 +98,9 @@ export function HouseCard({
   const [tempError, setTempError] = useState<string | null>(null);
   const [tempPending, startTemp] = useTransition();
 
+  const today = appTodayKey(undefined, resolveAppTimeZone(snapshot?.settings?.appTimeZone));
   const loggedTempToday =
-    house.loggedTemp && house.loggedTempAt === todayKey() ? house.loggedTemp : null;
+    house.loggedTemp && house.loggedTempAt?.slice(0, 10) === today ? house.loggedTemp : null;
 
   const mortalityValue = metrics ? formatNumber(metrics.cumulative) : "—";
   const mortalityPct = metrics ? formatPct(metrics.cumulativePct) : null;
@@ -135,7 +133,7 @@ export function HouseCard({
   }
 
   function saveTemp(next: string | null) {
-    const day = todayKey();
+    const day = today;
     const trimmed = next?.trim() ?? "";
     if (trimmed && !Number.isFinite(Number(trimmed))) {
       setTempError("Enter a valid temperature");
