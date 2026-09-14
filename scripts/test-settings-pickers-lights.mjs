@@ -8,6 +8,7 @@ const dateField = readFileSync(join(root, "src/components/DateKeyField.tsx"), "u
 const timeField = readFileSync(join(root, "src/components/TimeKeyField.tsx"), "utf8");
 const serviceFields = readFileSync(join(root, "src/components/serviceForms/fields.tsx"), "utf8");
 const settings = readFileSync(join(root, "src/components/SettingsScreen.tsx"), "utf8");
+const settingsLayout = readFileSync(join(root, "src/components/SettingsLayout.tsx"), "utf8");
 
 assert.doesNotMatch(dateField, /h-\[94vh\]/);
 assert.doesNotMatch(timeField, /h-\[92vh\]/);
@@ -18,8 +19,11 @@ assert.match(timeField, /max-h-\[min\(28rem,72vh\)\]/);
 assert.doesNotMatch(serviceFields, /type=\{value === "24\/7" \? "text" : "time"\}/);
 assert.match(serviceFields, /TimeKeyField/);
 
-assert.match(settings, /bg-stone-200/);
-assert.match(settings, /justify-between/);
+assert.match(settingsLayout, /settings page layout/i);
+assert.match(settingsLayout, /bg-stone-200/);
+assert.match(settingsLayout, /justify-between/);
+assert.match(settings, /SettingsChipInput/);
+assert.match(settings, /justify-between|SettingsFieldRow/);
 assert.match(settings, /name="farmOrder"/);
 assert.match(settings, /<select/);
 assert.doesNotMatch(settings, /FarmOrderStepper/);
@@ -53,7 +57,7 @@ assert.match(settings, /name="dailyMortalityWarningPct"/);
 assert.match(settings, /name="defaultMarketAgeDays"/);
 assert.match(settings, /signOutAction/);
 assert.match(settings, /SettingsChipInput/);
-assert.match(settings, /setSelectionRange/);
+assert.match(settingsLayout, /setSelectionRange/);
 assert.match(settings, /name="alertRisingThreeDays"/);
 assert.match(settings, /<option value="on">Yes<\/option>/);
 assert.match(settings, /<option value="off">No<\/option>/);

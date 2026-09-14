@@ -1,4 +1,4 @@
-import { createElement, useState, type ReactNode } from "react";
+import { createElement, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -13,6 +13,13 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../src/auth";
+import {
+  SettingsChipInput,
+  SettingsRow,
+  settingsNoFocusRing as noFocusRing,
+  settingsValueChip,
+  settingsValueText,
+} from "../src/components/SettingsLayout";
 import {
   getAppTimeZone,
   getFarmOrder,
@@ -37,133 +44,6 @@ import { FARM_ORDER_OPTIONS, type FarmOrder } from "../src/lib/farmOrder";
 import { PrimaryButton } from "../src/components/ui";
 import { colors, styles } from "../src/theme";
 
-const noFocusRing =
-  Platform.OS === "web"
-    ? ({
-        outlineWidth: 0,
-        outlineStyle: "none",
-        outlineColor: "transparent",
-        boxShadow: "none",
-      } as const)
-    : null;
-
-const valueChip = {
-  minHeight: 36,
-  borderRadius: 10,
-  backgroundColor: "#e7e5e4",
-  paddingHorizontal: 10,
-  justifyContent: "center" as const,
-};
-
-const valueText = {
-  fontSize: 15,
-  fontWeight: "600" as const,
-  color: colors.text,
-  textAlign: "right" as const,
-};
-
-function SettingsRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-        minHeight: 44,
-      }}
-    >
-      <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text, flexShrink: 0 }}>
-        {label}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function placeCaretAtEnd(
-  value: string,
-  target?: { setSelectionRange?: (start: number, end: number) => void },
-) {
-  const n = value.length;
-  const move = () => {
-    try {
-      target?.setSelectionRange?.(n, n);
-    } catch {
-      /* ignore */
-    }
-  };
-  move();
-  requestAnimationFrame(move);
-}
-
-function SettingsChipInput({
-  value,
-  onChangeText,
-  accessibilityLabel,
-  keyboardType,
-  autoCapitalize,
-  autoCorrect,
-  textContentType,
-  autoComplete,
-  placeholder,
-  wide,
-}: {
-  value: string;
-  onChangeText: (value: string) => void;
-  accessibilityLabel: string;
-  keyboardType?: "number-pad" | "decimal-pad";
-  autoCapitalize?: "words" | "none";
-  autoCorrect?: boolean;
-  textContentType?: "name";
-  autoComplete?: "name";
-  placeholder?: string;
-  wide?: boolean;
-}) {
-  const [selection, setSelection] = useState<{ start: number; end: number } | undefined>();
-  const chipStyle = wide
-    ? [valueChip, { minWidth: 152, maxWidth: 224, flex: 1 }]
-    : [valueChip, valueText, { width: 76, paddingVertical: 6, borderWidth: 0 }, noFocusRing];
-
-  return (
-    <View style={wide ? chipStyle : undefined}>
-      <TextInput
-        style={
-          wide
-            ? [valueText, { paddingVertical: 6, borderWidth: 0 }, noFocusRing]
-            : chipStyle
-        }
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        autoCorrect={autoCorrect}
-        textContentType={textContentType}
-        autoComplete={autoComplete}
-        placeholder={placeholder}
-        placeholderTextColor={colors.muted}
-        selectionColor={colors.muted}
-        underlineColorAndroid="transparent"
-        selectTextOnFocus={false}
-        selection={selection}
-        accessibilityLabel={accessibilityLabel}
-        onFocus={(event) => {
-          const n = value.length;
-          setSelection({ start: n, end: n });
-          placeCaretAtEnd(value, event.target as { setSelectionRange?: (start: number, end: number) => void });
-          setTimeout(() => setSelection(undefined), 80);
-        }}
-      />
-    </View>
-  );
-}
-
 function SettingsSelect<T extends string>({
   title,
   value,
@@ -186,8 +66,8 @@ function SettingsSelect<T extends string>({
         "aria-label": title,
         onChange: (event: { target: { value: string } }) => onChange(event.target.value as T),
         style: {
-          ...valueChip,
-          ...valueText,
+          ...settingsValueChip,
+          ...settingsValueText,
           minWidth: 152,
           maxWidth: 224,
           borderWidth: 0,
@@ -206,9 +86,9 @@ function SettingsSelect<T extends string>({
         accessibilityRole="button"
         accessibilityLabel={title}
         onPress={() => setOpen(true)}
-        style={[valueChip, { minWidth: 152, maxWidth: 224 }]}
+        style={[settingsValueChip, { minWidth: 152, maxWidth: 224 }]}
       >
-        <Text numberOfLines={1} style={valueText}>
+        <Text numberOfLines={1} style={settingsValueText}>
           {selected?.label ?? ""}
         </Text>
       </Pressable>

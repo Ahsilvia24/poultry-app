@@ -72,6 +72,7 @@ import {
   formatNumber,
   formatPct,
 } from "../../../../src/components/ui";
+import { SettingsChipInput, SettingsRow } from "../../../../src/components/SettingsLayout";
 import { DatePickerField } from "../../../../src/components/DatePickerField";
 import { TimeScrollPickerField } from "../../../../src/components/TimeScrollPicker";
 import { ClipboardIconButton } from "../../../../src/components/ClipboardIconButton";
@@ -499,6 +500,7 @@ export default function FarmDetailScreen() {
   const [generatorSwap, setGeneratorSwap] = useState<GeneratorHourSwapSuggestion | null>(
     null,
   );
+  const genHourInputRefs = useRef<Array<TextInput | null>>([]);
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("farms", scrollRef);
   const sectionY = useRef<Record<string, number>>({});
@@ -2760,18 +2762,47 @@ export default function FarmDetailScreen() {
                 {(generatorEditingGen
                   ? GENERATOR_FIELD_DEFS.filter((f) => f.hourKey === generatorEditingGen)
                   : GENERATOR_FIELD_DEFS
-                ).map((f) => (
-                  <NativeNumInput
-                    key={f.hourKey}
-                    label={`${f.label} hours`}
-                    value={generatorDraft[f.hourKey]}
-                    decimal
-                    placeholder="Optional"
-                    onChangeText={(v) =>
-                      setGeneratorDraft((prev) => ({ ...prev, [f.hourKey]: v }))
-                    }
-                  />
-                ))}
+                ).map((f, index, list) => {
+                  const previous = previousGeneratorHoursFromLogs(data?.generatorLogs ?? [], {
+                    onOrBeforeDate: generatorDraft.logDate,
+                    excludeLogId: generatorEditingId,
+                  });
+                  const raw = generatorDraft[f.hourKey];
+                  const delta = hoursDelta(
+                    raw.trim() === "" ? null : Number(raw),
+                    previous[f.hourKey] ?? null,
+                  );
+                  const isLast = index === list.length - 1;
+                  return (
+                    <View key={f.hourKey}>
+                      <SettingsRow label={`${f.label} hours`}>
+                        <SettingsChipInput
+                          inputRef={(el) => {
+                            genHourInputRefs.current[index] = el;
+                          }}
+                          value={raw}
+                          keyboardType="decimal-pad"
+                          accessibilityLabel={`${f.label} hours`}
+                          returnKeyType={isLast ? "done" : "next"}
+                          blurOnSubmit={isLast}
+                          onSubmitEditing={() => {
+                            if (isLast) Keyboard.dismiss();
+                            else genHourInputRefs.current[index + 1]?.focus();
+                          }}
+                          onChangeText={(v) =>
+                            setGeneratorDraft((prev) => ({
+                              ...prev,
+                              [f.hourKey]: v.replace(/[^\d.]/g, ""),
+                            }))
+                          }
+                        />
+                      </SettingsRow>
+                      <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 6 }}>
+                        Time exercised: {formatGeneratorHours(delta)}
+                      </Text>
+                    </View>
+                  );
+                })}
                 <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
                   <PrimaryButton
                     label={generatorSaving ? "Saving…" : "Save"}

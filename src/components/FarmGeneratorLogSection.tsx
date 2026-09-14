@@ -8,7 +8,13 @@ import {
   updateGeneratorLogAction,
 } from "@/app/actions/ops";
 import { DateKeyField } from "@/components/DateKeyField";
-import { Button, Card, Input, Label } from "@/components/ui";
+import {
+  SettingsChipInput,
+  SettingsFieldRow,
+  SettingsValueChip,
+  handleSettingsLayoutEnter,
+} from "@/components/SettingsLayout";
+import { Button, Card, Label } from "@/components/ui";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSectionChrome";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
@@ -304,6 +310,7 @@ function GeneratorLogForm({
   return (
     <form
       className="mt-4 space-y-3"
+      onKeyDown={handleSettingsLayoutEnter}
       onSubmit={(e) => {
         e.preventDefault();
         try {
@@ -340,7 +347,7 @@ function GeneratorLogForm({
           required
         />
       </div>
-      <div className={`grid gap-3 ${onlyGen ? "grid-cols-1" : "grid-cols-2"}`}>
+      <div className="space-y-1">
         {visibleFields.map((field) => {
           const [value, setValue] = fieldState[field.hourKey];
           const delta = hoursDelta(
@@ -349,19 +356,18 @@ function GeneratorLogForm({
           );
           return (
             <div key={field.hourKey}>
-              <Label htmlFor={`gen-${field.hourKey}`}>{field.label} hours</Label>
-              <Input
-                id={`gen-${field.hourKey}`}
-                name={field.hourKey}
-                type="text"
-                inputMode="decimal"
-                value={value}
-                placeholder="Optional"
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ""))}
-                className="placeholder:text-stone-400/70"
-              />
-              <p className="mt-1 text-xs text-stone-500">
+              <SettingsFieldRow label={`${field.label} hours`} htmlFor={`gen-${field.hourKey}`}>
+                <SettingsValueChip className="w-[4.75rem]">
+                  <SettingsChipInput
+                    id={`gen-${field.hourKey}`}
+                    name={field.hourKey}
+                    inputMode="decimal"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ""))}
+                  />
+                </SettingsValueChip>
+              </SettingsFieldRow>
+              <p className="-mt-1 mb-1 text-xs text-stone-500">
                 Time exercised: {formatGeneratorHours(delta)}
               </p>
             </div>

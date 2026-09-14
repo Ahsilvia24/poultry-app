@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
@@ -12,98 +12,10 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { SettingsChipInput, SettingsRow } from "../../../src/components/SettingsLayout";
 import { createFarm } from "../../../src/repos/data";
 import { colors, styles } from "../../../src/theme";
 import { Card, PageHeader } from "../../../src/components/ui";
-
-const noFocusRing =
-  Platform.OS === "web"
-    ? ({
-        outlineWidth: 0,
-        outlineStyle: "none",
-        outlineColor: "transparent",
-        boxShadow: "none",
-      } as const)
-    : null;
-
-const valueChip = {
-  minHeight: 36,
-  borderRadius: 10,
-  backgroundColor: "#e7e5e4",
-  paddingHorizontal: 10,
-  justifyContent: "center" as const,
-};
-
-const valueText = {
-  fontSize: 15,
-  fontWeight: "600" as const,
-  color: colors.text,
-  textAlign: "right" as const,
-};
-
-function FieldRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-        minHeight: 44,
-      }}
-    >
-      <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text, flex: 1, flexShrink: 1 }}>
-        {label}
-      </Text>
-      {children}
-    </View>
-  );
-}
-
-function ChipInput({
-  value,
-  onChangeText,
-  accessibilityLabel,
-  keyboardType,
-  autoCapitalize,
-  wide,
-  placeholder,
-}: {
-  value: string;
-  onChangeText: (value: string) => void;
-  accessibilityLabel: string;
-  keyboardType?: "number-pad";
-  autoCapitalize?: "words" | "none";
-  wide?: boolean;
-  placeholder?: string;
-}) {
-  const chipStyle = wide
-    ? [valueChip, { minWidth: 152, maxWidth: 224, flex: 1 }]
-    : [valueChip, valueText, { width: 76, paddingVertical: 6, borderWidth: 0 }, noFocusRing];
-
-  return (
-    <View style={wide ? chipStyle : undefined}>
-      <TextInput
-        style={
-          wide
-            ? [valueText, { paddingVertical: 6, borderWidth: 0 }, noFocusRing]
-            : chipStyle
-        }
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        placeholder={placeholder}
-        placeholderTextColor={colors.muted}
-        underlineColorAndroid="transparent"
-        accessibilityLabel={accessibilityLabel}
-        returnKeyType="done"
-        blurOnSubmit
-        onSubmitEditing={() => Keyboard.dismiss()}
-      />
-    </View>
-  );
-}
 
 function parseOptionalCount(raw: string) {
   const trimmed = raw.trim();
@@ -115,6 +27,9 @@ function parseOptionalCount(raw: string) {
 
 export default function NewFarmScreen() {
   const router = useRouter();
+  const housesRef = useRef<TextInput>(null);
+  const generatorsRef = useRef<TextInput>(null);
+  const growerRef = useRef<TextInput>(null);
   const [farmName, setFarmName] = useState("");
   const [growerName, setGrowerName] = useState("");
   const [numberOfHouses, setNumberOfHouses] = useState("");
@@ -156,40 +71,55 @@ export default function NewFarmScreen() {
           />
 
           <Card>
-            <FieldRow label="Farm name">
-              <ChipInput
+            <SettingsRow label="Farm name">
+              <SettingsChipInput
                 value={farmName}
                 onChangeText={setFarmName}
                 accessibilityLabel="Farm name"
                 autoCapitalize="words"
                 wide
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => housesRef.current?.focus()}
               />
-            </FieldRow>
-            <FieldRow label="Number of houses">
-              <ChipInput
+            </SettingsRow>
+            <SettingsRow label="Number of houses">
+              <SettingsChipInput
+                inputRef={housesRef}
                 value={numberOfHouses}
                 onChangeText={(next) => setNumberOfHouses(next.replace(/[^\d]/g, ""))}
                 accessibilityLabel="Number of houses"
                 keyboardType="number-pad"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => generatorsRef.current?.focus()}
               />
-            </FieldRow>
-            <FieldRow label="Number of generators">
-              <ChipInput
+            </SettingsRow>
+            <SettingsRow label="Number of generators">
+              <SettingsChipInput
+                inputRef={generatorsRef}
                 value={numberOfGenerators}
                 onChangeText={(next) => setNumberOfGenerators(next.replace(/[^\d]/g, ""))}
                 accessibilityLabel="Number of generators"
                 keyboardType="number-pad"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => growerRef.current?.focus()}
               />
-            </FieldRow>
-            <FieldRow label="Grower name">
-              <ChipInput
+            </SettingsRow>
+            <SettingsRow label="Grower name">
+              <SettingsChipInput
+                inputRef={growerRef}
                 value={growerName}
                 onChangeText={setGrowerName}
                 accessibilityLabel="Grower name"
                 autoCapitalize="words"
                 wide
+                returnKeyType="done"
+                blurOnSubmit
+                onSubmitEditing={() => Keyboard.dismiss()}
               />
-            </FieldRow>
+            </SettingsRow>
 
             {error ? (
               <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "600" }}>

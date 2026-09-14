@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { updateSettingsAction } from "@/app/actions/ops";
 import { signOutAction } from "@/app/actions/auth";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { useOffline } from "@/components/OfflineProvider";
+import {
+  SettingsChipInput,
+  SettingsFieldRow as SettingsRow,
+  SettingsValueChip as ValueChip,
+  settingsValueTextClass as valueTextClass,
+} from "@/components/SettingsLayout";
 import { Button, Card } from "@/components/ui";
 import { APP_TIME_ZONES, resolveAppTimeZone } from "@/lib/app-time-zones";
 import { FARM_ORDER_OPTIONS, parseFarmOrder } from "@/lib/farm-order";
@@ -13,89 +19,6 @@ import {
   settingsFormValues,
   settingsWriteFromForm,
 } from "@/lib/offline/applyLocal";
-import { cn } from "@/lib/utils";
-
-const labelClass = "min-w-0 flex-1 text-[15px] font-semibold leading-none text-stone-800";
-const valueTextClass =
-  "w-full border-0 bg-transparent p-0 text-right text-[15px] font-semibold leading-none text-stone-900 outline-none focus:ring-0";
-const valueChipClass =
-  "flex h-9 items-center justify-end rounded-lg bg-stone-200 px-2.5";
-
-function placeCaretAtEnd(el: HTMLInputElement) {
-  const move = () => {
-    const n = el.value.length;
-    try {
-      el.setSelectionRange(n, n);
-    } catch {
-      /* iOS may ignore selection on some input types */
-    }
-  };
-  move();
-  requestAnimationFrame(move);
-  window.setTimeout(move, 0);
-  window.setTimeout(move, 50);
-}
-
-function SettingsChipInput({
-  id,
-  name,
-  defaultValue,
-  required,
-  autoComplete,
-  inputMode = "text",
-}: {
-  id: string;
-  name: string;
-  defaultValue: string | number;
-  required?: boolean;
-  autoComplete?: string;
-  inputMode?: "text" | "numeric" | "decimal";
-}) {
-  return (
-    <input
-      id={id}
-      name={name}
-      type="text"
-      inputMode={inputMode}
-      autoComplete={autoComplete ?? "off"}
-      defaultValue={defaultValue}
-      required={required}
-      onFocus={(event) => placeCaretAtEnd(event.currentTarget)}
-      className={valueTextClass}
-    />
-  );
-}
-
-function SettingsRow({
-  label,
-  htmlFor,
-  children,
-  labelClassName,
-}: {
-  label: ReactNode;
-  htmlFor: string;
-  children: ReactNode;
-  labelClassName?: string;
-}) {
-  return (
-    <div className="flex min-h-11 items-center justify-between gap-3">
-      <label htmlFor={htmlFor} className={cn(labelClass, labelClassName)}>
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-function ValueChip({
-  className,
-  children,
-}: {
-  className?: string;
-  children: ReactNode;
-}) {
-  return <div className={cn(valueChipClass, className)}>{children}</div>;
-}
 
 export function SettingsScreen() {
   const { snapshot, patchSnapshot, enqueue } = useOffline();
