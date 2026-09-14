@@ -51,7 +51,7 @@ assert.match(expoFarm, /SettingsRow label=\{\`\$\{f.label\} hours\`\}/);
 assert.match(expoFarm, /SettingsChipInput/);
 assert.match(expoFarm, /returnKeyType=\{isLast \? "done" : "next"\}/);
 assert.match(expoFarm, /Time exercised:/);
-assert.match(expoFarm, /NativeNumInput/);
+assert.match(expoFarm, /SettingsNumRow/);
 
 const hoursBlock = expoFarm.slice(
   expoFarm.indexOf("Log generators"),

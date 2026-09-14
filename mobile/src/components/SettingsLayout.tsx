@@ -99,7 +99,7 @@ export function SettingsChipInput({
   onChangeText: (value: string) => void;
   accessibilityLabel: string;
   keyboardType?: "number-pad" | "decimal-pad";
-  autoCapitalize?: "words" | "none";
+  autoCapitalize?: "words" | "none" | "characters";
   autoCorrect?: boolean;
   textContentType?: "name";
   autoComplete?: "name";

@@ -71,6 +71,7 @@ export function SettingsChipInput({
   defaultValue,
   required,
   autoComplete,
+  autoCapitalize,
   inputMode = "text",
   placeholder,
   onChange,
@@ -81,6 +82,7 @@ export function SettingsChipInput({
   defaultValue?: string | number;
   required?: boolean;
   autoComplete?: string;
+  autoCapitalize?: "off" | "none" | "on" | "sentences" | "words" | "characters";
   inputMode?: "text" | "numeric" | "decimal";
   placeholder?: string;
   onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -92,6 +94,7 @@ export function SettingsChipInput({
       type="text"
       inputMode={inputMode}
       autoComplete={autoComplete ?? "off"}
+      autoCapitalize={autoCapitalize}
       {...(value !== undefined ? { value } : { defaultValue })}
       required={required}
       placeholder={placeholder}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type Ref, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -249,16 +249,15 @@ type FarmEditDraft = {
 };
 
 /** Native iOS number pad — same feel as Flock ID text field. */
-function NativeNumInput({
+function SettingsNumRow({
   label,
   value,
   onChangeText,
   decimal,
   grouped,
   placeholder,
-  style,
-  autoFocus,
-  inputRef,
+  wide,
+  autoCapitalize,
   propagateChecked,
   onPropagateToggle,
 }: {
@@ -268,31 +267,26 @@ function NativeNumInput({
   decimal?: boolean;
   grouped?: boolean;
   placeholder?: string;
-  style?: object;
-  autoFocus?: boolean;
-  inputRef?: Ref<TextInput>;
+  wide?: boolean;
+  autoCapitalize?: "words" | "none" | "characters";
   propagateChecked?: boolean;
   onPropagateToggle?: () => void;
 }) {
   return (
-    <View style={[{ marginBottom: 10 }, style]}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        ref={inputRef}
-        autoFocus={autoFocus}
-        style={[
-          styles.input,
-          { fontSize: 20, fontWeight: "700", color: colors.text },
-          onPropagateToggle ? { marginBottom: 0 } : null,
-        ]}
-        value={grouped ? formatGroupedInput(value, !!decimal) : value}
-        onChangeText={(text) =>
-          onChangeText(grouped ? formatGroupedInput(text, !!decimal) : text)
-        }
-        keyboardType={decimal ? "decimal-pad" : "number-pad"}
-        placeholder={placeholder}
-        placeholderTextColor={colors.muted}
-      />
+    <View>
+      <SettingsRow label={label}>
+        <SettingsChipInput
+          value={grouped ? formatGroupedInput(value, !!decimal) : value}
+          onChangeText={(text) =>
+            onChangeText(grouped ? formatGroupedInput(text, !!decimal) : text)
+          }
+          accessibilityLabel={label}
+          keyboardType={decimal ? "decimal-pad" : wide ? undefined : "number-pad"}
+          wide={wide}
+          autoCapitalize={autoCapitalize}
+          placeholder={placeholder}
+        />
+      </SettingsRow>
       {onPropagateToggle ? (
         <PropagateCheck checked={!!propagateChecked} onToggle={onPropagateToggle} />
       ) : null}
@@ -2196,62 +2190,44 @@ export default function FarmDetailScreen() {
               >
                 {editingHouse ? (
                   <View>
-                    <View style={{ flexDirection: "row", gap: 10 }}>
-                      <NativeNumInput
-                        label="House number"
-                        value={editingHouse.houseNumber}
-                        style={{ flex: 1 }}
-                        onChangeText={(v) =>
-                          setEditingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
-                        }
-                      />
-                      {data.activeFlock ? (
-                        <View style={{ flex: 1, marginBottom: 10 }}>
-                          <Text style={styles.label}>Flock ID</Text>
-                          <TextInput
-                            style={[
-                              styles.input,
-                              { fontSize: 20, fontWeight: "700", color: colors.text, marginBottom: 0 },
-                            ]}
-                            value={editingHouse.flockNumber}
-                            onChangeText={(v) =>
-                              setEditingHouse((prev) =>
-                                prev ? { ...prev, flockNumber: v } : prev,
-                              )
-                            }
-                            autoCapitalize="characters"
-                            autoCorrect={false}
-                            placeholder="e.g. 26-07"
-                            placeholderTextColor={colors.muted}
-                          />
-                          <PropagateCheck
-                            checked={editingHouse.applyFlockIdToRemaining}
-                            onToggle={() =>
-                              setEditingHouse((prev) =>
-                                prev
-                                  ? {
-                                      ...prev,
-                                      applyFlockIdToRemaining: !prev.applyFlockIdToRemaining,
-                                    }
-                                  : prev,
-                              )
-                            }
-                          />
-                        </View>
-                      ) : (
-                        <View style={{ flex: 1 }} />
-                      )}
-                    </View>
+                    <SettingsNumRow
+                      label="House number"
+                      value={editingHouse.houseNumber}
+                      onChangeText={(v) =>
+                        setEditingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
+                      }
+                    />
                     {data.activeFlock ? (
                       <>
-                        <View style={{ marginBottom: 10 }}>
+                        <SettingsNumRow
+                          label="Flock ID"
+                          value={editingHouse.flockNumber}
+                          wide
+                          autoCapitalize="characters"
+                          placeholder="e.g. 26-07"
+                          onChangeText={(v) =>
+                            setEditingHouse((prev) => (prev ? { ...prev, flockNumber: v } : prev))
+                          }
+                          propagateChecked={editingHouse.applyFlockIdToRemaining}
+                          onPropagateToggle={() =>
+                            setEditingHouse((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    applyFlockIdToRemaining: !prev.applyFlockIdToRemaining,
+                                  }
+                                : prev,
+                            )
+                          }
+                        />
+                        <View>
                           <DatePickerField
                             label="Placement date"
+                            layout="settings"
                             value={editingHouse.placementDate}
                             presentation={Platform.OS === "web" ? "modal" : "inline"}
                             expanded={housePicker === "placement"}
                             onOpen={() => setHousePicker("placement")}
-                            inputStyle={{ marginBottom: 0 }}
                             onChange={(date) =>
                               setEditingHouse((prev) => {
                                 if (!prev) return prev;
@@ -2284,7 +2260,7 @@ export default function FarmDetailScreen() {
                             }
                           />
                         </View>
-                        <NativeNumInput
+                        <SettingsNumRow
                           label="Birds placed"
                           value={editingHouse.placedBirdCount}
                           grouped
@@ -2302,14 +2278,14 @@ export default function FarmDetailScreen() {
                             )
                           }
                         />
-                        <View style={{ marginBottom: 10 }}>
+                        <View>
                           <DatePickerField
                             label="Catch date"
+                            layout="settings"
                             value={editingHouse.catchDate}
                             presentation={Platform.OS === "web" ? "modal" : "inline"}
                             expanded={housePicker === "catch"}
                             onOpen={() => setHousePicker("catch")}
-                            inputStyle={{ marginBottom: 0 }}
                             onChange={(date) =>
                               setEditingHouse((prev) =>
                                 prev ? { ...prev, catchDate: date } : prev,
@@ -2330,14 +2306,14 @@ export default function FarmDetailScreen() {
                             }
                           />
                         </View>
-                        <View style={{ marginBottom: 10 }}>
+                        <View>
                           <TimeScrollPickerField
                             label="Catch time"
+                            layout="settings"
                             value={editingHouse.catchTime}
                             presentation={Platform.OS === "web" ? "modal" : "inline"}
                             expanded={housePicker === "catchTime"}
                             onOpen={() => setHousePicker("catchTime")}
-                            inputStyle={{ marginBottom: 0 }}
                             onChange={(time) =>
                               setEditingHouse((prev) =>
                                 prev ? { ...prev, catchTime: time } : prev,
@@ -2364,7 +2340,7 @@ export default function FarmDetailScreen() {
                                   prev ? { ...prev, catchTime: "" } : prev,
                                 )
                               }
-                              style={{ alignSelf: "flex-start", marginTop: 2 }}
+                              style={{ alignSelf: "flex-end", marginTop: 2 }}
                               hitSlop={8}
                             >
                               <Text style={{ color: colors.muted, fontWeight: "700", fontSize: 12 }}>
@@ -2375,72 +2351,64 @@ export default function FarmDetailScreen() {
                         </View>
                       </>
                     ) : null}
-                    <View style={{ flexDirection: "row", gap: 10 }}>
-                      <NativeNumInput
-                        label="Square footage"
-                        value={editingHouse.squareFootage}
-                        placeholder="29,700"
-                        decimal
-                        grouped
-                        style={{ flex: 1 }}
-                        onChangeText={(v) =>
-                          setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
-                        }
-                        propagateChecked={editingHouse.applySquareFootageToRemaining}
-                        onPropagateToggle={() =>
-                          setEditingHouse((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  applySquareFootageToRemaining: !prev.applySquareFootageToRemaining,
-                                }
-                              : prev,
-                          )
-                        }
-                      />
-                      <NativeNumInput
-                        label="Total CFM (Min Vent)"
-                        value={editingHouse.totalFanCFM}
-                        decimal
-                        grouped
-                        style={{ flex: 1 }}
-                        onChangeText={(v) =>
-                          setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
-                        }
-                        propagateChecked={editingHouse.applyMinVentCfmToRemaining}
-                        onPropagateToggle={() =>
-                          setEditingHouse((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  applyMinVentCfmToRemaining: !prev.applyMinVentCfmToRemaining,
-                                }
-                              : prev,
-                          )
-                        }
-                      />
-                    </View>
-                    <View style={{ flexDirection: "row", gap: 10 }}>
-                      <NativeNumInput
-                        label="Total CFM (Power)"
-                        value={editingHouse.totalPowerCFM}
-                        decimal
-                        grouped
-                        style={{ flex: 1 }}
-                        onChangeText={(v) =>
-                          setEditingHouse((prev) => (prev ? { ...prev, totalPowerCFM: v } : prev))
-                        }
-                        propagateChecked={editingHouse.applyPowerCfmToRemaining}
-                        onPropagateToggle={() =>
-                          setEditingHouse((prev) =>
-                            prev
-                              ? { ...prev, applyPowerCfmToRemaining: !prev.applyPowerCfmToRemaining }
-                              : prev,
-                          )
-                        }
-                      />
-                      <View style={{ flex: 1 }} />
-                    </View>
+                    <SettingsNumRow
+                      label="Square footage"
+                      value={editingHouse.squareFootage}
+                      placeholder="29,700"
+                      decimal
+                      grouped
+                      onChangeText={(v) =>
+                        setEditingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
+                      }
+                      propagateChecked={editingHouse.applySquareFootageToRemaining}
+                      onPropagateToggle={() =>
+                        setEditingHouse((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                applySquareFootageToRemaining: !prev.applySquareFootageToRemaining,
+                              }
+                            : prev,
+                        )
+                      }
+                    />
+                    <SettingsNumRow
+                      label="Total CFM (Min Vent)"
+                      value={editingHouse.totalFanCFM}
+                      decimal
+                      grouped
+                      onChangeText={(v) =>
+                        setEditingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
+                      }
+                      propagateChecked={editingHouse.applyMinVentCfmToRemaining}
+                      onPropagateToggle={() =>
+                        setEditingHouse((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                applyMinVentCfmToRemaining: !prev.applyMinVentCfmToRemaining,
+                              }
+                            : prev,
+                        )
+                      }
+                    />
+                    <SettingsNumRow
+                      label="Total CFM (Power)"
+                      value={editingHouse.totalPowerCFM}
+                      decimal
+                      grouped
+                      onChangeText={(v) =>
+                        setEditingHouse((prev) => (prev ? { ...prev, totalPowerCFM: v } : prev))
+                      }
+                      propagateChecked={editingHouse.applyPowerCfmToRemaining}
+                      onPropagateToggle={() =>
+                        setEditingHouse((prev) =>
+                          prev
+                            ? { ...prev, applyPowerCfmToRemaining: !prev.applyPowerCfmToRemaining }
+                            : prev,
+                        )
+                      }
+                    />
                   </View>
                 ) : null}
               </ScrollView>
@@ -2511,22 +2479,22 @@ export default function FarmDetailScreen() {
               ) : null}
               {addingHouse ? (
                 <View style={{ marginTop: 14 }}>
-                  <NativeNumInput
-                    label="House number *"
+                  <SettingsNumRow
+                    label="House number"
                     value={addingHouse.houseNumber}
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, houseNumber: v } : prev))
                     }
                   />
-                  <NativeNumInput
-                    label="Square footage *"
+                  <SettingsNumRow
+                    label="Square footage"
                     value={addingHouse.squareFootage}
                     decimal
                     onChangeText={(v) =>
                       setAddingHouse((prev) => (prev ? { ...prev, squareFootage: v } : prev))
                     }
                   />
-                  <NativeNumInput
+                  <SettingsNumRow
                     label="Total CFM (Min Vent)"
                     value={addingHouse.totalFanCFM}
                     decimal
@@ -2534,7 +2502,7 @@ export default function FarmDetailScreen() {
                       setAddingHouse((prev) => (prev ? { ...prev, totalFanCFM: v } : prev))
                     }
                   />
-                  <NativeNumInput
+                  <SettingsNumRow
                     label="Total CFM (Power)"
                     value={addingHouse.totalPowerCFM}
                     decimal
@@ -2606,32 +2574,32 @@ export default function FarmDetailScreen() {
               ) : null}
               {editingFarm ? (
                 <View style={{ marginTop: 14, gap: 4 }}>
-                  <Text style={styles.label}>Farm name *</Text>
-                  <TextInput
-                    style={styles.input}
+                  <SettingsNumRow
+                    label="Farm name"
                     value={editingFarm.farmName}
+                    wide
+                    autoCapitalize="words"
                     onChangeText={(v) =>
                       setEditingFarm((prev) => (prev ? { ...prev, farmName: v } : prev))
                     }
-                    autoCapitalize="words"
                   />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Farm #</Text>
-                  <TextInput
-                    style={styles.input}
+                  <SettingsNumRow
+                    label="Farm #"
                     value={editingFarm.farmNumber}
+                    wide
+                    autoCapitalize="characters"
                     onChangeText={(v) =>
                       setEditingFarm((prev) => (prev ? { ...prev, farmNumber: v } : prev))
                     }
-                    autoCapitalize="characters"
                   />
-                  <Text style={[styles.label, { marginTop: 8 }]}>Grower name</Text>
-                  <TextInput
-                    style={styles.input}
+                  <SettingsNumRow
+                    label="Grower name"
                     value={editingFarm.growerName}
+                    wide
+                    autoCapitalize="words"
                     onChangeText={(v) =>
                       setEditingFarm((prev) => (prev ? { ...prev, growerName: v } : prev))
                     }
-                    autoCapitalize="words"
                   />
                   <View ref={farmNotesWrapRef} collapsable={false}>
                     <Text style={[styles.label, { marginTop: 8 }]}>Notes</Text>

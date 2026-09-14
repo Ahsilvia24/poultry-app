@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -17,6 +16,7 @@ import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { colors, styles } from "../../../../src/theme";
 import { BackHeader, Card, PrimaryButton } from "../../../../src/components/ui";
 import { DatePickerField } from "../../../../src/components/DatePickerField";
+import { SettingsChipInput, SettingsRow } from "../../../../src/components/SettingsLayout";
 
 function paramId(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -144,19 +144,21 @@ export default function AddFlockScreen() {
                 </Text>
               ) : null}
 
-              <Text style={styles.label}>Flock number *</Text>
-              <TextInput
-                style={styles.input}
-                value={flockNumber}
-                onChangeText={setFlockNumber}
-                autoCapitalize="characters"
-                placeholder="e.g. 26-01"
-                placeholderTextColor={colors.muted}
-              />
+              <SettingsRow label="Flock number">
+                <SettingsChipInput
+                  value={flockNumber}
+                  onChangeText={setFlockNumber}
+                  autoCapitalize="characters"
+                  wide
+                  placeholder="e.g. 26-01"
+                  accessibilityLabel="Flock number"
+                />
+              </SettingsRow>
 
-              <View style={{ marginTop: 8 }}>
+              <View style={{ marginTop: 4 }}>
                 <DatePickerField
                   label="Placement date"
+                  layout="settings"
                   value={placementDate}
                   expanded={datePicker === "placement"}
                   onOpen={() => setDatePicker("placement")}
@@ -172,28 +174,31 @@ export default function AddFlockScreen() {
               >
                 Birds placed per house
               </Text>
-              <Text style={[styles.muted, { marginBottom: 8 }]}>
+              <Text style={[styles.muted, { marginBottom: 4 }]}>
                 Leave a house at 0 / blank to keep it empty for this flock.
               </Text>
               {houses.map((h) => {
                 const occupied = occupiedHouseIds.has(h.id);
                 const isFirstOpen = firstOpenHouse?.id === h.id;
                 return (
-                  <View key={h.id} style={{ marginBottom: 8 }}>
-                    <Text style={styles.label}>
-                      House {h.houseNumber}
-                      {occupied && h.flockNumber ? ` · on flock ${h.flockNumber}` : ""}
-                    </Text>
-                    {occupied ? (
-                      <Text style={[styles.muted, { marginTop: 4 }]}>
-                        Already placed — skip for this flock.
-                      </Text>
-                    ) : (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                        <TextInput
-                          style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                          keyboardType="number-pad"
+                  <View key={h.id}>
+                    <SettingsRow
+                      label={
+                        occupied && h.flockNumber
+                          ? `House ${h.houseNumber} · on flock ${h.flockNumber}`
+                          : `House ${h.houseNumber}`
+                      }
+                    >
+                      {occupied ? (
+                        <Text style={{ fontSize: 15, fontWeight: "600", color: colors.muted }}>
+                          Already placed
+                        </Text>
+                      ) : (
+                        <SettingsChipInput
                           value={placements[h.id] ?? ""}
+                          keyboardType="number-pad"
+                          accessibilityLabel={`House ${h.houseNumber} birds placed`}
+                          placeholder="0"
                           onChangeText={(v) =>
                             setPlacements((prev) => {
                               const next = { ...prev, [h.id]: v };
@@ -205,41 +210,49 @@ export default function AddFlockScreen() {
                               return next;
                             })
                           }
-                          placeholder="0 = empty"
-                          placeholderTextColor={colors.muted}
                         />
-                        {isFirstOpen ? (
-                          <Pressable
-                            onPress={() => {
-                              const nextChecked = !propagate;
-                              setPropagate(nextChecked);
-                              if (!nextChecked || !firstOpenHouse) return;
-                              const value = placements[firstOpenHouse.id] ?? String(DEFAULT_PLACED);
-                              setPlacements((prev) => {
-                                const next = { ...prev };
-                                for (const house of availableHouses) next[house.id] = value;
-                                return next;
-                              });
-                            }}
-                            style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 44 }}
-                          >
-                            <View
-                              style={{
-                                width: 20,
-                                height: 20,
-                                borderRadius: 4,
-                                borderWidth: 1.5,
-                                borderColor: colors.accentDark,
-                                backgroundColor: propagate ? colors.accentDark : "transparent",
-                              }}
-                            />
-                            <Text style={[styles.muted, { color: colors.text, fontWeight: "700", maxWidth: 120 }]}>
-                              Propagate (to the rest of the houses)
-                            </Text>
-                          </Pressable>
-                        ) : null}
-                      </View>
-                    )}
+                      )}
+                    </SettingsRow>
+                    {isFirstOpen ? (
+                      <Pressable
+                        onPress={() => {
+                          const nextChecked = !propagate;
+                          setPropagate(nextChecked);
+                          if (!nextChecked || !firstOpenHouse) return;
+                          const value = placements[firstOpenHouse.id] ?? String(DEFAULT_PLACED);
+                          setPlacements((prev) => {
+                            const next = { ...prev };
+                            for (const house of availableHouses) next[house.id] = value;
+                            return next;
+                          });
+                        }}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: propagate }}
+                        accessibilityLabel="Propagate"
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          alignSelf: "flex-end",
+                          gap: 6,
+                          minHeight: 28,
+                          marginBottom: 4,
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted }}>
+                          Propagate
+                        </Text>
+                        <View
+                          style={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: 4,
+                            borderWidth: 2,
+                            borderColor: propagate ? colors.accentDark : colors.border,
+                            backgroundColor: propagate ? colors.accentDark : "#fff",
+                          }}
+                        />
+                      </Pressable>
+                    ) : null}
                   </View>
                 );
               })}

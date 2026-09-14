@@ -2,7 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { updateFarmAction } from "@/app/actions/farms";
-import { Button, Input, Label, Textarea } from "@/components/ui";
+import {
+  SettingsChipInput,
+  SettingsFieldRow,
+  SettingsValueChip,
+  handleSettingsLayoutEnter,
+} from "@/components/SettingsLayout";
+import { Button, Label, Textarea } from "@/components/ui";
 
 type FarmInfo = {
   id: string;
@@ -82,7 +88,8 @@ export function FarmListSettingsButton({ farm }: { farm: FarmInfo }) {
               Edit Farm Info
             </h3>
             <form
-              className="mt-4 space-y-4"
+              className="mt-4 space-y-1"
+              onKeyDown={handleSettingsLayoutEnter}
               onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
@@ -97,48 +104,53 @@ export function FarmListSettingsButton({ farm }: { farm: FarmInfo }) {
                 });
               }}
             >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <Label htmlFor={`list-farmName-${farm.id}`}>Farm name *</Label>
-                  <Input
+              <SettingsFieldRow label="Farm name" htmlFor={`list-farmName-${farm.id}`}>
+                <SettingsValueChip className="min-w-[9.5rem] max-w-[14rem] flex-1">
+                  <SettingsChipInput
                     id={`list-farmName-${farm.id}`}
                     name="farmName"
                     required
                     defaultValue={farm.farmName}
+                    autoCapitalize="words"
                   />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor={`list-farmNumber-${farm.id}`}>Farm #</Label>
-                  <Input
+                </SettingsValueChip>
+              </SettingsFieldRow>
+              <SettingsFieldRow label="Farm #" htmlFor={`list-farmNumber-${farm.id}`}>
+                <SettingsValueChip className="min-w-[6rem] max-w-[9rem]">
+                  <SettingsChipInput
                     id={`list-farmNumber-${farm.id}`}
                     name="farmNumber"
                     defaultValue={farm.farmNumber ?? ""}
+                    autoCapitalize="characters"
                   />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor={`list-growerName-${farm.id}`}>Grower name</Label>
-                  <Input
+                </SettingsValueChip>
+              </SettingsFieldRow>
+              <SettingsFieldRow label="Grower name" htmlFor={`list-growerName-${farm.id}`}>
+                <SettingsValueChip className="min-w-[9.5rem] max-w-[14rem] flex-1">
+                  <SettingsChipInput
                     id={`list-growerName-${farm.id}`}
                     name="growerName"
                     defaultValue={farm.growerName}
+                    autoComplete="name"
+                    autoCapitalize="words"
                   />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor={`list-notes-${farm.id}`}>Notes</Label>
-                  <Textarea
-                    id={`list-notes-${farm.id}`}
-                    name="notes"
-                    rows={3}
-                    defaultValue={farm.notes ?? ""}
-                    className="scroll-mb-32"
-                    onFocus={(e) =>
-                      e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })
-                    }
-                  />
-                </div>
+                </SettingsValueChip>
+              </SettingsFieldRow>
+              <div className="pt-2">
+                <Label htmlFor={`list-notes-${farm.id}`}>Notes</Label>
+                <Textarea
+                  id={`list-notes-${farm.id}`}
+                  name="notes"
+                  rows={3}
+                  defaultValue={farm.notes ?? ""}
+                  className="scroll-mb-32"
+                  onFocus={(e) =>
+                    e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })
+                  }
+                />
               </div>
-              {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
-              <div className="flex flex-wrap gap-2">
+              {error ? <p className="pt-2 text-sm font-semibold text-red-700">{error}</p> : null}
+              <div className="flex flex-wrap gap-2 pt-3">
                 <Button type="submit" disabled={pending}>
                   {pending ? "Saving…" : "Save"}
                 </Button>

@@ -5,8 +5,14 @@ import { useEffect, useState, useTransition } from "react";
 import { deleteHouseAction, updateHouseAction } from "@/app/actions/farms";
 import { DateKeyField } from "@/components/DateKeyField";
 import { GroupedNumberInput } from "@/components/GroupedNumberInput";
+import {
+  SettingsChipInput,
+  SettingsFieldRow,
+  SettingsValueChip,
+  handleSettingsLayoutEnter,
+} from "@/components/SettingsLayout";
 import { TimeKeyField } from "@/components/TimeKeyField";
-import { Button, Input, Label } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { formDataToParts, formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
@@ -214,172 +220,177 @@ export function HouseCardActions({
         }}
       >
         {mode === "edit" ? (
-          <form action={onSave} className="flex min-h-0 flex-1 flex-col">
+          <form action={onSave} className="flex min-h-0 flex-1 flex-col" onKeyDown={handleSettingsLayoutEnter}>
             <div className="shrink-0 px-5 pt-[max(1.25rem,env(safe-area-inset-top,1.25rem))]">
               <h3 className="text-lg font-bold text-stone-900">
                 Edit house {house.houseNumber}
               </h3>
               {error ? <p className="mt-2 text-sm text-red-700">{error}</p> : null}
             </div>
-            <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-5 py-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor={`edit-houseNumber-${house.id}`}>House number</Label>
-                  <Input
+            <div className="min-h-0 space-y-1 overflow-y-auto overscroll-contain px-5 py-3">
+              <SettingsFieldRow label="House number" htmlFor={`edit-houseNumber-${house.id}`}>
+                <SettingsValueChip className="w-[4.75rem]">
+                  <SettingsChipInput
                     id={`edit-houseNumber-${house.id}`}
                     name="houseNumber"
-                    type="number"
-                    min={1}
                     required
-                    compact
+                    inputMode="numeric"
                     defaultValue={house.houseNumber}
                   />
-                </div>
-                {hasActiveFlock ? (
+                </SettingsValueChip>
+              </SettingsFieldRow>
+              {hasActiveFlock ? (
+                <>
                   <div>
-                    <Label htmlFor={`edit-flockNumber-${house.id}`}>Flock ID</Label>
-                    <Input
-                      id={`edit-flockNumber-${house.id}`}
-                      name="flockNumber"
-                      compact
-                      defaultValue={house.flockNumber ?? ""}
-                      placeholder="e.g. 26-07"
-                      autoCapitalize="characters"
-                    />
+                    <SettingsFieldRow label="Flock ID" htmlFor={`edit-flockNumber-${house.id}`}>
+                      <SettingsValueChip className="min-w-[6rem]">
+                        <SettingsChipInput
+                          id={`edit-flockNumber-${house.id}`}
+                          name="flockNumber"
+                          defaultValue={house.flockNumber ?? ""}
+                          placeholder="e.g. 26-07"
+                          autoCapitalize="characters"
+                        />
+                      </SettingsValueChip>
+                    </SettingsFieldRow>
                     <PropagateCheck
                       name="applyFlockIdToRemaining"
                       checked={applyFlockIdToRemaining}
                       onChange={setApplyFlockIdToRemaining}
                     />
                   </div>
-                ) : (
-                  <div />
-                )}
-              </div>
-              {hasActiveFlock ? (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor={`edit-placementDate-${house.id}`}>Placement date</Label>
+                  <div>
+                    <SettingsFieldRow label="Placement date" htmlFor={`edit-placementDate-${house.id}`}>
                       <DateKeyField
                         id={`edit-placementDate-${house.id}`}
                         name="placementDate"
                         label="Placement date"
                         value={placementDate}
                         onChange={onPlacementChange}
+                        variant="settings"
                       />
-                      <PropagateCheck
-                        name="applyPlacementToRemaining"
-                        checked={applyPlacementToRemaining}
-                        onChange={setApplyPlacementToRemaining}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`edit-placedBirdCount-${house.id}`}>Birds placed</Label>
-                      <GroupedNumberInput
-                        id={`edit-placedBirdCount-${house.id}`}
-                        name="placedBirdCount"
-                        min={1}
-                        step={1}
-                        compact
-                        defaultValue={house.placedBirdCount ?? ""}
-                      />
-                      <PropagateCheck
-                        name="applyBirdsToRemaining"
-                        checked={applyBirdsToRemaining}
-                        onChange={setApplyBirdsToRemaining}
-                      />
-                    </div>
+                    </SettingsFieldRow>
+                    <PropagateCheck
+                      name="applyPlacementToRemaining"
+                      checked={applyPlacementToRemaining}
+                      onChange={setApplyPlacementToRemaining}
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor={`edit-catchDate-${house.id}`}>Catch date</Label>
+                  <div>
+                    <SettingsFieldRow label="Birds placed" htmlFor={`edit-placedBirdCount-${house.id}`}>
+                      <SettingsValueChip className="min-w-[5.5rem]">
+                        <GroupedNumberInput
+                          id={`edit-placedBirdCount-${house.id}`}
+                          name="placedBirdCount"
+                          min={1}
+                          step={1}
+                          variant="settings"
+                          defaultValue={house.placedBirdCount ?? ""}
+                        />
+                      </SettingsValueChip>
+                    </SettingsFieldRow>
+                    <PropagateCheck
+                      name="applyBirdsToRemaining"
+                      checked={applyBirdsToRemaining}
+                      onChange={setApplyBirdsToRemaining}
+                    />
+                  </div>
+                  <div>
+                    <SettingsFieldRow label="Catch date" htmlFor={`edit-catchDate-${house.id}`}>
                       <DateKeyField
                         id={`edit-catchDate-${house.id}`}
                         name="catchDate"
                         label="Catch date"
                         value={catchDate}
                         onChange={setCatchDate}
+                        variant="settings"
                       />
-                      <PropagateCheck
-                        name="applyCatchDateToRemaining"
-                        checked={applyCatchDateToRemaining}
-                        onChange={setApplyCatchDateToRemaining}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`edit-catchTime-${house.id}`}>Catch time</Label>
+                    </SettingsFieldRow>
+                    <PropagateCheck
+                      name="applyCatchDateToRemaining"
+                      checked={applyCatchDateToRemaining}
+                      onChange={setApplyCatchDateToRemaining}
+                    />
+                  </div>
+                  <div>
+                    <SettingsFieldRow label="Catch time" htmlFor={`edit-catchTime-${house.id}`}>
                       <TimeKeyField
                         id={`edit-catchTime-${house.id}`}
                         name="catchTime"
                         label="Catch time"
                         value={catchTime}
                         onChange={setCatchTime}
+                        variant="settings"
                       />
-                      <PropagateCheck
-                        name="applyCatchTimeToRemaining"
-                        checked={applyCatchTimeToRemaining}
-                        onChange={setApplyCatchTimeToRemaining}
-                      />
-                    </div>
+                    </SettingsFieldRow>
+                    <PropagateCheck
+                      name="applyCatchTimeToRemaining"
+                      checked={applyCatchTimeToRemaining}
+                      onChange={setApplyCatchTimeToRemaining}
+                    />
                   </div>
                 </>
               ) : null}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor={`edit-squareFootage-${house.id}`}>Square footage</Label>
-                  <GroupedNumberInput
-                    id={`edit-squareFootage-${house.id}`}
-                    name="squareFootage"
-                    decimal
-                    min={1}
-                    step="any"
-                    required
-                    compact
-                    defaultValue={house.squareFootage ?? 29700}
-                  />
-                  <PropagateCheck
-                    name="applySquareFootageToRemaining"
-                    checked={applySquareFootageToRemaining}
-                    onChange={setApplySquareFootageToRemaining}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`edit-totalFanCFM-${house.id}`}>Total CFM (Min Vent)</Label>
-                  <GroupedNumberInput
-                    id={`edit-totalFanCFM-${house.id}`}
-                    name="totalFanCFM"
-                    decimal
-                    min={0}
-                    step="any"
-                    compact
-                    defaultValue={house.totalFanCFM ?? ""}
-                  />
-                  <PropagateCheck
-                    name="applyMinVentCfmToRemaining"
-                    checked={applyMinVentCfmToRemaining}
-                    onChange={setApplyMinVentCfmToRemaining}
-                  />
-                </div>
+              <div>
+                <SettingsFieldRow label="Square footage" htmlFor={`edit-squareFootage-${house.id}`}>
+                  <SettingsValueChip className="min-w-[5.5rem]">
+                    <GroupedNumberInput
+                      id={`edit-squareFootage-${house.id}`}
+                      name="squareFootage"
+                      decimal
+                      min={1}
+                      step="any"
+                      required
+                      variant="settings"
+                      defaultValue={house.squareFootage ?? 29700}
+                    />
+                  </SettingsValueChip>
+                </SettingsFieldRow>
+                <PropagateCheck
+                  name="applySquareFootageToRemaining"
+                  checked={applySquareFootageToRemaining}
+                  onChange={setApplySquareFootageToRemaining}
+                />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor={`edit-totalPowerCFM-${house.id}`}>Total CFM (Power)</Label>
-                  <GroupedNumberInput
-                    id={`edit-totalPowerCFM-${house.id}`}
-                    name="totalPowerCFM"
-                    decimal
-                    min={0}
-                    step="any"
-                    compact
-                    defaultValue={house.totalPowerCFM ?? ""}
-                  />
-                  <PropagateCheck
-                    name="applyPowerCfmToRemaining"
-                    checked={applyPowerCfmToRemaining}
-                    onChange={setApplyPowerCfmToRemaining}
-                  />
-                </div>
+              <div>
+                <SettingsFieldRow label="Total CFM (Min Vent)" htmlFor={`edit-totalFanCFM-${house.id}`}>
+                  <SettingsValueChip className="min-w-[5.5rem]">
+                    <GroupedNumberInput
+                      id={`edit-totalFanCFM-${house.id}`}
+                      name="totalFanCFM"
+                      decimal
+                      min={0}
+                      step="any"
+                      variant="settings"
+                      defaultValue={house.totalFanCFM ?? ""}
+                    />
+                  </SettingsValueChip>
+                </SettingsFieldRow>
+                <PropagateCheck
+                  name="applyMinVentCfmToRemaining"
+                  checked={applyMinVentCfmToRemaining}
+                  onChange={setApplyMinVentCfmToRemaining}
+                />
+              </div>
+              <div>
+                <SettingsFieldRow label="Total CFM (Power)" htmlFor={`edit-totalPowerCFM-${house.id}`}>
+                  <SettingsValueChip className="min-w-[5.5rem]">
+                    <GroupedNumberInput
+                      id={`edit-totalPowerCFM-${house.id}`}
+                      name="totalPowerCFM"
+                      decimal
+                      min={0}
+                      step="any"
+                      variant="settings"
+                      defaultValue={house.totalPowerCFM ?? ""}
+                    />
+                  </SettingsValueChip>
+                </SettingsFieldRow>
+                <PropagateCheck
+                  name="applyPowerCfmToRemaining"
+                  checked={applyPowerCfmToRemaining}
+                  onChange={setApplyPowerCfmToRemaining}
+                />
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2 px-5 pt-2 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+1.5rem))]">

@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { updateFarmAction } from "@/app/actions/farms";
-import { Button, Card, Input, Label, Textarea } from "@/components/ui";
+import {
+  SettingsChipInput,
+  SettingsFieldRow,
+  SettingsValueChip,
+  handleSettingsLayoutEnter,
+} from "@/components/SettingsLayout";
+import { Button, Card, Label, Textarea } from "@/components/ui";
 import { formDataToParts, formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
@@ -28,7 +34,7 @@ function GearIcon({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06-.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   );
 }
@@ -88,35 +94,54 @@ export function FarmInfoEditor({
               }
               setOpen(false);
             }}
-            className="mt-4 space-y-4"
+            className="mt-4 space-y-1"
+            onKeyDown={handleSettingsLayoutEnter}
           >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Label htmlFor="farmName">Farm name *</Label>
-                <Input id="farmName" name="farmName" required defaultValue={farm.farmName} />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="farmNumber">Farm #</Label>
-                <Input id="farmNumber" name="farmNumber" defaultValue={farm.farmNumber ?? ""} />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="growerName">Grower name</Label>
-                <Input id="growerName" name="growerName" defaultValue={farm.growerName} />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  rows={3}
-                  defaultValue={farm.notes ?? ""}
-                  className="scroll-mb-32"
-                  onFocus={(e) => e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })}
+            <SettingsFieldRow label="Farm name" htmlFor="farmName">
+              <SettingsValueChip className="min-w-[9.5rem] max-w-[14rem] flex-1">
+                <SettingsChipInput
+                  id="farmName"
+                  name="farmName"
+                  required
+                  defaultValue={farm.farmName}
+                  autoCapitalize="words"
                 />
-              </div>
+              </SettingsValueChip>
+            </SettingsFieldRow>
+            <SettingsFieldRow label="Farm #" htmlFor="farmNumber">
+              <SettingsValueChip className="min-w-[6rem] max-w-[9rem]">
+                <SettingsChipInput
+                  id="farmNumber"
+                  name="farmNumber"
+                  defaultValue={farm.farmNumber ?? ""}
+                  autoCapitalize="characters"
+                />
+              </SettingsValueChip>
+            </SettingsFieldRow>
+            <SettingsFieldRow label="Grower name" htmlFor="growerName">
+              <SettingsValueChip className="min-w-[9.5rem] max-w-[14rem] flex-1">
+                <SettingsChipInput
+                  id="growerName"
+                  name="growerName"
+                  defaultValue={farm.growerName}
+                  autoComplete="name"
+                  autoCapitalize="words"
+                />
+              </SettingsValueChip>
+            </SettingsFieldRow>
+            <div className="pt-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                name="notes"
+                rows={3}
+                defaultValue={farm.notes ?? ""}
+                className="scroll-mb-32"
+                onFocus={(e) => e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" })}
+              />
             </div>
-            {error ? <p className="text-sm font-semibold text-red-700">{error}</p> : null}
-            <div className="flex flex-wrap gap-2">
+            {error ? <p className="pt-2 text-sm font-semibold text-red-700">{error}</p> : null}
+            <div className="flex flex-wrap gap-2 pt-3">
               <Button type="submit">Save</Button>
               <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
                 Cancel

@@ -13,6 +13,7 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
+import { SettingsRow, settingsValueChip, settingsValueText } from "./SettingsLayout";
 import { WebPortalOverlay } from "./WebPortalOverlay";
 
 /** Half-hour slots: top (:00) and bottom (:30) of each hour. */
@@ -135,6 +136,7 @@ export function TimeScrollPickerField({
   style,
   inputStyle,
   presentation = "modal",
+  layout = "default",
 }: {
   label: string;
   value: string;
@@ -148,6 +150,8 @@ export function TimeScrollPickerField({
   inputStyle?: object;
   /** `inline` expands under the field — required inside parent Modals. */
   presentation?: "modal" | "inline";
+  /** Settings layout: label left, grey time chip right. */
+  layout?: "default" | "settings";
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => parseTime(value || "06:00"));
@@ -181,43 +185,62 @@ export function TimeScrollPickerField({
 
   const draftKey = toTimeKey(safePickerDate(draft));
   const pickerValue = safePickerDate(draft);
+  const isSettings = layout === "settings";
+
+  const trigger = (
+    <Pressable
+      onPress={openPicker}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${value ? timeLabel(value) : "Select time"}. Opens time picker`}
+      style={
+        isSettings
+          ? [settingsValueChip, { minWidth: 116 }]
+          : [
+              styles.input,
+              {
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 6,
+              },
+              inputStyle,
+            ]
+      }
+    >
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+        style={
+          isSettings
+            ? settingsValueText
+            : {
+                flex: 1,
+                minWidth: 0,
+                fontWeight: "700",
+                color: value ? colors.text : colors.muted,
+                fontSize: 16,
+              }
+        }
+      >
+        {value ? timeLabel(value) : "Select time"}
+      </Text>
+      {isSettings ? null : <Ionicons name="time-outline" size={20} color={colors.muted} />}
+    </Pressable>
+  );
 
   return (
     <View style={style}>
-      <Text style={styles.label} numberOfLines={2}>
-        {label}
-      </Text>
-      <Pressable
-        onPress={openPicker}
-        accessibilityRole="button"
-        accessibilityLabel={`${label}, ${value ? timeLabel(value) : "Select time"}. Opens time picker`}
-        style={[
-          styles.input,
-          {
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 6,
-          },
-          inputStyle,
-        ]}
-      >
-        <Text
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.75}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            fontWeight: "700",
-            color: value ? colors.text : colors.muted,
-            fontSize: 16,
-          }}
-        >
-          {value ? timeLabel(value) : "Select time"}
-        </Text>
-        <Ionicons name="time-outline" size={20} color={colors.muted} />
-      </Pressable>
+      {isSettings ? (
+        <SettingsRow label={label}>{trigger}</SettingsRow>
+      ) : (
+        <>
+          <Text style={styles.label} numberOfLines={2}>
+            {label}
+          </Text>
+          {trigger}
+        </>
+      )}
 
       {Platform.OS === "android" && open && !useInline ? (
         <DateTimePicker

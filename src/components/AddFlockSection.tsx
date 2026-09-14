@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { addDays, format, parseISO } from "date-fns";
 import { DateKeyField } from "@/components/DateKeyField";
 import { useOffline } from "@/components/OfflineProvider";
-import { Button, Card, Input, Label } from "@/components/ui";
+import {
+  SettingsChipInput,
+  SettingsFieldRow,
+  SettingsValueChip,
+  handleSettingsLayoutEnter,
+} from "@/components/SettingsLayout";
+import { Button, Card } from "@/components/ui";
 import { formDataToParts, formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import { settingsFormValues } from "@/lib/offline/applyLocal";
@@ -136,7 +142,8 @@ export function AddFlockSection({
                   if (result?.error) setError(result.error);
                 });
               }}
-              className="mt-4 space-y-3"
+              className="mt-4 space-y-1"
+              onKeyDown={handleSettingsLayoutEnter}
             >
               {error ? (
                 <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
@@ -148,77 +155,78 @@ export function AddFlockSection({
                   placement date — leave others at 0.
                 </p>
               ) : null}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="flockNumber">Flock number</Label>
-                  <Input id="flockNumber" name="flockNumber" required />
-                </div>
-                <div className="min-w-0 overflow-hidden">
-                  <Label htmlFor="placementDate">Placement date</Label>
-                  <DateKeyField
-                    id="placementDate"
-                    name="placementDate"
-                    label="Placement date"
-                    value={placementDate}
-                    onChange={setPlacementDate}
+              <SettingsFieldRow label="Flock number" htmlFor="flockNumber">
+                <SettingsValueChip className="min-w-[6rem] max-w-[9rem]">
+                  <SettingsChipInput
+                    id="flockNumber"
+                    name="flockNumber"
                     required
+                    autoCapitalize="characters"
+                    placeholder="e.g. 26-01"
                   />
-                </div>
-              </div>
+                </SettingsValueChip>
+              </SettingsFieldRow>
+              <SettingsFieldRow label="Placement date" htmlFor="placementDate">
+                <DateKeyField
+                  id="placementDate"
+                  name="placementDate"
+                  label="Placement date"
+                  value={placementDate}
+                  onChange={setPlacementDate}
+                  required
+                  variant="settings"
+                />
+              </SettingsFieldRow>
               <input type="hidden" name="targetMarketAge" value={marketAge} />
               <input type="hidden" name="projectedCatchDate" value={projectedCatchDate} />
               <input type="hidden" name="flockStatus" value="ACTIVE" />
               <input type="hidden" name="sex" value="STRAIGHT_RUN" />
               <input type="hidden" name="initialBirdCount" value="1" />
-              <div>
+              <div className="pt-2">
                 <p className="mb-1 text-sm font-semibold text-stone-700">Birds placed per house</p>
-                <p className="mb-2 text-xs text-stone-500">
+                <p className="mb-1 text-xs text-stone-500">
                   Leave a house at 0 to keep it empty for this flock.
                 </p>
-                <div className="space-y-3">
+                <div className="space-y-1">
                   {houses.map((house) => {
                     const occupied = Boolean(house.occupiedByFlock);
                     const isFirstOpen = firstOpenHouse?.id === house.id;
                     return (
-                      <div
-                        key={house.id}
-                        className="flex flex-wrap items-end gap-3 sm:flex-nowrap"
-                      >
+                      <div key={house.id}>
                         {!occupied ? (
                           <input type="hidden" name="houseId" value={house.id} />
                         ) : null}
-                        <div className="min-w-[5rem]">
-                          <Label htmlFor={`placed-${house.id}`}>
-                            House {house.houseNumber}
-                            {occupied && house.occupiedByFlock
-                              ? ` · on ${house.occupiedByFlock}`
-                              : ""}
-                          </Label>
+                        <SettingsFieldRow
+                          label={
+                            occupied && house.occupiedByFlock
+                              ? `House ${house.houseNumber} · on ${house.occupiedByFlock}`
+                              : `House ${house.houseNumber}`
+                          }
+                          htmlFor={`placed-${house.id}`}
+                        >
                           {occupied ? (
-                            <p className="mt-1 text-sm text-stone-500">
-                              Already placed — skipped.
-                            </p>
+                            <span className="text-sm font-medium text-stone-500">Already placed</span>
                           ) : (
-                            <Input
-                              id={`placed-${house.id}`}
-                              name="placedBirdCount"
-                              type="number"
-                              min={0}
-                              value={counts[house.id] ?? DEFAULT_PLACED}
-                              onChange={(event) => setHouseCount(house.id, event.target.value)}
-                              className="mt-1 max-w-[10rem]"
-                            />
+                            <SettingsValueChip className="min-w-[5.5rem]">
+                              <SettingsChipInput
+                                id={`placed-${house.id}`}
+                                name="placedBirdCount"
+                                inputMode="numeric"
+                                value={counts[house.id] ?? DEFAULT_PLACED}
+                                onChange={(event) => setHouseCount(house.id, event.target.value)}
+                              />
+                            </SettingsValueChip>
                           )}
-                        </div>
+                        </SettingsFieldRow>
                         {isFirstOpen ? (
-                          <label className="mb-2 flex min-h-11 items-center gap-2 text-sm font-semibold text-stone-800">
+                          <label className="mt-0.5 ml-auto flex w-fit cursor-pointer items-center gap-1.5 leading-none">
+                            <span className="text-xs font-medium text-stone-600">Propagate</span>
                             <input
                               type="checkbox"
                               checked={propagate}
                               onChange={(event) => onPropagateChange(event.target.checked)}
-                              className="h-4 w-4 accent-emerald-800"
+                              className="h-3.5 w-3.5 shrink-0 rounded border-stone-300 text-emerald-700 focus:ring-emerald-700"
                             />
-                            Propagate (to the rest of the houses)
                           </label>
                         ) : null}
                       </div>
@@ -226,7 +234,7 @@ export function AddFlockSection({
                   })}
                 </div>
               </div>
-              <Button type="submit" disabled={pending}>
+              <Button type="submit" disabled={pending} className="mt-3">
                 {pending ? "Creating…" : "Create flock"}
               </Button>
             </form>

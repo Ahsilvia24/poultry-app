@@ -10,6 +10,7 @@ export function TimeKeyField({
   value,
   onChange,
   className,
+  variant = "default",
 }: {
   id: string;
   name?: string;
@@ -17,6 +18,8 @@ export function TimeKeyField({
   value: string;
   onChange: (next: string) => void;
   className?: string;
+  /** Settings layout: grey chip on the right. Picker still pops up. */
+  variant?: "default" | "settings";
 }) {
   const [open, setOpen] = useState(false);
   const selectedRef = useRef<HTMLButtonElement | null>(null);
@@ -29,6 +32,8 @@ export function TimeKeyField({
     return () => window.clearTimeout(t);
   }, [open, value]);
 
+  const isSettings = variant === "settings";
+
   return (
     <div className={className}>
       {name ? <input type="hidden" name={name} value={value} /> : null}
@@ -37,17 +42,23 @@ export function TimeKeyField({
         type="button"
         aria-label={`${label}, ${value ? halfHourTimeLabel(value) : "Select time"}. Opens time picker`}
         onClick={() => setOpen(true)}
-        className="flex h-11 w-full min-w-0 max-w-full items-center justify-between gap-2 rounded-lg border border-stone-300 bg-white px-2.5 text-left text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+        className={
+          isSettings
+            ? "flex h-9 min-w-[7.25rem] items-center justify-end rounded-lg bg-stone-200 px-2.5 text-right text-[15px] font-semibold leading-none text-stone-900 outline-none"
+            : "flex h-11 w-full min-w-0 max-w-full items-center justify-between gap-2 rounded-lg border border-stone-300 bg-white px-2.5 text-left text-base font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200"
+        }
       >
         <span className={`min-w-0 truncate ${value ? "text-stone-900" : "text-stone-400"}`}>
           {value ? halfHourTimeLabel(value) : "Select time"}
         </span>
-        <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-stone-400">
-          <path
-            fill="currentColor"
-            d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm.75 3a.75.75 0 0 0-1.5 0v5.19l3.22 1.88a.75.75 0 1 0 .76-1.3L12.75 11.3V7Z"
-          />
-        </svg>
+        {isSettings ? null : (
+          <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-stone-400">
+            <path
+              fill="currentColor"
+              d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm.75 3a.75.75 0 0 0-1.5 0v5.19l3.22 1.88a.75.75 0 1 0 .76-1.3L12.75 11.3V7Z"
+            />
+          </svg>
+        )}
       </button>
 
       {open ? (
