@@ -1375,26 +1375,25 @@ export default function FarmDetailScreen() {
                           </Text>
                         ) : null}
                       </Text>
-                      {h.cumulativeMortality != null || h.projectedHeadCount != null ? (
-                        <Text
-                          style={{
-                            marginTop: 2,
-                            fontSize: 14,
-                            fontWeight: "600",
-                            color: colors.muted,
-                          }}
-                        >
-                          {h.cumulativeMortality != null
-                            ? `M ${formatNumber(h.cumulativeMortality)}`
-                            : null}
-                          {h.cumulativeMortality != null && h.projectedHeadCount != null
-                            ? " · "
-                            : null}
-                          {h.projectedHeadCount != null
-                            ? `PHC ${formatNumber(h.projectedHeadCount)}`
-                            : null}
-                        </Text>
-                      ) : null}
+                      <Text
+                        style={{
+                          marginTop: 2,
+                          minHeight: 20,
+                          fontSize: 14,
+                          fontWeight: "600",
+                          color: colors.muted,
+                        }}
+                      >
+                        {h.cumulativeMortality != null
+                          ? `M ${formatNumber(h.cumulativeMortality)}`
+                          : ""}
+                        {h.cumulativeMortality != null && h.projectedHeadCount != null
+                          ? " · "
+                          : ""}
+                        {h.projectedHeadCount != null
+                          ? `PHC ${formatNumber(h.projectedHeadCount)}`
+                          : ""}
+                      </Text>
                     </Pressable>
                     <Pressable
                       accessibilityRole="button"
@@ -1522,24 +1521,20 @@ export default function FarmDetailScreen() {
                       opacity: pressed ? 0.85 : 1,
                     })}
                   >
-                    {h.weeklyMortality.length > 0 ? (
-                      <View>
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: "700",
-                            color: colors.muted,
-                            textTransform: "uppercase",
-                            marginBottom: 8,
-                          }}
-                        >
-                          Weekly mortality
-                        </Text>
-                        <WeeklyMortalityList weeks={h.weeklyMortality} />
-                      </View>
-                    ) : (
-                      <Text style={styles.muted}>No weekly mortality yet.</Text>
-                    )}
+                    <View>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "700",
+                          color: colors.muted,
+                          textTransform: "uppercase",
+                          marginBottom: 8,
+                        }}
+                      >
+                        Weekly mortality
+                      </Text>
+                      <WeeklyMortalityList weeks={h.weeklyMortality} />
+                    </View>
                   </Pressable>
                 </View>
 

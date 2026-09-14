@@ -180,15 +180,13 @@ export function HouseCard({
                   <span className="font-semibold text-stone-600"> {birdAgeDays}d</span>
                 ) : null}
               </p>
-              {metrics || projectedHeadCount != null ? (
-                <p className="mt-0.5 text-sm font-semibold text-stone-600">
-                  {metrics ? `M ${formatNumber(metrics.cumulative)}` : null}
-                  {metrics && projectedHeadCount != null ? " · " : null}
-                  {projectedHeadCount != null
-                    ? `PHC ${formatNumber(projectedHeadCount)}`
-                    : null}
-                </p>
-              ) : null}
+              <p className="mt-0.5 min-h-5 text-sm font-semibold text-stone-600">
+                {metrics ? `M ${formatNumber(metrics.cumulative)}` : ""}
+                {metrics && projectedHeadCount != null ? " · " : ""}
+                {projectedHeadCount != null
+                  ? `PHC ${formatNumber(projectedHeadCount)}`
+                  : ""}
+              </p>
             </button>
             <div className="flex shrink-0 items-start gap-2">
               <button
@@ -240,16 +238,12 @@ export function HouseCard({
             className="mt-3 w-full text-left text-inherit"
             aria-label={`Edit house ${house.houseNumber} weekly mortality`}
           >
-            {weeklyMortality.length > 0 ? (
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-                  Weekly mortality
-                </p>
-                <WeeklyMortalityList weeks={weeklyMortality} />
-              </div>
-            ) : (
-              <p className="text-sm text-stone-500">No weekly mortality yet.</p>
-            )}
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                Weekly mortality
+              </p>
+              <WeeklyMortalityList weeks={weeklyMortality} />
+            </div>
           </button>
 
           <button
@@ -314,17 +308,21 @@ export function HouseCard({
                 </div>
                 <div>
                   <p className="text-[13px] text-stone-500">Mortality</p>
-                  <p className="mt-0.5 text-[15px] font-bold">{mortalityValue}</p>
-                  {mortalityPct ? (
-                    <p className="text-[15px] font-bold leading-snug">({mortalityPct})</p>
-                  ) : null}
+                  <p className="mt-0.5 min-h-[22px] text-[15px] font-bold tabular-nums">
+                    {mortalityValue}
+                  </p>
+                  <p className="min-h-[22px] text-[15px] font-bold leading-snug tabular-nums">
+                    {mortalityPct ? `(${mortalityPct})` : "\u00a0"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-[13px] text-stone-500">Proj. Mort.</p>
-                  <p className="mt-0.5 text-[15px] font-bold">{projMortValue}</p>
-                  {projMortPct ? (
-                    <p className="text-[15px] font-bold leading-snug">({projMortPct})</p>
-                  ) : null}
+                  <p className="mt-0.5 min-h-[22px] text-[15px] font-bold tabular-nums">
+                    {projMortValue}
+                  </p>
+                  <p className="min-h-[22px] text-[15px] font-bold leading-snug tabular-nums">
+                    {projMortPct ? `(${projMortPct})` : "\u00a0"}
+                  </p>
                 </div>
               </div>
             </button>
