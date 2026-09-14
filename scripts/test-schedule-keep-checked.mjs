@@ -7,8 +7,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(root, rel), "utf8");
 
 const {
+  applyIncomingScheduleChecks,
   bindCompletionsToSchedule,
   gatherFollowUpCompletions,
+  rememberScheduleCheckKey,
   upsertFollowUpCompletion,
 } = await import(join(root, "src/lib/offline/followUpCompletions.ts"));
 const { applyFormWrite } = await import(join(root, "src/lib/offline/applyWrites.ts"));
@@ -255,9 +257,46 @@ assert.equal(
   false,
 );
 
+const stickyPrev = applyIncomingScheduleChecks(
+  { "farm-1|Placement|NEW8": true },
+  [{ farmId: "farm-1", label: "Placement", flockNumber: "NEW8", completed: false }],
+  new Set(),
+);
+assert.equal(stickyPrev["farm-1|Placement|NEW8"], true);
+assert.equal(rememberScheduleCheckKey({ farmId: "farm-1", label: "Weight Projection", flockNumber: "A" }), "farm-1|Weight Proj.|A");
+
+const userCleared = new Set(["farm-1|Placement|NEW8"]);
+const afterUserClear = applyIncomingScheduleChecks(
+  { "farm-1|Placement|NEW8": true },
+  [{ farmId: "farm-1", label: "Placement", flockNumber: "NEW8", completed: false }],
+  userCleared,
+);
+assert.equal(afterUserClear["farm-1|Placement|NEW8"], false);
+
+const withFallback = selectDashboard(
+  {
+    ...base,
+    followUpCompletions: [],
+    dashboard: { ...base.dashboard, todaysSchedule: [{ ...base.dashboard.todaysSchedule[0], completed: false }] },
+  },
+  {
+    ...base.dashboard,
+    todaysSchedule: [{ ...base.dashboard.todaysSchedule[0], completed: true }],
+  },
+);
+assert.equal(
+  withFallback.todaysSchedule.some((row) => row.label === "Placement" && row.completed),
+  true,
+  "server/initial checkoffs apply when the replica list is still open",
+);
+
 assert.match(read("src/lib/offline/applyWrites.ts"), /upsertFollowUpCompletion/);
 assert.match(read("src/lib/offline/selectDashboard.ts"), /bindCompletionsToSchedule/);
+assert.match(read("src/lib/offline/selectDashboard.ts"), /fallback\?\.todaysSchedule/);
 assert.match(read("src/lib/offline/buildSnapshot.ts"), /followUpCompletions/);
 assert.match(read("src/lib/offline/types.ts"), /followUpCompletions\?:/);
+assert.match(read("src/components/FollowUpsDueList.tsx"), /applyIncomingScheduleChecks/);
+assert.match(read("src/components/OfflineProvider.tsx"), /seedAndMergeFollowUpCompletions/);
+assert.doesNotMatch(read("src/components/FollowUpsDueList.tsx"), /setChecked\(serverChecked\)/);
 
 console.log("schedule-keep-checked: ok");

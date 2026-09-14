@@ -19,6 +19,32 @@ export function completionKey(dateKey: string, label: string) {
   return `${dateKey}::${label}`;
 }
 
+export function rememberScheduleCheckKey(item: {
+  farmId: string;
+  label: string;
+  flockNumber?: string | null;
+}) {
+  const label = item.label === "Weight Projection" ? "Weight Proj." : item.label;
+  return `${item.farmId}|${label}|${item.flockNumber ?? ""}`;
+}
+
+export function applyIncomingScheduleChecks(
+  prev: Record<string, boolean>,
+  items: Array<{ farmId: string; label: string; flockNumber?: string | null; completed: boolean }>,
+  userCleared: Set<string>,
+): Record<string, boolean> {
+  const next = { ...prev };
+  for (const item of items) {
+    const key = rememberScheduleCheckKey(item);
+    if (item.completed && !userCleared.has(key)) next[key] = true;
+    if (!item.completed && userCleared.has(key)) {
+      next[key] = false;
+      userCleared.delete(key);
+    }
+  }
+  return next;
+}
+
 function weekdayOf(dateKey: string): number {
   return parseDateKey(dateKey).getDay(); // Sun=0 … Sat=6
 }

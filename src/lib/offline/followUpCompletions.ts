@@ -1,5 +1,5 @@
 import { completionKey } from "@/lib/visits/schedule";
-import type { OfflineFollowUpCompletion } from "@/lib/offline/types";
+import type { OfflineFollowUpCompletion, OfflineSnapshot } from "@/lib/offline/types";
 
 export function normalizeScheduleLabel(label: string) {
   return label === "Weight Projection" ? "Weight Proj." : label;
@@ -11,6 +11,33 @@ export function labelsMatch(a: string, b: string) {
 
 export function completionRowKey(farmId: string, date: string, label: string) {
   return `${farmId}|${date}|${normalizeScheduleLabel(label)}`;
+}
+
+/** Farm + visit label + flock ID. Survives a one-day rebuild shift. */
+export function rememberScheduleCheckKey(item: {
+  farmId: string;
+  label: string;
+  flockNumber?: string | null;
+}) {
+  return `${item.farmId}|${normalizeScheduleLabel(item.label)}|${item.flockNumber ?? ""}`;
+}
+
+/** Keep a check visible while a later snapshot still says it is open. */
+export function applyIncomingScheduleChecks(
+  prev: Record<string, boolean>,
+  items: Array<{ farmId: string; label: string; flockNumber?: string | null; completed: boolean }>,
+  userCleared: Set<string>,
+): Record<string, boolean> {
+  const next = { ...prev };
+  for (const item of items) {
+    const key = rememberScheduleCheckKey(item);
+    if (item.completed && !userCleared.has(key)) next[key] = true;
+    if (!item.completed && userCleared.has(key)) {
+      next[key] = false;
+      userCleared.delete(key);
+    }
+  }
+  return next;
 }
 
 export type ScheduleBindItem = {
@@ -147,4 +174,23 @@ export function bindCompletionsToSchedule(
   }
 
   return map;
+}
+
+/** Keep local checkoffs when a remote snapshot lands, and seed from dashboard flags. */
+export function seedAndMergeFollowUpCompletions(
+  snapshot: OfflineSnapshot,
+  previous?: OfflineSnapshot | null,
+): OfflineSnapshot {
+  return {
+    ...snapshot,
+    followUpCompletions: gatherFollowUpCompletions(
+      [...(previous?.followUpCompletions ?? []), ...(snapshot.followUpCompletions ?? [])],
+      [
+        ...(previous?.dashboard?.todaysSchedule ?? []),
+        ...(previous?.dashboard?.upcomingSchedule ?? []),
+        ...(snapshot.dashboard?.todaysSchedule ?? []),
+        ...(snapshot.dashboard?.upcomingSchedule ?? []),
+      ],
+    ),
+  };
 }

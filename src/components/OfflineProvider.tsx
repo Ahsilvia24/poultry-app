@@ -42,6 +42,7 @@ import {
 import { farmGroupKey as placementFarmGroupKey } from "@/lib/placement-import/parse";
 import type { PlacementRow } from "@/lib/placement-import/types";
 import { ensureDeviceId } from "@/lib/device-id";
+import { seedAndMergeFollowUpCompletions } from "@/lib/offline/followUpCompletions";
 import type { OfflineFormWrite, OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
 
 type OfflineContextValue = {
@@ -202,8 +203,11 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const [aliases, setAliases] = useState<IdAliases>({});
 
   const replaceSnapshot = useCallback((next: OfflineSnapshot) => {
-    setSnapshot(next);
-    void saveLocalSnapshot(next);
+    setSnapshot((current) => {
+      const merged = seedAndMergeFollowUpCompletions(next, current);
+      void saveLocalSnapshot(merged);
+      return merged;
+    });
   }, []);
 
   const patchSnapshot = useCallback((fn: (current: OfflineSnapshot) => OfflineSnapshot) => {
@@ -237,7 +241,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     (async () => {
       const local = await loadLocalSnapshot();
       const storedAliases = await loadIdAliases();
-      if (!cancelled && local) setSnapshot(local);
+      if (!cancelled && local) setSnapshot(seedAndMergeFollowUpCompletions(local));
       if (!cancelled) setAliases(storedAliases);
       if (!cancelled) setReady(true);
       if (cancelled) return;

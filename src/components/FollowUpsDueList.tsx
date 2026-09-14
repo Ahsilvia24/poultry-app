@@ -3,10 +3,14 @@
 import { format, parseISO } from "date-fns";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toggleFollowUpCompletionAction } from "@/app/actions/follow-ups";
 import { OneDotName } from "@/components/OneDotName";
 import { ScrollableFarmList } from "@/components/ScrollableFarmList";
+import {
+  applyIncomingScheduleChecks,
+  rememberScheduleCheckKey,
+} from "@/lib/offline/followUpCompletions";
 import { formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
@@ -38,16 +42,17 @@ export function FollowUpsDueList({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const serverChecked = useMemo(
-    () => Object.fromEntries(items.map((f) => [itemKey(f), f.completed])),
-    [items],
+  const userCleared = useRef(new Set<string>());
+  const [checked, setChecked] = useState<Record<string, boolean>>(() =>
+    applyIncomingScheduleChecks({}, items, userCleared.current),
   );
-  const [checked, setChecked] = useState(serverChecked);
-  const serverSignature = items.map((f) => `${itemKey(f)}:${f.completed}`).join("|");
+  const serverSignature = items
+    .map((f) => `${rememberScheduleCheckKey(f)}:${f.completed}`)
+    .join("|");
 
   useEffect(() => {
-    setChecked(serverChecked);
-  }, [serverSignature, serverChecked]);
+    setChecked((prev) => applyIncomingScheduleChecks(prev, items, userCleared.current));
+  }, [serverSignature, items]);
 
   if (items.length === 0) {
     return <p className="mt-2 text-[15px] text-stone-500">None</p>;
@@ -55,10 +60,13 @@ export function FollowUpsDueList({
 
   function toggle(item: FollowUpDueItem) {
     const key = itemKey(item);
+    const rememberKey = rememberScheduleCheckKey(item);
     if (pendingKey === key) return;
-    const next = !(checked[key] ?? item.completed);
+    const next = !(checked[rememberKey] ?? item.completed);
     setError(null);
-    setChecked((prev) => ({ ...prev, [key]: next }));
+    if (next) userCleared.current.delete(rememberKey);
+    else userCleared.current.add(rememberKey);
+    setChecked((prev) => ({ ...prev, [rememberKey]: next }));
     setPendingKey(key);
     startTransition(async () => {
       if (enabled) {
@@ -86,7 +94,9 @@ export function FollowUpsDueList({
       });
       setPendingKey(null);
       if (result.error) {
-        setChecked((prev) => ({ ...prev, [key]: !next }));
+        if (next) userCleared.current.add(rememberKey);
+        else userCleared.current.delete(rememberKey);
+        setChecked((prev) => ({ ...prev, [rememberKey]: !next }));
         setError(result.error);
         return;
       }
@@ -101,7 +111,7 @@ export function FollowUpsDueList({
         <ul className="space-y-2.5 text-[15px]">
           {items.map((f) => {
             const key = itemKey(f);
-            const isDone = checked[key] ?? f.completed;
+            const isDone = checked[rememberScheduleCheckKey(f)] ?? f.completed;
             const isBusy = pending && pendingKey === key;
             return (
               <li

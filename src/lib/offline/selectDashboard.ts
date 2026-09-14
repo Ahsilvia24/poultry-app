@@ -90,6 +90,7 @@ function activeFlocksForFarm(snapshot: OfflineSnapshot, farmId: string) {
 export function rebuildDashboardScheduleFromReplica(
   snapshot: OfflineSnapshot,
   source: DashboardData | null | undefined,
+  fallback?: DashboardData | null,
 ): DashboardData {
   const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
   const today = appToday(undefined, timeZone);
@@ -102,8 +103,12 @@ export function rebuildDashboardScheduleFromReplica(
   const upcomingCatches: CatchRow[] = [];
   const seenFarmCatchKeys = new Set<string>();
   const gathered = gatherFollowUpCompletions(snapshot.followUpCompletions, [
+    ...(snapshot.dashboard?.todaysSchedule ?? []),
+    ...(snapshot.dashboard?.upcomingSchedule ?? []),
     ...(source?.todaysSchedule ?? []),
     ...(source?.upcomingSchedule ?? []),
+    ...(fallback?.todaysSchedule ?? []),
+    ...(fallback?.upcomingSchedule ?? []),
   ]);
   const todayStart = startOfDay(today);
   const horizonDays = Math.max(0, differenceInCalendarDays(horizon, todayStart));
@@ -271,7 +276,7 @@ export function selectDashboard(
   const source = snapshot?.dashboard ?? fallback ?? null;
   const timeZone = resolveAppTimeZone(snapshot?.settings?.appTimeZone);
   if (snapshotHasFarmGraph(snapshot)) {
-    return rebuildDashboardScheduleFromReplica(snapshot, source);
+    return rebuildDashboardScheduleFromReplica(snapshot, source, fallback);
   }
   if (!source) return null;
   return resplitDashboardSchedule(source, appTodayKey(undefined, timeZone));

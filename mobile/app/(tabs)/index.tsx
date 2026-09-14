@@ -18,7 +18,12 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { deactivateFarm, getDashboard, toggleFollowUpCompletion } from "../../src/repos/data";
 import { appScrollProps, colors, styles } from "../../src/theme";
-import { formatShortScheduleDate, formatLastVisitDate } from "../../src/lib/schedule";
+import {
+  applyIncomingScheduleChecks,
+  formatShortScheduleDate,
+  formatLastVisitDate,
+  rememberScheduleCheckKey,
+} from "../../src/lib/schedule";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { ConfirmDialog } from "../../src/components/ConfirmDialog";
 import { SwipeCommitDeleteRow } from "../../src/components/SwipeCommitDeleteRow";
@@ -222,6 +227,7 @@ export default function DashboardScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const userCleared = useRef(new Set<string>());
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [inactiveConfirm, setInactiveConfirm] = useState<{
     farmId: string;
@@ -251,34 +257,27 @@ export default function DashboardScreen() {
     }, [load]),
   );
 
-  const serverChecked = useMemo(() => {
-    if (!data) return {} as Record<string, boolean>;
-    const next: Record<string, boolean> = {};
-    for (const item of [...data.todaysSchedule, ...data.upcomingSchedule]) {
-      next[scheduleItemKey(item)] = item.completed;
-    }
-    return next;
-  }, [data]);
-
-  const serverSignature = useMemo(
-    () =>
-      data
-        ? [...data.todaysSchedule, ...data.upcomingSchedule]
-            .map((i) => `${scheduleItemKey(i)}:${i.completed}`)
-            .join("|")
-        : "",
+  const scheduleItems = useMemo(
+    () => (data ? [...data.todaysSchedule, ...data.upcomingSchedule] : []),
     [data],
+  );
+  const serverSignature = useMemo(
+    () => scheduleItems.map((i) => `${rememberScheduleCheckKey(i)}:${i.completed}`).join("|"),
+    [scheduleItems],
   );
 
   useEffect(() => {
-    setChecked(serverChecked);
-  }, [serverSignature, serverChecked]);
+    setChecked((prev) => applyIncomingScheduleChecks(prev, scheduleItems, userCleared.current));
+  }, [serverSignature, scheduleItems]);
 
   function toggleScheduleItem(item: ScheduleItem) {
     const key = scheduleItemKey(item);
+    const rememberKey = rememberScheduleCheckKey(item);
     if (pendingKey === key) return;
-    const next = !(checked[key] ?? item.completed);
-    setChecked((prev) => ({ ...prev, [key]: next }));
+    const next = !(checked[rememberKey] ?? item.completed);
+    if (next) userCleared.current.delete(rememberKey);
+    else userCleared.current.add(rememberKey);
+    setChecked((prev) => ({ ...prev, [rememberKey]: next }));
     setPendingKey(key);
     try {
       toggleFollowUpCompletion({
@@ -290,7 +289,9 @@ export default function DashboardScreen() {
       });
       setData(getDashboard());
     } catch {
-      setChecked((prev) => ({ ...prev, [key]: !next }));
+      if (next) userCleared.current.add(rememberKey);
+      else userCleared.current.delete(rememberKey);
+      setChecked((prev) => ({ ...prev, [rememberKey]: !next }));
     } finally {
       setPendingKey(null);
     }
@@ -336,7 +337,7 @@ export default function DashboardScreen() {
                         key={key}
                         item={item}
                         showDate
-                        checked={checked[key] ?? item.completed}
+                        checked={checked[rememberScheduleCheckKey(item)] ?? item.completed}
                         busy={pendingKey === key}
                         onToggle={() => toggleScheduleItem(item)}
                         onOpenFarm={() =>
@@ -367,7 +368,7 @@ export default function DashboardScreen() {
                         key={key}
                         item={item}
                         showDate
-                        checked={checked[key] ?? item.completed}
+                        checked={checked[rememberScheduleCheckKey(item)] ?? item.completed}
                         busy={pendingKey === key}
                         onToggle={() => toggleScheduleItem(item)}
                         onOpenFarm={() =>
