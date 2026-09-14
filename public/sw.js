@@ -6,7 +6,7 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v5";
+const CACHE = "poultrytech-offline-v6";
 const NETWORK_MS = 1500;
 
 const PRECACHE = [
@@ -185,6 +185,29 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
       await self.clients.claim();
+    })(),
+  );
+});
+
+self.addEventListener("message", (event) => {
+  const urls = event.data?.urls;
+  if (event.data?.type !== "precache" || !Array.isArray(urls)) return;
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE);
+      await Promise.all(
+        urls.map(async (url) => {
+          try {
+            const parsed = new URL(String(url), self.location.origin);
+            if (!sameOrigin(parsed) || skipRequest(parsed)) return;
+            if (!isStaticAsset(parsed) && !PRECACHE.includes(parsed.pathname)) return;
+            if (await cache.match(parsed.href)) return;
+            await cache.add(parsed.href).catch(() => undefined);
+          } catch {
+            /* skip bad url */
+          }
+        }),
+      );
     })(),
   );
 });

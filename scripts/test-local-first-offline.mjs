@@ -68,6 +68,15 @@ assert.match(importUi, /previewPlacementRowsLocal/);
 assert.match(importUi, /applyPlacementToSnapshot/);
 assert.match(importUi, /applyCatchToSnapshot/);
 assert.match(importUi, /graph: result\.graph/);
+assert.match(importUi, /Need Wi-Fi once to finish downloading the import reader/);
+assert.match(importUi, /pdf-text-extract-client/);
+
+const extractClient = read("src/lib/pdf-text-extract-client.ts");
+assert.match(extractClient, /from "unpdf"/);
+assert.match(extractClient, /webpackMode: "eager"/);
+assert.match(extractClient, /unpdf\/pdfjs/);
+assert.match(extractClient, /definePDFJSModule/);
+assert.match(extractClient, /const pdfjsReady = definePDFJSModule/);
 assert.match(provider, /aliasesFromImportGraph/);
 
 const { extractPlacementRowsOnDevice } = await import(

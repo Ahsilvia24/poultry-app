@@ -11,7 +11,8 @@ assert.ok(existsSync(join(root, "public/sw.js")), "missing public/sw.js");
 assert.ok(existsSync(join(root, "public/offline.html")), "missing public/offline.html");
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v5/);
+assert.match(sw, /poultrytech-offline-v6/);
+assert.match(sw, /type !== "precache"/);
 assert.match(sw, /NETWORK_MS = 1500/);
 assert.match(sw, /addEventListener\("fetch"/);
 assert.match(sw, /request\.method !== "GET"/);
@@ -54,6 +55,8 @@ const register = read("src/components/RegisterServiceWorker.tsx");
 assert.match(register, /serviceWorker\.register\("\/sw\.js"/);
 assert.match(register, /updateViaCache: "none"/);
 assert.match(register, /NODE_ENV !== "production"/);
+assert.match(register, /precacheAppAssets/);
+assert.match(register, /collectAppAssetUrls/);
 
 const banner = read("src/components/OfflineBanner.tsx");
 assert.match(banner, /No service — showing last loaded data/);

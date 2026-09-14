@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   uploadScheduleImportAction,
   type UploadScheduleImportResult,
@@ -62,6 +62,18 @@ function canUpload(type: ScheduleImportType) {
   return type === "placement" || type === "catch";
 }
 
+function importReadError(err: unknown) {
+  const msg = err instanceof Error ? err.message : "Upload failed";
+  if (
+    /Failed to load chunk|Loading chunk|dynamically imported module|Importing a module script failed/i.test(
+      msg,
+    )
+  ) {
+    return "Need Wi-Fi once to finish downloading the import reader, then placement works offline.";
+  }
+  return msg;
+}
+
 export function DashboardScheduleImport({
   imports: _imports,
 }: {
@@ -69,6 +81,10 @@ export function DashboardScheduleImport({
 }) {
   const { snapshot, enqueue, patchSnapshot } = useOffline();
   const [importType, setImportType] = useState<ScheduleImportType>("placement");
+
+  useEffect(() => {
+    void import("@/lib/pdf-text-extract-client");
+  }, []);
   const [pending, startTransition] = useTransition();
   const [uploadResult, setUploadResult] = useState<UploadScheduleImportResult | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -323,7 +339,7 @@ export function DashboardScheduleImport({
           loadPreview(res.example.id, importType);
         }
       } catch (err) {
-        setLocalError(err instanceof Error ? err.message : "Upload failed");
+        setLocalError(importReadError(err));
       }
     });
   }
