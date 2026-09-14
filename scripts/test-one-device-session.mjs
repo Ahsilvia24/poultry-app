@@ -21,24 +21,28 @@ assert.equal(sessionMatches("abc", ""), false);
 assert.deepEqual(replaceLoginStatus({ activeSessionId: null, unsyncedAt: null }), {
   otherDevice: false,
   unsynced: false,
+  knownOtherDevice: false,
 });
 assert.deepEqual(
   replaceLoginStatus({ activeSessionId: "sid-1", unsyncedAt: null, currentSessionId: "sid-1" }),
-  { otherDevice: false, unsynced: false },
+  { otherDevice: false, unsynced: false, knownOtherDevice: false },
 );
 assert.deepEqual(replaceLoginStatus({ activeSessionId: "sid-1", unsyncedAt: null }), {
   otherDevice: true,
   unsynced: false,
+  knownOtherDevice: false,
 });
 assert.deepEqual(
   replaceLoginStatus({ activeSessionId: "sid-1", unsyncedAt: "2026-09-12T04:00:00.000Z" }),
-  { otherDevice: true, unsynced: true },
+  { otherDevice: true, unsynced: true, knownOtherDevice: false },
 );
-assert.match(replaceLoginWarning(true), /has not uploaded/);
-assert.match(replaceLoginWarning(false), /If that phone has work/);
+assert.match(replaceLoginWarning(true, true), /has not uploaded/);
+assert.match(replaceLoginWarning(false, true), /If that phone has work/);
+assert.match(replaceLoginWarning(false, false), /still has a sign-in open/);
 
 const schema = read("prisma/schema.prisma");
 assert.match(schema, /activeSessionId/);
+assert.match(schema, /activeDeviceId/);
 assert.match(schema, /unsyncedAt/);
 
 const auth = read("src/lib/auth.ts");
@@ -53,6 +57,8 @@ assert.match(read("src/app/api/login/route.ts"), /needsConfirm/);
 assert.match(read("src/app/api/offline/pending/route.ts"), /markUnsynced/);
 assert.match(read("src/components/OfflineProvider.tsx"), /reportUnsynced/);
 assert.match(read("src/lib/active-session.ts"), /unsyncedAt: null/);
+assert.match(read("src/lib/active-session.ts"), /bindActiveDevice/);
+assert.match(read("src/app/api/offline/device/route.ts"), /bindActiveDevice/);
 
 const mobileAuth = read("src/lib/mobile-auth.ts");
 assert.match(mobileAuth, /isActiveSession/);

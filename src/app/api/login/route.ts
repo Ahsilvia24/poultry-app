@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { isDeviceId } from "@/lib/device-id";
 import { replaceLoginStatus } from "@/lib/replace-login";
+import { cookieHeaderHasSessionToken } from "@/lib/session-cookie";
 import { verifyEmailPassword } from "@/lib/verify-credentials";
 import { establishWebSession } from "@/lib/web-session";
 
@@ -20,10 +22,15 @@ function truthy(value: unknown) {
   return value === true || value === "1" || value === "true";
 }
 
+function readDeviceId(value: unknown) {
+  return isDeviceId(value) ? value : undefined;
+}
+
 async function readCredentials(req: Request): Promise<{
   email: string;
   password: string;
   confirmReplace: boolean;
+  deviceId?: string;
   json: boolean;
 }> {
   const ct = req.headers.get("content-type") ?? "";
@@ -32,11 +39,13 @@ async function readCredentials(req: Request): Promise<{
       email?: unknown;
       password?: unknown;
       confirmReplace?: unknown;
+      deviceId?: unknown;
     };
     return {
       email: String(body.email ?? "").trim().toLowerCase(),
       password: String(body.password ?? ""),
       confirmReplace: truthy(body.confirmReplace),
+      deviceId: readDeviceId(body.deviceId),
       json: true,
     };
   }
@@ -46,6 +55,7 @@ async function readCredentials(req: Request): Promise<{
       email: String(form.get("email") ?? "").trim().toLowerCase(),
       password: String(form.get("password") ?? ""),
       confirmReplace: truthy(form.get("confirmReplace")),
+      deviceId: readDeviceId(form.get("deviceId")),
       json: false,
     };
   }
@@ -54,11 +64,13 @@ async function readCredentials(req: Request): Promise<{
       email?: unknown;
       password?: unknown;
       confirmReplace?: unknown;
+      deviceId?: unknown;
     };
     return {
       email: String(body.email ?? "").trim().toLowerCase(),
       password: String(body.password ?? ""),
       confirmReplace: truthy(body.confirmReplace),
+      deviceId: readDeviceId(body.deviceId),
       json: true,
     };
   } catch {
@@ -68,7 +80,13 @@ async function readCredentials(req: Request): Promise<{
 
 export async function POST(req: Request) {
   const origin = requestOrigin(req);
-  let parsed: { email: string; password: string; confirmReplace: boolean; json: boolean };
+  let parsed: {
+    email: string;
+    password: string;
+    confirmReplace: boolean;
+    deviceId?: string;
+    json: boolean;
+  };
   try {
     parsed = await readCredentials(req);
   } catch {
@@ -93,20 +111,28 @@ export async function POST(req: Request) {
     const session = await auth();
     const status = replaceLoginStatus({
       activeSessionId: user.activeSessionId,
+      activeDeviceId: user.activeDeviceId,
       unsyncedAt: user.unsyncedAt,
       currentSessionId: session?.user?.sessionId,
+      currentDeviceId: parsed.deviceId,
+      sameBrowser: cookieHeaderHasSessionToken(req.headers.get("cookie")),
     });
     if (status.otherDevice) {
       if (parsed.json) {
-        return NextResponse.json({ needsConfirm: true, unsynced: status.unsynced });
+        return NextResponse.json({
+          needsConfirm: true,
+          unsynced: status.unsynced,
+          knownOtherDevice: status.knownOtherDevice,
+        });
       }
       const url = new URL("/login", origin);
       url.searchParams.set("confirm", status.unsynced ? "unsynced" : "replace");
+      if (status.knownOtherDevice) url.searchParams.set("other", "1");
       return NextResponse.redirect(url, 303);
     }
   }
 
-  const result = await establishWebSession(parsed.email, parsed.password);
+  const result = await establishWebSession(parsed.email, parsed.password, parsed.deviceId);
   if (result.error) return fail(result.error, 401);
 
   if (parsed.json) return NextResponse.json({ ok: true });

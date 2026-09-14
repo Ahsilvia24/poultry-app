@@ -41,6 +41,7 @@ import {
 } from "@/lib/offline/remapIds";
 import { farmGroupKey as placementFarmGroupKey } from "@/lib/placement-import/parse";
 import type { PlacementRow } from "@/lib/placement-import/types";
+import { ensureDeviceId } from "@/lib/device-id";
 import type { OfflineFormWrite, OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
 
 type OfflineContextValue = {
@@ -54,6 +55,19 @@ type OfflineContextValue = {
 };
 
 const OfflineContext = createContext<OfflineContextValue | null>(null);
+
+async function bindThisPhone() {
+  try {
+    await fetch("/api/offline/device", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId: ensureDeviceId() }),
+      keepalive: true,
+    });
+  } catch {
+    // Best-effort. The next sign-in can still send the same local device id.
+  }
+}
 
 async function reportUnsynced(pending: boolean) {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return;
@@ -227,6 +241,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       if (!cancelled) setAliases(storedAliases);
       if (!cancelled) setReady(true);
       if (cancelled) return;
+      void bindThisPhone();
       setSyncing(true);
       try {
         const queued = await loadOutbox();

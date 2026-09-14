@@ -4,6 +4,7 @@ import { FormEvent, Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button, Input, Label } from "@/components/ui";
+import { ensureDeviceId } from "@/lib/device-id";
 import { replaceLoginWarning } from "@/lib/replace-login";
 
 function LoginForm() {
@@ -14,8 +15,10 @@ function LoginForm() {
   const urlConfirm = params.get("confirm");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(urlError ? "Invalid email or password" : null);
-  const [warning, setWarning] = useState<boolean | null>(
-    urlConfirm === "unsynced" ? true : urlConfirm === "replace" ? false : null,
+  const [warning, setWarning] = useState<{ unsynced: boolean; knownOtherDevice: boolean } | null>(
+    urlConfirm === "unsynced" || urlConfirm === "replace"
+      ? { unsynced: urlConfirm === "unsynced", knownOtherDevice: params.get("other") === "1" }
+      : null,
   );
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -27,6 +30,7 @@ function LoginForm() {
       email: String(new FormData(form).get("email") ?? "").trim().toLowerCase(),
       password: String(new FormData(form).get("password") ?? ""),
       confirmReplace: warning != null,
+      deviceId: ensureDeviceId(),
     };
     try {
       const res = await fetch("/api/login", {
@@ -39,9 +43,13 @@ function LoginForm() {
         error?: string;
         needsConfirm?: boolean;
         unsynced?: boolean;
+        knownOtherDevice?: boolean;
       };
       if (data.needsConfirm) {
-        setWarning(Boolean(data.unsynced));
+        setWarning({
+          unsynced: Boolean(data.unsynced),
+          knownOtherDevice: Boolean(data.knownOtherDevice),
+        });
         setPending(false);
         return;
       }
@@ -70,8 +78,8 @@ function LoginForm() {
         ) : null}
         {replaced ? (
           <p className="mt-3 text-center text-sm font-medium text-stone-800">
-            This account is signed in on another device. If this phone still has work that has
-            not uploaded, wait for a signal before you sign in here or that work may be lost.
+            This sign-in expired. If this phone still has work that has not uploaded, wait for
+            a signal before you sign in again or that work may be lost.
           </p>
         ) : null}
         <form
@@ -91,7 +99,9 @@ function LoginForm() {
           {warning != null ? (
             <>
               <input type="hidden" name="confirmReplace" value="1" />
-              <p className="text-sm font-medium text-amber-900">{replaceLoginWarning(warning)}</p>
+              <p className="text-sm font-medium text-amber-900">
+                {replaceLoginWarning(warning.unsynced, warning.knownOtherDevice)}
+              </p>
             </>
           ) : (
             <p className="text-sm text-stone-600">

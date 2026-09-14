@@ -12,11 +12,13 @@ function isNextRedirect(error: unknown) {
 export async function establishWebSession(
   email: string,
   password: string,
+  deviceId?: string,
 ): Promise<{ error?: string }> {
   try {
     const result = await signIn("credentials", {
       email,
       password,
+      ...(deviceId ? { deviceId } : {}),
       redirect: false,
     });
     if (typeof result === "string" && /[?&]error=/.test(result)) {

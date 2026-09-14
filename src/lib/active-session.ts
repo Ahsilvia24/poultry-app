@@ -1,3 +1,4 @@
+import { isDeviceId } from "@/lib/device-id";
 import { prisma } from "@/lib/prisma";
 
 /** Tokens issued before this column existed stay valid until the next sign-in. */
@@ -9,13 +10,29 @@ export function sessionMatches(
   return Boolean(presented && presented === activeSessionId);
 }
 
-export async function rotateActiveSession(userId: string) {
+export async function rotateActiveSession(userId: string, deviceId?: string | null) {
   const sessionId = crypto.randomUUID();
   await prisma.user.update({
     where: { id: userId },
-    data: { activeSessionId: sessionId, unsyncedAt: null },
+    data: {
+      activeSessionId: sessionId,
+      unsyncedAt: null,
+      ...(isDeviceId(deviceId) ? { activeDeviceId: deviceId } : {}),
+    },
   });
   return sessionId;
+}
+
+export async function bindActiveDevice(
+  userId: string,
+  presented: string | null | undefined,
+  deviceId: string,
+) {
+  if (!presented || !isDeviceId(deviceId)) return;
+  await prisma.user.updateMany({
+    where: { id: userId, activeSessionId: presented },
+    data: { activeDeviceId: deviceId },
+  });
 }
 
 export async function markUnsynced(userId: string, pending: boolean) {
@@ -41,6 +58,6 @@ export async function clearActiveSession(userId: string, presented: string | nul
   if (!presented) return;
   await prisma.user.updateMany({
     where: { id: userId, activeSessionId: presented },
-    data: { activeSessionId: null, unsyncedAt: null },
+    data: { activeSessionId: null, activeDeviceId: null, unsyncedAt: null },
   });
 }

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { rotateActiveSession } from "@/lib/active-session";
+import { isDeviceId } from "@/lib/device-id";
 import { jsonError, signMobileToken } from "@/lib/mobile-auth";
 import { replaceLoginStatus } from "@/lib/replace-login";
 import { verifyEmailPassword } from "@/lib/verify-credentials";
@@ -9,6 +10,7 @@ const schema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   confirmReplace: z.boolean().optional(),
+  deviceId: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -22,14 +24,23 @@ export async function POST(req: NextRequest) {
   if (!parsed.data.confirmReplace) {
     const status = replaceLoginStatus({
       activeSessionId: user.activeSessionId,
+      activeDeviceId: user.activeDeviceId,
       unsyncedAt: user.unsyncedAt,
+      currentDeviceId: isDeviceId(parsed.data.deviceId) ? parsed.data.deviceId : undefined,
     });
     if (status.otherDevice) {
-      return Response.json({ needsConfirm: true, unsynced: status.unsynced });
+      return Response.json({
+        needsConfirm: true,
+        unsynced: status.unsynced,
+        knownOtherDevice: status.knownOtherDevice,
+      });
     }
   }
 
-  const sid = await rotateActiveSession(user.id);
+  const sid = await rotateActiveSession(
+    user.id,
+    isDeviceId(parsed.data.deviceId) ? parsed.data.deviceId : undefined,
+  );
   const token = await signMobileToken({
     sub: user.id,
     email: user.email,

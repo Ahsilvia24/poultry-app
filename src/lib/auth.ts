@@ -4,6 +4,7 @@ import type { Session } from "next-auth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { clearActiveSession, isActiveSession, rotateActiveSession } from "@/lib/active-session";
+import { isDeviceId } from "@/lib/device-id";
 import { applyHostedEnv } from "@/lib/hosted-env";
 import { authConfig, isAuthDevBypassEnabled } from "@/lib/auth.config";
 import { prisma } from "@/lib/prisma";
@@ -13,6 +14,7 @@ applyHostedEnv();
 const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
+  deviceId: z.string().optional(),
 });
 
 const DEV_USER_EMAIL = () =>
@@ -55,7 +57,10 @@ const nextAuth = NextAuth({
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
         if (!valid) return null;
 
-        const sessionId = await rotateActiveSession(user.id);
+        const sessionId = await rotateActiveSession(
+          user.id,
+          isDeviceId(parsed.data.deviceId) ? parsed.data.deviceId : undefined,
+        );
         return {
           id: user.id,
           email: user.email,
