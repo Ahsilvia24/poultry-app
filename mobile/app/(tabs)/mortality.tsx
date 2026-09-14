@@ -17,6 +17,7 @@ import {
   saveHouseMortalitySeries,
 } from "../../src/repos/data";
 import { birdAgeFromPlacement, flockWeekFromAge } from "../../src/lib/mortality";
+import { mortalityGridMaxAge } from "../../src/lib/weeklyMortalityLayout";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
   getFarmNavContext,
@@ -503,24 +504,31 @@ export default function MortalityScreen() {
     try {
       const series = getHouseMortalitySeries(id);
       const catchEnd = series.projectedCatchDate ?? todayKey();
-      const maxAge = Math.max(
-        birdAgeFromPlacement(series.placementDate, todayKey()),
-        birdAgeFromPlacement(series.placementDate, catchEnd),
-      );
+      const todayAge = birdAgeFromPlacement(series.placementDate, todayKey());
+      const catchAge = birdAgeFromPlacement(series.placementDate, catchEnd);
       const byDate = new Map(series.records.map((r) => [r.mortality_date, r]));
-      const next: DayRow[] = [];
-      for (let age = 0; age <= maxAge; age++) {
+      function rowForAge(age: number): DayRow {
         const mortalityDate = addDaysKey(series.placementDate, age);
         const existing = byDate.get(mortalityDate);
-        next.push({
+        return {
           age,
           mortalityDate,
           // Keep boxes blank until entered; show "0" only after a confirmed entry
           cullCount: existing ? String(existing.cull_count) : "",
           dailyMortalityCount: existing ? String(existing.daily_mortality_count) : "",
           hasEntry: Boolean(existing),
-        });
+        };
       }
+      const seed: DayRow[] = [];
+      const baseMax = Math.max(todayAge, catchAge);
+      for (let age = 0; age <= baseMax; age++) seed.push(rowForAge(age));
+      const known = series.records.map((record) => ({
+        age: birdAgeFromPlacement(series.placementDate, record.mortality_date),
+        hasEntry: true,
+      }));
+      const maxAge = mortalityGridMaxAge(todayAge, catchAge, [...seed, ...known]);
+      const next: DayRow[] = [];
+      for (let age = 0; age <= maxAge; age++) next.push(rowForAge(age));
       setRows(next);
       if (shouldJump) jumpToFirstUnfilled(next);
       else {
@@ -697,6 +705,27 @@ export default function MortalityScreen() {
           hasEntry: hasMort || hasCull,
         };
       });
+      try {
+        const series = getHouseMortalitySeries(houseFlockIdRef.current || houseFlockId);
+        const catchEnd = series.projectedCatchDate ?? todayKey();
+        const todayAge = birdAgeFromPlacement(series.placementDate, todayKey());
+        const catchAge = birdAgeFromPlacement(series.placementDate, catchEnd);
+        const maxAge = mortalityGridMaxAge(todayAge, catchAge, next);
+        const have = new Set(next.map((row) => row.age));
+        for (let extraAge = 0; extraAge <= maxAge; extraAge++) {
+          if (have.has(extraAge)) continue;
+          next.push({
+            age: extraAge,
+            mortalityDate: addDaysKey(series.placementDate, extraAge),
+            cullCount: "",
+            dailyMortalityCount: "",
+            hasEntry: false,
+          });
+        }
+        next.sort((a, b) => a.age - b.age);
+      } catch {
+        // Keep the edited row even if the house series is not on the phone.
+      }
       rowsRef.current = next;
       return next;
     });

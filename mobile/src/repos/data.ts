@@ -118,7 +118,8 @@ function summarizeHouse(
   currentWeek = Math.min(Math.max(1, currentWeek), MAX_WEEKLY_MORTALITY_WEEK);
 
   const weekTotals = new Map<number, number>();
-  for (let w = 1; w <= currentWeek; w++) weekTotals.set(w, 0);
+  const fillThrough = Math.min(currentWeek, 8);
+  for (let w = 1; w <= fillThrough; w++) weekTotals.set(w, 0);
 
   for (const r of records) {
     if (r.mortality_date > asOf) continue;
