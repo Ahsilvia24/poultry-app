@@ -11,6 +11,7 @@ assert.doesNotMatch(dashboard, /signOutAction/);
 assert.doesNotMatch(dashboard, /signOutLocalApp/);
 assert.doesNotMatch(dashboard, />\s*Sign out\s*</);
 assert.match(settings, /signOutLocalApp/);
-assert.match(settings, />\s*Sign out\s*</);
+assert.match(settings, /Signing out…/);
+assert.match(settings, /"Sign out"/);
 
 console.log("dashboard-signout: ok");
