@@ -72,7 +72,9 @@ assert.match(importUi, /applyPlacementToSnapshot/);
 assert.match(importUi, /applyCatchToSnapshot/);
 assert.match(importUi, /graph: result\.graph/);
 assert.match(importUi, /Need Wi-Fi once to finish downloading the import reader/);
-assert.match(importUi, /pdf-text-extract-client/);
+assert.match(importUi, /extractPlacementRowsOnDevice/);
+assert.match(read("src/lib/placement-import/extract-client.ts"), /pdf-text-extract-client/);
+assert.match(read("src/lib/catch-import/extract-client.ts"), /pdf-text-extract-client/);
 
 const extractClient = read("src/lib/pdf-text-extract-client.ts");
 assert.match(extractClient, /import\("unpdf"\)/);

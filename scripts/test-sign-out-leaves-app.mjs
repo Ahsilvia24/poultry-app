@@ -31,8 +31,12 @@ assert.match(idb, /objectStore\(SNAP_STORE\)\.clear\(\)/);
 
 const logout = read("src/app/api/logout/route.ts");
 assert.match(logout, /signOut\(\{ redirect: false \}\)/);
-assert.match(logout, /session-token/);
+assert.match(logout, /expireSessionCookies/);
 assert.match(logout, /jar\.delete/);
+
+const cookies = read("src/lib/session-cookie.ts");
+assert.match(cookies, /session-token/);
+assert.match(cookies, /export function expireSessionCookies/);
 
 const login = read("src/app/(auth)/login/page.tsx");
 assert.match(login, /tellWorkerSignedIn/);
