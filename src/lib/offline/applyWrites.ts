@@ -1175,6 +1175,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
       const farmId = write.id ?? write.farmId ?? localRecordId();
       const farmName = (fields.farmName ?? "").trim();
       if (!farmName) return snapshot;
+      if (snapshot.farms.some((row) => row.id === farmId && !row.deletedAt)) return snapshot;
       const houseCount = Math.min(40, Math.max(0, Math.floor(num(fields.numberOfHouses, 0))));
       const houses = Array.from({ length: houseCount }, (_, i) => ({
         id: localCreatedHouseId(farmId, i + 1),

@@ -18,6 +18,12 @@ import type { CatchSelection } from "@/app/actions/catch-import";
 import type { PlacementSelection } from "@/app/actions/placement-import";
 import { flushFormWrite } from "@/lib/offline/flushWrites";
 import {
+  isLocalFarmId,
+  leftoverHasLocalFarm,
+  LOCAL_FARM_STILL_ON_PHONE,
+  sortCreateFarmFirst,
+} from "@/lib/offline/localFarmId";
+import {
   aliasesFromImportGraph,
   inferImportGraphFromSnapshot,
   mergeAliases,
@@ -25,6 +31,7 @@ import {
   type IdAliases,
   type ImportEntityGraph,
 } from "@/lib/offline/remapIds";
+import { uploadLocalFarmFromReplica } from "@/lib/offline/uploadLocalFarm";
 import { farmGroupKey as placementFarmGroupKey } from "@/lib/placement-import/parse";
 import type { PlacementRow } from "@/lib/placement-import/types";
 import type { OfflineFormWrite, OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
@@ -57,20 +64,43 @@ export async function pullRemoteSnapshot(): Promise<OfflineSnapshot | null> {
   }
 }
 
+export type FlushOutboxResult = { pending: number; aliases: IdAliases; error?: string };
+
+let flushTail: Promise<void> = Promise.resolve();
+
 export async function flushOutbox(opts?: {
   evenIfOffline?: boolean;
-}): Promise<{ pending: number; aliases: IdAliases }> {
+}): Promise<FlushOutboxResult> {
+  let result!: FlushOutboxResult;
+  const run = async () => {
+    result = await flushOutboxOnce(opts);
+  };
+  const next = flushTail.then(run, run);
+  flushTail = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  await next;
+  return result;
+}
+
+async function flushOutboxOnce(opts?: { evenIfOffline?: boolean }): Promise<FlushOutboxResult> {
   let aliases = await loadIdAliases();
   if (!opts?.evenIfOffline && typeof navigator !== "undefined" && navigator.onLine === false) {
     const items = await loadOutbox();
     return { pending: items.length, aliases };
   }
-  const items = await loadOutbox();
+  const items = sortCreateFarmFirst(await loadOutbox());
   if (items.length === 0) {
     await reportUnsynced(false);
     return { pending: 0, aliases };
   }
   const remain: OfflineOutboxItem[] = [];
+  let error: string | undefined;
+  function keep(item: OfflineOutboxItem, reason?: string) {
+    remain.push(item);
+    if (reason && !error) error = reason;
+  }
   for (const item of items) {
     const remapped = remapOutboxItem(item, aliases);
     try {
@@ -90,7 +120,7 @@ export async function flushOutbox(opts?: {
           rows: payload.rows as never,
         });
         if (!res.ok) {
-          remain.push(remapped);
+          keep(remapped, "error" in res && typeof res.error === "string" ? res.error : undefined);
           continue;
         }
         let localGraph = originalPayload.graph;
@@ -124,41 +154,56 @@ export async function flushOutbox(opts?: {
           selections: payload.selections ?? [],
           rows: payload.rows as never,
         });
-        if (!res.ok) remain.push(remapped);
+        if (!res.ok) keep(remapped, "error" in res && typeof res.error === "string" ? res.error : undefined);
         continue;
       }
       if (remapped.kind === "updateHouseTemp") {
         const payload = remapped.payload as HouseTempWrite;
+        if (isLocalFarmId(payload.farmId)) {
+          const uploaded = await uploadLocalFarmFromReplica(payload.farmId, aliases);
+          if (!uploaded.ok) {
+            keep(remapped, uploaded.error);
+            continue;
+          }
+          aliases = mergeAliases(aliases, uploaded.aliases);
+        }
+        const temp = remapOutboxItem(remapped, aliases).payload as HouseTempWrite;
         const res = await updateHouseLoggedTempAction(
-          payload.farmId,
-          payload.houseId,
-          payload.temp,
-          payload.dateKey,
+          temp.farmId,
+          temp.houseId,
+          temp.temp,
+          temp.dateKey,
         );
-        if (res?.error) remain.push(remapped);
+        if (res?.error) keep(remapped, res.error);
         continue;
       }
       if (remapped.kind === "updateSettings") {
         const res = await updateSettingsAction(
           formDataFromSettingsWrite(remapped.payload as SettingsWrite),
         );
-        if (res && "error" in res && res.error) remain.push(remapped);
+        if (res && "error" in res && res.error) keep(remapped, res.error);
         continue;
       }
       if (remapped.kind === "formWrite") {
         const result = await flushFormWrite(remapped.payload as OfflineFormWrite, aliases);
         aliases = mergeAliases(aliases, result.aliases);
-        if (!result.ok) remain.push(remapOutboxItem(remapped, aliases));
+        if (!result.ok) keep(remapOutboxItem(remapped, aliases), result.error);
         continue;
       }
-      remain.push(remapped);
-    } catch {
-      remain.push(remapOutboxItem(remapped, aliases));
+      keep(remapped);
+    } catch (err) {
+      keep(
+        remapOutboxItem(remapped, aliases),
+        err instanceof Error && err.message ? err.message : undefined,
+      );
     }
   }
   const leftover = remain.map((item) => remapOutboxItem(item, aliases));
   await saveIdAliases(aliases);
   await saveOutbox(leftover);
   await reportUnsynced(leftover.length > 0);
-  return { pending: leftover.length, aliases };
+  if (!error && leftoverHasLocalFarm(leftover)) {
+    error = LOCAL_FARM_STILL_ON_PHONE;
+  }
+  return { pending: leftover.length, aliases, error };
 }

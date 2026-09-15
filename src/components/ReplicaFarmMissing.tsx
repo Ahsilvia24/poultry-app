@@ -6,12 +6,17 @@ import { useOffline } from "@/components/OfflineProvider";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { loadOutbox } from "@/lib/offline/idb";
 import { replayThenEnsureFarm } from "@/lib/offline/ensureOfflineFarm";
+import {
+  createFarmWriteForLocalFarm,
+  isLocalFarmId,
+  outboxHasCreateFarm,
+} from "@/lib/offline/localFarmId";
 import { resolveAlias } from "@/lib/offline/remapIds";
 import { syncPhoneResultMessage } from "@/lib/offline/syncPhoneToWebsite";
 
 export function ReplicaFarmMissing({ farmId }: { farmId: string }) {
   const nav = useOfflineNav();
-  const { patchSnapshot, syncNow, syncing } = useOffline();
+  const { snapshot, patchSnapshot, enqueue, syncNow, syncing } = useOffline();
   const [working, setWorking] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -63,7 +68,17 @@ export function ReplicaFarmMissing({ farmId }: { farmId: string }) {
               setWorking(true);
               try {
                 const queued = await loadOutbox();
+                const next = snapshot
+                  ? replayThenEnsureFarm(snapshot, queued, farmId)
+                  : null;
+                const farm = next?.farms.find((row) => row.id === farmId);
                 patchSnapshot((current) => replayThenEnsureFarm(current, queued, farmId));
+                if (isLocalFarmId(farmId) && !outboxHasCreateFarm(queued, farmId)) {
+                  await enqueue({
+                    kind: "formWrite",
+                    payload: createFarmWriteForLocalFarm(farmId, farm),
+                  });
+                }
               } finally {
                 setWorking(false);
               }

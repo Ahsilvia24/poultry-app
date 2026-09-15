@@ -11,6 +11,8 @@ assert.match(missing, /Sync data/);
 assert.match(missing, /Work offline/);
 assert.match(missing, /syncNow/);
 assert.match(missing, /replayThenEnsureFarm/);
+assert.match(missing, /createFarmWriteForLocalFarm/);
+assert.match(missing, /enqueue/);
 assert.doesNotMatch(missing, /\(\{farmId\}\)/);
 assert.doesNotMatch(missing, /Open it once with a connection/);
 

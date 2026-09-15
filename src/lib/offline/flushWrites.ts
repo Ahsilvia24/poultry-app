@@ -48,25 +48,31 @@ import {
 } from "@/app/actions/serviceForms";
 import { isLocalRecordId, writeToFormData } from "@/lib/offline/formPairs";
 import { loadLocalSnapshot } from "@/lib/offline/idb";
+import { isLocalFarmId } from "@/lib/offline/localFarmId";
 import {
   aliasesFromCreateFarm,
   aliasesFromCreateFlock,
   remapFormWrite,
+  resolveAlias,
   type IdAliases,
 } from "@/lib/offline/remapIds";
 import { isServiceFormKind } from "@/lib/serviceForms/stored";
 import type { AnyServiceForm, ServiceFormKind } from "@/lib/serviceForms/types";
 import type { OfflineFormWrite } from "@/lib/offline/types";
+import { ensureLocalFarmsForWrite } from "@/lib/offline/uploadLocalFarm";
 
-export type FlushWriteResult = { ok: boolean; aliases?: IdAliases };
+export type FlushWriteResult = { ok: boolean; aliases?: IdAliases; error?: string };
 
-function failed(result: unknown) {
-  if (!result || typeof result !== "object") return false;
-  return "error" in result && Boolean((result as { error?: string }).error);
+function actionError(result: unknown): string | undefined {
+  if (!result || typeof result !== "object") return undefined;
+  const error = (result as { error?: unknown }).error;
+  return typeof error === "string" && error ? error : undefined;
 }
 
-function asResult(ok: boolean, aliases?: IdAliases): FlushWriteResult {
-  return aliases ? { ok, aliases } : { ok };
+function fromAction(result: unknown, aliases?: IdAliases): FlushWriteResult {
+  const error = actionError(result);
+  if (error) return { ok: false, error };
+  return aliases ? { ok: true, aliases } : { ok: true };
 }
 
 export async function flushFormWrite(
@@ -74,9 +80,12 @@ export async function flushFormWrite(
   aliases: IdAliases = {},
 ): Promise<FlushWriteResult> {
   const original = write;
+  const ensured = await ensureLocalFarmsForWrite(write, aliases);
+  if (ensured.error) return { ok: false, error: ensured.error, aliases: ensured.aliases };
+  aliases = { ...aliases, ...ensured.aliases };
   write = remapFormWrite(write, aliases);
   if (write.action.startsWith("delete") && isLocalRecordId(write.id)) {
-    return { ok: true };
+    return { ok: true, aliases };
   }
   const formData = writeToFormData(write);
   const farmId = write.farmId ?? write.fields?.farmId ?? "";
@@ -84,7 +93,7 @@ export async function flushFormWrite(
 
   switch (write.action) {
     case "updateFarm":
-      return asResult(!failed(await updateFarmAction(farmId, formData)));
+      return fromAction(await updateFarmAction(farmId, formData), aliases);
     case "deactivateFarm":
       await deactivateFarmAction(farmId, { skipRedirect: true });
       return { ok: true };
@@ -96,70 +105,71 @@ export async function flushFormWrite(
       return { ok: true };
     case "createHouse": {
       const result = await createHouseAction(farmId, formData);
-      if (failed(result)) return { ok: false };
+      const error = actionError(result);
+      if (error) return { ok: false, error };
       const serverId = (result as { id?: string } | undefined)?.id;
-      const next: IdAliases = {};
+      const next: IdAliases = { ...aliases };
       if (original.id && serverId && original.id !== serverId) next[original.id] = serverId;
-      return asResult(true, next);
+      return { ok: true, aliases: next };
     }
     case "updateHouse":
-      return asResult(!failed(await updateHouseAction(farmId, id, formData)));
+      return fromAction(await updateHouseAction(farmId, id, formData), aliases);
     case "deleteHouse":
-      return asResult(!failed(await deleteHouseAction(farmId, id)));
+      return fromAction(await deleteHouseAction(farmId, id), aliases);
     case "createVisit":
-      return asResult(!failed(await createVisitAction(formData)));
+      return fromAction(await createVisitAction(formData), aliases);
     case "updateVisit":
-      return asResult(!failed(await updateVisitAction(id, formData)));
+      return fromAction(await updateVisitAction(id, formData), aliases);
     case "deleteVisit":
       await deleteVisitAction(farmId, id);
       return { ok: true };
     case "createIssue":
-      return asResult(!failed(await createIssueAction(formData)));
+      return fromAction(await createIssueAction(formData), aliases);
     case "updateIssue":
-      return asResult(!failed(await updateIssueAction(id, formData)));
+      return fromAction(await updateIssueAction(id, formData), aliases);
     case "deleteIssue":
       await deleteIssueAction(farmId, id);
       return { ok: true };
     case "createLitter":
-      return asResult(!failed(await createLitterEventAction(formData)));
+      return fromAction(await createLitterEventAction(formData), aliases);
     case "updateLitter":
-      return asResult(!failed(await updateLitterEventAction(id, formData)));
+      return fromAction(await updateLitterEventAction(id, formData), aliases);
     case "deleteLitter":
       await deleteLitterEventAction(farmId, id);
       return { ok: true };
     case "createFeed":
-      return asResult(!failed(await createFeedDeliveryAction(formData)));
+      return fromAction(await createFeedDeliveryAction(formData), aliases);
     case "updateFeed":
-      return asResult(!failed(await updateFeedDeliveryAction(id, formData)));
+      return fromAction(await updateFeedDeliveryAction(id, formData), aliases);
     case "deleteFeed":
       await deleteFeedDeliveryAction(id);
       return { ok: true };
     case "createGeneratorLog":
-      return asResult(!failed(await createGeneratorLogAction(formData)));
+      return fromAction(await createGeneratorLogAction(formData), aliases);
     case "updateGeneratorLog":
-      return asResult(!failed(await updateGeneratorLogAction(id, formData)));
+      return fromAction(await updateGeneratorLogAction(id, formData), aliases);
     case "deleteGeneratorLog":
       await deleteGeneratorLogAction(id);
       return { ok: true };
     case "saveFarmLfo":
-      return asResult(!failed(await saveFarmLfoHubAction(farmId, formData)));
+      return fromAction(await saveFarmLfoHubAction(farmId, formData), aliases);
     case "createManualLfo":
-      return asResult(!failed(await createManualLastFeedOrderAction(formData)));
+      return fromAction(await createManualLastFeedOrderAction(formData), aliases);
     case "updateLfo":
-      if (isLocalRecordId(id)) return { ok: true };
-      return asResult(!failed(await updateLastFeedOrderAction(id, formData)));
+      if (isLocalRecordId(id)) return { ok: true, aliases };
+      return fromAction(await updateLastFeedOrderAction(id, formData), aliases);
     case "saveAsNewLfo": {
       const fromId = (write.extra as { fromLfoId?: string } | undefined)?.fromLfoId ?? "";
       if (!fromId || isLocalRecordId(fromId)) {
-        return asResult(!failed(await saveFarmLfoHubAction(farmId, formData)));
+        return fromAction(await saveFarmLfoHubAction(farmId, formData), aliases);
       }
-      return asResult(!failed(await saveAsNewLastFeedOrderAction(fromId, formData)));
+      return fromAction(await saveAsNewLastFeedOrderAction(fromId, formData), aliases);
     }
     case "deleteLfo":
       await deleteLastFeedOrderAction(id);
       return { ok: true };
     case "saveMortalitySeries":
-      return asResult(!failed(await saveMortalityHouseSeriesAction(write.extra)));
+      return fromAction(await saveMortalityHouseSeriesAction(write.extra), aliases);
     case "toggleFollowUp": {
       const extra = write.extra as {
         farmId: string;
@@ -168,21 +178,21 @@ export async function flushFormWrite(
         label: string;
         completed: boolean;
       };
-      return asResult(
-        !failed(
-          await toggleFollowUpCompletionAction({
-            farmId: extra.farmId,
-            flockId: extra.flockId,
-            scheduledDate: extra.date,
-            label: extra.label,
-            completed: extra.completed,
-          }),
-        ),
+      return fromAction(
+        await toggleFollowUpCompletionAction({
+          farmId: extra.farmId,
+          flockId: extra.flockId,
+          scheduledDate: extra.date,
+          label: extra.label,
+          completed: extra.completed,
+        }),
+        aliases,
       );
     }
     case "createFlock": {
       const result = await createFlockAction(farmId, formData, { skipRedirect: true });
-      if (failed(result)) return { ok: false };
+      const flockError = actionError(result);
+      if (flockError) return { ok: false, error: flockError };
       const created = result as {
         id?: string;
         houseFlocks?: Array<{ id: string; houseId: string }>;
@@ -205,14 +215,18 @@ export async function flushFormWrite(
       };
     }
     case "createFarm": {
+      const localFarmId = original.id ?? original.farmId ?? "";
+      if (localFarmId && !isLocalFarmId(resolveAlias(aliases, localFarmId))) {
+        return { ok: true, aliases };
+      }
       const result = await createFarmAction(formData, { skipRedirect: true });
-      if (failed(result)) return { ok: false };
+      const farmError = actionError(result);
+      if (farmError) return { ok: false, error: farmError };
       const created = result as {
         id: string;
         houses?: Array<{ id: string; houseNumber: number }>;
       };
       const snapshot = await loadLocalSnapshot();
-      const localFarmId = original.id ?? original.farmId ?? "";
       const localHouses = (snapshot?.houses ?? []).filter((house) => house.farmId === localFarmId);
       return {
         ok: true,
@@ -225,60 +239,60 @@ export async function flushFormWrite(
       };
     }
     case "completeFlock":
-      if (isLocalRecordId(id)) return { ok: true };
+      if (isLocalRecordId(id)) return { ok: true, aliases };
       await completeFlockAction(id);
-      return { ok: true };
+      return { ok: true, aliases };
     case "reactivateFlock":
-      if (isLocalRecordId(id)) return { ok: true };
-      return asResult(!failed(await reactivateFlockAction(id)));
+      if (isLocalRecordId(id)) return { ok: true, aliases };
+      return fromAction(await reactivateFlockAction(id), aliases);
     case "deleteFlock":
-      if (isLocalRecordId(id)) return { ok: true };
-      return asResult(!failed(await deleteFlockAction(id)));
+      if (isLocalRecordId(id)) return { ok: true, aliases };
+      return fromAction(await deleteFlockAction(id), aliases);
     case "updateFlockNumber":
-      if (isLocalRecordId(id)) return { ok: true };
-      return asResult(!failed(await updateFlockNumberAction(id, write.fields?.flockNumber ?? "")));
+      if (isLocalRecordId(id)) return { ok: true, aliases };
+      return fromAction(await updateFlockNumberAction(id, write.fields?.flockNumber ?? ""), aliases);
     case "updateWeightProjection":
-      if (isLocalRecordId(id)) return { ok: true };
-      return asResult(!failed(await updateFlockWeightProjectionAction(id, formData)));
+      if (isLocalRecordId(id)) return { ok: true, aliases };
+      return fromAction(await updateFlockWeightProjectionAction(id, formData), aliases);
     case "saveServiceDraft": {
       const formKind = write.fields?.formKind ?? "";
-      if (!isServiceFormKind(formKind)) return { ok: false };
-      return asResult(
-        !failed(
-          await saveServiceFormDraftAction({
-            farmId,
-            formKind,
-            payload: write.extra,
-          }),
-        ),
+      if (!isServiceFormKind(formKind)) return { ok: false, error: "This checklist cannot upload." };
+      return fromAction(
+        await saveServiceFormDraftAction({
+          farmId,
+          formKind,
+          payload: write.extra,
+        }),
+        aliases,
       );
     }
     case "completeServiceForm": {
       const form = write.extra as AnyServiceForm | undefined;
-      if (!form) return { ok: false };
+      if (!form) return { ok: false, error: "This checklist cannot upload." };
       const existingVisitId = write.fields?.existingVisitId?.trim();
-      return asResult(
-        !failed(
-          await completeServiceFormAction({
-            farmId,
-            form,
-            serviceFormId: isLocalRecordId(write.id) ? undefined : write.id,
-            existingVisitId:
-              existingVisitId && !isLocalRecordId(existingVisitId) ? existingVisitId : undefined,
-          }),
-        ),
+      return fromAction(
+        await completeServiceFormAction({
+          farmId,
+          form,
+          serviceFormId: isLocalRecordId(write.id) ? undefined : write.id,
+          existingVisitId:
+            existingVisitId && !isLocalRecordId(existingVisitId) ? existingVisitId : undefined,
+        }),
+        aliases,
       );
     }
     case "deleteServiceDraft": {
       const formKind = write.fields?.formKind as ServiceFormKind | undefined;
-      if (!formKind || !isServiceFormKind(formKind)) return { ok: false };
+      if (!formKind || !isServiceFormKind(formKind)) {
+        return { ok: false, error: "This checklist cannot upload." };
+      }
       await deleteServiceFormDraftAction(farmId, formKind);
       return { ok: true };
     }
     case "deleteServiceForm":
-      if (isLocalRecordId(write.id)) return { ok: true };
-      return asResult(!failed(await deleteServiceFormAction(farmId, id)));
+      if (isLocalRecordId(write.id)) return { ok: true, aliases };
+      return fromAction(await deleteServiceFormAction(farmId, id), aliases);
     default:
-      return { ok: false };
+      return { ok: false, error: "This farm work cannot upload from the phone." };
   }
 }

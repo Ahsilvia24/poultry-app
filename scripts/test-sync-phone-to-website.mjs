@@ -20,6 +20,8 @@ assert.match(sync, /leftover\.length === 0/);
 assert.match(sync, /ok: true/);
 assert.match(sync, /reason === "offline"/);
 assert.match(sync, /reason === "leftover"/);
+assert.match(sync, /result\.error/);
+assert.match(sync, /lastError/);
 
 const ping = read("src/app/api/offline/ping/route.ts");
 assert.match(ping, /auth\(\)/);

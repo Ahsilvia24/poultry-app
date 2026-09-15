@@ -32,7 +32,7 @@ type OfflineContextValue = {
   syncing: boolean;
   pendingCount: number;
   aliases: IdAliases;
-  enqueue: (item: Omit<OfflineOutboxItem, "id" | "createdAt">) => void;
+  enqueue: (item: Omit<OfflineOutboxItem, "id" | "createdAt">) => Promise<void>;
   flushNow: () => Promise<{ pending: number }>;
   syncNow: () => Promise<SyncPhoneResult>;
   replaceSnapshot: (snapshot: OfflineSnapshot) => void;
@@ -62,6 +62,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const [aliases, setAliases] = useState<IdAliases>({});
 
   const replicaGen = useRef(0);
+  const outboxTail = useRef(Promise.resolve());
 
   const replaceSnapshot = useCallback((next: OfflineSnapshot) => {
     setSnapshot((current) => {
@@ -87,20 +88,23 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
     };
-    void loadOutbox()
-      .then((items) => {
-        const next = coalesceFormWrite(items, full);
-        setPendingCount(next.length);
-        return saveOutbox(next);
-      })
-      .then(() => {
-        void reportUnsynced(true);
-        if (typeof navigator === "undefined" || navigator.onLine === false) return;
-        return flushOutbox().then((flushed) => {
-          setAliases(flushed.aliases);
-          setPendingCount(flushed.pending);
-        });
-      });
+    const run = async () => {
+      const items = await loadOutbox();
+      const next = coalesceFormWrite(items, full);
+      setPendingCount(next.length);
+      await saveOutbox(next);
+      void reportUnsynced(true);
+      if (typeof navigator === "undefined" || navigator.onLine === false) return;
+      const flushed = await flushOutbox();
+      setAliases(flushed.aliases);
+      setPendingCount(flushed.pending);
+    };
+    const queued = outboxTail.current.then(run, run);
+    outboxTail.current = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queued;
   }, []);
 
   const flushNow = useCallback(async () => {
@@ -231,7 +235,7 @@ const missingOffline: OfflineContextValue = {
   syncing: false,
   pendingCount: 0,
   aliases: {},
-  enqueue: () => undefined,
+  enqueue: async () => undefined,
   flushNow: async () => ({ pending: 0 }),
   syncNow: async () => ({
     ok: false,

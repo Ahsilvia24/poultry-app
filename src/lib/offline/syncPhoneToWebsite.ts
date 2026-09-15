@@ -9,7 +9,7 @@ export type SyncFailReason = "offline" | "no-session" | "unreachable" | "leftove
 
 export type SyncPhoneResult =
   | { ok: true; pending: 0; aliases: IdAliases; snapshot: OfflineSnapshot | null }
-  | { ok: false; pending: number; aliases: IdAliases; reason: SyncFailReason };
+  | { ok: false; pending: number; aliases: IdAliases; reason: SyncFailReason; error?: string };
 
 export const SYNC_WORKING = "Uploading farm work to the website…";
 export const SYNC_SAVED = "All farm work on this phone is saved to the website.";
@@ -17,6 +17,7 @@ export const SYNC_NEEDS_SERVICE = "Sync needs Wi-Fi or service. Connect and tap 
 export const SYNC_NO_SESSION = "This sign-in expired. Sign in, then tap Sync data.";
 export const SYNC_UNREACHABLE = "Could not reach the website. Stay on Wi-Fi and tap Sync data again.";
 export const SYNC_LEFTOVER = "Farm work did not upload. Stay on Wi-Fi and tap Sync data again.";
+export { LOCAL_FARM_STILL_ON_PHONE as SYNC_LOCAL_FARM } from "@/lib/offline/localFarmId";
 
 export function syncPhoneResultMessage(result: SyncPhoneResult): {
   kind: "saved" | "unsaved";
@@ -25,7 +26,9 @@ export function syncPhoneResultMessage(result: SyncPhoneResult): {
   if (result.ok) return { kind: "saved", text: SYNC_SAVED };
   if (result.reason === "offline") return { kind: "unsaved", text: SYNC_NEEDS_SERVICE };
   if (result.reason === "no-session") return { kind: "unsaved", text: SYNC_NO_SESSION };
-  if (result.reason === "leftover") return { kind: "unsaved", text: SYNC_LEFTOVER };
+  if (result.reason === "leftover") {
+    return { kind: "unsaved", text: result.error?.trim() || SYNC_LEFTOVER };
+  }
   return { kind: "unsaved", text: SYNC_UNREACHABLE };
 }
 
@@ -61,20 +64,23 @@ export async function probeWebsite(): Promise<
 async function fail(
   reason: SyncFailReason,
   aliases: IdAliases,
+  error?: string,
 ): Promise<Extract<SyncPhoneResult, { ok: false }>> {
   const leftover = await loadOutbox();
-  return { ok: false, pending: leftover.length, aliases, reason };
+  return { ok: false, pending: leftover.length, aliases, reason, error };
 }
 
 /** Upload every local write. Success only after the outbox is empty and the website answers. */
 export async function syncPhoneToWebsite(): Promise<SyncPhoneResult> {
   let aliases: IdAliases = {};
+  let lastError: string | undefined;
   for (let attempt = 0; attempt < SYNC_ATTEMPTS; attempt += 1) {
     const probe = await probeWebsite();
     if (!probe.ok) return fail(probe.reason, aliases);
 
     const flushed = await flushOutbox({ evenIfOffline: true });
     aliases = flushed.aliases;
+    lastError = flushed.error;
     const leftover = await loadOutbox();
     if (leftover.length === 0) {
       const confirm = await probeWebsite();
@@ -89,5 +95,5 @@ export async function syncPhoneToWebsite(): Promise<SyncPhoneResult> {
     }
     if (attempt < SYNC_ATTEMPTS - 1) await wait(400 * (attempt + 1));
   }
-  return fail("leftover", aliases);
+  return fail("leftover", aliases, lastError);
 }
