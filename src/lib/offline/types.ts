@@ -174,6 +174,7 @@ export type OfflineFollowUpCompletion = {
   date: string;
   label: string;
   completedAt: string;
+  status?: "COMPLETED" | "DISMISSED";
 };
 
 export type OfflineSettings = {

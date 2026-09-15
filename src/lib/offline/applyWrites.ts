@@ -141,7 +141,13 @@ function activeFarmFlockId(snapshot: OfflineSnapshot, farmId: string) {
 
 function patchDashboardFollowUp(
   snapshot: OfflineSnapshot,
-  extra: { farmId: string; date: string; label: string; completed: boolean },
+  extra: {
+    farmId: string;
+    date: string;
+    label: string;
+    completed: boolean;
+    dismissed?: boolean;
+  },
 ): OfflineSnapshot {
   if (!snapshot.dashboard) return snapshot;
   const lists = ["todaysSchedule", "upcomingSchedule"] as const;
@@ -149,16 +155,27 @@ function patchDashboardFollowUp(
   for (const key of lists) {
     const list = dashboard[key];
     if (!Array.isArray(list)) continue;
-    dashboard[key] = list.map((item) => {
-      if (
-        item.farmId === extra.farmId &&
-        item.date === extra.date &&
-        item.label === extra.label
-      ) {
-        return { ...item, completed: extra.completed };
-      }
-      return item;
-    }) as typeof list;
+    dashboard[key] = (
+      extra.dismissed
+        ? list.filter(
+            (item) =>
+              !(
+                item.farmId === extra.farmId &&
+                item.date === extra.date &&
+                item.label === extra.label
+              ),
+          )
+        : list.map((item) => {
+            if (
+              item.farmId === extra.farmId &&
+              item.date === extra.date &&
+              item.label === extra.label
+            ) {
+              return { ...item, completed: extra.completed };
+            }
+            return item;
+          })
+    ) as typeof list;
   }
   return { ...snapshot, dashboard };
 }
@@ -171,6 +188,7 @@ function applyFollowUpToggle(
     label: string;
     completed: boolean;
     flockId?: string | null;
+    dismissed?: boolean;
   },
 ): OfflineSnapshot {
   const next = {
@@ -1099,6 +1117,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
         label: string;
         completed: boolean;
         flockId?: string | null;
+        dismissed?: boolean;
       };
       return applyFollowUpToggle(snapshot, extra);
     }

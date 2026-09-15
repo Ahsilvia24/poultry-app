@@ -64,4 +64,28 @@ describe("splitScheduleForDashboard completions", () => {
     );
     assert.equal(items.length, 0);
   });
+
+  it("hides swipe-dismissed visits from today and upcoming", () => {
+    const upcoming: ScheduledVisit = {
+      ...sevenDay,
+      date: new Date(Date.UTC(2026, 8, 18, 12)),
+      dateKey: "2026-09-18",
+      label: "14 Day",
+      birdAgeDays: 14,
+    };
+    const dismissed = new Map([
+      [completionKey("2026-09-10", "7 Day"), { completedAt: today, dismissed: true }],
+      [completionKey("2026-09-18", "14 Day"), { completedAt: today, dismissed: true }],
+    ]);
+    const { today: todayItems, upcoming: upcomingItems } = splitScheduleForDashboard(
+      [sevenDay, upcoming],
+      today,
+      horizon,
+      dismissed,
+      undefined,
+      "America/Chicago",
+    );
+    assert.equal(todayItems.length, 0);
+    assert.equal(upcomingItems.length, 0);
+  });
 });

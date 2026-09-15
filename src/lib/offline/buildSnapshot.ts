@@ -128,7 +128,7 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
         : Promise.resolve([]),
       farmIds.length
         ? prisma.followUpCompletion.findMany({
-            where: { farmId: { in: farmIds }, NOT: { status: "DISMISSED" } },
+            where: { farmId: { in: farmIds } },
           })
         : Promise.resolve([]),
     ]);
@@ -300,6 +300,7 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
       date: dateKeyFromDb(row.scheduledDate),
       label: row.label,
       completedAt: row.completedAt.toISOString(),
+      status: row.status === "DISMISSED" ? "DISMISSED" : "COMPLETED",
     })),
     dashboard,
   });

@@ -95,10 +95,8 @@ export async function getDashboardData(userId: string) {
     prisma.followUpCompletion.findMany({
       where: {
         farm: { userId, deletedAt: null, isActive: true },
-        // Ignore any leftover dismiss rows from the brief remove experiment
-        NOT: { status: "DISMISSED" },
       },
-      select: { farmId: true, scheduledDate: true, label: true, completedAt: true },
+      select: { farmId: true, scheduledDate: true, label: true, completedAt: true, status: true },
     }),
     prisma.litterEvent.findMany({
       where: {
@@ -156,7 +154,7 @@ export async function getDashboardData(userId: string) {
   const upcomingSchedule: FollowUpRow[] = [];
   const horizon = addDays(startOfDay(today), UPCOMING_OUTLOOK_DAYS);
 
-  const completedByFarm = new Map<string, Map<string, { completedAt: Date }>>();
+  const completedByFarm = new Map<string, Map<string, { completedAt: Date; dismissed?: boolean }>>();
   for (const c of completions) {
     const label = c.label === "Weight Projection" ? "Weight Proj." : c.label;
     const key = completionKey(dateKeyFromDb(c.scheduledDate), label);
@@ -165,7 +163,10 @@ export async function getDashboardData(userId: string) {
       map = new Map();
       completedByFarm.set(c.farmId, map);
     }
-    map.set(key, { completedAt: c.completedAt });
+    map.set(key, {
+      completedAt: c.completedAt,
+      dismissed: c.status === "DISMISSED",
+    });
   }
 
   for (const farm of farms) {

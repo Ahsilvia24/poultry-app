@@ -69,6 +69,7 @@ export function gatherFollowUpCompletions(
       date: row.date,
       label: normalizeScheduleLabel(row.label),
       completedAt: row.completedAt,
+      status: row.status === "DISMISSED" ? "DISMISSED" : "COMPLETED",
     });
   };
   for (const row of stored ?? []) add(row);
@@ -94,6 +95,7 @@ export function upsertFollowUpCompletion(
     label: string;
     completed: boolean;
     completedAt?: string;
+    dismissed?: boolean;
   },
 ): OfflineFollowUpCompletion[] {
   const label = normalizeScheduleLabel(input.label);
@@ -105,7 +107,7 @@ export function upsertFollowUpCompletion(
     return false;
   };
   const kept = current.filter((row) => !sameVisit(row));
-  if (!input.completed) return kept;
+  if (!input.completed && !input.dismissed) return kept;
   return [
     ...kept,
     {
@@ -114,6 +116,7 @@ export function upsertFollowUpCompletion(
       date: input.date,
       label,
       completedAt: input.completedAt ?? new Date().toISOString(),
+      status: input.dismissed ? "DISMISSED" : "COMPLETED",
     },
   ];
 }
@@ -127,10 +130,10 @@ export function bindCompletionsToSchedule(
   items: ScheduleBindItem[],
   completions: OfflineFollowUpCompletion[],
   farmId: string,
-): Map<string, { completedAt: Date }> {
+): Map<string, { completedAt: Date; dismissed?: boolean }> {
   const farmRows = completions.filter((row) => row.farmId === farmId);
   const used = new Set<string>();
-  const map = new Map<string, { completedAt: Date }>();
+  const map = new Map<string, { completedAt: Date; dismissed?: boolean }>();
 
   const take = (row: OfflineFollowUpCompletion, dateKey: string, label: string) => {
     const id = completionRowKey(row.farmId, row.date, row.label);
@@ -138,6 +141,7 @@ export function bindCompletionsToSchedule(
     used.add(id);
     map.set(completionKey(dateKey, normalizeScheduleLabel(label)), {
       completedAt: new Date(row.completedAt),
+      dismissed: row.status === "DISMISSED",
     });
   };
 

@@ -197,6 +197,7 @@ export async function flushFormWrite(
         date: string;
         label: string;
         completed: boolean;
+        dismissed?: boolean;
       };
       return fromAction(
         await toggleFollowUpCompletionAction({
@@ -205,6 +206,7 @@ export async function flushFormWrite(
           scheduledDate: extra.date,
           label: extra.label,
           completed: extra.completed,
+          dismissed: extra.dismissed,
         }),
         aliases,
       );

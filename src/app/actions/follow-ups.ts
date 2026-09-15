@@ -12,6 +12,7 @@ const toggleSchema = z.object({
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   label: z.string().min(1),
   completed: z.boolean(),
+  dismissed: z.boolean().optional(),
 });
 
 export async function toggleFollowUpCompletionAction(raw: unknown) {
@@ -32,7 +33,7 @@ export async function toggleFollowUpCompletionAction(raw: unknown) {
       ? ["Weight Proj.", "Weight Projection"]
       : [parsed.data.label];
 
-  if (parsed.data.completed) {
+  if (parsed.data.completed || parsed.data.dismissed) {
     // Prefer the short dashboard label; drop any legacy Weight Projection row.
     await prisma.followUpCompletion.deleteMany({
       where: {
@@ -41,6 +42,7 @@ export async function toggleFollowUpCompletionAction(raw: unknown) {
         label: { in: labels.filter((l) => l !== parsed.data.label) },
       },
     });
+    const status = parsed.data.dismissed ? "DISMISSED" : "COMPLETED";
     await prisma.followUpCompletion.upsert({
       where: {
         farmId_scheduledDate_label: {
@@ -54,14 +56,14 @@ export async function toggleFollowUpCompletionAction(raw: unknown) {
         flockId: parsed.data.flockId || null,
         scheduledDate,
         label: parsed.data.label,
-        status: "COMPLETED",
+        status,
         completedAt: new Date(),
         completedByUserId: user.id!,
       },
       update: {
         flockId: parsed.data.flockId || null,
         completedAt: new Date(),
-        status: "COMPLETED",
+        status,
         completedByUserId: user.id!,
       },
     });

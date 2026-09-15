@@ -149,7 +149,7 @@ export function buildFlockVisitSchedule(
 
 export type DueScheduledVisit = ScheduledVisit & { completed: boolean };
 
-export type CompletionInfo = { completedAt: Date };
+export type CompletionInfo = { completedAt: Date; dismissed?: boolean };
 
 /**
  * Split schedule into today vs upcoming.
@@ -183,6 +183,7 @@ export function splitScheduleForDashboard(
 
     const key = completionKey(v.dateKey, v.label);
     const info = completions.get(key);
+    if (info?.dismissed) continue;
     if (info) {
       // Farm-timezone calendar day the tech checked it off — not UTC, and not
       // the visit's scheduled date. Evening Central checkoffs are still
