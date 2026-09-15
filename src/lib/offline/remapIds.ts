@@ -14,6 +14,25 @@ export function resolveAlias(aliases: IdAliases, id: string | undefined | null):
   return current;
 }
 
+/** Local and website ids for the same row, so a saved checklist still opens after upload. */
+export function aliasIdCandidates(aliases: IdAliases | null | undefined, rawId: string) {
+  const ids = new Set<string>([rawId, resolveAlias(aliases ?? {}, rawId)]);
+  for (const [from, to] of Object.entries(aliases ?? {})) {
+    if (to === rawId || ids.has(to)) ids.add(from);
+  }
+  return ids;
+}
+
+export function resolveReplicaRecordId(
+  aliases: IdAliases,
+  rows: Array<{ id: string }>,
+  rawId: string,
+) {
+  const candidates = aliasIdCandidates(aliases, rawId);
+  const match = rows.find((row) => candidates.has(row.id));
+  return match?.id ?? resolveAlias(aliases, rawId);
+}
+
 /** After a new farm uploads, the website id may be aliased while the phone still has the local id. */
 export function resolveReplicaId(
   aliases: IdAliases,

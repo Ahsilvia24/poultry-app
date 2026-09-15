@@ -13,6 +13,9 @@ assert.match(read("src/components/serviceForms/PlacementFormView.tsx"), /useServ
 assert.match(read("src/components/serviceForms/PrebroodFormView.tsx"), /useServiceFormSave/);
 assert.match(read("src/components/OfflineNav.tsx"), /selectServiceFormPage/);
 assert.match(read("src/components/OfflineNav.tsx"), /formId: params.get\("formId"\)/);
+assert.match(read("src/components/OfflineNav.tsx"), /page\.missingSaved/);
+assert.match(read("src/components/OfflineNav.tsx"), /key=\{page\.existing\?\.id/);
+assert.match(read("src/components/OfflineNavContext.tsx"), /replicaHrefsMatch/);
 assert.match(read("src/components/serviceForms/ServiceFarmPicker.tsx"), /formId: row.id/);
 assert.match(read("src/lib/offline/applyWrites.ts"), /alreadyCompleted/);
 assert.match(read("src/components/OfflineProvider.tsx"), /seedAndMergeServiceForms/);
@@ -24,8 +27,10 @@ const { seedAndMergeServiceForms } = await import(join(root, "src/lib/offline/se
 const {
   selectServiceFarmPicker,
   selectServiceFormPage,
+  selectStoredServiceForm,
 } = await import(join(root, "src/lib/offline/selectServiceFarm.ts"));
 const { selectVisits } = await import(join(root, "src/lib/offline/selectVisits.ts"));
+const { replicaHrefsMatch } = await import(join(root, "src/lib/offline/hasFarmGraph.ts"));
 
 function snapshot() {
   return {
@@ -212,5 +217,43 @@ assert.equal(edited.serviceForms.length, 1);
 assert.equal(edited.visits.length, 1);
 assert.equal(edited.visits[0].notes, "Edited");
 assert.equal(edited.visits[0].id, phone.serviceForms[0].visitId);
+
+assert.equal(
+  replicaHrefsMatch(
+    "/farms/farm-1/service/report?formId=local-service-1",
+    "/farms/farm-1/service/report",
+  ),
+  false,
+  "keep formId on the phone until the full href lands",
+);
+assert.equal(
+  replicaHrefsMatch(
+    "/farms/farm-1/service/report?formId=local-service-1",
+    "/farms/farm-1/service/report?formId=local-service-1",
+  ),
+  true,
+);
+
+const aliased = selectStoredServiceForm(phone, "farm-1", {
+  kind: "service_report",
+  formId: "server-service-1",
+  aliases: { "local-service-1": "server-service-1" },
+});
+assert.equal(aliased?.id, "local-service-1");
+assert.equal(aliased?.payload.comments, "Done");
+
+const missing = selectServiceFormPage(snapshot(), "farm-1", "service_report", {
+  formId: "missing-form",
+});
+assert.equal(missing?.missingSaved, true);
+assert.equal(missing?.existing, null);
+assert.equal(missing?.draft, null);
+
+const reopen = selectServiceFormPage(phone, "farm-1", "service_report", {
+  formId: "local-service-1",
+});
+assert.equal(reopen?.missingSaved, false);
+assert.equal(reopen?.existing?.id, "local-service-1");
+assert.equal(reopen?.existing?.payload.comments, "Done");
 
 console.log("checklist-save-offline: ok");

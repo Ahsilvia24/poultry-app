@@ -11,7 +11,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { hrefHasHouseFocus, resetAppScroll } from "@/lib/app-scroll";
-import { replicaPath } from "@/lib/offline/hasFarmGraph";
+import { replicaHrefsMatch } from "@/lib/offline/hasFarmGraph";
 
 type OfflineNavValue = {
   viewHref: string;
@@ -38,8 +38,7 @@ export function OfflineNavProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!pendingHref) return;
-    const { pathname: pendingPath } = replicaPath(pendingHref);
-    if (pathname === pendingPath) setPendingHref(null);
+    if (replicaHrefsMatch(pendingHref, liveHref(pathname))) setPendingHref(null);
   }, [pathname, pendingHref]);
 
   const navigate = useCallback(

@@ -17,6 +17,13 @@ export function replicaPath(href: string): { pathname: string; search: string } 
   return { pathname: url.pathname, search: url.search };
 }
 
+/** Keep an in-app href until path and query both land, so `?formId=` is not dropped offline. */
+export function replicaHrefsMatch(left: string, right: string) {
+  const a = replicaPath(left);
+  const b = replicaPath(right);
+  return a.pathname === b.pathname && a.search === b.search;
+}
+
 export function isReplicaHref(href: string): boolean {
   const { pathname } = replicaPath(href);
   if (

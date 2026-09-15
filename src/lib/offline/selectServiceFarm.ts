@@ -7,6 +7,7 @@ import {
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
 import { asDate } from "@/lib/offline/dates";
+import { aliasIdCandidates, type IdAliases } from "@/lib/offline/remapIds";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import type { ServiceFarmContext } from "@/lib/serviceForms/farmContext";
 import { isServiceFormKind, type StoredServiceForm } from "@/lib/serviceForms/stored";
@@ -42,31 +43,8 @@ export function selectServiceFarmPicker(snapshot: OfflineSnapshot, farmId: strin
   return { farmId, draftKinds, completed };
 }
 
-export function selectStoredServiceForm(
-  snapshot: OfflineSnapshot,
-  farmId: string,
-  opts: { formId?: string | null; visitId?: string | null; kind: ServiceFormKind },
-): StoredServiceForm | null {
-  const forms = snapshot.serviceForms ?? [];
-  if (opts.formId) {
-    const row = forms.find((item) => item.id === opts.formId && item.farmId === farmId);
-    if (!row || !isServiceFormKind(row.formKind) || row.formKind !== opts.kind) return null;
-    return {
-      id: row.id,
-      farmId: row.farmId,
-      flockId: row.flockId,
-      formKind: row.formKind,
-      formDate: row.formDate ?? "",
-      payload: row.payload,
-      visitId: row.visitId,
-      createdAt: row.createdAt,
-    };
-  }
-  if (!opts.visitId) return null;
-  const row = forms
-    .filter((item) => item.farmId === farmId && item.visitId === opts.visitId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-  if (!row || !isServiceFormKind(row.formKind) || row.formKind !== opts.kind) return null;
+function toStored(row: NonNullable<OfflineSnapshot["serviceForms"]>[number]): StoredServiceForm | null {
+  if (!isServiceFormKind(row.formKind)) return null;
   return {
     id: row.id,
     farmId: row.farmId,
@@ -77,6 +55,32 @@ export function selectStoredServiceForm(
     visitId: row.visitId,
     createdAt: row.createdAt,
   };
+}
+
+export function selectStoredServiceForm(
+  snapshot: OfflineSnapshot,
+  farmId: string,
+  opts: {
+    formId?: string | null;
+    visitId?: string | null;
+    kind: ServiceFormKind;
+    aliases?: IdAliases | null;
+  },
+): StoredServiceForm | null {
+  const forms = snapshot.serviceForms ?? [];
+  if (opts.formId) {
+    const ids = aliasIdCandidates(opts.aliases, opts.formId);
+    const row = forms.find((item) => item.farmId === farmId && ids.has(item.id));
+    if (!row || row.formKind !== opts.kind) return null;
+    return toStored(row);
+  }
+  if (!opts.visitId) return null;
+  const visitIds = aliasIdCandidates(opts.aliases, opts.visitId);
+  const row = forms
+    .filter((item) => item.farmId === farmId && item.visitId && visitIds.has(item.visitId))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  if (!row || row.formKind !== opts.kind) return null;
+  return toStored(row);
 }
 
 export function selectServiceFormDraft<T extends AnyServiceForm>(
@@ -179,7 +183,12 @@ export function selectServiceFormPage<T extends AnyServiceForm>(
   snapshot: OfflineSnapshot,
   farmId: string,
   kind: ServiceFormKind,
-  query: { formId?: string | null; visitId?: string | null; fresh?: string | null },
+  query: {
+    formId?: string | null;
+    visitId?: string | null;
+    fresh?: string | null;
+    aliases?: IdAliases | null;
+  },
 ) {
   const context = selectServiceFarmContext(snapshot, farmId);
   if (!context) return null;
@@ -187,8 +196,17 @@ export function selectServiceFormPage<T extends AnyServiceForm>(
     kind,
     formId: query.formId,
     visitId: query.visitId,
+    aliases: query.aliases,
   });
+  const askedForSaved = Boolean(query.formId || query.visitId);
   const fresh = query.fresh === "1";
-  const draft = !existing && !fresh ? selectServiceFormDraft<T>(snapshot, farmId, kind) : null;
-  return { context, existing, draft, fresh };
+  const draft =
+    !existing && !fresh && !askedForSaved ? selectServiceFormDraft<T>(snapshot, farmId, kind) : null;
+  return {
+    context,
+    existing,
+    draft,
+    fresh,
+    missingSaved: askedForSaved && !existing,
+  };
 }

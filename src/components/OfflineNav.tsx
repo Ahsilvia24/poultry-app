@@ -182,11 +182,29 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
       formId: params.get("formId"),
       visitId: params.get("visitId"),
       fresh: params.get("fresh"),
+      aliases,
     });
     if (!page) return <ReplicaFarmMissing farmId={farmId} />;
+    if (page.missingSaved) {
+      return (
+        <div>
+          <ReplicaLink
+            href={`/farms/${farmId}/service`}
+            className="inline-flex min-h-11 items-center gap-1 text-base font-semibold text-emerald-800"
+          >
+            <BackCaret />
+            Service
+          </ReplicaLink>
+          <p className="mt-4 text-sm font-semibold text-stone-800">
+            This checklist is not on the phone yet.
+          </p>
+        </div>
+      );
+    }
     if (kind === "service_report") {
       return (
         <ServiceReportFormView
+          key={page.existing?.id ?? "new-service-report"}
           farmId={farmId}
           context={page.context}
           existing={page.existing}
@@ -198,6 +216,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     if (kind === "placement") {
       return (
         <PlacementFormView
+          key={page.existing?.id ?? "new-placement"}
           farmId={farmId}
           context={page.context}
           existing={page.existing}
@@ -208,6 +227,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     }
     return (
       <PrebroodFormView
+        key={page.existing?.id ?? "new-prebrood"}
         farmId={farmId}
         context={page.context}
         existing={page.existing}
