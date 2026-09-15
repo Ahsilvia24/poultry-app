@@ -34,6 +34,9 @@ if (migrateUrl) {
       "prisma migrate deploy failed. Continuing with next build. Check POSTGRES_URL is a postgres:// string.",
     );
   }
+  run(process.execPath, [path.join(process.cwd(), "scripts/ensure-visit-type.mjs")], {
+    allowFail: true,
+  });
 } else {
   console.warn(
     "No postgres:// URL on POSTGRES_URL, DATABASE_URL, or PRISMA_DATABASE_URL. Skipping migrate.",
