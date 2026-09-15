@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FarmHistoryButton } from "@/components/FarmHistoryButton";
 import { FieldLogReport } from "@/components/FieldLogReport";
 import { GeneratorLogReport } from "@/components/GeneratorLogReport";
@@ -16,6 +16,7 @@ import {
 import { Button, Card, PageHeader } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { defaultFieldLogRange } from "@/lib/reports/field-log";
+import { mergeReportsInitial, rememberReportsHref } from "@/lib/reports/lastHref";
 import { reportsHref, resolveReportType, type ReportTypeKey } from "@/lib/reports/types";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import {
@@ -98,43 +99,55 @@ export function ReportsView({
   initial: { type?: string; farmId?: string; from?: string; to?: string };
 }) {
   const nav = useOfflineNav();
-  const [type, setType] = useState<ReportTypeKey>(() => resolveReportType(initial.type));
+  const seed = mergeReportsInitial(initial);
+  const [type, setType] = useState<ReportTypeKey>(() => resolveReportType(seed.type));
   const [farmId, setFarmId] = useState(() => {
-    const requested = initial.farmId ?? "";
-    if (resolveReportType(initial.type) === "mortality" && !requested) {
+    const requested = seed.farmId ?? "";
+    if (resolveReportType(seed.type) === "mortality" && !requested) {
       return firstFarmId(snapshot);
     }
     return requested;
   });
   const [fieldRange, setFieldRange] = useState(() => {
     const defaults = defaultFieldLogRange();
-    if (resolveReportType(initial.type) === "field-log") {
-      return { from: initial.from ?? defaults.from, to: initial.to ?? defaults.to };
+    if (resolveReportType(seed.type) === "field-log") {
+      return { from: seed.from ?? defaults.from, to: seed.to ?? defaults.to };
     }
     return defaults;
   });
   const [generatorRange, setGeneratorRange] = useState(() => {
     const defaults = defaultGeneratorRange();
-    if (resolveReportType(initial.type) === "generator") {
-      return { from: initial.from ?? defaults.from, to: initial.to ?? defaults.to };
+    if (resolveReportType(seed.type) === "generator") {
+      return { from: seed.from ?? defaults.from, to: seed.to ?? defaults.to };
     }
     return defaults;
   });
   const [mortalityRange, setMortalityRange] = useState(() => {
     const startFarm =
-      initial.farmId ||
-      (resolveReportType(initial.type) === "mortality" ? firstFarmId(snapshot) : "");
+      seed.farmId ||
+      (resolveReportType(seed.type) === "mortality" ? firstFarmId(snapshot) : "");
     const defaults = startFarm
       ? mortalityRangeForFarm(snapshot, startFarm)
       : defaultMortalityRange();
-    if (resolveReportType(initial.type) === "mortality") {
-      return { from: initial.from ?? defaults.from, to: initial.to ?? defaults.to };
+    if (resolveReportType(seed.type) === "mortality") {
+      return { from: seed.from ?? defaults.from, to: seed.to ?? defaults.to };
     }
     return defaults;
   });
 
   const range =
     type === "field-log" ? fieldRange : type === "generator" ? generatorRange : mortalityRange;
+
+  useEffect(() => {
+    persist({
+      type,
+      farmId: type === "field-log" ? undefined : farmId,
+      from: range.from,
+      to: range.to,
+    });
+    // Remember the open tab once so share / Reports tab survive a remount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const model = useMemo(
     () =>
@@ -148,14 +161,14 @@ export function ReportsView({
   );
 
   function persist(next: { type: ReportTypeKey; farmId?: string; from: string; to: string }) {
-    nav?.replace(
-      reportsHref({
-        type: next.type,
-        farmId: next.type === "field-log" ? undefined : next.farmId,
-        from: next.from,
-        to: next.to,
-      }),
-    );
+    const href = reportsHref({
+      type: next.type,
+      farmId: next.type === "field-log" ? undefined : next.farmId,
+      from: next.from,
+      to: next.to,
+    });
+    rememberReportsHref(href);
+    nav?.replace(href);
   }
 
   function onSelectType(next: ReportTypeKey) {
@@ -178,10 +191,21 @@ export function ReportsView({
     });
   }
 
+  function onGeneratorFarmChange(nextFarmId: string) {
+    setFarmId(nextFarmId);
+    persist({
+      type: "generator",
+      farmId: nextFarmId,
+      from: generatorRange.from,
+      to: generatorRange.to,
+    });
+  }
+
   function onMortalityFarmChange(nextFarmId: string) {
     setFarmId(nextFarmId);
     const nextRange = mortalityRangeForFarm(snapshot, nextFarmId);
     setMortalityRange(nextRange);
+    persist({ type: "mortality", farmId: nextFarmId, from: nextRange.from, to: nextRange.to });
   }
 
   function onFilter(event: FormEvent<HTMLFormElement>) {
@@ -269,7 +293,7 @@ export function ReportsView({
             from={model.from}
             to={model.to}
             allowAllFarms
-            onFarmChange={setFarmId}
+            onFarmChange={onGeneratorFarmChange}
             rangeKey={`gen-${generatorRange.from}-${generatorRange.to}`}
           />
         </form>

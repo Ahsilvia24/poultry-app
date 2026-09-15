@@ -182,16 +182,22 @@ export function MortalityCharts({
 
   function shareByHousePdf() {
     if (byHouse.length === 0) return;
+    const dataUrl = drawHouseBarChart(
+      byHouse.map((h) => ({ houseLabel: h.houseLabel, mortality: h.mortality })),
+    );
     downloadReportPdf({
       title: "Mortality by House",
       subtitle: filterLabel,
       filename: `mortality-by-house-${Date.now()}.pdf`,
-      blocks: [
-        {
-          type: "image",
-          dataUrl: drawHouseBarChart(byHouse.map((h) => ({ houseLabel: h.houseLabel, mortality: h.mortality }))),
-        },
-      ],
+      blocks: dataUrl
+        ? [{ type: "image", dataUrl }]
+        : [
+            {
+              type: "table",
+              headers: ["House", "Mortality"],
+              rows: byHouse.map((h) => [h.houseLabel, h.mortality]),
+            },
+          ],
     });
   }
 
@@ -204,16 +210,20 @@ export function MortalityCharts({
 
   function shareCumulativePdf() {
     if (cumulativeByAge.length === 0) return;
+    const dataUrl = drawAgeLineChart(cumulativeByAge);
     downloadReportPdf({
       title: "Cumulative Mortality by Bird Age",
       subtitle: filterLabel,
       filename: `mortality-by-age-${Date.now()}.pdf`,
-      blocks: [
-        {
-          type: "image",
-          dataUrl: drawAgeLineChart(cumulativeByAge),
-        },
-      ],
+      blocks: dataUrl
+        ? [{ type: "image", dataUrl }]
+        : [
+            {
+              type: "table",
+              headers: ["Bird age (days)", "Cumulative mortality"],
+              rows: cumulativeByAge.map((p) => [p.birdAgeInDays, p.cumulative]),
+            },
+          ],
     });
   }
 
