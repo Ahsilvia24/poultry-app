@@ -1,16 +1,57 @@
 "use client";
 
+import { useState } from "react";
 import { deleteVisitAction } from "@/app/actions/ops";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { HoldReorderList } from "@/components/HoldReorderList";
 import { LoggedVisitTile } from "@/components/LoggedVisitTile";
-import { ReplicaLink } from "@/components/ReplicaLink";
-import { BackHeader } from "@/components/ui";
+import { ReplicaLink, useReplicaNavigate } from "@/components/ReplicaLink";
+import {
+  SettingsFieldRow,
+  SettingsValueChip,
+  settingsValueTextClass,
+} from "@/components/SettingsLayout";
+import { BackHeader, Card } from "@/components/ui";
 import { formWrite } from "@/lib/offline/formPairs";
 import { useHiddenReplicaDeletes } from "@/lib/offline/useHiddenReplicaDeletes";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
-import type { AllVisitsPageModel, VisitListRow } from "@/lib/offline/selectVisits";
+import type { AllVisitsFarmOption, AllVisitsPageModel, VisitListRow } from "@/lib/offline/selectVisits";
 import { loggedAtForFieldLogOrder } from "@/lib/reports/field-log";
+
+function AllVisitsAddTile({ farms }: { farms: AllVisitsFarmOption[] }) {
+  const navigate = useReplicaNavigate();
+  const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
+  if (farms.length === 0) return null;
+
+  return (
+    <Card className="mb-5 overflow-visible">
+      <SettingsFieldRow label="Farm:" htmlFor="all-visits-farm">
+        <SettingsValueChip className="min-w-[9.5rem] max-w-[14rem] flex-1">
+          <select
+            id="all-visits-farm"
+            value={farmId}
+            onChange={(event) => setFarmId(event.target.value)}
+            className={settingsValueTextClass}
+          >
+            {farms.map((farm) => (
+              <option key={farm.id} value={farm.id}>
+                {farm.farmName}
+              </option>
+            ))}
+          </select>
+        </SettingsValueChip>
+      </SettingsFieldRow>
+      <button
+        type="button"
+        disabled={!farmId}
+        onClick={() => navigate(`/farms/${farmId}/visits/new`)}
+        className="mt-3 flex min-h-11 w-full items-center justify-center rounded-[10px] bg-emerald-700 px-3 py-2.5 text-center text-[15px] font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+      >
+        Add Visit
+      </button>
+    </Card>
+  );
+}
 
 export function AllVisitsView({ model }: { model: AllVisitsPageModel }) {
   const { visible, remove } = useHiddenReplicaDeletes();
@@ -40,6 +81,8 @@ export function AllVisitsView({ model }: { model: AllVisitsPageModel }) {
       <p className="mb-4 text-sm font-semibold text-stone-500">
         Hold a visit to set Field Log order. Swipe to delete.
       </p>
+
+      <AllVisitsAddTile farms={model.farms} />
 
       {model.days.length === 0 ? (
         <p className="text-stone-500">No logged visits yet.</p>

@@ -138,6 +138,10 @@ assert.equal(all.days[0]?.dateKey, "2026-09-15");
 assert.equal(all.days[0]?.visits[0]?.farmName, "Oak Ridge");
 assert.equal(all.days[0]?.visits[1]?.farmName, "Pine Hill");
 assert.equal(all.days[1]?.visits[0]?.visitType, "LAST_FEED_ORDER");
+assert.deepEqual(
+  all.farms.map((farm) => farm.farmName),
+  ["Oak Ridge", "Pine Hill"],
+);
 
 const before = buildFieldLogWeeks(replicaVisitsForFieldLog(snapshot()), "2026-09-15", "2026-09-15");
 assert.equal(before[0]?.days.find((day) => day.dateKey === "2026-09-15")?.farms[0]?.farmName, "Oak Ridge");
@@ -197,7 +201,12 @@ assert.match(allVisits, /deleteVisit/);
 assert.match(allVisits, /reorderVisits/);
 assert.match(allVisits, /loggedAtForFieldLogOrder/);
 assert.match(allVisits, /day\.label/);
+assert.match(allVisits, /SettingsFieldRow/);
+assert.match(allVisits, /Add Visit/);
+assert.match(allVisits, /visits\/new/);
+assert.match(allVisits, /useReplicaNavigate/);
 assert.match(read("src/components/LoggedVisitTile.tsx"), /aside=\{dateLabel\}/);
+assert.equal(isReplicaHref("/farms/farm-1/visits/new"), true);
 
 const hold = read("src/components/HoldReorderList.tsx");
 assert.match(hold, /LONG_PRESS_MS = 420/);

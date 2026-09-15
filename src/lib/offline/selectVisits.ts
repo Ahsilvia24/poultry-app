@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { asDateRequired } from "@/lib/offline/dates";
+import { selectFarmTiles } from "@/lib/offline/selectFarms";
 import type { OfflineSnapshot, OfflineVisit } from "@/lib/offline/types";
 import {
   FIELD_LOG_WEEKDAYS,
@@ -74,8 +75,14 @@ export type AllVisitsDay = {
   visits: VisitListRow[];
 };
 
+export type AllVisitsFarmOption = {
+  id: string;
+  farmName: string;
+};
+
 export type AllVisitsPageModel = {
   days: AllVisitsDay[];
+  farms: AllVisitsFarmOption[];
 };
 
 function weekdayLabel(dateKey: string) {
@@ -102,7 +109,10 @@ export function selectAllVisits(snapshot: OfflineSnapshot): AllVisitsPageModel {
         .slice()
         .sort((a, b) => a.loggedAt.localeCompare(b.loggedAt) || a.id.localeCompare(b.id)),
     }));
-  return { days };
+  return {
+    days,
+    farms: selectFarmTiles(snapshot).map((farm) => ({ id: farm.id, farmName: farm.farmName })),
+  };
 }
 
 function activeFlockForFarm(snapshot: OfflineSnapshot, farmId: string) {
