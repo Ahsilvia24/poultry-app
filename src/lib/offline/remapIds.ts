@@ -50,6 +50,33 @@ export function mergeAliases(base: IdAliases, extra?: IdAliases): IdAliases {
   return { ...base, ...extra };
 }
 
+/** After a create (or leftover update-as-create) lands, map the phone id to the website id. */
+export function aliasesFromCreated(
+  aliases: IdAliases,
+  localId: string | undefined,
+  serverId: string | undefined,
+): IdAliases {
+  if (!localId || !serverId || localId === serverId) return aliases;
+  return { ...aliases, [localId]: serverId };
+}
+
+/**
+ * A leftover update still has `local-…` after create already uploaded.
+ * Reuse the matching website row when we can; otherwise create.
+ */
+export function chooseLeftoverCreatedId(options: {
+  existingId?: string | null;
+  sameFingerprint?: string[];
+  sameDay?: string[];
+}): string | null {
+  if (options.existingId) return options.existingId;
+  const sameFingerprint = options.sameFingerprint ?? [];
+  if (sameFingerprint.length > 0) return sameFingerprint[0] ?? null;
+  const sameDay = options.sameDay ?? [];
+  if (sameDay.length === 1) return sameDay[0] ?? null;
+  return null;
+}
+
 function remapUnknown(value: unknown, aliases: IdAliases): unknown {
   if (typeof value === "string") return resolveAlias(aliases, value);
   if (Array.isArray(value)) return value.map((item) => remapUnknown(item, aliases));
