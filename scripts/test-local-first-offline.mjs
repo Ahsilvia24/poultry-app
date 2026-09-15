@@ -80,7 +80,7 @@ assert.match(extractClient, /webpackMode: "eager"/);
 assert.match(extractClient, /unpdf\/pdfjs/);
 assert.match(extractClient, /definePDFJSModule/);
 assert.match(extractClient, /const pdfjsReady = definePDFJSModule/);
-assert.match(provider, /aliasesFromImportGraph/);
+assert.match(flush, /aliasesFromImportGraph/);
 
 const { extractPlacementRowsOnDevice } = await import(
   join(root, "src/lib/placement-import/extract-client.ts")
