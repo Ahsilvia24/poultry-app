@@ -7,6 +7,7 @@ import { useKeypadNav } from "@/components/KeypadNavContext";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { replicaPath } from "@/lib/offline/hasFarmGraph";
+import { reportsTabHref } from "@/lib/reports/lastHref";
 import { TabGlyph } from "@/components/TabGlyph";
 import type { TabIconName } from "@/lib/tab-icon-glyphs";
 
@@ -39,11 +40,17 @@ export function AppNav() {
   const offlineNav = useOfflineNav();
   const { keypadOpen } = useKeypadNav();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [reportsHref, setReportsHref] = useState("/reports");
   const viewPath = offlineNav ? pathOnly(offlineNav.viewHref) : pathname;
+  const viewHref = offlineNav?.viewHref ?? pathname;
+
+  useEffect(() => {
+    setReportsHref(reportsTabHref(viewHref));
+  }, [viewHref]);
 
   useEffect(() => {
     setPendingHref(null);
-  }, [pathname]);
+  }, [viewPath]);
 
   useEffect(() => {
     const prefetchTabs = () => {
@@ -57,7 +64,7 @@ export function AppNav() {
   }, [router]);
 
   function tabIsActive(href: string) {
-    if (pendingHref) return pendingHref === href;
+    if (pendingHref) return isActive(pathOnly(pendingHref), href);
     return isActive(viewPath, href);
   }
 
@@ -67,7 +74,7 @@ export function AppNav() {
 
   function onTabPress(href: string) {
     router.prefetch(href);
-    if (!isActive(pathname, href)) setPendingHref(href);
+    if (!isActive(viewPath, pathOnly(href))) setPendingHref(href);
   }
 
   return (
@@ -76,15 +83,16 @@ export function AppNav() {
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
           <nav className="flex items-center gap-1">
             {desktopNav.map((item) => {
+              const href = item.href === "/reports" ? reportsHref : item.href;
               const active = tabIsActive(item.href);
               return (
                 <ReplicaLink
                   key={item.href}
-                  href={item.href}
+                  href={href}
                   prefetch
-                  onPointerEnter={() => prefetchTab(item.href)}
-                  onTouchStart={() => onTabPress(item.href)}
-                  onClick={() => onTabPress(item.href)}
+                  onPointerEnter={() => prefetchTab(href)}
+                  onTouchStart={() => onTabPress(href)}
+                  onClick={() => onTabPress(href)}
                   className={cn(
                     "rounded-lg px-3 py-2 text-base font-semibold",
                     active
@@ -104,15 +112,16 @@ export function AppNav() {
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white md:hidden">
           <div className="flex items-center gap-1 px-1 pt-1.5 pb-[calc(0.7rem+env(safe-area-inset-bottom,0px))]">
             {tabs.map((item) => {
+              const href = item.href === "/reports" ? reportsHref : item.href;
               const active = tabIsActive(item.href);
               return (
                 <ReplicaLink
                   key={item.href}
-                  href={item.href}
+                  href={href}
                   prefetch
-                  onPointerEnter={() => prefetchTab(item.href)}
-                  onTouchStart={() => onTabPress(item.href)}
-                  onClick={() => onTabPress(item.href)}
+                  onPointerEnter={() => prefetchTab(href)}
+                  onTouchStart={() => onTabPress(href)}
+                  onClick={() => onTabPress(href)}
                   className={cn(
                     "flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[10px] border px-0.5 py-1.5 text-center text-[12px] font-extrabold leading-none text-stone-700",
                     active ? selectedTabClass : "border-transparent",
