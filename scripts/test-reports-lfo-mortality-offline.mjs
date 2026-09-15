@@ -42,7 +42,7 @@ assert.match(selectReports, /defaultGeneratorRange/);
 assert.match(selectReports, /subDays\(today, 28\)/);
 assert.match(selectReports, /mortalityRangeForFarm/);
 assert.match(selectReports, /activeFlockPlacementKey/);
-assert.match(selectReports, /`H\$\{houseNumber/);
+assert.match(selectReports, /`House \$\{houseNumber/);
 assert.match(selectReports, /House \$\{house\.houseNumber\}/);
 
 const charts = read("src/components/MortalityCharts.tsx");

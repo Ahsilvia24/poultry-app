@@ -49,6 +49,7 @@ import { selectIssue, selectIssues } from "@/lib/offline/selectIssues";
 import { selectLitter, selectLitterEvent } from "@/lib/offline/selectLitter";
 import { selectAllVisits, selectVisit, selectVisits } from "@/lib/offline/selectVisits";
 import type { PlacementForm, PrebroodForm, ServiceReportForm } from "@/lib/serviceForms/types";
+import { isAllVisitsReturn } from "@/lib/visits/returnTo";
 
 export { OfflineNavProvider, useOfflineNav } from "@/components/OfflineNavContext";
 
@@ -247,6 +248,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
         farmId={model.farmId}
         flockId={model.activeFlockId}
         placementDate={model.activePlacementDate}
+        fromAllVisits={isAllVisitsReturn(search)}
       />
     );
   }
@@ -277,6 +279,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
         flockId={model.activeFlockId}
         placementDate={model.activePlacementDate}
         visit={visit}
+        fromAllVisits={isAllVisitsReturn(search)}
       />
     );
   }

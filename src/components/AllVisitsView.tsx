@@ -7,7 +7,6 @@ import { HoldReorderList } from "@/components/HoldReorderList";
 import { LoggedVisitTile } from "@/components/LoggedVisitTile";
 import { ReplicaLink, useReplicaNavigate } from "@/components/ReplicaLink";
 import {
-  SettingsFieldRow,
   SettingsValueChip,
   settingsValueTextClass,
 } from "@/components/SettingsLayout";
@@ -17,6 +16,7 @@ import { useHiddenReplicaDeletes } from "@/lib/offline/useHiddenReplicaDeletes";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import type { AllVisitsFarmOption, AllVisitsPageModel, VisitListRow } from "@/lib/offline/selectVisits";
 import { loggedAtForFieldLogOrder } from "@/lib/reports/field-log";
+import { visitFormHref } from "@/lib/visits/returnTo";
 
 function AllVisitsAddTile({ farms }: { farms: AllVisitsFarmOption[] }) {
   const navigate = useReplicaNavigate();
@@ -25,13 +25,13 @@ function AllVisitsAddTile({ farms }: { farms: AllVisitsFarmOption[] }) {
 
   return (
     <Card className="mb-5 overflow-visible">
-      <SettingsFieldRow label="Farm:" htmlFor="all-visits-farm">
-        <SettingsValueChip className="min-w-[9.5rem] max-w-[14rem] flex-1">
+      <div className="flex items-center gap-2">
+        <SettingsValueChip className="min-w-0 flex-1">
           <select
             id="all-visits-farm"
             value={farmId}
             onChange={(event) => setFarmId(event.target.value)}
-            className={settingsValueTextClass}
+            className={`${settingsValueTextClass} text-left`}
           >
             {farms.map((farm) => (
               <option key={farm.id} value={farm.id}>
@@ -40,15 +40,15 @@ function AllVisitsAddTile({ farms }: { farms: AllVisitsFarmOption[] }) {
             ))}
           </select>
         </SettingsValueChip>
-      </SettingsFieldRow>
-      <button
-        type="button"
-        disabled={!farmId}
-        onClick={() => navigate(`/farms/${farmId}/visits/new`)}
-        className="mt-3 flex min-h-11 w-full items-center justify-center rounded-[10px] bg-emerald-700 px-3 py-2.5 text-center text-[15px] font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
-      >
-        Add Visit
-      </button>
+        <button
+          type="button"
+          disabled={!farmId}
+          onClick={() => navigate(visitFormHref(farmId, undefined, true))}
+          className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-emerald-700 px-3 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+        >
+          Log Visit
+        </button>
+      </div>
     </Card>
   );
 }
@@ -101,6 +101,7 @@ export function AllVisitsView({ model }: { model: AllVisitsPageModel }) {
                     renderItem={(visit, ctx) => (
                       <LoggedVisitTile
                         visit={visit}
+                        fromAllVisits
                         swipeDisabled={ctx.swipeDisabled}
                         suppressOpen={ctx.suppressOpen}
                         onDelete={() =>

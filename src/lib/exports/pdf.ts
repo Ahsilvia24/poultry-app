@@ -9,7 +9,8 @@ export type PdfTableSection = {
 
 export type PdfBlock =
   | { type: "heading"; text: string }
-  | { type: "table"; title?: string; headers: string[]; rows: Array<Array<string | number>> };
+  | { type: "table"; title?: string; headers: string[]; rows: Array<Array<string | number>> }
+  | { type: "image"; dataUrl: string; width?: number; height?: number };
 
 function pageBottom(doc: jsPDF) {
   return doc.internal.pageSize.getHeight() - 16;
@@ -45,6 +46,17 @@ export function downloadReportPdf(opts: {
   }
 
   for (const block of opts.blocks) {
+    if (block.type === "image") {
+      if (!block.dataUrl) continue;
+      const pageW = doc.internal.pageSize.getWidth() - 28;
+      const imgW = Math.min(block.width ?? pageW, pageW);
+      const imgH = block.height ?? (imgW * 420) / 900;
+      y = ensurePageSpace(doc, y, imgH + 6);
+      doc.addImage(block.dataUrl, "PNG", 14, y, imgW, imgH);
+      y += imgH + 8;
+      continue;
+    }
+
     if (block.type === "heading") {
       y = ensurePageSpace(doc, y, 14);
       doc.setFontSize(14);

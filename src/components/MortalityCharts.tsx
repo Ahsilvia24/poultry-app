@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { downloadCsv, toCsv } from "@/lib/exports/csv";
 import { downloadMortalityPdf, downloadReportPdf } from "@/lib/exports/pdf";
+import { drawAgeLineChart, drawHouseBarChart } from "@/lib/reports/mortality-chart-share";
 import {
   mortalityMatrixHasData,
   mortalityMatrixToTable,
@@ -88,32 +89,24 @@ export function MortalityCharts({
   byHouse,
   byHouseByDate,
   byFarm,
-  displayCumulativeByAge,
-  displayByHouse,
-  displayByHouseByDate,
-  allFarms = false,
-  displayFarmName,
+  farmTitle,
   filterLabel,
 }: {
   cumulativeByAge: CumulativePoint[];
   byHouse: HouseBarPoint[];
   byHouseByDate: HouseByDateMatrix;
   byFarm: FarmRow[];
-  displayCumulativeByAge?: CumulativePoint[];
-  displayByHouse?: HouseBarPoint[];
-  displayByHouseByDate?: HouseByDateMatrix;
-  allFarms?: boolean;
-  displayFarmName?: string | null;
+  farmTitle?: string | null;
   filterLabel: string;
 }) {
-  const shownCumulative = displayCumulativeByAge ?? cumulativeByAge;
-  const shownByHouse = displayByHouse ?? byHouse;
-  const shownByDate = displayByHouseByDate ?? byHouseByDate;
-  const entityHeader = allFarms ? "Farm" : "";
-  const farmNameOnTiles = displayFarmName ?? null;
+  const shownCumulative = cumulativeByAge;
+  const shownByHouse = byHouse;
+  const shownByDate = byHouseByDate;
+  const entityHeader = "";
+  const farmNameOnTiles = farmTitle ?? null;
 
   function percentageRowLabel(row: FarmRow) {
-    if (!allFarms && row.kind === "farm") return "Total farm";
+    if (row.kind === "farm") return "Total farm";
     return row.farmName;
   }
 
@@ -152,9 +145,9 @@ export function MortalityCharts({
 
   async function copyPercentage() {
     if (byFarm.length === 0) return;
-    const header = [entityHeader || "Farm", "Placed", "Mortality", "Culls", "Total", "%"].join("\t");
+    const header = [entityHeader || "Farm", "Placed", "Total", "%"].join("\t");
     const lines = byFarm.map((f) =>
-      [percentageRowLabel(f), f.placed, f.mortality, f.culls, f.total, f.pct.toFixed(2)].join("\t"),
+      [percentageRowLabel(f), f.placed, f.total, f.pct.toFixed(2)].join("\t"),
     );
     await navigator.clipboard.writeText([header, ...lines].join("\n"));
   }
@@ -168,12 +161,10 @@ export function MortalityCharts({
       blocks: [
         {
           type: "table",
-          headers: [entityHeader || "Farm", "Placed", "Mortality", "Culls", "Total", "%"],
+          headers: [entityHeader || "Farm", "Placed", "Total", "%"],
           rows: byFarm.map((f) => [
             percentageRowLabel(f),
             f.placed,
-            f.mortality,
-            f.culls,
             f.total,
             f.pct.toFixed(2),
           ]),
@@ -184,8 +175,8 @@ export function MortalityCharts({
 
   async function copyByHouse() {
     if (byHouse.length === 0) return;
-    const header = ["House", "Mortality", "Culls", "Total"].join("\t");
-    const lines = byHouse.map((h) => [h.houseLabel, h.mortality, h.culls, h.total].join("\t"));
+    const header = ["House", "Mortality"].join("\t");
+    const lines = byHouse.map((h) => [h.houseLabel, h.mortality].join("\t"));
     await navigator.clipboard.writeText([header, ...lines].join("\n"));
   }
 
@@ -197,9 +188,8 @@ export function MortalityCharts({
       filename: `mortality-by-house-${Date.now()}.pdf`,
       blocks: [
         {
-          type: "table",
-          headers: ["House", "Mortality", "Culls", "Total"],
-          rows: byHouse.map((h) => [h.houseLabel, h.mortality, h.culls, h.total]),
+          type: "image",
+          dataUrl: drawHouseBarChart(byHouse.map((h) => ({ houseLabel: h.houseLabel, mortality: h.mortality }))),
         },
       ],
     });
@@ -220,9 +210,8 @@ export function MortalityCharts({
       filename: `mortality-by-age-${Date.now()}.pdf`,
       blocks: [
         {
-          type: "table",
-          headers: ["Age (days)", "Cumulative"],
-          rows: cumulativeByAge.map((p) => [p.birdAgeInDays, p.cumulative]),
+          type: "image",
+          dataUrl: drawAgeLineChart(cumulativeByAge),
         },
       ],
     });
@@ -243,19 +232,17 @@ export function MortalityCharts({
       ),
       "",
       toCsv(
-        ["House", "Mortality", "Culls", "Total"],
-        byHouse.map((h) => [h.houseLabel, h.mortality, h.culls, h.total]),
+        ["House", "Mortality"],
+        byHouse.map((h) => [h.houseLabel, h.mortality]),
       ),
       "",
       toCsv(houseDateHeaders, houseDateRows),
       "",
       toCsv(
-        [entityHeader || "Farm", "Placed", "Mortality", "Culls", "Total", "Pct"],
+        [entityHeader || "Farm", "Placed", "Total", "Pct"],
         byFarm.map((f) => [
           percentageRowLabel(f),
           f.placed,
-          f.mortality,
-          f.culls,
           f.total,
           f.pct.toFixed(2),
         ]),
@@ -272,12 +259,10 @@ export function MortalityCharts({
       sections: [
         {
           title: "Mortality by Percentage",
-          headers: [entityHeader || "Farm", "Placed", "Mortality", "Culls", "Total", "%"],
+          headers: [entityHeader || "Farm", "Placed", "Total", "%"],
           rows: byFarm.map((f) => [
             percentageRowLabel(f),
             f.placed,
-            f.mortality,
-            f.culls,
             f.total,
             f.pct.toFixed(2),
           ]),
@@ -293,8 +278,8 @@ export function MortalityCharts({
         },
         {
           title: "Mortality by House",
-          headers: ["House", "Mortality", "Culls", "Total"],
-          rows: byHouse.map((h) => [h.houseLabel, h.mortality, h.culls, h.total]),
+          headers: ["House", "Mortality"],
+          rows: byHouse.map((h) => [h.houseLabel, h.mortality]),
         },
         {
           title: "Cumulative Mortality by Bird Age",
@@ -311,7 +296,7 @@ export function MortalityCharts({
         <TileHeader
           title="Mortality by Percentage"
           extra={
-            !allFarms && farmNameOnTiles ? (
+            farmNameOnTiles ? (
               <p className="mt-1 text-sm font-semibold text-stone-800">{farmNameOnTiles}</p>
             ) : null
           }
@@ -455,8 +440,7 @@ export function MortalityCharts({
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="mortality" name="Mortality" stackId="a" fill="#047857" />
-                <Bar dataKey="culls" name="Culls" stackId="a" fill="#a8a29e" />
+                <Bar dataKey="mortality" name="Mortality" fill="#047857" />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -467,8 +451,8 @@ export function MortalityCharts({
         <TileHeader
           title="Cumulative Mortality by Bird Age"
           extra={
-            displayFarmName ? (
-              <p className="mt-1 text-sm font-semibold text-stone-800">{displayFarmName}</p>
+            farmNameOnTiles ? (
+              <p className="mt-1 text-sm font-semibold text-stone-800">{farmNameOnTiles}</p>
             ) : null
           }
           onCopy={() => void copyCumulative()}

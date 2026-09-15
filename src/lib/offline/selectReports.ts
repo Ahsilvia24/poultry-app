@@ -1,8 +1,13 @@
 import { eachDayOfInterval, format, parseISO, subDays } from "date-fns";
 import {
+  birdAgeFromPlacement,
   buildMortalitySummaries,
   calcPercentage,
 } from "@/lib/mortality/calculations";
+import {
+  clampDateKeyToPlacement,
+  fillCumulativeByAge,
+} from "@/lib/reports/mortality-chart-share";
 import { asDate, asDateKey, asDateRequired } from "@/lib/offline/dates";
 import { replicaVisitsForFieldLog } from "@/lib/offline/selectVisits";
 import type { OfflineSnapshot } from "@/lib/offline/types";
@@ -57,11 +62,6 @@ export type ReplicaReportsModel = {
     byFarm: FarmRow[];
     farmTitle: string | null;
     filterLabel: string;
-    allFarms: boolean;
-    displayFarmName: string | null;
-    displayByHouse: HouseBarPoint[];
-    displayByHouseByDate: HouseByDateMatrix;
-    displayCumulativeByAge: CumulativePoint[];
   } | null;
   history: { selectedFarmId: string; rows: ReplicaHistoryRow[] } | null;
 };
@@ -71,23 +71,8 @@ function inRange(key: string, from: string, to: string) {
   return day >= from && day <= to;
 }
 
-function formatRangeLabel(from: string, to: string) {
-  return `${format(parseISO(from), "MMMM d, yyyy")} to ${format(parseISO(to), "MMMM d, yyyy")}`;
-}
-
-function oldestFarmId(snapshot: OfflineSnapshot, farmIds?: string[]) {
-  let best = "";
-  let bestTime = Infinity;
-  for (const flock of snapshot.flocks ?? []) {
-    if (flock.deletedAt) continue;
-    if (farmIds?.length && !farmIds.includes(flock.farmId)) continue;
-    const time = asDateRequired(flock.placementDate).getTime();
-    if (time < bestTime) {
-      bestTime = time;
-      best = flock.farmId;
-    }
-  }
-  return best;
+export function formatRangeLabel(from: string, to: string) {
+  return `${format(parseISO(from), "d MMM yy")} to ${format(parseISO(to), "d MMM yy")}`;
 }
 
 export function defaultGeneratorRange(today = new Date()): { from: string; to: string } {
@@ -158,8 +143,9 @@ export function selectReports(
       farmName: farm.farmName,
       numberOfGenerators: farm.numberOfGenerators,
     }));
-  const farmId =
+  let farmId =
     search.farmId && farms.some((farm) => farm.id === search.farmId) ? search.farmId : "";
+  if (type === "mortality" && !farmId) farmId = farms[0]?.id ?? "";
   const farmNameById = new Map(farms.map((farm) => [farm.id, farm.farmName]));
   const houseById = new Map((snapshot.houses ?? []).map((house) => [house.id, house]));
   const flockById = new Map((snapshot.flocks ?? []).map((flock) => [flock.id, flock]));
@@ -255,6 +241,8 @@ export function selectReports(
 
   const fromDate = parseISO(from);
   const toDate = parseISO(to);
+  const placementKey = farmId ? activeFlockPlacementKey(snapshot, farmId) : null;
+  const chartFrom = clampDateKeyToPlacement(from, placementKey);
   const mortalities = (snapshot.mortalities ?? []).filter((row) => {
     if (row.isDraft || !inRange(row.mortalityDate, from, to)) return false;
     const hf = hfById.get(row.houseFlockId);
@@ -264,26 +252,24 @@ export function selectReports(
     if (farmId && flock.farmId !== farmId) return false;
     return true;
   });
+  const chartMortalities = mortalities.filter((row) => inRange(row.mortalityDate, chartFrom, to));
 
   const byAgeMap = new Map<number, number>();
-  for (const row of mortalities) {
+  for (const row of chartMortalities) {
     byAgeMap.set(row.birdAgeInDays, (byAgeMap.get(row.birdAgeInDays) ?? 0) + row.dailyMortalityCount);
   }
-  const ages = [...byAgeMap.keys()].sort((a, b) => a - b);
-  let running = 0;
-  const cumulativeByAge: CumulativePoint[] = ages.map((age) => {
-    running += byAgeMap.get(age) ?? 0;
-    return { birdAgeInDays: age, cumulative: running };
-  });
+  const placementDate = placementKey ? asDateRequired(placementKey) : null;
+  const startAge = placementDate ? birdAgeFromPlacement(placementDate, parseISO(chartFrom)) : 0;
+  const cumulativeByAge: CumulativePoint[] = fillCumulativeByAge(byAgeMap, startAge);
 
   const houseMap = new Map<string, HouseBarPoint & { sortKey: string; farmId: string; houseNumber: number }>();
-  for (const row of mortalities) {
+  for (const row of chartMortalities) {
     const hf = hfById.get(row.houseFlockId)!;
     const flock = flockById.get(hf.flockId)!;
     const house = houseById.get(hf.houseId);
     const farmName = farmNameById.get(flock.farmId) ?? "Farm";
     const houseNumber = house?.houseNumber ?? 0;
-    const houseLabel = farmId ? `H${houseNumber || "?"}` : `${farmName} H${houseNumber || "?"}`;
+    const houseLabel = farmId ? `House ${houseNumber || "?"}` : `${farmName} H${houseNumber || "?"}`;
     const sortKey = `${farmName}\0${String(houseNumber).padStart(4, "0")}`;
     const rec = houseMap.get(sortKey) ?? {
       houseLabel,
@@ -359,17 +345,10 @@ export function selectReports(
     }
   }
 
-  const farmIdsInData = [
-    ...new Set(
-      mortalities
-        .map((row) => flockById.get(hfById.get(row.houseFlockId)?.flockId ?? "")?.farmId)
-        .filter((id): id is string => Boolean(id)),
-    ),
-  ];
   const placementByFarm = new Map<string, number>();
   for (const hf of snapshot.houseFlocks ?? []) {
     const flock = flockById.get(hf.flockId);
-    if (!flock || !farmIdsInData.includes(flock.farmId)) continue;
+    if (!flock || (farmId && flock.farmId !== farmId)) continue;
     const name = farmNameById.get(flock.farmId) ?? "Farm";
     placementByFarm.set(name, (placementByFarm.get(name) ?? 0) + hf.placedBirdCount);
   }
@@ -462,67 +441,18 @@ export function selectReports(
     rows: houseDateRows.map(({ houseLabel, byDate }) => ({ houseLabel, byDate })),
   };
 
-  const allFarms = !farmId;
-  const displayFarmId = allFarms
-    ? oldestFarmId(snapshot, farmIdsInData.length ? farmIdsInData : undefined)
-    : farmId;
-  const displayFarmName = displayFarmId ? (farmNameById.get(displayFarmId) ?? null) : null;
-  const displayByHouse: HouseBarPoint[] = allFarms
-    ? byHouseFull
-        .filter((row) => row.farmId === displayFarmId)
-        .map((row) => ({
-          houseLabel: `House ${row.houseNumber}`,
-          mortality: row.mortality,
-          culls: row.culls,
-          total: row.total,
-        }))
-    : byHouse;
-  const displayByHouseByDate: HouseByDateMatrix = allFarms
-    ? {
-        dates: dateKeys,
-        rows: houseDateRows
-          .filter((row) => row.farmId === displayFarmId)
-          .map((row) => ({
-            houseLabel: `House ${row.houseNumber}`,
-            byDate: row.byDate,
-          })),
-      }
-    : byHouseByDate;
-
-  let displayCumulativeByAge = cumulativeByAge;
-  if (allFarms && displayFarmId) {
-    const displayAgeMap = new Map<number, number>();
-    for (const row of mortalities) {
-      const flock = flockById.get(hfById.get(row.houseFlockId)!.flockId);
-      if (!flock || flock.farmId !== displayFarmId) continue;
-      displayAgeMap.set(
-        row.birdAgeInDays,
-        (displayAgeMap.get(row.birdAgeInDays) ?? 0) + row.dailyMortalityCount,
-      );
-    }
-    const displayAges = [...displayAgeMap.keys()].sort((a, b) => a - b);
-    let displayRunning = 0;
-    displayCumulativeByAge = displayAges.map((age) => {
-      displayRunning += displayAgeMap.get(age) ?? 0;
-      return { birdAgeInDays: age, cumulative: displayRunning };
-    });
-  }
-
   model.mortality = {
     cumulativeByAge,
     byHouse,
     byHouseByDate,
     byFarm,
-    farmTitle: farmId ? (farmNameById.get(farmId) ?? null) : "All farms",
+    farmTitle: farmId ? (farmNameById.get(farmId) ?? null) : null,
     filterLabel: [
-      farmId ? `Farm: ${farmNameById.get(farmId) ?? farmId}` : "All farms",
+      farmId ? farmNameById.get(farmId) ?? farmId : "",
       formatRangeLabel(from, to),
-    ].join(" · "),
-    allFarms,
-    displayFarmName,
-    displayByHouse,
-    displayByHouseByDate,
-    displayCumulativeByAge,
+    ]
+      .filter(Boolean)
+      .join(" · "),
   };
   return model;
 }

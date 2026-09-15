@@ -10,14 +10,16 @@ export function FarmVisitFormView({
   flockId,
   placementDate,
   visit,
+  fromAllVisits = false,
 }: {
   farmId: string;
   flockId?: string | null;
   placementDate?: string | null;
   visit?: VisitListRow | null;
+  fromAllVisits?: boolean;
 }) {
   const nav = useOfflineNav();
-  const listHref = `/farms/${farmId}/visits`;
+  const listHref = fromAllVisits ? "/visits" : `/farms/${farmId}/visits`;
 
   function afterSave() {
     if (nav) nav.navigate(listHref);
@@ -27,7 +29,7 @@ export function FarmVisitFormView({
     <div>
       <BackHeader
         href={listHref}
-        backLabel="Visits"
+        backLabel={fromAllVisits ? "All Visits" : "Visits"}
         title={visit ? "Edit Visit" : "Log Visit"}
       />
       <Card>

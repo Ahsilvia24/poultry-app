@@ -16,6 +16,7 @@ import { replicaHrefsMatch } from "@/lib/offline/hasFarmGraph";
 type OfflineNavValue = {
   viewHref: string;
   navigate: (href: string) => void;
+  replace: (href: string) => void;
 };
 
 const OfflineNavContext = createContext<OfflineNavValue | null>(null);
@@ -50,8 +51,16 @@ export function OfflineNavProvider({ children }: { children: ReactNode }) {
     [router],
   );
 
+  const replace = useCallback(
+    (href: string) => {
+      setPendingHref(href);
+      router.replace(href);
+    },
+    [router],
+  );
+
   const viewHref = pendingHref ?? liveHref(pathname);
-  const value = useMemo(() => ({ viewHref, navigate }), [viewHref, navigate]);
+  const value = useMemo(() => ({ viewHref, navigate, replace }), [viewHref, navigate, replace]);
 
   return <OfflineNavContext.Provider value={value}>{children}</OfflineNavContext.Provider>;
 }
