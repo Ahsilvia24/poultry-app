@@ -77,7 +77,7 @@ export function AllVisitsView({ model }: { model: AllVisitsPageModel }) {
 
   return (
     <div>
-      <BackHeader href="/reports" backLabel="Field Log" title="All Visits" />
+      <BackHeader href="/reports?type=field-log" backLabel="Field Log" title="All Visits" />
       <p className="mb-4 text-sm font-semibold text-stone-500">
         Hold a visit to set Field Log order. Swipe to delete.
       </p>
@@ -123,7 +123,7 @@ export function AllVisitsView({ model }: { model: AllVisitsPageModel }) {
       )}
 
       <ReplicaLink
-        href="/reports"
+        href="/reports?type=field-log"
         className="mt-6 inline-flex min-h-11 items-center text-sm font-bold text-stone-800 underline"
       >
         Back to Field Log

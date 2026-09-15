@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { downloadPdfBytes } from "@/lib/serviceForms/sharePdf";
 
 export type PdfTableSection = {
   title: string;
@@ -91,7 +92,8 @@ export function downloadReportPdf(opts: {
     }
   }
 
-  doc.save(opts.filename ?? "report.pdf");
+  const bytes = new Uint8Array(doc.output("arraybuffer"));
+  downloadPdfBytes(bytes, opts.filename ?? "report.pdf");
 }
 
 export function downloadMortalityPdf(opts: {

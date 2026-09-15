@@ -40,6 +40,7 @@ assert.match(field, /whitespace-nowrap/);
 
 const visits = read("src/components/AllVisitsView.tsx");
 assert.match(visits, /Log Visit/);
+assert.match(visits, /\/reports\?type=field-log/);
 assert.doesNotMatch(visits, /label="Farm:"/);
 
 const form = read("src/components/FarmVisitFormView.tsx");
@@ -49,15 +50,21 @@ assert.match(form, /"\/visits"/);
 const reports = read("src/components/ReportsView.tsx");
 assert.match(reports, /nav\?\.replace/);
 assert.match(reports, /reportsHref/);
+assert.match(reports, /rememberReportsHref/);
+assert.match(reports, /mergeReportsInitial/);
+assert.match(reports, /onGeneratorFarmChange/);
 assert.match(reports, /Apply Filter/);
 assert.doesNotMatch(reports, /htmlFor="farmId">Farm</);
 
 const charts = read("src/components/MortalityCharts.tsx");
 assert.match(charts, /type: "image"/);
+assert.match(charts, /type: "table"/);
 assert.doesNotMatch(charts, /name="Culls"/);
 
 const pdf = read("src/lib/exports/pdf.ts");
 assert.match(pdf, /type: "image"/);
 assert.match(pdf, /addImage/);
+assert.match(pdf, /downloadPdfBytes/);
+assert.doesNotMatch(pdf, /doc\.save\(/);
 
 console.log("reports-visits-polish: ok");
