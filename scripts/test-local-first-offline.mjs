@@ -26,14 +26,17 @@ assert.match(provider, /loadLocalSnapshot/);
 assert.match(provider, /Never block the UI on sync/);
 assert.match(provider, /flushOutbox/);
 assert.match(provider, /patchSnapshot/);
-assert.match(provider, /updateHouseTemp/);
-assert.match(provider, /updateSettings/);
-assert.match(provider, /formWrite/);
-assert.match(provider, /flushFormWrite/);
 assert.match(provider, /canReplaceReplicaWithRemote/);
-assert.match(provider, /remapOutboxItem/);
 assert.match(provider, /loadIdAliases/);
-assert.match(provider, /saveIdAliases/);
+assert.match(provider, /syncPhoneToWebsite/);
+
+const flush = read("src/lib/offline/flushOutbox.ts");
+assert.match(flush, /updateHouseTemp/);
+assert.match(flush, /updateSettings/);
+assert.match(flush, /formWrite/);
+assert.match(flush, /flushFormWrite/);
+assert.match(flush, /remapOutboxItem/);
+assert.match(flush, /saveIdAliases/);
 
 const farmPage = read("src/app/(dashboard)/farms/[id]/page.tsx");
 assert.match(farmPage, /FarmDetailClient/);

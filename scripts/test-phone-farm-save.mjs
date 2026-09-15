@@ -25,11 +25,14 @@ assert.match(settings, /phoneFarmSaveStatus/);
 assert.match(settings, /SIGN_OUT_UNSAVED_CONFIRM/);
 assert.match(settings, /window\.confirm/);
 assert.match(settings, /flushNow/);
+assert.match(settings, /syncNow/);
+assert.match(settings, /Sync data/);
 assert.match(settings, /pendingCount/);
 
 const provider = read("src/components/OfflineProvider.tsx");
 assert.match(provider, /pendingCount/);
 assert.match(provider, /flushNow/);
+assert.match(provider, /syncNow/);
 assert.match(provider, /setPendingCount/);
 
 console.log("phone-farm-save: ok");
