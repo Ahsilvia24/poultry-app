@@ -10,6 +10,7 @@ export function FarmLogListTile({
   href,
   title,
   subtitle,
+  aside,
   ariaLabel,
   onDelete,
   swipeDisabled = false,
@@ -19,6 +20,7 @@ export function FarmLogListTile({
   href: string;
   title: string;
   subtitle: string;
+  aside?: string;
   ariaLabel: string;
   onDelete: () => void;
   swipeDisabled?: boolean;
@@ -42,7 +44,7 @@ export function FarmLogListTile({
         <div
           role="link"
           tabIndex={0}
-          className="block min-w-0 cursor-pointer"
+          className="flex min-w-0 cursor-pointer items-center gap-2.5"
           aria-label={ariaLabel}
           onClick={() => {
             if (suppressOpen) return;
@@ -55,8 +57,15 @@ export function FarmLogListTile({
             }
           }}
         >
-          <p className="text-base font-extrabold text-stone-900">{title}</p>
-          <p className="mt-0.5 font-semibold text-stone-500">{subtitle}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-extrabold text-stone-900">{title}</p>
+            <p className="mt-0.5 font-semibold text-stone-500">{subtitle}</p>
+          </div>
+          {aside ? (
+            <p className="shrink-0 whitespace-nowrap text-[15px] font-semibold text-stone-600">
+              {aside}
+            </p>
+          ) : null}
         </div>
       </Card>
     </SwipeCommitDeleteRow>

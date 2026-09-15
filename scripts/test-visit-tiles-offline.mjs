@@ -163,10 +163,15 @@ assert.doesNotMatch(links, /#visits/);
 const tile = read("src/components/LoggedVisitTile.tsx");
 assert.match(tile, /FarmLogListTile/);
 assert.match(tile, /fieldLogVisitTypeLabel/);
+assert.match(tile, /formatFieldLogDayHeader/);
+assert.match(tile, /aside=\{dateLabel\}/);
 assert.match(tile, /visit\.farmName/);
 assert.doesNotMatch(tile, /<ReplicaLink/);
 assert.doesNotMatch(tile, /formatServiceShortDate/);
 assert.doesNotMatch(tile, /VISIT_TYPE_LABELS/);
+
+const { formatFieldLogDayHeader } = await import(join(root, "src/lib/reports/field-log.ts"));
+assert.equal(formatFieldLogDayHeader("2026-09-15"), "Sep 15");
 
 const swipe = read("src/components/SwipeCommitDeleteRow.tsx");
 assert.doesNotMatch(swipe, /closest\("a, button/);

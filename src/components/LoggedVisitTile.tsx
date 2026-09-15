@@ -2,7 +2,7 @@
 
 import { FarmLogListTile } from "@/components/FarmLogListTile";
 import type { VisitListRow } from "@/lib/offline/selectVisits";
-import { fieldLogVisitTypeLabel } from "@/lib/reports/field-log";
+import { fieldLogVisitTypeLabel, formatFieldLogDayHeader } from "@/lib/reports/field-log";
 
 export function LoggedVisitTile({
   visit,
@@ -16,6 +16,7 @@ export function LoggedVisitTile({
   suppressOpen?: boolean;
 }) {
   const reason = fieldLogVisitTypeLabel(visit.visitType, visit.notes);
+  const dateLabel = formatFieldLogDayHeader(visit.visitDate);
 
   return (
     <FarmLogListTile
@@ -23,7 +24,8 @@ export function LoggedVisitTile({
       href={`/farms/${visit.farmId}/visits/${visit.id}`}
       title={visit.farmName}
       subtitle={reason}
-      ariaLabel={`View or edit ${visit.farmName} ${reason}`}
+      aside={dateLabel}
+      ariaLabel={`View or edit ${visit.farmName} ${reason} ${dateLabel}`}
       onDelete={onDelete}
       swipeDisabled={swipeDisabled}
       suppressOpen={suppressOpen}

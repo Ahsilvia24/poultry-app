@@ -261,6 +261,7 @@ assert.match(tile, /useReplicaNavigate/);
 assert.match(tile, /SwipeCommitDeleteRow/);
 assert.match(tile, /role="link"/);
 assert.match(tile, /setGone\(true\)/);
+assert.match(tile, /aside/);
 assert.doesNotMatch(tile, /<ReplicaLink/);
 assert.doesNotMatch(tile, /<a /);
 

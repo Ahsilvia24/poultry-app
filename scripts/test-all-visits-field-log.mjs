@@ -196,6 +196,8 @@ assert.match(allVisits, /HoldReorderList/);
 assert.match(allVisits, /deleteVisit/);
 assert.match(allVisits, /reorderVisits/);
 assert.match(allVisits, /loggedAtForFieldLogOrder/);
+assert.match(allVisits, /day\.label/);
+assert.match(read("src/components/LoggedVisitTile.tsx"), /aside=\{dateLabel\}/);
 
 const hold = read("src/components/HoldReorderList.tsx");
 assert.match(hold, /LONG_PRESS_MS = 420/);
