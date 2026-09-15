@@ -44,9 +44,8 @@ export async function keepSignedOutOnLogin() {
 }
 
 /**
- * Clear replica, cookie, and cached dashboard, then leave the app.
- * `/signed-out` is not a public auth path, so even the older worker
- * must serve login instead of falling back to the cached home page.
+ * Clear replica, cookie, and cached dashboard, then open the static
+ * leave page. That file cannot be a cached dashboard.
  */
 export async function signOutLocalApp() {
   await markCachesSignedOut(true);
@@ -60,7 +59,7 @@ export async function signOutLocalApp() {
       keepalive: true,
     });
   } catch {
-    /* Offline: local replica + signed-out flag still leave the app. */
+    /* Offline: local replica + SW flag still leave the app. */
   }
-  window.location.replace("/signed-out");
+  window.location.replace("/signed-out.html");
 }

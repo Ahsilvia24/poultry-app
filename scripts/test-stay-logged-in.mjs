@@ -24,7 +24,7 @@ const mobileAuth = read("src/lib/mobile-auth.ts");
 assert.match(mobileAuth, /400d/);
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v9/);
+assert.match(sw, /poultrytech-offline-v10/);
 assert.match(sw, /cache\.match\("\/"\)\) \|\| \(await cache\.match\("\/offline\.html"\)\)/);
 assert.match(sw, /SIGNED_OUT_FLAG/);
 assert.match(sw, /type === "sign-out"/);

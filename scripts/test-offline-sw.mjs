@@ -11,7 +11,7 @@ assert.ok(existsSync(join(root, "public/sw.js")), "missing public/sw.js");
 assert.ok(existsSync(join(root, "public/offline.html")), "missing public/offline.html");
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v9/);
+assert.match(sw, /poultrytech-offline-v10/);
 assert.match(sw, /type !== "precache"/);
 assert.match(sw, /type === "sign-out"/);
 assert.match(sw, /SIGNED_OUT_FLAG/);
@@ -27,9 +27,9 @@ assert.match(sw, /fetchWithTimeout/);
 assert.match(sw, /navigator\.onLine === false/);
 assert.match(sw, /\/offline\.html/);
 assert.match(sw, /cache\.match\("\/"\)\) \|\| \(await cache\.match\("\/offline\.html"\)\)/);
-assert.match(sw, /function serveLogin/);
-assert.match(sw, /cache\.match\("\/login"\)/);
-assert.match(sw, /if \(await isSignedOut\(\)\) return serveLogin\(\)/);
+assert.match(sw, /function serveLeave/);
+assert.match(sw, /cache\.match\(LEAVE_PAGE\)/);
+assert.match(sw, /if \(await isSignedOut\(\)\) return serveLeave\(\)/);
 assert.match(sw, /apple-touch-icon\.png/);
 assert.match(sw, /PRECACHE[\s\S]*"\/"/);
 assert.doesNotMatch(sw, /sql-wasm/);
@@ -80,6 +80,7 @@ assert.match(globalError, /navigator\.onLine === false/);
 const proxy = read("src/proxy.ts");
 assert.ok(proxy.includes(String.raw`sw\\.js`), "proxy matcher should skip sw.js");
 assert.ok(proxy.includes(String.raw`offline\\.html`), "proxy matcher should skip offline.html");
+assert.ok(proxy.includes(String.raw`signed-out\\.html`), "proxy matcher should skip signed-out.html");
 
 const nextConfig = read("next.config.ts");
 assert.match(nextConfig, /source: "\/sw\.js"/);
@@ -92,6 +93,7 @@ assert.match(nav, /addEventListener\("online"/);
 
 assert.equal(isHomeScreenAsset("/sw.js"), true);
 assert.equal(isHomeScreenAsset("/offline.html"), true);
+assert.equal(isHomeScreenAsset("/signed-out.html"), true);
 assert.equal(isHomeScreenAsset("/login"), false);
 
 console.log("offline-sw: ok");

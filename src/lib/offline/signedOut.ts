@@ -6,6 +6,8 @@ export function isPublicAuthPath(path: string) {
   return (
     path === "/login" ||
     path.startsWith("/login/") ||
+    path === "/signed-out" ||
+    path === "/signed-out.html" ||
     path.startsWith("/register") ||
     path.startsWith("/forgot-password") ||
     path.startsWith("/reset-password") ||
@@ -22,14 +24,11 @@ function isStaticAssetPath(path: string) {
 }
 
 function keepWhenSignedOut(path: string) {
-  if (path === SIGNED_OUT_FLAG || isPublicAuthPath(path)) return true;
+  if (path === SIGNED_OUT_FLAG || path === "/signed-out.html" || path === "/offline.html") {
+    return true;
+  }
   if (isStaticAssetPath(path)) return true;
-  return (
-    path === "/manifest.webmanifest" ||
-    path === "/offline.html" ||
-    path.endsWith(".png") ||
-    path.endsWith(".ico")
-  );
+  return path === "/manifest.webmanifest" || path.endsWith(".png") || path.endsWith(".ico");
 }
 
 /** Page-side flag + cache wipe so Sign out does not wait on a worker message. */

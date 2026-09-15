@@ -18,7 +18,7 @@ assert.match(local, /clearLocalReplica/);
 assert.match(local, /markCachesSignedOut\(true\)/);
 assert.match(local, /type: "sign-out"/);
 assert.match(local, /\/api\/logout/);
-assert.match(local, /location\.replace\("\/signed-out"\)/);
+assert.match(local, /location\.replace\("\/signed-out.html"\)/);
 
 const signedOut = read("src/lib/offline/signedOut.ts");
 assert.match(signedOut, /SIGNED_OUT_FLAG = "\/__poultrytech-signed-out"/);
@@ -40,22 +40,28 @@ assert.match(login, /keepSignedOutOnLogin/);
 assert.match(login, /signedout/);
 
 const bounce = read("src/app/signed-out/page.tsx");
-assert.match(bounce, /redirect\("\/login\?signedout=1"\)/);
+assert.match(bounce, /redirect\("\/signed-out.html"\)/);
+
+const leave = read("public/signed-out.html");
+assert.match(leave, /Signed out of this phone/);
+assert.match(leave, /\/api\/login/);
+assert.doesNotMatch(leave, /_next/);
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v9/);
+assert.match(sw, /poultrytech-offline-v10/);
 assert.match(sw, /SIGNED_OUT_FLAG/);
 assert.match(sw, /dropSignedInPages/);
 assert.match(sw, /isPublicAuthPath/);
-assert.match(sw, /function serveLogin/);
-assert.match(sw, /function isLoginPath/);
+assert.match(sw, /function serveLeave/);
+assert.match(sw, /function isLeavePath/);
 assert.match(sw, /homeFallback/);
-assert.match(sw, /return serveLogin\(\)/);
-assert.doesNotMatch(sw, /if \(\(await isSignedOut\(\)\) && !isPublicAuthPath/);
+assert.match(sw, /return serveLeave\(\)/);
+assert.doesNotMatch(sw, /function serveLogin/);
+assert.doesNotMatch(sw, /cache\.add\("\/login"\)/);
 
 const register = read("src/components/RegisterServiceWorker.tsx");
 assert.match(register, /phoneIsSignedOut/);
-assert.match(register, /\/login\?signedout=1/);
+assert.match(register, /\/signed-out.html/);
 
 const proxy = read("src/proxy.ts");
 assert.match(proxy, /\/api\/logout/);

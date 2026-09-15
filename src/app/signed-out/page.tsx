@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Network fallback when the worker is not intercepting. Always leave the app. */
+/** Network fallback. The Home Screen worker should serve /signed-out.html instead. */
 export default function SignedOutPage() {
-  redirect("/login?signedout=1");
+  redirect("/signed-out.html");
 }

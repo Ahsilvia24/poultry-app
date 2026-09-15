@@ -6,13 +6,14 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v9";
+const CACHE = "poultrytech-offline-v10";
 const NETWORK_MS = 1500;
 const SIGNED_OUT_FLAG = "/__poultrytech-signed-out";
+const LEAVE_PAGE = "/signed-out.html";
 
 const PRECACHE = [
   "/",
-  "/login",
+  "/signed-out.html",
   "/offline.html",
   "/manifest.webmanifest",
   "/apple-touch-icon.png",
@@ -63,6 +64,8 @@ function isPublicAuthPath(path) {
   return (
     path === "/login" ||
     path.startsWith("/login/") ||
+    path === "/signed-out" ||
+    path === "/signed-out.html" ||
     path.startsWith("/register") ||
     path.startsWith("/forgot-password") ||
     path.startsWith("/reset-password") ||
@@ -71,8 +74,13 @@ function isPublicAuthPath(path) {
   );
 }
 
-function isLoginPath(path) {
-  return path === "/login" || path.startsWith("/login/") || path === "/signed-out";
+function isLeavePath(path) {
+  return (
+    path === "/login" ||
+    path.startsWith("/login/") ||
+    path === "/signed-out" ||
+    path === "/signed-out.html"
+  );
 }
 
 async function isSignedOut() {
@@ -80,21 +88,22 @@ async function isSignedOut() {
   return Boolean(await cache.match(SIGNED_OUT_FLAG));
 }
 
+function keepWhenSignedOut(path, url) {
+  if (path === SIGNED_OUT_FLAG || path === LEAVE_PAGE || path === "/offline.html") return true;
+  if (isStaticAsset(url)) return true;
+  return (
+    path === "/manifest.webmanifest" ||
+    path.endsWith(".png") ||
+    path.endsWith(".ico")
+  );
+}
+
 async function dropSignedInPages(cache) {
   const reqs = await cache.keys();
   await Promise.all(
     reqs.map(async (req) => {
-      const path = new URL(req.url).pathname;
-      if (path === SIGNED_OUT_FLAG || isPublicAuthPath(path)) return;
-      if (isStaticAsset(new URL(req.url))) return;
-      if (
-        path === "/manifest.webmanifest" ||
-        path === "/offline.html" ||
-        path.endsWith(".png") ||
-        path.endsWith(".ico")
-      ) {
-        return;
-      }
+      const parsed = new URL(req.url);
+      if (keepWhenSignedOut(parsed.pathname, parsed)) return;
       await cache.delete(req);
     }),
   );
@@ -105,27 +114,27 @@ async function setSignedOut(on) {
   if (on) {
     await cache.put(SIGNED_OUT_FLAG, new Response("1", { status: 200 }));
     await dropSignedInPages(cache);
-    await cache.add("/login").catch(() => undefined);
+    await cache.add(LEAVE_PAGE).catch(() => undefined);
     return;
   }
   await cache.delete(SIGNED_OUT_FLAG);
 }
 
-async function serveLogin() {
+async function serveLeave() {
   const cache = await caches.open(CACHE);
-  const cached = await cache.match("/login");
+  const cached = await cache.match(LEAVE_PAGE);
   if (cached) return cached;
   try {
-    const fresh = await fetch("/login", { cache: "reload" });
+    const fresh = await fetch(LEAVE_PAGE, { cache: "reload" });
     if (fresh && fresh.ok) {
-      await cache.put("/login", fresh.clone());
+      await cache.put(LEAVE_PAGE, fresh.clone());
       return fresh;
     }
   } catch {
-    /* use the last-resort page */
+    /* last-resort page */
   }
   return new Response(
-    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PoultryTech</title></head><body style="font-family:system-ui;background:#f3efe6;color:#1c1917;padding:2rem;text-align:center"><h1>Signed out</h1><p>Connect to Wi-Fi and tap Sign in.</p><p><a href="/login?signedout=1">Sign in</a></p></body></html>`,
+    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PoultryTech</title></head><body style="font-family:system-ui;background:#f3efe6;color:#1c1917;padding:2rem;text-align:center"><h1>Signed out</h1><p>Connect to Wi-Fi and open PoultryTech again to sign in.</p></body></html>`,
     { status: 200, headers: { "Content-Type": "text/html;charset=utf-8" } },
   );
 }
@@ -134,7 +143,7 @@ async function putOk(cache, request, response) {
   if (!response || !response.ok) return response;
   if (await isSignedOut()) {
     const path = new URL(request.url).pathname;
-    if (!isPublicAuthPath(path) && !isStaticAsset(new URL(request.url))) return response;
+    if (path !== LEAVE_PAGE && !isStaticAsset(new URL(request.url))) return response;
   }
   if (response.redirected) {
     const finalPath = new URL(response.url).pathname;
@@ -166,7 +175,7 @@ async function matchCachedPage(cache, request, homeFallback = true) {
 }
 
 async function cachedFallback(request) {
-  if (await isSignedOut()) return serveLogin();
+  if (await isSignedOut()) return serveLeave();
   const cache = await caches.open(CACHE);
   const page = await matchCachedPage(cache, request);
   if (page) return page;
@@ -236,9 +245,16 @@ async function adoptOldCaches(cache) {
   for (const key of keys) {
     if (key === CACHE || !key.startsWith("poultrytech-offline-")) continue;
     const old = await caches.open(key);
+    if (await old.match(SIGNED_OUT_FLAG)) {
+      await cache.put(SIGNED_OUT_FLAG, new Response("1", { status: 200 }));
+    }
+    const signedOut = Boolean(await cache.match(SIGNED_OUT_FLAG));
     const reqs = await old.keys();
     await Promise.all(
       reqs.map(async (req) => {
+        const path = new URL(req.url).pathname;
+        if (path === "/login" || path.startsWith("/login/")) return;
+        if (signedOut && (path === "/" || path === "/signed-out")) return;
         if (await cache.match(req)) return;
         const res = await old.match(req);
         if (res) await cache.put(req, res);
@@ -324,10 +340,10 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     (async () => {
       if (await isSignedOut()) {
-        if (isPublicAuthPath(url.pathname) && !isLoginPath(url.pathname)) {
+        if (isPublicAuthPath(url.pathname) && !isLeavePath(url.pathname)) {
           return staleWhileRevalidate(request, event, false);
         }
-        return serveLogin();
+        return serveLeave();
       }
       if (isNavigation(request) || isRsc(request, url)) {
         return staleWhileRevalidate(request, event);

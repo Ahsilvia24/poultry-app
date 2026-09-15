@@ -10,6 +10,7 @@ export const HOME_SCREEN_ICON_PATHS = [
   "/manifest.json",
   "/sw.js",
   "/offline.html",
+  "/signed-out.html",
 ] as const;
 
 export function isHomeScreenAsset(pathname: string) {
