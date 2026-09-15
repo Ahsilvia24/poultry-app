@@ -51,8 +51,18 @@
       <div>
         <h1>PoultryTech</h1>
         <p>No phone service. Open this app once on Wi-Fi so the last Dashboard can be saved on the phone.</p>
-        <a href="/">Try Dashboard</a>
+        <a id="try" href="/">Try Dashboard</a>
       </div>
     </main>
+    <script>
+      (function () {
+        var params = new URLSearchParams(location.search);
+        var n = Number(params.get("open") || 0);
+        if (n >= 4) return;
+        window.setTimeout(function () {
+          location.replace("/?open=" + (n + 1));
+        }, 1200);
+      })();
+    </script>
   </body>
 </html>

@@ -11,11 +11,12 @@ assert.ok(existsSync(join(root, "public/sw.js")), "missing public/sw.js");
 assert.ok(existsSync(join(root, "public/offline.html")), "missing public/offline.html");
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v11/);
+assert.match(sw, /poultrytech-offline-v12/);
 assert.match(sw, /type !== "precache"/);
 assert.match(sw, /type === "sign-out"/);
 assert.match(sw, /SIGNED_OUT_FLAG/);
 assert.match(sw, /NETWORK_MS = 1500/);
+assert.match(sw, /OPEN_MS = 8000/);
 assert.match(sw, /addEventListener\("fetch"/);
 assert.match(sw, /request\.method !== "GET"/);
 assert.match(sw, /networkFirst/);
@@ -42,6 +43,7 @@ assert.match(sw, /isNavigation\(request\) \|\| isRsc\(request, url\)/);
 const offline = read("public/offline.html");
 assert.match(offline, /No phone service/);
 assert.match(offline, /href="\/"/);
+assert.match(offline, /open=/);
 
 const layout = read("src/app/layout.tsx");
 assert.match(layout, /RegisterServiceWorker/);

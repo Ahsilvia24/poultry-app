@@ -6,8 +6,9 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v11";
+const CACHE = "poultrytech-offline-v12";
 const NETWORK_MS = 1500;
+const OPEN_MS = 8000;
 const SIGNED_OUT_FLAG = "/__poultrytech-signed-out";
 const LEAVE_PAGE = "/signed-out.html";
 
@@ -214,13 +215,15 @@ async function cachedFallback(request) {
 
 async function networkFirst(request) {
   const cache = await caches.open(CACHE);
-  if (self.navigator && self.navigator.onLine === false) {
-    return cachedFallback(request);
+  const cached = await cache.match(request);
+  if (cached && self.navigator && self.navigator.onLine === false) {
+    return cached;
   }
   try {
-    const fresh = await fetchWithTimeout(request, NETWORK_MS);
+    const fresh = await fetchWithTimeout(request, cached ? NETWORK_MS : OPEN_MS);
     return putOk(cache, request, fresh);
   } catch {
+    if (cached) return cached;
     return cachedFallback(request);
   }
 }
@@ -250,11 +253,10 @@ async function staleWhileRevalidate(request, event, homeFallback = true) {
   })();
   event.waitUntil(refresh);
   if (cached) return cached;
-  if (self.navigator && self.navigator.onLine === false) {
-    return cachedFallback(request);
-  }
+  // Home Screen often reports offline at launch even on Wi-Fi.
+  // With no saved Dashboard, try the network before offline.html.
   try {
-    const fresh = await fetchWithTimeout(request, NETWORK_MS);
+    const fresh = await fetchWithTimeout(request, OPEN_MS);
     return putOk(cache, request, fresh);
   } catch {
     return cachedFallback(request);
