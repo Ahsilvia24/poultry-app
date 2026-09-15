@@ -55,7 +55,7 @@ assert.match(settings, /name="defaultEfc"/);
 assert.doesNotMatch(settings, /<Label htmlFor="email">/);
 assert.match(settings, /name="dailyMortalityWarningPct"/);
 assert.match(settings, /name="defaultMarketAgeDays"/);
-assert.match(settings, /signOutAction/);
+assert.match(settings, /signOutLocalApp/);
 assert.match(settings, /SettingsChipInput/);
 assert.match(settingsLayout, /setSelectionRange/);
 assert.match(settings, /name="alertRisingThreeDays"/);

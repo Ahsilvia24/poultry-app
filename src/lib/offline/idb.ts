@@ -77,3 +77,18 @@ export async function loadIdAliases(): Promise<Record<string, string>> {
 export async function saveIdAliases(aliases: Record<string, string>): Promise<void> {
   await idbSet("idAliases", aliases);
 }
+
+/** Drop the phone replica so Sign out actually leaves the app. */
+export async function clearLocalReplica(): Promise<void> {
+  try {
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(SNAP_STORE, "readwrite");
+      tx.objectStore(SNAP_STORE).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    /* Best-effort. Cookie + SW sign-out still leave the session. */
+  }
+}

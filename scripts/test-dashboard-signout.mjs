@@ -8,8 +8,9 @@ const dashboard = readFileSync(join(root, "src/app/(dashboard)/page.tsx"), "utf8
 const settings = readFileSync(join(root, "src/components/SettingsScreen.tsx"), "utf8");
 
 assert.doesNotMatch(dashboard, /signOutAction/);
+assert.doesNotMatch(dashboard, /signOutLocalApp/);
 assert.doesNotMatch(dashboard, />\s*Sign out\s*</);
-assert.match(settings, /signOutAction/);
+assert.match(settings, /signOutLocalApp/);
 assert.match(settings, />\s*Sign out\s*</);
 
 console.log("dashboard-signout: ok");

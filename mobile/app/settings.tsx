@@ -556,7 +556,9 @@ export default function SettingsScreen() {
           </View>
 
           <Pressable
-            onPress={() => void signOut()}
+            onPress={() => {
+              void signOut().then(() => router.replace("/login"));
+            }}
             style={{ alignSelf: "center", paddingVertical: 16, paddingHorizontal: 12 }}
           >
             <Text

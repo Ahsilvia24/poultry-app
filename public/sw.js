@@ -6,8 +6,9 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v7";
+const CACHE = "poultrytech-offline-v8";
 const NETWORK_MS = 1500;
+const SIGNED_OUT_FLAG = "/__poultrytech-signed-out";
 
 const PRECACHE = [
   "/",
@@ -58,8 +59,59 @@ function skipRequest(url) {
   );
 }
 
+function isPublicAuthPath(path) {
+  return (
+    path === "/login" ||
+    path.startsWith("/login/") ||
+    path.startsWith("/register") ||
+    path.startsWith("/forgot-password") ||
+    path.startsWith("/reset-password") ||
+    path.startsWith("/support") ||
+    path.startsWith("/privacy")
+  );
+}
+
+async function isSignedOut() {
+  const cache = await caches.open(CACHE);
+  return Boolean(await cache.match(SIGNED_OUT_FLAG));
+}
+
+async function dropSignedInPages(cache) {
+  const reqs = await cache.keys();
+  await Promise.all(
+    reqs.map(async (req) => {
+      const path = new URL(req.url).pathname;
+      if (path === SIGNED_OUT_FLAG || isPublicAuthPath(path)) return;
+      if (isStaticAsset(new URL(req.url))) return;
+      if (
+        path === "/manifest.webmanifest" ||
+        path === "/offline.html" ||
+        path.endsWith(".png") ||
+        path.endsWith(".ico")
+      ) {
+        return;
+      }
+      await cache.delete(req);
+    }),
+  );
+}
+
+async function setSignedOut(on) {
+  const cache = await caches.open(CACHE);
+  if (on) {
+    await cache.put(SIGNED_OUT_FLAG, new Response("1", { status: 200 }));
+    await dropSignedInPages(cache);
+    return;
+  }
+  await cache.delete(SIGNED_OUT_FLAG);
+}
+
 async function putOk(cache, request, response) {
   if (!response || !response.ok) return response;
+  if (await isSignedOut()) {
+    const path = new URL(request.url).pathname;
+    if (!isPublicAuthPath(path) && !isStaticAsset(new URL(request.url))) return response;
+  }
   if (response.redirected) {
     const finalPath = new URL(response.url).pathname;
     const reqPath = new URL(request.url).pathname;
@@ -88,9 +140,17 @@ async function matchCachedPage(cache, request) {
 
 async function cachedFallback(request) {
   const cache = await caches.open(CACHE);
+  if (await isSignedOut()) {
+    const login = await cache.match("/login");
+    if (login) return login;
+  }
   const page = await matchCachedPage(cache, request);
   if (page) return page;
   if (isNavigation(request)) {
+    if (await isSignedOut()) {
+      const login = await cache.match("/login");
+      if (login) return login;
+    }
     const fallback =
       (await cache.match("/")) || (await cache.match("/offline.html"));
     if (fallback) return fallback;
@@ -189,7 +249,24 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+function ack(event) {
+  try {
+    event.ports?.[0]?.postMessage({ ok: true });
+  } catch {
+    /* no port */
+  }
+}
+
 self.addEventListener("message", (event) => {
+  const type = event.data?.type;
+  if (type === "sign-out") {
+    event.waitUntil(setSignedOut(true).then(() => ack(event)));
+    return;
+  }
+  if (type === "sign-in") {
+    event.waitUntil(setSignedOut(false).then(() => ack(event)));
+    return;
+  }
   const urls = event.data?.urls;
   if (event.data?.type !== "precache" || !Array.isArray(urls)) return;
   event.waitUntil(
@@ -224,7 +301,21 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (isNavigation(request) || isRsc(request, url)) {
-    event.respondWith(staleWhileRevalidate(request, event));
+    event.respondWith(
+      (async () => {
+        if ((await isSignedOut()) && !isPublicAuthPath(url.pathname)) {
+          const cache = await caches.open(CACHE);
+          const login = await cache.match("/login");
+          if (login) return login;
+          try {
+            return await fetch("/login");
+          } catch {
+            return cachedFallback(request);
+          }
+        }
+        return staleWhileRevalidate(request, event);
+      })(),
+    );
     return;
   }
   event.respondWith(networkFirst(request));

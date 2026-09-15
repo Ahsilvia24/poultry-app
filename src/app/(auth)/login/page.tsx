@@ -7,6 +7,7 @@ import { Button, Input, Label } from "@/components/ui";
 import { SafariLink } from "@/components/SafariLink";
 import { ensureDeviceId } from "@/lib/device-id";
 import { replaceLoginWarning } from "@/lib/replace-login";
+import { tellWorkerSignedIn } from "@/lib/offline/signOutLocal";
 
 function LoginForm() {
   const params = useSearchParams();
@@ -59,6 +60,7 @@ function LoginForm() {
         setPending(false);
         return;
       }
+      await tellWorkerSignedIn();
       window.location.assign("/");
     } catch {
       setError("Invalid email or password");

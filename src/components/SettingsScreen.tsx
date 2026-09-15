@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { updateSettingsAction } from "@/app/actions/ops";
-import { signOutAction } from "@/app/actions/auth";
+import { signOutLocalApp } from "@/lib/offline/signOutLocal";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { useOffline } from "@/components/OfflineProvider";
 import {
@@ -283,11 +283,15 @@ export function SettingsScreen() {
         </div>
       </Card>
 
-      <form action={signOutAction} className="mt-6 flex justify-center">
-        <button type="submit" className="px-3 py-2 text-sm font-bold text-stone-800 underline">
+      <div className="mt-6 flex justify-center">
+        <button
+          type="button"
+          onClick={() => void signOutLocalApp()}
+          className="px-3 py-2 text-sm font-bold text-stone-800 underline"
+        >
           Sign out
         </button>
-      </form>
+      </div>
     </div>
   );
 }
