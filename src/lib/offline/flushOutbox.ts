@@ -192,9 +192,12 @@ async function flushOutboxOnce(opts?: { evenIfOffline?: boolean }): Promise<Flus
       }
       keep(remapped);
     } catch (err) {
+      const message = err instanceof Error && err.message ? err.message : undefined;
       keep(
         remapOutboxItem(remapped, aliases),
-        err instanceof Error && err.message ? err.message : undefined,
+        message && /server components render|digest property/i.test(message)
+          ? "Could not upload this farm work. Stay on Wi-Fi and tap Sync data again."
+          : message,
       );
     }
   }

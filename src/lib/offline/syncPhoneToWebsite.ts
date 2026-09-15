@@ -2,6 +2,7 @@ import { flushOutbox, pullRemoteSnapshot } from "@/lib/offline/flushOutbox";
 import { loadOutbox } from "@/lib/offline/idb";
 import type { IdAliases } from "@/lib/offline/remapIds";
 import type { OfflineSnapshot } from "@/lib/offline/types";
+import { publicSyncLeftoverError } from "@/lib/visits/ensureVisitType";
 
 export const SYNC_ATTEMPTS = 3;
 
@@ -27,7 +28,7 @@ export function syncPhoneResultMessage(result: SyncPhoneResult): {
   if (result.reason === "offline") return { kind: "unsaved", text: SYNC_NEEDS_SERVICE };
   if (result.reason === "no-session") return { kind: "unsaved", text: SYNC_NO_SESSION };
   if (result.reason === "leftover") {
-    return { kind: "unsaved", text: result.error?.trim() || SYNC_LEFTOVER };
+    return { kind: "unsaved", text: publicSyncLeftoverError(result.error) || SYNC_LEFTOVER };
   }
   return { kind: "unsaved", text: SYNC_UNREACHABLE };
 }

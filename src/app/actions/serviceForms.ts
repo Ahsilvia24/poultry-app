@@ -6,6 +6,7 @@ import { assertFarmAccess, requireUser } from "@/lib/auth-helpers";
 import { withPrebroodLoggedHours } from "@/lib/generator/format";
 import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
+import { visitSaveError } from "@/lib/visits/ensureVisitType";
 import { applyLiveHouseMetrics } from "@/lib/serviceForms/prefill";
 import { loadServiceFarmContext } from "@/lib/serviceForms/farmContext";
 import { isServiceFormKind } from "@/lib/serviceForms/stored";
@@ -155,6 +156,24 @@ async function syncLinkedVisit(input: {
 }
 
 export async function completeServiceFormAction(input: {
+  farmId: string;
+  form: AnyServiceForm;
+  serviceFormId?: string | null;
+  existingVisitId?: string | null;
+}) {
+  try {
+    return await completeServiceFormActionInner(input);
+  } catch (error) {
+    const digest =
+      error && typeof error === "object" && "digest" in error
+        ? String((error as { digest?: string }).digest)
+        : "";
+    if (digest.includes("NEXT_REDIRECT")) throw error;
+    return { error: visitSaveError(error) };
+  }
+}
+
+async function completeServiceFormActionInner(input: {
   farmId: string;
   form: AnyServiceForm;
   serviceFormId?: string | null;

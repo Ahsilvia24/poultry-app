@@ -22,11 +22,13 @@ assert.match(sync, /reason === "offline"/);
 assert.match(sync, /reason === "leftover"/);
 assert.match(sync, /result\.error/);
 assert.match(sync, /lastError/);
+assert.match(sync, /publicSyncLeftoverError/);
 
 const ping = read("src/app/api/offline/ping/route.ts");
 assert.match(ping, /auth\(\)/);
 assert.match(ping, /status: 204/);
 assert.match(ping, /status: 401/);
+assert.match(ping, /ensureWeightProjectionVisitType/);
 
 const settings = read("src/components/SettingsScreen.tsx");
 assert.match(settings, /Sync data/);
@@ -50,5 +52,6 @@ assert.match(flush, /applyCatch/);
 assert.match(flush, /updateHouseTemp/);
 assert.match(flush, /updateSettings/);
 assert.match(flush, /formWrite/);
+assert.match(flush, /server components render/);
 
 console.log("sync-phone-to-website: ok");
