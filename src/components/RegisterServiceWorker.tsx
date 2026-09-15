@@ -29,7 +29,7 @@ export function RegisterServiceWorker() {
     void (async () => {
       if (isPublicAuthPath(window.location.pathname)) return;
       if ((await phoneIsSignedOut()) && !cancelled) {
-        window.location.replace("/signed-out.html");
+        window.location.replace("/api/leave");
       }
     })();
     return () => {

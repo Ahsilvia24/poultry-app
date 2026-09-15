@@ -44,8 +44,8 @@ export async function keepSignedOutOnLogin() {
 }
 
 /**
- * Clear replica, cookie, and cached dashboard, then open the static
- * leave page. That file cannot be a cached dashboard.
+ * Clear replica, cookie, and cached dashboard, then open /api/leave.
+ * Home Screen workers skip /api/, so this cannot paint a cached dashboard.
  */
 export async function signOutLocalApp() {
   await markCachesSignedOut(true);
@@ -61,5 +61,5 @@ export async function signOutLocalApp() {
   } catch {
     /* Offline: local replica + SW flag still leave the app. */
   }
-  window.location.replace("/signed-out.html");
+  window.location.replace("/api/leave");
 }

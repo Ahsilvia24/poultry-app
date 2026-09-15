@@ -35,6 +35,8 @@ const withAuth = auth((req) => {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/login") ||
     pathname.startsWith("/api/logout") ||
+    pathname.startsWith("/api/leave") ||
+    pathname === "/signed-out" ||
     pathname.startsWith("/api/register") ||
     pathname.startsWith("/api/mobile") ||
     pathname.startsWith("/support") ||

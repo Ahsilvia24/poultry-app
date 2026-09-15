@@ -8,6 +8,8 @@ export function isPublicAuthPath(path: string) {
     path.startsWith("/login/") ||
     path === "/signed-out" ||
     path === "/signed-out.html" ||
+    path === "/api/leave" ||
+    path.startsWith("/api/leave/") ||
     path.startsWith("/register") ||
     path.startsWith("/forgot-password") ||
     path.startsWith("/reset-password") ||

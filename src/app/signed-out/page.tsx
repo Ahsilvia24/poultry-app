@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Network fallback. The Home Screen worker should serve /signed-out.html instead. */
+/** Network fallback. /api/leave is skipped by the Home Screen worker. */
 export default function SignedOutPage() {
-  redirect("/signed-out.html");
+  redirect("/api/leave");
 }
