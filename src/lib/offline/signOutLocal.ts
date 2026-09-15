@@ -1,4 +1,5 @@
 import { clearLocalReplica } from "@/lib/offline/idb";
+import { markCachesSignedOut } from "@/lib/offline/signedOut";
 
 function postWorker(type: "sign-out" | "sign-in"): Promise<void> {
   return new Promise((resolve) => {
@@ -33,21 +34,33 @@ function postWorker(type: "sign-out" | "sign-in"): Promise<void> {
 }
 
 export async function tellWorkerSignedIn() {
+  await markCachesSignedOut(false);
   await postWorker("sign-in");
 }
 
-/** Clear replica, cookie, and cached dashboard, then open login. */
+export async function keepSignedOutOnLogin() {
+  await markCachesSignedOut(true);
+  await postWorker("sign-out");
+}
+
+/**
+ * Clear replica, cookie, and cached dashboard, then leave the app.
+ * `/signed-out` is not a public auth path, so even the older worker
+ * must serve login instead of falling back to the cached home page.
+ */
 export async function signOutLocalApp() {
+  await markCachesSignedOut(true);
   await clearLocalReplica();
   await postWorker("sign-out");
   try {
     await fetch("/api/logout", {
       method: "POST",
       credentials: "include",
+      cache: "no-store",
       keepalive: true,
     });
   } catch {
-    /* Offline: local replica + SW flag still leave the app. */
+    /* Offline: local replica + signed-out flag still leave the app. */
   }
-  window.location.replace("/login");
+  window.location.replace("/signed-out");
 }

@@ -6,7 +6,7 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v8";
+const CACHE = "poultrytech-offline-v9";
 const NETWORK_MS = 1500;
 const SIGNED_OUT_FLAG = "/__poultrytech-signed-out";
 
@@ -71,6 +71,10 @@ function isPublicAuthPath(path) {
   );
 }
 
+function isLoginPath(path) {
+  return path === "/login" || path.startsWith("/login/") || path === "/signed-out";
+}
+
 async function isSignedOut() {
   const cache = await caches.open(CACHE);
   return Boolean(await cache.match(SIGNED_OUT_FLAG));
@@ -101,9 +105,29 @@ async function setSignedOut(on) {
   if (on) {
     await cache.put(SIGNED_OUT_FLAG, new Response("1", { status: 200 }));
     await dropSignedInPages(cache);
+    await cache.add("/login").catch(() => undefined);
     return;
   }
   await cache.delete(SIGNED_OUT_FLAG);
+}
+
+async function serveLogin() {
+  const cache = await caches.open(CACHE);
+  const cached = await cache.match("/login");
+  if (cached) return cached;
+  try {
+    const fresh = await fetch("/login", { cache: "reload" });
+    if (fresh && fresh.ok) {
+      await cache.put("/login", fresh.clone());
+      return fresh;
+    }
+  } catch {
+    /* use the last-resort page */
+  }
+  return new Response(
+    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PoultryTech</title></head><body style="font-family:system-ui;background:#f3efe6;color:#1c1917;padding:2rem;text-align:center"><h1>Signed out</h1><p>Connect to Wi-Fi and tap Sign in.</p><p><a href="/login?signedout=1">Sign in</a></p></body></html>`,
+    { status: 200, headers: { "Content-Type": "text/html;charset=utf-8" } },
+  );
 }
 
 async function putOk(cache, request, response) {
@@ -130,27 +154,23 @@ function fetchWithTimeout(request, ms) {
   return fetch(request, { signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
-async function matchCachedPage(cache, request) {
+async function matchCachedPage(cache, request, homeFallback = true) {
   const exact = await cache.match(request);
   if (exact) return exact;
   if (!isNavigation(request)) return null;
   const path = new URL(request.url).pathname;
-  return (await cache.match(path)) || (await cache.match("/")) || null;
+  const byPath = await cache.match(path);
+  if (byPath) return byPath;
+  if (!homeFallback) return null;
+  return (await cache.match("/")) || null;
 }
 
 async function cachedFallback(request) {
+  if (await isSignedOut()) return serveLogin();
   const cache = await caches.open(CACHE);
-  if (await isSignedOut()) {
-    const login = await cache.match("/login");
-    if (login) return login;
-  }
   const page = await matchCachedPage(cache, request);
   if (page) return page;
   if (isNavigation(request)) {
-    if (await isSignedOut()) {
-      const login = await cache.match("/login");
-      if (login) return login;
-    }
     const fallback =
       (await cache.match("/")) || (await cache.match("/offline.html"));
     if (fallback) return fallback;
@@ -187,9 +207,9 @@ async function cacheFirst(request) {
   }
 }
 
-async function staleWhileRevalidate(request, event) {
+async function staleWhileRevalidate(request, event, homeFallback = true) {
   const cache = await caches.open(CACHE);
-  const cached = await matchCachedPage(cache, request);
+  const cached = await matchCachedPage(cache, request, homeFallback);
   const refresh = (async () => {
     try {
       const fresh = await fetch(request);
@@ -242,6 +262,7 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const cache = await caches.open(CACHE);
       await adoptOldCaches(cache);
+      if (await isSignedOut()) await dropSignedInPages(cache);
       const keys = await caches.keys();
       await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
       await self.clients.claim();
@@ -300,23 +321,18 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(cacheFirst(request));
     return;
   }
-  if (isNavigation(request) || isRsc(request, url)) {
-    event.respondWith(
-      (async () => {
-        if ((await isSignedOut()) && !isPublicAuthPath(url.pathname)) {
-          const cache = await caches.open(CACHE);
-          const login = await cache.match("/login");
-          if (login) return login;
-          try {
-            return await fetch("/login");
-          } catch {
-            return cachedFallback(request);
-          }
+  event.respondWith(
+    (async () => {
+      if (await isSignedOut()) {
+        if (isPublicAuthPath(url.pathname) && !isLoginPath(url.pathname)) {
+          return staleWhileRevalidate(request, event, false);
         }
+        return serveLogin();
+      }
+      if (isNavigation(request) || isRsc(request, url)) {
         return staleWhileRevalidate(request, event);
-      })(),
-    );
-    return;
-  }
-  event.respondWith(networkFirst(request));
+      }
+      return networkFirst(request);
+    })(),
+  );
 });

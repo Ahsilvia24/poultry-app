@@ -1,19 +1,20 @@
 "use client";
 
-import { FormEvent, Suspense, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button, Input, Label } from "@/components/ui";
 import { SafariLink } from "@/components/SafariLink";
 import { ensureDeviceId } from "@/lib/device-id";
 import { replaceLoginWarning } from "@/lib/replace-login";
-import { tellWorkerSignedIn } from "@/lib/offline/signOutLocal";
+import { keepSignedOutOnLogin, tellWorkerSignedIn } from "@/lib/offline/signOutLocal";
 
 function LoginForm() {
   const params = useSearchParams();
   const resetOk = params.get("reset") === "1";
   const replaced = params.get("replaced") === "1";
   const urlError = params.get("error") === "1";
+  const signedOut = params.get("signedout") === "1";
   const urlConfirm = params.get("confirm");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(urlError ? "Invalid email or password" : null);
@@ -22,6 +23,11 @@ function LoginForm() {
       ? { unsynced: urlConfirm === "unsynced", knownOtherDevice: params.get("other") === "1" }
       : null,
   );
+
+  useEffect(() => {
+    if (!signedOut) return;
+    void keepSignedOutOnLogin();
+  }, [signedOut]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
