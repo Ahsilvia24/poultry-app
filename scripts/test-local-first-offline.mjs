@@ -102,6 +102,7 @@ const {
   aliasesFromCreateFarm,
   aliasesFromImportGraph,
   canReplaceReplicaWithRemote,
+  resolveReplicaId,
   inferImportGraphFromSnapshot,
   remapFormWrite,
   remapOutboxItem,
@@ -589,6 +590,12 @@ const createAliases = aliasesFromCreateFarm({
 });
 assert.equal(resolveAlias(createAliases, "local-farm-9"), "farm-server-9");
 assert.equal(resolveAlias(createAliases, "local-farm-9-h-2"), "house-server-2");
+assert.equal(
+  resolveReplicaId(createAliases, createdFarm.farms, "local-farm-9"),
+  "local-farm-9",
+  "phone still has the local farm after the website id is aliased",
+);
+assert.ok(selectFarmDetail(createdFarm, resolveReplicaId(createAliases, createdFarm.farms, "local-farm-9")));
 
 const remappedEdit = remapFormWrite(
   {
@@ -634,8 +641,8 @@ const farmActions = read("src/app/actions/farms.ts");
 assert.match(farmActions, /if \(options\?\.skipRedirect\) return \{ success: true as const, id: farm\.id, houses \}/);
 assert.match(farmActions, /return \{ success: true as const, id: house\.id \}/);
 assert.match(farmActions, /houseFlocks/);
-assert.match(read("src/components/OfflineNav.tsx"), /resolveAlias/);
-assert.match(read("src/components/FarmDetailClient.tsx"), /resolveAlias/);
+assert.match(read("src/components/OfflineNav.tsx"), /resolveReplicaId/);
+assert.match(read("src/components/FarmDetailClient.tsx"), /resolveReplicaId/);
 
 const ended = applyFormWrite(snapshot, { action: "completeFlock", id: "flock-1" });
 assert.equal(ended.flocks[0].flockStatus, "COMPLETED");

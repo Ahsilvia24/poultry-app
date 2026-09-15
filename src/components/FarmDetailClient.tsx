@@ -1,9 +1,10 @@
 "use client";
 
 import { FarmDetailView } from "@/components/FarmDetailView";
+import { ReplicaFarmMissing } from "@/components/ReplicaFarmMissing";
 import { useOffline } from "@/components/OfflineProvider";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
-import { resolveAlias } from "@/lib/offline/remapIds";
+import { resolveReplicaId } from "@/lib/offline/remapIds";
 import { selectFarmDetail } from "@/lib/offline/selectFarmDetail";
 
 export function FarmDetailClient({
@@ -16,7 +17,7 @@ export function FarmDetailClient({
   const { snapshot, ready, aliases } = useOffline();
 
   if (snapshotHasFarmGraph(snapshot)) {
-    const model = selectFarmDetail(snapshot, resolveAlias(aliases, farmId));
+    const model = selectFarmDetail(snapshot, resolveReplicaId(aliases, snapshot.farms, farmId));
     if (model) {
       return (
         <FarmDetailView
@@ -26,14 +27,7 @@ export function FarmDetailClient({
         />
       );
     }
-    return (
-      <div>
-        <p className="text-sm font-semibold text-stone-800">This farm is not on the phone yet.</p>
-        <p className="mt-1 text-sm text-stone-500">
-          Download farms once with a connection, then this page stays available offline.
-        </p>
-      </div>
-    );
+    return <ReplicaFarmMissing farmId={farmId} />;
   }
 
   return (

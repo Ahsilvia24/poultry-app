@@ -14,6 +14,18 @@ export function resolveAlias(aliases: IdAliases, id: string | undefined | null):
   return current;
 }
 
+/** After a new farm uploads, the website id may be aliased while the phone still has the local id. */
+export function resolveReplicaId(
+  aliases: IdAliases,
+  rows: Array<{ id: string; deletedAt?: string | null }>,
+  rawId: string,
+): string {
+  const resolved = resolveAlias(aliases, rawId);
+  if (rows.some((row) => row.id === resolved && !row.deletedAt)) return resolved;
+  if (rows.some((row) => row.id === rawId && !row.deletedAt)) return rawId;
+  return resolved;
+}
+
 export function mergeAliases(base: IdAliases, extra?: IdAliases): IdAliases {
   if (!extra || Object.keys(extra).length === 0) return base;
   return { ...base, ...extra };

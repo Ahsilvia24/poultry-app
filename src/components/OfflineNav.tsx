@@ -26,11 +26,12 @@ import { PlacementFormView } from "@/components/serviceForms/PlacementFormView";
 import { PrebroodFormView } from "@/components/serviceForms/PrebroodFormView";
 import { ServiceFarmPicker } from "@/components/serviceForms/ServiceFarmPicker";
 import { ServiceReportFormView } from "@/components/serviceForms/ServiceReportFormView";
+import { ReplicaFarmMissing } from "@/components/ReplicaFarmMissing";
 import { BackCaret, Card, PageHeader } from "@/components/ui";
 import { useOffline } from "@/components/OfflineProvider";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { replicaPath, snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
-import { resolveAlias } from "@/lib/offline/remapIds";
+import { resolveAlias, resolveReplicaId } from "@/lib/offline/remapIds";
 import { selectDashboard } from "@/lib/offline/selectDashboard";
 import { selectFarmDetail } from "@/lib/offline/selectFarmDetail";
 import { selectFarmTiles } from "@/lib/offline/selectFarms";
@@ -50,35 +51,18 @@ import type { PlacementForm, PrebroodForm, ServiceReportForm } from "@/lib/servi
 
 export { OfflineNavProvider, useOfflineNav } from "@/components/OfflineNavContext";
 
-function ReplicaFarmMissing({ farmId }: { farmId: string }) {
-  const nav = useOfflineNav();
-  return (
-    <div>
-      <button
-        type="button"
-        className="inline-flex min-h-11 items-center gap-1 text-base font-semibold text-emerald-800"
-        onClick={() => nav?.navigate("/farms")}
-      >
-        <BackCaret />
-        Farms
-      </button>
-      <p className="mt-4 text-sm font-semibold text-stone-800">This farm is not on the phone yet.</p>
-      <p className="mt-1 text-sm text-stone-500">
-        Open it once with a connection and it will stay available offline. ({farmId})
-      </p>
-    </div>
-  );
-}
-
 export function OfflineRoutes({ children }: { children: ReactNode }) {
   const { snapshot, aliases } = useOffline();
   const nav = useOfflineNav();
   const viewHref = nav?.viewHref ?? "/";
   if (!snapshotHasFarmGraph(snapshot)) return children;
 
+  const phoneFarmId = (rawId: string | null | undefined) =>
+    rawId ? resolveReplicaId(aliases, snapshot.farms, rawId) : "";
+
   const { pathname, search } = replicaPath(viewHref);
   const rawFarmId = new URLSearchParams(search).get("farmId");
-  const farmIdParam = rawFarmId ? resolveAlias(aliases, rawFarmId) : null;
+  const farmIdParam = rawFarmId ? phoneFarmId(rawFarmId) : null;
 
   if (pathname === "/") {
     return <DashboardHome initial={selectDashboard(snapshot)} scheduleImports={[]} />;
@@ -124,7 +108,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const lfoNewFarm = /^\/lfo\/new\/([^/]+)$/.exec(pathname);
   if (lfoNewFarm) {
-    const data = selectLfo(snapshot, resolveAlias(aliases, lfoNewFarm[1]));
+    const data = selectLfo(snapshot, phoneFarmId(lfoNewFarm[1]));
     return (
       <div>
         <PageHeader title="Last Feed Order" />
@@ -165,7 +149,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     const params = new URLSearchParams(search);
     const model = selectMortality(
       snapshot,
-      params.get("farmId") ? resolveAlias(aliases, params.get("farmId")) : null,
+      params.get("farmId") ? phoneFarmId(params.get("farmId")) : null,
       params.get("houseFlockId") ? resolveAlias(aliases, params.get("houseFlockId")) : null,
     );
     return (
@@ -187,7 +171,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const serviceForm = /^\/farms\/([^/]+)\/service\/(report|placement|prebrood)$/.exec(pathname);
   if (serviceForm && serviceForm[1] !== "new") {
-    const farmId = resolveAlias(aliases, serviceForm[1]);
+    const farmId = phoneFarmId(serviceForm[1]);
     const kind =
       serviceForm[2] === "report"
         ? "service_report"
@@ -234,7 +218,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const visitsNew = /^\/farms\/([^/]+)\/visits\/new$/.exec(pathname);
   if (visitsNew && visitsNew[1] !== "new") {
-    const farmId = resolveAlias(aliases, visitsNew[1]);
+    const farmId = phoneFarmId(visitsNew[1]);
     const model = selectVisits(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return (
@@ -248,7 +232,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const visitsEdit = /^\/farms\/([^/]+)\/visits\/([^/]+)$/.exec(pathname);
   if (visitsEdit && visitsEdit[1] !== "new" && visitsEdit[2] !== "new") {
-    const farmId = resolveAlias(aliases, visitsEdit[1]);
+    const farmId = phoneFarmId(visitsEdit[1]);
     const model = selectVisits(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     const visit = selectVisit(snapshot, farmId, resolveAlias(aliases, visitsEdit[2]));
@@ -278,7 +262,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const visitsList = /^\/farms\/([^/]+)\/visits$/.exec(pathname);
   if (visitsList && visitsList[1] !== "new") {
-    const farmId = resolveAlias(aliases, visitsList[1]);
+    const farmId = phoneFarmId(visitsList[1]);
     const model = selectVisits(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return <FarmVisitsView model={model} />;
@@ -286,7 +270,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const generators = /^\/farms\/([^/]+)\/generators$/.exec(pathname);
   if (generators && generators[1] !== "new") {
-    const farmId = resolveAlias(aliases, generators[1]);
+    const farmId = phoneFarmId(generators[1]);
     const model = selectGenerators(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return <FarmGeneratorsView model={model} />;
@@ -294,7 +278,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const issuesNew = /^\/farms\/([^/]+)\/issues\/new$/.exec(pathname);
   if (issuesNew && issuesNew[1] !== "new") {
-    const farmId = resolveAlias(aliases, issuesNew[1]);
+    const farmId = phoneFarmId(issuesNew[1]);
     const model = selectIssues(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return (
@@ -304,7 +288,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const issuesEdit = /^\/farms\/([^/]+)\/issues\/([^/]+)$/.exec(pathname);
   if (issuesEdit && issuesEdit[1] !== "new" && issuesEdit[2] !== "new") {
-    const farmId = resolveAlias(aliases, issuesEdit[1]);
+    const farmId = phoneFarmId(issuesEdit[1]);
     const model = selectIssues(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     const issue = selectIssue(snapshot, farmId, resolveAlias(aliases, issuesEdit[2]));
@@ -334,7 +318,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const issuesList = /^\/farms\/([^/]+)\/issues$/.exec(pathname);
   if (issuesList && issuesList[1] !== "new") {
-    const farmId = resolveAlias(aliases, issuesList[1]);
+    const farmId = phoneFarmId(issuesList[1]);
     const model = selectIssues(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return <FarmIssuesView model={model} />;
@@ -342,7 +326,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const litterNew = /^\/farms\/([^/]+)\/litter\/new$/.exec(pathname);
   if (litterNew && litterNew[1] !== "new") {
-    const farmId = resolveAlias(aliases, litterNew[1]);
+    const farmId = phoneFarmId(litterNew[1]);
     const model = selectLitter(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return <FarmLitterFormView farmId={model.farmId} houses={model.houses} />;
@@ -350,7 +334,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const litterEdit = /^\/farms\/([^/]+)\/litter\/([^/]+)$/.exec(pathname);
   if (litterEdit && litterEdit[1] !== "new" && litterEdit[2] !== "new") {
-    const farmId = resolveAlias(aliases, litterEdit[1]);
+    const farmId = phoneFarmId(litterEdit[1]);
     const model = selectLitter(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     const event = selectLitterEvent(snapshot, farmId, resolveAlias(aliases, litterEdit[2]));
@@ -375,7 +359,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const litterList = /^\/farms\/([^/]+)\/litter$/.exec(pathname);
   if (litterList && litterList[1] !== "new") {
-    const farmId = resolveAlias(aliases, litterList[1]);
+    const farmId = phoneFarmId(litterList[1]);
     const model = selectLitter(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return <FarmLitterView model={model} />;
@@ -383,7 +367,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const feedNew = /^\/farms\/([^/]+)\/feed\/new$/.exec(pathname);
   if (feedNew && feedNew[1] !== "new") {
-    const farmId = resolveAlias(aliases, feedNew[1]);
+    const farmId = phoneFarmId(feedNew[1]);
     const model = selectFeed(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return <FarmFeedFormView farmId={model.farmId} farms={model.feedFarms} />;
@@ -391,7 +375,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const feedEdit = /^\/farms\/([^/]+)\/feed\/([^/]+)$/.exec(pathname);
   if (feedEdit && feedEdit[1] !== "new" && feedEdit[2] !== "new") {
-    const farmId = resolveAlias(aliases, feedEdit[1]);
+    const farmId = phoneFarmId(feedEdit[1]);
     const model = selectFeed(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     const delivery = selectFeedDelivery(snapshot, farmId, resolveAlias(aliases, feedEdit[2]));
@@ -416,7 +400,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const feedList = /^\/farms\/([^/]+)\/feed$/.exec(pathname);
   if (feedList && feedList[1] !== "new") {
-    const farmId = resolveAlias(aliases, feedList[1]);
+    const farmId = phoneFarmId(feedList[1]);
     const model = selectFeed(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return <FarmFeedView model={model} />;
@@ -424,7 +408,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const serviceHome = /^\/farms\/([^/]+)\/service$/.exec(pathname);
   if (serviceHome && serviceHome[1] !== "new") {
-    const farmId = resolveAlias(aliases, serviceHome[1]);
+    const farmId = phoneFarmId(serviceHome[1]);
     const model = selectServiceFarmPicker(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return (
@@ -438,7 +422,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   const farmDetail = /^\/farms\/([^/]+)$/.exec(pathname);
   if (farmDetail && farmDetail[1] !== "new") {
-    const farmId = resolveAlias(aliases, farmDetail[1]);
+    const farmId = phoneFarmId(farmDetail[1]);
     const model = selectFarmDetail(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmDetail[1]} />;
     const focusHouseFlockId = new URLSearchParams(search).get("focusHouseFlockId");
@@ -512,7 +496,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
         snapshot={snapshot}
         initialFarmId={
           historyFarm
-            ? resolveAlias(aliases, historyFarm[1])
+            ? phoneFarmId(historyFarm[1])
             : (params.get("farmId") ?? farmIdParam ?? undefined)
         }
       />
