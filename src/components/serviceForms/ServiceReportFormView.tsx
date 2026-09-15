@@ -15,10 +15,7 @@ import {
   TimeField,
   YesNoField,
 } from "@/components/serviceForms/fields";
-import {
-  useAutosaveServiceFormDraft,
-  useCompleteServiceForm,
-} from "@/components/serviceForms/useServiceFormSave";
+import { useServiceFormSave } from "@/components/serviceForms/useServiceFormSave";
 import { createServiceReportDraft, withSavedServiceTech } from "@/lib/serviceForms/defaults";
 import {
   CFM_FT2_MIN_VENT_LABEL,
@@ -59,10 +56,6 @@ export function ServiceReportFormView({
   draft: ServiceReportForm | null;
   fresh: boolean;
 }) {
-  const { complete, saving, editing, error } = useCompleteServiceForm(farmId, {
-    serviceFormId: existing?.id ?? null,
-    existingVisitId: existing ? null : null,
-  });
   const detail = context.detail;
 
   const [form, setForm] = useState<ServiceReportForm>(() => {
@@ -103,7 +96,16 @@ export function ServiceReportFormView({
     }));
   }, [detail]);
 
-  useAutosaveServiceFormDraft(farmId, "service_report", form, !existing && !saving);
+  const { complete, saving, editing, error } = useServiceFormSave(
+    farmId,
+    "service_report",
+    form,
+    {
+      serviceFormId: existing?.id ?? null,
+      existingVisitId: existing?.visitId ?? null,
+      autosave: !existing,
+    },
+  );
 
   function patch(p: Partial<ServiceReportForm>) {
     setForm((prev) => ({ ...prev, ...p }));

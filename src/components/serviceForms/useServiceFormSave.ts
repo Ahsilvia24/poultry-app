@@ -12,23 +12,33 @@ import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import { shareServiceFormPdf } from "@/lib/serviceForms/sharePdf";
 import type { AnyServiceForm, ServiceFormKind } from "@/lib/serviceForms/types";
 
-export function useAutosaveServiceFormDraft(
+export function useServiceFormSave(
   farmId: string,
   kind: ServiceFormKind,
   form: AnyServiceForm,
-  enabled: boolean,
+  opts: {
+    serviceFormId?: string | null;
+    existingVisitId?: string | null;
+    autosave: boolean;
+  },
 ) {
-  const { enabled: replica, queue } = useReplicaWrite();
+  const router = useRouter();
+  const nav = useOfflineNav();
+  const { enabled, queue } = useReplicaWrite();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const editing = Boolean(opts.serviceFormId);
+  const sealed = useRef(false);
   const formRef = useRef(form);
   formRef.current = form;
-  const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
+  const autosaveRef = useRef(opts.autosave);
+  autosaveRef.current = opts.autosave && !sealed.current;
 
   useEffect(() => {
-    if (!enabled || !farmId) return;
+    if (!opts.autosave || sealed.current || !farmId) return;
     const t = setTimeout(() => {
-      if (!enabledRef.current) return;
-      if (replica) {
+      if (sealed.current || !autosaveRef.current) return;
+      if (enabled) {
         queue(
           formWrite("saveServiceDraft", {
             farmId,
@@ -45,22 +55,11 @@ export function useAutosaveServiceFormDraft(
       });
     }, 400);
     return () => clearTimeout(t);
-  }, [enabled, farmId, kind, form, replica, queue]);
-}
+  }, [opts.autosave, farmId, kind, form, enabled, queue]);
 
-export function useCompleteServiceForm(
-  farmId: string,
-  opts: { serviceFormId?: string | null; existingVisitId?: string | null },
-) {
-  const router = useRouter();
-  const nav = useOfflineNav();
-  const { enabled, queue } = useReplicaWrite();
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const editing = Boolean(opts.serviceFormId);
-
-  async function complete(form: AnyServiceForm) {
-    if (saving) return;
+  async function complete(next: AnyServiceForm) {
+    if (saving || sealed.current) return;
+    sealed.current = true;
     setSaving(true);
     setError(null);
     try {
@@ -69,24 +68,28 @@ export function useCompleteServiceForm(
           formWrite("completeServiceForm", {
             id: opts.serviceFormId ?? localRecordId(),
             farmId,
-            fields: opts.existingVisitId ? { existingVisitId: opts.existingVisitId } : undefined,
-            extra: form,
+            fields: {
+              formKind: kind,
+              ...(opts.existingVisitId ? { existingVisitId: opts.existingVisitId } : {}),
+            },
+            extra: next,
           }),
         );
       } else {
         const result = await completeServiceFormAction({
           farmId,
-          form,
+          form: next,
           serviceFormId: opts.serviceFormId,
           existingVisitId: opts.existingVisitId,
         });
         if ("error" in result && result.error) {
+          sealed.current = false;
           setError(result.error);
           return;
         }
       }
       try {
-        await shareServiceFormPdf(form);
+        await shareServiceFormPdf(next);
       } catch {
         // Visit is saved even if the download is dismissed.
       }
@@ -97,6 +100,7 @@ export function useCompleteServiceForm(
         router.refresh();
       }
     } catch (e) {
+      sealed.current = false;
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);

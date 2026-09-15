@@ -1452,6 +1452,15 @@ export function coalesceFormWrite(
   }
 
   if (write.action === "saveServiceDraft") {
+    const kind = write.fields?.formKind ?? "";
+    const alreadyCompleted = items.some((item) => {
+      const payload = asFormWrite(item);
+      if (payload?.action !== "completeServiceForm" || payload.farmId !== write.farmId) return false;
+      const completedKind =
+        payload.fields?.formKind ?? (payload.extra as { kind?: string } | undefined)?.kind;
+      return completedKind === kind;
+    });
+    if (alreadyCompleted) return items;
     const idx = items.findIndex((item) => {
       const payload = asFormWrite(item);
       return payload?.action === "saveServiceDraft" && sameServiceDraft(payload, write);

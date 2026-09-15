@@ -15,10 +15,7 @@ import {
   TextField,
   YesNoField,
 } from "@/components/serviceForms/fields";
-import {
-  useAutosaveServiceFormDraft,
-  useCompleteServiceForm,
-} from "@/components/serviceForms/useServiceFormSave";
+import { useServiceFormSave } from "@/components/serviceForms/useServiceFormSave";
 import { createPlacementDraft, withSavedServiceTech } from "@/lib/serviceForms/defaults";
 import {
   CFM_FT2_MIN_VENT_LABEL,
@@ -48,9 +45,6 @@ export function PlacementFormView({
   draft: PlacementForm | null;
   fresh: boolean;
 }) {
-  const { complete, saving, editing, error } = useCompleteServiceForm(farmId, {
-    serviceFormId: existing?.id ?? null,
-  });
   const detail = context.detail;
 
   const [form, setForm] = useState<PlacementForm>(() => {
@@ -77,7 +71,11 @@ export function PlacementFormView({
     return blank;
   });
 
-  useAutosaveServiceFormDraft(farmId, "placement", form, !existing && !saving);
+  const { complete, saving, editing, error } = useServiceFormSave(farmId, "placement", form, {
+    serviceFormId: existing?.id ?? null,
+    existingVisitId: existing?.visitId ?? null,
+    autosave: !existing,
+  });
 
   function patch(p: Partial<PlacementForm>) {
     setForm((prev) => ({ ...prev, ...p }));

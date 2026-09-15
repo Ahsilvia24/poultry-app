@@ -23,6 +23,7 @@ import { flushOutbox, pullRemoteSnapshot, reportUnsynced } from "@/lib/offline/f
 import { canReplaceReplicaWithRemote, type IdAliases } from "@/lib/offline/remapIds";
 import { ensureDeviceId } from "@/lib/device-id";
 import { seedAndMergeFollowUpCompletions } from "@/lib/offline/followUpCompletions";
+import { seedAndMergeServiceForms } from "@/lib/offline/serviceForms";
 import { syncPhoneToWebsite, type SyncPhoneResult } from "@/lib/offline/syncPhoneToWebsite";
 import type { OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
 
@@ -66,7 +67,10 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
 
   const replaceSnapshot = useCallback((next: OfflineSnapshot) => {
     setSnapshot((current) => {
-      const merged = seedAndMergeFollowUpCompletions(next, current);
+      const merged = seedAndMergeServiceForms(
+        seedAndMergeFollowUpCompletions(next, current),
+        current,
+      );
       void saveLocalSnapshot(merged);
       return merged;
     });

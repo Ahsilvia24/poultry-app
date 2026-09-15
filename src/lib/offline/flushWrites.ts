@@ -292,16 +292,22 @@ export async function flushFormWrite(
       const form = write.extra as AnyServiceForm | undefined;
       if (!form) return { ok: false, error: "This checklist cannot upload." };
       const existingVisitId = write.fields?.existingVisitId?.trim();
-      return fromAction(
-        await completeServiceFormAction({
-          farmId,
-          form,
-          serviceFormId: isLocalRecordId(write.id) ? undefined : write.id,
-          existingVisitId:
-            existingVisitId && !isLocalRecordId(existingVisitId) ? existingVisitId : undefined,
-        }),
-        aliases,
-      );
+      const result = await completeServiceFormAction({
+        farmId,
+        form,
+        serviceFormId: isLocalRecordId(write.id) ? undefined : write.id,
+        existingVisitId:
+          existingVisitId && !isLocalRecordId(existingVisitId) ? existingVisitId : undefined,
+      });
+      const error = actionError(result);
+      if (error) return { ok: false, error, aliases };
+      const created = result as { id?: string; visitId?: string };
+      const next = { ...aliases };
+      if (write.id && created.id && write.id !== created.id) next[write.id] = created.id;
+      if (existingVisitId && created.visitId && existingVisitId !== created.visitId) {
+        next[existingVisitId] = created.visitId;
+      }
+      return { ok: true, aliases: next };
     }
     case "deleteServiceDraft": {
       const formKind = write.fields?.formKind as ServiceFormKind | undefined;

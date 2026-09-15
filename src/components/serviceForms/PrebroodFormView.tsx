@@ -12,10 +12,7 @@ import {
   TextField,
   YesNoField,
 } from "@/components/serviceForms/fields";
-import {
-  useAutosaveServiceFormDraft,
-  useCompleteServiceForm,
-} from "@/components/serviceForms/useServiceFormSave";
+import { useServiceFormSave } from "@/components/serviceForms/useServiceFormSave";
 import {
   createPrebroodDraft,
   hydratePrebroodForm,
@@ -41,9 +38,6 @@ export function PrebroodFormView({
   draft: PrebroodForm | null;
   fresh: boolean;
 }) {
-  const { complete, saving, editing, error } = useCompleteServiceForm(farmId, {
-    serviceFormId: existing?.id ?? null,
-  });
   const detail = context.detail;
 
   const [form, setForm] = useState<PrebroodForm>(() => {
@@ -67,7 +61,11 @@ export function PrebroodFormView({
     });
   });
 
-  useAutosaveServiceFormDraft(farmId, "prebrood", form, !existing && !saving);
+  const { complete, saving, editing, error } = useServiceFormSave(farmId, "prebrood", form, {
+    serviceFormId: existing?.id ?? null,
+    existingVisitId: existing?.visitId ?? null,
+    autosave: !existing,
+  });
 
   function pullLoggedHours(next: PrebroodForm): PrebroodForm {
     if (next.generatorHoursCheckedOk !== "yes") {
