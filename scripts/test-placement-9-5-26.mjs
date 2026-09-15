@@ -55,7 +55,9 @@ assert.match(nextConfig, /unpdf/);
 assert.match(nextConfig, /pdf-parse/);
 assert.match(nextConfig, /outputFileTracingIncludes/);
 assert.match(nextConfig, /unpdf\/dist/);
-assert.match(nextConfig, /pdfjs-dist\/legacy\/build/);
+assert.match(nextConfig, /outputFileTracingExcludes/);
+assert.match(nextConfig, /pdf-parse\/\*\*\/\*/);
+assert.match(nextConfig, /pdfjs-dist\/\*\*\/\*/);
 
 const extractSrc = readFileSync(join(root, "src/lib/pdf-text-extract.ts"), "utf8");
 assert.match(extractSrc, /extractWithUnpdf/);

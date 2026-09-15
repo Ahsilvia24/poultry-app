@@ -1,16 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // unpdf ships an inlined pdf.js worker. Keep it (and the older
-  // pdf-parse / pdf.js fallbacks) on disk for Vercel serverless.
+  // unpdf ships an inlined pdf.js worker. Copy only that package onto
+  // serverless functions. pdf-parse / pdfjs-dist are 50MB+ fallbacks and
+  // blew up Vercel production deploys when attached to every route.
   serverExternalPackages: ["unpdf", "pdf-parse", "pdfjs-dist"],
   outputFileTracingIncludes: {
-    "/*": [
-      "./node_modules/unpdf/dist/**/*",
-      "./node_modules/pdf-parse/dist/**/*",
-      "./node_modules/pdfjs-dist/legacy/build/**/*",
-      "./node_modules/pdfjs-dist/build/**/*",
-    ],
+    "/api/leave": ["./public/signed-out.html"],
+    "/*": ["./node_modules/unpdf/dist/**/*"],
   },
   async headers() {
     return [
@@ -47,7 +44,11 @@ const nextConfig: NextConfig = {
     "*.cursor.sh",
   ],
   outputFileTracingExcludes: {
-    "/*": ["./mobile/**/*"],
+    "/*": [
+      "./mobile/**/*",
+      "./node_modules/pdf-parse/**/*",
+      "./node_modules/pdfjs-dist/**/*",
+    ],
   },
   experimental: {
     // Homescreen PWA tab switches were refetching every dynamic page (Next 15+

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   uploadScheduleImportAction,
   type UploadScheduleImportResult,
@@ -81,10 +81,6 @@ export function DashboardScheduleImport({
 }) {
   const { snapshot, enqueue, patchSnapshot } = useOffline();
   const [importType, setImportType] = useState<ScheduleImportType>("placement");
-
-  useEffect(() => {
-    void import("@/lib/pdf-text-extract-client");
-  }, []);
   const [pending, startTransition] = useTransition();
   const [uploadResult, setUploadResult] = useState<UploadScheduleImportResult | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);

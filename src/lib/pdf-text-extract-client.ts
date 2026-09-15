@@ -1,33 +1,13 @@
 /**
- * Browser / phone extract. Start the pdf.js reader as soon as this module
- * loads with the dashboard, and ask the bundler to keep it in that same
- * download so import does not fetch a leftover chunk offline.
+ * Browser / phone extract. unpdf ships an inlined pdf.js worker, so a
+ * Placement or Catch PDF can be read with no network after the app JS is saved.
  */
-import {
-  definePDFJSModule,
-  extractText,
-  extractTextItems,
-  getDocumentProxy,
-} from "unpdf";
-
 function copyBytes(bytes: Uint8Array): Uint8Array {
   return Uint8Array.from(bytes);
 }
 
-async function loadUnpdfPdfjs() {
-  try {
-    return await import(/* webpackMode: "eager" */ "unpdf/pdfjs");
-  } catch {
-    const { pathToFileURL } = await import("node:url");
-    const { join } = await import("node:path");
-    return import(pathToFileURL(join(process.cwd(), "node_modules/unpdf/dist/pdfjs.mjs")).href);
-  }
-}
-
-const pdfjsReady = definePDFJSModule(() => loadUnpdfPdfjs());
-
 export async function extractPdfTextsOnDevice(bytes: Uint8Array): Promise<string[]> {
-  await pdfjsReady;
+  const { extractText, extractTextItems, getDocumentProxy } = await import("unpdf");
   const pdf = await getDocumentProxy(copyBytes(bytes));
   try {
     const texts: string[] = [];
