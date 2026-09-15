@@ -8,6 +8,9 @@ const read = (rel) => readFileSync(join(root, rel), "utf8");
 
 const settings = read("src/components/SettingsScreen.tsx");
 assert.match(settings, /signOutLocalApp/);
+assert.match(settings, /phoneFarmSaveStatus/);
+assert.match(settings, /SIGN_OUT_UNSAVED_CONFIRM/);
+assert.match(settings, /window\.confirm/);
 assert.doesNotMatch(settings, /action=\{signOutAction\}/);
 
 const local = read("src/lib/offline/signOutLocal.ts");

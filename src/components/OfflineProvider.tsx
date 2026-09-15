@@ -51,8 +51,10 @@ type OfflineContextValue = {
   snapshot: OfflineSnapshot | null;
   ready: boolean;
   syncing: boolean;
+  pendingCount: number;
   aliases: IdAliases;
   enqueue: (item: Omit<OfflineOutboxItem, "id" | "createdAt">) => void;
+  flushNow: () => Promise<{ pending: number }>;
   replaceSnapshot: (snapshot: OfflineSnapshot) => void;
   patchSnapshot: (fn: (snapshot: OfflineSnapshot) => OfflineSnapshot) => void;
 };
@@ -202,6 +204,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<OfflineSnapshot | null>(null);
   const [ready, setReady] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   const [aliases, setAliases] = useState<IdAliases>({});
 
   const replicaGen = useRef(0);
@@ -231,14 +234,35 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       createdAt: new Date().toISOString(),
     };
     void loadOutbox()
-      .then((items) => saveOutbox(coalesceFormWrite(items, full)))
+      .then((items) => {
+        const next = coalesceFormWrite(items, full);
+        setPendingCount(next.length);
+        return saveOutbox(next);
+      })
       .then(() => {
         void reportUnsynced(true);
         if (typeof navigator === "undefined" || navigator.onLine === false) return;
         return flushOutbox().then((flushed) => {
           setAliases(flushed.aliases);
+          setPendingCount(flushed.pending);
         });
       });
+  }, []);
+
+  const flushNow = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const flushed = await flushOutbox();
+      setAliases(flushed.aliases);
+      setPendingCount(flushed.pending);
+      return { pending: flushed.pending };
+    } catch {
+      const leftover = await loadOutbox();
+      setPendingCount(leftover.length);
+      return { pending: leftover.length };
+    } finally {
+      setSyncing(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -254,14 +278,17 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       setSyncing(true);
       try {
         const queued = await loadOutbox();
+        if (!cancelled) setPendingCount(queued.length);
         if (queued.length) await reportUnsynced(true);
         const flushed = await flushOutbox();
         if (!cancelled) setAliases(flushed.aliases);
+        if (!cancelled) setPendingCount(flushed.pending);
         if (canReplaceReplicaWithRemote(flushed.pending)) {
           const gen = replicaGen.current;
           const remote = await pullRemoteSnapshot();
           if (cancelled || !remote || replicaGen.current !== gen) return;
           const leftover = await loadOutbox();
+          if (!cancelled) setPendingCount(leftover.length);
           replaceSnapshot(
             leftover.length ? applyPendingOutboxItems(remote, leftover) : remote,
           );
@@ -277,11 +304,13 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       void flushOutbox()
         .then(async (flushed) => {
           setAliases(flushed.aliases);
+          setPendingCount(flushed.pending);
           if (!canReplaceReplicaWithRemote(flushed.pending)) return;
           const gen = replicaGen.current;
           const remote = await pullRemoteSnapshot();
           if (!remote || replicaGen.current !== gen) return;
           const leftover = await loadOutbox();
+          setPendingCount(leftover.length);
           replaceSnapshot(
             leftover.length ? applyPendingOutboxItems(remote, leftover) : remote,
           );
@@ -297,8 +326,18 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   }, [replaceSnapshot]);
 
   const value = useMemo(
-    () => ({ snapshot, ready, syncing, aliases, enqueue, replaceSnapshot, patchSnapshot }),
-    [snapshot, ready, syncing, aliases, enqueue, replaceSnapshot, patchSnapshot],
+    () => ({
+      snapshot,
+      ready,
+      syncing,
+      pendingCount,
+      aliases,
+      enqueue,
+      flushNow,
+      replaceSnapshot,
+      patchSnapshot,
+    }),
+    [snapshot, ready, syncing, pendingCount, aliases, enqueue, flushNow, replaceSnapshot, patchSnapshot],
   );
 
   return <OfflineContext.Provider value={value}>{children}</OfflineContext.Provider>;
@@ -308,8 +347,10 @@ const missingOffline: OfflineContextValue = {
   snapshot: null,
   ready: true,
   syncing: false,
+  pendingCount: 0,
   aliases: {},
   enqueue: () => undefined,
+  flushNow: async () => ({ pending: 0 }),
   replaceSnapshot: () => undefined,
   patchSnapshot: () => undefined,
 };

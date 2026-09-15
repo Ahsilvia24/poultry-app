@@ -5,6 +5,7 @@ import { updateSettingsAction } from "@/app/actions/ops";
 import { signOutLocalApp } from "@/lib/offline/signOutLocal";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { useOffline } from "@/components/OfflineProvider";
+import { phoneFarmSaveStatus, SIGN_OUT_UNSAVED_CONFIRM } from "@/lib/offline/phoneFarmSave";
 import {
   SettingsChipInput,
   SettingsFieldRow as SettingsRow,
@@ -21,7 +22,9 @@ import {
 } from "@/lib/offline/applyLocal";
 
 export function SettingsScreen() {
-  const { snapshot, patchSnapshot, enqueue } = useOffline();
+  const { snapshot, patchSnapshot, enqueue, pendingCount, syncing, ready, flushNow } = useOffline();
+  const farmSave = phoneFarmSaveStatus({ ready, syncing, pendingCount });
+  const [leaving, setLeaving] = useState(false);
   const values = snapshot
     ? settingsFormValues(snapshot)
     : {
@@ -283,13 +286,47 @@ export function SettingsScreen() {
         </div>
       </Card>
 
-      <div className="mt-6 flex justify-center">
+      <div className="mt-6 flex flex-col items-center gap-3 px-4">
+        {farmSave.kind === "unsaved" ? (
+          <p
+            role="status"
+            className="max-w-md rounded-xl border border-amber-300 bg-amber-100 px-4 py-3 text-center text-sm font-semibold text-amber-950"
+          >
+            {farmSave.text}
+          </p>
+        ) : (
+          <p
+            role="status"
+            className={
+              farmSave.kind === "saved"
+                ? "max-w-md text-center text-sm font-semibold text-emerald-800"
+                : "max-w-md text-center text-sm font-medium text-stone-600"
+            }
+          >
+            {farmSave.text}
+          </p>
+        )}
         <button
           type="button"
-          onClick={() => void signOutLocalApp()}
-          className="px-3 py-2 text-sm font-bold text-stone-800 underline"
+          disabled={leaving}
+          onClick={() => {
+            void (async () => {
+              setLeaving(true);
+              try {
+                let pending = pendingCount;
+                if (typeof navigator === "undefined" || navigator.onLine !== false) {
+                  pending = (await flushNow()).pending;
+                }
+                if (pending > 0 && !window.confirm(SIGN_OUT_UNSAVED_CONFIRM)) return;
+                await signOutLocalApp();
+              } finally {
+                setLeaving(false);
+              }
+            })();
+          }}
+          className="px-3 py-2 text-sm font-bold text-stone-800 underline disabled:opacity-60"
         >
-          Sign out
+          {leaving ? "Signing out…" : "Sign out"}
         </button>
       </div>
     </div>
