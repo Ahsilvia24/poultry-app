@@ -52,7 +52,9 @@ assert.match(leave, /\/api\/login/);
 assert.doesNotMatch(leave, /_next/);
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v10/);
+assert.match(sw, /poultrytech-offline-v11/);
+assert.match(sw, /responseLooksLikeLogin/);
+assert.doesNotMatch(sw, /PRECACHE\s*=\s*\[[\s\S]*?"\/",/);
 assert.match(sw, /SIGNED_OUT_FLAG/);
 assert.match(sw, /dropSignedInPages/);
 assert.match(sw, /isPublicAuthPath/);
@@ -64,8 +66,9 @@ assert.doesNotMatch(sw, /function serveLogin/);
 assert.doesNotMatch(sw, /cache\.add\("\/login"\)/);
 
 const register = read("src/components/RegisterServiceWorker.tsx");
-assert.match(register, /phoneIsSignedOut/);
-assert.match(register, /\/api\/leave/);
+assert.match(register, /serviceWorker\.register\("\/sw\.js"/);
+assert.doesNotMatch(register, /\/api\/leave/);
+assert.doesNotMatch(register, /phoneIsSignedOut/);
 
 const proxy = read("src/proxy.ts");
 assert.match(proxy, /\/api\/logout/);

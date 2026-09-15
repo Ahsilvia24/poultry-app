@@ -6,13 +6,12 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v10";
+const CACHE = "poultrytech-offline-v11";
 const NETWORK_MS = 1500;
 const SIGNED_OUT_FLAG = "/__poultrytech-signed-out";
 const LEAVE_PAGE = "/signed-out.html";
 
 const PRECACHE = [
-  "/",
   "/signed-out.html",
   "/offline.html",
   "/manifest.webmanifest",
@@ -83,6 +82,22 @@ function isLeavePath(path) {
   );
 }
 
+function responseLooksLikeLogin(res) {
+  if (!res) return false;
+  try {
+    const path = new URL(res.url).pathname;
+    return (
+      path === "/login" ||
+      path.startsWith("/login/") ||
+      path === "/signed-out" ||
+      path === "/signed-out.html" ||
+      path === "/api/leave"
+    );
+  } catch {
+    return false;
+  }
+}
+
 async function isSignedOut() {
   const cache = await caches.open(CACHE);
   return Boolean(await cache.match(SIGNED_OUT_FLAG));
@@ -145,11 +160,13 @@ async function putOk(cache, request, response) {
     const path = new URL(request.url).pathname;
     if (path !== LEAVE_PAGE && !isStaticAsset(new URL(request.url))) return response;
   }
-  if (response.redirected) {
+  if (response.redirected || responseLooksLikeLogin(response)) {
     const finalPath = new URL(response.url).pathname;
     const reqPath = new URL(request.url).pathname;
-    if (finalPath !== reqPath) {
-      await cache.put(new Request(response.url), response.clone());
+    if (finalPath !== reqPath || responseLooksLikeLogin(response)) {
+      if (!responseLooksLikeLogin(response)) {
+        await cache.put(new Request(response.url), response.clone());
+      }
       return response;
     }
   }
@@ -165,13 +182,15 @@ function fetchWithTimeout(request, ms) {
 
 async function matchCachedPage(cache, request, homeFallback = true) {
   const exact = await cache.match(request);
-  if (exact) return exact;
+  if (exact && !responseLooksLikeLogin(exact)) return exact;
   if (!isNavigation(request)) return null;
   const path = new URL(request.url).pathname;
   const byPath = await cache.match(path);
-  if (byPath) return byPath;
+  if (byPath && !responseLooksLikeLogin(byPath)) return byPath;
   if (!homeFallback) return null;
-  return (await cache.match("/")) || null;
+  const home = await cache.match("/");
+  if (home && !responseLooksLikeLogin(home)) return home;
+  return null;
 }
 
 async function cachedFallback(request) {
@@ -180,8 +199,10 @@ async function cachedFallback(request) {
   const page = await matchCachedPage(cache, request);
   if (page) return page;
   if (isNavigation(request)) {
+    const home = await cache.match("/");
     const fallback =
-      (await cache.match("/")) || (await cache.match("/offline.html"));
+      (home && !responseLooksLikeLogin(home) ? home : null) ||
+      (await cache.match("/offline.html"));
     if (fallback) return fallback;
     return new Response(
       "PoultryTech needs to download once on Wi-Fi, then it can open without service.",
@@ -255,9 +276,11 @@ async function adoptOldCaches(cache) {
         const path = new URL(req.url).pathname;
         if (path === "/login" || path.startsWith("/login/")) return;
         if (signedOut && (path === "/" || path === "/signed-out")) return;
-        if (await cache.match(req)) return;
         const res = await old.match(req);
-        if (res) await cache.put(req, res);
+        if (!res || responseLooksLikeLogin(res)) return;
+        const existing = await cache.match(req);
+        if (existing && !responseLooksLikeLogin(existing)) return;
+        await cache.put(req, res);
       }),
     );
   }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { isPublicAuthPath, phoneIsSignedOut } from "@/lib/offline/signedOut";
 
 function collectAppAssetUrls() {
   const urls = new Set<string>();
@@ -24,19 +23,6 @@ async function precacheAppAssets() {
 
 /** Save the app files on the phone so Home Screen can open without service. */
 export function RegisterServiceWorker() {
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      if (isPublicAuthPath(window.location.pathname)) return;
-      if ((await phoneIsSignedOut()) && !cancelled) {
-        window.location.replace("/api/leave");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
