@@ -12,6 +12,7 @@ import {
 } from "@/lib/generator/format";
 import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
+import { ensureWeightProjectionVisitType, visitSaveError } from "@/lib/visits/ensureVisitType";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { DEFAULT_FARM_ORDER } from "@/lib/farm-order";
 import {
@@ -370,28 +371,34 @@ export async function createVisitAction(formData: FormData) {
     parsed.data.visitDate,
   );
 
-  const created = await prisma.farmVisit.create({
-    data: {
-      farmId: parsed.data.farmId,
-      flockId: parsed.data.flockId,
-      visitDate: new Date(parsed.data.visitDate),
-      birdAgeInDays,
-      visitType: parsed.data.visitType,
-      generalBirdCondition: parsed.data.generalBirdCondition ?? "Healthy",
-      activityLevel: parsed.data.activityLevel,
-      uniformity: parsed.data.uniformity,
-      litterCondition: parsed.data.litterCondition,
-      waterConsumption: parsed.data.waterConsumption,
-      feedInventory: parsed.data.feedInventory,
-      temperature: null,
-      humidity: null,
-      staticPressure: parsed.data.staticPressure,
-      notes: parsed.data.notes,
-      followUpRequired: parsed.data.followUpRequired ?? false,
-      followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
-      loggedAt: parseLoggedAt(formData.get("loggedAt")),
-    },
-  });
+  await ensureWeightProjectionVisitType();
+  let created;
+  try {
+    created = await prisma.farmVisit.create({
+      data: {
+        farmId: parsed.data.farmId,
+        flockId: parsed.data.flockId,
+        visitDate: new Date(parsed.data.visitDate),
+        birdAgeInDays,
+        visitType: parsed.data.visitType,
+        generalBirdCondition: parsed.data.generalBirdCondition ?? "Healthy",
+        activityLevel: parsed.data.activityLevel,
+        uniformity: parsed.data.uniformity,
+        litterCondition: parsed.data.litterCondition,
+        waterConsumption: parsed.data.waterConsumption,
+        feedInventory: parsed.data.feedInventory,
+        temperature: null,
+        humidity: null,
+        staticPressure: parsed.data.staticPressure,
+        notes: parsed.data.notes,
+        followUpRequired: parsed.data.followUpRequired ?? false,
+        followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
+        loggedAt: parseLoggedAt(formData.get("loggedAt")),
+      },
+    });
+  } catch (error) {
+    return { error: visitSaveError(error) };
+  }
   revalidatePath(`/farms/${parsed.data.farmId}`);
   revalidatePath("/");
   revalidatePath("/reports");
@@ -502,27 +509,32 @@ export async function updateVisitAction(visitId: string, formData: FormData) {
   const flockId = parsed.data.flockId ?? existing.flockId;
   const birdAgeInDays = await resolveVisitBirdAge(flockId, parsed.data.visitDate);
 
-  await prisma.farmVisit.update({
-    where: { id: visitId },
-    data: {
-      flockId: parsed.data.flockId,
-      visitDate: new Date(parsed.data.visitDate),
-      birdAgeInDays,
-      visitType: parsed.data.visitType,
-      generalBirdCondition: parsed.data.generalBirdCondition ?? "Healthy",
-      activityLevel: parsed.data.activityLevel,
-      uniformity: parsed.data.uniformity,
-      litterCondition: parsed.data.litterCondition,
-      waterConsumption: parsed.data.waterConsumption,
-      feedInventory: parsed.data.feedInventory,
-      temperature: null,
-      humidity: null,
-      staticPressure: parsed.data.staticPressure,
-      notes: parsed.data.notes,
-      followUpRequired: parsed.data.followUpRequired ?? false,
-      followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
-    },
-  });
+  await ensureWeightProjectionVisitType();
+  try {
+    await prisma.farmVisit.update({
+      where: { id: visitId },
+      data: {
+        flockId: parsed.data.flockId,
+        visitDate: new Date(parsed.data.visitDate),
+        birdAgeInDays,
+        visitType: parsed.data.visitType,
+        generalBirdCondition: parsed.data.generalBirdCondition ?? "Healthy",
+        activityLevel: parsed.data.activityLevel,
+        uniformity: parsed.data.uniformity,
+        litterCondition: parsed.data.litterCondition,
+        waterConsumption: parsed.data.waterConsumption,
+        feedInventory: parsed.data.feedInventory,
+        temperature: null,
+        humidity: null,
+        staticPressure: parsed.data.staticPressure,
+        notes: parsed.data.notes,
+        followUpRequired: parsed.data.followUpRequired ?? false,
+        followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
+      },
+    });
+  } catch (error) {
+    return { error: visitSaveError(error) };
+  }
   revalidatePath(`/farms/${parsed.data.farmId}`);
   revalidatePath("/");
   revalidatePath("/reports");
