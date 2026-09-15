@@ -31,7 +31,7 @@ assert.equal(birdAgeFromPlacement(flockPlace, today), 39);
 assert.equal(flockWeekFromAge(39), 6);
 assert.equal(lastAgeOfFlockWeek(6), 42);
 assert.equal(mortalityEntryVisibleMaxAge(39, []), 42);
-assert.equal(mortalityGridMaxAge(39, 52, []), 42, "39d flock must not paint week 7 from catch day 52");
+assert.equal(mortalityGridMaxAge(39, 52, []), 56, "entry grid always starts at 8 weeks");
 
 const entryWeeks = [];
 for (let age = 0; age <= 42; age++) entryWeeks.push(flockWeekFromAge(age));
