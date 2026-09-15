@@ -5187,9 +5187,8 @@ function serviceFormVisitMeta(formKind: ServiceFormKind) {
   return { visitType };
 }
 
-function serviceFormVisitNotes(visitNotes?: string | null) {
-  const notes = visitNotes?.trim() || "";
-  return notes || null;
+function serviceFormVisitNotes(_visitNotes?: string | null) {
+  return null;
 }
 
 function readLiveVisit(farmId: string, visitId: string | null | undefined) {

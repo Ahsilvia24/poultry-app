@@ -211,6 +211,9 @@ assert.equal(isReplicaHref("/farms/farm-1/visits/new"), true);
 const hold = read("src/components/HoldReorderList.tsx");
 assert.match(hold, /LONG_PRESS_MS = 420/);
 assert.match(hold, /onReorder/);
+assert.match(hold, /\[-webkit-touch-callout:none\]/);
+assert.match(hold, /select-none/);
+assert.match(hold, /onContextMenu/);
 
 const field = read("src/components/FieldLogReport.tsx");
 assert.match(field, /href="\/visits"/);

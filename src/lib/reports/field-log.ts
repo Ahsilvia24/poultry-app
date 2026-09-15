@@ -61,6 +61,7 @@ const FIELD_LOG_VISIT_TYPE_LABELS: Record<string, string> = {
   MORTALITY_INVESTIGATION: "Mortality Investigation",
   PRE_CATCH: "Pre-Catch Visit",
   LAST_FEED_ORDER: "LFO",
+  WEIGHT_PROJECTION: "Weight Projection",
   CERTIFICATION: "Certification",
   OTHER: "Enter Other",
   SEVEN_DAY: "7-day visit",
@@ -73,11 +74,19 @@ export function loggedAtForFieldLogOrder(visitDate: string, index: number): stri
   return new Date(Date.UTC(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, Math.max(0, index))).toISOString();
 }
 
+/** Other reason is the typed box only — never "Other" + the text. */
+export function fieldLogOtherReason(notes?: string | null): string {
+  const raw = notes?.trim() ?? "";
+  if (!raw) return "Enter Other";
+  const stripped = raw
+    .replace(/^(enter\s+other|other)\s*[:\-–—]\s*/i, "")
+    .replace(/^(enter\s+other)\n+/i, "")
+    .trim();
+  return stripped || "Enter Other";
+}
+
 export function fieldLogVisitTypeLabel(visitType: string, notes?: string | null): string {
-  if (visitType === "OTHER") {
-    const reason = notes?.trim();
-    return reason || "Enter Other";
-  }
+  if (visitType === "OTHER") return fieldLogOtherReason(notes);
   return FIELD_LOG_VISIT_TYPE_LABELS[visitType] ?? visitType;
 }
 

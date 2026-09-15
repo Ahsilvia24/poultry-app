@@ -144,7 +144,7 @@ for (const { kind, visitType } of kinds) {
   assert.equal(picker?.completed.some((row) => row.formKind === kind), true, `${kind} is on Completed`);
   const visit = selectVisits(completed, "farm-1")?.visits.find((row) => row.visitType === visitType);
   assert.ok(visit, `${kind} logs a visit`);
-  assert.equal(visit.notes, "Done");
+  assert.equal(visit.notes, null);
   const page = selectServiceFormPage(completed, "farm-1", kind, { formId: `local-${kind}` });
   assert.ok(page?.existing, `${kind} reopens from the replica`);
   assert.equal(page.existing.id, `local-${kind}`);
@@ -215,7 +215,7 @@ const edited = applyFormWrite(phone, {
 });
 assert.equal(edited.serviceForms.length, 1);
 assert.equal(edited.visits.length, 1);
-assert.equal(edited.visits[0].notes, "Edited");
+assert.equal(edited.visits[0].notes, null);
 assert.equal(edited.visits[0].id, phone.serviceForms[0].visitId);
 
 assert.equal(

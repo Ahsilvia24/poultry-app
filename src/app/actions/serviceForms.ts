@@ -175,7 +175,7 @@ export async function completeServiceFormAction(input: {
 
   const formDate = form.date?.trim() || "";
   if (!formDate) return { error: "Visit date is required" };
-  const notes = visitNotes(form.comments);
+  const notes = null;
   const visitType = visitTypeForKind(form.kind);
 
   if (input.serviceFormId) {

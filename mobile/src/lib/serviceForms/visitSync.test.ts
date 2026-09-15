@@ -87,14 +87,13 @@ function setup() {
   return db;
 }
 
-function visitNotesFromChecklist(visitNotes?: string | null) {
-  const notes = visitNotes?.trim() || "";
-  return notes || null;
+function visitNotesFromChecklist(_visitNotes?: string | null) {
+  return null;
 }
 
 describe("checklist visit notes", () => {
-  it("keeps only the checklist comments", () => {
-    assert.equal(visitNotesFromChecklist("House 2 fans noisy"), "House 2 fans noisy");
+  it("does not copy service report comments onto the visit", () => {
+    assert.equal(visitNotesFromChecklist("House 2 fans noisy"), null);
     assert.equal(visitNotesFromChecklist("  "), null);
     assert.equal(visitNotesFromChecklist(null), null);
   });

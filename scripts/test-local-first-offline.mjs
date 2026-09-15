@@ -508,7 +508,7 @@ const completed = applyFormWrite(draftSaved, {
 assert.equal(completed.serviceFormDrafts?.length, 0);
 assert.equal(completed.serviceForms?.[0].id, "local-service-1");
 assert.equal(completed.visits[0].visitType, "ROUTINE_SERVICE");
-assert.equal(completed.visits[0].notes, "Done");
+assert.equal(completed.visits[0].notes, null);
 
 const { selectServiceFarmPicker, selectServiceFarmContext } = await import(
   join(root, "src/lib/offline/selectServiceFarm.ts")

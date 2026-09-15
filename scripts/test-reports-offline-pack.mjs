@@ -7,9 +7,11 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(root, rel), "utf8");
 
 const visitUtils = read("src/lib/utils.ts");
+assert.match(visitUtils, /value: "WEIGHT_PROJECTION", label: "Weight Projection"/);
 assert.match(visitUtils, /value: "OTHER", label: "Enter Other"/);
 
 const mobileVisits = read("mobile/src/lib/visits.ts");
+assert.match(mobileVisits, /value: "WEIGHT_PROJECTION", label: "Weight Projection"/);
 assert.match(mobileVisits, /value: "OTHER", label: "Enter Other"/);
 
 const visitForm = read("src/components/FarmOpsForms.tsx");
@@ -25,8 +27,10 @@ assert.match(mobileVisit, /Enter a reason for this visit/);
 assert.match(mobileVisit, /otherReason/);
 
 const fieldLog = read("src/lib/reports/field-log.ts");
+assert.match(fieldLog, /WEIGHT_PROJECTION: "Weight Projection"/);
 assert.match(fieldLog, /OTHER: "Enter Other"/);
-assert.match(fieldLog, /return reason \|\| "Enter Other"/);
+assert.match(fieldLog, /fieldLogOtherReason/);
+assert.match(fieldLog, /return stripped \|\| "Enter Other"/);
 
 const reports = read("src/components/ReportsView.tsx");
 assert.match(reports, /flex justify-end/);
@@ -310,6 +314,9 @@ const otherVisit = field.fieldLog.weeks
   ?.farms[0];
 assert.equal(otherVisit?.notes, "Controller alarm");
 assert.equal(fieldLogVisitTypeLabel("OTHER", otherVisit?.notes), "Controller alarm");
+assert.equal(fieldLogVisitTypeLabel("OTHER", "Other: Controller alarm"), "Controller alarm");
 assert.equal(fieldLogVisitTypeLabel("OTHER"), "Enter Other");
+assert.equal(fieldLogVisitTypeLabel("WEIGHT_PROJECTION"), "Weight Projection");
+assert.equal(fieldLogVisitTypeLabel("ROUTINE_SERVICE", "House 2 fans noisy"), "Routine Service");
 
 console.log("reports-offline-pack: ok");

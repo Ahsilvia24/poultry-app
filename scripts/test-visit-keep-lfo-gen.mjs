@@ -108,7 +108,7 @@ const completed = applyFormWrite(snapshot(), {
 assert.equal(completed.serviceForms?.[0].id, "form-1");
 assert.ok(completed.serviceForms?.[0].visitId);
 assert.equal(completed.visits[0].visitType, "ROUTINE_SERVICE");
-assert.equal(completed.visits[0].notes, "Walked houses");
+assert.equal(completed.visits[0].notes, null);
 const checklistVisitId = completed.serviceForms[0].visitId;
 assert.equal(completed.visits[0].id, checklistVisitId);
 
@@ -132,7 +132,7 @@ const recomputed = applyFormWrite(afterVisitDelete, {
 assert.equal(recomputed.serviceForms?.[0].id, "form-1");
 assert.ok(recomputed.serviceForms?.[0].visitId);
 assert.notEqual(recomputed.serviceForms?.[0].visitId, checklistVisitId);
-assert.equal(recomputed.visits[0].notes, "Walked again");
+assert.equal(recomputed.visits[0].notes, null);
 
 const withLfo = applyFormWrite(snapshot(), {
   action: "saveFarmLfo",

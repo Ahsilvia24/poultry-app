@@ -156,7 +156,7 @@ export function useCompleteServiceForm(farmId: string, opts?: {
         formKind: form.kind,
         formDate: form.date?.trim() || "",
         payload: form,
-        visitNotes: form.comments?.trim() || null,
+        visitNotes: null,
         generatorHours: input.generatorHours ?? null,
         serviceFormId,
         existingVisitId,

@@ -1344,7 +1344,6 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
       const form = write.extra as AnyServiceForm | undefined;
       if (!farmId || !form || !isServiceFormKind(form.kind)) return snapshot;
       const formDate = form.date?.trim() || now.slice(0, 10);
-      const comments = typeof form.comments === "string" ? form.comments.trim() : "";
       const formId = write.id ?? localRecordId();
       const forms = snapshot.serviceForms ?? [];
       const existing = forms.find((row) => row.id === formId);
@@ -1369,7 +1368,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
         generalBirdCondition: "Healthy",
         followUpRequired: false,
         followUpDate: null,
-        notes: comments || null,
+        notes: null,
         loggedAt: now,
       };
       const visits = snapshot.visits.some((row) => row.id === visitId)

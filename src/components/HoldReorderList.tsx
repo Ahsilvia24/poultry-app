@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 const LONG_PRESS_MS = 420;
 const CANCEL_PX = 12;
@@ -136,7 +136,7 @@ export function HoldReorderList<T extends { id: string }>({
   }, []);
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5 select-none [-webkit-touch-callout:none] [-webkit-user-select:none]">
       {shown.map((item, index) => (
         <div
           key={item.id}
@@ -144,8 +144,20 @@ export function HoldReorderList<T extends { id: string }>({
             if (node) rowRefs.current.set(item.id, node);
             else rowRefs.current.delete(item.id);
           }}
-          className={draggingId === item.id ? "relative z-10 scale-[1.02]" : undefined}
-          style={dragging.current ? { touchAction: "none" } : undefined}
+          className={
+            draggingId === item.id
+              ? "relative z-10 scale-[1.02] select-none [-webkit-touch-callout:none] [-webkit-user-select:none]"
+              : "select-none [-webkit-touch-callout:none] [-webkit-user-select:none]"
+          }
+          style={
+            {
+              WebkitTouchCallout: "none",
+              WebkitUserSelect: "none",
+              userSelect: "none",
+              ...(dragging.current ? { touchAction: "none" } : {}),
+            } as CSSProperties
+          }
+          onContextMenu={(event) => event.preventDefault()}
           onPointerDown={(event) => {
             if (event.pointerType === "mouse" && event.button !== 0) return;
             begin(event.clientY, item.id, index);

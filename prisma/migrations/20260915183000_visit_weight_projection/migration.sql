@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "VisitType" ADD VALUE 'WEIGHT_PROJECTION';
