@@ -20,6 +20,7 @@ import { FarmIssuesView } from "@/components/FarmIssuesView";
 import { FarmLitterFormView } from "@/components/FarmLitterFormView";
 import { FarmLitterView } from "@/components/FarmLitterView";
 import { FarmVisitFormView } from "@/components/FarmVisitFormView";
+import { AllVisitsView } from "@/components/AllVisitsView";
 import { FarmVisitsView } from "@/components/FarmVisitsView";
 import { ReportsView } from "@/components/ReportsView";
 import { PlacementFormView } from "@/components/serviceForms/PlacementFormView";
@@ -46,7 +47,7 @@ import { selectFeed, selectFeedDelivery } from "@/lib/offline/selectFeed";
 import { selectGenerators } from "@/lib/offline/selectGenerators";
 import { selectIssue, selectIssues } from "@/lib/offline/selectIssues";
 import { selectLitter, selectLitterEvent } from "@/lib/offline/selectLitter";
-import { selectVisit, selectVisits } from "@/lib/offline/selectVisits";
+import { selectAllVisits, selectVisit, selectVisits } from "@/lib/offline/selectVisits";
 import type { PlacementForm, PrebroodForm, ServiceReportForm } from "@/lib/serviceForms/types";
 
 export { OfflineNavProvider, useOfflineNav } from "@/components/OfflineNavContext";
@@ -463,6 +464,10 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
         initialFarmId={data.initialFarmId}
       />
     );
+  }
+
+  if (pathname === "/visits") {
+    return <AllVisitsView model={selectAllVisits(snapshot)} />;
   }
 
   if (pathname === "/reports") {

@@ -4,6 +4,7 @@ import {
   calcPercentage,
 } from "@/lib/mortality/calculations";
 import { asDate, asDateKey, asDateRequired } from "@/lib/offline/dates";
+import { replicaVisitsForFieldLog } from "@/lib/offline/selectVisits";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import {
   buildFieldLogWeeks,
@@ -178,16 +179,9 @@ export function selectReports(
   };
 
   if (type === "field-log") {
-    const visits = (snapshot.visits ?? [])
-      .filter((visit) => inRange(visit.visitDate, from, to))
-      .map((visit) => ({
-        id: visit.id,
-        farmName: farmNameById.get(visit.farmId) ?? "Farm",
-        visitType: visit.visitType,
-        visitDate: visit.visitDate.slice(0, 10),
-        loggedAt: visit.loggedAt ?? `${visit.visitDate.slice(0, 10)}T12:00:00.000Z`,
-        notes: visit.notes,
-      }));
+    const visits = replicaVisitsForFieldLog(snapshot).filter((visit) =>
+      inRange(visit.visitDate, from, to),
+    );
     model.fieldLog = {
       weeks: buildFieldLogWeeks(visits, from, to),
       filterLabel: formatRangeLabel(from, to),

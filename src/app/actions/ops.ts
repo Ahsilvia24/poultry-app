@@ -35,6 +35,13 @@ function emptyToNull(value: FormDataEntryValue | null) {
   return s === "" ? null : s;
 }
 
+function parseLoggedAt(value: FormDataEntryValue | null) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return new Date();
+  const at = new Date(raw);
+  return Number.isNaN(at.getTime()) ? new Date() : at;
+}
+
 async function resolveVisitBirdAge(
   flockId: string | null | undefined,
   visitDateStr: string,
@@ -363,7 +370,7 @@ export async function createVisitAction(formData: FormData) {
     parsed.data.visitDate,
   );
 
-  await prisma.farmVisit.create({
+  const created = await prisma.farmVisit.create({
     data: {
       farmId: parsed.data.farmId,
       flockId: parsed.data.flockId,
@@ -382,13 +389,14 @@ export async function createVisitAction(formData: FormData) {
       notes: parsed.data.notes,
       followUpRequired: parsed.data.followUpRequired ?? false,
       followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
-      loggedAt: new Date(),
+      loggedAt: parseLoggedAt(formData.get("loggedAt")),
     },
   });
   revalidatePath(`/farms/${parsed.data.farmId}`);
   revalidatePath("/");
   revalidatePath("/reports");
-  return { success: true };
+  revalidatePath("/visits");
+  return { success: true, id: created.id };
 }
 
 export async function createIssueAction(formData: FormData) {
@@ -440,6 +448,26 @@ export async function deleteVisitAction(farmId: string, visitId: string) {
   revalidatePath(`/farms/${farmId}`);
   revalidatePath("/");
   revalidatePath("/reports");
+  revalidatePath("/visits");
+  return { success: true };
+}
+
+export async function reorderVisitAction(visitId: string, farmId: string, loggedAt: string) {
+  const user = await requireUser();
+  await assertFarmAccess(farmId, user.id!);
+  const at = new Date(loggedAt);
+  if (Number.isNaN(at.getTime())) return { error: "Invalid visit order" };
+  const visit = await prisma.farmVisit.findFirst({
+    where: { id: visitId, farmId },
+  });
+  if (!visit) return { error: "Visit not found" };
+  await prisma.farmVisit.update({
+    where: { id: visitId },
+    data: { loggedAt: at },
+  });
+  revalidatePath(`/farms/${farmId}`);
+  revalidatePath("/reports");
+  revalidatePath("/visits");
   return { success: true };
 }
 

@@ -16,6 +16,14 @@ export function FarmVisitsView({ model }: { model: VisitsPageModel }) {
     <div>
       <BackHeader href={`/farms/${model.farmId}`} backLabel="Farm" title="Logged Visits" />
 
+      <div className="mb-3 flex justify-end">
+        <ReplicaLink
+          href="/visits"
+          className="inline-flex min-h-11 items-center text-sm font-bold text-stone-800 underline"
+        >
+          All farms
+        </ReplicaLink>
+      </div>
       <ReplicaLink
         href={`/farms/${model.farmId}/visits/new`}
         className="mb-4 flex min-h-11 items-center justify-center rounded-[10px] bg-emerald-700 px-3 py-2.5 text-center text-[15px] font-bold text-white hover:bg-emerald-800"
@@ -31,7 +39,6 @@ export function FarmVisitsView({ model }: { model: VisitsPageModel }) {
             {visits.map((visit) => (
               <LoggedVisitTile
                 key={visit.id}
-                farmId={model.farmId}
                 visit={visit}
                 onDelete={() =>
                   remove(

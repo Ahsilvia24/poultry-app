@@ -676,7 +676,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
             followUpRequired: fields.followUpRequired === "on",
             followUpDate: emptyToNull(fields.followUpDate),
             notes: emptyToNull(fields.notes),
-            loggedAt: now,
+            loggedAt: emptyToNull(fields.loggedAt) ?? now,
           },
           ...snapshot.visits,
         ],
@@ -707,6 +707,20 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
         visits: (snapshot.visits ?? []).filter((visit) => visit.id !== visitId),
         serviceForms: (snapshot.serviceForms ?? []).map((form) =>
           form.visitId === visitId ? { ...form, visitId: null } : form,
+        ),
+      };
+    }
+    case "reorderVisits": {
+      const items = (write.extra as { items?: Array<{ id: string; loggedAt: string }> } | undefined)
+        ?.items ?? [];
+      if (!items.length) return snapshot;
+      const loggedAtById = new Map(items.map((item) => [item.id, item.loggedAt]));
+      return {
+        ...snapshot,
+        visits: (snapshot.visits ?? []).map((visit) =>
+          loggedAtById.has(visit.id)
+            ? { ...visit, loggedAt: loggedAtById.get(visit.id)! }
+            : visit,
         ),
       };
     }
@@ -1407,6 +1421,16 @@ export function coalesceFormWrite(
 ): import("@/lib/offline/types").OfflineOutboxItem[] {
   if (next.kind !== "formWrite") return [...items, next];
   const write = next.payload as OfflineFormWrite;
+
+  if (write.action === "reorderVisits") {
+    const idx = items.findIndex((item) => asFormWrite(item)?.action === "reorderVisits");
+    if (idx >= 0) {
+      const copy = items.slice();
+      copy[idx] = next;
+      return copy;
+    }
+    return [...items, next];
+  }
 
   if (write.action === "saveServiceDraft") {
     const idx = items.findIndex((item) => {

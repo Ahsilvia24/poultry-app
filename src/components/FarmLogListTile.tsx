@@ -12,6 +12,8 @@ export function FarmLogListTile({
   subtitle,
   ariaLabel,
   onDelete,
+  swipeDisabled = false,
+  suppressOpen = false,
 }: {
   rowId: string;
   href: string;
@@ -19,6 +21,8 @@ export function FarmLogListTile({
   subtitle: string;
   ariaLabel: string;
   onDelete: () => void;
+  swipeDisabled?: boolean;
+  suppressOpen?: boolean;
 }) {
   const navigate = useReplicaNavigate();
   const [gone, setGone] = useState(false);
@@ -28,6 +32,7 @@ export function FarmLogListTile({
   return (
     <SwipeCommitDeleteRow
       rowId={rowId}
+      disabled={swipeDisabled}
       onDelete={() => {
         setGone(true);
         onDelete();
@@ -39,7 +44,10 @@ export function FarmLogListTile({
           tabIndex={0}
           className="block min-w-0 cursor-pointer"
           aria-label={ariaLabel}
-          onClick={() => navigate(href)}
+          onClick={() => {
+            if (suppressOpen) return;
+            navigate(href);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
               event.preventDefault();

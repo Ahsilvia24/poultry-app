@@ -67,6 +67,12 @@ const FIELD_LOG_VISIT_TYPE_LABELS: Record<string, string> = {
 };
 
 /** Field-log labels: Last Feed Order shortens to LFO. Other shows the typed reason. */
+/** Stable intra-day timestamps the Field Log and All Visits list share. */
+export function loggedAtForFieldLogOrder(visitDate: string, index: number): string {
+  const [y, m, d] = visitDate.slice(0, 10).split("-").map(Number);
+  return new Date(Date.UTC(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, Math.max(0, index))).toISOString();
+}
+
 export function fieldLogVisitTypeLabel(visitType: string, notes?: string | null): string {
   if (visitType === "OTHER") {
     const reason = notes?.trim();

@@ -104,7 +104,7 @@ assert.match(selectReports, /displayByHouseByDate/);
 assert.match(selectReports, /displayCumulativeByAge/);
 assert.match(selectReports, /displayFarmName/);
 assert.match(selectReports, /allFarms/);
-assert.match(selectReports, /notes: visit.notes/);
+assert.match(selectReports, /replicaVisitsForFieldLog/);
 
 const { selectReports: buildReports } = await import("../src/lib/offline/selectReports.ts");
 const { fieldLogVisitTypeLabel } = await import("../src/lib/reports/field-log.ts");

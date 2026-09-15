@@ -17,12 +17,15 @@ assert.equal(existsSync(join(root, "src/components/FarmVisitsSection.tsx")), fal
 
 const { applyFormWrite } = await import(join(root, "src/lib/offline/applyWrites.ts"));
 const { isReplicaHref } = await import(join(root, "src/lib/offline/hasFarmGraph.ts"));
-const { selectVisit, selectVisits } = await import(join(root, "src/lib/offline/selectVisits.ts"));
+const { selectAllVisits, selectVisit, selectVisits } = await import(
+  join(root, "src/lib/offline/selectVisits.ts")
+);
 
 assert.equal(isReplicaHref("/farms/abc/visits"), true);
 assert.equal(isReplicaHref("/farms/abc/visits/new"), true);
 assert.equal(isReplicaHref("/farms/abc/visits/visit-1"), true);
 assert.equal(isReplicaHref("/farms/new/visits"), false);
+assert.equal(isReplicaHref("/visits"), true);
 
 function snapshot() {
   return {
@@ -108,6 +111,7 @@ assert.equal(listed.activeFlockId, "flock-1");
 assert.equal(listed.activePlacementDate, "2026-09-01");
 assert.equal(listed.visits.length, 10, "logged visits page lists every visit, not a farm-page slice");
 assert.equal(listed.visits[0].id, "visit-10");
+assert.equal(listed.visits[0].farmName, "Oak Ridge");
 assert.equal(listed.visits[0].visitDate, "2026-09-10");
 assert.equal(listed.visits.at(-1)?.id, "visit-1");
 
@@ -158,7 +162,11 @@ assert.doesNotMatch(links, /#visits/);
 
 const tile = read("src/components/LoggedVisitTile.tsx");
 assert.match(tile, /FarmLogListTile/);
+assert.match(tile, /fieldLogVisitTypeLabel/);
+assert.match(tile, /visit\.farmName/);
 assert.doesNotMatch(tile, /<ReplicaLink/);
+assert.doesNotMatch(tile, /formatServiceShortDate/);
+assert.doesNotMatch(tile, /VISIT_TYPE_LABELS/);
 
 const swipe = read("src/components/SwipeCommitDeleteRow.tsx");
 assert.doesNotMatch(swipe, /closest\("a, button/);
@@ -170,6 +178,8 @@ assert.match(list, /LoggedVisitTile/);
 assert.match(list, /space-y-2.5/);
 assert.match(list, /useHiddenReplicaDeletes/);
 assert.match(list, /deleteVisit/);
+assert.match(list, /href="\/visits"/);
+assert.match(list, /All farms/);
 assert.doesNotMatch(list, /startDelete/);
 assert.doesNotMatch(list, /startTransition/);
 

@@ -204,6 +204,7 @@ export type OfflineFormWriteAction =
   | "createVisit"
   | "updateVisit"
   | "deleteVisit"
+  | "reorderVisits"
   | "createIssue"
   | "updateIssue"
   | "deleteIssue"

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui";
 import { CopyShareRow } from "@/components/CopyShareIcons";
+import { ReplicaLink } from "@/components/ReplicaLink";
 import { downloadReportPdf } from "@/lib/exports/pdf";
 import {
   FIELD_LOG_FARM_NAME_CHARS,
@@ -81,14 +82,22 @@ export function FieldLogReport({
           <p className="text-base font-extrabold text-stone-900">Field Log</p>
           <p className="text-sm text-stone-600">{filterLabel}</p>
         </div>
-        <CopyShareRow
-          onCopy={() => void copy()}
-          onShare={sharePdf}
-          copyDisabled={!hasFarms}
-          shareDisabled={!hasFarms}
-          copyLabel="Copy field log"
-          shareLabel="Share field log PDF"
-        />
+        <div className="flex flex-wrap items-center gap-4">
+          <ReplicaLink
+            href="/visits"
+            className="inline-flex min-h-11 items-center text-sm font-bold text-stone-800 underline"
+          >
+            All Visits
+          </ReplicaLink>
+          <CopyShareRow
+            onCopy={() => void copy()}
+            onShare={sharePdf}
+            copyDisabled={!hasFarms}
+            shareDisabled={!hasFarms}
+            copyLabel="Copy field log"
+            shareLabel="Share field log PDF"
+          />
+        </div>
       </div>
       {notice ? <p className="mb-3 text-sm font-semibold text-red-800">{notice}</p> : null}
 

@@ -23,6 +23,7 @@ export function SwipeCommitDeleteRow({
   deleteLabel = "Delete",
   className,
   transparent = false,
+  disabled = false,
 }: {
   rowId: string;
   onDelete: () => void;
@@ -33,6 +34,7 @@ export function SwipeCommitDeleteRow({
   className?: string;
   /** Sit on the page background instead of a white card. */
   transparent?: boolean;
+  disabled?: boolean;
 }) {
   const [swipeX, setSwipeX] = useState(0);
   const [rowWidth, setRowWidth] = useState(0);
@@ -166,10 +168,11 @@ export function SwipeCommitDeleteRow({
         )}
         style={{ transform: `translateX(${swipeX}px)`, touchAction: "pan-y" }}
         onTouchStart={(e) => {
-          if (isActionTarget(e.target)) return;
+          if (disabled || isActionTarget(e.target)) return;
           begin(e.touches[0]?.clientX ?? 0, e.touches[0]?.clientY ?? 0);
         }}
         onPointerDown={(e) => {
+          if (disabled) return;
           if (e.pointerType === "touch") return;
           if (e.pointerType === "mouse" && e.button !== 0) return;
           if (isActionTarget(e.target)) return;

@@ -22,6 +22,7 @@ import {
   createLitterEventAction,
   createVisitAction,
   deleteFeedDeliveryAction,
+  reorderVisitAction,
   deleteGeneratorLogAction,
   deleteIssueAction,
   deleteLitterEventAction,
@@ -116,13 +117,32 @@ export async function flushFormWrite(
       return fromAction(await updateHouseAction(farmId, id, formData), aliases);
     case "deleteHouse":
       return fromAction(await deleteHouseAction(farmId, id), aliases);
-    case "createVisit":
-      return fromAction(await createVisitAction(formData), aliases);
+    case "createVisit": {
+      const result = await createVisitAction(formData);
+      const error = actionError(result);
+      if (error) return { ok: false, error };
+      const serverId = (result as { id?: string } | undefined)?.id;
+      const next: IdAliases = { ...aliases };
+      if (original.id && serverId && original.id !== serverId) next[original.id] = serverId;
+      return { ok: true, aliases: next };
+    }
     case "updateVisit":
       return fromAction(await updateVisitAction(id, formData), aliases);
     case "deleteVisit":
       await deleteVisitAction(farmId, id);
-      return { ok: true };
+      return { ok: true, aliases };
+    case "reorderVisits": {
+      const items =
+        (write.extra as { items?: Array<{ id: string; farmId: string; loggedAt: string }> } | undefined)
+          ?.items ?? [];
+      for (const item of items) {
+        if (isLocalRecordId(item.id)) continue;
+        const result = await reorderVisitAction(item.id, item.farmId, item.loggedAt);
+        const error = actionError(result);
+        if (error) return { ok: false, error };
+      }
+      return { ok: true, aliases };
+    }
     case "createIssue":
       return fromAction(await createIssueAction(formData), aliases);
     case "updateIssue":
