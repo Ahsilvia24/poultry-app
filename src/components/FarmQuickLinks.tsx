@@ -14,9 +14,11 @@ type FlockOption = { id: string; flockNumber: string; ageDays: number };
 export function FarmQuickLinks({
   farmId,
   completeFlocks = [],
+  onAddFlock,
 }: {
   farmId: string;
   completeFlocks?: FlockOption[];
+  onAddFlock?: () => void;
 }) {
   const router = useRouter();
   const serviceHref = `/farms/${farmId}/service`;
@@ -44,7 +46,13 @@ export function FarmQuickLinks({
     feedHref,
   ]);
 
-  const links: Array<{ key: string; href: string; label: string; external?: boolean }> = [
+  const links: Array<{
+    key: string;
+    href: string;
+    label: string;
+    external?: boolean;
+    action?: () => void;
+  }> = [
     { key: "service", href: serviceHref, label: "Service Farm", external: true },
     { key: "generators", href: generatorsHref, label: "Generator", external: true },
     { key: "visits", href: visitsHref, label: "Visits", external: true },
@@ -52,12 +60,19 @@ export function FarmQuickLinks({
     { key: "litter", href: litterHref, label: "Litter", external: true },
     { key: "feed", href: feedHref, label: "Feed", external: true },
     { key: "lfo", href: `/lfo?farmId=${farmId}`, label: "LFO", external: true },
-    { key: "add-flock", href: "#add-flock", label: "Add Flock" },
+    { key: "add-flock", href: "", label: "Add Flock", action: onAddFlock },
   ];
 
   // Append End Flock after Add Flock when there is an active flock.
   const items: Array<
-    | { kind: "link"; key: string; href: string; label: string; external?: boolean }
+    | {
+        kind: "link";
+        key: string;
+        href: string;
+        label: string;
+        external?: boolean;
+        action?: () => void;
+      }
     | { kind: "complete"; key: string }
   > = [];
   for (const link of links) {
@@ -82,7 +97,19 @@ export function FarmQuickLinks({
               />
             );
           }
-          return item.external ? (
+          if (item.key === "add-flock") {
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => item.action?.()}
+                className={linkClass}
+              >
+                {item.label}
+              </button>
+            );
+          }
+          return (
             <ReplicaLink
               key={item.key}
               href={item.href}
@@ -93,10 +120,6 @@ export function FarmQuickLinks({
             >
               {item.label}
             </ReplicaLink>
-          ) : (
-            <a key={item.key} href={item.href} className={linkClass}>
-              {item.label}
-            </a>
           );
         })}
       </div>
