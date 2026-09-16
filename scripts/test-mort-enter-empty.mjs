@@ -8,7 +8,7 @@ const read = (rel) => readFileSync(join(root, rel), "utf8");
 
 const {
   firstUnfilledAfterLastFilled,
-  nextEmptyInColumn,
+  nextRowInColumn,
   displayCullCount,
   displayMortalityCount,
   needsEntry,
@@ -49,16 +49,10 @@ const caughtUp = [
 ];
 assert.equal(firstUnfilledAfterLastFilled(caughtUp, asOf), null, "do not land on a filled today");
 
-assert.equal(nextEmptyInColumn(throughTwo, "mortality", 2, asOf)?.age, 3);
-assert.equal(nextEmptyInColumn(throughTwo, "mortality", 1, asOf)?.age, 3, "Enter skips a filled 0");
-assert.equal(nextEmptyInColumn(caughtUp, "mortality", 6, asOf), null, "Enter closes when caught up");
-
-const cullsCol = [
-  row(1, "2026-09-11", "2", "1"),
-  row(2, "2026-09-12", "1", ""),
-  row(3, "2026-09-13", "", "4"),
-];
-assert.equal(nextEmptyInColumn(cullsCol, "culls", 1, asOf)?.age, 2);
+assert.equal(nextRowInColumn(throughTwo, 2)?.age, 3);
+assert.equal(nextRowInColumn(throughTwo, 1)?.age, 2, "Enter steps one box even onto a typed 0");
+assert.equal(nextRowInColumn(caughtUp, 6), null, "Enter closes after the last row");
+assert.equal(nextRowInColumn(caughtUp, 1)?.age, 2, "Enter does not skip a filled box");
 
 assert.equal(displayCullCount(0), "");
 assert.equal(displayCullCount(3), "3");
@@ -122,10 +116,18 @@ assert.equal(prefilled[0]?.mortalityToDate, "");
 assert.deepEqual(prefilled[0]?.weeks, ["", "", "", "", "", "", "", ""]);
 
 const form = read("src/components/MortalityEntryForm.tsx");
-assert.match(form, /nextEmptyInColumn/);
+assert.match(form, /nextRowInColumn/);
+assert.doesNotMatch(form, /nextEmptyInColumn/);
 assert.match(form, /firstUnfilledAfterLastFilled\(built, asOfDateKey\)/);
 assert.doesNotMatch(form, /built\.find\(\(r\) => r\.mortalityDate === asOfDateKey\)/);
 assert.match(form, /displayCullCount/);
 assert.match(form, /displayMortalityCount/);
+assert.match(form, /setReplaceOnType\(value === ""\)/);
+assert.doesNotMatch(form, /setReplaceOnType\(value === "" \|\| value === "0"\)/);
+
+const mobile = read("mobile/app/(tabs)/mortality.tsx");
+assert.match(mobile, /nextRowInColumn/);
+assert.doesNotMatch(mobile, /nextEmptyInColumn/);
+assert.match(mobile, /setSelection\(\{ start: len, end: len \}\)/);
 
 console.log("mort-enter-empty: ok");

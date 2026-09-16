@@ -1,6 +1,4 @@
-/** Mortality / culls cell navigation — next empty box, not the next age slot. */
-
-export type MortalityNavField = "culls" | "mortality";
+/** Mortality / culls cell navigation — open on the next unfilled box; Enter steps one row. */
 
 export type MortalityNavRow = {
   age: number;
@@ -44,27 +42,9 @@ export function firstUnfilledAfterLastFilled(
   return null;
 }
 
-export function cellEmpty(row: MortalityNavRow, field: MortalityNavField) {
-  return field === "culls" ? row.cullCount === "" : row.dailyMortalityCount === "";
-}
-
-/**
- * Next empty box in this column after `afterAge`, through today.
- * Skips boxes that already have a value so Enter lands on the next unfilled cell.
- */
-export function nextEmptyInColumn(
-  rows: MortalityNavRow[],
-  field: MortalityNavField,
-  afterAge: number,
-  asOfDateKey: string,
-): MortalityNavRow | null {
-  return (
-    rows.find((r) => {
-      if (r.age <= afterAge) return false;
-      if (r.mortalityDate > asOfDateKey) return false;
-      return cellEmpty(r, field);
-    }) ?? null
-  );
+/** Immediate next age slot in the column — even when that box already has a value. */
+export function nextRowInColumn(rows: MortalityNavRow[], afterAge: number): MortalityNavRow | null {
+  return rows.find((r) => r.age === afterAge + 1) ?? null;
 }
 
 /** Culls default to 0 in the DB when left blank — show those as empty, not "0". */

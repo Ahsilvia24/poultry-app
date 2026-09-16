@@ -24,7 +24,7 @@ assert.match(mort, /NumpadEnter/);
 assert.match(mort, /Backspace/);
 assert.match(mort, /onEnterRef\.current\(\)/);
 assert.match(mort, /onBackspaceRef\.current\(\)/);
-assert.match(mort, /nextEmptyInColumn/);
+assert.match(mort, /nextRowInColumn/);
 assert.match(mort, /firstUnfilledAfterLastFilled\(built, asOfDateKey\)/);
 assert.doesNotMatch(mort, /built\.find\(\(r\) => r\.mortalityDate === asOfDateKey\)/);
 assert.match(mort, /scrollMortalityCellAboveKeypad/);

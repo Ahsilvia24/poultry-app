@@ -16,7 +16,7 @@ import {
   firstUnfilledAfterLastFilled,
   mortalityEntered,
   needsEntry,
-  nextEmptyInColumn,
+  nextRowInColumn,
 } from "@/lib/mortality/entryNav";
 import { mortalityGridMaxAge } from "@/lib/weeklyMortalityLayout";
 import { formatNumber } from "@/lib/utils";
@@ -540,7 +540,9 @@ export function MortalityEntryForm({
     const row = rowsRef.current.find((r) => r.age === age);
     const value = field === "culls" ? row?.cullCount ?? "" : row?.dailyMortalityCount ?? "";
     setMortField({ kind: field, age });
-    setReplaceOnType(value === "" || value === "0");
+    // Empty box: first digit starts a new number. Filled box: caret is at the
+    // far right so Backspace deletes the last digit.
+    setReplaceOnType(value === "");
     setExpandedWeeks((prev) => {
       if (prev.has(week)) return prev;
       const next = new Set(prev);
@@ -593,12 +595,7 @@ export function MortalityEntryForm({
   function onEnter() {
     if (!activeField) return;
     flushSave();
-    const next = nextEmptyInColumn(
-      rowsRef.current,
-      activeField.kind,
-      activeField.age,
-      asOfDateKey,
-    );
+    const next = nextRowInColumn(rowsRef.current, activeField.age);
     if (next) {
       focusAgeInColumn(activeField.kind, next.age);
     } else {

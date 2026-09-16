@@ -115,15 +115,8 @@ function displayMortalityCount(count: number | null | undefined): string {
   return String(count);
 }
 
-function nextEmptyInColumn(rows: DayRow[], kind: FieldKind, afterAge: number, today: string): DayRow | null {
-  return (
-    rows.find((r) => {
-      if (r.age <= afterAge) return false;
-      if (r.mortalityDate > today) return false;
-      const value = kind === "culls" ? r.cullCount : r.dailyMortalityCount;
-      return value === "";
-    }) ?? null
-  );
+function nextRowInColumn(rows: DayRow[], afterAge: number): DayRow | null {
+  return rows.find((r) => r.age === afterAge + 1) ?? null;
 }
 
 type ActiveField = {
@@ -431,7 +424,7 @@ export default function MortalityScreen() {
           const field = { kind: "mort" as const, age };
           activeFieldRef.current = field;
           setActiveField(field);
-          setSelection({ start: 0, end: 0 });
+          setSelection({ start: 0, end: 0 }); // empty target — caret at end of blank
           input.focus();
           queueWeekScroll(age);
           return;
@@ -770,11 +763,8 @@ export default function MortalityScreen() {
     activeFieldRef.current = field;
     setActiveField(field);
     const value = getFieldValue(kind, age);
-    if (value && Number(value) !== 0) {
-      setSelection({ start: value.length, end: value.length });
-    } else {
-      setSelection({ start: 0, end: value.length });
-    }
+    const len = value.length;
+    setSelection({ start: len, end: len });
     const key = fieldKey(kind, age);
     const attempt = (triesLeft: number) => {
       requestAnimationFrame(() => {
@@ -797,13 +787,8 @@ export default function MortalityScreen() {
     activeFieldRef.current = field;
     setActiveField(field);
     queueWeekScroll(age);
-    if (value && Number(value) !== 0) {
-      const len = value.length;
-      // Place caret at the far right for existing non-zero values
-      setSelection({ start: len, end: len });
-    } else {
-      setSelection({ start: 0, end: value.length });
-    }
+    const len = value.length;
+    setSelection({ start: len, end: len });
   }
 
   function onDigit(d: string) {
@@ -858,7 +843,7 @@ export default function MortalityScreen() {
     if (!activeField) return;
     flushSave();
     const { kind, age } = activeField;
-    const next = nextEmptyInColumn(rowsRef.current, kind, age, todayKey());
+    const next = nextRowInColumn(rowsRef.current, age);
     if (next) {
       focusField(kind, next.age);
     } else {
