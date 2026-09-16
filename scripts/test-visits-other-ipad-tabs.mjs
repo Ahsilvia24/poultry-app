@@ -17,6 +17,7 @@ const {
 } = await import(join(root, "src/lib/visits/visitPlace.ts"));
 const { applyFormWrite } = await import(join(root, "src/lib/offline/applyWrites.ts"));
 const { selectFarmTiles } = await import(join(root, "src/lib/offline/selectFarms.ts"));
+const { selectAllVisits } = await import(join(root, "src/lib/offline/selectVisits.ts"));
 const { isReplicaHref } = await import(join(root, "src/lib/offline/hasFarmGraph.ts"));
 
 assert.equal(normalizeVisitPlaceName("  Feed   Store  "), "Feed Store");
@@ -67,6 +68,29 @@ const snapshot = {
   followUpCompletions: [],
 };
 
+const withManual = {
+  ...snapshot,
+  farms: [
+    ...snapshot.farms,
+    {
+      ...snapshot.farms[0],
+      id: "farm-manual",
+      farmName: "Manual",
+      farmNumber: null,
+      isActive: false,
+      growerName: "",
+    },
+  ],
+};
+assert.equal(
+  selectAllVisits(withManual).farms.some((farm) => farm.farmName === "Manual"),
+  false,
+);
+assert.equal(
+  selectAllVisits(withManual).farms.some((farm) => farm.farmName === "Oak Ridge"),
+  true,
+);
+
 const afterPlace = applyFormWrite(snapshot, {
   action: "createFarm",
   id: "local-11111111-1111-1111-1111-111111111111",
@@ -82,7 +106,10 @@ assert.equal(findVisitPlaceFarm(afterPlace.farms, "feed store")?.id, placeFarm.i
 
 const picker = read("src/components/AllVisitsView.tsx");
 assert.match(picker, /ENTER_OTHER_FARM_VALUE/);
-assert.match(picker, />Enter Other</);
+assert.match(picker, />Other</);
+assert.doesNotMatch(picker, />Enter Other</);
+assert.doesNotMatch(picker, /Feed store or other place/);
+assert.match(picker, /placeholder="Enter Other"/);
 assert.match(picker, /all-visits-other-place/);
 assert.match(picker, /visitPlaceFormHref/);
 
