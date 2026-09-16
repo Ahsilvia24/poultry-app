@@ -61,18 +61,17 @@ describe("manualProjectedWeightLbs", () => {
 
 describe("formatManualWeightCopy", () => {
   it("copies catch-day WP and uses ## for empty fields", () => {
-    assert.equal(
-      formatManualWeightCopy({
-        catchWeightLbs: 8.86,
-        tf: "",
-        inv: "",
-        chc: "",
-        cr: "",
-        dtk: "",
-        efc: "",
-      }),
-      "WP: 8.86 TFD: ## INV: ## CHC: ## CR: ## DTK: ## EFC: ##",
-    );
+    const line = formatManualWeightCopy({
+      catchWeightLbs: 8.86,
+      tf: "",
+      inv: "",
+      chc: "",
+      cr: "",
+      dtk: "",
+      efc: "",
+    });
+    assert.equal(line, "WP: 8.86 TFD: ## INV: ## CHC: ## CR: ## DTK: ## EFC: ##");
+    assert.notEqual(line, encodeURIComponent(line));
   });
 
   it("uses ## for missing catch weight and keeps typed field values", () => {

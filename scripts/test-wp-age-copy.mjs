@@ -39,9 +39,31 @@ assert.match(panel, /CopyIconButton/);
 assert.match(panel, /onCopy/);
 assert.match(panel, />\s*Top\s*</);
 
-assert.match(section, /navigator\.clipboard\.writeText/);
+assert.match(section, /copyPlainText/);
+assert.doesNotMatch(section, /encodeURIComponent/);
+assert.doesNotMatch(section, /navigator\.clipboard\.writeText/);
 assert.match(section, /copyLabel="Copy custom weight projection"/);
 assert.match(section, /<WeightProjectionManualTile onCopyTextChange=\{setCopyText\} \/>/);
+
+const copyHelper = read("src/lib/copyPlainText.ts");
+assert.match(copyHelper, /copyWithTextarea/);
+assert.match(copyHelper, /text\/plain/);
+assert.doesNotMatch(copyHelper, /encodeURIComponent/);
+assert.match(copyHelper, /decodeURIComponent/);
+
+const { plainClipboardText, decodeCopiedLine } = await import(
+  join(root, "src/lib/copyPlainText.ts")
+);
+const readable = "WP: 6.33 TFD: 2080000 INV: 150000 CHC: 258000 CR: 0.45 DTK: 8 EFC: 1.75";
+assert.equal(
+  decodeCopiedLine("WP:%206.33%20TFD%3A%202080000%20INV%3A%20150000%20CHC%3A%20258000%20CR%3A%200.45%20DTK%3A%208%20EFC%3A%201.75"),
+  readable,
+);
+const clipped = plainClipboardText(readable);
+assert.match(clipped, /WP: 6\.33 TFD: 2080000 INV: 150000/);
+assert.doesNotMatch(clipped, /%[0-9A-Fa-f]{2}/);
+assert.ok(clipped.startsWith("\u2060"));
+assert.doesNotMatch(clipped, /^[A-Za-z][A-Za-z0-9+.-]*:/);
 
 const { formatManualWeightCopy } = await import(
   join(root, "src/lib/weight/manualProjection.ts")

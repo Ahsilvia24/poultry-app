@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { copyPlainText } from "@/lib/copyPlainText";
 import { ToolsSectionPanel } from "@/components/ToolsSectionPanel";
 import { WeightProjectionManualTile } from "@/components/WeightProjectionManualTile";
 
@@ -10,7 +11,7 @@ export function CustomWeightProjectionSection() {
   const onCopy = useCallback(async () => {
     const text = copyText.trim();
     if (!text) return;
-    await navigator.clipboard.writeText(text);
+    await copyPlainText(text);
   }, [copyText]);
 
   return (
