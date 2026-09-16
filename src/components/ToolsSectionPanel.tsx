@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CopyIconButton } from "@/components/CopyShareIcons";
 import { Card } from "@/components/ui";
 
 export function ToolsSectionPanel({
@@ -11,6 +12,8 @@ export function ToolsSectionPanel({
   footer,
   defaultOpen = true,
   showTop = true,
+  onCopy,
+  copyLabel = "Copy",
 }: {
   hashId: string;
   title: string;
@@ -21,9 +24,13 @@ export function ToolsSectionPanel({
   /** When false, section stays hidden until opened via quick link. */
   defaultOpen?: boolean;
   showTop?: boolean;
+  /** When set, a copy icon is shown immediately left of Top. */
+  onCopy?: () => void | Promise<void>;
+  copyLabel?: string;
 }) {
   const hash = `#${hashId}`;
   const [open, setOpen] = useState(defaultOpen);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     function syncFromHash() {
@@ -33,6 +40,12 @@ export function ToolsSectionPanel({
     window.addEventListener("hashchange", syncFromHash);
     return () => window.removeEventListener("hashchange", syncFromHash);
   }, [hash]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(t);
+  }, [copied]);
 
   function snapToTop() {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -48,14 +61,27 @@ export function ToolsSectionPanel({
             <h2 className="text-[20px] font-bold text-stone-900">{title}</h2>
             {subtitle ? <p className="mt-1 text-sm text-stone-500">{subtitle}</p> : null}
           </div>
-          {showTop ? (
-            <button
-              type="button"
-              onClick={snapToTop}
-              className="shrink-0 text-sm font-semibold text-stone-500 hover:text-stone-800"
-            >
-              Top
-            </button>
+          {onCopy || showTop ? (
+            <div className="flex shrink-0 items-center">
+              {onCopy ? (
+                <CopyIconButton
+                  label={copyLabel}
+                  copied={copied}
+                  onClick={() => {
+                    void Promise.resolve(onCopy()).then(() => setCopied(true));
+                  }}
+                />
+              ) : null}
+              {showTop ? (
+                <button
+                  type="button"
+                  onClick={snapToTop}
+                  className="shrink-0 text-sm font-semibold text-stone-500 hover:text-stone-800"
+                >
+                  Top
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </div>
         {children ? <div className="mt-4">{children}</div> : null}

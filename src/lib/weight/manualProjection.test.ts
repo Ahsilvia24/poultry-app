@@ -4,6 +4,7 @@ import { catchWeightBandFromLbs } from "./projections.ts";
 import {
   DEFAULT_CONSUMPTION_RATE,
   DEFAULT_EXPECTED_FEED_CONVERSION,
+  formatManualWeightCopy,
   manualProjectedWeightLbs,
   resolveDefaultConsumptionRate,
   resolveDefaultEfc,
@@ -55,5 +56,37 @@ describe("manualProjectedWeightLbs", () => {
     assert.equal(manualProjectedWeightLbs({ ...base, currentHeadCount: 0 }), null);
     assert.equal(manualProjectedWeightLbs({ ...base, expectedFeedConversion: 0 }), null);
     assert.equal(manualProjectedWeightLbs({ ...base, inventoryLbs: 60_000 }), null);
+  });
+});
+
+describe("formatManualWeightCopy", () => {
+  it("copies catch-day WP and uses ## for empty fields", () => {
+    assert.equal(
+      formatManualWeightCopy({
+        catchWeightLbs: 8.86,
+        tf: "",
+        inv: "",
+        chc: "",
+        cr: "",
+        dtk: "",
+        efc: "",
+      }),
+      "WP: 8.86 TFD: ## INV: ## CHC: ## CR: ## DTK: ## EFC: ##",
+    );
+  });
+
+  it("uses ## for missing catch weight and keeps typed field values", () => {
+    assert.equal(
+      formatManualWeightCopy({
+        catchWeightLbs: null,
+        tf: "50000",
+        inv: "5000",
+        chc: "20000",
+        cr: "0.45",
+        dtk: "8",
+        efc: "1.75",
+      }),
+      "WP: ## TFD: 50000 INV: 5000 CHC: 20000 CR: 0.45 DTK: 8 EFC: 1.75",
+    );
   });
 });
