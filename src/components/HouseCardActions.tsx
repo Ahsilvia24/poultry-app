@@ -32,17 +32,6 @@ export type HouseEditValues = {
   flockNumber?: string | null;
 };
 
-function addDaysKey(dateKey: string, days: number) {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  if (!y || !m || !d) return dateKey;
-  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
-  dt.setDate(dt.getDate() + days);
-  const yy = dt.getFullYear();
-  const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  const dd = String(dt.getDate()).padStart(2, "0");
-  return `${yy}-${mm}-${dd}`;
-}
-
 function PropagateCheck({
   name,
   checked,
@@ -145,16 +134,6 @@ export function HouseCardActions({
     if (pending) return;
     onModeChange("idle");
     setError(null);
-  }
-
-  function onPlacementChange(next: string) {
-    setPlacementDate(next);
-    if (!next) return;
-    const oldDefault = placementDate ? addDaysKey(placementDate, 52) : "";
-    const catchWasDefault = !catchDate || catchDate === oldDefault;
-    if (catchWasDefault) {
-      setCatchDate(addDaysKey(next, 52));
-    }
   }
 
   function onSave(formData: FormData) {
@@ -272,7 +251,7 @@ export function HouseCardActions({
                         name="placementDate"
                         label="Placement date"
                         value={placementDate}
-                        onChange={onPlacementChange}
+                        onChange={setPlacementDate}
                         variant="settings"
                         chipClassName="w-[6rem]"
                       />

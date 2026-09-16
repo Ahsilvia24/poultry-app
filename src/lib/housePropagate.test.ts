@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { housesInPropagateRange, isHouseInPropagateRange } from "./housePropagate.ts";
+import {
+  housesInPropagateRange,
+  isHouseInPropagateRange,
+  remainingHousesOnSameFarm,
+} from "./housePropagate.ts";
 
 const farm8 = [1, 2, 3, 4, 5, 6, 7, 8].map((houseNumber) => ({
   id: `h${houseNumber}`,
@@ -34,6 +38,24 @@ describe("housesInPropagateRange", () => {
     assert.deepEqual(
       housesInPropagateRange(farm8, 4).map((h) => h.houseNumber),
       [4, 5, 6, 7, 8],
+    );
+  });
+});
+
+describe("remainingHousesOnSameFarm", () => {
+  it("never includes another farm even when house numbers match", () => {
+    const houses = [
+      { id: "a1", farmId: "farm-a", houseNumber: 1, deletedAt: null },
+      { id: "a2", farmId: "farm-a", houseNumber: 2, deletedAt: null },
+      { id: "a3", farmId: "farm-a", houseNumber: 3, deletedAt: null },
+      { id: "b2", farmId: "farm-b", houseNumber: 2, deletedAt: null },
+      { id: "b3", farmId: "farm-b", houseNumber: 3, deletedAt: null },
+    ];
+    assert.deepEqual(
+      remainingHousesOnSameFarm(houses, { id: "a1", farmId: "farm-a", houseNumber: 1 }).map(
+        (h) => h.id,
+      ),
+      ["a2", "a3"],
     );
   });
 });
