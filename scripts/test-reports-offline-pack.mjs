@@ -18,9 +18,8 @@ const visitForm = read("src/components/FarmOpsForms.tsx");
 assert.match(visitForm, /visitType === "OTHER"/);
 assert.match(visitForm, /name="notes"/);
 assert.match(visitForm, /Reason for this visit/);
-const reasonAt = visitForm.indexOf("Reason for this visit");
-const ageAt = visitForm.indexOf("Bird age (days)");
-assert.ok(reasonAt > -1 && ageAt > reasonAt, "reason field sits above bird age");
+assert.doesNotMatch(visitForm, /Bird age \(days\)/);
+assert.doesNotMatch(visitForm, /Bird condition/);
 
 const mobileVisit = read("mobile/src/components/VisitFormScreen.tsx");
 assert.match(mobileVisit, /Enter a reason for this visit/);

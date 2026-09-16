@@ -103,7 +103,7 @@ assert.match(visits, /fromAllVisits/);
 
 const form = read("src/components/FarmVisitFormView.tsx");
 assert.match(form, /nav\.navigate\(listHref\)/);
-assert.match(form, /fromAllVisits \? "\/visits"/);
+assert.match(form, /fromAllVisits \|\| placeName \? "\/visits"/);
 
 const pdf = read("src/lib/exports/pdf.ts");
 assert.match(pdf, /downloadPdfBytes/);

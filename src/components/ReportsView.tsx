@@ -19,6 +19,7 @@ import { defaultFieldLogRange } from "@/lib/reports/field-log";
 import { mergeReportsInitial, rememberReportsHref } from "@/lib/reports/lastHref";
 import { reportsHref, resolveReportType, type ReportTypeKey } from "@/lib/reports/types";
 import type { OfflineSnapshot } from "@/lib/offline/types";
+import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 import {
   defaultGeneratorRange,
   defaultMortalityRange,
@@ -29,7 +30,7 @@ import {
 function firstFarmId(snapshot: OfflineSnapshot) {
   return (
     (snapshot.farms ?? [])
-      .filter((farm) => !farm.deletedAt)
+      .filter((farm) => !farm.deletedAt && !isVisitPlaceFarm(farm))
       .slice()
       .sort((a, b) => a.farmName.localeCompare(b.farmName))[0]?.id ?? ""
   );

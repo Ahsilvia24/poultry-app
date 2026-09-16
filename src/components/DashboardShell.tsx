@@ -20,7 +20,7 @@ function ShellBody({ children }: { children: React.ReactNode }) {
       <main
         className={cn(
           "mx-auto max-w-7xl px-4 py-4 md:py-6",
-          keypadOpen ? "pb-4" : "pb-28 md:pb-8",
+          keypadOpen ? "pb-4" : "pb-28",
         )}
       >
         <OfflineRoutes>{children}</OfflineRoutes>

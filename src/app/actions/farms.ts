@@ -173,6 +173,7 @@ export async function createFarmAction(
   const parsed = createFarmSchema.safeParse({
     farmName: formData.get("farmName"),
     growerName: emptyToNull(formData.get("growerName")),
+    farmNumber: emptyToNull(formData.get("farmNumber")),
     notes: emptyToNull(formData.get("notes")),
     numberOfHouses: formData.get("numberOfHouses") || 0,
     numberOfGenerators: formData.get("numberOfGenerators") || null,
@@ -188,6 +189,7 @@ export async function createFarmAction(
         userId: requireUserId(user.id),
         farmName: parsed.data.farmName,
         growerName: parsed.data.growerName?.trim() || "",
+        farmNumber: parsed.data.farmNumber,
         notes: parsed.data.notes,
         numberOfHouses: houseCount,
         numberOfGenerators: parsed.data.numberOfGenerators ?? null,

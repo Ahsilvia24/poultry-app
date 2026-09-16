@@ -11,15 +11,17 @@ export function FarmVisitFormView({
   placementDate,
   visit,
   fromAllVisits = false,
+  placeName,
 }: {
   farmId: string;
   flockId?: string | null;
   placementDate?: string | null;
   visit?: VisitListRow | null;
   fromAllVisits?: boolean;
+  placeName?: string | null;
 }) {
   const nav = useOfflineNav();
-  const listHref = fromAllVisits ? "/visits" : `/farms/${farmId}/visits`;
+  const listHref = fromAllVisits || placeName ? "/visits" : `/farms/${farmId}/visits`;
 
   function afterSave() {
     if (nav) nav.navigate(listHref);
@@ -29,7 +31,7 @@ export function FarmVisitFormView({
     <div>
       <BackHeader
         href={listHref}
-        backLabel={fromAllVisits ? "All Visits" : "Visits"}
+        backLabel={fromAllVisits || placeName ? "All Visits" : "Visits"}
         title={visit ? "Edit Visit" : "Log Visit"}
       />
       <Card>
@@ -39,6 +41,7 @@ export function FarmVisitFormView({
           placementDate={placementDate}
           recordId={visit?.id}
           initial={visit ?? undefined}
+          placeName={placeName}
           onSuccess={afterSave}
         />
       </Card>

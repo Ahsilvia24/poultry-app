@@ -489,6 +489,17 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     );
   }
 
+  if (pathname === "/visits/other/new") {
+    const placeName = new URLSearchParams(search).get("place")?.trim() ?? "";
+    return (
+      <FarmVisitFormView
+        farmId=""
+        placeName={placeName}
+        fromAllVisits
+      />
+    );
+  }
+
   if (pathname === "/visits") {
     return <AllVisitsView model={selectAllVisits(snapshot)} />;
   }

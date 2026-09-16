@@ -4,6 +4,7 @@ import { asDateKey } from "@/lib/offline/dates";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import { listMortalityHouses } from "@/lib/mortalityHouses";
 import type { MortalityFarmPayload } from "@/components/MortalityEntryForm";
+import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 
 export function selectMortality(
   snapshot: OfflineSnapshot,
@@ -12,7 +13,7 @@ export function selectMortality(
 ) {
   const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
   const farms: MortalityFarmPayload[] = (snapshot.farms ?? [])
-    .filter((farm) => farm.isActive && !farm.deletedAt)
+    .filter((farm) => farm.isActive && !farm.deletedAt && !isVisitPlaceFarm(farm))
     .slice()
     .sort((a, b) => a.farmName.localeCompare(b.farmName))
     .map((farm) => {

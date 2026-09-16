@@ -37,6 +37,7 @@ export function isReplicaHref(href: string): boolean {
     pathname === "/reports" ||
     pathname === "/history" ||
     pathname === "/visits" ||
+    pathname === "/visits/other/new" ||
     pathname === "/mortality"
   ) {
     return true;

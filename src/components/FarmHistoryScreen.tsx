@@ -5,6 +5,7 @@ import { FarmHistoryReplica } from "@/components/FarmHistoryReplica";
 import { BackHeader, Card } from "@/components/ui";
 import { selectFarmHistoryRows } from "@/lib/offline/selectReports";
 import type { OfflineSnapshot } from "@/lib/offline/types";
+import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 
 export function FarmHistoryScreen({
   snapshot,
@@ -16,7 +17,7 @@ export function FarmHistoryScreen({
   const farms = useMemo(
     () =>
       (snapshot.farms ?? [])
-        .filter((farm) => !farm.deletedAt)
+        .filter((farm) => !farm.deletedAt && !isVisitPlaceFarm(farm))
         .slice()
         .sort((a, b) => a.farmName.localeCompare(b.farmName)),
     [snapshot.farms],
