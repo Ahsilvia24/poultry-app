@@ -2,7 +2,6 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { FarmHistoryButton } from "@/components/FarmHistoryButton";
 import { FieldLogReport } from "@/components/FieldLogReport";
 import { GeneratorLogReport } from "@/components/GeneratorLogReport";
 import { MortalityCharts } from "@/components/MortalityCharts";
@@ -253,7 +252,7 @@ export function ReportsView({
   if (model.type === "field-log") {
     return (
       <div>
-        <PageHeader title="Reports" actions={<FarmHistoryButton />} />
+        <PageHeader title="Reports" />
         <ReportsTypeTabs active="field-log" onSelect={onSelectType} />
         <Card className="mb-6">
           <form className="grid gap-3" onSubmit={onFilter}>
@@ -284,7 +283,7 @@ export function ReportsView({
   if (model.type === "generator") {
     return (
       <div>
-        <PageHeader title="Reports" actions={<FarmHistoryButton />} />
+        <PageHeader title="Reports" />
         <ReportsTypeTabs active="generator" onSelect={onSelectType} />
         <form onSubmit={onFilter}>
           <ReportFarmFilterTile
@@ -308,7 +307,7 @@ export function ReportsView({
 
   return (
     <div>
-      <PageHeader title="Reports" actions={<FarmHistoryButton />} />
+      <PageHeader title="Reports" />
       <ReportsTypeTabs active="mortality" onSelect={onSelectType} />
       <form onSubmit={onFilter}>
         <ReportFarmFilterTile

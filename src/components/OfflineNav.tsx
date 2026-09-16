@@ -11,7 +11,6 @@ import { NewFarmForm } from "@/components/NewFarmForm";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { SettingsScreen } from "@/components/SettingsScreen";
 import { ToolsView } from "@/components/ToolsView";
-import { FarmHistoryScreen } from "@/components/FarmHistoryScreen";
 import { FarmFeedFormView } from "@/components/FarmFeedFormView";
 import { FarmFeedView } from "@/components/FarmFeedView";
 import { FarmGeneratorsView } from "@/components/FarmGeneratorsView";
@@ -506,19 +505,11 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   if (pathname === "/reports") {
     const params = new URLSearchParams(search);
-    if (params.get("type") === "history") {
-      return (
-        <FarmHistoryScreen
-          snapshot={snapshot}
-          initialFarmId={params.get("farmId") ?? farmIdParam ?? undefined}
-        />
-      );
-    }
     return (
       <ReportsView
         snapshot={snapshot}
         initial={{
-          type: params.get("type") ?? undefined,
+          type: params.get("type") === "history" ? "field-log" : (params.get("type") ?? undefined),
           farmId: params.get("farmId") ?? undefined,
           from: params.get("from") ?? undefined,
           to: params.get("to") ?? undefined,
@@ -527,17 +518,11 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     );
   }
 
-  const historyFarm = /^\/history\/([^/]+)$/.exec(pathname);
-  if (pathname === "/history" || historyFarm) {
-    const params = new URLSearchParams(search);
+  if (pathname === "/history" || /^\/history\/[^/]+$/.test(pathname)) {
     return (
-      <FarmHistoryScreen
+      <ReportsView
         snapshot={snapshot}
-        initialFarmId={
-          historyFarm
-            ? phoneFarmId(historyFarm[1])
-            : (params.get("farmId") ?? farmIdParam ?? undefined)
-        }
+        initial={{ type: "field-log" }}
       />
     );
   }

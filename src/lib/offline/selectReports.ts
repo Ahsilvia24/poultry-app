@@ -1,14 +1,13 @@
 import { eachDayOfInterval, format, parseISO, subDays } from "date-fns";
 import {
   birdAgeFromPlacement,
-  buildMortalitySummaries,
   calcPercentage,
 } from "@/lib/mortality/calculations";
 import {
   clampDateKeyToPlacement,
   fillCumulativeByAge,
 } from "@/lib/reports/mortality-chart-share";
-import { asDate, asDateKey, asDateRequired } from "@/lib/offline/dates";
+import { asDateKey, asDateRequired } from "@/lib/offline/dates";
 import { replicaVisitsForFieldLog } from "@/lib/offline/selectVisits";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
@@ -26,26 +25,8 @@ import type {
   HouseByDateMatrix,
 } from "@/components/MortalityCharts";
 
-export type ReplicaHistoryRow = {
-  flockId: string;
-  flockNumber: string;
-  flockStatus: string;
-  placementDate: string;
-  catchDate: string | null;
-  marketAge: number | null;
-  placed: number;
-  mortPct: number;
-  livability: number | null;
-  weight: number | null;
-  fcr: number | null;
-  condemnation: number | null;
-  feedLbs: number;
-  lastCleanout: string | null;
-  houseMortPcts: Array<{ houseNumber: number; mortPct: number }>;
-};
-
 export type ReplicaReportsModel = {
-  type: ReportTypeKey | "history";
+  type: ReportTypeKey;
   from: string;
   to: string;
   farmId: string;
@@ -64,7 +45,6 @@ export type ReplicaReportsModel = {
     farmTitle: string | null;
     filterLabel: string;
   } | null;
-  history: { selectedFarmId: string; rows: ReplicaHistoryRow[] } | null;
 };
 
 function inRange(key: string, from: string, to: string) {
@@ -118,7 +98,7 @@ export function selectReports(
   snapshot: OfflineSnapshot,
   search: { type?: string; farmId?: string; from?: string; to?: string },
 ): ReplicaReportsModel {
-  const type = search.type === "history" ? "history" : resolveReportType(search.type);
+  const type = resolveReportType(search.type);
   const today = new Date();
   const fieldDefaults = defaultFieldLogRange(today);
   const generatorDefaults = defaultGeneratorRange(today);
@@ -162,7 +142,6 @@ export function selectReports(
     fieldLog: null,
     generator: null,
     mortality: null,
-    history: null,
   };
 
   if (type === "field-log") {
@@ -227,15 +206,6 @@ export function selectReports(
         selected ? `Farm: ${farmNameById.get(selected) ?? selected}` : "All farms",
         formatRangeLabel(from, to),
       ].join(" · "),
-    };
-    return model;
-  }
-
-  if (type === "history") {
-    const selectedFarmId = farmId || farms[0]?.id || "";
-    model.history = {
-      selectedFarmId,
-      rows: selectedFarmId ? selectFarmHistoryRows(snapshot, selectedFarmId) : [],
     };
     return model;
   }
@@ -456,73 +426,4 @@ export function selectReports(
       .join(" · "),
   };
   return model;
-}
-
-export function selectFarmHistoryRows(snapshot: OfflineSnapshot, farmId: string): ReplicaHistoryRow[] {
-  const flocks = (snapshot.flocks ?? [])
-    .filter((flock) => flock.farmId === farmId && !flock.deletedAt)
-    .slice()
-    .sort((a, b) => asDateRequired(b.placementDate).getTime() - asDateRequired(a.placementDate).getTime());
-  const houses = (snapshot.houses ?? []).filter((house) => house.farmId === farmId && !house.deletedAt);
-  const houseById = new Map(houses.map((house) => [house.id, house]));
-  const cleanouts = (snapshot.litterEvents ?? [])
-    .filter((row) => row.farmId === farmId && row.eventType === "FULL_LITTER_CLEANOUT")
-    .slice()
-    .sort((a, b) => b.eventDate.localeCompare(a.eventDate));
-
-  return flocks.map((flock) => {
-    const hfs = (snapshot.houseFlocks ?? []).filter((hf) => hf.flockId === flock.id);
-    const placed = hfs.reduce((sum, hf) => sum + hf.placedBirdCount, 0);
-    const catchDate =
-      asDateKey(flock.actualCatchDate) ?? asDateKey(flock.projectedCatchDate) ?? null;
-    const placement = asDateRequired(flock.placementDate);
-    const catchAsDate = asDate(catchDate);
-    const marketAge = catchAsDate
-      ? Math.round((catchAsDate.getTime() - placement.getTime()) / 86400000)
-      : flock.targetMarketAge;
-    const houseMortPcts = hfs.map((hf) => {
-      const morts = (snapshot.mortalities ?? [])
-        .filter((row) => row.houseFlockId === hf.id && !row.isDraft)
-        .map((row) => ({ ...row, mortalityDate: asDateRequired(row.mortalityDate) }));
-      const summaries = buildMortalitySummaries(hf.placedBirdCount, morts);
-      const latest = summaries[summaries.length - 1];
-      return {
-        houseNumber: houseById.get(hf.houseId)?.houseNumber ?? 0,
-        mortPct: latest?.cumulativeMortalityPercentage ?? 0,
-        totalLoss: latest?.cumulativeMortalityCount ?? 0,
-      };
-    });
-    const totalLoss = houseMortPcts.reduce((sum, row) => sum + row.totalLoss, 0);
-    const mortPct = calcPercentage(totalLoss, placed);
-    const houseFeed = (snapshot.feedDeliveries ?? [])
-      .filter((row) => row.houseFlockId && hfs.some((hf) => hf.id === row.houseFlockId))
-      .reduce((sum, row) => sum + row.poundsDelivered, 0);
-    const flockFeed = (snapshot.feedDeliveries ?? [])
-      .filter((row) => row.flockId === flock.id && !row.houseFlockId)
-      .reduce((sum, row) => sum + row.poundsDelivered, 0);
-    const placementKey = asDateKey(flock.placementDate) ?? flock.placementDate.slice(0, 10);
-    const lastCleanout =
-      cleanouts.find((row) => row.eventDate.slice(0, 10) <= placementKey)?.eventDate.slice(0, 10) ??
-      null;
-    return {
-      flockId: flock.id,
-      flockNumber: flock.flockNumber,
-      flockStatus: flock.flockStatus,
-      placementDate: placementKey,
-      catchDate,
-      marketAge,
-      placed,
-      mortPct,
-      livability: placed > 0 ? 100 - mortPct : null,
-      weight: null,
-      fcr: null,
-      condemnation: null,
-      feedLbs: houseFeed + flockFeed,
-      lastCleanout,
-      houseMortPcts: houseMortPcts.map(({ houseNumber, mortPct: pct }) => ({
-        houseNumber,
-        mortPct: pct,
-      })),
-    };
-  });
 }
