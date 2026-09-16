@@ -36,6 +36,7 @@ export function KeypadNavProvider({ children }: { children: ReactNode }) {
   const [keypadOpen, setKeypadOpenState] = useState(false);
   const [tabsBlocked, setTabsBlocked] = useState(false);
   const blockTimer = useRef<number | null>(null);
+  const openRef = useRef(false);
 
   const setKeypadOpen = useCallback((open: boolean) => {
     if (open) {
@@ -45,9 +46,15 @@ export function KeypadNavProvider({ children }: { children: ReactNode }) {
         blockTimer.current = null;
       }
       setTabsBlocked(false);
+      openRef.current = true;
       setKeypadOpenState(true);
       return;
     }
+    // House cards / tools call setKeypadOpen(false) on mount and unmount.
+    // Only hide tabs after a keypad that was actually open — otherwise the
+    // bottom tab tiles vanish and come back on every tab change.
+    if (!openRef.current) return;
+    openRef.current = false;
     armKeypadPointerGuard();
     setKeypadOpenState(false);
     setTabsBlocked(true);

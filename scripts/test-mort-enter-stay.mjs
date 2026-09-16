@@ -17,6 +17,9 @@ const ctx = read("src/components/KeypadNavContext.tsx");
 assert.match(ctx, /armKeypadPointerGuard\(\)/);
 assert.match(ctx, /disarmKeypadPointerGuard\(\)/);
 assert.match(ctx, /keypadOpen \|\| tabsBlocked/);
+assert.match(ctx, /if \(!openRef\.current\) return/);
+assert.match(ctx, /openRef\.current = true/);
+assert.match(ctx, /openRef\.current = false/);
 
 const mort = read("src/components/MortalityEntryForm.tsx");
 assert.match(mort, /keydown/);
