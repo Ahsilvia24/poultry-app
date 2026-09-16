@@ -3,6 +3,7 @@ import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import type { OfflineSnapshot } from "@/lib/offline/types";
+import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 
 export type OfflineFarmTile = {
@@ -19,7 +20,7 @@ export function selectFarmTiles(snapshot: OfflineSnapshot): OfflineFarmTile[] {
   const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
   const today = appToday(undefined, timeZone);
   const tiles = snapshot.farms
-    .filter((farm) => !farm.deletedAt && !isVisitPlaceFarm(farm))
+    .filter((farm) => !farm.deletedAt && !isVisitPlaceFarm(farm) && !isManualLfoFarm(farm))
     .map((farm) => {
       const farmHouses = (snapshot.houses ?? []).filter(
         (house) => house.farmId === farm.id && !house.deletedAt,

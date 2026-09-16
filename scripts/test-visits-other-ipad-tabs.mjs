@@ -130,7 +130,8 @@ assert.match(nav, /fixed inset-x-0 bottom-0/);
 
 const shell = read("src/components/DashboardShell.tsx");
 assert.match(shell, /pt-4 md:pt-6/);
-assert.match(shell, /keypadOpen \? "pb-4" : "pb-28"/);
+assert.match(shell, /pb-28/);
+assert.doesNotMatch(shell, /keypadOpen \? "pb-4"/);
 assert.doesNotMatch(shell, /md:pb-8/);
 assert.doesNotMatch(shell, /py-4/);
 assert.doesNotMatch(shell, /md:py-6/);

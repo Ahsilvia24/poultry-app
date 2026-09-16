@@ -10,6 +10,7 @@ import {
   lfoTimingFromSettings,
 } from "@/lib/lfo/calculate";
 import { nextCustomLfoName, parseCustomLfoNumber } from "@/lib/lfo/customName";
+import { MANUAL_LFO_FARM_NAME, MANUAL_LFO_FARM_NUMBER } from "@/lib/lfo/manualFarm";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 import { lastFeedOrderSchema } from "@/lib/validations";
 import { normalizeHalfHourTime } from "@/lib/time-slots";
@@ -342,15 +343,37 @@ export async function deleteLastFeedOrderAction(lfoId: string) {
 }
 
 async function getOrCreateManualFarm(userId: string) {
+  const include = {
+    houses: { where: { deletedAt: null }, orderBy: { houseNumber: "asc" as const } },
+    flocks: true,
+  };
   let farm = await prisma.farm.findFirst({
-    where: { userId, farmName: "Manual", isActive: false, deletedAt: null },
-    include: { houses: { where: { deletedAt: null }, orderBy: { houseNumber: "asc" } }, flocks: true },
+    where: {
+      userId,
+      OR: [{ farmNumber: MANUAL_LFO_FARM_NUMBER }, { farmName: MANUAL_LFO_FARM_NAME }],
+    },
+    include,
+    orderBy: { createdAt: "asc" },
   });
-  if (!farm) {
+  if (farm) {
+    // Reuse the same hidden row — never mint another "Manual" farm after a delete.
+    if (farm.isActive || farm.farmNumber !== MANUAL_LFO_FARM_NUMBER || farm.farmName !== MANUAL_LFO_FARM_NAME) {
+      farm = await prisma.farm.update({
+        where: { id: farm.id },
+        data: {
+          farmName: MANUAL_LFO_FARM_NAME,
+          farmNumber: MANUAL_LFO_FARM_NUMBER,
+          isActive: false,
+        },
+        include,
+      });
+    }
+  } else {
     farm = await prisma.farm.create({
       data: {
         userId,
-        farmName: "Manual",
+        farmName: MANUAL_LFO_FARM_NAME,
+        farmNumber: MANUAL_LFO_FARM_NUMBER,
         growerName: "",
         numberOfHouses: 1,
         isActive: false,
@@ -364,7 +387,7 @@ async function getOrCreateManualFarm(userId: string) {
           },
         },
       },
-      include: { houses: { where: { deletedAt: null }, orderBy: { houseNumber: "asc" } }, flocks: true },
+      include,
     });
   }
   let house = farm.houses[0];

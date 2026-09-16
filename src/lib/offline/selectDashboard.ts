@@ -12,6 +12,7 @@ import {
 } from "@/lib/offline/followUpCompletions";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import type { OfflineFlockRef, OfflineSnapshot } from "@/lib/offline/types";
+import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 import {
   DEFAULT_THRESHOLDS,
@@ -87,7 +88,9 @@ function flockCatchKey(flock: OfflineFlockRef) {
 }
 
 function liveFarms(snapshot: OfflineSnapshot) {
-  return snapshot.farms.filter((farm) => farm.isActive && !farm.deletedAt && !isVisitPlaceFarm(farm));
+  return snapshot.farms.filter(
+    (farm) => farm.isActive && !farm.deletedAt && !isVisitPlaceFarm(farm) && !isManualLfoFarm(farm),
+  );
 }
 
 function activeFlocksForFarm(snapshot: OfflineSnapshot, farmId: string) {

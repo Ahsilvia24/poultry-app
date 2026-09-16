@@ -216,7 +216,7 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
   );
 
   const mapped = farms
-      .filter((f) => f.id !== MANUAL_LFO_FARM_ID)
+      .filter((f) => f.id !== MANUAL_LFO_FARM_ID && f.farm_name.trim().toLowerCase() !== "manual")
       .map((f) => {
       const flocks = db.getAllSync<{
         id: string;
