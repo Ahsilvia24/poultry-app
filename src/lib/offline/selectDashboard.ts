@@ -1,6 +1,7 @@
 import { addDays, differenceInCalendarDays, format, startOfDay, subDays } from "date-fns";
 import { appToday, appTodayKey } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
+import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import { dedupeScheduleRows, scheduleGroupsForFarm } from "@/lib/flockIdentity";
 import type { getDashboardData } from "@/lib/dashboard";
@@ -97,10 +98,6 @@ function activeFlocksForFarm(snapshot: OfflineSnapshot, farmId: string) {
     )
     .slice()
     .sort((a, b) => flockPlaceKey(a).localeCompare(flockPlaceKey(b)));
-}
-
-function uniqueSortedAges(ages: number[]) {
-  return Array.from(new Set(ages)).sort((a, b) => a - b);
 }
 
 function snapshotThresholds(snapshot: OfflineSnapshot, fallback: DashboardData["thresholds"]) {
@@ -220,10 +217,16 @@ export function rebuildFarmCardsFromReplica(
       .sort()
       .at(-1) ?? null;
 
-    const flockAgesDays = uniqueSortedAges(
-      activeFlocks.map((flock) =>
-        daysSincePlacement(localNoonFromKey(flockPlaceKey(flock)), today, timeZone),
-      ),
+    const farmHouseIds = new Set(houses.map((house) => house.id));
+    const flockAgesDays = flockAgesFromPlacements(
+      activeFlocks.map((flock) => ({
+        placementDate: flockPlaceKey(flock),
+        houses: (snapshot.houseFlocks ?? [])
+          .filter((hf) => hf.flockId === flock.id && farmHouseIds.has(hf.houseId))
+          .map((hf) => ({ placementDate: hf.placementDate })),
+      })),
+      today,
+      timeZone,
     );
 
     farmCards.push({

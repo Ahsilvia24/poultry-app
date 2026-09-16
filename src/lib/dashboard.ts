@@ -15,6 +15,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/session-user";
 import type { FarmCardSummary, ThresholdSettings } from "@/types";
+import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import { VISIT_PLACE_FARM_NUMBER } from "@/lib/visits/visitPlace";
 import {
@@ -66,6 +67,7 @@ export async function getDashboardData(userId: string) {
             targetMarketAge: true,
             houseFlocks: {
               select: {
+                houseId: true,
                 placedBirdCount: true,
                 placementDate: true,
                 catchDate: true,
@@ -328,6 +330,17 @@ export async function getDashboardData(userId: string) {
       { dailyPct, sevenDayPct: sevenPct, risingThreeDays: rising },
       thresholds,
     );
+    const farmHouseIds = new Set(farm.houses.map((house) => house.id));
+    const flockAgesDays = flockAgesFromPlacements(
+      activeFlocks.map((flock) => ({
+        placementDate: flock.placementDate,
+        houses: flock.houseFlocks
+          .filter((hf) => farmHouseIds.has(hf.houseId))
+          .map((hf) => ({ placementDate: hf.placementDate })),
+      })),
+      today,
+      timeZone,
+    );
 
     farmCards.push({
       id: farm.id,
@@ -335,12 +348,8 @@ export async function getDashboardData(userId: string) {
       growerName: farm.growerName,
       phoneNumber: farm.phoneNumber,
       houseCount: farm.houses?.length ?? activeHouseCount,
-      flockAgeDays: active ? daysSincePlacement(active.placementDate, today, timeZone) : null,
-      flockAgesDays: Array.from(
-        new Set(
-          activeFlocks.map((fl) => daysSincePlacement(fl.placementDate, today, timeZone)),
-        ),
-      ).sort((a, b) => a - b),
+      flockAgeDays: flockAgesDays[0] ?? null,
+      flockAgesDays,
       totalBirdsPlaced: placed,
       birdsRemaining: remaining,
       todayMortality: todayMort,

@@ -186,6 +186,33 @@ assert.equal(oak.houseCount, 4, "all houses count, not the stale two-house card"
 assert.equal(oak.totalBirdsPlaced, 44000, "birds from both flocks");
 assert.equal(oak.birdsRemaining, 44000, "remaining includes every house flock");
 assert.deepEqual(oak.flockAgesDays, [5, 40], "both flock ages land on the card");
+
+const staggered = snapshot({
+  flocks: [flock("flock-old", "farm-1", "OLD1", placedOld, catchOld)],
+  houseFlocks: [
+    houseFlock("hf-1", "flock-old", "h1", 10000, placedOld, catchOld),
+    houseFlock("hf-2", "flock-old", "h2", 10000, format(addDays(todayNoon, -39), "yyyy-MM-dd"), catchOld),
+    houseFlock("hf-3", "flock-old", "h3", 10000, format(addDays(todayNoon, -38), "yyyy-MM-dd"), catchOld),
+    houseFlock("hf-leak", "flock-old", "h5", 10000, placedNew, catchNew),
+  ],
+});
+const staggeredCard = selectDashboard(staggered).farmCards.find((card) => card.id === "farm-1");
+assert.deepEqual(
+  staggeredCard?.flockAgesDays,
+  [38, 39, 40],
+  "houses placed a day apart each keep their own age",
+);
+assert.equal(
+  staggeredCard?.flockAgesDays.includes(5),
+  false,
+  "a house on another farm cannot add an age",
+);
+
+const { selectFarmTiles } = await import(join(root, "src/lib/offline/selectFarms.ts"));
+assert.deepEqual(
+  selectFarmTiles(staggered).find((farm) => farm.id === "farm-1")?.flockAges,
+  [38, 39, 40],
+);
 assert.ok(pine, "replica-only farm appears even when the last server card omitted it");
 assert.equal(pine.houseCount, 2);
 assert.equal(dash.stats.activeFarms, 2);
@@ -226,8 +253,12 @@ assert.equal(afterCard.houseCount, 4);
 assert.deepEqual(afterCard.flockAgesDays, [5, 40]);
 
 const cardsSrc = read("src/components/DashboardFarmCards.tsx");
-assert.match(cardsSrc, /farmAgeLabel/);
+assert.match(cardsSrc, /farmAges/);
 assert.match(cardsSrc, /flockAgesDays/);
+assert.match(cardsSrc, /whitespace-nowrap/);
 assert.match(read("src/lib/offline/selectDashboard.ts"), /rebuildFarmCardsFromReplica/);
+assert.match(read("src/lib/offline/selectDashboard.ts"), /flockAgesFromPlacements/);
+assert.match(read("src/lib/dashboard.ts"), /flockAgesFromPlacements/);
+assert.match(read("src/lib/flockAges.ts"), /houseDates.length > 0 \? houseDates/);
 
 console.log("dash-all-flocks: ok");

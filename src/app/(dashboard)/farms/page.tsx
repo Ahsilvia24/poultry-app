@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { appToday } from "@/lib/app-calendar";
-import { daysSincePlacement } from "@/lib/mortality/calculations";
+import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { getUserTimeZone } from "@/lib/user-time-zone";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -27,7 +27,15 @@ export default async function FarmsPage() {
         flocks: {
           where: { flockStatus: "ACTIVE", deletedAt: null },
           orderBy: { placementDate: "asc" },
-          select: { placementDate: true },
+          select: {
+            placementDate: true,
+            houseFlocks: {
+              select: {
+                placementDate: true,
+                house: { select: { farmId: true, deletedAt: true } },
+              },
+            },
+          },
         },
       },
       orderBy: { farmName: "asc" },
@@ -46,9 +54,16 @@ export default async function FarmsPage() {
       phoneNumber: farm.phoneNumber,
       isActive: farm.isActive,
       houseCount: farm.houses.length,
-      flockAges: Array.from(
-        new Set(farm.flocks.map((fl) => daysSincePlacement(fl.placementDate, today, timeZone))),
-      ).sort((a, b) => a - b),
+      flockAges: flockAgesFromPlacements(
+        farm.flocks.map((flock) => ({
+          placementDate: flock.placementDate,
+          houses: flock.houseFlocks
+            .filter((hf) => hf.house.farmId === farm.id && !hf.house.deletedAt)
+            .map((hf) => ({ placementDate: hf.placementDate })),
+        })),
+        today,
+        timeZone,
+      ),
     })),
     parseFarmOrder(orderRow?.farmOrder),
   );
