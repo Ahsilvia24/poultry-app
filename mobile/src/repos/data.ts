@@ -285,7 +285,7 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
       // One age per distinct placement (flock + staggered house dates), including negatives.
       const flockAgesDays = Array.from(
         new Set(placementDates.map((d) => daysSincePlacement(d, today))),
-      ).sort((a, b) => a - b);
+      ).sort((a, b) => b - a);
       return {
         id: f.id,
         farmName: f.farm_name,
@@ -909,7 +909,7 @@ export function getFarmDetail(farmId: string) {
         .map((h) => h.ageDays)
         .filter((a): a is number => a != null),
     ]),
-  ).sort((a, b) => a - b);
+  ).sort((a, b) => b - a);
 
   const flockAgeDays =
     flockAgesDays[0] ??

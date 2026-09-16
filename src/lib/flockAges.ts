@@ -1,9 +1,10 @@
 import { daysSincePlacement } from "@/lib/mortality/calculations";
 import { asDateKey, localNoonFromKey } from "@/lib/offline/dates";
 
+/** Unique ages, oldest birds first (51d 49d). */
 export function uniqueSortedAges(ages: Iterable<number>): number[] {
   return Array.from(new Set(Array.from(ages).filter((age) => Number.isFinite(age)))).sort(
-    (a, b) => a - b,
+    (a, b) => b - a,
   );
 }
 

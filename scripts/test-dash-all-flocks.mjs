@@ -8,6 +8,7 @@ const read = (rel) => readFileSync(join(root, rel), "utf8");
 
 const { applyFormWrite } = await import(join(root, "src/lib/offline/applyWrites.ts"));
 const { selectDashboard } = await import(join(root, "src/lib/offline/selectDashboard.ts"));
+const { uniqueSortedAges } = await import(join(root, "src/lib/flockAges.ts"));
 const { appTodayKey } = await import(join(root, "src/lib/app-calendar.ts"));
 const { addDays, format } = await import("date-fns");
 
@@ -185,7 +186,8 @@ assert.ok(oak, "Oak Ridge stays on Active Farms");
 assert.equal(oak.houseCount, 4, "all houses count, not the stale two-house card");
 assert.equal(oak.totalBirdsPlaced, 44000, "birds from both flocks");
 assert.equal(oak.birdsRemaining, 44000, "remaining includes every house flock");
-assert.deepEqual(oak.flockAgesDays, [5, 40], "both flock ages land on the card");
+assert.deepEqual(uniqueSortedAges([49, 51]), [51, 49], "tile ages read oldest to youngest");
+assert.deepEqual(oak.flockAgesDays, [40, 5], "ages show oldest to youngest");
 
 const staggered = snapshot({
   flocks: [flock("flock-old", "farm-1", "OLD1", placedOld, catchOld)],
@@ -199,8 +201,8 @@ const staggered = snapshot({
 const staggeredCard = selectDashboard(staggered).farmCards.find((card) => card.id === "farm-1");
 assert.deepEqual(
   staggeredCard?.flockAgesDays,
-  [38, 39, 40],
-  "houses placed a day apart each keep their own age",
+  [40, 39, 38],
+  "houses placed a day apart each keep their own age, oldest first",
 );
 assert.equal(
   staggeredCard?.flockAgesDays.includes(5),
@@ -211,7 +213,7 @@ assert.equal(
 const { selectFarmTiles } = await import(join(root, "src/lib/offline/selectFarms.ts"));
 assert.deepEqual(
   selectFarmTiles(staggered).find((farm) => farm.id === "farm-1")?.flockAges,
-  [38, 39, 40],
+  [40, 39, 38],
 );
 assert.ok(pine, "replica-only farm appears even when the last server card omitted it");
 assert.equal(pine.houseCount, 2);
@@ -250,7 +252,7 @@ const afterSecond = selectDashboard(
 const afterCard = afterSecond.farmCards.find((card) => card.id === "farm-1");
 assert.equal(afterCard.totalBirdsPlaced, 44000, "adding a second flock offline updates Active Farms");
 assert.equal(afterCard.houseCount, 4);
-assert.deepEqual(afterCard.flockAgesDays, [5, 40]);
+assert.deepEqual(afterCard.flockAgesDays, [40, 5]);
 
 const cardsSrc = read("src/components/DashboardFarmCards.tsx");
 assert.match(cardsSrc, /farmAges/);
@@ -260,5 +262,7 @@ assert.match(read("src/lib/offline/selectDashboard.ts"), /rebuildFarmCardsFromRe
 assert.match(read("src/lib/offline/selectDashboard.ts"), /flockAgesFromPlacements/);
 assert.match(read("src/lib/dashboard.ts"), /flockAgesFromPlacements/);
 assert.match(read("src/lib/flockAges.ts"), /houseDates.length > 0 \? houseDates/);
+assert.match(read("src/lib/flockAges.ts"), /\(a, b\) => b - a/);
+assert.match(cardsSrc, /uniqueSortedAges/);
 
 console.log("dash-all-flocks: ok");

@@ -10,6 +10,7 @@ import { formatNumber, formatPct } from "@/lib/utils";
 import { Button, Card, StatusBadge } from "@/components/ui";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
+import { uniqueSortedAges } from "@/lib/flockAges";
 import type { FarmCardSummary } from "@/types";
 
 function formatLastVisitDate(dateKey: string) {
@@ -23,7 +24,7 @@ function openIssuesLabel(count: number) {
 }
 
 function farmAges(farm: FarmCardSummary) {
-  if (farm.flockAgesDays?.length) return farm.flockAgesDays;
+  if (farm.flockAgesDays?.length) return uniqueSortedAges(farm.flockAgesDays);
   if (farm.flockAgeDays != null) return [farm.flockAgeDays];
   return [];
 }
