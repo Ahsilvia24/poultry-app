@@ -6,7 +6,7 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v12";
+const CACHE = "poultrytech-offline-v13";
 const NETWORK_MS = 1500;
 const OPEN_MS = 8000;
 const SIGNED_OUT_FLAG = "/__poultrytech-signed-out";
@@ -52,12 +52,21 @@ function skipRequest(url) {
   const path = url.pathname;
   return (
     path === "/sw.js" ||
-    path.startsWith("/support") ||
-    path.startsWith("/privacy") ||
+    isPublicAuthPath(path) ||
     path.startsWith("/api/") ||
     path.startsWith("/_next/webpack") ||
     path.startsWith("/_next/src")
   );
+}
+
+/** Safari cannot show a worker response that followed a redirect (login, www). */
+function withoutRedirect(response) {
+  if (!response || !response.redirected) return response;
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
 }
 
 function isPublicAuthPath(path) {
@@ -156,10 +165,10 @@ async function serveLeave() {
 }
 
 async function putOk(cache, request, response) {
-  if (!response || !response.ok) return response;
+  if (!response || !response.ok) return withoutRedirect(response);
   if (await isSignedOut()) {
     const path = new URL(request.url).pathname;
-    if (path !== LEAVE_PAGE && !isStaticAsset(new URL(request.url))) return response;
+    if (path !== LEAVE_PAGE && !isStaticAsset(new URL(request.url))) return withoutRedirect(response);
   }
   if (response.redirected || responseLooksLikeLogin(response)) {
     const finalPath = new URL(response.url).pathname;
@@ -168,11 +177,11 @@ async function putOk(cache, request, response) {
       if (!responseLooksLikeLogin(response)) {
         await cache.put(new Request(response.url), response.clone());
       }
-      return response;
+      return withoutRedirect(response);
     }
   }
   await cache.put(request, response.clone());
-  return response;
+  return withoutRedirect(response);
 }
 
 function fetchWithTimeout(request, ms) {
@@ -365,15 +374,12 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     (async () => {
       if (await isSignedOut()) {
-        if (isPublicAuthPath(url.pathname) && !isLeavePath(url.pathname)) {
-          return staleWhileRevalidate(request, event, false);
-        }
         return serveLeave();
       }
       if (isNavigation(request) || isRsc(request, url)) {
         return staleWhileRevalidate(request, event);
       }
       return networkFirst(request);
-    })(),
+    })().then(withoutRedirect),
   );
 });

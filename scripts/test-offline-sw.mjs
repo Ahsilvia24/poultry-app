@@ -11,7 +11,7 @@ assert.ok(existsSync(join(root, "public/sw.js")), "missing public/sw.js");
 assert.ok(existsSync(join(root, "public/offline.html")), "missing public/offline.html");
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v12/);
+assert.match(sw, /poultrytech-offline-v13/);
 assert.match(sw, /type !== "precache"/);
 assert.match(sw, /type === "sign-out"/);
 assert.match(sw, /SIGNED_OUT_FLAG/);
