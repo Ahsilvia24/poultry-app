@@ -126,7 +126,7 @@ export async function flushFormWrite(
     case "createVisit":
       return fromCreated(await createVisitAction(formData), original.id, aliases);
     case "updateVisit":
-      return fromAction(await updateVisitAction(id, formData), aliases);
+      return fromCreated(await updateVisitAction(id, formData), original.id, aliases);
     case "deleteVisit":
       await deleteVisitAction(farmId, id);
       return { ok: true, aliases };
