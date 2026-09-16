@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FarmsPageClient } from "@/components/FarmsPageClient";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
+import { MANUAL_LFO_FARM_NAME, MANUAL_LFO_FARM_NUMBER } from "@/lib/lfo/manualFarm";
 import { VISIT_PLACE_FARM_NUMBER } from "@/lib/visits/visitPlace";
 
 export default async function FarmsPage() {
@@ -20,7 +21,8 @@ export default async function FarmsPage() {
       where: {
         userId: session.user.id,
         deletedAt: null,
-        farmNumber: { not: VISIT_PLACE_FARM_NUMBER },
+        farmNumber: { notIn: [VISIT_PLACE_FARM_NUMBER, MANUAL_LFO_FARM_NUMBER] },
+        farmName: { not: MANUAL_LFO_FARM_NAME },
       },
       include: {
         houses: { where: { deletedAt: null }, select: { id: true } },

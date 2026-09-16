@@ -14,6 +14,7 @@ export default async function NewLfoFarmSelectPage() {
       deletedAt: null,
       isActive: true,
       farmName: { not: "Manual" },
+      farmNumber: { not: "__manual_lfo__" },
     },
     include: {
       flocks: {

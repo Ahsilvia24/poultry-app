@@ -357,17 +357,31 @@ async function getOrCreateManualFarm(userId: string) {
   });
   if (farm) {
     // Reuse the same hidden row — never mint another "Manual" farm after a delete.
-    if (farm.isActive || farm.farmNumber !== MANUAL_LFO_FARM_NUMBER || farm.farmName !== MANUAL_LFO_FARM_NAME) {
+    if (
+      farm.isActive ||
+      farm.deletedAt ||
+      farm.farmNumber !== MANUAL_LFO_FARM_NUMBER ||
+      farm.farmName !== MANUAL_LFO_FARM_NAME
+    ) {
       farm = await prisma.farm.update({
         where: { id: farm.id },
         data: {
           farmName: MANUAL_LFO_FARM_NAME,
           farmNumber: MANUAL_LFO_FARM_NUMBER,
           isActive: false,
+          deletedAt: null,
         },
         include,
       });
     }
+    await prisma.farm.updateMany({
+      where: {
+        userId,
+        id: { not: farm.id },
+        OR: [{ farmNumber: MANUAL_LFO_FARM_NUMBER }, { farmName: MANUAL_LFO_FARM_NAME }],
+      },
+      data: { isActive: false, deletedAt: new Date() },
+    });
   } else {
     farm = await prisma.farm.create({
       data: {

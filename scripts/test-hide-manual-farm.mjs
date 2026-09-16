@@ -59,4 +59,19 @@ assert.match(lfo, /orderBy: \{ createdAt: "asc" \}/);
 const farmsSelect = read("src/lib/offline/selectFarms.ts");
 assert.match(farmsSelect, /isManualLfoFarm/);
 
+const farmsPage = read("src/app/(dashboard)/farms/page.tsx");
+assert.match(farmsPage, /MANUAL_LFO_FARM_NUMBER/);
+assert.match(farmsPage, /farmName: \{ not: MANUAL_LFO_FARM_NAME \}/);
+
+const farmsClient = read("src/components/FarmsPageClient.tsx");
+assert.match(farmsClient, /isManualLfoFarm/);
+
+const snapshot = read("src/lib/offline/buildSnapshot.ts");
+assert.match(snapshot, /isManualLfoFarm/);
+assert.match(snapshot, /visibleFarms/);
+assert.match(snapshot, /lfoFarmIds/);
+
+assert.match(lfo, /id: \{ not: farm.id \}/);
+assert.match(lfo, /deletedAt: new Date\(\)/);
+
 console.log("hide-manual-farm: ok");
