@@ -599,6 +599,21 @@ export function MortalityEntryForm({
       setMortField(null);
     }
   }
+  const onEnterRef = useRef(onEnter);
+  onEnterRef.current = onEnter;
+
+  useEffect(() => {
+    if (!activeField) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "Enter" && event.key !== "NumpadEnter") return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.repeat) return;
+      onEnterRef.current();
+    }
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [activeField]);
 
   function changeFarm(nextFarmId: string) {
     flushSave();

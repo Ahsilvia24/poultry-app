@@ -19,7 +19,11 @@ function Key({
   return (
     <button
       type="button"
-      onClick={onPress}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onPress();
+      }}
       className={`flex min-h-12 flex-1 items-center justify-center rounded-[10px] text-[22px] font-bold ${variants[variant]}`}
     >
       {label}
