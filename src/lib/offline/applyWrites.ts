@@ -233,7 +233,14 @@ function activeHouseFlock(snapshot: OfflineSnapshot, farmId: string, houseId: st
 }
 
 function syncFlockDatesFromHouses(snapshot: OfflineSnapshot, flockId: string): OfflineSnapshot {
-  const hfs = snapshot.houseFlocks.filter((hf) => hf.flockId === flockId);
+  const flock = snapshot.flocks.find((row) => row.id === flockId);
+  if (!flock) return snapshot;
+  const farmHouseIds = new Set(
+    snapshot.houses.filter((house) => house.farmId === flock.farmId && !house.deletedAt).map((house) => house.id),
+  );
+  const hfs = snapshot.houseFlocks.filter(
+    (hf) => hf.flockId === flockId && farmHouseIds.has(hf.houseId),
+  );
   const places = hfs
     .map((hf) => hf.placementDate)
     .filter((value): value is string => Boolean(value))
@@ -269,7 +276,10 @@ function assignHouseFlockNumber(
   catchDate: string,
   placedBirdCount: number,
 ): OfflineSnapshot {
+  const ownedHouse = snapshot.houses.find((row) => row.id === houseId && !row.deletedAt);
+  if (!ownedHouse || ownedHouse.farmId !== farmId) return snapshot;
   const current = snapshot.flocks.find((flock) => flock.id === currentFlockId);
+  if (current && current.farmId !== farmId) return snapshot;
   const existing =
     snapshot.flocks.find(
       (flock) =>
@@ -1077,6 +1087,10 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
       };
       const hf = snapshot.houseFlocks.find((row) => row.id === extra.houseFlockId);
       const flock = snapshot.flocks.find((row) => row.id === hf?.flockId);
+      const house = snapshot.houses.find((row) => row.id === hf?.houseId && !row.deletedAt);
+      if (!hf || !flock || !house) return snapshot;
+      if (house.farmId !== flock.farmId) return snapshot;
+      if (write.farmId && write.farmId !== house.farmId) return snapshot;
       const placeKey =
         (hf?.placementDate ?? "").trim() || asDateKey(flock?.placementDate) || "";
       const clear = new Set(extra.clearDates ?? []);

@@ -124,7 +124,11 @@ export function aliasesFromCreateFarm(options: {
       const deterministic = `${localFarmId}-h-${server.houseNumber}`;
       if (deterministic !== server.id) aliases[deterministic] = server.id;
     }
-    const local = options.localHouses.find((house) => house.houseNumber === server.houseNumber);
+    const local = options.localHouses.find(
+      (house) =>
+        house.houseNumber === server.houseNumber &&
+        (!options.localFarmId || house.farmId === options.localFarmId),
+    );
     if (local && local.id !== server.id) aliases[local.id] = server.id;
   }
   return aliases;

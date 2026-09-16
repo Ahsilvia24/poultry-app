@@ -234,16 +234,168 @@ assert.equal(place(flockIdOnly, "a2"), "2026-09-01");
 assert.equal(catchOn(flockIdOnly, "a2"), "2026-10-23");
 assert.equal(birds(flockIdOnly, "a2"), 21000);
 assert.equal(place(flockIdOnly, "b1"), "2026-09-03");
+assert.equal(flockIdOnly.flocks.find((row) => row.id === "flock-b")?.placementDate, "2026-09-03");
+
+const catchOnly = applyFormWrite(snapshot(), {
+  action: "updateHouse",
+  id: "a1",
+  farmId: "farm-a",
+  fields: {
+    houseNumber: "1",
+    squareFootage: "29700",
+    placedBirdCount: "20000",
+    placementDate: "2026-09-01",
+    catchDate: "2026-11-11",
+    applyCatchDateToRemaining: "true",
+  },
+});
+assert.equal(catchOn(catchOnly, "a2"), "2026-11-11");
+assert.equal(catchOn(catchOnly, "a3"), "2026-11-11");
+assert.equal(place(catchOnly, "a2"), "2026-09-01");
+assert.equal(birds(catchOnly, "a2"), 21000);
+assert.equal(catchOn(catchOnly, "b1"), "2026-10-25");
+
+const powerOnly = applyFormWrite(snapshot(), {
+  action: "updateHouse",
+  id: "a1",
+  farmId: "farm-a",
+  fields: {
+    houseNumber: "1",
+    squareFootage: "29700",
+    totalPowerCFM: "8800",
+    totalFanCFM: "1000",
+    placedBirdCount: "20000",
+    placementDate: "2026-09-01",
+    catchDate: "2026-10-23",
+    applyPowerCfmToRemaining: "true",
+  },
+});
+assert.equal(powerOnly.houses.find((h) => h.id === "a2")?.totalPowerCFM, 8800);
+assert.equal(powerOnly.houses.find((h) => h.id === "a3")?.totalPowerCFM, 8800);
+assert.equal(powerOnly.houses.find((h) => h.id === "a2")?.totalFanCFM, 1000);
+assert.equal(powerOnly.houses.find((h) => h.id === "b2")?.totalPowerCFM, 2000);
+assert.equal(place(powerOnly, "a2"), "2026-09-01");
+assert.equal(birds(powerOnly, "a2"), 21000);
+assert.equal(place(powerOnly, "b1"), "2026-09-03");
+
+const leaked = snapshot();
+leaked.houseFlocks.push(hf("hf-leak", "flock-a", "b1", 99999, "2026-01-01", "2026-02-01"));
+const afterLeak = applyFormWrite(leaked, {
+  action: "updateHouse",
+  id: "a1",
+  farmId: "farm-a",
+  fields: {
+    houseNumber: "1",
+    squareFootage: "29700",
+    placedBirdCount: "20000",
+    placementDate: "2026-09-01",
+    catchDate: "2026-10-23",
+    applyPlacementToRemaining: "true",
+  },
+});
+assert.equal(afterLeak.flocks.find((row) => row.id === "flock-a")?.placementDate, "2026-09-01");
+assert.equal(afterLeak.flocks.find((row) => row.id === "flock-b")?.placementDate, "2026-09-03");
+assert.equal(place(afterLeak, "b1"), "2026-09-03", "a leaked farm-B house on flock A never moves Bravo");
+assert.equal(birds(afterLeak, "b1"), 18000);
+
+const start = snapshot();
+start.mortalities = [
+  {
+    id: "m-a",
+    houseFlockId: "hf-a1",
+    mortalityDate: "2026-09-08",
+    birdAgeInDays: 7,
+    dailyMortalityCount: 12,
+    cullCount: 0,
+    totalDailyLoss: 12,
+    isDraft: false,
+  },
+  {
+    id: "m-b",
+    houseFlockId: "hf-b1",
+    mortalityDate: "2026-09-10",
+    birdAgeInDays: 7,
+    dailyMortalityCount: 4,
+    cullCount: 1,
+    totalDailyLoss: 4,
+    isDraft: false,
+  },
+];
+const mortA = applyFormWrite(start, {
+  action: "saveMortalitySeries",
+  farmId: "farm-a",
+  extra: {
+    houseFlockId: "hf-a1",
+    entries: [{ mortalityDate: "2026-09-08", dailyMortalityCount: 15, cullCount: 0, birdAgeInDays: 7 }],
+    clearDates: [],
+  },
+});
+assert.equal(
+  mortA.mortalities.find((row) => row.houseFlockId === "hf-a1")?.dailyMortalityCount,
+  15,
+);
+assert.equal(
+  mortA.mortalities.find((row) => row.houseFlockId === "hf-b1")?.dailyMortalityCount,
+  4,
+  "farm B mortality never changes when farm A saves",
+);
+assert.equal(mortA.mortalities.find((row) => row.houseFlockId === "hf-b1")?.cullCount, 1);
+assert.equal(place(mortA, "b1"), "2026-09-03");
+
+const wrongFarm = applyFormWrite(start, {
+  action: "saveMortalitySeries",
+  farmId: "farm-b",
+  extra: {
+    houseFlockId: "hf-a1",
+    entries: [{ mortalityDate: "2026-09-08", dailyMortalityCount: 99, cullCount: 9, birdAgeInDays: 7 }],
+    clearDates: [],
+  },
+});
+assert.equal(
+  wrongFarm.mortalities.find((row) => row.houseFlockId === "hf-a1")?.dailyMortalityCount,
+  12,
+  "a farm-B write cannot land on farm-A mortality",
+);
+assert.equal(wrongFarm.mortalities.find((row) => row.houseFlockId === "hf-b1")?.dailyMortalityCount, 4);
+
+const { aliasesFromCreateFarm } = await import(join(root, "src/lib/offline/remapIds.ts"));
+const aliases = aliasesFromCreateFarm({
+  localFarmId: "farm-a",
+  serverFarmId: "server-a",
+  localHouses: [
+    { id: "a1", houseNumber: 1, farmId: "farm-a" },
+    { id: "b1", houseNumber: 1, farmId: "farm-b" },
+  ],
+  serverHouses: [{ id: "server-h1", houseNumber: 1 }],
+});
+assert.equal(aliases.a1, "server-h1");
+assert.equal(aliases.b1, undefined, "house 1 on another farm is not aliased");
 
 const actions = read("src/app/actions/farms.ts");
 assert.match(actions, /remainingHousesOnSameFarm/);
 assert.match(actions, /house: \{ farmId, deletedAt: null \}/);
+assert.match(actions, /house: \{ farmId: flock\.farmId, deletedAt: null \}/);
+assert.match(actions, /where: \{ id: currentFlockId, farmId \}/);
 assert.doesNotMatch(actions, /if \(placementDate && !catchDate\)/);
+
+const mortAction = read("src/app/actions/mortality.ts");
+assert.match(mortAction, /hf\.house\.farmId !== flock\.farmId/);
+assert.match(mortAction, /hf\.house\.farmId === flock\.farmId/);
+
+const selectMort = read("src/lib/offline/selectMortality.ts");
+assert.match(selectMort, /farmHouseIds\.has\(hf\.houseId\)/);
 
 const apply = read("src/lib/offline/applyWrites.ts");
 assert.match(apply, /const farmId = house\.farmId/);
 assert.match(apply, /remainingHousesOnSameFarm/);
+assert.match(apply, /write\.farmId !== house\.farmId/);
+assert.match(apply, /farmHouseIds\.has\(hf\.houseId\)/);
 assert.doesNotMatch(apply, /catchRaw \?\? \(placementDate \? addDaysKey/);
+
+const mortForm = read("src/components/MortalityEntryForm.tsx");
+assert.match(mortForm, /key=\{row\.age\}/);
+assert.match(mortForm, /tabular-nums/);
+assert.match(mortForm, /keepPinnedBirdAge|pinnedBirdAge/);
 
 const sheet = read("src/components/HouseCardActions.tsx");
 assert.doesNotMatch(sheet, /catchWasDefault/);

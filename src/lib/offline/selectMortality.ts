@@ -28,9 +28,10 @@ export function selectMortality(
         )
         .slice()
         .sort((a, b) => a.placementDate.localeCompare(b.placementDate) || a.flockNumber.localeCompare(b.flockNumber));
+      const farmHouseIds = new Set(houses.map((house) => house.id));
       const houseFlocks = flocks.flatMap((flock) =>
         (snapshot.houseFlocks ?? [])
-          .filter((hf) => hf.flockId === flock.id)
+          .filter((hf) => hf.flockId === flock.id && farmHouseIds.has(hf.houseId))
           .map((hf) => ({ ...hf, flockId: flock.id })),
       );
       const listed = listMortalityHouses(houses, houseFlocks);

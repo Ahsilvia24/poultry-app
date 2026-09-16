@@ -776,7 +776,7 @@ export function MortalityEntryForm({
                         activeField?.kind === "mortality" && activeField.age === row.age;
                       return (
                         <div
-                          key={row.mortalityDate}
+                          key={row.age}
                           data-mort-row={row.age}
                           className="flex items-center gap-1 border-t border-stone-100 px-2.5 py-1.5"
                         >

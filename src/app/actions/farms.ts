@@ -58,9 +58,10 @@ async function assignHouseFlockNumber(
   });
   if (!owned) return;
   const current = await prisma.flock.findFirst({
-    where: { id: currentFlockId },
+    where: { id: currentFlockId, farmId },
     select: { flockNumber: true },
   });
+  if (!current) return;
   const activeNumbers = await prisma.flock.findMany({
     where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
     select: { id: true, flockNumber: true },
@@ -74,7 +75,7 @@ async function assignHouseFlockNumber(
   const others = await prisma.houseFlock.count({
     where: {
       flockId: currentFlockId,
-      house: { deletedAt: null, NOT: { id: houseId } },
+      house: { farmId, deletedAt: null, NOT: { id: houseId } },
     },
   });
   const hf = await prisma.houseFlock.findFirst({
@@ -149,8 +150,16 @@ async function assignHouseFlockNumber(
 }
 
 async function syncFlockDatesFromHouses(flockId: string) {
+  const flock = await prisma.flock.findFirst({
+    where: { id: flockId },
+    select: { farmId: true },
+  });
+  if (!flock) return;
   const hfs = await prisma.houseFlock.findMany({
-    where: { flockId },
+    where: {
+      flockId,
+      house: { farmId: flock.farmId, deletedAt: null },
+    },
     select: { placementDate: true, catchDate: true },
   });
   const places = hfs

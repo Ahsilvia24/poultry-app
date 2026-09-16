@@ -25,14 +25,18 @@ export async function saveMortalityBatchAction(raw: unknown) {
     },
     include: {
       houseFlocks: {
-        include: { mortalities: true },
+        include: { house: { select: { farmId: true, deletedAt: true } }, mortalities: true },
       },
     },
   });
   if (!flock) return { error: "Flock not found or access denied" };
 
   const mortalityDate = new Date(parsed.data.mortalityDate);
-  const hfMap = new Map(flock.houseFlocks.map((hf) => [hf.id, hf]));
+  const hfMap = new Map(
+    flock.houseFlocks
+      .filter((hf) => hf.house.farmId === flock.farmId && !hf.house.deletedAt)
+      .map((hf) => [hf.id, hf]),
+  );
 
   for (const entry of parsed.data.entries) {
     const hf = hfMap.get(entry.houseFlockId);
@@ -117,14 +121,16 @@ export async function saveMortalityHouseSeriesAction(raw: unknown) {
     },
     include: {
       houseFlocks: {
-        include: { mortalities: true },
+        include: { house: { select: { farmId: true, deletedAt: true } }, mortalities: true },
       },
     },
   });
   if (!flock) return { error: "Flock not found or access denied" };
 
   const hf = flock.houseFlocks.find((h) => h.id === parsed.data.houseFlockId);
-  if (!hf) return { error: "Invalid house flock" };
+  if (!hf || hf.house.farmId !== flock.farmId || hf.house.deletedAt) {
+    return { error: "Invalid house flock" };
+  }
 
   const entries = [...parsed.data.entries].sort((a, b) =>
     a.mortalityDate.localeCompare(b.mortalityDate),
