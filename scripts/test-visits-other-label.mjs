@@ -9,7 +9,8 @@ const select = readFileSync(join(root, "src/lib/offline/selectVisits.ts"), "utf8
 
 assert.match(picker, />Other</);
 assert.doesNotMatch(picker, />Enter Other</);
-assert.match(picker, /placeholder="Enter Other"/);
+assert.match(picker, /placeholder="Enter Location"/);
+assert.match(picker, /aria-label="Enter Location"/);
 assert.doesNotMatch(picker, /Feed store or other place/);
 assert.match(select, /farmName === "Manual"/);
 assert.match(select, /isActive === false/);

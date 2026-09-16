@@ -109,7 +109,8 @@ assert.match(picker, /ENTER_OTHER_FARM_VALUE/);
 assert.match(picker, />Other</);
 assert.doesNotMatch(picker, />Enter Other</);
 assert.doesNotMatch(picker, /Feed store or other place/);
-assert.match(picker, /placeholder="Enter Other"/);
+assert.match(picker, /placeholder="Enter Location"/);
+assert.match(picker, /aria-label="Enter Location"/);
 assert.match(picker, /all-visits-other-place/);
 assert.match(picker, /visitPlaceFormHref/);
 
