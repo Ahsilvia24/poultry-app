@@ -10,9 +10,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  armKeypadPointerGuard,
+  disarmKeypadPointerGuard,
+  KEYPAD_TAB_GUARD_MS,
+} from "@/lib/keypadPointerGuard";
 
-/** Keep tabs hidden after the keypad closes so the same tap cannot hit a tab. */
-export const KEYPAD_TAB_GUARD_MS = 400;
+export { KEYPAD_TAB_GUARD_MS, isKeypadGuardActive } from "@/lib/keypadPointerGuard";
 
 type KeypadNavContextValue = {
   keypadOpen: boolean;
@@ -35,6 +39,7 @@ export function KeypadNavProvider({ children }: { children: ReactNode }) {
 
   const setKeypadOpen = useCallback((open: boolean) => {
     if (open) {
+      disarmKeypadPointerGuard();
       if (blockTimer.current != null) {
         window.clearTimeout(blockTimer.current);
         blockTimer.current = null;
@@ -43,6 +48,7 @@ export function KeypadNavProvider({ children }: { children: ReactNode }) {
       setKeypadOpenState(true);
       return;
     }
+    armKeypadPointerGuard();
     setKeypadOpenState(false);
     setTabsBlocked(true);
     if (blockTimer.current != null) window.clearTimeout(blockTimer.current);
@@ -55,6 +61,7 @@ export function KeypadNavProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     return () => {
       if (blockTimer.current != null) window.clearTimeout(blockTimer.current);
+      disarmKeypadPointerGuard();
     };
   }, []);
 

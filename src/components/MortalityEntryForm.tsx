@@ -105,8 +105,8 @@ function firstUnfilledAfterLastFilled(rows: DayRow[], asOfDateKey: string): DayR
 function focusMortalityAge(age: number, field: "culls" | "mortality" = "mortality") {
   const el = document.querySelector<HTMLElement>(`[data-mort-nav="${field}-${age}"]`);
   if (!el) return false;
-  el.scrollIntoView({ block: "center", behavior: "smooth" });
-  el.focus();
+  el.scrollIntoView({ block: "nearest", behavior: "auto" });
+  el.focus({ preventScroll: true });
   return true;
 }
 
@@ -304,6 +304,9 @@ export function MortalityEntryForm({
   function setMortField(next: { kind: "culls" | "mortality"; age: number } | null) {
     setActiveField(next);
     setKeypadOpen(!!next);
+    if (!next && typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
   }
 
   useEffect(() => {
@@ -838,7 +841,15 @@ export function MortalityEntryForm({
             type="button"
             aria-label="Dismiss keypad"
             className="fixed inset-0 z-40 bg-transparent"
-            onClick={() => {
+            onTouchEnd={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              flushSave();
+              setMortField(null);
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
               flushSave();
               setMortField(null);
             }}

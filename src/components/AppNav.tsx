@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useKeypadNav } from "@/components/KeypadNavContext";
+import { isKeypadGuardActive } from "@/lib/keypadPointerGuard";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { replicaPath } from "@/lib/offline/hasFarmGraph";
@@ -69,6 +70,7 @@ export function AppNav() {
   }
 
   function onTabPress(href: string) {
+    if (isKeypadGuardActive()) return;
     router.prefetch(href);
     if (!isActive(viewPath, pathOnly(href))) setPendingHref(href);
   }
