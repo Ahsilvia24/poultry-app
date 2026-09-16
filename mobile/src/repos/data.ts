@@ -97,7 +97,7 @@ function summarizeHouse(
   cumulativePct: number;
   remaining: number;
   status: string;
-  weekly: Array<{ week: number; total: number }>;
+  weekly: Array<{ week: number; total: number; entered: boolean }>;
 } {
   let cumulative = 0;
   let today = 0;
@@ -120,6 +120,7 @@ function summarizeHouse(
   currentWeek = Math.min(Math.max(1, currentWeek), MAX_WEEKLY_MORTALITY_WEEK);
 
   const weekTotals = new Map<number, number>();
+  const enteredWeeks = new Set<number>();
   const fillThrough = 8;
   for (let w = 1; w <= fillThrough; w++) weekTotals.set(w, 0);
 
@@ -141,6 +142,7 @@ function summarizeHouse(
     if (week >= 1 && week <= 16 && (week <= currentWeek || pinned)) {
       if (week > 8 && loss === 0 && !weekTotals.has(week)) continue;
       weekTotals.set(week, (weekTotals.get(week) ?? 0) + loss);
+      enteredWeeks.add(week);
     }
     if (r.mortality_date === asOf) today += loss;
   }
@@ -175,7 +177,7 @@ function summarizeHouse(
 
   const weekly = Array.from(weekTotals.entries())
     .sort((a, b) => a[0] - b[0])
-    .map(([week, total]) => ({ week, total }));
+    .map(([week, total]) => ({ week, total, entered: enteredWeeks.has(week) }));
 
   return {
     today,
@@ -780,7 +782,7 @@ export function getFarmDetail(farmId: string) {
       cumulativePct: 0,
       remaining: hf?.placed_bird_count ?? 0,
       status: "Normal",
-      weekly: [] as Array<{ week: number; total: number }>,
+      weekly: [] as Array<{ week: number; total: number; entered: boolean }>,
     };
 
     if (hf) {

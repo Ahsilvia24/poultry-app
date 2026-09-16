@@ -10,6 +10,14 @@ import {
   flockWeekFromAge,
   pinnedBirdAge,
 } from "@/lib/mortality/calculations";
+import {
+  displayCullCount,
+  displayMortalityCount,
+  firstUnfilledAfterLastFilled,
+  mortalityEntered,
+  needsEntry,
+  nextEmptyInColumn,
+} from "@/lib/mortality/entryNav";
 import { mortalityGridMaxAge } from "@/lib/weeklyMortalityLayout";
 import { formatNumber } from "@/lib/utils";
 import { Card } from "@/components/ui";
@@ -71,37 +79,6 @@ function NeedsEntryIcon() {
       !
     </span>
   );
-}
-
-/** True once mortality (daily loss) has been entered for the day — including 0. */
-function mortalityEntered(row: DayRow) {
-  return row.dailyMortalityCount !== "";
-}
-
-/**
- * Past/today with no mortality total yet — Loss cell shows !.
- * Day 0 is usually left blank (entry starts on day 1), so it never prompts.
- * Culls are optional metadata and do not clear the !.
- */
-function needsEntry(row: DayRow, asOfDateKey: string) {
-  return row.age > 0 && row.mortalityDate <= asOfDateKey && !mortalityEntered(row);
-}
-
-/**
- * First past/today day still missing a mortality total after the last day
- * that has one. If none entered yet, the earliest day that needs entry.
- */
-function firstUnfilledAfterLastFilled(rows: DayRow[], asOfDateKey: string): DayRow | null {
-  let lastFilledAge = -1;
-  for (const row of rows) {
-    if (mortalityEntered(row)) lastFilledAge = Math.max(lastFilledAge, row.age);
-  }
-  const afterLast = rows.find((r) => r.age > lastFilledAge && needsEntry(r, asOfDateKey));
-  if (afterLast) return afterLast;
-  if (lastFilledAge < 0) {
-    return rows.find((r) => needsEntry(r, asOfDateKey)) ?? null;
-  }
-  return null;
 }
 
 function scrollMortalityCellAboveKeypad(el: HTMLElement) {
@@ -194,9 +171,9 @@ function buildRows(
     return {
       age,
       mortalityDate,
-      // Blank until entered — don't seed "0" or clearing one cell leaves a phantom zero
-      dailyMortalityCount: existing ? String(existing.dailyMortalityCount) : "",
-      cullCount: existing ? String(existing.cullCount) : "",
+      // Blank until entered — don't seed "0" into empty cull boxes
+      dailyMortalityCount: existing ? displayMortalityCount(existing.dailyMortalityCount) : "",
+      cullCount: existing ? displayCullCount(existing.cullCount) : "",
       hasEntry: Boolean(existing),
     };
   }
@@ -204,8 +181,8 @@ function buildRows(
   const known = [...byAge.keys()].map((age) => ({
     age,
     hasEntry: true,
-    dailyMortalityCount: String(byAge.get(age)?.dailyMortalityCount ?? ""),
-    cullCount: String(byAge.get(age)?.cullCount ?? ""),
+    dailyMortalityCount: displayMortalityCount(byAge.get(age)?.dailyMortalityCount),
+    cullCount: displayCullCount(byAge.get(age)?.cullCount),
   }));
   const maxAge = mortalityGridMaxAge(todayAge, catchAge, known);
 
@@ -369,8 +346,8 @@ export function MortalityEntryForm({
       isDraft: false,
       entries: entered.map((r) => ({
         mortalityDate: r.mortalityDate,
-        dailyMortalityCount: Number(r.dailyMortalityCount || 0),
-        cullCount: Number(r.cullCount || 0),
+        dailyMortalityCount: r.dailyMortalityCount === "" ? 0 : Number(r.dailyMortalityCount),
+        cullCount: r.cullCount === "" ? 0 : Number(r.cullCount),
         birdAgeInDays: r.age,
       })),
       clearDates,
@@ -453,10 +430,7 @@ export function MortalityEntryForm({
       setExpandedWeeks(new Set([currentWeek]));
       return;
     }
-    const jumpTo =
-      firstUnfilledAfterLastFilled(built, asOfDateKey) ??
-      built.find((r) => r.mortalityDate === asOfDateKey) ??
-      null;
+    const jumpTo = firstUnfilledAfterLastFilled(built, asOfDateKey);
     const openWeek = jumpTo ? flockWeekFromAge(jumpTo.age) : currentWeek;
     // Exclusive accordion: only the jump target week stays open
     setExpandedWeeks(new Set([openWeek]));
@@ -577,10 +551,6 @@ export function MortalityEntryForm({
     setFocusToken((t) => t + 1);
   }
 
-  function focusNextInColumn(field: "culls" | "mortality", age: number) {
-    focusAgeInColumn(field, age + 1);
-  }
-
   function focusPrevInColumn(field: "culls" | "mortality", age: number) {
     focusAgeInColumn(field, age - 1);
   }
@@ -623,9 +593,14 @@ export function MortalityEntryForm({
   function onEnter() {
     if (!activeField) return;
     flushSave();
-    const nextAge = activeField.age + 1;
-    if (rowsRef.current.some((r) => r.age === nextAge)) {
-      focusNextInColumn(activeField.kind, activeField.age);
+    const next = nextEmptyInColumn(
+      rowsRef.current,
+      activeField.kind,
+      activeField.age,
+      asOfDateKey,
+    );
+    if (next) {
+      focusAgeInColumn(activeField.kind, next.age);
     } else {
       setMortField(null);
     }

@@ -16,7 +16,9 @@ type FarmHouse = {
   ageDays: number | null;
   placedBirdCount: number | null;
   cumulativeMortality: number;
-  weeklyMortality: Array<{ week: number; total: number }>;
+  weeklyMortality: Array<{ week: number; total: number; entered?: boolean }>;
+  /** True when this house has at least one saved mortality record. */
+  hasMortalityEntries?: boolean;
   squareFootage?: number | null;
   totalFanCFM: number | null;
   totalPowerCFM?: number | null;
@@ -42,12 +44,29 @@ export type FarmDetailLike = {
   houses: FarmHouse[];
 };
 
-function weeksFromSummary(weekly: Array<{ week: number; total: number }>) {
-  const map = new Map(weekly.map((w) => [w.week, w.total]));
+function weekWasEntered(week: { week: number; total: number; entered?: boolean }) {
+  return week.entered === true;
+}
+
+function houseHasEnteredMortality(house: FarmHouse) {
+  if (typeof house.hasMortalityEntries === "boolean") return house.hasMortalityEntries;
+  return (house.weeklyMortality ?? []).some(weekWasEntered);
+}
+
+/** Week cells stay blank until that week has a saved mortality record (entered 0 still prints 0). */
+export function weeksFromSummary(weekly: Array<{ week: number; total: number; entered?: boolean }>) {
+  const map = new Map(weekly.map((w) => [w.week, w]));
   return [1, 2, 3, 4, 5, 6, 7, 8].map((week) => {
-    const total = map.get(week);
-    return total == null ? "" : String(total);
+    const item = map.get(week);
+    if (!item || item.entered === false) return "";
+    return String(item.total);
   });
+}
+
+export function mortalityToDateFromHouse(house: FarmHouse) {
+  if (house.placedBirdCount == null) return "";
+  if (!houseHasEnteredMortality(house)) return "";
+  return String(house.cumulativeMortality);
 }
 
 export function prefillHouseRows(detail: FarmDetailLike): ServiceHouseRow[] {
@@ -56,7 +75,7 @@ export function prefillHouseRows(detail: FarmDetailLike): ServiceHouseRow[] {
     const row = emptyHouseRow(h.houseNumber);
     row.age = h.ageDays != null ? String(Math.max(0, h.ageDays)) : "";
     row.placed = h.placedBirdCount != null ? String(h.placedBirdCount) : "";
-    row.mortalityToDate = h.placedBirdCount != null ? String(h.cumulativeMortality) : "";
+    row.mortalityToDate = mortalityToDateFromHouse(h);
     row.weeks = weeksFromSummary(h.weeklyMortality ?? []);
     row.currentTemp = h.loggedTemp?.trim() || "";
     return row;
