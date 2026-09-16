@@ -1,6 +1,7 @@
 import { addDays, differenceInCalendarDays, format, startOfDay, subDays } from "date-fns";
 import { appToday, appTodayKey } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
+import { addCatchHouseNumber } from "@/lib/catchHouses";
 import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import { dedupeScheduleRows, scheduleGroupsForFarm } from "@/lib/flockIdentity";
@@ -360,10 +361,15 @@ export function rebuildDashboardScheduleFromReplica(
       for (const due of upcoming) upcomingSchedule.push(toRow(due));
     }
 
+    const houseNumberById = new Map(
+      (snapshot.houses ?? [])
+        .filter((house) => house.farmId === farm.id && !house.deletedAt)
+        .map((house) => [house.id, house.houseNumber]),
+    );
     for (const flock of activeFlocks) {
       const flockCatchDates = new Map<
         string,
-        { catchDate: string; placement: string; catchTime: string | null }
+        { catchDate: string; placement: string; catchTime: string | null; houseNumbers: number[] }
       >();
       const houses = snapshot.houseFlocks.filter((hf) => hf.flockId === flock.id);
       for (const hf of houses) {
@@ -372,9 +378,14 @@ export function rebuildDashboardScheduleFromReplica(
         const catchTime = hf.catchTime?.trim() || null;
         const existing = flockCatchDates.get(catchDate);
         if (!existing) {
-          flockCatchDates.set(catchDate, { catchDate, placement, catchTime });
-        } else if (catchTime && (!existing.catchTime || catchTime < existing.catchTime)) {
-          existing.catchTime = catchTime;
+          const houseNumbers: number[] = [];
+          addCatchHouseNumber(houseNumbers, houseNumberById.get(hf.houseId));
+          flockCatchDates.set(catchDate, { catchDate, placement, catchTime, houseNumbers });
+        } else {
+          addCatchHouseNumber(existing.houseNumbers, houseNumberById.get(hf.houseId));
+          if (catchTime && (!existing.catchTime || catchTime < existing.catchTime)) {
+            existing.catchTime = catchTime;
+          }
         }
       }
       if (flockCatchDates.size === 0) {
@@ -383,16 +394,20 @@ export function rebuildDashboardScheduleFromReplica(
           catchDate,
           placement: flockPlaceKey(flock),
           catchTime: null,
+          houseNumbers: [],
         });
       }
-      for (const [dateKey, { placement, catchTime }] of flockCatchDates) {
+      for (const [dateKey, { placement, catchTime, houseNumbers }] of flockCatchDates) {
         const farmCatchKey = `${farm.id}|${dateKey}`;
         if (seenFarmCatchKeys.has(farmCatchKey)) {
           const existing = upcomingCatches.find(
             (row) => row.farmId === farm.id && row.date === dateKey,
           );
-          if (existing && catchTime && (!existing.catchTime || catchTime < existing.catchTime)) {
-            existing.catchTime = catchTime;
+          if (existing) {
+            for (const n of houseNumbers) addCatchHouseNumber(existing.houseNumbers, n);
+            if (catchTime && (!existing.catchTime || catchTime < existing.catchTime)) {
+              existing.catchTime = catchTime;
+            }
           }
           continue;
         }
@@ -409,6 +424,7 @@ export function rebuildDashboardScheduleFromReplica(
             timeZone,
           ),
           catchTime,
+          houseNumbers: houseNumbers.slice().sort((a, b) => a - b),
         });
       }
     }

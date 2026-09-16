@@ -1,3 +1,4 @@
+import { addCatchHouseNumber } from "@/lib/catchHouses";
 import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { daysSincePlacement } from "@/lib/mortality/calculations";
 import { farmGroupKey as catchFarmGroupKey } from "@/lib/catch-import/parse";
@@ -251,6 +252,11 @@ function patchDashboardCatchDates(
     if (!farm || !date) continue;
     upcoming = upcoming.filter((row) => row.farmName !== farm.farmName || row.flockNumber !== flock.flockNumber);
     if (date >= todayKey && date <= horizonKey) {
+      const houseNumbers: number[] = [];
+      for (const hf of houseFlocks.filter((row) => row.flockId === flockId)) {
+        const house = snapshot.houses.find((row) => row.id === hf.houseId && !row.deletedAt);
+        addCatchHouseNumber(houseNumbers, house?.houseNumber);
+      }
       upcoming.push({
         farmId: farm.id,
         farmName: farm.farmName,
@@ -269,6 +275,7 @@ function patchDashboardCatchDates(
             .filter((hf) => hf.flockId === flockId && hf.catchTime)
             .map((hf) => hf.catchTime)
             .sort()[0] ?? null,
+        houseNumbers,
       });
     }
   }
