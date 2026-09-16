@@ -8,8 +8,10 @@ export function resetAppScroll() {
 
 export function hrefHasHouseFocus(href: string): boolean {
   try {
-    const id = new URL(href, "https://poultrytech.local").searchParams.get("focusHouseFlockId");
-    return Boolean(id?.trim());
+    const params = new URL(href, "https://poultrytech.local").searchParams;
+    return Boolean(
+      params.get("focusHouseId")?.trim() || params.get("focusHouseFlockId")?.trim(),
+    );
   } catch {
     return false;
   }

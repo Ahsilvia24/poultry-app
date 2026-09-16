@@ -10,6 +10,7 @@ import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
+import { isKeypadGuardActive } from "@/lib/keypadPointerGuard";
 import { updateHouseLoggedTempAction } from "@/app/actions/farms";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOffline } from "@/components/OfflineProvider";
@@ -121,6 +122,7 @@ export function HouseCard({
   }, [tempOpen, setKeypadOpen]);
 
   function openTemp() {
+    if (isKeypadGuardActive()) return;
     setTempError(null);
     setTempValue(loggedTempToday ?? "");
     setTempOpen(true);
@@ -170,7 +172,10 @@ export function HouseCard({
           <div className="flex items-start justify-between gap-2">
             <button
               type="button"
-              onClick={() => setMode("edit")}
+              onClick={() => {
+                if (isKeypadGuardActive()) return;
+                setMode("edit");
+              }}
               className="min-w-0 flex-1 text-left text-inherit"
               aria-label={`Edit house ${house.houseNumber}`}
             >
@@ -234,7 +239,10 @@ export function HouseCard({
 
           <button
             type="button"
-            onClick={() => setMode("edit")}
+            onClick={() => {
+              if (isKeypadGuardActive()) return;
+              setMode("edit");
+            }}
             className="mt-3 w-full text-left text-inherit"
             aria-label={`Edit house ${house.houseNumber} weekly mortality`}
           >

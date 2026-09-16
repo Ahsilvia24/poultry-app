@@ -52,6 +52,7 @@ export function selectMortality(
                 const houseFlockRecord = flockById.get(houseFlock.flockId);
                 return {
                 houseFlockId: houseFlock.id,
+                houseId: house.id,
                 flockId: houseFlock.flockId,
                 houseNumber: house.houseNumber,
                 placedBirdCount: houseFlock.placedBirdCount,

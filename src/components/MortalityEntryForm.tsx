@@ -16,11 +16,13 @@ import { Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { NumberKeypad } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
+import { armKeypadPointerGuard, isKeypadGuardActive } from "@/lib/keypadPointerGuard";
 import { formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 export type MortalityHousePayload = {
   houseFlockId: string;
+  houseId?: string;
   flockId?: string;
   houseNumber: number;
   placedBirdCount: number;
@@ -102,10 +104,31 @@ function firstUnfilledAfterLastFilled(rows: DayRow[], asOfDateKey: string): DayR
   return null;
 }
 
+function scrollMortalityCellAboveKeypad(el: HTMLElement) {
+  const keypad = document.querySelector<HTMLElement>("[data-mort-keypad]");
+  const keypadTop = keypad?.getBoundingClientRect().top ?? window.innerHeight - 280;
+  const row = el.closest<HTMLElement>("[data-mort-row]") ?? el;
+  const rect = row.getBoundingClientRect();
+  const topPad = 72;
+  let delta = 0;
+  if (rect.bottom + 12 > keypadTop) delta = rect.bottom + 12 - keypadTop;
+  else if (rect.top < topPad) delta = rect.top - topPad;
+  if (delta === 0) return;
+  const scroller = document.querySelector("[data-app-scroll]");
+  if (scroller instanceof HTMLElement) {
+    const overflowY = getComputedStyle(scroller).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") {
+      scroller.scrollTop += delta;
+      return;
+    }
+  }
+  window.scrollBy(0, delta);
+}
+
 function focusMortalityAge(age: number, field: "culls" | "mortality" = "mortality") {
   const el = document.querySelector<HTMLElement>(`[data-mort-nav="${field}-${age}"]`);
   if (!el) return false;
-  el.scrollIntoView({ block: "nearest", behavior: "auto" });
+  scrollMortalityCellAboveKeypad(el);
   el.focus({ preventScroll: true });
   return true;
 }
@@ -544,7 +567,12 @@ export function MortalityEntryForm({
     const value = field === "culls" ? row?.cullCount ?? "" : row?.dailyMortalityCount ?? "";
     setMortField({ kind: field, age });
     setReplaceOnType(value === "" || value === "0");
-    setExpandedWeeks(new Set([week]));
+    setExpandedWeeks((prev) => {
+      if (prev.has(week)) return prev;
+      const next = new Set(prev);
+      next.add(week);
+      return next;
+    });
     pendingJumpRef.current = { age, field };
     setFocusToken((t) => t + 1);
   }
@@ -604,10 +632,19 @@ export function MortalityEntryForm({
   }
   const onEnterRef = useRef(onEnter);
   onEnterRef.current = onEnter;
+  const onBackspaceRef = useRef(onBackspace);
+  onBackspaceRef.current = onBackspace;
 
   useEffect(() => {
     if (!activeField) return;
     function onKey(event: KeyboardEvent) {
+      if (event.key === "Backspace") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.repeat) return;
+        onBackspaceRef.current();
+        return;
+      }
       if (event.key !== "Enter" && event.key !== "NumpadEnter") return;
       event.preventDefault();
       event.stopPropagation();
@@ -618,7 +655,16 @@ export function MortalityEntryForm({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [activeField]);
 
+  function ignoreLeftoverTap() {
+    return isKeypadGuardActive() || Boolean(activeField);
+  }
+
   function changeFarm(nextFarmId: string) {
+    if (ignoreLeftoverTap()) {
+      flushSave();
+      setMortField(null);
+      return;
+    }
     flushSave();
     setFarmId(nextFarmId);
     setSaveStatus("idle");
@@ -633,6 +679,11 @@ export function MortalityEntryForm({
   }
 
   function changeHouse(nextHouseId: string) {
+    if (ignoreLeftoverTap()) {
+      flushSave();
+      setMortField(null);
+      return;
+    }
     flushSave();
     jumpOnHouseLoadRef.current = true;
     setSaveStatus("idle");
@@ -738,6 +789,7 @@ export function MortalityEntryForm({
                 <button
                   type="button"
                   onClick={() => {
+                    if (isKeypadGuardActive()) return;
                     setMortField(null);
                     toggleWeek(group.week);
                   }}
@@ -854,7 +906,7 @@ export function MortalityEntryForm({
               setMortField(null);
             }}
           />
-          <div className="relative z-50">
+          <div className="relative z-50" data-mort-keypad>
           <NumberKeypad
             onDigit={onDigit}
             onBackspace={onBackspace}
@@ -864,11 +916,13 @@ export function MortalityEntryForm({
                 ? {
                     label: `Back to House ${house.houseNumber}`,
                     onPress: () => {
+                      const params = new URLSearchParams();
+                      params.set("focusHouseFlockId", house.houseFlockId);
+                      if (house.houseId) params.set("focusHouseId", house.houseId);
+                      armKeypadPointerGuard();
                       flushSave();
+                      openReplica(`/farms/${farmId}?${params.toString()}`);
                       setMortField(null);
-                      openReplica(
-                        `/farms/${farmId}?focusHouseFlockId=${encodeURIComponent(house.houseFlockId)}`,
-                      );
                     },
                   }
                 : undefined

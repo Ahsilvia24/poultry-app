@@ -1,5 +1,5 @@
 /** Keep leftover iOS taps from hitting a tab after the keypad unmounts. */
-export const KEYPAD_TAB_GUARD_MS = 800;
+export const KEYPAD_TAB_GUARD_MS = 1200;
 export const KEYPAD_SHIELD_ID = "keypad-pointer-shield";
 
 const EAT_TYPES = [
@@ -35,7 +35,7 @@ function mountShield() {
     shield.id = KEYPAD_SHIELD_ID;
     shield.setAttribute("aria-hidden", "true");
     shield.style.cssText =
-      "position:fixed;inset:0;z-index:2147483647;touch-action:none;";
+      "position:fixed;inset:0;z-index:2147483647;touch-action:none;pointer-events:auto;";
     document.body.appendChild(shield);
   }
 }

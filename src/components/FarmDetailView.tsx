@@ -20,17 +20,23 @@ export function FarmDetailView({
   model,
   timeZone,
   focusHouseFlockId,
+  focusHouseId: focusHouseIdParam,
 }: {
   model: FarmDetailModel;
   timeZone?: string;
   focusHouseFlockId?: string | null;
+  focusHouseId?: string | null;
 }) {
   const farm = model.farm;
   const [addFlockOpen, setAddFlockOpen] = useState(false);
   const houseById = new Map(model.houses.map((house) => [house.id, house]));
-  const focusHouseId = focusHouseFlockId
-    ? model.houseCards.find((card) => card.houseFlockId === focusHouseFlockId)?.houseId
-    : null;
+  const focusHouseId =
+    (focusHouseIdParam && model.houses.some((house) => house.id === focusHouseIdParam)
+      ? focusHouseIdParam
+      : null) ??
+    (focusHouseFlockId
+      ? model.houseCards.find((card) => card.houseFlockId === focusHouseFlockId)?.houseId
+      : null);
 
   useLayoutEffect(() => {
     if (focusHouseId) return;

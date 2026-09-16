@@ -76,6 +76,7 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
               const houseFlockRecord = farm.flocks.find((row) => row.id === houseFlock.flockId) ?? active;
               return {
               houseFlockId: houseFlock.id,
+              houseId: house.id,
               flockId: houseFlock.flockId,
               houseNumber: house.houseNumber,
               placedBirdCount: houseFlock.placedBirdCount,
