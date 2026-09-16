@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useState } from "react";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { resetAppScroll } from "@/lib/app-scroll";
 import { createFlockAction } from "@/app/actions/farms";
@@ -26,6 +26,7 @@ export function FarmDetailView({
   focusHouseFlockId?: string | null;
 }) {
   const farm = model.farm;
+  const [addFlockOpen, setAddFlockOpen] = useState(false);
   const houseById = new Map(model.houses.map((house) => [house.id, house]));
   const focusHouseId = focusHouseFlockId
     ? model.houseCards.find((card) => card.houseFlockId === focusHouseFlockId)?.houseId
@@ -55,7 +56,11 @@ export function FarmDetailView({
       </div>
 
       <div className="mb-6">
-        <FarmQuickLinks farmId={farm.id} completeFlocks={model.activeFlocks} />
+        <FarmQuickLinks
+          farmId={farm.id}
+          completeFlocks={model.activeFlocks}
+          onAddFlock={() => setAddFlockOpen(true)}
+        />
       </div>
 
       <ExclusiveSwipeGroup>
@@ -102,6 +107,8 @@ export function FarmDetailView({
         activeFlockCount={model.activeFlocks.length}
         houses={model.addFlockHouses}
         initialPlacement={appTodayKey(undefined, resolveAppTimeZone(timeZone))}
+        open={addFlockOpen}
+        onOpenChange={setAddFlockOpen}
       />
     </div>
   );

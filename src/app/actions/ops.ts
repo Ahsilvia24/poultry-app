@@ -20,6 +20,8 @@ import {
   DEFAULT_EXPECTED_FEED_CONVERSION,
 } from "@/lib/weight/manualProjection";
 import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
+import { isLocalRecordId } from "@/lib/offline/formPairs";
+import { chooseLeftoverCreatedId } from "@/lib/offline/remapIds";
 import {
   farmIssueSchema,
   farmVisitSchema,
@@ -34,6 +36,11 @@ import {
 function emptyToNull(value: FormDataEntryValue | null) {
   const s = String(value ?? "").trim();
   return s === "" ? null : s;
+}
+
+function websiteRelationId(value: string | null | undefined) {
+  if (!value || isLocalRecordId(value)) return null;
+  return value;
 }
 
 function parseLoggedAt(value: FormDataEntryValue | null) {
@@ -89,7 +96,7 @@ export async function createFeedDeliveryAction(formData: FormData) {
     farmId = hf.flock.farmId;
   }
 
-  await prisma.feedDelivery.create({
+  const created = await prisma.feedDelivery.create({
     data: {
       flockId: parsed.data.flockId,
       houseFlockId: parsed.data.houseFlockId,
@@ -105,7 +112,7 @@ export async function createFeedDeliveryAction(formData: FormData) {
 
   if (farmId) revalidatePath(`/farms/${farmId}`);
   revalidatePath("/feed");
-  return { success: true };
+  return { success: true, id: created.id };
 }
 
 async function resolveFeedDeliveryFarmId(
@@ -148,14 +155,49 @@ export async function updateFeedDeliveryAction(deliveryId: string, formData: For
     return { error: "Select a house" };
   }
 
-  const existing = await prisma.feedDelivery.findFirst({
+  const feedInclude = {
+    flock: true,
+    houseFlock: { include: { flock: true } },
+  } as const;
+  let existing = await prisma.feedDelivery.findFirst({
     where: { id: deliveryId },
-    include: {
-      flock: true,
-      houseFlock: { include: { flock: true } },
-    },
+    include: feedInclude,
   });
-  if (!existing) return { error: "Delivery not found" };
+  if (!existing && isLocalRecordId(deliveryId)) {
+    const leftoverId = chooseLeftoverCreatedId({
+      sameFingerprint: (
+        await prisma.feedDelivery.findMany({
+          where: {
+            houseFlockId: parsed.data.houseFlockId,
+            deliveryDate: new Date(parsed.data.deliveryDate),
+            poundsDelivered: parsed.data.poundsDelivered,
+          },
+          select: { id: true },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        })
+      ).map((row) => row.id),
+      sameDay: (
+        await prisma.feedDelivery.findMany({
+          where: {
+            houseFlockId: parsed.data.houseFlockId,
+            deliveryDate: new Date(parsed.data.deliveryDate),
+          },
+          select: { id: true },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        })
+      ).map((row) => row.id),
+    });
+    if (leftoverId) {
+      existing = await prisma.feedDelivery.findFirst({
+        where: { id: leftoverId },
+        include: feedInclude,
+      });
+    }
+  }
+  if (!existing) {
+    if (isLocalRecordId(deliveryId)) return createFeedDeliveryAction(formData);
+    return { error: "Delivery not found" };
+  }
 
   const existingFarmId = existing.flock?.farmId ?? existing.houseFlock?.flock.farmId;
   if (!existingFarmId) return { error: "Delivery not found" };
@@ -169,7 +211,7 @@ export async function updateFeedDeliveryAction(deliveryId: string, formData: For
   if (!farmId) return { error: "Access denied" };
 
   await prisma.feedDelivery.update({
-    where: { id: deliveryId },
+    where: { id: existing.id },
     data: {
       flockId: parsed.data.flockId,
       houseFlockId: parsed.data.houseFlockId,
@@ -186,7 +228,7 @@ export async function updateFeedDeliveryAction(deliveryId: string, formData: For
   revalidatePath(`/farms/${farmId}`);
   revalidatePath(`/farms/${existingFarmId}`);
   revalidatePath("/feed");
-  return { success: true };
+  return { success: true, id: existing.id };
 }
 
 export async function deleteFeedDeliveryAction(deliveryId: string) {
@@ -326,10 +368,10 @@ export async function createLitterEventAction(formData: FormData) {
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid litter event" };
   await assertFarmAccess(parsed.data.farmId, user.id!);
 
-  await prisma.litterEvent.create({
+  const created = await prisma.litterEvent.create({
     data: {
       farmId: parsed.data.farmId,
-      houseId: parsed.data.houseId,
+      houseId: websiteRelationId(parsed.data.houseId),
       eventDate: new Date(parsed.data.eventDate),
       eventType: parsed.data.eventType,
       litterDepth: parsed.data.litterDepth,
@@ -339,7 +381,7 @@ export async function createLitterEventAction(formData: FormData) {
     },
   });
   revalidatePath(`/farms/${parsed.data.farmId}`);
-  return { success: true };
+  return { success: true, id: created.id };
 }
 
 export async function createVisitAction(formData: FormData) {
@@ -424,11 +466,11 @@ export async function createIssueAction(formData: FormData) {
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid issue" };
   await assertFarmAccess(parsed.data.farmId, user.id!);
 
-  await prisma.farmIssue.create({
+  const created = await prisma.farmIssue.create({
     data: {
       farmId: parsed.data.farmId,
-      houseId: parsed.data.houseId,
-      flockId: parsed.data.flockId,
+      houseId: websiteRelationId(parsed.data.houseId),
+      flockId: websiteRelationId(parsed.data.flockId),
       dateReported: new Date(parsed.data.dateReported),
       category: parsed.data.category,
       priority: parsed.data.priority,
@@ -441,7 +483,7 @@ export async function createIssueAction(formData: FormData) {
   });
   revalidatePath(`/farms/${parsed.data.farmId}`);
   revalidatePath("/");
-  return { success: true };
+  return { success: true, id: created.id };
 }
 
 export async function deleteVisitAction(farmId: string, visitId: string) {
@@ -467,7 +509,7 @@ export async function reorderVisitAction(visitId: string, farmId: string, logged
   const visit = await prisma.farmVisit.findFirst({
     where: { id: visitId, farmId },
   });
-  if (!visit) return { error: "Visit not found" };
+  if (!visit) return { success: true };
   await prisma.farmVisit.update({
     where: { id: visitId },
     data: { loggedAt: at },
@@ -504,33 +546,82 @@ export async function updateVisitAction(visitId: string, formData: FormData) {
   const existing = await prisma.farmVisit.findFirst({
     where: { id: visitId, farmId: parsed.data.farmId },
   });
-  if (!existing) return { error: "Visit not found" };
+  const leftoverId =
+    existing?.id ??
+    (isLocalRecordId(visitId)
+      ? chooseLeftoverCreatedId({
+          sameFingerprint: (
+            await prisma.farmVisit.findMany({
+              where: {
+                farmId: parsed.data.farmId,
+                visitDate: new Date(parsed.data.visitDate),
+                visitType: parsed.data.visitType,
+                notes: parsed.data.notes,
+              },
+              select: { id: true },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            })
+          ).map((row) => row.id),
+          sameDay: (
+            await prisma.farmVisit.findMany({
+              where: {
+                farmId: parsed.data.farmId,
+                visitDate: new Date(parsed.data.visitDate),
+              },
+              select: { id: true },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            })
+          ).map((row) => row.id),
+        })
+      : null);
 
-  const flockId = parsed.data.flockId ?? existing.flockId;
+  const flockId = websiteRelationId(parsed.data.flockId) ?? existing?.flockId ?? null;
   const birdAgeInDays = await resolveVisitBirdAge(flockId, parsed.data.visitDate);
+  const data = {
+    flockId,
+    visitDate: new Date(parsed.data.visitDate),
+    birdAgeInDays,
+    visitType: parsed.data.visitType,
+    generalBirdCondition: parsed.data.generalBirdCondition ?? "Healthy",
+    activityLevel: parsed.data.activityLevel,
+    uniformity: parsed.data.uniformity,
+    litterCondition: parsed.data.litterCondition,
+    waterConsumption: parsed.data.waterConsumption,
+    feedInventory: parsed.data.feedInventory,
+    temperature: null,
+    humidity: null,
+    staticPressure: parsed.data.staticPressure,
+    notes: parsed.data.notes,
+    followUpRequired: parsed.data.followUpRequired ?? false,
+    followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
+  };
+
+  if (!leftoverId) {
+    if (!isLocalRecordId(visitId) && !existing) return { error: "Visit not found" };
+    await ensureWeightProjectionVisitType();
+    try {
+      const created = await prisma.farmVisit.create({
+        data: {
+          farmId: parsed.data.farmId,
+          ...data,
+          loggedAt: parseLoggedAt(formData.get("loggedAt")),
+        },
+      });
+      revalidatePath(`/farms/${parsed.data.farmId}`);
+      revalidatePath("/");
+      revalidatePath("/reports");
+      revalidatePath("/visits");
+      return { success: true, id: created.id };
+    } catch (error) {
+      return { error: visitSaveError(error) };
+    }
+  }
 
   await ensureWeightProjectionVisitType();
   try {
     await prisma.farmVisit.update({
-      where: { id: visitId },
-      data: {
-        flockId: parsed.data.flockId,
-        visitDate: new Date(parsed.data.visitDate),
-        birdAgeInDays,
-        visitType: parsed.data.visitType,
-        generalBirdCondition: parsed.data.generalBirdCondition ?? "Healthy",
-        activityLevel: parsed.data.activityLevel,
-        uniformity: parsed.data.uniformity,
-        litterCondition: parsed.data.litterCondition,
-        waterConsumption: parsed.data.waterConsumption,
-        feedInventory: parsed.data.feedInventory,
-        temperature: null,
-        humidity: null,
-        staticPressure: parsed.data.staticPressure,
-        notes: parsed.data.notes,
-        followUpRequired: parsed.data.followUpRequired ?? false,
-        followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
-      },
+      where: { id: leftoverId },
+      data,
     });
   } catch (error) {
     return { error: visitSaveError(error) };
@@ -538,7 +629,7 @@ export async function updateVisitAction(visitId: string, formData: FormData) {
   revalidatePath(`/farms/${parsed.data.farmId}`);
   revalidatePath("/");
   revalidatePath("/reports");
-  return { success: true };
+  return { success: true, id: leftoverId };
 }
 
 export async function deleteIssueAction(farmId: string, issueId: string) {
@@ -574,26 +665,63 @@ export async function updateIssueAction(issueId: string, formData: FormData) {
   const existing = await prisma.farmIssue.findFirst({
     where: { id: issueId, farmId: parsed.data.farmId },
   });
-  if (!existing) return { error: "Issue not found" };
+  const leftoverId =
+    existing?.id ??
+    (isLocalRecordId(issueId)
+      ? chooseLeftoverCreatedId({
+          sameFingerprint: (
+            await prisma.farmIssue.findMany({
+              where: {
+                farmId: parsed.data.farmId,
+                dateReported: new Date(parsed.data.dateReported),
+                category: parsed.data.category,
+                description: parsed.data.description,
+              },
+              select: { id: true },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            })
+          ).map((row) => row.id),
+          sameDay: (
+            await prisma.farmIssue.findMany({
+              where: {
+                farmId: parsed.data.farmId,
+                dateReported: new Date(parsed.data.dateReported),
+              },
+              select: { id: true },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            })
+          ).map((row) => row.id),
+        })
+      : null);
+  const data = {
+    houseId: websiteRelationId(parsed.data.houseId),
+    flockId: websiteRelationId(parsed.data.flockId),
+    dateReported: new Date(parsed.data.dateReported),
+    category: parsed.data.category,
+    priority: parsed.data.priority,
+    description: parsed.data.description,
+    correctiveAction: parsed.data.correctiveAction,
+    assignedTo: parsed.data.assignedTo,
+    status: parsed.data.status,
+    resolvedDate: parsed.data.resolvedDate ? new Date(parsed.data.resolvedDate) : null,
+  };
+  if (!leftoverId) {
+    if (!isLocalRecordId(issueId) && !existing) return { error: "Issue not found" };
+    const created = await prisma.farmIssue.create({
+      data: { farmId: parsed.data.farmId, ...data },
+    });
+    revalidatePath(`/farms/${parsed.data.farmId}`);
+    revalidatePath("/");
+    return { success: true, id: created.id };
+  }
 
   await prisma.farmIssue.update({
-    where: { id: issueId },
-    data: {
-      houseId: parsed.data.houseId,
-      flockId: parsed.data.flockId,
-      dateReported: new Date(parsed.data.dateReported),
-      category: parsed.data.category,
-      priority: parsed.data.priority,
-      description: parsed.data.description,
-      correctiveAction: parsed.data.correctiveAction,
-      assignedTo: parsed.data.assignedTo,
-      status: parsed.data.status,
-      resolvedDate: parsed.data.resolvedDate ? new Date(parsed.data.resolvedDate) : null,
-    },
+    where: { id: leftoverId },
+    data,
   });
   revalidatePath(`/farms/${parsed.data.farmId}`);
   revalidatePath("/");
-  return { success: true };
+  return { success: true, id: leftoverId };
 }
 
 export async function deleteLitterEventAction(farmId: string, eventId: string) {
@@ -626,22 +754,59 @@ export async function updateLitterEventAction(eventId: string, formData: FormDat
   const existing = await prisma.litterEvent.findFirst({
     where: { id: eventId, farmId: parsed.data.farmId },
   });
-  if (!existing) return { error: "Litter event not found" };
+  const leftoverId =
+    existing?.id ??
+    (isLocalRecordId(eventId)
+      ? chooseLeftoverCreatedId({
+          sameFingerprint: (
+            await prisma.litterEvent.findMany({
+              where: {
+                farmId: parsed.data.farmId,
+                eventDate: new Date(parsed.data.eventDate),
+                eventType: parsed.data.eventType,
+                notes: parsed.data.notes,
+              },
+              select: { id: true },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            })
+          ).map((row) => row.id),
+          sameDay: (
+            await prisma.litterEvent.findMany({
+              where: {
+                farmId: parsed.data.farmId,
+                eventDate: new Date(parsed.data.eventDate),
+              },
+              select: { id: true },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            })
+          ).map((row) => row.id),
+        })
+      : null);
+  const data = {
+    houseId: websiteRelationId(parsed.data.houseId),
+    eventDate: new Date(parsed.data.eventDate),
+    eventType: parsed.data.eventType,
+    litterDepth: parsed.data.litterDepth,
+    contractor: parsed.data.contractor,
+    notes: parsed.data.notes,
+  };
+  if (!leftoverId) {
+    if (!isLocalRecordId(eventId) && !existing) return { error: "Litter event not found" };
+    const created = await prisma.litterEvent.create({
+      data: { farmId: parsed.data.farmId, ...data, cost: null },
+    });
+    revalidatePath(`/farms/${parsed.data.farmId}`);
+    revalidatePath("/");
+    return { success: true, id: created.id };
+  }
 
   await prisma.litterEvent.update({
-    where: { id: eventId },
-    data: {
-      houseId: parsed.data.houseId,
-      eventDate: new Date(parsed.data.eventDate),
-      eventType: parsed.data.eventType,
-      litterDepth: parsed.data.litterDepth,
-      contractor: parsed.data.contractor,
-      notes: parsed.data.notes,
-    },
+    where: { id: leftoverId },
+    data,
   });
   revalidatePath(`/farms/${parsed.data.farmId}`);
   revalidatePath("/");
-  return { success: true };
+  return { success: true, id: leftoverId };
 }
 
 export async function updateSettingsAction(formData: FormData) {
@@ -823,11 +988,11 @@ export async function createGeneratorLogAction(formData: FormData) {
     return { error: "Enter hours for at least one generator" };
   }
 
-  await upsertGeneratorLogForDate(parsed.data.farmId, parsed.data.logDate, hours);
+  const id = await upsertGeneratorLogForDate(parsed.data.farmId, parsed.data.logDate, hours);
   await pruneGeneratorLogs(parsed.data.farmId);
 
   revalidatePath(`/farms/${parsed.data.farmId}`);
-  return { success: true };
+  return { success: true, id };
 }
 
 async function clearGeneratorHourOnLog(
@@ -863,7 +1028,10 @@ export async function updateGeneratorLogAction(logId: string, formData: FormData
   const existing = await prisma.generatorLog.findFirst({
     where: { id: logId, farm: { userId: user.id!, deletedAt: null } },
   });
-  if (!existing) return { error: "Generator log not found" };
+  if (!existing) {
+    if (!isLocalRecordId(logId)) return { error: "Generator log not found" };
+    return createGeneratorLogAction(formData);
+  }
 
   const onlyGenRaw = formData.get("onlyGen");
   if (isGenHourKey(onlyGenRaw)) {

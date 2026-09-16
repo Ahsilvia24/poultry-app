@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureActiveFlockHouseFlocksForUser } from "@/lib/ensureActiveFlockHouseFlocks";
 import { listMortalityHouses } from "@/lib/mortalityHouses";
+import { VISIT_PLACE_FARM_NUMBER } from "@/lib/visits/visitPlace";
 import { PageHeader } from "@/components/ui";
 import {
   MortalityEntryForm,
@@ -22,7 +23,12 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
   await ensureActiveFlockHouseFlocksForUser(session.user.id);
 
   const farmsRaw = await prisma.farm.findMany({
-    where: { userId: session.user.id, deletedAt: null, isActive: true },
+    where: {
+      userId: session.user.id,
+      deletedAt: null,
+      isActive: true,
+      farmNumber: { not: VISIT_PLACE_FARM_NUMBER },
+    },
     orderBy: { farmName: "asc" },
     include: {
       houses: { where: { deletedAt: null }, orderBy: { houseNumber: "asc" } },

@@ -49,10 +49,12 @@ import {
 } from "@/app/actions/serviceForms";
 import { isLocalRecordId, writeToFormData } from "@/lib/offline/formPairs";
 import { loadLocalSnapshot } from "@/lib/offline/idb";
+import { isActionTransportError } from "@/lib/offline/actionTransportError";
 import { isLocalFarmId } from "@/lib/offline/localFarmId";
 import {
   aliasesFromCreateFarm,
   aliasesFromCreateFlock,
+  aliasesFromCreated,
   remapFormWrite,
   resolveAlias,
   type IdAliases,
@@ -74,6 +76,17 @@ function fromAction(result: unknown, aliases?: IdAliases): FlushWriteResult {
   const error = actionError(result);
   if (error) return { ok: false, error };
   return aliases ? { ok: true, aliases } : { ok: true };
+}
+
+function fromCreated(
+  result: unknown,
+  originalId: string | undefined,
+  aliases: IdAliases,
+): FlushWriteResult {
+  const error = actionError(result);
+  if (error) return { ok: false, error };
+  const serverId = (result as { id?: string } | undefined)?.id;
+  return { ok: true, aliases: aliasesFromCreated(aliases, originalId, serverId) };
 }
 
 export async function flushFormWrite(
@@ -104,30 +117,16 @@ export async function flushFormWrite(
     case "deleteFarm":
       await deleteFarmAction(farmId, { skipRedirect: true });
       return { ok: true };
-    case "createHouse": {
-      const result = await createHouseAction(farmId, formData);
-      const error = actionError(result);
-      if (error) return { ok: false, error };
-      const serverId = (result as { id?: string } | undefined)?.id;
-      const next: IdAliases = { ...aliases };
-      if (original.id && serverId && original.id !== serverId) next[original.id] = serverId;
-      return { ok: true, aliases: next };
-    }
+    case "createHouse":
+      return fromCreated(await createHouseAction(farmId, formData), original.id, aliases);
     case "updateHouse":
       return fromAction(await updateHouseAction(farmId, id, formData), aliases);
     case "deleteHouse":
       return fromAction(await deleteHouseAction(farmId, id), aliases);
-    case "createVisit": {
-      const result = await createVisitAction(formData);
-      const error = actionError(result);
-      if (error) return { ok: false, error };
-      const serverId = (result as { id?: string } | undefined)?.id;
-      const next: IdAliases = { ...aliases };
-      if (original.id && serverId && original.id !== serverId) next[original.id] = serverId;
-      return { ok: true, aliases: next };
-    }
+    case "createVisit":
+      return fromCreated(await createVisitAction(formData), original.id, aliases);
     case "updateVisit":
-      return fromAction(await updateVisitAction(id, formData), aliases);
+      return fromCreated(await updateVisitAction(id, formData), original.id, aliases);
     case "deleteVisit":
       await deleteVisitAction(farmId, id);
       return { ok: true, aliases };
@@ -144,30 +143,30 @@ export async function flushFormWrite(
       return { ok: true, aliases };
     }
     case "createIssue":
-      return fromAction(await createIssueAction(formData), aliases);
+      return fromCreated(await createIssueAction(formData), original.id, aliases);
     case "updateIssue":
-      return fromAction(await updateIssueAction(id, formData), aliases);
+      return fromCreated(await updateIssueAction(id, formData), original.id, aliases);
     case "deleteIssue":
       await deleteIssueAction(farmId, id);
       return { ok: true };
     case "createLitter":
-      return fromAction(await createLitterEventAction(formData), aliases);
+      return fromCreated(await createLitterEventAction(formData), original.id, aliases);
     case "updateLitter":
-      return fromAction(await updateLitterEventAction(id, formData), aliases);
+      return fromCreated(await updateLitterEventAction(id, formData), original.id, aliases);
     case "deleteLitter":
       await deleteLitterEventAction(farmId, id);
       return { ok: true };
     case "createFeed":
-      return fromAction(await createFeedDeliveryAction(formData), aliases);
+      return fromCreated(await createFeedDeliveryAction(formData), original.id, aliases);
     case "updateFeed":
-      return fromAction(await updateFeedDeliveryAction(id, formData), aliases);
+      return fromCreated(await updateFeedDeliveryAction(id, formData), original.id, aliases);
     case "deleteFeed":
       await deleteFeedDeliveryAction(id);
       return { ok: true };
     case "createGeneratorLog":
-      return fromAction(await createGeneratorLogAction(formData), aliases);
+      return fromCreated(await createGeneratorLogAction(formData), original.id, aliases);
     case "updateGeneratorLog":
-      return fromAction(await updateGeneratorLogAction(id, formData), aliases);
+      return fromCreated(await updateGeneratorLogAction(id, formData), original.id, aliases);
     case "deleteGeneratorLog":
       await deleteGeneratorLogAction(id);
       return { ok: true };
@@ -212,7 +211,25 @@ export async function flushFormWrite(
       );
     }
     case "createFlock": {
-      const result = await createFlockAction(farmId, formData, { skipRedirect: true });
+      let result: unknown;
+      try {
+        result = await createFlockAction(farmId, formData, { skipRedirect: true });
+      } catch (err) {
+        if (!isActionTransportError(err)) {
+          return {
+            ok: false,
+            error: err instanceof Error ? err.message : "Could not create flock.",
+          };
+        }
+        try {
+          result = await createFlockAction(farmId, formData, { skipRedirect: true });
+        } catch {
+          return {
+            ok: false,
+            error: "Could not upload this flock. Stay on Wi-Fi and tap Sync data again.",
+          };
+        }
+      }
       const flockError = actionError(result);
       if (flockError) return { ok: false, error: flockError };
       const created = result as {

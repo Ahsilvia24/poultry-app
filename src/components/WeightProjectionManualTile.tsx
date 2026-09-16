@@ -6,6 +6,7 @@ import { useKeypadNav } from "@/components/KeypadNavContext";
 import { catchWeightBandFromLbs } from "@/lib/weight/projections";
 import { useOffline } from "@/components/OfflineProvider";
 import {
+  formatManualWeightCopy,
   manualProjectedWeightLbs,
   parseManualNumber,
   resolveDefaultConsumptionRate,
@@ -22,7 +23,7 @@ const FIELDS: Array<{
   decimal: boolean;
   tripleZero: boolean;
 }> = [
-  { key: "tf", label: "TF", unit: "lb", decimal: false, tripleZero: true },
+  { key: "tf", label: "TFD", unit: "lb", decimal: false, tripleZero: true },
   { key: "inv", label: "INV", unit: "lb", decimal: false, tripleZero: true },
   { key: "chc", label: "CHC", unit: "", decimal: false, tripleZero: true },
   { key: "cr", label: "CR", unit: "lb/bird/day", decimal: true, tripleZero: false },
@@ -42,7 +43,11 @@ function formatField(key: FieldKey, raw: string) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
-export function WeightProjectionManualTile() {
+export function WeightProjectionManualTile({
+  onCopyTextChange,
+}: {
+  onCopyTextChange?: (text: string) => void;
+} = {}) {
   const { setKeypadOpen } = useKeypadNav();
   const { snapshot } = useOffline();
   const defaultCr = resolveDefaultConsumptionRate(snapshot?.settings?.defaultConsumptionRate);
@@ -108,7 +113,21 @@ export function WeightProjectionManualTile() {
   }, [tf, inv, chc, cr, dtk, efc]);
 
   const band = projected != null ? catchWeightBandFromLbs(projected) : null;
+  const catchWeightLbs = band?.find((p) => p.key === "catch")?.weightLbs ?? null;
+  const copyText = formatManualWeightCopy({
+    catchWeightLbs,
+    tf,
+    inv,
+    chc,
+    cr,
+    dtk,
+    efc,
+  });
   const activeMeta = FIELDS.find((f) => f.key === active) ?? null;
+
+  useEffect(() => {
+    onCopyTextChange?.(copyText);
+  }, [copyText, onCopyTextChange]);
 
   function onDigit(d: string) {
     if (!active) return;

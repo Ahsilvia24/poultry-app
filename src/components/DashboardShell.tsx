@@ -19,8 +19,8 @@ function ShellBody({ children }: { children: React.ReactNode }) {
       <AppNav />
       <main
         className={cn(
-          "mx-auto max-w-7xl px-4 py-4 md:py-6",
-          keypadOpen ? "pb-4" : "pb-28 md:pb-8",
+          "mx-auto max-w-7xl px-4 pt-4 md:pt-6",
+          keypadOpen ? "pb-4" : "pb-28",
         )}
       >
         <OfflineRoutes>{children}</OfflineRoutes>

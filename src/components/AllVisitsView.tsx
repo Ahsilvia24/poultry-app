@@ -7,7 +7,6 @@ import { HoldReorderList } from "@/components/HoldReorderList";
 import { LoggedVisitTile } from "@/components/LoggedVisitTile";
 import { ReplicaLink, useReplicaNavigate } from "@/components/ReplicaLink";
 import {
-  SettingsFieldRow,
   SettingsValueChip,
   settingsValueTextClass,
 } from "@/components/SettingsLayout";
@@ -17,38 +16,59 @@ import { useHiddenReplicaDeletes } from "@/lib/offline/useHiddenReplicaDeletes";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import type { AllVisitsFarmOption, AllVisitsPageModel, VisitListRow } from "@/lib/offline/selectVisits";
 import { loggedAtForFieldLogOrder } from "@/lib/reports/field-log";
+import { visitFormHref } from "@/lib/visits/returnTo";
+import { ENTER_OTHER_FARM_VALUE, visitPlaceFormHref } from "@/lib/visits/visitPlace";
 
 function AllVisitsAddTile({ farms }: { farms: AllVisitsFarmOption[] }) {
   const navigate = useReplicaNavigate();
-  const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
-  if (farms.length === 0) return null;
+  const [farmId, setFarmId] = useState(farms[0]?.id ?? ENTER_OTHER_FARM_VALUE);
+  const [placeName, setPlaceName] = useState("");
+  const other = farmId === ENTER_OTHER_FARM_VALUE;
+  const canLog = other ? placeName.trim().length > 0 : Boolean(farmId);
 
   return (
     <Card className="mb-5 overflow-visible">
-      <SettingsFieldRow label="Farm:" htmlFor="all-visits-farm">
-        <SettingsValueChip className="min-w-[9.5rem] max-w-[14rem] flex-1">
+      <div className="flex items-center gap-2">
+        <SettingsValueChip className="min-w-0 flex-1">
           <select
             id="all-visits-farm"
             value={farmId}
             onChange={(event) => setFarmId(event.target.value)}
-            className={settingsValueTextClass}
+            className={`${settingsValueTextClass} text-left`}
           >
             {farms.map((farm) => (
               <option key={farm.id} value={farm.id}>
                 {farm.farmName}
               </option>
             ))}
+            <option value={ENTER_OTHER_FARM_VALUE}>Other</option>
           </select>
         </SettingsValueChip>
-      </SettingsFieldRow>
-      <button
-        type="button"
-        disabled={!farmId}
-        onClick={() => navigate(`/farms/${farmId}/visits/new`)}
-        className="mt-3 flex min-h-11 w-full items-center justify-center rounded-[10px] bg-emerald-700 px-3 py-2.5 text-center text-[15px] font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
-      >
-        Add Visit
-      </button>
+        <button
+          type="button"
+          disabled={!canLog}
+          onClick={() =>
+            navigate(
+              other ? visitPlaceFormHref(placeName) : visitFormHref(farmId, undefined, true),
+            )
+          }
+          className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-emerald-700 px-3 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+        >
+          Log Visit
+        </button>
+      </div>
+      {other ? (
+        <div className="mt-3">
+          <input
+            id="all-visits-other-place"
+            value={placeName}
+            onChange={(event) => setPlaceName(event.target.value)}
+            placeholder="Enter Other"
+            aria-label="Enter Other"
+            className={`${settingsValueTextClass} w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-left`}
+          />
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -77,7 +97,7 @@ export function AllVisitsView({ model }: { model: AllVisitsPageModel }) {
 
   return (
     <div>
-      <BackHeader href="/reports" backLabel="Field Log" title="All Visits" />
+      <BackHeader href="/reports?type=field-log" backLabel="Field Log" title="All Visits" />
       <p className="mb-4 text-sm font-semibold text-stone-500">
         Hold a visit to set Field Log order. Swipe to delete.
       </p>
@@ -101,6 +121,7 @@ export function AllVisitsView({ model }: { model: AllVisitsPageModel }) {
                     renderItem={(visit, ctx) => (
                       <LoggedVisitTile
                         visit={visit}
+                        fromAllVisits
                         swipeDisabled={ctx.swipeDisabled}
                         suppressOpen={ctx.suppressOpen}
                         onDelete={() =>
@@ -122,7 +143,7 @@ export function AllVisitsView({ model }: { model: AllVisitsPageModel }) {
       )}
 
       <ReplicaLink
-        href="/reports"
+        href="/reports?type=field-log"
         className="mt-6 inline-flex min-h-11 items-center text-sm font-bold text-stone-800 underline"
       >
         Back to Field Log

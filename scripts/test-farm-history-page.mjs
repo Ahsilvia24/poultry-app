@@ -1,67 +1,42 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(root, rel), "utf8");
 
-const types = read("src/lib/reports/types.ts");
-assert.match(types, /field-log/);
-assert.match(types, /generator/);
-assert.match(types, /mortality/);
-assert.doesNotMatch(types, /key: "history"/);
+assert.equal(existsSync(join(root, "src/components/FarmHistoryButton.tsx")), false);
+assert.equal(existsSync(join(root, "src/components/FarmHistoryScreen.tsx")), false);
+assert.equal(existsSync(join(root, "src/components/FarmHistoryPageClient.tsx")), false);
+assert.equal(existsSync(join(root, "src/components/FarmHistoryReplica.tsx")), false);
+assert.equal(existsSync(join(root, "src/components/FarmHistoryView.tsx")), false);
 
 const reports = read("src/components/ReportsView.tsx");
-assert.match(reports, /FarmHistoryButton/);
-assert.doesNotMatch(reports, /Farms visited each day/);
-assert.doesNotMatch(reports, /subtitle=/);
-assert.doesNotMatch(reports, /model.type === "history"/);
-assert.doesNotMatch(reports, /FarmHistoryReplica/);
+assert.doesNotMatch(reports, /FarmHistory/);
+assert.doesNotMatch(reports, /Farm History/);
 
-const button = read("src/components/FarmHistoryButton.tsx");
-assert.match(button, /href="\/history"/);
-assert.match(button, /<Button compact>/);
-assert.doesNotMatch(button, /min-h-10/);
-
-const screen = read("src/components/FarmHistoryScreen.tsx");
-assert.match(screen, /BackHeader href="\/reports"/);
-assert.match(screen, /<select/);
-assert.match(screen, /border-emerald-700/);
-assert.doesNotMatch(screen, /ReportsTypeTabs/);
-
-const page = read("src/app/(dashboard)/history/page.tsx");
-assert.match(page, /FarmHistoryPageClient/);
+const nav = read("src/components/OfflineNav.tsx");
+assert.doesNotMatch(nav, /FarmHistoryScreen/);
+assert.match(nav, /pathname === "\/history"/);
 
 const reportsPage = read("src/app/(dashboard)/reports/page.tsx");
-assert.match(reportsPage, /params.type === "history"/);
-assert.match(reportsPage, /redirect\(`\/history/);
+assert.doesNotMatch(reportsPage, /redirect\(`\/history/);
+assert.doesNotMatch(reportsPage, /params.type === "history"/);
 
-const offline = read("src/lib/offline/hasFarmGraph.ts");
-assert.match(offline, /pathname === "\/history"/);
+const historyPage = read("src/app/(dashboard)/history/page.tsx");
+assert.match(historyPage, /redirect\("\/reports"\)/);
+assert.doesNotMatch(historyPage, /FarmHistoryPageClient/);
 
-const mobileReports = read("mobile/app/(tabs)/reports.tsx");
-assert.match(mobileReports, /Farm History/);
-assert.match(mobileReports, /\/farm-history/);
-assert.match(mobileReports, /minHeight: 36/);
-assert.match(mobileReports, /paddingVertical: 6/);
-assert.match(mobileReports, /paddingHorizontal: 12/);
-assert.doesNotMatch(mobileReports, /Farms visited each day/);
-assert.doesNotMatch(mobileReports, /key: "history"/);
-assert.doesNotMatch(mobileReports, /FarmHistoryPanel/);
+const historyFarmPage = read("src/app/(dashboard)/history/[farmId]/page.tsx");
+assert.match(historyFarmPage, /redirect\("\/reports"\)/);
 
-const farmsPage = read("src/components/FarmsPageClient.tsx");
-assert.match(farmsPage, /<Button compact>Add Farm<\/Button>/);
+const select = read("src/lib/offline/selectReports.ts");
+assert.doesNotMatch(select, /selectFarmHistoryRows/);
+assert.doesNotMatch(select, /ReplicaHistoryRow/);
+assert.doesNotMatch(select, /history:/);
 
-const mobileFarms = read("mobile/app/(tabs)/farms/index.tsx");
-assert.match(mobileFarms, /Add Farm/);
-assert.match(mobileFarms, /minHeight: 36/);
-
-const mobileHistory = read("mobile/app/farm-history.tsx");
-assert.match(mobileHistory, /Farm History/);
-assert.match(mobileHistory, /Modal/);
-assert.match(mobileHistory, /accentDark/);
-assert.match(mobileHistory, /FarmHistoryPanel/);
-assert.doesNotMatch(mobileHistory, /WheelPicker/);
+const types = read("src/lib/reports/types.ts");
+assert.doesNotMatch(types, /key: "history"/);
 
 console.log("farm-history-page: ok");

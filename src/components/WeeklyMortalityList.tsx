@@ -1,6 +1,6 @@
 import { groupWeeklyMortalityRows, type WeekTotal } from "@/lib/weeklyMortalityLayout";
 
-/** House tiles: Wk1–Wk8, then Wk9–Wk12 once that later week has data. */
+/** House tiles: Wk1–Wk8, then later rows only after week 9+ has an entry. */
 export function WeeklyMortalityList({ weeks }: { weeks: WeekTotal[] }) {
   const rows = groupWeeklyMortalityRows(weeks);
 

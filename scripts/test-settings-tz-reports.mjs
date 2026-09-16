@@ -27,6 +27,7 @@ assert.match(schema, /appTimeZone/);
 assert.match(schema, /America\/Chicago/);
 
 assert.match(reports, /<option value="">All farms<\/option>/);
+assert.match(reports, /allowAllFarms=\{false\}/);
 assert.match(reports, /name="farmId"/);
 assert.match(selectReports, /type === "generator"/);
 assert.match(selectReports, /selected && farm.id !== selected/);

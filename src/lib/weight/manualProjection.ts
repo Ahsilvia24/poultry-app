@@ -26,6 +26,38 @@ export function parseManualNumber(value: string): number | null {
   return n;
 }
 
+const COPY_PLACEHOLDER = "##";
+
+function copyField(raw: string): string {
+  const t = raw.trim();
+  return t === "" ? COPY_PLACEHOLDER : t;
+}
+
+/** Custom WP clipboard text. One field per line. WP is catch-day weight only. */
+export function formatManualWeightCopy(input: {
+  catchWeightLbs: number | null;
+  tf: string;
+  inv: string;
+  chc: string;
+  cr: string;
+  dtk: string;
+  efc: string;
+}): string {
+  const wp =
+    input.catchWeightLbs != null && Number.isFinite(input.catchWeightLbs)
+      ? input.catchWeightLbs.toFixed(2)
+      : COPY_PLACEHOLDER;
+  return [
+    `WP: ${wp}`,
+    `TFD: ${copyField(input.tf)}`,
+    `INV: ${copyField(input.inv)}`,
+    `CHC: ${copyField(input.chc)}`,
+    `CR: ${copyField(input.cr)}`,
+    `DTK: ${copyField(input.dtk)}`,
+    `EFC: ${copyField(input.efc)}`,
+  ].join("\n");
+}
+
 export function manualProjectedWeightLbs(input: {
   totalFeedLbs: number;
   inventoryLbs: number;

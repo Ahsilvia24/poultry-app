@@ -1,8 +1,7 @@
 export const WEEKLY_MORTALITY_MAX_WEEK = 16;
 export const WEEKLY_MORTALITY_COLUMNS = 4;
-/** House tiles always paint Wk1–Wk8. Later rows appear after that week has data. */
+/** House tiles and entry grids always start at Wk1–Wk8. */
 export const WEEKLY_MORTALITY_BASE_WEEKS = 8;
-export const WEEKLY_MORTALITY_EXTENDED_WEEKS = 12;
 
 export type WeekTotal = { week: number; total: number };
 
@@ -48,34 +47,50 @@ export function mortalityDayHasData(row: MortalityDayLike): boolean {
   );
 }
 
-/** Weeks 9–12 unlock after any value in the last week-8 box, or later-week data. */
-export function shouldUnlockExtendedMortalityWeeks(rows: MortalityDayLike[]): boolean {
-  if (
-    rows.some(
-      (row) => flockWeekFromAge(row.age) > WEEKLY_MORTALITY_BASE_WEEKS && mortalityDayHasData(row),
-    )
-  ) {
-    return true;
-  }
-  const week8 = rows.filter((row) => flockWeekFromAge(row.age) === WEEKLY_MORTALITY_BASE_WEEKS);
-  const lastBox = week8[week8.length - 1];
+function lastBoxOfWeekHasData(rows: MortalityDayLike[], week: number): boolean {
+  const lastAge = lastAgeOfFlockWeek(week);
+  const lastBox = rows.find((row) => row.age === lastAge);
   return Boolean(lastBox && mortalityDayHasData(lastBox));
+}
+
+/**
+ * Always Wk1–Wk8, then through the catch week, then one more week each time
+ * the last box of the last visible week has a number.
+ */
+export function unlockedMortalityWeek(catchAge: number, rows: MortalityDayLike[]): number {
+  let maxWeek = WEEKLY_MORTALITY_BASE_WEEKS;
+  if (catchAge > 0) maxWeek = Math.max(maxWeek, flockWeekFromAge(catchAge));
+  for (const row of rows) {
+    if (mortalityDayHasData(row)) {
+      maxWeek = Math.max(maxWeek, flockWeekFromAge(row.age));
+    }
+  }
+  while (maxWeek < WEEKLY_MORTALITY_MAX_WEEK && lastBoxOfWeekHasData(rows, maxWeek)) {
+    maxWeek += 1;
+  }
+  return maxWeek;
+}
+
+/** Weeks past 8 unlock after a value in the last box of the last visible week. */
+export function shouldUnlockExtendedMortalityWeeks(
+  rows: MortalityDayLike[],
+  catchAge = 0,
+): boolean {
+  return unlockedMortalityWeek(catchAge, rows) > WEEKLY_MORTALITY_BASE_WEEKS;
 }
 
 export function mortalityGridMaxAge(
   todayAge: number,
-  _catchAge: number,
+  catchAge: number,
   rows: MortalityDayLike[],
 ): number {
-  const pinned = rows.filter(mortalityDayHasData).map((row) => row.age);
-  const visible = mortalityEntryVisibleMaxAge(todayAge, pinned);
-  if (!shouldUnlockExtendedMortalityWeeks(rows)) return visible;
-  return Math.max(visible, lastAgeOfFlockWeek(WEEKLY_MORTALITY_EXTENDED_WEEKS));
+  void todayAge;
+  return lastAgeOfFlockWeek(unlockedMortalityWeek(catchAge, rows));
 }
 
 /**
  * Two fixed rows (1–4 / 5–8). A 9–12 row appears only when a later week
- * has a real total. Empty or remapped week-9 keys must not unlock it.
+ * has a real entry. Empty week-9 keys must not unlock it.
  */
 export function groupWeeklyMortalityRows(weeks: WeekTotal[]): WeekTotal[][] {
   const byWeek = new Map(
@@ -89,8 +104,7 @@ export function groupWeeklyMortalityRows(weeks: WeekTotal[]): WeekTotal[][] {
   const highest = laterWithData.length
     ? Math.max(WEEKLY_MORTALITY_BASE_WEEKS, ...laterWithData.map((week) => week.week))
     : WEEKLY_MORTALITY_BASE_WEEKS;
-  const last =
-    Math.ceil(highest / WEEKLY_MORTALITY_COLUMNS) * WEEKLY_MORTALITY_COLUMNS;
+  const last = Math.ceil(highest / WEEKLY_MORTALITY_COLUMNS) * WEEKLY_MORTALITY_COLUMNS;
   const rows: WeekTotal[][] = [];
   for (let start = 1; start <= last; start += WEEKLY_MORTALITY_COLUMNS) {
     const row: WeekTotal[] = [];

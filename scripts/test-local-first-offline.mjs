@@ -429,9 +429,9 @@ assert.ok((fieldLog.fieldLog?.weeks.length ?? 0) >= 1);
 const mortReport = selectReports(snapshot, { type: "mortality", from: "2026-08-01", to: "2026-09-11" });
 assert.ok((mortReport.mortality?.byHouse.length ?? 0) >= 1);
 
-const history = selectReports(snapshot, { type: "history", farmId: "farm-1" });
-assert.equal(history.history?.rows.length, 1);
-assert.equal(history.history?.rows[0].flockNumber, "A1");
+const historyAsFieldLog = selectReports(snapshot, { type: "history", farmId: "farm-1" });
+assert.equal(historyAsFieldLog.type, "field-log");
+assert.equal(historyAsFieldLog.history, undefined);
 
 const withVisit = applyFormWrite(snapshot, {
   action: "createVisit",
@@ -526,7 +526,7 @@ const nav = read("src/components/AppNav.tsx");
 assert.doesNotMatch(nav, /Settlement/);
 const settlementPage = read("src/app/(dashboard)/settlement/page.tsx");
 assert.match(settlementPage, /redirect\("\/"\)/);
-assert.doesNotMatch(read("src/components/FarmHistoryView.tsx"), /SettlementForm/);
+assert.equal(existsSync(join(root, "src/components/FarmHistoryView.tsx")), false);
 assert.match(read("src/lib/offline/buildSnapshot.ts"), /serviceForms/);
 assert.match(read("src/lib/offline/buildSnapshot.ts"), /followUpCompletions/);
 assert.match(read("src/components/AddFlockSection.tsx"), /createFlock/);
@@ -555,7 +555,7 @@ assert.match(read("src/components/OfflineNav.tsx"), /selectLfoEdit/);
 assert.match(read("src/components/SavedLfoRow.tsx"), /ReplicaLink/);
 assert.match(read("src/components/LfoEditView.tsx"), /updateLfo/);
 assert.match(read("src/components/FarmOpsForms.tsx"), /deleteFlock/);
-assert.match(read("src/components/FarmHistoryReplica.tsx"), /DeleteFlockButton/);
+assert.equal(existsSync(join(root, "src/components/FarmHistoryReplica.tsx")), false);
 
 const createdFarm = applyFormWrite(snapshot, {
   action: "createFarm",
@@ -652,10 +652,7 @@ const stillActive = applyFormWrite(snapshot, { action: "deleteFlock", id: "flock
 assert.equal(stillActive.flocks[0].deletedAt, null);
 const removedFlock = applyFormWrite(ended, { action: "deleteFlock", id: "flock-1" });
 assert.ok(removedFlock.flocks[0].deletedAt);
-assert.equal(
-  selectReports(removedFlock, { type: "history", farmId: "farm-1" }).history?.rows.length,
-  0,
-);
+assert.equal(selectReports(removedFlock, { type: "history", farmId: "farm-1" }).type, "field-log");
 
 const lfoEdit = selectLfoEdit(snapshot, "lfo-1");
 assert.ok(lfoEdit);

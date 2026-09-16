@@ -19,7 +19,9 @@ assert.match(page, /fromLabel="From"/);
 assert.match(page, /toLabel="To"/);
 assert.match(page, /from=\{model.from\}/);
 assert.match(page, /to=\{model.to\}/);
-assert.equal((page.match(/<ReportDateRangeFields/g) ?? []).length, 3);
+assert.equal((page.match(/<ReportDateRangeFields/g) ?? []).length, 2);
+assert.match(page, /Apply Filter/);
+assert.match(page, /Apply filters/);
 assert.doesNotMatch(page, /<p className="mt-1 text-xs text-stone-500">\{format\((fromDate|toDate)/);
 
 console.log("reports-date-range: ok");
