@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/session-user";
 import type { FarmCardSummary, ThresholdSettings } from "@/types";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
+import { VISIT_PLACE_FARM_NUMBER } from "@/lib/visits/visitPlace";
 import {
   buildFlockVisitSchedule,
   completionKey,
@@ -45,7 +46,7 @@ export async function getDashboardData(userId: string) {
   const [settings, farms, completions, recentCleanouts] = await Promise.all([
     prisma.userSettings.findUnique({ where: { userId } }),
     prisma.farm.findMany({
-      where: { userId, deletedAt: null, isActive: true },
+      where: { userId, deletedAt: null, isActive: true, farmNumber: { not: VISIT_PLACE_FARM_NUMBER } },
       select: {
         id: true,
         farmName: true,

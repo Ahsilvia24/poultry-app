@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FarmsPageClient } from "@/components/FarmsPageClient";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
+import { VISIT_PLACE_FARM_NUMBER } from "@/lib/visits/visitPlace";
 
 export default async function FarmsPage() {
   const session = await auth();
@@ -19,6 +20,7 @@ export default async function FarmsPage() {
       where: {
         userId: session.user.id,
         deletedAt: null,
+        farmNumber: { not: VISIT_PLACE_FARM_NUMBER },
       },
       include: {
         houses: { where: { deletedAt: null }, select: { id: true } },

@@ -2,7 +2,6 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { FarmHistoryButton } from "@/components/FarmHistoryButton";
 import { FieldLogReport } from "@/components/FieldLogReport";
 import { GeneratorLogReport } from "@/components/GeneratorLogReport";
 import { MortalityCharts } from "@/components/MortalityCharts";
@@ -19,6 +18,7 @@ import { defaultFieldLogRange } from "@/lib/reports/field-log";
 import { mergeReportsInitial, rememberReportsHref } from "@/lib/reports/lastHref";
 import { reportsHref, resolveReportType, type ReportTypeKey } from "@/lib/reports/types";
 import type { OfflineSnapshot } from "@/lib/offline/types";
+import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 import {
   defaultGeneratorRange,
   defaultMortalityRange,
@@ -29,7 +29,7 @@ import {
 function firstFarmId(snapshot: OfflineSnapshot) {
   return (
     (snapshot.farms ?? [])
-      .filter((farm) => !farm.deletedAt)
+      .filter((farm) => !farm.deletedAt && !isVisitPlaceFarm(farm))
       .slice()
       .sort((a, b) => a.farmName.localeCompare(b.farmName))[0]?.id ?? ""
   );
@@ -252,7 +252,7 @@ export function ReportsView({
   if (model.type === "field-log") {
     return (
       <div>
-        <PageHeader title="Reports" actions={<FarmHistoryButton />} />
+        <PageHeader title="Reports" />
         <ReportsTypeTabs active="field-log" onSelect={onSelectType} />
         <Card className="mb-6">
           <form className="grid gap-3" onSubmit={onFilter}>
@@ -283,7 +283,7 @@ export function ReportsView({
   if (model.type === "generator") {
     return (
       <div>
-        <PageHeader title="Reports" actions={<FarmHistoryButton />} />
+        <PageHeader title="Reports" />
         <ReportsTypeTabs active="generator" onSelect={onSelectType} />
         <form onSubmit={onFilter}>
           <ReportFarmFilterTile
@@ -307,7 +307,7 @@ export function ReportsView({
 
   return (
     <div>
-      <PageHeader title="Reports" actions={<FarmHistoryButton />} />
+      <PageHeader title="Reports" />
       <ReportsTypeTabs active="mortality" onSelect={onSelectType} />
       <form onSubmit={onFilter}>
         <ReportFarmFilterTile

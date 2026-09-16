@@ -49,6 +49,7 @@ import {
 } from "@/app/actions/serviceForms";
 import { isLocalRecordId, writeToFormData } from "@/lib/offline/formPairs";
 import { loadLocalSnapshot } from "@/lib/offline/idb";
+import { isActionTransportError } from "@/lib/offline/actionTransportError";
 import { isLocalFarmId } from "@/lib/offline/localFarmId";
 import {
   aliasesFromCreateFarm,
@@ -125,7 +126,7 @@ export async function flushFormWrite(
     case "createVisit":
       return fromCreated(await createVisitAction(formData), original.id, aliases);
     case "updateVisit":
-      return fromAction(await updateVisitAction(id, formData), aliases);
+      return fromCreated(await updateVisitAction(id, formData), original.id, aliases);
     case "deleteVisit":
       await deleteVisitAction(farmId, id);
       return { ok: true, aliases };
@@ -210,7 +211,25 @@ export async function flushFormWrite(
       );
     }
     case "createFlock": {
-      const result = await createFlockAction(farmId, formData, { skipRedirect: true });
+      let result: unknown;
+      try {
+        result = await createFlockAction(farmId, formData, { skipRedirect: true });
+      } catch (err) {
+        if (!isActionTransportError(err)) {
+          return {
+            ok: false,
+            error: err instanceof Error ? err.message : "Could not create flock.",
+          };
+        }
+        try {
+          result = await createFlockAction(farmId, formData, { skipRedirect: true });
+        } catch {
+          return {
+            ok: false,
+            error: "Could not upload this flock. Stay on Wi-Fi and tap Sync data again.",
+          };
+        }
+      }
       const flockError = actionError(result);
       if (flockError) return { ok: false, error: flockError };
       const created = result as {

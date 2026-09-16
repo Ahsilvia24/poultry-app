@@ -11,6 +11,7 @@ import {
 } from "@/lib/offline/followUpCompletions";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import type { OfflineFlockRef, OfflineSnapshot } from "@/lib/offline/types";
+import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 import {
   DEFAULT_THRESHOLDS,
   averageDailyMortalityLast7Days,
@@ -85,7 +86,7 @@ function flockCatchKey(flock: OfflineFlockRef) {
 }
 
 function liveFarms(snapshot: OfflineSnapshot) {
-  return snapshot.farms.filter((farm) => farm.isActive && !farm.deletedAt);
+  return snapshot.farms.filter((farm) => farm.isActive && !farm.deletedAt && !isVisitPlaceFarm(farm));
 }
 
 function activeFlocksForFarm(snapshot: OfflineSnapshot, farmId: string) {

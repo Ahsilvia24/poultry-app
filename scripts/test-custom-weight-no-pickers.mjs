@@ -9,7 +9,9 @@ const expo = readFileSync(join(root, "mobile/src/components/WeightProjectionManu
 const view = readFileSync(join(root, "src/components/ToolsView.tsx"), "utf8");
 
 assert.match(web, /Tap the numbers to calculate/);
-assert.match(web, /label: "TF"/);
+assert.match(web, /label: "TFD"/);
+assert.match(web, /formatManualWeightCopy/);
+assert.match(web, /onCopyTextChange/);
 assert.match(web, /resolveDefaultConsumptionRate/);
 assert.match(web, /resolveDefaultEfc/);
 assert.match(web, /defaultConsumptionRate/);
@@ -26,7 +28,7 @@ assert.doesNotMatch(expo, /Chip/);
 assert.doesNotMatch(expo, /selectFarm/);
 assert.doesNotMatch(expo, /listFarms/);
 
-assert.match(view, /<WeightProjectionManualTile \/>/);
+assert.match(view, /<CustomWeightProjectionSection \/>/);
 assert.doesNotMatch(view, /WeightProjectionManualTile\s*\n\s*farms=/);
 
 console.log("custom-weight-no-pickers: ok");

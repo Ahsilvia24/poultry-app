@@ -1231,7 +1231,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
             id: farmId,
             farmName,
             growerName: (fields.growerName ?? "").trim(),
-            farmNumber: null,
+            farmNumber: emptyToNull(fields.farmNumber),
             phoneNumber: null,
             isActive: true,
             deletedAt: null,

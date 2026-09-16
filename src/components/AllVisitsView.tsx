@@ -17,11 +17,14 @@ import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import type { AllVisitsFarmOption, AllVisitsPageModel, VisitListRow } from "@/lib/offline/selectVisits";
 import { loggedAtForFieldLogOrder } from "@/lib/reports/field-log";
 import { visitFormHref } from "@/lib/visits/returnTo";
+import { ENTER_OTHER_FARM_VALUE, visitPlaceFormHref } from "@/lib/visits/visitPlace";
 
 function AllVisitsAddTile({ farms }: { farms: AllVisitsFarmOption[] }) {
   const navigate = useReplicaNavigate();
-  const [farmId, setFarmId] = useState(farms[0]?.id ?? "");
-  if (farms.length === 0) return null;
+  const [farmId, setFarmId] = useState(farms[0]?.id ?? ENTER_OTHER_FARM_VALUE);
+  const [placeName, setPlaceName] = useState("");
+  const other = farmId === ENTER_OTHER_FARM_VALUE;
+  const canLog = other ? placeName.trim().length > 0 : Boolean(farmId);
 
   return (
     <Card className="mb-5 overflow-visible">
@@ -38,17 +41,34 @@ function AllVisitsAddTile({ farms }: { farms: AllVisitsFarmOption[] }) {
                 {farm.farmName}
               </option>
             ))}
+            <option value={ENTER_OTHER_FARM_VALUE}>Other</option>
           </select>
         </SettingsValueChip>
         <button
           type="button"
-          disabled={!farmId}
-          onClick={() => navigate(visitFormHref(farmId, undefined, true))}
+          disabled={!canLog}
+          onClick={() =>
+            navigate(
+              other ? visitPlaceFormHref(placeName) : visitFormHref(farmId, undefined, true),
+            )
+          }
           className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-emerald-700 px-3 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
         >
           Log Visit
         </button>
       </div>
+      {other ? (
+        <div className="mt-3">
+          <input
+            id="all-visits-other-place"
+            value={placeName}
+            onChange={(event) => setPlaceName(event.target.value)}
+            placeholder="Enter Other"
+            aria-label="Enter Other"
+            className={`${settingsValueTextClass} w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-left`}
+          />
+        </div>
+      ) : null}
     </Card>
   );
 }

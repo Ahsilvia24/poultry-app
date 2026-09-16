@@ -12,6 +12,10 @@ import { normalizeHalfHourTime } from "@/lib/time-slots";
 import { isHouseInPropagateRange } from "@/lib/housePropagate";
 import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
 import { ensureActiveFlockHouseFlocks } from "@/lib/ensureActiveFlockHouseFlocks";
+import {
+  createFlockAlreadyUploaded,
+  createFlockOccupiedFlockWhere,
+} from "@/lib/flock/createFlockSync";
 
 function emptyToNull(value: FormDataEntryValue | null) {
   const s = String(value ?? "").trim();
@@ -169,6 +173,7 @@ export async function createFarmAction(
   const parsed = createFarmSchema.safeParse({
     farmName: formData.get("farmName"),
     growerName: emptyToNull(formData.get("growerName")),
+    farmNumber: emptyToNull(formData.get("farmNumber")),
     notes: emptyToNull(formData.get("notes")),
     numberOfHouses: formData.get("numberOfHouses") || 0,
     numberOfGenerators: formData.get("numberOfGenerators") || null,
@@ -184,6 +189,7 @@ export async function createFarmAction(
         userId: requireUserId(user.id),
         farmName: parsed.data.farmName,
         growerName: parsed.data.growerName?.trim() || "",
+        farmNumber: parsed.data.farmNumber,
         notes: parsed.data.notes,
         numberOfHouses: houseCount,
         numberOfGenerators: parsed.data.numberOfGenerators ?? null,
@@ -683,17 +689,40 @@ export async function createFlockAction(
   const existingSameNumber = (
     await prisma.flock.findMany({
       where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
-      select: { id: true, flockNumber: true, initialBirdCount: true },
+      select: {
+        id: true,
+        flockNumber: true,
+        initialBirdCount: true,
+        houseFlocks: { select: { id: true, houseId: true } },
+      },
     })
   ).find(
     (f) => normalizeFlockNumber(f.flockNumber) === normalizeFlockNumber(parsed.data.flockNumber),
   );
 
+  if (
+    existingSameNumber &&
+    createFlockAlreadyUploaded(
+      existingSameNumber.houseFlocks.map((row) => row.houseId),
+      housePlacements.map((row) => row.houseId),
+    )
+  ) {
+    if (options?.skipRedirect) {
+      return {
+        success: true as const,
+        id: existingSameNumber.id,
+        houseFlocks: existingSameNumber.houseFlocks,
+      };
+    }
+    revalidatePath(`/farms/${farmId}`);
+    redirect(`/farms/${farmId}`);
+  }
+
   if (housePlacements.length > 0) {
     const occupied = await prisma.houseFlock.findFirst({
       where: {
         houseId: { in: housePlacements.map((h) => h.houseId) },
-        flock: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+        flock: createFlockOccupiedFlockWhere(farmId, existingSameNumber?.id),
       },
       include: { flock: { select: { flockNumber: true } }, house: { select: { houseNumber: true } } },
     });
@@ -772,8 +801,8 @@ export async function createFlockAction(
       })
     : [];
 
-  revalidatePath(`/farms/${farmId}`);
   if (options?.skipRedirect) return { success: true as const, id: flockId, houseFlocks };
+  revalidatePath(`/farms/${farmId}`);
   redirect(`/farms/${farmId}`);
 }
 

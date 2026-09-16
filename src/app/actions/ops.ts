@@ -509,7 +509,7 @@ export async function reorderVisitAction(visitId: string, farmId: string, logged
   const visit = await prisma.farmVisit.findFirst({
     where: { id: visitId, farmId },
   });
-  if (!visit) return { error: "Visit not found" };
+  if (!visit) return { success: true };
   await prisma.farmVisit.update({
     where: { id: visitId },
     data: { loggedAt: at },
@@ -546,33 +546,82 @@ export async function updateVisitAction(visitId: string, formData: FormData) {
   const existing = await prisma.farmVisit.findFirst({
     where: { id: visitId, farmId: parsed.data.farmId },
   });
-  if (!existing) return { error: "Visit not found" };
+  const leftoverId =
+    existing?.id ??
+    (isLocalRecordId(visitId)
+      ? chooseLeftoverCreatedId({
+          sameFingerprint: (
+            await prisma.farmVisit.findMany({
+              where: {
+                farmId: parsed.data.farmId,
+                visitDate: new Date(parsed.data.visitDate),
+                visitType: parsed.data.visitType,
+                notes: parsed.data.notes,
+              },
+              select: { id: true },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            })
+          ).map((row) => row.id),
+          sameDay: (
+            await prisma.farmVisit.findMany({
+              where: {
+                farmId: parsed.data.farmId,
+                visitDate: new Date(parsed.data.visitDate),
+              },
+              select: { id: true },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            })
+          ).map((row) => row.id),
+        })
+      : null);
 
-  const flockId = parsed.data.flockId ?? existing.flockId;
+  const flockId = websiteRelationId(parsed.data.flockId) ?? existing?.flockId ?? null;
   const birdAgeInDays = await resolveVisitBirdAge(flockId, parsed.data.visitDate);
+  const data = {
+    flockId,
+    visitDate: new Date(parsed.data.visitDate),
+    birdAgeInDays,
+    visitType: parsed.data.visitType,
+    generalBirdCondition: parsed.data.generalBirdCondition ?? "Healthy",
+    activityLevel: parsed.data.activityLevel,
+    uniformity: parsed.data.uniformity,
+    litterCondition: parsed.data.litterCondition,
+    waterConsumption: parsed.data.waterConsumption,
+    feedInventory: parsed.data.feedInventory,
+    temperature: null,
+    humidity: null,
+    staticPressure: parsed.data.staticPressure,
+    notes: parsed.data.notes,
+    followUpRequired: parsed.data.followUpRequired ?? false,
+    followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
+  };
+
+  if (!leftoverId) {
+    if (!isLocalRecordId(visitId) && !existing) return { error: "Visit not found" };
+    await ensureWeightProjectionVisitType();
+    try {
+      const created = await prisma.farmVisit.create({
+        data: {
+          farmId: parsed.data.farmId,
+          ...data,
+          loggedAt: parseLoggedAt(formData.get("loggedAt")),
+        },
+      });
+      revalidatePath(`/farms/${parsed.data.farmId}`);
+      revalidatePath("/");
+      revalidatePath("/reports");
+      revalidatePath("/visits");
+      return { success: true, id: created.id };
+    } catch (error) {
+      return { error: visitSaveError(error) };
+    }
+  }
 
   await ensureWeightProjectionVisitType();
   try {
     await prisma.farmVisit.update({
-      where: { id: visitId },
-      data: {
-        flockId: parsed.data.flockId,
-        visitDate: new Date(parsed.data.visitDate),
-        birdAgeInDays,
-        visitType: parsed.data.visitType,
-        generalBirdCondition: parsed.data.generalBirdCondition ?? "Healthy",
-        activityLevel: parsed.data.activityLevel,
-        uniformity: parsed.data.uniformity,
-        litterCondition: parsed.data.litterCondition,
-        waterConsumption: parsed.data.waterConsumption,
-        feedInventory: parsed.data.feedInventory,
-        temperature: null,
-        humidity: null,
-        staticPressure: parsed.data.staticPressure,
-        notes: parsed.data.notes,
-        followUpRequired: parsed.data.followUpRequired ?? false,
-        followUpDate: parsed.data.followUpDate ? new Date(parsed.data.followUpDate) : null,
-      },
+      where: { id: leftoverId },
+      data,
     });
   } catch (error) {
     return { error: visitSaveError(error) };
@@ -580,7 +629,7 @@ export async function updateVisitAction(visitId: string, formData: FormData) {
   revalidatePath(`/farms/${parsed.data.farmId}`);
   revalidatePath("/");
   revalidatePath("/reports");
-  return { success: true };
+  return { success: true, id: leftoverId };
 }
 
 export async function deleteIssueAction(farmId: string, issueId: string) {
