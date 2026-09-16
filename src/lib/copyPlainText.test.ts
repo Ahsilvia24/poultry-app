@@ -4,14 +4,14 @@ import { decodeCopiedLine, plainClipboardText } from "./copyPlainText.ts";
 
 describe("plainClipboardText", () => {
   const readable =
-    "WP: 6.33 TFD: 2080000 INV: 150000 CHC: 258000 CR: 0.45 DTK: 8 EFC: 1.75";
+    "WP: 6.33\nTFD: 2080000\nINV: 150000\nCHC: 258000\nCR: 0.45\nDTK: 8\nEFC: 1.75";
 
-  it("decodes the iPad URL-encoded copy line", () => {
+  it("decodes a URL-encoded one-line leftover into the same abbreviations", () => {
     assert.equal(
       decodeCopiedLine(
         "WP:%206.33%20TFD%3A%202080000%20INV%3A%20150000%20CHC%3A%20258000%20CR%3A%200.45%20DTK%3A%208%20EFC%3A%201.75",
       ),
-      readable,
+      "WP: 6.33 TFD: 2080000 INV: 150000 CHC: 258000 CR: 0.45 DTK: 8 EFC: 1.75",
     );
   });
 

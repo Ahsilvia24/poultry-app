@@ -70,8 +70,23 @@ describe("formatManualWeightCopy", () => {
       dtk: "",
       efc: "",
     });
-    assert.equal(line, "WP: 8.86 TFD: ## INV: ## CHC: ## CR: ## DTK: ## EFC: ##");
+    assert.equal(line, "WP: 8.86\nTFD: ##\nINV: ##\nCHC: ##\nCR: ##\nDTK: ##\nEFC: ##");
     assert.notEqual(line, encodeURIComponent(line));
+  });
+
+  it("puts each abbreviation on its own line", () => {
+    assert.equal(
+      formatManualWeightCopy({
+        catchWeightLbs: 7.24,
+        tf: "2080000",
+        inv: "150000",
+        chc: "250000",
+        cr: "0.45",
+        dtk: "11",
+        efc: "1.75",
+      }),
+      "WP: 7.24\nTFD: 2080000\nINV: 150000\nCHC: 250000\nCR: 0.45\nDTK: 11\nEFC: 1.75",
+    );
   });
 
   it("uses ## for missing catch weight and keeps typed field values", () => {
@@ -85,7 +100,7 @@ describe("formatManualWeightCopy", () => {
         dtk: "8",
         efc: "1.75",
       }),
-      "WP: ## TFD: 50000 INV: 5000 CHC: 20000 CR: 0.45 DTK: 8 EFC: 1.75",
+      "WP: ##\nTFD: 50000\nINV: 5000\nCHC: 20000\nCR: 0.45\nDTK: 8\nEFC: 1.75",
     );
   });
 });

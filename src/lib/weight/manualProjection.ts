@@ -33,7 +33,7 @@ function copyField(raw: string): string {
   return t === "" ? COPY_PLACEHOLDER : t;
 }
 
-/** One-line Custom WP clipboard text. WP is catch-day weight only. */
+/** Custom WP clipboard text. One field per line. WP is catch-day weight only. */
 export function formatManualWeightCopy(input: {
   catchWeightLbs: number | null;
   tf: string;
@@ -55,7 +55,7 @@ export function formatManualWeightCopy(input: {
     `CR: ${copyField(input.cr)}`,
     `DTK: ${copyField(input.dtk)}`,
     `EFC: ${copyField(input.efc)}`,
-  ].join(" ");
+  ].join("\n");
 }
 
 export function manualProjectedWeightLbs(input: {

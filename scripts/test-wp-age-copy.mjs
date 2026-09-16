@@ -34,6 +34,8 @@ assert.match(manual, /p\.key === "catch"/);
 assert.match(helper, /WP: \$\{wp\}/);
 assert.match(helper, /TFD:/);
 assert.match(helper, /COPY_PLACEHOLDER = "##"/);
+assert.match(helper, /\.join\("\\n"\)/);
+assert.doesNotMatch(helper, /\.join\(" "\)/);
 
 assert.match(panel, /CopyIconButton/);
 assert.match(panel, /onCopy/);
@@ -54,13 +56,18 @@ assert.match(copyHelper, /decodeURIComponent/);
 const { plainClipboardText, decodeCopiedLine } = await import(
   join(root, "src/lib/copyPlainText.ts")
 );
-const readable = "WP: 6.33 TFD: 2080000 INV: 150000 CHC: 258000 CR: 0.45 DTK: 8 EFC: 1.75";
+const readable =
+  "WP: 6.33\nTFD: 2080000\nINV: 150000\nCHC: 258000\nCR: 0.45\nDTK: 8\nEFC: 1.75";
 assert.equal(
-  decodeCopiedLine("WP:%206.33%20TFD%3A%202080000%20INV%3A%20150000%20CHC%3A%20258000%20CR%3A%200.45%20DTK%3A%208%20EFC%3A%201.75"),
-  readable,
+  decodeCopiedLine(
+    "WP:%206.33%20TFD%3A%202080000%20INV%3A%20150000%20CHC%3A%20258000%20CR%3A%200.45%20DTK%3A%208%20EFC%3A%201.75",
+  ),
+  "WP: 6.33 TFD: 2080000 INV: 150000 CHC: 258000 CR: 0.45 DTK: 8 EFC: 1.75",
 );
 const clipped = plainClipboardText(readable);
-assert.match(clipped, /WP: 6\.33 TFD: 2080000 INV: 150000/);
+assert.match(clipped, /WP: 6\.33/);
+assert.match(clipped, /TFD: 2080000/);
+assert.match(clipped, /\nINV: 150000\n/);
 assert.doesNotMatch(clipped, /%[0-9A-Fa-f]{2}/);
 assert.ok(clipped.startsWith("\u2060"));
 assert.doesNotMatch(clipped, /^[A-Za-z][A-Za-z0-9+.-]*:/);
@@ -78,7 +85,7 @@ assert.equal(
     dtk: "",
     efc: "",
   }),
-  "WP: 8.86 TFD: ## INV: ## CHC: ## CR: ## DTK: ## EFC: ##",
+  "WP: 8.86\nTFD: ##\nINV: ##\nCHC: ##\nCR: ##\nDTK: ##\nEFC: ##",
 );
 
 console.log("wp-age-copy: ok");
