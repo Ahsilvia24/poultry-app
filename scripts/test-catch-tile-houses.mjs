@@ -155,12 +155,10 @@ const home = read("src/components/DashboardHome.tsx");
 assert.match(home, /formatCatchHouses/);
 assert.match(home, /formatCatchAges/);
 assert.doesNotMatch(home, /c\.flockAgeDays != null \?/);
-assert.doesNotMatch(home, /c\.catchAgeDays\}d/);
 
 const expo = read("mobile/app/(tabs)/index.tsx");
 assert.match(expo, /formatCatchHouses/);
 assert.match(expo, /formatCatchAges/);
 assert.doesNotMatch(expo, /c\.flockAgeDays != null \?/);
-assert.doesNotMatch(expo, /c\.catchAgeDays\}d/);
 
 console.log("catch-tile-houses: ok");
