@@ -59,4 +59,12 @@ describe("mergeLiveHouseRows", () => {
     assert.equal(next[1]?.houseNumber, 2);
     assert.equal(next[1]?.currentTemp, "76");
   });
+
+  it("does not slide week cells that already have numbers", () => {
+    const next = mergeLiveHouseRows(
+      [row({ houseNumber: 1, weeks: ["10", "20", "", "", "", "", "", ""] })],
+      [row({ houseNumber: 1, weeks: ["", "10", "20", "", "", "", "", ""] })],
+    );
+    assert.deepEqual(next[0]?.weeks, ["10", "20", "", "", "", "", "", ""]);
+  });
 });

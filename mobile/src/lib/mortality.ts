@@ -51,6 +51,49 @@ export function keepPinnedBirdAge(
   return storedAge;
 }
 
+function addCalendarDays(dateKey: string, days: number): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  if (!y || !m || !d) return dateKey;
+  const next = new Date(Date.UTC(y, m - 1, d + days));
+  const yy = next.getUTCFullYear();
+  const mm = String(next.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(next.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+/** Keep a saved row on its stored calendar day — never rewrite to placement + age. */
+export function mortalityEntryDateKey(
+  placementDateKey: string,
+  age: number,
+  storedDate?: string | null,
+): string {
+  const key = storedDate?.slice(0, 10) ?? "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return key;
+  return addCalendarDays(placementDateKey, age);
+}
+
+/**
+ * Only delete dates that already had a saved row and are now empty.
+ * Blank boxes must not wipe a live date that was remapped onto another age.
+ */
+export function mortalityDatesToClear(
+  emptyBoxDates: string[],
+  existingDates: string[],
+): string[] {
+  const existing = new Set(
+    existingDates.map((value) => value.slice(0, 10)).filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key)),
+  );
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of emptyBoxDates) {
+    const key = raw.slice(0, 10);
+    if (!existing.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
+}
+
 export function flockWeekFromAge(birdAgeInDays: number): number {
   const age = Math.max(0, birdAgeInDays);
   if (age <= 7) return 1;

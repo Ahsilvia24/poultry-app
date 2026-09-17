@@ -16,7 +16,13 @@ import {
   getHouseMortalitySeries,
   saveHouseMortalitySeries,
 } from "../../src/repos/data";
-import { birdAgeFromPlacement, flockWeekFromAge, pinnedBirdAge } from "../../src/lib/mortality";
+import {
+  birdAgeFromPlacement,
+  flockWeekFromAge,
+  mortalityDatesToClear,
+  mortalityEntryDateKey,
+  pinnedBirdAge,
+} from "../../src/lib/mortality";
 import { mortalityGridMaxAge } from "../../src/lib/weeklyMortalityLayout";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
@@ -309,7 +315,10 @@ export default function MortalityScreen() {
             cullCount: Number(r.cullCount || 0),
             birdAgeInDays: r.age,
           })),
-        clearDates: snapshot.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
+        clearDates: mortalityDatesToClear(
+          snapshot.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
+          getHouseMortalitySeries(id).records.map((row) => row.mortality_date),
+        ),
       });
     } catch {
       // Best-effort when switching context / unmounting
@@ -525,13 +534,15 @@ export default function MortalityScreen() {
           record.mortality_date,
           record.bird_age_in_days,
         );
-        const expectedDate = addDaysKey(series.placementDate, age);
-        const current = byAge.get(age);
-        if (!current || record.mortality_date === expectedDate) byAge.set(age, record);
+        if (!byAge.has(age)) byAge.set(age, record);
       }
       function rowForAge(age: number): DayRow {
-        const mortalityDate = addDaysKey(series.placementDate, age);
         const existing = byAge.get(age);
+        const mortalityDate = mortalityEntryDateKey(
+          series.placementDate,
+          age,
+          existing?.mortality_date,
+        );
         return {
           age,
           mortalityDate,
@@ -688,7 +699,10 @@ export default function MortalityScreen() {
             cullCount: Number(r.cullCount || 0),
             birdAgeInDays: r.age,
           })),
-        clearDates: snapshot.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
+        clearDates: mortalityDatesToClear(
+          snapshot.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
+          getHouseMortalitySeries(id).records.map((row) => row.mortality_date),
+        ),
       });
       if (gen === saveGenRef.current) setSaveStatus("saved");
       return true;
@@ -738,7 +752,7 @@ export default function MortalityScreen() {
           if (have.has(extraAge)) continue;
           next.push({
             age: extraAge,
-            mortalityDate: addDaysKey(series.placementDate, extraAge),
+            mortalityDate: mortalityEntryDateKey(series.placementDate, extraAge),
             cullCount: "",
             dailyMortalityCount: "",
             hasEntry: false,

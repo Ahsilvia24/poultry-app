@@ -1,5 +1,5 @@
 import { format, parseISO, subDays } from "date-fns";
-import { calendarDaysBetween, dateKeyForAge } from "@/lib/app-calendar";
+import { addCalendarDays, calendarDaysBetween, dateKeyForAge } from "@/lib/app-calendar";
 import type {
   MortalityRecordLike,
   MortalityStatus,
@@ -97,13 +97,13 @@ export function weeklyMortalityByPlacement(
     totals.set(w, 0);
   }
 
-  const placementKey = format(placementDate, "yyyy-MM-dd");
-  const asOfKey = format(asOfDate, "yyyy-MM-dd");
+  const placementKey = dateKeyForAge(placementDate);
+  const asOfKey = dateKeyForAge(asOfDate);
   for (const record of records) {
     const dateKey = toDateKey(record.mortalityDate);
     const fromDate = birdAgeFromPlacement(placementDate, parseISO(dateKey));
     const stored = record.birdAgeInDays;
-    const pinned = typeof stored === "number" && !(stored === 0 && fromDate !== 0);
+    const pinned = typeof stored === "number" && Number.isFinite(stored) && !(stored === 0 && fromDate !== 0);
     if (!pinned) {
       if (dateKey > asOfKey) continue;
       if (dateKey < placementKey) continue;
@@ -126,9 +126,44 @@ export function weeklyMortalityByPlacement(
 
 function toDateKey(value: Date | string): string {
   if (typeof value === "string") {
-    return value.slice(0, 10);
+    const key = value.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return key;
   }
-  return format(value, "yyyy-MM-dd");
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date.getTime()) ? dateKeyForAge(date) : "";
+}
+
+/** Keep a saved row on its stored calendar day — never rewrite to placement + age. */
+export function mortalityEntryDateKey(
+  placementDateKey: string,
+  age: number,
+  storedDate?: string | null,
+): string {
+  const key = storedDate?.slice(0, 10) ?? "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return key;
+  return addCalendarDays(placementDateKey, age);
+}
+
+/**
+ * Only delete dates that already had a saved row and are now empty.
+ * Blank boxes must not wipe a live date that was remapped onto another age.
+ */
+export function mortalityDatesToClear(
+  emptyBoxDates: string[],
+  existingDates: string[],
+): string[] {
+  const existing = new Set(
+    existingDates.map((value) => value.slice(0, 10)).filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key)),
+  );
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of emptyBoxDates) {
+    const key = raw.slice(0, 10);
+    if (!existing.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
 }
 
 /**

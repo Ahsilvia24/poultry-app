@@ -355,7 +355,7 @@ export async function getDashboardData(userId: string) {
         projectedHead += projectedHeadCountAtCatch(metrics.remaining, avgDaily, daysUntilCatch);
         projectedMortExtra += avgDaily * daysUntilCatch;
         for (const week of weeklyMortalityByPlacement(
-          flock.placementDate,
+          hf.placementDate ?? flock.placementDate,
           hf.mortalities,
           today,
         )) {

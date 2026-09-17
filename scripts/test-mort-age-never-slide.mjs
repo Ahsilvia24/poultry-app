@@ -74,4 +74,25 @@ assert.deepEqual(
 );
 assert.ok(!slid.some((week) => week.week === 7 && week.total === 7333));
 
+const utcMidnightPlace = new Date(Date.UTC(2026, 7, 13));
+const utcMidnightAsOf = new Date(Date.UTC(2026, 8, 14));
+const fromUtcDates = weeklyMortalityByPlacement(
+  utcMidnightPlace,
+  [
+    {
+      mortalityDate: new Date(Date.UTC(2026, 8, 18)),
+      birdAgeInDays: 36,
+      dailyMortalityCount: 7333,
+      cullCount: 0,
+      totalDailyLoss: 7333,
+    },
+  ],
+  utcMidnightAsOf,
+);
+assert.deepEqual(
+  fromUtcDates.find((week) => week.week === 6),
+  { week: 6, total: 7333, entered: true },
+  "UTC midnight Date keys must not shift a pinned count into another week",
+);
+
 console.log("mort-age-never-slide: ok");

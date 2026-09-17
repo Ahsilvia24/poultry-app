@@ -6,7 +6,7 @@ import {
   summarizeForDate,
   weeklyMortalityByPlacement,
 } from "@/lib/mortality/calculations";
-import { asDate } from "@/lib/offline/dates";
+import { asDate, asDateKey, localNoonFromKey } from "@/lib/offline/dates";
 import { aliasIdCandidates, type IdAliases } from "@/lib/offline/remapIds";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import type { ServiceFarmContext } from "@/lib/serviceForms/farmContext";
@@ -135,7 +135,8 @@ export function selectServiceFarmContext(
     const matched = hfByHouseId.get(house.id) ?? null;
     const hf = matched?.hf ?? null;
     const flock = matched?.flock ?? null;
-    const placement = asDate(hf?.placementDate ?? flock?.placementDate ?? null);
+    const placeKey = asDateKey(hf?.placementDate ?? flock?.placementDate ?? null);
+    const placement = placeKey ? localNoonFromKey(placeKey) : asDate(hf?.placementDate ?? flock?.placementDate ?? null);
     const morts = hf
       ? (snapshot.mortalities ?? []).filter((row) => row.houseFlockId === hf.id && !row.isDraft)
       : [];

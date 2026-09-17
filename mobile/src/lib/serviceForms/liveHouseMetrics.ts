@@ -8,6 +8,10 @@ export function normalizedLoggedTemp(temp: string): string | null {
   return trimmed;
 }
 
+function weekCellsHaveNumbers(weeks: string[]) {
+  return weeks.some((week) => week.trim() !== "");
+}
+
 function pullLiveHouseFields(row: ServiceHouseRow, live: ServiceHouseRow): ServiceHouseRow {
   const weeks = row.weeks.slice();
   while (weeks.length < live.weeks.length) weeks.push("");
@@ -15,10 +19,9 @@ function pullLiveHouseFields(row: ServiceHouseRow, live: ServiceHouseRow): Servi
     ...row,
     currentTemp: live.currentTemp.trim(),
     mortalityToDate: live.mortalityToDate.trim() ? live.mortalityToDate : row.mortalityToDate,
-    weeks: weeks.map((w, i) => {
-      const next = live.weeks[i]?.trim();
-      return next ? next : w;
-    }),
+    // Once a week box has a number, keep the whole row. Live remounts
+    // after a checklist / service-report save must not slide cells.
+    weeks: weekCellsHaveNumbers(weeks) ? weeks : live.weeks.slice(),
     age: live.age.trim() ? live.age : row.age,
     placed: live.placed.trim() ? live.placed : row.placed,
   };

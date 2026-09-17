@@ -76,7 +76,21 @@ const entry = read("src/components/MortalityEntryForm.tsx");
 assert.match(entry, /key=\{row\.age\}/);
 assert.match(entry, /w-16 shrink-0/);
 assert.match(entry, /tabular-nums/);
+assert.match(entry, /mortalityEntryDateKey/);
+assert.match(entry, /mortalityDatesToClear/);
 assert.doesNotMatch(entry, /key=\{row\.mortalityDate\}/);
+assert.doesNotMatch(entry, /entry\.mortalityDate === expectedDate/);
+
+const live = read("src/lib/serviceForms/liveHouseMetrics.ts");
+assert.match(live, /weekCellsHaveNumbers/);
+assert.doesNotMatch(live, /return next \? next : w/);
+
+const dash = read("src/lib/dashboard.ts");
+assert.match(dash, /hf\.placementDate \?\? flock\.placementDate/);
+assert.doesNotMatch(
+  dash,
+  /weeklyMortalityByPlacement\(\s*flock\.placementDate/,
+);
 
 const expo = read("mobile/app/(tabs)/farms/[id]/index.tsx");
 assert.match(expo, /WeeklyMortalityList weeks=\{h\.weeklyMortality\}/);

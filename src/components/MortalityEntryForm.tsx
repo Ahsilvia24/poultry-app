@@ -8,6 +8,8 @@ import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
 import {
   birdAgeFromPlacement,
   flockWeekFromAge,
+  mortalityDatesToClear,
+  mortalityEntryDateKey,
   pinnedBirdAge,
 } from "@/lib/mortality/calculations";
 import {
@@ -160,14 +162,12 @@ function buildRows(
       parseLocalDate(entry.mortalityDate),
       entry.birdAgeInDays,
     );
-    const expectedDate = format(addDays(placement, age), "yyyy-MM-dd");
-    const current = byAge.get(age);
-    if (!current || entry.mortalityDate === expectedDate) byAge.set(age, entry);
+    if (!byAge.has(age)) byAge.set(age, entry);
   }
 
   function rowForAge(age: number): DayRow {
-    const mortalityDate = format(addDays(placement, age), "yyyy-MM-dd");
     const existing = byAge.get(age);
+    const mortalityDate = mortalityEntryDateKey(placementDate, age, existing?.mortalityDate);
     return {
       age,
       mortalityDate,
@@ -332,7 +332,10 @@ export function MortalityEntryForm({
     setError(null);
 
     const entered = currentRows.filter((r) => r.hasEntry);
-    const clearDates = currentRows.filter((r) => !r.hasEntry).map((r) => r.mortalityDate);
+    const clearDates = mortalityDatesToClear(
+      currentRows.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
+      (currentHouse.existingEntries ?? []).map((entry) => entry.mortalityDate),
+    );
     if (entered.length === 0 && clearDates.length === 0) {
       setSaveStatus("idle");
       return;
@@ -519,7 +522,7 @@ export function MortalityEntryForm({
           if (have.has(extraAge)) continue;
           next.push({
             age: extraAge,
-            mortalityDate: format(addDays(placement, extraAge), "yyyy-MM-dd"),
+            mortalityDate: mortalityEntryDateKey(placementKey, extraAge),
             dailyMortalityCount: "",
             cullCount: "",
             hasEntry: false,

@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
-import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { appTodayKey } from "@/lib/app-calendar";
 import { ensureActiveFlockHouseFlocksForUser } from "@/lib/ensureActiveFlockHouseFlocks";
 import { listMortalityHouses } from "@/lib/mortalityHouses";
 import { MANUAL_LFO_FARM_NAME, MANUAL_LFO_FARM_NUMBER } from "@/lib/lfo/manualFarm";
+import { getUserTimeZone } from "@/lib/user-time-zone";
 import { VISIT_PLACE_FARM_NUMBER } from "@/lib/visits/visitPlace";
+import { dateKeyFromDb } from "@/lib/visits/schedule";
 import { PageHeader } from "@/components/ui";
 import {
   MortalityEntryForm,
@@ -19,6 +21,7 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
   if (!session?.user?.id) redirect("/login");
 
   const params = await searchParams;
+  const timeZone = await getUserTimeZone(session.user.id);
 
   // Houses added after the flock was created never got a HouseFlock row.
   await ensureActiveFlockHouseFlocksForUser(session.user.id);
@@ -69,9 +72,9 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
               farm.flocks.length > 1
                 ? farm.flocks.map((flock) => flock.flockNumber).join(" · ")
                 : active.flockNumber,
-            placementDate: format(active.placementDate, "yyyy-MM-dd"),
+            placementDate: dateKeyFromDb(active.placementDate),
             projectedCatchDate: active.projectedCatchDate
-              ? format(active.projectedCatchDate, "yyyy-MM-dd")
+              ? dateKeyFromDb(active.projectedCatchDate)
               : null,
             targetMarketAge: active.targetMarketAge,
             houses: houses.map(({ house, houseFlock }) => {
@@ -83,8 +86,8 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
               houseNumber: house.houseNumber,
               placedBirdCount: houseFlock.placedBirdCount,
               placementDate: houseFlock.placementDate
-                ? format(houseFlock.placementDate, "yyyy-MM-dd")
-                : format(houseFlockRecord.placementDate, "yyyy-MM-dd"),
+                ? dateKeyFromDb(houseFlock.placementDate)
+                : dateKeyFromDb(houseFlockRecord.placementDate),
               existingEntries: houseFlock.mortalities.map((m) => ({
                 // Use UTC calendar date so keys match form day keys (avoid TZ off-by-one)
                 mortalityDate: m.mortalityDate.toISOString().slice(0, 10),
@@ -103,7 +106,7 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
   });
 
   // Stable calendar day for SSR + client first paint (avoids hydration age mismatch).
-  const asOfDateKey = new Date().toISOString().slice(0, 10);
+  const asOfDateKey = appTodayKey(undefined, timeZone);
 
   return (
     <div>
