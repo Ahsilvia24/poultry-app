@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureActiveFlockHouseFlocksForUser } from "@/lib/ensureActiveFlockHouseFlocks";
 import { listMortalityHouses } from "@/lib/mortalityHouses";
+import { MANUAL_LFO_FARM_NAME, MANUAL_LFO_FARM_NUMBER } from "@/lib/lfo/manualFarm";
+import { VISIT_PLACE_FARM_NUMBER } from "@/lib/visits/visitPlace";
 import { PageHeader } from "@/components/ui";
 import {
   MortalityEntryForm,
@@ -22,7 +24,13 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
   await ensureActiveFlockHouseFlocksForUser(session.user.id);
 
   const farmsRaw = await prisma.farm.findMany({
-    where: { userId: session.user.id, deletedAt: null, isActive: true },
+    where: {
+      userId: session.user.id,
+      deletedAt: null,
+      isActive: true,
+      farmNumber: { notIn: [VISIT_PLACE_FARM_NUMBER, MANUAL_LFO_FARM_NUMBER] },
+      farmName: { not: MANUAL_LFO_FARM_NAME },
+    },
     orderBy: { farmName: "asc" },
     include: {
       houses: { where: { deletedAt: null }, orderBy: { houseNumber: "asc" } },
@@ -70,6 +78,7 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
               const houseFlockRecord = farm.flocks.find((row) => row.id === houseFlock.flockId) ?? active;
               return {
               houseFlockId: houseFlock.id,
+              houseId: house.id,
               flockId: houseFlock.flockId,
               houseNumber: house.houseNumber,
               placedBirdCount: houseFlock.placedBirdCount,

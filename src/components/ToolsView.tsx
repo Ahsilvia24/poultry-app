@@ -14,7 +14,7 @@ import {
   VentilationLinks,
   type VentilationFarmPayload,
 } from "@/components/VentilationLinks";
-import { WeightProjectionManualTile } from "@/components/WeightProjectionManualTile";
+import { CustomWeightProjectionSection } from "@/components/CustomWeightProjectionSection";
 
 export function ToolsView({
   farms,
@@ -45,9 +45,7 @@ export function ToolsView({
           <ToolsWeightProjections farms={weightFarms} initialFarmId={initialFarmId ?? null} />
         </ToolsSectionPanel>
 
-        <ToolsSectionPanel hashId="weight-projections-manual" title="Custom Weight Projection">
-          <WeightProjectionManualTile />
-        </ToolsSectionPanel>
+        <CustomWeightProjectionSection />
 
         <ToolsSectionPanel hashId="ventilation" title="Ventilation" footer={<VentilationCfmCharts />}>
           <VentilationLinks farms={farms} />

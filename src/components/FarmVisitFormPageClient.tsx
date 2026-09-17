@@ -2,10 +2,12 @@
 
 import { FarmVisitFormView } from "@/components/FarmVisitFormView";
 import { useOffline } from "@/components/OfflineProvider";
+import { useOfflineNav } from "@/components/OfflineNavContext";
 import { BackHeader } from "@/components/ui";
-import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
+import { replicaPath, snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import { resolveAlias } from "@/lib/offline/remapIds";
 import { selectVisit, selectVisits } from "@/lib/offline/selectVisits";
+import { isAllVisitsReturn } from "@/lib/visits/returnTo";
 
 export function FarmVisitFormPageClient({
   farmId,
@@ -15,7 +17,9 @@ export function FarmVisitFormPageClient({
   visitId?: string;
 }) {
   const { snapshot, ready, aliases } = useOffline();
-  const listHref = `/farms/${farmId}/visits`;
+  const nav = useOfflineNav();
+  const fromAllVisits = isAllVisitsReturn(replicaPath(nav?.viewHref ?? "").search);
+  const listHref = fromAllVisits ? "/visits" : `/farms/${farmId}/visits`;
 
   if (snapshotHasFarmGraph(snapshot)) {
     const resolvedFarmId = resolveAlias(aliases, farmId);
@@ -33,7 +37,7 @@ export function FarmVisitFormPageClient({
       if (!visit) {
         return (
           <div>
-            <BackHeader href={listHref} backLabel="Visits" title="Visit" />
+            <BackHeader href={listHref} backLabel={fromAllVisits ? "All Visits" : "Visits"} title="Visit" />
             <p className="text-sm font-semibold text-stone-800">This visit is not on the phone yet.</p>
           </div>
         );
@@ -44,6 +48,7 @@ export function FarmVisitFormPageClient({
           flockId={model.activeFlockId}
           placementDate={model.activePlacementDate}
           visit={visit}
+          fromAllVisits={fromAllVisits}
         />
       );
     }
@@ -52,13 +57,14 @@ export function FarmVisitFormPageClient({
         farmId={model.farmId}
         flockId={model.activeFlockId}
         placementDate={model.activePlacementDate}
+        fromAllVisits={fromAllVisits}
       />
     );
   }
 
   return (
     <div>
-      <BackHeader href={listHref} backLabel="Visits" title={visitId ? "Edit Visit" : "Log Visit"} />
+      <BackHeader href={listHref} backLabel={fromAllVisits ? "All Visits" : "Visits"} title={visitId ? "Edit Visit" : "Log Visit"} />
       <p className="text-sm font-semibold text-stone-800">
         {ready ? "Need a connection once to download this farm." : "Opening visit…"}
       </p>

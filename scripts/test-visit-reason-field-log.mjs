@@ -128,6 +128,9 @@ assert.equal(
   "Routine Service",
 );
 
+assert.match(read("src/app/api/offline/ping/route.ts"), /ensureWeightProjectionVisitType/);
+assert.match(read("scripts/vercel-build.mjs"), /ensure-visit-type\.mjs/);
+
 const hold = read("src/components/HoldReorderList.tsx");
 assert.match(hold, /select-none/);
 assert.match(hold, /\[-webkit-touch-callout:none\]/);

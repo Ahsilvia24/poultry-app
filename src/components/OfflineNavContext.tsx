@@ -12,10 +12,12 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { hrefHasHouseFocus, resetAppScroll } from "@/lib/app-scroll";
 import { replicaHrefsMatch } from "@/lib/offline/hasFarmGraph";
+import { writeReplicaUrl } from "@/lib/offline/replicaHistory";
 
 type OfflineNavValue = {
   viewHref: string;
   navigate: (href: string) => void;
+  replace: (href: string) => void;
 };
 
 const OfflineNavContext = createContext<OfflineNavValue | null>(null);
@@ -45,13 +47,23 @@ export function OfflineNavProvider({ children }: { children: ReactNode }) {
     (href: string) => {
       if (!hrefHasHouseFocus(href)) resetAppScroll();
       setPendingHref(href);
+      if (writeReplicaUrl(href, "push")) return;
       router.push(href);
     },
     [router],
   );
 
+  const replace = useCallback(
+    (href: string) => {
+      setPendingHref(href);
+      if (writeReplicaUrl(href, "replace")) return;
+      router.replace(href);
+    },
+    [router],
+  );
+
   const viewHref = pendingHref ?? liveHref(pathname);
-  const value = useMemo(() => ({ viewHref, navigate }), [viewHref, navigate]);
+  const value = useMemo(() => ({ viewHref, navigate, replace }), [viewHref, navigate, replace]);
 
   return <OfflineNavContext.Provider value={value}>{children}</OfflineNavContext.Provider>;
 }

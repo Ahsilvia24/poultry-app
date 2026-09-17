@@ -109,6 +109,7 @@ export async function loadServiceFarmContext(
       ageDays: placementDate ? daysSincePlacement(placementDate, today, timeZone) : null,
       placedBirdCount: hf?.placedBirdCount ?? null,
       cumulativeMortality: metrics?.cumulative ?? 0,
+      hasMortalityEntries: (hf?.mortalities.length ?? 0) > 0,
       weeklyMortality,
       squareFootage: house.squareFootage,
       totalFanCFM: house.totalFanCFM,

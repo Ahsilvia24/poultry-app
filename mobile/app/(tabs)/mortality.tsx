@@ -105,6 +105,20 @@ function firstUnfilledAfterLastFilled(rows: DayRow[], today: string): DayRow | n
 
 type FieldKind = "culls" | "mort";
 
+function displayCullCount(count: number | null | undefined): string {
+  if (count == null || !Number.isFinite(count) || count === 0) return "";
+  return String(count);
+}
+
+function displayMortalityCount(count: number | null | undefined): string {
+  if (count == null || !Number.isFinite(count)) return "";
+  return String(count);
+}
+
+function nextRowInColumn(rows: DayRow[], afterAge: number): DayRow | null {
+  return rows.find((r) => r.age === afterAge + 1) ?? null;
+}
+
 type ActiveField = {
   kind: FieldKind;
   age: number;
@@ -387,10 +401,7 @@ export default function MortalityScreen() {
   function jumpToFirstUnfilled(nextRows: DayRow[]) {
     clearJumpTimer();
     const today = todayKey();
-    const jumpTo =
-      firstUnfilledAfterLastFilled(nextRows, today) ??
-      nextRows.find((r) => r.mortalityDate === today) ??
-      null;
+    const jumpTo = firstUnfilledAfterLastFilled(nextRows, today);
     const todayAge = nextRows.find((r) => r.mortalityDate === today)?.age;
     const fallbackWeek =
       todayAge != null
@@ -413,7 +424,7 @@ export default function MortalityScreen() {
           const field = { kind: "mort" as const, age };
           activeFieldRef.current = field;
           setActiveField(field);
-          setSelection({ start: 0, end: 0 });
+          setSelection({ start: 0, end: 0 }); // empty target — caret at end of blank
           input.focus();
           queueWeekScroll(age);
           return;
@@ -524,17 +535,17 @@ export default function MortalityScreen() {
         return {
           age,
           mortalityDate,
-          // Keep boxes blank until entered; show "0" only after a confirmed entry
-          cullCount: existing ? String(existing.cull_count) : "",
-          dailyMortalityCount: existing ? String(existing.daily_mortality_count) : "",
+          // Keep boxes blank until entered; culls 0 is the DB default, not a typed value
+          cullCount: existing ? displayCullCount(existing.cull_count) : "",
+          dailyMortalityCount: existing ? displayMortalityCount(existing.daily_mortality_count) : "",
           hasEntry: Boolean(existing),
         };
       }
       const known = [...byAge.keys()].map((age) => ({
         age,
         hasEntry: true,
-        dailyMortalityCount: String(byAge.get(age)?.daily_mortality_count ?? ""),
-        cullCount: String(byAge.get(age)?.cull_count ?? ""),
+        dailyMortalityCount: displayMortalityCount(byAge.get(age)?.daily_mortality_count),
+        cullCount: displayCullCount(byAge.get(age)?.cull_count),
       }));
       const maxAge = mortalityGridMaxAge(todayAge, catchAge, known);
       const next: DayRow[] = [];
@@ -752,11 +763,8 @@ export default function MortalityScreen() {
     activeFieldRef.current = field;
     setActiveField(field);
     const value = getFieldValue(kind, age);
-    if (value && Number(value) !== 0) {
-      setSelection({ start: value.length, end: value.length });
-    } else {
-      setSelection({ start: 0, end: value.length });
-    }
+    const len = value.length;
+    setSelection({ start: len, end: len });
     const key = fieldKey(kind, age);
     const attempt = (triesLeft: number) => {
       requestAnimationFrame(() => {
@@ -779,13 +787,8 @@ export default function MortalityScreen() {
     activeFieldRef.current = field;
     setActiveField(field);
     queueWeekScroll(age);
-    if (value && Number(value) !== 0) {
-      const len = value.length;
-      // Place caret at the far right for existing non-zero values
-      setSelection({ start: len, end: len });
-    } else {
-      setSelection({ start: 0, end: value.length });
-    }
+    const len = value.length;
+    setSelection({ start: len, end: len });
   }
 
   function onDigit(d: string) {
@@ -840,9 +843,9 @@ export default function MortalityScreen() {
     if (!activeField) return;
     flushSave();
     const { kind, age } = activeField;
-    const nextAge = age + 1;
-    if (rowsRef.current.some((r) => r.age === nextAge)) {
-      focusField(kind, nextAge);
+    const next = nextRowInColumn(rowsRef.current, age);
+    if (next) {
+      focusField(kind, next.age);
     } else {
       pendingScrollAgeRef.current = null;
       activeFieldRef.current = null;

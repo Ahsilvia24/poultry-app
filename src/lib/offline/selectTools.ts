@@ -13,6 +13,8 @@ import type { WeightFarmPayload } from "@/components/ToolsWeightProjections";
 import type { VentilationFarmPayload } from "@/components/VentilationLinks";
 import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
 import { parseDateKey } from "@/lib/visits/schedule";
+import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
+import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 
 export function selectTools(snapshot: OfflineSnapshot, initialFarmId?: string | null) {
   const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
@@ -20,7 +22,7 @@ export function selectTools(snapshot: OfflineSnapshot, initialFarmId?: string | 
 
   const farmsRaw = sortFarmsByOrder(
     (snapshot.farms ?? [])
-      .filter((farm) => farm.isActive && !farm.deletedAt)
+      .filter((farm) => farm.isActive && !farm.deletedAt && !isVisitPlaceFarm(farm) && !isManualLfoFarm(farm))
       .map((farm) => {
         const flocks = (snapshot.flocks ?? [])
           .filter((flock) => flock.farmId === farm.id && flock.flockStatus === "ACTIVE" && !flock.deletedAt)

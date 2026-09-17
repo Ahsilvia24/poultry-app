@@ -1,13 +1,11 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { KeypadNavProvider, useKeypadNav } from "@/components/KeypadNavContext";
+import { KeypadNavProvider } from "@/components/KeypadNavContext";
 import { AppNav } from "@/components/AppNav";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { OfflineRoutes } from "@/components/OfflineNav";
 
 function ShellBody({ children }: { children: React.ReactNode }) {
-  const { keypadOpen } = useKeypadNav();
   return (
     <div data-app-scroll className="min-h-dvh bg-[#f3efe6]">
       <div
@@ -17,12 +15,7 @@ function ShellBody({ children }: { children: React.ReactNode }) {
       />
       <OfflineBanner />
       <AppNav />
-      <main
-        className={cn(
-          "mx-auto max-w-7xl px-4 py-4 md:py-6",
-          keypadOpen ? "pb-4" : "pb-28 md:pb-8",
-        )}
-      >
+      <main className="mx-auto max-w-7xl px-4 pb-28 pt-4 md:pt-6">
         <OfflineRoutes>{children}</OfflineRoutes>
       </main>
     </div>

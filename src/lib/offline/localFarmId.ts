@@ -16,6 +16,7 @@ export function isLocalFarmId(id: string | undefined): boolean {
 export function createFarmFieldsFromFarm(farm?: {
   farmName?: string | null;
   growerName?: string | null;
+  farmNumber?: string | null;
   notes?: string | null;
   numberOfHouses?: number | null;
   numberOfGenerators?: number | null;
@@ -24,6 +25,7 @@ export function createFarmFieldsFromFarm(farm?: {
   return {
     farmName: farm?.farmName?.trim() || "New farm",
     growerName: farm?.growerName ?? "",
+    farmNumber: farm?.farmNumber ?? "",
     notes: farm?.notes ?? "",
     numberOfHouses: String(farm?.numberOfHouses ?? 0),
     numberOfGenerators: generators != null && generators >= 1 ? String(generators) : "",
@@ -34,7 +36,7 @@ export function createFarmWriteForLocalFarm(
   farmId: string,
   farm?: Pick<
     OfflineFarmRef,
-    "farmName" | "growerName" | "notes" | "numberOfHouses" | "numberOfGenerators"
+    "farmName" | "growerName" | "farmNumber" | "notes" | "numberOfHouses" | "numberOfGenerators"
   >,
 ): OfflineFormWrite {
   return {

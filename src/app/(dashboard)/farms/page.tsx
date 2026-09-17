@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { appToday } from "@/lib/app-calendar";
-import { daysSincePlacement } from "@/lib/mortality/calculations";
+import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { getUserTimeZone } from "@/lib/user-time-zone";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { FarmsPageClient } from "@/components/FarmsPageClient";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
+import { MANUAL_LFO_FARM_NAME, MANUAL_LFO_FARM_NUMBER } from "@/lib/lfo/manualFarm";
+import { VISIT_PLACE_FARM_NUMBER } from "@/lib/visits/visitPlace";
 
 export default async function FarmsPage() {
   const session = await auth();
@@ -19,13 +21,23 @@ export default async function FarmsPage() {
       where: {
         userId: session.user.id,
         deletedAt: null,
+        farmNumber: { notIn: [VISIT_PLACE_FARM_NUMBER, MANUAL_LFO_FARM_NUMBER] },
+        farmName: { not: MANUAL_LFO_FARM_NAME },
       },
       include: {
         houses: { where: { deletedAt: null }, select: { id: true } },
         flocks: {
           where: { flockStatus: "ACTIVE", deletedAt: null },
           orderBy: { placementDate: "asc" },
-          select: { placementDate: true },
+          select: {
+            placementDate: true,
+            houseFlocks: {
+              select: {
+                placementDate: true,
+                house: { select: { farmId: true, deletedAt: true } },
+              },
+            },
+          },
         },
       },
       orderBy: { farmName: "asc" },
@@ -44,9 +56,16 @@ export default async function FarmsPage() {
       phoneNumber: farm.phoneNumber,
       isActive: farm.isActive,
       houseCount: farm.houses.length,
-      flockAges: Array.from(
-        new Set(farm.flocks.map((fl) => daysSincePlacement(fl.placementDate, today, timeZone))),
-      ).sort((a, b) => a - b),
+      flockAges: flockAgesFromPlacements(
+        farm.flocks.map((flock) => ({
+          placementDate: flock.placementDate,
+          houses: flock.houseFlocks
+            .filter((hf) => hf.house.farmId === farm.id && !hf.house.deletedAt)
+            .map((hf) => ({ placementDate: hf.placementDate })),
+        })),
+        today,
+        timeZone,
+      ),
     })),
     parseFarmOrder(orderRow?.farmOrder),
   );

@@ -8,6 +8,7 @@ import {
   lfoTimingFromSettings,
 } from "@/lib/lfo/calculate";
 import { lfoDisplayName } from "@/lib/lfo/customName";
+import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import type { LfoShareInventory } from "@/lib/lfo/share-payload";
 import { summarizeForDate } from "@/lib/mortality/calculations";
 import { asDateKey, asDateRequired } from "@/lib/offline/dates";
@@ -48,7 +49,7 @@ export function selectLfo(snapshot: OfflineSnapshot, initialFarmId?: string) {
   const timing = lfoTimingFromSettings(snapshot.settings);
 
   const farms = (snapshot.farms ?? [])
-    .filter((farm) => farm.isActive && !farm.deletedAt)
+    .filter((farm) => farm.isActive && !farm.deletedAt && !isManualLfoFarm(farm))
     .filter((farm) => {
       const hasActive = (snapshot.flocks ?? []).some(
         (flock) => flock.farmId === farm.id && flock.flockStatus === "ACTIVE" && !flock.deletedAt,

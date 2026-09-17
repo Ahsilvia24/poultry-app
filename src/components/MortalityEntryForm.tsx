@@ -10,17 +10,27 @@ import {
   flockWeekFromAge,
   pinnedBirdAge,
 } from "@/lib/mortality/calculations";
+import {
+  displayCullCount,
+  displayMortalityCount,
+  firstUnfilledAfterLastFilled,
+  mortalityEntered,
+  needsEntry,
+  nextRowInColumn,
+} from "@/lib/mortality/entryNav";
 import { mortalityGridMaxAge } from "@/lib/weeklyMortalityLayout";
 import { formatNumber } from "@/lib/utils";
 import { Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { NumberKeypad } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
+import { armKeypadPointerGuard, isKeypadGuardActive } from "@/lib/keypadPointerGuard";
 import { formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 export type MortalityHousePayload = {
   houseFlockId: string;
+  houseId?: string;
   flockId?: string;
   houseNumber: number;
   placedBirdCount: number;
@@ -71,42 +81,32 @@ function NeedsEntryIcon() {
   );
 }
 
-/** True once mortality (daily loss) has been entered for the day — including 0. */
-function mortalityEntered(row: DayRow) {
-  return row.dailyMortalityCount !== "";
-}
-
-/**
- * Past/today with no mortality total yet — Loss cell shows !.
- * Day 0 is usually left blank (entry starts on day 1), so it never prompts.
- * Culls are optional metadata and do not clear the !.
- */
-function needsEntry(row: DayRow, asOfDateKey: string) {
-  return row.age > 0 && row.mortalityDate <= asOfDateKey && !mortalityEntered(row);
-}
-
-/**
- * First past/today day still missing a mortality total after the last day
- * that has one. If none entered yet, the earliest day that needs entry.
- */
-function firstUnfilledAfterLastFilled(rows: DayRow[], asOfDateKey: string): DayRow | null {
-  let lastFilledAge = -1;
-  for (const row of rows) {
-    if (mortalityEntered(row)) lastFilledAge = Math.max(lastFilledAge, row.age);
+function scrollMortalityCellAboveKeypad(el: HTMLElement) {
+  const keypad = document.querySelector<HTMLElement>("[data-mort-keypad]");
+  const keypadTop = keypad?.getBoundingClientRect().top ?? window.innerHeight - 280;
+  const row = el.closest<HTMLElement>("[data-mort-row]") ?? el;
+  const rect = row.getBoundingClientRect();
+  const topPad = 72;
+  let delta = 0;
+  if (rect.bottom + 12 > keypadTop) delta = rect.bottom + 12 - keypadTop;
+  else if (rect.top < topPad) delta = rect.top - topPad;
+  if (delta === 0) return;
+  const scroller = document.querySelector("[data-app-scroll]");
+  if (scroller instanceof HTMLElement) {
+    const overflowY = getComputedStyle(scroller).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") {
+      scroller.scrollTop += delta;
+      return;
+    }
   }
-  const afterLast = rows.find((r) => r.age > lastFilledAge && needsEntry(r, asOfDateKey));
-  if (afterLast) return afterLast;
-  if (lastFilledAge < 0) {
-    return rows.find((r) => needsEntry(r, asOfDateKey)) ?? null;
-  }
-  return null;
+  window.scrollBy(0, delta);
 }
 
 function focusMortalityAge(age: number, field: "culls" | "mortality" = "mortality") {
   const el = document.querySelector<HTMLElement>(`[data-mort-nav="${field}-${age}"]`);
   if (!el) return false;
-  el.scrollIntoView({ block: "center", behavior: "smooth" });
-  el.focus();
+  scrollMortalityCellAboveKeypad(el);
+  el.focus({ preventScroll: true });
   return true;
 }
 
@@ -171,9 +171,9 @@ function buildRows(
     return {
       age,
       mortalityDate,
-      // Blank until entered — don't seed "0" or clearing one cell leaves a phantom zero
-      dailyMortalityCount: existing ? String(existing.dailyMortalityCount) : "",
-      cullCount: existing ? String(existing.cullCount) : "",
+      // Blank until entered — don't seed "0" into empty cull boxes
+      dailyMortalityCount: existing ? displayMortalityCount(existing.dailyMortalityCount) : "",
+      cullCount: existing ? displayCullCount(existing.cullCount) : "",
       hasEntry: Boolean(existing),
     };
   }
@@ -181,8 +181,8 @@ function buildRows(
   const known = [...byAge.keys()].map((age) => ({
     age,
     hasEntry: true,
-    dailyMortalityCount: String(byAge.get(age)?.dailyMortalityCount ?? ""),
-    cullCount: String(byAge.get(age)?.cullCount ?? ""),
+    dailyMortalityCount: displayMortalityCount(byAge.get(age)?.dailyMortalityCount),
+    cullCount: displayCullCount(byAge.get(age)?.cullCount),
   }));
   const maxAge = mortalityGridMaxAge(todayAge, catchAge, known);
 
@@ -304,6 +304,9 @@ export function MortalityEntryForm({
   function setMortField(next: { kind: "culls" | "mortality"; age: number } | null) {
     setActiveField(next);
     setKeypadOpen(!!next);
+    if (!next && typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
   }
 
   useEffect(() => {
@@ -343,8 +346,8 @@ export function MortalityEntryForm({
       isDraft: false,
       entries: entered.map((r) => ({
         mortalityDate: r.mortalityDate,
-        dailyMortalityCount: Number(r.dailyMortalityCount || 0),
-        cullCount: Number(r.cullCount || 0),
+        dailyMortalityCount: r.dailyMortalityCount === "" ? 0 : Number(r.dailyMortalityCount),
+        cullCount: r.cullCount === "" ? 0 : Number(r.cullCount),
         birdAgeInDays: r.age,
       })),
       clearDates,
@@ -427,10 +430,7 @@ export function MortalityEntryForm({
       setExpandedWeeks(new Set([currentWeek]));
       return;
     }
-    const jumpTo =
-      firstUnfilledAfterLastFilled(built, asOfDateKey) ??
-      built.find((r) => r.mortalityDate === asOfDateKey) ??
-      null;
+    const jumpTo = firstUnfilledAfterLastFilled(built, asOfDateKey);
     const openWeek = jumpTo ? flockWeekFromAge(jumpTo.age) : currentWeek;
     // Exclusive accordion: only the jump target week stays open
     setExpandedWeeks(new Set([openWeek]));
@@ -540,14 +540,17 @@ export function MortalityEntryForm({
     const row = rowsRef.current.find((r) => r.age === age);
     const value = field === "culls" ? row?.cullCount ?? "" : row?.dailyMortalityCount ?? "";
     setMortField({ kind: field, age });
-    setReplaceOnType(value === "" || value === "0");
-    setExpandedWeeks(new Set([week]));
+    // Empty box: first digit starts a new number. Filled box: caret is at the
+    // far right so Backspace deletes the last digit.
+    setReplaceOnType(value === "");
+    setExpandedWeeks((prev) => {
+      if (prev.has(week)) return prev;
+      const next = new Set(prev);
+      next.add(week);
+      return next;
+    });
     pendingJumpRef.current = { age, field };
     setFocusToken((t) => t + 1);
-  }
-
-  function focusNextInColumn(field: "culls" | "mortality", age: number) {
-    focusAgeInColumn(field, age + 1);
   }
 
   function focusPrevInColumn(field: "culls" | "mortality", age: number) {
@@ -592,15 +595,48 @@ export function MortalityEntryForm({
   function onEnter() {
     if (!activeField) return;
     flushSave();
-    const nextAge = activeField.age + 1;
-    if (rowsRef.current.some((r) => r.age === nextAge)) {
-      focusNextInColumn(activeField.kind, activeField.age);
+    const next = nextRowInColumn(rowsRef.current, activeField.age);
+    if (next) {
+      focusAgeInColumn(activeField.kind, next.age);
     } else {
       setMortField(null);
     }
   }
+  const onEnterRef = useRef(onEnter);
+  onEnterRef.current = onEnter;
+  const onBackspaceRef = useRef(onBackspace);
+  onBackspaceRef.current = onBackspace;
+
+  useEffect(() => {
+    if (!activeField) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Backspace") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.repeat) return;
+        onBackspaceRef.current();
+        return;
+      }
+      if (event.key !== "Enter" && event.key !== "NumpadEnter") return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.repeat) return;
+      onEnterRef.current();
+    }
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [activeField]);
+
+  function ignoreLeftoverTap() {
+    return isKeypadGuardActive() || Boolean(activeField);
+  }
 
   function changeFarm(nextFarmId: string) {
+    if (ignoreLeftoverTap()) {
+      flushSave();
+      setMortField(null);
+      return;
+    }
     flushSave();
     setFarmId(nextFarmId);
     setSaveStatus("idle");
@@ -615,6 +651,11 @@ export function MortalityEntryForm({
   }
 
   function changeHouse(nextHouseId: string) {
+    if (ignoreLeftoverTap()) {
+      flushSave();
+      setMortField(null);
+      return;
+    }
     flushSave();
     jumpOnHouseLoadRef.current = true;
     setSaveStatus("idle");
@@ -720,6 +761,7 @@ export function MortalityEntryForm({
                 <button
                   type="button"
                   onClick={() => {
+                    if (isKeypadGuardActive()) return;
                     setMortField(null);
                     toggleWeek(group.week);
                   }}
@@ -758,7 +800,7 @@ export function MortalityEntryForm({
                         activeField?.kind === "mortality" && activeField.age === row.age;
                       return (
                         <div
-                          key={row.mortalityDate}
+                          key={row.age}
                           data-mort-row={row.age}
                           className="flex items-center gap-1 border-t border-stone-100 px-2.5 py-1.5"
                         >
@@ -823,12 +865,20 @@ export function MortalityEntryForm({
             type="button"
             aria-label="Dismiss keypad"
             className="fixed inset-0 z-40 bg-transparent"
-            onClick={() => {
+            onTouchEnd={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              flushSave();
+              setMortField(null);
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
               flushSave();
               setMortField(null);
             }}
           />
-          <div className="relative z-50">
+          <div className="relative z-50" data-mort-keypad>
           <NumberKeypad
             onDigit={onDigit}
             onBackspace={onBackspace}
@@ -838,11 +888,13 @@ export function MortalityEntryForm({
                 ? {
                     label: `Back to House ${house.houseNumber}`,
                     onPress: () => {
+                      const params = new URLSearchParams();
+                      params.set("focusHouseFlockId", house.houseFlockId);
+                      if (house.houseId) params.set("focusHouseId", house.houseId);
+                      armKeypadPointerGuard();
                       flushSave();
+                      openReplica(`/farms/${farmId}?${params.toString()}`);
                       setMortField(null);
-                      openReplica(
-                        `/farms/${farmId}?focusHouseFlockId=${encodeURIComponent(house.houseFlockId)}`,
-                      );
                     },
                   }
                 : undefined

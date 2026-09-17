@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
 import { addDays, format, parseISO } from "date-fns";
 import { DateKeyField } from "@/components/DateKeyField";
 import { useOffline } from "@/components/OfflineProvider";
@@ -12,7 +12,7 @@ import {
   handleSettingsLayoutEnter,
 } from "@/components/SettingsLayout";
 import { Button, Card } from "@/components/ui";
-import { formDataToParts, formWrite } from "@/lib/offline/formPairs";
+import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import { settingsFormValues } from "@/lib/offline/applyLocal";
 
@@ -30,6 +30,25 @@ function catchFromPlacement(placement: string, marketAge: number) {
   return format(addDays(parseISO(placement), marketAge), "yyyy-MM-dd");
 }
 
+function emptyCounts(houses: HouseOption[]) {
+  const init: Record<string, string> = {};
+  for (const house of houses) {
+    if (!house.occupiedByFlock) init[house.id] = DEFAULT_PLACED;
+  }
+  return init;
+}
+
+/** Drop #add-flock without Next.js ACTION_RESTORE / RSC fetch. */
+function clearAddFlockHash() {
+  if (typeof window === "undefined") return;
+  if (window.location.hash !== "#add-flock") return;
+  window.history.replaceState(
+    window.history.state,
+    "",
+    `${window.location.pathname}${window.location.search}`,
+  );
+}
+
 export function AddFlockSection({
   farmId,
   action,
@@ -37,6 +56,8 @@ export function AddFlockSection({
   activeFlockCount = 0,
   houses,
   initialPlacement,
+  open: openProp,
+  onOpenChange,
 }: {
   farmId: string;
   action: (formData: FormData) => Promise<{ error?: string } | void>;
@@ -44,6 +65,8 @@ export function AddFlockSection({
   activeFlockCount?: number;
   houses: HouseOption[];
   initialPlacement: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const { enabled, queue } = useReplicaWrite();
   const { snapshot } = useOffline();
@@ -51,22 +74,24 @@ export function AddFlockSection({
   const marketAge = settingsAge > 0 ? settingsAge : DEFAULT_MARKET_AGE;
   const [placementDate, setPlacementDate] = useState(initialPlacement);
   const projectedCatchDate = catchFromPlacement(placementDate, marketAge);
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [formKey, setFormKey] = useState(0);
   const openHouses = useMemo(
     () => houses.filter((house) => !house.occupiedByFlock),
     [houses],
   );
   const firstOpenHouse = openHouses[0] ?? null;
-  const [counts, setCounts] = useState<Record<string, string>>(() => {
-    const init: Record<string, string> = {};
-    for (const house of houses) {
-      if (!house.occupiedByFlock) init[house.id] = DEFAULT_PLACED;
-    }
-    return init;
-  });
+  const [counts, setCounts] = useState<Record<string, string>>(() => emptyCounts(houses));
   const [propagate, setPropagate] = useState(false);
+
+  function setOpen(next: boolean) {
+    onOpenChange?.(next);
+    if (openProp === undefined) setUncontrolledOpen(next);
+    if (!next) clearAddFlockHash();
+  }
 
   useEffect(() => {
     function syncFromHash() {
@@ -75,7 +100,26 @@ export function AddFlockSection({
     syncFromHash();
     window.addEventListener("hashchange", syncFromHash);
     return () => window.removeEventListener("hashchange", syncFromHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    document.getElementById("add-flock")?.scrollIntoView({ block: "start" });
+  }, [open]);
+
+  function resetForm() {
+    setError(null);
+    setPropagate(false);
+    setPlacementDate(initialPlacement);
+    setCounts(emptyCounts(houses));
+    setFormKey((key) => key + 1);
+  }
+
+  function closeForm() {
+    setOpen(false);
+    resetForm();
+  }
 
   function setHouseCount(houseId: string, value: string) {
     setCounts((prev) => {
@@ -100,6 +144,31 @@ export function AddFlockSection({
     });
   }
 
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setError(null);
+    if (enabled) {
+      queue(
+        formWrite("createFlock", {
+          id: localRecordId(),
+          farmId,
+          ...formDataToParts(formData),
+        }),
+      );
+      closeForm();
+      return;
+    }
+    startTransition(async () => {
+      const result = await action(formData);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      closeForm();
+    });
+  }
+
   return (
     <div id="add-flock" className="scroll-mt-24">
       {open ? (
@@ -108,12 +177,7 @@ export function AddFlockSection({
             <h3 className="font-bold">Add Flock</h3>
             <button
               type="button"
-              onClick={() => {
-                setOpen(false);
-                if (window.location.hash === "#add-flock") {
-                  history.replaceState(null, "", window.location.pathname + window.location.search);
-                }
-              }}
+              onClick={closeForm}
               className="text-sm font-semibold text-stone-500 hover:text-stone-800"
             >
               Close
@@ -123,26 +187,8 @@ export function AddFlockSection({
             <p className="mt-2 text-sm text-stone-600">Add houses before creating a flock.</p>
           ) : (
             <form
-              action={(formData) => {
-                setError(null);
-                startTransition(async () => {
-                  if (enabled) {
-                    queue(
-                      formWrite("createFlock", {
-                        farmId,
-                        ...formDataToParts(formData),
-                      }),
-                    );
-                    setOpen(false);
-                    if (window.location.hash === "#add-flock") {
-                      history.replaceState(null, "", window.location.pathname + window.location.search);
-                    }
-                    return;
-                  }
-                  const result = await action(formData);
-                  if (result?.error) setError(result.error);
-                });
-              }}
+              key={formKey}
+              onSubmit={onSubmit}
               className="mt-4 space-y-1"
               onKeyDown={handleSettingsLayoutEnter}
             >
@@ -238,7 +284,7 @@ export function AddFlockSection({
                 </div>
               </div>
               <Button type="submit" disabled={pending} className="mt-3">
-                {pending ? "Creating…" : "Create flock"}
+                {pending && !enabled ? "Creating…" : "Create flock"}
               </Button>
             </form>
           )}

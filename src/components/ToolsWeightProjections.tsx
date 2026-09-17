@@ -40,8 +40,6 @@ export function ToolsWeightProjections({
       (initialFarmId ? farms.find((f) => f.id === initialFarmId) : null) ?? farms[0] ?? null;
     return initialFarm?.houses[0]?.id ?? "";
   });
-  const [useAgeOfBird, setUseAgeOfBird] = useState(false);
-  const [ageDaysText, setAgeDaysText] = useState("");
   const [localGrowthRate, setLocalGrowthRate] = useState<number | null>(null);
 
   const farm = useMemo(
@@ -69,18 +67,39 @@ export function ToolsWeightProjections({
 
   return (
     <div className="space-y-2">
-      {!useAgeOfBird ? (
-        <div>
-          {farms.length > 0 ? (
-            <>
-              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                {farms.map((f) => {
-                  const active = f.id === (farm?.id ?? farmId);
+      <div>
+        {farms.length > 0 ? (
+          <>
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+              {farms.map((f) => {
+                const active = f.id === (farm?.id ?? farmId);
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => changeFarm(f.id)}
+                    className={cn(
+                      "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
+                      active
+                        ? "bg-emerald-800 text-white"
+                        : "bg-stone-200 text-stone-800",
+                    )}
+                  >
+                    {f.farmName}
+                  </button>
+                );
+              })}
+            </div>
+
+            {houses.length > 0 ? (
+              <div className="-mx-1 mt-1.5 flex gap-2 overflow-x-auto px-1 pb-1">
+                {houses.map((h) => {
+                  const active = h.id === (house?.id ?? "");
                   return (
                     <button
-                      key={f.id}
+                      key={h.id}
                       type="button"
-                      onClick={() => changeFarm(f.id)}
+                      onClick={() => setHouseId(h.id)}
                       className={cn(
                         "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
                         active
@@ -88,44 +107,19 @@ export function ToolsWeightProjections({
                           : "bg-stone-200 text-stone-800",
                       )}
                     >
-                      {f.farmName}
+                      House {h.houseNumber}
                     </button>
                   );
                 })}
               </div>
-
-              {houses.length > 0 ? (
-                <div className="-mx-1 mt-1.5 flex gap-2 overflow-x-auto px-1 pb-1">
-                  {houses.map((h) => {
-                    const active = h.id === (house?.id ?? "");
-                    return (
-                      <button
-                        key={h.id}
-                        type="button"
-                        onClick={() => setHouseId(h.id)}
-                        className={cn(
-                          "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
-                          active
-                            ? "bg-emerald-800 text-white"
-                            : "bg-stone-200 text-stone-800",
-                        )}
-                      >
-                        House {h.houseNumber}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="mt-1.5 text-sm text-stone-600">This farm has no houses.</p>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-stone-600">
-              Add an active farm with a flock, or use age of bird below.
-            </p>
-          )}
-        </div>
-      ) : null}
+            ) : (
+              <p className="mt-1.5 text-sm text-stone-600">This farm has no houses.</p>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-stone-600">Add an active farm with a flock.</p>
+        )}
+      </div>
 
       <WeightProjectionTile
         key={house?.id ?? "empty"}
@@ -133,10 +127,6 @@ export function ToolsWeightProjections({
         groups={house?.groups ?? []}
         growthRateLbsPerDay={growthRateLbsPerDay}
         embedded
-        useAgeOfBird={useAgeOfBird}
-        onUseAgeOfBirdChange={setUseAgeOfBird}
-        ageDaysText={ageDaysText}
-        onAgeDaysChange={setAgeDaysText}
         onGrowthRateChange={setLocalGrowthRate}
       />
     </div>

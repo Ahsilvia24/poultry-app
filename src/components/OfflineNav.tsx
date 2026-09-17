@@ -11,7 +11,6 @@ import { NewFarmForm } from "@/components/NewFarmForm";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { SettingsScreen } from "@/components/SettingsScreen";
 import { ToolsView } from "@/components/ToolsView";
-import { FarmHistoryScreen } from "@/components/FarmHistoryScreen";
 import { FarmFeedFormView } from "@/components/FarmFeedFormView";
 import { FarmFeedView } from "@/components/FarmFeedView";
 import { FarmGeneratorsView } from "@/components/FarmGeneratorsView";
@@ -49,6 +48,7 @@ import { selectIssue, selectIssues } from "@/lib/offline/selectIssues";
 import { selectLitter, selectLitterEvent } from "@/lib/offline/selectLitter";
 import { selectAllVisits, selectVisit, selectVisits } from "@/lib/offline/selectVisits";
 import type { PlacementForm, PrebroodForm, ServiceReportForm } from "@/lib/serviceForms/types";
+import { isAllVisitsReturn } from "@/lib/visits/returnTo";
 
 export { OfflineNavProvider, useOfflineNav } from "@/components/OfflineNavContext";
 
@@ -247,6 +247,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
         farmId={model.farmId}
         flockId={model.activeFlockId}
         placementDate={model.activePlacementDate}
+        fromAllVisits={isAllVisitsReturn(search)}
       />
     );
   }
@@ -277,6 +278,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
         flockId={model.activeFlockId}
         placementDate={model.activePlacementDate}
         visit={visit}
+        fromAllVisits={isAllVisitsReturn(search)}
       />
     );
   }
@@ -446,12 +448,15 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     const farmId = phoneFarmId(farmDetail[1]);
     const model = selectFarmDetail(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmDetail[1]} />;
-    const focusHouseFlockId = new URLSearchParams(search).get("focusHouseFlockId");
+    const farmQuery = new URLSearchParams(search);
+    const focusHouseFlockId = farmQuery.get("focusHouseFlockId");
+    const focusHouseId = farmQuery.get("focusHouseId");
     return (
       <FarmDetailView
         model={model}
         timeZone={snapshot.settings?.appTimeZone}
         focusHouseFlockId={focusHouseFlockId}
+        focusHouseId={focusHouseId}
       />
     );
   }
@@ -486,25 +491,28 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     );
   }
 
+  if (pathname === "/visits/other/new") {
+    const placeName = new URLSearchParams(search).get("place")?.trim() ?? "";
+    return (
+      <FarmVisitFormView
+        farmId=""
+        placeName={placeName}
+        fromAllVisits
+      />
+    );
+  }
+
   if (pathname === "/visits") {
     return <AllVisitsView model={selectAllVisits(snapshot)} />;
   }
 
   if (pathname === "/reports") {
     const params = new URLSearchParams(search);
-    if (params.get("type") === "history") {
-      return (
-        <FarmHistoryScreen
-          snapshot={snapshot}
-          initialFarmId={params.get("farmId") ?? farmIdParam ?? undefined}
-        />
-      );
-    }
     return (
       <ReportsView
         snapshot={snapshot}
         initial={{
-          type: params.get("type") ?? undefined,
+          type: params.get("type") === "history" ? "field-log" : (params.get("type") ?? undefined),
           farmId: params.get("farmId") ?? undefined,
           from: params.get("from") ?? undefined,
           to: params.get("to") ?? undefined,
@@ -513,17 +521,11 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     );
   }
 
-  const historyFarm = /^\/history\/([^/]+)$/.exec(pathname);
-  if (pathname === "/history" || historyFarm) {
-    const params = new URLSearchParams(search);
+  if (pathname === "/history" || /^\/history\/[^/]+$/.test(pathname)) {
     return (
-      <FarmHistoryScreen
+      <ReportsView
         snapshot={snapshot}
-        initialFarmId={
-          historyFarm
-            ? phoneFarmId(historyFarm[1])
-            : (params.get("farmId") ?? farmIdParam ?? undefined)
-        }
+        initial={{ type: "field-log" }}
       />
     );
   }

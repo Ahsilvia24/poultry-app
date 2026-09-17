@@ -9,7 +9,13 @@ export default async function NewLfoFarmSelectPage() {
   if (!session?.user?.id) redirect("/login");
 
   const farms = await prisma.farm.findMany({
-    where: { userId: session.user.id, deletedAt: null, isActive: true },
+    where: {
+      userId: session.user.id,
+      deletedAt: null,
+      isActive: true,
+      farmName: { not: "Manual" },
+      farmNumber: { not: "__manual_lfo__" },
+    },
     include: {
       flocks: {
         where: { flockStatus: "ACTIVE", deletedAt: null },

@@ -18,7 +18,6 @@ import {
   deleteFlockAction,
 } from "@/app/actions/farms";
 import { appTodayKey } from "@/lib/app-calendar";
-import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import {
   ISSUE_CATEGORY_LABELS,
   LITTER_EVENT_LABELS,
@@ -30,6 +29,11 @@ import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
+import { createFarmAction } from "@/app/actions/farms";
+import {
+  findVisitPlaceFarm,
+  visitPlaceFarmFields,
+} from "@/lib/visits/visitPlace";
 
 export type VisitFormValues = {
   visitDate: string;
@@ -41,27 +45,23 @@ export type VisitFormValues = {
   followUpDate?: string | null;
 };
 
-function parseVisitDateKey(dateKey: string) {
-  return new Date(`${dateKey}T12:00:00`);
-}
-
 export function FarmVisitForm({
   farmId,
   flockId,
-  placementDate,
   onSuccess,
   recordId,
   initial,
+  placeName,
 }: {
   farmId: string;
   flockId?: string | null;
-  /** Active flock placement date (`yyyy-MM-dd`) for auto bird age. */
   placementDate?: string | null;
   onSuccess?: () => void;
   recordId?: string;
   initial?: VisitFormValues;
+  placeName?: string | null;
 }) {
-  const { enabled, queue } = useReplicaWrite();
+  const { enabled, queue, snapshot } = useReplicaWrite();
   const [pending, start] = useTransition();
   const [visitDate, setVisitDate] = useState(
     initial?.visitDate ?? appTodayKey(),
@@ -83,21 +83,46 @@ export function FarmVisitForm({
         ]
       : [...VISIT_TYPE_OPTIONS];
 
-  const birdAgeInDays =
-    placementDate != null && visitDate
-      ? birdAgeFromPlacement(parseVisitDateKey(placementDate), parseVisitDateKey(visitDate))
-      : null;
-
   return (
     <form
       className="mt-4 space-y-3"
       action={(fd) => {
         start(async () => {
+          let resolvedFarmId = farmId;
+          if (!resolvedFarmId && placeName?.trim()) {
+            const existing = snapshot
+              ? findVisitPlaceFarm(snapshot.farms ?? [], placeName)
+              : undefined;
+            if (existing) {
+              resolvedFarmId = existing.id;
+            } else if (enabled) {
+              resolvedFarmId = localRecordId();
+              queue(
+                formWrite("createFarm", {
+                  id: resolvedFarmId,
+                  farmId: resolvedFarmId,
+                  fields: visitPlaceFarmFields(placeName),
+                }),
+              );
+            } else {
+              const farmData = new FormData();
+              for (const [key, value] of Object.entries(visitPlaceFarmFields(placeName))) {
+                farmData.set(key, value);
+              }
+              const created = await createFarmAction(farmData, { skipRedirect: true });
+              if (!created || !("id" in created) || !created.id) {
+                return;
+              }
+              resolvedFarmId = created.id;
+            }
+          }
+          if (!resolvedFarmId) return;
+          fd.set("farmId", resolvedFarmId);
           if (enabled) {
             queue(
               formWrite(recordId ? "updateVisit" : "createVisit", {
                 id: recordId ?? localRecordId(),
-                farmId,
+                farmId: resolvedFarmId,
                 ...formDataToParts(fd),
               }),
             );
@@ -115,6 +140,9 @@ export function FarmVisitForm({
     >
       <input type="hidden" name="farmId" value={farmId} />
       {flockId ? <input type="hidden" name="flockId" value={flockId} /> : null}
+      {placeName ? (
+        <p className="text-sm font-extrabold text-stone-800">{placeName}</p>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="min-w-0 overflow-hidden">
           <Label htmlFor={fid("visitDate")}>Visit date</Label>
@@ -155,24 +183,6 @@ export function FarmVisitForm({
             />
           </div>
         ) : null}
-        <div>
-          <Label htmlFor={fid("birdAgeInDays")}>Bird age (days)</Label>
-          <Input
-            id={fid("birdAgeInDays")}
-            type="text"
-            readOnly
-            value={birdAgeInDays != null ? String(birdAgeInDays) : "—"}
-            className="bg-stone-50 text-stone-700"
-          />
-        </div>
-        <div>
-          <Label htmlFor={fid("generalBirdCondition")}>Bird condition</Label>
-          <Input
-            id={fid("generalBirdCondition")}
-            name="generalBirdCondition"
-            defaultValue={initial?.generalBirdCondition ?? "Healthy"}
-          />
-        </div>
       </div>
       {visitType === "OTHER" ? null : (
         <div>

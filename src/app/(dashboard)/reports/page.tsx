@@ -13,10 +13,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const params = await searchParams;
-  if (params.type === "history") {
-    const qs = params.farmId ? `?farmId=${encodeURIComponent(params.farmId)}` : "";
-    redirect(`/history${qs}`);
-  }
   return (
     <ReportsPageClient
       type={params.type}
