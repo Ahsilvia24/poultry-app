@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(root, rel), "utf8");
 
-const { formatCatchHouses } = await import(join(root, "src/lib/catchHouses.ts"));
+const { formatCatchAges, formatCatchHouses } = await import(join(root, "src/lib/catchHouses.ts"));
 const { selectDashboard } = await import(join(root, "src/lib/offline/selectDashboard.ts"));
 const { appTodayKey } = await import(join(root, "src/lib/app-calendar.ts"));
 const { addDays, format } = await import("date-fns");
@@ -18,6 +18,9 @@ assert.equal(formatCatchHouses([1, 2]), "H1&2");
 assert.equal(formatCatchHouses([1, 2, 3]), "H1-3");
 assert.equal(formatCatchHouses([1, 3, 5]), "H1 H3 H5");
 assert.equal(formatCatchHouses([]), "");
+assert.equal(formatCatchAges([42, 40, 42]), "42d 40d");
+assert.equal(formatCatchAges([45, 45]), "45d");
+assert.equal(formatCatchAges([]), "");
 
 const todayKey = appTodayKey(undefined, "America/Chicago");
 const [ty, tm, td] = todayKey.split("-").map(Number);
@@ -25,6 +28,7 @@ const todayNoon = new Date(ty, tm - 1, td, 12);
 const dayA = format(addDays(todayNoon, 2), "yyyy-MM-dd");
 const dayB = format(addDays(todayNoon, 5), "yyyy-MM-dd");
 const placed = format(addDays(todayNoon, -40), "yyyy-MM-dd");
+const placedLater = format(addDays(todayNoon, -38), "yyyy-MM-dd");
 
 function house(id, houseNumber) {
   return {
@@ -42,13 +46,13 @@ function house(id, houseNumber) {
   };
 }
 
-function houseFlock(id, houseId, catchDate) {
+function houseFlock(id, houseId, catchDate, placementDate = placed) {
   return {
     id,
     flockId: "flock-1",
     houseId,
     placedBirdCount: 18000,
-    placementDate: placed,
+    placementDate,
     catchDate,
     catchTime: null,
   };
@@ -100,7 +104,7 @@ const dash = selectDashboard({
     houseFlock("hf-3", "house-3", dayA),
     houseFlock("hf-4", "house-4", dayA),
     houseFlock("hf-5", "house-5", dayB),
-    houseFlock("hf-6", "house-6", dayA),
+    houseFlock("hf-6", "house-6", dayA, placedLater),
     houseFlock("hf-7", "house-7", dayB),
   ],
   mortalities: [],
@@ -139,15 +143,24 @@ const dash = selectDashboard({
 const byDate = Object.fromEntries(dash.upcomingCatches.map((row) => [row.date, row]));
 assert.deepEqual(byDate[dayA]?.houseNumbers, [1, 2, 3, 4, 6]);
 assert.equal(formatCatchHouses(byDate[dayA]?.houseNumbers), "H1-4 H6");
+assert.deepEqual(byDate[dayA]?.catchAgesDays, [42, 40]);
+assert.equal(formatCatchAges(byDate[dayA]?.catchAgesDays), "42d 40d");
+assert.equal(byDate[dayA]?.catchAgeDays, 42);
 assert.deepEqual(byDate[dayB]?.houseNumbers, [5, 7]);
 assert.equal(formatCatchHouses(byDate[dayB]?.houseNumbers), "H5&7");
+assert.deepEqual(byDate[dayB]?.catchAgesDays, [45]);
+assert.equal(formatCatchAges(byDate[dayB]?.catchAgesDays), "45d");
 
 const home = read("src/components/DashboardHome.tsx");
 assert.match(home, /formatCatchHouses/);
+assert.match(home, /formatCatchAges/);
 assert.doesNotMatch(home, /c\.flockAgeDays != null \?/);
+assert.doesNotMatch(home, /c\.catchAgeDays\}d/);
 
 const expo = read("mobile/app/(tabs)/index.tsx");
 assert.match(expo, /formatCatchHouses/);
+assert.match(expo, /formatCatchAges/);
 assert.doesNotMatch(expo, /c\.flockAgeDays != null \?/);
+assert.doesNotMatch(expo, /c\.catchAgeDays\}d/);
 
 console.log("catch-tile-houses: ok");

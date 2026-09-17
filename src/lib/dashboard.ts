@@ -15,7 +15,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/session-user";
 import type { FarmCardSummary, ThresholdSettings } from "@/types";
-import { addCatchHouseNumber } from "@/lib/catchHouses";
+import { addCatchAge, addCatchHouseNumber, uniqueCatchAges } from "@/lib/catchHouses";
 import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import { MANUAL_LFO_FARM_NUMBER } from "@/lib/lfo/manualFarm";
@@ -147,6 +147,7 @@ export async function getDashboardData(userId: string) {
     flockNumber: string;
     flockAgeDays: number;
     catchAgeDays: number;
+    catchAgesDays: number[];
     catchTime: string | null;
     houseNumbers: number[];
   }> = [];
@@ -253,27 +254,31 @@ export async function getDashboardData(userId: string) {
     for (const flock of activeFlocks) {
       const flockCatchDates = new Map<
         string,
-        { catchDate: Date; placement: Date; catchTime: string | null; houseNumbers: number[] }
+        { catchDate: Date; catchTime: string | null; houseNumbers: number[]; catchAges: number[] }
       >();
       for (const hf of flock.houseFlocks) {
-        const placement = hf.placementDate ?? flock.placementDate;
+        const placement = startOfDay(hf.placementDate ?? flock.placementDate);
         const catchDate = hf.catchDate
           ? startOfDay(hf.catchDate)
           : resolveCatchDate(flock);
         const key = format(catchDate, "yyyy-MM-dd");
         const catchTime = hf.catchTime?.trim() || null;
+        const catchAge = daysSincePlacement(placement, catchDate, timeZone);
         const existing = flockCatchDates.get(key);
         if (!existing) {
           const houseNumbers: number[] = [];
+          const catchAges: number[] = [];
           addCatchHouseNumber(houseNumbers, houseNumberById.get(hf.houseId));
+          addCatchAge(catchAges, catchAge);
           flockCatchDates.set(key, {
             catchDate,
-            placement: startOfDay(placement),
             catchTime,
             houseNumbers,
+            catchAges,
           });
         } else {
           addCatchHouseNumber(existing.houseNumbers, houseNumberById.get(hf.houseId));
+          addCatchAge(existing.catchAges, catchAge);
           if (catchTime && (!existing.catchTime || catchTime < existing.catchTime)) {
             existing.catchTime = catchTime;
           }
@@ -283,19 +288,23 @@ export async function getDashboardData(userId: string) {
         const catchDate = resolveCatchDate(flock);
         flockCatchDates.set(format(catchDate, "yyyy-MM-dd"), {
           catchDate,
-          placement: startOfDay(flock.placementDate),
           catchTime: null,
           houseNumbers: [],
+          catchAges: [daysSincePlacement(startOfDay(flock.placementDate), catchDate, timeZone)],
         });
       }
-      for (const [dateKey, { catchDate, placement, catchTime, houseNumbers }] of flockCatchDates) {
+      for (const [dateKey, { catchDate, catchTime, houseNumbers, catchAges }] of flockCatchDates) {
         const farmCatchKey = `${farm.id}|${dateKey}`;
+        const ages = uniqueCatchAges(catchAges);
         if (seenFarmCatchKeys.has(farmCatchKey)) {
           const existing = upcomingCatches.find(
             (c) => c.farmName === farm.farmName && c.date === dateKey,
           );
           if (existing) {
             for (const n of houseNumbers) addCatchHouseNumber(existing.houseNumbers, n);
+            for (const age of ages) addCatchAge(existing.catchAgesDays, age);
+            existing.catchAgesDays = uniqueCatchAges(existing.catchAgesDays);
+            existing.catchAgeDays = existing.catchAgesDays[0] ?? existing.catchAgeDays;
             if (catchTime && (!existing.catchTime || catchTime < existing.catchTime)) {
               existing.catchTime = catchTime;
             }
@@ -308,8 +317,9 @@ export async function getDashboardData(userId: string) {
           farmName: farm.farmName,
           date: dateKey,
           flockNumber: flock.flockNumber,
-          flockAgeDays: daysSincePlacement(placement, today, timeZone),
-          catchAgeDays: daysSincePlacement(placement, catchDate, timeZone),
+          flockAgeDays: ages[0] ?? daysSincePlacement(catchDate, today, timeZone),
+          catchAgeDays: ages[0] ?? 0,
+          catchAgesDays: ages,
           catchTime,
           houseNumbers: houseNumbers.slice().sort((a, b) => a - b),
         });

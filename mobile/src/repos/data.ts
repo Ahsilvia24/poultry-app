@@ -25,7 +25,7 @@ import {
   formatHouseLfoSummary,
   formatLocalDateTime,
 } from "../lib/lfo/calculate";
-import { addCatchHouseNumber } from "../lib/catchHouses";
+import { addCatchAge, addCatchHouseNumber, uniqueCatchAges } from "../lib/catchHouses";
 import { getDefaultMarketAgeDays, getLfoFeedTiming } from "../lib/appSettings";
 import { lfoDisplayName, nextCustomLfoName } from "../lib/lfo/customName";
 import { normalizeHalfHourTime } from "../lib/time-slots";
@@ -353,6 +353,7 @@ export function getDashboard() {
     date: string;
     flockAgeDays: number | null;
     catchAgeDays: number;
+    catchAgesDays: number[];
     catchTime: string | null;
     houseNumbers: number[];
   };
@@ -503,16 +504,20 @@ export function getDashboard() {
         addDaysKey(housePlacement, 52);
       const houseCatchTime = hf.catch_time?.trim() || null;
       const catchKey = `${farm.id}|${houseCatch}`;
+      const catchAge = birdAgeFromPlacement(housePlacement, houseCatch);
       if (!seenCatchKeys.has(catchKey)) {
         seenCatchKeys.add(catchKey);
         const houseNumbers: number[] = [];
+        const catchAges: number[] = [];
         addCatchHouseNumber(houseNumbers, hf.house_number);
+        addCatchAge(catchAges, catchAge);
         upcomingCatches.push({
           farmId: farm.id,
           farmName: farm.farmName,
           date: houseCatch,
           flockAgeDays: daysSincePlacement(housePlacement, today),
-          catchAgeDays: birdAgeFromPlacement(housePlacement, houseCatch),
+          catchAgeDays: uniqueCatchAges(catchAges)[0] ?? 0,
+          catchAgesDays: uniqueCatchAges(catchAges),
           catchTime: houseCatchTime,
           houseNumbers,
         });
@@ -522,6 +527,9 @@ export function getDashboard() {
         );
         if (existing) {
           addCatchHouseNumber(existing.houseNumbers, hf.house_number);
+          addCatchAge(existing.catchAgesDays, catchAge);
+          existing.catchAgesDays = uniqueCatchAges(existing.catchAgesDays);
+          existing.catchAgeDays = existing.catchAgesDays[0] ?? existing.catchAgeDays;
           if (houseCatchTime && (!existing.catchTime || houseCatchTime < existing.catchTime)) {
             existing.catchTime = houseCatchTime;
           }
@@ -548,12 +556,14 @@ export function getDashboard() {
         const catchKey = `${farm.id}|${catchDate}`;
         if (seenCatchKeys.has(catchKey)) continue;
         seenCatchKeys.add(catchKey);
+        const catchAge = birdAgeFromPlacement(fl.placement_date, catchDate);
         upcomingCatches.push({
           farmId: farm.id,
           farmName: farm.farmName,
           date: catchDate,
           flockAgeDays: daysSincePlacement(fl.placement_date, today),
-          catchAgeDays: birdAgeFromPlacement(fl.placement_date, catchDate),
+          catchAgeDays: catchAge,
+          catchAgesDays: uniqueCatchAges([catchAge]),
           catchTime: null,
           houseNumbers: [],
         });

@@ -33,3 +33,25 @@ export function addCatchHouseNumber(houseNumbers: number[], houseNumber: number 
   const n = Math.round(Number(houseNumber));
   if (n > 0 && !houseNumbers.includes(n)) houseNumbers.push(n);
 }
+
+/** Unique catch ages, oldest birds first. */
+export function uniqueCatchAges(ages: Iterable<number> | null | undefined): number[] {
+  return [
+    ...new Set(
+      [...(ages ?? [])].filter((age) => Number.isFinite(age)).map((age) => Math.round(Number(age))),
+    ),
+  ].sort((a, b) => b - a);
+}
+
+export function addCatchAge(ages: number[], age: number | null | undefined) {
+  if (age == null || !Number.isFinite(age)) return;
+  const n = Math.round(Number(age));
+  if (!ages.includes(n)) ages.push(n);
+}
+
+/** Far-right Upcoming Catches ages: "54d" or "54d 52d" when they differ. */
+export function formatCatchAges(ages: Iterable<number> | null | undefined): string {
+  return uniqueCatchAges(ages)
+    .map((age) => `${age}d`)
+    .join(" ");
+}

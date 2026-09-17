@@ -1,4 +1,4 @@
-import { addCatchHouseNumber } from "@/lib/catchHouses";
+import { addCatchAge, addCatchHouseNumber, uniqueCatchAges } from "@/lib/catchHouses";
 import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { daysSincePlacement } from "@/lib/mortality/calculations";
 import { farmGroupKey as catchFarmGroupKey } from "@/lib/catch-import/parse";
@@ -253,10 +253,20 @@ function patchDashboardCatchDates(
     upcoming = upcoming.filter((row) => row.farmName !== farm.farmName || row.flockNumber !== flock.flockNumber);
     if (date >= todayKey && date <= horizonKey) {
       const houseNumbers: number[] = [];
+      const catchAges: number[] = [];
       for (const hf of houseFlocks.filter((row) => row.flockId === flockId)) {
         const house = snapshot.houses.find((row) => row.id === hf.houseId && !row.deletedAt);
         addCatchHouseNumber(houseNumbers, house?.houseNumber);
+        const placement =
+          asDateKey(hf.placementDate) ??
+          asDateKey(flock.placementDate) ??
+          flock.placementDate.slice(0, 10);
+        addCatchAge(
+          catchAges,
+          daysSincePlacement(localNoonFromKey(placement), localNoonFromKey(date)),
+        );
       }
+      const ages = uniqueCatchAges(catchAges);
       upcoming.push({
         farmId: farm.id,
         farmName: farm.farmName,
@@ -266,10 +276,13 @@ function patchDashboardCatchDates(
           localNoonFromKey(asDateKey(flock.placementDate) ?? flock.placementDate.slice(0, 10)),
           new Date(),
         ),
-        catchAgeDays: daysSincePlacement(
-          localNoonFromKey(asDateKey(flock.placementDate) ?? flock.placementDate.slice(0, 10)),
-          localNoonFromKey(date),
-        ),
+        catchAgeDays:
+          ages[0] ??
+          daysSincePlacement(
+            localNoonFromKey(asDateKey(flock.placementDate) ?? flock.placementDate.slice(0, 10)),
+            localNoonFromKey(date),
+          ),
+        catchAgesDays: ages,
         catchTime:
           houseFlocks
             .filter((hf) => hf.flockId === flockId && hf.catchTime)

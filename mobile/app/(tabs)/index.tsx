@@ -37,7 +37,7 @@ import {
 } from "../../src/components/ui";
 import { ScheduleImportCard } from "../../src/components/ScheduleImportCard";
 import { OneDotName } from "../../src/components/OneDotName";
-import { formatCatchHouses } from "../../src/lib/catchHouses";
+import { formatCatchAges, formatCatchHouses } from "../../src/lib/catchHouses";
 import { compactCatchTimeLabel } from "../../src/lib/time-slots";
 
 type Dashboard = ReturnType<typeof getDashboard>;
@@ -393,7 +393,11 @@ export default function DashboardScreen() {
                 <Text style={[styles.muted, { marginTop: 8 }]}>None</Text>
               ) : (
                 <ScrollableScheduleList>
-                  {data.upcomingCatches.map((c) => (
+                  {data.upcomingCatches.map((c) => {
+                    const agesLabel =
+                      formatCatchAges("catchAgesDays" in c ? c.catchAgesDays : undefined) ||
+                      (c.catchAgeDays != null ? `${c.catchAgeDays}d` : "");
+                    return (
                     <Pressable
                       key={`${c.farmId}-${c.date}`}
                       onPress={() =>
@@ -456,14 +460,15 @@ export default function DashboardScreen() {
                             {compactCatchTimeLabel(c.catchTime)}
                           </Text>
                         ) : null}
-                        {c.catchAgeDays != null ? (
+                        {agesLabel ? (
                           <Text style={{ color: colors.muted, fontSize: 13 }}>
-                            ({c.catchAgeDays}d)
+                            ({agesLabel})
                           </Text>
                         ) : null}
                       </View>
                     </Pressable>
-                  ))}
+                    );
+                  })}
                 </ScrollableScheduleList>
               )}
             </Card>
