@@ -157,15 +157,17 @@ assert.equal(formatCatchAges(byDate[dayB]?.catchAgesDays), "45d");
 
 const home = read("src/components/DashboardHome.tsx");
 assert.match(home, /formatCatchHouses/);
-assert.match(home, /formatCatchAges/);
 assert.match(home, /formatCatchDateLabel/);
+assert.doesNotMatch(home, /formatCatchAges/);
+assert.doesNotMatch(home, /agesLabel/);
 assert.doesNotMatch(home, /parseISO\(c\.date\)/);
 assert.doesNotMatch(home, /c\.flockAgeDays != null \?/);
 
 const expo = read("mobile/app/(tabs)/index.tsx");
 assert.match(expo, /formatCatchHouses/);
-assert.match(expo, /formatCatchAges/);
 assert.match(expo, /formatCatchDateLabel/);
+assert.doesNotMatch(expo, /formatCatchAges/);
+assert.doesNotMatch(expo, /agesLabel/);
 assert.doesNotMatch(expo, /c\.flockAgeDays != null \?/);
 
 console.log("catch-tile-houses: ok");

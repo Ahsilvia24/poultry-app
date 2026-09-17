@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCatchAges, formatCatchDateLabel, formatCatchHouses } from "@/lib/catchHouses";
+import { formatCatchDateLabel, formatCatchHouses } from "@/lib/catchHouses";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { Card } from "@/components/ui";
@@ -84,9 +84,6 @@ export function DashboardHome({
                   const housesLabel = formatCatchHouses(
                     "houseNumbers" in c ? c.houseNumbers : undefined,
                   );
-                  const agesLabel =
-                    formatCatchAges("catchAgesDays" in c ? c.catchAgesDays : undefined) ||
-                    (c.catchAgeDays != null ? `${c.catchAgeDays}d` : "");
                   const name = (
                     <>
                       <OneDotName text={c.farmName} />
@@ -120,7 +117,6 @@ export function DashboardHome({
                         {c.catchTime ? (
                           <span>{compactCatchTimeLabel(c.catchTime)}</span>
                         ) : null}
-                        {agesLabel ? <span>({agesLabel})</span> : null}
                       </span>
                     </li>
                   );

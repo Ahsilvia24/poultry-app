@@ -51,7 +51,7 @@ export function addCatchAge(ages: number[], age: number | null | undefined) {
   if (!ages.includes(n)) ages.push(n);
 }
 
-/** Far-right Upcoming Catches ages: "54d" or "54d 52d" when they differ. */
+/** Distinct catch ages, oldest first: "54d" or "54d 52d" when they differ. */
 export function formatCatchAges(ages: Iterable<number> | null | undefined): string {
   return uniqueCatchAges(ages)
     .map((age) => `${age}d`)
