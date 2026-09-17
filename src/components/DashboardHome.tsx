@@ -1,7 +1,6 @@
 "use client";
 
-import { format, parseISO } from "date-fns";
-import { formatCatchAges, formatCatchHouses } from "@/lib/catchHouses";
+import { formatCatchAges, formatCatchDateLabel, formatCatchHouses } from "@/lib/catchHouses";
 import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { Card } from "@/components/ui";
 import { DashboardScheduleImport } from "@/components/DashboardScheduleImport";
@@ -23,14 +22,6 @@ function catchFarmHref(
   if (farmId) return `/farms/${farmId}`;
   const match = farms?.find((farm) => farm.farmName === farmName);
   return match ? `/farms/${match.id}` : null;
-}
-
-function catchDateLabel(date: string) {
-  try {
-    return format(parseISO(date), "EEE, MMM d");
-  } catch {
-    return date;
-  }
 }
 
 type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
@@ -123,7 +114,7 @@ export function DashboardHome({
                         </span>
                       )}
                       <span className="ml-auto flex shrink-0 items-baseline gap-1.5 whitespace-nowrap text-stone-600">
-                        <span>{catchDateLabel(c.date)}</span>
+                        <span>{formatCatchDateLabel(c.date)}</span>
                         {c.catchTime ? (
                           <span>{compactCatchTimeLabel(c.catchTime)}</span>
                         ) : null}

@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/session-user";
 import type { FarmCardSummary, ThresholdSettings } from "@/types";
 import { addCatchAge, addCatchHouseNumber, uniqueCatchAges } from "@/lib/catchHouses";
+import { localNoonFromKey } from "@/lib/offline/dates";
 import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import { MANUAL_LFO_FARM_NUMBER } from "@/lib/lfo/manualFarm";
@@ -211,13 +212,14 @@ export async function getDashboardData(userId: string) {
       activeFlocks.map((flock) => ({
         id: flock.id,
         flockNumber: flock.flockNumber,
-        placementDate: format(startOfDay(flock.placementDate), "yyyy-MM-dd"),
-        catchDate: format(resolveCatchDate(flock), "yyyy-MM-dd"),
+        placementDate: dateKeyFromDb(flock.placementDate),
+        catchDate:
+          (flock.actualCatchDate && dateKeyFromDb(flock.actualCatchDate)) ||
+          (flock.projectedCatchDate && dateKeyFromDb(flock.projectedCatchDate)) ||
+          dateKeyFromDb(resolveCatchDate(flock)),
         houses: flock.houseFlocks.map((hf) => ({
-          placementDate: hf.placementDate
-            ? format(startOfDay(hf.placementDate), "yyyy-MM-dd")
-            : null,
-          catchDate: hf.catchDate ? format(startOfDay(hf.catchDate), "yyyy-MM-dd") : null,
+          placementDate: hf.placementDate ? dateKeyFromDb(hf.placementDate) : null,
+          catchDate: hf.catchDate ? dateKeyFromDb(hf.catchDate) : null,
         })),
       })),
     );
@@ -257,11 +259,14 @@ export async function getDashboardData(userId: string) {
         { catchDate: Date; catchTime: string | null; houseNumbers: number[]; catchAges: number[] }
       >();
       for (const hf of flock.houseFlocks) {
-        const placement = startOfDay(hf.placementDate ?? flock.placementDate);
-        const catchDate = hf.catchDate
-          ? startOfDay(hf.catchDate)
-          : resolveCatchDate(flock);
-        const key = format(catchDate, "yyyy-MM-dd");
+        const placementKey = dateKeyFromDb(hf.placementDate ?? flock.placementDate);
+        const key =
+          (hf.catchDate && dateKeyFromDb(hf.catchDate)) ||
+          (flock.actualCatchDate && dateKeyFromDb(flock.actualCatchDate)) ||
+          (flock.projectedCatchDate && dateKeyFromDb(flock.projectedCatchDate)) ||
+          dateKeyFromDb(resolveCatchDate(flock));
+        const placement = localNoonFromKey(placementKey);
+        const catchDate = localNoonFromKey(key);
         const catchTime = hf.catchTime?.trim() || null;
         const catchAge = daysSincePlacement(placement, catchDate, timeZone);
         const existing = flockCatchDates.get(key);
@@ -285,12 +290,15 @@ export async function getDashboardData(userId: string) {
         }
       }
       if (flockCatchDates.size === 0 && flock.projectedCatchDate) {
-        const catchDate = resolveCatchDate(flock);
-        flockCatchDates.set(format(catchDate, "yyyy-MM-dd"), {
+        const key = dateKeyFromDb(flock.projectedCatchDate);
+        const catchDate = localNoonFromKey(key);
+        flockCatchDates.set(key, {
           catchDate,
           catchTime: null,
           houseNumbers: [],
-          catchAges: [daysSincePlacement(startOfDay(flock.placementDate), catchDate, timeZone)],
+          catchAges: [
+            daysSincePlacement(localNoonFromKey(dateKeyFromDb(flock.placementDate)), catchDate, timeZone),
+          ],
         });
       }
       for (const [dateKey, { catchDate, catchTime, houseNumbers, catchAges }] of flockCatchDates) {

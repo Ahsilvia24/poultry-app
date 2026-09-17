@@ -37,7 +37,7 @@ import {
 } from "../../src/components/ui";
 import { ScheduleImportCard } from "../../src/components/ScheduleImportCard";
 import { OneDotName } from "../../src/components/OneDotName";
-import { formatCatchAges, formatCatchHouses } from "../../src/lib/catchHouses";
+import { formatCatchAges, formatCatchDateLabel, formatCatchHouses } from "../../src/lib/catchHouses";
 import { compactCatchTimeLabel } from "../../src/lib/time-slots";
 
 type Dashboard = ReturnType<typeof getDashboard>;
@@ -207,17 +207,6 @@ function ScheduleCheckRow({
       </Pressable>
     </View>
   );
-}
-
-/** e.g. Wed, Jul 29 */
-function formatCatchDate(dateKey: string) {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  const dt = new Date(y!, (m ?? 1) - 1, d ?? 1, 12);
-  return dt.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 export default function DashboardScreen() {
@@ -453,7 +442,7 @@ export default function DashboardScreen() {
                         }}
                       >
                         <Text style={{ color: colors.muted, fontSize: 13 }}>
-                          {formatCatchDate(c.date)}
+                          {formatCatchDateLabel(c.date)}
                         </Text>
                         {c.catchTime ? (
                           <Text style={{ color: colors.muted, fontSize: 13 }}>

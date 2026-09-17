@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(root, rel), "utf8");
 
-const { formatCatchAges, formatCatchHouses } = await import(join(root, "src/lib/catchHouses.ts"));
+const { formatCatchAges, formatCatchDateLabel, formatCatchHouses } = await import(
+  join(root, "src/lib/catchHouses.ts")
+);
 const { selectDashboard } = await import(join(root, "src/lib/offline/selectDashboard.ts"));
 const { appTodayKey } = await import(join(root, "src/lib/app-calendar.ts"));
 const { addDays, format } = await import("date-fns");
@@ -21,6 +23,8 @@ assert.equal(formatCatchHouses([]), "");
 assert.equal(formatCatchAges([42, 40, 42]), "42d 40d");
 assert.equal(formatCatchAges([45, 45]), "45d");
 assert.equal(formatCatchAges([]), "");
+assert.equal(formatCatchDateLabel("2026-09-18"), "Fri, Sep 18");
+assert.equal(formatCatchDateLabel("2026-09-21"), "Mon, Sep 21");
 
 const todayKey = appTodayKey(undefined, "America/Chicago");
 const [ty, tm, td] = todayKey.split("-").map(Number);
@@ -154,11 +158,14 @@ assert.equal(formatCatchAges(byDate[dayB]?.catchAgesDays), "45d");
 const home = read("src/components/DashboardHome.tsx");
 assert.match(home, /formatCatchHouses/);
 assert.match(home, /formatCatchAges/);
+assert.match(home, /formatCatchDateLabel/);
+assert.doesNotMatch(home, /parseISO\(c\.date\)/);
 assert.doesNotMatch(home, /c\.flockAgeDays != null \?/);
 
 const expo = read("mobile/app/(tabs)/index.tsx");
 assert.match(expo, /formatCatchHouses/);
 assert.match(expo, /formatCatchAges/);
+assert.match(expo, /formatCatchDateLabel/);
 assert.doesNotMatch(expo, /c\.flockAgeDays != null \?/);
 
 console.log("catch-tile-houses: ok");

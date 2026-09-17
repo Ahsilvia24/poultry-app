@@ -55,3 +55,17 @@ export function formatCatchAges(ages: Iterable<number> | null | undefined): stri
     .map((age) => `${age}d`)
     .join(" ");
 }
+
+/**
+ * Far-right Upcoming Catches date from a `yyyy-MM-dd` key.
+ * Uses local noon so UTC midnight does not roll the label back a day.
+ */
+export function formatCatchDateLabel(dateKey: string): string {
+  const [y, m, d] = (dateKey ?? "").split("-").map(Number);
+  if (!y || !m || !d) return dateKey ?? "";
+  return new Date(y, m - 1, d, 12, 0, 0, 0).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
