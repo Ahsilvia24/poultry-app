@@ -52,13 +52,15 @@ function houseHasEnteredMortality(house: FarmHouse) {
   return (house.weeklyMortality ?? []).some(weekWasEntered);
 }
 
-/** Week cells stay blank until that week has a saved mortality record (entered 0 still prints 0). */
+/** Week cells stay blank until that week has a saved day. Incomplete weeks still print the running sum. */
 export function weeksFromSummary(weekly: Array<{ week: number; total: number; entered?: boolean }>) {
   const map = new Map(weekly.map((w) => [w.week, w]));
   return [1, 2, 3, 4, 5, 6, 7, 8].map((week) => {
     const item = map.get(week);
-    if (!item || item.entered === false) return "";
-    return String(item.total);
+    if (!item) return "";
+    if (item.entered === true) return String(item.total);
+    if (item.entered === false) return "";
+    return item.total > 0 ? String(item.total) : "";
   });
 }
 

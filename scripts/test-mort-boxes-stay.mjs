@@ -109,9 +109,42 @@ const kept = mergeLiveHouseRows(
 assert.equal(kept[0]?.currentTemp, "78");
 assert.deepEqual(
   kept[0]?.weeks,
-  ["", "", "", "", "", "7333", "", ""],
-  "opening a checklist again must not slide Wk6 into Wk7",
+  ["", "", "", "", "", "7333", "7333", ""],
+  "live fills the same week index; a blank live cell does not clear Wk6",
 );
+
+const week1Refresh = mergeLiveHouseRows(
+  [
+    {
+      houseNumber: 1,
+      age: "3",
+      placed: "20000",
+      weeks: ["0", "", "", "", "", "", "", ""],
+      currentTemp: "",
+      mortalityToDate: "0",
+      binA: "",
+      binB: "",
+      litterTemp: "",
+      ammoniaPpm: "",
+    },
+  ],
+  [
+    {
+      houseNumber: 1,
+      age: "3",
+      placed: "20000",
+      weeks: ["25", "", "", "", "", "", "", ""],
+      currentTemp: "",
+      mortalityToDate: "25",
+      binA: "",
+      binB: "",
+      litterTemp: "",
+      ammoniaPpm: "",
+    },
+  ],
+);
+assert.equal(week1Refresh[0]?.weeks[0], "25", "incomplete week 1 updates off a stuck 0");
+assert.equal(week1Refresh[0]?.mortalityToDate, "25");
 
 const entry = read("src/components/MortalityEntryForm.tsx");
 assert.match(entry, /mortalityEntryDateKey\(placementDate, age, existing\?\.mortalityDate\)/);

@@ -84,6 +84,42 @@ const week1Zero = weeklyMortalityByPlacement(
 );
 assert.equal(week1Zero.find((week) => week.week === 1)?.entered, true);
 assert.equal(weeksFromSummary(week1Zero)[0], "0", "entered 0 still prints 0");
+
+const incompleteWeek1 = weeklyMortalityByPlacement(
+  placement,
+  [
+    { mortalityDate: "2026-08-01", dailyMortalityCount: 5, cullCount: 0, birdAgeInDays: 0 },
+    { mortalityDate: "2026-08-02", dailyMortalityCount: 8, cullCount: 0, birdAgeInDays: 1 },
+    { mortalityDate: "2026-08-03", dailyMortalityCount: 12, cullCount: 0, birdAgeInDays: 2 },
+  ],
+  new Date(2026, 7, 4, 12),
+);
+assert.equal(incompleteWeek1.find((week) => week.week === 1)?.total, 25);
+assert.equal(incompleteWeek1.find((week) => week.week === 1)?.entered, true);
+assert.deepEqual(
+  weeksFromSummary(incompleteWeek1),
+  ["25", "", "", "", "", "", "", ""],
+  "incomplete week 1 still fills the running sum",
+);
+assert.equal(
+  mortalityToDateFromHouse({
+    houseNumber: 1,
+    ageDays: 3,
+    placedBirdCount: 20000,
+    cumulativeMortality: 25,
+    weeklyMortality: incompleteWeek1,
+    hasMortalityEntries: true,
+  }),
+  "25",
+);
+assert.deepEqual(
+  weeksFromSummary([
+    { week: 1, total: 0 },
+    { week: 2, total: 0 },
+  ]),
+  ["", "", "", "", "", "", "", ""],
+  "zero-filled weeks without entered do not print 0",
+);
 assert.equal(
   mortalityToDateFromHouse({
     houseNumber: 1,

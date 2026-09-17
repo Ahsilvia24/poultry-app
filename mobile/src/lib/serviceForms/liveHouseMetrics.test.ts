@@ -60,10 +60,19 @@ describe("mergeLiveHouseRows", () => {
     assert.equal(next[1]?.currentTemp, "76");
   });
 
-  it("does not slide week cells that already have numbers", () => {
+  it("updates the same week box from live so incomplete week 1 is not stuck at 0", () => {
+    const next = mergeLiveHouseRows(
+      [row({ houseNumber: 1, weeks: ["0", "", "", "", "", "", "", ""], mortalityToDate: "0" })],
+      [row({ houseNumber: 1, weeks: ["25", "", "", "", "", "", "", ""], mortalityToDate: "25" })],
+    );
+    assert.equal(next[0]?.weeks[0], "25");
+    assert.equal(next[0]?.mortalityToDate, "25");
+  });
+
+  it("does not clear a filled week when live has not entered that week", () => {
     const next = mergeLiveHouseRows(
       [row({ houseNumber: 1, weeks: ["10", "20", "", "", "", "", "", ""] })],
-      [row({ houseNumber: 1, weeks: ["", "10", "20", "", "", "", "", ""] })],
+      [row({ houseNumber: 1, weeks: ["", "20", "", "", "", "", "", ""] })],
     );
     assert.deepEqual(next[0]?.weeks, ["10", "20", "", "", "", "", "", ""]);
   });

@@ -82,8 +82,8 @@ assert.doesNotMatch(entry, /key=\{row\.mortalityDate\}/);
 assert.doesNotMatch(entry, /entry\.mortalityDate === expectedDate/);
 
 const live = read("src/lib/serviceForms/liveHouseMetrics.ts");
-assert.match(live, /weekCellsHaveNumbers/);
-assert.doesNotMatch(live, /return next \? next : w/);
+assert.match(live, /return next \? next : w/);
+assert.doesNotMatch(live, /weekCellsHaveNumbers/);
 
 const dash = read("src/lib/dashboard.ts");
 assert.match(dash, /hf\.placementDate \?\? flock\.placementDate/);
