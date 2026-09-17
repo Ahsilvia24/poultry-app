@@ -17,8 +17,13 @@ assert.match(read("src/components/OfflineNav.tsx"), /page\.missingSaved/);
 assert.match(read("src/components/OfflineNav.tsx"), /key=\{page\.existing\?\.id/);
 assert.match(read("src/components/OfflineNavContext.tsx"), /replicaHrefsMatch/);
 assert.match(read("src/components/serviceForms/ServiceFarmPicker.tsx"), /formId: row.id/);
-assert.match(read("src/components/serviceForms/ServiceFarmPicker.tsx"), /deleteAllServiceForms/);
-assert.match(read("src/components/serviceForms/ServiceFarmPicker.tsx"), /Delete all checklists\?/);
+const pickerSrc = read("src/components/serviceForms/ServiceFarmPicker.tsx");
+assert.match(pickerSrc, /deleteAllServiceForms/);
+assert.match(pickerSrc, /Delete all checklists\?/);
+assert.ok(
+  pickerSrc.indexOf("ExclusiveSwipeGroup") < pickerSrc.indexOf('aria-label="Delete all checklists on this farm"'),
+  "Delete all sits below the completed list",
+);
 assert.match(read("src/app/actions/serviceForms.ts"), /deleteAllServiceFormsAction/);
 assert.match(read("src/lib/offline/flushWrites.ts"), /deleteAllServiceFormsAction/);
 assert.match(read("src/lib/offline/applyWrites.ts"), /alreadyCompleted/);

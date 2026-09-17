@@ -153,66 +153,64 @@ export function ServiceFarmPicker({
         </div>
       ))}
 
-      <div className="mb-2 mt-3.5 flex items-center justify-between gap-3">
-        <h2 className="text-base font-extrabold text-stone-900">Completed</h2>
-        {completed.length > 0 ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => setPendingDeleteAll(true)}
-            className="font-bold text-red-700"
-            aria-label="Delete all checklists on this farm"
-          >
-            Delete all
-          </button>
-        ) : null}
-      </div>
+      <h2 className="mb-2 mt-3.5 text-base font-extrabold text-stone-900">Completed</h2>
 
       {shareError ? <p className="mb-2 font-semibold text-red-700">{shareError}</p> : null}
 
       {completed.length === 0 ? (
         <p className="text-stone-500">No completed checklists yet.</p>
       ) : (
-        <ExclusiveSwipeGroup>
-          <div className="space-y-2.5">
-            {completed.map((row) => {
-              const form = FORMS.find((f) => f.key === row.formKind);
-              return (
-                <SwipeCommitDeleteRow
-                  key={row.id}
-                  rowId={row.id}
-                  onDelete={() => setPendingDelete(row)}
-                  deleteLabel="Delete"
-                >
-                  <Card className="!py-3">
-                    <div className="flex items-center gap-2.5">
-                      <ReplicaLink
-                        href={form ? formHref(farmId, form.href, { formId: row.id }) : "#"}
-                        className="min-w-0 flex-1"
-                        aria-label={`View or edit ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
-                      >
-                        <p className="text-base font-extrabold text-stone-900">
-                          {kindTitle(row.formKind)}
-                        </p>
-                        <p className="mt-0.5 font-semibold text-stone-500">
-                          {formatServiceShortDate(row.formDate)}
-                        </p>
-                      </ReplicaLink>
-                      <button
-                        type="button"
-                        onClick={() => void shareSaved(row)}
-                        aria-label={`Share PDF for ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
-                        className="self-center rounded-lg border-[1.5px] border-emerald-800 px-2.5 py-1.5 text-xs font-bold text-emerald-800"
-                      >
-                        {sharingId === row.id ? "Sharing…" : "Share PDF"}
-                      </button>
-                    </div>
-                  </Card>
-                </SwipeCommitDeleteRow>
-              );
-            })}
-          </div>
-        </ExclusiveSwipeGroup>
+        <>
+          <ExclusiveSwipeGroup>
+            <div className="space-y-2.5">
+              {completed.map((row) => {
+                const form = FORMS.find((f) => f.key === row.formKind);
+                return (
+                  <SwipeCommitDeleteRow
+                    key={row.id}
+                    rowId={row.id}
+                    onDelete={() => setPendingDelete(row)}
+                    deleteLabel="Delete"
+                  >
+                    <Card className="!py-3">
+                      <div className="flex items-center gap-2.5">
+                        <ReplicaLink
+                          href={form ? formHref(farmId, form.href, { formId: row.id }) : "#"}
+                          className="min-w-0 flex-1"
+                          aria-label={`View or edit ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
+                        >
+                          <p className="text-base font-extrabold text-stone-900">
+                            {kindTitle(row.formKind)}
+                          </p>
+                          <p className="mt-0.5 font-semibold text-stone-500">
+                            {formatServiceShortDate(row.formDate)}
+                          </p>
+                        </ReplicaLink>
+                        <button
+                          type="button"
+                          onClick={() => void shareSaved(row)}
+                          aria-label={`Share PDF for ${kindTitle(row.formKind)} ${formatServiceShortDate(row.formDate)}`}
+                          className="self-center rounded-lg border-[1.5px] border-emerald-800 px-2.5 py-1.5 text-xs font-bold text-emerald-800"
+                        >
+                          {sharingId === row.id ? "Sharing…" : "Share PDF"}
+                        </button>
+                      </div>
+                    </Card>
+                  </SwipeCommitDeleteRow>
+                );
+              })}
+            </div>
+          </ExclusiveSwipeGroup>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setPendingDeleteAll(true)}
+            className="mt-3 font-bold text-red-700"
+            aria-label="Delete all checklists on this farm"
+          >
+            Delete all
+          </button>
+        </>
       )}
 
       {pendingDeleteAll ? (
