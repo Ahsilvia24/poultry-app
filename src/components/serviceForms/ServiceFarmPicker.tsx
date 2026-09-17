@@ -115,8 +115,7 @@ export function ServiceFarmPicker({
         setPendingDeleteAll(false);
         return;
       }
-      const result = await deleteAllServiceFormsAction(farmId);
-      if ("error" in result && result.error) setDeleteError(result.error);
+      await deleteAllServiceFormsAction(farmId);
       setPendingDeleteAll(false);
       router.refresh();
     });
