@@ -10,6 +10,7 @@ import { formatNumber, formatPct } from "@/lib/utils";
 import { Button, Card, StatusBadge } from "@/components/ui";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
+import { uniqueSortedAges } from "@/lib/flockAges";
 import type { FarmCardSummary } from "@/types";
 
 function formatLastVisitDate(dateKey: string) {
@@ -22,13 +23,10 @@ function openIssuesLabel(count: number) {
   return `${count} open issues`;
 }
 
-function farmAgeLabel(farm: FarmCardSummary) {
-  const ages = farm.flockAgesDays?.length
-    ? farm.flockAgesDays
-    : farm.flockAgeDays != null
-      ? [farm.flockAgeDays]
-      : [];
-  return ages.length ? ages.map((age) => `${age}d`).join(" ") : null;
+function farmAges(farm: FarmCardSummary) {
+  if (farm.flockAgesDays?.length) return uniqueSortedAges(farm.flockAgesDays);
+  if (farm.flockAgeDays != null) return [farm.flockAgeDays];
+  return [];
 }
 
 function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
@@ -36,7 +34,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
   const [pending, start] = useTransition();
   const deactivatingRef = useRef(false);
   const { enabled, queue } = useReplicaWrite();
-  const ageLabel = farmAgeLabel(farm);
+  const ages = farmAges(farm);
 
   function makeInactive() {
     if (pending || deactivatingRef.current) return;
@@ -66,7 +64,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
           <div className="w-full px-3 py-2.5 text-left">
             <div className="flex w-full items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <p className="text-[16px] font-extrabold text-stone-900">
+                <p className="text-[16px] font-extrabold leading-snug text-stone-900">
                   <ReplicaLink
                     href={`/farms/${farm.id}`}
                     prefetch
@@ -75,8 +73,15 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
                   >
                     {farm.farmName}
                   </ReplicaLink>
-                  {ageLabel ? (
-                    <span className="font-semibold text-stone-500"> {ageLabel}</span>
+                  {ages.length > 0 ? (
+                    <span className="font-semibold text-stone-500">
+                      {ages.map((age) => (
+                        <span key={age} className="whitespace-nowrap">
+                          {" "}
+                          {age}d
+                        </span>
+                      ))}
+                    </span>
                   ) : null}
                 </p>
               </div>

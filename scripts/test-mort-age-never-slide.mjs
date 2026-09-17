@@ -70,7 +70,7 @@ const slid = weeklyMortalityByPlacement(
 );
 assert.deepEqual(
   slid.find((week) => week.week === 6),
-  { week: 6, total: 7333 },
+  { week: 6, total: 7333, entered: true },
 );
 assert.ok(!slid.some((week) => week.week === 7 && week.total === 7333));
 

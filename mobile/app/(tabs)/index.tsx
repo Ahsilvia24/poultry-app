@@ -37,6 +37,7 @@ import {
 } from "../../src/components/ui";
 import { ScheduleImportCard } from "../../src/components/ScheduleImportCard";
 import { OneDotName } from "../../src/components/OneDotName";
+import { formatCatchHouses } from "../../src/lib/catchHouses";
 import { compactCatchTimeLabel } from "../../src/lib/time-slots";
 
 type Dashboard = ReturnType<typeof getDashboard>;
@@ -425,7 +426,7 @@ export default function DashboardScreen() {
                             color: colors.text,
                           }}
                         />
-                        {c.flockAgeDays != null ? (
+                        {formatCatchHouses(c.houseNumbers) ? (
                           <Text
                             style={{
                               fontWeight: "400",
@@ -435,7 +436,7 @@ export default function DashboardScreen() {
                             }}
                             numberOfLines={1}
                           >
-                            {c.flockAgeDays}d
+                            {formatCatchHouses(c.houseNumbers)}
                           </Text>
                         ) : null}
                       </View>

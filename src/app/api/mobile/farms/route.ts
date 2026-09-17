@@ -11,6 +11,8 @@ export async function GET(req: NextRequest) {
     where: {
       userId: user.id,
       deletedAt: null,
+      farmName: { not: "Manual" },
+      farmNumber: { not: "__manual_lfo__" },
       ...(status === "active" ? { isActive: true } : status === "inactive" ? { isActive: false } : {}),
     },
     include: {

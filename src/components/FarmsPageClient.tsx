@@ -3,12 +3,15 @@
 import { FarmsListTiles } from "@/components/FarmsListTiles";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOffline } from "@/components/OfflineProvider";
+import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { selectFarmTiles, type OfflineFarmTile } from "@/lib/offline/selectFarms";
 import { Button, Card, PageHeader } from "@/components/ui";
 
 export function FarmsPageClient({ initial }: { initial: OfflineFarmTile[] }) {
   const { snapshot } = useOffline();
-  const tiles = snapshot ? selectFarmTiles(snapshot) : initial;
+  const tiles = (snapshot ? selectFarmTiles(snapshot) : initial).filter(
+    (farm) => !isManualLfoFarm(farm),
+  );
 
   return (
     <div>

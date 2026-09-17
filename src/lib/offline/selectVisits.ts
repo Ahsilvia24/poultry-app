@@ -111,9 +111,7 @@ export function selectAllVisits(snapshot: OfflineSnapshot): AllVisitsPageModel {
     }));
   return {
     days,
-    farms: selectFarmTiles(snapshot)
-      .filter((farm) => !(farm.farmName === "Manual" && farm.isActive === false))
-      .map((farm) => ({ id: farm.id, farmName: farm.farmName })),
+    farms: selectFarmTiles(snapshot).map((farm) => ({ id: farm.id, farmName: farm.farmName })),
   };
 }
 

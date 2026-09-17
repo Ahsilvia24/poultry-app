@@ -147,6 +147,7 @@ export function selectServiceFarmContext(
       ageDays: placement ? daysSincePlacement(placement, today, timeZone) : null,
       placedBirdCount: hf?.placedBirdCount ?? null,
       cumulativeMortality: metrics?.cumulative ?? 0,
+      hasMortalityEntries: morts.length > 0,
       weeklyMortality,
       squareFootage: house.squareFootage,
       totalFanCFM: house.totalFanCFM,

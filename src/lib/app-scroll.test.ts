@@ -7,5 +7,6 @@ describe("hrefHasHouseFocus", () => {
     assert.equal(hrefHasHouseFocus("/farms/abc"), false);
     assert.equal(hrefHasHouseFocus("/farms/abc?focusHouseFlockId="), false);
     assert.equal(hrefHasHouseFocus("/farms/abc?focusHouseFlockId=hf-1"), true);
+    assert.equal(hrefHasHouseFocus("/farms/abc?focusHouseId=h-1"), true);
   });
 });

@@ -1,6 +1,21 @@
 "use client";
 
+import { useRef } from "react";
+
 const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
+const PRESS_LOCK_MS = 320;
+
+function usePressOnce(onPress: () => void) {
+  const last = useRef(0);
+  return (event: { preventDefault(): void; stopPropagation(): void }) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const now = Date.now();
+    if (now - last.current < PRESS_LOCK_MS) return;
+    last.current = now;
+    onPress();
+  };
+}
 
 function Key({
   label,
@@ -11,6 +26,7 @@ function Key({
   onPress: () => void;
   variant?: "default" | "muted" | "enter";
 }) {
+  const press = usePressOnce(onPress);
   const variants = {
     default: "bg-white text-stone-900 active:bg-stone-100",
     muted: "bg-[#d6d3d1] text-stone-900 active:bg-stone-300",
@@ -19,8 +35,9 @@ function Key({
   return (
     <button
       type="button"
-      onClick={onPress}
-      className={`flex min-h-12 flex-1 items-center justify-center rounded-[10px] text-[22px] font-bold ${variants[variant]}`}
+      onTouchEnd={press}
+      onClick={press}
+      className={`flex min-h-12 flex-1 touch-manipulation items-center justify-center rounded-[10px] text-[22px] font-bold ${variants[variant]}`}
     >
       {label}
     </button>
@@ -42,13 +59,15 @@ export function NumberKeypad({
   allowTripleZero?: boolean;
   extraAction?: { label: string; onPress: () => void };
 }) {
+  const pressExtra = usePressOnce(extraAction?.onPress ?? (() => {}));
   return (
     <div className="border-t border-stone-200 bg-[#e7e5e4] px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
       {extraAction ? (
         <button
           type="button"
-          onClick={extraAction.onPress}
-          className="mb-2 flex min-h-12 w-full items-center justify-center rounded-[10px] bg-emerald-700 px-3 text-base font-extrabold text-white active:bg-emerald-800"
+          onTouchEnd={pressExtra}
+          onClick={pressExtra}
+          className="mb-2 flex min-h-12 w-full touch-manipulation items-center justify-center rounded-[10px] bg-emerald-700 px-3 text-base font-extrabold text-white active:bg-emerald-800"
         >
           {extraAction.label}
         </button>

@@ -1,5 +1,6 @@
 import { getDashboardData } from "@/lib/dashboard";
 import { ensureActiveFlockHouseFlocks } from "@/lib/ensureActiveFlockHouseFlocks";
+import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { prisma } from "@/lib/prisma";
 import { dateKeyOrNull, isoOrNull } from "@/lib/offline/dates";
 import { dateKeyFromDb } from "@/lib/visits/schedule";
@@ -50,17 +51,25 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
 
   if (!user) throw new Error("User not found");
 
+  const hiddenFarmIds = new Set(farms.filter((farm) => isManualLfoFarm(farm)).map((farm) => farm.id));
+  const visibleFarms = farms.filter((farm) => !hiddenFarmIds.has(farm.id));
+  const visibleHouses = houses.filter((house) => !hiddenFarmIds.has(house.farmId));
+  const visibleFlocks = flocks.filter((flock) => !hiddenFarmIds.has(flock.farmId));
+
   await Promise.all(
-    farms.map((farm) => ensureActiveFlockHouseFlocks(farm.id, { userId }).catch(() => 0)),
+    visibleFarms.map((farm) => ensureActiveFlockHouseFlocks(farm.id, { userId }).catch(() => 0)),
   );
 
   const houseFlocks = await prisma.houseFlock.findMany({
     where: { flock: { farm: { userId, deletedAt: null }, deletedAt: null } },
   });
+  const visibleFlockIds = new Set(visibleFlocks.map((flock) => flock.id));
+  const visibleHouseFlocks = houseFlocks.filter((hf) => visibleFlockIds.has(hf.flockId));
 
-  const houseFlockIds = houseFlocks.map((hf) => hf.id);
-  const farmIds = farms.map((farm) => farm.id);
-  const flockIds = flocks.map((flock) => flock.id);
+  const houseFlockIds = visibleHouseFlocks.map((hf) => hf.id);
+  const farmIds = visibleFarms.map((farm) => farm.id);
+  const lfoFarmIds = farms.map((farm) => farm.id);
+  const flockIds = visibleFlocks.map((flock) => flock.id);
 
   const [
     mortalities,
@@ -102,9 +111,9 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
             where: { OR: [{ flockId: { in: flockIds } }, { houseFlock: { flockId: { in: flockIds } } }] },
           })
         : Promise.resolve([]),
-      farmIds.length
+      lfoFarmIds.length
         ? prisma.lastFeedOrder.findMany({
-            where: { farmId: { in: farmIds } },
+            where: { farmId: { in: lfoFarmIds } },
             include: { houseInventories: true },
             orderBy: [{ createdAt: "desc" }, { orderDate: "desc" }],
           })
@@ -140,7 +149,7 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
     userEmail: user.email,
     pulledAt: new Date().toISOString(),
     settings,
-    farms: farms.map((farm) => ({
+    farms: visibleFarms.map((farm) => ({
       id: farm.id,
       farmName: farm.farmName,
       growerName: farm.growerName,
@@ -156,7 +165,7 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
       state: farm.state,
       zipCode: farm.zipCode,
     })),
-    houses: houses.map((house) => ({
+    houses: visibleHouses.map((house) => ({
       id: house.id,
       farmId: house.farmId,
       houseNumber: house.houseNumber,
@@ -169,7 +178,7 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
       loggedTempAt: house.loggedTempAt,
       deletedAt: isoOrNull(house.deletedAt),
     })),
-    flocks: flocks.map((flock) => ({
+    flocks: visibleFlocks.map((flock) => ({
       id: flock.id,
       farmId: flock.farmId,
       flockNumber: flock.flockNumber,
@@ -181,7 +190,7 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
       growthRateLbsPerDay: flock.growthRateLbsPerDay,
       deletedAt: isoOrNull(flock.deletedAt),
     })),
-    houseFlocks: houseFlocks.map((hf) => ({
+    houseFlocks: visibleHouseFlocks.map((hf) => ({
       id: hf.id,
       flockId: hf.flockId,
       houseId: hf.houseId,
