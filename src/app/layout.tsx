@@ -53,7 +53,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       style={{ backgroundColor: "#f3efe6" }}
     >
       <body
-        className="min-h-full overflow-x-hidden bg-[#f3efe6] font-sans text-stone-900 antialiased"
+        className="min-h-full overflow-x-clip bg-[#f3efe6] font-sans text-stone-900 antialiased"
         style={{ backgroundColor: "#f3efe6" }}
       >
         {process.env.NODE_ENV === "production" ? (

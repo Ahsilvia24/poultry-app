@@ -1,5 +1,7 @@
 "use client";
 
+import { appScrollTo } from "@/lib/app-scroll";
+
 export function FarmLogSectionHeader({
   title,
   extraRight,
@@ -33,7 +35,7 @@ export function FarmLogSectionTop() {
     <div className="mb-4 mt-2">
       <button
         type="button"
-        onClick={() => window.scrollTo({ top: 0, left: 0, behavior: "auto" })}
+        onClick={() => appScrollTo(0)}
         className="text-sm font-semibold text-stone-500 hover:text-stone-800"
       >
         Top

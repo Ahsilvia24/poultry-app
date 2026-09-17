@@ -11,13 +11,14 @@ const settings = read("src/components/SettingsScreen.tsx");
 const nav = read("src/components/AppNav.tsx");
 
 assert.match(shell, /pt-4 md:pt-6/);
-assert.match(shell, /pb-28/);
+assert.doesNotMatch(shell, /pb-28/);
 assert.doesNotMatch(shell, /keypadOpen \? "pb-4"/);
 assert.doesNotMatch(shell, /\bpy-4\b/);
 assert.doesNotMatch(shell, /\bmd:py-6\b/);
 assert.doesNotMatch(shell, /\bmd:pb-8\b/);
 
-assert.match(nav, /fixed inset-x-0 bottom-0/);
+assert.match(nav, /z-40 shrink-0/);
+assert.doesNotMatch(nav, /fixed inset-x-0 bottom-0/);
 assert.match(settings, /Sync data/);
 assert.match(settings, /Sign out/);
 

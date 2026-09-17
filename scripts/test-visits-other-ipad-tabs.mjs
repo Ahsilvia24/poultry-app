@@ -126,11 +126,12 @@ assert.doesNotMatch(nav, /desktopNav/);
 assert.doesNotMatch(nav, /md:hidden/);
 assert.doesNotMatch(nav, /md:block/);
 assert.doesNotMatch(nav, /href: "\/settings"/);
-assert.match(nav, /fixed inset-x-0 bottom-0/);
+assert.match(nav, /z-40 shrink-0/);
+assert.doesNotMatch(nav, /fixed inset-x-0 bottom-0/);
 
 const shell = read("src/components/DashboardShell.tsx");
 assert.match(shell, /pt-4 md:pt-6/);
-assert.match(shell, /pb-28/);
+assert.doesNotMatch(shell, /pb-28/);
 assert.doesNotMatch(shell, /keypadOpen \? "pb-4"/);
 assert.doesNotMatch(shell, /md:pb-8/);
 assert.doesNotMatch(shell, /py-4/);
