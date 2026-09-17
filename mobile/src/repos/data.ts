@@ -82,9 +82,6 @@ function daysUntilDateKey(fromKey: string, toKey: string): number {
   );
 }
 
-/** Broiler flocks don't run past this — caps bad ages from inflating the week grid. */
-const MAX_WEEKLY_MORTALITY_WEEK = 16;
-
 function summarizeHouse(
   placed: number,
   records: MortRow[],
@@ -106,41 +103,24 @@ function summarizeHouse(
   const last3: number[] = [];
   const place = placementDate?.trim() || null;
 
-  // Match web: show weeks 1…current flock week only (zeros for empty weeks).
-  let currentWeek = 1;
-  if (place) {
-    currentWeek = flockWeekFromAge(birdAgeFromPlacement(place, asOf));
-  } else {
-    let maxAge = 0;
-    for (const r of records) {
-      if (r.mortality_date > asOf) continue;
-      maxAge = Math.max(maxAge, r.bird_age_in_days);
-    }
-    currentWeek = flockWeekFromAge(maxAge);
-  }
-  currentWeek = Math.min(Math.max(1, currentWeek), MAX_WEEKLY_MORTALITY_WEEK);
-
   const weekTotals = new Map<number, number>();
   const enteredWeeks = new Set<number>();
   const fillThrough = 8;
   for (let w = 1; w <= fillThrough; w++) weekTotals.set(w, 0);
 
+  const byDate = new Map<string, (typeof records)[number]>();
   for (const r of records) {
-    const fromDate = place ? birdAgeFromPlacement(place, r.mortality_date) : r.bird_age_in_days;
-    const pinned =
-      typeof r.bird_age_in_days === "number" &&
-      !(r.bird_age_in_days === 0 && fromDate !== 0);
-    if (!pinned) {
-      if (r.mortality_date > asOf) continue;
-      if (place && r.mortality_date < place) continue;
-    }
+    if (!r.mortality_date) continue;
+    byDate.set(r.mortality_date.slice(0, 10), r);
+  }
+  for (const r of byDate.values()) {
     const loss = calcTotalDailyLoss(r.daily_mortality_count, r.cull_count);
     cumulative += loss;
     const age = place
       ? pinnedBirdAge(place, r.mortality_date, r.bird_age_in_days)
       : r.bird_age_in_days;
     const week = flockWeekFromAge(age);
-    if (week >= 1 && week <= 16 && (week <= currentWeek || pinned)) {
+    if (week >= 1 && week <= 16) {
       if (week > 8 && loss === 0 && !weekTotals.has(week)) continue;
       weekTotals.set(week, (weekTotals.get(week) ?? 0) + loss);
       enteredWeeks.add(week);

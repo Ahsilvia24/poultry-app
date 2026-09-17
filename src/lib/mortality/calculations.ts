@@ -80,14 +80,40 @@ export type WeeklyMortalityTotal = {
  * Weeks with no entries are included as 0 once that week has started (house tiles).
  * `entered` is false for those zero-filled weeks so service reports can stay blank.
  */
+function ageFromDateKeys(placementKey: string, dateKey: string): number {
+  return Math.max(0, calendarDaysBetween(placementKey, dateKey));
+}
+
+function pinnedAgeFromDateKeys(
+  placementKey: string,
+  dateKey: string,
+  storedAge?: number | null,
+): number {
+  const fromDate = ageFromDateKeys(placementKey, dateKey);
+  if (storedAge == null || !Number.isFinite(storedAge)) return fromDate;
+  if (storedAge === 0 && fromDate !== 0) return fromDate;
+  return storedAge;
+}
+
+/** One saved day per calendar date — last row wins so a sync copy cannot double-count. */
+function uniqueMortalityByDate(records: MortalityRecordLike[]): MortalityRecordLike[] {
+  const byDate = new Map<string, MortalityRecordLike>();
+  for (const record of records) {
+    const dateKey = toDateKey(record.mortalityDate);
+    if (!dateKey) continue;
+    byDate.set(dateKey, record);
+  }
+  return [...byDate.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([, record]) => record);
+}
+
 export function weeklyMortalityByPlacement(
   placementDate: Date,
   records: MortalityRecordLike[],
   asOfDate: Date = new Date(),
 ): WeeklyMortalityTotal[] {
-  const ageToday = birdAgeFromPlacement(placementDate, asOfDate);
-  // Cap so a bad/old placement can't inflate the week grid into tiny unreadables.
-  const currentWeek = Math.min(flockWeekFromAge(ageToday), 16);
+  void asOfDate;
   const totals = new Map<number, number>();
   const enteredWeeks = new Set<number>();
   // House tiles always show Wk1–Wk8. Weeks 9+ appear only after that week has rows.
@@ -97,21 +123,12 @@ export function weeklyMortalityByPlacement(
     totals.set(w, 0);
   }
 
-  const placementKey = dateKeyForAge(placementDate);
-  const asOfKey = dateKeyForAge(asOfDate);
-  for (const record of records) {
+  const placementKey = toDateKey(placementDate);
+  for (const record of uniqueMortalityByDate(records)) {
     const dateKey = toDateKey(record.mortalityDate);
-    const fromDate = birdAgeFromPlacement(placementDate, parseISO(dateKey));
-    const stored = record.birdAgeInDays;
-    const pinned = typeof stored === "number" && Number.isFinite(stored) && !(stored === 0 && fromDate !== 0);
-    if (!pinned) {
-      if (dateKey > asOfKey) continue;
-      if (dateKey < placementKey) continue;
-    }
-    const age = pinnedBirdAge(placementDate, parseISO(dateKey), stored);
+    const age = pinnedAgeFromDateKeys(placementKey, dateKey, record.birdAgeInDays);
     const week = flockWeekFromAge(age);
     if (week < 1 || week > 16) continue;
-    if (week > currentWeek && !pinned) continue;
     const loss = calcTotalDailyLoss(record.dailyMortalityCount, record.cullCount);
     // Zero/empty later weeks must not paint Wk9–Wk12 on house tiles.
     if (week > 8 && loss === 0 && !totals.has(week)) continue;
@@ -174,17 +191,11 @@ export function buildMortalitySummaries(
   placedBirdCount: number,
   records: MortalityRecordLike[],
 ): MortalitySummary[] {
-  const sorted = [...records].sort(
-    (a, b) => new Date(a.mortalityDate).getTime() - new Date(b.mortalityDate).getTime(),
-  );
+  const unique = uniqueMortalityByDate(records);
+  const byDate = new Map(unique.map((record) => [toDateKey(record.mortalityDate), record]));
 
   let cumulative = 0;
-  const byDate = new Map<string, MortalityRecordLike>();
-  for (const r of sorted) {
-    byDate.set(toDateKey(r.mortalityDate), r);
-  }
-
-  return sorted.map((record) => {
+  return unique.map((record) => {
     const dateKey = toDateKey(record.mortalityDate);
     const loss = calcTotalDailyLoss(record.dailyMortalityCount, record.cullCount);
     cumulative += loss;
@@ -240,7 +251,7 @@ export function getLatestSummary(
 
   if (!asOfDate) return summaries[summaries.length - 1];
 
-  const key = format(asOfDate, "yyyy-MM-dd");
+  const key = toDateKey(asOfDate);
   const exact = summaries.find((s) => s.date === key);
   if (exact) return exact;
 
