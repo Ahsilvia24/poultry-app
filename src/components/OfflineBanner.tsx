@@ -23,7 +23,7 @@ export function OfflineBanner() {
       role="status"
       className="sticky top-[env(safe-area-inset-top,0px)] z-50 border-b border-amber-300 bg-amber-100 px-4 py-2 text-center text-sm font-semibold text-amber-950"
     >
-      No service — showing last loaded data. Saves need a signal.
+      No service — showing last loaded data. Saves stay on this phone.
     </div>
   );
 }

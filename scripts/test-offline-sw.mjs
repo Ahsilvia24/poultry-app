@@ -75,6 +75,8 @@ assert.match(register, /warmOfflineAssets/);
 
 const banner = read("src/components/OfflineBanner.tsx");
 assert.match(banner, /No service — showing last loaded data/);
+assert.match(banner, /Saves stay on this phone/);
+assert.doesNotMatch(banner, /Saves need a signal/);
 
 const shell = read("src/components/DashboardShell.tsx");
 assert.match(shell, /OfflineBanner/);
