@@ -43,6 +43,7 @@ import {
 import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
 import {
   completeServiceFormAction,
+  deleteAllServiceFormsAction,
   deleteServiceFormAction,
   deleteServiceFormDraftAction,
   saveServiceFormDraftAction,
@@ -337,6 +338,8 @@ export async function flushFormWrite(
     case "deleteServiceForm":
       if (isLocalRecordId(write.id)) return { ok: true, aliases };
       return fromAction(await deleteServiceFormAction(farmId, id), aliases);
+    case "deleteAllServiceForms":
+      return fromAction(await deleteAllServiceFormsAction(farmId), aliases);
     default:
       return { ok: false, error: "This farm work cannot upload from the phone." };
   }

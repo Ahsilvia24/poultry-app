@@ -17,6 +17,10 @@ assert.match(read("src/components/OfflineNav.tsx"), /page\.missingSaved/);
 assert.match(read("src/components/OfflineNav.tsx"), /key=\{page\.existing\?\.id/);
 assert.match(read("src/components/OfflineNavContext.tsx"), /replicaHrefsMatch/);
 assert.match(read("src/components/serviceForms/ServiceFarmPicker.tsx"), /formId: row.id/);
+assert.match(read("src/components/serviceForms/ServiceFarmPicker.tsx"), /deleteAllServiceForms/);
+assert.match(read("src/components/serviceForms/ServiceFarmPicker.tsx"), /Delete all checklists\?/);
+assert.match(read("src/app/actions/serviceForms.ts"), /deleteAllServiceFormsAction/);
+assert.match(read("src/lib/offline/flushWrites.ts"), /deleteAllServiceFormsAction/);
 assert.match(read("src/lib/offline/applyWrites.ts"), /alreadyCompleted/);
 assert.match(read("src/components/OfflineProvider.tsx"), /seedAndMergeServiceForms/);
 
@@ -255,5 +259,39 @@ const reopen = selectServiceFormPage(phone, "farm-1", "service_report", {
 assert.equal(reopen?.missingSaved, false);
 assert.equal(reopen?.existing?.id, "local-service-1");
 assert.equal(reopen?.existing?.payload.comments, "Done");
+
+const farm2 = applyFormWrite(phone, {
+  action: "completeServiceForm",
+  id: "local-other-farm",
+  farmId: "farm-2",
+  extra: { kind: "placement", date: "2026-09-16", comments: "Other", farmName: "South" },
+});
+const cleared = applyFormWrite(farm2, {
+  action: "deleteAllServiceForms",
+  farmId: "farm-1",
+});
+assert.equal(cleared.serviceForms.some((row) => row.farmId === "farm-1"), false);
+assert.equal(cleared.serviceForms.some((row) => row.farmId === "farm-2"), true);
+assert.equal(cleared.visits.some((row) => row.farmId === "farm-1"), false);
+assert.equal(selectServiceFarmPicker(cleared, "farm-1")?.completed.length, 0);
+
+const pendingDelete = item("w4", {
+  action: "deleteServiceForm",
+  id: "local-service-1",
+  farmId: "farm-1",
+});
+const deleteAll = item("w5", {
+  action: "deleteAllServiceForms",
+  farmId: "farm-1",
+});
+const coalescedAll = coalesceFormWrite([complete, pendingDelete], deleteAll);
+assert.equal(
+  coalescedAll.some((row) => {
+    const action = row.payload.action;
+    return action === "completeServiceForm" || action === "deleteServiceForm";
+  }),
+  false,
+);
+assert.equal(coalescedAll.at(-1)?.payload.action, "deleteAllServiceForms");
 
 console.log("checklist-save-offline: ok");

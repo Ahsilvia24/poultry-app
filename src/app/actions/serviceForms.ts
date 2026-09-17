@@ -104,6 +104,24 @@ export async function deleteServiceFormAction(farmId: string, formId: string) {
   return { success: true as const };
 }
 
+export async function deleteAllServiceFormsAction(farmId: string) {
+  const user = await requireUser();
+  await assertFarmAccess(farmId, user.id!);
+  const existing = await prisma.serviceForm.findMany({
+    where: { farmId },
+    select: { visitId: true },
+  });
+  const visitIds = existing
+    .map((row) => row.visitId)
+    .filter((id): id is string => Boolean(id));
+  await prisma.serviceForm.deleteMany({ where: { farmId } });
+  if (visitIds.length) {
+    await prisma.farmVisit.deleteMany({ where: { id: { in: visitIds }, farmId } });
+  }
+  revalidateService(farmId);
+  return { success: true as const };
+}
+
 async function syncLinkedVisit(input: {
   serviceFormId: string;
   farmId: string;

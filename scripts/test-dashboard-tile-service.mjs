@@ -55,5 +55,8 @@ assert.match(prebrood, /Complete · Log visit · Share PDF/);
 const picker = readFileSync(join(root, "src/components/serviceForms/ServiceFarmPicker.tsx"), "utf8");
 assert.match(picker, /Share PDF/);
 assert.match(picker, /Start over/);
+assert.match(picker, /Delete all/);
+assert.match(picker, /deleteAllServiceForms/);
+assert.match(picker, /Delete all checklists\?/);
 
 console.log("dashboard-tile-service: ok");

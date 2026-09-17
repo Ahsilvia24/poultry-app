@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  deleteAllServiceFormsAction,
   deleteServiceFormAction,
   deleteServiceFormDraftAction,
 } from "@/app/actions/serviceForms";
@@ -49,6 +50,7 @@ export function ServiceFarmPicker({
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<StoredServiceForm | null>(null);
+  const [pendingDeleteAll, setPendingDeleteAll] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -105,6 +107,21 @@ export function ServiceFarmPicker({
     });
   }
 
+  function runDeleteAll() {
+    if (completed.length === 0) return;
+    start(async () => {
+      if (enabled) {
+        queue(formWrite("deleteAllServiceForms", { farmId }));
+        setPendingDeleteAll(false);
+        return;
+      }
+      const result = await deleteAllServiceFormsAction(farmId);
+      if ("error" in result && result.error) setDeleteError(result.error);
+      setPendingDeleteAll(false);
+      router.refresh();
+    });
+  }
+
   return (
     <div>
       <BackHeader href={`/farms/${farmId}`} backLabel="Farm" title="Service Farm" />
@@ -137,7 +154,20 @@ export function ServiceFarmPicker({
         </div>
       ))}
 
-      <h2 className="mb-2 mt-3.5 text-base font-extrabold text-stone-900">Completed</h2>
+      <div className="mb-2 mt-3.5 flex items-center justify-between gap-3">
+        <h2 className="text-base font-extrabold text-stone-900">Completed</h2>
+        {completed.length > 0 ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setPendingDeleteAll(true)}
+            className="font-bold text-red-700"
+            aria-label="Delete all checklists on this farm"
+          >
+            Delete all
+          </button>
+        ) : null}
+      </div>
 
       {shareError ? <p className="mb-2 font-semibold text-red-700">{shareError}</p> : null}
 
@@ -185,6 +215,38 @@ export function ServiceFarmPicker({
           </div>
         </ExclusiveSwipeGroup>
       )}
+
+      {pendingDeleteAll ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          onClick={() => setPendingDeleteAll(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-stone-900">Delete all checklists?</h3>
+            <p className="mt-2 text-sm text-stone-600">
+              This removes every Placement, Prebrood, and Service Report on this farm.
+            </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <Button type="button" variant="danger" disabled={pending} onClick={runDeleteAll}>
+                {pending ? "Deleting…" : "Delete all"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={pending}
+                onClick={() => setPendingDeleteAll(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {pendingDelete ? (
         <div

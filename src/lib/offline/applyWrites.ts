@@ -1437,6 +1437,17 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
           : snapshot.visits,
       };
     }
+    case "deleteAllServiceForms": {
+      const farmId = write.farmId ?? "";
+      if (!farmId) return snapshot;
+      const removed = (snapshot.serviceForms ?? []).filter((row) => row.farmId === farmId);
+      const visitIds = new Set(removed.map((row) => row.visitId).filter(Boolean));
+      return {
+        ...snapshot,
+        serviceForms: (snapshot.serviceForms ?? []).filter((row) => row.farmId !== farmId),
+        visits: snapshot.visits.filter((row) => !visitIds.has(row.id)),
+      };
+    }
     default:
       return snapshot;
   }
@@ -1506,6 +1517,22 @@ export function coalesceFormWrite(
     });
     if (write.action === "deleteServiceDraft") return [...kept, next];
     items = kept;
+  }
+
+  if (write.action === "deleteAllServiceForms") {
+    const farmId = write.farmId ?? "";
+    const kept = items.filter((item) => {
+      const payload = asFormWrite(item);
+      if (!payload || payload.farmId !== farmId) return true;
+      return (
+        payload.action !== "saveServiceDraft" &&
+        payload.action !== "completeServiceForm" &&
+        payload.action !== "deleteServiceDraft" &&
+        payload.action !== "deleteServiceForm" &&
+        payload.action !== "deleteAllServiceForms"
+      );
+    });
+    return [...kept, next];
   }
 
   if (!isLocalRecordId(write.id)) return [...items, next];

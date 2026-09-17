@@ -235,7 +235,8 @@ export type OfflineFormWriteAction =
   | "saveServiceDraft"
   | "completeServiceForm"
   | "deleteServiceDraft"
-  | "deleteServiceForm";
+  | "deleteServiceForm"
+  | "deleteAllServiceForms";
 
 export type OfflineFormWrite = {
   action: OfflineFormWriteAction;
