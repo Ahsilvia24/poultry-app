@@ -58,5 +58,8 @@ assert.match(picker, /Start over/);
 assert.match(picker, /Delete all/);
 assert.match(picker, /deleteAllServiceForms/);
 assert.match(picker, /Delete all checklists\?/);
+assert.ok(
+  picker.indexOf("ExclusiveSwipeGroup") < picker.indexOf('aria-label="Delete all checklists on this farm"'),
+);
 
 console.log("dashboard-tile-service: ok");
