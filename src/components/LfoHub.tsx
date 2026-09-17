@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui";
 import { FarmLfoForm, type FarmLfoHouseInput } from "@/components/FarmLfoForm";
 import { ManualLfoForm } from "@/components/ManualLfoForm";
 import { SavedLfoRow } from "@/components/SavedLfoRow";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
+import { useOfflineNav } from "@/components/OfflineNavContext";
 import { lfoTabFromRoute } from "@/lib/lfo/defaultTab";
+import { writeReplicaUrl } from "@/lib/offline/replicaHistory";
 import type { LfoShareInventory } from "@/lib/lfo/share-payload";
 
 export const MANUAL_LFO_TAB_ID = "manual";
@@ -28,7 +29,7 @@ export function LfoHub({
   }>;
   initialFarmId?: string;
 }) {
-  const router = useRouter();
+  const nav = useOfflineNav();
   const [tab, setTab] = useState(() => {
     const fromRoute = lfoTabFromRoute(initialFarmId, MANUAL_LFO_TAB_ID);
     return fromRoute !== MANUAL_LFO_TAB_ID && farms.some((f) => f.id === fromRoute)
@@ -36,13 +37,17 @@ export function LfoHub({
       : MANUAL_LFO_TAB_ID;
   });
 
+  function persistTab(id: string) {
+    const href = id === MANUAL_LFO_TAB_ID ? "/lfo" : `/lfo?farmId=${id}`;
+    const already = id === MANUAL_LFO_TAB_ID ? !initialFarmId : initialFarmId === id;
+    if (already) return;
+    if (nav) nav.replace(href);
+    else writeReplicaUrl(href, "replace");
+  }
+
   function selectTab(id: string) {
     setTab(id);
-    if (id === MANUAL_LFO_TAB_ID) {
-      if (initialFarmId) router.replace("/lfo");
-      return;
-    }
-    if (initialFarmId !== id) router.replace(`/lfo?farmId=${id}`);
+    persistTab(id);
   }
 
   const isManual = tab === MANUAL_LFO_TAB_ID;

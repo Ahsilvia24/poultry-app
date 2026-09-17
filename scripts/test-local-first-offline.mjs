@@ -48,6 +48,12 @@ assert.match(settingsPage, /SettingsScreen/);
 const lfoPage = read("src/app/(dashboard)/lfo/page.tsx");
 assert.match(lfoPage, /LfoPageClient/);
 
+const lfoHub = read("src/components/LfoHub.tsx");
+assert.match(lfoHub, /useOfflineNav/);
+assert.match(lfoHub, /writeReplicaUrl/);
+assert.match(lfoHub, /nav\.replace\(href\)/);
+assert.doesNotMatch(lfoHub, /useRouter|router\.replace/);
+
 const toolsPage = read("src/app/(dashboard)/tools/page.tsx");
 assert.match(toolsPage, /ToolsPageClient/);
 

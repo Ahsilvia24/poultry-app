@@ -37,16 +37,20 @@ const {
 } = await import(join(root, "src/lib/reports/lastHref.ts"));
 
 assert.equal(writeReplicaUrl("/reports?type=mortality&farmId=f1", "replace"), true);
+assert.equal(writeReplicaUrl("/lfo?farmId=f1", "replace"), true);
+assert.equal(writeReplicaUrl("/lfo", "replace"), true);
 assert.equal(writeReplicaUrl("/visits", "push"), true);
 assert.equal(writeReplicaUrl("/farms/f1/visits/new?from=all-visits", "push"), true);
 assert.equal(writeReplicaUrl("/login", "push"), false);
-assert.equal(historyCalls.length, 3);
+assert.equal(historyCalls.length, 5);
 assert.equal(historyCalls[0]?.mode, "replace");
 assert.equal(historyCalls[0]?.state?.__NA, true);
 assert.equal(historyCalls[0]?.url, "/reports?type=mortality&farmId=f1");
-assert.equal(historyCalls[1]?.mode, "push");
-assert.equal(historyCalls[1]?.url, "/visits");
-assert.equal(historyCalls[2]?.url, "/farms/f1/visits/new?from=all-visits");
+assert.equal(historyCalls[1]?.url, "/lfo?farmId=f1");
+assert.equal(historyCalls[2]?.url, "/lfo");
+assert.equal(historyCalls[3]?.mode, "push");
+assert.equal(historyCalls[3]?.url, "/visits");
+assert.equal(historyCalls[4]?.url, "/farms/f1/visits/new?from=all-visits");
 
 assert.equal(
   rememberReportsHref("/reports?type=generator&from=2026-09-01&to=2026-09-15"),
@@ -96,6 +100,11 @@ const reports = read("src/components/ReportsView.tsx");
 assert.match(reports, /rememberReportsHref/);
 assert.match(reports, /onGeneratorFarmChange/);
 assert.match(reports, /persist\(\{ type: "mortality"/);
+
+const lfoHub = read("src/components/LfoHub.tsx");
+assert.match(lfoHub, /useOfflineNav/);
+assert.match(lfoHub, /writeReplicaUrl\(href, "replace"\)/);
+assert.doesNotMatch(lfoHub, /router\.replace/);
 
 const visits = read("src/components/AllVisitsView.tsx");
 assert.match(visits, /visitFormHref\(farmId, undefined, true\)/);
