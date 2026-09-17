@@ -69,7 +69,14 @@ assert.match(house, /min-h-5/);
 const list = read("src/components/WeeklyMortalityList.tsx");
 assert.match(list, /groupWeeklyMortalityRows/);
 assert.match(list, /h-6 text-\[17px\]/);
+assert.match(list, /tabular-nums/);
 assert.doesNotMatch(list, /weeks\.length === 0/);
+
+const entry = read("src/components/MortalityEntryForm.tsx");
+assert.match(entry, /key=\{row\.age\}/);
+assert.match(entry, /w-16 shrink-0/);
+assert.match(entry, /tabular-nums/);
+assert.doesNotMatch(entry, /key=\{row\.mortalityDate\}/);
 
 const expo = read("mobile/app/(tabs)/farms/[id]/index.tsx");
 assert.match(expo, /WeeklyMortalityList weeks=\{h\.weeklyMortality\}/);

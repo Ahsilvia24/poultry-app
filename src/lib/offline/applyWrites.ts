@@ -5,7 +5,7 @@ import {
   calcTotalDailyLoss,
   keepPinnedBirdAge,
 } from "@/lib/mortality/calculations";
-import { isHouseInPropagateRange } from "@/lib/housePropagate";
+import { remainingHousesOnSameFarm } from "@/lib/housePropagate";
 import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
 import { asDate, asDateKey, localNoonFromKey } from "@/lib/offline/dates";
 import { upsertFollowUpCompletion } from "@/lib/offline/followUpCompletions";
@@ -233,7 +233,14 @@ function activeHouseFlock(snapshot: OfflineSnapshot, farmId: string, houseId: st
 }
 
 function syncFlockDatesFromHouses(snapshot: OfflineSnapshot, flockId: string): OfflineSnapshot {
-  const hfs = snapshot.houseFlocks.filter((hf) => hf.flockId === flockId);
+  const flock = snapshot.flocks.find((row) => row.id === flockId);
+  if (!flock) return snapshot;
+  const farmHouseIds = new Set(
+    snapshot.houses.filter((house) => house.farmId === flock.farmId && !house.deletedAt).map((house) => house.id),
+  );
+  const hfs = snapshot.houseFlocks.filter(
+    (hf) => hf.flockId === flockId && farmHouseIds.has(hf.houseId),
+  );
   const places = hfs
     .map((hf) => hf.placementDate)
     .filter((value): value is string => Boolean(value))
@@ -269,7 +276,10 @@ function assignHouseFlockNumber(
   catchDate: string,
   placedBirdCount: number,
 ): OfflineSnapshot {
+  const ownedHouse = snapshot.houses.find((row) => row.id === houseId && !row.deletedAt);
+  if (!ownedHouse || ownedHouse.farmId !== farmId) return snapshot;
   const current = snapshot.flocks.find((flock) => flock.id === currentFlockId);
+  if (current && current.farmId !== farmId) return snapshot;
   const existing =
     snapshot.flocks.find(
       (flock) =>
@@ -384,9 +394,9 @@ function dropFarmFromDashboard(snapshot: OfflineSnapshot, farmId: string): Offli
 function applyUpdateHouse(snapshot: OfflineSnapshot, write: OfflineFormWrite): OfflineSnapshot {
   const fields = write.fields ?? {};
   const houseId = write.id ?? "";
-  const farmId = write.farmId ?? fields.farmId ?? "";
-  const house = snapshot.houses.find((row) => row.id === houseId);
+  const house = snapshot.houses.find((row) => row.id === houseId && !row.deletedAt);
   if (!house) return snapshot;
+  const farmId = house.farmId;
 
   let next: OfflineSnapshot = {
     ...snapshot,
@@ -407,13 +417,7 @@ function applyUpdateHouse(snapshot: OfflineSnapshot, write: OfflineFormWrite): O
     ),
   };
 
-  const remaining = next.houses.filter(
-    (row) =>
-      row.farmId === farmId &&
-      !row.deletedAt &&
-      row.id !== houseId &&
-      isHouseInPropagateRange(row.houseNumber, house.houseNumber),
-  );
+  const remaining = remainingHousesOnSameFarm(next.houses, house);
   if (remaining.length > 0) {
     const remainingIds = new Set(remaining.map((row) => row.id));
     next = {
@@ -482,6 +486,8 @@ function applyUpdateHouse(snapshot: OfflineSnapshot, write: OfflineFormWrite): O
       catchTime?: string | null;
     },
   ) {
+    const targetHouse = current.houses.find((row) => row.id === targetHouseId);
+    if (!targetHouse || targetHouse.farmId !== farmId) return current;
     const existing = activeHouseFlock(current, farmId, targetHouseId);
     if (existing) {
       return {
@@ -503,6 +509,7 @@ function applyUpdateHouse(snapshot: OfflineSnapshot, write: OfflineFormWrite): O
     if (patch.placedBirdCount == null && patch.placementDate == null && patch.catchDate == null) {
       return current;
     }
+    if (patch.placedBirdCount == null) return current;
     const place =
       patch.placementDate ?? asDateKey(activeFlock!.placementDate) ?? activeFlock!.placementDate.slice(0, 10);
     return {
@@ -524,19 +531,19 @@ function applyUpdateHouse(snapshot: OfflineSnapshot, write: OfflineFormWrite): O
 
   const placedBirdCount = placedRaw != null ? num(placedRaw) : undefined;
   const placementDate = placementRaw;
-  const catchDate = catchRaw ?? (placementDate ? addDaysKey(placementDate, 52) : undefined);
+  const catchDate = catchRaw;
   next = upsertHf(next, houseId, {
     placedBirdCount,
-    placementDate,
-    catchDate,
+    placementDate: placementDate ?? undefined,
+    catchDate: catchDate ?? undefined,
     catchTime: catchTimeSubmitted ? emptyToNull(fields.catchTime) : undefined,
   });
 
   if (flockNumberRaw) {
     const hf = activeHouseFlock(next, farmId, houseId);
     if (hf) {
-      const place = placementDate ?? hf.placementDate ?? asDateKey(activeFlock.placementDate) ?? "";
-      const catchResolved = catchDate ?? hf.catchDate ?? addDaysKey(place, 52);
+      const place = hf.placementDate ?? asDateKey(activeFlock.placementDate) ?? "";
+      const catchResolved = hf.catchDate ?? addDaysKey(place, 52);
       next = assignHouseFlockNumber(
         next,
         farmId,
@@ -558,6 +565,7 @@ function applyUpdateHouse(snapshot: OfflineSnapshot, write: OfflineFormWrite): O
     formFlag(fields, "applyFlockIdToRemaining");
   if (remainingFlags) {
     for (const row of remaining) {
+      if (row.farmId !== farmId) continue;
       next = upsertHf(next, row.id, {
         ...(formFlag(fields, "applyBirdsToRemaining") ? { placedBirdCount } : {}),
         ...(formFlag(fields, "applyPlacementToRemaining") ? { placementDate } : {}),
@@ -569,8 +577,8 @@ function applyUpdateHouse(snapshot: OfflineSnapshot, write: OfflineFormWrite): O
       if (formFlag(fields, "applyFlockIdToRemaining") && flockNumberRaw) {
         const hf = activeHouseFlock(next, farmId, row.id);
         if (hf) {
-          const place = placementDate ?? hf.placementDate ?? asDateKey(activeFlock.placementDate) ?? "";
-          const catchResolved = catchDate ?? hf.catchDate ?? addDaysKey(place, 52);
+          const place = hf.placementDate ?? asDateKey(activeFlock.placementDate) ?? "";
+          const catchResolved = hf.catchDate ?? addDaysKey(place, 52);
           next = assignHouseFlockNumber(
             next,
             farmId,
@@ -585,6 +593,15 @@ function applyUpdateHouse(snapshot: OfflineSnapshot, write: OfflineFormWrite): O
       }
     }
   }
+
+  const touched = new Set<string>();
+  const sourceHf = activeHouseFlock(next, farmId, houseId);
+  if (sourceHf) touched.add(sourceHf.flockId);
+  for (const row of remaining) {
+    const hf = activeHouseFlock(next, farmId, row.id);
+    if (hf) touched.add(hf.flockId);
+  }
+  for (const flockId of touched) next = syncFlockDatesFromHouses(next, flockId);
 
   return next;
 }
@@ -1070,6 +1087,10 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
       };
       const hf = snapshot.houseFlocks.find((row) => row.id === extra.houseFlockId);
       const flock = snapshot.flocks.find((row) => row.id === hf?.flockId);
+      const house = snapshot.houses.find((row) => row.id === hf?.houseId && !row.deletedAt);
+      if (!hf || !flock || !house) return snapshot;
+      if (house.farmId !== flock.farmId) return snapshot;
+      if (write.farmId && write.farmId !== house.farmId) return snapshot;
       const placeKey =
         (hf?.placementDate ?? "").trim() || asDateKey(flock?.placementDate) || "";
       const clear = new Set(extra.clearDates ?? []);

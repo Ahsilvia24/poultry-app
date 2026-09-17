@@ -10,9 +10,11 @@ import { selectFarmDetail } from "@/lib/offline/selectFarmDetail";
 export function FarmDetailClient({
   farmId,
   focusHouseFlockId,
+  focusHouseId,
 }: {
   farmId: string;
   focusHouseFlockId?: string;
+  focusHouseId?: string;
 }) {
   const { snapshot, ready, aliases } = useOffline();
 
@@ -24,6 +26,7 @@ export function FarmDetailClient({
           model={model}
           timeZone={snapshot.settings?.appTimeZone}
           focusHouseFlockId={focusHouseFlockId}
+          focusHouseId={focusHouseId}
         />
       );
     }

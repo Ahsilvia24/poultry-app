@@ -448,12 +448,15 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     const farmId = phoneFarmId(farmDetail[1]);
     const model = selectFarmDetail(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmDetail[1]} />;
-    const focusHouseFlockId = new URLSearchParams(search).get("focusHouseFlockId");
+    const farmQuery = new URLSearchParams(search);
+    const focusHouseFlockId = farmQuery.get("focusHouseFlockId");
+    const focusHouseId = farmQuery.get("focusHouseId");
     return (
       <FarmDetailView
         model={model}
         timeZone={snapshot.settings?.appTimeZone}
         focusHouseFlockId={focusHouseFlockId}
+        focusHouseId={focusHouseId}
       />
     );
   }

@@ -10,6 +10,7 @@ import {
 import { asDateKey, asDateRequired } from "@/lib/offline/dates";
 import { replicaVisitsForFieldLog } from "@/lib/offline/selectVisits";
 import type { OfflineSnapshot } from "@/lib/offline/types";
+import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 import {
   buildFieldLogWeeks,
@@ -116,7 +117,7 @@ export function selectReports(
   const from = search.from ?? typeDefaults.from;
   const to = search.to ?? typeDefaults.to;
   const farms = (snapshot.farms ?? [])
-    .filter((farm) => !farm.deletedAt && !isVisitPlaceFarm(farm))
+    .filter((farm) => !farm.deletedAt && !isVisitPlaceFarm(farm) && !isManualLfoFarm(farm))
     .slice()
     .sort((a, b) => a.farmName.localeCompare(b.farmName))
     .map((farm) => ({

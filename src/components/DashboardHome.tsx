@@ -1,6 +1,7 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
+import { formatCatchHouses } from "@/lib/catchHouses";
 import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { Card } from "@/components/ui";
 import { DashboardScheduleImport } from "@/components/DashboardScheduleImport";
@@ -87,12 +88,15 @@ export function DashboardHome({
                     c.farmName,
                     snapshot?.farms,
                   );
+                  const housesLabel = formatCatchHouses(
+                    "houseNumbers" in c ? c.houseNumbers : undefined,
+                  );
                   const name = (
                     <>
                       <OneDotName text={c.farmName} />
-                      {c.flockAgeDays != null ? (
+                      {housesLabel ? (
                         <span className="shrink-0 font-normal text-stone-500">
-                          {c.flockAgeDays}d
+                          {housesLabel}
                         </span>
                       ) : null}
                     </>

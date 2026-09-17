@@ -63,8 +63,8 @@ function AllVisitsAddTile({ farms }: { farms: AllVisitsFarmOption[] }) {
             id="all-visits-other-place"
             value={placeName}
             onChange={(event) => setPlaceName(event.target.value)}
-            placeholder="Enter Other"
-            aria-label="Enter Other"
+            placeholder="Enter Location"
+            aria-label="Enter Location"
             className={`${settingsValueTextClass} w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-left`}
           />
         </div>

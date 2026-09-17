@@ -4,6 +4,7 @@ import { asDateKey } from "@/lib/offline/dates";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import { listMortalityHouses } from "@/lib/mortalityHouses";
 import type { MortalityFarmPayload } from "@/components/MortalityEntryForm";
+import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 
 export function selectMortality(
@@ -13,7 +14,7 @@ export function selectMortality(
 ) {
   const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
   const farms: MortalityFarmPayload[] = (snapshot.farms ?? [])
-    .filter((farm) => farm.isActive && !farm.deletedAt && !isVisitPlaceFarm(farm))
+    .filter((farm) => farm.isActive && !farm.deletedAt && !isVisitPlaceFarm(farm) && !isManualLfoFarm(farm))
     .slice()
     .sort((a, b) => a.farmName.localeCompare(b.farmName))
     .map((farm) => {
@@ -28,9 +29,10 @@ export function selectMortality(
         )
         .slice()
         .sort((a, b) => a.placementDate.localeCompare(b.placementDate) || a.flockNumber.localeCompare(b.flockNumber));
+      const farmHouseIds = new Set(houses.map((house) => house.id));
       const houseFlocks = flocks.flatMap((flock) =>
         (snapshot.houseFlocks ?? [])
-          .filter((hf) => hf.flockId === flock.id)
+          .filter((hf) => hf.flockId === flock.id && farmHouseIds.has(hf.houseId))
           .map((hf) => ({ ...hf, flockId: flock.id })),
       );
       const listed = listMortalityHouses(houses, houseFlocks);
@@ -51,6 +53,7 @@ export function selectMortality(
                 const houseFlockRecord = flockById.get(houseFlock.flockId);
                 return {
                 houseFlockId: houseFlock.id,
+                houseId: house.id,
                 flockId: houseFlock.flockId,
                 houseNumber: house.houseNumber,
                 placedBirdCount: houseFlock.placedBirdCount,

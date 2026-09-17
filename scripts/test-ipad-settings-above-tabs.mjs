@@ -11,7 +11,8 @@ const settings = read("src/components/SettingsScreen.tsx");
 const nav = read("src/components/AppNav.tsx");
 
 assert.match(shell, /pt-4 md:pt-6/);
-assert.match(shell, /keypadOpen \? "pb-4" : "pb-28"/);
+assert.match(shell, /pb-28/);
+assert.doesNotMatch(shell, /keypadOpen \? "pb-4"/);
 assert.doesNotMatch(shell, /\bpy-4\b/);
 assert.doesNotMatch(shell, /\bmd:py-6\b/);
 assert.doesNotMatch(shell, /\bmd:pb-8\b/);

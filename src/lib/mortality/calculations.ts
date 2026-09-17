@@ -68,19 +68,28 @@ export function flockWeekFromAge(birdAgeInDays: number): number {
   return Math.floor((age - 8) / 7) + 2;
 }
 
+export type WeeklyMortalityTotal = {
+  week: number;
+  total: number;
+  /** True when at least one saved mortality record falls in this week. */
+  entered: boolean;
+};
+
 /**
  * Sum total daily loss by flock week (placement-based), through the current week.
- * Weeks with no entries are included as 0 once that week has started.
+ * Weeks with no entries are included as 0 once that week has started (house tiles).
+ * `entered` is false for those zero-filled weeks so service reports can stay blank.
  */
 export function weeklyMortalityByPlacement(
   placementDate: Date,
   records: MortalityRecordLike[],
   asOfDate: Date = new Date(),
-): Array<{ week: number; total: number }> {
+): WeeklyMortalityTotal[] {
   const ageToday = birdAgeFromPlacement(placementDate, asOfDate);
   // Cap so a bad/old placement can't inflate the week grid into tiny unreadables.
   const currentWeek = Math.min(flockWeekFromAge(ageToday), 16);
   const totals = new Map<number, number>();
+  const enteredWeeks = new Set<number>();
   // House tiles always show Wk1–Wk8. Weeks 9+ appear only after that week has rows.
   const fillThrough = 8;
 
@@ -107,11 +116,12 @@ export function weeklyMortalityByPlacement(
     // Zero/empty later weeks must not paint Wk9–Wk12 on house tiles.
     if (week > 8 && loss === 0 && !totals.has(week)) continue;
     totals.set(week, (totals.get(week) ?? 0) + loss);
+    enteredWeeks.add(week);
   }
 
   return Array.from(totals.entries())
     .sort((a, b) => a[0] - b[0])
-    .map(([week, total]) => ({ week, total }));
+    .map(([week, total]) => ({ week, total, entered: enteredWeeks.has(week) }));
 }
 
 function toDateKey(value: Date | string): string {

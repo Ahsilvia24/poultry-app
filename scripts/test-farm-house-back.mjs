@@ -19,14 +19,16 @@ assert.equal(farmHouseBackScrollTopInScroller(500, 100, 50), 500 - 100 + 50 - FA
 assert.ok(FARM_HOUSE_BACK_PEEK_PX >= 80, "peek must leave previous-house stats visible");
 
 const mortality = read("src/components/MortalityEntryForm.tsx");
-assert.match(mortality, /focusHouseFlockId=\$\{encodeURIComponent\(house\.houseFlockId\)\}/);
-assert.match(mortality, /`\/farms\/\$\{farmId\}\?focusHouseFlockId=/);
+assert.match(mortality, /params\.set\("focusHouseFlockId", house\.houseFlockId\)/);
+assert.match(mortality, /params\.set\("focusHouseId", house\.houseId\)/);
+assert.match(mortality, /`\/farms\/\$\{farmId\}\?\$\{params\.toString\(\)\}`/);
 assert.doesNotMatch(mortality, /openReplica\(`\/farms\/\$\{farmId\}`\)/);
 
 const farm = read("src/components/FarmDetailView.tsx");
 assert.match(farm, /id=\{`house-\$\{house\.id\}`\}/);
 assert.match(farm, /FarmHouseFocus/);
 assert.match(farm, /focusHouseFlockId/);
+assert.match(farm, /focusHouseId/);
 
 const client = read("src/components/FarmDetailClient.tsx");
 assert.match(client, /focusHouseFlockId/);

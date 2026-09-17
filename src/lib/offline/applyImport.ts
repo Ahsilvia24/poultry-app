@@ -1,3 +1,5 @@
+import { addCatchHouseNumber } from "@/lib/catchHouses";
+import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { daysSincePlacement } from "@/lib/mortality/calculations";
 import { farmGroupKey as catchFarmGroupKey } from "@/lib/catch-import/parse";
 import type { CatchRow } from "@/lib/catch-import/types";
@@ -172,8 +174,15 @@ function patchDashboardAfterPlacement(
     const placed = houseFlocks
       .filter((hf) => flockIds.has(hf.flockId))
       .reduce((sum, hf) => sum + hf.placedBirdCount, 0);
-    const ages = farmFlocks.map((flock) =>
-      daysSincePlacement(localNoonFromKey(asDateKey(flock.placementDate) ?? flock.placementDate.slice(0, 10)), today),
+    const farmHouseIds = new Set(farmHouses.map((house) => house.id));
+    const ages = flockAgesFromPlacements(
+      farmFlocks.map((flock) => ({
+        placementDate: flock.placementDate,
+        houses: houseFlocks
+          .filter((hf) => hf.flockId === flock.id && farmHouseIds.has(hf.houseId))
+          .map((hf) => ({ placementDate: hf.placementDate })),
+      })),
+      today,
     );
     const nextCard = {
       id: farm.id,
@@ -243,6 +252,11 @@ function patchDashboardCatchDates(
     if (!farm || !date) continue;
     upcoming = upcoming.filter((row) => row.farmName !== farm.farmName || row.flockNumber !== flock.flockNumber);
     if (date >= todayKey && date <= horizonKey) {
+      const houseNumbers: number[] = [];
+      for (const hf of houseFlocks.filter((row) => row.flockId === flockId)) {
+        const house = snapshot.houses.find((row) => row.id === hf.houseId && !row.deletedAt);
+        addCatchHouseNumber(houseNumbers, house?.houseNumber);
+      }
       upcoming.push({
         farmId: farm.id,
         farmName: farm.farmName,
@@ -261,6 +275,7 @@ function patchDashboardCatchDates(
             .filter((hf) => hf.flockId === flockId && hf.catchTime)
             .map((hf) => hf.catchTime)
             .sort()[0] ?? null,
+        houseNumbers,
       });
     }
   }

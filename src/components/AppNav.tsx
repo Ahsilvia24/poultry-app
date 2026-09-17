@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useKeypadNav } from "@/components/KeypadNavContext";
+import { isKeypadGuardActive } from "@/lib/keypadPointerGuard";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { replicaPath } from "@/lib/offline/hasFarmGraph";
@@ -34,7 +34,6 @@ export function AppNav() {
   const pathname = usePathname();
   const router = useRouter();
   const offlineNav = useOfflineNav();
-  const { keypadOpen } = useKeypadNav();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [reportsHref, setReportsHref] = useState("/reports");
   const viewPath = offlineNav ? pathOnly(offlineNav.viewHref) : pathname;
@@ -69,11 +68,10 @@ export function AppNav() {
   }
 
   function onTabPress(href: string) {
+    if (isKeypadGuardActive()) return;
     router.prefetch(href);
     if (!isActive(viewPath, pathOnly(href))) setPendingHref(href);
   }
-
-  if (keypadOpen) return null;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white">
