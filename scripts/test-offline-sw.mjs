@@ -11,7 +11,14 @@ assert.ok(existsSync(join(root, "public/sw.js")), "missing public/sw.js");
 assert.ok(existsSync(join(root, "public/offline.html")), "missing public/offline.html");
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v13/);
+assert.match(sw, /poultrytech-offline-v14/);
+assert.match(sw, /\/service-forms\/placement\.pdf/);
+assert.match(sw, /\/service-forms\/prebrood\.pdf/);
+assert.match(sw, /\/service-forms\/service-report\.pdf/);
+assert.ok(existsSync(join(root, "public/service-forms/placement.pdf")));
+assert.ok(existsSync(join(root, "public/service-forms/prebrood.pdf")));
+assert.ok(existsSync(join(root, "public/service-forms/service-report.pdf")));
+assert.match(sw, /webmanifest\|pdf/);
 assert.match(sw, /type !== "precache"/);
 assert.match(sw, /type === "sign-out"/);
 assert.match(sw, /SIGNED_OUT_FLAG/);
@@ -64,6 +71,7 @@ assert.match(register, /updateViaCache: "none"/);
 assert.match(register, /NODE_ENV !== "production"/);
 assert.match(register, /precacheAppAssets/);
 assert.match(register, /collectAppAssetUrls/);
+assert.match(register, /warmOfflineAssets/);
 
 const banner = read("src/components/OfflineBanner.tsx");
 assert.match(banner, /No service — showing last loaded data/);

@@ -72,6 +72,19 @@ assert.match(importUi, /applyPlacementToSnapshot/);
 assert.match(importUi, /applyCatchToSnapshot/);
 assert.match(importUi, /graph: result\.graph/);
 assert.match(importUi, /Need Wi-Fi once to finish downloading the import reader/);
+assert.doesNotMatch(importUi, /settlement/);
+assert.match(read("src/lib/offline/warmOfflineAssets.ts"), /pdf-text-extract-client/);
+assert.match(read("src/lib/offline/warmOfflineAssets.ts"), /import\("unpdf"\)/);
+assert.match(read("src/lib/offline/warmOfflineAssets.ts"), /serviceForms\/sharePdf/);
+assert.match(read("src/lib/offline/warmOfflineAssets.ts"), /service-forms\/service-report\.pdf/);
+assert.match(read("src/components/OfflineProvider.tsx"), /warmOfflineAssets/);
+assert.doesNotMatch(read("src/lib/schedule-import-types.ts"), /settlement/);
+assert.equal(existsSync(join(root, "src/components/SettlementExampleUpload.tsx")), false);
+assert.equal(existsSync(join(root, "src/components/SettlementForm.tsx")), false);
+assert.equal(existsSync(join(root, "src/components/PerformanceForm.tsx")), false);
+assert.equal(existsSync(join(root, "src/app/actions/settlement-upload.ts")), false);
+assert.doesNotMatch(read("src/app/actions/ops.ts"), /saveFlockSettlementAction/);
+assert.doesNotMatch(read("src/lib/validations/index.ts"), /flockSettlementSchema/);
 assert.match(importUi, /extractPlacementRowsOnDevice/);
 assert.match(read("src/lib/placement-import/extract-client.ts"), /pdf-text-extract-client/);
 assert.match(read("src/lib/catch-import/extract-client.ts"), /pdf-text-extract-client/);
@@ -112,6 +125,15 @@ const { localImportFarmId } = await import(join(root, "src/lib/offline/formPairs
 const { applyCatchToSnapshot, applyPlacementToSnapshot } = await import(
   join(root, "src/lib/offline/applyImport.ts")
 );
+const { SERVICE_FORM_TEMPLATE_URLS, collectWarmAssetUrls } = await import(
+  join(root, "src/lib/offline/warmOfflineAssets.ts")
+);
+assert.deepEqual([...SERVICE_FORM_TEMPLATE_URLS], [
+  "/service-forms/placement.pdf",
+  "/service-forms/prebrood.pdf",
+  "/service-forms/service-report.pdf",
+]);
+assert.ok(collectWarmAssetUrls().includes("/service-forms/service-report.pdf"));
 
 const pdfBytes = readFileSync(
   join(root, "src/lib/placement-import/fixtures/weekly-chick-placement-9-5-26.pdf"),

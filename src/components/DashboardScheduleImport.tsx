@@ -437,7 +437,7 @@ export function DashboardScheduleImport({
   return (
     <Card>
       <div className="flex flex-wrap gap-2">
-        {SCHEDULE_IMPORT_TYPES.filter((type) => type.id !== "settlement").map((type) => {
+        {SCHEDULE_IMPORT_TYPES.map((type) => {
           const active = importType === type.id;
           return (
             <button

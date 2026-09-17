@@ -6,7 +6,7 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v13";
+const CACHE = "poultrytech-offline-v14";
 const NETWORK_MS = 1500;
 const OPEN_MS = 8000;
 const SIGNED_OUT_FLAG = "/__poultrytech-signed-out";
@@ -21,6 +21,9 @@ const PRECACHE = [
   "/icon-192.png",
   "/icon-512.png",
   "/favicon.png",
+  "/service-forms/placement.pdf",
+  "/service-forms/prebrood.pdf",
+  "/service-forms/service-report.pdf",
 ];
 
 function sameOrigin(url) {
@@ -31,7 +34,7 @@ function isStaticAsset(url) {
   const path = url.pathname;
   return (
     path.startsWith("/_next/static/") ||
-    /\.(?:js|mjs|css|png|ico|woff2|webmanifest)$/.test(path)
+    /\.(?:js|mjs|css|png|ico|woff2|webmanifest|pdf)$/.test(path)
   );
 }
 

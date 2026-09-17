@@ -284,19 +284,6 @@ export const performanceSchema = z.object({
   settlementNotes: z.string().optional().nullable(),
 });
 
-export const flockSettlementSchema = z.object({
-  flockId: z.string().min(1, "Select a farm with a flock"),
-  marketAge: z.coerce.number().int().positive().optional().nullable(),
-  breed: z.string().optional().nullable(),
-  weight: z.coerce.number().positive().optional().nullable(),
-  growthRate: z.coerce.number().positive().optional().nullable(),
-  feedConversion: z.coerce.number().positive().optional().nullable(),
-  adjustedFeedConversion: z.coerce.number().positive().optional().nullable(),
-  goodPoundsSold: z.coerce.number().min(0).optional().nullable(),
-  /** Farm place/rank on settlement (1, 2, 3…). */
-  settlementNo: z.coerce.number().int().min(1).optional().nullable(),
-});
-
 export const lastFeedOrderHouseInventorySchema = z.object({
   houseId: z.string().min(1),
   binAPounds: z.coerce.number().min(0, "Bin A cannot be negative"),

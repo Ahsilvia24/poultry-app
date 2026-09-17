@@ -26,7 +26,7 @@
 .DS_Store
 *.pem
 
-# local uploads (settlement examples, etc.)
+# local uploads
 /uploads
 
 # debug

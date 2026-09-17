@@ -26,7 +26,6 @@ import {
   farmIssueSchema,
   farmVisitSchema,
   feedDeliverySchema,
-  flockSettlementSchema,
   generatorLogSchema,
   litterEventSchema,
   performanceSchema,
@@ -305,51 +304,6 @@ export async function upsertPerformanceAction(formData: FormData) {
 
   revalidatePath(`/farms/${hf.flock.farmId}`);
   revalidatePath("/reports");
-  return { success: true };
-}
-
-export async function saveFlockSettlementAction(formData: FormData) {
-  const user = await requireUser();
-  const parsed = flockSettlementSchema.safeParse({
-    flockId: formData.get("flockId"),
-    marketAge: emptyToNull(formData.get("marketAge")),
-    breed: emptyToNull(formData.get("breed")),
-    weight: emptyToNull(formData.get("weight")),
-    growthRate: emptyToNull(formData.get("growthRate")),
-    feedConversion: emptyToNull(formData.get("feedConversion")),
-    adjustedFeedConversion: emptyToNull(formData.get("adjustedFeedConversion")),
-    goodPoundsSold: emptyToNull(formData.get("goodPoundsSold")),
-    settlementNo: emptyToNull(formData.get("settlementNo")),
-  });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid settlement" };
-  }
-
-  const flock = await prisma.flock.findFirst({
-    where: { id: parsed.data.flockId, farm: { userId: user.id!, deletedAt: null }, deletedAt: null },
-  });
-  if (!flock) return { error: "Flock not found or access denied" };
-  if (flock.flockStatus !== "COMPLETED") {
-    return { error: "Complete the flock before entering settlement info." };
-  }
-
-  await prisma.flock.update({
-    where: { id: flock.id },
-    data: {
-      birdType: parsed.data.breed,
-      growthRateLbsPerDay: parsed.data.growthRate,
-      settlementMarketAgeInDays: parsed.data.marketAge,
-      settlementWeightLbs: parsed.data.weight,
-      settlementFeedConversion: parsed.data.feedConversion,
-      settlementAdjustedFeedConversion: parsed.data.adjustedFeedConversion,
-      settlementGoodPoundsSold: parsed.data.goodPoundsSold,
-      settlementNo: parsed.data.settlementNo,
-    },
-  });
-
-  revalidatePath(`/farms/${flock.farmId}`);
-  revalidatePath("/reports");
-  revalidatePath("/settlement");
   return { success: true };
 }
 

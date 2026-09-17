@@ -85,13 +85,6 @@ export async function uploadScheduleImportAction(
   }
   const importType: ScheduleImportType = typeRaw;
 
-  if (importType === "settlement") {
-    return {
-      ok: false,
-      error: `${scheduleImportTypeLabel(importType)} import is not available.`,
-    };
-  }
-
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     return {

@@ -26,6 +26,7 @@ import { seedAndMergeFollowUpCompletions } from "@/lib/offline/followUpCompletio
 import { seedAndMergeServiceForms } from "@/lib/offline/serviceForms";
 import { syncPhoneToWebsite, type SyncPhoneResult } from "@/lib/offline/syncPhoneToWebsite";
 import type { OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
+import { warmOfflineAssets } from "@/lib/offline/warmOfflineAssets";
 
 type OfflineContextValue = {
   snapshot: OfflineSnapshot | null;
@@ -152,6 +153,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       if (!cancelled) setAliases(storedAliases);
       if (!cancelled) setReady(true);
       if (cancelled) return;
+      void warmOfflineAssets();
       void bindThisPhone();
       setSyncing(true);
       try {
