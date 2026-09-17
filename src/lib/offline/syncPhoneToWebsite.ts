@@ -1,6 +1,7 @@
 import { flushOutbox, pullRemoteSnapshot } from "@/lib/offline/flushOutbox";
-import { loadOutbox } from "@/lib/offline/idb";
+import { loadIdAliases, loadOutbox } from "@/lib/offline/idb";
 import type { IdAliases } from "@/lib/offline/remapIds";
+import { SYNC_OVERALL_MS, withTimeout } from "@/lib/offline/syncTimeout";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import { publicSyncLeftoverError } from "@/lib/visits/ensureVisitType";
 
@@ -71,8 +72,21 @@ async function fail(
   return { ok: false, pending: leftover.length, aliases, reason, error };
 }
 
-/** Upload every local write. Success only after the outbox is empty and the website answers. */
+/** Upload every local write. Success when the outbox is empty. Snapshot pull is best-effort. */
 export async function syncPhoneToWebsite(): Promise<SyncPhoneResult> {
+  try {
+    return await withTimeout(syncPhoneToWebsiteOnce(), SYNC_OVERALL_MS);
+  } catch {
+    const aliases = await loadIdAliases();
+    const leftover = await loadOutbox();
+    if (leftover.length === 0) {
+      return { ok: true, pending: 0, aliases, snapshot: null };
+    }
+    return fail("leftover", aliases);
+  }
+}
+
+async function syncPhoneToWebsiteOnce(): Promise<SyncPhoneResult> {
   let aliases: IdAliases = {};
   let lastError: string | undefined;
   for (let attempt = 0; attempt < SYNC_ATTEMPTS; attempt += 1) {

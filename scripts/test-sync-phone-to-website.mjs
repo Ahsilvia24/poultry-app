@@ -23,6 +23,8 @@ assert.match(sync, /reason === "leftover"/);
 assert.match(sync, /result\.error/);
 assert.match(sync, /lastError/);
 assert.match(sync, /publicSyncLeftoverError/);
+assert.match(sync, /withTimeout\(syncPhoneToWebsiteOnce\(\), SYNC_OVERALL_MS\)/);
+assert.match(sync, /snapshot: null/);
 
 const ping = read("src/app/api/offline/ping/route.ts");
 assert.match(ping, /auth\(\)/);
@@ -53,5 +55,38 @@ assert.match(flush, /updateHouseTemp/);
 assert.match(flush, /updateSettings/);
 assert.match(flush, /formWrite/);
 assert.match(flush, /server components render/);
+assert.match(flush, /AbortController/);
+assert.match(flush, /SNAPSHOT_TIMEOUT_MS/);
+assert.match(flush, /WRITE_TIMEOUT_MS/);
+assert.match(flush, /FLUSH_BUDGET_MS/);
+assert.match(flush, /withTimeout/);
+assert.match(flush, /isSyncTimeout/);
+assert.match(flush, /SYNC_WRITE_TIMEOUT/);
+assert.match(flush, /flushOutboxItem/);
+
+const timeoutSrc = read("src/lib/offline/syncTimeout.ts");
+assert.match(timeoutSrc, /SNAPSHOT_TIMEOUT_MS = 20_000/);
+assert.match(timeoutSrc, /WRITE_TIMEOUT_MS = 20_000/);
+assert.match(timeoutSrc, /FLUSH_BUDGET_MS = 45_000/);
+assert.match(timeoutSrc, /SYNC_OVERALL_MS = 70_000/);
+assert.match(timeoutSrc, /export function withTimeout/);
+
+const { withTimeout, isSyncTimeout, SYNC_TIMEOUT_MARK } = await import(
+  join(root, "src/lib/offline/syncTimeout.ts"),
+);
+
+const started = Date.now();
+let timedOut = false;
+try {
+  await withTimeout(new Promise(() => undefined), 40);
+} catch (error) {
+  timedOut = isSyncTimeout(error);
+  assert.equal(error instanceof Error && error.message, SYNC_TIMEOUT_MARK);
+}
+assert.equal(timedOut, true);
+assert.ok(Date.now() - started < 1000);
+
+const value = await withTimeout(Promise.resolve("saved"), 200);
+assert.equal(value, "saved");
 
 console.log("sync-phone-to-website: ok");
