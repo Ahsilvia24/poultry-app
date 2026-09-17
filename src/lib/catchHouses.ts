@@ -1,3 +1,5 @@
+import { formatDateKeyLabel } from "@/lib/app-calendar";
+
 /** Compact house list for Upcoming Catches: "H1-4 H6", "H5&7". */
 export function formatCatchHouses(houseNumbers: Iterable<number> | null | undefined): string {
   const nums = [
@@ -58,14 +60,8 @@ export function formatCatchAges(ages: Iterable<number> | null | undefined): stri
 
 /**
  * Far-right Upcoming Catches date from a `yyyy-MM-dd` key.
- * Uses local noon so UTC midnight does not roll the label back a day.
+ * Weekday uses the Settings timezone (default Central).
  */
-export function formatCatchDateLabel(dateKey: string): string {
-  const [y, m, d] = (dateKey ?? "").split("-").map(Number);
-  if (!y || !m || !d) return dateKey ?? "";
-  return new Date(y, m - 1, d, 12, 0, 0, 0).toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+export function formatCatchDateLabel(dateKey: string, timeZone?: string | null): string {
+  return formatDateKeyLabel(dateKey, timeZone);
 }

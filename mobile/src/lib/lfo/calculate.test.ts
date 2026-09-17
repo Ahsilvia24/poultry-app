@@ -88,4 +88,28 @@ describe("calculateLastFeedOrder clock", () => {
       4,
     );
   });
+
+  it("treats catch and order clocks as Settings timezone, default Central", () => {
+    const feedUp = feedUpAtFromCatch("2026-09-18", "23:00", undefined, "America/Chicago");
+    assert.equal(feedUp, "2026-09-18T18:00");
+    const result = calculateLastFeedOrder({
+      orderDate: "2026-09-18",
+      orderTime: "08:00",
+      consumptionRate: 0.45,
+      timeZone: "America/Chicago",
+      houses: [
+        {
+          houseId: "h1",
+          houseNumber: 1,
+          headCount: 10000,
+          binAPounds: 0,
+          binBPounds: 0,
+          feedUpAt: feedUp,
+        },
+      ],
+    });
+    // Catch 11:00 PM Central → feed up 6:00 PM → feed off 1:00 PM.
+    // From order 8:00 AM Central to feed off = 5 hours.
+    assert.equal(result.houses[0].hoursUntilFeedOff, 5);
+  });
 });

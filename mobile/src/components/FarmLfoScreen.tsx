@@ -18,7 +18,8 @@ import {
   feedUpLabel,
   formatLfoOrderClock,
 } from "../lib/lfo/calculate";
-import { getLfoFeedTiming } from "../lib/appSettings";
+import { getAppTimeZone, getLfoFeedTiming } from "../lib/appSettings";
+import { formatStampInAppZone } from "../lib/appCalendar";
 import { todayKey } from "../lib/ids";
 import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../lib/scrollField";
 import { useTabScrollToTop } from "../lib/tabScroll";
@@ -46,14 +47,9 @@ function formatHours(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
-function formatFeedStamp(d: Date | null) {
+function formatFeedStamp(d: Date | null, timeZone?: string | null) {
   if (!d) return "—";
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatStampInAppZone(d, timeZone);
 }
 
 type HouseDraft = {
@@ -144,8 +140,9 @@ export function FarmLfoScreen({
   savedSection?: React.ReactNode;
 }) {
   const navigation = useNavigation();
+  const timeZone = getAppTimeZone();
   const [orderDate, setOrderDate] = useState(todayKey);
-  const [orderTime, setOrderTime] = useState(currentHalfHourTime);
+  const [orderTime, setOrderTime] = useState(() => currentHalfHourTime(undefined, timeZone));
   const [consumptionRate, setConsumptionRate] = useState(
     formatConsumptionRate(DEFAULT_LFO_CONSUMPTION_RATE),
   );
@@ -197,11 +194,12 @@ export function FarmLfoScreen({
         headCount: house.headCount,
         binAPounds: Number(house.binAPounds) || 0,
         binBPounds: Number(house.binBPounds) || 0,
-        feedUpAt: feedUpAtFromCatch(house.catchDate, house.catchTime, timing),
+        feedUpAt: feedUpAtFromCatch(house.catchDate, house.catchTime, timing, timeZone),
       })),
       timing,
+      timeZone,
     });
-  }, [consumptionRate, houses, orderDate, orderTime, timing]);
+  }, [consumptionRate, houses, orderDate, orderTime, timeZone, timing]);
 
   const feedMillText = useMemo(
     () =>
@@ -294,13 +292,13 @@ export function FarmLfoScreen({
       saveFarmLfo({
         farmId,
         orderDate: orderDate.trim() || todayKey(),
-        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(),
+        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(undefined, timeZone),
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         houses: houses.map((house) => ({
           houseId: house.houseId,
           binAPounds: Number(house.binAPounds) || 0,
           binBPounds: Number(house.binBPounds) || 0,
-          feedUpAt: feedUpAtFromCatch(house.catchDate, house.catchTime, timing),
+          feedUpAt: feedUpAtFromCatch(house.catchDate, house.catchTime, timing, timeZone),
           headCount: house.headCount,
         })),
       });
@@ -472,13 +470,13 @@ export function FarmLfoScreen({
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     <Text style={styles.muted}>{feedUpLabel(timing)}</Text>
                     <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
-                      {formatFeedStamp(result.feedUpAt)}
+                      {formatFeedStamp(result.feedUpAt, timeZone)}
                     </Text>
                   </View>
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     <Text style={styles.muted}>{feedOffLabel(timing)}</Text>
                     <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
-                      {formatFeedStamp(result.feedOffAt)}
+                      {formatFeedStamp(result.feedOffAt, timeZone)}
                     </Text>
                   </View>
                   <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
@@ -579,9 +577,9 @@ export function FarmLfoScreen({
               />
             </View>
           </View>
-          {formatLfoOrderClock(orderDate, orderTime) ? (
+          {formatLfoOrderClock(orderDate, orderTime, timeZone) ? (
             <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
-              Hours from {formatLfoOrderClock(orderDate, orderTime)}
+              Hours from {formatLfoOrderClock(orderDate, orderTime, timeZone)}
             </Text>
           ) : null}
         </Card>

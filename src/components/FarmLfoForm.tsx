@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { appTodayKey, formatStampInAppZone } from "@/lib/app-calendar";
 import { DateKeyField } from "@/components/DateKeyField";
+import { useAppTimeZone } from "@/lib/useAppTimeZone";
 import { TimeKeyField } from "@/components/TimeKeyField";
 import { Button, Card, Input, Label } from "@/components/ui";
 import { saveFarmLfoHubAction } from "@/app/actions/lfo";
@@ -94,8 +95,9 @@ export function FarmLfoForm({
 }) {
   const { enabled, queue } = useReplicaWrite();
   const timing = useLfoFeedTiming();
-  const [orderDate, setOrderDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
-  const [orderTime, setOrderTime] = useState(currentHalfHourTime);
+  const timeZone = useAppTimeZone();
+  const [orderDate, setOrderDate] = useState(() => appTodayKey(undefined, timeZone));
+  const [orderTime, setOrderTime] = useState(() => currentHalfHourTime(undefined, timeZone));
   const [consumptionRate, setConsumptionRate] = useState(
     formatConsumptionRate(DEFAULT_LFO_CONSUMPTION_RATE),
   );
@@ -116,11 +118,12 @@ export function FarmLfoForm({
         headCount: row.headCount,
         binAPounds: Number(row.binAPounds) || 0,
         binBPounds: Number(row.binBPounds) || 0,
-        feedUpAt: feedUpAtFromCatch(row.catchDate, row.catchTime, timing),
+        feedUpAt: feedUpAtFromCatch(row.catchDate, row.catchTime, timing, timeZone),
       })),
       timing,
+      timeZone,
     });
-  }, [consumptionRate, orderDate, orderTime, rows, timing]);
+  }, [consumptionRate, orderDate, orderTime, rows, timeZone, timing]);
 
   const feedMillText = useMemo(
     () =>
@@ -152,7 +155,7 @@ export function FarmLfoForm({
       formData.append("houseId", row.houseId);
       formData.append("binAPounds", row.binAPounds);
       formData.append("binBPounds", row.binBPounds);
-      formData.append("feedUpAt", feedUpAtFromCatch(row.catchDate, row.catchTime, timing) ?? "");
+      formData.append("feedUpAt", feedUpAtFromCatch(row.catchDate, row.catchTime, timing, timeZone) ?? "");
     }
     return formData;
   }
@@ -230,7 +233,7 @@ export function FarmLfoForm({
       ) : (
         rows.map((house) => {
           const result = calc.houses.find((row) => row.houseId === house.houseId);
-          const feedUpAt = feedUpAtFromCatch(house.catchDate, house.catchTime, timing) ?? "";
+          const feedUpAt = feedUpAtFromCatch(house.catchDate, house.catchTime, timing, timeZone) ?? "";
           return (
             <Card key={house.houseId}>
               <input type="hidden" name="houseId" value={house.houseId} />
@@ -307,13 +310,13 @@ export function FarmLfoForm({
                   <div className="flex justify-between gap-2">
                     <dt className="text-stone-500">{feedUpLabel(timing)}</dt>
                     <dd className="font-medium text-stone-800">
-                      {result.feedUpAt ? format(result.feedUpAt, "MMM d, h:mm a") : "—"}
+                      {result.feedUpAt ? formatStampInAppZone(result.feedUpAt, timeZone) : "—"}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-2">
                     <dt className="text-stone-500">{feedOffLabel(timing)}</dt>
                     <dd className="font-medium text-stone-800">
-                      {result.feedOffAt ? format(result.feedOffAt, "MMM d, h:mm a") : "—"}
+                      {result.feedOffAt ? formatStampInAppZone(result.feedOffAt, timeZone) : "—"}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-2">
@@ -401,9 +404,9 @@ export function FarmLfoForm({
             />
           </PairField>
         </div>
-        {formatLfoOrderClock(orderDate, orderTime) ? (
+        {formatLfoOrderClock(orderDate, orderTime, timeZone) ? (
           <p className="mt-1 text-xs text-stone-500">
-            Hours from {formatLfoOrderClock(orderDate, orderTime)}
+            Hours from {formatLfoOrderClock(orderDate, orderTime, timeZone)}
           </p>
         ) : null}
       </Card>

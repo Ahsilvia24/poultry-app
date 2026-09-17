@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { appToday, appTodayKey, calendarDaysBetween, dateKeyForAge } from "./app-calendar.ts";
+import {
+  addCalendarDays,
+  appToday,
+  appTodayKey,
+  calendarDaysBetween,
+  dateKeyForAge,
+  formatDateKeyLabel,
+  formatDateTimeInAppZone,
+  zonedDateTimeFromParts,
+} from "./app-calendar.ts";
 import { DEFAULT_APP_TIME_ZONE, resolveAppTimeZone } from "./app-time-zones.ts";
 
 function daysSincePlacement(placement: Date, onDate: Date, timeZone?: string | null) {
@@ -53,5 +62,25 @@ describe("app calendar", () => {
   it("counts calendar days from keys", () => {
     assert.equal(calendarDaysBetween("2026-09-01", "2026-09-11"), 10);
     assert.equal(calendarDaysBetween("2026-09-11", "2026-09-01"), -10);
+    assert.equal(addCalendarDays("2026-09-18", 12), "2026-09-30");
+    assert.equal(addCalendarDays("2026-09-18", -28), "2026-08-21");
+  });
+
+  it("reads wall-clock LFO times in the Settings timezone, not UTC midnight", () => {
+    // 11:00 PM Central on Sep 18 2026 is 4:00 AM UTC on Sep 19 (CDT).
+    const catchAt = zonedDateTimeFromParts("2026-09-18", "23:00", "America/Chicago");
+    assert.equal(catchAt?.toISOString(), "2026-09-19T04:00:00.000Z");
+
+    const feedUp = new Date(catchAt!.getTime() - 5 * 60 * 60 * 1000);
+    assert.equal(feedUp.toISOString(), "2026-09-18T23:00:00.000Z");
+    assert.equal(formatDateTimeInAppZone(feedUp, "America/Chicago"), "2026-09-18T18:00");
+
+    const pacificCatch = zonedDateTimeFromParts("2026-09-18", "23:00", "America/Los_Angeles");
+    assert.equal(pacificCatch?.toISOString(), "2026-09-19T06:00:00.000Z");
+  });
+
+  it("labels a stored catch day from the key, not UTC midnight in the farm zone", () => {
+    assert.match(formatDateKeyLabel("2026-09-18", "America/Chicago"), /Fri.*Sep 18/);
+    assert.match(formatDateKeyLabel("2026-09-18", "America/New_York"), /Fri.*Sep 18/);
   });
 });

@@ -117,7 +117,7 @@ export function selectLfo(snapshot: OfflineSnapshot, initialFarmId?: string) {
       );
       const houses = inventories
         .map((inv) => {
-          const catchParts = catchPartsFromFeedUpAt(inv.feedUpAt, timing);
+          const catchParts = catchPartsFromFeedUpAt(inv.feedUpAt, timing, timeZone);
           return {
             houseId: inv.houseId,
             houseNumber: houseNumberById.get(inv.houseId) ?? 0,
@@ -134,6 +134,7 @@ export function selectLfo(snapshot: OfflineSnapshot, initialFarmId?: string) {
         orderTime: lfo.orderTime,
         consumptionRate: lfo.consumptionRate,
         timing,
+        timeZone,
         houses: inventories.map((inv) => ({
           houseId: inv.houseId,
           houseNumber: houseNumberById.get(inv.houseId) ?? 0,
@@ -153,6 +154,7 @@ export function selectLfo(snapshot: OfflineSnapshot, initialFarmId?: string) {
         calculatedAt: lfo.calculatedAt ?? lfo.createdAt,
         notes: lfo.notes,
         timing,
+        timeZone,
         houses,
       };
       return {
@@ -217,7 +219,7 @@ export function selectLfoEdit(snapshot: OfflineSnapshot, lfoId: string): LfoEdit
     .sort((a, b) => a.houseNumber - b.houseNumber)
     .map((house) => {
       const inv = invByHouse.get(house.id);
-      const catchParts = catchPartsFromFeedUpAt(inv?.feedUpAt, timing);
+      const catchParts = catchPartsFromFeedUpAt(inv?.feedUpAt, timing, timeZone);
       return {
         houseId: house.id,
         houseNumber: house.houseNumber,
@@ -235,7 +237,7 @@ export function selectLfoEdit(snapshot: OfflineSnapshot, lfoId: string): LfoEdit
     );
     houses = [...invByHouse.values()]
       .map((inv) => {
-        const catchParts = catchPartsFromFeedUpAt(inv.feedUpAt, timing);
+        const catchParts = catchPartsFromFeedUpAt(inv.feedUpAt, timing, timeZone);
         return {
           houseId: inv.houseId,
           houseNumber: houseNumberById.get(inv.houseId) ?? 0,

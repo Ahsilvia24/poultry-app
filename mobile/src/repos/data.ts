@@ -26,7 +26,7 @@ import {
   formatLocalDateTime,
 } from "../lib/lfo/calculate";
 import { addCatchAge, addCatchHouseNumber, uniqueCatchAges } from "../lib/catchHouses";
-import { getDefaultMarketAgeDays, getLfoFeedTiming } from "../lib/appSettings";
+import { getAppTimeZone, getDefaultMarketAgeDays, getLfoFeedTiming } from "../lib/appSettings";
 import { lfoDisplayName, nextCustomLfoName } from "../lib/lfo/customName";
 import { normalizeHalfHourTime } from "../lib/time-slots";
 import { buildFieldLogWeeks, type FieldLogWeek } from "../lib/reports/field-log";
@@ -1804,7 +1804,8 @@ export function listLfos() {
         orderTime: detail.orderTime,
         consumptionRate: detail.consumptionRate,
         timing: getLfoFeedTiming(),
-        houses: detail.houses.map((h) => ({
+        timeZone: getAppTimeZone(),
+        houses: detail.houses.map((h) => ({)
           houseId: h.houseId,
           houseNumber: h.houseNumber,
           binAPounds: h.binAPounds,
@@ -1955,11 +1956,11 @@ export function createLfo(farmId: string, orderDate: string, notes?: string, ord
     );
     const catchTime = hf?.catch_time?.trim() || null;
     const catchDate = hf?.catch_date?.trim() || hf?.flock_catch?.trim() || null;
-    const feedUp = catchTime && catchDate ? feedUpFromCatch(catchDate, catchTime, getLfoFeedTiming()) : null;
+    const feedUp = catchTime && catchDate ? feedUpFromCatch(catchDate, catchTime, getLfoFeedTiming(), getAppTimeZone()) : null;
     db.runSync(
       `INSERT INTO lfo_house_inventory (id, lfo_id, house_id, bin_a_pounds, bin_b_pounds, feed_up_at, consumption_rate)
        VALUES (?, ?, ?, 0, 0, ?, 0.45)`,
-      [newId("lfoi"), id, h.id, feedUp ? formatLocalDateTime(feedUp) : null],
+      [newId("lfoi"), id, h.id, feedUp ? formatLocalDateTime(feedUp, getAppTimeZone()) : null],
     );
   }
   ensureLastFeedOrderVisit(farmId, orderDate);

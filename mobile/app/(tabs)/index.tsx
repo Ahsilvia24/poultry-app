@@ -38,6 +38,7 @@ import {
 import { ScheduleImportCard } from "../../src/components/ScheduleImportCard";
 import { OneDotName } from "../../src/components/OneDotName";
 import { formatCatchAges, formatCatchDateLabel, formatCatchHouses } from "../../src/lib/catchHouses";
+import { getAppTimeZone } from "../../src/lib/appSettings";
 import { compactCatchTimeLabel } from "../../src/lib/time-slots";
 
 type Dashboard = ReturnType<typeof getDashboard>;
@@ -442,7 +443,7 @@ export default function DashboardScreen() {
                         }}
                       >
                         <Text style={{ color: colors.muted, fontSize: 13 }}>
-                          {formatCatchDateLabel(c.date)}
+                          {formatCatchDateLabel(c.date, getAppTimeZone())}
                         </Text>
                         {c.catchTime ? (
                           <Text style={{ color: colors.muted, fontSize: 13 }}>

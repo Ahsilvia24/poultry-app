@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { format } from "date-fns";
+import { appTodayKey, formatStampInAppZone } from "@/lib/app-calendar";
 import { DateKeyField } from "@/components/DateKeyField";
+import { useAppTimeZone } from "@/lib/useAppTimeZone";
 import { TimeKeyField } from "@/components/TimeKeyField";
 import { Button, Card, Input, Label } from "@/components/ui";
 import { ConsumptionRateCalculator } from "@/components/ConsumptionRateCalculator";
@@ -38,8 +39,9 @@ function PairField({ children }: { children: React.ReactNode }) {
 export function ManualLfoForm() {
   const { enabled, queue } = useReplicaWrite();
   const timing = useLfoFeedTiming();
-  const [orderDate, setOrderDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
-  const [orderTime, setOrderTime] = useState(currentHalfHourTime);
+  const timeZone = useAppTimeZone();
+  const [orderDate, setOrderDate] = useState(() => appTodayKey(undefined, timeZone));
+  const [orderTime, setOrderTime] = useState(() => currentHalfHourTime(undefined, timeZone));
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [rateFocused, setRateFocused] = useState(false);
   const [headCount, setHeadCount] = useState("");
@@ -63,12 +65,13 @@ export function ManualLfoForm() {
           headCount: Number.isFinite(heads) && heads > 0 ? heads : 0,
           binAPounds: Number(binAPounds) || 0,
           binBPounds: Number(binBPounds) || 0,
-          feedUpAt: feedUpAtFromCatch(catchDate, catchTime, timing),
+          feedUpAt: feedUpAtFromCatch(catchDate, catchTime, timing, timeZone),
         },
       ],
       timing,
+      timeZone,
     });
-  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime, timing]);
+  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime, timeZone, timing]);
 
   const result = calc.houses[0];
 
@@ -202,13 +205,13 @@ export function ManualLfoForm() {
             <div className="flex justify-between gap-2">
               <dt className="text-stone-500">{feedUpLabel(timing)}</dt>
               <dd className="font-medium text-stone-800">
-                {result.feedUpAt ? format(result.feedUpAt, "MMM d, h:mm a") : "—"}
+                {result.feedUpAt ? formatStampInAppZone(result.feedUpAt, timeZone) : "—"}
               </dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt className="text-stone-500">{feedOffLabel(timing)}</dt>
               <dd className="font-medium text-stone-800">
-                {result.feedOffAt ? format(result.feedOffAt, "MMM d, h:mm a") : "—"}
+                {result.feedOffAt ? formatStampInAppZone(result.feedOffAt, timeZone) : "—"}
               </dd>
             </div>
             <div className="flex justify-between gap-2">
@@ -291,9 +294,9 @@ export function ManualLfoForm() {
             />
           </PairField>
         </div>
-        {formatLfoOrderClock(orderDate, orderTime) ? (
+        {formatLfoOrderClock(orderDate, orderTime, timeZone) ? (
           <p className="mt-1 text-xs text-stone-500">
-            Hours from {formatLfoOrderClock(orderDate, orderTime)}
+            Hours from {formatLfoOrderClock(orderDate, orderTime, timeZone)}
           </p>
         ) : null}
       </Card>

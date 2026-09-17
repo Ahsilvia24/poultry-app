@@ -2,7 +2,8 @@
 
 import { useRef, useState, useTransition } from "react";
 import { ReplicaLink } from "@/components/ReplicaLink";
-import { format, parseISO } from "date-fns";
+import { formatDateKeyLabel } from "@/lib/app-calendar";
+import { useAppTimeZone } from "@/lib/useAppTimeZone";
 import { deactivateFarmAction } from "@/app/actions/farms";
 import { formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
@@ -13,8 +14,8 @@ import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { uniqueSortedAges } from "@/lib/flockAges";
 import type { FarmCardSummary } from "@/types";
 
-function formatLastVisitDate(dateKey: string) {
-  return format(parseISO(dateKey), "EEE, d MMM yy");
+function formatLastVisitDate(dateKey: string, timeZone?: string | null) {
+  return formatDateKeyLabel(dateKey, timeZone);
 }
 
 function openIssuesLabel(count: number) {
@@ -34,6 +35,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
   const [pending, start] = useTransition();
   const deactivatingRef = useRef(false);
   const { enabled, queue } = useReplicaWrite();
+  const timeZone = useAppTimeZone();
   const ages = farmAges(farm);
 
   function makeInactive() {
@@ -132,7 +134,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
               <div className="mt-3 flex flex-wrap gap-3 text-[12px] text-stone-500">
                 <span>
                   Last visit:{" "}
-                  {farm.lastVisitDate ? formatLastVisitDate(farm.lastVisitDate) : "—"}
+                  {farm.lastVisitDate ? formatLastVisitDate(farm.lastVisitDate, timeZone) : "—"}
                 </span>
                 <span>{openIssuesLabel(farm.openIssues)}</span>
               </div>

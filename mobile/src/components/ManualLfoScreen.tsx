@@ -18,7 +18,8 @@ import {
   feedUpLabel,
   formatLfoOrderClock,
 } from "../lib/lfo/calculate";
-import { getLfoFeedTiming } from "../lib/appSettings";
+import { getAppTimeZone, getLfoFeedTiming } from "../lib/appSettings";
+import { formatStampInAppZone } from "../lib/appCalendar";
 import { todayKey } from "../lib/ids";
 import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../lib/scrollField";
 import { useTabScrollToTop } from "../lib/tabScroll";
@@ -52,14 +53,9 @@ function formatHours(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
-function formatFeedStamp(d: Date | null) {
+function formatFeedStamp(d: Date | null, timeZone?: string | null) {
   if (!d) return "—";
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatStampInAppZone(d, timeZone);
 }
 
 type ActiveField = "rate" | "head" | "binA" | "binB" | "calcWater" | "calcHead";
@@ -125,8 +121,9 @@ export function ManualLfoScreen({
   savedSection?: React.ReactNode;
 }) {
   const navigation = useNavigation();
+  const timeZone = getAppTimeZone();
   const [orderDate, setOrderDate] = useState(todayKey);
-  const [orderTime, setOrderTime] = useState(currentHalfHourTime);
+  const [orderTime, setOrderTime] = useState(() => currentHalfHourTime(undefined, timeZone));
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [headCount, setHeadCount] = useState("");
   const [calcWaterGal, setCalcWaterGal] = useState(DEFAULT_WATER_GAL);
@@ -184,12 +181,13 @@ export function ManualLfoScreen({
           headCount: Number.isFinite(heads) && heads > 0 ? heads : 0,
           binAPounds: Number(binAPounds) || 0,
           binBPounds: Number(binBPounds) || 0,
-          feedUpAt: feedUpAtFromCatch(catchDate, catchTime, timing),
+          feedUpAt: feedUpAtFromCatch(catchDate, catchTime, timing, timeZone),
         },
       ],
       timing,
+      timeZone,
     });
-  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime, timing]);
+  }, [binAPounds, binBPounds, catchDate, catchTime, consumptionRate, heads, orderDate, orderTime, timeZone, timing]);
 
   const result = calc.houses[0];
 
@@ -261,12 +259,12 @@ export function ManualLfoScreen({
       const rate = Number(consumptionRate);
       const { id } = createManualLfo({
         orderDate: orderDate.trim() || todayKey(),
-        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(),
+        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(undefined, timeZone),
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         headCount: Number.isFinite(heads) && heads > 0 ? heads : 0,
         binAPounds: Number(binAPounds) || 0,
         binBPounds: Number(binBPounds) || 0,
-        feedUpAt: feedUpAtFromCatch(catchDate, catchTime, timing),
+        feedUpAt: feedUpAtFromCatch(catchDate, catchTime, timing, timeZone),
       });
       setActiveField(null);
       if (onSaved) onSaved(id);
@@ -441,13 +439,13 @@ export function ManualLfoScreen({
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                 <Text style={styles.muted}>{feedUpLabel(timing)}</Text>
                 <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
-                  {formatFeedStamp(result.feedUpAt)}
+                  {formatFeedStamp(result.feedUpAt, timeZone)}
                 </Text>
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                 <Text style={styles.muted}>{feedOffLabel(timing)}</Text>
                 <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
-                  {formatFeedStamp(result.feedOffAt)}
+                  {formatFeedStamp(result.feedOffAt, timeZone)}
                 </Text>
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
@@ -546,9 +544,9 @@ export function ManualLfoScreen({
               />
             </View>
           </View>
-          {formatLfoOrderClock(orderDate, orderTime) ? (
+          {formatLfoOrderClock(orderDate, orderTime, timeZone) ? (
             <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
-              Hours from {formatLfoOrderClock(orderDate, orderTime)}
+              Hours from {formatLfoOrderClock(orderDate, orderTime, timeZone)}
             </Text>
           ) : null}
         </Card>

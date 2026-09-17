@@ -1,14 +1,23 @@
-import { format } from "date-fns";
-import { parseDateKey } from "../ids";
+const SHORT_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
-/** Service date on Prebrood form: "07 Aug 26" */
+/** Service date on Prebrood form: "07 Aug 26" — from the stored key, not UTC midnight. */
 export function formatServiceShortDate(dateKey: string) {
-  if (!dateKey) return "";
-  try {
-    return format(parseDateKey(dateKey), "dd MMM yy");
-  } catch {
-    return dateKey;
-  }
+  const [y, m, d] = (dateKey ?? "").slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return dateKey ?? "";
+  return `${String(d).padStart(2, "0")} ${SHORT_MONTHS[m - 1]} ${String(y).slice(-2)}`;
 }
 
 export function formatMinVentPair(on: string, off: string) {

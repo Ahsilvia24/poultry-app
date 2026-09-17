@@ -13,6 +13,7 @@ import {
   type MortalityHouseRow,
   type MortalityPctRow,
 } from "../../src/repos/data";
+import { getAppTimeZone } from "../../src/lib/appSettings";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
   defaultFieldLogRange,
@@ -105,7 +106,7 @@ export default function ReportsScreen() {
   const farmIdParam = paramId(params.farmId);
   const typeParam = paramId(params.type);
   const farms = useMemo(() => listFarms().farms, []);
-  const weekDefaults = useMemo(() => defaultFieldLogRange(), []);
+  const weekDefaults = useMemo(() => defaultFieldLogRange(new Date(), getAppTimeZone()), []);
   const initialFarmId = farmIdParam || farms[0]?.id || "";
   const initialMortFrom =
     farms.find((farm) => farm.id === initialFarmId)?.placementDate ??

@@ -1,4 +1,6 @@
-import { eachDayOfInterval, format, parseISO, subDays } from "date-fns";
+import { eachDayOfInterval, parseISO } from "date-fns";
+import { addCalendarDays, appTodayKey } from "@/lib/app-calendar";
+import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import {
   birdAgeFromPlacement,
   calcPercentage,
@@ -53,16 +55,45 @@ function inRange(key: string, from: string, to: string) {
   return day >= from && day <= to;
 }
 
+const SHORT_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+function formatRangeDay(dateKey: string) {
+  const [y, m, d] = dateKey.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return dateKey;
+  return `${d} ${SHORT_MONTHS[m - 1]} ${String(y).slice(-2)}`;
+}
+
 export function formatRangeLabel(from: string, to: string) {
-  return `${format(parseISO(from), "d MMM yy")} to ${format(parseISO(to), "d MMM yy")}`;
+  return `${formatRangeDay(from)} to ${formatRangeDay(to)}`;
 }
 
-export function defaultGeneratorRange(today = new Date()): { from: string; to: string } {
-  return { from: format(subDays(today, 28), "yyyy-MM-dd"), to: format(today, "yyyy-MM-dd") };
+export function defaultGeneratorRange(
+  today: Date | string = new Date(),
+  timeZone?: string | null,
+): { from: string; to: string } {
+  const key = typeof today === "string" ? today.slice(0, 10) : appTodayKey(today, timeZone);
+  return { from: addCalendarDays(key, -28), to: key };
 }
 
-export function defaultMortalityRange(today = new Date()): { from: string; to: string } {
-  return { from: format(subDays(today, 42), "yyyy-MM-dd"), to: format(today, "yyyy-MM-dd") };
+export function defaultMortalityRange(
+  today: Date | string = new Date(),
+  timeZone?: string | null,
+): { from: string; to: string } {
+  const key = typeof today === "string" ? today.slice(0, 10) : appTodayKey(today, timeZone);
+  return { from: addCalendarDays(key, -42), to: key };
 }
 
 export function activeFlockPlacementKey(
@@ -85,9 +116,10 @@ export function activeFlockPlacementKey(
 export function mortalityRangeForFarm(
   snapshot: OfflineSnapshot,
   farmId: string,
-  today = new Date(),
+  today: Date | string = new Date(),
+  timeZone?: string | null,
 ): { from: string; to: string } {
-  const fallback = defaultMortalityRange(today);
+  const fallback = defaultMortalityRange(today, timeZone);
   if (!farmId) return fallback;
   return {
     from: activeFlockPlacementKey(snapshot, farmId) ?? fallback.from,
@@ -100,14 +132,15 @@ export function selectReports(
   search: { type?: string; farmId?: string; from?: string; to?: string },
 ): ReplicaReportsModel {
   const type = resolveReportType(search.type);
-  const today = new Date();
-  const fieldDefaults = defaultFieldLogRange(today);
-  const generatorDefaults = defaultGeneratorRange(today);
+  const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
+  const todayKey = appTodayKey(undefined, timeZone);
+  const fieldDefaults = defaultFieldLogRange(todayKey);
+  const generatorDefaults = defaultGeneratorRange(todayKey, timeZone);
   const requestedFarmId = search.farmId ?? "";
   const mortalityDefaults =
     type === "mortality" && requestedFarmId
-      ? mortalityRangeForFarm(snapshot, requestedFarmId, today)
-      : defaultMortalityRange(today);
+      ? mortalityRangeForFarm(snapshot, requestedFarmId, todayKey, timeZone)
+      : defaultMortalityRange(todayKey, timeZone);
   const typeDefaults =
     type === "field-log"
       ? fieldDefaults

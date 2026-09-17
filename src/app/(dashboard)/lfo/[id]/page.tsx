@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -10,35 +9,40 @@ import {
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
 import { BackHeader, Card } from "@/components/ui";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
-import { catchPartsFromFeedUpAt } from "@/lib/lfo/calculate";
+import { catchPartsFromFeedUpAt, lfoTimingFromSettings } from "@/lib/lfo/calculate";
 import { lfoDisplayName } from "@/lib/lfo/customName";
+import { getUserTimeZone } from "@/lib/user-time-zone";
+import { dateKeyFromDb } from "@/lib/visits/schedule";
 
 type Params = Promise<{ id: string }>;
-
-function toDatetimeLocalValue(d: Date | null | undefined): string | null {
-  if (!d) return null;
-  return format(d, "yyyy-MM-dd'T'HH:mm");
-}
 
 export default async function EditLfoPage({ params }: { params: Params }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
   const { id } = await params;
+  const timeZone = await getUserTimeZone(session.user.id);
 
-  const lfo = await prisma.lastFeedOrder.findFirst({
-    where: { id, farm: { userId: session.user.id, deletedAt: null } },
-    include: {
-      farm: { select: { id: true, farmName: true } },
-      houseInventories: true,
-    },
-  });
+  const [lfo, settings] = await Promise.all([
+    prisma.lastFeedOrder.findFirst({
+      where: { id, farm: { userId: session.user.id, deletedAt: null } },
+      include: {
+        farm: { select: { id: true, farmName: true } },
+        houseInventories: true,
+      },
+    }),
+    prisma.userSettings.findUnique({
+      where: { userId: session.user.id },
+      select: { lfoFeedUpHoursBeforeCatch: true, lfoFeedOffHoursBeforeCatch: true },
+    }),
+  ]);
 
   if (!lfo) notFound();
 
   const displayName = lfoDisplayName(lfo.farm.farmName, lfo.notes);
   const asOf = lfo.calculatedAt ?? lfo.createdAt;
   const needsLiveHeads = lfo.houseInventories.some((inv) => inv.headCount == null);
+  const timing = lfoTimingFromSettings(settings);
   const [houses, liveHeads] = await Promise.all([
     prisma.house.findMany({
       where: { farmId: lfo.farm.id, deletedAt: null },
@@ -53,7 +57,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
 
   const houseRows = houses.map((h) => {
     const inv = invByHouse.get(h.id);
-    const catchParts = catchPartsFromFeedUpAt(toDatetimeLocalValue(inv?.feedUpAt));
+    const catchParts = catchPartsFromFeedUpAt(inv?.feedUpAt, timing, timeZone);
     return {
       houseId: h.id,
       houseNumber: h.houseNumber,
@@ -95,7 +99,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
           action={submit}
           saveAsNewAction={saveAsNew}
           farmName={displayName}
-          orderDate={format(lfo.orderDate, "yyyy-MM-dd")}
+          orderDate={dateKeyFromDb(lfo.orderDate)}
           orderTime={lfo.orderTime}
           consumptionRate={lfo.consumptionRate}
           asOf={asOf}

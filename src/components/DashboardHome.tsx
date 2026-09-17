@@ -1,6 +1,7 @@
 "use client";
 
 import { formatCatchAges, formatCatchDateLabel, formatCatchHouses } from "@/lib/catchHouses";
+import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { Card } from "@/components/ui";
 import { DashboardScheduleImport } from "@/components/DashboardScheduleImport";
@@ -35,6 +36,7 @@ export function DashboardHome({
 }) {
   const { snapshot } = useOffline();
   const data = selectDashboard(snapshot, initial);
+  const timeZone = resolveAppTimeZone(snapshot?.settings?.appTimeZone);
 
   return (
     <div>
@@ -114,7 +116,7 @@ export function DashboardHome({
                         </span>
                       )}
                       <span className="ml-auto flex shrink-0 items-baseline gap-1.5 whitespace-nowrap text-stone-600">
-                        <span>{formatCatchDateLabel(c.date)}</span>
+                        <span>{formatCatchDateLabel(c.date, timeZone)}</span>
                         {c.catchTime ? (
                           <span>{compactCatchTimeLabel(c.catchTime)}</span>
                         ) : null}

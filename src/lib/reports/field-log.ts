@@ -1,3 +1,5 @@
+import { appTodayKey } from "@/lib/app-calendar";
+
 /** Calendar `yyyy-MM-dd` helpers that ignore local timezone. */
 
 export const FIELD_LOG_WEEKDAYS = [
@@ -94,8 +96,9 @@ function pad2(n: number) {
   return String(n).padStart(2, "0");
 }
 
-export function localDateKey(d = new Date()): string {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+export function localDateKey(d: Date | string = new Date(), timeZone?: string | null): string {
+  if (typeof d === "string") return d.slice(0, 10);
+  return appTodayKey(d, timeZone);
 }
 
 export function addDaysToDateKey(dateKey: string, days: number): string {
@@ -113,8 +116,11 @@ export function mondayOfWeek(dateKey: string): string {
   return addDaysToDateKey(dateKey, -fromMonday);
 }
 
-export function defaultFieldLogRange(today = new Date()): { from: string; to: string } {
-  const todayKey = localDateKey(today);
+export function defaultFieldLogRange(
+  today: Date | string = new Date(),
+  timeZone?: string | null,
+): { from: string; to: string } {
+  const todayKey = localDateKey(today, timeZone);
   return { from: mondayOfWeek(todayKey), to: todayKey };
 }
 

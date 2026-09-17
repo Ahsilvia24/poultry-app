@@ -6,7 +6,7 @@ import {
   startOfDay,
   subDays,
 } from "date-fns";
-import { appTodayKey } from "../app-calendar";
+import { addCalendarDays, appTodayKey, calendarDaysBetween } from "../app-calendar";
 import { lfoTargetWeekday } from "../lfoSchedule";
 
 const DEFAULT_MARKET_AGE = 52;
@@ -168,11 +168,10 @@ export function splitScheduleForDashboard(
   _now: Date = new Date(),
   timeZone?: string | null,
 ): { today: DueScheduledVisit[]; upcoming: DueScheduledVisit[] } {
-  const todayStart = startOfDay(today);
   const todayKey = dateKeyFromDb(today);
-  const endKey = format(startOfDay(horizon), "yyyy-MM-dd");
-  const horizonDays = Math.max(0, differenceInCalendarDays(startOfDay(horizon), todayStart));
-  const overdueStart = format(subDays(todayStart, horizonDays), "yyyy-MM-dd");
+  const endKey = dateKeyFromDb(horizon);
+  const horizonDays = Math.max(0, calendarDaysBetween(todayKey, endKey));
+  const overdueStart = addCalendarDays(todayKey, -horizonDays);
 
   const todayItems: DueScheduledVisit[] = [];
   const upcomingItems: DueScheduledVisit[] = [];

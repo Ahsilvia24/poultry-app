@@ -100,6 +100,7 @@ export function ReportsView({
 }) {
   const nav = useOfflineNav();
   const seed = mergeReportsInitial(initial);
+  const timeZone = snapshot.settings?.appTimeZone;
   const [type, setType] = useState<ReportTypeKey>(() => resolveReportType(seed.type));
   const [farmId, setFarmId] = useState(() => {
     const requested = seed.farmId ?? "";
@@ -109,14 +110,14 @@ export function ReportsView({
     return requested;
   });
   const [fieldRange, setFieldRange] = useState(() => {
-    const defaults = defaultFieldLogRange();
+    const defaults = defaultFieldLogRange(new Date(), timeZone);
     if (resolveReportType(seed.type) === "field-log") {
       return { from: seed.from ?? defaults.from, to: seed.to ?? defaults.to };
     }
     return defaults;
   });
   const [generatorRange, setGeneratorRange] = useState(() => {
-    const defaults = defaultGeneratorRange();
+    const defaults = defaultGeneratorRange(new Date(), timeZone);
     if (resolveReportType(seed.type) === "generator") {
       return { from: seed.from ?? defaults.from, to: seed.to ?? defaults.to };
     }
@@ -127,8 +128,8 @@ export function ReportsView({
       seed.farmId ||
       (resolveReportType(seed.type) === "mortality" ? firstFarmId(snapshot) : "");
     const defaults = startFarm
-      ? mortalityRangeForFarm(snapshot, startFarm)
-      : defaultMortalityRange();
+      ? mortalityRangeForFarm(snapshot, startFarm, new Date(), timeZone)
+      : defaultMortalityRange(new Date(), timeZone);
     if (resolveReportType(seed.type) === "mortality") {
       return { from: seed.from ?? defaults.from, to: seed.to ?? defaults.to };
     }

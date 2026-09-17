@@ -15,6 +15,8 @@ import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 import { lastFeedOrderSchema } from "@/lib/validations";
 import { normalizeHalfHourTime } from "@/lib/time-slots";
 import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
+import { zonedDateTimeFromParts } from "@/lib/app-calendar";
+import { getUserTimeZone } from "@/lib/user-time-zone";
 import { parseDateKey } from "@/lib/visits/schedule";
 import { VISIT_TYPE_LABELS } from "@/lib/utils";
 import type { z } from "zod";
@@ -38,8 +40,12 @@ function parseHouseInventories(formData: FormData) {
   }));
 }
 
-function parseFeedUpDate(value: string | null | undefined): Date | null {
+function parseFeedUpDate(value: string | null | undefined, timeZone?: string | null): Date | null {
   if (!value) return null;
+  const wall = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+  if (wall && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(value.trim())) {
+    return zonedDateTimeFromParts(wall[1]!, wall[2]!, timeZone);
+  }
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -113,6 +119,8 @@ async function ensureLastFeedOrderVisit(farmId: string, orderDate: string) {
 }
 
 async function createLfoRecord(farmId: string, parsed: ParsedLfo) {
+  const farm = await prisma.farm.findUnique({ where: { id: farmId }, select: { userId: true } });
+  const timeZone = farm?.userId ? await getUserTimeZone(farm.userId) : undefined;
   const activeFlock = await prisma.flock.findFirst({
     where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
     orderBy: { placementDate: "desc" },
@@ -142,7 +150,7 @@ async function createLfoRecord(farmId: string, parsed: ParsedLfo) {
             houseId: h.houseId,
             binAPounds: h.binAPounds,
             binBPounds: h.binBPounds,
-            feedUpAt: parseFeedUpDate(h.feedUpAt),
+            feedUpAt: parseFeedUpDate(h.feedUpAt, timeZone),
             headCount: heads.get(h.houseId) ?? 0,
           })),
         },
@@ -199,6 +207,7 @@ export async function saveFarmLfoHubAction(farmId: string, formData: FormData) {
 export async function updateLastFeedOrderAction(lfoId: string, formData: FormData) {
   const user = await requireUser();
   const existing = await assertLfoAccess(lfoId, user.id!);
+  const timeZone = await getUserTimeZone(user.id!);
 
   const parsed = parseLfoForm(formData);
   if (!parsed.success) {
@@ -243,13 +252,13 @@ export async function updateLastFeedOrderAction(lfoId: string, formData: FormDat
             houseId: inv.houseId,
             binAPounds: inv.binAPounds,
             binBPounds: inv.binBPounds,
-            feedUpAt: parseFeedUpDate(inv.feedUpAt),
+            feedUpAt: parseFeedUpDate(inv.feedUpAt, timeZone),
             headCount: heads.get(inv.houseId) ?? 0,
           },
           update: {
             binAPounds: inv.binAPounds,
             binBPounds: inv.binBPounds,
-            feedUpAt: parseFeedUpDate(inv.feedUpAt),
+            feedUpAt: parseFeedUpDate(inv.feedUpAt, timeZone),
             ...(storedHead == null ? { headCount: heads.get(inv.houseId) ?? 0 } : {}),
           },
         });
@@ -272,6 +281,7 @@ export async function updateLastFeedOrderAction(lfoId: string, formData: FormDat
 export async function saveAsNewLastFeedOrderAction(fromLfoId: string, formData: FormData) {
   const user = await requireUser();
   const existing = await assertLfoAccess(fromLfoId, user.id!);
+  const timeZone = await getUserTimeZone(user.id!);
 
   const parsed = parseLfoForm(formData);
   if (!parsed.success) {
@@ -309,7 +319,7 @@ export async function saveAsNewLastFeedOrderAction(fromLfoId: string, formData: 
               houseId: h.houseId,
               binAPounds: h.binAPounds,
               binBPounds: h.binBPounds,
-              feedUpAt: parseFeedUpDate(h.feedUpAt),
+              feedUpAt: parseFeedUpDate(h.feedUpAt, timeZone),
               headCount: headByHouse.get(h.houseId) ?? 0,
             })),
           },
@@ -442,10 +452,18 @@ export async function createManualLastFeedOrderAction(formData: FormData) {
   const catchTime = String(formData.get("catchTime") ?? "").trim();
   const settings = await prisma.userSettings.findUnique({
     where: { userId: user.id! },
-    select: { lfoFeedUpHoursBeforeCatch: true, lfoFeedOffHoursBeforeCatch: true },
+    select: {
+      lfoFeedUpHoursBeforeCatch: true,
+      lfoFeedOffHoursBeforeCatch: true,
+      appTimeZone: true,
+    },
   });
   const timing = lfoTimingFromSettings(settings);
-  const feedUpAt = parseFeedUpDate(feedUpAtFromCatch(catchDate, catchTime, timing));
+  const timeZone = await getUserTimeZone(user.id!);
+  const feedUpAt = parseFeedUpDate(
+    feedUpAtFromCatch(catchDate, catchTime, timing, timeZone),
+    timeZone,
+  );
 
   const prior = await prisma.lastFeedOrder.findMany({
     where: { farm: { userId: user.id } },

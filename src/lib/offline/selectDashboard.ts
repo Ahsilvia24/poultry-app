@@ -1,5 +1,5 @@
-import { addDays, differenceInCalendarDays, format, startOfDay, subDays } from "date-fns";
-import { appToday, appTodayKey } from "@/lib/app-calendar";
+import { format } from "date-fns";
+import { addCalendarDays, appToday, appTodayKey } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { addCatchAge, addCatchHouseNumber, uniqueCatchAges } from "@/lib/catchHouses";
 import { flockAgesFromPlacements } from "@/lib/flockAges";
@@ -28,6 +28,8 @@ import {
 } from "@/lib/mortality/calculations";
 import {
   buildFlockVisitSchedule,
+  dateKeyFromDb,
+  parseDateKey,
   resolveCatchDate,
   splitScheduleForDashboard,
   todayScheduleRankFromLabel,
@@ -193,7 +195,7 @@ export function rebuildFarmCardsFromReplica(
         dailyPct = Math.max(dailyPct, metrics.dailyPct);
         sevenPct = Math.max(sevenPct, metrics.sevenDayPct);
         if (isRisingThreeDays(morts, today)) rising = true;
-        if (morts.some((row) => format(row.mortalityDate, "yyyy-MM-dd") === todayKey)) {
+        if (morts.some((row) => dateKeyFromDb(row.mortalityDate) === todayKey)) {
           hasTodayEntry = true;
         }
         const avgDaily = averageDailyMortalityLast7Days(morts, today);
@@ -286,8 +288,8 @@ export function rebuildDashboardScheduleFromReplica(
   const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
   const today = appToday(undefined, timeZone);
   const todayKey = appTodayKey(undefined, timeZone);
-  const horizon = addDays(startOfDay(today), UPCOMING_OUTLOOK_DAYS);
-  const catchHorizonEnd = format(addDays(startOfDay(today), CATCH_HORIZON_DAYS), "yyyy-MM-dd");
+  const horizon = parseDateKey(addCalendarDays(todayKey, UPCOMING_OUTLOOK_DAYS));
+  const catchHorizonEnd = addCalendarDays(todayKey, CATCH_HORIZON_DAYS);
 
   const todaysSchedule: ScheduleRow[] = [];
   const upcomingSchedule: ScheduleRow[] = [];
@@ -301,10 +303,8 @@ export function rebuildDashboardScheduleFromReplica(
     ...(fallback?.todaysSchedule ?? []),
     ...(fallback?.upcomingSchedule ?? []),
   ]);
-  const todayStart = startOfDay(today);
-  const horizonDays = Math.max(0, differenceInCalendarDays(horizon, todayStart));
-  const overdueStart = format(subDays(todayStart, horizonDays), "yyyy-MM-dd");
-  const endKey = format(startOfDay(horizon), "yyyy-MM-dd");
+  const overdueStart = addCalendarDays(todayKey, -UPCOMING_OUTLOOK_DAYS);
+  const endKey = addCalendarDays(todayKey, UPCOMING_OUTLOOK_DAYS);
 
   for (const farm of liveFarms(snapshot)) {
     const activeFlocks = activeFlocksForFarm(snapshot, farm.id);

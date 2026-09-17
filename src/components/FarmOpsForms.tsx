@@ -64,7 +64,7 @@ export function FarmVisitForm({
   const { enabled, queue, snapshot } = useReplicaWrite();
   const [pending, start] = useTransition();
   const [visitDate, setVisitDate] = useState(
-    initial?.visitDate ?? appTodayKey(),
+    initial?.visitDate ?? appTodayKey(undefined, snapshot?.settings?.appTimeZone),
   );
   const fid = (name: string) => (recordId ? `${recordId}-${name}` : name);
   const [visitType, setVisitType] = useState(initial?.visitType ?? "ROUTINE_SERVICE");

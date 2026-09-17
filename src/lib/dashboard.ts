@@ -1,5 +1,5 @@
-import { format, subDays, addDays, startOfDay } from "date-fns";
-import { appToday, appTodayKey } from "@/lib/app-calendar";
+import { subDays } from "date-fns";
+import { addCalendarDays, appToday, appTodayKey } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import {
   DEFAULT_THRESHOLDS,
@@ -25,6 +25,7 @@ import {
   buildFlockVisitSchedule,
   completionKey,
   dateKeyFromDb,
+  parseDateKey,
   resolveCatchDate,
   splitScheduleForDashboard,
   todayScheduleRankFromLabel,
@@ -166,7 +167,7 @@ export async function getDashboardData(userId: string) {
   const UPCOMING_OUTLOOK_DAYS = 10;
   const todaysSchedule: FollowUpRow[] = [];
   const upcomingSchedule: FollowUpRow[] = [];
-  const horizon = addDays(startOfDay(today), UPCOMING_OUTLOOK_DAYS);
+  const horizon = parseDateKey(addCalendarDays(todayKey, UPCOMING_OUTLOOK_DAYS));
 
   const completedByFarm = new Map<string, Map<string, { completedAt: Date; dismissed?: boolean }>>();
   for (const c of completions) {
@@ -347,7 +348,7 @@ export async function getDashboardData(userId: string) {
         dailyPct = Math.max(dailyPct, metrics.dailyPct);
         sevenPct = Math.max(sevenPct, metrics.sevenDayPct);
         if (isRisingThreeDays(hf.mortalities, today)) rising = true;
-        if (hf.mortalities.some((m) => format(m.mortalityDate, "yyyy-MM-dd") === todayKey)) {
+        if (hf.mortalities.some((m) => dateKeyFromDb(m.mortalityDate) === todayKey)) {
           hasTodayEntry = true;
         }
         const avgDaily = averageDailyMortalityLast7Days(hf.mortalities, today);
@@ -405,7 +406,7 @@ export async function getDashboardData(userId: string) {
       cumulativeMortality: cum,
       cumulativeMortalityPct: placed > 0 ? (cum / placed) * 100 : 0,
       openIssues: farm.issues.length,
-      lastVisitDate: farm.visits[0] ? format(farm.visits[0].visitDate, "yyyy-MM-dd") : null,
+      lastVisitDate: farm.visits[0] ? dateKeyFromDb(farm.visits[0].visitDate) : null,
       status,
       missingTodayMortality: Boolean(active && !hasTodayEntry && activeHouseCount > 0),
     });
@@ -428,8 +429,8 @@ export async function getDashboardData(userId: string) {
 
   const totalHouses = farms.reduce((s, f) => s + f.houses.length, 0);
 
-  const catchHorizonEnd = format(addDays(startOfDay(today), 12), "yyyy-MM-dd");
-  const todayCatchKey = format(startOfDay(today), "yyyy-MM-dd");
+  const catchHorizonEnd = addCalendarDays(todayKey, 12);
+  const todayCatchKey = todayKey;
 
   return {
     stats: {
@@ -449,7 +450,7 @@ export async function getDashboardData(userId: string) {
     upcomingSchedule: upcomingDeduped.slice(0, 40),
     recentCleanouts: recentCleanouts.map((c) => ({
       farmName: c.farm.farmName,
-      date: format(c.eventDate, "yyyy-MM-dd"),
+      date: dateKeyFromDb(c.eventDate),
     })),
     thresholds,
   };

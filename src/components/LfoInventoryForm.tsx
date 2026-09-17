@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOfflineNav } from "@/components/OfflineNavContext";
-import { format } from "date-fns";
 import { DateKeyField } from "@/components/DateKeyField";
+import { formatStampInAppZone } from "@/lib/app-calendar";
 import { TimeKeyField } from "@/components/TimeKeyField";
 import { Button, Input, Label } from "@/components/ui";
 import {
@@ -17,6 +17,7 @@ import {
   formatLfoOrderClock,
 } from "@/lib/lfo/calculate";
 import { useLfoFeedTiming } from "@/lib/lfo/useLfoFeedTiming";
+import { useAppTimeZone } from "@/lib/useAppTimeZone";
 import { formatFeedMillData } from "@/lib/lfo/feedMillData";
 import { formatConsumptionRate } from "@/lib/lfo/consumptionRate";
 import { currentHalfHourTime, normalizeHalfHourTime } from "@/lib/time-slots";
@@ -105,6 +106,7 @@ export function LfoInventoryForm({
   const router = useRouter();
   const nav = useOfflineNav();
   const timing = useLfoFeedTiming();
+  const timeZone = useAppTimeZone();
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -127,7 +129,7 @@ export function LfoInventoryForm({
   );
   const [orderDate, setOrderDate] = useState(initialOrderDate);
   const [orderTime, setOrderTime] = useState(
-    () => normalizeHalfHourTime(initialOrderTime) ?? currentHalfHourTime(),
+    () => normalizeHalfHourTime(initialOrderTime) ?? currentHalfHourTime(undefined, timeZone),
   );
   const [rows, setRows] = useState(
     initialHouses.map((h) => ({
@@ -153,11 +155,12 @@ export function LfoInventoryForm({
         headCount: r.headCount,
         binAPounds: Number(r.binAPounds) || 0,
         binBPounds: Number(r.binBPounds) || 0,
-        feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime, timing),
+        feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime, timing, timeZone),
       })),
       timing,
+      timeZone,
     });
-  }, [consumptionRate, orderDate, orderTime, rows, timing]);
+  }, [consumptionRate, orderDate, orderTime, rows, timeZone, timing]);
 
   const feedMillText = useMemo(
     () =>
@@ -223,17 +226,17 @@ export function LfoInventoryForm({
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">Saved.</p>
       ) : null}
 
-      {formatLfoOrderClock(orderDate, orderTime) ? (
+      {formatLfoOrderClock(orderDate, orderTime, timeZone) ? (
         <p className="text-sm text-stone-600">
           Hours until feed off are measured from{" "}
           <span className="font-semibold text-stone-800">
-            {formatLfoOrderClock(orderDate, orderTime)}
+            {formatLfoOrderClock(orderDate, orderTime, timeZone)}
           </span>
           {asOf ? (
             <>
               . Head counts stay frozen to{" "}
               <span className="font-semibold text-stone-800">
-                {format(new Date(asOf), "MMM d, yyyy, h:mm a")}
+                {formatStampInAppZone(new Date(asOf), timeZone, { year: true })}
               </span>
             </>
           ) : null}
@@ -243,7 +246,7 @@ export function LfoInventoryForm({
         <p className="text-sm text-stone-600">
           Head counts stay frozen to{" "}
           <span className="font-semibold text-stone-800">
-            {format(new Date(asOf), "MMM d, yyyy, h:mm a")}
+            {formatStampInAppZone(new Date(asOf), timeZone, { year: true })}
           </span>
           .
         </p>
@@ -291,16 +294,16 @@ export function LfoInventoryForm({
         />
       </div>
       <p className="text-xs text-stone-500">Consumption rate in lbs/bird/day</p>
-      {formatLfoOrderClock(orderDate, orderTime) ? (
+      {formatLfoOrderClock(orderDate, orderTime, timeZone) ? (
         <p className="text-xs text-stone-500">
-          Hours from {formatLfoOrderClock(orderDate, orderTime)}
+          Hours from {formatLfoOrderClock(orderDate, orderTime, timeZone)}
         </p>
       ) : null}
 
       <div className="space-y-3">
         {rows.map((house) => {
           const result = calc.houses.find((h) => h.houseId === house.houseId);
-          const feedUpAt = feedUpAtFromCatch(house.catchDate, house.catchTime, timing) ?? "";
+          const feedUpAt = feedUpAtFromCatch(house.catchDate, house.catchTime, timing, timeZone) ?? "";
           return (
             <div
               key={house.houseId}
@@ -381,13 +384,13 @@ export function LfoInventoryForm({
                   <div className="flex justify-between gap-2">
                     <dt className="text-stone-500">{feedUpLabel(timing)}</dt>
                     <dd className="font-medium text-stone-800">
-                      {result.feedUpAt ? format(result.feedUpAt, "MMM d, h:mm a") : "—"}
+                      {result.feedUpAt ? formatStampInAppZone(result.feedUpAt, timeZone) : "—"}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-2">
                     <dt className="text-stone-500">{feedOffLabel(timing)}</dt>
                     <dd className="font-medium text-stone-800">
-                      {result.feedOffAt ? format(result.feedOffAt, "MMM d, h:mm a") : "—"}
+                      {result.feedOffAt ? formatStampInAppZone(result.feedOffAt, timeZone) : "—"}
                     </dd>
                   </div>
                   <div className="flex justify-between gap-2">

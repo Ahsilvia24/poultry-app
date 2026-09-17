@@ -1,3 +1,4 @@
+import { formatStampInAppZone } from "../appCalendar";
 import {
   calculateLastFeedOrder,
   catchPartsFromFeedUpAt,
@@ -53,6 +54,7 @@ export type LfoShareInventory = {
   notes?: string | null;
   houses: LfoShareInventoryHouse[];
   timing?: LfoFeedTiming;
+  timeZone?: string | null;
 };
 
 function formatOrderDate(dateKey: string): string {
@@ -69,27 +71,16 @@ function formatHours(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
-function formatFeedStamp(d: Date | null): string {
+function formatFeedStamp(d: Date | null, timeZone?: string | null): string {
   if (!d) return "—";
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatStampInAppZone(d, timeZone);
 }
 
-function formatAsOf(value: string | Date | null | undefined): string {
+function formatAsOf(value: string | Date | null | undefined, timeZone?: string | null): string {
   if (value == null || value === "") return "—";
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatStampInAppZone(d, timeZone, { year: true });
 }
 
 function dash(value: string | null | undefined): string {
@@ -130,6 +121,7 @@ export function buildLfoSharePayload(
   calc?: LfoCalculateResult,
 ): LfoSharePayload {
   const timing = inventory.timing ?? DEFAULT_LFO_FEED_TIMING;
+  const timeZone = inventory.timeZone;
   const orderDate = inventory.orderDate.slice(0, 10);
   const houses = inventory.houses
     .filter((house) => Number(house.headCount) > 0)
@@ -137,7 +129,7 @@ export function buildLfoSharePayload(
     let catchDate = house.catchDate?.trim() ?? "";
     let catchTime = house.catchTime?.trim() ?? "";
     if ((!catchDate || !catchTime) && house.feedUpAt) {
-      const parts = catchPartsFromFeedUpAt(house.feedUpAt, timing);
+      const parts = catchPartsFromFeedUpAt(house.feedUpAt, timing, timeZone);
       catchDate = catchDate || parts.date;
       catchTime = catchTime || parts.time;
     }
@@ -149,7 +141,7 @@ export function buildLfoSharePayload(
       binBPounds: house.binBPounds,
       catchDate,
       catchTime,
-      feedUpAt: house.feedUpAt ?? feedUpAtFromCatch(catchDate, catchTime, timing),
+      feedUpAt: house.feedUpAt ?? feedUpAtFromCatch(catchDate, catchTime, timing, timeZone),
     };
   });
 
@@ -160,7 +152,8 @@ export function buildLfoSharePayload(
       orderTime: inventory.orderTime,
       consumptionRate: inventory.consumptionRate,
       timing,
-      houses: houses.map((house) => ({
+      timeZone,
+      houses: houses.map((house) => ({)
         houseId: house.houseId,
         houseNumber: house.houseNumber,
         headCount: house.headCount,
@@ -172,7 +165,7 @@ export function buildLfoSharePayload(
 
   const orderTimeLabel = dash(halfHourTimeLabel(inventory.orderTime));
   const orderDateLabel = formatOrderDate(orderDate);
-  const calculatedAtLabel = formatAsOf(inventory.calculatedAt);
+  const calculatedAtLabel = formatAsOf(inventory.calculatedAt, timeZone);
   const notes = inventory.notes?.trim() || null;
   const houseSummaryLines = formatHouseLfoSummary(result.houses);
 
@@ -208,8 +201,8 @@ export function buildLfoSharePayload(
         { label: "Bin B (lbs)", value: formatLbs(house.binBPounds) },
         { label: "Catch date", value: house.catchDate ? formatOrderDate(house.catchDate) : "—" },
         { label: "Catch time", value: dash(halfHourTimeLabel(house.catchTime)) },
-        { label: feedUpLabel(timing), value: formatFeedStamp(houseResult?.feedUpAt ?? null) },
-        { label: feedOffLabel(timing), value: formatFeedStamp(houseResult?.feedOffAt ?? null) },
+        { label: feedUpLabel(timing), value: formatFeedStamp(houseResult?.feedUpAt ?? null, timeZone) },
+        { label: feedOffLabel(timing), value: formatFeedStamp(houseResult?.feedOffAt ?? null, timeZone) },
         {
           label: "Hours until feed off",
           value:

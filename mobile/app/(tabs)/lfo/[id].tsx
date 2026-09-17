@@ -22,7 +22,8 @@ import {
   feedUpLabel,
   formatLfoOrderClock,
 } from "../../../src/lib/lfo/calculate";
-import { getLfoFeedTiming } from "../../../src/lib/appSettings";
+import { getAppTimeZone, getLfoFeedTiming } from "../../../src/lib/appSettings";
+import { formatStampInAppZone } from "../../../src/lib/appCalendar";
 import { CUSTOM_KEYPAD_HEIGHT, scrollFieldAboveKeypad } from "../../../src/lib/scrollField";
 import { useTabScrollToTop } from "../../../src/lib/tabScroll";
 import { colors, fonts, styles } from "../../../src/theme";
@@ -48,24 +49,13 @@ function formatHours(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
-function formatFeedStamp(d: Date | null) {
+function formatFeedStamp(d: Date | null, timeZone?: string | null) {
   if (!d) return "—";
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatStampInAppZone(d, timeZone);
 }
 
-function formatAsOf(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+function formatAsOf(iso: string, timeZone?: string | null) {
+  return formatStampInAppZone(new Date(iso), timeZone, { year: true });
 }
 
 type HouseDraft = {
@@ -86,16 +76,17 @@ type ActiveField =
 
 function loadDraft(id: string) {
   const lfo = getLfo(id);
+  const timeZone = getAppTimeZone();
   return {
     farmName: lfo.farmName,
     orderDate: lfo.orderDate.slice(0, 10),
-    orderTime: normalizeHalfHourTime(lfo.orderTime) ?? currentHalfHourTime(),
+    orderTime: normalizeHalfHourTime(lfo.orderTime) ?? currentHalfHourTime(undefined, timeZone),
     consumptionRate: formatConsumptionRate(lfo.consumptionRate ?? DEFAULT_LFO_CONSUMPTION_RATE),
     calculatedAt: lfo.calculatedAt,
     notes: lfo.notes,
     houses: lfo.houses.map(
       (h): HouseDraft => {
-        const parts = catchPartsFromFeedUpAt(h.feedUpAt, getLfoFeedTiming());
+        const parts = catchPartsFromFeedUpAt(h.feedUpAt, getLfoFeedTiming(), timeZone);
         return {
           id: h.id,
           houseId: h.houseId,
@@ -173,9 +164,10 @@ export default function EditLfoScreen() {
 
   const [error, setError] = useState<string | null>(null);
   const timing = getLfoFeedTiming();
+  const timeZone = getAppTimeZone();
   const [farmName, setFarmName] = useState("");
   const [orderDate, setOrderDate] = useState("");
-  const [orderTime, setOrderTime] = useState(currentHalfHourTime);
+  const [orderTime, setOrderTime] = useState(() => currentHalfHourTime(undefined, timeZone));
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [calculatedAt, setCalculatedAt] = useState<string | null>(null);
   const [notes, setNotes] = useState<string | null>(null);
@@ -251,11 +243,12 @@ export default function EditLfoScreen() {
         headCount: r.headCount,
         binAPounds: Number(r.binAPounds) || 0,
         binBPounds: Number(r.binBPounds) || 0,
-        feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime, timing),
+        feedUpAt: feedUpAtFromCatch(r.catchDate, r.catchTime, timing, timeZone),
       })),
       timing,
+      timeZone,
     });
-  }, [consumptionRate, orderDate, orderTime, houses, timing]);
+  }, [consumptionRate, orderDate, orderTime, houses, timeZone, timing]);
 
   const feedMillText = useMemo(
     () =>
@@ -357,7 +350,7 @@ export default function EditLfoScreen() {
       updateLfo({
         id,
         orderDate: orderDate.trim() || orderDate,
-        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(),
+        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(undefined, timeZone),
         notes,
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         houses: houses.map((h) => ({
@@ -365,7 +358,7 @@ export default function EditLfoScreen() {
           houseId: h.houseId,
           binAPounds: Number(h.binAPounds) || 0,
           binBPounds: Number(h.binBPounds) || 0,
-          feedUpAt: feedUpAtFromCatch(h.catchDate, h.catchTime, timing),
+          feedUpAt: feedUpAtFromCatch(h.catchDate, h.catchTime, timing, timeZone),
         })),
       });
       setError(null);
@@ -389,14 +382,14 @@ export default function EditLfoScreen() {
       saveLfoAsNew({
         sourceId: id,
         orderDate: orderDate.trim() || orderDate,
-        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(),
+        orderTime: normalizeHalfHourTime(orderTime) ?? currentHalfHourTime(undefined, timeZone),
         notes,
         consumptionRate: Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_LFO_CONSUMPTION_RATE,
         houses: houses.map((h) => ({
           houseId: h.houseId,
           binAPounds: Number(h.binAPounds) || 0,
           binBPounds: Number(h.binBPounds) || 0,
-          feedUpAt: feedUpAtFromCatch(h.catchDate, h.catchTime, timing),
+          feedUpAt: feedUpAtFromCatch(h.catchDate, h.catchTime, timing, timeZone),
         })),
       });
       setError(null);
@@ -488,12 +481,12 @@ export default function EditLfoScreen() {
 
           {ready ? (
             <>
-              {formatLfoOrderClock(orderDate, orderTime) ? (
+              {formatLfoOrderClock(orderDate, orderTime, timeZone) ? (
                 <Text style={[styles.muted, { marginBottom: 10 }]}>
                   Hours until feed off are measured from{" "}
-                  {formatLfoOrderClock(orderDate, orderTime)}.
+                  {formatLfoOrderClock(orderDate, orderTime, timeZone)}.
                   {calculatedAt
-                    ? ` Head counts stay frozen to ${formatAsOf(calculatedAt)}.`
+                    ? ` Head counts stay frozen to ${formatAsOf(calculatedAt, timeZone)}.`
                     : ""}
                 </Text>
               ) : null}
@@ -548,9 +541,9 @@ export default function EditLfoScreen() {
                 <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
                   Consumption rate in lbs/bird/day
                 </Text>
-                {formatLfoOrderClock(orderDate, orderTime) ? (
+                {formatLfoOrderClock(orderDate, orderTime, timeZone) ? (
                   <Text style={[styles.muted, { marginTop: 4, fontSize: 12 }]}>
-                    Hours from {formatLfoOrderClock(orderDate, orderTime)}
+                    Hours from {formatLfoOrderClock(orderDate, orderTime, timeZone)}
                   </Text>
                 ) : null}
               </Card>
@@ -655,13 +648,13 @@ export default function EditLfoScreen() {
                         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                           <Text style={styles.muted}>{feedUpLabel(timing)}</Text>
                           <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
-                            {formatFeedStamp(result.feedUpAt)}
+                            {formatFeedStamp(result.feedUpAt, timeZone)}
                           </Text>
                         </View>
                         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                           <Text style={styles.muted}>{feedOffLabel(timing)}</Text>
                           <Text style={{ fontFamily: fonts.sans, fontWeight: "600" }}>
-                            {formatFeedStamp(result.feedOffAt)}
+                            {formatFeedStamp(result.feedOffAt, timeZone)}
                           </Text>
                         </View>
                         <View style={{ flexDirection: "row", justifyContent: "space-between" }}>

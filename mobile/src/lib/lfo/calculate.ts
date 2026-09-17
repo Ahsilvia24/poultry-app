@@ -1,3 +1,4 @@
+import { formatDateTimeInAppZone, formatStampInAppZone, zonedDateTimeFromParts } from "../appCalendar";
 import { normalizeHalfHourTime } from "../time-slots";
 
 export const DEFAULT_LFO_CONSUMPTION_RATE = 0.45;
@@ -76,6 +77,7 @@ export type LfoCalculateInput = {
   now?: Date;
   houses: LfoHouseInventoryInput[];
   timing?: LfoFeedTiming;
+  timeZone?: string | null;
 };
 
 export type LfoHouseCalculateResult = {
@@ -107,9 +109,14 @@ export type LfoCalculateResult = {
   totalReclaimLbs: number;
 };
 
-function toDate(value: string | Date | null | undefined): Date | null {
+function toDate(value: string | Date | null | undefined, timeZone?: string | null): Date | null {
   if (value == null || value === "") return null;
-  const d = value instanceof Date ? value : new Date(value);
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const wall = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+  if (wall && !/[zZ]|[+-]\d{2}:?\d{2}$/.test(value.trim())) {
+    return zonedDateTimeFromParts(wall[1]!, wall[2]!, timeZone);
+  }
+  const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -120,36 +127,20 @@ export function feedOffFromFeedUp(
   return new Date(feedUpAt.getTime() - hoursBeforeUp(timing) * 60 * 60 * 1000);
 }
 
-/** Local `yyyy-MM-dd` + `HH:mm` → Date. */
-export function combineDateAndTime(dateKey: string, timeHHmm: string): Date | null {
+/** Settings-timezone `yyyy-MM-dd` + `HH:mm` → Date (default Central). */
+export function combineDateAndTime(
+  dateKey: string,
+  timeHHmm: string,
+  timeZone?: string | null,
+): Date | null {
   const date = dateKey.trim();
   const time = timeHHmm.trim();
   if (!date || !time) return null;
-  const [y, m, d] = date.split("-").map(Number);
-  const [hh, mm] = time.split(":").map(Number);
-  if (
-    !Number.isFinite(y) ||
-    !Number.isFinite(m) ||
-    !Number.isFinite(d) ||
-    !Number.isFinite(hh) ||
-    !Number.isFinite(mm) ||
-    y < 1 ||
-    m < 1 ||
-    d < 1
-  ) {
-    return null;
-  }
-  const dt = new Date(y, m - 1, d, hh, mm, 0, 0);
-  return Number.isNaN(dt.getTime()) ? null : dt;
+  return zonedDateTimeFromParts(date, time, timeZone);
 }
 
-export function formatLocalDateTime(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day}T${hh}:${mm}`;
+export function formatLocalDateTime(d: Date, timeZone?: string | null): string {
+  return formatDateTimeInAppZone(d, timeZone);
 }
 
 /** Feed up is N hours before catch (default 5; catch 11:00 PM → feed up 6:00 PM). */
@@ -157,8 +148,9 @@ export function feedUpFromCatch(
   catchDateKey: string,
   catchTimeHHmm: string,
   timing: LfoFeedTiming = DEFAULT_LFO_FEED_TIMING,
+  timeZone?: string | null,
 ): Date | null {
-  const catchAt = combineDateAndTime(catchDateKey, catchTimeHHmm);
+  const catchAt = combineDateAndTime(catchDateKey, catchTimeHHmm, timeZone);
   if (!catchAt) return null;
   return new Date(catchAt.getTime() - timing.feedUpHoursBeforeCatch * 60 * 60 * 1000);
 }
@@ -171,13 +163,16 @@ export function catchFromFeedUp(
   return new Date(feedUpAt.getTime() + timing.feedUpHoursBeforeCatch * 60 * 60 * 1000);
 }
 
-/** Split a local `yyyy-MM-ddTHH:mm` (or Date) into date + :00/:30 time. */
-export function splitLocalDateTime(value: string | Date | null | undefined): {
+/** Split a Settings-timezone `yyyy-MM-ddTHH:mm` (or Date) into date + :00/:30 time. */
+export function splitLocalDateTime(
+  value: string | Date | null | undefined,
+  timeZone?: string | null,
+): {
   date: string;
   time: string;
 } {
   if (value == null || value === "") return { date: "", time: "" };
-  const formatted = value instanceof Date ? formatLocalDateTime(value) : value;
+  const formatted = value instanceof Date ? formatLocalDateTime(value, timeZone) : value;
   const [date = "", timePart = ""] = formatted.split("T");
   const raw = timePart.slice(0, 5);
   if (!raw) return { date, time: "" };
@@ -199,24 +194,26 @@ export function splitLocalDateTime(value: string | Date | null | undefined): {
 export function catchPartsFromFeedUpAt(
   feedUpAt: string | Date | null | undefined,
   timing: LfoFeedTiming = DEFAULT_LFO_FEED_TIMING,
+  timeZone?: string | null,
 ): {
   date: string;
   time: string;
 } {
   if (feedUpAt == null || feedUpAt === "") return { date: "", time: "" };
-  const parts = splitLocalDateTime(feedUpAt);
-  const feedUp = combineDateAndTime(parts.date, parts.time);
+  const parts = splitLocalDateTime(feedUpAt, timeZone);
+  const feedUp = combineDateAndTime(parts.date, parts.time, timeZone);
   if (!feedUp) return { date: "", time: "" };
-  return splitLocalDateTime(catchFromFeedUp(feedUp, timing));
+  return splitLocalDateTime(catchFromFeedUp(feedUp, timing), timeZone);
 }
 
 export function feedUpAtFromCatch(
   catchDate: string,
   catchTime: string,
   timing: LfoFeedTiming = DEFAULT_LFO_FEED_TIMING,
+  timeZone?: string | null,
 ): string | null {
-  const feedUp = feedUpFromCatch(catchDate, catchTime, timing);
-  return feedUp ? formatLocalDateTime(feedUp) : null;
+  const feedUp = feedUpFromCatch(catchDate, catchTime, timing, timeZone);
+  return feedUp ? formatLocalDateTime(feedUp, timeZone) : null;
 }
 
 export function hoursBetween(from: Date, to: Date): number {
@@ -283,36 +280,33 @@ export function formatHouseLfoSummary(
 export function lfoClockFromOrder(
   orderDate: string,
   orderTime?: string | null,
+  timeZone?: string | null,
 ): Date | null {
   const time = normalizeHalfHourTime(orderTime);
   if (!time) return null;
-  return combineDateAndTime(orderDate.slice(0, 10), time);
+  return combineDateAndTime(orderDate.slice(0, 10), time, timeZone);
 }
 
 export function formatLfoOrderClock(
   orderDate: string,
   orderTime?: string | null,
+  timeZone?: string | null,
 ): string {
-  const d = lfoClockFromOrder(orderDate, orderTime);
+  const d = lfoClockFromOrder(orderDate, orderTime, timeZone);
   if (!d) return "";
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return formatStampInAppZone(d, timeZone, { year: true });
 }
 
 export function calculateLastFeedOrder(input: LfoCalculateInput): LfoCalculateResult {
-  const now = input.now ?? lfoClockFromOrder(input.orderDate, input.orderTime) ?? new Date();
+  const now =
+    input.now ?? lfoClockFromOrder(input.orderDate, input.orderTime, input.timeZone) ?? new Date();
   const rate = Number.isFinite(input.consumptionRate)
     ? input.consumptionRate
     : DEFAULT_LFO_CONSUMPTION_RATE;
   const timing = input.timing ?? DEFAULT_LFO_FEED_TIMING;
 
   const houses: LfoHouseCalculateResult[] = input.houses.map((h) => {
-    const feedUpAt = toDate(h.feedUpAt);
+    const feedUpAt = toDate(h.feedUpAt, input.timeZone);
     const feedOffAt = feedUpAt ? feedOffFromFeedUp(feedUpAt, timing) : null;
     const hoursUntilFeedOff =
       feedOffAt == null ? null : Math.max(0, hoursBetween(now, feedOffAt));

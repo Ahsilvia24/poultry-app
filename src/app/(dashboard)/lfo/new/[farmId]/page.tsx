@@ -1,12 +1,14 @@
 import { notFound, redirect } from "next/navigation";
-import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createLastFeedOrderAction } from "@/app/actions/lfo";
 import { LfoInventoryForm } from "@/components/LfoInventoryForm";
 import { BackHeader, Card } from "@/components/ui";
+import { appTodayKey } from "@/lib/app-calendar";
 import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
+import { getUserTimeZone } from "@/lib/user-time-zone";
+import { dateKeyFromDb } from "@/lib/visits/schedule";
 
 type Params = Promise<{ farmId: string }>;
 
@@ -15,6 +17,7 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
   if (!session?.user?.id) redirect("/login");
 
   const { farmId } = await params;
+  const timeZone = await getUserTimeZone(session.user.id);
 
   const farm = await prisma.farm.findFirst({
     where: { id: farmId, userId: session.user.id, deletedAt: null },
@@ -62,7 +65,7 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
     if (!info?.catchTime) return { catchDate: "", catchTime: "" };
     const catchDate = info.catchDate ?? info.flockCatch;
     return {
-      catchDate: catchDate ? format(catchDate, "yyyy-MM-dd") : "",
+      catchDate: catchDate ? dateKeyFromDb(catchDate) : "",
       catchTime: info.catchTime,
     };
   }
@@ -72,7 +75,7 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
     return createLastFeedOrderAction(farmId, formData);
   }
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = appTodayKey(undefined, timeZone);
 
   return (
     <div>

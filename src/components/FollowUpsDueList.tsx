@@ -1,6 +1,7 @@
 "use client";
 
-import { format, parseISO } from "date-fns";
+import { formatDateKeyLabel } from "@/lib/app-calendar";
+import { useAppTimeZone } from "@/lib/useAppTimeZone";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -40,6 +41,7 @@ export function FollowUpsDueList({
   showDate?: boolean;
 }) {
   const router = useRouter();
+  const timeZone = useAppTimeZone();
   const { enabled, queue } = useReplicaWrite();
   const { visible, remove } = useHiddenReplicaDeletes();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
@@ -194,7 +196,7 @@ export function FollowUpsDueList({
                         </span>
                         {showDate ? (
                           <span className="whitespace-nowrap text-stone-500">
-                            {format(parseISO(f.date), "EEE, MMM d")}
+                            {formatDateKeyLabel(f.date, timeZone)}
                           </span>
                         ) : null}
                       </span>
