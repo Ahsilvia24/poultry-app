@@ -7,17 +7,20 @@ import { OfflineRoutes } from "@/components/OfflineNav";
 
 function ShellBody({ children }: { children: React.ReactNode }) {
   return (
-    <div data-app-scroll className="min-h-dvh bg-[#f3efe6]">
+    <div className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-[#f3efe6]">
       <div
         aria-hidden
-        className="sticky top-0 z-[60] bg-white"
+        className="shrink-0 bg-white"
         style={{ height: "env(safe-area-inset-top, 0px)" }}
       />
       <OfflineBanner />
-      <AppNav />
-      <main className="mx-auto max-w-7xl px-4 pb-28 pt-4 md:pt-6">
+      <main
+        data-app-scroll
+        className="mx-auto min-h-0 w-full max-w-7xl flex-1 overflow-y-auto overscroll-none px-4 pt-4 md:pt-6"
+      >
         <OfflineRoutes>{children}</OfflineRoutes>
       </main>
+      <AppNav />
     </div>
   );
 }

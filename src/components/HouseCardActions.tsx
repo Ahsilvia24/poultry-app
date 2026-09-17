@@ -14,6 +14,7 @@ import {
 } from "@/components/SettingsLayout";
 import { TimeKeyField } from "@/components/TimeKeyField";
 import { Button } from "@/components/ui";
+import { appScrollTo, appScrollY, getAppScroller } from "@/lib/app-scroll";
 import { formDataToParts, formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
@@ -105,9 +106,18 @@ export function HouseCardActions({
 
   useEffect(() => {
     if (mode === "idle") return;
+    const scroller = getAppScroller();
+    const scrollY = appScrollY();
+    if (scroller) {
+      const prevOverflow = scroller.style.overflow;
+      scroller.style.overflow = "hidden";
+      return () => {
+        scroller.style.overflow = prevOverflow;
+        appScrollTo(scrollY);
+      };
+    }
     const html = document.documentElement;
     const body = document.body;
-    const scrollY = window.scrollY;
     const prev = {
       htmlOverflow: html.style.overflow,
       bodyOverflow: body.style.overflow,
@@ -126,7 +136,7 @@ export function HouseCardActions({
       body.style.position = prev.bodyPosition;
       body.style.top = prev.bodyTop;
       body.style.width = prev.bodyWidth;
-      window.scrollTo(0, scrollY);
+      appScrollTo(scrollY);
     };
   }, [mode]);
 

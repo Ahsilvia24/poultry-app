@@ -74,7 +74,7 @@ export function AppNav() {
   }
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white">
+    <nav className="z-40 shrink-0 border-t border-stone-200 bg-white">
       <div className="mx-auto flex max-w-7xl items-center gap-1 px-1 pt-1.5 pb-[calc(0.7rem+env(safe-area-inset-bottom,0px))]">
         {tabs.map((item) => {
           const href = item.href === "/reports" ? reportsHref : item.href;

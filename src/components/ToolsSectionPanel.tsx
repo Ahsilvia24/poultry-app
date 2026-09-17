@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CopyIconButton } from "@/components/CopyShareIcons";
 import { Card } from "@/components/ui";
+import { appScrollTo } from "@/lib/app-scroll";
 
 export function ToolsSectionPanel({
   hashId,
@@ -48,7 +49,7 @@ export function ToolsSectionPanel({
   }, [copied]);
 
   function snapToTop() {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    appScrollTo(0);
   }
 
   if (!open) return <div id={hashId} className="scroll-mt-24" />;

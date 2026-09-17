@@ -10,7 +10,7 @@ const expoTabs = readFileSync(join(root, "mobile/app/(tabs)/_layout.tsx"), "utf8
 
 assert.match(nav, /0\.7rem\+env\(safe-area-inset-bottom/);
 assert.match(layout, /viewportFit: "cover"/);
-assert.match(layout, /overflow-x-hidden/);
+assert.match(layout, /overflow-x-clip/);
 assert.match(layout, /maximumScale: 1/);
 assert.match(layout, /userScalable: false/);
 assert.match(layout, /LockPinchZoom/);
