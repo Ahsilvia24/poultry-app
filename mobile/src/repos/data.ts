@@ -25,6 +25,7 @@ import {
   formatHouseLfoSummary,
   formatLocalDateTime,
 } from "../lib/lfo/calculate";
+import { addCatchHouseNumber } from "../lib/catchHouses";
 import { getDefaultMarketAgeDays, getLfoFeedTiming } from "../lib/appSettings";
 import { lfoDisplayName, nextCustomLfoName } from "../lib/lfo/customName";
 import { normalizeHalfHourTime } from "../lib/time-slots";
@@ -284,7 +285,7 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
       // One age per distinct placement (flock + staggered house dates), including negatives.
       const flockAgesDays = Array.from(
         new Set(placementDates.map((d) => daysSincePlacement(d, today))),
-      ).sort((a, b) => a - b);
+      ).sort((a, b) => b - a);
       return {
         id: f.id,
         farmName: f.farm_name,
@@ -353,6 +354,7 @@ export function getDashboard() {
     flockAgeDays: number | null;
     catchAgeDays: number;
     catchTime: string | null;
+    houseNumbers: number[];
   };
   const upcomingCatches: CatchRow[] = [];
   const seenCatchKeys = new Set<string>();
@@ -447,11 +449,14 @@ export function getDashboard() {
       placement_date: string | null;
       flock_placement: string;
       flock_catch: string | null;
+      house_number: number | null;
     }>(
       `SELECT hf.id, hf.flock_id, hf.placed_bird_count, hf.catch_date, hf.catch_time, hf.placement_date,
-              f.placement_date as flock_placement, f.projected_catch_date as flock_catch
+              f.placement_date as flock_placement, f.projected_catch_date as flock_catch,
+              h.house_number
        FROM house_flocks hf
        JOIN flocks f ON f.id = hf.flock_id
+       LEFT JOIN houses h ON h.id = hf.house_id AND h.deleted_at IS NULL
        WHERE f.farm_id = ? AND f.flock_status = 'ACTIVE'`,
       [farm.id],
     );
@@ -500,6 +505,8 @@ export function getDashboard() {
       const catchKey = `${farm.id}|${houseCatch}`;
       if (!seenCatchKeys.has(catchKey)) {
         seenCatchKeys.add(catchKey);
+        const houseNumbers: number[] = [];
+        addCatchHouseNumber(houseNumbers, hf.house_number);
         upcomingCatches.push({
           farmId: farm.id,
           farmName: farm.farmName,
@@ -507,13 +514,17 @@ export function getDashboard() {
           flockAgeDays: daysSincePlacement(housePlacement, today),
           catchAgeDays: birdAgeFromPlacement(housePlacement, houseCatch),
           catchTime: houseCatchTime,
+          houseNumbers,
         });
-      } else if (houseCatchTime) {
+      } else {
         const existing = upcomingCatches.find(
           (c) => c.farmId === farm.id && c.date === houseCatch,
         );
-        if (existing && (!existing.catchTime || houseCatchTime < existing.catchTime)) {
-          existing.catchTime = houseCatchTime;
+        if (existing) {
+          addCatchHouseNumber(existing.houseNumbers, hf.house_number);
+          if (houseCatchTime && (!existing.catchTime || houseCatchTime < existing.catchTime)) {
+            existing.catchTime = houseCatchTime;
+          }
         }
       }
       const daysUntilCatch = daysUntilDateKey(today, houseCatch);
@@ -544,6 +555,7 @@ export function getDashboard() {
           flockAgeDays: daysSincePlacement(fl.placement_date, today),
           catchAgeDays: birdAgeFromPlacement(fl.placement_date, catchDate),
           catchTime: null,
+          houseNumbers: [],
         });
       }
     }
@@ -897,7 +909,7 @@ export function getFarmDetail(farmId: string) {
         .map((h) => h.ageDays)
         .filter((a): a is number => a != null),
     ]),
-  ).sort((a, b) => a - b);
+  ).sort((a, b) => b - a);
 
   const flockAgeDays =
     flockAgesDays[0] ??
