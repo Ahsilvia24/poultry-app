@@ -58,6 +58,7 @@ assert.match(bounce, /redirect\("\/api\/leave"\)/);
 const leave = read("public/signed-out.html");
 assert.match(leave, /Signed out of this phone/);
 assert.match(leave, /\/api\/login/);
+assert.match(leave, /data\.error \|\| "Invalid email or password"/);
 assert.doesNotMatch(leave, /_next/);
 
 const sw = read("public/sw.js");
