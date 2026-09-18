@@ -1437,6 +1437,17 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
           : snapshot.visits,
       };
     }
+    case "deleteServiceForms": {
+      const ids = serviceFormIdsFromWrite(write);
+      if (ids.size === 0) return snapshot;
+      const removed = (snapshot.serviceForms ?? []).filter((row) => ids.has(row.id));
+      const visitIds = new Set(removed.map((row) => row.visitId).filter(Boolean));
+      return {
+        ...snapshot,
+        serviceForms: (snapshot.serviceForms ?? []).filter((row) => !ids.has(row.id)),
+        visits: snapshot.visits.filter((row) => !visitIds.has(row.id)),
+      };
+    }
     case "deleteAllServiceForms": {
       const farmId = write.farmId ?? "";
       if (!farmId) return snapshot;
@@ -1456,6 +1467,19 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
 function asFormWrite(item: import("@/lib/offline/types").OfflineOutboxItem) {
   if (item.kind !== "formWrite") return null;
   return item.payload as OfflineFormWrite;
+}
+
+export function serviceFormIdsFromWrite(write: OfflineFormWrite) {
+  const ids = new Set<string>();
+  for (const id of write.listFields?.formIds ?? []) {
+    if (id) ids.add(id);
+  }
+  const extra = write.extra as { formIds?: string[] } | undefined;
+  for (const id of extra?.formIds ?? []) {
+    if (id) ids.add(id);
+  }
+  if (write.id) ids.add(write.id);
+  return ids;
 }
 
 function sameServiceDraft(a: OfflineFormWrite, b: OfflineFormWrite) {
@@ -1519,6 +1543,23 @@ export function coalesceFormWrite(
     items = kept;
   }
 
+  if (write.action === "deleteServiceForms") {
+    const ids = serviceFormIdsFromWrite(write);
+    const kept = items.filter((item) => {
+      const payload = asFormWrite(item);
+      if (!payload) return true;
+      if (payload.action === "deleteServiceForms") return false;
+      if (payload.action === "deleteServiceForm" && payload.id && ids.has(payload.id)) {
+        return false;
+      }
+      if (payload.action === "completeServiceForm" && payload.id && ids.has(payload.id)) {
+        return false;
+      }
+      return true;
+    });
+    return [...kept, next];
+  }
+
   if (write.action === "deleteAllServiceForms") {
     const farmId = write.farmId ?? "";
     const kept = items.filter((item) => {
@@ -1529,6 +1570,7 @@ export function coalesceFormWrite(
         payload.action !== "completeServiceForm" &&
         payload.action !== "deleteServiceDraft" &&
         payload.action !== "deleteServiceForm" &&
+        payload.action !== "deleteServiceForms" &&
         payload.action !== "deleteAllServiceForms"
       );
     });

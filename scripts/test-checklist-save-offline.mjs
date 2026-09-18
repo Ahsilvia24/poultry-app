@@ -299,4 +299,11 @@ assert.equal(
 );
 assert.equal(coalescedAll.at(-1)?.payload.action, "deleteAllServiceForms");
 
+const ranged = applyFormWrite(farm2, {
+  action: "deleteServiceForms",
+  listFields: { formIds: ["local-service-1"] },
+});
+assert.equal(ranged.serviceForms.some((row) => row.id === "local-service-1"), false);
+assert.equal(ranged.serviceForms.some((row) => row.id === "local-other-farm"), true);
+
 console.log("checklist-save-offline: ok");

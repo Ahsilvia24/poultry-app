@@ -13,6 +13,18 @@ const SHORT_MONTHS = [
   "Dec",
 ];
 
+export function serviceFormKindTitle(kind: string) {
+  if (kind === "placement") return "Placement";
+  if (kind === "prebrood") return "Prebrood";
+  return "Service";
+}
+
+export function serviceFormKindHref(kind: string) {
+  if (kind === "placement") return "placement";
+  if (kind === "prebrood") return "prebrood";
+  return "report";
+}
+
 /** Service date on Prebrood form: "07 Aug 26" — from the stored key, not UTC midnight. */
 export function formatServiceShortDate(dateKey: string) {
   const [y, m, d] = (dateKey ?? "").slice(0, 10).split("-").map(Number);

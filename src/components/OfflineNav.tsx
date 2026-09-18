@@ -24,6 +24,7 @@ import { FarmVisitsView } from "@/components/FarmVisitsView";
 import { ReportsView } from "@/components/ReportsView";
 import { PlacementFormView } from "@/components/serviceForms/PlacementFormView";
 import { PrebroodFormView } from "@/components/serviceForms/PrebroodFormView";
+import { AllServiceFormsView } from "@/components/serviceForms/AllServiceFormsView";
 import { ServiceFarmPicker } from "@/components/serviceForms/ServiceFarmPicker";
 import { ServiceReportFormView } from "@/components/serviceForms/ServiceReportFormView";
 import { ReplicaFarmMissing } from "@/components/ReplicaFarmMissing";
@@ -39,6 +40,7 @@ import { selectLfo, selectLfoEdit } from "@/lib/offline/selectLfo";
 import { selectTools } from "@/lib/offline/selectTools";
 import { selectMortality } from "@/lib/offline/selectMortality";
 import {
+  selectAllServiceForms,
   selectServiceFarmPicker,
   selectServiceFormPage,
 } from "@/lib/offline/selectServiceFarm";
@@ -427,6 +429,16 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
     const model = selectFeed(snapshot, farmId);
     if (!model) return <ReplicaFarmMissing farmId={farmId} />;
     return <FarmFeedView model={model} />;
+  }
+
+  if (pathname === "/service/forms") {
+    return (
+      <AllServiceFormsView
+        rows={selectAllServiceForms(snapshot)}
+        timeZone={snapshot.settings?.appTimeZone}
+        fromFarmId={phoneFarmId(new URLSearchParams(search).get("fromFarm")) || null}
+      />
+    );
   }
 
   const serviceHome = /^\/farms\/([^/]+)\/service$/.exec(pathname);
