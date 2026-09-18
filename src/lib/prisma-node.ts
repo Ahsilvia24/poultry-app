@@ -7,10 +7,11 @@ const globalForNodePrisma = globalThis as unknown as { nodePrisma?: PrismaClient
 
 function postgresUrl() {
   const candidates = [
-    process.env.DATABASE_URL,
-    process.env.POSTGRES_URL,
     process.env.POSTGRES_URL_NON_POOLING,
     process.env.DATABASE_URL_UNPOOLED,
+    process.env.DIRECT_URL,
+    process.env.POSTGRES_URL,
+    process.env.DATABASE_URL,
     process.env.POSTGRES_PRISMA_URL,
     process.env.PRISMA_DATABASE_URL,
   ];
