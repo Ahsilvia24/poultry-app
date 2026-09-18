@@ -3,9 +3,10 @@ export const WRITE_TIMEOUT_MS = 12_000;
 export const FLUSH_BUDGET_MS = 15_000;
 /** One flush loop plus the in-flight write that started just before the budget. */
 export const FLUSH_OVERALL_MS = FLUSH_BUDGET_MS + WRITE_TIMEOUT_MS + 2_000;
-/** Must outlast a full flush plus ping checks, or Settings reports leftover while work is still uploading. */
+/** Must outlast a full flush plus ping checks, or leftover is a mid-upload snapshot. */
 export const SYNC_OVERALL_MS = FLUSH_OVERALL_MS + 10_000;
-export const SYNC_UI_MS = SYNC_OVERALL_MS + 2_000;
+/** Drop the Settings “Uploading…” banner. The flush can keep running after this. */
+export const SYNC_UI_MS = 12_000;
 export const SIGN_OUT_FLUSH_MS = 4_000;
 export const LOGOUT_FETCH_MS = 2_000;
 export const SIGN_OUT_OVERALL_MS = 4_000;

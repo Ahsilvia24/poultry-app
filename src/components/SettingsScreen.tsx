@@ -95,12 +95,7 @@ export function SettingsScreen() {
       let settled = false;
       const timer = window.setTimeout(() => {
         if (settled) return;
-        setLastSync({
-          ok: false,
-          pending: pendingCount || 1,
-          aliases: {},
-          reason: "leftover",
-        });
+        // Unstick Uploading. Do not lock leftover — syncNow still updates lastSync.
         setSyncingNow(false);
       }, SYNC_UI_MS);
       try {
