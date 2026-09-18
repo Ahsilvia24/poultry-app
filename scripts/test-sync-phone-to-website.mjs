@@ -39,10 +39,11 @@ assert.match(settings, /syncNow/);
 assert.match(settings, /SYNC_UI_MS/);
 assert.match(settings, /signOutLocalApp/);
 assert.match(settings, /px-3 py-2 text-sm font-bold text-stone-800 underline/);
-assert.equal(
-  settings.match(/px-3 py-2 text-sm font-bold text-stone-800 underline disabled:opacity-60/g)?.length,
-  2,
-);
+assert.match(settings, /min-h-11/);
+assert.match(settings, /actionLinkClass/);
+assert.match(settings, /disabled=\{leaving \|\| syncingNow\}/);
+assert.match(settings, /disabled=\{leaving\}/);
+assert.doesNotMatch(settings, /disabled=\{busy\}/);
 
 const provider = read("src/components/OfflineProvider.tsx");
 assert.match(provider, /syncNow/);
@@ -73,6 +74,9 @@ assert.match(timeoutSrc, /WRITE_TIMEOUT_MS = 12_000/);
 assert.match(timeoutSrc, /FLUSH_BUDGET_MS = 15_000/);
 assert.match(timeoutSrc, /SYNC_OVERALL_MS = 15_000/);
 assert.match(timeoutSrc, /SYNC_UI_MS = 12_000/);
+assert.match(timeoutSrc, /SIGN_OUT_FLUSH_MS = 4_000/);
+assert.match(timeoutSrc, /LOGOUT_FETCH_MS = 2_000/);
+assert.match(timeoutSrc, /SIGN_OUT_OVERALL_MS = 4_000/);
 assert.match(timeoutSrc, /export function withTimeout/);
 
 const { withTimeout, isSyncTimeout, SYNC_TIMEOUT_MARK } = await import(

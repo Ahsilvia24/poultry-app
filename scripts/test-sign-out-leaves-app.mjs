@@ -10,7 +10,13 @@ const settings = read("src/components/SettingsScreen.tsx");
 assert.match(settings, /signOutLocalApp/);
 assert.match(settings, /phoneFarmSaveStatus/);
 assert.match(settings, /SIGN_OUT_UNSAVED_CONFIRM/);
-assert.match(settings, /window\.confirm/);
+assert.match(settings, /SIGN_OUT_ANYWAY/);
+assert.match(settings, /role="dialog"/);
+assert.match(settings, /leaveApp/);
+assert.match(settings, /SIGN_OUT_FLUSH_MS/);
+assert.match(settings, /disabled=\{leaving\}/);
+assert.doesNotMatch(settings, /window\.confirm/);
+assert.doesNotMatch(settings, /disabled=\{busy\}/);
 assert.doesNotMatch(settings, /action=\{signOutAction\}/);
 
 const local = read("src/lib/offline/signOutLocal.ts");
@@ -19,6 +25,9 @@ assert.match(local, /markCachesSignedOut\(true\)/);
 assert.match(local, /type: "sign-out"/);
 assert.match(local, /\/api\/logout/);
 assert.match(local, /location\.replace\("\/api\/leave"\)/);
+assert.match(local, /withTimeout\(prepareLeave\(\), SIGN_OUT_OVERALL_MS\)/);
+assert.match(local, /AbortController/);
+assert.match(local, /LOGOUT_FETCH_MS/);
 
 const signedOut = read("src/lib/offline/signedOut.ts");
 assert.match(signedOut, /SIGNED_OUT_FLAG = "\/__poultrytech-signed-out"/);

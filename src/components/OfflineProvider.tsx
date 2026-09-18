@@ -139,6 +139,12 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         replaceSnapshot(result.snapshot);
       }
       return result;
+    } catch {
+      const leftover = await loadOutbox();
+      const stored = await loadIdAliases();
+      setPendingCount(leftover.length);
+      setAliases(stored);
+      return { ok: false as const, pending: leftover.length, aliases: stored, reason: "leftover" as const };
     } finally {
       setSyncing(false);
     }
