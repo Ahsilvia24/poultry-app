@@ -1761,15 +1761,39 @@ export function getFieldLog(from: string, to: string): FieldLogWeek[] {
   );
 }
 
+type LfoListRow = {
+  id: string;
+  farm_id: string;
+  order_date: string;
+  notes: string | null;
+  farm_name: string;
+};
+
+function lfoHousesForCalc(detail: {
+  houses: Array<{
+    houseId: string;
+    houseNumber: number;
+    binAPounds: number;
+    binBPounds: number;
+    feedUpAt: string | Date | null;
+    headCount: number;
+  }>;
+}) {
+  return detail.houses.map((house) => {
+    return {
+      houseId: house.houseId,
+      houseNumber: house.houseNumber,
+      binAPounds: house.binAPounds,
+      binBPounds: house.binBPounds,
+      feedUpAt: house.feedUpAt,
+      headCount: house.headCount,
+    };
+  });
+}
+
 export function listLfos() {
   const db = getDb();
-  const rows = db.getAllSync<{
-    id: string;
-    farm_id: string;
-    order_date: string;
-    notes: string | null;
-    farm_name: string;
-  }>(
+  const rows = db.getAllSync<LfoListRow>(
     `SELECT l.*, f.farm_name FROM last_feed_orders l
      JOIN farms f ON f.id = l.farm_id
      ORDER BY COALESCE(l.created_at, l.calculated_at, l.order_date) DESC, l.id DESC`,
@@ -1785,14 +1809,7 @@ export function listLfos() {
         consumptionRate: detail.consumptionRate,
         timing: getLfoFeedTiming(),
         timeZone: getAppTimeZone(),
-        houses: detail.houses.map((h) => ({)
-          houseId: h.houseId,
-          houseNumber: h.houseNumber,
-          binAPounds: h.binAPounds,
-          binBPounds: h.binBPounds,
-          feedUpAt: h.feedUpAt,
-          headCount: h.headCount,
-        })),
+        houses: lfoHousesForCalc(detail),
       });
       houseSummary = formatHouseLfoSummary(calc.houses);
     } catch {
