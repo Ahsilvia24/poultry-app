@@ -61,13 +61,13 @@ assert.match(flush, /AbortController/);
 assert.match(flush, /SNAPSHOT_TIMEOUT_MS/);
 assert.match(flush, /WRITE_TIMEOUT_MS/);
 assert.match(flush, /FLUSH_BUDGET_MS/);
+assert.match(flush, /FLUSH_OVERALL_MS/);
 assert.match(flush, /withTimeout/);
 assert.match(flush, /isSyncTimeout/);
 assert.match(flush, /SYNC_WRITE_TIMEOUT/);
 assert.match(flush, /flushOutboxItem/);
 assert.match(flush, /flushGeneration/);
 assert.match(flush, /flushTail = Promise.resolve\(\)/);
-assert.match(flush, /FLUSH_OVERALL_MS/);
 assert.match(flush, /export async function waitForFlush/);
 assert.match(sync, /waitForFlush/);
 
