@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isDeviceId } from "@/lib/device-id";
 import { replaceLoginStatus } from "@/lib/replace-login";
 import { cookieHeaderHasSessionToken } from "@/lib/session-cookie";
-import { verifyLoginPassword } from "@/lib/verify-credentials";
+import { verifyEmailPassword } from "@/lib/verify-credentials";
 import { establishWebSession } from "@/lib/web-session";
 
 export const dynamic = "force-dynamic";
@@ -99,11 +99,11 @@ export async function POST(req: Request) {
     return NextResponse.redirect(url, 303);
   };
 
-  if (!parsed.email || !parsed.password) {
+  if (!parsed.email.includes("@") || !parsed.password) {
     return fail("Invalid email or password", 400);
   }
 
-  const user = await verifyLoginPassword(parsed.email, parsed.password);
+  const user = await verifyEmailPassword(parsed.email, parsed.password);
   if (!user) return fail("Invalid email or password", 401);
 
   if (!parsed.confirmReplace) {

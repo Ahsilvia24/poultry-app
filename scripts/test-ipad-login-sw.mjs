@@ -31,7 +31,7 @@ assert.equal(await safe.text(), "<html>Sign in</html>");
 const ok = new Response("dashboard", { status: 200 });
 assert.equal(withoutRedirect(ok), ok);
 
-assert.match(sw, /poultrytech-offline-v16/);
+assert.match(sw, /poultrytech-offline-v17/);
 assert.match(sw, /function withoutRedirect/);
 assert.match(sw, /Safari cannot show a worker response that followed a redirect/);
 assert.match(sw, /isPublicAuthPath\(path\)/);
