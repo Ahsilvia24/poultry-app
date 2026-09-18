@@ -67,21 +67,37 @@ assert.match(flush, /SYNC_WRITE_TIMEOUT/);
 assert.match(flush, /flushOutboxItem/);
 assert.match(flush, /flushGeneration/);
 assert.match(flush, /flushTail = Promise.resolve\(\)/);
+assert.match(flush, /FLUSH_OVERALL_MS/);
+assert.match(flush, /export async function waitForFlush/);
+assert.match(sync, /waitForFlush/);
 
 const timeoutSrc = read("src/lib/offline/syncTimeout.ts");
 assert.match(timeoutSrc, /SNAPSHOT_TIMEOUT_MS = 20_000/);
 assert.match(timeoutSrc, /WRITE_TIMEOUT_MS = 12_000/);
 assert.match(timeoutSrc, /FLUSH_BUDGET_MS = 15_000/);
-assert.match(timeoutSrc, /SYNC_OVERALL_MS = 15_000/);
-assert.match(timeoutSrc, /SYNC_UI_MS = 12_000/);
+assert.match(timeoutSrc, /FLUSH_OVERALL_MS/);
 assert.match(timeoutSrc, /SIGN_OUT_FLUSH_MS = 4_000/);
 assert.match(timeoutSrc, /LOGOUT_FETCH_MS = 2_000/);
 assert.match(timeoutSrc, /SIGN_OUT_OVERALL_MS = 4_000/);
 assert.match(timeoutSrc, /export function withTimeout/);
 
-const { withTimeout, isSyncTimeout, SYNC_TIMEOUT_MARK } = await import(
-  join(root, "src/lib/offline/syncTimeout.ts"),
-);
+const {
+  FLUSH_BUDGET_MS,
+  FLUSH_OVERALL_MS,
+  SIGN_OUT_OVERALL_MS,
+  SYNC_OVERALL_MS,
+  SYNC_UI_MS,
+  WRITE_TIMEOUT_MS,
+  withTimeout,
+  isSyncTimeout,
+  SYNC_TIMEOUT_MARK,
+} = await import(join(root, "src/lib/offline/syncTimeout.ts"));
+
+assert.equal(FLUSH_OVERALL_MS, FLUSH_BUDGET_MS + WRITE_TIMEOUT_MS + 2_000);
+assert.ok(SYNC_OVERALL_MS >= FLUSH_OVERALL_MS, "Sync must wait for the flush, not cut it off");
+assert.ok(SYNC_UI_MS >= SYNC_OVERALL_MS, "Settings must not show leftover while sync is still running");
+assert.ok(SIGN_OUT_OVERALL_MS < SYNC_OVERALL_MS, "leave must be faster than a full sync");
+assert.match(sync, /flushOutbox\(\{ evenIfOffline: true \}\)/);
 
 const started = Date.now();
 let timedOut = false;
