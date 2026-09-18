@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isDeviceId } from "@/lib/device-id";
 import { replaceLoginStatus } from "@/lib/replace-login";
 import { cookieHeaderHasSessionToken } from "@/lib/session-cookie";
-import { verifyEmailPassword } from "@/lib/verify-credentials";
+import { verifyLoginPassword } from "@/lib/verify-credentials";
 import { establishWebSession } from "@/lib/web-session";
 
 export const dynamic = "force-dynamic";
@@ -102,11 +102,8 @@ export async function POST(req: Request) {
   if (!parsed.email || !parsed.password) {
     return fail("Invalid email or password", 400);
   }
-  if (!parsed.email.includes("@")) {
-    return fail("Use your email and password, not your name.", 400);
-  }
 
-  const user = await verifyEmailPassword(parsed.email, parsed.password);
+  const user = await verifyLoginPassword(parsed.email, parsed.password);
   if (!user) return fail("Invalid email or password", 401);
 
   if (!parsed.confirmReplace) {
@@ -132,7 +129,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const result = await establishWebSession(parsed.email, parsed.password, parsed.deviceId);
+  const result = await establishWebSession(user.email, parsed.password, parsed.deviceId);
   if (result.error) return fail(result.error, 401);
 
   if (parsed.json) return NextResponse.json({ ok: true });

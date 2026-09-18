@@ -98,8 +98,15 @@ function LoginForm() {
           onSubmit={onSubmit}
         >
           <div>
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required autoComplete="email" />
+            <Label htmlFor="email">Email or name</Label>
+            <Input
+              id="email"
+              name="email"
+              type="text"
+              inputMode="email"
+              required
+              autoComplete="username"
+            />
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
