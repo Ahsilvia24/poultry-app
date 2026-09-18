@@ -13,7 +13,7 @@ applyHostedEnv();
 
 const credentialsSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1),
+  password: z.string().min(6),
   deviceId: z.string().optional(),
 });
 

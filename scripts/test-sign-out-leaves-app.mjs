@@ -62,7 +62,7 @@ assert.match(leave, /data\.error \|\| "Invalid email or password"/);
 assert.doesNotMatch(leave, /_next/);
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v16/);
+assert.match(sw, /poultrytech-offline-v17/);
 assert.match(sw, /responseLooksLikeLogin/);
 assert.doesNotMatch(sw, /PRECACHE\s*=\s*\[[\s\S]*?"\/",/);
 assert.match(sw, /SIGNED_OUT_FLAG/);
