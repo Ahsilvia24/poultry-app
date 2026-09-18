@@ -55,8 +55,15 @@ assert.match(nextConfig, /unpdf/);
 assert.match(nextConfig, /pdf-parse/);
 assert.match(nextConfig, /outputFileTracingIncludes/);
 assert.match(nextConfig, /unpdf\/dist/);
-assert.match(nextConfig, /\.prisma\/client/);
 assert.match(nextConfig, /outputFileTracingExcludes/);
+assert.match(nextConfig, /libquery_engine-debian-/);
+assert.doesNotMatch(
+  nextConfig.slice(
+    nextConfig.indexOf("outputFileTracingIncludes"),
+    nextConfig.indexOf("outputFileTracingExcludes"),
+  ),
+  /\.prisma\/client/,
+);
 assert.match(nextConfig, /pdf-parse\/\*\*\/\*/);
 assert.match(nextConfig, /pdfjs-dist\/\*\*\/\*/);
 

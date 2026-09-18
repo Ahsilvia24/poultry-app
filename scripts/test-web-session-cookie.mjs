@@ -77,7 +77,7 @@ assert.equal(res.cookies.get("authjs.session-token")?.value, cookie.value);
 assert.equal(res.cookies.get("__Secure-authjs.session-token")?.value, "");
 
 assert.match(read("prisma/schema.prisma"), /rhel-openssl-3\.0\.x/);
-assert.match(read("next.config.ts"), /\.prisma\/client/);
+assert.match(read("next.config.ts"), /libquery_engine-debian-/);
 assert.match(read("next.config.ts"), /@prisma\/adapter-pg/);
 assert.match(read("src/lib/prisma-node.ts"), /PrismaPg/);
 assert.match(read("src/lib/prisma-node.ts"), /DIRECT_URL/);
