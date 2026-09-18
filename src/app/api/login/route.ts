@@ -3,7 +3,11 @@ import { isDeviceId } from "@/lib/device-id";
 import { replaceLoginStatus } from "@/lib/replace-login";
 import { cookieHeaderHasSessionToken } from "@/lib/session-cookie";
 import { verifyEmailPassword } from "@/lib/verify-credentials";
-import { establishWebSession } from "@/lib/web-session";
+import {
+  createWebSession,
+  putSessionOnResponse,
+  requestUsesSecureCookies,
+} from "@/lib/web-session";
 
 export const dynamic = "force-dynamic";
 
@@ -129,9 +133,15 @@ export async function POST(req: Request) {
     }
   }
 
-  const result = await establishWebSession(user.email, parsed.password, parsed.deviceId);
-  if (result.error) return fail(result.error, 401);
+  const created = await createWebSession(
+    user,
+    parsed.deviceId,
+    requestUsesSecureCookies(req),
+  );
+  if ("error" in created) return fail(created.error, 401);
 
-  if (parsed.json) return NextResponse.json({ ok: true });
-  return NextResponse.redirect(new URL("/", origin), 303);
+  const res = parsed.json
+    ? NextResponse.json({ ok: true })
+    : NextResponse.redirect(new URL("/", origin), 303);
+  return putSessionOnResponse(res, created.cookie);
 }

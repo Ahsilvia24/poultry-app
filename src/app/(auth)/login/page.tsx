@@ -44,6 +44,8 @@ function LoginForm() {
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        cache: "no-store",
         body: JSON.stringify(body),
       });
       const data = (await res.json().catch(() => ({}))) as {
