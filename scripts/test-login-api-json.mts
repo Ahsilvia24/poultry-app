@@ -7,6 +7,16 @@ async function main() {
   assert.equal(badLogin.status, 400);
   assert.deepEqual(await badLogin.json(), { error: "Invalid email or password" });
 
+  const nameLogin = await loginPost(
+    new Request("http://localhost/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "Alex", password: "secret1" }),
+    }),
+  );
+  assert.equal(nameLogin.status, 400);
+  assert.deepEqual(await nameLogin.json(), { error: "Use your email and password, not your name." });
+
   const emptyLogin = await loginPost(
     new Request("http://localhost/api/login", {
       method: "POST",

@@ -10,6 +10,8 @@ export const SESSION_COOKIE_NAMES = [
   "__Secure-authjs.session-token",
   "authjs.callback-url",
   "__Secure-authjs.callback-url",
+  "authjs.csrf-token",
+  "__Host-authjs.csrf-token",
   "next-auth.session-token",
   "__Secure-next-auth.session-token",
 ];
@@ -23,9 +25,12 @@ export function expireSessionCookies(res: NextResponse) {
     res.cookies.set(name, "", {
       path: "/",
       maxAge: 0,
+      expires: new Date(0),
       httpOnly: true,
       sameSite: "lax",
-      secure: name.startsWith("__Secure-"),
+      secure:
+        name.startsWith("__Secure-") ||
+        name.startsWith("__Host-"),
     });
   }
 }

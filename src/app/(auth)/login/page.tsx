@@ -62,14 +62,14 @@ function LoginForm() {
         return;
       }
       if (!res.ok || data.error) {
-        setError("Invalid email or password");
+        setError(data.error || "Invalid email or password");
         setPending(false);
         return;
       }
       await tellWorkerSignedIn();
       window.location.assign("/");
     } catch {
-      setError("Invalid email or password");
+      setError("Need Wi-Fi or service to sign in.");
       setPending(false);
     }
   }

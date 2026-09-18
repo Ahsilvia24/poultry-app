@@ -69,6 +69,8 @@ const loginRoute = read("src/app/api/login/route.ts");
 assert.match(loginRoute, /sameBrowser: cookieHeaderHasSessionToken/);
 assert.match(loginRoute, /currentDeviceId: parsed\.deviceId/);
 assert.match(loginRoute, /knownOtherDevice/);
+assert.doesNotMatch(loginRoute, /await auth\(\)/);
+assert.match(loginRoute, /Use your email and password, not your name/);
 
 assert.match(read("src/components/OfflineProvider.tsx"), /bindThisPhone/);
 assert.match(read("src/app/api/offline/device/route.ts"), /bindActiveDevice/);

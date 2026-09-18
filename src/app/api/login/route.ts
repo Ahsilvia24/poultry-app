@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { isDeviceId } from "@/lib/device-id";
 import { replaceLoginStatus } from "@/lib/replace-login";
 import { cookieHeaderHasSessionToken } from "@/lib/session-cookie";
@@ -103,17 +102,18 @@ export async function POST(req: Request) {
   if (!parsed.email || !parsed.password) {
     return fail("Invalid email or password", 400);
   }
+  if (!parsed.email.includes("@")) {
+    return fail("Use your email and password, not your name.", 400);
+  }
 
   const user = await verifyEmailPassword(parsed.email, parsed.password);
   if (!user) return fail("Invalid email or password", 401);
 
   if (!parsed.confirmReplace) {
-    const session = await auth();
     const status = replaceLoginStatus({
       activeSessionId: user.activeSessionId,
       activeDeviceId: user.activeDeviceId,
       unsyncedAt: user.unsyncedAt,
-      currentSessionId: session?.user?.sessionId,
       currentDeviceId: parsed.deviceId,
       sameBrowser: cookieHeaderHasSessionToken(req.headers.get("cookie")),
     });

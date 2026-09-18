@@ -61,7 +61,7 @@ assert.match(leave, /\/api\/login/);
 assert.doesNotMatch(leave, /_next/);
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v15/);
+assert.match(sw, /poultrytech-offline-v16/);
 assert.match(sw, /responseLooksLikeLogin/);
 assert.doesNotMatch(sw, /PRECACHE\s*=\s*\[[\s\S]*?"\/",/);
 assert.match(sw, /SIGNED_OUT_FLAG/);

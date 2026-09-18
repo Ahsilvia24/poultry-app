@@ -166,7 +166,7 @@
           }
           if (!res.ok || data.error) {
             err.hidden = false;
-            err.textContent = "Invalid email or password";
+            err.textContent = data.error || "Invalid email or password";
             submit.disabled = false;
             submit.textContent = confirmReplace ? "Sign in anyway" : "Sign in";
             return;

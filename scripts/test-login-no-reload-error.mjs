@@ -30,6 +30,8 @@ assert.match(loginRoute, /NextResponse\.redirect/);
 
 const session = read("src/lib/web-session.ts");
 assert.match(session, /redirect: false/);
+assert.match(session, /redirectTo: "\/"/);
+assert.match(session, /Could not start this sign-in/);
 assert.match(session, /isNextRedirect/);
 
 const auth = read("src/app/actions/auth.ts");
