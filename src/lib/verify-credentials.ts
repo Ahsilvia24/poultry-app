@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { getNodePrisma } from "@/lib/prisma-node";
 
 export function signinUnavailableDetail(error: unknown) {
   if (error instanceof Error) {
@@ -10,7 +10,8 @@ export function signinUnavailableDetail(error: unknown) {
 
 export async function verifyEmailPassword(email: string, password: string) {
   try {
-    const user = await prisma.user.findUnique({
+    const db = await getNodePrisma();
+    const user = await db.user.findUnique({
       where: { email: email.trim().toLowerCase() },
     });
     if (!user) return null;
