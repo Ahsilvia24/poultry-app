@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { getNodePrisma } from "@/lib/prisma-node";
 import { isRegisterEmailAllowed } from "@/lib/allowedRegisterEmails";
 import { registerSchema } from "@/lib/validations";
 import {
@@ -74,9 +74,10 @@ export async function POST(req: Request) {
     return fail("This email is not approved for an account.", 400);
   }
 
+  const db = await getNodePrisma();
   let existing;
   try {
-    existing = await prisma.user.findUnique({ where: { email } });
+    existing = await db.user.findUnique({ where: { email } });
   } catch {
     return fail("Could not reach sign-in. Try again.", 503);
   }
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  const user = await prisma.user.create({
+  const user = await db.user.create({
     data: {
       name: parsed.data.name,
       email,

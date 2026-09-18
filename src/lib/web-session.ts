@@ -4,6 +4,7 @@ import type { NextResponse } from "next/server";
 import { rotateActiveSession } from "@/lib/active-session";
 import { SESSION_MAX_AGE_SECONDS } from "@/lib/auth.config";
 import { applyHostedEnv } from "@/lib/hosted-env";
+import { getNodePrisma } from "@/lib/prisma-node";
 import {
   attachSessionCookie,
   type IssuedSessionCookie,
@@ -66,7 +67,7 @@ export async function createWebSession(
   secure: boolean,
 ): Promise<{ cookie: IssuedSessionCookie } | { error: string }> {
   try {
-    const sessionId = await rotateActiveSession(user.id, deviceId);
+    const sessionId = await rotateActiveSession(user.id, deviceId, await getNodePrisma());
     return { cookie: await issueSessionCookie(user, sessionId, secure) };
   } catch {
     return { error: SESSION_FAIL };

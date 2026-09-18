@@ -38,9 +38,13 @@ export function reuseExistingSessionId(
   return null;
 }
 
-export async function rotateActiveSession(userId: string, deviceId?: string | null) {
+export async function rotateActiveSession(
+  userId: string,
+  deviceId?: string | null,
+  db: Pick<typeof prisma, "user"> = prisma,
+) {
   if (isDeviceId(deviceId)) {
-    const current = await prisma.user.findUnique({
+    const current = await db.user.findUnique({
       where: { id: userId },
       select: { activeSessionId: true, activeDeviceId: true },
     });
@@ -52,7 +56,7 @@ export async function rotateActiveSession(userId: string, deviceId?: string | nu
     if (reuse) return reuse;
   }
   const sessionId = crypto.randomUUID();
-  await prisma.user.update({
+  await db.user.update({
     where: { id: userId },
     data: {
       activeSessionId: sessionId,

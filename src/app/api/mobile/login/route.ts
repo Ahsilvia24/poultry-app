@@ -3,6 +3,7 @@ import { z } from "zod";
 import { rotateActiveSession } from "@/lib/active-session";
 import { isDeviceId } from "@/lib/device-id";
 import { jsonError, signMobileToken } from "@/lib/mobile-auth";
+import { getNodePrisma } from "@/lib/prisma-node";
 import { replaceLoginStatus } from "@/lib/replace-login";
 import { verifyEmailPassword } from "@/lib/verify-credentials";
 
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
   const sid = await rotateActiveSession(
     user.id,
     isDeviceId(parsed.data.deviceId) ? parsed.data.deviceId : undefined,
+    await getNodePrisma(),
   );
   const token = await signMobileToken({
     sub: user.id,
