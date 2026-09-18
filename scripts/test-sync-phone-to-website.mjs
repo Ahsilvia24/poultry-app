@@ -95,9 +95,11 @@ const {
 
 assert.equal(FLUSH_OVERALL_MS, FLUSH_BUDGET_MS + WRITE_TIMEOUT_MS + 2_000);
 assert.ok(SYNC_OVERALL_MS >= FLUSH_OVERALL_MS, "Sync must wait for the flush, not cut it off");
-assert.ok(SYNC_UI_MS >= SYNC_OVERALL_MS, "Settings must not show leftover while sync is still running");
+assert.ok(SYNC_UI_MS <= 12_000, "Uploading must not sit through a full flush");
 assert.ok(SIGN_OUT_OVERALL_MS < SYNC_OVERALL_MS, "leave must be faster than a full sync");
 assert.match(sync, /flushOutbox\(\{ evenIfOffline: true \}\)/);
+assert.match(settings, /setSyncingNow\(false\)/);
+assert.doesNotMatch(settings, /reason: "leftover"/);
 
 const started = Date.now();
 let timedOut = false;
