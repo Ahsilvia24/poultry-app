@@ -21,7 +21,7 @@ import {
   serviceFormKindHref,
   serviceFormKindTitle,
 } from "@/lib/serviceForms/format";
-import { shareServiceFormPdf } from "@/lib/serviceForms/sharePdf";
+import { shareServiceFormPdf, shareServiceFormsPdf } from "@/lib/serviceForms/sharePdf";
 import type { AnyServiceForm } from "@/lib/serviceForms/types";
 
 function formHref(row: AllServiceFormRow) {
@@ -57,15 +57,15 @@ export function AllServiceFormsView({
   const backHref = fromFarmId ? `/farms/${fromFarmId}/service` : "/farms";
   const busy = pending || sharingAll || Boolean(sharingId);
 
-  async function shareRow(row: AllServiceFormRow) {
+  function rowForm(row: AllServiceFormRow): AnyServiceForm {
     const payload = row.payload;
     if (!payload || typeof payload !== "object") {
       throw new Error("Could not open this PDF.");
     }
-    await shareServiceFormPdf({
+    return {
       ...(payload as AnyServiceForm),
       kind: row.formKind,
-    } as AnyServiceForm);
+    } as AnyServiceForm;
   }
 
   async function shareSaved(row: AllServiceFormRow) {
@@ -73,7 +73,7 @@ export function AllServiceFormsView({
     setShareError(null);
     setSharingId(row.id);
     try {
-      await shareRow(row);
+      await shareServiceFormPdf(rowForm(row));
     } catch (error) {
       setShareError(error instanceof Error ? error.message : "Could not share PDF");
     } finally {
@@ -86,9 +86,7 @@ export function AllServiceFormsView({
     setShareError(null);
     setSharingAll(true);
     try {
-      for (const row of visible) {
-        await shareRow(row);
-      }
+      await shareServiceFormsPdf(visible.map(rowForm));
     } catch (error) {
       setShareError(error instanceof Error ? error.message : "Could not share PDF");
     } finally {

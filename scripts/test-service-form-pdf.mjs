@@ -1,10 +1,22 @@
 import assert from "node:assert/strict";
 import { createServiceReportDraft } from "../src/lib/serviceForms/defaults.ts";
-import { formatServiceShortDate } from "../src/lib/serviceForms/format.ts";
+import { formatServiceShortDate, serviceFormPdfFileName } from "../src/lib/serviceForms/format.ts";
 import { lastLoggedGeneratorHours, withPrebroodLoggedHours } from "../src/lib/generator/format.ts";
 import { buildServiceFormPdf } from "../src/lib/serviceForms/pdfFill.ts";
 
 assert.equal(formatServiceShortDate("2026-09-10"), "10 Sep 26");
+assert.equal(
+  serviceFormPdfFileName("Service Report", "North Ridge", "2026-09-15"),
+  "Service Report North Ridge 15 Sep 26.pdf",
+);
+assert.equal(
+  serviceFormPdfFileName("Placement", "South", "2026-09-09"),
+  "Placement South 09 Sep 26.pdf",
+);
+assert.equal(
+  serviceFormPdfFileName("Prebrood", "Oak Ridge", "2026-09-08"),
+  "Prebrood Oak Ridge 08 Sep 26.pdf",
+);
 
 const hours = lastLoggedGeneratorHours([
   { gen1Hours: 12.5, gen2Hours: null, gen3Hours: null, gen4Hours: null },
@@ -45,7 +57,7 @@ form.feederHeightOk = "yes";
 
 const pdf = await buildServiceFormPdf(form);
 assert.ok(pdf.bytes.byteLength > 1000);
-assert.match(pdf.filename, /Service-Report-North-Ridge/);
+assert.equal(pdf.filename, `Service Report North Ridge ${formatServiceShortDate(form.date)}.pdf`);
 assert.equal(pdf.bytes[0], 0x25); // %PDF
 
 console.log("service-form-pdf: ok", pdf.filename, pdf.bytes.byteLength);

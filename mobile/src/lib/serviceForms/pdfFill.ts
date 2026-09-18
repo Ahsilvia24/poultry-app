@@ -21,7 +21,7 @@ import type {
   ServiceReportForm,
   YesNo,
 } from "./types";
-import { formatMinVentPair, formatServiceShortDate } from "./format";
+import { formatMinVentPair, formatServiceShortDate, serviceFormPdfFileName } from "./format";
 import { minVentCenteredX, minVentSideBoxes } from "./minVentLabel";
 import {
   MAX_PLACEMENT_COMMENT_PAGES,
@@ -666,7 +666,7 @@ async function buildServiceReportPdf(form: ServiceReportForm) {
     leftoverComments = next;
   }
 
-  return writePdfToCache(doc, pdfFileName("Service-Report", form.farmName, form.date));
+  return writePdfToCache(doc, serviceFormPdfFileName("Service Report", form.farmName, form.date));
 }
 
 async function appendTemplatePage(doc: PDFDocument, template: number) {
@@ -689,7 +689,7 @@ async function buildPlacementPdf(form: PlacementForm) {
     if (!leftover || leftover === comments) break;
     comments = leftover;
   }
-  return writePdfToCache(doc, pdfFileName("Placement", form.farmName, form.date));
+  return writePdfToCache(doc, serviceFormPdfFileName("Placement", form.farmName, form.date));
 }
 
 async function buildPrebroodPdf(form: PrebroodForm) {
@@ -705,18 +705,7 @@ async function buildPrebroodPdf(form: PrebroodForm) {
     if (!leftover || leftover === comments) break;
     comments = leftover;
   }
-  return writePdfToCache(doc, pdfFileName("Prebrood", form.farmName, form.date));
-}
-
-/** Friendly name for Save to Files / AirDrop (e.g. Service-Report-NORTH-RIDGE-2026-07-29.pdf). */
-function pdfFileName(kind: string, farmName: string, date: string) {
-  const farm = String(farmName || "Farm")
-    .trim()
-    .replace(/[^A-Za-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 40) || "Farm";
-  const day = String(date || "").trim() || "date";
-  return `${kind}-${farm}-${day}.pdf`;
+  return writePdfToCache(doc, serviceFormPdfFileName("Prebrood", form.farmName, form.date));
 }
 
 async function writePdfToCache(doc: PDFDocument, filename: string): Promise<BuiltServicePdf> {
