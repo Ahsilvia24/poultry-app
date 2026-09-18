@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isDeviceId } from "@/lib/device-id";
 import { replaceLoginStatus } from "@/lib/replace-login";
 import { cookieHeaderHasSessionToken } from "@/lib/session-cookie";
-import { verifyEmailPassword } from "@/lib/verify-credentials";
+import { signinUnavailableDetail, verifyEmailPassword } from "@/lib/verify-credentials";
 import {
   createWebSession,
   putSessionOnResponse,
@@ -113,7 +113,16 @@ export async function POST(req: Request) {
   let user;
   try {
     user = await verifyEmailPassword(parsed.email, parsed.password);
-  } catch {
+  } catch (error) {
+    if (parsed.json) {
+      return NextResponse.json(
+        {
+          error: "Could not reach sign-in. Try again.",
+          detail: signinUnavailableDetail(error instanceof Error ? error.cause : error),
+        },
+        { status: 503 },
+      );
+    }
     return fail("Could not reach sign-in. Try again.", 503);
   }
   if (!user) return fail("Invalid email or password", 401);
