@@ -20,6 +20,24 @@ export function formatServiceShortDate(dateKey: string) {
   return `${String(d).padStart(2, "0")} ${SHORT_MONTHS[m - 1]} ${String(y).slice(-2)}`;
 }
 
+function pdfFarmName(farmName: string) {
+  return (
+    String(farmName || "Farm")
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, " ")
+      .replace(/\s+/g, " ")
+      .slice(0, 40)
+      .trim() || "Farm"
+  );
+}
+
+/** Save/share name, e.g. "Service Report North Ridge 15 Sep 26.pdf". */
+export function serviceFormPdfFileName(kindLabel: string, farmName: string, date: string) {
+  const farm = pdfFarmName(farmName);
+  const day = formatServiceShortDate(date) || String(date || "").trim() || "date";
+  return `${kindLabel} ${farm} ${day}.pdf`;
+}
+
 export function formatMinVentPair(on: string, off: string) {
   const a = on.trim();
   const b = off.trim();

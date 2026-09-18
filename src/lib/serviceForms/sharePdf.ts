@@ -1,4 +1,5 @@
 import { PDFDocument } from "pdf-lib";
+import { formatServiceShortDate } from "./format";
 import type { BuiltServicePdf } from "./pdfFill";
 import { buildServiceFormPdf } from "./pdfFill";
 import type { AnyServiceForm } from "./types";
@@ -28,10 +29,11 @@ export function mergedServiceFormsFilename(forms: AnyServiceForm[]) {
     .map((form) => String(form.date || "").trim())
     .filter(Boolean)
     .sort();
-  const from = dates[0] || "date";
+  const from = dates[0] || "";
   const to = dates[dates.length - 1] || from;
-  const range = from === to ? from : `${from}-to-${to}`;
-  return `Checklists-${forms.length}-${range}.pdf`;
+  const day = formatServiceShortDate(from) || from || "date";
+  const prefix = from && to && from !== to ? "Weekly Reports" : "All Reports";
+  return `${prefix} ${day}.pdf`;
 }
 
 /** Combine every checklist into one PDF so Share All is a single download. */

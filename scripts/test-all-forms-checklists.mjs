@@ -193,16 +193,19 @@ const second = createPlacementDraft({ farmName: "South", serviceTech: "Alex" });
 second.date = "2026-09-16";
 second.comments = "South placement notes.";
 
-assert.equal(mergedServiceFormsFilename([first, second]), "Checklists-2-2026-09-15-to-2026-09-16.pdf");
-assert.equal(mergedServiceFormsFilename([first]), "Checklists-1-2026-09-15.pdf");
+assert.equal(mergedServiceFormsFilename([first, second]), "Weekly Reports 15 Sep 26.pdf");
+assert.equal(mergedServiceFormsFilename([first]), "All Reports 15 Sep 26.pdf");
+const sameDay = createPlacementDraft({ farmName: "South", serviceTech: "Alex" });
+sameDay.date = "2026-09-15";
+assert.equal(mergedServiceFormsFilename([first, sameDay]), "All Reports 15 Sep 26.pdf");
 
 const one = await buildMergedServiceFormsPdf([first]);
-assert.match(one.filename, /Service-Report-Oak-Ridge-2026-09-15\.pdf/);
+assert.equal(one.filename, "Service Report Oak Ridge 15 Sep 26.pdf");
 const oneDoc = await PDFDocument.load(one.bytes);
 assert.equal(oneDoc.getPageCount(), 1);
 
 const merged = await buildMergedServiceFormsPdf([first, second]);
-assert.equal(merged.filename, "Checklists-2-2026-09-15-to-2026-09-16.pdf");
+assert.equal(merged.filename, "Weekly Reports 15 Sep 26.pdf");
 assert.ok(merged.bytes.byteLength > one.bytes.byteLength);
 const mergedDoc = await PDFDocument.load(merged.bytes);
 assert.equal(mergedDoc.getPageCount(), 2, "Share All must include every visible checklist page");
