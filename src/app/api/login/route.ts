@@ -103,11 +103,19 @@ export async function POST(req: Request) {
     return NextResponse.redirect(url, 303);
   };
 
-  if (!parsed.email.includes("@") || !parsed.password) {
+  if (!parsed.email || !parsed.password) {
     return fail("Invalid email or password", 400);
   }
+  if (!parsed.email.includes("@")) {
+    return fail("Use the email for this account.", 400);
+  }
 
-  const user = await verifyEmailPassword(parsed.email, parsed.password);
+  let user;
+  try {
+    user = await verifyEmailPassword(parsed.email, parsed.password);
+  } catch {
+    return fail("Could not reach sign-in. Try again.", 503);
+  }
   if (!user) return fail("Invalid email or password", 401);
 
   if (!parsed.confirmReplace) {

@@ -74,7 +74,12 @@ export async function POST(req: Request) {
     return fail("This email is not approved for an account.", 400);
   }
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  let existing;
+  try {
+    existing = await prisma.user.findUnique({ where: { email } });
+  } catch {
+    return fail("Could not reach sign-in. Try again.", 503);
+  }
   if (existing) {
     return fail("An account with this email already exists", 400);
   }

@@ -71,6 +71,7 @@ assert.match(loginRoute, /currentDeviceId: parsed\.deviceId/);
 assert.match(loginRoute, /knownOtherDevice/);
 assert.doesNotMatch(loginRoute, /await auth\(\)/);
 assert.match(loginRoute, /verifyEmailPassword/);
+assert.match(loginRoute, /Could not reach sign-in/);
 assert.match(loginRoute, /createWebSession\(/);
 assert.match(loginRoute, /putSessionOnResponse/);
 assert.doesNotMatch(loginRoute, /establishWebSession/);

@@ -76,11 +76,16 @@ attachSessionCookie(res, cookie);
 assert.equal(res.cookies.get("authjs.session-token")?.value, cookie.value);
 assert.equal(res.cookies.get("__Secure-authjs.session-token")?.value, "");
 
+assert.match(read("prisma/schema.prisma"), /rhel-openssl-3\.0\.x/);
+assert.match(read("next.config.ts"), /\.prisma\/client/);
+
 const loginRoute = read("src/app/api/login/route.ts");
 assert.match(loginRoute, /createWebSession/);
 assert.match(loginRoute, /putSessionOnResponse\(res, created\.cookie\)/);
 assert.doesNotMatch(loginRoute, /return NextResponse\.json\(\{ ok: true \}\)/);
 assert.match(loginRoute, /Invalid email or password/);
+assert.match(loginRoute, /Use the email for this account/);
+assert.match(loginRoute, /Could not reach sign-in/);
 assert.match(loginRoute, /if \("error" in created\) return fail\(created\.error/);
 
 const registerRoute = read("src/app/api/register/route.ts");
