@@ -5,13 +5,19 @@ import { updateSettingsAction } from "@/app/actions/ops";
 import { signOutLocalApp } from "@/lib/offline/signOutLocal";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { useOffline } from "@/components/OfflineProvider";
-import { phoneFarmSaveStatus, SIGN_OUT_UNSAVED_CONFIRM } from "@/lib/offline/phoneFarmSave";
+import {
+  phoneFarmSaveStatus,
+  SIGN_OUT_ANYWAY,
+  SIGN_OUT_STAY,
+  SIGN_OUT_UNSAVED_BODY,
+  SIGN_OUT_UNSAVED_CONFIRM,
+} from "@/lib/offline/phoneFarmSave";
 import {
   SYNC_WORKING,
   syncPhoneResultMessage,
   type SyncPhoneResult,
 } from "@/lib/offline/syncPhoneToWebsite";
-import { SYNC_UI_MS } from "@/lib/offline/syncTimeout";
+import { SIGN_OUT_FLUSH_MS, SYNC_UI_MS, withTimeout } from "@/lib/offline/syncTimeout";
 import {
   SettingsChipInput,
   SettingsFieldRow as SettingsRow,
@@ -33,6 +39,7 @@ export function SettingsScreen() {
   const farmSave = phoneFarmSaveStatus({ ready, syncing, pendingCount });
   const [leaving, setLeaving] = useState(false);
   const [syncingNow, setSyncingNow] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const [lastSync, setLastSync] = useState<SyncPhoneResult | null>(null);
   const shownSave =
     syncingNow
@@ -40,7 +47,6 @@ export function SettingsScreen() {
       : lastSync && !(lastSync.ok && pendingCount > 0)
         ? syncPhoneResultMessage(lastSync)
         : farmSave;
-  const busy = leaving || syncingNow;
   const values = snapshot
     ? settingsFormValues(snapshot)
     : {
@@ -81,6 +87,70 @@ export function SettingsScreen() {
     savedTimer.current = window.setTimeout(() => setSaved(false), 2500);
   }
 
+  function onSync() {
+    if (syncingNow || leaving) return;
+    void (async () => {
+      setSyncingNow(true);
+      setLastSync(null);
+      let settled = false;
+      const timer = window.setTimeout(() => {
+        if (settled) return;
+        setLastSync({
+          ok: false,
+          pending: pendingCount || 1,
+          aliases: {},
+          reason: "leftover",
+        });
+        setSyncingNow(false);
+      }, SYNC_UI_MS);
+      try {
+        const result = await syncNow();
+        settled = true;
+        setLastSync(result);
+      } catch {
+        settled = true;
+        setLastSync({
+          ok: false,
+          pending: pendingCount || 1,
+          aliases: {},
+          reason: "unreachable",
+        });
+      } finally {
+        settled = true;
+        window.clearTimeout(timer);
+        setSyncingNow(false);
+      }
+    })();
+  }
+
+  async function leaveApp(force = false) {
+    setLeaving(true);
+    try {
+      let pending = pendingCount;
+      if (!force && (typeof navigator === "undefined" || navigator.onLine !== false)) {
+        try {
+          pending = (await withTimeout(flushNow(), SIGN_OUT_FLUSH_MS)).pending;
+        } catch {
+          /* Leave even if the upload is still sitting. */
+        }
+      }
+      if (!force && pending > 0) {
+        setConfirmLeave(true);
+        return;
+      }
+      setConfirmLeave(false);
+      await signOutLocalApp();
+    } catch {
+      setConfirmLeave(false);
+      await signOutLocalApp();
+    } finally {
+      setLeaving(false);
+    }
+  }
+
+  const actionLinkClass =
+    "relative z-10 min-h-11 px-3 py-2 text-sm font-bold text-stone-800 underline disabled:opacity-60";
+
   return (
     <div>
       <div className="mb-4 flex items-start justify-between gap-4 md:mb-6">
@@ -96,6 +166,79 @@ export function SettingsScreen() {
             {values.email}
           </p>
         ) : null}
+      </div>
+
+      <div className="relative z-10 mb-5 flex flex-col items-center gap-3 px-1">
+        {shownSave.kind === "unsaved" ? (
+          <p
+            role="status"
+            className="max-w-md rounded-xl border border-amber-300 bg-amber-100 px-4 py-3 text-center text-sm font-semibold text-amber-950"
+          >
+            {shownSave.text}
+          </p>
+        ) : (
+          <p
+            role="status"
+            className={
+              shownSave.kind === "saved"
+                ? "max-w-md text-center text-sm font-semibold text-emerald-800"
+                : "max-w-md text-center text-sm font-medium text-stone-600"
+            }
+          >
+            {shownSave.text}
+          </p>
+        )}
+        {confirmLeave ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={SIGN_OUT_UNSAVED_CONFIRM}
+            className="max-w-md rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-center"
+          >
+            <p className="text-sm font-semibold text-amber-950">{SIGN_OUT_UNSAVED_BODY}</p>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-6">
+              <button
+                type="button"
+                disabled={leaving}
+                onClick={() => setConfirmLeave(false)}
+                className={actionLinkClass}
+              >
+                {SIGN_OUT_STAY}
+              </button>
+              <button
+                type="button"
+                disabled={leaving}
+                onClick={() => {
+                  void leaveApp(true);
+                }}
+                className={actionLinkClass}
+              >
+                {leaving ? "Signing out…" : SIGN_OUT_ANYWAY}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-center gap-8">
+            <button
+              type="button"
+              disabled={leaving || syncingNow}
+              onClick={onSync}
+              className={actionLinkClass}
+            >
+              {syncingNow ? "Syncing…" : "Sync data"}
+            </button>
+            <button
+              type="button"
+              disabled={leaving}
+              onClick={() => {
+                void leaveApp();
+              }}
+              className={actionLinkClass}
+            >
+              {leaving ? "Signing out…" : "Sign out"}
+            </button>
+          </div>
+        )}
       </div>
 
       <Card className="max-w-2xl overflow-visible">
@@ -301,85 +444,6 @@ export function SettingsScreen() {
           <ChangePasswordForm />
         </div>
       </Card>
-
-      <div className="mt-6 flex flex-col items-center gap-3 px-4">
-        {shownSave.kind === "unsaved" ? (
-          <p
-            role="status"
-            className="max-w-md rounded-xl border border-amber-300 bg-amber-100 px-4 py-3 text-center text-sm font-semibold text-amber-950"
-          >
-            {shownSave.text}
-          </p>
-        ) : (
-          <p
-            role="status"
-            className={
-              shownSave.kind === "saved"
-                ? "max-w-md text-center text-sm font-semibold text-emerald-800"
-                : "max-w-md text-center text-sm font-medium text-stone-600"
-            }
-          >
-            {shownSave.text}
-          </p>
-        )}
-        <div className="flex flex-wrap items-center justify-center gap-8">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              void (async () => {
-                setSyncingNow(true);
-                setLastSync(null);
-                let settled = false;
-                const timer = window.setTimeout(() => {
-                  if (settled) return;
-                  setLastSync({
-                    ok: false,
-                    pending: pendingCount || 1,
-                    aliases: {},
-                    reason: "leftover",
-                  });
-                  setSyncingNow(false);
-                }, SYNC_UI_MS);
-                try {
-                  const result = await syncNow();
-                  settled = true;
-                  setLastSync(result);
-                } finally {
-                  settled = true;
-                  window.clearTimeout(timer);
-                  setSyncingNow(false);
-                }
-              })();
-            }}
-            className="px-3 py-2 text-sm font-bold text-stone-800 underline disabled:opacity-60"
-          >
-            {syncingNow ? "Syncing…" : "Sync data"}
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              void (async () => {
-                setLeaving(true);
-                try {
-                  let pending = pendingCount;
-                  if (typeof navigator === "undefined" || navigator.onLine !== false) {
-                    pending = (await flushNow()).pending;
-                  }
-                  if (pending > 0 && !window.confirm(SIGN_OUT_UNSAVED_CONFIRM)) return;
-                  await signOutLocalApp();
-                } finally {
-                  setLeaving(false);
-                }
-              })();
-            }}
-            className="px-3 py-2 text-sm font-bold text-stone-800 underline disabled:opacity-60"
-          >
-            {leaving ? "Signing out…" : "Sign out"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

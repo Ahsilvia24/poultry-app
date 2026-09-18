@@ -3,6 +3,9 @@ export const WRITE_TIMEOUT_MS = 12_000;
 export const FLUSH_BUDGET_MS = 15_000;
 export const SYNC_OVERALL_MS = 15_000;
 export const SYNC_UI_MS = 12_000;
+export const SIGN_OUT_FLUSH_MS = 4_000;
+export const LOGOUT_FETCH_MS = 2_000;
+export const SIGN_OUT_OVERALL_MS = 4_000;
 export const SYNC_TIMEOUT_MARK = "SYNC_TIMEOUT";
 
 export const SYNC_WRITE_TIMEOUT =

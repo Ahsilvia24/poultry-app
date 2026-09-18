@@ -20,5 +20,8 @@ export function phoneFarmSaveStatus(input: {
   return { kind: "saved", text: "All farm work on this phone is saved." };
 }
 
-export const SIGN_OUT_UNSAVED_CONFIRM =
-  "This phone still has farm work that has not uploaded. Sign out deletes that work from this phone. Sign out anyway?";
+export const SIGN_OUT_UNSAVED_BODY =
+  "This phone still has farm work that has not uploaded. Sign out deletes that work from this phone.";
+export const SIGN_OUT_UNSAVED_CONFIRM = `${SIGN_OUT_UNSAVED_BODY} Sign out anyway?`;
+export const SIGN_OUT_ANYWAY = "Sign out anyway";
+export const SIGN_OUT_STAY = "Stay signed in";

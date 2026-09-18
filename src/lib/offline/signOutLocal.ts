@@ -1,5 +1,6 @@
 import { clearLocalReplica } from "@/lib/offline/idb";
 import { markCachesSignedOut } from "@/lib/offline/signedOut";
+import { LOGOUT_FETCH_MS, SIGN_OUT_OVERALL_MS, withTimeout } from "@/lib/offline/syncTimeout";
 
 function postWorker(type: "sign-out" | "sign-in"): Promise<void> {
   return new Promise((resolve) => {
@@ -43,23 +44,39 @@ export async function keepSignedOutOnLogin() {
   await postWorker("sign-out");
 }
 
-/**
- * Clear replica, cookie, and cached dashboard, then open /api/leave.
- * Home Screen workers skip /api/, so this cannot paint a cached dashboard.
- */
-export async function signOutLocalApp() {
+async function prepareLeave() {
   await markCachesSignedOut(true);
   await clearLocalReplica();
   await postWorker("sign-out");
   try {
-    await fetch("/api/logout", {
-      method: "POST",
-      credentials: "include",
-      cache: "no-store",
-      keepalive: true,
-    });
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), LOGOUT_FETCH_MS);
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        keepalive: true,
+        signal: controller.signal,
+      });
+    } finally {
+      window.clearTimeout(timer);
+    }
   } catch {
-    /* Offline: local replica + SW flag still leave the app. */
+    /* Offline or stalled: local replica + SW flag still leave the app. */
+  }
+}
+
+/**
+ * Clear replica, cookie, and cached dashboard, then open /api/leave.
+ * Home Screen workers skip /api/, so this cannot paint a cached dashboard.
+ * Never wait forever on IndexedDB, the worker, or /api/logout.
+ */
+export async function signOutLocalApp() {
+  try {
+    await withTimeout(prepareLeave(), SIGN_OUT_OVERALL_MS);
+  } catch {
+    /* Still open the leave page. */
   }
   window.location.replace("/api/leave");
 }
