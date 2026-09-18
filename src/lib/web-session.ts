@@ -20,18 +20,19 @@ export async function establishWebSession(
       password,
       ...(deviceId ? { deviceId } : {}),
       redirect: false,
+      redirectTo: "/",
     });
     if (typeof result === "string" && /[?&]error=/.test(result)) {
-      return { error: "Invalid email or password" };
+      return { error: "Could not start this sign-in. Try again." };
     }
     if (result && typeof result === "object" && "error" in result) {
       const err = (result as { error?: string }).error;
-      if (err) return { error: "Invalid email or password" };
+      if (err) return { error: "Could not start this sign-in. Try again." };
     }
     return {};
   } catch (error) {
     if (isNextRedirect(error)) return {};
-    if (error instanceof AuthError) return { error: "Invalid email or password" };
-    return { error: "Invalid email or password" };
+    if (error instanceof AuthError) return { error: "Could not start this sign-in. Try again." };
+    return { error: "Could not start this sign-in. Try again." };
   }
 }

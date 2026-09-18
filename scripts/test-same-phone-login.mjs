@@ -69,6 +69,12 @@ const loginRoute = read("src/app/api/login/route.ts");
 assert.match(loginRoute, /sameBrowser: cookieHeaderHasSessionToken/);
 assert.match(loginRoute, /currentDeviceId: parsed\.deviceId/);
 assert.match(loginRoute, /knownOtherDevice/);
+assert.doesNotMatch(loginRoute, /await auth\(\)/);
+assert.match(loginRoute, /verifyLoginPassword/);
+assert.match(loginRoute, /establishWebSession\(user\.email/);
+assert.match(read("src/lib/verify-credentials.ts"), /name: \{ equals: key, mode: "insensitive" \}/);
+assert.match(read("src/app/(auth)/login/page.tsx"), /Email or name/);
+assert.match(read("public/signed-out.html"), /Email or name/);
 
 assert.match(read("src/components/OfflineProvider.tsx"), /bindThisPhone/);
 assert.match(read("src/app/api/offline/device/route.ts"), /bindActiveDevice/);
