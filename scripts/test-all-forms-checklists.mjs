@@ -22,6 +22,9 @@ assert.match(view, /filterServiceFormsByDateRange/);
 assert.match(view, /deleteServiceForms/);
 assert.match(view, /listFields: \{ formIds \}/);
 assert.match(view, /shareServiceFormPdf/);
+assert.match(view, /shareServiceFormsPdf/);
+assert.match(view, /shareServiceFormsPdf\(visible\.map\(rowForm\)\)/);
+assert.doesNotMatch(view, /for \(const row of visible\) \{\s*await shareRow/);
 assert.match(view, /all-forms-from/);
 assert.match(view, /all-forms-to/);
 assert.match(view, /visible\.map/);
@@ -168,5 +171,40 @@ assert.match(actions, /export async function deleteServiceFormsAction/);
 assert.match(actions, /revalidatePath\("\/service\/forms"\)/);
 assert.match(read("src/lib/offline/flushWrites.ts"), /deleteServiceFormsAction/);
 assert.match(read("src/lib/offline/types.ts"), /"deleteServiceForms"/);
+
+const sharePdf = read("src/lib/serviceForms/sharePdf.ts");
+assert.match(sharePdf, /export async function shareServiceFormsPdf/);
+assert.match(sharePdf, /buildMergedServiceFormsPdf/);
+assert.match(sharePdf, /copyPages/);
+assert.doesNotMatch(sharePdf, /for \(const form of forms\) \{\s*downloadPdfBytes/);
+
+const { createPlacementDraft, createServiceReportDraft } = await import(
+  join(root, "src/lib/serviceForms/defaults.ts")
+);
+const { buildMergedServiceFormsPdf, mergedServiceFormsFilename } = await import(
+  join(root, "src/lib/serviceForms/sharePdf.ts")
+);
+const { PDFDocument } = await import("pdf-lib");
+
+const first = createServiceReportDraft({ farmName: "Oak Ridge", serviceTech: "Alex" });
+first.date = "2026-09-15";
+first.comments = "Oak Ridge service notes.";
+const second = createPlacementDraft({ farmName: "South", serviceTech: "Alex" });
+second.date = "2026-09-16";
+second.comments = "South placement notes.";
+
+assert.equal(mergedServiceFormsFilename([first, second]), "Checklists-2-2026-09-15-to-2026-09-16.pdf");
+assert.equal(mergedServiceFormsFilename([first]), "Checklists-1-2026-09-15.pdf");
+
+const one = await buildMergedServiceFormsPdf([first]);
+assert.match(one.filename, /Service-Report-Oak-Ridge-2026-09-15\.pdf/);
+const oneDoc = await PDFDocument.load(one.bytes);
+assert.equal(oneDoc.getPageCount(), 1);
+
+const merged = await buildMergedServiceFormsPdf([first, second]);
+assert.equal(merged.filename, "Checklists-2-2026-09-15-to-2026-09-16.pdf");
+assert.ok(merged.bytes.byteLength > one.bytes.byteLength);
+const mergedDoc = await PDFDocument.load(merged.bytes);
+assert.equal(mergedDoc.getPageCount(), 2, "Share All must include every visible checklist page");
 
 console.log("all-forms-checklists: ok");
