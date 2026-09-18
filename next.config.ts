@@ -4,7 +4,15 @@ const nextConfig: NextConfig = {
   // unpdf ships an inlined pdf.js worker. Copy only that package onto
   // serverless functions. pdf-parse / pdfjs-dist are 50MB+ fallbacks and
   // blew up Vercel production deploys when attached to every route.
-  serverExternalPackages: ["@prisma/client", "prisma", "unpdf", "pdf-parse", "pdfjs-dist"],
+  serverExternalPackages: [
+    "@prisma/client",
+    "@prisma/adapter-pg",
+    "pg",
+    "prisma",
+    "unpdf",
+    "pdf-parse",
+    "pdfjs-dist",
+  ],
   outputFileTracingIncludes: {
     "/api/leave": ["./public/signed-out.html"],
     "/api/**": [
