@@ -153,14 +153,16 @@ export function buildLfoSharePayload(
       consumptionRate: inventory.consumptionRate,
       timing,
       timeZone,
-      houses: houses.map((house) => ({)
-        houseId: house.houseId,
-        houseNumber: house.houseNumber,
-        headCount: house.headCount,
-        binAPounds: house.binAPounds,
-        binBPounds: house.binBPounds,
-        feedUpAt: house.feedUpAt,
-      })),
+      houses: houses.map((house) => {
+        return {
+          houseId: house.houseId,
+          houseNumber: house.houseNumber,
+          headCount: house.headCount,
+          binAPounds: house.binAPounds,
+          binBPounds: house.binBPounds,
+          feedUpAt: house.feedUpAt,
+        };
+      }),
     });
 
   const orderTimeLabel = dash(halfHourTimeLabel(inventory.orderTime));
