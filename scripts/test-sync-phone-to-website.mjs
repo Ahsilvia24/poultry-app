@@ -15,7 +15,6 @@ assert.match(sync, /did not upload/);
 assert.match(sync, /\/api\/offline\/ping/);
 assert.match(sync, /evenIfOffline: true/);
 assert.match(sync, /loadOutbox/);
-assert.match(sync, /pullRemoteSnapshot/);
 assert.match(sync, /leftover\.length === 0/);
 assert.match(sync, /ok: true/);
 assert.match(sync, /reason === "offline"/);
@@ -25,6 +24,7 @@ assert.match(sync, /lastError/);
 assert.match(sync, /publicSyncLeftoverError/);
 assert.match(sync, /withTimeout\(syncPhoneToWebsiteOnce\(\), SYNC_OVERALL_MS\)/);
 assert.match(sync, /snapshot: null/);
+assert.doesNotMatch(sync, /await pullRemoteSnapshot/);
 
 const ping = read("src/app/api/offline/ping/route.ts");
 assert.match(ping, /auth\(\)/);
@@ -36,6 +36,7 @@ const settings = read("src/components/SettingsScreen.tsx");
 assert.match(settings, /Sync data/);
 assert.match(settings, /Syncing…/);
 assert.match(settings, /syncNow/);
+assert.match(settings, /SYNC_UI_MS/);
 assert.match(settings, /signOutLocalApp/);
 assert.match(settings, /px-3 py-2 text-sm font-bold text-stone-800 underline/);
 assert.equal(
@@ -63,12 +64,15 @@ assert.match(flush, /withTimeout/);
 assert.match(flush, /isSyncTimeout/);
 assert.match(flush, /SYNC_WRITE_TIMEOUT/);
 assert.match(flush, /flushOutboxItem/);
+assert.match(flush, /flushGeneration/);
+assert.match(flush, /flushTail = Promise.resolve\(\)/);
 
 const timeoutSrc = read("src/lib/offline/syncTimeout.ts");
 assert.match(timeoutSrc, /SNAPSHOT_TIMEOUT_MS = 20_000/);
-assert.match(timeoutSrc, /WRITE_TIMEOUT_MS = 20_000/);
-assert.match(timeoutSrc, /FLUSH_BUDGET_MS = 45_000/);
-assert.match(timeoutSrc, /SYNC_OVERALL_MS = 70_000/);
+assert.match(timeoutSrc, /WRITE_TIMEOUT_MS = 12_000/);
+assert.match(timeoutSrc, /FLUSH_BUDGET_MS = 15_000/);
+assert.match(timeoutSrc, /SYNC_OVERALL_MS = 15_000/);
+assert.match(timeoutSrc, /SYNC_UI_MS = 12_000/);
 assert.match(timeoutSrc, /export function withTimeout/);
 
 const { withTimeout, isSyncTimeout, SYNC_TIMEOUT_MARK } = await import(

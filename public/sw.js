@@ -6,7 +6,7 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v14";
+const CACHE = "poultrytech-offline-v15";
 const NETWORK_MS = 1500;
 const OPEN_MS = 8000;
 const SIGNED_OUT_FLAG = "/__poultrytech-signed-out";
@@ -275,6 +275,13 @@ async function staleWhileRevalidate(request, event, homeFallback = true) {
   }
 }
 
+function shouldAdoptFromOldCache(path) {
+  if (path === SIGNED_OUT_FLAG) return true;
+  if (PRECACHE.includes(path)) return true;
+  if (path.startsWith("/service-forms/")) return true;
+  return false;
+}
+
 async function adoptOldCaches(cache) {
   const keys = await caches.keys();
   for (const key of keys) {
@@ -283,13 +290,11 @@ async function adoptOldCaches(cache) {
     if (await old.match(SIGNED_OUT_FLAG)) {
       await cache.put(SIGNED_OUT_FLAG, new Response("1", { status: 200 }));
     }
-    const signedOut = Boolean(await cache.match(SIGNED_OUT_FLAG));
     const reqs = await old.keys();
     await Promise.all(
       reqs.map(async (req) => {
         const path = new URL(req.url).pathname;
-        if (path === "/login" || path.startsWith("/login/")) return;
-        if (signedOut && (path === "/" || path === "/signed-out")) return;
+        if (!shouldAdoptFromOldCache(path)) return;
         const res = await old.match(req);
         if (!res || responseLooksLikeLogin(res)) return;
         const existing = await cache.match(req);

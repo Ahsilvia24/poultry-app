@@ -1,4 +1,4 @@
-import { flushOutbox, pullRemoteSnapshot } from "@/lib/offline/flushOutbox";
+import { flushOutbox } from "@/lib/offline/flushOutbox";
 import { loadIdAliases, loadOutbox } from "@/lib/offline/idb";
 import type { IdAliases } from "@/lib/offline/remapIds";
 import { SYNC_OVERALL_MS, withTimeout } from "@/lib/offline/syncTimeout";
@@ -105,8 +105,8 @@ async function syncPhoneToWebsiteOnce(): Promise<SyncPhoneResult> {
         if (attempt < SYNC_ATTEMPTS - 1) await wait(400 * (attempt + 1));
         continue;
       }
-      const snapshot = await pullRemoteSnapshot();
-      return { ok: true, pending: 0, aliases, snapshot };
+      // Snapshot download is what left Settings on “Uploading…”. Work is already up.
+      return { ok: true, pending: 0, aliases, snapshot: null };
     }
     if (attempt < SYNC_ATTEMPTS - 1) await wait(400 * (attempt + 1));
   }

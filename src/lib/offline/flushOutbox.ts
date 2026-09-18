@@ -80,10 +80,22 @@ export async function pullRemoteSnapshot(): Promise<OfflineSnapshot | null> {
 export type FlushOutboxResult = { pending: number; aliases: IdAliases; error?: string };
 
 let flushTail: Promise<void> = Promise.resolve();
+let flushGeneration = 0;
+
+async function leftoverFlushResult(error?: string): Promise<FlushOutboxResult> {
+  const leftover = await loadOutbox();
+  const aliases = await loadIdAliases();
+  return {
+    pending: leftover.length,
+    aliases,
+    error: leftover.length > 0 ? error ?? SYNC_WRITE_TIMEOUT : undefined,
+  };
+}
 
 export async function flushOutbox(opts?: {
   evenIfOffline?: boolean;
 }): Promise<FlushOutboxResult> {
+  const gen = ++flushGeneration;
   let result!: FlushOutboxResult;
   const run = async () => {
     try {
@@ -92,13 +104,7 @@ export async function flushOutbox(opts?: {
         FLUSH_BUDGET_MS + WRITE_TIMEOUT_MS + 2_000,
       );
     } catch {
-      const leftover = await loadOutbox();
-      const aliases = await loadIdAliases();
-      result = {
-        pending: leftover.length,
-        aliases,
-        error: leftover.length > 0 ? SYNC_WRITE_TIMEOUT : undefined,
-      };
+      result = await leftoverFlushResult();
     }
   };
   const next = flushTail.then(run, run);
@@ -106,7 +112,12 @@ export async function flushOutbox(opts?: {
     () => undefined,
     () => undefined,
   );
-  await next;
+  try {
+    await withTimeout(next, FLUSH_BUDGET_MS + WRITE_TIMEOUT_MS + 2_000);
+  } catch {
+    if (flushGeneration === gen) flushTail = Promise.resolve();
+    result = result ?? (await leftoverFlushResult());
+  }
   return result;
 }
 

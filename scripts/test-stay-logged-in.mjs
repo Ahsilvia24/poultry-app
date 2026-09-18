@@ -24,7 +24,7 @@ const mobileAuth = read("src/lib/mobile-auth.ts");
 assert.match(mobileAuth, /400d/);
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v14/);
+assert.match(sw, /poultrytech-offline-v15/);
 assert.match(sw, /OPEN_MS = 8000/);
 assert.match(sw, /responseLooksLikeLogin/);
 assert.match(sw, /cache\.match\("\/offline\.html"\)/);

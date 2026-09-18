@@ -11,6 +11,7 @@ import {
   syncPhoneResultMessage,
   type SyncPhoneResult,
 } from "@/lib/offline/syncPhoneToWebsite";
+import { SYNC_UI_MS } from "@/lib/offline/syncTimeout";
 import {
   SettingsChipInput,
   SettingsFieldRow as SettingsRow,
@@ -329,9 +330,24 @@ export function SettingsScreen() {
               void (async () => {
                 setSyncingNow(true);
                 setLastSync(null);
+                let settled = false;
+                const timer = window.setTimeout(() => {
+                  if (settled) return;
+                  setLastSync({
+                    ok: false,
+                    pending: pendingCount || 1,
+                    aliases: {},
+                    reason: "leftover",
+                  });
+                  setSyncingNow(false);
+                }, SYNC_UI_MS);
                 try {
-                  setLastSync(await syncNow());
+                  const result = await syncNow();
+                  settled = true;
+                  setLastSync(result);
                 } finally {
+                  settled = true;
+                  window.clearTimeout(timer);
                   setSyncingNow(false);
                 }
               })();
