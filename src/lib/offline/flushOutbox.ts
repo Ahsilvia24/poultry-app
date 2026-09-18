@@ -33,6 +33,7 @@ import {
 } from "@/lib/offline/remapIds";
 import {
   FLUSH_BUDGET_MS,
+  FLUSH_OVERALL_MS,
   SNAPSHOT_TIMEOUT_MS,
   SYNC_WRITE_TIMEOUT,
   WRITE_TIMEOUT_MS,
@@ -92,6 +93,16 @@ async function leftoverFlushResult(error?: string): Promise<FlushOutboxResult> {
   };
 }
 
+/** Wait for an in-flight flush to persist, then return leftover. Does not start another pass. */
+export async function waitForFlush(): Promise<FlushOutboxResult> {
+  try {
+    await withTimeout(flushTail, FLUSH_OVERALL_MS);
+  } catch {
+    /* Read leftover even if the flush timer already fired. */
+  }
+  return leftoverFlushResult();
+}
+
 export async function flushOutbox(opts?: {
   evenIfOffline?: boolean;
 }): Promise<FlushOutboxResult> {
@@ -99,10 +110,7 @@ export async function flushOutbox(opts?: {
   let result!: FlushOutboxResult;
   const run = async () => {
     try {
-      result = await withTimeout(
-        flushOutboxOnce(opts),
-        FLUSH_BUDGET_MS + WRITE_TIMEOUT_MS + 2_000,
-      );
+      result = await withTimeout(flushOutboxOnce(opts), FLUSH_OVERALL_MS);
     } catch {
       result = await leftoverFlushResult();
     }
@@ -113,7 +121,7 @@ export async function flushOutbox(opts?: {
     () => undefined,
   );
   try {
-    await withTimeout(next, FLUSH_BUDGET_MS + WRITE_TIMEOUT_MS + 2_000);
+    await withTimeout(next, FLUSH_OVERALL_MS);
   } catch {
     if (flushGeneration === gen) flushTail = Promise.resolve();
     result = result ?? (await leftoverFlushResult());

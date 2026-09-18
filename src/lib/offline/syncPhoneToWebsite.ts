@@ -1,4 +1,4 @@
-import { flushOutbox } from "@/lib/offline/flushOutbox";
+import { flushOutbox, waitForFlush } from "@/lib/offline/flushOutbox";
 import { loadIdAliases, loadOutbox } from "@/lib/offline/idb";
 import type { IdAliases } from "@/lib/offline/remapIds";
 import { SYNC_OVERALL_MS, withTimeout } from "@/lib/offline/syncTimeout";
@@ -77,12 +77,21 @@ export async function syncPhoneToWebsite(): Promise<SyncPhoneResult> {
   try {
     return await withTimeout(syncPhoneToWebsiteOnce(), SYNC_OVERALL_MS);
   } catch {
-    const aliases = await loadIdAliases();
-    const leftover = await loadOutbox();
-    if (leftover.length === 0) {
-      return { ok: true, pending: 0, aliases, snapshot: null };
+    // The overall timer does not cancel flush. Wait for it so leftover is not a mid-upload snapshot.
+    try {
+      const flushed = await waitForFlush();
+      if (flushed.pending === 0) {
+        return { ok: true, pending: 0, aliases: flushed.aliases, snapshot: null };
+      }
+      return fail("leftover", flushed.aliases, flushed.error);
+    } catch {
+      const aliases = await loadIdAliases();
+      const leftover = await loadOutbox();
+      if (leftover.length === 0) {
+        return { ok: true, pending: 0, aliases, snapshot: null };
+      }
+      return fail("leftover", aliases);
     }
-    return fail("leftover", aliases);
   }
 }
 
