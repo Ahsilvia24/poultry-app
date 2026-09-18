@@ -1,6 +1,7 @@
 import { appToday, appTodayKey } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { lastLoggedGeneratorHours } from "@/lib/generator/format";
+import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import {
   daysSincePlacement,
   summarizeForDate,
@@ -9,9 +10,11 @@ import {
 import { asDate, asDateKey, localNoonFromKey } from "@/lib/offline/dates";
 import { aliasIdCandidates, type IdAliases } from "@/lib/offline/remapIds";
 import type { OfflineSnapshot } from "@/lib/offline/types";
+import { mondayOfWeek } from "@/lib/reports/field-log";
 import type { ServiceFarmContext } from "@/lib/serviceForms/farmContext";
 import { isServiceFormKind, type StoredServiceForm } from "@/lib/serviceForms/stored";
 import type { AnyServiceForm, ServiceFormKind } from "@/lib/serviceForms/types";
+import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 
 export function selectServiceFarmPicker(snapshot: OfflineSnapshot, farmId: string) {
   const farm = snapshot.farms.find((row) => row.id === farmId && !row.deletedAt);
@@ -41,6 +44,63 @@ export function selectServiceFarmPicker(snapshot: OfflineSnapshot, farmId: strin
       }),
     );
   return { farmId, draftKinds, completed };
+}
+
+export type AllServiceFormRow = StoredServiceForm & { farmName: string };
+
+export function defaultAllFormsRange(
+  todayKey: string,
+): { from: string; to: string } {
+  const today = (todayKey ?? "").slice(0, 10);
+  if (!today) return { from: "", to: "" };
+  return { from: mondayOfWeek(today), to: today };
+}
+
+export function filterServiceFormsByDateRange<T extends { formDate?: string | null }>(
+  rows: T[],
+  from: string,
+  to: string,
+): T[] {
+  const start = (from || "").slice(0, 10);
+  const end = (to || "").slice(0, 10);
+  const lo = start && end && start > end ? end : start;
+  const hi = start && end && start > end ? start : end;
+  return rows.filter((row) => {
+    const key = (row.formDate ?? "").slice(0, 10);
+    if (!key) return false;
+    if (lo && key < lo) return false;
+    if (hi && key > hi) return false;
+    return true;
+  });
+}
+
+export function selectAllServiceForms(snapshot: OfflineSnapshot): AllServiceFormRow[] {
+  const farmNames = new Map(
+    snapshot.farms
+      .filter((farm) => !farm.deletedAt && !isVisitPlaceFarm(farm) && !isManualLfoFarm(farm))
+      .map((farm) => [farm.id, farm.farmName]),
+  );
+  return (snapshot.serviceForms ?? [])
+    .filter((row) => farmNames.has(row.farmId) && isServiceFormKind(row.formKind))
+    .slice()
+    .sort((a, b) => {
+      const date = (b.formDate ?? "").localeCompare(a.formDate ?? "");
+      if (date !== 0) return date;
+      const farm = (farmNames.get(a.farmId) ?? "").localeCompare(farmNames.get(b.farmId) ?? "");
+      if (farm !== 0) return farm;
+      return b.createdAt.localeCompare(a.createdAt);
+    })
+    .map((row) => ({
+      id: row.id,
+      farmId: row.farmId,
+      farmName: farmNames.get(row.farmId) ?? "Farm",
+      flockId: row.flockId,
+      formKind: row.formKind as ServiceFormKind,
+      formDate: row.formDate ?? "",
+      payload: row.payload,
+      visitId: row.visitId,
+      createdAt: row.createdAt,
+    }));
 }
 
 function toStored(row: NonNullable<OfflineSnapshot["serviceForms"]>[number]): StoredServiceForm | null {

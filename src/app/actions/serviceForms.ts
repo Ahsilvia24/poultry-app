@@ -56,6 +56,7 @@ function revalidateService(farmId: string) {
   revalidatePath(`/farms/${farmId}/service/report`);
   revalidatePath(`/farms/${farmId}/service/placement`);
   revalidatePath(`/farms/${farmId}/service/prebrood`);
+  revalidatePath("/service/forms");
   revalidatePath("/");
   revalidatePath("/reports");
 }
@@ -101,6 +102,34 @@ export async function deleteServiceFormAction(farmId: string, formId: string) {
     await prisma.farmVisit.deleteMany({ where: { id: existing.visitId, farmId } });
   }
   revalidateService(farmId);
+  return { success: true as const };
+}
+
+export async function deleteServiceFormsAction(formIds: string[]) {
+  const user = await requireUser();
+  const unique = [...new Set(formIds.filter(Boolean))];
+  if (unique.length === 0) return { success: true as const };
+  const existing = await prisma.serviceForm.findMany({
+    where: { id: { in: unique }, farm: { userId: user.id!, deletedAt: null } },
+    select: { id: true, farmId: true, visitId: true },
+  });
+  if (existing.length === 0) return { success: true as const };
+  const visitIdsByFarm = new Map<string, string[]>();
+  const farmIds = new Set<string>();
+  for (const row of existing) {
+    farmIds.add(row.farmId);
+    if (!row.visitId) continue;
+    const list = visitIdsByFarm.get(row.farmId) ?? [];
+    list.push(row.visitId);
+    visitIdsByFarm.set(row.farmId, list);
+  }
+  await prisma.serviceForm.deleteMany({
+    where: { id: { in: existing.map((row) => row.id) } },
+  });
+  for (const [farmId, visitIds] of visitIdsByFarm) {
+    await prisma.farmVisit.deleteMany({ where: { id: { in: visitIds }, farmId } });
+  }
+  for (const farmId of farmIds) revalidateService(farmId);
   return { success: true as const };
 }
 

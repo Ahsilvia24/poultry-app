@@ -14,7 +14,7 @@ import { BackHeader, Button, Card } from "@/components/ui";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
-import { formatServiceShortDate } from "@/lib/serviceForms/format";
+import { formatServiceShortDate, serviceFormKindTitle } from "@/lib/serviceForms/format";
 import { shareServiceFormPdf } from "@/lib/serviceForms/sharePdf";
 import type { StoredServiceForm } from "@/lib/serviceForms/stored";
 import type { AnyServiceForm, ServiceFormKind } from "@/lib/serviceForms/types";
@@ -26,7 +26,7 @@ const FORMS = [
 ] as const;
 
 function kindTitle(kind: ServiceFormKind) {
-  return FORMS.find((f) => f.key === kind)?.title ?? kind;
+  return serviceFormKindTitle(kind);
 }
 
 function formHref(farmId: string, href: string, extra?: Record<string, string>) {
@@ -153,7 +153,15 @@ export function ServiceFarmPicker({
         </div>
       ))}
 
-      <h2 className="mb-2 mt-3.5 text-base font-extrabold text-stone-900">Completed</h2>
+      <div className="mb-2 mt-3.5 flex items-baseline gap-2">
+        <h2 className="text-base font-extrabold text-stone-900">Completed</h2>
+        <ReplicaLink
+          href={`/service/forms?fromFarm=${farmId}`}
+          className="text-sm font-semibold text-emerald-800"
+        >
+          All Forms
+        </ReplicaLink>
+      </div>
 
       {shareError ? <p className="mb-2 font-semibold text-red-700">{shareError}</p> : null}
 

@@ -46,8 +46,10 @@ import {
   deleteAllServiceFormsAction,
   deleteServiceFormAction,
   deleteServiceFormDraftAction,
+  deleteServiceFormsAction,
   saveServiceFormDraftAction,
 } from "@/app/actions/serviceForms";
+import { serviceFormIdsFromWrite } from "@/lib/offline/applyWrites";
 import { isLocalRecordId, writeToFormData } from "@/lib/offline/formPairs";
 import { loadLocalSnapshot } from "@/lib/offline/idb";
 import { isActionTransportError } from "@/lib/offline/actionTransportError";
@@ -338,6 +340,11 @@ export async function flushFormWrite(
     case "deleteServiceForm":
       if (isLocalRecordId(write.id)) return { ok: true, aliases };
       return fromAction(await deleteServiceFormAction(farmId, id), aliases);
+    case "deleteServiceForms": {
+      const formIds = [...serviceFormIdsFromWrite(write)].filter((formId) => !isLocalRecordId(formId));
+      if (formIds.length === 0) return { ok: true, aliases };
+      return fromAction(await deleteServiceFormsAction(formIds), aliases);
+    }
     case "deleteAllServiceForms":
       return fromAction(await deleteAllServiceFormsAction(farmId), aliases);
     default:

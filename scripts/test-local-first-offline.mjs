@@ -184,6 +184,8 @@ assert.equal(isReplicaHref("/lfo/new/farm-1"), true);
 assert.equal(isReplicaHref("/lfo/abc"), true);
 assert.equal(isReplicaHref("/lfo/lfo-1"), true);
 assert.equal(isReplicaHref("/mortality"), true);
+assert.equal(isReplicaHref("/service/forms"), true);
+assert.equal(isReplicaHref("/service/forms?fromFarm=farm-1"), true);
 assert.equal(isReplicaHref("/reports"), true);
 assert.equal(isReplicaHref("/reports?type=mortality"), true);
 assert.equal(isReplicaHref("/history"), true);
