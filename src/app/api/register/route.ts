@@ -3,7 +3,11 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { isRegisterEmailAllowed } from "@/lib/allowedRegisterEmails";
 import { registerSchema } from "@/lib/validations";
-import { establishWebSession } from "@/lib/web-session";
+import {
+  createWebSession,
+  putSessionOnResponse,
+  requestUsesSecureCookies,
+} from "@/lib/web-session";
 
 export const dynamic = "force-dynamic";
 
@@ -70,13 +74,18 @@ export async function POST(req: Request) {
     return fail("This email is not approved for an account.", 400);
   }
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  let existing;
+  try {
+    existing = await prisma.user.findUnique({ where: { email } });
+  } catch {
+    return fail("Could not reach sign-in. Try again.", 503);
+  }
   if (existing) {
     return fail("An account with this email already exists", 400);
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  await prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       name: parsed.data.name,
       email,
@@ -85,14 +94,20 @@ export async function POST(req: Request) {
     },
   });
 
-  const signedIn = await establishWebSession(email, parsed.data.password);
-  if (signedIn.error) {
+  const created = await createWebSession(
+    { id: user.id, email: user.email, name: user.name },
+    undefined,
+    requestUsesSecureCookies(req),
+  );
+  if ("error" in created) {
     if (parsedBody.json) {
       return NextResponse.json({ error: "Account created. Sign in with your email." }, { status: 400 });
     }
     return NextResponse.redirect(new URL("/login", origin), 303);
   }
 
-  if (parsedBody.json) return NextResponse.json({ ok: true });
-  return NextResponse.redirect(new URL("/", origin), 303);
+  const res = parsedBody.json
+    ? NextResponse.json({ ok: true })
+    : NextResponse.redirect(new URL("/", origin), 303);
+  return putSessionOnResponse(res, created.cookie);
 }

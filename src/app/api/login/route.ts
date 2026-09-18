@@ -3,7 +3,11 @@ import { isDeviceId } from "@/lib/device-id";
 import { replaceLoginStatus } from "@/lib/replace-login";
 import { cookieHeaderHasSessionToken } from "@/lib/session-cookie";
 import { verifyEmailPassword } from "@/lib/verify-credentials";
-import { establishWebSession } from "@/lib/web-session";
+import {
+  createWebSession,
+  putSessionOnResponse,
+  requestUsesSecureCookies,
+} from "@/lib/web-session";
 
 export const dynamic = "force-dynamic";
 
@@ -99,11 +103,19 @@ export async function POST(req: Request) {
     return NextResponse.redirect(url, 303);
   };
 
-  if (!parsed.email.includes("@") || !parsed.password) {
+  if (!parsed.email || !parsed.password) {
     return fail("Invalid email or password", 400);
   }
+  if (!parsed.email.includes("@")) {
+    return fail("Use the email for this account.", 400);
+  }
 
-  const user = await verifyEmailPassword(parsed.email, parsed.password);
+  let user;
+  try {
+    user = await verifyEmailPassword(parsed.email, parsed.password);
+  } catch {
+    return fail("Could not reach sign-in. Try again.", 503);
+  }
   if (!user) return fail("Invalid email or password", 401);
 
   if (!parsed.confirmReplace) {
@@ -129,9 +141,15 @@ export async function POST(req: Request) {
     }
   }
 
-  const result = await establishWebSession(user.email, parsed.password, parsed.deviceId);
-  if (result.error) return fail(result.error, 401);
+  const created = await createWebSession(
+    user,
+    parsed.deviceId,
+    requestUsesSecureCookies(req),
+  );
+  if ("error" in created) return fail(created.error, 401);
 
-  if (parsed.json) return NextResponse.json({ ok: true });
-  return NextResponse.redirect(new URL("/", origin), 303);
+  const res = parsed.json
+    ? NextResponse.json({ ok: true })
+    : NextResponse.redirect(new URL("/", origin), 303);
+  return putSessionOnResponse(res, created.cookie);
 }

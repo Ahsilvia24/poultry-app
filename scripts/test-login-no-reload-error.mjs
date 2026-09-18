@@ -24,15 +24,16 @@ assert.match(proxy, /pathname\.startsWith\("\/api\/login"\)/);
 assert.match(proxy, /pathname\.startsWith\("\/api\/register"\)/);
 
 const loginRoute = read("src/app/api/login/route.ts");
-assert.match(loginRoute, /establishWebSession/);
+assert.match(loginRoute, /createWebSession/);
+assert.match(loginRoute, /putSessionOnResponse/);
 assert.match(loginRoute, /export async function POST/);
 assert.match(loginRoute, /NextResponse\.redirect/);
 
 const session = read("src/lib/web-session.ts");
-assert.match(session, /redirect: false/);
-assert.match(session, /redirectTo: "\/"/);
+assert.match(session, /issueSessionCookie/);
+assert.match(session, /putSessionOnResponse/);
 assert.match(session, /Could not start this sign-in/);
-assert.match(session, /isNextRedirect/);
+assert.doesNotMatch(session, /signIn\(/);
 
 const auth = read("src/app/actions/auth.ts");
 assert.match(auth, /return \{ ok: true as const \}/);

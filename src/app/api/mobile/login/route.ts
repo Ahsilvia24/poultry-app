@@ -18,7 +18,12 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return jsonError("Invalid email or password", 400);
 
-  const user = await verifyEmailPassword(parsed.data.email, parsed.data.password);
+  let user;
+  try {
+    user = await verifyEmailPassword(parsed.data.email, parsed.data.password);
+  } catch {
+    return jsonError("Could not reach sign-in. Try again.", 503);
+  }
   if (!user) return jsonError("Invalid email or password", 401);
 
   if (!parsed.data.confirmReplace) {

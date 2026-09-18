@@ -99,6 +99,7 @@
           <p id="err" class="err" hidden></p>
           <button id="submit" type="submit">Sign in</button>
         </form>
+        <p class="note"><a href="/forgot-password" style="color:#065f46;font-weight:700">Forgot password</a></p>
       </div>
     </main>
     <script>
@@ -146,6 +147,7 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
+            cache: "no-store",
             body: JSON.stringify({
               email: document.getElementById("email").value.trim().toLowerCase(),
               password: document.getElementById("password").value,
