@@ -90,7 +90,8 @@ assert.doesNotMatch(read("src/lib/auth-edge.ts"), /prisma|adapter-pg|from "pg"/)
 const vercel = read("vercel.json");
 assert.match(vercel, /"iad1"/);
 assert.match(vercel, /ignoreCommand/);
-assert.match(vercel, /VERCEL_ENV/);
+assert.match(vercel, /VERCEL_GIT_COMMIT_REF/);
+assert.match(vercel, /exit 1/);
 
 const {
   FARM_DATABASE_LOCKED,
