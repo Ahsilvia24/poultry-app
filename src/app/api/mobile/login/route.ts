@@ -5,7 +5,7 @@ import { isDeviceId } from "@/lib/device-id";
 import { jsonError, signMobileToken } from "@/lib/mobile-auth";
 import { getNodePrisma } from "@/lib/prisma-node";
 import { replaceLoginStatus } from "@/lib/replace-login";
-import { verifyEmailPassword } from "@/lib/verify-credentials";
+import { signinUnavailableMessage, verifyEmailPassword } from "@/lib/verify-credentials";
 
 const schema = z.object({
   email: z.string().email(),
@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
   let user;
   try {
     user = await verifyEmailPassword(parsed.data.email, parsed.data.password);
-  } catch {
-    return jsonError("Could not reach sign-in. Try again.", 503);
+  } catch (error) {
+    return jsonError(signinUnavailableMessage(error), 503);
   }
   if (!user) return jsonError("Invalid email or password", 401);
 

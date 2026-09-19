@@ -77,11 +77,34 @@ assert.equal(res.cookies.get("authjs.session-token")?.value, cookie.value);
 assert.equal(res.cookies.get("__Secure-authjs.session-token")?.value, "");
 
 assert.match(read("prisma/schema.prisma"), /rhel-openssl-3\.0\.x/);
-assert.match(read("next.config.ts"), /\.prisma\/client/);
+assert.match(read("next.config.ts"), /libquery_engine-debian-/);
+assert.match(read("next.config.ts"), /query_engine_bg\.wasm/);
 assert.match(read("next.config.ts"), /@prisma\/adapter-pg/);
 assert.match(read("src/lib/prisma-node.ts"), /PrismaPg/);
 assert.match(read("src/lib/prisma-node.ts"), /DIRECT_URL/);
 assert.doesNotMatch(read("src/lib/prisma.ts"), /adapter-pg/);
+assert.doesNotMatch(read("src/proxy.ts"), /@\/lib\/auth"/);
+assert.match(read("src/proxy.ts"), /@\/lib\/auth-edge/);
+assert.doesNotMatch(read("src/lib/auth-edge.ts"), /prisma|adapter-pg|from "pg"/);
+
+const vercel = read("vercel.json");
+assert.match(vercel, /"iad1"/);
+assert.match(vercel, /ignoreCommand/);
+assert.match(vercel, /VERCEL_ENV/);
+
+const {
+  FARM_DATABASE_LOCKED,
+  isFarmDatabaseLocked,
+  signinUnavailableMessage,
+} = await import("../src/lib/verify-credentials.ts");
+assert.equal(
+  isFarmDatabaseLocked(
+    new Error("Failed to identify your database: Your account has restrictions: planLimitReached."),
+  ),
+  true,
+);
+assert.equal(signinUnavailableMessage(new Error("planLimitReached")), FARM_DATABASE_LOCKED);
+assert.equal(signinUnavailableMessage(new Error("timeout")), "Could not reach sign-in. Try again.");
 
 const loginRoute = read("src/app/api/login/route.ts");
 assert.match(loginRoute, /createWebSession/);
@@ -89,7 +112,9 @@ assert.match(loginRoute, /putSessionOnResponse\(res, created\.cookie\)/);
 assert.doesNotMatch(loginRoute, /return NextResponse\.json\(\{ ok: true \}\)/);
 assert.match(loginRoute, /Invalid email or password/);
 assert.match(loginRoute, /Use the email for this account/);
-assert.match(loginRoute, /Could not reach sign-in/);
+assert.match(loginRoute, /signinUnavailableMessage/);
+assert.match(read("src/lib/verify-credentials.ts"), /Could not reach sign-in/);
+assert.match(read("src/lib/verify-credentials.ts"), /farm database is locked/i);
 assert.match(loginRoute, /if \("error" in created\) return fail\(created\.error/);
 
 const registerRoute = read("src/app/api/register/route.ts");

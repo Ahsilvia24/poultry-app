@@ -66,6 +66,7 @@ assert.match(mobileAuth, /sid/);
 
 const proxy = read("src/proxy.ts");
 assert.doesNotMatch(proxy, /isLoggedIn && isAuthPage/);
+assert.match(proxy, /@\/lib\/auth-edge/);
 
 const login = read("src/app/(auth)/login/page.tsx");
 assert.match(login, /One device at a time/);

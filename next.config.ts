@@ -15,15 +15,7 @@ const nextConfig: NextConfig = {
   ],
   outputFileTracingIncludes: {
     "/api/leave": ["./public/signed-out.html"],
-    "/api/**": [
-      "./node_modules/.prisma/client/**/*",
-      "./node_modules/@prisma/client/**/*",
-    ],
-    "/*": [
-      "./node_modules/unpdf/dist/**/*",
-      "./node_modules/.prisma/client/**/*",
-      "./node_modules/@prisma/client/**/*",
-    ],
+    "/*": ["./node_modules/unpdf/dist/**/*"],
   },
   async headers() {
     return [
@@ -64,6 +56,11 @@ const nextConfig: NextConfig = {
       "./mobile/**/*",
       "./node_modules/pdf-parse/**/*",
       "./node_modules/pdfjs-dist/**/*",
+      "./node_modules/.prisma/client/libquery_engine-debian-*",
+      "./node_modules/.prisma/client/query_engine-windows-*",
+      "./node_modules/.prisma/client/libquery_engine-*darwin*",
+      "./node_modules/.prisma/client/query_engine_bg.wasm",
+      "./node_modules/@prisma/engines/**/*",
     ],
   },
   experimental: {
