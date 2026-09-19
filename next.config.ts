@@ -58,6 +58,9 @@ const nextConfig: NextConfig = {
       "./node_modules/pdfjs-dist/**/*",
       "./node_modules/.prisma/client/libquery_engine-debian-*",
       "./node_modules/.prisma/client/query_engine-windows-*",
+      "./node_modules/.prisma/client/libquery_engine-*darwin*",
+      "./node_modules/.prisma/client/query_engine_bg.wasm",
+      "./node_modules/@prisma/engines/**/*",
     ],
   },
   experimental: {

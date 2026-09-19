@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, isAuthDevBypassEnabled } from "@/lib/auth";
+import { auth, isAuthDevBypassEnabled } from "@/lib/auth-edge";
 import { isHomeScreenAsset } from "@/lib/home-screen-icons";
 
 /** Prefer the current host so redirects stay on Vercel, not poultrytechapp.com. */

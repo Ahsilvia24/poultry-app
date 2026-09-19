@@ -57,6 +57,8 @@ assert.match(nextConfig, /outputFileTracingIncludes/);
 assert.match(nextConfig, /unpdf\/dist/);
 assert.match(nextConfig, /outputFileTracingExcludes/);
 assert.match(nextConfig, /libquery_engine-debian-/);
+assert.match(nextConfig, /query_engine_bg\.wasm/);
+assert.match(nextConfig, /@prisma\/engines/);
 assert.doesNotMatch(
   nextConfig.slice(
     nextConfig.indexOf("outputFileTracingIncludes"),
