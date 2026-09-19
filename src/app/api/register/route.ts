@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getNodePrisma } from "@/lib/prisma-node";
+import { signinUnavailableMessage } from "@/lib/verify-credentials";
 import { isRegisterEmailAllowed } from "@/lib/allowedRegisterEmails";
 import { registerSchema } from "@/lib/validations";
 import {
@@ -78,8 +79,8 @@ export async function POST(req: Request) {
   let existing;
   try {
     existing = await db.user.findUnique({ where: { email } });
-  } catch {
-    return fail("Could not reach sign-in. Try again.", 503);
+  } catch (error) {
+    return fail(signinUnavailableMessage(error), 503);
   }
   if (existing) {
     return fail("An account with this email already exists", 400);
