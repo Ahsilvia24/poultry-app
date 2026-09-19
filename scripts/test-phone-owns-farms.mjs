@@ -62,7 +62,8 @@ assert.match(
 assert.doesNotMatch(read("src/lib/offline/signOutLocal.ts"), /clearLocalReplica/);
 assert.match(read("src/lib/offline/signOutLocal.ts"), /lockPhoneOwner/);
 assert.match(read("src/components/OfflineProvider.tsx"), /persistOwnerFarms/);
-assert.match(read("src/components/OfflineProvider.tsx"), /snapshotHasFarmGraph/);
+assert.match(read("src/components/OfflineProvider.tsx"), /farmCountInSnapshot/);
+assert.match(read("src/components/OfflineProvider.tsx"), /pullRemoteSnapshot/);
 assert.match(read("src/components/SettingsScreen.tsx"), /Save backup file/);
 assert.match(read("src/components/SettingsScreen.tsx"), /Restore backup/);
 assert.match(read("src/app/(auth)/login/page.tsx"), /verifyLocalAccount/);

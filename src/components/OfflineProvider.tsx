@@ -20,8 +20,8 @@ import {
   saveOutbox,
 } from "@/lib/offline/idb";
 import { persistOwnerFarms } from "@/lib/offline/persistOwnerFarms";
-import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import { normalizeOwnerEmail } from "@/lib/offline/ownerEmail";
+import { farmCountInSnapshot } from "@/lib/offline/phoneBackup";
 import { unlockPhoneOwner } from "@/lib/offline/phoneUnlock";
 import { applyPendingOutboxItems } from "@/lib/offline/applyOutbox";
 import { coalesceFormWrite } from "@/lib/offline/applyWrites";
@@ -200,7 +200,9 @@ export function OfflineProvider({
       if (cancelled) return;
       void warmOfflineAssets();
       void bindThisPhone();
-      if (snapshotHasFarmGraph(local)) {
+      // Empty local graph still pulls from Prisma once, so old website farms
+      // can land on this phone after the database unlocks.
+      if (farmCountInSnapshot(local) > 0) {
         setSyncing(false);
         return;
       }
