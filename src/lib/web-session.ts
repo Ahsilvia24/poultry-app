@@ -61,6 +61,17 @@ export async function issueSessionCookie(
   };
 }
 
+export async function createLocalWebSession(
+  user: { id: string; email: string; name?: string | null },
+  secure: boolean,
+): Promise<{ cookie: IssuedSessionCookie } | { error: string }> {
+  try {
+    return { cookie: await issueSessionCookie(user, crypto.randomUUID(), secure) };
+  } catch {
+    return { error: SESSION_FAIL };
+  }
+}
+
 export async function createWebSession(
   user: { id: string; email: string; name?: string | null },
   deviceId: string | undefined,
@@ -70,7 +81,7 @@ export async function createWebSession(
     const sessionId = await rotateActiveSession(user.id, deviceId, await getNodePrisma());
     return { cookie: await issueSessionCookie(user, sessionId, secure) };
   } catch {
-    return { error: SESSION_FAIL };
+    return createLocalWebSession(user, secure);
   }
 }
 

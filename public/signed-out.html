@@ -91,7 +91,7 @@
     <main>
       <div class="card">
         <h1>PoultryTech</h1>
-        <p class="note">Signed out of this phone.</p>
+        <p class="note">Signed out. Farms stay on this phone. Sign in with the same email to open them.</p>
         <form id="login">
           <label>Email <input id="email" name="email" type="email" required autocomplete="email" /></label>
           <label>Password <input id="password" name="password" type="password" required autocomplete="current-password" /></label>
@@ -167,10 +167,7 @@
             return;
           }
           if (!res.ok || data.error) {
-            err.hidden = false;
-            err.textContent = data.error || "Invalid email or password";
-            submit.disabled = false;
-            submit.textContent = confirmReplace ? "Sign in anyway" : "Sign in";
+            window.location.assign("/login?signedout=1");
             return;
           }
           await clearSignedOut();

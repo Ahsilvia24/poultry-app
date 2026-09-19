@@ -11,12 +11,18 @@ import {
   type ReactNode,
 } from "react";
 import {
+  ensureOwnerSnapshot,
   loadIdAliases,
+  loadLatestBackup,
   loadLocalSnapshot,
   loadOutbox,
-  saveLocalSnapshot,
+  persistPhoneStorage,
   saveOutbox,
 } from "@/lib/offline/idb";
+import { persistOwnerFarms } from "@/lib/offline/persistOwnerFarms";
+import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
+import { normalizeOwnerEmail } from "@/lib/offline/ownerEmail";
+import { unlockPhoneOwner } from "@/lib/offline/phoneUnlock";
 import { applyPendingOutboxItems } from "@/lib/offline/applyOutbox";
 import { coalesceFormWrite } from "@/lib/offline/applyWrites";
 import { flushOutbox, pullRemoteSnapshot, reportUnsynced } from "@/lib/offline/flushOutbox";
@@ -33,6 +39,7 @@ type OfflineContextValue = {
   ready: boolean;
   syncing: boolean;
   pendingCount: number;
+  lastBackupAt: string | null;
   aliases: IdAliases;
   enqueue: (item: Omit<OfflineOutboxItem, "id" | "createdAt">) => Promise<void>;
   flushNow: () => Promise<{ pending: number }>;
@@ -56,15 +63,32 @@ async function bindThisPhone() {
   }
 }
 
-export function OfflineProvider({ children }: { children: ReactNode }) {
+export function OfflineProvider({
+  children,
+  ownerEmail,
+  ownerUserId,
+  ownerName,
+}: {
+  children: ReactNode;
+  ownerEmail?: string;
+  ownerUserId?: string;
+  ownerName?: string;
+}) {
+  const owner = normalizeOwnerEmail(ownerEmail ?? "");
   const [snapshot, setSnapshot] = useState<OfflineSnapshot | null>(null);
   const [ready, setReady] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
   const [aliases, setAliases] = useState<IdAliases>({});
 
   const replicaGen = useRef(0);
   const outboxTail = useRef(Promise.resolve());
+
+  const rememberBackup = useCallback(async (email: string) => {
+    const latest = await loadLatestBackup(email);
+    setLastBackupAt(latest?.savedAt ?? null);
+  }, []);
 
   const replaceSnapshot = useCallback((next: OfflineSnapshot) => {
     setSnapshot((current) => {
@@ -72,20 +96,24 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         seedAndMergeFollowUpCompletions(next, current),
         current,
       );
-      void saveLocalSnapshot(merged);
+      void persistOwnerFarms(merged, owner).then(() => {
+        if (owner) void rememberBackup(owner);
+      });
       return merged;
     });
-  }, []);
+  }, [owner, rememberBackup]);
 
   const patchSnapshot = useCallback((fn: (current: OfflineSnapshot) => OfflineSnapshot) => {
     setSnapshot((current) => {
       if (!current) return current;
       replicaGen.current += 1;
       const next = fn(current);
-      void saveLocalSnapshot(next);
+      void persistOwnerFarms(next, owner).then(() => {
+        if (owner) void rememberBackup(owner);
+      });
       return next;
     });
-  }, []);
+  }, [owner, rememberBackup]);
 
   const enqueue = useCallback((item: Omit<OfflineOutboxItem, "id" | "createdAt">) => {
     const full: OfflineOutboxItem = {
@@ -94,10 +122,10 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       createdAt: new Date().toISOString(),
     };
     const run = async () => {
-      const items = await loadOutbox();
+      const items = await loadOutbox(owner);
       const next = coalesceFormWrite(items, full);
       setPendingCount(next.length);
-      await saveOutbox(next);
+      await saveOutbox(next, owner);
       void reportUnsynced(true);
       if (typeof navigator === "undefined" || navigator.onLine === false) return;
       const flushed = await flushOutbox();
@@ -110,7 +138,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       () => undefined,
     );
     return queued;
-  }, []);
+  }, [owner]);
 
   const flushNow = useCallback(async () => {
     setSyncing(true);
@@ -152,18 +180,33 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    if (owner) unlockPhoneOwner(owner);
     (async () => {
-      const local = await loadLocalSnapshot();
-      const storedAliases = await loadIdAliases();
+      await persistPhoneStorage();
+      const local =
+        (await loadLocalSnapshot(owner)) ??
+        (owner && ownerUserId
+          ? await ensureOwnerSnapshot({
+              email: owner,
+              userId: ownerUserId,
+              userName: ownerName || owner.split("@")[0] || "Tech",
+            })
+          : null);
+      const storedAliases = await loadIdAliases(owner);
       if (!cancelled && local) setSnapshot(seedAndMergeFollowUpCompletions(local));
       if (!cancelled) setAliases(storedAliases);
+      if (!cancelled && owner) await rememberBackup(owner);
       if (!cancelled) setReady(true);
       if (cancelled) return;
       void warmOfflineAssets();
       void bindThisPhone();
+      if (snapshotHasFarmGraph(local)) {
+        setSyncing(false);
+        return;
+      }
       setSyncing(true);
       try {
-        const queued = await loadOutbox();
+        const queued = await loadOutbox(owner);
         if (!cancelled) setPendingCount(queued.length);
         if (queued.length) await reportUnsynced(true);
         const flushed = await flushOutbox();
@@ -173,7 +216,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
           const gen = replicaGen.current;
           const remote = await pullRemoteSnapshot();
           if (cancelled || !remote || replicaGen.current !== gen) return;
-          const leftover = await loadOutbox();
+          const leftover = await loadOutbox(owner);
           if (!cancelled) setPendingCount(leftover.length);
           replaceSnapshot(
             leftover.length ? applyPendingOutboxItems(remote, leftover) : remote,
@@ -185,31 +228,10 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setSyncing(false);
       }
     })();
-    const onOnline = () => {
-      setSyncing(true);
-      void flushOutbox()
-        .then(async (flushed) => {
-          setAliases(flushed.aliases);
-          setPendingCount(flushed.pending);
-          if (!canReplaceReplicaWithRemote(flushed.pending)) return;
-          const gen = replicaGen.current;
-          const remote = await pullRemoteSnapshot();
-          if (!remote || replicaGen.current !== gen) return;
-          const leftover = await loadOutbox();
-          setPendingCount(leftover.length);
-          replaceSnapshot(
-            leftover.length ? applyPendingOutboxItems(remote, leftover) : remote,
-          );
-        })
-        .catch(() => undefined)
-        .finally(() => setSyncing(false));
-    };
-    window.addEventListener("online", onOnline);
     return () => {
       cancelled = true;
-      window.removeEventListener("online", onOnline);
     };
-  }, [replaceSnapshot]);
+  }, [owner, ownerName, ownerUserId, rememberBackup, replaceSnapshot]);
 
   const value = useMemo(
     () => ({
@@ -217,6 +239,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       ready,
       syncing,
       pendingCount,
+      lastBackupAt,
       aliases,
       enqueue,
       flushNow,
@@ -229,6 +252,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       ready,
       syncing,
       pendingCount,
+      lastBackupAt,
       aliases,
       enqueue,
       flushNow,
@@ -246,6 +270,7 @@ const missingOffline: OfflineContextValue = {
   ready: true,
   syncing: false,
   pendingCount: 0,
+  lastBackupAt: null,
   aliases: {},
   enqueue: async () => undefined,
   flushNow: async () => ({ pending: 0 }),

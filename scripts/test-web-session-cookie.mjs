@@ -85,6 +85,8 @@ assert.match(read("src/lib/prisma-node.ts"), /DIRECT_URL/);
 assert.doesNotMatch(read("src/lib/prisma.ts"), /adapter-pg/);
 assert.doesNotMatch(read("src/proxy.ts"), /@\/lib\/auth"/);
 assert.match(read("src/proxy.ts"), /@\/lib\/auth-edge/);
+assert.match(read("src/proxy.ts"), /\/api\/local-session/);
+assert.match(read("src/lib/web-session.ts"), /createLocalWebSession/);
 assert.doesNotMatch(read("src/lib/auth-edge.ts"), /prisma|adapter-pg|from "pg"/);
 
 const vercel = read("vercel.json");

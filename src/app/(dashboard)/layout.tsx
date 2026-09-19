@@ -8,13 +8,18 @@ import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  if (!session?.user?.id) {
+  const user = session?.user;
+  if (!user?.id) {
     const jar = await cookies();
     redirect(cookieNamesHaveSessionToken(jar.getAll().map((cookie) => cookie.name)) ? "/login?replaced=1" : "/login");
   }
 
   return (
-    <OfflineProvider>
+    <OfflineProvider
+      ownerEmail={user.email ?? ""}
+      ownerUserId={user.id}
+      ownerName={user.name ?? ""}
+    >
       <OfflineNavProvider>
         <DashboardShell>{children}</DashboardShell>
       </OfflineNavProvider>

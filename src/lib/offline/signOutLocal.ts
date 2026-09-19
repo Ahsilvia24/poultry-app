@@ -1,4 +1,4 @@
-import { clearLocalReplica } from "@/lib/offline/idb";
+import { lockPhoneOwner } from "@/lib/offline/phoneUnlock";
 import { markCachesSignedOut } from "@/lib/offline/signedOut";
 import { LOGOUT_FETCH_MS, SIGN_OUT_OVERALL_MS, withTimeout } from "@/lib/offline/syncTimeout";
 
@@ -45,8 +45,8 @@ export async function keepSignedOutOnLogin() {
 }
 
 async function prepareLeave() {
+  lockPhoneOwner();
   await markCachesSignedOut(true);
-  await clearLocalReplica();
   await postWorker("sign-out");
   try {
     const controller = new AbortController();
@@ -68,9 +68,8 @@ async function prepareLeave() {
 }
 
 /**
- * Clear replica, cookie, and cached dashboard, then open /api/leave.
- * Home Screen workers skip /api/, so this cannot paint a cached dashboard.
- * Never wait forever on IndexedDB, the worker, or /api/logout.
+ * Clear the session cookie and cached dashboard, then open /api/leave.
+ * Farms stay on this phone under that email. Never wipe IndexedDB.
  */
 export async function signOutLocalApp() {
   try {

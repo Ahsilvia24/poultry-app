@@ -83,6 +83,41 @@ function downloadTextFile(contents: string, filename: string, mimeType: string) 
   URL.revokeObjectURL(url);
 }
 
+export async function writeAutomaticMobileBackup() {
+  if (Platform.OS === "web") return;
+  const dir = FileSystem.documentDirectory;
+  if (!dir) return;
+  const backup = buildMobileBackup();
+  await FileSystem.writeAsStringAsync(`${dir}poultrytech-auto-backup.json`, mobileBackupJson(backup), {
+    encoding: FileSystem.EncodingType.UTF8,
+  });
+}
+
+export async function importMobileBackupJson(text: string) {
+  const parsed = JSON.parse(text) as Partial<MobileBackup>;
+  if (parsed.format !== MOBILE_BACKUP_FORMAT || !parsed.tables) {
+    throw new Error("That file is not a PoultryTech backup.");
+  }
+  const db = getDb();
+  db.withTransactionSync(() => {
+    for (const name of TABLES) {
+      const rows = parsed.tables?.[name] ?? [];
+      db.runSync(`DELETE FROM ${name}`);
+      for (const row of rows) {
+        const keys = Object.keys(row);
+        if (!keys.length) continue;
+        const cols = keys.map((key) => `"${key}"`).join(", ");
+        const placeholders = keys.map(() => "?").join(", ");
+        db.runSync(
+          `INSERT INTO ${name} (${cols}) VALUES (${placeholders})`,
+          keys.map((key) => row[key] as string | number | null),
+        );
+      }
+    }
+  });
+  return { farmCount: parsed.tables.farms?.length ?? 0 };
+}
+
 /** Share or download a JSON backup of phone / Safari farm data. */
 export async function shareMobileBackup(): Promise<{ fileName: string; farmCount: number }> {
   const backup = buildMobileBackup();
