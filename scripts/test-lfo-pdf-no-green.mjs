@@ -16,14 +16,14 @@ assert.doesNotMatch(download, /Field/);
 assert.doesNotMatch(download, /autoTable/);
 
 assert.match(builder, /LABEL_W = 136/);
-assert.match(builder, /FIRST_PAGE_HOUSES = 6/);
+assert.doesNotMatch(builder, /FIRST_PAGE_HOUSES/);
 assert.match(builder, /HelveticaBold/);
 assert.doesNotMatch(builder, /fillColor/);
 assert.doesNotMatch(builder, /autoTable/);
 assert.doesNotMatch(builder, /\[4, 120, 87\]/);
 
 assert.match(expo, /LABEL_W = 136/);
-assert.match(expo, /FIRST_PAGE_HOUSES = 6/);
+assert.doesNotMatch(expo, /FIRST_PAGE_HOUSES/);
 assert.doesNotMatch(expo, /fillColor/);
 
 assert.match(row, /void downloadLfoPdf\(shareInventory\)/);

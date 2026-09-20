@@ -7,7 +7,6 @@ const MARGIN = 36;
 const GUTTER = 16;
 /** Tight label column so values sit next to the label, freeing a second house. */
 const LABEL_W = 136;
-const FIRST_PAGE_HOUSES = 6;
 const ROW_H = 13;
 const TITLE_H = 18;
 const SECTION_GAP = 8;
@@ -128,21 +127,24 @@ export async function buildLfoPdfBytes(payload: LfoSharePayload): Promise<Uint8A
 
   const order = payload.sections.find((section) => section.title === "Order");
   const houses = payload.sections.filter(isHouseSection);
-  const totals = payload.sections.find((section) => section.title === "Totals");
   const summary = payload.sections.find((section) => section.title === "House summary");
-  const page1Houses = houses.slice(0, FIRST_PAGE_HOUSES);
-  const overflowHouses = houses.slice(FIRST_PAGE_HOUSES);
   const rightX = MARGIN + colW + GUTTER;
 
-  if (order) {
-    const h = measureSection(order, contentW);
-    need(h);
-    y = drawSectionAt(order, MARGIN, contentW, y);
+  const headerH = Math.max(
+    order ? measureSection(order, colW) : 0,
+    summary ? measureSection(summary, colW) : 0,
+  );
+  if (headerH > 0) {
+    need(headerH);
+    const startY = y;
+    if (order) drawSectionAt(order, MARGIN, colW, startY);
+    if (summary) drawSectionAt(summary, rightX, colW, startY);
+    y = startY - headerH;
   }
 
-  for (let i = 0; i < page1Houses.length; i += 2) {
-    const left = page1Houses[i];
-    const right = page1Houses[i + 1];
+  for (let i = 0; i < houses.length; i += 2) {
+    const left = houses[i];
+    const right = houses[i + 1];
     const h = Math.max(
       measureSection(left, colW),
       right ? measureSection(right, colW) : 0,
@@ -152,34 +154,6 @@ export async function buildLfoPdfBytes(payload: LfoSharePayload): Promise<Uint8A
     drawSectionAt(left, MARGIN, colW, startY);
     if (right) drawSectionAt(right, rightX, colW, startY);
     y = startY - h;
-  }
-
-  if (overflowHouses.length > 0) {
-    newPage();
-    if (summary) {
-      drawSectionAt(summary, rightX, colW, y);
-    }
-    for (const house of overflowHouses) {
-      const h = measureSection(house, colW);
-      need(h);
-      y = drawSectionAt(house, MARGIN, colW, y);
-    }
-    if (totals) {
-      const h = measureSection(totals, colW);
-      need(h);
-      y = drawSectionAt(totals, MARGIN, colW, y);
-    }
-  } else {
-    const leftH = totals ? measureSection(totals, colW) : 0;
-    const rightH = summary ? measureSection(summary, colW) : 0;
-    const h = Math.max(leftH, rightH);
-    if (h > 0) {
-      need(h);
-      const startY = y;
-      if (totals) drawSectionAt(totals, MARGIN, colW, startY);
-      if (summary) drawSectionAt(summary, rightX, colW, startY);
-      y = startY - h;
-    }
   }
 
   return doc.save();

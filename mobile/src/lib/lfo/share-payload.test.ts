@@ -44,17 +44,20 @@ describe("buildLfoSharePayload", () => {
 
     assert.equal(payload.title, "Last Feed Order — Sunrise 1");
     assert.equal(payload.subtitle, "");
-    assert.ok(labels.includes("Farm"));
+    assert.ok(!labels.includes("Farm"));
     assert.ok(!labels.includes("Order date"));
     assert.ok(!labels.includes("Order time"));
+    assert.ok(labels.includes("Total Feed"));
+    assert.ok(labels.includes("Reclaim"));
     assert.ok(labels.includes("Consumption rate"));
     assert.ok(labels.includes("Hours measured from"));
     assert.ok(labels.includes("Head counts as of"));
     assert.ok(labels.includes("Notes"));
     assert.ok(labels.includes("Bin A (lbs)"));
     assert.ok(labels.includes("Bin B (lbs)"));
-    assert.ok(labels.includes("Catch date"));
-    assert.ok(labels.includes("Catch time"));
+    assert.ok(labels.includes("Catch"));
+    assert.ok(!labels.includes("Catch date"));
+    assert.ok(!labels.includes("Catch time"));
     assert.ok(labels.includes("Feed up (−5)"));
     assert.ok(labels.includes("Feed off (−10)"));
     assert.ok(labels.includes("Hours until feed off"));
@@ -67,7 +70,10 @@ describe("buildLfoSharePayload", () => {
     assert.ok(values.some((value) => value.includes("Call mill before 6")));
     assert.ok(payload.sections.some((section) => section.title === "House 1"));
     assert.ok(payload.sections.some((section) => section.title === "House 2"));
-    assert.ok(payload.sections.some((section) => section.title === "Totals"));
+    assert.ok(!payload.sections.some((section) => section.title === "Totals"));
+    assert.ok(values.some((value) => value.includes("at 5:00pm")));
+    assert.ok(values.some((value) => value.includes("at 6:00am")));
+    assert.ok(!values.some((value) => value.includes("at save")));
     assert.ok(payload.houseSummaryLines.length > 0);
   });
 

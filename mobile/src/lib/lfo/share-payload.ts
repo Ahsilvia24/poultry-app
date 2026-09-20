@@ -12,7 +12,6 @@ import {
   type LfoHouseCalculateResult,
 } from "./calculate";
 import { formatConsumptionRate } from "./consumptionRate";
-import { halfHourTimeLabel } from "../time-slots";
 
 export type LfoShareField = {
   label: string;
@@ -63,6 +62,8 @@ function formatOrderDate(dateKey: string): string {
   return `${m}-${d}-${y}`;
 }
 
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 function formatLbs(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
@@ -71,21 +72,31 @@ function formatHours(n: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
-function formatFeedStamp(d: Date | null, timeZone?: string | null): string {
-  if (!d) return "—";
-  return formatStampInAppZone(d, timeZone);
+function formatLfoClock(hour24: number, minute: number): string {
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return `${hour12}:${String(minute).padStart(2, "0")}${hour24 < 12 ? "am" : "pm"}`;
 }
 
-function formatAsOf(value: string | Date | null | undefined, timeZone?: string | null): string {
+/** "Sep 17, 2026 at 11:30am" */
+function formatLfoDateAndTime(dateKey: string, time?: string | null): string {
+  const [y, m, d] = (dateKey ?? "").slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return dateKey || "—";
+  const datePart = `${SHORT_MONTHS[m - 1]} ${d}, ${y}`;
+  const t = time?.trim();
+  if (!t) return datePart;
+  const [hh, mm] = t.split(":").map(Number);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return datePart;
+  return `${datePart} at ${formatLfoClock(hh, mm)}`;
+}
+
+function formatLfoStamp(value: Date | string | null | undefined, timeZone?: string | null): string {
   if (value == null || value === "") return "—";
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
-  return formatStampInAppZone(d, timeZone, { year: true });
-}
-
-function dash(value: string | null | undefined): string {
-  const t = value?.trim();
-  return t ? t : "—";
+  return formatStampInAppZone(d, timeZone, { year: true }).replace(
+    /, (\d{1,2}:\d{2})\s*(AM|PM)/i,
+    (_m, clock, ap) => ` at ${clock}${String(ap).toLowerCase()}`,
+  );
 }
 
 function rawRow(result: LfoHouseCalculateResult): LfoShareField | null {
@@ -165,9 +176,6 @@ export function buildLfoSharePayload(
       }),
     });
 
-  const orderTimeLabel = dash(halfHourTimeLabel(inventory.orderTime));
-  const orderDateLabel = formatOrderDate(orderDate);
-  const calculatedAtLabel = formatAsOf(inventory.calculatedAt, timeZone);
   const notes = inventory.notes?.trim() || null;
   const houseSummaryLines = formatHouseLfoSummary(result.houses);
 
@@ -175,13 +183,14 @@ export function buildLfoSharePayload(
     {
       title: "Order",
       rows: [
-        { label: "Farm", value: inventory.farmName },
+        { label: "Total Feed", value: `${formatLbs(result.totalOrderLbs)} lbs` },
+        { label: "Reclaim", value: `${formatLbs(result.totalReclaimLbs)} lbs` },
         {
           label: "Consumption rate",
           value: `${formatConsumptionRate(inventory.consumptionRate)} lbs/bird/day`,
         },
-        { label: "Hours measured from", value: `${orderDateLabel}  ${orderTimeLabel}` },
-        { label: "Head counts as of", value: calculatedAtLabel },
+        { label: "Hours measured from", value: formatLfoDateAndTime(orderDate, inventory.orderTime) },
+        { label: "Head counts as of", value: formatLfoStamp(inventory.calculatedAt, timeZone) },
         ...(notes ? [{ label: "Notes", value: notes }] : []),
       ],
     },
@@ -195,16 +204,18 @@ export function buildLfoSharePayload(
     sections.push({
       title: `House ${house.houseNumber}`,
       rows: [
-        {
-          label: "Head count",
-          value: `${house.headCount.toLocaleString()}${inventory.calculatedAt ? " at save" : ""}`,
-        },
+        { label: "Head count", value: house.headCount.toLocaleString() },
         { label: "Bin A (lbs)", value: formatLbs(house.binAPounds) },
         { label: "Bin B (lbs)", value: formatLbs(house.binBPounds) },
-        { label: "Catch date", value: house.catchDate ? formatOrderDate(house.catchDate) : "—" },
-        { label: "Catch time", value: dash(halfHourTimeLabel(house.catchTime)) },
-        { label: feedUpLabel(timing), value: formatFeedStamp(houseResult?.feedUpAt ?? null, timeZone) },
-        { label: feedOffLabel(timing), value: formatFeedStamp(houseResult?.feedOffAt ?? null, timeZone) },
+        {
+          label: "Catch",
+          value:
+            house.catchDate || house.catchTime
+              ? formatLfoDateAndTime(house.catchDate, house.catchTime)
+              : "—",
+        },
+        { label: feedUpLabel(timing), value: formatLfoStamp(houseResult?.feedUpAt ?? null, timeZone) },
+        { label: feedOffLabel(timing), value: formatLfoStamp(houseResult?.feedOffAt ?? null, timeZone) },
         {
           label: "Hours until feed off",
           value:
@@ -232,14 +243,6 @@ export function buildLfoSharePayload(
       ],
     });
   }
-
-  sections.push({
-    title: "Totals",
-    rows: [
-      { label: "Order", value: `${formatLbs(result.totalOrderLbs)} lbs` },
-      { label: "Reclaim", value: `${formatLbs(result.totalReclaimLbs)} lbs` },
-    ],
-  });
 
   if (houseSummaryLines.length > 0) {
     sections.push({
