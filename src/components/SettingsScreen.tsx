@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from "react";
-import { updateSettingsAction } from "@/app/actions/ops";
 import { signOutLocalApp } from "@/lib/offline/signOutLocal";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { useOffline } from "@/components/OfflineProvider";
 import {
+  adoptImportedSnapshot,
   buildPhoneBackup,
   downloadPhoneBackup,
+  EXPORT_ALL_APP_DATA,
+  farmCountInSnapshot,
+  IMPORT_APP_DATA,
+  MOVE_DATA_HELP,
   parsePhoneBackupText,
   sharePhoneBackup,
 } from "@/lib/offline/phoneBackup";
@@ -19,17 +23,6 @@ import {
   SIGN_OUT_UNSAVED_BODY,
   SIGN_OUT_UNSAVED_CONFIRM,
 } from "@/lib/offline/phoneFarmSave";
-import {
-  GET_WEBSITE_FARMS,
-  GET_WEBSITE_WORKING,
-  pullWebsiteFarmsMessage,
-} from "@/lib/offline/pullWebsiteFarms";
-import {
-  SYNC_WORKING,
-  syncPhoneResultMessage,
-  type SyncPhoneResult,
-} from "@/lib/offline/syncPhoneToWebsite";
-import { SIGN_OUT_FLUSH_MS, SYNC_UI_MS, withTimeout } from "@/lib/offline/syncTimeout";
 import {
   SettingsChipInput,
   SettingsFieldRow as SettingsRow,
@@ -49,31 +42,20 @@ export function SettingsScreen() {
   const {
     snapshot,
     patchSnapshot,
-    enqueue,
     pendingCount,
     lastBackupAt,
     syncing,
     ready,
-    flushNow,
-    syncNow,
-    pullWebsiteFarmsNow,
     replaceSnapshot,
   } = useOffline();
   const farmSave = phoneFarmSaveStatus({ ready, syncing, pendingCount, lastBackupAt });
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupNote, setBackupNote] = useState<string | null>(null);
+  const [confirmImport, setConfirmImport] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [leaving, setLeaving] = useState(false);
-  const [syncingNow, setSyncingNow] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
-  const [lastSync, setLastSync] = useState<SyncPhoneResult | null>(null);
-  const [websiteBusy, setWebsiteBusy] = useState(false);
-  const shownSave =
-    syncingNow
-      ? { kind: "saving" as const, text: SYNC_WORKING }
-      : lastSync && !(lastSync.ok && pendingCount > 0)
-        ? syncPhoneResultMessage(lastSync)
-        : farmSave;
+  const shownSave = farmSave;
   const values = snapshot
     ? settingsFormValues(snapshot)
     : {
@@ -108,47 +90,14 @@ export function SettingsScreen() {
     event.preventDefault();
     const write = settingsWriteFromForm(new FormData(event.currentTarget));
     patchSnapshot((current) => applySettings(current, write));
-    enqueue({ kind: "updateSettings", payload: write });
     setSaved(true);
     if (savedTimer.current != null) window.clearTimeout(savedTimer.current);
     savedTimer.current = window.setTimeout(() => setSaved(false), 2500);
   }
 
-  function onSync() {
-    if (syncingNow || leaving) return;
-    void (async () => {
-      setSyncingNow(true);
-      setLastSync(null);
-      let settled = false;
-      const timer = window.setTimeout(() => {
-        if (settled) return;
-        // Unstick Uploading. Do not lock leftover — syncNow still updates lastSync.
-        setSyncingNow(false);
-      }, SYNC_UI_MS);
-      try {
-        const result = await syncNow();
-        settled = true;
-        setLastSync(result);
-      } catch {
-        settled = true;
-        setLastSync({
-          ok: false,
-          pending: pendingCount || 1,
-          aliases: {},
-          reason: "unreachable",
-        });
-      } finally {
-        settled = true;
-        window.clearTimeout(timer);
-        setSyncingNow(false);
-      }
-    })();
-  }
-
   async function leaveApp(force = false) {
     setLeaving(true);
     try {
-      void withTimeout(flushNow(), SIGN_OUT_FLUSH_MS).catch(() => undefined);
       if (!force) {
         setConfirmLeave(true);
         return;
@@ -163,7 +112,7 @@ export function SettingsScreen() {
     }
   }
 
-  async function onSaveBackup() {
+  async function onExportAll() {
     if (!snapshot || backupBusy) return;
     setBackupBusy(true);
     setBackupNote(null);
@@ -171,42 +120,53 @@ export function SettingsScreen() {
       const backup = buildPhoneBackup(snapshot);
       await persistOwnerFarms(snapshot);
       await sharePhoneBackup(backup);
-      setBackupNote("Backup file saved. Keep a copy in Files or email it to yourself.");
+      setBackupNote(
+        `Exported ${farmCountInSnapshot(snapshot)} farm${farmCountInSnapshot(snapshot) === 1 ? "" : "s"}. Open that file on the other phone and tap Import app data.`,
+      );
     } catch {
       if (snapshot) downloadPhoneBackup(buildPhoneBackup(snapshot));
-      setBackupNote("Backup file downloaded. Keep a copy off this phone.");
+      setBackupNote("Exported a file. Keep it in Files or email it to yourself, then import it on the other phone.");
     } finally {
       setBackupBusy(false);
     }
   }
 
-  async function onGetWebsiteFarms() {
-    if (websiteBusy || leaving || backupBusy) return;
-    setWebsiteBusy(true);
-    setBackupNote(null);
-    try {
-      const result = await pullWebsiteFarmsNow();
-      setBackupNote(pullWebsiteFarmsMessage(result));
-    } catch {
-      setBackupNote(pullWebsiteFarmsMessage({ ok: false, reason: "unavailable" }));
-    } finally {
-      setWebsiteBusy(false);
-    }
+  async function applyImportText(text: string) {
+    const backup = parsePhoneBackupText(text);
+    const next = adoptImportedSnapshot(backup.snapshot, {
+      email: snapshot?.userEmail || backup.email,
+      userId: snapshot?.userId,
+      userName: snapshot?.userName,
+    });
+    await persistOwnerFarms(next);
+    replaceSnapshot(next);
+    setBackupNote(
+      `Imported ${farmCountInSnapshot(next)} farm${farmCountInSnapshot(next) === 1 ? "" : "s"}. This phone now has that copy.`,
+    );
   }
 
-  async function onRestoreFile(event: ChangeEvent<HTMLInputElement>) {
+  async function onPickImport(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    setBackupBusy(true);
     setBackupNote(null);
     try {
-      const backup = parsePhoneBackupText(await file.text());
-      await persistOwnerFarms(backup.snapshot);
-      replaceSnapshot(backup.snapshot);
-      setBackupNote(`Restored ${backup.snapshot.farms.length} farm(s) from the backup file.`);
+      const text = await file.text();
+      parsePhoneBackupText(text);
+      setConfirmImport(text);
     } catch (error) {
-      setBackupNote(error instanceof Error ? error.message : "Could not restore that file.");
+      setBackupNote(error instanceof Error ? error.message : "Could not read that file.");
+    }
+  }
+
+  async function onConfirmImport() {
+    if (!confirmImport || backupBusy) return;
+    setBackupBusy(true);
+    try {
+      await applyImportText(confirmImport);
+      setConfirmImport(null);
+    } catch (error) {
+      setBackupNote(error instanceof Error ? error.message : "Could not import that file.");
     } finally {
       setBackupBusy(false);
     }
@@ -282,44 +242,7 @@ export function SettingsScreen() {
             </div>
           </div>
         ) : (
-          <>
           <div className="flex flex-wrap items-center justify-center gap-8">
-            <button
-              type="button"
-              disabled={leaving || backupBusy || websiteBusy || !snapshot}
-              onClick={() => {
-                void onSaveBackup();
-              }}
-              className={actionLinkClass}
-            >
-              {backupBusy ? "Saving backup…" : "Save backup file"}
-            </button>
-            <button
-              type="button"
-              disabled={leaving || backupBusy || websiteBusy}
-              onClick={() => fileRef.current?.click()}
-              className={actionLinkClass}
-            >
-              Restore backup
-            </button>
-            <button
-              type="button"
-              disabled={leaving || backupBusy || websiteBusy}
-              onClick={() => {
-                void onGetWebsiteFarms();
-              }}
-              className={actionLinkClass}
-            >
-              {websiteBusy ? GET_WEBSITE_WORKING : GET_WEBSITE_FARMS}
-            </button>
-            <button
-              type="button"
-              disabled={leaving || syncingNow}
-              onClick={onSync}
-              className={actionLinkClass}
-            >
-              {syncingNow ? "Syncing…" : "Sync data"}
-            </button>
             <button
               type="button"
               disabled={leaving}
@@ -331,28 +254,83 @@ export function SettingsScreen() {
               {leaving ? "Signing out…" : "Sign out"}
             </button>
           </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={(event) => {
-              void onRestoreFile(event);
-            }}
-          />
-          {backupNote ? (
-            <p className="max-w-md text-center text-sm font-medium text-stone-700">{backupNote}</p>
-          ) : null}
-          </>
         )}
       </div>
+
+      <Card className="mb-5 max-w-2xl">
+        <h2 className="font-bold leading-tight text-stone-900">Move data to another phone</h2>
+        <p className="mt-1 text-sm text-stone-600">{MOVE_DATA_HELP}</p>
+        {confirmImport ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Replace farms on this phone with this file?"
+            className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3"
+          >
+            <p className="text-sm font-semibold text-amber-950">
+              Import replaces every farm on this phone with the file. Continue?
+            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-6">
+              <button
+                type="button"
+                disabled={backupBusy}
+                onClick={() => setConfirmImport(null)}
+                className={actionLinkClass}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={backupBusy}
+                onClick={() => {
+                  void onConfirmImport();
+                }}
+                className={actionLinkClass}
+              >
+                {backupBusy ? "Importing…" : IMPORT_APP_DATA}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button
+              type="button"
+              compact
+              disabled={leaving || backupBusy || !snapshot}
+              onClick={() => {
+                void onExportAll();
+              }}
+            >
+              {backupBusy ? "Exporting…" : EXPORT_ALL_APP_DATA}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              compact
+              disabled={leaving || backupBusy}
+              onClick={() => fileRef.current?.click()}
+            >
+              {IMPORT_APP_DATA}
+            </Button>
+          </div>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(event) => {
+            void onPickImport(event);
+          }}
+        />
+        {backupNote ? (
+          <p className="mt-3 text-sm font-medium text-stone-700">{backupNote}</p>
+        ) : null}
+      </Card>
 
       <Card className="max-w-2xl overflow-visible">
         <form
           key={snapshot?.pulledAt ?? "empty"}
-          action={async (formData) => {
-            await updateSettingsAction(formData);
-          }}
           onSubmit={onSubmit}
           className="space-y-3"
         >

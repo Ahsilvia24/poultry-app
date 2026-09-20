@@ -4,6 +4,10 @@ import { OFFLINE_SNAPSHOT_VERSION, type OfflineSnapshot } from "@/lib/offline/ty
 
 export const PHONE_BACKUP_FORMAT = "poultrytech-phone-backup" as const;
 export const PHONE_BACKUP_VERSION = 1 as const;
+export const EXPORT_ALL_APP_DATA = "Export all app data";
+export const IMPORT_APP_DATA = "Import app data";
+export const MOVE_DATA_HELP =
+  "Each phone keeps its own farms. Export all app data here, then import that file after you sign in on the other phone.";
 
 export type PhoneBackup = {
   format: typeof PHONE_BACKUP_FORMAT;
@@ -15,6 +19,21 @@ export type PhoneBackup = {
 
 export function farmCountInSnapshot(snapshot: OfflineSnapshot | null | undefined) {
   return snapshot?.farms?.filter((farm) => !farm.deletedAt).length ?? 0;
+}
+
+/** Import a file onto this login. The other phone’s email does not have to match. */
+export function adoptImportedSnapshot(
+  snapshot: OfflineSnapshot,
+  owner: { email: string; userId?: string; userName?: string },
+): OfflineSnapshot {
+  const email = normalizeOwnerEmail(owner.email || snapshot.userEmail);
+  return {
+    ...snapshot,
+    userEmail: email,
+    userId: owner.userId || snapshot.userId,
+    userName: (owner.userName || snapshot.userName || email.split("@")[0] || "Tech").trim(),
+    pulledAt: new Date().toISOString(),
+  };
 }
 
 export function buildPhoneBackup(snapshot: OfflineSnapshot): PhoneBackup {

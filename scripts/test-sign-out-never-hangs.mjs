@@ -37,7 +37,7 @@ try {
 assert.equal(flushPending, 7);
 
 const settings = read("src/components/SettingsScreen.tsx");
-assert.match(settings, /withTimeout\(flushNow\(\), SIGN_OUT_FLUSH_MS\)/);
+assert.doesNotMatch(settings, /flushNow/);
 assert.match(settings, /leaveApp\(true\)/);
 assert.doesNotMatch(settings, /disabled=\{busy\}/);
 

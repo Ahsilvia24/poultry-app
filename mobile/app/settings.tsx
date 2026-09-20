@@ -39,8 +39,7 @@ import {
   setServiceTech,
 } from "../src/lib/appSettings";
 import { APP_TIME_ZONES } from "../src/lib/appTimeZones";
-import { importMobileBackupJson, shareMobileBackup } from "../src/lib/dataExport";
-import * as FileSystem from "expo-file-system/legacy";
+import { pickAndImportMobileBackup, shareMobileBackup } from "../src/lib/dataExport";
 import { FARM_ORDER_OPTIONS, type FarmOrder } from "../src/lib/farmOrder";
 import { PrimaryButton } from "../src/components/ui";
 import { colors, styles } from "../src/theme";
@@ -348,6 +347,22 @@ export default function SettingsScreen() {
 
           <View style={{ flex: 1, minHeight: 48 }} />
 
+          <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text, marginBottom: 8 }}>
+            Move data to another phone
+          </Text>
+          <Text
+            style={{
+              alignSelf: "center",
+              maxWidth: 320,
+              textAlign: "center",
+              color: colors.muted,
+              fontSize: 13,
+              marginBottom: 8,
+            }}
+          >
+            Each phone keeps its own farms. Export all app data, then import that file after you
+            sign in on the other phone.
+          </Text>
           <Pressable
             disabled={exporting}
             onPress={() => {
@@ -357,7 +372,7 @@ export default function SettingsScreen() {
               void shareMobileBackup()
                 .then(({ farmCount }) => {
                   setExportNote(
-                    `Saved a backup of ${farmCount} farm${farmCount === 1 ? "" : "s"}. Keep that file.`,
+                    `Exported ${farmCount} farm${farmCount === 1 ? "" : "s"}. Import that file on the other phone.`,
                   );
                 })
                 .catch((e) => {
@@ -365,16 +380,18 @@ export default function SettingsScreen() {
                 })
                 .finally(() => setExporting(false));
             }}
-            style={{ alignSelf: "center", paddingVertical: 16, paddingHorizontal: 12 }}
+            style={{
+              alignSelf: "center",
+              minHeight: 48,
+              justifyContent: "center",
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderRadius: 12,
+              backgroundColor: colors.accentDark,
+            }}
           >
-            <Text
-              style={{
-                color: colors.text,
-                fontWeight: "700",
-                textDecorationLine: "underline",
-              }}
-            >
-              {exporting ? "Exporting…" : "Export data"}
+            <Text style={{ color: "#fff", fontWeight: "800" }}>
+              {exporting ? "Exporting…" : "Export all app data"}
             </Text>
           </Pressable>
           <Pressable
@@ -383,34 +400,30 @@ export default function SettingsScreen() {
               if (exporting) return;
               setExporting(true);
               setExportNote(null);
-              void (async () => {
-                const dir = FileSystem.documentDirectory;
-                if (!dir) throw new Error("No automatic backup on this phone yet.");
-                const uri = `${dir}poultrytech-auto-backup.json`;
-                const info = await FileSystem.getInfoAsync(uri);
-                if (!info.exists) throw new Error("No automatic backup on this phone yet.");
-                const text = await FileSystem.readAsStringAsync(uri);
-                const restored = await importMobileBackupJson(text);
-                setExportNote(
-                  `Restored ${restored.farmCount} farm${restored.farmCount === 1 ? "" : "s"} from the automatic backup.`,
-                );
-              })()
+              void pickAndImportMobileBackup()
+                .then((result) => {
+                  if (result.canceled) return;
+                  setExportNote(
+                    `Imported ${result.farmCount} farm${result.farmCount === 1 ? "" : "s"}. This phone now has that copy.`,
+                  );
+                })
                 .catch((e) => {
-                  setExportNote(e instanceof Error ? e.message : "Restore failed");
+                  setExportNote(e instanceof Error ? e.message : "Import failed");
                 })
                 .finally(() => setExporting(false));
             }}
-            style={{ alignSelf: "center", paddingVertical: 8, paddingHorizontal: 12 }}
+            style={{
+              alignSelf: "center",
+              minHeight: 48,
+              justifyContent: "center",
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              marginTop: 8,
+              borderRadius: 12,
+              backgroundColor: "#e7e5e4",
+            }}
           >
-            <Text
-              style={{
-                color: colors.text,
-                fontWeight: "700",
-                textDecorationLine: "underline",
-              }}
-            >
-              Restore automatic backup
-            </Text>
+            <Text style={{ color: colors.text, fontWeight: "800" }}>Import app data</Text>
           </Pressable>
           {exportNote ? (
             <Text
@@ -421,23 +434,12 @@ export default function SettingsScreen() {
                 color: colors.muted,
                 fontSize: 13,
                 fontWeight: "600",
+                marginTop: 8,
               }}
             >
               {exportNote}
             </Text>
-          ) : (
-            <Text
-              style={{
-                alignSelf: "center",
-                maxWidth: 320,
-                textAlign: "center",
-                color: colors.muted,
-                fontSize: 13,
-              }}
-            >
-              Safari keeps farms in this browser. Export to save a copy you own.
-            </Text>
-          )}
+          ) : null}
 
           <View style={{ marginTop: 12, gap: 12 }}>
             <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { changePasswordAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui";
 import { updateLocalPassword } from "@/lib/offline/localAccounts";
 import { useOffline } from "@/components/OfflineProvider";
@@ -38,17 +37,13 @@ export function ChangePasswordForm() {
     setError(null);
     setOk(false);
     const currentPassword = String(formData.get("currentPassword") ?? "");
-    const newPassword = String(formData.get("newPassword") ?? "");
+    const newPassword = String(formData.get("password") ?? "");
     const email = snapshot?.userEmail ?? "";
     try {
-      if (email) await updateLocalPassword(email, currentPassword, newPassword);
+      if (!email) throw new Error("Sign in again, then change the password.");
+      await updateLocalPassword(email, currentPassword, newPassword);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not change password.");
-      return;
-    }
-    const result = await changePasswordAction(formData);
-    if (result?.error && !email) {
-      setError(result.error);
       return;
     }
     setOk(true);

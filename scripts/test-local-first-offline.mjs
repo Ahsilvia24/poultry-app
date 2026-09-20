@@ -23,12 +23,12 @@ assert.match(layout, /OfflineNavProvider/);
 
 const provider = read("src/components/OfflineProvider.tsx");
 assert.match(provider, /loadLocalSnapshot/);
-assert.match(provider, /Never block the UI on sync/);
-assert.match(provider, /flushOutbox/);
 assert.match(provider, /patchSnapshot/);
-assert.match(provider, /canReplaceReplicaWithRemote/);
+assert.match(provider, /persistOwnerFarms/);
 assert.match(provider, /loadIdAliases/);
-assert.match(provider, /syncPhoneToWebsite/);
+assert.doesNotMatch(provider, /flushOutbox/);
+assert.doesNotMatch(provider, /syncPhoneToWebsite/);
+assert.doesNotMatch(provider, /pullRemoteSnapshot/);
 
 const flush = read("src/lib/offline/flushOutbox.ts");
 assert.match(flush, /updateHouseTemp/);

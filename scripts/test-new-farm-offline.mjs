@@ -7,13 +7,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(root, rel), "utf8");
 
 const missing = read("src/components/ReplicaFarmMissing.tsx");
-assert.match(missing, /Sync data/);
-assert.match(missing, /Work offline/);
-assert.match(missing, /syncNow/);
-assert.match(missing, /replayThenEnsureFarm/);
-assert.match(missing, /createFarmWriteForLocalFarm/);
-assert.match(missing, /enqueue/);
-assert.doesNotMatch(missing, /\(\{farmId\}\)/);
+assert.doesNotMatch(missing, /Sync data/);
+assert.doesNotMatch(missing, /syncNow/);
+assert.match(missing, /Import app data/);
+assert.doesNotMatch(missing, /Work offline/);
 assert.doesNotMatch(missing, /Open it once with a connection/);
 
 const nav = read("src/components/OfflineNav.tsx");
