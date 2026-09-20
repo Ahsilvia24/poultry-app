@@ -1,8 +1,5 @@
-import bcrypt from "bcryptjs";
-import { getNodePrisma } from "@/lib/prisma-node";
-
 export const FARM_DATABASE_LOCKED =
-  "The farm database is locked. Open Vercel → Storage → Prisma and raise the plan. Your farms are still saved. Then sign in with email and password.";
+  "The farm database is locked. Open Vercel → Storage → Prisma and raise the plan. Your farms are still saved. Then sign in with your email and password.";
 
 function errorText(error: unknown): string {
   if (typeof error === "string") return error;
@@ -31,18 +28,7 @@ export function signinUnavailableDetail(error: unknown) {
   return (text || "unknown").slice(0, 240);
 }
 
-export async function verifyEmailPassword(email: string, password: string) {
-  try {
-    const db = await getNodePrisma();
-    const user = await db.user.findUnique({
-      where: { email: email.trim().toLowerCase() },
-    });
-    if (!user) return null;
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    return valid ? user : null;
-  } catch (error) {
-    const fail = new Error("SIGNIN_UNAVAILABLE");
-    fail.cause = error;
-    throw fail;
-  }
+/** Passwords live on the phone. There is no hosted user table to check. */
+export async function verifyEmailPassword(_email: string, _password: string) {
+  return null;
 }

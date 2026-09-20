@@ -1,5 +1,4 @@
 import { isDeviceId } from "@/lib/device-id";
-import { prisma } from "@/lib/prisma";
 
 /** Tokens issued before this column existed stay valid until the next sign-in. */
 export function sessionMatches(
@@ -39,74 +38,30 @@ export function reuseExistingSessionId(
 }
 
 export async function rotateActiveSession(
-  userId: string,
+  _userId: string,
   deviceId?: string | null,
-  db: Pick<typeof prisma, "user"> = prisma,
 ) {
-  if (isDeviceId(deviceId)) {
-    const current = await db.user.findUnique({
-      where: { id: userId },
-      select: { activeSessionId: true, activeDeviceId: true },
-    });
-    const reuse = reuseExistingSessionId(
-      current?.activeSessionId,
-      current?.activeDeviceId,
-      deviceId,
-    );
-    if (reuse) return reuse;
-  }
-  const sessionId = crypto.randomUUID();
-  await db.user.update({
-    where: { id: userId },
-    data: {
-      activeSessionId: sessionId,
-      unsyncedAt: null,
-      ...(isDeviceId(deviceId) ? { activeDeviceId: deviceId } : {}),
-    },
-  });
-  return sessionId;
+  const reuse = reuseExistingSessionId(null, null, deviceId);
+  if (reuse) return reuse;
+  return crypto.randomUUID();
 }
 
 export async function bindActiveDevice(
-  userId: string,
-  presented: string | null | undefined,
-  deviceId: string,
-) {
-  if (!presented || !isDeviceId(deviceId)) return;
-  await prisma.user.updateMany({
-    where: { id: userId, activeSessionId: presented },
-    data: { activeDeviceId: deviceId },
-  });
-}
+  _userId: string,
+  _presented: string | null | undefined,
+  _deviceId: string,
+) {}
 
-export async function markUnsynced(userId: string, pending: boolean) {
-  await prisma.user.update({
-    where: { id: userId },
-    data: { unsyncedAt: pending ? new Date() : null },
-  });
-}
+export async function markUnsynced(_userId: string, _pending: boolean) {}
 
 export async function isActiveSession(
-  userId: string,
+  _userId: string,
   presented: string | null | undefined,
 ) {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { activeSessionId: true },
-    });
-    // Phone-owned logins use a local user id. Missing Prisma row is not a sign-out.
-    if (!user) return true;
-    return decideActiveSession({ ok: true, activeSessionId: user.activeSessionId }, presented);
-  } catch {
-    return decideActiveSession({ ok: false }, presented);
-  }
+  return decideActiveSession({ ok: false }, presented);
 }
 
-export async function clearActiveSession(userId: string, presented: string | null | undefined) {
-  if (!presented) return;
-  await prisma.user.updateMany({
-    where: { id: userId, activeSessionId: presented },
-    data: { activeSessionId: null, activeDeviceId: null, unsyncedAt: null },
-  });
-}
+export async function clearActiveSession(
+  _userId: string,
+  _presented: string | null | undefined,
+) {}

@@ -76,13 +76,13 @@ attachSessionCookie(res, cookie);
 assert.equal(res.cookies.get("authjs.session-token")?.value, cookie.value);
 assert.equal(res.cookies.get("__Secure-authjs.session-token")?.value, "");
 
-assert.match(read("prisma/schema.prisma"), /rhel-openssl-3\.0\.x/);
 assert.match(read("next.config.ts"), /libquery_engine-debian-/);
 assert.match(read("next.config.ts"), /query_engine_bg\.wasm/);
 assert.match(read("next.config.ts"), /@prisma\/adapter-pg/);
-assert.match(read("src/lib/prisma-node.ts"), /PrismaPg/);
-assert.match(read("src/lib/prisma-node.ts"), /DIRECT_URL/);
-assert.doesNotMatch(read("src/lib/prisma.ts"), /adapter-pg/);
+assert.match(read("next.config.ts"), /node_modules\/\.prisma\/\*\*\/\*/);
+assert.doesNotMatch(read("src/lib/prisma.ts"), /@prisma\/client/);
+assert.doesNotMatch(read("src/lib/prisma-node.ts"), /@prisma\/client|PrismaPg|adapter-pg|from "pg"/);
+assert.doesNotMatch(read("src/lib/web-session.ts"), /getNodePrisma/);
 assert.doesNotMatch(read("src/proxy.ts"), /@\/lib\/auth"/);
 assert.match(read("src/proxy.ts"), /@\/lib\/auth-edge/);
 assert.match(read("src/proxy.ts"), /\/api\/local-session/);

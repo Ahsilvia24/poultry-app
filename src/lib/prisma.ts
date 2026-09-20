@@ -1,14 +1,15 @@
-import { PrismaClient } from "@prisma/client";
-import { applyHostedEnv } from "@/lib/hosted-env";
-
-applyHostedEnv();
-
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+/** Offline-only. No Prisma client is shipped on Vercel. */
+export const prisma: any = new Proxy(
+  {},
+  {
+    get: () =>
+      new Proxy(
+        {},
+        {
+          get: () => () => {
+            throw new Error("No database");
+          },
+        },
+      ),
+  },
+);

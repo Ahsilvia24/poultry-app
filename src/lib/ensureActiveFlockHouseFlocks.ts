@@ -1,11 +1,10 @@
-import type { Prisma } from "@prisma/client";
 import { format } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { planAttachMissingHousesToActiveFlock } from "@/lib/attachHouseToActiveFlock";
 import { planMergeDuplicateFlocks } from "@/lib/flockIdentity";
 import { dateKeyFromDb, parseDateKey } from "@/lib/visits/schedule";
 
-type Db = Prisma.TransactionClient | typeof prisma;
+type Db = typeof prisma;
 
 function dateTimeKey(value: Date): string {
   return format(value, "yyyy-MM-dd");

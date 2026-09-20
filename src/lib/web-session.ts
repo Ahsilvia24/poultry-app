@@ -1,10 +1,8 @@
 import { encode } from "@auth/core/jwt";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
-import { rotateActiveSession } from "@/lib/active-session";
 import { SESSION_MAX_AGE_SECONDS } from "@/lib/auth.config";
 import { applyHostedEnv } from "@/lib/hosted-env";
-import { getNodePrisma } from "@/lib/prisma-node";
 import {
   attachSessionCookie,
   type IssuedSessionCookie,
@@ -74,15 +72,10 @@ export async function createLocalWebSession(
 
 export async function createWebSession(
   user: { id: string; email: string; name?: string | null },
-  deviceId: string | undefined,
+  _deviceId: string | undefined,
   secure: boolean,
 ): Promise<{ cookie: IssuedSessionCookie } | { error: string }> {
-  try {
-    const sessionId = await rotateActiveSession(user.id, deviceId, await getNodePrisma());
-    return { cookie: await issueSessionCookie(user, sessionId, secure) };
-  } catch {
-    return createLocalWebSession(user, secure);
-  }
+  return createLocalWebSession(user, secure);
 }
 
 export function putSessionOnResponse(res: NextResponse, cookie: IssuedSessionCookie) {

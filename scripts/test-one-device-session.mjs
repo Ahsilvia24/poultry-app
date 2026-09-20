@@ -46,9 +46,9 @@ assert.match(schema, /activeDeviceId/);
 assert.match(schema, /unsyncedAt/);
 
 const auth = read("src/lib/auth.ts");
-assert.match(auth, /rotateActiveSession/);
 assert.match(auth, /isActiveSession/);
 assert.match(auth, /clearActiveSession/);
+assert.doesNotMatch(auth, /from "@\/lib\/prisma"/);
 
 const mobileLogin = read("src/app/api/mobile/login/route.ts");
 assert.match(mobileLogin, /rotateActiveSession/);
@@ -56,7 +56,6 @@ assert.match(mobileLogin, /needsConfirm/);
 assert.match(read("src/app/api/login/route.ts"), /needsConfirm/);
 assert.match(read("src/app/api/offline/pending/route.ts"), /markUnsynced/);
 assert.doesNotMatch(read("src/components/OfflineProvider.tsx"), /reportUnsynced/);
-assert.match(read("src/lib/active-session.ts"), /unsyncedAt: null/);
 assert.match(read("src/lib/active-session.ts"), /bindActiveDevice/);
 assert.match(read("src/app/api/offline/device/route.ts"), /bindActiveDevice/);
 
