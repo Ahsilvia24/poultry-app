@@ -23,6 +23,25 @@ const inventory = {
   ],
 };
 
+function eightHouseInventory() {
+  return {
+    farmName: "EIGHT HOUSE",
+    orderDate: "2026-09-09",
+    orderTime: "15:30",
+    consumptionRate: 0.45,
+    calculatedAt: "2026-09-09T15:34:00",
+    houses: Array.from({ length: 8 }, (_, i) => ({
+      houseId: `h${i + 1}`,
+      houseNumber: i + 1,
+      headCount: 28000 - i * 100,
+      binAPounds: 3000 + i * 100,
+      binBPounds: 4000,
+      catchDate: "2026-09-11",
+      catchTime: "08:00",
+    })),
+  };
+}
+
 describe("buildLfoPdfBytes", () => {
   it("writes a black-and-white label PDF, not a Field/Value table", async () => {
     const payload = buildLfoSharePayload(inventory);
@@ -40,5 +59,24 @@ describe("buildLfoPdfBytes", () => {
     assert.match(text, /Bin A \(lbs\)/);
     assert.doesNotMatch(text, /\bField\b/);
     assert.doesNotMatch(text, /\bValue\b/);
+  });
+
+  it("keeps houses 1-6 on page 1 and 7-8 with totals plus summary on page 2", async () => {
+    const payload = buildLfoSharePayload(eightHouseInventory());
+    const bytes = await buildLfoPdfBytes(payload);
+    const pdf = await getDocumentProxy(Uint8Array.from(bytes));
+    assert.equal(pdf.numPages, 2);
+    const extracted = await extractText(pdf, { mergePages: false });
+    const pages = Array.isArray(extracted.text) ? extracted.text : [extracted.text];
+    assert.equal(pages.length, 2);
+    assert.match(pages[0], /House 1/);
+    assert.match(pages[0], /House 6/);
+    assert.doesNotMatch(pages[0], /House 7/);
+    assert.doesNotMatch(pages[0], /House 8/);
+    assert.doesNotMatch(pages[0], /\bTotals\b/);
+    assert.match(pages[1], /House 7/);
+    assert.match(pages[1], /House 8/);
+    assert.match(pages[1], /Totals/);
+    assert.match(pages[1], /House summary/);
   });
 });
