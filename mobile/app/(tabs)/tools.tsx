@@ -792,7 +792,7 @@ function ChipScroller({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={[{ marginBottom: 10 }, style]}
+      style={[{ marginBottom: 12 }, style]}
       contentContainerStyle={{
         flexDirection: "row",
         alignItems: "center",

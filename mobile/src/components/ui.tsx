@@ -1,4 +1,4 @@
-import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { Pressable, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
 import {
@@ -16,7 +16,7 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View style={{ marginBottom: 12 }}>
       <View
         style={{
           flexDirection: "row",
@@ -48,7 +48,7 @@ export function BackHeader({
   accessibilityLabel?: string;
 }) {
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View style={{ marginBottom: 12 }}>
       <View
         style={{
           flexDirection: "row",
@@ -195,7 +195,7 @@ export function Chip({
           paddingHorizontal: 14,
           paddingVertical: 10,
           marginRight: 8,
-          marginBottom: 8,
+          marginBottom: 0,
           flexShrink: 0,
           backgroundColor: active ? activeBg : "#e7e5e4",
         },
@@ -257,8 +257,14 @@ export function PrimaryButton({
   );
 }
 
-export function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <Text style={[styles.sectionTitle]}>{children}</Text>;
+export function SectionTitle({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<TextStyle>;
+}) {
+  return <Text style={[styles.sectionTitle, style]}>{children}</Text>;
 }
 
 /**

@@ -50,5 +50,24 @@ assert.match(quick, /min-h-12/);
 const expoTools = read("mobile/app/(tabs)/tools.tsx");
 assert.match(expoTools, /fontSize: 17/);
 assert.match(expoTools, /fontFamily: fonts\.sans/);
+assert.match(expoTools, /marginBottom: 12/);
+assert.match(expoTools, /style=\{\[\{ marginBottom: 12 \}, style\]\}/);
+
+const expoUi = read("mobile/src/components/ui.tsx");
+assert.match(expoUi, /export function PageHeader[\s\S]*?marginBottom: 12/);
+assert.match(expoUi, /export function BackHeader[\s\S]*?marginBottom: 12/);
+assert.doesNotMatch(expoUi, /marginBottom: 16/);
+const expoChip = expoUi.slice(expoUi.indexOf("export function Chip("), expoUi.indexOf("export function PrimaryButton"));
+assert.match(expoChip, /marginBottom: 0/);
+assert.doesNotMatch(expoChip, /marginBottom: 8/);
+
+const expoDash = read("mobile/app/(tabs)/index.tsx");
+assert.match(expoDash, /<View style=\{\{ marginBottom: 12 \}\}>/);
+assert.match(expoDash, /<Card style=\{\{ marginBottom: 0 \}\}>[\s\S]*Upcoming Catches/);
+assert.match(expoDash, /<SectionTitle style=\{\{ marginTop: 12 \}\}>Active Farms<\/SectionTitle>/);
+
+const expoReports = read("mobile/app/(tabs)/reports.tsx");
+assert.match(expoReports, /<View style=\{\{ flexDirection: "row", marginBottom: 12 \}\}>/);
+assert.doesNotMatch(expoReports, /flexDirection: "row", marginBottom: 8/);
 
 console.log("homescreen-larger-type: ok");

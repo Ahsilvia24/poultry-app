@@ -135,7 +135,7 @@ function ChipScroller({ children }: { children: React.ReactNode }) {
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={{ marginBottom: 10 }}
+      style={{ marginBottom: 12 }}
       contentContainerStyle={{ flexDirection: "row", alignItems: "center", paddingRight: 8 }}
     >
       {children}

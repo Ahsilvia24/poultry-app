@@ -1111,7 +1111,7 @@ export default function FarmDetailScreen() {
       >
         <View
           style={{
-            marginBottom: 16,
+            marginBottom: 12,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",

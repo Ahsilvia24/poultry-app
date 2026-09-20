@@ -447,7 +447,7 @@ export default function ReportsScreen() {
           <>
             <Text style={styles.label}>Farm</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: "row", marginBottom: 8 }}>
+              <View style={{ flexDirection: "row", marginBottom: 12 }}>
                 <Chip label="All" active={genFarmId === ""} onPress={() => setGenFarmId("")} />
                 {farms.map((f) => (
                   <Chip
@@ -582,7 +582,7 @@ export default function ReportsScreen() {
           <>
             <Text style={styles.label}>Farm</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: "row", marginBottom: 8 }}>
+              <View style={{ flexDirection: "row", marginBottom: 12 }}>
                 <Chip label="All" active={farmId === ""} onPress={() => selectMortalityFarm("")} />
                 {farms.map((f) => (
                   <Chip
