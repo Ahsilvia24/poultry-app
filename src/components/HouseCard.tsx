@@ -92,7 +92,6 @@ export function HouseCard({
   const router = useRouter();
   const { snapshot, patchSnapshot, enqueue } = useOffline();
   const { setKeypadOpen } = useKeypadNav();
-  const [detailsOpen, setDetailsOpen] = useState(true);
   const [mode, setMode] = useState<"idle" | "edit" | "delete">("idle");
   const [tempOpen, setTempOpen] = useState(false);
   const [tempValue, setTempValue] = useState("");
@@ -243,6 +242,77 @@ export function HouseCard({
               if (isKeypadGuardActive()) return;
               setMode("edit");
             }}
+            className="mt-3 w-full space-y-3 text-left text-inherit"
+            aria-label={`Edit house ${house.houseNumber} details`}
+          >
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <p className="text-[13px] text-stone-500">Placed</p>
+                <p className="mt-0.5 text-[15px] font-bold">
+                  {birdsPlaced != null ? formatNumber(birdsPlaced) : "—"}
+                </p>
+                {placementDateKey ? (
+                  <p className="text-[15px] font-bold leading-snug">{formatHouseDetailDate(placementDateKey)}</p>
+                ) : null}
+              </div>
+              <div>
+                <p className="text-[13px] text-stone-500">Remaining</p>
+                <p className="mt-0.5 text-[15px] font-bold">
+                  {metrics ? formatNumber(metrics.remaining) : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[13px] text-stone-500">PHC</p>
+                <p className="mt-0.5 text-[15px] font-bold">
+                  {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
+                </p>
+                <p className="mt-0.5 text-[11px] text-stone-400">150 catch crew</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <p className="text-[13px] text-stone-500">Catch</p>
+                {catchDateKey ? (
+                  <p className="mt-0.5 text-[15px] font-bold leading-snug">
+                    {formatHouseDetailDate(catchDateKey)}
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-[15px] font-bold">—</p>
+                )}
+                {catchTime ? (
+                  <p className="text-[15px] font-bold leading-snug">{compactCatchTimeLabel(catchTime)}</p>
+                ) : null}
+                {catchAgeDays != null ? (
+                  <p className="text-[15px] font-bold leading-snug">{catchAgeDays} days</p>
+                ) : null}
+              </div>
+              <div>
+                <p className="text-[13px] text-stone-500">Mortality</p>
+                <p className="mt-0.5 min-h-[22px] text-[15px] font-bold tabular-nums">
+                  {mortalityValue}
+                </p>
+                <p className="min-h-[22px] text-[15px] font-bold leading-snug tabular-nums">
+                  {mortalityPct ? `(${mortalityPct})` : "\u00a0"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[13px] text-stone-500">Proj. Mort.</p>
+                <p className="mt-0.5 min-h-[22px] text-[15px] font-bold tabular-nums">
+                  {projMortValue}
+                </p>
+                <p className="min-h-[22px] text-[15px] font-bold leading-snug tabular-nums">
+                  {projMortPct ? `(${projMortPct})` : "\u00a0"}
+                </p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (isKeypadGuardActive()) return;
+              setMode("edit");
+            }}
             className="mt-3 w-full text-left text-inherit"
             aria-label={`Edit house ${house.houseNumber} weekly mortality`}
           >
@@ -253,88 +323,6 @@ export function HouseCard({
               <WeeklyMortalityList weeks={weeklyMortality} />
             </div>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setDetailsOpen((o) => !o)}
-            className="mt-3 flex min-h-10 w-full items-center gap-2 border-t border-stone-100 pt-3 text-left text-sm font-semibold text-stone-700 hover:text-stone-900"
-            aria-expanded={detailsOpen}
-          >
-            <span className="w-4 text-stone-500" aria-hidden="true">
-              {detailsOpen ? "▾" : "▸"}
-            </span>
-            {detailsOpen ? "Hide Details" : "Show Details"}
-          </button>
-
-          {detailsOpen ? (
-            <button
-              type="button"
-              onClick={() => setMode("edit")}
-              className="mt-3 w-full space-y-3 text-left text-inherit"
-              aria-label={`Edit house ${house.houseNumber} details`}
-            >
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <p className="text-[13px] text-stone-500">Placed</p>
-                  <p className="mt-0.5 text-[15px] font-bold">
-                    {birdsPlaced != null ? formatNumber(birdsPlaced) : "—"}
-                  </p>
-                  {placementDateKey ? (
-                    <p className="text-[15px] font-bold leading-snug">{formatHouseDetailDate(placementDateKey)}</p>
-                  ) : null}
-                </div>
-                <div>
-                  <p className="text-[13px] text-stone-500">Remaining</p>
-                  <p className="mt-0.5 text-[15px] font-bold">
-                    {metrics ? formatNumber(metrics.remaining) : "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[13px] text-stone-500">PHC</p>
-                  <p className="mt-0.5 text-[15px] font-bold">
-                    {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-stone-400">150 catch crew</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <p className="text-[13px] text-stone-500">Catch</p>
-                  {catchDateKey ? (
-                    <p className="mt-0.5 text-[15px] font-bold leading-snug">
-                      {formatHouseDetailDate(catchDateKey)}
-                    </p>
-                  ) : (
-                    <p className="mt-0.5 text-[15px] font-bold">—</p>
-                  )}
-                  {catchTime ? (
-                    <p className="text-[15px] font-bold leading-snug">{compactCatchTimeLabel(catchTime)}</p>
-                  ) : null}
-                  {catchAgeDays != null ? (
-                    <p className="text-[15px] font-bold leading-snug">{catchAgeDays} days</p>
-                  ) : null}
-                </div>
-                <div>
-                  <p className="text-[13px] text-stone-500">Mortality</p>
-                  <p className="mt-0.5 min-h-[22px] text-[15px] font-bold tabular-nums">
-                    {mortalityValue}
-                  </p>
-                  <p className="min-h-[22px] text-[15px] font-bold leading-snug tabular-nums">
-                    {mortalityPct ? `(${mortalityPct})` : "\u00a0"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[13px] text-stone-500">Proj. Mort.</p>
-                  <p className="mt-0.5 min-h-[22px] text-[15px] font-bold tabular-nums">
-                    {projMortValue}
-                  </p>
-                  <p className="min-h-[22px] text-[15px] font-bold leading-snug tabular-nums">
-                    {projMortPct ? `(${projMortPct})` : "\u00a0"}
-                  </p>
-                </div>
-              </div>
-            </button>
-          ) : null}
         </Card>
     </SwipeCommitDeleteRow>
 

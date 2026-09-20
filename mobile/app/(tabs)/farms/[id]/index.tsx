@@ -430,7 +430,6 @@ export default function FarmDetailScreen() {
   const [addingHouse, setAddingHouse] = useState<AddHouseDraft | null>(null);
   const [addHouseError, setAddHouseError] = useState<string | null>(null);
   const [addHouseSaving, setAddHouseSaving] = useState(false);
-  const [collapsedHouses, setCollapsedHouses] = useState<Set<string>>(new Set());
   const [editingFarm, setEditingFarm] = useState<FarmEditDraft | null>(null);
   const [farmEditError, setFarmEditError] = useState<string | null>(null);
   const [farmSaving, setFarmSaving] = useState(false);
@@ -1293,9 +1292,7 @@ export default function FarmDetailScreen() {
           </Card>
         </View>
 
-        {data.houses.map((h) => {
-          const detailsOpen = !collapsedHouses.has(h.id);
-          return (
+        {data.houses.map((h) => (
             <View
               key={`${farm.id}-${h.id}`}
               collapsable={false}
@@ -1317,7 +1314,7 @@ export default function FarmDetailScreen() {
               }
             >
               <Card style={{ marginBottom: 0, padding: 0 }}>
-                <View style={{ padding: 16, paddingBottom: 4 }}>
+                <View style={{ padding: 16 }}>
                   <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
                     <Pressable
                       onPress={() => openHouseEditor(h)}
@@ -1478,65 +1475,11 @@ export default function FarmDetailScreen() {
                   <Pressable
                     onPress={() => openHouseEditor(h)}
                     accessibilityRole="button"
-                    accessibilityLabel={`Edit house ${h.houseNumber} weekly mortality`}
+                    accessibilityLabel={`Edit house ${h.houseNumber} details`}
                     style={({ pressed }) => ({
                       marginTop: 12,
                       opacity: pressed ? 0.85 : 1,
                     })}
-                  >
-                    <View>
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          fontWeight: "700",
-                          color: colors.muted,
-                          textTransform: "uppercase",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Weekly mortality
-                      </Text>
-                      <WeeklyMortalityList weeks={h.weeklyMortality} />
-                    </View>
-                  </Pressable>
-                </View>
-
-                <Pressable
-                  onPress={() =>
-                    setCollapsedHouses((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(h.id)) next.delete(h.id);
-                      else next.add(h.id);
-                      return next;
-                    })
-                  }
-                  accessibilityState={{ expanded: detailsOpen }}
-                  style={{
-                    marginHorizontal: 16,
-                    marginTop: 8,
-                    paddingTop: 12,
-                    paddingBottom: detailsOpen ? 0 : 16,
-                    borderTopWidth: 1,
-                    borderTopColor: "#f5f5f4",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
-                    minHeight: 40,
-                  }}
-                >
-                  <Text style={{ color: colors.muted, fontWeight: "700", width: 14 }}>
-                    {detailsOpen ? "▾" : "▸"}
-                  </Text>
-                  <Text style={{ fontWeight: "700", color: colors.text, fontSize: 14 }}>
-                    {detailsOpen ? "Hide Details" : "Show Details"}
-                  </Text>
-                </Pressable>
-
-                {detailsOpen ? (
-                  <Pressable
-                    onPress={() => openHouseEditor(h)}
-                    accessibilityLabel={`Edit house ${h.houseNumber} details`}
-                    style={{ paddingHorizontal: 16, paddingBottom: 16, marginTop: 10 }}
                   >
                     <View style={{ gap: 10 }}>
                       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
@@ -1659,12 +1602,36 @@ export default function FarmDetailScreen() {
                       </View>
                     </View>
                   </Pressable>
-                ) : null}
+
+                  <Pressable
+                    onPress={() => openHouseEditor(h)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit house ${h.houseNumber} weekly mortality`}
+                    style={({ pressed }) => ({
+                      marginTop: 12,
+                      opacity: pressed ? 0.85 : 1,
+                    })}
+                  >
+                    <View>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "700",
+                          color: colors.muted,
+                          textTransform: "uppercase",
+                          marginBottom: 8,
+                        }}
+                      >
+                        Weekly mortality
+                      </Text>
+                      <WeeklyMortalityList weeks={h.weeklyMortality} />
+                    </View>
+                  </Pressable>
+                </View>
               </Card>
             </SwipeCommitDeleteRow>
             </View>
-          );
-        })}
+        ))}
 
         {data.houses.length === 0 ? (
           <Text style={[styles.muted, { marginBottom: 4 }]}>No houses yet.</Text>
