@@ -192,7 +192,6 @@ export function buildLfoSharePayload(
           value: `${formatConsumptionRate(inventory.consumptionRate)} lbs/bird/day`,
         },
         { label: "Hours measured from", value: formatLfoDateAndTime(orderDate, inventory.orderTime) },
-        { label: "Head counts as of", value: formatLfoStamp(inventory.calculatedAt, timeZone) },
         ...(notes ? [{ label: "Notes", value: notes }] : []),
       ],
     },

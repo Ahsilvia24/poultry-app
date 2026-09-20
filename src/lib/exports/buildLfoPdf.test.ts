@@ -23,22 +23,25 @@ const inventory = {
   ],
 };
 
-function houseInventory(count: number, farmName: string) {
+function houseInventory(count: number, farmName: string, mixOrders = false) {
   return {
     farmName,
     orderDate: "2026-09-09",
     orderTime: "15:30",
     consumptionRate: 0.45,
     calculatedAt: "2026-09-09T15:34:00",
-    houses: Array.from({ length: count }, (_, i) => ({
-      houseId: `h${i + 1}`,
-      houseNumber: i + 1,
-      headCount: 28000 - i * 100,
-      binAPounds: 16000 + i * 100,
-      binBPounds: 17000,
-      catchDate: "2026-09-11",
-      catchTime: "08:00",
-    })),
+    houses: Array.from({ length: count }, (_, i) => {
+      const orderHouse = mixOrders && i % 2 === 0;
+      return {
+        houseId: `h${i + 1}`,
+        houseNumber: i + 1,
+        headCount: 28000 - i * 100,
+        binAPounds: orderHouse ? 3000 + i * 50 : 16000 + i * 100,
+        binBPounds: orderHouse ? 4000 : 17000,
+        catchDate: "2026-09-11",
+        catchTime: "08:00",
+      };
+    }),
   };
 }
 
@@ -75,6 +78,7 @@ describe("buildLfoPdfBytes", () => {
     assert.doesNotMatch(text, /Catch time/);
     assert.doesNotMatch(text, /Hourly consumption/);
     assert.doesNotMatch(text, /Bin A \(lbs\)/);
+    assert.doesNotMatch(text, /Head counts as of/);
     const farmRows = payload.sections.flatMap((section) => section.rows).filter((row) => row.label === "Farm");
     assert.equal(farmRows.length, 0);
   });
@@ -112,5 +116,23 @@ describe("buildLfoPdfBytes", () => {
     assert.match(pages[1] ?? "", /House summary/);
     assert.match(pages[1] ?? "", /H9-/);
     assert.match(pages[1] ?? "", /H12-/);
+  });
+
+  it("writes a 24-house farm with both orders and reclaim", async () => {
+    const payload = buildLfoSharePayload(houseInventory(24, "TWENTY FOUR", true));
+    const labels = payload.sections.flatMap((section) => section.rows.map((row) => row.label));
+    assert.ok(labels.includes("Order (rounded)"));
+    assert.ok(labels.includes("Reclaim (rounded)"));
+    assert.ok(!labels.includes("Head counts as of"));
+    const bytes = await buildLfoPdfBytes(payload);
+    const pdf = await getDocumentProxy(Uint8Array.from(bytes));
+    assert.ok(pdf.numPages >= 3);
+    const extracted = await extractText(pdf, { mergePages: true });
+    const text = extracted.text;
+    assert.match(text, /House 1/);
+    assert.match(text, /House 24/);
+    assert.match(text, /Order \(rounded\)/);
+    assert.match(text, /Reclaim \(rounded\)/);
+    assert.doesNotMatch(text, /Head counts as of/);
   });
 });

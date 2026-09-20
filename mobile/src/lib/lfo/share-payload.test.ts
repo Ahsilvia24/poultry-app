@@ -51,7 +51,7 @@ describe("buildLfoSharePayload", () => {
     assert.ok(labels.includes("Reclaim"));
     assert.ok(labels.includes("Consumption rate"));
     assert.ok(labels.includes("Hours measured from"));
-    assert.ok(labels.includes("Head counts as of"));
+    assert.ok(!labels.includes("Head counts as of"));
     assert.ok(labels.includes("Notes"));
     assert.ok(labels.includes("Bin A/B (lbs)"));
     assert.ok(!labels.includes("Bin A (lbs)"));
