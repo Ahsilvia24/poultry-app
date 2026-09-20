@@ -8,15 +8,15 @@ const read = (rel) => readFileSync(join(root, rel), "utf8");
 
 const login = read("src/app/(auth)/login/page.tsx");
 assert.match(login, /Signing in/);
-assert.match(login, /action="\/api\/login"/);
-assert.match(login, /method="post"/);
+assert.match(login, /onSubmit/);
+assert.match(login, /\/api\/local-session/);
+assert.doesNotMatch(login, /action="\/api\/login"/);
 assert.doesNotMatch(login, /loginAction/);
-assert.doesNotMatch(login, /form action=\{onSubmit\}/);
 assert.doesNotMatch(login, /postAuthJson/);
 
 const register = read("src/app/(auth)/register/page.tsx");
-assert.match(register, /action="\/api\/register"/);
-assert.match(register, /method="post"/);
+assert.match(register, /\/api\/local-session/);
+assert.doesNotMatch(register, /action="\/api\/register"/);
 assert.doesNotMatch(register, /registerAction/);
 
 const proxy = read("src/proxy.ts");
@@ -50,8 +50,9 @@ const globalError = read("src/app/global-error.tsx");
 assert.match(globalError, /window\.location\.reload\(\)/);
 
 const dashboard = read("src/app/(dashboard)/page.tsx");
-assert.match(dashboard, /scheduleImports = await listScheduleImports/);
-assert.match(dashboard, /catch \{\s*scheduleImports = \[\];\s*\}/);
+assert.doesNotMatch(dashboard, /getDashboardData/);
+assert.doesNotMatch(dashboard, /listScheduleImports/);
+assert.match(dashboard, /scheduleImports=\{\[\]\}/);
 
 const nextConfig = read("next.config.ts");
 assert.match(nextConfig, /source: "\/login"/);

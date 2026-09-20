@@ -13,10 +13,8 @@ assert.match(nextConfig, /static:\s*600/);
 
 const servicePage = read("src/app/(dashboard)/farms/[id]/service/page.tsx");
 assert.doesNotMatch(servicePage, /loadServiceFarmContext/);
-assert.match(servicePage, /Promise\.all/);
-assert.match(servicePage, /listServiceFormDraftKinds\(id, userId\)/);
-assert.match(servicePage, /listStoredServiceForms\(id, userId\)/);
-assert.match(servicePage, /prisma\.farm\.findFirst/);
+assert.doesNotMatch(servicePage, /from "@\/lib\/prisma"/);
+assert.match(servicePage, /ServiceFarmPicker/);
 
 const farmContext = read("src/lib/serviceForms/farmContext.ts");
 assert.match(farmContext, /farm: \{ userId, deletedAt: null \}/);
@@ -40,7 +38,8 @@ const quickLinks = read("src/components/FarmQuickLinks.tsx");
 assert.match(quickLinks, /router\.prefetch\(serviceHref\)/);
 
 const farmPage = read("src/app/(dashboard)/farms/[id]/page.tsx");
-assert.match(farmPage, /const \[farm, thresholds\] = await Promise\.all/);
+assert.match(farmPage, /FarmDetailClient/);
+assert.doesNotMatch(farmPage, /from "@\/lib\/prisma"/);
 
 for (const rel of [
   "src/app/(dashboard)/loading.tsx",

@@ -60,8 +60,8 @@ const farmsSelect = read("src/lib/offline/selectFarms.ts");
 assert.match(farmsSelect, /isManualLfoFarm/);
 
 const farmsPage = read("src/app/(dashboard)/farms/page.tsx");
-assert.match(farmsPage, /MANUAL_LFO_FARM_NUMBER/);
-assert.match(farmsPage, /farmName: \{ not: MANUAL_LFO_FARM_NAME \}/);
+assert.match(farmsPage, /FarmsPageClient/);
+assert.doesNotMatch(farmsPage, /from "@\/lib\/prisma"/);
 
 const farmsClient = read("src/components/FarmsPageClient.tsx");
 assert.match(farmsClient, /isManualLfoFarm/);

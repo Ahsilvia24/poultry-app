@@ -81,6 +81,19 @@ assert.match(read("src/components/OfflineProvider.tsx"), /persistOwnerFarms/);
 assert.doesNotMatch(read("src/components/OfflineProvider.tsx"), /pullRemoteSnapshot/);
 assert.doesNotMatch(read("src/components/OfflineProvider.tsx"), /syncPhoneToWebsite/);
 assert.doesNotMatch(read("src/components/OfflineProvider.tsx"), /flushOutbox/);
+assert.doesNotMatch(read("src/app/(dashboard)/page.tsx"), /getDashboardData/);
+assert.doesNotMatch(read("src/app/(dashboard)/page.tsx"), /from "@\/lib\/prisma"/);
+for (const rel of [
+  "src/app/(dashboard)/farms/page.tsx",
+  "src/app/(dashboard)/mortality/page.tsx",
+  "src/app/(dashboard)/farms/[id]/service/page.tsx",
+  "src/app/(dashboard)/lfo/new/page.tsx",
+  "src/app/(dashboard)/lfo/new/[farmId]/page.tsx",
+  "src/app/(dashboard)/lfo/[id]/page.tsx",
+]) {
+  assert.doesNotMatch(read(rel), /from "@\/lib\/prisma"/);
+  assert.doesNotMatch(read(rel), /getUserTimeZone/);
+}
 assert.match(read("src/components/SettingsScreen.tsx"), /EXPORT_ALL_APP_DATA/);
 assert.match(read("src/components/SettingsScreen.tsx"), /IMPORT_APP_DATA/);
 assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Sync data/);

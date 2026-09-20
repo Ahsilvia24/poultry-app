@@ -152,9 +152,11 @@ assert.match(entry, /mortalityDatesToClear/);
 assert.doesNotMatch(entry, /const mortalityDate = format\(addDays\(placement, age\)/);
 
 const page = read("src/app/(dashboard)/mortality/page.tsx");
-assert.match(page, /dateKeyFromDb/);
-assert.match(page, /appTodayKey/);
-assert.doesNotMatch(page, /format\(active\.placementDate/);
-assert.doesNotMatch(page, /new Date\(\)\.toISOString\(\)\.slice/);
+assert.doesNotMatch(page, /from "@\/lib\/prisma"/);
+const selectMortality = read("src/lib/offline/selectMortality.ts");
+assert.match(selectMortality, /asDateKey/);
+assert.match(selectMortality, /appTodayKey/);
+assert.doesNotMatch(selectMortality, /format\(active\.placementDate/);
+assert.doesNotMatch(selectMortality, /new Date\(\)\.toISOString\(\)\.slice/);
 
 console.log("mort-boxes-stay: ok");
