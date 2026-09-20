@@ -44,30 +44,43 @@ describe("buildLfoSharePayload", () => {
 
     assert.equal(payload.title, "Last Feed Order — Sunrise 1");
     assert.equal(payload.subtitle, "");
-    assert.ok(labels.includes("Farm"));
+    assert.ok(!labels.includes("Farm"));
     assert.ok(!labels.includes("Order date"));
     assert.ok(!labels.includes("Order time"));
+    assert.ok(labels.includes("Total Feed"));
+    assert.ok(labels.includes("Reclaim"));
     assert.ok(labels.includes("Consumption rate"));
     assert.ok(labels.includes("Hours measured from"));
-    assert.ok(labels.includes("Head counts as of"));
+    assert.ok(!labels.includes("Head counts as of"));
     assert.ok(labels.includes("Notes"));
-    assert.ok(labels.includes("Bin A (lbs)"));
-    assert.ok(labels.includes("Bin B (lbs)"));
-    assert.ok(labels.includes("Catch date"));
-    assert.ok(labels.includes("Catch time"));
+    assert.ok(labels.includes("Bin A/B (lbs)"));
+    assert.ok(!labels.includes("Bin A (lbs)"));
+    assert.ok(!labels.includes("Bin B (lbs)"));
+    assert.ok(labels.includes("Catch"));
+    assert.ok(!labels.includes("Catch date"));
+    assert.ok(!labels.includes("Catch time"));
     assert.ok(labels.includes("Feed up (−5)"));
     assert.ok(labels.includes("Feed off (−10)"));
+    const house1Labels =
+      payload.sections.find((section) => section.title === "House 1")?.rows.map((row) => row.label) ??
+      [];
+    assert.ok(house1Labels.indexOf("Feed off (−10)") < house1Labels.indexOf("Catch"));
     assert.ok(labels.includes("Hours until feed off"));
-    assert.ok(labels.includes("Hourly consumption"));
+    assert.ok(!labels.includes("Hourly consumption"));
     assert.ok(labels.includes("Feed used until off"));
     assert.ok(labels.includes("Head count"));
+    assert.ok(labels.includes("Order (rounded)") || labels.includes("Reclaim (rounded)"));
     assert.ok(values.some((value) => value.includes("0.42")));
-    assert.ok(values.some((value) => /12,?000/.test(value)));
+    assert.ok(values.some((value) => /12,?000 \/ 4,?000/.test(value)));
+    assert.ok(values.some((value) => / @ /.test(value) && value.includes("lbs/hr")));
     assert.ok(values.some((value) => /28,?000/.test(value)));
     assert.ok(values.some((value) => value.includes("Call mill before 6")));
     assert.ok(payload.sections.some((section) => section.title === "House 1"));
     assert.ok(payload.sections.some((section) => section.title === "House 2"));
-    assert.ok(payload.sections.some((section) => section.title === "Totals"));
+    assert.ok(!payload.sections.some((section) => section.title === "Totals"));
+    assert.ok(values.some((value) => value.includes("at 5:00pm")));
+    assert.ok(values.some((value) => value.includes("at 6:00am")));
+    assert.ok(!values.some((value) => value.includes("at save")));
     assert.ok(payload.houseSummaryLines.length > 0);
   });
 
