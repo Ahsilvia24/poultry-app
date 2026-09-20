@@ -67,7 +67,7 @@ describe("buildLfoPdfBytes", () => {
     assert.match(text, /lbs\/hr/);
     assert.match(text, /Sep 9, 2026 at 3:30pm/);
     assert.match(text, /Sep 11, 2026 at 8:00am/);
-    assert.match(text, /\.{2,}/);
+    assert.match(text, / \. \. /);
     assert.doesNotMatch(text, /\bField\b/);
     assert.doesNotMatch(text, /\bValue\b/);
     assert.doesNotMatch(text, / at save/);
