@@ -5,8 +5,8 @@ const PAGE_W = 612;
 const PAGE_H = 792;
 const MARGIN = 36;
 const GUTTER = 16;
-/** Gap between the muted label and the bold value on the same row. */
-const LABEL_VALUE_GAP = 6;
+/** Extra space after the longest muted label; shorter rows fill it with leader dots. */
+const LABEL_VALUE_GAP = 10;
 /** H1-4 / H5-8 stacks beside Order; leftover houses use the same stacks at the page bottom. */
 const SUMMARY_STACK_LEN = 4;
 const HEADER_SUMMARY_MAX_HOUSE = 8;
@@ -104,16 +104,26 @@ export async function buildLfoPdfBytes(payload: LfoSharePayload): Promise<Uint8A
     if (y - h < MARGIN) newPage();
   };
 
+  let colValueX = 0;
+
   const rowLayout = (label: string, value: string, width: number) => {
     const labelText = pdfSafe(label);
     const labelW = labelText ? font.widthOfTextAtSize(labelText, 10) : 0;
-    const valueX = Math.min(
-      labelW + (labelText ? LABEL_VALUE_GAP : 0),
-      Math.max(0, width - 48),
-    );
+    const valueX = colValueX;
     const vw = Math.max(48, width - valueX);
     const valueLines = value ? wrapText(value, bold, 10, vw) : [""];
-    return { labelText, valueX, valueLines };
+    return { labelText, labelW, valueX, valueLines };
+  };
+
+  const drawLeaders = (fromX: number, toX: number, textY: number) => {
+    const dot = ".";
+    const dotW = font.widthOfTextAtSize(dot, 10);
+    const step = dotW + 1.25;
+    let dx = fromX;
+    while (dx + dotW <= toX + 0.05) {
+      page.drawText(dot, { x: dx, y: textY, size: 10, font, color: muted });
+      dx += step;
+    }
   };
 
   const measureSection = (section: LfoShareSection, width: number) => {
@@ -130,11 +140,16 @@ export async function buildLfoPdfBytes(payload: LfoSharePayload): Promise<Uint8A
     page.drawText(pdfSafe(section.title), { x, y: cy - 12, size: 12, font: bold, color: ink });
     cy -= TITLE_H;
     for (const row of section.rows) {
-      const { labelText, valueX, valueLines } = rowLayout(row.label, row.value, width);
+      const { labelText, labelW, valueX, valueLines } = rowLayout(row.label, row.value, width);
       const lineCount = Math.max(1, valueLines.length);
       for (let i = 0; i < lineCount; i++) {
         if (i === 0 && labelText) {
           page.drawText(labelText, { x, y: cy - 10, size: 10, font, color: muted });
+          const leaderFrom = x + labelW + 3;
+          const leaderTo = x + valueX - 3;
+          if (leaderTo - leaderFrom >= font.widthOfTextAtSize(".", 10)) {
+            drawLeaders(leaderFrom, leaderTo, cy - 10);
+          }
         }
         const value = valueLines[i] ?? "";
         if (value) {
@@ -169,6 +184,18 @@ export async function buildLfoPdfBytes(payload: LfoSharePayload): Promise<Uint8A
           (row) => row.label,
         );
   const rightX = MARGIN + colW + GUTTER;
+  const alignSections = [order, ...houses].filter((section): section is LfoShareSection => Boolean(section));
+  let maxLabelW = 0;
+  for (const section of alignSections) {
+    for (const row of section.rows) {
+      const label = pdfSafe(row.label);
+      if (label) maxLabelW = Math.max(maxLabelW, font.widthOfTextAtSize(label, 10));
+    }
+  }
+  colValueX = Math.min(
+    maxLabelW + (maxLabelW > 0 ? LABEL_VALUE_GAP : 0),
+    Math.max(0, colW - 48),
+  );
 
   const headerSummary = sortSummaryLines(
     summaryLines.filter((line) => {
