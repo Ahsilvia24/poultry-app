@@ -211,6 +211,8 @@ export function buildLfoSharePayload(
           label: "Bin A/B (lbs)",
           value: `${formatLbs(house.binAPounds)} / ${formatLbs(house.binBPounds)}`,
         },
+        { label: feedOffLabel(timing), value: formatLfoStamp(houseResult?.feedOffAt ?? null, timeZone) },
+        { label: feedUpLabel(timing), value: formatLfoStamp(houseResult?.feedUpAt ?? null, timeZone) },
         {
           label: "Catch",
           value:
@@ -218,8 +220,6 @@ export function buildLfoSharePayload(
               ? formatLfoDateAndTime(house.catchDate, house.catchTime)
               : "—",
         },
-        { label: feedUpLabel(timing), value: formatLfoStamp(houseResult?.feedUpAt ?? null, timeZone) },
-        { label: feedOffLabel(timing), value: formatLfoStamp(houseResult?.feedOffAt ?? null, timeZone) },
         {
           label: "Hours until feed off",
           value: houseResult

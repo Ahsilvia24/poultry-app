@@ -61,6 +61,10 @@ describe("buildLfoSharePayload", () => {
     assert.ok(!labels.includes("Catch time"));
     assert.ok(labels.includes("Feed up (−5)"));
     assert.ok(labels.includes("Feed off (−10)"));
+    const house1Labels =
+      payload.sections.find((section) => section.title === "House 1")?.rows.map((row) => row.label) ??
+      [];
+    assert.ok(house1Labels.indexOf("Feed off (−10)") < house1Labels.indexOf("Catch"));
     assert.ok(labels.includes("Hours until feed off"));
     assert.ok(!labels.includes("Hourly consumption"));
     assert.ok(labels.includes("Feed used until off"));
