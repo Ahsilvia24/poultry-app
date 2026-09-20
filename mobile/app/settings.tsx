@@ -39,7 +39,8 @@ import {
   setServiceTech,
 } from "../src/lib/appSettings";
 import { APP_TIME_ZONES } from "../src/lib/appTimeZones";
-import { shareMobileBackup } from "../src/lib/dataExport";
+import { importMobileBackupJson, shareMobileBackup } from "../src/lib/dataExport";
+import * as FileSystem from "expo-file-system/legacy";
 import { FARM_ORDER_OPTIONS, type FarmOrder } from "../src/lib/farmOrder";
 import { PrimaryButton } from "../src/components/ui";
 import { colors, styles } from "../src/theme";
@@ -374,6 +375,41 @@ export default function SettingsScreen() {
               }}
             >
               {exporting ? "Exporting…" : "Export data"}
+            </Text>
+          </Pressable>
+          <Pressable
+            disabled={exporting}
+            onPress={() => {
+              if (exporting) return;
+              setExporting(true);
+              setExportNote(null);
+              void (async () => {
+                const dir = FileSystem.documentDirectory;
+                if (!dir) throw new Error("No automatic backup on this phone yet.");
+                const uri = `${dir}poultrytech-auto-backup.json`;
+                const info = await FileSystem.getInfoAsync(uri);
+                if (!info.exists) throw new Error("No automatic backup on this phone yet.");
+                const text = await FileSystem.readAsStringAsync(uri);
+                const restored = await importMobileBackupJson(text);
+                setExportNote(
+                  `Restored ${restored.farmCount} farm${restored.farmCount === 1 ? "" : "s"} from the automatic backup.`,
+                );
+              })()
+                .catch((e) => {
+                  setExportNote(e instanceof Error ? e.message : "Restore failed");
+                })
+                .finally(() => setExporting(false));
+            }}
+            style={{ alignSelf: "center", paddingVertical: 8, paddingHorizontal: 12 }}
+          >
+            <Text
+              style={{
+                color: colors.text,
+                fontWeight: "700",
+                textDecorationLine: "underline",
+              }}
+            >
+              Restore automatic backup
             </Text>
           </Pressable>
           {exportNote ? (

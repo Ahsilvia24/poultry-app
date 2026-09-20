@@ -7,7 +7,27 @@ import { Button, Input, Label } from "@/components/ui";
 import { SafariLink } from "@/components/SafariLink";
 import { ensureDeviceId } from "@/lib/device-id";
 import { replaceLoginWarning } from "@/lib/replace-login";
+import { isRegisterEmailAllowed } from "@/lib/allowedRegisterEmails";
+import { upsertLocalAccount, verifyLocalAccount } from "@/lib/offline/localAccounts";
+import { unlockPhoneOwner } from "@/lib/offline/phoneUnlock";
 import { keepSignedOutOnLogin, tellWorkerSignedIn } from "@/lib/offline/signOutLocal";
+
+async function startLocalSession(account: { email: string; userId: string; name: string }) {
+  unlockPhoneOwner(account.email);
+  const res = await fetch("/api/local-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    cache: "no-store",
+    body: JSON.stringify({
+      email: account.email,
+      userId: account.userId,
+      name: account.name,
+    }),
+  });
+  const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+  if (!res.ok || data.error) throw new Error(data.error || "Could not start this sign-in.");
+}
 
 function LoginForm() {
   const params = useSearchParams();
@@ -41,6 +61,13 @@ function LoginForm() {
       deviceId: ensureDeviceId(),
     };
     try {
+      const local = await verifyLocalAccount(body.email, body.password);
+      if (local) {
+        await startLocalSession(local);
+        await tellWorkerSignedIn();
+        window.location.assign("/");
+        return;
+      }
       const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -51,6 +78,9 @@ function LoginForm() {
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         error?: string;
+        userId?: string;
+        email?: string;
+        name?: string;
         needsConfirm?: boolean;
         unsynced?: boolean;
         knownOtherDevice?: boolean;
@@ -64,9 +94,33 @@ function LoginForm() {
         return;
       }
       if (!res.ok || data.error) {
-        setError(data.error || "Invalid email or password");
+        if (res.status === 503 && isRegisterEmailAllowed(body.email) && body.password.length >= 8) {
+          const account = await upsertLocalAccount({
+            email: body.email,
+            password: body.password,
+            name: body.email.split("@")[0],
+          });
+          await startLocalSession(account);
+          await tellWorkerSignedIn();
+          window.location.assign("/");
+          return;
+        }
+        setError(
+          res.status === 503
+            ? "The website database is offline. Register with this email to start on this phone, or restore a backup file."
+            : data.error || "Invalid email or password",
+        );
         setPending(false);
         return;
+      }
+      if (data.userId && data.email) {
+        await upsertLocalAccount({
+          email: data.email,
+          password: body.password,
+          userId: data.userId,
+          name: data.name,
+        });
+        unlockPhoneOwner(data.email);
       }
       await tellWorkerSignedIn();
       window.location.assign("/");
@@ -89,8 +143,8 @@ function LoginForm() {
         ) : null}
         {replaced ? (
           <p className="mt-3 text-center text-sm font-medium text-stone-800">
-            This sign-in expired. If this phone still has work that has not uploaded, wait for
-            a signal before you sign in again or that work may be lost.
+            This sign-in expired. Farms stay on this phone. Sign in with the same email to
+            open them.
           </p>
         ) : null}
         <form
@@ -116,7 +170,7 @@ function LoginForm() {
             </>
           ) : (
             <p className="text-sm text-stone-600">
-              One device at a time. Signing in here signs out any other phone.
+              Farms stay on this phone. Sign-in does not need the website database.
             </p>
           )}
           {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}

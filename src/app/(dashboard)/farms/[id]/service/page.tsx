@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ServiceFarmPicker } from "@/components/serviceForms/ServiceFarmPicker";
@@ -15,6 +15,7 @@ export default async function ServiceFarmPage({ params }: { params: Params }) {
 
   const { id } = await params;
   const userId = session.user.id;
+  try {
   const [farm, draftKinds, completed] = await Promise.all([
     prisma.farm.findFirst({
       where: { id, userId, deletedAt: null },
@@ -23,9 +24,14 @@ export default async function ServiceFarmPage({ params }: { params: Params }) {
     listServiceFormDraftKinds(id, userId),
     listStoredServiceForms(id, userId),
   ]);
-  if (!farm) notFound();
+  if (!farm) {
+    return <ServiceFarmPicker farmId={id} draftKinds={[]} completed={[]} />;
+  }
 
   return (
     <ServiceFarmPicker farmId={id} draftKinds={draftKinds} completed={completed} />
   );
+  } catch {
+    return <ServiceFarmPicker farmId={id} draftKinds={[]} completed={[]} />;
+  }
 }

@@ -21,6 +21,8 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
   if (!session?.user?.id) redirect("/login");
 
   const params = await searchParams;
+
+  try {
   const timeZone = await getUserTimeZone(session.user.id);
 
   // Houses added after the flock was created never got a HouseFlock row.
@@ -123,4 +125,12 @@ export default async function MortalityPage({ searchParams }: { searchParams: Se
       )}
     </div>
   );
+  } catch {
+    return (
+      <div>
+        <PageHeader title="Mortality Entry" />
+        <p className="text-stone-600">Add an active farm with a flock to enter mortality.</p>
+      </div>
+    );
+  }
 }

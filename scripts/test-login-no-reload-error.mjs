@@ -21,6 +21,7 @@ assert.doesNotMatch(register, /registerAction/);
 
 const proxy = read("src/proxy.ts");
 assert.match(proxy, /pathname\.startsWith\("\/api\/login"\)/);
+assert.match(proxy, /pathname\.startsWith\("\/api\/local-session"\)/);
 assert.match(proxy, /pathname\.startsWith\("\/api\/register"\)/);
 
 const loginRoute = read("src/app/api/login/route.ts");

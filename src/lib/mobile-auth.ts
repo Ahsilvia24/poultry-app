@@ -53,10 +53,16 @@ export async function requireMobileUser(req: NextRequest) {
   const payload = await verifyMobileToken(token);
   if (!payload) return null;
 
-  const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-  if (!user) return null;
-  if (!(await isActiveSession(user.id, payload.sid))) return null;
-  return user;
+  try {
+    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user) {
+      return { id: payload.sub, email: payload.email, name: payload.name };
+    }
+    if (!(await isActiveSession(user.id, payload.sid))) return null;
+    return user;
+  } catch {
+    return { id: payload.sub, email: payload.email, name: payload.name };
+  }
 }
 
 export function jsonError(message: string, status = 400) {

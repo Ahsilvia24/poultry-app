@@ -3,6 +3,8 @@
 import { useRef, useState, type ReactNode } from "react";
 import { changePasswordAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui";
+import { updateLocalPassword } from "@/lib/offline/localAccounts";
+import { useOffline } from "@/components/OfflineProvider";
 
 const fieldClass =
   "h-11 min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 text-[15px] font-semibold text-stone-900 outline-none placeholder:font-semibold placeholder:tracking-wide placeholder:text-stone-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200";
@@ -28,14 +30,24 @@ function Line({
 
 export function ChangePasswordForm() {
   const formRef = useRef<HTMLFormElement>(null);
+  const { snapshot } = useOffline();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
   async function onSubmit(formData: FormData) {
     setError(null);
     setOk(false);
+    const currentPassword = String(formData.get("currentPassword") ?? "");
+    const newPassword = String(formData.get("newPassword") ?? "");
+    const email = snapshot?.userEmail ?? "";
+    try {
+      if (email) await updateLocalPassword(email, currentPassword, newPassword);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not change password.");
+      return;
+    }
     const result = await changePasswordAction(formData);
-    if (result?.error) {
+    if (result?.error && !email) {
       setError(result.error);
       return;
     }

@@ -1,7 +1,8 @@
 import "react-native-gesture-handler";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, AppState, Text, View } from "react-native";
+import { writeAutomaticMobileBackup } from "../src/lib/dataExport";
 import { AuthProvider, useAuth } from "../src/auth";
 import { LockPinchZoom } from "../src/components/LockPinchZoom";
 import { colors } from "../src/theme";
@@ -61,6 +62,17 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    const write = () => {
+      void writeAutomaticMobileBackup().catch(() => undefined);
+    };
+    write();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "background" || state === "inactive") write();
+    });
+    return () => sub.remove();
+  }, []);
+
   return (
     <AuthProvider>
       <LockPinchZoom />

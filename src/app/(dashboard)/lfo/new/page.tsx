@@ -8,6 +8,7 @@ export default async function NewLfoFarmSelectPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
+  try {
   const farms = await prisma.farm.findMany({
     where: {
       userId: session.user.id,
@@ -64,4 +65,16 @@ export default async function NewLfoFarmSelectPage() {
       )}
     </div>
   );
+  } catch {
+    return (
+      <div>
+        <BackHeader href="/lfo" backLabel="LFOs" title="New LFO" />
+        <Card>
+          <p className="text-sm text-stone-600">
+            No farms with an active flock and houses. Add a flock on a farm first.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 }

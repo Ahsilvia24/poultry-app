@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createLastFeedOrderAction } from "@/app/actions/lfo";
@@ -7,6 +7,7 @@ import { BackHeader, Card } from "@/components/ui";
 import { appTodayKey } from "@/lib/app-calendar";
 import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
+import { rethrowNavigation } from "@/lib/rethrow-navigation";
 import { getUserTimeZone } from "@/lib/user-time-zone";
 import { dateKeyFromDb } from "@/lib/visits/schedule";
 
@@ -17,6 +18,7 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
   if (!session?.user?.id) redirect("/login");
 
   const { farmId } = await params;
+  try {
   const timeZone = await getUserTimeZone(session.user.id);
 
   const farm = await prisma.farm.findFirst({
@@ -38,7 +40,16 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
     },
   });
 
-  if (!farm) notFound();
+  if (!farm) {
+    return (
+      <div>
+        <BackHeader href="/lfo" backLabel="LFOs" title="Last Feed Order" />
+        <Card>
+          <p className="text-sm text-stone-600">Opening Last Feed Order…</p>
+        </Card>
+      </div>
+    );
+  }
   if (farm.flocks.length === 0 || farm.houses.length === 0) {
     redirect("/lfo/new");
   }
@@ -104,4 +115,15 @@ export default async function NewLfoForFarmPage({ params }: { params: Params }) 
       </Card>
     </div>
   );
+  } catch (error) {
+    rethrowNavigation(error);
+    return (
+      <div>
+        <BackHeader href="/lfo" backLabel="LFOs" title="Last Feed Order" />
+        <Card>
+          <p className="text-sm text-stone-600">Opening Last Feed Order…</p>
+        </Card>
+      </div>
+    );
+  }
 }

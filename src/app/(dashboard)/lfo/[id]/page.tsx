@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -11,6 +11,7 @@ import { BackHeader, Card } from "@/components/ui";
 import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
 import { catchPartsFromFeedUpAt, lfoTimingFromSettings } from "@/lib/lfo/calculate";
 import { lfoDisplayName } from "@/lib/lfo/customName";
+import { rethrowNavigation } from "@/lib/rethrow-navigation";
 import { getUserTimeZone } from "@/lib/user-time-zone";
 import { dateKeyFromDb } from "@/lib/visits/schedule";
 
@@ -21,6 +22,7 @@ export default async function EditLfoPage({ params }: { params: Params }) {
   if (!session?.user?.id) redirect("/login");
 
   const { id } = await params;
+  try {
   const timeZone = await getUserTimeZone(session.user.id);
 
   const [lfo, settings] = await Promise.all([
@@ -37,7 +39,16 @@ export default async function EditLfoPage({ params }: { params: Params }) {
     }),
   ]);
 
-  if (!lfo) notFound();
+  if (!lfo) {
+    return (
+      <div>
+        <BackHeader href="/lfo" backLabel="LFOs" title="Last Feed Order" />
+        <Card>
+          <p className="text-sm text-stone-600">Opening Last Feed Order…</p>
+        </Card>
+      </div>
+    );
+  }
 
   const displayName = lfoDisplayName(lfo.farm.farmName, lfo.notes);
   const asOf = lfo.calculatedAt ?? lfo.createdAt;
@@ -111,4 +122,15 @@ export default async function EditLfoPage({ params }: { params: Params }) {
       </Card>
     </div>
   );
+  } catch (error) {
+    rethrowNavigation(error);
+    return (
+      <div>
+        <BackHeader href="/lfo" backLabel="LFOs" title="Last Feed Order" />
+        <Card>
+          <p className="text-sm text-stone-600">Opening Last Feed Order…</p>
+        </Card>
+      </div>
+    );
+  }
 }

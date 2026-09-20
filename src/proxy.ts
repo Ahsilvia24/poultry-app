@@ -34,6 +34,7 @@ const withAuth = auth((req) => {
     isHomeScreenAsset(pathname) ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/login") ||
+    pathname.startsWith("/api/local-session") ||
     pathname.startsWith("/api/logout") ||
     pathname.startsWith("/api/leave") ||
     pathname === "/signed-out" ||

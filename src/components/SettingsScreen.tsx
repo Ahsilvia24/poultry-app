@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from "react";
 import { updateSettingsAction } from "@/app/actions/ops";
 import { signOutLocalApp } from "@/lib/offline/signOutLocal";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { useOffline } from "@/components/OfflineProvider";
+import {
+  buildPhoneBackup,
+  downloadPhoneBackup,
+  parsePhoneBackupText,
+  sharePhoneBackup,
+} from "@/lib/offline/phoneBackup";
+import { persistOwnerFarms } from "@/lib/offline/persistOwnerFarms";
 import {
   phoneFarmSaveStatus,
   SIGN_OUT_ANYWAY,
@@ -12,6 +19,11 @@ import {
   SIGN_OUT_UNSAVED_BODY,
   SIGN_OUT_UNSAVED_CONFIRM,
 } from "@/lib/offline/phoneFarmSave";
+import {
+  GET_WEBSITE_FARMS,
+  GET_WEBSITE_WORKING,
+  pullWebsiteFarmsMessage,
+} from "@/lib/offline/pullWebsiteFarms";
 import {
   SYNC_WORKING,
   syncPhoneResultMessage,
@@ -34,13 +46,28 @@ import {
 } from "@/lib/offline/applyLocal";
 
 export function SettingsScreen() {
-  const { snapshot, patchSnapshot, enqueue, pendingCount, syncing, ready, flushNow, syncNow } =
-    useOffline();
-  const farmSave = phoneFarmSaveStatus({ ready, syncing, pendingCount });
+  const {
+    snapshot,
+    patchSnapshot,
+    enqueue,
+    pendingCount,
+    lastBackupAt,
+    syncing,
+    ready,
+    flushNow,
+    syncNow,
+    pullWebsiteFarmsNow,
+    replaceSnapshot,
+  } = useOffline();
+  const farmSave = phoneFarmSaveStatus({ ready, syncing, pendingCount, lastBackupAt });
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupNote, setBackupNote] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [leaving, setLeaving] = useState(false);
   const [syncingNow, setSyncingNow] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [lastSync, setLastSync] = useState<SyncPhoneResult | null>(null);
+  const [websiteBusy, setWebsiteBusy] = useState(false);
   const shownSave =
     syncingNow
       ? { kind: "saving" as const, text: SYNC_WORKING }
@@ -121,15 +148,8 @@ export function SettingsScreen() {
   async function leaveApp(force = false) {
     setLeaving(true);
     try {
-      let pending = pendingCount;
-      if (!force && (typeof navigator === "undefined" || navigator.onLine !== false)) {
-        try {
-          pending = (await withTimeout(flushNow(), SIGN_OUT_FLUSH_MS)).pending;
-        } catch {
-          /* Leave even if the upload is still sitting. */
-        }
-      }
-      if (!force && pending > 0) {
+      void withTimeout(flushNow(), SIGN_OUT_FLUSH_MS).catch(() => undefined);
+      if (!force) {
         setConfirmLeave(true);
         return;
       }
@@ -140,6 +160,55 @@ export function SettingsScreen() {
       await signOutLocalApp();
     } finally {
       setLeaving(false);
+    }
+  }
+
+  async function onSaveBackup() {
+    if (!snapshot || backupBusy) return;
+    setBackupBusy(true);
+    setBackupNote(null);
+    try {
+      const backup = buildPhoneBackup(snapshot);
+      await persistOwnerFarms(snapshot);
+      await sharePhoneBackup(backup);
+      setBackupNote("Backup file saved. Keep a copy in Files or email it to yourself.");
+    } catch {
+      if (snapshot) downloadPhoneBackup(buildPhoneBackup(snapshot));
+      setBackupNote("Backup file downloaded. Keep a copy off this phone.");
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
+  async function onGetWebsiteFarms() {
+    if (websiteBusy || leaving || backupBusy) return;
+    setWebsiteBusy(true);
+    setBackupNote(null);
+    try {
+      const result = await pullWebsiteFarmsNow();
+      setBackupNote(pullWebsiteFarmsMessage(result));
+    } catch {
+      setBackupNote(pullWebsiteFarmsMessage({ ok: false, reason: "unavailable" }));
+    } finally {
+      setWebsiteBusy(false);
+    }
+  }
+
+  async function onRestoreFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setBackupBusy(true);
+    setBackupNote(null);
+    try {
+      const backup = parsePhoneBackupText(await file.text());
+      await persistOwnerFarms(backup.snapshot);
+      replaceSnapshot(backup.snapshot);
+      setBackupNote(`Restored ${backup.snapshot.farms.length} farm(s) from the backup file.`);
+    } catch (error) {
+      setBackupNote(error instanceof Error ? error.message : "Could not restore that file.");
+    } finally {
+      setBackupBusy(false);
     }
   }
 
@@ -213,7 +282,36 @@ export function SettingsScreen() {
             </div>
           </div>
         ) : (
+          <>
           <div className="flex flex-wrap items-center justify-center gap-8">
+            <button
+              type="button"
+              disabled={leaving || backupBusy || websiteBusy || !snapshot}
+              onClick={() => {
+                void onSaveBackup();
+              }}
+              className={actionLinkClass}
+            >
+              {backupBusy ? "Saving backup…" : "Save backup file"}
+            </button>
+            <button
+              type="button"
+              disabled={leaving || backupBusy || websiteBusy}
+              onClick={() => fileRef.current?.click()}
+              className={actionLinkClass}
+            >
+              Restore backup
+            </button>
+            <button
+              type="button"
+              disabled={leaving || backupBusy || websiteBusy}
+              onClick={() => {
+                void onGetWebsiteFarms();
+              }}
+              className={actionLinkClass}
+            >
+              {websiteBusy ? GET_WEBSITE_WORKING : GET_WEBSITE_FARMS}
+            </button>
             <button
               type="button"
               disabled={leaving || syncingNow}
@@ -233,6 +331,19 @@ export function SettingsScreen() {
               {leaving ? "Signing out…" : "Sign out"}
             </button>
           </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(event) => {
+              void onRestoreFile(event);
+            }}
+          />
+          {backupNote ? (
+            <p className="max-w-md text-center text-sm font-medium text-stone-700">{backupNote}</p>
+          ) : null}
+          </>
         )}
       </div>
 

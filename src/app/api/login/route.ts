@@ -164,7 +164,12 @@ export async function POST(req: Request) {
   if ("error" in created) return fail(created.error, 401);
 
   const res = parsed.json
-    ? NextResponse.json({ ok: true })
+    ? NextResponse.json({
+        ok: true,
+        userId: user.id,
+        email: user.email,
+        name: user.name ?? "",
+      })
     : NextResponse.redirect(new URL("/", origin), 303);
   return putSessionOnResponse(res, created.cookie);
 }

@@ -20,7 +20,8 @@ assert.doesNotMatch(settings, /disabled=\{busy\}/);
 assert.doesNotMatch(settings, /action=\{signOutAction\}/);
 
 const local = read("src/lib/offline/signOutLocal.ts");
-assert.match(local, /clearLocalReplica/);
+assert.doesNotMatch(local, /clearLocalReplica/);
+assert.match(local, /lockPhoneOwner/);
 assert.match(local, /markCachesSignedOut\(true\)/);
 assert.match(local, /type: "sign-out"/);
 assert.match(local, /\/api\/logout/);
@@ -56,9 +57,9 @@ const bounce = read("src/app/signed-out/page.tsx");
 assert.match(bounce, /redirect\("\/api\/leave"\)/);
 
 const leave = read("public/signed-out.html");
-assert.match(leave, /Signed out of this phone/);
+assert.match(leave, /Farms stay on this phone/);
 assert.match(leave, /\/api\/login/);
-assert.match(leave, /data\.error \|\| "Invalid email or password"/);
+assert.match(leave, /\/login\?signedout=1/);
 assert.match(leave, /forgot-password/);
 assert.doesNotMatch(leave, /_next/);
 

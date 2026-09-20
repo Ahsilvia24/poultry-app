@@ -69,7 +69,7 @@ assert.doesNotMatch(proxy, /isLoggedIn && isAuthPage/);
 assert.match(proxy, /@\/lib\/auth-edge/);
 
 const login = read("src/app/(auth)/login/page.tsx");
-assert.match(login, /One device at a time/);
+assert.match(login, /Farms stay on this phone/);
 assert.match(login, /replaced/);
 assert.match(login, /Sign in anyway/);
 assert.match(login, /needsConfirm/);
