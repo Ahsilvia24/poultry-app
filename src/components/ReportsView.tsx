@@ -18,22 +18,13 @@ import { defaultFieldLogRange } from "@/lib/reports/field-log";
 import { mergeReportsInitial, rememberReportsHref } from "@/lib/reports/lastHref";
 import { reportsHref, resolveReportType, type ReportTypeKey } from "@/lib/reports/types";
 import type { OfflineSnapshot } from "@/lib/offline/types";
-import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 import {
   defaultGeneratorRange,
   defaultMortalityRange,
+  firstReportFarmId,
   mortalityRangeForFarm,
   selectReports,
 } from "@/lib/offline/selectReports";
-
-function firstFarmId(snapshot: OfflineSnapshot) {
-  return (
-    (snapshot.farms ?? [])
-      .filter((farm) => !farm.deletedAt && !isVisitPlaceFarm(farm))
-      .slice()
-      .sort((a, b) => a.farmName.localeCompare(b.farmName))[0]?.id ?? ""
-  );
-}
 
 function ReportFarmFilterTile({
   type,
@@ -102,13 +93,15 @@ export function ReportsView({
   const seed = mergeReportsInitial(initial);
   const timeZone = snapshot.settings?.appTimeZone;
   const [type, setType] = useState<ReportTypeKey>(() => resolveReportType(seed.type));
-  const [farmId, setFarmId] = useState(() => {
-    const requested = seed.farmId ?? "";
-    if (resolveReportType(seed.type) === "mortality" && !requested) {
-      return firstFarmId(snapshot);
-    }
-    return requested;
+  const [genFarmId, setGenFarmId] = useState(() =>
+    resolveReportType(seed.type) === "generator" ? (seed.farmId ?? "") : "",
+  );
+  const [mortFarmId, setMortFarmId] = useState(() => {
+    const requested =
+      resolveReportType(seed.type) === "mortality" ? (seed.farmId ?? "") : "";
+    return requested || firstReportFarmId(snapshot);
   });
+  const farmId = type === "generator" ? genFarmId : type === "mortality" ? mortFarmId : "";
   const [fieldRange, setFieldRange] = useState(() => {
     const defaults = defaultFieldLogRange(new Date(), timeZone);
     if (resolveReportType(seed.type) === "field-log") {
@@ -125,8 +118,8 @@ export function ReportsView({
   });
   const [mortalityRange, setMortalityRange] = useState(() => {
     const startFarm =
-      seed.farmId ||
-      (resolveReportType(seed.type) === "mortality" ? firstFarmId(snapshot) : "");
+      (resolveReportType(seed.type) === "mortality" ? seed.farmId : "") ||
+      firstReportFarmId(snapshot);
     const defaults = startFarm
       ? mortalityRangeForFarm(snapshot, startFarm, new Date(), timeZone)
       : defaultMortalityRange(new Date(), timeZone);
@@ -142,7 +135,7 @@ export function ReportsView({
   useEffect(() => {
     persist({
       type,
-      farmId: type === "field-log" ? undefined : farmId,
+      farmId: type === "field-log" ? undefined : farmId || undefined,
       from: range.from,
       to: range.to,
     });
@@ -174,26 +167,34 @@ export function ReportsView({
 
   function onSelectType(next: ReportTypeKey) {
     setType(next);
-    if (next === "mortality" && !farmId) {
-      const id = firstFarmId(snapshot);
-      setFarmId(id);
+    if (next === "generator") {
+      setGenFarmId("");
+      persist({
+        type: next,
+        farmId: undefined,
+        from: generatorRange.from,
+        to: generatorRange.to,
+      });
+      return;
+    }
+    if (next === "mortality") {
+      const id = firstReportFarmId(snapshot);
+      setMortFarmId(id);
       const nextRange = mortalityRangeForFarm(snapshot, id);
       setMortalityRange(nextRange);
       persist({ type: next, farmId: id, from: nextRange.from, to: nextRange.to });
       return;
     }
-    const nextRange =
-      next === "field-log" ? fieldRange : next === "generator" ? generatorRange : mortalityRange;
     persist({
       type: next,
-      farmId: next === "field-log" ? undefined : farmId,
-      from: nextRange.from,
-      to: nextRange.to,
+      farmId: undefined,
+      from: fieldRange.from,
+      to: fieldRange.to,
     });
   }
 
   function onGeneratorFarmChange(nextFarmId: string) {
-    setFarmId(nextFarmId);
+    setGenFarmId(nextFarmId);
     persist({
       type: "generator",
       farmId: nextFarmId,
@@ -203,7 +204,7 @@ export function ReportsView({
   }
 
   function onMortalityFarmChange(nextFarmId: string) {
-    setFarmId(nextFarmId);
+    setMortFarmId(nextFarmId);
     const nextRange = mortalityRangeForFarm(snapshot, nextFarmId);
     setMortalityRange(nextRange);
     persist({ type: "mortality", farmId: nextFarmId, from: nextRange.from, to: nextRange.to });
@@ -222,7 +223,7 @@ export function ReportsView({
       return;
     }
     if (type === "generator") {
-      if (nextFarmId !== farmId) setFarmId(nextFarmId);
+      if (nextFarmId !== genFarmId) setGenFarmId(nextFarmId);
       const next = {
         from: nextFrom || generatorRange.from,
         to: nextTo || generatorRange.to,
@@ -231,8 +232,8 @@ export function ReportsView({
       persist({ type, farmId: nextFarmId, from: next.from, to: next.to });
       return;
     }
-    const appliedFarm = nextFarmId || farmId || firstFarmId(snapshot);
-    if (appliedFarm !== farmId) {
+    const appliedFarm = nextFarmId || mortFarmId || firstReportFarmId(snapshot);
+    if (appliedFarm !== mortFarmId) {
       onMortalityFarmChange(appliedFarm);
       const next = {
         from: nextFrom || mortalityRange.from,

@@ -288,7 +288,13 @@ export default function ReportsScreen() {
                 onPress={() => {
                   setReportType(t.key);
                   setOpenDate(null);
-                  if (t.key === "generator") applyGenerator();
+                  if (t.key === "generator") {
+                    setGenFarmId("");
+                    setGenFarms(getGeneratorLogReport(genFrom, genTo));
+                  }
+                  if (t.key === "mortality") {
+                    selectMortalityFarm(farms[0]?.id ?? "");
+                  }
                 }}
               />
             ))}

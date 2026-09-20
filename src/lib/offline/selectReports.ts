@@ -1,6 +1,8 @@
 import { eachDayOfInterval, parseISO } from "date-fns";
-import { addCalendarDays, appTodayKey } from "@/lib/app-calendar";
+import { addCalendarDays, appToday, appTodayKey } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
+import { flockAgesFromPlacements } from "@/lib/flockAges";
+import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
 import {
   birdAgeFromPlacement,
   calcPercentage,
@@ -127,6 +129,52 @@ export function mortalityRangeForFarm(
   };
 }
 
+export type ReportFarmOption = {
+  id: string;
+  farmName: string;
+  numberOfGenerators: number | null;
+  isActive?: boolean;
+  flockAgesDays: number[];
+};
+
+/** Farms in the Settings “Order Farms By” sequence used by report pickers. */
+export function reportFarms(snapshot: OfflineSnapshot): ReportFarmOption[] {
+  const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
+  const today = appToday(undefined, timeZone);
+  const farms = (snapshot.farms ?? [])
+    .filter((farm) => !farm.deletedAt && !isVisitPlaceFarm(farm) && !isManualLfoFarm(farm))
+    .map((farm) => {
+      const farmHouses = (snapshot.houses ?? []).filter(
+        (house) => house.farmId === farm.id && !house.deletedAt,
+      );
+      const farmHouseIds = new Set(farmHouses.map((house) => house.id));
+      const flocks = (snapshot.flocks ?? []).filter(
+        (flock) => flock.farmId === farm.id && flock.flockStatus === "ACTIVE" && !flock.deletedAt,
+      );
+      return {
+        id: farm.id,
+        farmName: farm.farmName,
+        numberOfGenerators: farm.numberOfGenerators,
+        isActive: farm.isActive,
+        flockAgesDays: flockAgesFromPlacements(
+          flocks.map((flock) => ({
+            placementDate: flock.placementDate,
+            houses: (snapshot.houseFlocks ?? [])
+              .filter((hf) => hf.flockId === flock.id && farmHouseIds.has(hf.houseId))
+              .map((hf) => ({ placementDate: hf.placementDate })),
+          })),
+          today,
+          timeZone,
+        ),
+      };
+    });
+  return sortFarmsByOrder(farms, parseFarmOrder(snapshot.settings?.farmOrder));
+}
+
+export function firstReportFarmId(snapshot: OfflineSnapshot) {
+  return reportFarms(snapshot)[0]?.id ?? "";
+}
+
 export function selectReports(
   snapshot: OfflineSnapshot,
   search: { type?: string; farmId?: string; from?: string; to?: string },
@@ -149,15 +197,11 @@ export function selectReports(
         : mortalityDefaults;
   const from = search.from ?? typeDefaults.from;
   const to = search.to ?? typeDefaults.to;
-  const farms = (snapshot.farms ?? [])
-    .filter((farm) => !farm.deletedAt && !isVisitPlaceFarm(farm) && !isManualLfoFarm(farm))
-    .slice()
-    .sort((a, b) => a.farmName.localeCompare(b.farmName))
-    .map((farm) => ({
-      id: farm.id,
-      farmName: farm.farmName,
-      numberOfGenerators: farm.numberOfGenerators,
-    }));
+  const farms = reportFarms(snapshot).map((farm) => ({
+    id: farm.id,
+    farmName: farm.farmName,
+    numberOfGenerators: farm.numberOfGenerators,
+  }));
   let farmId =
     search.farmId && farms.some((farm) => farm.id === search.farmId) ? search.farmId : "";
   if (type === "mortality" && !farmId) farmId = farms[0]?.id ?? "";

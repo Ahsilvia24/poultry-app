@@ -39,6 +39,10 @@ assert.equal((reports.match(/Apply filters/g) ?? []).length, 1);
 assert.doesNotMatch(reports, /Run report/);
 assert.doesNotMatch(reports, /oldestFarmId/);
 assert.doesNotMatch(reports, /allFarms=/);
+assert.match(reports, /const \[genFarmId, setGenFarmId\]/);
+assert.match(reports, /const \[mortFarmId, setMortFarmId\]/);
+assert.match(reports, /setGenFarmId\(""\)/);
+assert.match(reports, /firstReportFarmId/);
 
 const gen = read("src/components/GeneratorLogReport.tsx");
 assert.match(gen, /CopyShareRow/);
@@ -102,6 +106,8 @@ assert.match(mobileReports, /displayMatrix/);
 assert.match(mobileReports, /Export CSV/);
 assert.match(mobileReports, /Export PDF/);
 assert.doesNotMatch(mobileReports, /mortFilterLabel\}<\/Text>/);
+assert.match(mobileReports, /setGenFarmId\(""\)/);
+assert.match(mobileReports, /selectMortalityFarm\(farms\[0\]\?\.id/);
 
 const selectReports = read("src/lib/offline/selectReports.ts");
 assert.doesNotMatch(selectReports, /function oldestFarmId/);
@@ -110,8 +116,10 @@ assert.match(selectReports, /clampDateKeyToPlacement/);
 assert.match(selectReports, /fillCumulativeByAge/);
 assert.match(selectReports, /replicaVisitsForFieldLog/);
 assert.match(selectReports, /d MMM yy/);
+assert.match(selectReports, /sortFarmsByOrder/);
+assert.match(selectReports, /firstReportFarmId/);
 
-const { selectReports: buildReports } = await import("../src/lib/offline/selectReports.ts");
+const { firstReportFarmId, selectReports: buildReports } = await import("../src/lib/offline/selectReports.ts");
 const { fieldLogVisitTypeLabel } = await import("../src/lib/reports/field-log.ts");
 
 const snapshot = {
@@ -275,19 +283,54 @@ const snapshot = {
   dashboard: null,
 };
 
+assert.equal(firstReportFarmId(snapshot), "old");
+assert.equal(
+  firstReportFarmId({ ...snapshot, settings: { farmOrder: "name_asc" } }),
+  "new",
+);
+
 const defaulted = buildReports(snapshot, {
   type: "mortality",
   from: "2026-08-15",
   to: "2026-09-12",
 });
-assert.equal(defaulted.farmId, "new");
-assert.equal(defaulted.mortality.farmTitle, "Newest Farm");
+assert.deepEqual(
+  defaulted.farms.map((farm) => farm.id),
+  ["old", "new"],
+);
+assert.equal(defaulted.farmId, "old");
+assert.equal(defaulted.mortality.farmTitle, "Oldest Farm");
 assert.equal(defaulted.mortality.byHouse.length, 1);
 assert.equal(defaulted.mortality.byHouse[0].houseLabel, "House 1");
 assert.equal(defaulted.mortality.byHouseByDate.rows.length, 1);
-assert.equal(defaulted.mortality.cumulativeByAge[0]?.birdAgeInDays, 14);
-assert.ok(defaulted.mortality.cumulativeByAge.some((row) => row.birdAgeInDays === 31));
-assert.ok(!defaulted.mortality.byFarm.some((row) => row.farmName === "Oldest Farm"));
+assert.ok(defaulted.mortality.cumulativeByAge.some((row) => row.birdAgeInDays === 92));
+assert.ok(!defaulted.mortality.byFarm.some((row) => row.farmName === "Newest Farm"));
+
+const named = buildReports(
+  { ...snapshot, settings: { farmOrder: "name_asc" } },
+  {
+    type: "mortality",
+    from: "2026-08-15",
+    to: "2026-09-12",
+  },
+);
+assert.deepEqual(
+  named.farms.map((farm) => farm.id),
+  ["new", "old"],
+);
+assert.equal(named.farmId, "new");
+assert.equal(named.mortality.farmTitle, "Newest Farm");
+
+const generatorAll = buildReports(snapshot, {
+  type: "generator",
+  from: "2026-08-15",
+  to: "2026-09-12",
+});
+assert.equal(generatorAll.farmId, "");
+assert.deepEqual(
+  generatorAll.farms.map((farm) => farm.id),
+  ["old", "new"],
+);
 
 const oneFarm = buildReports(snapshot, {
   type: "mortality",

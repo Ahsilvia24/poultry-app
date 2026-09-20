@@ -29,6 +29,9 @@ assert.match(schema, /America\/Chicago/);
 assert.match(reports, /<option value="">All farms<\/option>/);
 assert.match(reports, /allowAllFarms=\{false\}/);
 assert.match(reports, /name="farmId"/);
+assert.match(reports, /const \[genFarmId, setGenFarmId\]/);
+assert.match(reports, /setGenFarmId\(""\)/);
+assert.match(reports, /firstReportFarmId/);
 assert.match(selectReports, /type === "generator"/);
 assert.match(selectReports, /selected && farm.id !== selected/);
 assert.doesNotMatch(reports, /name="cause"/);
@@ -78,6 +81,8 @@ assert.ok(
 assert.match(mobileReports, /const \[genFarmId, setGenFarmId\] = useState\(""\)/);
 assert.match(mobileReports, /getGeneratorLogReport\(genFrom, genTo, genFarmId \|\| undefined\)/);
 assert.match(mobileReports, /Chip label="All" active=\{genFarmId === ""\}/);
+assert.match(mobileReports, /setGenFarmId\(""\)/);
+assert.match(mobileReports, /selectMortalityFarm\(farms\[0\]\?\.id/);
 assert.doesNotMatch(mobileReports, /By cause/);
 
 console.log("settings-tz-reports: ok");
