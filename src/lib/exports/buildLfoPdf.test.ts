@@ -57,7 +57,10 @@ describe("buildLfoPdfBytes", () => {
     assert.match(text, /House 1/);
     assert.match(text, /Consumption rate/);
     assert.match(text, /Total Feed/);
-    assert.match(text, /Bin A \(lbs\)/);
+    assert.match(text, /Bin A\/B \(lbs\)/);
+    assert.match(text, /3,?000 \/ 4,?000/);
+    assert.match(text, / @ /);
+    assert.match(text, /lbs\/hr/);
     assert.match(text, /Sep 9, 2026 at 3:30pm/);
     assert.match(text, /Sep 11, 2026 at 8:00am/);
     assert.doesNotMatch(text, /\bField\b/);
@@ -65,27 +68,24 @@ describe("buildLfoPdfBytes", () => {
     assert.doesNotMatch(text, / at save/);
     assert.doesNotMatch(text, /\bTotals\b/);
     assert.doesNotMatch(text, /Catch time/);
+    assert.doesNotMatch(text, /Hourly consumption/);
+    assert.doesNotMatch(text, /Bin A \(lbs\)/);
     const farmRows = payload.sections.flatMap((section) => section.rows).filter((row) => row.label === "Farm");
     assert.equal(farmRows.length, 0);
   });
 
-  it("pairs leftover houses left-right and keeps house summary on page 1", async () => {
+  it("fits houses 1-8 on one page with house summary", async () => {
     const payload = buildLfoSharePayload(eightHouseInventory());
     const bytes = await buildLfoPdfBytes(payload);
     const pdf = await getDocumentProxy(Uint8Array.from(bytes));
-    assert.equal(pdf.numPages, 2);
-    const extracted = await extractText(pdf, { mergePages: false });
-    const pages = Array.isArray(extracted.text) ? extracted.text : [extracted.text];
-    assert.equal(pages.length, 2);
-    assert.match(pages[0], /House summary/);
-    assert.match(pages[0], /Total Feed/);
-    assert.match(pages[0], /House 1/);
-    assert.match(pages[0], /House 6/);
-    assert.doesNotMatch(pages[0], /House 7/);
-    assert.doesNotMatch(pages[0], /House 8/);
-    assert.doesNotMatch(pages[0], /\bTotals\b/);
-    assert.match(pages[1], /House 7/);
-    assert.match(pages[1], /House 8/);
-    assert.doesNotMatch(pages[1], /\bTotals\b/);
+    assert.equal(pdf.numPages, 1);
+    const extracted = await extractText(pdf, { mergePages: true });
+    const text = extracted.text;
+    assert.match(text, /House summary/);
+    assert.match(text, /Total Feed/);
+    assert.match(text, /House 1/);
+    assert.match(text, /House 8/);
+    assert.doesNotMatch(text, /\bTotals\b/);
+    assert.doesNotMatch(text, /Hourly consumption/);
   });
 });

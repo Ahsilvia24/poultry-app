@@ -99,25 +99,29 @@ function formatLfoStamp(value: Date | string | null | undefined, timeZone?: stri
   );
 }
 
-function rawRow(result: LfoHouseCalculateResult): LfoShareField | null {
-  if (result.rawOrderLbs != null && result.rawOrderLbs > 0) {
-    return { label: "LFO", value: `${formatLbs(result.rawOrderLbs)} lbs` };
-  }
-  if (result.rawReclaimLbs != null && result.rawReclaimLbs > 0) {
-    return { label: "Reclaim", value: `${formatLbs(result.rawReclaimLbs)} lbs` };
-  }
-  return null;
-}
-
-function roundedRow(result: LfoHouseCalculateResult): LfoShareField {
+function roundedOrderRow(result: LfoHouseCalculateResult): LfoShareField {
   if (result.orderLbs != null && result.orderLbs > 0) {
-    return { label: "LFO (rounded)", value: `Order ${formatLbs(result.orderLbs)} lbs` };
+    const raw = result.rawOrderLbs;
+    return {
+      label: "Order (rounded)",
+      value:
+        raw != null && raw > 0
+          ? `${formatLbs(raw)} lbs (${formatLbs(result.orderLbs)} lbs)`
+          : `${formatLbs(result.orderLbs)} lbs`,
+    };
   }
   if (result.reclaimLbs != null && result.reclaimLbs > 0) {
-    return { label: "Reclaim (rounded)", value: `Reclaim ${formatLbs(result.reclaimLbs)} lbs` };
+    const raw = result.rawReclaimLbs;
+    return {
+      label: "Reclaim (rounded)",
+      value:
+        raw != null && raw > 0
+          ? `${formatLbs(raw)} lbs (${formatLbs(result.reclaimLbs)} lbs)`
+          : `${formatLbs(result.reclaimLbs)} lbs`,
+    };
   }
   return {
-    label: "LFO / reclaim (rounded)",
+    label: "Order (rounded)",
     value: result.balanceLbs == null ? "—" : "Even — no order or reclaim",
   };
 }
@@ -198,13 +202,14 @@ export function buildLfoSharePayload(
     const houseResult =
       result.houses.find((row) => row.houseNumber === house.houseNumber) ??
       result.houses.find((row) => row.houseId === house.houseId);
-    const raw = houseResult ? rawRow(houseResult) : null;
     sections.push({
       title: `House ${house.houseNumber}`,
       rows: [
         { label: "Head count", value: house.headCount.toLocaleString() },
-        { label: "Bin A (lbs)", value: formatLbs(house.binAPounds) },
-        { label: "Bin B (lbs)", value: formatLbs(house.binBPounds) },
+        {
+          label: "Bin A/B (lbs)",
+          value: `${formatLbs(house.binAPounds)} / ${formatLbs(house.binBPounds)}`,
+        },
         {
           label: "Catch",
           value:
@@ -216,15 +221,10 @@ export function buildLfoSharePayload(
         { label: feedOffLabel(timing), value: formatLfoStamp(houseResult?.feedOffAt ?? null, timeZone) },
         {
           label: "Hours until feed off",
-          value:
-            houseResult?.hoursUntilFeedOff == null
-              ? "—"
-              : formatHours(houseResult.hoursUntilFeedOff),
-        },
-        {
-          label: "Hourly consumption",
           value: houseResult
-            ? `${formatLbs(houseResult.hourlyConsumptionLbs)} lbs/hr`
+            ? houseResult.hoursUntilFeedOff == null
+              ? `@ ${formatLbs(houseResult.hourlyConsumptionLbs)} lbs/hr`
+              : `${formatHours(houseResult.hoursUntilFeedOff)} @ ${formatLbs(houseResult.hourlyConsumptionLbs)} lbs/hr`
             : "—",
         },
         {
@@ -234,10 +234,9 @@ export function buildLfoSharePayload(
               ? "—"
               : `${formatLbs(houseResult.feedConsumedUntilOffLbs)} lbs`,
         },
-        ...(raw ? [raw] : []),
         houseResult
-          ? roundedRow(houseResult)
-          : { label: "LFO / reclaim (rounded)", value: "—" },
+          ? roundedOrderRow(houseResult)
+          : { label: "Order (rounded)", value: "—" },
       ],
     });
   }
