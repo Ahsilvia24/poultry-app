@@ -29,6 +29,16 @@ export function signinUnavailableDetail(error: unknown) {
 }
 
 /** Passwords live on the phone. There is no hosted user table to check. */
-export async function verifyEmailPassword(_email: string, _password: string) {
+export async function verifyEmailPassword(
+  _email: string,
+  _password: string,
+): Promise<{
+  id: string;
+  email: string;
+  name: string | null;
+  activeSessionId?: string | null;
+  activeDeviceId?: string | null;
+  unsyncedAt?: Date | string | null;
+} | null> {
   return null;
 }

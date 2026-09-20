@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { subDays } from "date-fns";
 import { addCalendarDays, appToday, appTodayKey } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";

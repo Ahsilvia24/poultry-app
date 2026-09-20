@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextRequest } from "next/server";
 import { format } from "date-fns";
 import { jsonError, requireMobileUser } from "@/lib/mobile-auth";

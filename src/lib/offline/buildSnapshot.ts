@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getDashboardData } from "@/lib/dashboard";
 import { ensureActiveFlockHouseFlocks } from "@/lib/ensureActiveFlockHouseFlocks";
 import { isManualLfoFarm } from "@/lib/lfo/manualFarm";

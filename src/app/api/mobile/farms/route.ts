@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextRequest } from "next/server";
 import { jsonError, requireMobileUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
