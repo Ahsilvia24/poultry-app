@@ -7,7 +7,9 @@ const MARGIN = 36;
 const GUTTER = 16;
 /** Gap between the muted label and the bold value on the same row. */
 const LABEL_VALUE_GAP = 6;
-const SUMMARY_COLS = 4;
+/** H1-4 / H5-8 stacks beside Order; leftover houses use the same stacks at the page bottom. */
+const SUMMARY_STACK_LEN = 4;
+const HEADER_SUMMARY_MAX_HOUSE = 8;
 const ROW_H = 13;
 const TITLE_H = 18;
 const SECTION_GAP = 8;
@@ -52,6 +54,33 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
 
 function isHouseSection(section: LfoShareSection): boolean {
   return /^House \d+$/.test(section.title);
+}
+
+function houseNumberFromTitle(title: string): number | null {
+  const match = /^House (\d+)$/.exec(title);
+  return match ? Number(match[1]) : null;
+}
+
+function houseNumberFromSummary(line: string): number | null {
+  const match = /^H(\d+)-/.exec(line);
+  return match ? Number(match[1]) : null;
+}
+
+function sortSummaryLines(lines: string[]): string[] {
+  return [...lines].sort(
+    (a, b) => (houseNumberFromSummary(a) ?? 0) - (houseNumberFromSummary(b) ?? 0),
+  );
+}
+
+function splitSummaryStacks(lines: string[]): { left: string[]; right: string[] } {
+  const sorted = sortSummaryLines(lines);
+  const left: string[] = [];
+  const right: string[] = [];
+  for (let i = 0; i < sorted.length; i += SUMMARY_STACK_LEN * 2) {
+    left.push(...sorted.slice(i, i + SUMMARY_STACK_LEN));
+    right.push(...sorted.slice(i + SUMMARY_STACK_LEN, i + SUMMARY_STACK_LEN * 2));
+  }
+  return { left, right };
 }
 
 /** Black-and-white LFO share: two house columns, never split a house across pages. */
@@ -142,26 +171,51 @@ export async function buildLfoPdfBytes(payload: LfoSharePayload): Promise<Uint8A
         );
   const rightX = MARGIN + colW + GUTTER;
 
-  const measureSummary = () => {
-    if (summaryLines.length === 0) return 0;
-    return TITLE_H + Math.ceil(summaryLines.length / SUMMARY_COLS) * ROW_H + SECTION_GAP;
+  const headerSummary = sortSummaryLines(
+    summaryLines.filter((line) => {
+      const house = houseNumberFromSummary(line);
+      return house != null && house <= HEADER_SUMMARY_MAX_HOUSE;
+    }),
+  );
+  const laterSummary = sortSummaryLines(
+    summaryLines.filter((line) => {
+      const house = houseNumberFromSummary(line);
+      return house != null && house > HEADER_SUMMARY_MAX_HOUSE;
+    }),
+  );
+  const headerHouseNums = new Set(
+    headerSummary
+      .map(houseNumberFromSummary)
+      .filter((house): house is number => house != null),
+  );
+
+  const measureStackedSummary = (lines: string[]) => {
+    if (lines.length === 0) return 0;
+    const { left, right } = splitSummaryStacks(lines);
+    return TITLE_H + Math.max(left.length, right.length, 1) * ROW_H + SECTION_GAP;
   };
 
-  const drawSummaryAt = (startY: number) => {
+  const drawStackedSummaryAt = (lines: string[], x: number, width: number, startY: number) => {
     let cy = startY;
-    page.drawText("House summary", { x: MARGIN, y: cy - 12, size: 12, font: bold, color: ink });
+    page.drawText("House summary", { x, y: cy - 12, size: 12, font: bold, color: ink });
     cy -= TITLE_H;
-    const cellW = contentW / SUMMARY_COLS;
-    for (let i = 0; i < summaryLines.length; i += SUMMARY_COLS) {
-      for (let c = 0; c < SUMMARY_COLS && i + c < summaryLines.length; c++) {
-        const line = pdfSafe(summaryLines[i + c] ?? "");
-        if (!line) continue;
-        page.drawText(line, {
-          x: MARGIN + c * cellW,
+    const stackGutter = 12;
+    const stackW = Math.max(48, (width - stackGutter) / 2);
+    const { left, right } = splitSummaryStacks(lines);
+    const rows = Math.max(left.length, right.length);
+    for (let i = 0; i < rows; i++) {
+      const leftLine = pdfSafe(left[i] ?? "");
+      const rightLine = pdfSafe(right[i] ?? "");
+      if (leftLine) {
+        page.drawText(leftLine, { x, y: cy - 10, size: 10, font, color: muted });
+      }
+      if (rightLine) {
+        page.drawText(rightLine, {
+          x: x + stackW + stackGutter,
           y: cy - 10,
           size: 10,
-          font: bold,
-          color: ink,
+          font,
+          color: muted,
         });
       }
       cy -= ROW_H;
@@ -169,30 +223,55 @@ export async function buildLfoPdfBytes(payload: LfoSharePayload): Promise<Uint8A
     return cy - SECTION_GAP;
   };
 
-  if (summaryLines.length > 0) {
-    const h = measureSummary();
+  let pageHouseNums: number[] = [];
+
+  const laterLinesFor = (houseNums: number[]) =>
+    laterSummary.filter((line) => {
+      const house = houseNumberFromSummary(line);
+      return house != null && houseNums.includes(house) && !headerHouseNums.has(house);
+    });
+
+  const flushPageFooter = () => {
+    const lines = laterLinesFor(pageHouseNums);
+    pageHouseNums = [];
+    if (lines.length === 0) return;
+    drawStackedSummaryAt(lines, MARGIN, contentW, MARGIN + measureStackedSummary(lines));
+  };
+
+  if (order || headerSummary.length > 0) {
+    const orderH = order ? measureSection(order, colW) : 0;
+    const summaryH = measureStackedSummary(headerSummary);
+    const h = Math.max(orderH, summaryH);
     need(h);
-    y = drawSummaryAt(y);
-  }
-  if (order) {
-    const h = measureSection(order, colW);
-    need(h);
-    y = drawSectionAt(order, MARGIN, colW, y);
+    const startY = y;
+    if (order) drawSectionAt(order, MARGIN, colW, startY);
+    if (headerSummary.length > 0) drawStackedSummaryAt(headerSummary, rightX, colW, startY);
+    y = startY - h;
   }
 
   for (let i = 0; i < houses.length; i += 2) {
     const left = houses[i];
     const right = houses[i + 1];
-    const h = Math.max(
+    const pairNums = [left, right]
+      .filter((section): section is LfoShareSection => Boolean(section))
+      .map((section) => houseNumberFromTitle(section.title))
+      .filter((house): house is number => house != null);
+    const pairH = Math.max(
       measureSection(left, colW),
       right ? measureSection(right, colW) : 0,
     );
-    need(h);
+    const reserve = measureStackedSummary(laterLinesFor([...pageHouseNums, ...pairNums]));
+    if (y - pairH - reserve < MARGIN) {
+      flushPageFooter();
+      newPage();
+    }
     const startY = y;
     drawSectionAt(left, MARGIN, colW, startY);
     if (right) drawSectionAt(right, rightX, colW, startY);
-    y = startY - h;
+    pageHouseNums.push(...pairNums);
+    y = startY - pairH;
   }
+  flushPageFooter();
 
   return doc.save();
 }

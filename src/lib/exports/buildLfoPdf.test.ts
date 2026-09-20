@@ -23,23 +23,27 @@ const inventory = {
   ],
 };
 
-function eightHouseInventory() {
+function houseInventory(count: number, farmName: string) {
   return {
-    farmName: "EIGHT HOUSE",
+    farmName,
     orderDate: "2026-09-09",
     orderTime: "15:30",
     consumptionRate: 0.45,
     calculatedAt: "2026-09-09T15:34:00",
-    houses: Array.from({ length: 8 }, (_, i) => ({
+    houses: Array.from({ length: count }, (_, i) => ({
       houseId: `h${i + 1}`,
       houseNumber: i + 1,
       headCount: 28000 - i * 100,
-      binAPounds: 3000 + i * 100,
-      binBPounds: 4000,
+      binAPounds: 16000 + i * 100,
+      binBPounds: 17000,
       catchDate: "2026-09-11",
       catchTime: "08:00",
     })),
   };
+}
+
+function eightHouseInventory() {
+  return houseInventory(8, "EIGHT HOUSE");
 }
 
 describe("buildLfoPdfBytes", () => {
@@ -89,5 +93,23 @@ describe("buildLfoPdfBytes", () => {
     assert.match(text, /House 8/);
     assert.doesNotMatch(text, /\bTotals\b/);
     assert.doesNotMatch(text, /Hourly consumption/);
+  });
+
+  it("puts leftover house summaries at the bottom of later pages", async () => {
+    const payload = buildLfoSharePayload(houseInventory(12, "TWELVE HOUSE"));
+    const bytes = await buildLfoPdfBytes(payload);
+    const pdf = await getDocumentProxy(Uint8Array.from(bytes));
+    assert.equal(pdf.numPages, 2);
+    const extracted = await extractText(pdf, { mergePages: false });
+    const pages = Array.isArray(extracted.text) ? extracted.text : [extracted.text];
+    assert.match(pages[0] ?? "", /House summary/);
+    assert.match(pages[0] ?? "", /H1-/);
+    assert.match(pages[0] ?? "", /H8-/);
+    assert.doesNotMatch(pages[0] ?? "", /H9-/);
+    assert.match(pages[1] ?? "", /House 9/);
+    assert.match(pages[1] ?? "", /House 12/);
+    assert.match(pages[1] ?? "", /House summary/);
+    assert.match(pages[1] ?? "", /H9-/);
+    assert.match(pages[1] ?? "", /H12-/);
   });
 });
