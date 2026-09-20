@@ -115,7 +115,7 @@ assert.doesNotMatch(selectReports, /allFarms/);
 assert.match(selectReports, /clampDateKeyToPlacement/);
 assert.match(selectReports, /fillCumulativeByAge/);
 assert.match(selectReports, /replicaVisitsForFieldLog/);
-assert.match(selectReports, /d MMM yy/);
+assert.match(selectReports, /SHORT_MONTHS/);
 assert.match(selectReports, /sortFarmsByOrder/);
 assert.match(selectReports, /firstReportFarmId/);
 
