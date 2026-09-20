@@ -72,7 +72,8 @@ function RegisterForm() {
         </p>
         <h1 className="mt-1.5 text-xl font-semibold">Create account</h1>
         <p className="mt-1 text-sm text-stone-500">
-          Farms stay on this phone under your email. Only approved emails can create an account.
+          Farms stay on this phone under your email. You can start now without the website, then
+          pull old farms later from Settings. Only approved emails can create an account.
         </p>
         <form
           action="/api/register"

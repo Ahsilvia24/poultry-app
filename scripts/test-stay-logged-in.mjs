@@ -16,6 +16,7 @@ assert.match(authConfig, /maxAge: SESSION_MAX_AGE_SECONDS/);
 
 const active = read("src/lib/active-session.ts");
 assert.match(active, /if \(!lookup\.ok\) return true;/);
+assert.match(active, /if \(!user\) return true;/);
 assert.match(active, /decideActiveSession\(\{ ok: false \}/);
 assert.match(active, /reuseExistingSessionId/);
 assert.match(active, /if \(reuse\) return reuse;/);

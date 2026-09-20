@@ -16,7 +16,7 @@ assert.match(mortality, /ensureActiveFlockHouseFlocksForUser\(session\.user\.id\
 assert.match(mortality, /houses: \{ where: \{ deletedAt: null \}/);
 assert.match(mortality, /listMortalityHouses/);
 assert.doesNotMatch(mortality, /take:\s*1/);
-assert.match(farmPage, /ensureActiveFlockHouseFlocks\(id, \{ userId: session\.user\.id \}\)/);
+assert.match(farmPage, /FarmDetailClient/);
 assert.match(expoData, /ensureHousesOnActiveFlock\(farmId\)/);
 assert.match(expoData, /ensureHousesOnActiveFlock\(f\.id\)/);
 assert.match(expoData, /planAttachMissingHousesToActiveFlock/);

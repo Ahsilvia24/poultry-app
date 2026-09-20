@@ -7,6 +7,7 @@ import { Button, Input, Label } from "@/components/ui";
 import { SafariLink } from "@/components/SafariLink";
 import { ensureDeviceId } from "@/lib/device-id";
 import { replaceLoginWarning } from "@/lib/replace-login";
+import { isRegisterEmailAllowed } from "@/lib/allowedRegisterEmails";
 import { upsertLocalAccount, verifyLocalAccount } from "@/lib/offline/localAccounts";
 import { unlockPhoneOwner } from "@/lib/offline/phoneUnlock";
 import { keepSignedOutOnLogin, tellWorkerSignedIn } from "@/lib/offline/signOutLocal";
@@ -93,9 +94,20 @@ function LoginForm() {
         return;
       }
       if (!res.ok || data.error) {
+        if (res.status === 503 && isRegisterEmailAllowed(body.email) && body.password.length >= 8) {
+          const account = await upsertLocalAccount({
+            email: body.email,
+            password: body.password,
+            name: body.email.split("@")[0],
+          });
+          await startLocalSession(account);
+          await tellWorkerSignedIn();
+          window.location.assign("/");
+          return;
+        }
         setError(
           res.status === 503
-            ? "No farms on this phone for that email. Register or restore a backup file."
+            ? "The website database is offline. Register with this email to start on this phone, or restore a backup file."
             : data.error || "Invalid email or password",
         );
         setPending(false);
@@ -158,7 +170,7 @@ function LoginForm() {
             </>
           ) : (
             <p className="text-sm text-stone-600">
-              Farms stay on this phone. Sign out does not delete them.
+              Farms stay on this phone. Sign-in does not need the website database.
             </p>
           )}
           {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}

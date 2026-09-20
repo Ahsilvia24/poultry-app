@@ -26,6 +26,7 @@ import { unlockPhoneOwner } from "@/lib/offline/phoneUnlock";
 import { applyPendingOutboxItems } from "@/lib/offline/applyOutbox";
 import { coalesceFormWrite } from "@/lib/offline/applyWrites";
 import { flushOutbox, pullRemoteSnapshot, reportUnsynced } from "@/lib/offline/flushOutbox";
+import { pullWebsiteFarms, type PullWebsiteFarmsResult } from "@/lib/offline/pullWebsiteFarms";
 import { canReplaceReplicaWithRemote, type IdAliases } from "@/lib/offline/remapIds";
 import { ensureDeviceId } from "@/lib/device-id";
 import { seedAndMergeFollowUpCompletions } from "@/lib/offline/followUpCompletions";
@@ -44,6 +45,7 @@ type OfflineContextValue = {
   enqueue: (item: Omit<OfflineOutboxItem, "id" | "createdAt">) => Promise<void>;
   flushNow: () => Promise<{ pending: number }>;
   syncNow: () => Promise<SyncPhoneResult>;
+  pullWebsiteFarmsNow: () => Promise<PullWebsiteFarmsResult>;
   replaceSnapshot: (snapshot: OfflineSnapshot) => void;
   patchSnapshot: (fn: (snapshot: OfflineSnapshot) => OfflineSnapshot) => void;
 };
@@ -178,6 +180,19 @@ export function OfflineProvider({
     }
   }, [replaceSnapshot]);
 
+  const pullWebsiteFarmsNow = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const result = await pullWebsiteFarms(owner);
+      if (result.ok) replaceSnapshot(result.snapshot);
+      return result;
+    } catch {
+      return { ok: false as const, reason: "unavailable" as const };
+    } finally {
+      setSyncing(false);
+    }
+  }, [owner, replaceSnapshot]);
+
   useEffect(() => {
     let cancelled = false;
     if (owner) unlockPhoneOwner(owner);
@@ -246,6 +261,7 @@ export function OfflineProvider({
       enqueue,
       flushNow,
       syncNow,
+      pullWebsiteFarmsNow,
       replaceSnapshot,
       patchSnapshot,
     }),
@@ -259,6 +275,7 @@ export function OfflineProvider({
       enqueue,
       flushNow,
       syncNow,
+      pullWebsiteFarmsNow,
       replaceSnapshot,
       patchSnapshot,
     ],
@@ -282,6 +299,7 @@ const missingOffline: OfflineContextValue = {
     aliases: {},
     reason: "unreachable",
   }),
+  pullWebsiteFarmsNow: async () => ({ ok: false, reason: "unavailable" }),
   replaceSnapshot: () => undefined,
   patchSnapshot: () => undefined,
 };

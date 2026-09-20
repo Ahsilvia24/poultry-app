@@ -20,6 +20,11 @@ import {
   SIGN_OUT_UNSAVED_CONFIRM,
 } from "@/lib/offline/phoneFarmSave";
 import {
+  GET_WEBSITE_FARMS,
+  GET_WEBSITE_WORKING,
+  pullWebsiteFarmsMessage,
+} from "@/lib/offline/pullWebsiteFarms";
+import {
   SYNC_WORKING,
   syncPhoneResultMessage,
   type SyncPhoneResult,
@@ -51,6 +56,7 @@ export function SettingsScreen() {
     ready,
     flushNow,
     syncNow,
+    pullWebsiteFarmsNow,
     replaceSnapshot,
   } = useOffline();
   const farmSave = phoneFarmSaveStatus({ ready, syncing, pendingCount, lastBackupAt });
@@ -61,6 +67,7 @@ export function SettingsScreen() {
   const [syncingNow, setSyncingNow] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [lastSync, setLastSync] = useState<SyncPhoneResult | null>(null);
+  const [websiteBusy, setWebsiteBusy] = useState(false);
   const shownSave =
     syncingNow
       ? { kind: "saving" as const, text: SYNC_WORKING }
@@ -173,6 +180,20 @@ export function SettingsScreen() {
     }
   }
 
+  async function onGetWebsiteFarms() {
+    if (websiteBusy || leaving || backupBusy) return;
+    setWebsiteBusy(true);
+    setBackupNote(null);
+    try {
+      const result = await pullWebsiteFarmsNow();
+      setBackupNote(pullWebsiteFarmsMessage(result));
+    } catch {
+      setBackupNote(pullWebsiteFarmsMessage({ ok: false, reason: "unavailable" }));
+    } finally {
+      setWebsiteBusy(false);
+    }
+  }
+
   async function onRestoreFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -261,10 +282,11 @@ export function SettingsScreen() {
             </div>
           </div>
         ) : (
+          <>
           <div className="flex flex-wrap items-center justify-center gap-8">
             <button
               type="button"
-              disabled={leaving || backupBusy || !snapshot}
+              disabled={leaving || backupBusy || websiteBusy || !snapshot}
               onClick={() => {
                 void onSaveBackup();
               }}
@@ -274,11 +296,21 @@ export function SettingsScreen() {
             </button>
             <button
               type="button"
-              disabled={leaving || backupBusy}
+              disabled={leaving || backupBusy || websiteBusy}
               onClick={() => fileRef.current?.click()}
               className={actionLinkClass}
             >
               Restore backup
+            </button>
+            <button
+              type="button"
+              disabled={leaving || backupBusy || websiteBusy}
+              onClick={() => {
+                void onGetWebsiteFarms();
+              }}
+              className={actionLinkClass}
+            >
+              {websiteBusy ? GET_WEBSITE_WORKING : GET_WEBSITE_FARMS}
             </button>
             <button
               type="button"
@@ -311,6 +343,7 @@ export function SettingsScreen() {
           {backupNote ? (
             <p className="max-w-md text-center text-sm font-medium text-stone-700">{backupNote}</p>
           ) : null}
+          </>
         )}
       </div>
 

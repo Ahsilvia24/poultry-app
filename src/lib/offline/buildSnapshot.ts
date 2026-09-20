@@ -3,12 +3,34 @@ import { ensureActiveFlockHouseFlocks } from "@/lib/ensureActiveFlockHouseFlocks
 import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { prisma } from "@/lib/prisma";
 import { dateKeyOrNull, isoOrNull } from "@/lib/offline/dates";
+import { normalizeOwnerEmail } from "@/lib/offline/ownerEmail";
 import { dateKeyFromDb } from "@/lib/visits/schedule";
 import { jsonSafe } from "@/lib/offline/json";
 import {
   OFFLINE_SNAPSHOT_VERSION,
   type OfflineSnapshot,
 } from "@/lib/offline/types";
+
+/** Local JWTs use a phone user id. Website farms are stored under the Prisma user for that email. */
+export async function resolveHostedUserId(input: {
+  id?: string | null;
+  email?: string | null;
+}): Promise<string | null> {
+  if (input.id) {
+    const byId = await prisma.user.findUnique({
+      where: { id: input.id },
+      select: { id: true },
+    });
+    if (byId) return byId.id;
+  }
+  const email = normalizeOwnerEmail(input.email ?? "");
+  if (!email.includes("@")) return null;
+  const byEmail = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  return byEmail?.id ?? null;
+}
 
 export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnapshot> {
   const [user, settings, farms, houses, flocks, dashboard] = await Promise.all([

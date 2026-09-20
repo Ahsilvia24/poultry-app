@@ -95,7 +95,8 @@ export async function isActiveSession(
       where: { id: userId },
       select: { activeSessionId: true },
     });
-    if (!user) return false;
+    // Phone-owned logins use a local user id. Missing Prisma row is not a sign-out.
+    if (!user) return true;
     return decideActiveSession({ ok: true, activeSessionId: user.activeSessionId }, presented);
   } catch {
     return decideActiveSession({ ok: false }, presented);
