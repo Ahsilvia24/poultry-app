@@ -12,6 +12,7 @@ import { Button, Card, StatusBadge } from "@/components/ui";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { uniqueSortedAges } from "@/lib/flockAges";
+import { LAST_SERVICE_REPORT_LABEL } from "@/lib/lastChecklistDate";
 import type { FarmCardSummary } from "@/types";
 
 function formatLastVisitDate(dateKey: string, timeZone?: string | null) {
@@ -90,7 +91,7 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
               <StatusBadge status={farm.status} />
             </div>
 
-            <div className="mt-3 border-t border-stone-100 pt-3">
+            <div className="mt-2">
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <p className="text-[13px] text-stone-500">Birds placed</p>
@@ -133,8 +134,10 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
               </div>
               <div className="mt-3 flex flex-wrap gap-3 text-[12px] text-stone-500">
                 <span>
-                  Last visit:{" "}
-                  {farm.lastVisitDate ? formatLastVisitDate(farm.lastVisitDate, timeZone) : "—"}
+                  {LAST_SERVICE_REPORT_LABEL}:{" "}
+                  {farm.lastServiceReportDate
+                    ? formatLastVisitDate(farm.lastServiceReportDate, timeZone)
+                    : "—"}
                 </span>
                 <span>{openIssuesLabel(farm.openIssues)}</span>
               </div>

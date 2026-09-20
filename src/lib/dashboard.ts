@@ -19,6 +19,7 @@ import { addCatchAge, addCatchHouseNumber, uniqueCatchAges } from "@/lib/catchHo
 import { localNoonFromKey } from "@/lib/offline/dates";
 import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
+import { lastServiceReportDateKey } from "@/lib/lastChecklistDate";
 import { MANUAL_LFO_FARM_NUMBER } from "@/lib/lfo/manualFarm";
 import { VISIT_PLACE_FARM_NUMBER } from "@/lib/visits/visitPlace";
 import {
@@ -101,7 +102,8 @@ export async function getDashboardData(userId: string) {
           where: { status: { not: "RESOLVED" } },
           select: { id: true, priority: true },
         },
-        visits: { orderBy: { visitDate: "desc" }, take: 1, select: { visitDate: true } },
+        serviceForms: { select: { formKind: true, formDate: true } },
+        lastFeedOrders: { select: { orderDate: true } },
       },
       orderBy: { farmName: "asc" },
     }),
@@ -406,7 +408,18 @@ export async function getDashboardData(userId: string) {
       cumulativeMortality: cum,
       cumulativeMortalityPct: placed > 0 ? (cum / placed) * 100 : 0,
       openIssues: farm.issues.length,
-      lastVisitDate: farm.visits[0] ? dateKeyFromDb(farm.visits[0].visitDate) : null,
+      lastServiceReportDate: lastServiceReportDateKey({
+        farmId: farm.id,
+        serviceForms: farm.serviceForms.map((form) => ({
+          farmId: farm.id,
+          formKind: form.formKind,
+          formDate: dateKeyFromDb(form.formDate),
+        })),
+        lfos: farm.lastFeedOrders.map((lfo) => ({
+          farmId: farm.id,
+          orderDate: dateKeyFromDb(lfo.orderDate),
+        })),
+      }),
       status,
       missingTodayMortality: Boolean(active && !hasTodayEntry && activeHouseCount > 0),
     });

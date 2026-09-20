@@ -202,7 +202,7 @@ function patchDashboardAfterPlacement(
       cumulativeMortality: 0,
       cumulativeMortalityPct: 0,
       openIssues: 0,
-      lastVisitDate: null,
+      lastServiceReportDate: null,
       status: "Normal" as const,
       missingTodayMortality: farmFlocks.length > 0,
     };

@@ -13,6 +13,7 @@ import {
 } from "@/lib/offline/followUpCompletions";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import type { OfflineFlockRef, OfflineSnapshot } from "@/lib/offline/types";
+import { lastServiceReportDateKey } from "@/lib/lastChecklistDate";
 import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 import {
@@ -216,12 +217,11 @@ export function rebuildFarmCardsFromReplica(
       todayMortalityTotal += todayMort;
     }
 
-    const lastVisit = (snapshot.visits ?? [])
-      .filter((visit) => visit.farmId === farm.id)
-      .map((visit) => asDateKey(visit.visitDate) ?? visit.visitDate.slice(0, 10))
-      .filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key))
-      .sort()
-      .at(-1) ?? null;
+    const lastServiceReportDate = lastServiceReportDateKey({
+      farmId: farm.id,
+      serviceForms: snapshot.serviceForms,
+      lfos: snapshot.lfos,
+    });
 
     const farmHouseIds = new Set(houses.map((house) => house.id));
     const flockAgesDays = flockAgesFromPlacements(
@@ -256,7 +256,7 @@ export function rebuildFarmCardsFromReplica(
       cumulativeMortality: cum,
       cumulativeMortalityPct: placed > 0 ? (cum / placed) * 100 : 0,
       openIssues: farmIssues.length,
-      lastVisitDate: lastVisit,
+      lastServiceReportDate,
       status: resolveMortalityStatus(
         { dailyPct, sevenDayPct: sevenPct, risingThreeDays: rising },
         thresholds,

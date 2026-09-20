@@ -39,6 +39,7 @@ import { ScheduleImportCard } from "../../src/components/ScheduleImportCard";
 import { OneDotName } from "../../src/components/OneDotName";
 import { formatCatchDateLabel, formatCatchHouses } from "../../src/lib/catchHouses";
 import { getAppTimeZone } from "../../src/lib/appSettings";
+import { LAST_SERVICE_REPORT_LABEL } from "../../src/lib/lastChecklistDate";
 import { compactCatchTimeLabel } from "../../src/lib/time-slots";
 
 type Dashboard = ReturnType<typeof getDashboard>;
@@ -516,7 +517,7 @@ export default function DashboardScreen() {
                         <StatusBadge status={farm.status} />
                       </View>
 
-                      <View style={{ paddingTop: 14 }}>
+                      <View style={{ paddingTop: 8 }}>
                         <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                           <Metric
                             columns={3}
@@ -565,9 +566,9 @@ export default function DashboardScreen() {
                           }}
                         >
                           <Text style={[styles.muted, { fontSize: 12 }]}>
-                            Last visit:{" "}
-                            {farm.lastVisitDate
-                              ? formatLastVisitDate(farm.lastVisitDate)
+                            {LAST_SERVICE_REPORT_LABEL}:{" "}
+                            {farm.lastServiceReportDate
+                              ? formatLastVisitDate(farm.lastServiceReportDate)
                               : "—"}
                           </Text>
                           <Text style={[styles.muted, { fontSize: 12 }]}>

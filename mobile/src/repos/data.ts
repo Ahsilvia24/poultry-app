@@ -415,7 +415,7 @@ export function getDashboard() {
         missingTodayMortality: false,
         weeklyMortality: [] as Array<{ week: number; total: number }>,
         projectedCatchDate: null,
-        lastVisitDate: null as string | null,
+        lastServiceReportDate: null as string | null,
       });
       continue;
     }
@@ -601,9 +601,15 @@ export function getDashboard() {
       for (const v of upcoming) upcomingSchedule.push(toRow(v));
     }
 
-    const lastVisit = db.getFirstSync<{ visit_date: string }>(
-      "SELECT visit_date FROM farm_visits WHERE farm_id = ? ORDER BY visit_date DESC LIMIT 1",
-      [farm.id],
+    const lastChecklist = db.getFirstSync<{ d: string | null }>(
+      `SELECT MAX(d) as d FROM (
+         SELECT form_date as d FROM service_forms
+          WHERE farm_id = ?
+            AND form_kind IN ('service_report', 'placement', 'prebrood')
+         UNION ALL
+         SELECT order_date as d FROM last_feed_orders WHERE farm_id = ?
+       )`,
+      [farm.id, farm.id],
     );
 
     const earliestCatch =
@@ -649,7 +655,7 @@ export function getDashboard() {
         .sort((a, b) => a[0] - b[0])
         .map(([week, total]) => ({ week, total })),
       projectedCatchDate: earliestCatch,
-      lastVisitDate: lastVisit?.visit_date ?? null,
+      lastServiceReportDate: lastChecklist?.d ?? null,
     });
   }
 

@@ -100,7 +100,7 @@ const staleCard = {
   cumulativeMortality: 1000,
   cumulativeMortalityPct: 5,
   openIssues: 0,
-  lastVisitDate: null,
+  lastServiceReportDate: null,
   status: "Normal",
   missingTodayMortality: false,
 };
