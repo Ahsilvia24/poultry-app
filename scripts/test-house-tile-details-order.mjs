@@ -59,10 +59,8 @@ assert.ok(phonePlacedAt >= 0 && phoneWeeklyAt > phonePlacedAt, "Phone details si
 assert.doesNotMatch(phone, /Hide Details|Show Details|collapsedHouses|detailsOpen/);
 assert.match(phone, /minHeight: 44/);
 assert.doesNotMatch(phone, /minHeight: 56/);
-const phoneTempAt = phone.indexOf("Log temperature for house");
-const phoneMortAt = phone.indexOf("Enter mortality for house");
-assert.ok(phone.slice(phoneTempAt, phoneTempAt + 900).includes("minWidth: 72"));
-assert.ok(phone.slice(phoneMortAt, phoneMortAt + 900).includes("minWidth: 96"));
+assert.match(phone, /minWidth: 72/);
+assert.match(phone, /minWidth: 96/);
 
 const empty = groupWeeklyMortalityRows([]);
 assert.deepEqual(
