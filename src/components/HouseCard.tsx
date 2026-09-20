@@ -189,8 +189,8 @@ export function HouseCard({
                 onClick={openTemp}
                 className={
                   loggedTempToday
-                    ? "inline-flex min-h-14 min-w-[4.5rem] flex-col items-center justify-center rounded-xl border-[1.5px] border-emerald-800 bg-white px-2.5 py-2"
-                    : "inline-flex min-h-14 min-w-[4.5rem] flex-col items-center justify-center rounded-xl border-[1.5px] border-stone-300 bg-stone-100 px-2.5 py-2"
+                    ? "inline-flex h-12 min-h-12 min-w-[4.5rem] flex-col items-center justify-center rounded-xl border-[1.5px] border-emerald-800 bg-white px-2.5"
+                    : "inline-flex h-12 min-h-12 min-w-[4.5rem] flex-col items-center justify-center rounded-xl border-[1.5px] border-stone-300 bg-stone-100 px-2.5"
                 }
                 aria-label={
                   loggedTempToday
@@ -216,7 +216,7 @@ export function HouseCard({
               {hasFlock && houseFlockId ? (
                 <ReplicaLink
                   href={`/mortality?farmId=${encodeURIComponent(farmId)}&houseFlockId=${encodeURIComponent(houseFlockId)}`}
-                  className="inline-flex min-h-14 min-w-24 items-center justify-center rounded-xl bg-emerald-800 px-3 py-3 text-center text-sm font-extrabold leading-tight text-white hover:bg-emerald-900"
+                  className="inline-flex h-12 min-h-12 min-w-24 items-center justify-center rounded-xl bg-emerald-800 px-3 text-center text-sm font-extrabold leading-tight text-white hover:bg-emerald-900"
                   aria-label={`Enter mortality for house ${house.houseNumber}`}
                 >
                   Enter
