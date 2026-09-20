@@ -31,6 +31,9 @@ assert.ok(placedAt >= 0 && weeklyAt > placedAt, "Placed / details sit where week
 assert.ok(web.lastIndexOf("WeeklyMortalityList") > placedAt, "Weekly mortality is at the bottom of the tile");
 assert.doesNotMatch(web, /Hide Details|Show Details|detailsOpen|aria-expanded/);
 assert.doesNotMatch(web, /border-t border-stone-100/);
+assert.match(web, /h-12 min-h-12 min-w-\[4\.5rem\]/);
+assert.match(web, /h-12 min-h-12 min-w-24/);
+assert.doesNotMatch(web, /min-h-14/);
 
 const phone = read("mobile/app/(tabs)/farms/[id]/index.tsx");
 assert.match(phone, /\$\{h\.ageDays\} Days Old/);
@@ -54,6 +57,10 @@ const phonePlacedAt = phone.indexOf(">Placed<");
 const phoneWeeklyAt = phone.lastIndexOf("Weekly mortality");
 assert.ok(phonePlacedAt >= 0 && phoneWeeklyAt > phonePlacedAt, "Phone details sit above weekly mortality");
 assert.doesNotMatch(phone, /Hide Details|Show Details|collapsedHouses|detailsOpen/);
+assert.match(phone, /minHeight: 44/);
+assert.doesNotMatch(phone, /minHeight: 56/);
+assert.match(phone, /minWidth: 72/);
+assert.match(phone, /minWidth: 96/);
 
 const empty = groupWeeklyMortalityRows([]);
 assert.deepEqual(
