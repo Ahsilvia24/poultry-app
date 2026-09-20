@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { signOut } from "@/lib/auth";
@@ -7,12 +5,22 @@ import { expireSessionCookies, isSessionCookieName } from "@/lib/session-cookie"
 
 export const dynamic = "force-dynamic";
 
+function requestOrigin(req: Request) {
+  const url = new URL(req.url);
+  const forwardedHost = req.headers.get("x-forwarded-host");
+  const forwardedProto = req.headers.get("x-forwarded-proto");
+  if (forwardedHost) {
+    return `${forwardedProto ?? "https"}://${forwardedHost.split(",")[0].trim()}`;
+  }
+  return url.origin;
+}
+
 /**
- * Sign out and return the static leave page as HTML.
- * Home Screen workers skip /api/, so even an old cached worker cannot
- * replace this with the dashboard.
+ * Clear the session cookie, then send the phone to /login.
+ * Home Screen workers skip /api/, so this redirect is never swapped
+ * for a cached dashboard. /login is the only place that starts a session.
  */
-async function leavePage() {
+async function leavePage(req: Request) {
   try {
     await signOut({ redirect: false });
   } catch {
@@ -22,27 +30,16 @@ async function leavePage() {
   for (const cookie of jar.getAll()) {
     if (isSessionCookieName(cookie.name)) jar.delete(cookie.name);
   }
-  let html = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>PoultryTech</title></head><body><p>Signed out of this phone.</p></body></html>";
-  try {
-    html = await readFile(join(process.cwd(), "public/signed-out.html"), "utf8");
-  } catch {
-    /* Function still leaves the session; phone shows the short fallback. */
-  }
-  const res = new NextResponse(html, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store, must-revalidate",
-    },
-  });
+  const res = NextResponse.redirect(new URL("/login", requestOrigin(req)), 303);
+  res.headers.set("Cache-Control", "no-store, must-revalidate");
   expireSessionCookies(res);
   return res;
 }
 
-export async function GET() {
-  return leavePage();
+export async function GET(req: Request) {
+  return leavePage(req);
 }
 
-export async function POST() {
-  return leavePage();
+export async function POST(req: Request) {
+  return leavePage(req);
 }
