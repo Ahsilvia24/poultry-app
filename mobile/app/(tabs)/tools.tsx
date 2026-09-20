@@ -29,7 +29,7 @@ import {
   DEFAULT_GROWTH_RATE_LBS_PER_DAY,
   resolveGrowthRate,
 } from "../../src/lib/weight/projections";
-import { appScrollProps, colors, styles } from "../../src/theme";
+import { appScrollProps, colors, fonts, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { useKeyboardInset } from "../../src/lib/useKeyboardInset";
 import { Card, Chip } from "../../src/components/ui";
@@ -292,9 +292,10 @@ export default function ToolsScreen() {
                 <Text
                   style={{
                     color: "#fff",
-                    fontSize: 15,
+                    fontFamily: fonts.sans,
+                    fontSize: 17,
                     fontWeight: "800",
-                    lineHeight: 16,
+                    lineHeight: 18,
                     textAlign: "center",
                   }}
                   numberOfLines={2}

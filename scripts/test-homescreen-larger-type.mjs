@@ -44,7 +44,11 @@ const gear = read("src/components/SettingsGearLink.tsx");
 assert.match(gear, /width="22"/);
 
 const quick = read("src/components/ToolsQuickLinks.tsx");
-assert.match(quick, /text-\[15px\]/);
+assert.match(quick, /text-\[17px\] font-extrabold/);
 assert.match(quick, /min-h-12/);
+
+const expoTools = read("mobile/app/(tabs)/tools.tsx");
+assert.match(expoTools, /fontSize: 17/);
+assert.match(expoTools, /fontFamily: fonts\.sans/);
 
 console.log("homescreen-larger-type: ok");
