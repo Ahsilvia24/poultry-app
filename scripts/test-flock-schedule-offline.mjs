@@ -120,7 +120,7 @@ function snapshot(extra = {}) {
           cumulativeMortality: 0,
           cumulativeMortalityPct: 0,
           openIssues: 0,
-          lastVisitDate: null,
+          lastServiceReportDate: null,
           status: "Normal",
           missingTodayMortality: false,
         },

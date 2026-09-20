@@ -54,7 +54,7 @@ export type FarmCardSummary = {
   cumulativeMortality: number;
   cumulativeMortalityPct: number;
   openIssues: number;
-  lastVisitDate: string | null;
+  lastServiceReportDate: string | null;
   status: MortalityStatus;
   missingTodayMortality: boolean;
 };
