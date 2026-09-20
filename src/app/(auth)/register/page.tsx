@@ -49,13 +49,6 @@ function RegisterForm() {
         setPending(false);
         return;
       }
-      void fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        cache: "no-store",
-        body: JSON.stringify({ name, email, password }),
-      }).catch(() => undefined);
       await tellWorkerSignedIn();
       window.location.assign("/");
     } catch (err) {
@@ -72,15 +65,10 @@ function RegisterForm() {
         </p>
         <h1 className="mt-1.5 text-xl font-semibold">Create account</h1>
         <p className="mt-1 text-sm text-stone-500">
-          Farms stay on this phone under your email. You can start now without the website, then
-          pull old farms later from Settings. Only approved emails can create an account.
+          Farms stay on this phone. Another phone starts empty until you import a file from
+          Settings. Only approved emails can create an account.
         </p>
-        <form
-          action="/api/register"
-          method="post"
-          className="mt-6 space-y-4"
-          onSubmit={onSubmit}
-        >
+        <form className="mt-6 space-y-4" onSubmit={onSubmit}>
           <div>
             <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" required autoComplete="name" />

@@ -28,7 +28,7 @@ function formatBackupClock(value: string) {
 }
 
 export const SIGN_OUT_UNSAVED_BODY =
-  "Sign out leaves the farms on this phone. Save a backup file if you might switch phones.";
+  "Sign out leaves the farms on this phone. Export all app data if you need them on another phone.";
 export const SIGN_OUT_UNSAVED_CONFIRM = `${SIGN_OUT_UNSAVED_BODY} Sign out now?`;
 export const SIGN_OUT_ANYWAY = "Sign out";
 export const SIGN_OUT_STAY = "Stay signed in";

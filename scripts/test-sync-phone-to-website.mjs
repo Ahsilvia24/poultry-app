@@ -33,21 +33,17 @@ assert.match(ping, /status: 401/);
 assert.match(ping, /ensureWeightProjectionVisitType/);
 
 const settings = read("src/components/SettingsScreen.tsx");
-assert.match(settings, /Sync data/);
-assert.match(settings, /Syncing…/);
-assert.match(settings, /syncNow/);
-assert.match(settings, /SYNC_UI_MS/);
+assert.doesNotMatch(settings, /Sync data/);
+assert.doesNotMatch(settings, /syncNow/);
 assert.match(settings, /signOutLocalApp/);
-assert.match(settings, /px-3 py-2 text-sm font-bold text-stone-800 underline/);
-assert.match(settings, /min-h-11/);
+assert.match(settings, /EXPORT_ALL_APP_DATA/);
 assert.match(settings, /actionLinkClass/);
-assert.match(settings, /disabled=\{leaving \|\| syncingNow\}/);
 assert.match(settings, /disabled=\{leaving\}/);
 assert.doesNotMatch(settings, /disabled=\{busy\}/);
 
 const provider = read("src/components/OfflineProvider.tsx");
-assert.match(provider, /syncNow/);
-assert.match(provider, /syncPhoneToWebsite/);
+assert.doesNotMatch(provider, /syncNow/);
+assert.doesNotMatch(provider, /syncPhoneToWebsite/);
 
 const flush = read("src/lib/offline/flushOutbox.ts");
 assert.match(flush, /evenIfOffline/);
@@ -98,7 +94,7 @@ assert.ok(SYNC_OVERALL_MS >= FLUSH_OVERALL_MS, "Sync must wait for the flush, no
 assert.ok(SYNC_UI_MS <= 12_000, "Uploading must not sit through a full flush");
 assert.ok(SIGN_OUT_OVERALL_MS < SYNC_OVERALL_MS, "leave must be faster than a full sync");
 assert.match(sync, /flushOutbox\(\{ evenIfOffline: true \}\)/);
-assert.match(settings, /setSyncingNow\(false\)/);
+assert.doesNotMatch(settings, /setSyncingNow/);
 assert.doesNotMatch(settings, /reason: "leftover"/);
 
 const started = Date.now();

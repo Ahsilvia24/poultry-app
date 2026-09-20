@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { getDb } from "../db";
@@ -116,6 +117,19 @@ export async function importMobileBackupJson(text: string) {
     }
   });
   return { farmCount: parsed.tables.farms?.length ?? 0 };
+}
+
+export async function pickAndImportMobileBackup() {
+  const picked = await DocumentPicker.getDocumentAsync({
+    type: "application/json",
+    copyToCacheDirectory: true,
+  });
+  if (picked.canceled || !picked.assets?.[0]?.uri) {
+    return { canceled: true as const };
+  }
+  const text = await FileSystem.readAsStringAsync(picked.assets[0].uri);
+  const restored = await importMobileBackupJson(text);
+  return { canceled: false as const, farmCount: restored.farmCount };
 }
 
 /** Share or download a JSON backup of phone / Safari farm data. */
