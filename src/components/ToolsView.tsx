@@ -27,7 +27,7 @@ export function ToolsView({
 }) {
   return (
     <div>
-      <div className="mb-3 md:mb-6">
+      <div className="mb-3">
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-stone-900 md:text-3xl">
             Tools
@@ -36,11 +36,11 @@ export function ToolsView({
         </div>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-3">
         <ToolsQuickLinks />
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         <ToolsSectionPanel hashId="weight-projections" title="Weight Projections" showTop={false}>
           <ToolsWeightProjections farms={weightFarms} initialFarmId={initialFarmId ?? null} />
         </ToolsSectionPanel>

@@ -1,129 +1,21 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { createLastFeedOrderAction } from "@/app/actions/lfo";
-import { LfoInventoryForm } from "@/components/LfoInventoryForm";
 import { BackHeader, Card } from "@/components/ui";
-import { appTodayKey } from "@/lib/app-calendar";
-import { DEFAULT_LFO_CONSUMPTION_RATE } from "@/lib/lfo/calculate";
-import { getFarmHouseHeadCounts } from "@/lib/lfo/head-counts";
-import { rethrowNavigation } from "@/lib/rethrow-navigation";
-import { getUserTimeZone } from "@/lib/user-time-zone";
-import { dateKeyFromDb } from "@/lib/visits/schedule";
 
 type Params = Promise<{ farmId: string }>;
 
 export default async function NewLfoForFarmPage({ params }: { params: Params }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+  await params;
 
-  const { farmId } = await params;
-  try {
-  const timeZone = await getUserTimeZone(session.user.id);
-
-  const farm = await prisma.farm.findFirst({
-    where: { id: farmId, userId: session.user.id, deletedAt: null },
-    include: {
-      houses: {
-        where: { deletedAt: null },
-        orderBy: { houseNumber: "asc" },
-      },
-      flocks: {
-        where: { flockStatus: "ACTIVE", deletedAt: null },
-        orderBy: { placementDate: "desc" },
-        include: {
-          houseFlocks: {
-            select: { houseId: true, catchDate: true, catchTime: true },
-          },
-        },
-      },
-    },
-  });
-
-  if (!farm) {
-    return (
-      <div>
-        <BackHeader href="/lfo" backLabel="LFOs" title="Last Feed Order" />
-        <Card>
-          <p className="text-sm text-stone-600">Opening Last Feed Order…</p>
-        </Card>
-      </div>
-    );
-  }
-  if (farm.flocks.length === 0 || farm.houses.length === 0) {
-    redirect("/lfo/new");
-  }
-
-  const headCounts = await getFarmHouseHeadCounts(farm.id);
-  const catchByHouse = new Map<
-    string,
-    { catchDate: Date | null; catchTime: string | null; flockCatch: Date | null }
-  >();
-  for (const flock of farm.flocks) {
-    const flockCatch = flock.actualCatchDate ?? flock.projectedCatchDate ?? null;
-    for (const hf of flock.houseFlocks) {
-      if (catchByHouse.has(hf.houseId)) continue;
-      catchByHouse.set(hf.houseId, {
-        catchDate: hf.catchDate,
-        catchTime: hf.catchTime,
-        flockCatch,
-      });
-    }
-  }
-
-  function catchPrefill(houseId: string): { catchDate: string; catchTime: string } {
-    const info = catchByHouse.get(houseId);
-    if (!info?.catchTime) return { catchDate: "", catchTime: "" };
-    const catchDate = info.catchDate ?? info.flockCatch;
-    return {
-      catchDate: catchDate ? dateKeyFromDb(catchDate) : "",
-      catchTime: info.catchTime,
-    };
-  }
-
-  async function submit(formData: FormData) {
-    "use server";
-    return createLastFeedOrderAction(farmId, formData);
-  }
-
-  const today = appTodayKey(undefined, timeZone);
-
+  // LFOs live in this browser. OfflineNav fills the form from the snapshot.
   return (
     <div>
-      <BackHeader href="/lfo/new" backLabel="Choose farm" title={farm.farmName} />
-
+      <BackHeader href="/lfo" backLabel="LFOs" title="Last Feed Order" />
       <Card>
-        <LfoInventoryForm
-          action={submit}
-          farmName={farm.farmName}
-          orderDate={today}
-          consumptionRate={DEFAULT_LFO_CONSUMPTION_RATE}
-          submitLabel="Save LFO"
-          houses={farm.houses.map((h) => {
-            const catchParts = catchPrefill(h.id);
-            return {
-              houseId: h.id,
-              houseNumber: h.houseNumber,
-              binAPounds: 0,
-              binBPounds: 0,
-              catchDate: catchParts.catchDate,
-              catchTime: catchParts.catchTime,
-              headCount: headCounts.get(h.id) ?? 0,
-            };
-          })}
-        />
+        <p className="text-sm text-stone-600">Opening Last Feed Order…</p>
       </Card>
     </div>
   );
-  } catch (error) {
-    rethrowNavigation(error);
-    return (
-      <div>
-        <BackHeader href="/lfo" backLabel="LFOs" title="Last Feed Order" />
-        <Card>
-          <p className="text-sm text-stone-600">Opening Last Feed Order…</p>
-        </Card>
-      </div>
-    );
-  }
 }

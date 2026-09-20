@@ -14,18 +14,27 @@ const ui = read("src/components/ui.tsx");
 assert.match(ui, /text-\[28px\] font-extrabold/);
 assert.match(ui, /min-h-\[52px\]/);
 assert.match(ui, /rounded-\[14px\].*p-4/);
+assert.match(ui, /className="mb-3 flex items-center justify-between gap-3"/);
+assert.doesNotMatch(ui, /md:mb-6/);
 
 const nav = read("src/components/AppNav.tsx");
 assert.match(nav, /size=\{22\}/);
 assert.match(nav, /text-\[12px\]/);
 assert.match(nav, /min-h-\[52px\]/);
 
-const dashboard = read("src/app/(dashboard)/page.tsx");
+const dashboard = read("src/components/DashboardHome.tsx");
 assert.match(dashboard, /text-\[28px\] font-extrabold/);
 assert.match(dashboard, /text-\[20px\] font-bold/);
+assert.match(dashboard, /mt-3 text-\[20px\] font-bold/);
 
-const tools = read("src/app/(dashboard)/tools/page.tsx");
+const tools = read("src/components/ToolsView.tsx");
 assert.match(tools, /text-\[28px\] font-extrabold/);
+assert.match(tools, /space-y-3/);
+assert.match(tools, /<div className="mb-3">/);
+assert.doesNotMatch(tools, /md:mb-6/);
+
+const reportTabs = read("src/components/ReportsTypeTabs.tsx");
+assert.match(reportTabs, /mb-3 flex flex-wrap gap-2/);
 
 const followUps = read("src/components/FollowUpsDueList.tsx");
 assert.match(followUps, /text-\[15px\]/);

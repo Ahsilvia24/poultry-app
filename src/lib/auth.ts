@@ -1,13 +1,10 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import type { Session } from "next-auth";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { clearActiveSession, isActiveSession, rotateActiveSession } from "@/lib/active-session";
-import { isDeviceId } from "@/lib/device-id";
+import { clearActiveSession, isActiveSession } from "@/lib/active-session";
 import { applyHostedEnv } from "@/lib/hosted-env";
 import { authConfig, isAuthDevBypassEnabled } from "@/lib/auth.config";
-import { prisma } from "@/lib/prisma";
 
 applyHostedEnv();
 
@@ -22,15 +19,11 @@ const DEV_USER_EMAIL = () =>
 
 async function resolveDevBypassSession(): Promise<Session | null> {
   if (!isAuthDevBypassEnabled()) return null;
-  const user = await prisma.user.findUnique({
-    where: { email: DEV_USER_EMAIL() },
-  });
-  if (!user) return null;
   return {
     user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
+      id: "dev-bypass",
+      email: DEV_USER_EMAIL(),
+      name: "Dev",
     },
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   };
@@ -48,25 +41,8 @@ const nextAuth = NextAuth({
       async authorize(raw) {
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
-
-        const user = await prisma.user.findUnique({
-          where: { email: parsed.data.email.toLowerCase() },
-        });
-        if (!user) return null;
-
-        const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
-        if (!valid) return null;
-
-        const sessionId = await rotateActiveSession(
-          user.id,
-          isDeviceId(parsed.data.deviceId) ? parsed.data.deviceId : undefined,
-        );
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          sessionId,
-        };
+        // Passwords live on the phone. Hosted Auth.js credentials are unused.
+        return null;
       },
     }),
   ],

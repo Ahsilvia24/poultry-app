@@ -46,7 +46,7 @@ function ReportFarmFilterTile({
   rangeKey: string;
 }) {
   return (
-    <Card className="mb-6">
+    <Card className="mb-3">
       <div className="grid gap-3">
         <input type="hidden" name="type" value={type} />
         <div className="flex items-center gap-2">
@@ -256,7 +256,7 @@ export function ReportsView({
       <div>
         <PageHeader title="Reports" />
         <ReportsTypeTabs active="field-log" onSelect={onSelectType} />
-        <Card className="mb-6">
+        <Card className="mb-3">
           <form className="grid gap-3" onSubmit={onFilter}>
             <input type="hidden" name="type" value="field-log" />
             <ReportDateRangeFields

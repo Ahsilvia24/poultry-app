@@ -301,7 +301,7 @@ export function MortalityCharts({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <Card>
         <TileHeader
           title="Mortality by Percentage"

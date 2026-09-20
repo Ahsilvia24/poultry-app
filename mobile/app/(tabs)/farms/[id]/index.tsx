@@ -1280,8 +1280,8 @@ export default function FarmDetailScreen() {
                     style={{
                       color: "#fff",
                       fontWeight: "800",
-                      fontSize: 12,
-                      lineHeight: 14,
+                      fontSize: 15,
+                      lineHeight: 16,
                       textAlign: "center",
                     }}
                     numberOfLines={2}

@@ -238,7 +238,7 @@ export default function ToolsScreen() {
       >
         <View
           style={{
-            marginBottom: 16,
+            marginBottom: 12,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
@@ -292,8 +292,9 @@ export default function ToolsScreen() {
                 <Text
                   style={{
                     color: "#fff",
-                    fontSize: 12,
+                    fontSize: 15,
                     fontWeight: "800",
+                    lineHeight: 16,
                     textAlign: "center",
                   }}
                   numberOfLines={2}

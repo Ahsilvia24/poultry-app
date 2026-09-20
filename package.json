@@ -6,17 +6,9 @@
     "dev": "node scripts/dev-with-env.mjs",
     "build": "node scripts/vercel-build.mjs",
     "start": "next start",
-    "lint": "eslint",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:setup": "prisma db push && tsx prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "lint": "eslint"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.10.0",
-    "@prisma/client": "^6.19.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
@@ -28,7 +20,6 @@
     "next-auth": "^5.0.0-beta.32",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
-    "pg": "^8.23.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.10.1",
@@ -40,22 +31,17 @@
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
-    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
-    "prisma": "^6.19.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
     "typescript": "^5"
   },
   "allowScripts": {
-    "@prisma/client": true,
-    "@prisma/engines": true,
     "core-js": true,
     "esbuild": true,
-    "prisma": true,
     "sharp": true,
     "unrs-resolver": true
   }

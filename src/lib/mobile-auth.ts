@@ -2,7 +2,6 @@ import { SignJWT, jwtVerify } from "jose";
 import { NextRequest } from "next/server";
 import { isActiveSession } from "@/lib/active-session";
 import { applyHostedEnv } from "@/lib/hosted-env";
-import { prisma } from "@/lib/prisma";
 
 const encoder = new TextEncoder();
 
@@ -52,17 +51,8 @@ export async function requireMobileUser(req: NextRequest) {
   const token = header.slice(7);
   const payload = await verifyMobileToken(token);
   if (!payload) return null;
-
-  try {
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user) {
-      return { id: payload.sub, email: payload.email, name: payload.name };
-    }
-    if (!(await isActiveSession(user.id, payload.sid))) return null;
-    return user;
-  } catch {
-    return { id: payload.sub, email: payload.email, name: payload.name };
-  }
+  if (!(await isActiveSession(payload.sub, payload.sid))) return null;
+  return { id: payload.sub, email: payload.email, name: payload.name };
 }
 
 export function jsonError(message: string, status = 400) {

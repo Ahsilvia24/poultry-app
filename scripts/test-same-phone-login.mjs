@@ -60,10 +60,11 @@ assert.equal(cookieHeaderHasSessionToken("theme=light"), false);
 assert.equal(cookieNamesHaveSessionToken(["__Secure-authjs.session-token"]), true);
 
 const login = read("src/app/(auth)/login/page.tsx");
-assert.match(login, /ensureDeviceId/);
-assert.match(login, /deviceId: ensureDeviceId\(\)/);
+assert.match(login, /\/api\/local-session/);
+assert.match(login, /verifyLocalAccount/);
 assert.match(login, /This sign-in expired/);
 assert.doesNotMatch(login, /signed in on another device/);
+assert.doesNotMatch(login, /ensureDeviceId/);
 
 const loginRoute = read("src/app/api/login/route.ts");
 assert.match(loginRoute, /sameBrowser: cookieHeaderHasSessionToken/);
@@ -80,8 +81,8 @@ assert.match(read("src/app/(auth)/login/page.tsx"), />Email</);
 assert.doesNotMatch(read("src/app/(auth)/login/page.tsx"), /Email or name/);
 assert.doesNotMatch(read("public/signed-out.html"), /Email or name/);
 
-assert.match(read("src/components/OfflineProvider.tsx"), /bindThisPhone/);
-assert.match(read("src/app/api/offline/device/route.ts"), /bindActiveDevice/);
+assert.match(read("src/components/OfflineProvider.tsx"), /persistOwnerFarms/);
+assert.doesNotMatch(read("src/components/OfflineProvider.tsx"), /bindThisPhone/);
 assert.match(read("src/lib/active-session.ts"), /activeDeviceId/);
 assert.match(read("prisma/schema.prisma"), /activeDeviceId/);
 
