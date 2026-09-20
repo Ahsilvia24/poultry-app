@@ -61,7 +61,7 @@ export function FarmDetailView({
         <FarmInfoEditor farm={farm} />
       </div>
 
-      <div className="mb-6">
+      <div className="mb-3">
         <FarmQuickLinks
           farmId={farm.id}
           completeFlocks={model.activeFlocks}
@@ -70,7 +70,7 @@ export function FarmDetailView({
       </div>
 
       <ExclusiveSwipeGroup>
-        <div className="mt-3 grid items-start gap-3 md:grid-cols-2">
+        <div className="grid items-start gap-3 md:grid-cols-2">
           {model.houseCards.map((card) => {
             const house = houseById.get(card.houseId);
             if (!house) return null;

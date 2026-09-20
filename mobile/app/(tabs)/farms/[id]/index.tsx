@@ -1177,7 +1177,7 @@ export default function FarmDetailScreen() {
           </View>
         </View>
 
-        <View style={{ marginBottom: 16 }}>
+        <View style={{ marginBottom: 12 }}>
           <Card>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {(
