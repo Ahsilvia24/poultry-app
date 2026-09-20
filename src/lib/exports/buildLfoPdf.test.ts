@@ -82,6 +82,8 @@ describe("buildLfoPdfBytes", () => {
     const extracted = await extractText(pdf, { mergePages: true });
     const text = extracted.text;
     assert.match(text, /House summary/);
+    assert.match(text, /H1-/);
+    assert.match(text, /H8-/);
     assert.match(text, /Total Feed/);
     assert.match(text, /House 1/);
     assert.match(text, /House 8/);

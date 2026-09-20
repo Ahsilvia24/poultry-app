@@ -7,6 +7,7 @@ const MARGIN = 36;
 const GUTTER = 16;
 /** Tight label column so values sit next to the label, freeing a second house. */
 const LABEL_W = 136;
+const SUMMARY_COLS = 4;
 const ROW_H = 13;
 const TITLE_H = 18;
 const SECTION_GAP = 8;
@@ -128,19 +129,50 @@ export async function buildLfoPdfBytes(payload: LfoSharePayload): Promise<Uint8A
 
   const order = payload.sections.find((section) => section.title === "Order");
   const houses = payload.sections.filter(isHouseSection);
-  const summary = payload.sections.find((section) => section.title === "House summary");
+  const summaryLines =
+    payload.houseSummaryLines.length > 0
+      ? payload.houseSummaryLines
+      : (payload.sections.find((section) => section.title === "House summary")?.rows ?? []).map(
+          (row) => row.label,
+        );
   const rightX = MARGIN + colW + GUTTER;
 
-  const headerH = Math.max(
-    order ? measureSection(order, colW) : 0,
-    summary ? measureSection(summary, colW) : 0,
-  );
-  if (headerH > 0) {
-    need(headerH);
-    const startY = y;
-    if (order) drawSectionAt(order, MARGIN, colW, startY);
-    if (summary) drawSectionAt(summary, rightX, colW, startY);
-    y = startY - headerH;
+  const measureSummary = () => {
+    if (summaryLines.length === 0) return 0;
+    return TITLE_H + Math.ceil(summaryLines.length / SUMMARY_COLS) * ROW_H + SECTION_GAP;
+  };
+
+  const drawSummaryAt = (startY: number) => {
+    let cy = startY;
+    page.drawText("House summary", { x: MARGIN, y: cy - 12, size: 12, font: bold, color: ink });
+    cy -= TITLE_H;
+    const cellW = contentW / SUMMARY_COLS;
+    for (let i = 0; i < summaryLines.length; i += SUMMARY_COLS) {
+      for (let c = 0; c < SUMMARY_COLS && i + c < summaryLines.length; c++) {
+        const line = pdfSafe(summaryLines[i + c] ?? "");
+        if (!line) continue;
+        page.drawText(line, {
+          x: MARGIN + c * cellW,
+          y: cy - 10,
+          size: 10,
+          font: bold,
+          color: ink,
+        });
+      }
+      cy -= ROW_H;
+    }
+    return cy - SECTION_GAP;
+  };
+
+  if (summaryLines.length > 0) {
+    const h = measureSummary();
+    need(h);
+    y = drawSummaryAt(y);
+  }
+  if (order) {
+    const h = measureSection(order, colW);
+    need(h);
+    y = drawSectionAt(order, MARGIN, colW, y);
   }
 
   for (let i = 0; i < houses.length; i += 2) {
