@@ -212,49 +212,6 @@ export function SettingsScreen() {
             {shownSave.text}
           </p>
         )}
-        {confirmLeave ? (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={SIGN_OUT_UNSAVED_CONFIRM}
-            className="max-w-md rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-center"
-          >
-            <p className="text-sm font-semibold text-amber-950">{SIGN_OUT_UNSAVED_BODY}</p>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-6">
-              <button
-                type="button"
-                disabled={leaving}
-                onClick={() => setConfirmLeave(false)}
-                className={actionLinkClass}
-              >
-                {SIGN_OUT_STAY}
-              </button>
-              <button
-                type="button"
-                disabled={leaving}
-                onClick={() => {
-                  void leaveApp(true);
-                }}
-                className={actionLinkClass}
-              >
-                {leaving ? "Signing out…" : SIGN_OUT_ANYWAY}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center justify-center gap-8">
-            <button
-              type="button"
-              disabled={leaving}
-              onClick={() => {
-                void leaveApp();
-              }}
-              className={actionLinkClass}
-            >
-              {leaving ? "Signing out…" : "Sign out"}
-            </button>
-          </div>
-        )}
       </div>
 
       <Card className="mb-5 max-w-2xl">
@@ -528,6 +485,50 @@ export function SettingsScreen() {
           <ChangePasswordForm />
         </div>
       </Card>
+
+      <div className="relative z-10 mt-6 flex flex-col items-center gap-3 px-1">
+        {confirmLeave ? (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={SIGN_OUT_UNSAVED_CONFIRM}
+            className="max-w-md rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-center"
+          >
+            <p className="text-sm font-semibold text-amber-950">{SIGN_OUT_UNSAVED_BODY}</p>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-6">
+              <button
+                type="button"
+                disabled={leaving}
+                onClick={() => setConfirmLeave(false)}
+                className={actionLinkClass}
+              >
+                {SIGN_OUT_STAY}
+              </button>
+              <button
+                type="button"
+                disabled={leaving}
+                onClick={() => {
+                  void leaveApp(true);
+                }}
+                className={actionLinkClass}
+              >
+                {leaving ? "Signing out…" : SIGN_OUT_ANYWAY}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={leaving}
+            onClick={() => {
+              void leaveApp();
+            }}
+            className={actionLinkClass}
+          >
+            {leaving ? "Signing out…" : "Sign out"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
