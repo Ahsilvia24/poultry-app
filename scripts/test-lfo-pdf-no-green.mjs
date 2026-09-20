@@ -15,7 +15,9 @@ assert.doesNotMatch(download, /downloadReportPdf/);
 assert.doesNotMatch(download, /Field/);
 assert.doesNotMatch(download, /autoTable/);
 
-assert.match(builder, /LABEL_W = 136/);
+assert.match(builder, /LABEL_VALUE_GAP = 6/);
+assert.match(builder, /rowLayout/);
+assert.doesNotMatch(builder, /LABEL_W/);
 assert.match(builder, /SUMMARY_COLS = 4/);
 assert.doesNotMatch(builder, /FIRST_PAGE_HOUSES/);
 assert.match(builder, /HelveticaBold/);
@@ -23,7 +25,9 @@ assert.doesNotMatch(builder, /fillColor/);
 assert.doesNotMatch(builder, /autoTable/);
 assert.doesNotMatch(builder, /\[4, 120, 87\]/);
 
-assert.match(expo, /LABEL_W = 136/);
+assert.match(expo, /LABEL_VALUE_GAP = 6/);
+assert.match(expo, /rowLayout/);
+assert.doesNotMatch(expo, /LABEL_W/);
 assert.match(expo, /SUMMARY_COLS = 4/);
 assert.doesNotMatch(expo, /FIRST_PAGE_HOUSES/);
 assert.doesNotMatch(expo, /fillColor/);

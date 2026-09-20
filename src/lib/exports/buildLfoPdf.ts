@@ -5,8 +5,8 @@ const PAGE_W = 612;
 const PAGE_H = 792;
 const MARGIN = 36;
 const GUTTER = 16;
-/** Tight label column so values sit next to the label, freeing a second house. */
-const LABEL_W = 136;
+/** Gap between the muted label and the bold value on the same row. */
+const LABEL_VALUE_GAP = 6;
 const SUMMARY_COLS = 4;
 const ROW_H = 13;
 const TITLE_H = 18;
@@ -76,15 +76,23 @@ export async function buildLfoPdfBytes(payload: LfoSharePayload): Promise<Uint8A
     if (y - h < MARGIN) newPage();
   };
 
-  const valueW = (width: number) => Math.max(48, width - LABEL_W);
+  const rowLayout = (label: string, value: string, width: number) => {
+    const labelText = pdfSafe(label);
+    const labelW = labelText ? font.widthOfTextAtSize(labelText, 10) : 0;
+    const valueX = Math.min(
+      labelW + (labelText ? LABEL_VALUE_GAP : 0),
+      Math.max(0, width - 48),
+    );
+    const vw = Math.max(48, width - valueX);
+    const valueLines = value ? wrapText(value, bold, 10, vw) : [""];
+    return { labelText, valueX, valueLines };
+  };
 
   const measureSection = (section: LfoShareSection, width: number) => {
     let h = TITLE_H;
-    const vw = valueW(width);
     for (const row of section.rows) {
-      const labelLines = wrapText(row.label, font, 10, LABEL_W - 8);
-      const valueLines = row.value ? wrapText(row.value, bold, 10, vw) : [""];
-      h += Math.max(labelLines.length, valueLines.length) * ROW_H;
+      const { valueLines } = rowLayout(row.label, row.value, width);
+      h += Math.max(1, valueLines.length) * ROW_H;
     }
     return h + SECTION_GAP;
   };
@@ -93,20 +101,17 @@ export async function buildLfoPdfBytes(payload: LfoSharePayload): Promise<Uint8A
     let cy = startY;
     page.drawText(pdfSafe(section.title), { x, y: cy - 12, size: 12, font: bold, color: ink });
     cy -= TITLE_H;
-    const vw = valueW(width);
     for (const row of section.rows) {
-      const labelLines = wrapText(row.label, font, 10, LABEL_W - 8);
-      const valueLines = row.value ? wrapText(row.value, bold, 10, vw) : [""];
-      const lineCount = Math.max(labelLines.length, valueLines.length);
+      const { labelText, valueX, valueLines } = rowLayout(row.label, row.value, width);
+      const lineCount = Math.max(1, valueLines.length);
       for (let i = 0; i < lineCount; i++) {
-        const label = labelLines[i] ?? "";
-        const value = valueLines[i] ?? "";
-        if (label) {
-          page.drawText(label, { x, y: cy - 10, size: 10, font, color: muted });
+        if (i === 0 && labelText) {
+          page.drawText(labelText, { x, y: cy - 10, size: 10, font, color: muted });
         }
+        const value = valueLines[i] ?? "";
         if (value) {
           page.drawText(value, {
-            x: x + LABEL_W,
+            x: x + valueX,
             y: cy - 10,
             size: 10,
             font: bold,
