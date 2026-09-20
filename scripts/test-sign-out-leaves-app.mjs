@@ -59,13 +59,15 @@ assert.match(bounce, /redirect\("\/api\/leave"\)/);
 
 const leave = read("public/signed-out.html");
 assert.match(leave, /Farms stay on this phone/);
-assert.match(leave, /\/api\/login/);
-assert.match(leave, /\/login\?signedout=1/);
-assert.match(leave, /forgot-password/);
+assert.match(leave, /location\.replace\("\/login"\)/);
+assert.match(leave, /href="\/login"/);
+assert.doesNotMatch(leave, /\/api\/login/);
+assert.doesNotMatch(leave, /signedout=1/);
+assert.doesNotMatch(leave, /forgot-password/);
 assert.doesNotMatch(leave, /_next/);
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v18/);
+assert.match(sw, /poultrytech-offline-v19/);
 assert.match(sw, /responseLooksLikeLogin/);
 assert.doesNotMatch(sw, /PRECACHE\s*=\s*\[[\s\S]*?"\/",/);
 assert.match(sw, /SIGNED_OUT_FLAG/);
@@ -89,8 +91,8 @@ assert.match(proxy, /\/api\/leave/);
 assert.match(proxy, /pathname === "\/signed-out"/);
 
 const leaveApi = read("src/app/api/leave/route.ts");
-assert.match(leaveApi, /signed-out\.html/);
-assert.match(leaveApi, /text\/html/);
+assert.match(leaveApi, /NextResponse\.redirect/);
+assert.match(leaveApi, /\/login/);
 assert.match(leaveApi, /export async function GET/);
 assert.match(leaveApi, /export async function POST/);
 assert.match(leaveApi, /expireSessionCookies/);

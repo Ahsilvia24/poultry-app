@@ -11,7 +11,7 @@ assert.ok(existsSync(join(root, "public/sw.js")), "missing public/sw.js");
 assert.ok(existsSync(join(root, "public/offline.html")), "missing public/offline.html");
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v18/);
+assert.match(sw, /poultrytech-offline-v19/);
 assert.match(sw, /shouldAdoptFromOldCache/);
 assert.match(sw, /\/service-forms\/placement\.pdf/);
 assert.match(sw, /\/service-forms\/prebrood\.pdf/);

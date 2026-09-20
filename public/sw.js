@@ -6,7 +6,7 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v18";
+const CACHE = "poultrytech-offline-v19";
 const NETWORK_MS = 1500;
 const OPEN_MS = 8000;
 const SIGNED_OUT_FLAG = "/__poultrytech-signed-out";

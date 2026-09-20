@@ -125,8 +125,9 @@ assert.match(registerRoute, /putSessionOnResponse/);
 assert.doesNotMatch(registerRoute, /establishWebSession/);
 
 const leave = read("public/signed-out.html");
-assert.match(leave, /cache: "no-store"/);
-assert.match(leave, /forgot-password/);
+assert.match(leave, /location\.replace\("\/login"\)/);
+assert.doesNotMatch(leave, /\/api\/login/);
+assert.match(read("src/app/api/leave/route.ts"), /Cache-Control.*no-store/);
 
 const login = read("src/app/(auth)/login/page.tsx");
 assert.match(login, /credentials: "include"/);

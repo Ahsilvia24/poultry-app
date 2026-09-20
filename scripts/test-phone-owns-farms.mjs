@@ -88,6 +88,8 @@ assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Get farms from w
 assert.match(read("src/app/(auth)/login/page.tsx"), /verifyLocalAccount/);
 assert.match(read("src/app/(auth)/login/page.tsx"), /getLocalAccount/);
 assert.doesNotMatch(read("src/app/(auth)/login/page.tsx"), /\/api\/login/);
+assert.doesNotMatch(read("public/signed-out.html"), /\/api\/login/);
+assert.match(read("public/signed-out.html"), /location\.replace\("\/login"\)/);
 assert.match(read("src/app/(auth)/register/page.tsx"), /upsertLocalAccount/);
 assert.doesNotMatch(read("src/app/(auth)/register/page.tsx"), /\/api\/register/);
 assert.match(read("src/app/api/local-session/route.ts"), /createLocalWebSession/);
