@@ -34,6 +34,9 @@ assert.match(expoDash, /pathname: "\/\(tabs\)\/farms\/\[id\]"/);
 const quick = readFileSync(join(root, "src/components/FarmQuickLinks.tsx"), "utf8");
 assert.match(quick, /Service Farm/);
 assert.match(quick, /\/farms\/\$\{farmId\}\/service/);
+assert.match(quick, /flex h-12 w-full/);
+assert.doesNotMatch(quick, /min-h-12/);
+assert.match(quick, /text-\[13px\]/);
 
 const servicePage = readFileSync(
   join(root, "src/app/(dashboard)/farms/[id]/service/page.tsx"),

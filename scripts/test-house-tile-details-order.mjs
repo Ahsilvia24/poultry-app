@@ -61,6 +61,10 @@ assert.match(phone, /minHeight: 44/);
 assert.doesNotMatch(phone, /minHeight: 56/);
 assert.match(phone, /minWidth: 72/);
 assert.match(phone, /minWidth: 96/);
+const phoneQuickAt = phone.indexOf('label: "Service Farm"');
+assert.ok(phoneQuickAt >= 0);
+assert.match(phone.slice(phoneQuickAt, phoneQuickAt + 2200), /height: 44/);
+assert.match(phone.slice(phoneQuickAt, phoneQuickAt + 2200), /paddingVertical: 0/);
 
 const empty = groupWeeklyMortalityRows([]);
 assert.deepEqual(

@@ -1266,13 +1266,14 @@ export default function FarmDetailScreen() {
                   onPress={link.onPress}
                   style={{
                     width: "31.5%",
+                    height: 44,
                     minHeight: 44,
                     borderRadius: 10,
                     backgroundColor: colors.accentDark,
                     alignItems: "center",
                     justifyContent: "center",
                     paddingHorizontal: 4,
-                    paddingVertical: 8,
+                    paddingVertical: 0,
                   }}
                 >
                   <Text
@@ -1280,6 +1281,7 @@ export default function FarmDetailScreen() {
                       color: "#fff",
                       fontWeight: "800",
                       fontSize: 12,
+                      lineHeight: 14,
                       textAlign: "center",
                     }}
                     numberOfLines={2}
