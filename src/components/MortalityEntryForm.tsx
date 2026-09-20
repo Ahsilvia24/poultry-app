@@ -675,7 +675,7 @@ export function MortalityEntryForm({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="space-y-2">
         <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
           <div className="flex w-max flex-nowrap gap-2">

@@ -58,8 +58,8 @@ export const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: colors.text,
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 8,
+    marginBottom: 8,
   },
   subtitle: {
     fontFamily: sans,

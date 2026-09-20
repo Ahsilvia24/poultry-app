@@ -13,7 +13,7 @@ export function ReportsTypeTabs({
   onSelect: (key: ReportTypeKey) => void;
 }) {
   return (
-    <div className="mb-4 flex flex-wrap gap-2">
+    <div className="mb-3 flex flex-wrap gap-2">
       {REPORT_TYPES.map((tab) => (
         <button
           key={tab.key}

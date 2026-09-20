@@ -101,7 +101,7 @@ export function FieldLogReport({
       </div>
       {notice ? <p className="mb-3 text-sm font-semibold text-red-800">{notice}</p> : null}
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {weeks.map((week) => (
           <div key={week.weekStart} className="overflow-x-auto">
             <div className="min-w-[56rem] grid grid-cols-7 divide-x divide-stone-200 rounded-lg border border-stone-200">

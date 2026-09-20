@@ -120,7 +120,7 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-3 md:mb-6">
+    <div className="mb-3 flex items-center justify-between gap-3">
       <div className="min-w-0">
         <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-stone-900 md:text-3xl">{title}</h1>
         {subtitle ? <p className="mt-1 text-[15px] text-stone-600">{subtitle}</p> : null}
@@ -159,7 +159,7 @@ export function BackHeader({
   subtitle?: string;
 }) {
   return (
-    <div className="mb-6">
+    <div className="mb-3">
       <div className="flex items-center justify-between gap-3">
         <ReplicaLink
           href={href}

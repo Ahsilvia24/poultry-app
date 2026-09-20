@@ -36,7 +36,7 @@ assert.match(quick, /Service Farm/);
 assert.match(quick, /\/farms\/\$\{farmId\}\/service/);
 assert.match(quick, /flex h-12 w-full/);
 assert.doesNotMatch(quick, /min-h-12/);
-assert.match(quick, /text-\[13px\]/);
+assert.match(quick, /text-\[15px\] font-extrabold/);
 
 const farmDetail = readFileSync(join(root, "src/components/FarmDetailView.tsx"), "utf8");
 assert.match(farmDetail, /<div className="mb-3">/);

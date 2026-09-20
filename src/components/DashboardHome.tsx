@@ -40,7 +40,7 @@ export function DashboardHome({
 
   return (
     <div>
-      <div className="mb-3 md:mb-6">
+      <div className="mb-3">
         <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-stone-900 md:text-3xl">
           Dashboard
         </h1>
@@ -127,10 +127,10 @@ export function DashboardHome({
         </Card>
       </div>
 
-      <h2 className="mt-8 text-[20px] font-bold">Active Farms</h2>
+      <h2 className="mt-3 text-[20px] font-bold">Active Farms</h2>
       <DashboardFarmCards farms={data?.farmCards ?? []} />
 
-      <h2 className="mt-8 text-[20px] font-bold">Import</h2>
+      <h2 className="mt-3 text-[20px] font-bold">Import</h2>
       <div className="mt-3">
         <DashboardScheduleImport imports={scheduleImports} />
       </div>
