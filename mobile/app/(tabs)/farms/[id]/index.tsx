@@ -1328,12 +1328,6 @@ export default function FarmDetailScreen() {
                     >
                       <Text style={{ fontSize: 17, fontWeight: "800" }}>
                         House {h.houseNumber}
-                        {h.ageDays != null ? (
-                          <Text style={{ fontWeight: "600", color: colors.muted }}>
-                            {" "}
-                            {h.ageDays}d
-                          </Text>
-                        ) : null}
                       </Text>
                       <Text
                         style={{
@@ -1344,15 +1338,7 @@ export default function FarmDetailScreen() {
                           color: colors.muted,
                         }}
                       >
-                        {h.cumulativeMortality != null
-                          ? `M ${formatNumber(h.cumulativeMortality)}`
-                          : ""}
-                        {h.cumulativeMortality != null && h.projectedHeadCount != null
-                          ? " · "
-                          : ""}
-                        {h.projectedHeadCount != null
-                          ? `PHC ${formatNumber(h.projectedHeadCount)}`
-                          : ""}
+                        {h.ageDays != null ? `${h.ageDays} Days Old` : ""}
                       </Text>
                     </Pressable>
                     <Pressable
@@ -1510,14 +1496,25 @@ export default function FarmDetailScreen() {
                         </View>
                         <Metric
                           columns={3}
-                          label="Remaining"
-                          value={formatNumber(h.remainingBirdCount)}
+                          label="Mortality"
+                          value={
+                            h.placedBirdCount != null
+                              ? `${formatNumber(h.cumulativeMortality)}\n(${formatPct(h.cumulativeMortalityPct)})`
+                              : formatNumber(h.cumulativeMortality)
+                          }
                         />
                         <Metric
                           columns={3}
-                          label="PHC"
-                          value={formatNumber(h.projectedHeadCount)}
-                          hint="150 catch crew"
+                          label="Proj. Mort."
+                          value={
+                            h.projectedMortality != null &&
+                            h.placedBirdCount != null &&
+                            h.placedBirdCount > 0
+                              ? `${formatNumber(h.projectedMortality)}\n(${formatPct(
+                                  (h.projectedMortality / h.placedBirdCount) * 100,
+                                )})`
+                              : formatNumber(h.projectedMortality)
+                          }
                         />
                       </View>
                       <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
@@ -1579,25 +1576,14 @@ export default function FarmDetailScreen() {
                         </View>
                         <Metric
                           columns={3}
-                          label="Mortality"
-                          value={
-                            h.placedBirdCount != null
-                              ? `${formatNumber(h.cumulativeMortality)}\n(${formatPct(h.cumulativeMortalityPct)})`
-                              : formatNumber(h.cumulativeMortality)
-                          }
+                          label="Remaining"
+                          value={formatNumber(h.remainingBirdCount)}
                         />
                         <Metric
                           columns={3}
-                          label="Proj. Mort."
-                          value={
-                            h.projectedMortality != null &&
-                            h.placedBirdCount != null &&
-                            h.placedBirdCount > 0
-                              ? `${formatNumber(h.projectedMortality)}\n(${formatPct(
-                                  (h.projectedMortality / h.placedBirdCount) * 100,
-                                )})`
-                              : formatNumber(h.projectedMortality)
-                          }
+                          label="PHC"
+                          value={formatNumber(h.projectedHeadCount)}
+                          hint="150 catch crew"
                         />
                       </View>
                     </View>

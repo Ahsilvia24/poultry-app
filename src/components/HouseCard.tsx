@@ -178,18 +178,9 @@ export function HouseCard({
               className="min-w-0 flex-1 text-left text-inherit"
               aria-label={`Edit house ${house.houseNumber}`}
             >
-              <p className="text-lg font-bold">
-                House {house.houseNumber}
-                {birdAgeDays != null ? (
-                  <span className="font-semibold text-stone-600"> {birdAgeDays}d</span>
-                ) : null}
-              </p>
+              <p className="text-lg font-bold">House {house.houseNumber}</p>
               <p className="mt-0.5 min-h-5 text-sm font-semibold text-stone-600">
-                {metrics ? `M ${formatNumber(metrics.cumulative)}` : ""}
-                {metrics && projectedHeadCount != null ? " · " : ""}
-                {projectedHeadCount != null
-                  ? `PHC ${formatNumber(projectedHeadCount)}`
-                  : ""}
+                {birdAgeDays != null ? `${birdAgeDays} Days Old` : ""}
               </p>
             </button>
             <div className="flex shrink-0 items-start gap-2">
@@ -256,17 +247,22 @@ export function HouseCard({
                 ) : null}
               </div>
               <div>
-                <p className="text-[13px] text-stone-500">Remaining</p>
-                <p className="mt-0.5 text-[15px] font-bold">
-                  {metrics ? formatNumber(metrics.remaining) : "—"}
+                <p className="text-[13px] text-stone-500">Mortality</p>
+                <p className="mt-0.5 min-h-[22px] text-[15px] font-bold tabular-nums">
+                  {mortalityValue}
+                </p>
+                <p className="min-h-[22px] text-[15px] font-bold leading-snug tabular-nums">
+                  {mortalityPct ? `(${mortalityPct})` : "\u00a0"}
                 </p>
               </div>
               <div>
-                <p className="text-[13px] text-stone-500">PHC</p>
-                <p className="mt-0.5 text-[15px] font-bold">
-                  {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
+                <p className="text-[13px] text-stone-500">Proj. Mort.</p>
+                <p className="mt-0.5 min-h-[22px] text-[15px] font-bold tabular-nums">
+                  {projMortValue}
                 </p>
-                <p className="mt-0.5 text-[11px] text-stone-400">150 catch crew</p>
+                <p className="min-h-[22px] text-[15px] font-bold leading-snug tabular-nums">
+                  {projMortPct ? `(${projMortPct})` : "\u00a0"}
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -287,22 +283,17 @@ export function HouseCard({
                 ) : null}
               </div>
               <div>
-                <p className="text-[13px] text-stone-500">Mortality</p>
-                <p className="mt-0.5 min-h-[22px] text-[15px] font-bold tabular-nums">
-                  {mortalityValue}
-                </p>
-                <p className="min-h-[22px] text-[15px] font-bold leading-snug tabular-nums">
-                  {mortalityPct ? `(${mortalityPct})` : "\u00a0"}
+                <p className="text-[13px] text-stone-500">Remaining</p>
+                <p className="mt-0.5 text-[15px] font-bold">
+                  {metrics ? formatNumber(metrics.remaining) : "—"}
                 </p>
               </div>
               <div>
-                <p className="text-[13px] text-stone-500">Proj. Mort.</p>
-                <p className="mt-0.5 min-h-[22px] text-[15px] font-bold tabular-nums">
-                  {projMortValue}
+                <p className="text-[13px] text-stone-500">PHC</p>
+                <p className="mt-0.5 text-[15px] font-bold">
+                  {projectedHeadCount != null ? formatNumber(projectedHeadCount) : "—"}
                 </p>
-                <p className="min-h-[22px] text-[15px] font-bold leading-snug tabular-nums">
-                  {projMortPct ? `(${projMortPct})` : "\u00a0"}
-                </p>
+                <p className="mt-0.5 text-[11px] text-stone-400">150 catch crew</p>
               </div>
             </div>
           </button>
