@@ -30,7 +30,7 @@ export type FollowUpDueItem = {
 };
 
 function itemKey(f: FollowUpDueItem) {
-  return `${f.farmId}-${f.date}-${f.label}`;
+  return `${f.farmId}-${f.flockId}-${f.date}-${f.label}`;
 }
 
 export function FollowUpsDueList({

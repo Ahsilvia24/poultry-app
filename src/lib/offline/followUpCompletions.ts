@@ -13,19 +13,28 @@ export function completionRowKey(farmId: string, date: string, label: string) {
   return `${farmId}|${date}|${normalizeScheduleLabel(label)}`;
 }
 
-/** Farm + visit label + flock ID. Survives a one-day rebuild shift. */
+/** One checkbox per farm + visit + flock + day. */
 export function rememberScheduleCheckKey(item: {
   farmId: string;
   label: string;
+  date?: string;
+  flockId?: string | null;
   flockNumber?: string | null;
 }) {
-  return `${item.farmId}|${normalizeScheduleLabel(item.label)}|${item.flockNumber ?? ""}`;
+  return `${item.farmId}|${normalizeScheduleLabel(item.label)}|${item.flockId ?? item.flockNumber ?? ""}|${item.date ?? ""}`;
 }
 
 /** Keep a check visible while a later snapshot still says it is open. */
 export function applyIncomingScheduleChecks(
   prev: Record<string, boolean>,
-  items: Array<{ farmId: string; label: string; flockNumber?: string | null; completed: boolean }>,
+  items: Array<{
+    farmId: string;
+    label: string;
+    date?: string;
+    flockId?: string | null;
+    flockNumber?: string | null;
+    completed: boolean;
+  }>,
   userCleared: Set<string>,
 ): Record<string, boolean> {
   const next = { ...prev };
@@ -73,6 +82,9 @@ export function gatherFollowUpCompletions(
     });
   };
   for (const row of stored ?? []) add(row);
+  // A present list — even empty after uncheck — is the phone's answer.
+  // Seeding from frozen/SSR flags is what brought farms back and blocked uncheck.
+  if (stored != null) return out;
   for (const row of dashboardRows ?? []) {
     if (!row.completed) continue;
     add({
@@ -100,16 +112,25 @@ export function upsertFollowUpCompletion(
 ): OfflineFollowUpCompletion[] {
   const label = normalizeScheduleLabel(input.label);
   const current = stored ?? [];
-  const sameVisit = (row: OfflineFollowUpCompletion) => {
-    if (row.farmId !== input.farmId || !labelsMatch(row.label, label)) return false;
-    if (row.date === input.date) return true;
-    if (input.flockId && row.flockId && row.flockId === input.flockId) return true;
-    return false;
-  };
-  const kept = current.filter((row) => !sameVisit(row));
-  if (!input.completed && !input.dismissed) return kept;
+  const exactDate = (row: OfflineFollowUpCompletion) =>
+    row.farmId === input.farmId && labelsMatch(row.label, label) && row.date === input.date;
+  const sameFlockLabel = (row: OfflineFollowUpCompletion) =>
+    row.farmId === input.farmId &&
+    labelsMatch(row.label, label) &&
+    Boolean(input.flockId && row.flockId && row.flockId === input.flockId);
+
+  const keptExact = current.filter((row) => !exactDate(row));
+  if (!input.completed && !input.dismissed) {
+    if (current.some(exactDate)) return keptExact;
+    // Date shifted one day: clear the one leftover. Two house dates keep theirs.
+    const leftovers = keptExact.filter(sameFlockLabel);
+    if (leftovers.length === 1) {
+      return keptExact.filter((row) => row !== leftovers[0]);
+    }
+    return keptExact;
+  }
   return [
-    ...kept,
+    ...keptExact,
     {
       farmId: input.farmId,
       flockId: input.flockId ?? null,
@@ -180,21 +201,28 @@ export function bindCompletionsToSchedule(
   return map;
 }
 
-/** Keep local checkoffs when a remote snapshot lands, and seed from dashboard flags. */
+/** Keep local checkoffs when a remote snapshot lands. Seed flags only if none stored. */
 export function seedAndMergeFollowUpCompletions(
   snapshot: OfflineSnapshot,
   previous?: OfflineSnapshot | null,
 ): OfflineSnapshot {
+  const hasStored =
+    previous?.followUpCompletions != null || snapshot.followUpCompletions != null;
+  const stored = hasStored
+    ? [...(previous?.followUpCompletions ?? []), ...(snapshot.followUpCompletions ?? [])]
+    : undefined;
   return {
     ...snapshot,
     followUpCompletions: gatherFollowUpCompletions(
-      [...(previous?.followUpCompletions ?? []), ...(snapshot.followUpCompletions ?? [])],
-      [
-        ...(previous?.dashboard?.todaysSchedule ?? []),
-        ...(previous?.dashboard?.upcomingSchedule ?? []),
-        ...(snapshot.dashboard?.todaysSchedule ?? []),
-        ...(snapshot.dashboard?.upcomingSchedule ?? []),
-      ],
+      stored,
+      stored == null
+        ? [
+            ...(previous?.dashboard?.todaysSchedule ?? []),
+            ...(previous?.dashboard?.upcomingSchedule ?? []),
+            ...(snapshot.dashboard?.todaysSchedule ?? []),
+            ...(snapshot.dashboard?.upcomingSchedule ?? []),
+          ]
+        : undefined,
     ),
   };
 }

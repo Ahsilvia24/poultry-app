@@ -4395,12 +4395,24 @@ export function toggleFollowUpCompletion(input: {
       : [input.label];
 
   if (!input.completed) {
+    let deleted = 0;
     for (const label of labels) {
-      db.runSync(
+      const result = db.runSync(
         `DELETE FROM follow_up_completions
          WHERE farm_id = ? AND scheduled_date = ? AND label = ?`,
         [input.farmId, input.scheduledDate, label],
       );
+      deleted += result.changes ?? 0;
+    }
+    if (deleted === 0 && input.flockId) {
+      const leftovers = db.getAllSync<{ id: string }>(
+        `SELECT id FROM follow_up_completions
+         WHERE farm_id = ? AND flock_id = ? AND label IN (${labels.map(() => "?").join(", ")})`,
+        [input.farmId, input.flockId, ...labels],
+      );
+      if (leftovers.length === 1) {
+        db.runSync(`DELETE FROM follow_up_completions WHERE id = ?`, [leftovers[0]!.id]);
+      }
     }
     return { success: true as const };
   }

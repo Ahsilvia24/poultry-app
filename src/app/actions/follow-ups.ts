@@ -68,13 +68,25 @@ export async function toggleFollowUpCompletionAction(raw: unknown) {
       },
     });
   } else {
-    await prisma.followUpCompletion.deleteMany({
+    const deleted = await prisma.followUpCompletion.deleteMany({
       where: {
         farmId: parsed.data.farmId,
         scheduledDate,
         label: { in: labels },
       },
     });
+    if (deleted.count === 0 && parsed.data.flockId) {
+      const leftovers = await prisma.followUpCompletion.findMany({
+        where: {
+          farmId: parsed.data.farmId,
+          flockId: parsed.data.flockId,
+          label: { in: labels },
+        },
+      });
+      if (leftovers.length === 1) {
+        await prisma.followUpCompletion.delete({ where: { id: leftovers[0]!.id } });
+      }
+    }
   }
 
   revalidatePath("/");
