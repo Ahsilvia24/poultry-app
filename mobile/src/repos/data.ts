@@ -4396,11 +4396,19 @@ export function toggleFollowUpCompletion(input: {
 
   if (!input.completed) {
     for (const label of labels) {
-      db.runSync(
-        `DELETE FROM follow_up_completions
-         WHERE farm_id = ? AND scheduled_date = ? AND label = ?`,
-        [input.farmId, input.scheduledDate, label],
-      );
+      if (input.flockId) {
+        db.runSync(
+          `DELETE FROM follow_up_completions
+           WHERE farm_id = ? AND flock_id = ? AND label = ?`,
+          [input.farmId, input.flockId, label],
+        );
+      } else {
+        db.runSync(
+          `DELETE FROM follow_up_completions
+           WHERE farm_id = ? AND scheduled_date = ? AND label = ?`,
+          [input.farmId, input.scheduledDate, label],
+        );
+      }
     }
     return { success: true as const };
   }

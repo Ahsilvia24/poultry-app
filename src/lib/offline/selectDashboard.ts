@@ -283,7 +283,7 @@ export function rebuildFarmCardsFromReplica(
 export function rebuildDashboardScheduleFromReplica(
   snapshot: OfflineSnapshot,
   source: DashboardData | null | undefined,
-  fallback?: DashboardData | null,
+  _fallback?: DashboardData | null,
 ): DashboardData {
   const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
   const today = appToday(undefined, timeZone);
@@ -295,14 +295,15 @@ export function rebuildDashboardScheduleFromReplica(
   const upcomingSchedule: ScheduleRow[] = [];
   const upcomingCatches: CatchRow[] = [];
   const seenFarmCatchKeys = new Set<string>();
-  const gathered = gatherFollowUpCompletions(snapshot.followUpCompletions, [
-    ...(snapshot.dashboard?.todaysSchedule ?? []),
-    ...(snapshot.dashboard?.upcomingSchedule ?? []),
-    ...(source?.todaysSchedule ?? []),
-    ...(source?.upcomingSchedule ?? []),
-    ...(fallback?.todaysSchedule ?? []),
-    ...(fallback?.upcomingSchedule ?? []),
-  ]);
+  const gathered = gatherFollowUpCompletions(
+    snapshot.followUpCompletions,
+    snapshot.followUpCompletions == null
+      ? [
+          ...(snapshot.dashboard?.todaysSchedule ?? []),
+          ...(snapshot.dashboard?.upcomingSchedule ?? []),
+        ]
+      : undefined,
+  );
   const overdueStart = addCalendarDays(todayKey, -UPCOMING_OUTLOOK_DAYS);
   const endKey = addCalendarDays(todayKey, UPCOMING_OUTLOOK_DAYS);
 

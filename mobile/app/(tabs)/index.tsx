@@ -51,8 +51,8 @@ const VISIBLE_SCHEDULE_ROWS = 6;
 const SCHEDULE_ROW_STEP = 32;
 const SCHEDULE_LIST_MAX_HEIGHT = VISIBLE_SCHEDULE_ROWS * SCHEDULE_ROW_STEP;
 
-function scheduleItemKey(item: Pick<ScheduleItem, "farmId" | "date" | "label">) {
-  return `${item.farmId}-${item.date}-${item.label}`;
+function scheduleItemKey(item: Pick<ScheduleItem, "farmId" | "flockId" | "date" | "label">) {
+  return `${item.farmId}-${item.flockId}-${item.date}-${item.label}`;
 }
 
 /** One-finger scroll inside a dashboard schedule tile when there are more than 6 farms. */

@@ -8,7 +8,10 @@ import {
 import { remainingHousesOnSameFarm } from "@/lib/housePropagate";
 import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
 import { asDate, asDateKey, localNoonFromKey } from "@/lib/offline/dates";
-import { upsertFollowUpCompletion } from "@/lib/offline/followUpCompletions";
+import {
+  labelsMatch,
+  upsertFollowUpCompletion,
+} from "@/lib/offline/followUpCompletions";
 import {
   isLocalRecordId,
   localCreatedHouseFlockId,
@@ -139,6 +142,15 @@ function activeFarmFlockId(snapshot: OfflineSnapshot, farmId: string) {
   );
 }
 
+function sameFrozenScheduleRow(
+  item: { farmId: string; date: string; label: string; flockId?: string | null },
+  extra: { farmId: string; date: string; label: string; flockId?: string | null },
+) {
+  if (item.farmId !== extra.farmId || !labelsMatch(item.label, extra.label)) return false;
+  if (item.date === extra.date) return true;
+  return Boolean(extra.flockId && item.flockId && item.flockId === extra.flockId);
+}
+
 function patchDashboardFollowUp(
   snapshot: OfflineSnapshot,
   extra: {
@@ -146,6 +158,7 @@ function patchDashboardFollowUp(
     date: string;
     label: string;
     completed: boolean;
+    flockId?: string | null;
     dismissed?: boolean;
   },
 ): OfflineSnapshot {
@@ -157,24 +170,10 @@ function patchDashboardFollowUp(
     if (!Array.isArray(list)) continue;
     dashboard[key] = (
       extra.dismissed
-        ? list.filter(
-            (item) =>
-              !(
-                item.farmId === extra.farmId &&
-                item.date === extra.date &&
-                item.label === extra.label
-              ),
+        ? list.filter((item) => !sameFrozenScheduleRow(item, extra))
+        : list.map((item) =>
+            sameFrozenScheduleRow(item, extra) ? { ...item, completed: extra.completed } : item,
           )
-        : list.map((item) => {
-            if (
-              item.farmId === extra.farmId &&
-              item.date === extra.date &&
-              item.label === extra.label
-            ) {
-              return { ...item, completed: extra.completed };
-            }
-            return item;
-          })
     ) as typeof list;
   }
   return { ...snapshot, dashboard };

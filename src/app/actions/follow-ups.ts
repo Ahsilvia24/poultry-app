@@ -71,8 +71,10 @@ export async function toggleFollowUpCompletionAction(raw: unknown) {
     await prisma.followUpCompletion.deleteMany({
       where: {
         farmId: parsed.data.farmId,
-        scheduledDate,
         label: { in: labels },
+        ...(parsed.data.flockId
+          ? { flockId: parsed.data.flockId }
+          : { scheduledDate }),
       },
     });
   }

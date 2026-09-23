@@ -22,15 +22,24 @@ export function completionKey(dateKey: string, label: string) {
 export function rememberScheduleCheckKey(item: {
   farmId: string;
   label: string;
+  date?: string;
+  flockId?: string | null;
   flockNumber?: string | null;
 }) {
   const label = item.label === "Weight Projection" ? "Weight Proj." : item.label;
-  return `${item.farmId}|${label}|${item.flockNumber ?? ""}`;
+  return `${item.farmId}|${label}|${item.flockId ?? item.flockNumber ?? ""}|${item.date ?? ""}`;
 }
 
 export function applyIncomingScheduleChecks(
   prev: Record<string, boolean>,
-  items: Array<{ farmId: string; label: string; flockNumber?: string | null; completed: boolean }>,
+  items: Array<{
+    farmId: string;
+    label: string;
+    date?: string;
+    flockId?: string | null;
+    flockNumber?: string | null;
+    completed: boolean;
+  }>,
   userCleared: Set<string>,
 ): Record<string, boolean> {
   const next = { ...prev };

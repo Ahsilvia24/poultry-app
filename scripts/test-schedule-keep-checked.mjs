@@ -19,7 +19,7 @@ const { appTodayKey } = await import(join(root, "src/lib/app-calendar.ts"));
 const { addDays, format } = await import("date-fns");
 const { completionKey } = await import(join(root, "src/lib/visits/schedule.ts"));
 
-const gathered = gatherFollowUpCompletions(
+const gatheredStored = gatherFollowUpCompletions(
   [{ farmId: "f1", date: "2026-09-14", label: "LFO", completedAt: "2026-09-14T15:00:00.000Z" }],
   [
     {
@@ -31,11 +31,22 @@ const gathered = gatherFollowUpCompletions(
     },
   ],
 );
-assert.equal(gathered.length, 2);
+assert.equal(gatheredStored.length, 1, "a stored list must not pick up frozen dashboard flags");
+
+const gatheredSeed = gatherFollowUpCompletions(undefined, [
+  {
+    farmId: "f1",
+    flockId: "fl1",
+    date: "2026-09-13",
+    label: "7 Day",
+    completed: true,
+  },
+]);
+assert.equal(gatheredSeed.length, 1);
 
 const exact = bindCompletionsToSchedule(
   [{ dateKey: "2026-09-14", label: "LFO", flockId: "fl1" }],
-  gathered,
+  gatheredStored,
   "f1",
 );
 assert.ok(exact.has(completionKey("2026-09-14", "LFO")));
@@ -257,21 +268,31 @@ assert.equal(
   false,
 );
 
+const placeKey = rememberScheduleCheckKey({
+  farmId: "farm-1",
+  label: "Placement",
+  flockNumber: "NEW8",
+  flockId: "flock-1",
+  date: todayKey,
+});
 const stickyPrev = applyIncomingScheduleChecks(
-  { "farm-1|Placement|NEW8": true },
-  [{ farmId: "farm-1", label: "Placement", flockNumber: "NEW8", completed: false }],
+  { [placeKey]: true },
+  [{ farmId: "farm-1", label: "Placement", flockNumber: "NEW8", flockId: "flock-1", date: todayKey, completed: false }],
   new Set(),
 );
-assert.equal(stickyPrev["farm-1|Placement|NEW8"], true);
-assert.equal(rememberScheduleCheckKey({ farmId: "farm-1", label: "Weight Projection", flockNumber: "A" }), "farm-1|Weight Proj.|A");
+assert.equal(stickyPrev[placeKey], true);
+assert.equal(
+  rememberScheduleCheckKey({ farmId: "farm-1", label: "Weight Projection", flockNumber: "A", date: "2026-09-14" }),
+  "farm-1|Weight Proj.|A|2026-09-14",
+);
 
-const userCleared = new Set(["farm-1|Placement|NEW8"]);
+const userCleared = new Set([placeKey]);
 const afterUserClear = applyIncomingScheduleChecks(
-  { "farm-1|Placement|NEW8": true },
-  [{ farmId: "farm-1", label: "Placement", flockNumber: "NEW8", completed: false }],
+  { [placeKey]: true },
+  [{ farmId: "farm-1", label: "Placement", flockNumber: "NEW8", flockId: "flock-1", date: todayKey, completed: false }],
   userCleared,
 );
-assert.equal(afterUserClear["farm-1|Placement|NEW8"], false);
+assert.equal(afterUserClear[placeKey], false);
 
 const withFallback = selectDashboard(
   {
@@ -286,13 +307,13 @@ const withFallback = selectDashboard(
 );
 assert.equal(
   withFallback.todaysSchedule.some((row) => row.label === "Placement" && row.completed),
-  true,
-  "server/initial checkoffs apply when the replica list is still open",
+  false,
+  "an empty replica list is not refilled from server/initial flags",
 );
 
 assert.match(read("src/lib/offline/applyWrites.ts"), /upsertFollowUpCompletion/);
 assert.match(read("src/lib/offline/selectDashboard.ts"), /bindCompletionsToSchedule/);
-assert.match(read("src/lib/offline/selectDashboard.ts"), /fallback\?\.todaysSchedule/);
+assert.match(read("src/lib/offline/selectDashboard.ts"), /followUpCompletions == null/);
 assert.match(read("src/lib/offline/buildSnapshot.ts"), /followUpCompletions/);
 assert.match(read("src/lib/offline/types.ts"), /followUpCompletions\?:/);
 assert.match(read("src/components/FollowUpsDueList.tsx"), /applyIncomingScheduleChecks/);
