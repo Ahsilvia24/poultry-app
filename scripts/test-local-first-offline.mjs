@@ -664,8 +664,11 @@ const remappedOutbox = remapOutboxItem(
   createAliases,
 );
 assert.equal(remappedOutbox.payload.farmId, "farm-server-9");
-assert.equal(canReplaceReplicaWithRemote(1), false);
-assert.equal(canReplaceReplicaWithRemote(0), true);
+assert.equal(canReplaceReplicaWithRemote(snapshot, 1), false);
+assert.equal(canReplaceReplicaWithRemote(snapshot, 0), false);
+assert.equal(canReplaceReplicaWithRemote(null, 0), true);
+assert.equal(canReplaceReplicaWithRemote({ ...snapshot, settings: null }, 0), false);
+assert.equal(canReplaceReplicaWithRemote(deletedFarm, 0), false);
 
 const farmActions = read("src/app/actions/farms.ts");
 assert.match(farmActions, /if \(options\?\.skipRedirect\) return \{ success: true as const, id: farm\.id, houses \}/);

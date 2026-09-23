@@ -12,6 +12,38 @@ export function snapshotHasFarmGraph(
   );
 }
 
+function listLength(value: unknown) {
+  return Array.isArray(value) ? value.length : 0;
+}
+
+/**
+ * True when this phone has no saved farm work yet.
+ * A v2 replica with deleted farms is not blank — delete-all must not re-seed.
+ */
+export function phoneReplicaIsBlank(snapshot: OfflineSnapshot | null | undefined) {
+  if (!snapshot) return true;
+  if (listLength(snapshot.farms) > 0) return false;
+  if (!snapshotHasFarmGraph(snapshot)) return true;
+  return (
+    listLength(snapshot.houses) === 0 &&
+    listLength(snapshot.flocks) === 0 &&
+    listLength(snapshot.houseFlocks) === 0 &&
+    listLength(snapshot.mortalities) === 0 &&
+    listLength(snapshot.visits) === 0 &&
+    listLength(snapshot.issues) === 0 &&
+    listLength(snapshot.litterEvents) === 0 &&
+    listLength(snapshot.feedDeliveries) === 0 &&
+    listLength(snapshot.lfos) === 0 &&
+    listLength(snapshot.lfoInventories) === 0 &&
+    listLength(snapshot.generatorLogs) === 0 &&
+    listLength(snapshot.serviceFormDrafts) === 0 &&
+    listLength(snapshot.serviceForms) === 0 &&
+    listLength(snapshot.followUpCompletions) === 0 &&
+    !snapshot.settings &&
+    !snapshot.dashboard
+  );
+}
+
 export function replicaPath(href: string): { pathname: string; search: string } {
   const url = new URL(href, "https://poultrytech.local");
   return { pathname: url.pathname, search: url.search };

@@ -72,7 +72,7 @@ async function fail(
   return { ok: false, pending: leftover.length, aliases, reason, error };
 }
 
-/** Upload every local write. Success when the outbox is empty. Snapshot pull is best-effort. */
+/** Upload leftover writes only. Never replace the phone replica with a website snapshot. */
 export async function syncPhoneToWebsite(): Promise<SyncPhoneResult> {
   try {
     return await withTimeout(syncPhoneToWebsiteOnce(), SYNC_OVERALL_MS);
