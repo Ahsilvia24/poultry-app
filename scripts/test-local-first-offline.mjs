@@ -667,27 +667,7 @@ assert.equal(remappedOutbox.payload.farmId, "farm-server-9");
 assert.equal(canReplaceReplicaWithRemote(snapshot, 1), false);
 assert.equal(canReplaceReplicaWithRemote(snapshot, 0), false);
 assert.equal(canReplaceReplicaWithRemote(null, 0), true);
-assert.equal(
-  canReplaceReplicaWithRemote(
-    {
-      ...snapshot,
-      farms: [],
-      houses: [],
-      flocks: [],
-      houseFlocks: [],
-      mortalities: [],
-      visits: [],
-      issues: [],
-      litterEvents: [],
-      feedDeliveries: [],
-      lfos: [],
-      lfoInventories: [],
-      generatorLogs: [],
-    },
-    0,
-  ),
-  true,
-);
+assert.equal(canReplaceReplicaWithRemote({ ...snapshot, settings: null }, 0), false);
 assert.equal(canReplaceReplicaWithRemote(deletedFarm, 0), false);
 
 const farmActions = read("src/app/actions/farms.ts");
