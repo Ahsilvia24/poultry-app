@@ -22,6 +22,8 @@ import { normalizeOwnerEmail } from "@/lib/offline/ownerEmail";
 import { unlockPhoneOwner } from "@/lib/offline/phoneUnlock";
 import { seedAndMergeFollowUpCompletions } from "@/lib/offline/followUpCompletions";
 import { seedAndMergeServiceForms } from "@/lib/offline/serviceForms";
+import { seedEmptyPhoneFromWebsite } from "@/lib/offline/seedEmptyPhone";
+import { uploadLeftoverWrites } from "@/lib/offline/uploadLeftoverWrites";
 import type { IdAliases } from "@/lib/offline/remapIds";
 import type { OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
 import { warmOfflineAssets } from "@/lib/offline/warmOfflineAssets";
@@ -98,15 +100,16 @@ export function OfflineProvider({
     if (owner) unlockPhoneOwner(owner);
     (async () => {
       await persistPhoneStorage();
-      const local =
-        (await loadLocalSnapshot(owner)) ??
-        (owner && ownerUserId
-          ? await ensureOwnerSnapshot({
-              email: owner,
-              userId: ownerUserId,
-              userName: ownerName || owner.split("@")[0] || "Tech",
-            })
-          : null);
+      let local = await loadLocalSnapshot(owner);
+      const seeded = await seedEmptyPhoneFromWebsite(owner);
+      if (seeded) local = seeded;
+      if (!local && owner && ownerUserId) {
+        local = await ensureOwnerSnapshot({
+          email: owner,
+          userId: ownerUserId,
+          userName: ownerName || owner.split("@")[0] || "Tech",
+        });
+      }
       const storedAliases = await loadIdAliases(owner);
       if (!cancelled && local) setSnapshot(seedAndMergeFollowUpCompletions(local));
       if (!cancelled) setAliases(storedAliases);
@@ -114,11 +117,24 @@ export function OfflineProvider({
       if (!cancelled) setReady(true);
       if (cancelled) return;
       void warmOfflineAssets();
+      void uploadLeftoverWrites(owner);
     })();
     return () => {
       cancelled = true;
     };
   }, [owner, ownerName, ownerUserId, rememberBackup]);
+
+  useEffect(() => {
+    const onOnline = () => {
+      void (async () => {
+        const seeded = await seedEmptyPhoneFromWebsite(owner);
+        if (seeded) replaceSnapshot(seeded);
+        await uploadLeftoverWrites(owner);
+      })();
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [owner, replaceSnapshot]);
 
   const value = useMemo(
     () => ({

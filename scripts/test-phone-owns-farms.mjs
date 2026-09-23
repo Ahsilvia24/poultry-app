@@ -81,6 +81,8 @@ assert.match(read("src/components/OfflineProvider.tsx"), /persistOwnerFarms/);
 assert.doesNotMatch(read("src/components/OfflineProvider.tsx"), /pullRemoteSnapshot/);
 assert.doesNotMatch(read("src/components/OfflineProvider.tsx"), /syncPhoneToWebsite/);
 assert.doesNotMatch(read("src/components/OfflineProvider.tsx"), /flushOutbox/);
+assert.match(read("src/components/OfflineProvider.tsx"), /seedEmptyPhoneFromWebsite/);
+assert.match(read("src/components/OfflineProvider.tsx"), /uploadLeftoverWrites/);
 assert.doesNotMatch(read("src/app/(dashboard)/page.tsx"), /getDashboardData/);
 assert.doesNotMatch(read("src/app/(dashboard)/page.tsx"), /from "@\/lib\/prisma"/);
 for (const rel of [

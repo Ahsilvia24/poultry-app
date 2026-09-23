@@ -44,6 +44,9 @@ assert.doesNotMatch(settings, /disabled=\{busy\}/);
 const provider = read("src/components/OfflineProvider.tsx");
 assert.doesNotMatch(provider, /syncNow/);
 assert.doesNotMatch(provider, /syncPhoneToWebsite/);
+assert.match(provider, /uploadLeftoverWrites/);
+assert.match(provider, /seedEmptyPhoneFromWebsite/);
+assert.match(provider, /addEventListener\("online"/);
 
 const flush = read("src/lib/offline/flushOutbox.ts");
 assert.match(flush, /evenIfOffline/);
