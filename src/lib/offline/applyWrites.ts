@@ -146,9 +146,11 @@ function sameFrozenScheduleRow(
   item: { farmId: string; date: string; label: string; flockId?: string | null },
   extra: { farmId: string; date: string; label: string; flockId?: string | null },
 ) {
-  if (item.farmId !== extra.farmId || !labelsMatch(item.label, extra.label)) return false;
-  if (item.date === extra.date) return true;
-  return Boolean(extra.flockId && item.flockId && item.flockId === extra.flockId);
+  return (
+    item.farmId === extra.farmId &&
+    item.date === extra.date &&
+    labelsMatch(item.label, extra.label)
+  );
 }
 
 function patchDashboardFollowUp(

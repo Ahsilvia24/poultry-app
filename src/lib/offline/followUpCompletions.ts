@@ -112,16 +112,25 @@ export function upsertFollowUpCompletion(
 ): OfflineFollowUpCompletion[] {
   const label = normalizeScheduleLabel(input.label);
   const current = stored ?? [];
-  const sameVisit = (row: OfflineFollowUpCompletion) => {
-    if (row.farmId !== input.farmId || !labelsMatch(row.label, label)) return false;
-    if (row.date === input.date) return true;
-    if (input.flockId && row.flockId && row.flockId === input.flockId) return true;
-    return false;
-  };
-  const kept = current.filter((row) => !sameVisit(row));
-  if (!input.completed && !input.dismissed) return kept;
+  const exactDate = (row: OfflineFollowUpCompletion) =>
+    row.farmId === input.farmId && labelsMatch(row.label, label) && row.date === input.date;
+  const sameFlockLabel = (row: OfflineFollowUpCompletion) =>
+    row.farmId === input.farmId &&
+    labelsMatch(row.label, label) &&
+    Boolean(input.flockId && row.flockId && row.flockId === input.flockId);
+
+  const keptExact = current.filter((row) => !exactDate(row));
+  if (!input.completed && !input.dismissed) {
+    if (current.some(exactDate)) return keptExact;
+    // Date shifted one day: clear the one leftover. Two house dates keep theirs.
+    const leftovers = keptExact.filter(sameFlockLabel);
+    if (leftovers.length === 1) {
+      return keptExact.filter((row) => row !== leftovers[0]);
+    }
+    return keptExact;
+  }
   return [
-    ...kept,
+    ...keptExact,
     {
       farmId: input.farmId,
       flockId: input.flockId ?? null,
