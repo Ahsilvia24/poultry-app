@@ -15,7 +15,9 @@ import {
   loadIdAliases,
   loadLatestBackup,
   loadLocalSnapshot,
+  loadOutbox,
   persistPhoneStorage,
+  saveOutbox,
 } from "@/lib/offline/idb";
 import { persistOwnerFarms } from "@/lib/offline/persistOwnerFarms";
 import { normalizeOwnerEmail } from "@/lib/offline/ownerEmail";
@@ -24,6 +26,9 @@ import { seedAndMergeFollowUpCompletions } from "@/lib/offline/followUpCompletio
 import { seedAndMergeServiceForms } from "@/lib/offline/serviceForms";
 import { seedEmptyPhoneFromWebsite } from "@/lib/offline/seedEmptyPhone";
 import { uploadLeftoverWrites } from "@/lib/offline/uploadLeftoverWrites";
+import { coalesceFormWrite } from "@/lib/offline/applyWrites";
+import { flushOutbox, reportUnsynced } from "@/lib/offline/flushOutbox";
+import { syncPhoneToWebsite, type SyncPhoneResult } from "@/lib/offline/syncPhoneToWebsite";
 import type { IdAliases } from "@/lib/offline/remapIds";
 import type { OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
 import { warmOfflineAssets } from "@/lib/offline/warmOfflineAssets";
@@ -36,6 +41,7 @@ type OfflineContextValue = {
   lastBackupAt: string | null;
   aliases: IdAliases;
   enqueue: (item: Omit<OfflineOutboxItem, "id" | "createdAt">) => Promise<void>;
+  syncNow: () => Promise<SyncPhoneResult>;
   replaceSnapshot: (snapshot: OfflineSnapshot) => void;
   patchSnapshot: (fn: (snapshot: OfflineSnapshot) => OfflineSnapshot) => void;
 };
@@ -56,10 +62,13 @@ export function OfflineProvider({
   const owner = normalizeOwnerEmail(ownerEmail ?? "");
   const [snapshot, setSnapshot] = useState<OfflineSnapshot | null>(null);
   const [ready, setReady] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
   const [aliases, setAliases] = useState<IdAliases>({});
 
   const replicaGen = useRef(0);
+  const outboxTail = useRef(Promise.resolve());
 
   const rememberBackup = useCallback(async (email: string) => {
     const latest = await loadLatestBackup(email);
@@ -91,8 +100,52 @@ export function OfflineProvider({
     });
   }, [owner, rememberBackup]);
 
-  const enqueue = useCallback(async (_item: Omit<OfflineOutboxItem, "id" | "createdAt">) => {
-    // Phone-only. Writes already land through patchSnapshot.
+  const enqueue = useCallback((item: Omit<OfflineOutboxItem, "id" | "createdAt">) => {
+    const full: OfflineOutboxItem = {
+      ...item,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+    };
+    const run = async () => {
+      const items = await loadOutbox();
+      const next = coalesceFormWrite(items, full);
+      setPendingCount(next.length);
+      await saveOutbox(next);
+      void reportUnsynced(true);
+      if (typeof navigator === "undefined" || navigator.onLine === false) return;
+      const flushed = await flushOutbox();
+      setAliases(flushed.aliases);
+      setPendingCount(flushed.pending);
+    };
+    const queued = outboxTail.current.then(run, run);
+    outboxTail.current = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queued;
+  }, []);
+
+  const syncNow = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const result = await syncPhoneToWebsite();
+      setAliases(result.aliases);
+      setPendingCount(result.pending);
+      return result;
+    } catch {
+      const leftover = await loadOutbox();
+      const stored = await loadIdAliases();
+      setPendingCount(leftover.length);
+      setAliases(stored);
+      return {
+        ok: false as const,
+        pending: leftover.length,
+        aliases: stored,
+        reason: "leftover" as const,
+      };
+    } finally {
+      setSyncing(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -117,7 +170,10 @@ export function OfflineProvider({
       if (!cancelled) setReady(true);
       if (cancelled) return;
       void warmOfflineAssets();
-      void uploadLeftoverWrites(owner);
+      const queued = await loadOutbox();
+      if (!cancelled) setPendingCount(queued.length);
+      await uploadLeftoverWrites(owner);
+      if (!cancelled) setPendingCount((await loadOutbox()).length);
     })();
     return () => {
       cancelled = true;
@@ -130,6 +186,7 @@ export function OfflineProvider({
         const seeded = await seedEmptyPhoneFromWebsite(owner);
         if (seeded) replaceSnapshot(seeded);
         await uploadLeftoverWrites(owner);
+        setPendingCount((await loadOutbox()).length);
       })();
     };
     window.addEventListener("online", onOnline);
@@ -140,15 +197,27 @@ export function OfflineProvider({
     () => ({
       snapshot,
       ready,
-      syncing: false,
-      pendingCount: 0,
+      syncing,
+      pendingCount,
       lastBackupAt,
       aliases,
       enqueue,
+      syncNow,
       replaceSnapshot,
       patchSnapshot,
     }),
-    [snapshot, ready, lastBackupAt, aliases, enqueue, replaceSnapshot, patchSnapshot],
+    [
+      snapshot,
+      ready,
+      syncing,
+      pendingCount,
+      lastBackupAt,
+      aliases,
+      enqueue,
+      syncNow,
+      replaceSnapshot,
+      patchSnapshot,
+    ],
   );
 
   return <OfflineContext.Provider value={value}>{children}</OfflineContext.Provider>;
@@ -162,6 +231,12 @@ const missingOffline: OfflineContextValue = {
   lastBackupAt: null,
   aliases: {},
   enqueue: async () => undefined,
+  syncNow: async () => ({
+    ok: false,
+    pending: 0,
+    aliases: {},
+    reason: "unreachable",
+  }),
   replaceSnapshot: () => undefined,
   patchSnapshot: () => undefined,
 };

@@ -24,6 +24,12 @@ import {
   SIGN_OUT_UNSAVED_CONFIRM,
 } from "@/lib/offline/phoneFarmSave";
 import {
+  SYNC_WORKING,
+  syncPhoneResultMessage,
+  type SyncPhoneResult,
+} from "@/lib/offline/syncPhoneToWebsite";
+import { SYNC_UI_MS } from "@/lib/offline/syncTimeout";
+import {
   SettingsChipInput,
   SettingsFieldRow as SettingsRow,
   SettingsValueChip as ValueChip,
@@ -47,15 +53,24 @@ export function SettingsScreen() {
     syncing,
     ready,
     replaceSnapshot,
+    enqueue,
+    syncNow,
   } = useOffline();
   const farmSave = phoneFarmSaveStatus({ ready, syncing, pendingCount, lastBackupAt });
+  const [syncingNow, setSyncingNow] = useState(false);
+  const [lastSync, setLastSync] = useState<SyncPhoneResult | null>(null);
+  const shownSave =
+    syncingNow
+      ? { kind: "saving" as const, text: SYNC_WORKING }
+      : lastSync && !(lastSync.ok && pendingCount > 0)
+        ? syncPhoneResultMessage(lastSync)
+        : farmSave;
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupNote, setBackupNote] = useState<string | null>(null);
   const [confirmImport, setConfirmImport] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [leaving, setLeaving] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
-  const shownSave = farmSave;
   const values = snapshot
     ? settingsFormValues(snapshot)
     : {
@@ -90,9 +105,46 @@ export function SettingsScreen() {
     event.preventDefault();
     const write = settingsWriteFromForm(new FormData(event.currentTarget));
     patchSnapshot((current) => applySettings(current, write));
+    void enqueue({ kind: "updateSettings", payload: write });
     setSaved(true);
     if (savedTimer.current != null) window.clearTimeout(savedTimer.current);
     savedTimer.current = window.setTimeout(() => setSaved(false), 2500);
+  }
+
+  function onSync() {
+    if (syncingNow || leaving) return;
+    void (async () => {
+      setSyncingNow(true);
+      setLastSync(null);
+      let settled = false;
+      const timer = window.setTimeout(() => {
+        if (settled) return;
+        setLastSync({
+          ok: false,
+          pending: pendingCount || 1,
+          aliases: {},
+          reason: "leftover",
+        });
+        setSyncingNow(false);
+      }, SYNC_UI_MS);
+      try {
+        const result = await syncNow();
+        settled = true;
+        setLastSync(result);
+      } catch {
+        settled = true;
+        setLastSync({
+          ok: false,
+          pending: pendingCount || 1,
+          aliases: {},
+          reason: "unreachable",
+        });
+      } finally {
+        settled = true;
+        window.clearTimeout(timer);
+        setSyncingNow(false);
+      }
+    })();
   }
 
   async function leaveApp(force = false) {
@@ -212,6 +264,14 @@ export function SettingsScreen() {
             {shownSave.text}
           </p>
         )}
+        <Button
+          type="button"
+          compact
+          disabled={leaving || syncingNow || !ready}
+          onClick={onSync}
+        >
+          {syncingNow ? "Syncing…" : "Sync data"}
+        </Button>
       </div>
 
       <Card className="mb-5 max-w-2xl">

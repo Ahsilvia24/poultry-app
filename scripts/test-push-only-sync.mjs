@@ -105,10 +105,11 @@ const provider = read("src/components/OfflineProvider.tsx");
 assert.match(provider, /seedEmptyPhoneFromWebsite/);
 assert.match(provider, /uploadLeftoverWrites/);
 assert.match(provider, /addEventListener\("online"/);
+assert.match(provider, /syncNow/);
+assert.match(provider, /syncPhoneToWebsite/);
+assert.match(provider, /saveOutbox/);
 assert.doesNotMatch(provider, /pullRemoteSnapshot/);
-assert.doesNotMatch(provider, /flushOutbox/);
-assert.doesNotMatch(provider, /syncPhoneToWebsite/);
-assert.doesNotMatch(provider, /syncNow/);
+assert.doesNotMatch(provider, /replaceSnapshot\(result\.snapshot\)/);
 
 const seed = read("src/lib/offline/seedEmptyPhone.ts");
 assert.match(seed, /canReplaceReplicaWithRemote/);
@@ -130,7 +131,9 @@ assert.match(sync, /snapshot: null/);
 assert.doesNotMatch(sync, /await pullRemoteSnapshot/);
 
 const settings = read("src/components/SettingsScreen.tsx");
-assert.doesNotMatch(settings, /Sync data/);
+assert.match(settings, /Sync data/);
+assert.match(settings, /syncNow/);
+assert.match(settings, /onSync/);
 assert.doesNotMatch(settings, /Get farms from website/);
 assert.match(settings, /IMPORT_APP_DATA/);
 

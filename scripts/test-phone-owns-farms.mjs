@@ -79,8 +79,8 @@ assert.doesNotMatch(read("src/lib/offline/signOutLocal.ts"), /clearLocalReplica/
 assert.match(read("src/lib/offline/signOutLocal.ts"), /lockPhoneOwner/);
 assert.match(read("src/components/OfflineProvider.tsx"), /persistOwnerFarms/);
 assert.doesNotMatch(read("src/components/OfflineProvider.tsx"), /pullRemoteSnapshot/);
-assert.doesNotMatch(read("src/components/OfflineProvider.tsx"), /syncPhoneToWebsite/);
-assert.doesNotMatch(read("src/components/OfflineProvider.tsx"), /flushOutbox/);
+assert.match(read("src/components/OfflineProvider.tsx"), /syncPhoneToWebsite/);
+assert.match(read("src/components/OfflineProvider.tsx"), /flushOutbox/);
 assert.match(read("src/components/OfflineProvider.tsx"), /seedEmptyPhoneFromWebsite/);
 assert.match(read("src/components/OfflineProvider.tsx"), /uploadLeftoverWrites/);
 assert.doesNotMatch(read("src/app/(dashboard)/page.tsx"), /getDashboardData/);
@@ -98,7 +98,7 @@ for (const rel of [
 }
 assert.match(read("src/components/SettingsScreen.tsx"), /EXPORT_ALL_APP_DATA/);
 assert.match(read("src/components/SettingsScreen.tsx"), /IMPORT_APP_DATA/);
-assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Sync data/);
+assert.match(read("src/components/SettingsScreen.tsx"), /Sync data/);
 assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Get farms from website/);
 assert.match(read("src/app/(auth)/login/page.tsx"), /verifyLocalAccount/);
 assert.match(read("src/app/(auth)/login/page.tsx"), /getLocalAccount/);

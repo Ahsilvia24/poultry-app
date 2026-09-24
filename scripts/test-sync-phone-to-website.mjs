@@ -33,8 +33,10 @@ assert.match(ping, /status: 401/);
 assert.match(ping, /ensureWeightProjectionVisitType/);
 
 const settings = read("src/components/SettingsScreen.tsx");
-assert.doesNotMatch(settings, /Sync data/);
-assert.doesNotMatch(settings, /syncNow/);
+assert.match(settings, /Sync data/);
+assert.match(settings, /syncNow/);
+assert.match(settings, /onSync/);
+assert.match(settings, /setSyncingNow/);
 assert.match(settings, /signOutLocalApp/);
 assert.match(settings, /EXPORT_ALL_APP_DATA/);
 assert.match(settings, /actionLinkClass/);
@@ -42,11 +44,12 @@ assert.match(settings, /disabled=\{leaving\}/);
 assert.doesNotMatch(settings, /disabled=\{busy\}/);
 
 const provider = read("src/components/OfflineProvider.tsx");
-assert.doesNotMatch(provider, /syncNow/);
-assert.doesNotMatch(provider, /syncPhoneToWebsite/);
+assert.match(provider, /syncNow/);
+assert.match(provider, /syncPhoneToWebsite/);
 assert.match(provider, /uploadLeftoverWrites/);
 assert.match(provider, /seedEmptyPhoneFromWebsite/);
 assert.match(provider, /addEventListener\("online"/);
+assert.doesNotMatch(provider, /pullRemoteSnapshot/);
 
 const flush = read("src/lib/offline/flushOutbox.ts");
 assert.match(flush, /evenIfOffline/);
@@ -97,8 +100,8 @@ assert.ok(SYNC_OVERALL_MS >= FLUSH_OVERALL_MS, "Sync must wait for the flush, no
 assert.ok(SYNC_UI_MS <= 12_000, "Uploading must not sit through a full flush");
 assert.ok(SIGN_OUT_OVERALL_MS < SYNC_OVERALL_MS, "leave must be faster than a full sync");
 assert.match(sync, /flushOutbox\(\{ evenIfOffline: true \}\)/);
-assert.doesNotMatch(settings, /setSyncingNow/);
-assert.doesNotMatch(settings, /reason: "leftover"/);
+assert.match(settings, /setSyncingNow/);
+assert.match(settings, /reason: "leftover"/);
 
 const started = Date.now();
 let timedOut = false;
