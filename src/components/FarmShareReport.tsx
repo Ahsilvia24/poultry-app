@@ -6,13 +6,11 @@ import {
 } from "@/components/SettingsLayout";
 import { Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { downloadReportPdf } from "@/lib/exports/pdf";
+import { shareFarmShareSheet } from "@/lib/reports/farm-share-image";
 import {
   ALL_FARM_SHARE_FIELDS,
   FARM_SHARE_FIELDS,
   farmShareCheckboxLabel,
-  farmShareFilename,
-  farmSharePdfBlocks,
   firstShareFarmId,
   selectFarmShare,
   shareFarms,
@@ -44,11 +42,7 @@ export function FarmShareReport({
 
   function sharePdf() {
     if (!model || selected.size === 0) return;
-    downloadReportPdf({
-      title: model.farmName,
-      filename: farmShareFilename(model.farmName),
-      blocks: farmSharePdfBlocks(model, fields),
-    });
+    void shareFarmShareSheet(model, fields);
   }
 
   return (

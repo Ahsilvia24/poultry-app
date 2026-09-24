@@ -19,6 +19,9 @@ const {
   shareFarms,
   toggleShareField,
 } = await import(join(root, "src/lib/reports/farm-share.ts"));
+const { farmShareImageFilename, farmShareSheetRows } = await import(
+  join(root, "src/lib/reports/farm-share-image.ts")
+);
 const { reportsHref, resolveReportType, REPORT_TYPES } = await import(
   join(root, "src/lib/reports/types.ts")
 );
@@ -242,7 +245,17 @@ assert.deepEqual(
 );
 assert.equal(farmShareFilename("Oak Ridge"), "Oak Ridge Info.pdf");
 assert.equal(farmShareFilename("Oak Poultry"), "Oak Poultry Info.pdf");
+assert.equal(farmShareImageFilename("Oak Poultry"), "Oak Poultry Info.jpg");
 assert.doesNotMatch(farmShareFilename("Oak Poultry"), /-/);
+
+const sheet = farmShareSheetRows(model, ALL_FARM_SHARE_FIELDS);
+assert.equal(sheet[0]?.kind, "title");
+assert.equal(sheet[0]?.text, "Oak Ridge");
+assert.deepEqual(
+  sheet.filter((row) => row.kind === "heading").map((row) => row.text),
+  ["Feed Off (-10)", "Feed Up (-5)", "Catch Times"],
+);
+assert.match(sheet.find((row) => row.kind === "line")?.text ?? "", /^H1  Sat, Sep 26/);
 
 const afterShare = {
   farmId: "farm-old",
@@ -263,8 +276,8 @@ assert.match(tile, /text-left/);
 assert.match(tile, /Unselect all/);
 assert.match(tile, /Select all/);
 assert.match(tile, /shareFarms/);
-assert.match(tile, /downloadReportPdf/);
-assert.match(tile, /farmSharePdfBlocks/);
+assert.match(tile, /shareFarmShareSheet/);
+assert.doesNotMatch(tile, /downloadReportPdf/);
 assert.doesNotMatch(tile, /ShareIconButton/);
 assert.doesNotMatch(tile, /router\.(push|replace)/);
 assert.doesNotMatch(tile, /nav\?\.(navigate|push)/);
