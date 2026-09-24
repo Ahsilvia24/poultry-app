@@ -2,11 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { ReplicaLink } from "@/components/ReplicaLink";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { deleteLastFeedOrderAction } from "@/app/actions/lfo";
 import { Card } from "@/components/ui";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
-import { downloadLfoPdf } from "@/lib/exports/lfo-pdf";
+import { shareLfoPdf } from "@/lib/exports/lfo-pdf";
 import type { LfoShareInventory } from "@/lib/lfo/share-payload";
 import { formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
@@ -120,6 +120,20 @@ export function SavedLfoRow({
   const { enabled, queue } = useReplicaWrite();
   const [, startTransition] = useTransition();
   const lines = houseSummary ?? [];
+  const [holdLink, setHoldLink] = useState(false);
+  const holdTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (holdTimer.current != null) window.clearTimeout(holdTimer.current);
+    };
+  }, []);
+
+  function holdRowLink() {
+    setHoldLink(true);
+    if (holdTimer.current != null) window.clearTimeout(holdTimer.current);
+    holdTimer.current = window.setTimeout(() => setHoldLink(false), 800);
+  }
 
   return (
     <SwipeCommitDeleteRow
@@ -138,7 +152,7 @@ export function SavedLfoRow({
       <Card className="relative rounded-xl p-4 transition hover:border-emerald-400">
         <ReplicaLink
           href={`/lfo/${id}`}
-          className="absolute inset-0 z-0 rounded-[inherit]"
+          className={`absolute inset-0 z-0 rounded-[inherit]${holdLink ? " pointer-events-none" : ""}`}
           aria-label={`Edit LFO for ${farmName}`}
         />
         <div className="relative z-10 flex pointer-events-none items-start gap-2">
@@ -157,7 +171,8 @@ export function SavedLfoRow({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                void downloadLfoPdf(shareInventory);
+                holdRowLink();
+                void shareLfoPdf(shareInventory).finally(() => holdRowLink());
               }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-md text-stone-500 hover:bg-stone-200 hover:text-stone-900"
             >

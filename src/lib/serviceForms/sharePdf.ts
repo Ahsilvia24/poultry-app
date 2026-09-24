@@ -1,4 +1,5 @@
 import { PDFDocument } from "pdf-lib";
+import { isHomeScreenApp, pdfFileFromBytes, shareFiles } from "@/lib/exports/share-file";
 import { formatServiceShortDate } from "./format";
 import type { BuiltServicePdf } from "./pdfFill";
 import { buildServiceFormPdf } from "./pdfFill";
@@ -15,6 +16,21 @@ export function downloadPdfBytes(bytes: Uint8Array, filename: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Hand the PDF file to the iOS share sheet. Stay in the app — do not open a
+ * blob URL (that is what shares a link and makes the return glitchy).
+ */
+export async function sharePdfBytes(
+  bytes: Uint8Array,
+  filename: string,
+): Promise<"share" | "download" | "stay"> {
+  const file = pdfFileFromBytes(bytes, filename);
+  if (await shareFiles([file], file.name.replace(/\.pdf$/i, ""))) return "share";
+  if (isHomeScreenApp()) return "stay";
+  downloadPdfBytes(bytes, filename);
+  return "download";
 }
 
 /** Build a PDF on the original Bachoco form template and download it. */

@@ -10,7 +10,8 @@ const expo = readFileSync(join(root, "mobile/src/lib/reports/buildLfoPdf.ts"), "
 const row = readFileSync(join(root, "src/components/SavedLfoRow.tsx"), "utf8");
 
 assert.match(download, /buildLfoPdfBytes/);
-assert.match(download, /downloadPdfBytes/);
+assert.match(download, /sharePdfBytes/);
+assert.doesNotMatch(download, /downloadPdfBytes/);
 assert.doesNotMatch(download, /downloadReportPdf/);
 assert.doesNotMatch(download, /Field/);
 assert.doesNotMatch(download, /autoTable/);
@@ -42,6 +43,8 @@ assert.doesNotMatch(expo, /SUMMARY_COLS/);
 assert.doesNotMatch(expo, /FIRST_PAGE_HOUSES/);
 assert.doesNotMatch(expo, /fillColor/);
 
-assert.match(row, /void downloadLfoPdf\(shareInventory\)/);
+assert.match(row, /shareLfoPdf\(shareInventory\)/);
+assert.match(row, /holdRowLink/);
+assert.doesNotMatch(row, /downloadLfoPdf/);
 
 console.log("lfo-pdf-no-green: ok");
