@@ -19,8 +19,8 @@ const {
   shareFarms,
   toggleShareField,
 } = await import(join(root, "src/lib/reports/farm-share.ts"));
-const { farmShareImageFilename, farmShareSheetRows, shareFarmShareSheet } = await import(
-  join(root, "src/lib/reports/farm-share-image.ts")
+const { buildFarmSharePdfBytes, shareFarmSharePdf } = await import(
+  join(root, "src/lib/reports/farm-share-pdf.ts")
 );
 const { reportsHref, resolveReportType, REPORT_TYPES } = await import(
   join(root, "src/lib/reports/types.ts")
@@ -245,21 +245,15 @@ assert.deepEqual(
 );
 assert.equal(farmShareFilename("Oak Ridge"), "Oak Ridge Info.pdf");
 assert.equal(farmShareFilename("Oak Poultry"), "Oak Poultry Info.pdf");
-assert.equal(farmShareImageFilename("Oak Poultry"), "Oak Poultry Info.jpg");
 assert.doesNotMatch(farmShareFilename("Oak Poultry"), /-/);
 
-const sheet = farmShareSheetRows(model, ALL_FARM_SHARE_FIELDS);
-assert.equal(sheet[0]?.kind, "title");
-assert.equal(sheet[0]?.text, "Oak Ridge");
-assert.deepEqual(
-  sheet.filter((row) => row.kind === "heading").map((row) => row.text),
-  ["Feed Off (-10)", "Feed Up (-5)", "Catch Times"],
-);
-assert.match(sheet.find((row) => row.kind === "line")?.text ?? "", /^H1  Sat, Sep 26/);
+const bytes = await buildFarmSharePdfBytes(model, ALL_FARM_SHARE_FIELDS);
+const header = Buffer.from(bytes.subarray(0, 5)).toString("latin1");
+assert.equal(header, "%PDF-");
 
-const drawn = [];
 const shares = [];
 const navStub = {
+  standalone: true,
   canShare: (data) => Array.isArray(data?.files) && data.files.length > 0,
   share: async (data) => {
     if (data?.url) throw new Error("must not share a URL");
@@ -267,39 +261,22 @@ const navStub = {
   },
 };
 Object.defineProperty(globalThis, "navigator", { configurable: true, value: navStub });
-globalThis.document = {
-  createElement(tag) {
-    if (tag !== "canvas") throw new Error(tag);
-    return {
-      width: 0,
-      height: 0,
-      getContext: () => ({
-        scale() {},
-        fillRect() {},
-        fillText(text) {
-          drawn.push(text);
-        },
-      }),
-      toBlob(cb, type, quality) {
-        assert.equal(type, "image/jpeg");
-        assert.equal(quality, 0.86);
-        cb(new Blob([Uint8Array.from([0xff, 0xd8, 0xff])], { type: "image/jpeg" }));
-      },
-    };
+Object.defineProperty(globalThis, "window", {
+  configurable: true,
+  value: {
+    ...globalThis.window,
+    matchMedia: () => ({ matches: true }),
+    navigator: navStub,
   },
-};
+});
 
-assert.equal(await shareFarmShareSheet(model, ALL_FARM_SHARE_FIELDS), true);
+assert.equal(await shareFarmSharePdf(model, ALL_FARM_SHARE_FIELDS), "share");
 assert.equal(shares.length, 1);
 assert.ok(!("url" in shares[0]));
 assert.ok(!("title" in shares[0]));
 assert.ok(!("text" in shares[0]));
-assert.equal(shares[0].files[0].name, "Oak Ridge Info.jpg");
-assert.equal(shares[0].files[0].type, "image/jpeg");
-assert.ok(drawn.includes("Oak Ridge"));
-assert.ok(drawn.includes("Feed Off (-10)"));
-assert.ok(drawn.includes("Feed Up (-5)"));
-assert.ok(drawn.includes("Catch Times"));
+assert.equal(shares[0].files[0].name, "Oak Ridge Info.pdf");
+assert.equal(shares[0].files[0].type, "application/pdf");
 
 const afterShare = {
   farmId: "farm-old",
@@ -320,11 +297,14 @@ assert.match(tile, /text-left/);
 assert.match(tile, /Unselect all/);
 assert.match(tile, /Select all/);
 assert.match(tile, /shareFarms/);
-assert.match(tile, /shareFarmShareSheet/);
+assert.match(tile, /shareFarmSharePdf/);
 assert.doesNotMatch(tile, /downloadReportPdf/);
-assert.match(read("src/lib/reports/farm-share-image.ts"), /image\/jpeg/);
-assert.match(read("src/lib/reports/farm-share-image.ts"), /shareFiles\(\[file\]\)/);
+assert.doesNotMatch(tile, /farm-share-image/);
+assert.doesNotMatch(tile, /image\/jpeg/);
+assert.match(read("src/lib/reports/farm-share-pdf.ts"), /sharePdfBytes/);
+assert.match(read("src/lib/reports/farm-share-pdf.ts"), /updateFieldAppearances: false/);
 assert.match(read("src/lib/exports/share-file.ts"), /nav\.share\(\{ files \}\)/);
+assert.match(read("src/lib/serviceForms/sharePdf.ts"), /shareFiles\(\[file\]\)/);
 assert.doesNotMatch(tile, /ShareIconButton/);
 assert.doesNotMatch(tile, /router\.(push|replace)/);
 assert.doesNotMatch(tile, /nav\?\.(navigate|push)/);

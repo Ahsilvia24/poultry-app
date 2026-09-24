@@ -6,7 +6,7 @@ import {
 } from "@/components/SettingsLayout";
 import { Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { shareFarmShareSheet } from "@/lib/reports/farm-share-image";
+import { shareFarmSharePdf } from "@/lib/reports/farm-share-pdf";
 import {
   ALL_FARM_SHARE_FIELDS,
   FARM_SHARE_FIELDS,
@@ -42,7 +42,7 @@ export function FarmShareReport({
 
   function sharePdf() {
     if (!model || selected.size === 0) return;
-    void shareFarmShareSheet(model, fields);
+    void shareFarmSharePdf(model, fields);
   }
 
   return (
