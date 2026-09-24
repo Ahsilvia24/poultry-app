@@ -27,7 +27,7 @@ export async function sharePdfBytes(
   filename: string,
 ): Promise<"share" | "download" | "stay"> {
   const file = pdfFileFromBytes(bytes, filename);
-  if (await shareFiles([file], file.name.replace(/\.pdf$/i, ""))) return "share";
+  if (await shareFiles([file])) return "share";
   if (isHomeScreenApp()) return "stay";
   downloadPdfBytes(bytes, filename);
   return "download";

@@ -228,17 +228,21 @@ assert.deepEqual(
     { type: "lines", title: "Catch Times" },
   ],
 );
-assert.match(allBlocks[0].lines[0], /^H1  /);
-assert.match(allBlocks[0].lines[1], /^H2  /);
+assert.match(allBlocks[0].lines[0], /^H1  [A-Z][a-z]{2}, Sep /);
+assert.match(allBlocks[0].lines[1], /^H2  [A-Z][a-z]{2}, Sep /);
 assert.notEqual(allBlocks[0].lines[0], allBlocks[0].lines[1]);
 assert.notEqual(allBlocks[2].lines[0], "H1  —");
+assert.match(allBlocks[2].lines[0], /^H1  Sat, Sep 26/);
+assert.match(allBlocks[2].lines[1], /^H2  Sun, Sep 27/);
 
 const onlyCatch = farmSharePdfBlocks(model, ["catchTimes"]);
 assert.deepEqual(
   onlyCatch.map((block) => block.title),
   ["Catch Times"],
 );
-assert.equal(farmShareFilename("Oak Ridge"), "Oak-Ridge-data.pdf");
+assert.equal(farmShareFilename("Oak Ridge"), "Oak Ridge Info.pdf");
+assert.equal(farmShareFilename("Oak Poultry"), "Oak Poultry Info.pdf");
+assert.doesNotMatch(farmShareFilename("Oak Poultry"), /-/);
 
 const afterShare = {
   farmId: "farm-old",

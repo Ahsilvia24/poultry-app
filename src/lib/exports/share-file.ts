@@ -35,12 +35,12 @@ export function canShareFiles(files: File[]): boolean {
   }
 }
 
-/** Share the File itself. Never pass a URL — iOS would share a link. */
-export async function shareFiles(files: File[], title?: string): Promise<boolean> {
+/** Share the File itself. Never pass a URL or text — iOS Messages would add a body. */
+export async function shareFiles(files: File[], _title?: string): Promise<boolean> {
   if (!canShareFiles(files)) return false;
   const nav = navigator as ShareNav;
   try {
-    await nav.share({ files, title });
+    await nav.share({ files });
     return true;
   } catch (err) {
     return isShareAbort(err);

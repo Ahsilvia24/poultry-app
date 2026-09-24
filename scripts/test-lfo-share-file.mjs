@@ -46,8 +46,12 @@ assert.equal(canShare([file]), true);
 assert.equal(await shareFiles([file], "Oak Ridge LFO"), true);
 assert.equal(shares.length, 1);
 assert.equal(shares[0].url, undefined);
+assert.equal(shares[0].title, undefined);
+assert.equal(shares[0].text, undefined);
 assert.equal(shares[0].files[0].name, "Oak Ridge LFO.pdf");
 assert.ok(!("url" in shares[0]));
+assert.ok(!("title" in shares[0]));
+assert.ok(!("text" in shares[0]));
 
 shares.length = 0;
 navStub.share = async () => {
@@ -63,9 +67,11 @@ assert.equal(await shareFiles([file], "Oak Ridge LFO"), false);
 
 const sharePdf = read("src/lib/serviceForms/sharePdf.ts");
 assert.match(sharePdf, /export async function sharePdfBytes/);
-assert.match(sharePdf, /shareFiles\(\[file\]/);
+assert.match(sharePdf, /shareFiles\(\[file\]\)/);
 assert.match(sharePdf, /isHomeScreenApp\(\)/);
 assert.doesNotMatch(sharePdf, /url:/);
+assert.match(read("src/lib/exports/share-file.ts"), /nav\.share\(\{ files \}\)/);
+assert.doesNotMatch(read("src/lib/exports/share-file.ts"), /nav\.share\(\{ files, title \}\)/);
 
 const lfoPdf = read("src/lib/exports/lfo-pdf.ts");
 assert.match(lfoPdf, /sharePdfBytes/);

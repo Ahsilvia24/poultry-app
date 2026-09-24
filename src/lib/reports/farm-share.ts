@@ -1,4 +1,3 @@
-import { formatStampInAppZone } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import type { PdfBlock } from "@/lib/exports/pdf";
 import { sortFarmsByOrder } from "@/lib/farm-order";
@@ -81,7 +80,15 @@ export function formatFarmShareStamp(
   value: Date | null,
   timeZone?: string | null,
 ): string {
-  return value ? formatStampInAppZone(value, timeZone) : "—";
+  if (!value) return "—";
+  return value.toLocaleString("en-US", {
+    timeZone: resolveAppTimeZone(timeZone),
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function activeFlockIds(snapshot: OfflineSnapshot, farmId: string): Set<string> {
@@ -181,8 +188,13 @@ export function farmSharePdfBlocks(
 }
 
 export function farmShareFilename(farmName: string): string {
-  const slug = farmName.trim().replace(/[^\w]+/g, "-").replace(/^-|-$/g, "") || "farm";
-  return `${slug}-data.pdf`;
+  const name =
+    farmName
+      .trim()
+      .replace(/\s+/g, " ")
+      .replace(/[\\/:*?"<>|]+/g, "")
+      .trim() || "Farm";
+  return `${name} Info.pdf`;
 }
 
 export function farmShareCheckboxLabel(
