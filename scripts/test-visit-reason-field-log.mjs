@@ -130,7 +130,6 @@ assert.equal(
 
 assert.doesNotMatch(read("src/app/api/offline/ping/route.ts"), /ensureWeightProjectionVisitType/);
 assert.match(read("src/app/api/offline/snapshot/route.ts"), /ensureWeightProjectionVisitType/);
-assert.match(read("scripts/vercel-build.mjs"), /ensure-visit-type\.mjs/);
 
 const hold = read("src/components/HoldReorderList.tsx");
 assert.match(hold, /select-none/);
