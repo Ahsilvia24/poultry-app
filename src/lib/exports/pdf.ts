@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { downloadPdfBytes } from "@/lib/serviceForms/sharePdf";
+import { sharePdfBytes } from "@/lib/serviceForms/sharePdf";
 
 export type PdfTableSection = {
   title: string;
@@ -23,7 +23,7 @@ function ensurePageSpace(doc: jsPDF, y: number, needed: number) {
   return 14;
 }
 
-export function downloadReportPdf(opts: {
+export async function downloadReportPdf(opts: {
   title: string;
   subtitle?: string;
   filename?: string;
@@ -93,16 +93,16 @@ export function downloadReportPdf(opts: {
   }
 
   const bytes = new Uint8Array(doc.output("arraybuffer"));
-  downloadPdfBytes(bytes, opts.filename ?? "report.pdf");
+  return sharePdfBytes(bytes, opts.filename ?? "report.pdf");
 }
 
-export function downloadMortalityPdf(opts: {
+export async function downloadMortalityPdf(opts: {
   title: string;
   subtitle?: string;
   sections: PdfTableSection[];
   filename?: string;
 }) {
-  downloadReportPdf({
+  return downloadReportPdf({
     title: opts.title,
     subtitle: opts.subtitle,
     filename: opts.filename ?? "mortality-report.pdf",

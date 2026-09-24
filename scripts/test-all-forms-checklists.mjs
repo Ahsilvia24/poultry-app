@@ -176,6 +176,7 @@ const sharePdf = read("src/lib/serviceForms/sharePdf.ts");
 assert.match(sharePdf, /export async function shareServiceFormsPdf/);
 assert.match(sharePdf, /buildMergedServiceFormsPdf/);
 assert.match(sharePdf, /copyPages/);
+assert.match(sharePdf, /await sharePdfBytes\(bytes, filename\)/);
 assert.doesNotMatch(sharePdf, /for \(const form of forms\) \{\s*downloadPdfBytes/);
 
 const { createPlacementDraft, createServiceReportDraft } = await import(

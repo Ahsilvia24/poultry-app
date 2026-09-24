@@ -72,6 +72,13 @@ assert.match(lfoPdf, /sharePdfBytes/);
 assert.match(lfoPdf, /export async function shareLfoPdf/);
 assert.doesNotMatch(lfoPdf, /downloadPdfBytes/);
 
+const reportPdf = read("src/lib/exports/pdf.ts");
+assert.match(reportPdf, /sharePdfBytes/);
+assert.doesNotMatch(reportPdf, /downloadPdfBytes/);
+
+assert.match(sharePdf, /await sharePdfBytes\(bytes, filename\)/);
+assert.equal((sharePdf.match(/await sharePdfBytes\(bytes, filename\)/g) ?? []).length, 2);
+
 const row = read("src/components/SavedLfoRow.tsx");
 assert.match(row, /shareLfoPdf/);
 assert.match(row, /holdRowLink/);

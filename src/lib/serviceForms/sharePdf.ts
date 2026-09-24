@@ -36,7 +36,7 @@ export async function sharePdfBytes(
 /** Build a PDF on the original Bachoco form template and download it. */
 export async function shareServiceFormPdf(form: AnyServiceForm) {
   const { bytes, filename } = await buildServiceFormPdf(form);
-  downloadPdfBytes(bytes, filename);
+  await sharePdfBytes(bytes, filename);
   return filename;
 }
 
@@ -77,6 +77,6 @@ export async function buildMergedServiceFormsPdf(
 /** Share every checklist in one PDF. Sequential a.click() downloads drop all but the first on iOS. */
 export async function shareServiceFormsPdf(forms: AnyServiceForm[]) {
   const { bytes, filename } = await buildMergedServiceFormsPdf(forms);
-  downloadPdfBytes(bytes, filename);
+  await sharePdfBytes(bytes, filename);
   return filename;
 }
