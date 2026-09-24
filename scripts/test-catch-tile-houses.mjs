@@ -257,6 +257,8 @@ const home = read("src/components/DashboardHome.tsx");
 assert.match(home, /formatCatchHouseLabel/);
 assert.match(home, /catchRowHouseNumber/);
 assert.match(home, /formatCatchDateLabel/);
+assert.match(home, /c\.farmId/);
+assert.doesNotMatch(home, /"farmId" in c/);
 assert.doesNotMatch(home, /formatCatchHouses/);
 assert.doesNotMatch(home, /formatCatchAges/);
 assert.doesNotMatch(home, /agesLabel/);

@@ -80,11 +80,7 @@ export function DashboardHome({
             <ScrollableFarmList className="mt-2 pr-2">
               <ul className="space-y-2.5 text-[15px]">
                 {(data?.upcomingCatches ?? []).map((c) => {
-                  const href = catchFarmHref(
-                    "farmId" in c ? c.farmId : undefined,
-                    c.farmName,
-                    snapshot?.farms,
-                  );
+                  const href = catchFarmHref(c.farmId, c.farmName, snapshot?.farms);
                   const houseNumber = catchRowHouseNumber(c);
                   const houseLabel = formatCatchHouseLabel(houseNumber);
                   const name = (
@@ -99,7 +95,7 @@ export function DashboardHome({
                   );
                   return (
                     <li
-                      key={`${"farmId" in c ? c.farmId : c.farmName}-${houseNumber ?? ""}-${c.date}-${c.flockNumber}`}
+                      key={`${c.farmId || c.farmName}-${houseNumber ?? ""}-${c.date}-${c.flockNumber}`}
                       className="flex min-h-[22px] items-baseline gap-2"
                     >
                       {href ? (
