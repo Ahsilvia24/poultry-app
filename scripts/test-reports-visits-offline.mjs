@@ -82,6 +82,7 @@ assert.deepEqual(mergeReportsInitial({}), {
   farmId: "oak",
   from: undefined,
   to: undefined,
+  fields: undefined,
 });
 
 assert.equal(visitFormHref("farm-1", undefined, true), "/farms/farm-1/visits/new?from=all-visits");

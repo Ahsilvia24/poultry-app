@@ -528,6 +528,7 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
           farmId: params.get("farmId") ?? undefined,
           from: params.get("from") ?? undefined,
           to: params.get("to") ?? undefined,
+          fields: params.get("fields") ?? undefined,
         }}
       />
     );

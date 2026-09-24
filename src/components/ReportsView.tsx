@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { FarmShareReport } from "@/components/FarmShareReport";
 import { FieldLogReport } from "@/components/FieldLogReport";
 import { GeneratorLogReport } from "@/components/GeneratorLogReport";
 import { MortalityCharts } from "@/components/MortalityCharts";
@@ -16,6 +17,12 @@ import { Button, Card, PageHeader } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { defaultFieldLogRange } from "@/lib/reports/field-log";
 import { mergeReportsInitial, rememberReportsHref } from "@/lib/reports/lastHref";
+import {
+  encodeShareFields,
+  firstShareFarmId,
+  parseShareFields,
+  type FarmShareFieldKey,
+} from "@/lib/reports/farm-share";
 import { reportsHref, resolveReportType, type ReportTypeKey } from "@/lib/reports/types";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import {
@@ -87,7 +94,7 @@ export function ReportsView({
   initial,
 }: {
   snapshot: OfflineSnapshot;
-  initial: { type?: string; farmId?: string; from?: string; to?: string };
+  initial: { type?: string; farmId?: string; from?: string; to?: string; fields?: string };
 }) {
   const nav = useOfflineNav();
   const seed = mergeReportsInitial(initial);
@@ -101,7 +108,22 @@ export function ReportsView({
       resolveReportType(seed.type) === "mortality" ? (seed.farmId ?? "") : "";
     return requested || firstReportFarmId(snapshot);
   });
-  const farmId = type === "generator" ? genFarmId : type === "mortality" ? mortFarmId : "";
+  const [shareFarmId, setShareFarmId] = useState(() => {
+    const requested =
+      resolveReportType(seed.type) === "share" ? (seed.farmId ?? "") : "";
+    return requested || firstShareFarmId(snapshot);
+  });
+  const [shareFields, setShareFields] = useState<FarmShareFieldKey[]>(() =>
+    parseShareFields(seed.fields),
+  );
+  const farmId =
+    type === "generator"
+      ? genFarmId
+      : type === "mortality"
+        ? mortFarmId
+        : type === "share"
+          ? shareFarmId
+          : "";
   const [fieldRange, setFieldRange] = useState(() => {
     const defaults = defaultFieldLogRange(new Date(), timeZone);
     if (resolveReportType(seed.type) === "field-log") {
@@ -130,7 +152,13 @@ export function ReportsView({
   });
 
   const range =
-    type === "field-log" ? fieldRange : type === "generator" ? generatorRange : mortalityRange;
+    type === "field-log"
+      ? fieldRange
+      : type === "generator"
+        ? generatorRange
+        : type === "share"
+          ? { from: "", to: "" }
+          : mortalityRange;
 
   useEffect(() => {
     persist({
@@ -138,6 +166,7 @@ export function ReportsView({
       farmId: type === "field-log" ? undefined : farmId || undefined,
       from: range.from,
       to: range.to,
+      fields: type === "share" ? encodeShareFields(shareFields) : undefined,
     });
     // Remember the open tab once so share / Reports tab survive a remount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,12 +183,19 @@ export function ReportsView({
     [snapshot, type, farmId, range.from, range.to],
   );
 
-  function persist(next: { type: ReportTypeKey; farmId?: string; from: string; to: string }) {
+  function persist(next: {
+    type: ReportTypeKey;
+    farmId?: string;
+    from?: string;
+    to?: string;
+    fields?: string;
+  }) {
     const href = reportsHref({
       type: next.type,
       farmId: next.type === "field-log" ? undefined : next.farmId,
-      from: next.from,
-      to: next.to,
+      from: next.type === "share" ? undefined : next.from,
+      to: next.type === "share" ? undefined : next.to,
+      fields: next.type === "share" ? next.fields : undefined,
     });
     rememberReportsHref(href);
     nav?.replace(href);
@@ -185,6 +221,16 @@ export function ReportsView({
       persist({ type: next, farmId: id, from: nextRange.from, to: nextRange.to });
       return;
     }
+    if (next === "share") {
+      const id = shareFarmId || firstShareFarmId(snapshot);
+      setShareFarmId(id);
+      persist({
+        type: next,
+        farmId: id,
+        fields: encodeShareFields(shareFields),
+      });
+      return;
+    }
     persist({
       type: next,
       farmId: undefined,
@@ -208,6 +254,24 @@ export function ReportsView({
     const nextRange = mortalityRangeForFarm(snapshot, nextFarmId);
     setMortalityRange(nextRange);
     persist({ type: "mortality", farmId: nextFarmId, from: nextRange.from, to: nextRange.to });
+  }
+
+  function onShareFarmChange(nextFarmId: string) {
+    setShareFarmId(nextFarmId);
+    persist({
+      type: "share",
+      farmId: nextFarmId,
+      fields: encodeShareFields(shareFields),
+    });
+  }
+
+  function onShareFieldsChange(nextFields: FarmShareFieldKey[]) {
+    setShareFields(nextFields);
+    persist({
+      type: "share",
+      farmId: shareFarmId,
+      fields: encodeShareFields(nextFields),
+    });
   }
 
   function onFilter(event: FormEvent<HTMLFormElement>) {
@@ -302,6 +366,22 @@ export function ReportsView({
         <GeneratorLogReport
           farms={model.generator?.farms ?? []}
           filterLabel={model.generator?.filterLabel ?? ""}
+        />
+      </div>
+    );
+  }
+
+  if (model.type === "share") {
+    return (
+      <div>
+        <PageHeader title="Reports" />
+        <ReportsTypeTabs active="share" onSelect={onSelectType} />
+        <FarmShareReport
+          snapshot={snapshot}
+          farmId={shareFarmId || model.farmId}
+          fields={shareFields}
+          onFarmChange={onShareFarmChange}
+          onFieldsChange={onShareFieldsChange}
         />
       </div>
     );
