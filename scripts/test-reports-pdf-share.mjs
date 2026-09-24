@@ -27,6 +27,7 @@ Object.defineProperty(globalThis, "window", {
 const { buildReportPdfBytes, downloadMortalityPdf, downloadReportPdf } = await import(
   join(root, "src/lib/exports/pdf.ts")
 );
+const { pdfBytesFromJpegPages } = await import(join(root, "src/lib/exports/scan-pdf.ts"));
 const { reportShareFilename } = await import(join(root, "src/lib/reports/share-filename.ts"));
 
 assert.equal(reportShareFilename("Generator Hours", "Weylin Groom"), "Generator Hours Weylin Groom.pdf");
@@ -44,6 +45,16 @@ assert.doesNotMatch(reportShareFilename("Field Log"), /\d{5,}/);
 function isPdf(bytes) {
   return Buffer.from(bytes.subarray(0, 5)).toString("latin1") === "%PDF-";
 }
+
+const tinyJpeg = Uint8Array.from(
+  Buffer.from(
+    "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAgACADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDzWiiitT8nCiiigAooooAKKKKAP//Z",
+    "base64",
+  ),
+);
+const scanPdf = await pdfBytesFromJpegPages([{ bytes: tinyJpeg, width: 612, height: 792 }]);
+assert.equal(isPdf(scanPdf), true);
+assert.match(Buffer.from(scanPdf).toString("latin1"), /DCTDecode|JFIF/);
 
 const fieldLogBytes = await buildReportPdfBytes({
   title: "Field Log - Alex",
@@ -101,6 +112,46 @@ const chartBytes = await buildReportPdfBytes({
 });
 assert.equal(isPdf(chartBytes), true);
 
+// Phone path: rasterize pages and wrap JPEGs so Messages can MMS like a checklist.
+const jpegBlob = new Blob([tinyJpeg], { type: "image/jpeg" });
+function mockCanvas() {
+  const ctx = {
+    scale() {},
+    fillRect() {},
+    fillText() {},
+    drawImage() {},
+    measureText: (text) => ({ width: String(text).length * 6 }),
+    font: "",
+    fillStyle: "",
+    textBaseline: "top",
+  };
+  return {
+    width: 0,
+    height: 0,
+    getContext: () => ctx,
+    toBlob: (cb) => {
+      queueMicrotask(() => cb(jpegBlob));
+    },
+  };
+}
+Object.defineProperty(globalThis, "document", {
+  configurable: true,
+  value: {
+    createElement: (tag) => {
+      if (tag === "canvas") return mockCanvas();
+      throw new Error(`unexpected element ${tag}`);
+    },
+  },
+});
+
+const scannedBytes = await buildReportPdfBytes({
+  title: "Field Log",
+  filename: "Field Log.pdf",
+  blocks: [{ type: "heading", text: "Oak Poultry" }],
+});
+assert.equal(isPdf(scannedBytes), true);
+assert.match(Buffer.from(scannedBytes).toString("latin1"), /DCTDecode|JFIF/);
+
 assert.equal(await downloadReportPdf({
   title: "Field Log",
   filename: reportShareFilename("Field Log"),
@@ -124,6 +175,9 @@ for (const share of shares) {
   assert.ok(!("title" in share));
   assert.ok(!("text" in share));
   assert.equal(share.files[0].type, "application/pdf");
+  const sharedBytes = new Uint8Array(await share.files[0].arrayBuffer());
+  assert.equal(isPdf(sharedBytes), true);
+  assert.match(Buffer.from(sharedBytes).toString("latin1"), /DCTDecode|JFIF/);
 }
 assert.equal(shares[0].files[0].name, "Field Log.pdf");
 assert.equal(shares[1].files[0].name, "Generator Hours Weylin Groom.pdf");
@@ -160,6 +214,8 @@ assert.doesNotMatch(mortality, /Date\.now\(\)\.pdf/);
 const pdf = read("src/lib/exports/pdf.ts");
 assert.match(pdf, /PDFDocument/);
 assert.match(pdf, /sharePdfBytes/);
+assert.match(pdf, /pdfBytesFromJpegPages/);
+assert.match(pdf, /renderReportJpegPages/);
 assert.match(pdf, /updateFieldAppearances: false/);
 assert.doesNotMatch(pdf, /from "jspdf"/);
 assert.doesNotMatch(pdf, /jspdf-autotable/);

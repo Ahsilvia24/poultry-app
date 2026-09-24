@@ -1,4 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import { renderReportJpegPages } from "@/lib/exports/report-canvas";
+import { pdfBytesFromJpegPages } from "@/lib/exports/scan-pdf";
 import { sharePdfBytes } from "@/lib/serviceForms/sharePdf";
 
 export type PdfTableSection = {
@@ -83,7 +85,7 @@ type ReportPdfOpts = {
   blocks: PdfBlock[];
 };
 
-export async function buildReportPdfBytes(opts: ReportPdfOpts): Promise<Uint8Array> {
+export async function buildTextReportPdfBytes(opts: ReportPdfOpts): Promise<Uint8Array> {
   const size = opts.orientation === "landscape" ? LANDSCAPE : PORTRAIT;
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -223,7 +225,16 @@ export async function buildReportPdfBytes(opts: ReportPdfOpts): Promise<Uint8Arr
   return doc.save({ updateFieldAppearances: false });
 }
 
-/** Field Log, Generator, Mortality — same share path as checklists. */
+/** Phone: scanned page like a checklist. Node tests: text PDF. */
+export async function buildReportPdfBytes(opts: ReportPdfOpts): Promise<Uint8Array> {
+  if (typeof document !== "undefined") {
+    const pages = await renderReportJpegPages(opts);
+    return pdfBytesFromJpegPages(pages);
+  }
+  return buildTextReportPdfBytes(opts);
+}
+
+/** Field Log, Generator, Mortality, Data — same share path as checklists. */
 export async function downloadReportPdf(opts: ReportPdfOpts) {
   const bytes = await buildReportPdfBytes(opts);
   return sharePdfBytes(bytes, opts.filename ?? "report.pdf");
