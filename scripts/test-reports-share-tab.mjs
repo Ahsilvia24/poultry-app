@@ -19,7 +19,7 @@ const {
   shareFarms,
   toggleShareField,
 } = await import(join(root, "src/lib/reports/farm-share.ts"));
-const { farmShareImageFilename, farmShareSheetRows } = await import(
+const { farmShareImageFilename, farmShareSheetRows, shareFarmShareSheet } = await import(
   join(root, "src/lib/reports/farm-share-image.ts")
 );
 const { reportsHref, resolveReportType, REPORT_TYPES } = await import(
@@ -257,6 +257,50 @@ assert.deepEqual(
 );
 assert.match(sheet.find((row) => row.kind === "line")?.text ?? "", /^H1  Sat, Sep 26/);
 
+const drawn = [];
+const shares = [];
+const navStub = {
+  canShare: (data) => Array.isArray(data?.files) && data.files.length > 0,
+  share: async (data) => {
+    if (data?.url) throw new Error("must not share a URL");
+    shares.push(data);
+  },
+};
+Object.defineProperty(globalThis, "navigator", { configurable: true, value: navStub });
+globalThis.document = {
+  createElement(tag) {
+    if (tag !== "canvas") throw new Error(tag);
+    return {
+      width: 0,
+      height: 0,
+      getContext: () => ({
+        scale() {},
+        fillRect() {},
+        fillText(text) {
+          drawn.push(text);
+        },
+      }),
+      toBlob(cb, type, quality) {
+        assert.equal(type, "image/jpeg");
+        assert.equal(quality, 0.86);
+        cb(new Blob([Uint8Array.from([0xff, 0xd8, 0xff])], { type: "image/jpeg" }));
+      },
+    };
+  },
+};
+
+assert.equal(await shareFarmShareSheet(model, ALL_FARM_SHARE_FIELDS), true);
+assert.equal(shares.length, 1);
+assert.ok(!("url" in shares[0]));
+assert.ok(!("title" in shares[0]));
+assert.ok(!("text" in shares[0]));
+assert.equal(shares[0].files[0].name, "Oak Ridge Info.jpg");
+assert.equal(shares[0].files[0].type, "image/jpeg");
+assert.ok(drawn.includes("Oak Ridge"));
+assert.ok(drawn.includes("Feed Off (-10)"));
+assert.ok(drawn.includes("Feed Up (-5)"));
+assert.ok(drawn.includes("Catch Times"));
+
 const afterShare = {
   farmId: "farm-old",
   fields: encodeShareFields(["feedOff", "catchTimes"]),
@@ -278,6 +322,9 @@ assert.match(tile, /Select all/);
 assert.match(tile, /shareFarms/);
 assert.match(tile, /shareFarmShareSheet/);
 assert.doesNotMatch(tile, /downloadReportPdf/);
+assert.match(read("src/lib/reports/farm-share-image.ts"), /image\/jpeg/);
+assert.match(read("src/lib/reports/farm-share-image.ts"), /shareFiles\(\[file\]\)/);
+assert.match(read("src/lib/exports/share-file.ts"), /nav\.share\(\{ files \}\)/);
 assert.doesNotMatch(tile, /ShareIconButton/);
 assert.doesNotMatch(tile, /router\.(push|replace)/);
 assert.doesNotMatch(tile, /nav\?\.(navigate|push)/);
