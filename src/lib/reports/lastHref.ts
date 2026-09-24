@@ -13,6 +13,7 @@ function asReportsHref(href: string) {
     farmId: params.get("farmId") ?? undefined,
     from: params.get("from") ?? undefined,
     to: params.get("to") ?? undefined,
+    fields: params.get("fields") ?? undefined,
   });
 }
 
@@ -50,6 +51,7 @@ export function mergeReportsInitial(initial: {
   farmId?: string;
   from?: string;
   to?: string;
+  fields?: string;
 }) {
   if (initial.type) return initial;
   const last = readLastReportsHref();
@@ -60,5 +62,6 @@ export function mergeReportsInitial(initial: {
     farmId: params.get("farmId") ?? initial.farmId,
     from: params.get("from") ?? initial.from,
     to: params.get("to") ?? initial.to,
+    fields: params.get("fields") ?? initial.fields,
   };
 }

@@ -7,6 +7,7 @@ type SearchParams = Promise<{
   from?: string;
   to?: string;
   type?: string;
+  fields?: string;
 }>;
 
 export default async function ReportsPage({ searchParams }: { searchParams: SearchParams }) {
@@ -19,6 +20,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
       farmId={params.farmId}
       from={params.from}
       to={params.to}
+      fields={params.fields}
     />
   );
 }
