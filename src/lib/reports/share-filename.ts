@@ -8,13 +8,14 @@ function cleanPart(value: string): string {
     .trim();
 }
 
-/** Farm name when one farm is selected. All Farms when the report covers every farm. */
+/** Farm name when one farm is selected. Empty when the report has no farm scope. */
 export function reportShareScope(farmName?: string | null): string {
-  return cleanPart(farmName ?? "") || REPORT_ALL_FARMS;
+  return cleanPart(farmName ?? "");
 }
 
-/** "Generator Hours Weylin Groom.pdf" — spaces only, no timestamps. */
+/** "Generator Hours Weylin Groom.pdf" or "Field Log.pdf" — spaces only, no timestamps. */
 export function reportShareFilename(reportName: string, farmName?: string | null): string {
   const title = cleanPart(reportName) || "Report";
-  return `${title} ${reportShareScope(farmName)}.pdf`;
+  const scope = reportShareScope(farmName);
+  return scope ? `${title} ${scope}.pdf` : `${title}.pdf`;
 }

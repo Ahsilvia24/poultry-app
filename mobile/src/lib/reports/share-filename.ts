@@ -9,10 +9,11 @@ function cleanPart(value: string): string {
 }
 
 export function reportShareScope(farmName?: string | null): string {
-  return cleanPart(farmName ?? "") || REPORT_ALL_FARMS;
+  return cleanPart(farmName ?? "");
 }
 
 export function reportShareFilename(reportName: string, farmName?: string | null): string {
   const title = cleanPart(reportName) || "Report";
-  return `${title} ${reportShareScope(farmName)}.pdf`;
+  const scope = reportShareScope(farmName);
+  return scope ? `${title} ${scope}.pdf` : `${title}.pdf`;
 }

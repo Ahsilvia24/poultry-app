@@ -4,7 +4,7 @@ import {
   type MortalityReportMatrix,
 } from "./mortality-matrix";
 import { savePdfBytes } from "./savePdf";
-import { reportShareFilename } from "./share-filename";
+import { REPORT_ALL_FARMS, reportShareFilename } from "./share-filename";
 
 export async function shareMortalityReportPdf(opts: {
   matrix: MortalityReportMatrix;
@@ -23,5 +23,8 @@ export async function shareMortalityReportPdf(opts: {
     rowHeaderLabel: opts.rowHeaderLabel,
     matrix: opts.matrix,
   });
-  await savePdfBytes(bytes, reportShareFilename(opts.reportName ?? "Mortality", opts.farmName));
+  await savePdfBytes(
+    bytes,
+    reportShareFilename(opts.reportName ?? "Mortality", opts.farmName || REPORT_ALL_FARMS),
+  );
 }

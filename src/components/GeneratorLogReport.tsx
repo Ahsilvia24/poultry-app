@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Card } from "@/components/ui";
 import { CopyShareRow } from "@/components/CopyShareIcons";
 import { downloadReportPdf } from "@/lib/exports/pdf";
-import { reportShareFilename } from "@/lib/reports/share-filename";
+import { REPORT_ALL_FARMS, reportShareFilename } from "@/lib/reports/share-filename";
 import {
   buildGeneratorReportView,
   formatGeneratorReportDate,
@@ -36,7 +36,7 @@ export function GeneratorLogReport({
     downloadReportPdf({
       title: "Generator Hours",
       subtitle: filterLabel,
-      filename: reportShareFilename("Generator Hours", farmName),
+      filename: reportShareFilename("Generator Hours", farmName || REPORT_ALL_FARMS),
       blocks: view.flatMap((farm) => [
         { type: "heading" as const, text: farm.farmName },
         ...farm.generators.map((gen) => ({

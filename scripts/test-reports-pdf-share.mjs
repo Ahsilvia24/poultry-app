@@ -30,9 +30,9 @@ const { buildReportPdfBytes, downloadMortalityPdf, downloadReportPdf } = await i
 const { reportShareFilename } = await import(join(root, "src/lib/reports/share-filename.ts"));
 
 assert.equal(reportShareFilename("Generator Hours", "Weylin Groom"), "Generator Hours Weylin Groom.pdf");
-assert.equal(reportShareFilename("Generator Hours"), "Generator Hours All Farms.pdf");
-assert.equal(reportShareFilename("Generator Hours", "  "), "Generator Hours All Farms.pdf");
-assert.equal(reportShareFilename("Field Log"), "Field Log All Farms.pdf");
+assert.equal(reportShareFilename("Generator Hours", "All Farms"), "Generator Hours All Farms.pdf");
+assert.equal(reportShareFilename("Generator Hours"), "Generator Hours.pdf");
+assert.equal(reportShareFilename("Field Log"), "Field Log.pdf");
 assert.equal(
   reportShareFilename("Mortality by Percentage", "Oak Poultry"),
   "Mortality by Percentage Oak Poultry.pdf",
@@ -125,7 +125,7 @@ for (const share of shares) {
   assert.ok(!("text" in share));
   assert.equal(share.files[0].type, "application/pdf");
 }
-assert.equal(shares[0].files[0].name, "Field Log All Farms.pdf");
+assert.equal(shares[0].files[0].name, "Field Log.pdf");
 assert.equal(shares[1].files[0].name, "Generator Hours Weylin Groom.pdf");
 assert.equal(shares[2].files[0].name, "Mortality Weylin Groom.pdf");
 
@@ -138,7 +138,7 @@ assert.doesNotMatch(field, /jspdf/i);
 
 const generator = read("src/components/GeneratorLogReport.tsx");
 assert.match(generator, /downloadReportPdf/);
-assert.match(generator, /reportShareFilename\("Generator Hours", farmName\)/);
+assert.match(generator, /reportShareFilename\("Generator Hours", farmName \|\| REPORT_ALL_FARMS\)/);
 assert.match(generator, /Share generator report PDF/);
 assert.doesNotMatch(generator, /Date\.now\(\)/);
 assert.match(read("src/components/ReportsView.tsx"), /farmName=\{farmId \? model\.farms\.find/);
