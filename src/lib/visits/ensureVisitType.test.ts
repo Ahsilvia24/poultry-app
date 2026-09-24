@@ -11,6 +11,7 @@ describe("publicSyncLeftoverError", () => {
       undefined,
     );
     assert.equal(publicSyncLeftoverError("Farm work did not upload."), "Farm work did not upload.");
+    assert.equal(publicSyncLeftoverError("No database"), undefined);
     assert.equal(publicSyncLeftoverError("  "), undefined);
   });
 });

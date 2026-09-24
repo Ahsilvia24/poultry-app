@@ -7,12 +7,15 @@ let ensurePromise: Promise<void> | null = null;
 /** Make Weight Projection a real Postgres visit type even if migrate deploy skipped it. */
 export async function ensureWeightProjectionVisitType() {
   if (!ensurePromise) {
-    ensurePromise = prisma
-      .$executeRawUnsafe(ADD_WEIGHT_PROJECTION)
-      .then(() => undefined)
-      .catch(() => {
-        ensurePromise = null;
-      });
+    try {
+      ensurePromise = Promise.resolve(prisma.$executeRawUnsafe(ADD_WEIGHT_PROJECTION))
+        .then(() => undefined)
+        .catch(() => {
+          ensurePromise = null;
+        });
+    } catch {
+      ensurePromise = Promise.resolve();
+    }
   }
   await ensurePromise;
 }
@@ -28,7 +31,7 @@ export function visitSaveError(err: unknown): string {
 export function publicSyncLeftoverError(error?: string): string | undefined {
   const text = error?.trim() ?? "";
   if (!text) return undefined;
-  if (/server components render|digest property|omitted in production/i.test(text)) {
+  if (/No database|server components render|digest property|omitted in production/i.test(text)) {
     return undefined;
   }
   return text;

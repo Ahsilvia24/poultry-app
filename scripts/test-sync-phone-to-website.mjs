@@ -30,7 +30,8 @@ const ping = read("src/app/api/offline/ping/route.ts");
 assert.match(ping, /auth\(\)/);
 assert.match(ping, /status: 204/);
 assert.match(ping, /status: 401/);
-assert.match(ping, /ensureWeightProjectionVisitType/);
+assert.doesNotMatch(ping, /ensureWeightProjectionVisitType/);
+assert.doesNotMatch(ping, /prisma/);
 
 const settings = read("src/components/SettingsScreen.tsx");
 assert.match(settings, /Sync data/);
