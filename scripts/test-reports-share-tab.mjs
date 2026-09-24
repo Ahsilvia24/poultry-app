@@ -314,6 +314,10 @@ assert.match(tabs, /key: "data", label: "Data"/);
 
 const pdf = read("src/lib/exports/pdf.ts");
 assert.match(pdf, /type: "lines"/);
-assert.match(pdf, /headStyles: \{ fillColor: \[4, 120, 87\] \}/);
+assert.match(pdf, /PDFDocument/);
+assert.match(pdf, /sharePdfBytes/);
+assert.match(pdf, /4 \/ 255, 120 \/ 255, 87 \/ 255/);
+assert.doesNotMatch(pdf, /jspdf/i);
+assert.doesNotMatch(pdf, /autoTable/);
 
 console.log("reports-share-tab: ok");
