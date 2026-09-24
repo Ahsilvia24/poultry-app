@@ -24,6 +24,8 @@ assert.match(sync, /lastError/);
 assert.match(sync, /publicSyncLeftoverError/);
 assert.match(sync, /withTimeout\(syncPhoneToWebsiteOnce\(\), SYNC_OVERALL_MS\)/);
 assert.match(sync, /snapshot: null/);
+assert.match(sync, /pushPhoneReplicaToWebsite/);
+assert.match(sync, /websiteHasPhoneFarms/);
 assert.doesNotMatch(sync, /await pullRemoteSnapshot/);
 
 const ping = read("src/app/api/offline/ping/route.ts");

@@ -128,6 +128,7 @@ assert.doesNotMatch(pull, /mergeWebsiteSnapshot/);
 
 const sync = read("src/lib/offline/syncPhoneToWebsite.ts");
 assert.match(sync, /snapshot: null/);
+assert.match(sync, /pushPhoneReplicaToWebsite/);
 assert.doesNotMatch(sync, /await pullRemoteSnapshot/);
 
 const settings = read("src/components/SettingsScreen.tsx");

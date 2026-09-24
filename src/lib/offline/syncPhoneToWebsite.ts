@@ -1,5 +1,7 @@
 import { flushOutbox, waitForFlush } from "@/lib/offline/flushOutbox";
-import { loadIdAliases, loadOutbox } from "@/lib/offline/idb";
+import { websiteHasPhoneFarms } from "@/lib/offline/hostedReplica";
+import { loadIdAliases, loadLocalSnapshot, loadOutbox } from "@/lib/offline/idb";
+import { farmCountInSnapshot } from "@/lib/offline/phoneBackup";
 import type { IdAliases } from "@/lib/offline/remapIds";
 import { SYNC_OVERALL_MS, withTimeout } from "@/lib/offline/syncTimeout";
 import type { OfflineSnapshot } from "@/lib/offline/types";
@@ -72,6 +74,29 @@ async function fail(
   return { ok: false, pending: leftover.length, aliases, reason, error };
 }
 
+/** Empty leftover is not enough — Safari only sees farms the website actually kept. */
+export async function pushPhoneReplicaToWebsite(
+  snapshot?: OfflineSnapshot | null,
+): Promise<boolean> {
+  const local = snapshot ?? (await loadLocalSnapshot());
+  if (!local) return false;
+  if (farmCountInSnapshot(local) === 0) return true;
+  try {
+    const res = await fetch("/api/offline/snapshot", {
+      method: "POST",
+      cache: "no-store",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ snapshot: local }),
+    });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { ok?: boolean; snapshot?: OfflineSnapshot };
+    return Boolean(body.ok && body.snapshot && websiteHasPhoneFarms(local, body.snapshot));
+  } catch {
+    return false;
+  }
+}
+
 /** Upload leftover writes only. Never replace the phone replica with a website snapshot. */
 export async function syncPhoneToWebsite(): Promise<SyncPhoneResult> {
   try {
@@ -80,14 +105,14 @@ export async function syncPhoneToWebsite(): Promise<SyncPhoneResult> {
     // The overall timer does not cancel flush. Wait for it so leftover is not a mid-upload snapshot.
     try {
       const flushed = await waitForFlush();
-      if (flushed.pending === 0) {
+      if (flushed.pending === 0 && (await pushPhoneReplicaToWebsite())) {
         return { ok: true, pending: 0, aliases: flushed.aliases, snapshot: null };
       }
       return fail("leftover", flushed.aliases, flushed.error);
     } catch {
       const aliases = await loadIdAliases();
       const leftover = await loadOutbox();
-      if (leftover.length === 0) {
+      if (leftover.length === 0 && (await pushPhoneReplicaToWebsite())) {
         return { ok: true, pending: 0, aliases, snapshot: null };
       }
       return fail("leftover", aliases);
@@ -114,7 +139,10 @@ async function syncPhoneToWebsiteOnce(): Promise<SyncPhoneResult> {
         if (attempt < SYNC_ATTEMPTS - 1) await wait(400 * (attempt + 1));
         continue;
       }
-      // Snapshot download is what left Settings on “Uploading…”. Work is already up.
+      if (!(await pushPhoneReplicaToWebsite())) {
+        if (attempt < SYNC_ATTEMPTS - 1) await wait(400 * (attempt + 1));
+        continue;
+      }
       return { ok: true, pending: 0, aliases, snapshot: null };
     }
     if (attempt < SYNC_ATTEMPTS - 1) await wait(400 * (attempt + 1));
