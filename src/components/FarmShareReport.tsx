@@ -1,12 +1,10 @@
 "use client";
 
-import { ShareIconButton } from "@/components/CopyShareIcons";
 import {
-  SettingsFieldRow,
   SettingsValueChip,
   settingsValueTextClass,
 } from "@/components/SettingsLayout";
-import { Card } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { downloadReportPdf } from "@/lib/exports/pdf";
 import {
@@ -48,7 +46,6 @@ export function FarmShareReport({
     if (!model || selected.size === 0) return;
     downloadReportPdf({
       title: model.farmName,
-      subtitle: "Farm share",
       filename: farmShareFilename(model.farmName),
       blocks: farmSharePdfBlocks(model, fields),
     });
@@ -56,22 +53,13 @@ export function FarmShareReport({
 
   return (
     <Card>
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <p className="text-base font-extrabold text-stone-900">Share</p>
-        <ShareIconButton
-          label="Share farm PDF"
-          disabled={!canShare}
-          onClick={sharePdf}
-        />
-      </div>
-
-      <SettingsFieldRow label="Farm" htmlFor="share-farm">
-        <SettingsValueChip className="min-w-[9.5rem] max-w-[14rem]">
+      <div className="flex items-center gap-2">
+        <SettingsValueChip className="min-w-0 flex-1">
           <select
-            id="share-farm"
+            id="data-farm"
             value={selectedFarmId}
             onChange={(event) => onFarmChange(event.target.value)}
-            className={cn(settingsValueTextClass, "text-right")}
+            className={cn(settingsValueTextClass, "text-left")}
           >
             {farms.length === 0 ? <option value="">No farms</option> : null}
             {farms.map((farm) => (
@@ -81,7 +69,10 @@ export function FarmShareReport({
             ))}
           </select>
         </SettingsValueChip>
-      </SettingsFieldRow>
+        <Button type="button" compact className="shrink-0" disabled={!canShare} onClick={sharePdf}>
+          Share PDF
+        </Button>
+      </div>
 
       {selectedFarmId ? (
         <div className="mt-4">

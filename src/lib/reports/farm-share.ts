@@ -54,7 +54,7 @@ export function firstShareFarmId(snapshot: OfflineSnapshot): string {
 }
 
 export function parseShareFields(raw?: string | null): FarmShareFieldKey[] {
-  if (raw == null) return [...ALL_FARM_SHARE_FIELDS];
+  if (raw == null || !raw.trim()) return [];
   const allowed = new Set<string>(ALL_FARM_SHARE_FIELDS);
   const requested = raw
     .split(",")
@@ -157,6 +157,11 @@ export function farmShareSectionTitle(
   return "Catch times";
 }
 
+/** Helvetica cannot draw Unicode minus — it shows up as `"`. */
+export function farmSharePdfTitle(text: string): string {
+  return text.replace(/\u2212/g, "-").replace(/[\u2013\u2014]/g, "-");
+}
+
 export function farmSharePdfBlocks(
   model: FarmShareModel,
   fields: Iterable<FarmShareFieldKey>,
@@ -166,13 +171,12 @@ export function farmSharePdfBlocks(
   for (const field of ALL_FARM_SHARE_FIELDS) {
     if (!selected.has(field)) continue;
     blocks.push({
-      type: "table",
-      title: farmShareSectionTitle(field, model.timing),
-      headers: ["House", "Time"],
-      rows: model.houses.map((house) => [
-        houseLabel(house.houseNumber),
-        formatFarmShareStamp(stampOf(house, field), model.timeZone),
-      ]),
+      type: "lines",
+      title: farmSharePdfTitle(farmShareSectionTitle(field, model.timing)),
+      lines: model.houses.map(
+        (house) =>
+          `${houseLabel(house.houseNumber)}  ${formatFarmShareStamp(stampOf(house, field), model.timeZone)}`,
+      ),
     });
   }
   return blocks;
@@ -180,7 +184,7 @@ export function farmSharePdfBlocks(
 
 export function farmShareFilename(farmName: string): string {
   const slug = farmName.trim().replace(/[^\w]+/g, "-").replace(/^-|-$/g, "") || "farm";
-  return `${slug}-share.pdf`;
+  return `${slug}-data.pdf`;
 }
 
 export function farmShareCheckboxLabel(

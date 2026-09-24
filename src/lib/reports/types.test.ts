@@ -7,11 +7,12 @@ describe("resolveReportType", () => {
     assert.equal(resolveReportType("field-log"), "field-log");
     assert.equal(resolveReportType("generator"), "generator");
     assert.equal(resolveReportType("mortality"), "mortality");
-    assert.equal(resolveReportType("share"), "share");
+    assert.equal(resolveReportType("data"), "data");
+    assert.equal(resolveReportType("share"), "data");
     assert.equal(resolveReportType(undefined), "field-log");
     assert.deepEqual(
       REPORT_TYPES.map((t) => t.key),
-      ["field-log", "generator", "mortality", "share"],
+      ["field-log", "generator", "mortality", "data"],
     );
   });
 

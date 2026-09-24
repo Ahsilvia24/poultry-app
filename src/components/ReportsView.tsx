@@ -110,7 +110,7 @@ export function ReportsView({
   });
   const [shareFarmId, setShareFarmId] = useState(() => {
     const requested =
-      resolveReportType(seed.type) === "share" ? (seed.farmId ?? "") : "";
+      resolveReportType(seed.type) === "data" ? (seed.farmId ?? "") : "";
     return requested || firstShareFarmId(snapshot);
   });
   const [shareFields, setShareFields] = useState<FarmShareFieldKey[]>(() =>
@@ -121,7 +121,7 @@ export function ReportsView({
       ? genFarmId
       : type === "mortality"
         ? mortFarmId
-        : type === "share"
+        : type === "data"
           ? shareFarmId
           : "";
   const [fieldRange, setFieldRange] = useState(() => {
@@ -156,7 +156,7 @@ export function ReportsView({
       ? fieldRange
       : type === "generator"
         ? generatorRange
-        : type === "share"
+        : type === "data"
           ? { from: "", to: "" }
           : mortalityRange;
 
@@ -166,7 +166,7 @@ export function ReportsView({
       farmId: type === "field-log" ? undefined : farmId || undefined,
       from: range.from,
       to: range.to,
-      fields: type === "share" ? encodeShareFields(shareFields) : undefined,
+      fields: type === "data" ? encodeShareFields(shareFields) : undefined,
     });
     // Remember the open tab once so share / Reports tab survive a remount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -193,9 +193,9 @@ export function ReportsView({
     const href = reportsHref({
       type: next.type,
       farmId: next.type === "field-log" ? undefined : next.farmId,
-      from: next.type === "share" ? undefined : next.from,
-      to: next.type === "share" ? undefined : next.to,
-      fields: next.type === "share" ? next.fields : undefined,
+      from: next.type === "data" ? undefined : next.from,
+      to: next.type === "data" ? undefined : next.to,
+      fields: next.type === "data" ? next.fields : undefined,
     });
     rememberReportsHref(href);
     nav?.replace(href);
@@ -221,7 +221,7 @@ export function ReportsView({
       persist({ type: next, farmId: id, from: nextRange.from, to: nextRange.to });
       return;
     }
-    if (next === "share") {
+    if (next === "data") {
       const id = shareFarmId || firstShareFarmId(snapshot);
       setShareFarmId(id);
       persist({
@@ -259,7 +259,7 @@ export function ReportsView({
   function onShareFarmChange(nextFarmId: string) {
     setShareFarmId(nextFarmId);
     persist({
-      type: "share",
+      type: "data",
       farmId: nextFarmId,
       fields: encodeShareFields(shareFields),
     });
@@ -268,7 +268,7 @@ export function ReportsView({
   function onShareFieldsChange(nextFields: FarmShareFieldKey[]) {
     setShareFields(nextFields);
     persist({
-      type: "share",
+      type: "data",
       farmId: shareFarmId,
       fields: encodeShareFields(nextFields),
     });
@@ -371,11 +371,11 @@ export function ReportsView({
     );
   }
 
-  if (model.type === "share") {
+  if (model.type === "data") {
     return (
       <div>
         <PageHeader title="Reports" />
-        <ReportsTypeTabs active="share" onSelect={onSelectType} />
+        <ReportsTypeTabs active="data" onSelect={onSelectType} />
         <FarmShareReport
           snapshot={snapshot}
           farmId={shareFarmId || model.farmId}

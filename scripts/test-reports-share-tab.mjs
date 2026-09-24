@@ -11,6 +11,7 @@ const {
   encodeShareFields,
   farmShareFilename,
   farmSharePdfBlocks,
+  farmSharePdfTitle,
   farmShareSectionTitle,
   firstShareFarmId,
   parseShareFields,
@@ -41,11 +42,17 @@ globalThis.window = {
 
 assert.deepEqual(
   REPORT_TYPES.map((tab) => tab.key),
-  ["field-log", "generator", "mortality", "share"],
+  ["field-log", "generator", "mortality", "data"],
 );
-assert.equal(resolveReportType("share"), "share");
+assert.deepEqual(
+  REPORT_TYPES.map((tab) => tab.label),
+  ["Field Log", "Generator", "Mortality", "Data"],
+);
+assert.equal(resolveReportType("data"), "data");
+assert.equal(resolveReportType("share"), "data");
 assert.deepEqual(ALL_FARM_SHARE_FIELDS, ["feedOff", "feedUp", "catchTimes"]);
-assert.deepEqual(parseShareFields(undefined), ["feedOff", "feedUp", "catchTimes"]);
+assert.deepEqual(parseShareFields(undefined), []);
+assert.deepEqual(parseShareFields(null), []);
 assert.deepEqual(parseShareFields(""), []);
 assert.deepEqual(parseShareFields("catchTimes,feedOff"), ["feedOff", "catchTimes"]);
 assert.equal(encodeShareFields(["catchTimes", "feedOff"]), "feedOff,catchTimes");
@@ -55,14 +62,15 @@ assert.deepEqual(toggleShareField(["feedOff", "feedUp", "catchTimes"], "feedUp",
 ]);
 
 const href = reportsHref({
-  type: "share",
+  type: "data",
   farmId: "farm-old",
   fields: "feedOff,catchTimes",
 });
-assert.equal(href, "/reports?type=share&farmId=farm-old&fields=feedOff%2CcatchTimes");
+assert.equal(href, "/reports?type=data&farmId=farm-old&fields=feedOff%2CcatchTimes");
+assert.equal(rememberReportsHref("/reports?type=share&farmId=farm-old&fields=feedOff%2CcatchTimes"), href);
 assert.equal(rememberReportsHref(href), href);
 assert.deepEqual(mergeReportsInitial({}), {
-  type: "share",
+  type: "data",
   farmId: "farm-old",
   from: undefined,
   to: undefined,
@@ -175,8 +183,9 @@ assert.deepEqual(
 );
 assert.equal(firstShareFarmId(snapshot), "farm-old");
 
-const reports = selectReports(snapshot, { type: "share", farmId: "farm-old" });
-assert.equal(reports.type, "share");
+const reports = selectReports(snapshot, { type: "data", farmId: "farm-old" });
+assert.equal(reports.type, "data");
+assert.equal(selectReports(snapshot, { type: "share", farmId: "farm-old" }).type, "data");
 assert.equal(reports.mortality, null);
 
 const model = selectFarmShare(snapshot, "farm-old");
@@ -202,22 +211,32 @@ assert.equal(model.houses[1].feedUpAt?.toISOString(), h2FeedUp?.toISOString());
 assert.equal(model.houses[1].feedOffAt?.toISOString(), h2FeedOff.toISOString());
 assert.notEqual(model.houses[0].catchTime, model.houses[1].catchTime);
 
+assert.match(farmShareSectionTitle("feedOff", timing), /Feed off \(−10\)/);
+assert.match(farmShareSectionTitle("feedUp", timing), /Feed up \(−5\)/);
+assert.equal(farmSharePdfTitle(farmShareSectionTitle("feedOff", timing)), "Feed off (-10)");
+assert.equal(farmSharePdfTitle(farmShareSectionTitle("feedUp", timing)), "Feed up (-5)");
+assert.doesNotMatch(farmSharePdfTitle(farmShareSectionTitle("feedOff", timing)), /[“"\u2212]/);
+
 const allBlocks = farmSharePdfBlocks(model, ALL_FARM_SHARE_FIELDS);
 assert.deepEqual(
-  allBlocks.map((block) => block.title),
-  [farmShareSectionTitle("feedOff", timing), farmShareSectionTitle("feedUp", timing), "Catch times"],
+  allBlocks.map((block) => ({ type: block.type, title: block.title })),
+  [
+    { type: "lines", title: "Feed off (-10)" },
+    { type: "lines", title: "Feed up (-5)" },
+    { type: "lines", title: "Catch times" },
+  ],
 );
-assert.equal(allBlocks[0].rows[0][0], "H1");
-assert.equal(allBlocks[0].rows[1][0], "H2");
-assert.notEqual(allBlocks[0].rows[0][1], allBlocks[0].rows[1][1]);
-assert.notEqual(allBlocks[2].rows[0][1], "—");
+assert.match(allBlocks[0].lines[0], /^H1  /);
+assert.match(allBlocks[0].lines[1], /^H2  /);
+assert.notEqual(allBlocks[0].lines[0], allBlocks[0].lines[1]);
+assert.notEqual(allBlocks[2].lines[0], "H1  —");
 
 const onlyCatch = farmSharePdfBlocks(model, ["catchTimes"]);
 assert.deepEqual(
   onlyCatch.map((block) => block.title),
   ["Catch times"],
 );
-assert.equal(farmShareFilename("Oak Ridge"), "Oak-Ridge-share.pdf");
+assert.equal(farmShareFilename("Oak Ridge"), "Oak-Ridge-data.pdf");
 
 const afterShare = {
   farmId: "farm-old",
@@ -233,16 +252,22 @@ assert.match(view, /onShareFieldsChange/);
 assert.match(view, /encodeShareFields\(shareFields\)/);
 
 const tile = read("src/components/FarmShareReport.tsx");
-assert.match(tile, /ShareIconButton/);
+assert.match(tile, /Share PDF/);
+assert.match(tile, /text-left/);
 assert.match(tile, /Unselect all/);
 assert.match(tile, /Select all/);
 assert.match(tile, /shareFarms/);
 assert.match(tile, /downloadReportPdf/);
 assert.match(tile, /farmSharePdfBlocks/);
+assert.doesNotMatch(tile, /ShareIconButton/);
 assert.doesNotMatch(tile, /router\.(push|replace)/);
 assert.doesNotMatch(tile, /nav\?\.(navigate|push)/);
 
 const tabs = read("src/lib/reports/types.ts");
-assert.match(tabs, /key: "share", label: "Share"/);
+assert.match(tabs, /key: "data", label: "Data"/);
+
+const pdf = read("src/lib/exports/pdf.ts");
+assert.match(pdf, /type: "lines"/);
+assert.match(pdf, /headStyles: \{ fillColor: \[4, 120, 87\] \}/);
 
 console.log("reports-share-tab: ok");

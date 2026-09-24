@@ -11,6 +11,7 @@ export type PdfTableSection = {
 export type PdfBlock =
   | { type: "heading"; text: string }
   | { type: "table"; title?: string; headers: string[]; rows: Array<Array<string | number>> }
+  | { type: "lines"; title?: string; lines: string[] }
   | { type: "image"; dataUrl: string; width?: number; height?: number };
 
 function pageBottom(doc: jsPDF) {
@@ -64,6 +65,25 @@ export async function downloadReportPdf(opts: {
       doc.setTextColor(0);
       doc.text(block.text, 14, y);
       y += 8;
+      continue;
+    }
+
+    if (block.type === "lines") {
+      if (block.title) {
+        y = ensurePageSpace(doc, y, 12);
+        doc.setFontSize(12);
+        doc.setTextColor(0);
+        doc.text(block.title, 14, y);
+        y += 7;
+      }
+      doc.setFontSize(10);
+      doc.setTextColor(0);
+      for (const line of block.lines) {
+        y = ensurePageSpace(doc, y, 6);
+        doc.text(line, 14, y);
+        y += 6;
+      }
+      y += 6;
       continue;
     }
 
