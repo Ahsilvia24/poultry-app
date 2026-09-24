@@ -211,19 +211,21 @@ assert.equal(model.houses[1].feedUpAt?.toISOString(), h2FeedUp?.toISOString());
 assert.equal(model.houses[1].feedOffAt?.toISOString(), h2FeedOff.toISOString());
 assert.notEqual(model.houses[0].catchTime, model.houses[1].catchTime);
 
-assert.match(farmShareSectionTitle("feedOff", timing), /Feed off \(−10\)/);
-assert.match(farmShareSectionTitle("feedUp", timing), /Feed up \(−5\)/);
-assert.equal(farmSharePdfTitle(farmShareSectionTitle("feedOff", timing)), "Feed off (-10)");
-assert.equal(farmSharePdfTitle(farmShareSectionTitle("feedUp", timing)), "Feed up (-5)");
+assert.match(farmShareSectionTitle("feedOff", timing), /Feed Off \(−10\)/);
+assert.match(farmShareSectionTitle("feedUp", timing), /Feed Up \(−5\)/);
+assert.equal(farmSharePdfTitle(farmShareSectionTitle("feedOff", timing)), "Feed Off (-10)");
+assert.equal(farmSharePdfTitle(farmShareSectionTitle("feedUp", timing)), "Feed Up (-5)");
+assert.equal(farmShareSectionTitle("catchTimes", timing), "Catch Times");
+assert.equal(farmSharePdfTitle(farmShareSectionTitle("catchTimes", timing)), "Catch Times");
 assert.doesNotMatch(farmSharePdfTitle(farmShareSectionTitle("feedOff", timing)), /[“"\u2212]/);
 
 const allBlocks = farmSharePdfBlocks(model, ALL_FARM_SHARE_FIELDS);
 assert.deepEqual(
   allBlocks.map((block) => ({ type: block.type, title: block.title })),
   [
-    { type: "lines", title: "Feed off (-10)" },
-    { type: "lines", title: "Feed up (-5)" },
-    { type: "lines", title: "Catch times" },
+    { type: "lines", title: "Feed Off (-10)" },
+    { type: "lines", title: "Feed Up (-5)" },
+    { type: "lines", title: "Catch Times" },
   ],
 );
 assert.match(allBlocks[0].lines[0], /^H1  /);
@@ -234,7 +236,7 @@ assert.notEqual(allBlocks[2].lines[0], "H1  —");
 const onlyCatch = farmSharePdfBlocks(model, ["catchTimes"]);
 assert.deepEqual(
   onlyCatch.map((block) => block.title),
-  ["Catch times"],
+  ["Catch Times"],
 );
 assert.equal(farmShareFilename("Oak Ridge"), "Oak-Ridge-data.pdf");
 

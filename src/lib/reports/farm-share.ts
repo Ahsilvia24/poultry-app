@@ -5,9 +5,7 @@ import { sortFarmsByOrder } from "@/lib/farm-order";
 import {
   combineDateAndTime,
   feedOffFromFeedUp,
-  feedOffLabel,
   feedUpFromCatch,
-  feedUpLabel,
   lfoTimingFromSettings,
   type LfoFeedTiming,
 } from "@/lib/lfo/calculate";
@@ -16,9 +14,9 @@ import { reportFarms, type ReportFarmOption } from "@/lib/offline/selectReports"
 import type { OfflineSnapshot } from "@/lib/offline/types";
 
 export const FARM_SHARE_FIELDS = [
-  { key: "feedOff", label: "Feed off" },
-  { key: "feedUp", label: "Feed up" },
-  { key: "catchTimes", label: "Catch times" },
+  { key: "feedOff", label: "Feed Off" },
+  { key: "feedUp", label: "Feed Up" },
+  { key: "catchTimes", label: "Catch Times" },
 ] as const;
 
 export type FarmShareFieldKey = (typeof FARM_SHARE_FIELDS)[number]["key"];
@@ -152,9 +150,9 @@ export function farmShareSectionTitle(
   field: FarmShareFieldKey,
   timing: LfoFeedTiming,
 ): string {
-  if (field === "feedOff") return feedOffLabel(timing);
-  if (field === "feedUp") return feedUpLabel(timing);
-  return "Catch times";
+  if (field === "feedOff") return `Feed Off (−${timing.feedOffHoursBeforeCatch})`;
+  if (field === "feedUp") return `Feed Up (−${timing.feedUpHoursBeforeCatch})`;
+  return "Catch Times";
 }
 
 /** Helvetica cannot draw Unicode minus — it shows up as `"`. */
