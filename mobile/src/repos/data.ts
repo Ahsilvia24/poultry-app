@@ -25,7 +25,11 @@ import {
   formatHouseLfoSummary,
   formatLocalDateTime,
 } from "../lib/lfo/calculate";
-import { addCatchAge, addCatchHouseNumber, uniqueCatchAges } from "../lib/catchHouses";
+import {
+  addCatchHouseNumber,
+  sortUpcomingCatchRows,
+  uniqueCatchAges,
+} from "../lib/catchHouses";
 import { getAppTimeZone, getDefaultMarketAgeDays, getLfoFeedTiming } from "../lib/appSettings";
 import { lfoDisplayName, nextCustomLfoName } from "../lib/lfo/customName";
 import { normalizeHalfHourTime } from "../lib/time-slots";
@@ -335,6 +339,7 @@ export function getDashboard() {
     catchAgeDays: number;
     catchAgesDays: number[];
     catchTime: string | null;
+    houseNumber: number | null;
     houseNumbers: number[];
   };
   const upcomingCatches: CatchRow[] = [];
@@ -483,37 +488,24 @@ export function getDashboard() {
         hf.flock_catch ||
         addDaysKey(housePlacement, 52);
       const houseCatchTime = hf.catch_time?.trim() || null;
-      const catchKey = `${farm.id}|${houseCatch}`;
+      const houseNumber = hf.house_number ?? null;
+      const catchKey = `${farm.id}|${houseNumber ?? ""}|${houseCatch}`;
       const catchAge = birdAgeFromPlacement(housePlacement, houseCatch);
       if (!seenCatchKeys.has(catchKey)) {
         seenCatchKeys.add(catchKey);
         const houseNumbers: number[] = [];
-        const catchAges: number[] = [];
-        addCatchHouseNumber(houseNumbers, hf.house_number);
-        addCatchAge(catchAges, catchAge);
+        addCatchHouseNumber(houseNumbers, houseNumber);
         upcomingCatches.push({
           farmId: farm.id,
           farmName: farm.farmName,
           date: houseCatch,
           flockAgeDays: daysSincePlacement(housePlacement, today),
-          catchAgeDays: uniqueCatchAges(catchAges)[0] ?? 0,
-          catchAgesDays: uniqueCatchAges(catchAges),
+          catchAgeDays: uniqueCatchAges([catchAge])[0] ?? 0,
+          catchAgesDays: uniqueCatchAges([catchAge]),
           catchTime: houseCatchTime,
+          houseNumber,
           houseNumbers,
         });
-      } else {
-        const existing = upcomingCatches.find(
-          (c) => c.farmId === farm.id && c.date === houseCatch,
-        );
-        if (existing) {
-          addCatchHouseNumber(existing.houseNumbers, hf.house_number);
-          addCatchAge(existing.catchAgesDays, catchAge);
-          existing.catchAgesDays = uniqueCatchAges(existing.catchAgesDays);
-          existing.catchAgeDays = existing.catchAgesDays[0] ?? existing.catchAgeDays;
-          if (houseCatchTime && (!existing.catchTime || houseCatchTime < existing.catchTime)) {
-            existing.catchTime = houseCatchTime;
-          }
-        }
       }
       const daysUntilCatch = daysUntilDateKey(today, houseCatch);
       if (daysUntilCatch != null) {
@@ -545,6 +537,7 @@ export function getDashboard() {
           catchAgeDays: catchAge,
           catchAgesDays: uniqueCatchAges([catchAge]),
           catchTime: null,
+          houseNumber: null,
           houseNumbers: [],
         });
       }
@@ -675,11 +668,9 @@ export function getDashboard() {
   );
 
   const catchHorizonEnd = addDaysKey(today, 12);
-  const upcomingCatchesSorted = upcomingCatches
-    .filter((c) => c.date >= today && c.date <= catchHorizonEnd)
-    .sort(
-      (a, b) => a.date.localeCompare(b.date) || a.farmName.localeCompare(b.farmName),
-    );
+  const upcomingCatchesSorted = sortUpcomingCatchRows(
+    upcomingCatches.filter((c) => c.date >= today && c.date <= catchHorizonEnd),
+  );
 
   return {
     stats: {

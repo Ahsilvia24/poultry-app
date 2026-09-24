@@ -37,7 +37,11 @@ import {
 } from "../../src/components/ui";
 import { ScheduleImportCard } from "../../src/components/ScheduleImportCard";
 import { OneDotName } from "../../src/components/OneDotName";
-import { formatCatchDateLabel, formatCatchHouses } from "../../src/lib/catchHouses";
+import {
+  catchRowHouseNumber,
+  formatCatchDateLabel,
+  formatCatchHouseLabel,
+} from "../../src/lib/catchHouses";
 import { getAppTimeZone } from "../../src/lib/appSettings";
 import { LAST_SERVICE_REPORT_LABEL } from "../../src/lib/lastChecklistDate";
 import { compactCatchTimeLabel } from "../../src/lib/time-slots";
@@ -385,9 +389,11 @@ export default function DashboardScreen() {
               ) : (
                 <ScrollableScheduleList>
                   {data.upcomingCatches.map((c) => {
+                    const houseNumber = catchRowHouseNumber(c);
+                    const houseLabel = formatCatchHouseLabel(houseNumber);
                     return (
                     <Pressable
-                      key={`${c.farmId}-${c.date}`}
+                      key={`${c.farmId}-${houseNumber ?? ""}-${c.date}`}
                       onPress={() =>
                         router.navigate({
                           pathname: "/(tabs)/farms/[id]",
@@ -418,7 +424,7 @@ export default function DashboardScreen() {
                             color: colors.text,
                           }}
                         />
-                        {formatCatchHouses(c.houseNumbers) ? (
+                        {houseLabel ? (
                           <Text
                             style={{
                               fontWeight: "400",
@@ -428,7 +434,7 @@ export default function DashboardScreen() {
                             }}
                             numberOfLines={1}
                           >
-                            {formatCatchHouses(c.houseNumbers)}
+                            {houseLabel}
                           </Text>
                         ) : null}
                       </View>

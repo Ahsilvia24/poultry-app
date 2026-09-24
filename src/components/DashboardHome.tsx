@@ -1,6 +1,10 @@
 "use client";
 
-import { formatCatchDateLabel, formatCatchHouses } from "@/lib/catchHouses";
+import {
+  catchRowHouseNumber,
+  formatCatchDateLabel,
+  formatCatchHouseLabel,
+} from "@/lib/catchHouses";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { Card } from "@/components/ui";
@@ -81,22 +85,21 @@ export function DashboardHome({
                     c.farmName,
                     snapshot?.farms,
                   );
-                  const housesLabel = formatCatchHouses(
-                    "houseNumbers" in c ? c.houseNumbers : undefined,
-                  );
+                  const houseNumber = catchRowHouseNumber(c);
+                  const houseLabel = formatCatchHouseLabel(houseNumber);
                   const name = (
                     <>
                       <OneDotName text={c.farmName} />
-                      {housesLabel ? (
+                      {houseLabel ? (
                         <span className="shrink-0 font-normal text-stone-500">
-                          {housesLabel}
+                          {houseLabel}
                         </span>
                       ) : null}
                     </>
                   );
                   return (
                     <li
-                      key={`${c.farmName}-${c.date}-${c.flockNumber}`}
+                      key={`${"farmId" in c ? c.farmId : c.farmName}-${houseNumber ?? ""}-${c.date}-${c.flockNumber}`}
                       className="flex min-h-[22px] items-baseline gap-2"
                     >
                       {href ? (

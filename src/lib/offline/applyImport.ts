@@ -1,4 +1,8 @@
-import { addCatchAge, addCatchHouseNumber, uniqueCatchAges } from "@/lib/catchHouses";
+import {
+  addCatchHouseNumber,
+  sortUpcomingCatchRows,
+  uniqueCatchAges,
+} from "@/lib/catchHouses";
 import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { daysSincePlacement } from "@/lib/mortality/calculations";
 import { farmGroupKey as catchFarmGroupKey } from "@/lib/catch-import/parse";
@@ -248,51 +252,67 @@ function patchDashboardCatchDates(
     const flock = flocks.find((row) => row.id === flockId);
     if (!flock) continue;
     const farm = farms.find((row) => row.id === flock.farmId);
-    const date = asDateKey(flock.projectedCatchDate);
-    if (!farm || !date) continue;
+    if (!farm) continue;
     upcoming = upcoming.filter((row) => row.farmName !== farm.farmName || row.flockNumber !== flock.flockNumber);
-    if (date >= todayKey && date <= horizonKey) {
+    const flockHouses = houseFlocks.filter((row) => row.flockId === flockId);
+    const flockAgeDays = daysSincePlacement(
+      localNoonFromKey(asDateKey(flock.placementDate) ?? flock.placementDate.slice(0, 10)),
+      new Date(),
+    );
+    const pushRow = (
+      date: string,
+      houseNumber: number | null,
+      catchTime: string | null,
+      catchAge: number,
+    ) => {
+      if (date < todayKey || date > horizonKey) return;
       const houseNumbers: number[] = [];
-      const catchAges: number[] = [];
-      for (const hf of houseFlocks.filter((row) => row.flockId === flockId)) {
-        const house = snapshot.houses.find((row) => row.id === hf.houseId && !row.deletedAt);
-        addCatchHouseNumber(houseNumbers, house?.houseNumber);
-        const placement =
-          asDateKey(hf.placementDate) ??
-          asDateKey(flock.placementDate) ??
-          flock.placementDate.slice(0, 10);
-        addCatchAge(
-          catchAges,
-          daysSincePlacement(localNoonFromKey(placement), localNoonFromKey(date)),
-        );
-      }
-      const ages = uniqueCatchAges(catchAges);
+      addCatchHouseNumber(houseNumbers, houseNumber);
       upcoming.push({
         farmId: farm.id,
         farmName: farm.farmName,
         date,
         flockNumber: flock.flockNumber,
-        flockAgeDays: daysSincePlacement(
-          localNoonFromKey(asDateKey(flock.placementDate) ?? flock.placementDate.slice(0, 10)),
-          new Date(),
-        ),
-        catchAgeDays:
-          ages[0] ??
+        flockAgeDays,
+        catchAgeDays: catchAge,
+        catchAgesDays: uniqueCatchAges([catchAge]),
+        catchTime,
+        houseNumber,
+        houseNumbers,
+      });
+    };
+    if (flockHouses.length === 0) {
+      const date = asDateKey(flock.projectedCatchDate);
+      if (date) {
+        pushRow(
+          date,
+          null,
+          null,
           daysSincePlacement(
             localNoonFromKey(asDateKey(flock.placementDate) ?? flock.placementDate.slice(0, 10)),
             localNoonFromKey(date),
           ),
-        catchAgesDays: ages,
-        catchTime:
-          houseFlocks
-            .filter((hf) => hf.flockId === flockId && hf.catchTime)
-            .map((hf) => hf.catchTime)
-            .sort()[0] ?? null,
-        houseNumbers,
-      });
+        );
+      }
+    } else {
+      for (const hf of flockHouses) {
+        const date = asDateKey(hf.catchDate) ?? asDateKey(flock.projectedCatchDate);
+        if (!date) continue;
+        const house = snapshot.houses.find((row) => row.id === hf.houseId && !row.deletedAt);
+        const placement =
+          asDateKey(hf.placementDate) ??
+          asDateKey(flock.placementDate) ??
+          flock.placementDate.slice(0, 10);
+        pushRow(
+          date,
+          house?.houseNumber ?? null,
+          hf.catchTime?.trim() || null,
+          daysSincePlacement(localNoonFromKey(placement), localNoonFromKey(date)),
+        );
+      }
     }
   }
-  upcoming.sort((a, b) => a.date.localeCompare(b.date) || a.farmName.localeCompare(b.farmName));
+  upcoming = sortUpcomingCatchRows(upcoming);
   return {
     ...snapshot,
     farms,
