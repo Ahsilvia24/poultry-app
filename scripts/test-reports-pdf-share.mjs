@@ -216,6 +216,8 @@ assert.match(pdf, /PDFDocument/);
 assert.match(pdf, /sharePdfBytes/);
 assert.match(pdf, /pdfBytesFromJpegPages/);
 assert.match(pdf, /renderReportJpegPages/);
+assert.match(read("src/lib/exports/report-canvas.ts"), /const DPR = 3/);
+assert.match(read("src/lib/exports/scan-pdf.ts"), /quality = 0\.9/);
 assert.match(pdf, /updateFieldAppearances: false/);
 assert.doesNotMatch(pdf, /from "jspdf"/);
 assert.doesNotMatch(pdf, /jspdf-autotable/);

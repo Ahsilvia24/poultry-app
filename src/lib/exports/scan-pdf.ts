@@ -22,7 +22,7 @@ export async function pdfBytesFromJpegPages(
 
 export async function jpegBytesFromCanvas(
   canvas: HTMLCanvasElement,
-  quality = 0.86,
+  quality = 0.9,
 ): Promise<Uint8Array> {
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(

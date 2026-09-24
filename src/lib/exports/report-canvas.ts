@@ -4,7 +4,7 @@ import type { PdfBlock } from "@/lib/exports/pdf";
 const PORTRAIT = { w: 612, h: 792 };
 const LANDSCAPE = { w: 792, h: 612 };
 const MARGIN = 14;
-const DPR = 2;
+const DPR = 3;
 
 function pdfSafe(text: string): string {
   return text
