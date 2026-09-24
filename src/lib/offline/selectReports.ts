@@ -194,7 +194,9 @@ export function selectReports(
       ? fieldDefaults
       : type === "generator"
         ? generatorDefaults
-        : mortalityDefaults;
+        : type === "share"
+          ? { from: todayKey, to: todayKey }
+          : mortalityDefaults;
   const from = search.from ?? typeDefaults.from;
   const to = search.to ?? typeDefaults.to;
   const farms = reportFarms(snapshot).map((farm) => ({
@@ -204,7 +206,7 @@ export function selectReports(
   }));
   let farmId =
     search.farmId && farms.some((farm) => farm.id === search.farmId) ? search.farmId : "";
-  if (type === "mortality" && !farmId) farmId = farms[0]?.id ?? "";
+  if ((type === "mortality" || type === "share") && !farmId) farmId = farms[0]?.id ?? "";
   const farmNameById = new Map(farms.map((farm) => [farm.id, farm.farmName]));
   const houseById = new Map((snapshot.houses ?? []).map((house) => [house.id, house]));
   const flockById = new Map((snapshot.flocks ?? []).map((flock) => [flock.id, flock]));
@@ -221,6 +223,10 @@ export function selectReports(
     generator: null,
     mortality: null,
   };
+
+  if (type === "share") {
+    return model;
+  }
 
   if (type === "field-log") {
     const visits = replicaVisitsForFieldLog(snapshot).filter((visit) =>

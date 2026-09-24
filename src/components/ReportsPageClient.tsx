@@ -9,11 +9,13 @@ export function ReportsPageClient({
   farmId,
   from,
   to,
+  fields,
 }: {
   type?: string;
   farmId?: string;
   from?: string;
   to?: string;
+  fields?: string;
 }) {
   const { snapshot, ready } = useOffline();
   if (!snapshotHasFarmGraph(snapshot)) {
@@ -32,7 +34,7 @@ export function ReportsPageClient({
   return (
     <ReportsView
       snapshot={snapshot}
-      initial={{ type, farmId, from, to }}
+      initial={{ type, farmId, from, to, fields }}
     />
   );
 }
