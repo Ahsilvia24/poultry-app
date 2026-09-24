@@ -1,10 +1,12 @@
 import { buildGeneratorPdfBytes } from "./buildGeneratorPdf";
 import type { GeneratorReportViewFarm } from "./generator-log";
 import { savePdfBytes } from "./savePdf";
+import { reportShareFilename } from "./share-filename";
 
 export async function shareGeneratorReportPdf(opts: {
   farms: GeneratorReportViewFarm[];
   subtitle: string;
+  farmName?: string | null;
 }) {
   if (opts.farms.length === 0) {
     throw new Error("No generator hours logged in this date range.");
@@ -15,5 +17,5 @@ export async function shareGeneratorReportPdf(opts: {
     subtitle: opts.subtitle,
     farms: opts.farms,
   });
-  await savePdfBytes(bytes, `generator-hours-${Date.now()}.pdf`);
+  await savePdfBytes(bytes, reportShareFilename("Generator Hours", opts.farmName));
 }

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui";
 import { CopyShareRow } from "@/components/CopyShareIcons";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { downloadReportPdf } from "@/lib/exports/pdf";
+import { reportShareFilename } from "@/lib/reports/share-filename";
 import {
   FIELD_LOG_FARM_NAME_CHARS,
   FIELD_LOG_PDF_FARM_NAME_CHARS,
@@ -52,7 +53,7 @@ export function FieldLogReport({
     downloadReportPdf({
       title: pdfTitle,
       subtitle: filterLabel,
-      filename: `field-log-${Date.now()}.pdf`,
+      filename: reportShareFilename("Field Log"),
       orientation: "landscape",
       blocks: weeks.map((week) => {
         const maxRows = Math.max(1, ...week.days.map((day) => day.farms.length));

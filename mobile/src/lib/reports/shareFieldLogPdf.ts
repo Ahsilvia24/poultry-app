@@ -1,6 +1,7 @@
 import { buildFieldLogPdfBytes } from "./buildFieldLogPdf";
 import { fieldLogHasVisits, type FieldLogWeek } from "./field-log";
 import { savePdfBytes } from "./savePdf";
+import { reportShareFilename } from "./share-filename";
 
 export async function shareFieldLogPdf(opts: {
   weeks: FieldLogWeek[];
@@ -17,5 +18,5 @@ export async function shareFieldLogPdf(opts: {
     subtitle: opts.subtitle,
     weeks: opts.weeks,
   });
-  await savePdfBytes(bytes, `field-log-${Date.now()}.pdf`);
+  await savePdfBytes(bytes, reportShareFilename("Field Log"));
 }

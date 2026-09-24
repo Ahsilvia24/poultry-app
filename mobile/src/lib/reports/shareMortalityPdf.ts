@@ -4,11 +4,14 @@ import {
   type MortalityReportMatrix,
 } from "./mortality-matrix";
 import { savePdfBytes } from "./savePdf";
+import { reportShareFilename } from "./share-filename";
 
 export async function shareMortalityReportPdf(opts: {
   matrix: MortalityReportMatrix;
   rowHeaderLabel: string;
   subtitle: string;
+  farmName?: string | null;
+  reportName?: string;
 }) {
   if (!mortalityMatrixHasData(opts.matrix)) {
     throw new Error("No data for range");
@@ -20,5 +23,5 @@ export async function shareMortalityReportPdf(opts: {
     rowHeaderLabel: opts.rowHeaderLabel,
     matrix: opts.matrix,
   });
-  await savePdfBytes(bytes, `mortality-report-${Date.now()}.pdf`);
+  await savePdfBytes(bytes, reportShareFilename(opts.reportName ?? "Mortality", opts.farmName));
 }

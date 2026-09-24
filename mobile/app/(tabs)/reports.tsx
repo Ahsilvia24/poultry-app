@@ -37,6 +37,7 @@ import { shareFieldLogPdf } from "../../src/lib/reports/shareFieldLogPdf";
 import { shareGeneratorReportPdf } from "../../src/lib/reports/shareGeneratorPdf";
 import { shareMortalityReportPdf } from "../../src/lib/reports/shareMortalityPdf";
 import { shareTablePdf } from "../../src/lib/reports/shareTablePdf";
+import { reportShareFilename } from "../../src/lib/reports/share-filename";
 import { appScrollProps, colors, styles } from "../../src/theme";
 import {
   Card,
@@ -523,6 +524,7 @@ export default function ReportsScreen() {
                         void shareGeneratorReportPdf({
                           farms: genView,
                           subtitle: genFilterLabel,
+                          farmName: selectedGenFarmName,
                         }).catch((e) => {
                           setShareNotice(
                             userFacingMessage(e, "Could not share PDF. Try again in a moment."),
@@ -666,7 +668,7 @@ export default function ReportsScreen() {
                       setShareNotice(null);
                       void shareTablePdf({
                         title: "Mortality by Percentage",
-                        filename: `mortality-by-percentage-${Date.now()}.pdf`,
+                        filename: reportShareFilename("Mortality by Percentage", selectedFarmName),
                         headers: [entityHeader || "Farm", "Placed", "Total", "%"],
                         rows: pctRows.map((row) => [
                           percentageRowLabel(row),
@@ -757,6 +759,8 @@ export default function ReportsScreen() {
                         matrix,
                         rowHeaderLabel,
                         subtitle: mortFilterLabel,
+                        farmName: selectedFarmName,
+                        reportName: "Mortality by Date",
                       }).catch((e) => {
                         setShareNotice(
                           userFacingMessage(e, "Could not share PDF. Try again in a moment."),
@@ -887,7 +891,7 @@ export default function ReportsScreen() {
                       setShareNotice(null);
                       void shareTablePdf({
                         title: "Mortality by House",
-                        filename: `mortality-by-house-${Date.now()}.pdf`,
+                        filename: reportShareFilename("Mortality by House", selectedFarmName),
                         headers: ["House", "Mortality", "Culls", "Total"],
                         rows: houseRows.map((row) => [
                           row.houseLabel,
@@ -968,7 +972,7 @@ export default function ReportsScreen() {
                       setShareNotice(null);
                       void shareTablePdf({
                         title: "Cumulative Mortality by Bird Age",
-                        filename: `mortality-by-age-${Date.now()}.pdf`,
+                        filename: reportShareFilename("Cumulative Mortality by Bird Age", selectedFarmName),
                         headers: ["Farm", "Age (days)", "Cumulative"],
                         rows: ageSeries.flatMap((series) =>
                           series.points.map((point) => [
@@ -1058,6 +1062,8 @@ export default function ReportsScreen() {
                     matrix,
                     rowHeaderLabel,
                     subtitle: mortFilterLabel,
+                    farmName: selectedFarmName,
+                    reportName: "Mortality",
                   }).catch((e) => {
                     setShareNotice(
                       userFacingMessage(e, "Could not share PDF. Try again in a moment."),

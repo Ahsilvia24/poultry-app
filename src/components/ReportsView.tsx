@@ -366,6 +366,7 @@ export function ReportsView({
         <GeneratorLogReport
           farms={model.generator?.farms ?? []}
           filterLabel={model.generator?.filterLabel ?? ""}
+          farmName={farmId ? model.farms.find((farm) => farm.id === farmId)?.farmName : null}
         />
       </div>
     );

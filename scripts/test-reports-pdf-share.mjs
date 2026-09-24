@@ -27,6 +27,19 @@ Object.defineProperty(globalThis, "window", {
 const { buildReportPdfBytes, downloadMortalityPdf, downloadReportPdf } = await import(
   join(root, "src/lib/exports/pdf.ts")
 );
+const { reportShareFilename } = await import(join(root, "src/lib/reports/share-filename.ts"));
+
+assert.equal(reportShareFilename("Generator Hours", "Weylin Groom"), "Generator Hours Weylin Groom.pdf");
+assert.equal(reportShareFilename("Generator Hours"), "Generator Hours All Farms.pdf");
+assert.equal(reportShareFilename("Generator Hours", "  "), "Generator Hours All Farms.pdf");
+assert.equal(reportShareFilename("Field Log"), "Field Log All Farms.pdf");
+assert.equal(
+  reportShareFilename("Mortality by Percentage", "Oak Poultry"),
+  "Mortality by Percentage Oak Poultry.pdf",
+);
+assert.equal(reportShareFilename("Mortality", "Weylin Groom"), "Mortality Weylin Groom.pdf");
+assert.doesNotMatch(reportShareFilename("Generator Hours", "Weylin Groom"), /-/);
+assert.doesNotMatch(reportShareFilename("Field Log"), /\d{5,}/);
 
 function isPdf(bytes) {
   return Buffer.from(bytes.subarray(0, 5)).toString("latin1") === "%PDF-";
@@ -89,19 +102,19 @@ const chartBytes = await buildReportPdfBytes({
 assert.equal(isPdf(chartBytes), true);
 
 assert.equal(await downloadReportPdf({
-  title: "Field Log - Alex",
-  filename: "field-log.pdf",
+  title: "Field Log",
+  filename: reportShareFilename("Field Log"),
   orientation: "landscape",
   blocks: [{ type: "table", headers: ["Monday"], rows: [["Oak Poultry\nRoutine Service"]] }],
 }), "share");
 assert.equal(await downloadReportPdf({
   title: "Generator Hours",
-  filename: "generator-hours.pdf",
+  filename: reportShareFilename("Generator Hours", "Weylin Groom"),
   blocks: [{ type: "heading", text: "Oak Poultry" }],
 }), "share");
 assert.equal(await downloadMortalityPdf({
-  title: "Mortality report",
-  filename: "mortality-report.pdf",
+  title: "Mortality",
+  filename: reportShareFilename("Mortality", "Weylin Groom"),
   sections: [{ title: "Mortality by Percentage", headers: ["Farm", "%"], rows: [["Oak Poultry", "0.23"]] }],
 }), "share");
 
@@ -112,26 +125,37 @@ for (const share of shares) {
   assert.ok(!("text" in share));
   assert.equal(share.files[0].type, "application/pdf");
 }
-assert.equal(shares[0].files[0].name, "field-log.pdf");
-assert.equal(shares[1].files[0].name, "generator-hours.pdf");
-assert.equal(shares[2].files[0].name, "mortality-report.pdf");
+assert.equal(shares[0].files[0].name, "Field Log All Farms.pdf");
+assert.equal(shares[1].files[0].name, "Generator Hours Weylin Groom.pdf");
+assert.equal(shares[2].files[0].name, "Mortality Weylin Groom.pdf");
 
 const field = read("src/components/FieldLogReport.tsx");
 assert.match(field, /downloadReportPdf/);
+assert.match(field, /reportShareFilename\("Field Log"\)/);
 assert.match(field, /Share field log PDF/);
+assert.doesNotMatch(field, /Date\.now\(\)/);
 assert.doesNotMatch(field, /jspdf/i);
 
 const generator = read("src/components/GeneratorLogReport.tsx");
 assert.match(generator, /downloadReportPdf/);
+assert.match(generator, /reportShareFilename\("Generator Hours", farmName\)/);
 assert.match(generator, /Share generator report PDF/);
+assert.doesNotMatch(generator, /Date\.now\(\)/);
+assert.match(read("src/components/ReportsView.tsx"), /farmName=\{farmId \? model\.farms\.find/);
 
 const mortality = read("src/components/MortalityCharts.tsx");
 assert.match(mortality, /downloadReportPdf/);
 assert.match(mortality, /downloadMortalityPdf/);
+assert.match(mortality, /reportShareFilename\("Mortality by Percentage", farmTitle\)/);
+assert.match(mortality, /reportShareFilename\("Mortality by Date", farmTitle\)/);
+assert.match(mortality, /reportShareFilename\("Mortality by House", farmTitle\)/);
+assert.match(mortality, /reportShareFilename\("Cumulative Mortality by Bird Age", farmTitle\)/);
+assert.match(mortality, /reportShareFilename\("Mortality", farmTitle\)/);
 assert.match(mortality, /Share mortality by percentage PDF/);
 assert.match(mortality, /Share mortality by date PDF/);
 assert.match(mortality, /Share mortality by house PDF/);
 assert.match(mortality, /Share cumulative mortality PDF/);
+assert.doesNotMatch(mortality, /Date\.now\(\)\.pdf/);
 
 const pdf = read("src/lib/exports/pdf.ts");
 assert.match(pdf, /PDFDocument/);

@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { downloadCsv, toCsv } from "@/lib/exports/csv";
 import { downloadMortalityPdf, downloadReportPdf } from "@/lib/exports/pdf";
+import { reportShareFilename } from "@/lib/reports/share-filename";
 import { drawAgeLineChart, drawHouseBarChart } from "@/lib/reports/mortality-chart-share";
 import {
   mortalityMatrixHasData,
@@ -126,7 +127,7 @@ export function MortalityCharts({
     downloadReportPdf({
       title: "Mortality by Date",
       subtitle: filterLabel,
-      filename: `mortality-by-date-${Date.now()}.pdf`,
+      filename: reportShareFilename("Mortality by Date", farmTitle),
       orientation: "landscape",
       blocks: [
         {
@@ -157,7 +158,7 @@ export function MortalityCharts({
     downloadReportPdf({
       title: "Mortality by Percentage",
       subtitle: filterLabel,
-      filename: `mortality-by-percentage-${Date.now()}.pdf`,
+      filename: reportShareFilename("Mortality by Percentage", farmTitle),
       blocks: [
         {
           type: "table",
@@ -188,7 +189,7 @@ export function MortalityCharts({
     downloadReportPdf({
       title: "Mortality by House",
       subtitle: filterLabel,
-      filename: `mortality-by-house-${Date.now()}.pdf`,
+      filename: reportShareFilename("Mortality by House", farmTitle),
       blocks: dataUrl
         ? [{ type: "image", dataUrl }]
         : [
@@ -214,7 +215,7 @@ export function MortalityCharts({
     downloadReportPdf({
       title: "Cumulative Mortality by Bird Age",
       subtitle: filterLabel,
-      filename: `mortality-by-age-${Date.now()}.pdf`,
+      filename: reportShareFilename("Cumulative Mortality by Bird Age", farmTitle),
       blocks: dataUrl
         ? [{ type: "image", dataUrl }]
         : [
@@ -265,7 +266,7 @@ export function MortalityCharts({
     downloadMortalityPdf({
       title: "Mortality report",
       subtitle: filterLabel,
-      filename: `mortality-report-${Date.now()}.pdf`,
+      filename: reportShareFilename("Mortality", farmTitle),
       sections: [
         {
           title: "Mortality by Percentage",
