@@ -91,7 +91,15 @@ export async function pushPhoneReplicaToWebsite(
     });
     if (!res.ok) return false;
     const body = (await res.json()) as { ok?: boolean; snapshot?: OfflineSnapshot };
-    return Boolean(body.ok && body.snapshot && websiteHasPhoneFarms(local, body.snapshot));
+    if (!body.ok || !websiteHasPhoneFarms(local, body.snapshot)) return false;
+    const confirm = await fetch("/api/offline/snapshot", {
+      method: "GET",
+      cache: "no-store",
+      credentials: "include",
+    });
+    if (!confirm.ok) return false;
+    const read = (await confirm.json()) as { ok?: boolean; snapshot?: OfflineSnapshot };
+    return Boolean(read.ok && websiteHasPhoneFarms(local, read.snapshot));
   } catch {
     return false;
   }
