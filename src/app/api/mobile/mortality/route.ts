@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { jsonError, requireMobileUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 import { getUserThresholds } from "@/lib/dashboard";
+import { dateKeyFromDb } from "@/lib/visits/schedule";
 import {
   buildMortalitySummaries,
   calcTotalDailyLoss,
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
               placementDate: flock.placementDate,
               houses: flock.houseFlocks.map((hf) => {
                 const existing = hf.mortalities.find(
-                  (m) => format(m.mortalityDate, "yyyy-MM-dd") === date,
+                  (m) => dateKeyFromDb(m.mortalityDate) === date,
                 );
                 const summaries = buildMortalitySummaries(hf.placedBirdCount, hf.mortalities);
                 const latest = summaries[summaries.length - 1];
@@ -118,7 +119,6 @@ export async function POST(req: NextRequest) {
 
   const { birdAgeFromPlacement, getLatestSummary } = await import("@/lib/mortality/calculations");
   const mortalityDate = new Date(body.mortalityDate);
-  const birdAge = birdAgeFromPlacement(flock.placementDate, mortalityDate);
   const hfMap = new Map(flock.houseFlocks.map((hf) => [hf.id, hf]));
 
   for (const entry of body.entries) {
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
     if (!hf) return jsonError("Invalid house flock");
     const loss = calcTotalDailyLoss(Number(entry.dailyMortalityCount), Number(entry.cullCount));
     const existingOther = hf.mortalities.filter(
-      (m) => format(m.mortalityDate, "yyyy-MM-dd") !== body.mortalityDate,
+      (m) => dateKeyFromDb(m.mortalityDate) !== body.mortalityDate,
     );
     const latest = getLatestSummary(hf.placedBirdCount, existingOther, mortalityDate);
     const remainingBefore = latest?.remainingBirdCount ?? hf.placedBirdCount;
@@ -137,6 +137,9 @@ export async function POST(req: NextRequest) {
 
   const saved = [];
   for (const entry of body.entries) {
+    const hf = hfMap.get(entry.houseFlockId);
+    const place = hf?.placementDate ?? flock.placementDate;
+    const birdAge = birdAgeFromPlacement(place, mortalityDate);
     const loss = calcTotalDailyLoss(Number(entry.dailyMortalityCount), Number(entry.cullCount));
     const row = await prisma.dailyMortality.upsert({
       where: {

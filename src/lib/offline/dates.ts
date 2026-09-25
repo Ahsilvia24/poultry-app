@@ -1,10 +1,12 @@
+import { dateKeyForAge } from "@/lib/app-calendar";
+
 export function isoOrNull(value: Date | null | undefined): string | null {
   return value ? value.toISOString() : null;
 }
 
 export function dateKeyOrNull(value: Date | null | undefined): string | null {
   if (!value) return null;
-  return value.toISOString().slice(0, 10);
+  return dateKeyForAge(value);
 }
 
 export function asDate(value: string | Date | null | undefined): Date | null {
@@ -19,9 +21,9 @@ export function asDateRequired(value: string | Date): Date {
 
 export function asDateKey(value: string | Date | null | undefined): string | null {
   if (!value) return null;
-  if (value instanceof Date) return dateKeyOrNull(value);
+  if (value instanceof Date) return dateKeyForAge(value);
   const key = value.slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : dateKeyOrNull(new Date(value));
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : dateKeyForAge(new Date(value));
 }
 
 /** Local noon from yyyy-MM-dd — safe for startOfDay / calendar math. */

@@ -235,7 +235,7 @@ export function selectFarmDetail(
       projectedMortality,
       flockLabel: houseFlock?.flockNumber ?? null,
       houseFlockId: hf?.id ?? null,
-      placementDateKey: placementDate ? format(placementDate, "yyyy-MM-dd") : null,
+      placementDateKey: placementDate ? asDateKey(placementDate) ?? format(placementDate, "yyyy-MM-dd") : null,
       catchDateKey: catchDate ? format(catchDate, "yyyy-MM-dd") : null,
       catchTime: hf?.catchTime ?? null,
       birdAgeDays: placementDate ? daysSincePlacement(placementDate, today, timeZone) : null,
@@ -289,7 +289,8 @@ export function selectFarmDetail(
     })),
     activeFlockId: activeFlock?.id ?? null,
     activePlacementDate: activeFlock
-      ? format(asDateRequired(activeFlock.placementDate), "yyyy-MM-dd")
+      ? asDateKey(activeFlock.placementDate) ??
+        format(asDateRequired(activeFlock.placementDate), "yyyy-MM-dd")
       : null,
     addFlockHouses: houses.map((house) => ({
       id: house.id,

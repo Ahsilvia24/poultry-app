@@ -60,7 +60,7 @@ export function selectMortality(
                 placementDate:
                   asDateKey(houseFlock.placementDate) ??
                   asDateKey(houseFlockRecord?.placementDate) ??
-                  (asDateKey(active.placementDate) ?? active.placementDate.slice(0, 10)),
+                  "",
                 existingEntries: (snapshot.mortalities ?? [])
                   .filter((row) => row.houseFlockId === houseFlock.id)
                   .map((row) => ({

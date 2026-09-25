@@ -53,7 +53,8 @@ assert.deepEqual(
     [{ date: "2026-09-18", age: 30 }],
     [{ date: "2026-09-18", age: 36 }],
   ),
-  [],
+  ["2026-09-18"],
+  "emptying Tuesday Sept 18 clears that date even if the stored age is stale",
 );
 
 const farmDetail = read("src/lib/offline/selectFarmDetail.ts");

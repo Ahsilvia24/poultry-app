@@ -9,6 +9,7 @@ import {
   getLatestSummary,
 } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
+import { dateKeyFromDb } from "@/lib/visits/schedule";
 import { mortalityBatchSchema, mortalityHouseSeriesSchema } from "@/lib/validations";
 
 export async function saveMortalityBatchAction(raw: unknown) {
@@ -44,7 +45,7 @@ export async function saveMortalityBatchAction(raw: unknown) {
 
     const loss = calcTotalDailyLoss(entry.dailyMortalityCount, entry.cullCount);
     const existingOther = hf.mortalities.filter(
-      (m) => m.mortalityDate.toISOString().slice(0, 10) !== parsed.data.mortalityDate,
+      (m) => dateKeyFromDb(m.mortalityDate) !== parsed.data.mortalityDate,
     );
     const latest = getLatestSummary(hf.placedBirdCount, existingOther, mortalityDate);
     const remainingBefore = latest?.remainingBirdCount ?? hf.placedBirdCount;
@@ -147,7 +148,7 @@ export async function saveMortalityHouseSeriesAction(raw: unknown) {
 
   const existingByDate = new Map(
     hf.mortalities
-      .map((m) => [m.mortalityDate.toISOString().slice(0, 10), m] as const)
+      .map((m) => [dateKeyFromDb(m.mortalityDate), m] as const)
       .filter(([dateKey]) => !clearDates.has(dateKey)),
   );
   const submittedDates = new Set(entries.map((e) => e.mortalityDate));
