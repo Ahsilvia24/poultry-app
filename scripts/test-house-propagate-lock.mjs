@@ -395,7 +395,8 @@ assert.doesNotMatch(apply, /catchRaw \?\? \(placementDate \? addDaysKey/);
 const mortForm = read("src/components/MortalityEntryForm.tsx");
 assert.match(mortForm, /key=\{row\.age\}/);
 assert.match(mortForm, /tabular-nums/);
-assert.match(mortForm, /keepPinnedBirdAge|pinnedBirdAge/);
+assert.match(mortForm, /byDate\.get\(mortalityDate\)/);
+assert.match(mortForm, /birdAgeFromPlacement|daysSincePlacement/);
 
 const sheet = read("src/components/HouseCardActions.tsx");
 assert.doesNotMatch(sheet, /catchWasDefault/);

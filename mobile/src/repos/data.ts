@@ -8,8 +8,6 @@ import {
 } from "../lib/flockIdentity";
 import {
   birdAgeFromPlacement,
-  keepPinnedBirdAge,
-  pinnedBirdAge,
   daysSincePlacement,
   calcPercentage,
   calcTotalDailyLoss,
@@ -121,7 +119,7 @@ function summarizeHouse(
     const loss = calcTotalDailyLoss(r.daily_mortality_count, r.cull_count);
     cumulative += loss;
     const age = place
-      ? pinnedBirdAge(place, r.mortality_date, r.bird_age_in_days)
+      ? birdAgeFromPlacement(place, r.mortality_date)
       : r.bird_age_in_days;
     const week = flockWeekFromAge(age);
     if (week >= 1 && week <= 16) {
@@ -1416,10 +1414,7 @@ export function saveHouseMortalitySeries(input: {
       "SELECT id, bird_age_in_days FROM daily_mortality WHERE house_flock_id = ? AND mortality_date = ?",
       [input.houseFlockId, e.mortalityDate],
     );
-    const age = keepPinnedBirdAge(
-      e.birdAgeInDays ?? existing?.bird_age_in_days,
-      computed,
-    );
+    const age = computed;
     // Allow 0/0 — entering zero counts as a confirmed day entry
     if (existing) {
       db.runSync(
@@ -3876,9 +3871,9 @@ function resolveActiveFlockForPlacement(
 }
 
 /**
- * When placement moves, keep each entry on the same bird age (what techs enter by)
- * and shift the calendar date. Previously we kept the date and recomputed age, which
- * made "Age 1" mortality appear on Age 3 after a 2-day placement edit.
+ * When placement moves, keep each entry on its stored calendar date and
+ * recompute bird age. Tuesday Sept 7 stays Tuesday Sept 7; only the day
+ * number changes (place the 1st → the 2nd turns day 6 into day 5).
  */
 function realignMortalityForHouseFlock(
   houseFlockId: string,
@@ -3890,35 +3885,18 @@ function realignMortalityForHouseFlock(
   const rows = db.getAllSync<{
     id: string;
     mortality_date: string;
-    bird_age_in_days: number;
   }>(
-    `SELECT id, mortality_date, bird_age_in_days FROM daily_mortality WHERE house_flock_id = ?`,
+    `SELECT id, mortality_date FROM daily_mortality WHERE house_flock_id = ?`,
     [houseFlockId],
   );
   if (!rows.length) return;
 
-  // Age under the previous placement (what the tech saw when entering).
-  const remapped = rows.map((row) => {
-    const age = birdAgeFromPlacement(prevPlacementDate, row.mortality_date);
-    return {
-      id: row.id,
+  for (const row of rows) {
+    const age = birdAgeFromPlacement(nextPlacementDate, row.mortality_date);
+    db.runSync(`UPDATE daily_mortality SET bird_age_in_days = ? WHERE id = ?`, [
       age,
-      mortalityDate: addDaysKey(nextPlacementDate, age),
-    };
-  });
-
-  // Temp dates avoid UNIQUE(house_flock_id, mortality_date) collisions while shifting.
-  for (const row of remapped) {
-    db.runSync(`UPDATE daily_mortality SET mortality_date = ? WHERE id = ?`, [
-      `__tmp_${row.id}`,
       row.id,
     ]);
-  }
-  for (const row of remapped) {
-    db.runSync(
-      `UPDATE daily_mortality SET mortality_date = ?, bird_age_in_days = ? WHERE id = ?`,
-      [row.mortalityDate, row.age, row.id],
-    );
   }
 }
 

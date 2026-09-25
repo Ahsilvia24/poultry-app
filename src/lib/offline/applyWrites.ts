@@ -3,7 +3,6 @@ import { nextCustomLfoName, parseCustomLfoNumber } from "@/lib/lfo/customName";
 import {
   birdAgeFromPlacement,
   calcTotalDailyLoss,
-  keepPinnedBirdAge,
 } from "@/lib/mortality/calculations";
 import { remainingHousesOnSameFarm } from "@/lib/housePropagate";
 import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
@@ -1118,10 +1117,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
           id: idx >= 0 ? next[idx]!.id : `local-mort-${extra.houseFlockId}-${entry.mortalityDate}`,
           houseFlockId: extra.houseFlockId,
           mortalityDate: entry.mortalityDate,
-          birdAgeInDays: keepPinnedBirdAge(
-            entry.birdAgeInDays ?? (idx >= 0 ? next[idx]!.birdAgeInDays : null),
-            computed,
-          ),
+          birdAgeInDays: computed,
           dailyMortalityCount: entry.dailyMortalityCount,
           cullCount: entry.cullCount,
           totalDailyLoss: loss,

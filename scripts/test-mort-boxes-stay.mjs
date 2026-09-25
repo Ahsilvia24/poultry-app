@@ -40,9 +40,13 @@ function weekTotal(weeks, week) {
 const houseWeeks = weeklyMortalityByPlacement(housePlace, [record], today);
 const flockWeeks = weeklyMortalityByPlacement(flockPlace, [record], today);
 assert.equal(weekTotal(houseWeeks, 6), 7333);
-assert.equal(weekTotal(flockWeeks, 6), 7333, "pinned age 36 stays in Wk6 even if flock place is earlier");
+assert.equal(
+  weekTotal(flockWeeks, 7),
+  7333,
+  "Sept 18 stays Sept 18; an earlier flock place date only changes the week number",
+);
 assert.equal(weekTotal(houseWeeks, 7), 0);
-assert.equal(weekTotal(flockWeeks, 7), 0);
+assert.equal(weekTotal(flockWeeks, 6), 0);
 
 const afterChecklist = weeklyMortalityByPlacement(
   housePlace,
@@ -77,8 +81,8 @@ assert.deepEqual(
     [{ date: "2026-09-18", age: 30 }],
     [{ date: "2026-09-18", age: 36 }],
   ),
-  [],
-  "an empty calendar box must not delete a pinned age on the same date",
+  ["2026-09-18"],
+  "emptying Tuesday Sept 18 clears that date even if the stored age is stale",
 );
 assert.deepEqual(
   mortalityDatesToClear(
@@ -88,7 +92,7 @@ assert.deepEqual(
   ["2026-09-18"],
 );
 
-assert.equal(pinnedBirdAge(housePlace, noon("2026-09-18"), 36), 36);
+assert.equal(pinnedBirdAge(housePlace, noon("2026-09-18"), 99), 36);
 assert.equal(flockWeekFromAge(36), 6);
 
 const kept = mergeLiveHouseRows(
@@ -162,7 +166,8 @@ assert.equal(week1Refresh[0]?.weeks[0], "25", "incomplete week 1 updates off a s
 assert.equal(week1Refresh[0]?.mortalityToDate, "25");
 
 const entry = read("src/components/MortalityEntryForm.tsx");
-assert.match(entry, /mortalityEntryDateKey\(placementDate, age, existing\?\.mortalityDate\)/);
+assert.match(entry, /mortalityEntryDateKey\(placementDate, age\)/);
+assert.match(entry, /byDate\.get\(mortalityDate\)/);
 assert.match(entry, /mortalityDatesToClear/);
 assert.doesNotMatch(entry, /const mortalityDate = format\(addDays\(placement, age\)/);
 

@@ -1,5 +1,5 @@
 import { eachDayOfInterval, parseISO } from "date-fns";
-import { addCalendarDays, appToday, appTodayKey } from "@/lib/app-calendar";
+import { addCalendarDays, appToday, appTodayKey, calendarDaysBetween } from "@/lib/app-calendar";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { flockAgesFromPlacements } from "@/lib/flockAges";
 import { parseFarmOrder, sortFarmsByOrder } from "@/lib/farm-order";
@@ -311,7 +311,19 @@ export function selectReports(
 
   const byAgeMap = new Map<number, number>();
   for (const row of chartMortalities) {
-    byAgeMap.set(row.birdAgeInDays, (byAgeMap.get(row.birdAgeInDays) ?? 0) + row.dailyMortalityCount);
+    const hf = hfById.get(row.houseFlockId);
+    const flock = hf ? flockById.get(hf.flockId) : undefined;
+    const placeKey =
+      (hf?.placementDate ?? "").trim() ||
+      (flock ? asDateKey(flock.placementDate) ?? flock.placementDate.slice(0, 10) : "") ||
+      placementKey ||
+      "";
+    const dateKey = row.mortalityDate.slice(0, 10);
+    const age =
+      placeKey && dateKey
+        ? Math.max(0, calendarDaysBetween(placeKey, dateKey))
+        : row.birdAgeInDays;
+    byAgeMap.set(age, (byAgeMap.get(age) ?? 0) + row.dailyMortalityCount);
   }
   const placementDate = placementKey ? asDateRequired(placementKey) : null;
   const startAge = placementDate ? birdAgeFromPlacement(placementDate, parseISO(chartFrom)) : 0;

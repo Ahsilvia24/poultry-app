@@ -7,7 +7,6 @@ import {
   birdAgeFromPlacement,
   calcTotalDailyLoss,
   getLatestSummary,
-  keepPinnedBirdAge,
 } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
 import { mortalityBatchSchema, mortalityHouseSeriesSchema } from "@/lib/validations";
@@ -62,10 +61,7 @@ export async function saveMortalityBatchAction(raw: unknown) {
     const hf = hfMap.get(entry.houseFlockId);
     const place = hf?.placementDate ?? flock.placementDate;
     const computed = birdAgeFromPlacement(place, mortalityDate);
-    const existingAge = hf?.mortalities.find(
-      (row) => row.mortalityDate.toISOString().slice(0, 10) === parsed.data.mortalityDate,
-    )?.birdAgeInDays;
-    const birdAge = keepPinnedBirdAge(existingAge, computed);
+    const birdAge = computed;
     const loss = calcTotalDailyLoss(entry.dailyMortalityCount, entry.cullCount);
     const row = await prisma.dailyMortality.upsert({
       where: {
@@ -186,10 +182,7 @@ export async function saveMortalityHouseSeriesAction(raw: unknown) {
   for (const entry of entries) {
     const mortalityDate = new Date(entry.mortalityDate);
     const computed = birdAgeFromPlacement(place, mortalityDate);
-    const birdAge = keepPinnedBirdAge(
-      entry.birdAgeInDays ?? existingByDate.get(entry.mortalityDate)?.birdAgeInDays,
-      computed,
-    );
+    const birdAge = computed;
     const loss = calcTotalDailyLoss(entry.dailyMortalityCount, entry.cullCount);
     const row = await prisma.dailyMortality.upsert({
       where: {

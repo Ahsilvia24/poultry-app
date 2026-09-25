@@ -41,17 +41,17 @@ assert.ok(!entryWeeks.includes(7));
 assert.equal(pinnedBirdAge(housePlace, week6DateFromHouse, 36), 36);
 assert.equal(
   pinnedBirdAge(flockPlace, week6DateFromHouse, 36),
-  36,
-  "stored age 36 stays on week 6 even if the farm's oldest place date is a week earlier",
+  43,
+  "Sept 18 stays Sept 18; an earlier place date only changes the day-number",
 );
 assert.equal(
   pinnedBirdAge(housePlace, week6DateFromHouse, 0),
   36,
-  "house place date recovers a 0-placeholder onto day 36",
+  "house place date + Sept 18 is day 36",
 );
 assert.equal(pinnedBirdAge(flockPlace, week6DateFromHouse, 0), 43);
 
-assert.equal(keepPinnedBirdAge(36, 43), 36);
+assert.equal(keepPinnedBirdAge(36, 43), 43);
 assert.equal(keepPinnedBirdAge(0, 36), 36);
 assert.equal(keepPinnedBirdAge(0, 0), 0);
 
@@ -69,10 +69,10 @@ const slid = weeklyMortalityByPlacement(
   today,
 );
 assert.deepEqual(
-  slid.find((week) => week.week === 6),
-  { week: 6, total: 7333, entered: true },
+  slid.find((week) => week.week === 7),
+  { week: 7, total: 7333, entered: true },
 );
-assert.ok(!slid.some((week) => week.week === 7 && week.total === 7333));
+assert.ok(!slid.some((week) => week.week === 6 && week.total === 7333));
 
 const utcMidnightPlace = new Date(Date.UTC(2026, 7, 13));
 const utcMidnightAsOf = new Date(Date.UTC(2026, 8, 14));
@@ -92,7 +92,7 @@ const fromUtcDates = weeklyMortalityByPlacement(
 assert.deepEqual(
   fromUtcDates.find((week) => week.week === 6),
   { week: 6, total: 7333, entered: true },
-  "UTC midnight Date keys must not shift a pinned count into another week",
+  "UTC midnight Date keys must not shift a Sept 18 count off week 6",
 );
 
 console.log("mort-age-never-slide: ok");

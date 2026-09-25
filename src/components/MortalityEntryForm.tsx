@@ -7,10 +7,10 @@ import { addDays, format } from "date-fns";
 import { saveMortalityHouseSeriesAction } from "@/app/actions/mortality";
 import {
   birdAgeFromPlacement,
+  daysSincePlacement,
   flockWeekFromAge,
   mortalityDatesToClear,
   mortalityEntryDateKey,
-  pinnedBirdAge,
 } from "@/lib/mortality/calculations";
 import {
   displayCullCount,
@@ -155,19 +155,17 @@ function buildRows(
   const asOf = parseLocalDate(asOfDateKey);
   const todayAge = birdAgeFromPlacement(placement, asOf);
   const catchAge = birdAgeFromPlacement(placement, catchEnd);
-  const byAge = new Map<number, MortalityHousePayload["existingEntries"][number]>();
+  const byDate = new Map<string, MortalityHousePayload["existingEntries"][number]>();
   for (const entry of house.existingEntries) {
-    const age = pinnedBirdAge(
-      placement,
-      parseLocalDate(entry.mortalityDate),
-      entry.birdAgeInDays,
-    );
-    if (!byAge.has(age)) byAge.set(age, entry);
+    const dateKey = entry.mortalityDate.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateKey) && !byDate.has(dateKey)) {
+      byDate.set(dateKey, entry);
+    }
   }
 
   function rowForAge(age: number): DayRow {
-    const existing = byAge.get(age);
-    const mortalityDate = mortalityEntryDateKey(placementDate, age, existing?.mortalityDate);
+    const mortalityDate = mortalityEntryDateKey(placementDate, age);
+    const existing = byDate.get(mortalityDate);
     return {
       age,
       mortalityDate,
@@ -178,16 +176,17 @@ function buildRows(
     };
   }
 
-  const known = [...byAge.keys()].map((age) => ({
-    age,
+  const known = [...byDate.entries()].map(([dateKey, entry]) => ({
+    age: daysSincePlacement(placement, parseLocalDate(dateKey)),
     hasEntry: true,
-    dailyMortalityCount: displayMortalityCount(byAge.get(age)?.dailyMortalityCount),
-    cullCount: displayCullCount(byAge.get(age)?.cullCount),
+    dailyMortalityCount: displayMortalityCount(entry.dailyMortalityCount),
+    cullCount: displayCullCount(entry.cullCount),
   }));
+  const minAge = Math.min(0, ...known.map((row) => row.age));
   const maxAge = mortalityGridMaxAge(todayAge, catchAge, known);
 
   const rows: DayRow[] = [];
-  for (let age = 0; age <= maxAge; age++) rows.push(rowForAge(age));
+  for (let age = minAge; age <= maxAge; age++) rows.push(rowForAge(age));
   return rows;
 }
 

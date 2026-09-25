@@ -36,29 +36,26 @@ export function birdAgeFromPlacement(placementDate: Date, onDate: Date): number 
 }
 
 /**
- * Age slot a saved mortality row belongs to. Once a real age was stored,
- * keep that slot — do not follow a later placement-date edit.
- * Offline used `0` as "unknown" for new rows, so 0 is only trusted on day 0.
+ * Age for a saved mortality row: always calendar days from the current
+ * placement to the stored mortality date. A later place-date edit must
+ * not move the number off Tuesday Sept 7 — only the day-number changes.
  */
 export function pinnedBirdAge(
   placementDate: Date,
   mortalityDate: Date,
-  storedAge?: number | null,
+  _storedAge?: number | null,
 ): number {
-  const fromDate = birdAgeFromPlacement(placementDate, mortalityDate);
-  if (storedAge == null || !Number.isFinite(storedAge)) return fromDate;
-  if (storedAge === 0 && fromDate !== 0) return fromDate;
-  return storedAge;
+  void _storedAge;
+  return birdAgeFromPlacement(placementDate, mortalityDate);
 }
 
-/** Keep a saved age on write. Repair the offline `0` placeholder only. */
+/** Persist the age implied by the current placement and calendar date. */
 export function keepPinnedBirdAge(
-  storedAge: number | null | undefined,
+  _storedAge: number | null | undefined,
   computedAge: number,
 ): number {
-  if (storedAge == null || !Number.isFinite(storedAge)) return computedAge;
-  if (storedAge === 0 && computedAge !== 0) return computedAge;
-  return storedAge;
+  void _storedAge;
+  return computedAge;
 }
 
 /** Flock week from bird age: days 0–7 → week 1, 8–14 → week 2, 15–21 → week 3, etc. */
@@ -82,17 +79,6 @@ export type WeeklyMortalityTotal = {
  */
 function ageFromDateKeys(placementKey: string, dateKey: string): number {
   return Math.max(0, calendarDaysBetween(placementKey, dateKey));
-}
-
-function pinnedAgeFromDateKeys(
-  placementKey: string,
-  dateKey: string,
-  storedAge?: number | null,
-): number {
-  const fromDate = ageFromDateKeys(placementKey, dateKey);
-  if (storedAge == null || !Number.isFinite(storedAge)) return fromDate;
-  if (storedAge === 0 && fromDate !== 0) return fromDate;
-  return storedAge;
 }
 
 /** One saved day per calendar date — last row wins so a sync copy cannot double-count. */
@@ -126,7 +112,7 @@ export function weeklyMortalityByPlacement(
   const placementKey = toDateKey(placementDate);
   for (const record of uniqueMortalityByDate(records)) {
     const dateKey = toDateKey(record.mortalityDate);
-    const age = pinnedAgeFromDateKeys(placementKey, dateKey, record.birdAgeInDays);
+    const age = ageFromDateKeys(placementKey, dateKey);
     const week = flockWeekFromAge(age);
     if (week < 1 || week > 16) continue;
     const loss = calcTotalDailyLoss(record.dailyMortalityCount, record.cullCount);
@@ -168,49 +154,29 @@ function clearBoxDate(value: MortalityClearBox) {
   return (typeof value === "string" ? value : value.date).slice(0, 10);
 }
 
-function clearBoxAge(value: MortalityClearBox) {
-  return typeof value === "string" ? undefined : value.age;
-}
-
 function existingDateKey(value: MortalityExistingDate) {
   return (typeof value === "string" ? value : value.date).slice(0, 10);
 }
 
-function existingDateAge(value: MortalityExistingDate) {
-  return typeof value === "string" ? undefined : value.age;
-}
-
 /**
  * Only delete dates that already had a saved row and are now empty.
- * Blank boxes must not wipe a live date that was remapped onto another age.
+ * Match by calendar date only — a place-date edit may change the day-number
+ * without moving Tuesday Sept 7 off that date.
  */
 export function mortalityDatesToClear(
   emptyBoxDates: MortalityClearBox[],
   existingDates: MortalityExistingDate[],
 ): string[] {
-  const existing = existingDates
-    .map((value) => ({
-      date: existingDateKey(value),
-      age: existingDateAge(value),
-    }))
-    .filter((row) => /^\d{4}-\d{2}-\d{2}$/.test(row.date));
+  const existing = new Set(
+    existingDates
+      .map((value) => existingDateKey(value))
+      .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)),
+  );
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of emptyBoxDates) {
     const key = clearBoxDate(raw);
-    const boxAge = clearBoxAge(raw);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || seen.has(key)) continue;
-    const saved = existing.find((row) => row.date === key);
-    if (!saved) continue;
-    if (
-      boxAge != null &&
-      Number.isFinite(boxAge) &&
-      saved.age != null &&
-      Number.isFinite(saved.age) &&
-      saved.age !== boxAge
-    ) {
-      continue;
-    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || seen.has(key) || !existing.has(key)) continue;
     seen.add(key);
     out.push(key);
   }

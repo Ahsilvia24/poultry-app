@@ -18,10 +18,10 @@ import {
 } from "../../src/repos/data";
 import {
   birdAgeFromPlacement,
+  daysSincePlacement,
   flockWeekFromAge,
   mortalityDatesToClear,
   mortalityEntryDateKey,
-  pinnedBirdAge,
 } from "../../src/lib/mortality";
 import { mortalityGridMaxAge } from "../../src/lib/weeklyMortalityLayout";
 import { addDaysKey, todayKey } from "../../src/lib/ids";
@@ -527,22 +527,16 @@ export default function MortalityScreen() {
       const catchEnd = series.projectedCatchDate ?? todayKey();
       const todayAge = birdAgeFromPlacement(series.placementDate, todayKey());
       const catchAge = birdAgeFromPlacement(series.placementDate, catchEnd);
-      const byAge = new Map<number, (typeof series.records)[number]>();
+      const byDate = new Map<string, (typeof series.records)[number]>();
       for (const record of series.records) {
-        const age = pinnedBirdAge(
-          series.placementDate,
-          record.mortality_date,
-          record.bird_age_in_days,
-        );
-        if (!byAge.has(age)) byAge.set(age, record);
+        const dateKey = record.mortality_date.slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateKey) && !byDate.has(dateKey)) {
+          byDate.set(dateKey, record);
+        }
       }
       function rowForAge(age: number): DayRow {
-        const existing = byAge.get(age);
-        const mortalityDate = mortalityEntryDateKey(
-          series.placementDate,
-          age,
-          existing?.mortality_date,
-        );
+        const mortalityDate = mortalityEntryDateKey(series.placementDate, age);
+        const existing = byDate.get(mortalityDate);
         return {
           age,
           mortalityDate,
@@ -552,15 +546,16 @@ export default function MortalityScreen() {
           hasEntry: Boolean(existing),
         };
       }
-      const known = [...byAge.keys()].map((age) => ({
-        age,
+      const known = [...byDate.entries()].map(([dateKey, record]) => ({
+        age: daysSincePlacement(series.placementDate, dateKey),
         hasEntry: true,
-        dailyMortalityCount: displayMortalityCount(byAge.get(age)?.daily_mortality_count),
-        cullCount: displayCullCount(byAge.get(age)?.cull_count),
+        dailyMortalityCount: displayMortalityCount(record.daily_mortality_count),
+        cullCount: displayCullCount(record.cull_count),
       }));
+      const minAge = Math.min(0, ...known.map((row) => row.age));
       const maxAge = mortalityGridMaxAge(todayAge, catchAge, known);
       const next: DayRow[] = [];
-      for (let age = 0; age <= maxAge; age++) next.push(rowForAge(age));
+      for (let age = minAge; age <= maxAge; age++) next.push(rowForAge(age));
       setRows(next);
       if (shouldJump) jumpToFirstUnfilled(next);
       else {
