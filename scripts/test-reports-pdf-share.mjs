@@ -80,14 +80,67 @@ const generatorBytes = await buildReportPdfBytes({
   blocks: [
     { type: "heading", text: "Oak Poultry" },
     {
-      type: "table",
-      title: "Gen 1",
-      headers: ["Date", "Hours", "Exercised"],
-      rows: [["September 24, 2026", "12.4", "0.5"]],
+      type: "columnGroups",
+      columnsPerRow: 4,
+      groups: [
+        {
+          title: "Gen 1",
+          headers: ["Date", "Hours", "Exercised"],
+          rows: [["September 24, 2026", "12.4", "0.5"]],
+        },
+        {
+          title: "Gen 2",
+          headers: ["Date", "Hours", "Exercised"],
+          rows: [["September 24, 2026", "18.1", "0.4"]],
+        },
+        {
+          title: "Gen 3",
+          headers: ["Date", "Hours", "Exercised"],
+          rows: [["September 24, 2026", "9.0", "0.2"]],
+        },
+        {
+          title: "Gen 4",
+          headers: ["Date", "Hours", "Exercised"],
+          rows: [["September 24, 2026", "11.2", "0.3"]],
+        },
+        {
+          title: "Gen 5",
+          headers: ["Date", "Hours", "Exercised"],
+          rows: [["September 24, 2026", "7.5", "0.1"]],
+        },
+      ],
     },
   ],
 });
 assert.equal(isPdf(generatorBytes), true);
+
+const png =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+const pagedMortality = await buildReportPdfBytes({
+  title: "Mortality",
+  filename: "Mortality.pdf",
+  orientation: "landscape",
+  blocks: [
+    { type: "pageStart", title: "Mortality by Percentage", subtitle: "This flock" },
+    {
+      type: "table",
+      headers: ["Farm", "Placed", "Total", "%"],
+      rows: [["Oak Poultry", 18000, 42, "0.23"]],
+    },
+    { type: "pageStart", title: "Mortality by Date", subtitle: "This flock" },
+    {
+      type: "table",
+      headers: ["House", "Sep 24", "Total"],
+      rows: [["House 1", 3, 3]],
+    },
+    { type: "pageStart", title: "Mortality by House", subtitle: "This flock" },
+    { type: "image", dataUrl: png, width: 200, height: 80 },
+    { type: "pageStart", title: "Cumulative Mortality by Bird Age", subtitle: "This flock" },
+    { type: "image", dataUrl: png, width: 200, height: 80 },
+  ],
+});
+assert.equal(isPdf(pagedMortality), true);
 
 const mortalityBytes = await buildReportPdfBytes({
   title: "Mortality by Percentage",
@@ -103,8 +156,6 @@ const mortalityBytes = await buildReportPdfBytes({
 });
 assert.equal(isPdf(mortalityBytes), true);
 
-const png =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 const chartBytes = await buildReportPdfBytes({
   title: "Mortality by House",
   filename: "mortality-by-house.pdf",
@@ -192,6 +243,8 @@ assert.doesNotMatch(field, /jspdf/i);
 
 const generator = read("src/components/GeneratorLogReport.tsx");
 assert.match(generator, /downloadReportPdf/);
+assert.match(generator, /columnGroups/);
+assert.match(generator, /GENERATOR_COLUMNS_PER_ROW/);
 assert.match(generator, /reportShareFilename\("Generator Hours", farmName \|\| REPORT_ALL_FARMS\)/);
 assert.match(generator, /Share generator report PDF/);
 assert.doesNotMatch(generator, /Date\.now\(\)/);
@@ -199,7 +252,9 @@ assert.match(read("src/components/ReportsView.tsx"), /farmName=\{farmId \? model
 
 const mortality = read("src/components/MortalityCharts.tsx");
 assert.match(mortality, /downloadReportPdf/);
-assert.match(mortality, /downloadMortalityPdf/);
+assert.match(mortality, /pageStart/);
+assert.match(mortality, /compactHouseAxisLabel/);
+assert.match(mortality, /drawAgeLineChart/);
 assert.match(mortality, /reportShareFilename\("Mortality by Percentage", farmTitle\)/);
 assert.match(mortality, /reportShareFilename\("Mortality by Date", farmTitle\)/);
 assert.match(mortality, /reportShareFilename\("Mortality by House", farmTitle\)/);
@@ -209,6 +264,9 @@ assert.match(mortality, /Share mortality by percentage PDF/);
 assert.match(mortality, /Share mortality by date PDF/);
 assert.match(mortality, /Share mortality by house PDF/);
 assert.match(mortality, /Share cumulative mortality PDF/);
+assert.match(mortality, /Export PDF/);
+assert.doesNotMatch(mortality, /Export CSV/);
+assert.doesNotMatch(mortality, /downloadCsv/);
 assert.doesNotMatch(mortality, /Date\.now\(\)\.pdf/);
 
 const pdf = read("src/lib/exports/pdf.ts");

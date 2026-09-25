@@ -113,16 +113,19 @@ export function OfflineProvider({
       setPendingCount(next.length);
       await saveOutbox(next);
       void reportUnsynced(true);
-      if (typeof navigator === "undefined" || navigator.onLine === false) return;
-      const flushed = await flushOutbox();
-      setAliases(flushed.aliases);
-      setPendingCount(flushed.pending);
     };
     const queued = outboxTail.current.then(run, run);
     outboxTail.current = queued.then(
       () => undefined,
       () => undefined,
     );
+    void queued.then(() => {
+      if (typeof navigator === "undefined" || navigator.onLine === false) return;
+      void flushOutbox().then((flushed) => {
+        setAliases(flushed.aliases);
+        setPendingCount(flushed.pending);
+      });
+    });
     return queued;
   }, []);
 

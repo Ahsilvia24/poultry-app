@@ -20,6 +20,9 @@ export type GeneratorReportFarm = {
   priorHours?: GeneratorReportHours | null;
 };
 
+/** PDF and report grid: four generators across, then wrap to the next row. */
+export const GENERATOR_COLUMNS_PER_ROW = 4;
+
 export const GENERATOR_REPORT_COLUMNS = [
   { key: "gen1Hours", label: "Gen 1" },
   { key: "gen2Hours", label: "Gen 2" },

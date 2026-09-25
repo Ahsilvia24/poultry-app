@@ -14,10 +14,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { downloadCsv, toCsv } from "@/lib/exports/csv";
-import { downloadMortalityPdf, downloadReportPdf } from "@/lib/exports/pdf";
+import { downloadReportPdf } from "@/lib/exports/pdf";
 import { reportShareFilename } from "@/lib/reports/share-filename";
-import { drawAgeLineChart, drawHouseBarChart } from "@/lib/reports/mortality-chart-share";
+import {
+  compactHouseAxisLabel,
+  drawAgeLineChart,
+  drawHouseBarChart,
+} from "@/lib/reports/mortality-chart-share";
 import {
   mortalityMatrixHasData,
   mortalityMatrixToTable,
@@ -228,48 +231,23 @@ export function MortalityCharts({
     });
   }
 
-  function exportCsv() {
-    const houseDateHeaders = ["House", ...byHouseByDate.dates, "Total"];
-    const houseDateRows = byHouseByDate.rows.map((row) => {
-      const values = byHouseByDate.dates.map((d) => row.byDate[d] ?? 0);
-      const total = values.reduce((sum, n) => sum + n, 0);
-      return [row.houseLabel, ...values, total];
-    });
-
-    const csv = [
-      toCsv(
-        ["Bird age (days)", "Cumulative mortality"],
-        cumulativeByAge.map((p) => [p.birdAgeInDays, p.cumulative]),
-      ),
-      "",
-      toCsv(
-        ["House", "Mortality"],
-        byHouse.map((h) => [h.houseLabel, h.mortality]),
-      ),
-      "",
-      toCsv(houseDateHeaders, houseDateRows),
-      "",
-      toCsv(
-        [entityHeader || "Farm", "Placed", "Total", "Pct"],
-        byFarm.map((f) => [
-          percentageRowLabel(f),
-          f.placed,
-          f.total,
-          f.pct.toFixed(2),
-        ]),
-      ),
-    ].join("\n");
-    downloadCsv(`mortality-report-${Date.now()}.csv`, csv);
-  }
-
   function exportPdf() {
-    downloadMortalityPdf({
-      title: "Mortality report",
-      subtitle: filterLabel,
+    const houseChart =
+      typeof document !== "undefined" && byHouse.length > 0
+        ? drawHouseBarChart(byHouse.map((h) => ({ houseLabel: h.houseLabel, mortality: h.mortality })))
+        : "";
+    const ageChart =
+      typeof document !== "undefined" && cumulativeByAge.length > 0
+        ? drawAgeLineChart(cumulativeByAge)
+        : "";
+    downloadReportPdf({
+      title: "Mortality",
       filename: reportShareFilename("Mortality", farmTitle),
-      sections: [
+      orientation: "landscape",
+      blocks: [
+        { type: "pageStart", title: "Mortality by Percentage", subtitle: filterLabel },
         {
-          title: "Mortality by Percentage",
+          type: "table",
           headers: [entityHeader || "Farm", "Placed", "Total", "%"],
           rows: byFarm.map((f) => [
             percentageRowLabel(f),
@@ -278,8 +256,9 @@ export function MortalityCharts({
             f.pct.toFixed(2),
           ]),
         },
+        { type: "pageStart", title: "Mortality by Date", subtitle: filterLabel },
         {
-          title: "Mortality by Date",
+          type: "table",
           headers: ["House", ...byHouseByDate.dates.map(formatDateHeader), "Total"],
           rows: byHouseByDate.rows.map((row) => {
             const values = byHouseByDate.dates.map((d) => row.byDate[d] ?? 0);
@@ -287,16 +266,22 @@ export function MortalityCharts({
             return [row.houseLabel, ...values, total];
           }),
         },
-        {
-          title: "Mortality by House",
-          headers: ["House", "Mortality"],
-          rows: byHouse.map((h) => [h.houseLabel, h.mortality]),
-        },
-        {
-          title: "Cumulative Mortality by Bird Age",
-          headers: ["Age (days)", "Cumulative"],
-          rows: cumulativeByAge.map((p) => [p.birdAgeInDays, p.cumulative]),
-        },
+        { type: "pageStart", title: "Mortality by House", subtitle: filterLabel },
+        houseChart
+          ? { type: "image" as const, dataUrl: houseChart }
+          : {
+              type: "table" as const,
+              headers: ["House", "Mortality"],
+              rows: byHouse.map((h) => [h.houseLabel, h.mortality]),
+            },
+        { type: "pageStart", title: "Cumulative Mortality by Bird Age", subtitle: filterLabel },
+        ageChart
+          ? { type: "image" as const, dataUrl: ageChart }
+          : {
+              type: "table" as const,
+              headers: ["Age (days)", "Cumulative"],
+              rows: cumulativeByAge.map((p) => [p.birdAgeInDays, p.cumulative]),
+            },
       ],
     });
   }
@@ -445,9 +430,14 @@ export function MortalityCharts({
             <p className="text-sm text-stone-500">No data for current filters.</p>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={shownByHouse}>
+              <BarChart
+                data={shownByHouse.map((row) => ({
+                  ...row,
+                  houseTick: compactHouseAxisLabel(row.houseLabel),
+                }))}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                <XAxis dataKey="houseLabel" />
+                <XAxis dataKey="houseTick" interval={0} />
                 <YAxis />
                 <Tooltip />
                 <Legend />
@@ -502,10 +492,7 @@ export function MortalityCharts({
       </Card>
 
       <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={exportCsv}>
-          Export CSV
-        </Button>
-        <Button type="button" variant="secondary" onClick={exportPdf}>
+        <Button type="button" onClick={exportPdf}>
           Export PDF
         </Button>
       </div>

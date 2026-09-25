@@ -9,11 +9,27 @@ export type PdfTableSection = {
   rows: Array<Array<string | number>>;
 };
 
+export type PdfTableBlock = {
+  type: "table";
+  title?: string;
+  headers: string[];
+  rows: Array<Array<string | number>>;
+  headerStyle?: "fill" | "plain";
+};
+
+export type PdfColumnGroup = {
+  title: string;
+  headers: string[];
+  rows: Array<Array<string | number>>;
+};
+
 export type PdfBlock =
   | { type: "heading"; text: string }
-  | { type: "table"; title?: string; headers: string[]; rows: Array<Array<string | number>> }
+  | PdfTableBlock
   | { type: "lines"; title?: string; lines: string[] }
-  | { type: "image"; dataUrl: string; width?: number; height?: number };
+  | { type: "image"; dataUrl: string; width?: number; height?: number }
+  | { type: "pageStart"; title: string; subtitle?: string }
+  | { type: "columnGroups"; columnsPerRow?: number; groups: PdfColumnGroup[] };
 
 const PORTRAIT = { w: 612, h: 792 };
 const LANDSCAPE = { w: 792, h: 612 };
@@ -108,16 +124,175 @@ export async function buildTextReportPdfBytes(opts: ReportPdfOpts): Promise<Uint
     page.drawText(pdfSafe(text), { x, y: y - sizePt, size: sizePt, font: face, color });
   };
 
-  need(22);
-  drawText(opts.title, MARGIN, 16, bold);
-  y -= 20;
-  if (opts.subtitle) {
-    need(14);
-    drawText(opts.subtitle, MARGIN, 10, font, MUTED);
-    y -= 16;
+  const firstIsPage = opts.blocks[0]?.type === "pageStart";
+  if (!firstIsPage) {
+    need(22);
+    drawText(opts.title, MARGIN, 16, bold);
+    y -= 20;
+    if (opts.subtitle) {
+      need(14);
+      drawText(opts.subtitle, MARGIN, 10, font, MUTED);
+      y -= 16;
+    }
   }
 
+  const drawTableAt = (
+    table: {
+      headers: string[];
+      rows: Array<Array<string | number>>;
+      headerStyle?: "fill" | "plain";
+    },
+    x: number,
+    width: number,
+    startY: number,
+    fontSize: number,
+  ) => {
+    const colCount = Math.max(1, table.headers.length);
+    const colW = width / colCount;
+    const lineH = fontSize + 2;
+    const padX = 3;
+    const textW = Math.max(10, colW - padX * 2);
+    const plain = table.headerStyle === "plain";
+    let cursor = startY;
+    const headerH = lineH + 8;
+    if (plain) {
+      table.headers.forEach((header, i) => {
+        const lines = cellLines(String(header), bold, fontSize, textW);
+        page.drawText(lines[0] ?? "", {
+          x: x + colW * i + padX,
+          y: cursor - fontSize - 3,
+          size: fontSize,
+          font: bold,
+          color: INK,
+        });
+      });
+      page.drawRectangle({
+        x,
+        y: cursor - headerH,
+        width,
+        height: 0.7,
+        color: RULE,
+      });
+    } else {
+      page.drawRectangle({
+        x,
+        y: cursor - headerH,
+        width,
+        height: headerH,
+        color: GREEN,
+      });
+      table.headers.forEach((header, i) => {
+        const lines = cellLines(String(header), bold, fontSize, textW);
+        page.drawText(lines[0] ?? "", {
+          x: x + colW * i + padX,
+          y: cursor - fontSize - 4,
+          size: fontSize,
+          font: bold,
+          color: WHITE,
+        });
+      });
+    }
+    cursor -= headerH;
+    for (const row of table.rows) {
+      const cells = Array.from({ length: colCount }, (_, i) =>
+        cellLines(String(row[i] ?? ""), font, fontSize, textW),
+      );
+      const rowH = Math.max(1, ...cells.map((cell) => cell.length)) * lineH + 6;
+      page.drawRectangle({
+        x,
+        y: cursor - rowH,
+        width,
+        height: 0.6,
+        color: RULE,
+      });
+      cells.forEach((lines, i) => {
+        lines.forEach((line, lineIndex) => {
+          page.drawText(line, {
+            x: x + colW * i + padX,
+            y: cursor - fontSize - 3 - lineIndex * lineH,
+            size: fontSize,
+            font,
+            color: INK,
+          });
+        });
+      });
+      cursor -= rowH;
+    }
+    return cursor;
+  };
+
+  const measureTable = (
+    table: { headers: string[]; rows: Array<Array<string | number>> },
+    width: number,
+    fontSize: number,
+    title?: string,
+  ) => {
+    const colCount = Math.max(1, table.headers.length);
+    const colW = width / colCount;
+    const lineH = fontSize + 2;
+    const textW = Math.max(10, colW - 6);
+    let h = title ? 16 : 0;
+    h += lineH + 8;
+    for (const row of table.rows) {
+      const cells = Array.from({ length: colCount }, (_, i) =>
+        cellLines(String(row[i] ?? ""), font, fontSize, textW),
+      );
+      h += Math.max(1, ...cells.map((cell) => cell.length)) * lineH + 6;
+    }
+    return h;
+  };
+
   for (const block of opts.blocks) {
+    if (block.type === "pageStart") {
+      if (y < size.h - MARGIN - 0.5) newPage();
+      need(22);
+      drawText(block.title, MARGIN, 16, bold);
+      y -= 20;
+      if (block.subtitle) {
+        need(14);
+        drawText(block.subtitle, MARGIN, 10, font, MUTED);
+        y -= 16;
+      }
+      continue;
+    }
+
+    if (block.type === "columnGroups") {
+      const perRow = Math.max(1, block.columnsPerRow ?? 4);
+      const gap = 8;
+      const colW = (contentW - gap * (perRow - 1)) / perRow;
+      const fontSize = 7;
+      for (let i = 0; i < block.groups.length; i += perRow) {
+        const rowGroups = block.groups.slice(i, i + perRow);
+        const heights = rowGroups.map((group) =>
+          measureTable(group, colW, fontSize, group.title),
+        );
+        const rowH = Math.max(12, ...heights);
+        need(rowH + 8);
+        const startY = y;
+        rowGroups.forEach((group, index) => {
+          const x = MARGIN + index * (colW + gap);
+          if (group.title) {
+            page.drawText(pdfSafe(group.title), {
+              x,
+              y: startY - 11,
+              size: 10,
+              font: bold,
+              color: INK,
+            });
+          }
+          drawTableAt(
+            { ...group, headerStyle: "plain" },
+            x,
+            colW,
+            startY - (group.title ? 14 : 0),
+            fontSize,
+          );
+        });
+        y -= rowH + 12;
+      }
+      continue;
+    }
+
     if (block.type === "image") {
       if (!block.dataUrl) continue;
       const image = await embedDataUrl(doc, block.dataUrl);
@@ -152,6 +327,8 @@ export async function buildTextReportPdfBytes(opts: ReportPdfOpts): Promise<Uint
       continue;
     }
 
+    if (block.type !== "table") continue;
+
     if (block.title) {
       need(16);
       drawText(block.title, MARGIN, 12, bold);
@@ -164,27 +341,48 @@ export async function buildTextReportPdfBytes(opts: ReportPdfOpts): Promise<Uint
     const lineH = fontSize + 2;
     const padX = 3;
     const textW = Math.max(12, colW - padX * 2);
+    const plain = block.headerStyle === "plain";
 
     const drawHeader = () => {
       const h = lineH + 8;
       need(h + 4);
-      page.drawRectangle({
-        x: MARGIN,
-        y: y - h,
-        width: contentW,
-        height: h,
-        color: GREEN,
-      });
-      block.headers.forEach((header, i) => {
-        const lines = cellLines(String(header), bold, fontSize, textW);
-        page.drawText(lines[0] ?? "", {
-          x: MARGIN + colW * i + padX,
-          y: y - fontSize - 4,
-          size: fontSize,
-          font: bold,
-          color: WHITE,
+      if (plain) {
+        block.headers.forEach((header, i) => {
+          const lines = cellLines(String(header), bold, fontSize, textW);
+          page.drawText(lines[0] ?? "", {
+            x: MARGIN + colW * i + padX,
+            y: y - fontSize - 4,
+            size: fontSize,
+            font: bold,
+            color: INK,
+          });
         });
-      });
+        page.drawRectangle({
+          x: MARGIN,
+          y: y - h,
+          width: contentW,
+          height: 0.7,
+          color: RULE,
+        });
+      } else {
+        page.drawRectangle({
+          x: MARGIN,
+          y: y - h,
+          width: contentW,
+          height: h,
+          color: GREEN,
+        });
+        block.headers.forEach((header, i) => {
+          const lines = cellLines(String(header), bold, fontSize, textW);
+          page.drawText(lines[0] ?? "", {
+            x: MARGIN + colW * i + padX,
+            y: y - fontSize - 4,
+            size: fontSize,
+            font: bold,
+            color: WHITE,
+          });
+        });
+      }
       y -= h;
     };
 

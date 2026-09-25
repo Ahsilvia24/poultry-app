@@ -108,6 +108,7 @@ assert.match(provider, /addEventListener\("online"/);
 assert.match(provider, /syncNow/);
 assert.match(provider, /syncPhoneToWebsite/);
 assert.match(provider, /saveOutbox/);
+assert.match(provider, /void flushOutbox\(\)/);
 assert.doesNotMatch(provider, /pullRemoteSnapshot/);
 assert.doesNotMatch(provider, /replaceSnapshot\(result\.snapshot\)/);
 

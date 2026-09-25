@@ -37,6 +37,28 @@ function roundedRect(
   ctx.closePath();
 }
 
+/** Phone chart ticks: "House 2" → "H2". PDF keeps the full House label. */
+export function compactHouseAxisLabel(label: string) {
+  const trimmed = label.trim();
+  const only = /^House\s+(\d+)$/i.exec(trimmed);
+  if (only) return `H${only[1]}`;
+  return trimmed.replace(/\bHouse\s+(\d+)\b/gi, "H$1");
+}
+
+/** Intermediate age ticks like the app: every day for short windows, then every 2–3 days. */
+export function ageAxisTicks(minAge: number, maxAge: number): number[] {
+  const lo = Math.round(minAge);
+  const hi = Math.round(maxAge);
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return [];
+  if (hi <= lo) return [lo];
+  const span = hi - lo;
+  const step = span <= 16 ? 1 : span <= 32 ? 2 : span <= 60 ? 3 : span <= 90 ? 5 : 7;
+  const ticks: number[] = [];
+  for (let age = lo; age < hi; age += step) ticks.push(age);
+  if (ticks[ticks.length - 1] !== hi) ticks.push(hi);
+  return ticks;
+}
+
 export function drawHouseBarChart(rows: Array<{ houseLabel: string; mortality: number }>) {
   const width = 900;
   const height = 420;
@@ -137,8 +159,9 @@ export function drawAgeLineChart(points: Array<{ birdAgeInDays: number; cumulati
   ctx.fillStyle = "#78716c";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  ctx.fillText("Bird age (days)", left + plotW / 2, top + plotH + 18);
-  ctx.fillText(String(minAge), left, top + plotH + 4);
-  ctx.fillText(String(maxAge), left + plotW, top + plotH + 4);
+  ctx.fillText("Bird age (days)", left + plotW / 2, top + plotH + 26);
+  for (const age of ageAxisTicks(minAge, maxAge)) {
+    ctx.fillText(String(age), xAt(age), top + plotH + 4);
+  }
   return canvas.toDataURL("image/png");
 }

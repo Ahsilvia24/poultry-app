@@ -1,8 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-import { deleteHouseAction, updateHouseAction } from "@/app/actions/farms";
+import { useEffect, useState, type FormEvent } from "react";
 import { DateKeyField } from "@/components/DateKeyField";
 import { GroupedNumberInput } from "@/components/GroupedNumberInput";
 import {
@@ -69,10 +67,8 @@ export function HouseCardActions({
   mode: "idle" | "edit" | "delete";
   onModeChange: (mode: "idle" | "edit" | "delete") => void;
 }) {
-  const router = useRouter();
   const { enabled, queue } = useReplicaWrite();
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
   const [placementDate, setPlacementDate] = useState(house.placementDateKey ?? "");
   const [catchDate, setCatchDate] = useState(house.catchDateKey ?? "");
   const [catchTime, setCatchTime] = useState(house.catchTime ?? "");
@@ -131,51 +127,36 @@ export function HouseCardActions({
   }, [mode]);
 
   function close() {
-    if (pending) return;
     onModeChange("idle");
     setError(null);
   }
 
-  function onSave(formData: FormData) {
+  function onSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError(null);
-    startTransition(async () => {
-      if (enabled) {
-        queue(
-          formWrite("updateHouse", {
-            id: house.id,
-            farmId,
-            ...formDataToParts(formData),
-          }),
-        );
-        onModeChange("idle");
-        return;
-      }
-      const result = await updateHouseAction(farmId, house.id, formData);
-      if (result?.error) {
-        setError(result.error);
-        return;
-      }
-      onModeChange("idle");
-      router.refresh();
-    });
+    if (!enabled) {
+      setError("Farms on this phone are still loading. Try Save again.");
+      return;
+    }
+    const formData = new FormData(event.currentTarget);
+    queue(
+      formWrite("updateHouse", {
+        id: house.id,
+        farmId,
+        ...formDataToParts(formData),
+      }),
+    );
+    onModeChange("idle");
   }
 
   function onDelete() {
     setError(null);
-    startTransition(async () => {
-      if (enabled) {
-        queue(formWrite("deleteHouse", { id: house.id, farmId }));
-        onModeChange("idle");
-        return;
-      }
-      const result = await deleteHouseAction(farmId, house.id);
-      if (result?.error) {
-        setError(result.error);
-        return;
-      }
-      onModeChange("idle");
-      router.refresh();
-    });
+    if (!enabled) {
+      setError("Farms on this phone are still loading. Try Delete again.");
+      return;
+    }
+    queue(formWrite("deleteHouse", { id: house.id, farmId }));
+    onModeChange("idle");
   }
 
   if (mode === "idle") return null;
@@ -200,7 +181,7 @@ export function HouseCardActions({
         }}
       >
         {mode === "edit" ? (
-          <form action={onSave} className="flex min-h-0 flex-1 flex-col" onKeyDown={handleSettingsLayoutEnter}>
+          <form onSubmit={onSave} className="flex min-h-0 flex-1 flex-col" onKeyDown={handleSettingsLayoutEnter}>
             <div className="shrink-0 px-5 pt-[max(1.25rem,env(safe-area-inset-top,1.25rem))]">
               <h3 className="text-lg font-bold text-stone-900">
                 Edit house {house.houseNumber}
@@ -377,16 +358,15 @@ export function HouseCardActions({
               </SettingsFieldRow>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2 px-5 pt-2 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+1.5rem))]">
-              <Button type="submit" disabled={pending} className="flex-1">
-                {pending ? "Saving…" : "Save"}
+              <Button type="submit" className="flex-1">
+                Save
               </Button>
-              <Button type="button" variant="secondary" disabled={pending} onClick={close} className="flex-1">
+              <Button type="button" variant="secondary" onClick={close} className="flex-1">
                 Cancel
               </Button>
               <Button
                 type="button"
                 variant="danger"
-                disabled={pending}
                 onClick={() => onModeChange("delete")}
               >
                 Delete House
@@ -403,10 +383,10 @@ export function HouseCardActions({
             </p>
             {error ? <p className="mt-2 text-sm text-red-700">{error}</p> : null}
             <div className="mt-4 flex flex-wrap gap-2 pb-[max(1.75rem,calc(env(safe-area-inset-bottom)+1.5rem))]">
-              <Button type="button" variant="danger" disabled={pending} onClick={onDelete} className="flex-1">
-                {pending ? "Deleting…" : "Delete house"}
+              <Button type="button" variant="danger" onClick={onDelete} className="flex-1">
+                Delete house
               </Button>
-              <Button type="button" variant="secondary" disabled={pending} onClick={close} className="flex-1">
+              <Button type="button" variant="secondary" onClick={close} className="flex-1">
                 Cancel
               </Button>
             </div>

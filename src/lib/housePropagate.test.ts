@@ -43,6 +43,21 @@ describe("housesInPropagateRange", () => {
 });
 
 describe("remainingHousesOnSameFarm", () => {
+  it("propagating house 2 leaves house 1 and updates 3+", () => {
+    const houses = [1, 2, 3, 4].map((houseNumber) => ({
+      id: `h${houseNumber}`,
+      farmId: "farm-a",
+      houseNumber,
+      deletedAt: null,
+    }));
+    assert.deepEqual(
+      remainingHousesOnSameFarm(houses, { id: "h2", farmId: "farm-a", houseNumber: 2 }).map(
+        (h) => h.id,
+      ),
+      ["h3", "h4"],
+    );
+  });
+
   it("never includes another farm even when house numbers match", () => {
     const houses = [
       { id: "a1", farmId: "farm-a", houseNumber: 1, deletedAt: null },

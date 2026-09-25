@@ -170,6 +170,31 @@ assert.equal(birds(placeOnly, "a2"), 21000, "birds are not pulled along with pla
 assert.equal(place(placeOnly, "b1"), "2026-09-03");
 assert.equal(place(placeOnly, "b2"), "2026-09-03");
 
+const fromHouse2 = applyFormWrite(snapshot(), {
+  action: "updateHouse",
+  id: "a2",
+  farmId: "farm-a",
+  fields: {
+    houseNumber: "2",
+    squareFootage: "29700",
+    placedBirdCount: "21000",
+    placementDate: "2026-09-14",
+    catchDate: "2026-10-23",
+    applyPlacementToRemaining: "true",
+  },
+});
+assert.equal(place(fromHouse2, "a1"), "2026-09-01", "house 1 stays when propagating from house 2");
+assert.equal(place(fromHouse2, "a2"), "2026-09-14");
+assert.equal(place(fromHouse2, "a3"), "2026-09-14");
+assert.deepEqual(
+  remainingHousesOnSameFarm(snapshot().houses, {
+    id: "a2",
+    farmId: "farm-a",
+    houseNumber: 2,
+  }).map((h) => h.id),
+  ["a3"],
+);
+
 const sqftOnly = applyFormWrite(snapshot(), {
   action: "updateHouse",
   id: "a1",
@@ -400,6 +425,10 @@ assert.match(mortForm, /birdAgeFromPlacement|daysSincePlacement/);
 
 const sheet = read("src/components/HouseCardActions.tsx");
 assert.doesNotMatch(sheet, /catchWasDefault/);
+assert.doesNotMatch(sheet, /updateHouseAction/);
+assert.doesNotMatch(sheet, /router\.refresh/);
+assert.match(sheet, /onSubmit=\{onSave\}/);
+assert.match(sheet, /event\.preventDefault/);
 assert.match(sheet, /name="applyPlacementToRemaining"/);
 assert.match(sheet, /name="applyBirdsToRemaining"/);
 assert.match(sheet, /name="applyCatchDateToRemaining"/);

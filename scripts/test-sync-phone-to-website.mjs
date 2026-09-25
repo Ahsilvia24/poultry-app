@@ -105,7 +105,9 @@ assert.ok(SYNC_UI_MS <= 12_000, "Uploading must not sit through a full flush");
 assert.ok(SIGN_OUT_OVERALL_MS < SYNC_OVERALL_MS, "leave must be faster than a full sync");
 assert.match(sync, /flushOutbox\(\{ evenIfOffline: true \}\)/);
 assert.match(settings, /setSyncingNow/);
+assert.match(settings, /websiteConfirmed/);
 assert.match(settings, /reason: "leftover"/);
+assert.match(settings, /lastSync\?\.ok && pendingCount === 0/);
 
 const started = Date.now();
 let timedOut = false;

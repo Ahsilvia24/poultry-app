@@ -42,6 +42,26 @@ assert.equal(websiteHasPhoneFarms(phone, website), true);
 assert.equal(websiteHasPhoneFarms(phone, empty), false);
 assert.equal(websiteHasPhoneFarms(phone, null), false);
 assert.equal(websiteHasPhoneFarms(empty, empty), true);
+const phoneWithWork = {
+  ...phone,
+  mortalities: [
+    {
+      id: "m1",
+      houseFlockId: "hf1",
+      mortalityDate: "2026-09-24",
+      birdAgeInDays: 10,
+      dailyMortalityCount: 2,
+      cullCount: 0,
+      totalDailyLoss: 2,
+      isDraft: false,
+    },
+  ],
+};
+assert.equal(
+  websiteHasPhoneFarms(phoneWithWork, website),
+  false,
+  "same farm names are not enough when website is missing phone work",
+);
 
 setHostedReplicaDurableStore(null);
 clearHostedReplicaMemory();

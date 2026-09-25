@@ -16,7 +16,22 @@ function liveFarms(snapshot: OfflineSnapshot | null | undefined) {
   return (snapshot?.farms ?? []).filter((farm) => !farm.deletedAt);
 }
 
-/** True only when the website copy has every live farm from this phone. */
+function liveHouses(snapshot: OfflineSnapshot | null | undefined) {
+  return (snapshot?.houses ?? []).filter((house) => !house.deletedAt);
+}
+
+function workCounts(snapshot: OfflineSnapshot) {
+  return {
+    farms: liveFarms(snapshot).length,
+    houses: liveHouses(snapshot).length,
+    houseFlocks: snapshot.houseFlocks?.length ?? 0,
+    mortalities: snapshot.mortalities?.length ?? 0,
+    generatorLogs: snapshot.generatorLogs?.length ?? 0,
+    visits: snapshot.visits?.length ?? 0,
+  };
+}
+
+/** True only when the website copy has this phone's farms and the work on them. */
 export function websiteHasPhoneFarms(
   phone: OfflineSnapshot | null | undefined,
   website: OfflineSnapshot | null | undefined,
@@ -29,9 +44,22 @@ export function websiteHasPhoneFarms(
   const websiteNames = new Set(
     liveFarms(website).map((farm) => farm.farmName.trim().toLowerCase()).filter(Boolean),
   );
-  return phoneFarms.every(
-    (farm) =>
-      websiteIds.has(farm.id) || websiteNames.has(farm.farmName.trim().toLowerCase()),
+  if (
+    !phoneFarms.every(
+      (farm) =>
+        websiteIds.has(farm.id) || websiteNames.has(farm.farmName.trim().toLowerCase()),
+    )
+  ) {
+    return false;
+  }
+  const phoneWork = workCounts(phone);
+  const websiteWork = workCounts(website);
+  return (
+    websiteWork.houses >= phoneWork.houses &&
+    websiteWork.houseFlocks >= phoneWork.houseFlocks &&
+    websiteWork.mortalities >= phoneWork.mortalities &&
+    websiteWork.generatorLogs >= phoneWork.generatorLogs &&
+    websiteWork.visits >= phoneWork.visits
   );
 }
 
