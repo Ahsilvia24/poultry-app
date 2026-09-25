@@ -310,7 +310,7 @@ export default function DashboardScreen() {
         {...appScrollProps}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
       >
-        <View style={{ marginBottom: 16 }}>
+        <View style={{ marginBottom: 12 }}>
           <Text style={styles.title}>Dashboard</Text>
         </View>
 
@@ -318,7 +318,7 @@ export default function DashboardScreen() {
 
         {data ? (
           <>
-            <Card style={{ marginBottom: 8 }}>
+            <Card>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
                 Today&apos;s Schedule
               </Text>
@@ -349,7 +349,7 @@ export default function DashboardScreen() {
               )}
             </Card>
 
-            <Card style={{ marginBottom: 8 }}>
+            <Card>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
                 Upcoming Visits
               </Text>
@@ -380,7 +380,7 @@ export default function DashboardScreen() {
               )}
             </Card>
 
-            <Card style={{ marginBottom: 8 }}>
+            <Card style={{ marginBottom: 0 }}>
               <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
                 Upcoming Catches
               </Text>
@@ -462,7 +462,7 @@ export default function DashboardScreen() {
               )}
             </Card>
 
-            <SectionTitle>Active Farms</SectionTitle>
+            <SectionTitle style={{ marginTop: 12 }}>Active Farms</SectionTitle>
             {data.farmCards.map((farm) => {
               return (
                 <SwipeCommitDeleteRow

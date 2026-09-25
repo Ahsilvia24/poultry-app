@@ -53,7 +53,7 @@ import {
 } from "../../../../src/lib/generator";
 import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { formatGroupedInput, parseGroupedNumber, ungroupNumber } from "../../../../src/lib/grouped-number";
-import { appScrollProps, colors, styles } from "../../../../src/theme";
+import { appScrollProps, colors, fonts, styles } from "../../../../src/theme";
 import {
   Card,
   Chip,
@@ -1111,7 +1111,7 @@ export default function FarmDetailScreen() {
       >
         <View
           style={{
-            marginBottom: 16,
+            marginBottom: 12,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
@@ -1279,9 +1279,10 @@ export default function FarmDetailScreen() {
                   <Text
                     style={{
                       color: "#fff",
+                      fontFamily: fonts.sans,
                       fontWeight: "800",
-                      fontSize: 15,
-                      lineHeight: 16,
+                      fontSize: 17,
+                      lineHeight: 18,
                       textAlign: "center",
                     }}
                     numberOfLines={2}

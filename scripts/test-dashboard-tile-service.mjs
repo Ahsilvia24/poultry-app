@@ -36,7 +36,14 @@ assert.match(quick, /Service Farm/);
 assert.match(quick, /\/farms\/\$\{farmId\}\/service/);
 assert.match(quick, /flex h-12 w-full/);
 assert.doesNotMatch(quick, /min-h-12/);
-assert.match(quick, /text-\[15px\] font-extrabold/);
+assert.match(quick, /text-\[17px\] font-extrabold/);
+assert.match(expoFarm, /fontSize: 17/);
+assert.match(expoFarm, /fontFamily: fonts\.sans/);
+assert.match(expoFarm, /marginBottom: 12/);
+assert.doesNotMatch(
+  expoFarm.slice(expoFarm.indexOf("Back to farms") - 220, expoFarm.indexOf("Back to farms")),
+  /marginBottom: 16/,
+);
 
 const farmDetail = readFileSync(join(root, "src/components/FarmDetailView.tsx"), "utf8");
 assert.match(farmDetail, /<div className="mb-3">/);
