@@ -73,6 +73,30 @@ export function formatGeneratorReportDate(dateKey: string) {
   return `${mon} ${d}, ${y}`;
 }
 
+const GEN_LOG_MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** Compact date so four generator columns fit across a page. */
+export function formatGeneratorReportDateShort(dateKey: string) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  if (!y || !m || !d) return dateKey;
+  const mon = GEN_LOG_MONTHS_SHORT[m - 1];
+  if (!mon) return dateKey;
+  return `${mon} ${d}`;
+}
+
 function hoursDelta(
   current: number | null | undefined,
   previous: number | null | undefined,

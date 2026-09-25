@@ -2,7 +2,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildTextReportPdfBytes } from "../src/lib/exports/pdf.ts";
-import { GENERATOR_COLUMNS_PER_ROW } from "../src/lib/reports/generator-log.ts";
+import {
+  formatGeneratorReportDateShort,
+  GENERATOR_COLUMNS_PER_ROW,
+} from "../src/lib/reports/generator-log.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = "/opt/cursor/artifacts";
@@ -13,9 +16,17 @@ function gen(label, hours, exercised) {
     title: label,
     headers: ["Date", "Hours", "Exercised"],
     rows: [
-      ["September 24, 2026", hours, exercised],
-      ["September 17, 2026", String((Number(hours) - Number(exercised)).toFixed(1)), exercised],
-      ["September 10, 2026", String((Number(hours) - Number(exercised) * 2).toFixed(1)), exercised],
+      [formatGeneratorReportDateShort("2026-09-24"), hours, exercised],
+      [
+        formatGeneratorReportDateShort("2026-09-17"),
+        String((Number(hours) - Number(exercised)).toFixed(1)),
+        exercised,
+      ],
+      [
+        formatGeneratorReportDateShort("2026-09-10"),
+        String((Number(hours) - Number(exercised) * 2).toFixed(1)),
+        exercised,
+      ],
     ],
   };
 }

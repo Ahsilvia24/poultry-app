@@ -63,9 +63,9 @@ assert.doesNotMatch(charts, /name="Culls"/);
 
 const pdf = read("src/lib/exports/pdf.ts");
 assert.match(pdf, /type: "image"/);
-assert.match(pdf, /addImage/);
+assert.match(pdf, /type: "columnGroups"/);
 assert.match(pdf, /sharePdfBytes/);
 assert.doesNotMatch(pdf, /downloadPdfBytes/);
-assert.doesNotMatch(pdf, /doc\.save\(/);
+assert.doesNotMatch(pdf, /from "jspdf"/);
 
 console.log("reports-visits-polish: ok");

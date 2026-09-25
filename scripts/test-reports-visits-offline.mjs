@@ -117,8 +117,8 @@ assert.match(form, /fromAllVisits \|\| placeName \? "\/visits"/);
 
 const pdf = read("src/lib/exports/pdf.ts");
 assert.match(pdf, /sharePdfBytes/);
+assert.match(pdf, /pdfBytesFromJpegPages/);
 assert.doesNotMatch(pdf, /downloadPdfBytes/);
-assert.doesNotMatch(pdf, /doc\.save\(/);
 
 const charts = read("src/components/MortalityCharts.tsx");
 assert.match(charts, /type: "table"/);

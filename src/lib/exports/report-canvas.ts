@@ -219,7 +219,7 @@ export async function renderReportJpegPages(opts: {
       const perRow = Math.max(1, block.columnsPerRow ?? 4);
       const gap = 8;
       const colW = (contentW - gap * (perRow - 1)) / perRow;
-      const fontSize = 7;
+      const fontSize = 8;
       for (let i = 0; i < block.groups.length; i += perRow) {
         const rowGroups = block.groups.slice(i, i + perRow);
         const heights = rowGroups.map((group) =>

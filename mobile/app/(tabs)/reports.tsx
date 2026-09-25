@@ -1016,46 +1016,7 @@ export default function ReportsScreen() {
 
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
               <PrimaryButton
-                label="Export CSV"
-                onPress={() => {
-                  const header = [entityHeader || "Farm", "Placed", "Total", "%"].join(",");
-                  const pct = pctRows.map((row) =>
-                    [percentageRowLabel(row), row.placed, row.total, row.pct.toFixed(2)].join(","),
-                  );
-                  const house = [
-                    "House,Mortality,Culls,Total",
-                    ...houseRows.map((row) =>
-                      [row.houseLabel, row.mortality, row.culls, row.total].join(","),
-                    ),
-                  ];
-                  const age = [
-                    "Farm,Bird age (days),Cumulative",
-                    ...ageSeries.flatMap((series) =>
-                      series.points.map((point) =>
-                        [series.farmName, point.birdAgeInDays, point.cumulative].join(","),
-                      ),
-                    ),
-                  ];
-                  const text = [
-                    header,
-                    ...pct,
-                    "",
-                    ...house,
-                    "",
-                    matrixToTsv(matrix, rowHeaderLabel).replace(/\t/g, ","),
-                    "",
-                    ...age,
-                  ].join("\n");
-                  void import("expo-clipboard")
-                    .then((Clipboard) => Clipboard.setStringAsync(text))
-                    .then(() => setShareNotice(null))
-                    .catch(() => setShareNotice("Could not copy CSV on this device."));
-                }}
-                style={{ minWidth: 148 }}
-              />
-              <PrimaryButton
                 label="Export PDF"
-                secondary
                 onPress={() => {
                   setShareNotice(null);
                   void shareMortalityReportPdf({

@@ -8,6 +8,7 @@ import { REPORT_ALL_FARMS, reportShareFilename } from "@/lib/reports/share-filen
 import {
   buildGeneratorReportView,
   formatGeneratorReportDate,
+  formatGeneratorReportDateShort,
   formatGeneratorReportHours,
   GENERATOR_COLUMNS_PER_ROW,
   generatorReportToTsv,
@@ -47,7 +48,7 @@ export function GeneratorLogReport({
             title: gen.label,
             headers: ["Date", "Hours", "Exercised"],
             rows: gen.rows.map((row) => [
-              formatGeneratorReportDate(row.logDate),
+              formatGeneratorReportDateShort(row.logDate),
               formatGeneratorReportHours(row.hours),
               formatGeneratorReportHours(row.exercised),
             ]),
