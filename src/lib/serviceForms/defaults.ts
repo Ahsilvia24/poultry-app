@@ -1,3 +1,4 @@
+import { looksLikeEmail, pickPersonName } from "@/lib/person-name";
 import type {
   PlacementForm,
   PrebroodForm,
@@ -220,7 +221,8 @@ export function withSavedServiceTech<T extends { serviceTech: string }>(
   form: T,
   saved: string,
 ): T {
-  if (form.serviceTech.trim()) return form;
-  const name = saved.trim();
-  return name ? { ...form, serviceTech: name } : form;
+  const entered = form.serviceTech.trim();
+  if (entered && !looksLikeEmail(entered)) return form;
+  const name = pickPersonName(saved);
+  return name ? { ...form, serviceTech: name } : entered ? { ...form, serviceTech: "" } : form;
 }

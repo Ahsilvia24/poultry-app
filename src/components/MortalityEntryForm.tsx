@@ -333,8 +333,11 @@ export function MortalityEntryForm({
 
     const entered = currentRows.filter((r) => r.hasEntry);
     const clearDates = mortalityDatesToClear(
-      currentRows.filter((r) => !r.hasEntry).map((r) => r.mortalityDate),
-      (currentHouse.existingEntries ?? []).map((entry) => entry.mortalityDate),
+      currentRows.filter((r) => !r.hasEntry).map((r) => ({ date: r.mortalityDate, age: r.age })),
+      (currentHouse.existingEntries ?? []).map((entry) => ({
+        date: entry.mortalityDate,
+        age: entry.birdAgeInDays,
+      })),
     );
     if (entered.length === 0 && clearDates.length === 0) {
       setSaveStatus("idle");

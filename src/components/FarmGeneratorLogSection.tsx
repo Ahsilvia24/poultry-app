@@ -27,7 +27,6 @@ import {
   formatGeneratorLogDate,
   hoursDelta,
   GENERATOR_FIELD_DEFS,
-  MAX_GENERATOR_HOUR_LOGS,
   type GenHourKey,
   type GeneratorDeltas,
   type GeneratorHourSwapSuggestion,
@@ -42,8 +41,6 @@ export type GeneratorLogRow = {
   gen3Hours: number | null;
   gen4Hours: number | null;
 };
-
-const MAX_GENERATOR_LOGS_DISPLAY = MAX_GENERATOR_HOUR_LOGS;
 
 type ChartRow = {
   id: string;
@@ -472,9 +469,7 @@ export function FarmGeneratorLogSection({
 
   const chartRowsByGen = useMemo(() => {
     return GENERATOR_FIELD_DEFS.map((gen) => {
-      const genLogs = allSorted
-        .filter((log) => log[gen.hourKey] != null)
-        .slice(0, MAX_GENERATOR_LOGS_DISPLAY);
+      const genLogs = allSorted.filter((log) => log[gen.hourKey] != null);
       return {
         ...gen,
         rows: genLogs.map((log, index) => {

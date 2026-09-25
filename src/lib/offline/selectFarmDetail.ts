@@ -311,7 +311,12 @@ export function selectFarmDetail(
       })),
     generatorLogs: (snapshot.generatorLogs ?? [])
       .filter((row) => row.farmId === farmId)
-      .slice(0, 20)
+      .slice()
+      .sort((a, b) => {
+        const date = b.logDate.slice(0, 10).localeCompare(a.logDate.slice(0, 10));
+        if (date !== 0) return date;
+        return b.id.localeCompare(a.id);
+      })
       .map((row) => ({
         id: row.id,
         logDate: row.logDate.slice(0, 10),

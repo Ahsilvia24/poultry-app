@@ -1,5 +1,6 @@
 import { emptyPhoneSnapshot } from "@/lib/offline/emptySnapshot";
 import { normalizeOwnerEmail } from "@/lib/offline/ownerEmail";
+import { pickPersonName } from "@/lib/person-name";
 import type { OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
 import type { PhoneBackup } from "@/lib/offline/phoneBackup";
 
@@ -183,13 +184,13 @@ export async function ensureOwnerSnapshot(input: {
       ...existing,
       userId: existing.userId || input.userId,
       userEmail: normalizeOwnerEmail(input.email),
-      userName: existing.userName || input.userName,
+      userName: pickPersonName(existing.userName, input.userName) || existing.userName,
     };
   }
   const created = emptyPhoneSnapshot({
     userId: input.userId,
     userEmail: normalizeOwnerEmail(input.email),
-    userName: input.userName,
+    userName: pickPersonName(input.userName),
   });
   await saveLocalSnapshot(created, input.email);
   return created;

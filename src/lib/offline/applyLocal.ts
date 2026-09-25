@@ -1,5 +1,6 @@
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { parseFarmOrder } from "@/lib/farm-order";
+import { pickPersonName } from "@/lib/person-name";
 import type { OfflineSettings, OfflineSnapshot } from "@/lib/offline/types";
 import {
   DEFAULT_CONSUMPTION_RATE,
@@ -111,7 +112,7 @@ export function applySettings(snapshot: OfflineSnapshot, write: SettingsWrite): 
   }
   return {
     ...snapshot,
-    userName: write.name.trim() || snapshot.userName,
+    userName: pickPersonName(write.name, snapshot.userName) || snapshot.userName,
     settings: next,
   };
 }

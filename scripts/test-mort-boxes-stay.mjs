@@ -72,6 +72,21 @@ assert.deepEqual(
   [],
   "empty remapped boxes must not delete the live saved date",
 );
+assert.deepEqual(
+  mortalityDatesToClear(
+    [{ date: "2026-09-18", age: 30 }],
+    [{ date: "2026-09-18", age: 36 }],
+  ),
+  [],
+  "an empty calendar box must not delete a pinned age on the same date",
+);
+assert.deepEqual(
+  mortalityDatesToClear(
+    [{ date: "2026-09-18", age: 36 }],
+    [{ date: "2026-09-18", age: 36 }],
+  ),
+  ["2026-09-18"],
+);
 
 assert.equal(pinnedBirdAge(housePlace, noon("2026-09-18"), 36), 36);
 assert.equal(flockWeekFromAge(36), 6);

@@ -43,6 +43,7 @@ import {
   settingsFormValues,
   settingsWriteFromForm,
 } from "@/lib/offline/applyLocal";
+import { looksLikeEmail } from "@/lib/person-name";
 
 export function SettingsScreen() {
   const {
@@ -347,7 +348,7 @@ export function SettingsScreen() {
 
       <Card className="max-w-2xl overflow-visible">
         <form
-          key={snapshot?.pulledAt ?? "empty"}
+          key={snapshot?.userId ?? "empty"}
           onSubmit={onSubmit}
           className="space-y-3"
         >
@@ -359,9 +360,10 @@ export function SettingsScreen() {
                   <SettingsChipInput
                     id="name"
                     name="name"
-                    defaultValue={values.name}
-                    required
-                    autoComplete="name"
+                    defaultValue={looksLikeEmail(values.name) ? "" : values.name}
+                    required={false}
+                    autoComplete="off"
+                    autoCapitalize="words"
                   />
                 </ValueChip>
               </SettingsRow>

@@ -10,6 +10,7 @@ import {
 import { asDate, asDateKey, localNoonFromKey } from "@/lib/offline/dates";
 import { aliasIdCandidates, type IdAliases } from "@/lib/offline/remapIds";
 import type { OfflineSnapshot } from "@/lib/offline/types";
+import { pickPersonName } from "@/lib/person-name";
 import { mondayOfWeek } from "@/lib/reports/field-log";
 import type { ServiceFarmContext } from "@/lib/serviceForms/farmContext";
 import { isServiceFormKind, type StoredServiceForm } from "@/lib/serviceForms/stored";
@@ -231,7 +232,7 @@ export function selectServiceFarmContext(
     farmNumber: farm.farmNumber?.trim() ?? "",
     flockNumber: activeFlocks.map((flock) => flock.flockNumber).filter(Boolean).join(" · "),
     firstFlockNumber: activeFlock?.flockNumber ?? "",
-    serviceTech: snapshot.userName?.trim() ?? "",
+    serviceTech: pickPersonName(snapshot.userName),
     detail: {
       farm: { farmName: farm.farmName },
       activeFlock: activeFlock ? { flockNumber: activeFlock.flockNumber } : null,

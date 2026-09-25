@@ -21,6 +21,7 @@ import {
 } from "@/lib/offline/idb";
 import { persistOwnerFarms } from "@/lib/offline/persistOwnerFarms";
 import { normalizeOwnerEmail } from "@/lib/offline/ownerEmail";
+import { pickPersonName } from "@/lib/person-name";
 import { unlockPhoneOwner } from "@/lib/offline/phoneUnlock";
 import { seedAndMergeFollowUpCompletions } from "@/lib/offline/followUpCompletions";
 import { seedAndMergeServiceForms } from "@/lib/offline/serviceForms";
@@ -160,7 +161,7 @@ export function OfflineProvider({
         local = await ensureOwnerSnapshot({
           email: owner,
           userId: ownerUserId,
-          userName: ownerName || owner.split("@")[0] || "Tech",
+          userName: pickPersonName(ownerName),
         });
       }
       const storedAliases = await loadIdAliases(owner);

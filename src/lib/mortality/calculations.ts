@@ -161,22 +161,56 @@ export function mortalityEntryDateKey(
   return addCalendarDays(placementDateKey, age);
 }
 
+export type MortalityClearBox = string | { date: string; age?: number };
+export type MortalityExistingDate = string | { date: string; age?: number | null };
+
+function clearBoxDate(value: MortalityClearBox) {
+  return (typeof value === "string" ? value : value.date).slice(0, 10);
+}
+
+function clearBoxAge(value: MortalityClearBox) {
+  return typeof value === "string" ? undefined : value.age;
+}
+
+function existingDateKey(value: MortalityExistingDate) {
+  return (typeof value === "string" ? value : value.date).slice(0, 10);
+}
+
+function existingDateAge(value: MortalityExistingDate) {
+  return typeof value === "string" ? undefined : value.age;
+}
+
 /**
  * Only delete dates that already had a saved row and are now empty.
  * Blank boxes must not wipe a live date that was remapped onto another age.
  */
 export function mortalityDatesToClear(
-  emptyBoxDates: string[],
-  existingDates: string[],
+  emptyBoxDates: MortalityClearBox[],
+  existingDates: MortalityExistingDate[],
 ): string[] {
-  const existing = new Set(
-    existingDates.map((value) => value.slice(0, 10)).filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key)),
-  );
+  const existing = existingDates
+    .map((value) => ({
+      date: existingDateKey(value),
+      age: existingDateAge(value),
+    }))
+    .filter((row) => /^\d{4}-\d{2}-\d{2}$/.test(row.date));
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of emptyBoxDates) {
-    const key = raw.slice(0, 10);
-    if (!existing.has(key) || seen.has(key)) continue;
+    const key = clearBoxDate(raw);
+    const boxAge = clearBoxAge(raw);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || seen.has(key)) continue;
+    const saved = existing.find((row) => row.date === key);
+    if (!saved) continue;
+    if (
+      boxAge != null &&
+      Number.isFinite(boxAge) &&
+      saved.age != null &&
+      Number.isFinite(saved.age) &&
+      saved.age !== boxAge
+    ) {
+      continue;
+    }
     seen.add(key);
     out.push(key);
   }
