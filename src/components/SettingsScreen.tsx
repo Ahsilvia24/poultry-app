@@ -60,7 +60,7 @@ export function SettingsScreen() {
   const farmSave = phoneFarmSaveStatus({ ready, syncing, pendingCount, lastBackupAt });
   const [syncingNow, setSyncingNow] = useState(false);
   const [lastSync, setLastSync] = useState<SyncPhoneResult | null>(null);
-  const websiteConfirmed = Boolean(lastSync?.ok && pendingCount === 0);
+  const websiteConfirmed = Boolean(lastSync?.ok);
   const shownSave = syncingNow
     ? { kind: "saving" as const, text: SYNC_WORKING }
     : websiteConfirmed

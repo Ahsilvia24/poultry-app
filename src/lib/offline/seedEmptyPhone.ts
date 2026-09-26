@@ -1,3 +1,4 @@
+import { isHomeScreenApp } from "@/lib/exports/share-file";
 import { pullRemoteSnapshot } from "@/lib/offline/flushOutbox";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import { loadLocalSnapshot, loadOutbox } from "@/lib/offline/idb";
@@ -31,4 +32,20 @@ export async function seedEmptyPhoneFromWebsite(
   if (!adopted) return null;
   await persistOwnerFarms(adopted, ownerEmail);
   return adopted;
+}
+
+/**
+ * Safari / desktop website only. Show the hosted replica for this email.
+ * Never runs on the Home Screen app — that copy is push-only.
+ */
+export async function hydrateSafariFromWebsite(
+  ownerEmail?: string,
+): Promise<OfflineSnapshot | null> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
+  if (typeof window !== "undefined" && isHomeScreenApp()) return null;
+  const remote = await pullRemoteSnapshot();
+  if (!remote || !snapshotHasFarmGraph(remote)) return null;
+  if (farmCountInSnapshot(remote) === 0) return null;
+  await persistOwnerFarms(remote, ownerEmail);
+  return remote;
 }
