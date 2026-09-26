@@ -103,6 +103,7 @@ assert.equal(
 
 const provider = read("src/components/OfflineProvider.tsx");
 assert.match(provider, /seedEmptyPhoneFromWebsite/);
+assert.match(provider, /hydrateSafariFromWebsite/);
 assert.match(provider, /uploadLeftoverWrites/);
 assert.match(provider, /addEventListener\("online"/);
 assert.match(provider, /syncNow/);

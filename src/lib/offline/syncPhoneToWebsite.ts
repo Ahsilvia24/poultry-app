@@ -1,4 +1,4 @@
-import { flushOutbox, waitForFlush } from "@/lib/offline/flushOutbox";
+import { flushOutbox } from "@/lib/offline/flushOutbox";
 import { websiteHasPhoneFarms } from "@/lib/offline/hostedReplica";
 import { loadIdAliases, loadLocalSnapshot, loadOutbox } from "@/lib/offline/idb";
 import { farmCountInSnapshot } from "@/lib/offline/phoneBackup";
@@ -12,7 +12,7 @@ export const SYNC_ATTEMPTS = 3;
 export type SyncFailReason = "offline" | "no-session" | "unreachable" | "leftover";
 
 export type SyncPhoneResult =
-  | { ok: true; pending: 0; aliases: IdAliases; snapshot: OfflineSnapshot | null }
+  | { ok: true; pending: number; aliases: IdAliases; snapshot: OfflineSnapshot | null }
   | { ok: false; pending: number; aliases: IdAliases; reason: SyncFailReason; error?: string };
 
 export const SYNC_WORKING = "Uploading farm work to the website…";
@@ -74,7 +74,10 @@ async function fail(
   return { ok: false, pending: leftover.length, aliases, reason, error };
 }
 
-/** Empty leftover is not enough — Safari only sees farms the website actually kept. */
+/**
+ * Push this phone's replica to the signed-in email's website copy.
+ * Prisma leftover writes are not the website store — do not wait on them.
+ */
 export async function pushPhoneReplicaToWebsite(
   snapshot?: OfflineSnapshot | null,
 ): Promise<boolean> {
@@ -105,55 +108,40 @@ export async function pushPhoneReplicaToWebsite(
   }
 }
 
-/** Upload leftover writes only. Never replace the phone replica with a website snapshot. */
+/** Upload this phone's farms to the signed-in email. Never replace the phone replica. */
 export async function syncPhoneToWebsite(): Promise<SyncPhoneResult> {
   try {
     return await withTimeout(syncPhoneToWebsiteOnce(), SYNC_OVERALL_MS);
   } catch {
-    // The overall timer does not cancel flush. Wait for it so leftover is not a mid-upload snapshot.
-    try {
-      const flushed = await waitForFlush();
-      if (flushed.pending === 0 && (await pushPhoneReplicaToWebsite())) {
-        return { ok: true, pending: 0, aliases: flushed.aliases, snapshot: null };
-      }
-      return fail("leftover", flushed.aliases, flushed.error);
-    } catch {
-      const aliases = await loadIdAliases();
+    const aliases = await loadIdAliases();
+    if (await pushPhoneReplicaToWebsite()) {
       const leftover = await loadOutbox();
-      if (leftover.length === 0 && (await pushPhoneReplicaToWebsite())) {
-        return { ok: true, pending: 0, aliases, snapshot: null };
-      }
-      return fail("leftover", aliases);
+      return { ok: true, pending: leftover.length, aliases, snapshot: null };
     }
+    return fail("leftover", aliases);
   }
 }
 
 async function syncPhoneToWebsiteOnce(): Promise<SyncPhoneResult> {
-  let aliases: IdAliases = {};
+  let aliases: IdAliases = await loadIdAliases();
   let lastError: string | undefined;
   for (let attempt = 0; attempt < SYNC_ATTEMPTS; attempt += 1) {
     const probe = await probeWebsite();
     if (!probe.ok) return fail(probe.reason, aliases);
 
-    const flushed = await flushOutbox({ evenIfOffline: true });
-    aliases = flushed.aliases;
-    lastError = flushed.error;
-    const leftover = await loadOutbox();
-    if (leftover.length === 0) {
-      const confirm = await probeWebsite();
-      if (!confirm.ok) return fail(confirm.reason, aliases);
-      const still = await loadOutbox();
-      if (still.length > 0) {
-        if (attempt < SYNC_ATTEMPTS - 1) await wait(400 * (attempt + 1));
-        continue;
-      }
-      if (!(await pushPhoneReplicaToWebsite())) {
-        if (attempt < SYNC_ATTEMPTS - 1) await wait(400 * (attempt + 1));
-        continue;
-      }
-      return { ok: true, pending: 0, aliases, snapshot: null };
+    if (await pushPhoneReplicaToWebsite()) {
+      void flushOutbox({ evenIfOffline: true }).then((flushed) => {
+        aliases = flushed.aliases;
+      });
+      const leftover = await loadOutbox();
+      return { ok: true, pending: leftover.length, aliases, snapshot: null };
     }
+
+    lastError = lastError ?? "Could not save farms to the website.";
     if (attempt < SYNC_ATTEMPTS - 1) await wait(400 * (attempt + 1));
   }
   return fail("leftover", aliases, lastError);
 }
+
+/** Kept so tests can assert leftover Prisma writes never block a replica push. */
+export const REPLICA_PUSH_IGNORES_OUTBOX = true;

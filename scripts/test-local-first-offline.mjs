@@ -26,8 +26,8 @@ assert.match(provider, /loadLocalSnapshot/);
 assert.match(provider, /patchSnapshot/);
 assert.match(provider, /persistOwnerFarms/);
 assert.match(provider, /loadIdAliases/);
-assert.doesNotMatch(provider, /flushOutbox/);
-assert.doesNotMatch(provider, /syncPhoneToWebsite/);
+assert.match(provider, /void flushOutbox/);
+assert.match(provider, /syncPhoneToWebsite/);
 assert.doesNotMatch(provider, /pullRemoteSnapshot/);
 
 const flush = read("src/lib/offline/flushOutbox.ts");

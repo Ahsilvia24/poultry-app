@@ -15,7 +15,7 @@ assert.match(sync, /did not upload/);
 assert.match(sync, /\/api\/offline\/ping/);
 assert.match(sync, /evenIfOffline: true/);
 assert.match(sync, /loadOutbox/);
-assert.match(sync, /leftover\.length === 0/);
+assert.match(sync, /pushPhoneReplicaToWebsite\(\)/);
 assert.match(sync, /ok: true/);
 assert.match(sync, /reason === "offline"/);
 assert.match(sync, /reason === "leftover"/);
@@ -75,7 +75,7 @@ assert.match(flush, /flushOutboxItem/);
 assert.match(flush, /flushGeneration/);
 assert.match(flush, /flushTail = Promise.resolve\(\)/);
 assert.match(flush, /export async function waitForFlush/);
-assert.match(sync, /waitForFlush/);
+assert.match(sync, /flushOutbox\(\{ evenIfOffline: true \}\)/);
 
 const timeoutSrc = read("src/lib/offline/syncTimeout.ts");
 assert.match(timeoutSrc, /SNAPSHOT_TIMEOUT_MS = 20_000/);
@@ -107,7 +107,7 @@ assert.match(sync, /flushOutbox\(\{ evenIfOffline: true \}\)/);
 assert.match(settings, /setSyncingNow/);
 assert.match(settings, /websiteConfirmed/);
 assert.match(settings, /reason: "leftover"/);
-assert.match(settings, /lastSync\?\.ok && pendingCount === 0/);
+assert.match(settings, /lastSync\?\.ok/);
 
 const started = Date.now();
 let timedOut = false;
