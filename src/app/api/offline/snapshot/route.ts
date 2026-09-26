@@ -12,6 +12,7 @@ import type { OfflineSnapshot } from "@/lib/offline/types";
 import { ensureWeightProjectionVisitType } from "@/lib/visits/ensureVisitType";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 async function sessionEmail() {
   const session = await auth();
