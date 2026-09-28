@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Source_Sans_3, Source_Serif_4 } from "next/font/google";
+import { LockPhoneChrome } from "@/components/LockPhoneChrome";
 import { LockPinchZoom } from "@/components/LockPinchZoom";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import "./globals.css";
@@ -43,6 +44,7 @@ export const viewport: Viewport = {
   userScalable: false,
   viewportFit: "cover",
   themeColor: "#f3efe6",
+  interactiveWidget: "overlays-content",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -66,6 +68,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         ) : null}
         <RegisterServiceWorker />
         <LockPinchZoom />
+        <LockPhoneChrome />
         {children}
       </body>
     </html>

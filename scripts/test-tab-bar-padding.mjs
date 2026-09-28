@@ -8,12 +8,16 @@ const nav = readFileSync(join(root, "src/components/AppNav.tsx"), "utf8");
 const layout = readFileSync(join(root, "src/app/layout.tsx"), "utf8");
 const expoTabs = readFileSync(join(root, "mobile/app/(tabs)/_layout.tsx"), "utf8");
 
-assert.match(nav, /0\.7rem\+env\(safe-area-inset-bottom/);
+assert.match(nav, /0\.7rem\+var\(--app-safe-bottom,env\(safe-area-inset-bottom/);
+assert.match(nav, /pin-bottom-chrome/);
+assert.match(nav, /data-app-nav/);
 assert.match(layout, /viewportFit: "cover"/);
+assert.match(layout, /interactiveWidget: "overlays-content"/);
 assert.match(layout, /overflow-x-hidden/);
 assert.match(layout, /maximumScale: 1/);
 assert.match(layout, /userScalable: false/);
 assert.match(layout, /LockPinchZoom/);
+assert.match(layout, /LockPhoneChrome/);
 assert.match(expoTabs, /insets\.bottom \+ 10/);
 
 console.log("tab-bar-padding: ok");

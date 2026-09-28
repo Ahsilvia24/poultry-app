@@ -82,8 +82,11 @@ export function ConsumptionRateCalculator({
 
   useEffect(() => {
     setKeypadOpen(active != null);
-    return () => setKeypadOpen(false);
   }, [active, setKeypadOpen]);
+
+  useEffect(() => {
+    return () => setKeypadOpen(false, { guard: false });
+  }, [setKeypadOpen]);
 
   const activeValue = active === "water" ? dailyWaterGallons : headCount;
   const setActiveValue = active === "water" ? setDailyWaterGallons : setHeadCount;

@@ -309,7 +309,7 @@ export function MortalityEntryForm({
   }
 
   useEffect(() => {
-    return () => setKeypadOpen(false);
+    return () => setKeypadOpen(false, { guard: false });
   }, [setKeypadOpen]);
 
   function cancelScheduledSave() {

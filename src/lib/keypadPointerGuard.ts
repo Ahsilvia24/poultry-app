@@ -20,8 +20,16 @@ export function isKeypadGuardActive() {
   return Date.now() < armedUntil;
 }
 
+function isTabChrome(target: EventTarget | null) {
+  if (!(target instanceof Node)) return false;
+  const shield = document.getElementById(KEYPAD_SHIELD_ID);
+  if (shield?.contains(target)) return true;
+  return Boolean(document.querySelector("[data-app-nav]")?.contains(target));
+}
+
 function eat(event: Event) {
   if (!isKeypadGuardActive()) return;
+  if (!isTabChrome(event.target)) return;
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();
@@ -34,8 +42,10 @@ function mountShield() {
     shield = document.createElement("div");
     shield.id = KEYPAD_SHIELD_ID;
     shield.setAttribute("aria-hidden", "true");
+    // Cover only the tab bar so leftover iOS taps cannot change tabs.
+    // A full-screen shield ate mortality / temperature taps.
     shield.style.cssText =
-      "position:fixed;inset:0;z-index:2147483647;touch-action:none;pointer-events:auto;";
+      "position:fixed;left:0;right:0;bottom:0;height:calc(4.75rem + var(--app-safe-bottom, env(safe-area-inset-bottom, 0px)));z-index:2147483647;touch-action:none;pointer-events:auto;";
     document.body.appendChild(shield);
   }
 }

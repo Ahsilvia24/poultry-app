@@ -117,8 +117,11 @@ export function HouseCard({
 
   useEffect(() => {
     setKeypadOpen(tempOpen);
-    return () => setKeypadOpen(false);
   }, [tempOpen, setKeypadOpen]);
+
+  useEffect(() => {
+    return () => setKeypadOpen(false, { guard: false });
+  }, [setKeypadOpen]);
 
   function openTemp() {
     if (isKeypadGuardActive()) return;

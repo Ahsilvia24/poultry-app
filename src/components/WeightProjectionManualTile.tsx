@@ -82,8 +82,11 @@ export function WeightProjectionManualTile({
 
   useEffect(() => {
     setKeypadOpen(active != null);
-    return () => setKeypadOpen(false);
   }, [active, setKeypadOpen]);
+
+  useEffect(() => {
+    return () => setKeypadOpen(false, { guard: false });
+  }, [setKeypadOpen]);
 
   const projected = useMemo(() => {
     const totalFeedLbs = parseManualNumber(tf);

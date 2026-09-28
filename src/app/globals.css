@@ -57,3 +57,14 @@ h2,
 .brand {
   font-family: var(--font-serif), Georgia, serif;
 }
+
+/* iOS lifts fixed bottom chrome with the visual viewport — nudge it back. */
+.pin-bottom-chrome {
+  transform: translateY(var(--app-bottom-shift, 0px));
+}
+
+/* Hide tabs while a keypad is up so they cannot jump to mid-screen. */
+html[data-keypad-open] [data-app-nav] {
+  visibility: hidden;
+  pointer-events: none;
+}
