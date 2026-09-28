@@ -7,7 +7,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(root, rel), "utf8");
 
 const nav = read("src/components/AppNav.tsx");
-assert.match(nav, /<nav className="fixed inset-x-0 bottom-0/);
+assert.match(nav, /<nav[\s\S]*className="[^"]*fixed inset-x-0 bottom-0/);
 assert.doesNotMatch(nav, /if \(keypadOpen\) return null/);
 assert.doesNotMatch(nav, /useKeypadNav/);
 
