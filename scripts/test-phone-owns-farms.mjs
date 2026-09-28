@@ -8,6 +8,7 @@ import {
   adoptImportedSnapshot,
   buildPhoneBackup,
   farmCountInSnapshot,
+  visibleFarmCountInSnapshot,
   EXPORT_ALL_APP_DATA,
   IMPORT_APP_DATA,
   parsePhoneBackupText,
@@ -62,6 +63,80 @@ assert.equal(adopted.userEmail, "other@poultry.local");
 assert.equal(adopted.userId, "user_2");
 assert.equal(adopted.farms[0]?.farmName, "Farm 8");
 assert.equal(farmCountInSnapshot(adopted), 1);
+assert.equal(visibleFarmCountInSnapshot(adopted), 1);
+
+const mixed = {
+  ...snapshot,
+  farms: [
+    ...Array.from({ length: 9 }, (_, i) => ({
+      id: `farm_${i + 1}`,
+      farmName: `Farm ${i + 1}`,
+      growerName: "Grower",
+      farmNumber: String(3900 + i),
+      phoneNumber: null,
+      isActive: true,
+      deletedAt: null,
+      notes: null,
+      numberOfHouses: 2,
+      numberOfGenerators: null,
+      address: null,
+      city: null,
+      state: null,
+      zipCode: null,
+    })),
+    {
+      id: "place_mill",
+      farmName: "Feed Mill",
+      growerName: "",
+      farmNumber: "__visit_place__",
+      phoneNumber: null,
+      isActive: true,
+      deletedAt: null,
+      notes: null,
+      numberOfHouses: 0,
+      numberOfGenerators: null,
+      address: null,
+      city: null,
+      state: null,
+      zipCode: null,
+    },
+    {
+      id: "place_office",
+      farmName: "Office",
+      growerName: "",
+      farmNumber: "__visit_place__",
+      phoneNumber: null,
+      isActive: true,
+      deletedAt: null,
+      notes: null,
+      numberOfHouses: 0,
+      numberOfGenerators: null,
+      address: null,
+      city: null,
+      state: null,
+      zipCode: null,
+    },
+    {
+      id: "local-manual",
+      farmName: "Manual",
+      growerName: "",
+      farmNumber: "__manual_lfo__",
+      phoneNumber: null,
+      isActive: false,
+      deletedAt: null,
+      notes: null,
+      numberOfHouses: 0,
+      numberOfGenerators: null,
+      address: null,
+      city: null,
+      state: null,
+      zipCode: null,
+    },
+  ],
+};
+assert.equal(farmCountInSnapshot(mixed), 12);
+assert.equal(visibleFarmCountInSnapshot(mixed), 9);
+
 assert.equal(EXPORT_ALL_APP_DATA, "Export all app data");
 assert.equal(IMPORT_APP_DATA, "Import app data");
 
@@ -98,6 +173,8 @@ for (const rel of [
 }
 assert.match(read("src/components/SettingsScreen.tsx"), /EXPORT_ALL_APP_DATA/);
 assert.match(read("src/components/SettingsScreen.tsx"), /IMPORT_APP_DATA/);
+assert.match(read("src/components/SettingsScreen.tsx"), /visibleFarmCountInSnapshot/);
+assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Exported \$\{farmCountInSnapshot/);
 assert.match(read("src/components/SettingsScreen.tsx"), /Sync data/);
 assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Get farms from website/);
 assert.match(read("src/app/(auth)/login/page.tsx"), /verifyLocalAccount/);

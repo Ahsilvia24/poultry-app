@@ -1,6 +1,8 @@
+import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { emptyPhoneSnapshot } from "@/lib/offline/emptySnapshot";
 import { normalizeOwnerEmail } from "@/lib/offline/ownerEmail";
 import { OFFLINE_SNAPSHOT_VERSION, type OfflineSnapshot } from "@/lib/offline/types";
+import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 
 export const PHONE_BACKUP_FORMAT = "poultrytech-phone-backup" as const;
 export const PHONE_BACKUP_VERSION = 1 as const;
@@ -19,6 +21,15 @@ export type PhoneBackup = {
 
 export function farmCountInSnapshot(snapshot: OfflineSnapshot | null | undefined) {
   return snapshot?.farms?.filter((farm) => !farm.deletedAt).length ?? 0;
+}
+
+/** Farms the Farms tab shows — not Other visit places or the hidden Manual LFO farm. */
+export function visibleFarmCountInSnapshot(snapshot: OfflineSnapshot | null | undefined) {
+  return (
+    snapshot?.farms?.filter(
+      (farm) => !farm.deletedAt && !isVisitPlaceFarm(farm) && !isManualLfoFarm(farm),
+    ).length ?? 0
+  );
 }
 
 /** Import a file onto this login. The other phone’s email does not have to match. */
@@ -125,13 +136,13 @@ export function downloadPhoneBackup(backup: PhoneBackup) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
-  return { fileName, farmCount: farmCountInSnapshot(backup.snapshot) };
+  return { fileName, farmCount: visibleFarmCountInSnapshot(backup.snapshot) };
 }
 
 export async function sharePhoneBackup(backup: PhoneBackup) {
   const json = phoneBackupJson(backup);
   const fileName = phoneBackupFileName(backup.email, new Date(backup.exportedAt));
-  const farmCount = farmCountInSnapshot(backup.snapshot);
+  const farmCount = visibleFarmCountInSnapshot(backup.snapshot);
   const file = new File([json], fileName, { type: "application/json" });
   const nav = navigator as Navigator & {
     canShare?: (data: { files: File[] }) => boolean;

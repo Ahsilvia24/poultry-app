@@ -9,7 +9,7 @@ import {
   buildPhoneBackup,
   downloadPhoneBackup,
   EXPORT_ALL_APP_DATA,
-  farmCountInSnapshot,
+  visibleFarmCountInSnapshot,
   IMPORT_APP_DATA,
   MOVE_DATA_HELP,
   parsePhoneBackupText,
@@ -176,7 +176,7 @@ export function SettingsScreen() {
       await persistOwnerFarms(snapshot);
       await sharePhoneBackup(backup);
       setBackupNote(
-        `Exported ${farmCountInSnapshot(snapshot)} farm${farmCountInSnapshot(snapshot) === 1 ? "" : "s"}. Open that file on the other phone and tap Import app data.`,
+        `Exported ${visibleFarmCountInSnapshot(snapshot)} farm${visibleFarmCountInSnapshot(snapshot) === 1 ? "" : "s"}. Open that file on the other phone and tap Import app data.`,
       );
     } catch {
       if (snapshot) downloadPhoneBackup(buildPhoneBackup(snapshot));
@@ -196,7 +196,7 @@ export function SettingsScreen() {
     await persistOwnerFarms(next);
     replaceSnapshot(next);
     setBackupNote(
-      `Imported ${farmCountInSnapshot(next)} farm${farmCountInSnapshot(next) === 1 ? "" : "s"}. This phone now has that copy.`,
+      `Imported ${visibleFarmCountInSnapshot(next)} farm${visibleFarmCountInSnapshot(next) === 1 ? "" : "s"}. This phone now has that copy.`,
     );
   }
 
