@@ -105,7 +105,7 @@ export function WeightProjectionTile({
       type="button"
       onClick={toggleEdit}
       disabled={pending}
-      className="text-left text-base text-stone-600 hover:text-emerald-800"
+      className="shrink-0 text-left text-sm text-stone-600 hover:text-emerald-800"
       aria-expanded={editing}
       aria-label="Edit growth rate"
     >
@@ -118,25 +118,19 @@ export function WeightProjectionTile({
 
   const body = (
     <>
-      <div
-        className={
-          embedded
-            ? "flex flex-wrap items-center justify-end gap-2"
-            : "flex flex-wrap items-center justify-between gap-2"
-        }
-      >
-        {embedded ? null : (
-          <p className="text-base font-semibold text-stone-500">Weight Projection - Growth Rate</p>
-        )}
-        {growthRateControl}
-      </div>
+      {embedded ? null : (
+        <p className="text-base font-semibold text-stone-500">Weight Projection - Growth Rate</p>
+      )}
 
       {groups.length > 0 ? (
-        groups.map((group) => (
-          <div key={group.catchDateKey} className="mt-3">
-            <p className="mb-2 text-sm font-semibold text-stone-700">
-              Catch {formatCatchShort(group.catchDateKey)}
-            </p>
+        groups.map((group, index) => (
+          <div key={group.catchDateKey} className={index === 0 && embedded ? undefined : "mt-3"}>
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <p className="text-sm font-semibold text-stone-700">
+                Catch {formatCatchShort(group.catchDateKey)}
+              </p>
+              {index === 0 ? growthRateControl : null}
+            </div>
             <div className="grid grid-cols-3 gap-2 text-lg">
               {group.projections.map((p) => (
                 <div
@@ -145,18 +139,19 @@ export function WeightProjectionTile({
                 >
                   <p className="text-sm text-stone-500">{p.label}</p>
                   <p className="font-bold text-stone-900">{p.weightLbs.toFixed(2)} lb</p>
-                  <p className="text-sm text-stone-400">
-                    {p.ageDays}d · {formatCatchShort(p.dateKey)}
-                  </p>
+                  <p className="text-sm text-stone-400">{p.ageDays} Days</p>
                 </div>
               ))}
             </div>
           </div>
         ))
       ) : (
-        <p className="mt-3 text-sm text-stone-600">
-          Add an active flock with a catch date to see weight projections.
-        </p>
+        <>
+          <div className={embedded ? "flex justify-end" : "mt-2"}>{growthRateControl}</div>
+          <p className="mt-3 text-sm text-stone-600">
+            Add an active flock with a catch date to see weight projections.
+          </p>
+        </>
       )}
     </>
   );

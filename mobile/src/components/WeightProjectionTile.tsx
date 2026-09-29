@@ -110,7 +110,7 @@ export function WeightProjectionTile({
       accessibilityLabel="Edit growth rate"
       accessibilityState={{ expanded: editing }}
     >
-      <Text style={{ fontSize: 14, color: colors.text }}>
+      <Text style={{ fontSize: 13, color: colors.text }}>
         Using{" "}
         <Text
           style={{
@@ -176,7 +176,7 @@ export function WeightProjectionTile({
             {ageToggle ? <View style={{ marginTop: 8 }}>{ageToggle}</View> : null}
           </View>
         )}
-        {growthRateControl}
+        {useAgeOfBird || groups.length === 0 ? growthRateControl : null}
       </View>
 
       {useAgeOfBird ? (
@@ -215,7 +215,7 @@ export function WeightProjectionTile({
                     {p.weightLbs.toFixed(2)} lb
                   </Text>
                   <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-                    {p.ageDays}d
+                    {p.ageDays} Days
                   </Text>
                 </View>
               ))}
@@ -225,18 +225,29 @@ export function WeightProjectionTile({
           )}
         </View>
       ) : groups.length > 0 ? (
-        groups.map((group) => (
-          <View key={group.catchDateKey} style={{ marginTop: 12 }}>
-            <Text
+        groups.map((group, index) => (
+          <View key={group.catchDateKey} style={{ marginTop: index === 0 && embedded ? 0 : 12 }}>
+            <View
               style={{
-                fontSize: 13,
-                fontWeight: "700",
-                color: colors.text,
+                flexDirection: "row",
+                alignItems: "baseline",
+                justifyContent: "space-between",
+                gap: 8,
                 marginBottom: 8,
               }}
             >
-              Catch {formatCatchShort(group.catchDateKey)}
-            </Text>
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "700",
+                  color: colors.text,
+                  flexShrink: 1,
+                }}
+              >
+                Catch {formatCatchShort(group.catchDateKey)}
+              </Text>
+              {index === 0 ? growthRateControl : null}
+            </View>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {group.projections.map((p) => (
                 <View
@@ -256,7 +267,7 @@ export function WeightProjectionTile({
                     {p.weightLbs.toFixed(2)} lb
                   </Text>
                   <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
-                    {p.ageDays}d · {formatCatchShort(p.dateKey)}
+                    {p.ageDays} Days
                   </Text>
                 </View>
               ))}

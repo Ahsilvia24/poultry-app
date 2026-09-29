@@ -19,6 +19,10 @@ assert.doesNotMatch(tile, /ageDaysText/);
 assert.doesNotMatch(tile, /weightFromAgeDays/);
 assert.doesNotMatch(tile, /birdAgeDays/);
 assert.match(tile, /updateWeightProjection/);
+assert.match(tile, /items-baseline justify-between/);
+assert.match(tile, /\{p\.ageDays\} Days/);
+assert.doesNotMatch(tile, /ageDays\}d ·/);
+assert.doesNotMatch(tile, /formatCatchShort\(p\.dateKey\)/);
 
 assert.doesNotMatch(toolsWp, /Use Age of Bird/);
 assert.doesNotMatch(toolsWp, /useAgeOfBird/);
