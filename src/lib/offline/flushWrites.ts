@@ -229,7 +229,7 @@ export async function flushFormWrite(
         } catch {
           return {
             ok: false,
-            error: "Could not upload this flock. Stay on Wi-Fi and tap Sync data again.",
+            error: "Could not upload this flock. Stay on Wi-Fi and try again.",
           };
         }
       }

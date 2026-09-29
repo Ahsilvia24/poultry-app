@@ -28,9 +28,9 @@ assert.match(settings, /role="dialog"/);
 assert.doesNotMatch(settings, /window\.confirm/);
 assert.match(settings, /EXPORT_ALL_APP_DATA/);
 assert.match(settings, /IMPORT_APP_DATA/);
-assert.match(settings, /Sync data/);
+assert.doesNotMatch(settings, /Sync data/);
 assert.doesNotMatch(settings, /flushNow/);
-assert.match(settings, /syncNow/);
+assert.doesNotMatch(settings, /syncNow/);
 assert.match(settings, /pendingCount/);
 
 const provider = read("src/components/OfflineProvider.tsx");

@@ -23,8 +23,8 @@ assert.match(sync, /snapshot: null/);
 assert.match(sync, /REPLICA_PUSH_IGNORES_OUTBOX/);
 
 const settings = read("src/components/SettingsScreen.tsx");
-assert.match(settings, /websiteConfirmed = Boolean\(lastSync\?\.ok\)/);
-assert.doesNotMatch(settings, /lastSync\?\.ok && pendingCount === 0/);
+assert.doesNotMatch(settings, /websiteConfirmed/);
+assert.doesNotMatch(settings, /Sync data/);
 
 const seed = read("src/lib/offline/seedEmptyPhone.ts");
 assert.match(seed, /hydrateSafariFromWebsite/);

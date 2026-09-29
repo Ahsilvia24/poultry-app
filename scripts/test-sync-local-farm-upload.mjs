@@ -30,6 +30,7 @@ assert.equal(isLocalFarmId("local-import-oak-h-1"), false);
 assert.deepEqual(createFarmFieldsFromFarm({ farmName: " Bypass ", numberOfHouses: 2 }), {
   farmName: "Bypass",
   growerName: "",
+  farmNumber: "",
   notes: "",
   numberOfHouses: "2",
   numberOfGenerators: "",
@@ -74,7 +75,7 @@ assert.equal(outboxHasCreateFarm([updateItem], farmId), false);
 assert.equal(outboxHasCreateFarm([createItem, updateItem], farmId), true);
 assert.equal(sortCreateFarmFirst([updateItem, createItem])[0]?.id, "o1");
 assert.equal(leftoverHasLocalFarm([updateItem]), true);
-assert.match(LOCAL_FARM_STILL_ON_PHONE, /only on the phone/);
+assert.match(LOCAL_FARM_STILL_ON_PHONE, /only on this phone/);
 
 const empty = {
   version: OFFLINE_SNAPSHOT_VERSION,
@@ -90,10 +91,10 @@ assert.equal(once.farms.filter((farm) => farm.id === farmId).length, 1);
 assert.equal(twice.farms.filter((farm) => farm.id === farmId).length, 1);
 
 const missing = read("src/components/ReplicaFarmMissing.tsx");
-assert.match(missing, /createFarmWriteForLocalFarm/);
-assert.match(missing, /isLocalFarmId/);
-assert.match(missing, /outboxHasCreateFarm/);
-assert.match(missing, /enqueue/);
+assert.match(missing, /This farm is not on this phone/);
+assert.match(missing, /Import app data/);
+assert.doesNotMatch(missing, /createFarmWriteForLocalFarm/);
+assert.doesNotMatch(missing, /Sync data/);
 
 const flush = read("src/lib/offline/flushOutbox.ts");
 assert.match(flush, /sortCreateFarmFirst/);

@@ -134,9 +134,9 @@ assert.match(sync, /pushPhoneReplicaToWebsite/);
 assert.doesNotMatch(sync, /await pullRemoteSnapshot/);
 
 const settings = read("src/components/SettingsScreen.tsx");
-assert.match(settings, /Sync data/);
-assert.match(settings, /syncNow/);
-assert.match(settings, /onSync/);
+assert.doesNotMatch(settings, /Sync data/);
+assert.doesNotMatch(settings, /syncNow/);
+assert.doesNotMatch(settings, /onSync/);
 assert.doesNotMatch(settings, /Get farms from website/);
 assert.match(settings, /IMPORT_APP_DATA/);
 

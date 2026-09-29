@@ -30,7 +30,8 @@ assert.match(read("src/lib/reports/mortality-chart-share.ts"), /ageAxisTicks/);
 assert.match(read("src/lib/reports/mortality-chart-share.ts"), /compactHouseAxisLabel/);
 
 const settings = read("src/components/SettingsScreen.tsx");
-assert.match(settings, /websiteConfirmed/);
+assert.doesNotMatch(settings, /websiteConfirmed/);
+assert.doesNotMatch(settings, /Sync data/);
 assert.match(read("src/lib/offline/syncPhoneToWebsite.ts"), /saved to the website/);
 const hosted = read("src/lib/offline/hostedReplica.ts");
 assert.match(hosted, /websiteWork\.mortalities >= phoneWork\.mortalities/);

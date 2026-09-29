@@ -1,7 +1,7 @@
 import type { OfflineFarmRef, OfflineFormWrite, OfflineOutboxItem } from "@/lib/offline/types";
 
 export const LOCAL_FARM_STILL_ON_PHONE =
-  "This farm is only on the phone. Stay on Wi-Fi and tap Sync data again.";
+  "This farm is only on this phone. Export all app data if you need it on another phone.";
 
 const LOCAL_FARM_UUID =
   /^local-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

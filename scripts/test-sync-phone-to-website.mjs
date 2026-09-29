@@ -37,10 +37,10 @@ assert.doesNotMatch(ping, /ensureWeightProjectionVisitType/);
 assert.doesNotMatch(ping, /prisma/);
 
 const settings = read("src/components/SettingsScreen.tsx");
-assert.match(settings, /Sync data/);
-assert.match(settings, /syncNow/);
-assert.match(settings, /onSync/);
-assert.match(settings, /setSyncingNow/);
+assert.doesNotMatch(settings, /Sync data/);
+assert.doesNotMatch(settings, /syncNow/);
+assert.doesNotMatch(settings, /onSync/);
+assert.doesNotMatch(settings, /setSyncingNow/);
 assert.match(settings, /signOutLocalApp/);
 assert.match(settings, /EXPORT_ALL_APP_DATA/);
 assert.match(settings, /actionLinkClass/);
@@ -104,10 +104,9 @@ assert.ok(SYNC_OVERALL_MS >= FLUSH_OVERALL_MS, "Sync must wait for the flush, no
 assert.ok(SYNC_UI_MS <= 12_000, "Uploading must not sit through a full flush");
 assert.ok(SIGN_OUT_OVERALL_MS < SYNC_OVERALL_MS, "leave must be faster than a full sync");
 assert.match(sync, /flushOutbox\(\{ evenIfOffline: true \}\)/);
-assert.match(settings, /setSyncingNow/);
-assert.match(settings, /websiteConfirmed/);
-assert.match(settings, /reason: "leftover"/);
-assert.match(settings, /lastSync\?\.ok/);
+assert.doesNotMatch(settings, /setSyncingNow/);
+assert.doesNotMatch(settings, /websiteConfirmed/);
+assert.doesNotMatch(settings, /lastSync/);
 
 const started = Date.now();
 let timedOut = false;

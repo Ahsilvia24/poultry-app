@@ -175,7 +175,7 @@ assert.match(read("src/components/SettingsScreen.tsx"), /EXPORT_ALL_APP_DATA/);
 assert.match(read("src/components/SettingsScreen.tsx"), /IMPORT_APP_DATA/);
 assert.match(read("src/components/SettingsScreen.tsx"), /visibleFarmCountInSnapshot/);
 assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Exported \$\{farmCountInSnapshot/);
-assert.match(read("src/components/SettingsScreen.tsx"), /Sync data/);
+assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Sync data/);
 assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Get farms from website/);
 assert.match(read("src/app/(auth)/login/page.tsx"), /verifyLocalAccount/);
 assert.match(read("src/app/(auth)/login/page.tsx"), /getLocalAccount/);

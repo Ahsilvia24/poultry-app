@@ -23,9 +23,9 @@ export async function ensureWeightProjectionVisitType() {
 export function visitSaveError(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err ?? "");
   if (/WEIGHT_PROJECTION|invalid input value for enum/i.test(message)) {
-    return "Could not save this visit type yet. Stay on Wi-Fi and tap Sync data again.";
+    return "Could not save this visit type yet. Stay on Wi-Fi and try again.";
   }
-  return "Could not save this visit. Stay on Wi-Fi and tap Sync data again.";
+  return "Could not save this visit. Stay on Wi-Fi and try again.";
 }
 
 export function publicSyncLeftoverError(error?: string): string | undefined {

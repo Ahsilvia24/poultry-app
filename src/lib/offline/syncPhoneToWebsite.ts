@@ -17,10 +17,10 @@ export type SyncPhoneResult =
 
 export const SYNC_WORKING = "Uploading farm work to the website…";
 export const SYNC_SAVED = "All farm work on this phone is saved to the website.";
-export const SYNC_NEEDS_SERVICE = "Sync needs Wi-Fi or service. Connect and tap Sync data again.";
-export const SYNC_NO_SESSION = "This sign-in expired. Sign in, then tap Sync data.";
-export const SYNC_UNREACHABLE = "Could not reach the website. Stay on Wi-Fi and tap Sync data again.";
-export const SYNC_LEFTOVER = "Farm work did not upload. Stay on Wi-Fi and tap Sync data again.";
+export const SYNC_NEEDS_SERVICE = "Sync needs Wi-Fi or service. Connect and try again.";
+export const SYNC_NO_SESSION = "This sign-in expired. Sign in again.";
+export const SYNC_UNREACHABLE = "Could not reach the website. Stay on Wi-Fi and try again.";
+export const SYNC_LEFTOVER = "Farm work did not upload. Stay on Wi-Fi and try again.";
 export { LOCAL_FARM_STILL_ON_PHONE as SYNC_LOCAL_FARM } from "@/lib/offline/localFarmId";
 
 export function syncPhoneResultMessage(result: SyncPhoneResult): {
