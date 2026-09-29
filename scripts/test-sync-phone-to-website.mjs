@@ -106,8 +106,12 @@ assert.ok(SIGN_OUT_OVERALL_MS < SYNC_OVERALL_MS, "leave must be faster than a fu
 assert.match(sync, /flushOutbox\(\{ evenIfOffline: true \}\)/);
 assert.match(settings, /setSyncingNow/);
 assert.match(settings, /websiteConfirmed/);
-assert.match(settings, /reason: "leftover"/);
+assert.match(settings, /setLastSync\(await syncNow\(\)\)/);
+assert.doesNotMatch(settings, /SYNC_UI_MS/);
 assert.match(settings, /lastSync\?\.ok/);
+assert.match(settings, /copies this phone/);
+assert.match(sync, /SYNC_NO_STORAGE/);
+assert.match(sync, /no-storage/);
 
 const started = Date.now();
 let timedOut = false;

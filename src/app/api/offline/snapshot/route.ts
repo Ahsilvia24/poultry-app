@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { buildOfflineSnapshot, resolveHostedUserId } from "@/lib/offline/buildSnapshot";
 import {
   loadHostedReplica,
   saveHostedReplica,
@@ -8,8 +7,8 @@ import {
 } from "@/lib/offline/hostedReplica";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import { normalizeOwnerEmail } from "@/lib/offline/ownerEmail";
+import { lastReplicaStoreError } from "@/lib/offline/replicaStore";
 import type { OfflineSnapshot } from "@/lib/offline/types";
-import { ensureWeightProjectionVisitType } from "@/lib/visits/ensureVisitType";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -31,23 +30,10 @@ export async function GET() {
   if (hosted) {
     return NextResponse.json({ ok: true, snapshot: hosted });
   }
-  try {
-    const userId = await resolveHostedUserId({
-      id: signed.session.user?.id,
-      email: signed.email,
-    });
-    if (!userId) {
-      return NextResponse.json(
-        { ok: false, error: "No website farms for this email." },
-        { status: 404 },
-      );
-    }
-    await ensureWeightProjectionVisitType();
-    const snapshot = await buildOfflineSnapshot(userId);
-    return NextResponse.json({ ok: true, snapshot });
-  } catch {
-    return NextResponse.json({ ok: false, error: "Could not save farms to this phone." }, { status: 500 });
-  }
+  return NextResponse.json(
+    { ok: false, error: "No website farms for this email yet. Sync from the phone." },
+    { status: 404 },
+  );
 }
 
 /** Keep the phone replica on the website so Safari can seed from this email. */
@@ -64,7 +50,13 @@ export async function POST(req: Request) {
   const stored = await saveHostedReplica(signed.email, incoming);
   const readBack = stored ? await loadHostedReplica(signed.email) : null;
   if (!readBack || !websiteHasPhoneFarms(incoming, readBack)) {
-    return NextResponse.json({ ok: false, error: "Could not save farms to the website." }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: lastReplicaStoreError() || "Could not save farms to the website.",
+      },
+      { status: 503 },
+    );
   }
   return NextResponse.json({ ok: true, snapshot: readBack });
 }
