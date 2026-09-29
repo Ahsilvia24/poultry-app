@@ -55,4 +55,16 @@ describe("catchWeightProjections", () => {
     assert.equal(rows[1]!.weightLbs, 0.1);
     assert.equal(rows[2]!.weightLbs, 0.3);
   });
+
+  it("shows 0 for all three boxes when there is no catch weight", () => {
+    const rows = weightBandAround({
+      dateKey: "2026-09-12",
+      ageDays: 56,
+      midWeightLbs: 0,
+      midLabel: "Catch Day",
+    });
+    assert.equal(rows[0]!.weightLbs, 0);
+    assert.equal(rows[1]!.weightLbs, 0);
+    assert.equal(rows[2]!.weightLbs, 0);
+  });
 });

@@ -41,7 +41,8 @@ export function weightBandAround(input: {
   midWeightLbs: number;
   midLabel: string;
 }): WeightBandProjection[] {
-  const mid = input.midWeightLbs;
+  const mid = roundLbs(input.midWeightLbs);
+  const empty = !Number.isFinite(mid) || mid <= 0;
   return [
     {
       key: "low",
@@ -49,7 +50,7 @@ export function weightBandAround(input: {
       dateKey: input.dateKey,
       label: "Low",
       ageDays: input.ageDays,
-      weightLbs: Math.max(0, roundLbs(mid - CATCH_WEIGHT_BAND_LBS)),
+      weightLbs: empty ? 0 : Math.max(0, roundLbs(mid - CATCH_WEIGHT_BAND_LBS)),
     },
     {
       key: "catch",
@@ -57,7 +58,7 @@ export function weightBandAround(input: {
       dateKey: input.dateKey,
       label: input.midLabel,
       ageDays: input.ageDays,
-      weightLbs: roundLbs(mid),
+      weightLbs: empty ? 0 : mid,
     },
     {
       key: "high",
@@ -65,7 +66,7 @@ export function weightBandAround(input: {
       dateKey: input.dateKey,
       label: "High",
       ageDays: input.ageDays,
-      weightLbs: roundLbs(mid + CATCH_WEIGHT_BAND_LBS),
+      weightLbs: empty ? 0 : roundLbs(mid + CATCH_WEIGHT_BAND_LBS),
     },
   ];
 }
