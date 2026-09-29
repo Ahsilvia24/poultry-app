@@ -89,21 +89,41 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
       : [];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {farms.length === 0 ? (
         <p className="text-sm text-stone-600">Add a farm to inspect house min-vent math.</p>
       ) : (
-        <div className="space-y-3">
-          <div>
-            <p className="mb-2 text-sm font-semibold text-stone-700">Farm</p>
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-              {farms.map((f) => {
-                const active = f.id === farmId;
+        <div>
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            {farms.map((f) => {
+              const active = f.id === farmId;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => changeFarm(f.id)}
+                  className={cn(
+                    "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
+                    active
+                      ? "bg-emerald-800 text-white"
+                      : "bg-stone-200 text-stone-800",
+                  )}
+                >
+                  {f.farmName}
+                </button>
+              );
+            })}
+          </div>
+
+          {houses.length > 0 ? (
+            <div className="-mx-1 mt-1.5 flex gap-2 overflow-x-auto px-1 pb-1">
+              {houses.map((h) => {
+                const active = h.id === (house?.id ?? "");
                 return (
                   <button
-                    key={f.id}
+                    key={h.id}
                     type="button"
-                    onClick={() => changeFarm(f.id)}
+                    onClick={() => setHouseId(h.id)}
                     className={cn(
                       "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
                       active
@@ -111,43 +131,19 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                         : "bg-stone-200 text-stone-800",
                     )}
                   >
-                    {f.farmName}
+                    House {h.houseNumber}
                   </button>
                 );
               })}
             </div>
-          </div>
-
-          {houses.length > 0 ? (
-            <div>
-              <p className="mb-2 text-sm font-semibold text-stone-700">House</p>
-              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                {houses.map((h) => {
-                  const active = h.id === (house?.id ?? "");
-                  return (
-                    <button
-                      key={h.id}
-                      type="button"
-                      onClick={() => setHouseId(h.id)}
-                      className={cn(
-                        "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
-                        active
-                          ? "bg-emerald-800 text-white"
-                          : "bg-stone-200 text-stone-800",
-                      )}
-                    >
-                      House {h.houseNumber}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           ) : (
-            <p className="text-sm text-stone-600">This farm has no houses.</p>
+            <p className="mt-1.5 text-sm text-stone-600">This farm has no houses.</p>
           )}
+        </div>
+      )}
 
-          {house ? (
-            <div className="rounded-lg border border-stone-200 bg-white px-2.5 py-2.5 text-sm text-stone-700">
+      {house ? (
+        <div className="rounded-lg border border-stone-200 bg-white px-2.5 py-2.5 text-sm text-stone-700">
               <div className="flex flex-wrap items-baseline gap-1.5">
                 <p className="font-semibold text-stone-900">House {house.houseNumber}</p>
                 {flockWeek != null ? (
@@ -264,10 +260,8 @@ export function VentilationLinks({ farms = [] }: { farms?: VentilationFarmPayloa
                   Need birds placed, flock week, and Total CFM (Min Vent) on this house to calculate.
                 </p>
               )}
-            </div>
-          ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
