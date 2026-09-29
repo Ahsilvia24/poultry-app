@@ -116,6 +116,13 @@ assert.doesNotMatch(provider, /replaceSnapshot\(result\.snapshot\)/);
 const seed = read("src/lib/offline/seedEmptyPhone.ts");
 assert.match(seed, /canReplaceReplicaWithRemote/);
 assert.match(seed, /persistOwnerFarms/);
+assert.match(seed, /hydrateSafariFromWebsite/);
+const hydrate = seed.slice(seed.indexOf("export async function hydrateSafariFromWebsite"));
+assert.match(hydrate, /canReplaceReplicaWithRemote/);
+assert.ok(
+  hydrate.indexOf("canReplaceReplicaWithRemote") < hydrate.indexOf("pullRemoteSnapshot"),
+  "Safari hydrate must not overwrite farms already on the phone",
+);
 assert.doesNotMatch(seed, /mergeWebsiteSnapshot/);
 
 const upload = read("src/lib/offline/uploadLeftoverWrites.ts");

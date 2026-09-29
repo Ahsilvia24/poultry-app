@@ -137,6 +137,20 @@ assert.equal(afterCreate?.visits.length, 11);
 assert.equal(afterCreate?.visits[0].id, "local-visit-1");
 assert.equal(afterCreate?.visits[0].visitType, "PREBROOD");
 
+const noVisitsKey = { ...snapshot(), visits: undefined };
+const firstVisit = applyFormWrite(noVisitsKey, {
+  action: "createVisit",
+  id: "local-visit-empty",
+  farmId: "farm-1",
+  fields: { farmId: "farm-1", visitDate: "2026-09-29", visitType: "ROUTINE_SERVICE" },
+});
+assert.equal(selectVisits(firstVisit, "farm-1")?.visits[0]?.id, "local-visit-empty");
+
+const form = read("src/components/FarmOpsForms.tsx");
+assert.match(form, /fd\.set\("visitDate", visitDate\)/);
+assert.match(form, /fd\.set\("visitType", visitType\)/);
+assert.match(form, /if \(wrote\) onSuccess\?\.\(\)/);
+
 const deleted = applyFormWrite(created, {
   action: "deleteVisit",
   id: "local-visit-1",

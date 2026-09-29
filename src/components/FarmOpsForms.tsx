@@ -86,49 +86,52 @@ export function FarmVisitForm({
   return (
     <form
       className="mt-4 space-y-3"
-      action={(fd) => {
-        start(async () => {
-          let resolvedFarmId = farmId;
-          if (!resolvedFarmId && placeName?.trim()) {
-            const existing = snapshot
-              ? findVisitPlaceFarm(snapshot.farms ?? [], placeName)
-              : undefined;
-            if (existing) {
-              resolvedFarmId = existing.id;
-            } else if (enabled) {
-              resolvedFarmId = localRecordId();
-              queue(
-                formWrite("createFarm", {
-                  id: resolvedFarmId,
-                  farmId: resolvedFarmId,
-                  fields: visitPlaceFarmFields(placeName),
-                }),
-              );
-            } else {
-              const farmData = new FormData();
-              for (const [key, value] of Object.entries(visitPlaceFarmFields(placeName))) {
-                farmData.set(key, value);
-              }
-              const created = await createFarmAction(farmData, { skipRedirect: true });
-              if (!created || !("id" in created) || !created.id) {
-                return;
-              }
-              resolvedFarmId = created.id;
-            }
-          }
-          if (!resolvedFarmId) return;
-          fd.set("farmId", resolvedFarmId);
-          if (enabled) {
+      action={async (fd) => {
+        let resolvedFarmId = farmId;
+        if (!resolvedFarmId && placeName?.trim()) {
+          const existing = snapshot
+            ? findVisitPlaceFarm(snapshot.farms ?? [], placeName)
+            : undefined;
+          if (existing) {
+            resolvedFarmId = existing.id;
+          } else if (enabled) {
+            resolvedFarmId = localRecordId();
             queue(
-              formWrite(recordId ? "updateVisit" : "createVisit", {
-                id: recordId ?? localRecordId(),
+              formWrite("createFarm", {
+                id: resolvedFarmId,
                 farmId: resolvedFarmId,
-                ...formDataToParts(fd),
+                fields: visitPlaceFarmFields(placeName),
               }),
             );
-            onSuccess?.();
-            return;
+          } else {
+            const farmData = new FormData();
+            for (const [key, value] of Object.entries(visitPlaceFarmFields(placeName))) {
+              farmData.set(key, value);
+            }
+            const created = await createFarmAction(farmData, { skipRedirect: true });
+            if (!created || !("id" in created) || !created.id) {
+              return;
+            }
+            resolvedFarmId = created.id;
           }
+        }
+        if (!resolvedFarmId) return;
+        fd.set("farmId", resolvedFarmId);
+        fd.set("visitDate", visitDate);
+        fd.set("visitType", visitType);
+        if (visitType === "OTHER") fd.set("notes", otherReason);
+        if (enabled) {
+          const wrote = queue(
+            formWrite(recordId ? "updateVisit" : "createVisit", {
+              id: recordId ?? localRecordId(),
+              farmId: resolvedFarmId,
+              ...formDataToParts(fd),
+            }),
+          );
+          if (wrote) onSuccess?.();
+          return;
+        }
+        start(async () => {
           const result = recordId
             ? await updateVisitAction(recordId, fd)
             : await createVisitAction(fd);

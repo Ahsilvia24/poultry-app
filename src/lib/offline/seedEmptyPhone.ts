@@ -35,17 +35,20 @@ export async function seedEmptyPhoneFromWebsite(
 }
 
 /**
- * Safari / desktop website only. Show the hosted replica for this email.
- * Never runs on the Home Screen app — that copy is push-only.
+ * Safari / desktop website only. Fill a blank phone from the hosted replica.
+ * Never replace farms or visits already on this phone. Never runs on Home Screen.
  */
 export async function hydrateSafariFromWebsite(
   ownerEmail?: string,
 ): Promise<OfflineSnapshot | null> {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
   if (typeof window !== "undefined" && isHomeScreenApp()) return null;
+  const local = await loadLocalSnapshot(ownerEmail);
+  const pending = (await loadOutbox(ownerEmail)).length;
+  if (!canReplaceReplicaWithRemote(local, pending)) return null;
   const remote = await pullRemoteSnapshot();
-  if (!remote || !snapshotHasFarmGraph(remote)) return null;
-  if (farmCountInSnapshot(remote) === 0) return null;
-  await persistOwnerFarms(remote, ownerEmail);
-  return remote;
+  const adopted = adoptWebsiteSeed(local, pending, remote);
+  if (!adopted) return null;
+  await persistOwnerFarms(adopted, ownerEmail);
+  return adopted;
 }

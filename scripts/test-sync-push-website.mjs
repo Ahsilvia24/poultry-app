@@ -30,6 +30,7 @@ const seed = read("src/lib/offline/seedEmptyPhone.ts");
 assert.match(seed, /hydrateSafariFromWebsite/);
 assert.match(seed, /isHomeScreenApp\(\)/);
 assert.match(seed, /pullRemoteSnapshot/);
+assert.match(seed, /canReplaceReplicaWithRemote/);
 assert.doesNotMatch(seed, /mergeWebsiteSnapshot/);
 
 const provider = read("src/components/OfflineProvider.tsx");

@@ -127,7 +127,7 @@ function withLastFeedOrderVisit(
     notes: LAST_FEED_ORDER_VISIT_NOTES,
     loggedAt: now,
   };
-  return { ...snapshot, visits: [visit, ...snapshot.visits] };
+  return { ...snapshot, visits: [visit, ...(snapshot.visits ?? [])] };
 }
 
 function activeFarmFlockId(snapshot: OfflineSnapshot, farmId: string) {
@@ -713,7 +713,7 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
             notes: emptyToNull(fields.notes),
             loggedAt: emptyToNull(fields.loggedAt) ?? now,
           },
-          ...snapshot.visits,
+          ...(snapshot.visits ?? []),
         ],
       };
     }
