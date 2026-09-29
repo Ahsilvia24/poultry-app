@@ -9,7 +9,7 @@ import { publicSyncLeftoverError } from "@/lib/visits/ensureVisitType";
 
 export const SYNC_ATTEMPTS = 3;
 
-export type SyncFailReason = "offline" | "no-session" | "unreachable" | "leftover";
+export type SyncFailReason = "offline" | "no-session" | "unreachable" | "leftover" | "no-storage";
 
 export type SyncPhoneResult =
   | { ok: true; pending: number; aliases: IdAliases; snapshot: OfflineSnapshot | null }
@@ -21,6 +21,8 @@ export const SYNC_NEEDS_SERVICE = "Sync needs Wi-Fi or service. Connect and tap 
 export const SYNC_NO_SESSION = "This sign-in expired. Sign in, then tap Sync data.";
 export const SYNC_UNREACHABLE = "Could not reach the website. Stay on Wi-Fi and tap Sync data again.";
 export const SYNC_LEFTOVER = "Farm work did not upload. Stay on Wi-Fi and tap Sync data again.";
+export const SYNC_NO_STORAGE =
+  "The website is not set up to keep farm data. Sync cannot save until website storage is connected.";
 export { LOCAL_FARM_STILL_ON_PHONE as SYNC_LOCAL_FARM } from "@/lib/offline/localFarmId";
 
 export function syncPhoneResultMessage(result: SyncPhoneResult): {
@@ -33,11 +35,22 @@ export function syncPhoneResultMessage(result: SyncPhoneResult): {
   if (result.reason === "leftover") {
     return { kind: "unsaved", text: publicSyncLeftoverError(result.error) || SYNC_LEFTOVER };
   }
+  if (result.reason === "no-storage") {
+    return { kind: "unsaved", text: publicSyncLeftoverError(result.error) || SYNC_NO_STORAGE };
+  }
   return { kind: "unsaved", text: SYNC_UNREACHABLE };
 }
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+let lastPushError: string | undefined;
+
+function failReasonFromPush(error?: string): SyncFailReason {
+  const text = (error ?? lastPushError ?? "").toLowerCase();
+  if (text.includes("not connected") || text.includes("not set up to keep")) return "no-storage";
+  return "leftover";
 }
 
 export async function probeWebsite(): Promise<
@@ -81,6 +94,7 @@ async function fail(
 export async function pushPhoneReplicaToWebsite(
   snapshot?: OfflineSnapshot | null,
 ): Promise<boolean> {
+  lastPushError = undefined;
   const local = snapshot ?? (await loadLocalSnapshot());
   if (!local) return false;
   if (farmCountInSnapshot(local) === 0) return true;
@@ -92,17 +106,26 @@ export async function pushPhoneReplicaToWebsite(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ snapshot: local }),
     });
-    if (!res.ok) return false;
-    const body = (await res.json()) as { ok?: boolean; snapshot?: OfflineSnapshot };
-    if (!body.ok || !websiteHasPhoneFarms(local, body.snapshot)) return false;
+    const body = (await res.json().catch(() => null)) as
+      | { ok?: boolean; snapshot?: OfflineSnapshot; error?: string }
+      | null;
+    if (!res.ok || !body?.ok || !websiteHasPhoneFarms(local, body.snapshot)) {
+      lastPushError = body?.error?.trim() || lastPushError;
+      return false;
+    }
     const confirm = await fetch("/api/offline/snapshot", {
       method: "GET",
       cache: "no-store",
       credentials: "include",
     });
-    if (!confirm.ok) return false;
-    const read = (await confirm.json()) as { ok?: boolean; snapshot?: OfflineSnapshot };
-    return Boolean(read.ok && websiteHasPhoneFarms(local, read.snapshot));
+    const read = (await confirm.json().catch(() => null)) as
+      | { ok?: boolean; snapshot?: OfflineSnapshot; error?: string }
+      | null;
+    if (!confirm.ok || !read?.ok || !websiteHasPhoneFarms(local, read.snapshot)) {
+      lastPushError = read?.error?.trim() || lastPushError;
+      return false;
+    }
+    return true;
   } catch {
     return false;
   }
@@ -118,7 +141,7 @@ export async function syncPhoneToWebsite(): Promise<SyncPhoneResult> {
       const leftover = await loadOutbox();
       return { ok: true, pending: leftover.length, aliases, snapshot: null };
     }
-    return fail("leftover", aliases);
+    return fail(failReasonFromPush(), aliases, lastPushError);
   }
 }
 
@@ -137,10 +160,10 @@ async function syncPhoneToWebsiteOnce(): Promise<SyncPhoneResult> {
       return { ok: true, pending: leftover.length, aliases, snapshot: null };
     }
 
-    lastError = lastError ?? "Could not save farms to the website.";
+    lastError = lastPushError || lastError || "Could not save farms to the website.";
     if (attempt < SYNC_ATTEMPTS - 1) await wait(400 * (attempt + 1));
   }
-  return fail("leftover", aliases, lastError);
+  return fail(failReasonFromPush(lastError), aliases, lastError);
 }
 
 /** Kept so tests can assert leftover Prisma writes never block a replica push. */

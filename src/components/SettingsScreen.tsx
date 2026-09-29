@@ -28,7 +28,6 @@ import {
   syncPhoneResultMessage,
   type SyncPhoneResult,
 } from "@/lib/offline/syncPhoneToWebsite";
-import { SYNC_UI_MS } from "@/lib/offline/syncTimeout";
 import {
   SettingsChipInput,
   SettingsFieldRow as SettingsRow,
@@ -119,23 +118,9 @@ export function SettingsScreen() {
     void (async () => {
       setSyncingNow(true);
       setLastSync(null);
-      let settled = false;
-      const timer = window.setTimeout(() => {
-        if (settled) return;
-        setLastSync({
-          ok: false,
-          pending: pendingCount || 1,
-          aliases: {},
-          reason: "leftover",
-        });
-        setSyncingNow(false);
-      }, SYNC_UI_MS);
       try {
-        const result = await syncNow();
-        settled = true;
-        setLastSync(result);
+        setLastSync(await syncNow());
       } catch {
-        settled = true;
         setLastSync({
           ok: false,
           pending: pendingCount || 1,
@@ -143,8 +128,6 @@ export function SettingsScreen() {
           reason: "unreachable",
         });
       } finally {
-        settled = true;
-        window.clearTimeout(timer);
         setSyncingNow(false);
       }
     })();
@@ -275,6 +258,9 @@ export function SettingsScreen() {
         >
           {syncingNow ? "Syncing…" : "Sync data"}
         </Button>
+        <p className="max-w-md text-center text-xs font-medium text-stone-500">
+          Sync copies this phone’s farms to the website for this email. It does not change the phone.
+        </p>
       </div>
 
       <Card className="mb-5 max-w-2xl">

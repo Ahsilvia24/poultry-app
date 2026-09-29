@@ -150,15 +150,21 @@ assert.match(hosted, /putDurableReplica/);
 assert.match(hosted, /getDurableReplica/);
 assert.doesNotMatch(hosted, /\/tmp\/poultry-hosted-replicas/);
 
-const store = read("src/lib/offline/replicaStore.ts");
-assert.match(store, /hosted_phone_replica/);
-assert.match(store, /@neondatabase\/serverless/);
-assert.match(store, /setHostedReplicaDurableStore/);
-
 const route = read("src/app/api/offline/snapshot/route.ts");
 assert.match(route, /export async function POST/);
 assert.match(route, /saveHostedReplica/);
 assert.match(route, /loadHostedReplica/);
 assert.match(route, /websiteHasPhoneFarms/);
+assert.match(route, /lastReplicaStoreError/);
+assert.doesNotMatch(route, /buildOfflineSnapshot/);
+assert.doesNotMatch(route, /ensureWeightProjectionVisitType/);
+
+const store = read("src/lib/offline/replicaStore.ts");
+assert.match(store, /hosted_phone_replica/);
+assert.match(store, /@neondatabase\/serverless/);
+assert.match(store, /setHostedReplicaDurableStore/);
+assert.match(store, /sql\.query/);
+assert.match(store, /POSTGRES_URL_NON_POOLING/);
+assert.match(store, /REPLICA_STORAGE_MISSING/);
 
 console.log("hosted-replica: ok");
