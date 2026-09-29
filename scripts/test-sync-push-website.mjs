@@ -28,14 +28,12 @@ assert.doesNotMatch(settings, /Sync data/);
 
 const seed = read("src/lib/offline/seedEmptyPhone.ts");
 assert.match(seed, /hydrateSafariFromWebsite/);
-assert.match(seed, /isHomeScreenApp\(\)/);
-assert.match(seed, /pullRemoteSnapshot/);
-assert.match(seed, /canReplaceReplicaWithRemote/);
+assert.doesNotMatch(seed, /pullRemoteSnapshot/);
 assert.doesNotMatch(seed, /mergeWebsiteSnapshot/);
 
 const provider = read("src/components/OfflineProvider.tsx");
-assert.match(provider, /hydrateSafariFromWebsite/);
-assert.match(provider, /seedEmptyPhoneFromWebsite/);
+assert.doesNotMatch(provider, /hydrateSafariFromWebsite/);
+assert.doesNotMatch(provider, /seedEmptyPhoneFromWebsite/);
 assert.doesNotMatch(provider, /replaceSnapshot\(result\.snapshot\)/);
 assert.doesNotMatch(provider, /pullRemoteSnapshot/);
 

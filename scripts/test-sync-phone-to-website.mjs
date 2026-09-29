@@ -51,7 +51,7 @@ const provider = read("src/components/OfflineProvider.tsx");
 assert.match(provider, /syncNow/);
 assert.match(provider, /syncPhoneToWebsite/);
 assert.match(provider, /uploadLeftoverWrites/);
-assert.match(provider, /seedEmptyPhoneFromWebsite/);
+assert.doesNotMatch(provider, /seedEmptyPhoneFromWebsite/);
 assert.match(provider, /addEventListener\("online"/);
 assert.doesNotMatch(provider, /pullRemoteSnapshot/);
 

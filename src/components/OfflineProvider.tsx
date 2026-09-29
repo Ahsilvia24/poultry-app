@@ -25,7 +25,6 @@ import { pickPersonName } from "@/lib/person-name";
 import { unlockPhoneOwner } from "@/lib/offline/phoneUnlock";
 import { seedAndMergeFollowUpCompletions } from "@/lib/offline/followUpCompletions";
 import { seedAndMergeServiceForms } from "@/lib/offline/serviceForms";
-import { hydrateSafariFromWebsite, seedEmptyPhoneFromWebsite } from "@/lib/offline/seedEmptyPhone";
 import { uploadLeftoverWrites } from "@/lib/offline/uploadLeftoverWrites";
 import { coalesceFormWrite } from "@/lib/offline/applyWrites";
 import { flushOutbox, reportUnsynced } from "@/lib/offline/flushOutbox";
@@ -158,8 +157,6 @@ export function OfflineProvider({
     (async () => {
       await persistPhoneStorage();
       let local = await loadLocalSnapshot(owner);
-      const hosted = (await hydrateSafariFromWebsite(owner)) ?? (await seedEmptyPhoneFromWebsite(owner));
-      if (hosted) local = hosted;
       if (!local && owner && ownerUserId) {
         local = await ensureOwnerSnapshot({
           email: owner,
@@ -187,15 +184,13 @@ export function OfflineProvider({
   useEffect(() => {
     const onOnline = () => {
       void (async () => {
-        const hosted = (await hydrateSafariFromWebsite(owner)) ?? (await seedEmptyPhoneFromWebsite(owner));
-        if (hosted) replaceSnapshot(hosted);
         await uploadLeftoverWrites(owner);
         setPendingCount((await loadOutbox()).length);
       })();
     };
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
-  }, [owner, replaceSnapshot]);
+  }, [owner]);
 
   const value = useMemo(
     () => ({

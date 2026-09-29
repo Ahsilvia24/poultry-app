@@ -1,54 +1,24 @@
-import { isHomeScreenApp } from "@/lib/exports/share-file";
-import { pullRemoteSnapshot } from "@/lib/offline/flushOutbox";
-import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
-import { loadLocalSnapshot, loadOutbox } from "@/lib/offline/idb";
-import { persistOwnerFarms } from "@/lib/offline/persistOwnerFarms";
-import { farmCountInSnapshot } from "@/lib/offline/phoneBackup";
-import { canReplaceReplicaWithRemote } from "@/lib/offline/remapIds";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 
-/** First empty phone only. Never merge onto a replica that already has farms. */
+/** Website snapshots never become this phone’s farms. */
 export function adoptWebsiteSeed(
-  local: OfflineSnapshot | null | undefined,
-  pendingCount: number,
-  remote: OfflineSnapshot | null | undefined,
+  _local?: OfflineSnapshot | null,
+  _pendingCount?: number,
+  _remote?: OfflineSnapshot | null,
 ): OfflineSnapshot | null {
-  if (!canReplaceReplicaWithRemote(local, pendingCount)) return null;
-  if (!remote || !snapshotHasFarmGraph(remote)) return null;
-  if (farmCountInSnapshot(remote) === 0) return null;
-  return remote;
+  return null;
 }
 
-/** Pull website farms only when this phone has no farm work yet. */
+/** Website never writes onto this phone. */
 export async function seedEmptyPhoneFromWebsite(
-  ownerEmail?: string,
+  _ownerEmail?: string,
 ): Promise<OfflineSnapshot | null> {
-  if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
-  const local = await loadLocalSnapshot(ownerEmail);
-  const pending = (await loadOutbox(ownerEmail)).length;
-  if (!canReplaceReplicaWithRemote(local, pending)) return null;
-  const remote = await pullRemoteSnapshot();
-  const adopted = adoptWebsiteSeed(local, pending, remote);
-  if (!adopted) return null;
-  await persistOwnerFarms(adopted, ownerEmail);
-  return adopted;
+  return null;
 }
 
-/**
- * Safari / desktop website only. Fill a blank phone from the hosted replica.
- * Never replace farms or visits already on this phone. Never runs on Home Screen.
- */
+/** Website never writes onto this phone. */
 export async function hydrateSafariFromWebsite(
-  ownerEmail?: string,
+  _ownerEmail?: string,
 ): Promise<OfflineSnapshot | null> {
-  if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
-  if (typeof window !== "undefined" && isHomeScreenApp()) return null;
-  const local = await loadLocalSnapshot(ownerEmail);
-  const pending = (await loadOutbox(ownerEmail)).length;
-  if (!canReplaceReplicaWithRemote(local, pending)) return null;
-  const remote = await pullRemoteSnapshot();
-  const adopted = adoptWebsiteSeed(local, pending, remote);
-  if (!adopted) return null;
-  await persistOwnerFarms(adopted, ownerEmail);
-  return adopted;
+  return null;
 }

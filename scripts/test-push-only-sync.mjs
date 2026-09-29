@@ -88,8 +88,8 @@ const remote = {
   flocks: [],
   houseFlocks: [],
 };
-assert.equal(adoptWebsiteSeed(null, 0, remote)?.farms[0]?.id, "farm_1");
-assert.equal(adoptWebsiteSeed(empty, 0, remote)?.farms[0]?.id, "farm_1");
+assert.equal(adoptWebsiteSeed(null, 0, remote), null);
+assert.equal(adoptWebsiteSeed(empty, 0, remote), null);
 assert.equal(adoptWebsiteSeed(withFarm, 0, remote), null);
 assert.equal(adoptWebsiteSeed(deletedOnly, 0, remote), null);
 assert.equal(adoptWebsiteSeed(empty, 1, remote), null);
@@ -102,8 +102,8 @@ assert.equal(
 );
 
 const provider = read("src/components/OfflineProvider.tsx");
-assert.match(provider, /seedEmptyPhoneFromWebsite/);
-assert.match(provider, /hydrateSafariFromWebsite/);
+assert.doesNotMatch(provider, /seedEmptyPhoneFromWebsite/);
+assert.doesNotMatch(provider, /hydrateSafariFromWebsite/);
 assert.match(provider, /uploadLeftoverWrites/);
 assert.match(provider, /addEventListener\("online"/);
 assert.match(provider, /syncNow/);
@@ -112,17 +112,12 @@ assert.match(provider, /saveOutbox/);
 assert.match(provider, /void flushOutbox\(\)/);
 assert.doesNotMatch(provider, /pullRemoteSnapshot/);
 assert.doesNotMatch(provider, /replaceSnapshot\(result\.snapshot\)/);
+assert.doesNotMatch(provider, /replaceSnapshot\(hosted\)/);
 
 const seed = read("src/lib/offline/seedEmptyPhone.ts");
-assert.match(seed, /canReplaceReplicaWithRemote/);
-assert.match(seed, /persistOwnerFarms/);
-assert.match(seed, /hydrateSafariFromWebsite/);
-const hydrate = seed.slice(seed.indexOf("export async function hydrateSafariFromWebsite"));
-assert.match(hydrate, /canReplaceReplicaWithRemote/);
-assert.ok(
-  hydrate.indexOf("canReplaceReplicaWithRemote") < hydrate.indexOf("pullRemoteSnapshot"),
-  "Safari hydrate must not overwrite farms already on the phone",
-);
+assert.match(seed, /return null/);
+assert.doesNotMatch(seed, /pullRemoteSnapshot/);
+assert.doesNotMatch(seed, /persistOwnerFarms/);
 assert.doesNotMatch(seed, /mergeWebsiteSnapshot/);
 
 const upload = read("src/lib/offline/uploadLeftoverWrites.ts");
@@ -132,7 +127,7 @@ assert.doesNotMatch(upload, /replaceSnapshot/);
 
 const pull = read("src/lib/offline/pullWebsiteFarms.ts");
 assert.match(pull, /phone-owns/);
-assert.match(pull, /seedEmptyPhoneFromWebsite/);
+assert.doesNotMatch(pull, /seedEmptyPhoneFromWebsite/);
 assert.doesNotMatch(pull, /mergeWebsiteSnapshot/);
 
 const sync = read("src/lib/offline/syncPhoneToWebsite.ts");

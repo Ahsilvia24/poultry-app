@@ -1,7 +1,3 @@
-import { loadLocalSnapshot, loadOutbox } from "@/lib/offline/idb";
-import { farmCountInSnapshot } from "@/lib/offline/phoneBackup";
-import { canReplaceReplicaWithRemote } from "@/lib/offline/remapIds";
-import { seedEmptyPhoneFromWebsite } from "@/lib/offline/seedEmptyPhone";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 
 export const GET_WEBSITE_FARMS = "Get farms from website";
@@ -27,21 +23,7 @@ export function pullWebsiteFarmsMessage(result: PullWebsiteFarmsResult) {
   return `Added ${result.added} farm${result.added === 1 ? "" : "s"} from the website. Your phone farms are still here.`;
 }
 
-/** Seed only. A phone that already has a replica does not take website farms. */
-export async function pullWebsiteFarms(ownerEmail?: string): Promise<PullWebsiteFarmsResult> {
-  const local = await loadLocalSnapshot(ownerEmail);
-  const pending = (await loadOutbox(ownerEmail)).length;
-  if (!canReplaceReplicaWithRemote(local, pending)) {
-    return { ok: false, reason: "phone-owns" };
-  }
-  const seeded = await seedEmptyPhoneFromWebsite(ownerEmail);
-  if (seeded) {
-    return {
-      ok: true,
-      added: farmCountInSnapshot(seeded),
-      total: farmCountInSnapshot(seeded),
-      snapshot: seeded,
-    };
-  }
-  return { ok: false, reason: "unavailable" };
+/** Website farms never write onto this phone. */
+export async function pullWebsiteFarms(_ownerEmail?: string): Promise<PullWebsiteFarmsResult> {
+  return { ok: false, reason: "phone-owns" };
 }
