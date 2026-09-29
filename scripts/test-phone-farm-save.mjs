@@ -25,7 +25,9 @@ assert.match(SIGN_OUT_UNSAVED_CONFIRM, /Sign out now/);
 assert.match(SIGN_OUT_UNSAVED_CONFIRM, /on this phone/);
 
 const settings = read("src/components/SettingsScreen.tsx");
-assert.match(settings, /phoneFarmSaveStatus/);
+assert.doesNotMatch(settings, /phoneFarmSaveStatus/);
+assert.doesNotMatch(settings, /shownSave/);
+assert.doesNotMatch(settings, /Farms are saved on this phone/);
 assert.match(settings, /SIGN_OUT_UNSAVED_CONFIRM/);
 assert.match(settings, /SIGN_OUT_UNSAVED_BODY/);
 assert.match(settings, /role="dialog"/);
@@ -35,7 +37,7 @@ assert.match(settings, /IMPORT_APP_DATA/);
 assert.doesNotMatch(settings, /Sync data/);
 assert.doesNotMatch(settings, /flushNow/);
 assert.doesNotMatch(settings, /syncNow/);
-assert.match(settings, /pendingCount/);
+assert.doesNotMatch(settings, /pendingCount/);
 
 const provider = read("src/components/OfflineProvider.tsx");
 assert.match(provider, /pendingCount/);

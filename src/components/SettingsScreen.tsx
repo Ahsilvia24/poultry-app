@@ -17,7 +17,6 @@ import {
 } from "@/lib/offline/phoneBackup";
 import { persistOwnerFarms } from "@/lib/offline/persistOwnerFarms";
 import {
-  phoneFarmSaveStatus,
   SIGN_OUT_ANYWAY,
   SIGN_OUT_STAY,
   SIGN_OUT_UNSAVED_BODY,
@@ -43,14 +42,9 @@ export function SettingsScreen() {
   const {
     snapshot,
     patchSnapshot,
-    pendingCount,
-    lastBackupAt,
-    syncing,
-    ready,
     replaceSnapshot,
     enqueue,
   } = useOffline();
-  const shownSave = phoneFarmSaveStatus({ ready, syncing, pendingCount, lastBackupAt });
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupNote, setBackupNote] = useState<string | null>(null);
   const [confirmImport, setConfirmImport] = useState<string | null>(null);
@@ -192,28 +186,6 @@ export function SettingsScreen() {
             {values.email}
           </p>
         ) : null}
-      </div>
-
-      <div className="relative z-10 mb-5 flex flex-col items-center gap-3 px-1">
-        {shownSave.kind === "unsaved" ? (
-          <p
-            role="status"
-            className="max-w-md rounded-xl border border-amber-300 bg-amber-100 px-4 py-3 text-center text-sm font-semibold text-amber-950"
-          >
-            {shownSave.text}
-          </p>
-        ) : (
-          <p
-            role="status"
-            className={
-              shownSave.kind === "saved"
-                ? "max-w-md text-center text-sm font-semibold text-emerald-800"
-                : "max-w-md text-center text-sm font-medium text-stone-600"
-            }
-          >
-          {shownSave.text}
-        </p>
-        )}
       </div>
 
       <Card className="mb-5 max-w-2xl">

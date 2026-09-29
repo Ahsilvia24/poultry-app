@@ -178,6 +178,8 @@ assert.match(read("src/components/SettingsScreen.tsx"), /visibleFarmCountInSnaps
 assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Exported \$\{farmCountInSnapshot/);
 assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Sync data/);
 assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Get farms from website/);
+assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /phoneFarmSaveStatus/);
+assert.doesNotMatch(read("src/components/SettingsScreen.tsx"), /Farms are saved on this phone/);
 assert.match(read("src/app/(auth)/login/page.tsx"), /verifyLocalAccount/);
 assert.match(read("src/app/(auth)/login/page.tsx"), /getLocalAccount/);
 assert.doesNotMatch(read("src/app/(auth)/login/page.tsx"), /\/api\/login/);
