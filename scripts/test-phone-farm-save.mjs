@@ -12,7 +12,11 @@ assert.equal(phoneFarmSaveStatus({ ready: true, syncing: true, pendingCount: 2 }
 assert.equal(phoneFarmSaveStatus({ ready: true, syncing: false, pendingCount: 2 }).kind, "saved");
 assert.equal(phoneFarmSaveStatus({ ready: true, syncing: true, pendingCount: 0 }).kind, "saving");
 assert.equal(phoneFarmSaveStatus({ ready: true, syncing: false, pendingCount: 0 }).kind, "saved");
-assert.match(
+assert.equal(
+  phoneFarmSaveStatus({ ready: true, syncing: false, pendingCount: 0, lastBackupAt: "2026-09-19T12:00:00.000Z" }).text,
+  "Farms are saved on this phone.",
+);
+assert.doesNotMatch(
   phoneFarmSaveStatus({ ready: true, syncing: false, pendingCount: 0, lastBackupAt: "2026-09-19T12:00:00.000Z" }).text,
   /automatic backup/,
 );

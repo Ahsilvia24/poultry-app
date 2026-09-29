@@ -140,15 +140,16 @@ assert.equal(visibleFarmCountInSnapshot(mixed), 9);
 assert.equal(EXPORT_ALL_APP_DATA, "Export all app data");
 assert.equal(IMPORT_APP_DATA, "Import app data");
 
-assert.match(
+assert.equal(
   phoneFarmSaveStatus({
     ready: true,
     syncing: false,
     pendingCount: 0,
     lastBackupAt: "2026-09-19T12:00:00.000Z",
   }).text,
-  /automatic backup/,
+  "Farms are saved on this phone.",
 );
+assert.doesNotMatch(read("src/lib/offline/phoneFarmSave.ts"), /automatic backup/);
 
 assert.doesNotMatch(read("src/lib/offline/signOutLocal.ts"), /clearLocalReplica/);
 assert.match(read("src/lib/offline/signOutLocal.ts"), /lockPhoneOwner/);

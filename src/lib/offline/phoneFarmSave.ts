@@ -10,21 +10,9 @@ export function phoneFarmSaveStatus(input: {
     return { kind: "checking", text: "Checking farm saves on this phone…" };
   }
   if (input.syncing) {
-    return { kind: "saving", text: "Saving a backup of this phone’s farms…" };
+    return { kind: "saving", text: "Saving farms on this phone…" };
   }
-  if (input.lastBackupAt) {
-    return {
-      kind: "saved",
-      text: `Farms are saved on this phone. Last automatic backup ${formatBackupClock(input.lastBackupAt)}.`,
-    };
-  }
-  return { kind: "saved", text: "Farms are saved on this phone. Sign out keeps them here." };
-}
-
-function formatBackupClock(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "just now";
-  return date.toLocaleString();
+  return { kind: "saved", text: "Farms are saved on this phone." };
 }
 
 export const SIGN_OUT_UNSAVED_BODY =
