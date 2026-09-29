@@ -3,9 +3,14 @@
 import { useCallback, useState } from "react";
 import { copyPlainText } from "@/lib/copyPlainText";
 import { ToolsSectionPanel } from "@/components/ToolsSectionPanel";
+import type { WeightFarmPayload } from "@/components/ToolsWeightProjections";
 import { WeightProjectionManualTile } from "@/components/WeightProjectionManualTile";
 
-export function CustomWeightProjectionSection() {
+export function CustomWeightProjectionSection({
+  farms = [],
+}: {
+  farms?: WeightFarmPayload[];
+} = {}) {
   const [copyText, setCopyText] = useState("");
 
   const onCopy = useCallback(async () => {
@@ -17,11 +22,11 @@ export function CustomWeightProjectionSection() {
   return (
     <ToolsSectionPanel
       hashId="weight-projections-manual"
-      title="Custom Weight Projection"
+      title="Weight Projection - Feed"
       onCopy={onCopy}
-      copyLabel="Copy custom weight projection"
+      copyLabel="Copy weight projection - feed"
     >
-      <WeightProjectionManualTile onCopyTextChange={setCopyText} />
+      <WeightProjectionManualTile farms={farms} onCopyTextChange={setCopyText} />
     </ToolsSectionPanel>
   );
 }

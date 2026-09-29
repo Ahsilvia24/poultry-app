@@ -44,8 +44,9 @@ assert.match(panel, />\s*Top\s*</);
 assert.match(section, /copyPlainText/);
 assert.doesNotMatch(section, /encodeURIComponent/);
 assert.doesNotMatch(section, /navigator\.clipboard\.writeText/);
-assert.match(section, /copyLabel="Copy custom weight projection"/);
-assert.match(section, /<WeightProjectionManualTile onCopyTextChange=\{setCopyText\} \/>/);
+assert.match(section, /copyLabel="Copy weight projection - feed"/);
+assert.match(section, /title="Weight Projection - Feed"/);
+assert.match(section, /<WeightProjectionManualTile farms=\{farms\} onCopyTextChange=\{setCopyText\} \/>/);
 
 const copyHelper = read("src/lib/copyPlainText.ts");
 assert.match(copyHelper, /copyWithTextarea/);

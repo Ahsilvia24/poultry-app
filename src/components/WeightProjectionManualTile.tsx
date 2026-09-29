@@ -5,6 +5,8 @@ import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/compone
 import { useKeypadNav } from "@/components/KeypadNavContext";
 import { catchWeightBandFromLbs } from "@/lib/weight/projections";
 import { useOffline } from "@/components/OfflineProvider";
+import type { WeightFarmPayload } from "@/components/ToolsWeightProjections";
+import { chcFromRemaining } from "@/lib/weight/farmHeadCount";
 import {
   formatManualWeightCopy,
   manualProjectedWeightLbs,
@@ -44,8 +46,10 @@ function formatField(key: FieldKey, raw: string) {
 }
 
 export function WeightProjectionManualTile({
+  farms = [],
   onCopyTextChange,
 }: {
+  farms?: Array<Pick<WeightFarmPayload, "id" | "farmName" | "currentHeadCount">>;
   onCopyTextChange?: (text: string) => void;
 } = {}) {
   const { setKeypadOpen } = useKeypadNav();
@@ -60,6 +64,7 @@ export function WeightProjectionManualTile({
   const [efc, setEfc] = useState(() => String(defaultEfc));
   const [active, setActive] = useState<FieldKey | null>(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
+  const [farmId, setFarmId] = useState("");
   const seededDefaults = useRef(false);
 
   useEffect(() => {
@@ -140,8 +145,35 @@ export function WeightProjectionManualTile({
     setters[active](next);
   }
 
+  function selectFarm(nextFarmId: string) {
+    setFarmId(nextFarmId);
+    const farm = farms.find((f) => f.id === nextFarmId);
+    setChc(chcFromRemaining(farm?.currentHeadCount));
+  }
+
   return (
     <div className="space-y-3">
+      {farms.length > 0 ? (
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" data-wp-feed-farms>
+          {farms.map((farm) => {
+            const selected = farm.id === farmId;
+            return (
+              <button
+                key={farm.id}
+                type="button"
+                onClick={() => selectFarm(farm.id)}
+                className={cn(
+                  "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
+                  selected ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
+                )}
+              >
+                {farm.farmName}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       <div className="divide-y divide-stone-100">
         {FIELDS.map((field) => {
           const raw = values[field.key];

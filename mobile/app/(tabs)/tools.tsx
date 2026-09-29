@@ -308,7 +308,7 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("weight", e)} collapsable={false}>
           {open.weight ? (
-            <SectionPanel title="Weight Projections">
+            <SectionPanel title="Weight Projection - Growth Rate">
               {!useAgeOfBird ? (
                 <>
                   <ChipScroller style={{ marginBottom: 6 }}>
@@ -369,8 +369,14 @@ export default function ToolsScreen() {
 
         <View onLayout={(e) => onSectionLayout("weightManual", e)} collapsable={false}>
           {open.weightManual ? (
-            <SectionPanel title="Custom Weight Projection" onTop={scrollToTop}>
-              <WeightProjectionManualTile />
+            <SectionPanel title="Weight Projection - Feed" onTop={scrollToTop}>
+              <WeightProjectionManualTile
+                farms={farms.map((f) => ({
+                  id: f.id,
+                  farmName: f.farmName,
+                  currentHeadCount: f.currentHeadCount ?? null,
+                }))}
+              />
             </SectionPanel>
           ) : (
             <SectionAnchor />

@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { getDefaultConsumptionRate, getDefaultEfc } from "../lib/appSettings";
 import { catchWeightBandFromLbs } from "../lib/weight/projections";
 import { manualProjectedWeightLbs, parseManualNumber } from "../lib/weight/manualProjection";
 import { colors } from "../theme";
+import { Chip } from "./ui";
 import {
   NumberKeypad,
   appendKeypadDigit,
@@ -27,6 +28,11 @@ const FIELDS: Array<{
   { key: "efc", label: "EFC", unit: "", decimal: true, tripleZero: false },
 ];
 
+function chcFromRemaining(remaining: number | null | undefined): string {
+  if (remaining == null || !Number.isFinite(remaining)) return "";
+  return String(Math.round(Math.max(0, remaining)));
+}
+
 function formatField(key: FieldKey, raw: string) {
   if (raw.trim() === "") return "—";
   const n = Number(raw);
@@ -41,7 +47,11 @@ function formatField(key: FieldKey, raw: string) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
-export function WeightProjectionManualTile() {
+export function WeightProjectionManualTile({
+  farms = [],
+}: {
+  farms?: Array<{ id: string; farmName: string; currentHeadCount: number | null }>;
+} = {}) {
   const [tf, setTf] = useState("");
   const [inv, setInv] = useState("");
   const [chc, setChc] = useState("");
@@ -50,6 +60,7 @@ export function WeightProjectionManualTile() {
   const [efc, setEfc] = useState(() => String(getDefaultEfc()));
   const [active, setActive] = useState<FieldKey | null>(null);
   const [replaceOnType, setReplaceOnType] = useState(false);
+  const [farmId, setFarmId] = useState("");
 
   const values: Record<FieldKey, string> = { tf, inv, chc, cr, dtk, efc };
   const setters: Record<FieldKey, (next: string) => void> = {
@@ -91,8 +102,32 @@ export function WeightProjectionManualTile() {
   const band = projected != null ? catchWeightBandFromLbs(projected) : null;
   const activeMeta = FIELDS.find((f) => f.key === active) ?? null;
 
+  function selectFarm(nextFarmId: string) {
+    setFarmId(nextFarmId);
+    const farm = farms.find((f) => f.id === nextFarmId);
+    setChc(chcFromRemaining(farm?.currentHeadCount));
+  }
+
   return (
     <View>
+      {farms.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: 8 }}
+          contentContainerStyle={{ gap: 8 }}
+        >
+          {farms.map((farm) => (
+            <Chip
+              key={farm.id}
+              label={farm.farmName}
+              active={farmId === farm.id}
+              onPress={() => selectFarm(farm.id)}
+            />
+          ))}
+        </ScrollView>
+      ) : null}
+
       {FIELDS.map((field) => {
         const raw = values[field.key];
         const selected = active === field.key;

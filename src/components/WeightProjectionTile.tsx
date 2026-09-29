@@ -126,7 +126,7 @@ export function WeightProjectionTile({
         }
       >
         {embedded ? null : (
-          <p className="text-base font-semibold text-stone-500">Weight Projections</p>
+          <p className="text-base font-semibold text-stone-500">Weight Projection - Growth Rate</p>
         )}
         {growthRateControl}
       </div>

@@ -21,6 +21,8 @@ export type WeightHousePayload = {
 export type WeightFarmPayload = {
   id: string;
   farmName: string;
+  /** Farm birds remaining (sum of house remaining). */
+  currentHeadCount: number | null;
   houses: WeightHousePayload[];
 };
 

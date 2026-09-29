@@ -11,6 +11,7 @@ import { asDateKey, asDateRequired, localNoonFromKey } from "@/lib/offline/dates
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import type { WeightFarmPayload } from "@/components/ToolsWeightProjections";
 import type { VentilationFarmPayload } from "@/components/VentilationLinks";
+import { sumFarmRemainingHeadCount } from "@/lib/weight/farmHeadCount";
 import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
 import { parseDateKey } from "@/lib/visits/schedule";
 import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
@@ -155,6 +156,7 @@ export function selectTools(snapshot: OfflineSnapshot, initialFarmId?: string | 
     return {
       id: farm.id,
       farmName: farm.farmName,
+      currentHeadCount: sumFarmRemainingHeadCount(houses),
       houses,
     };
   });

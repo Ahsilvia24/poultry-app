@@ -41,11 +41,11 @@ export function ToolsView({
       </div>
 
       <div className="space-y-3">
-        <ToolsSectionPanel hashId="weight-projections" title="Weight Projections" showTop={false}>
+        <ToolsSectionPanel hashId="weight-projections" title="Weight Projection - Growth Rate" showTop={false}>
           <ToolsWeightProjections farms={weightFarms} initialFarmId={initialFarmId ?? null} />
         </ToolsSectionPanel>
 
-        <CustomWeightProjectionSection />
+        <CustomWeightProjectionSection farms={weightFarms} />
 
         <ToolsSectionPanel hashId="ventilation" title="Ventilation" footer={<VentilationCfmCharts />}>
           <VentilationLinks farms={farms} />
