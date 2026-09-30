@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { inflateSync } from "node:zlib";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -47,11 +48,42 @@ const filled = await buildTextReportPdfBytes({
   blocks: [{ type: "table", headers, rows }],
 });
 
+function inflatePdf(bytes) {
+  const raw = Buffer.from(bytes);
+  const chunks = [];
+  let from = 0;
+  while (true) {
+    const start = raw.indexOf(Buffer.from("stream\n"), from);
+    if (start < 0) break;
+    const end = raw.indexOf(Buffer.from("\nendstream"), start);
+    if (end < 0) break;
+    const payload = raw.subarray(start + "stream\n".length, end);
+    try {
+      chunks.push(inflateSync(payload).toString("latin1"));
+    } catch {
+      /* xref / object streams can use a different filter */
+    }
+    from = end + 1;
+  }
+  return chunks.join("\n");
+}
+
+function pdfText(content) {
+  return [...content.matchAll(/<([0-9A-Fa-f]+)> Tj/g)]
+    .map((match) => Buffer.from(match[1], "hex").toString("utf8"))
+    .join("\n");
+}
+
 const greenFill = /0\.01\d+\s+0\.47\d+\s+0\.34\d+/;
-assert.doesNotMatch(Buffer.from(plain).toString("latin1"), greenFill);
-assert.match(Buffer.from(filled).toString("latin1"), greenFill);
-assert.match(Buffer.from(plain).toString("latin1"), /Monday Sep 21/);
-assert.match(Buffer.from(plain).toString("latin1"), /Oak Poultry/);
-assert.match(Buffer.from(plain).toString("latin1"), /Routine Service/);
+const plainStream = inflatePdf(plain);
+const filledStream = inflatePdf(filled);
+assert.doesNotMatch(plainStream, greenFill);
+assert.match(filledStream, greenFill);
+assert.match(plainStream, /0\.11 0\.1 0\.09 rg/);
+assert.doesNotMatch(plainStream, /1 1 1 rg/);
+const plainText = pdfText(plainStream);
+assert.match(plainText, /Monday Sep 21/);
+assert.match(plainText, /Oak Poultry/);
+assert.match(plainText, /Routine Service/);
 
 console.log("field-log-pdf-no-green: ok");
