@@ -117,6 +117,36 @@ describe("planAttachMissingHousesToActiveFlock", () => {
     assert.ok(plans.every((p) => p.flockId === "flock-a"));
   });
 
+  it("does not attach houses reserved by a completed flock", () => {
+    const plans = planAttachMissingHousesToActiveFlock({
+      houses: houses(8),
+      houseFlocks: [
+        hf("h5", { flockId: "flock-b", placementDate: "2026-08-04" }),
+        hf("h6", { flockId: "flock-b", placementDate: "2026-08-04" }),
+        hf("h7", { flockId: "flock-b", placementDate: "2026-08-04" }),
+        hf("h8", { flockId: "flock-b", placementDate: "2026-08-04" }),
+      ],
+      activeFlocks: [
+        { id: "flock-b", placementDate: "2026-08-04", projectedCatchDate: "2026-09-25" },
+      ],
+      reservedHouseIds: ["h1", "h2", "h3", "h4"],
+    });
+    assert.deepEqual(plans, []);
+  });
+
+  it("still attaches a brand-new house that is not reserved", () => {
+    const extra = [...houses(4), { id: "h5", houseNumber: 5 }];
+    const plans = planAttachMissingHousesToActiveFlock({
+      houses: extra,
+      houseFlocks: [hf("h1"), hf("h2"), hf("h3"), hf("h4")],
+      activeFlocks: [flock],
+      reservedHouseIds: ["h1", "h2", "h3", "h4"],
+    });
+    assert.equal(plans.length, 1);
+    assert.equal(plans[0]?.houseId, "h5");
+    assert.equal(plans[0]?.flockId, "flock-a");
+  });
+
   it("falls back to flock dates when no sibling house-flock exists", () => {
     const plans = planAttachMissingHousesToActiveFlock({
       houses: houses(2),

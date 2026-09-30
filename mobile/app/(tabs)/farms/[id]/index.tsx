@@ -20,6 +20,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons";
 import {
   completeFlock,
+  reactivateFlock,
   createGeneratorLog,
   createHouse,
   deleteGeneratorLog,
@@ -450,8 +451,14 @@ export default function FarmDetailScreen() {
   const [completeConfirm, setCompleteConfirm] = useState<{
     flockId: string;
     flockNumber: string;
+    housesLabel?: string;
   } | null>(null);
-  const [completePickerOpen, setCompletePickerOpen] = useState(false);
+  const [restoreConfirm, setRestoreConfirm] = useState<{
+    flockId: string;
+    flockNumber: string;
+    housesLabel: string;
+  } | null>(null);
+  const [flockMenu, setFlockMenu] = useState<"add-end" | "past" | null>(null);
   const [completeError, setCompleteError] = useState<string | null>(null);
   const [generatorDraft, setGeneratorDraft] = useState({
     logDate: todayKey(),
@@ -678,11 +685,12 @@ export default function FarmDetailScreen() {
 
   const { farm } = data;
   const activeFlocks = data.activeFlocks ?? [];
+  const pastFlocks = data.pastFlocks ?? [];
 
-  function askCompleteFlock(flockId: string, flockNumber: string) {
+  function askCompleteFlock(flockId: string, flockNumber: string, housesLabel?: string) {
     setCompleteError(null);
-    setCompletePickerOpen(false);
-    setCompleteConfirm({ flockId, flockNumber });
+    setFlockMenu(null);
+    setCompleteConfirm({ flockId, flockNumber, housesLabel });
   }
 
   function runCompleteFlock() {
@@ -698,15 +706,39 @@ export default function FarmDetailScreen() {
     }
   }
 
-  function promptCompleteFlock() {
-    if (activeFlocks.length === 0) return;
-    if (activeFlocks.length === 1) {
-      askCompleteFlock(activeFlocks[0]!.id, activeFlocks[0]!.flockNumber);
+  function runRestoreFlock() {
+    if (!restoreConfirm) return;
+    try {
+      reactivateFlock(restoreConfirm.flockId);
+      setRestoreConfirm(null);
+      setCompleteError(null);
+      load();
+    } catch (e) {
+      setRestoreConfirm(null);
+      setCompleteError(e instanceof Error ? e.message : "Could not return flock");
+    }
+  }
+
+  function openAddFlock() {
+    setFlockMenu(null);
+    router.push({
+      pathname: "/(tabs)/farms/[id]/add-flock",
+      params: { id: farm.id },
+    });
+  }
+
+  function promptAddEndFlock() {
+    if (activeFlocks.length === 0) {
+      openAddFlock();
       return;
     }
-    // RN Web Alert.alert is a no-op — use an in-app picker instead.
     setCompleteError(null);
-    setCompletePickerOpen(true);
+    setFlockMenu("add-end");
+  }
+
+  function promptPastFlocks() {
+    setCompleteError(null);
+    setFlockMenu("past");
   }
 
   function openAddHouse() {
@@ -1242,23 +1274,15 @@ export default function FarmDetailScreen() {
                       }),
                   },
                   {
-                    key: "add-flock",
-                    label: "Add Flock",
-                    onPress: () =>
-                      router.push({
-                        pathname: "/(tabs)/farms/[id]/add-flock",
-                        params: { id: farm.id },
-                      }),
+                    key: "add-end-flock",
+                    label: "Add/End Flock",
+                    onPress: promptAddEndFlock,
                   },
-                  ...(activeFlocks.length > 0
-                    ? [
-                        {
-                          key: "complete-flock",
-                          label: "End Flock",
-                          onPress: promptCompleteFlock,
-                        },
-                      ]
-                    : []),
+                  {
+                    key: "past-flocks",
+                    label: "Past Flocks",
+                    onPress: promptPastFlocks,
+                  },
                 ] as Array<{ key: string; label: string; onPress: () => void }>
               ).map((link) => (
                 <Pressable
@@ -2508,7 +2532,7 @@ export default function FarmDetailScreen() {
         title="End flock?"
         message={
           completeConfirm
-            ? `Mark flock ${completeConfirm.flockNumber} as completed? You can reactivate it later from Farm History.`
+            ? `End flock ${completeConfirm.flockNumber}${completeConfirm.housesLabel ? ` on ${completeConfirm.housesLabel.toLowerCase()}` : ""}? Return it later from Past Flocks if those houses are still empty.`
             : ""
         }
         confirmLabel="End flock"
@@ -2526,16 +2550,28 @@ export default function FarmDetailScreen() {
         onCancel={() => setCompleteError(null)}
       />
 
+      <ConfirmDialog
+        visible={restoreConfirm != null}
+        title="Return flock?"
+        message={
+          restoreConfirm
+            ? `Return flock ${restoreConfirm.flockNumber} on ${restoreConfirm.housesLabel.toLowerCase()} to active?`
+            : ""
+        }
+        confirmLabel="Return flock"
+        onConfirm={runRestoreFlock}
+        onCancel={() => setRestoreConfirm(null)}
+      />
       <Modal
-        visible={completePickerOpen}
+        visible={flockMenu != null}
         transparent
         animationType="fade"
-        onRequestClose={() => setCompletePickerOpen(false)}
+        onRequestClose={() => setFlockMenu(null)}
       >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Dismiss"
-          onPress={() => setCompletePickerOpen(false)}
+          onPress={() => setFlockMenu(null)}
           style={{
             flex: 1,
             backgroundColor: "rgba(0,0,0,0.4)",
@@ -2557,33 +2593,92 @@ export default function FarmDetailScreen() {
             }}
           >
             <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-              End flock
+              {flockMenu === "past" ? "Past Flocks" : "Add/End Flock"}
             </Text>
             <Text style={{ marginTop: 8, fontSize: 14, lineHeight: 20, color: colors.muted }}>
-              Which flock do you want to end?
+              {flockMenu === "past"
+                ? "Return the last ended flock for empty houses. Houses that already have an active flock stay as they are."
+                : "Add a flock on empty houses, or end one of the active flocks."}
             </Text>
             <View style={{ marginTop: 16, gap: 8 }}>
-              {activeFlocks.map((fl) => (
-                <Pressable
-                  key={fl.id}
-                  accessibilityRole="button"
-                  onPress={() => askCompleteFlock(fl.id, fl.flockNumber)}
-                  style={{
-                    borderRadius: 10,
-                    paddingVertical: 12,
-                    paddingHorizontal: 14,
-                    backgroundColor: colors.accentDark,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>
-                    {fl.flockNumber} ({fl.flockAgeDays}d)
-                  </Text>
-                </Pressable>
-              ))}
+              {flockMenu === "add-end" ? (
+                <>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={openAddFlock}
+                    style={{
+                      borderRadius: 10,
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      backgroundColor: colors.accentDark,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>
+                      Add flock
+                    </Text>
+                  </Pressable>
+                  {activeFlocks.map((fl) => (
+                    <Pressable
+                      key={fl.id}
+                      accessibilityRole="button"
+                      onPress={() =>
+                        askCompleteFlock(fl.id, fl.flockNumber, fl.housesLabel)
+                      }
+                      style={{
+                        borderRadius: 10,
+                        paddingVertical: 12,
+                        paddingHorizontal: 14,
+                        backgroundColor: colors.accentDark,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>
+                        End {fl.flockNumber}
+                      </Text>
+                      <Text style={{ color: "#fff", fontWeight: "600", fontSize: 12, marginTop: 2 }}>
+                        {fl.housesLabel} · {fl.flockAgeDays}d
+                      </Text>
+                    </Pressable>
+                  ))}
+                </>
+              ) : pastFlocks.length === 0 ? (
+                <Text style={{ fontSize: 14, lineHeight: 20, color: colors.muted }}>
+                  No past flock to return. Only the last ended flock for empty houses can come back.
+                </Text>
+              ) : (
+                pastFlocks.map((fl) => (
+                  <Pressable
+                    key={fl.id}
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setFlockMenu(null);
+                      setRestoreConfirm({
+                        flockId: fl.id,
+                        flockNumber: fl.flockNumber,
+                        housesLabel: fl.housesLabel,
+                      });
+                    }}
+                    style={{
+                      borderRadius: 10,
+                      paddingVertical: 12,
+                      paddingHorizontal: 14,
+                      backgroundColor: colors.accentDark,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>
+                      Return {fl.flockNumber}
+                    </Text>
+                    <Text style={{ color: "#fff", fontWeight: "600", fontSize: 12, marginTop: 2 }}>
+                      {fl.housesLabel}
+                    </Text>
+                  </Pressable>
+                ))
+              )}
               <Pressable
                 accessibilityRole="button"
-                onPress={() => setCompletePickerOpen(false)}
+                onPress={() => setFlockMenu(null)}
                 style={{
                   borderRadius: 10,
                   paddingVertical: 12,

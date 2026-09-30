@@ -2,6 +2,13 @@ import { getDb } from "../db";
 import { newId, todayKey, addDaysKey } from "../lib/ids";
 import { planAttachMissingHousesToActiveFlock } from "../lib/attachHouseToActiveFlock";
 import {
+  canRestorePastFlock,
+  formatHouseList,
+  houseNumbersForFlock,
+  listRestorablePastFlocks,
+  reservedEndedHouseIds,
+} from "../lib/pastFlocks";
+import {
   dedupeScheduleRows,
   planMergeDuplicateFlocks,
   scheduleGroupsForFarm,
@@ -687,6 +694,47 @@ export function getDashboard() {
   };
 }
 
+function loadPastFlockGraph(farmId: string) {
+  const db = getDb();
+  const flocks = db.getAllSync<{
+    id: string;
+    farm_id: string;
+    flock_number: string;
+    flock_status: string;
+    placement_date: string;
+    actual_catch_date: string | null;
+  }>(
+    `SELECT id, farm_id, flock_number, flock_status, placement_date, actual_catch_date
+     FROM flocks WHERE farm_id = ?`,
+    [farmId],
+  );
+  const houses = db.getAllSync<{ id: string; house_number: number }>(
+    `SELECT id, house_number FROM houses WHERE farm_id = ? AND deleted_at IS NULL`,
+    [farmId],
+  );
+  const houseFlocks = db.getAllSync<{ flock_id: string; house_id: string }>(
+    `SELECT hf.flock_id, hf.house_id
+     FROM house_flocks hf
+     JOIN flocks f ON f.id = hf.flock_id
+     WHERE f.farm_id = ?`,
+    [farmId],
+  );
+  return {
+    farmId,
+    flocks: flocks.map((row) => ({
+      id: row.id,
+      farmId: row.farm_id,
+      flockNumber: row.flock_number,
+      flockStatus: row.flock_status,
+      deletedAt: null,
+      placementDate: row.placement_date,
+      actualCatchDate: row.actual_catch_date,
+    })),
+    houses: houses.map((row) => ({ id: row.id, houseNumber: row.house_number })),
+    houseFlocks: houseFlocks.map((row) => ({ flockId: row.flock_id, houseId: row.house_id })),
+  };
+}
+
 export function getFarmDetail(farmId: string) {
   const db = getDb();
   const today = todayKey();
@@ -904,8 +952,14 @@ export function getFarmDetail(farmId: string) {
     ? (flock.projected_catch_date ?? addDaysKey(flock.placement_date, 52))
     : null;
 
+  const pastFlockInput = loadPastFlockGraph(farmId);
   const activeFlocks = activeFlocksRaw.map((f) => {
     const ageDays = daysSincePlacement(f.placement_date, today);
+    const houseNumbers = houseNumbersForFlock(
+      pastFlockInput.houseFlocks,
+      pastFlockInput.houses,
+      f.id,
+    );
     return {
       id: f.id,
       flockNumber: f.flock_number,
@@ -916,8 +970,14 @@ export function getFarmDetail(farmId: string) {
       flockAgeDays: ageDays,
       flockWeek: flockWeekFromAge(Math.max(0, ageDays)),
       houseCount: houses.filter((h) => h.flockId === f.id).length,
+      houseNumbers,
+      housesLabel: formatHouseList(houseNumbers),
     };
   });
+  const pastFlocks = listRestorablePastFlocks(pastFlockInput).map((flock) => ({
+    ...flock,
+    housesLabel: formatHouseList(flock.houseNumbers),
+  }));
 
   const latestCompleted =
     activeFlocks.length === 0
@@ -951,6 +1011,7 @@ export function getFarmDetail(farmId: string) {
           : farm.number_of_generators,
     },
     activeFlocks,
+    pastFlocks,
     activeFlock: flock
       ? {
           id: flock.id,
@@ -3360,23 +3421,9 @@ export function reactivateFlock(flockId: string) {
   if (!flock) throw new Error("Flock not found");
   if (flock.flock_status === "ACTIVE") throw new Error("Flock is already active");
 
-  // Allow multiple active flocks, but not the same house on two at once.
-  const overlap = db.getFirstSync<{ house_number: number; flock_number: string }>(
-    `SELECT h.house_number, f.flock_number
-     FROM house_flocks hf
-     JOIN houses h ON h.id = hf.house_id
-     JOIN house_flocks other_hf ON other_hf.house_id = hf.house_id
-     JOIN flocks f ON f.id = other_hf.flock_id
-     WHERE hf.flock_id = ?
-       AND f.farm_id = ?
-       AND f.flock_status = 'ACTIVE'
-       AND f.id != ?
-     LIMIT 1`,
-    [flockId, flock.farm_id, flockId],
-  );
-  if (overlap) {
+  if (!canRestorePastFlock(loadPastFlockGraph(flock.farm_id), flockId)) {
     throw new Error(
-      `House ${overlap.house_number} is already on active flock ${overlap.flock_number}. Complete that flock first.`,
+      "Only the last ended flock for those empty houses can be returned. End the active flock on those houses first, or pick a different house group.",
     );
   }
 
@@ -3546,11 +3593,16 @@ export function getFarmHistory(farmId: string) {
     .filter((r) => r.id !== current?.id && r.flockStatus !== "ACTIVE")
     .slice(0, 3);
 
+  const restorableIds = new Set(
+    listRestorablePastFlocks(loadPastFlockGraph(farmId)).map((flock) => flock.id),
+  );
+
   return {
     farm: { id: farm.id, farmName: farm.farm_name },
     current,
     previous,
     all: rows,
+    restorableIds: [...restorableIds],
   };
 }
 
@@ -3718,6 +3770,7 @@ export function ensureHousesOnActiveFlock(farmId: string) {
     [farmId],
   );
 
+  const reserved = reservedEndedHouseIds(loadPastFlockGraph(farmId));
   const plans = planAttachMissingHousesToActiveFlock({
     houses: houses.map((h) => ({ id: h.id, houseNumber: h.house_number })),
     houseFlocks: hfs.map((hf) => ({
@@ -3733,6 +3786,7 @@ export function ensureHousesOnActiveFlock(farmId: string) {
       projectedCatchDate: flock.projected_catch_date,
       actualCatchDate: flock.actual_catch_date,
     })),
+    reservedHouseIds: reserved,
   });
 
   for (const plan of plans) {

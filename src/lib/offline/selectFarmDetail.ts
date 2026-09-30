@@ -15,6 +15,11 @@ import { asDate, asDateKey, asDateRequired, localNoonFromKey } from "@/lib/offli
 import { indexHouseFlocksByHouseId } from "@/lib/mortalityHouses";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import { dateKeyFromDb, resolveCatchDate } from "@/lib/visits/schedule";
+import {
+  formatHouseList,
+  houseNumbersForFlock,
+  listRestorablePastFlocks,
+} from "@/lib/offline/pastFlocks";
 
 function noonFromKey(value: string | Date | null | undefined) {
   const key = asDateKey(value);
@@ -57,7 +62,20 @@ export type FarmDetailModel = {
     catchTime: string | null;
     birdAgeDays: number | null;
   }>;
-  activeFlocks: Array<{ id: string; flockNumber: string; ageDays: number }>;
+  activeFlocks: Array<{
+    id: string;
+    flockNumber: string;
+    ageDays: number;
+    houseNumbers: number[];
+    housesLabel: string;
+  }>;
+  pastFlocks: Array<{
+    id: string;
+    flockNumber: string;
+    houseNumbers: number[];
+    housesLabel: string;
+    endedOn: string | null;
+  }>;
   activeFlockId: string | null;
   activePlacementDate: string | null;
   addFlockHouses: Array<{ id: string; houseNumber: number; occupiedByFlock: string | null }>;
@@ -282,10 +300,24 @@ export function selectFarmDetail(
     },
     houses,
     houseCards,
-    activeFlocks: activeFlocks.map((flock) => ({
-      id: flock.id,
-      flockNumber: flock.flockNumber,
-      ageDays: daysSincePlacement(asDateRequired(flock.placementDate), today, timeZone),
+    activeFlocks: activeFlocks.map((flock) => {
+      const houseNumbers = houseNumbersForFlock(snapshot.houseFlocks ?? [], houses, flock.id);
+      return {
+        id: flock.id,
+        flockNumber: flock.flockNumber,
+        ageDays: daysSincePlacement(asDateRequired(flock.placementDate), today, timeZone),
+        houseNumbers,
+        housesLabel: formatHouseList(houseNumbers),
+      };
+    }),
+    pastFlocks: listRestorablePastFlocks({
+      farmId,
+      flocks: snapshot.flocks ?? [],
+      houseFlocks: snapshot.houseFlocks ?? [],
+      houses,
+    }).map((flock) => ({
+      ...flock,
+      housesLabel: formatHouseList(flock.houseNumbers),
     })),
     activeFlockId: activeFlock?.id ?? null,
     activePlacementDate: activeFlock

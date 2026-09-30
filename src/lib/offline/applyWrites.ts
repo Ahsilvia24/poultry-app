@@ -7,6 +7,7 @@ import {
 import { remainingHousesOnSameFarm } from "@/lib/housePropagate";
 import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
 import { asDate, asDateKey, localNoonFromKey } from "@/lib/offline/dates";
+import { canRestorePastFlock } from "@/lib/offline/pastFlocks";
 import {
   labelsMatch,
   upsertFollowUpCompletion,
@@ -1297,20 +1298,19 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
       const flockId = write.id ?? "";
       const flock = snapshot.flocks.find((row) => row.id === flockId);
       if (!flock) return snapshot;
-      const houseIds = new Set(
-        snapshot.houseFlocks.filter((hf) => hf.flockId === flockId).map((hf) => hf.houseId),
-      );
-      const overlap = snapshot.houseFlocks.some((hf) => {
-        if (!houseIds.has(hf.houseId) || hf.flockId === flockId) return false;
-        const other = snapshot.flocks.find((row) => row.id === hf.flockId);
-        return Boolean(
-          other &&
-            other.farmId === flock.farmId &&
-            other.flockStatus !== "COMPLETED" &&
-            !other.deletedAt,
-        );
-      });
-      if (overlap) return snapshot;
+      if (
+        !canRestorePastFlock(
+          {
+            farmId: flock.farmId,
+            flocks: snapshot.flocks,
+            houseFlocks: snapshot.houseFlocks,
+            houses: snapshot.houses,
+          },
+          flockId,
+        )
+      ) {
+        return snapshot;
+      }
       return {
         ...snapshot,
         flocks: snapshot.flocks.map((row) =>

@@ -46,14 +46,17 @@ export function planAttachMissingHousesToActiveFlock(input: {
   houses: AttachableHouse[];
   houseFlocks: ActiveHouseFlockRef[];
   activeFlocks: ActiveFlockRef[];
+  /** Houses on a completed flock stay empty until Add flock or Past Flocks. */
+  reservedHouseIds?: Iterable<string>;
 }): AttachHousePlan[] {
   if (input.activeFlocks.length === 0 || input.houses.length === 0) return [];
 
   const flocksById = new Map(input.activeFlocks.map((flock) => [flock.id, flock]));
   const fallbackFlock = input.activeFlocks[0]!;
   const attached = new Map(input.houseFlocks.map((hf) => [hf.houseId, hf]));
+  const reserved = new Set(input.reservedHouseIds ?? []);
   const byNumber = [...input.houses].sort((a, b) => a.houseNumber - b.houseNumber);
-  const missing = byNumber.filter((house) => !attached.has(house.id));
+  const missing = byNumber.filter((house) => !attached.has(house.id) && !reserved.has(house.id));
   const plans: AttachHousePlan[] = [];
 
   function flockFor(hf: ActiveHouseFlockRef): ActiveFlockRef {

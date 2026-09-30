@@ -65,6 +65,7 @@ export function FarmDetailView({
         <FarmQuickLinks
           farmId={farm.id}
           completeFlocks={model.activeFlocks}
+          pastFlocks={model.pastFlocks}
           onAddFlock={() => setAddFlockOpen(true)}
         />
       </div>

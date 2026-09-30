@@ -146,9 +146,11 @@ assert.doesNotMatch(section, /startTransition\(async \(\) => \{\n\s+if \(enabled
 
 const links = read("src/components/FarmQuickLinks.tsx");
 assert.match(links, /onAddFlock/);
-assert.match(links, /item\.key === "add-flock"/);
-assert.match(links, /type="button"/);
+assert.match(links, /AddEndFlockButton/);
+assert.match(links, /PastFlocksButton/);
+assert.match(links, /pastFlocks/);
 assert.doesNotMatch(links, /href="#add-flock"/);
+assert.doesNotMatch(links, /End Flock/);
 
 const farm = read("src/components/FarmDetailView.tsx");
 assert.match(farm, /onAddFlock=\{\(\) => setAddFlockOpen\(true\)\}/);

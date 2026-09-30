@@ -124,6 +124,17 @@ export async function ensureActiveFlockHouseFlocks(
           })
         )?.flocks ?? farm.flocks.filter((f) => !mergePlans.some((p) => p.absorbIds.includes(f.id)));
 
+  const reservedRows =
+    farm.houses.length === 0
+      ? []
+      : await db.houseFlock.findMany({
+          where: {
+            houseId: { in: farm.houses.map((house) => house.id) },
+            flock: { farmId, flockStatus: { not: "ACTIVE" }, deletedAt: null },
+          },
+          select: { houseId: true },
+        });
+
   const plans = planAttachMissingHousesToActiveFlock({
     houses: farm.houses,
     houseFlocks: flocks.flatMap((flock) =>
@@ -141,6 +152,7 @@ export async function ensureActiveFlockHouseFlocks(
       projectedCatchDate: flock.projectedCatchDate ? dateTimeKey(flock.projectedCatchDate) : null,
       actualCatchDate: flock.actualCatchDate ? dateTimeKey(flock.actualCatchDate) : null,
     })),
+    reservedHouseIds: reservedRows.map((row) => row.houseId),
   });
   if (plans.length === 0) return 0;
 

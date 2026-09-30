@@ -20,7 +20,7 @@ import {
 import { ConfirmDialog } from "./ConfirmDialog";
 
 type HistoryData = ReturnType<typeof getFarmHistory>;
-type HistoryRow = HistoryData["all"][number];
+type HistoryRow = HistoryData["all"][number] & { canReactivate?: boolean };
 
 function FlockHistoryCard({
   row,
@@ -34,6 +34,7 @@ function FlockHistoryCard({
   onDelete: (row: HistoryRow) => void;
 }) {
   const canDelete = row.flockStatus !== "ACTIVE";
+  const canReactivate = row.canReactivate === true;
   return (
     <Card>
       <View
@@ -69,7 +70,7 @@ function FlockHistoryCard({
               <Ionicons name="trash-outline" size={20} color={colors.muted} />
             </Pressable>
           ) : null}
-          {canDelete ? (
+          {canReactivate ? (
             <PrimaryButton
               label="Make active"
               secondary
@@ -162,6 +163,11 @@ export function FarmHistoryPanel({ farmId }: { farmId: string }) {
     }
   }
 
+  const restorable = new Set(data?.restorableIds ?? []);
+  function withRestore(row: HistoryData["all"][number]): HistoryRow {
+    return { ...row, canReactivate: restorable.has(row.id) };
+  }
+
   return (
     <View>
       {error ? (
@@ -173,7 +179,7 @@ export function FarmHistoryPanel({ farmId }: { farmId: string }) {
 
       {data?.current ? (
         <FlockHistoryCard
-          row={data.current}
+          row={withRestore(data.current)}
           title={
             data.current.flockStatus === "ACTIVE"
               ? `Current flock — ${data.current.flockNumber}`
@@ -195,7 +201,7 @@ export function FarmHistoryPanel({ farmId }: { farmId: string }) {
         data.previous.map((row) => (
           <FlockHistoryCard
             key={row.id}
-            row={row}
+            row={withRestore(row)}
             title={`Flock ${row.flockNumber}`}
             onReactivate={(r) => setConfirm({ kind: "reactivate", row: r })}
             onDelete={(r) => setConfirm({ kind: "delete", row: r })}

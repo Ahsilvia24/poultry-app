@@ -13,6 +13,7 @@ import { normalizeHalfHourTime } from "@/lib/time-slots";
 import { remainingHousesOnSameFarm } from "@/lib/housePropagate";
 import { normalizeFlockNumber, planFlockNumberChange } from "@/lib/houseFlockNumber";
 import { ensureActiveFlockHouseFlocks } from "@/lib/ensureActiveFlockHouseFlocks";
+import { canRestorePastFlock } from "@/lib/offline/pastFlocks";
 import {
   createFlockAlreadyUploaded,
   createFlockOccupiedFlockWhere,
@@ -849,34 +850,47 @@ export async function reactivateFlockAction(flockId: string) {
   if (!flock) return { error: "Flock not found" };
   if (flock.flockStatus === "ACTIVE") return { error: "Flock is already active" };
 
-  const houseIds = (
-    await prisma.houseFlock.findMany({
-      where: { flockId },
-      select: { houseId: true },
-    })
-  ).map((h) => h.houseId);
-
-  if (houseIds.length > 0) {
-    const overlap = await prisma.houseFlock.findFirst({
-      where: {
-        houseId: { in: houseIds },
-        flock: {
-          farmId: flock.farmId,
-          flockStatus: "ACTIVE",
-          deletedAt: null,
-          id: { not: flockId },
-        },
+  const farmFlocks = await prisma.flock.findMany({
+    where: { farmId: flock.farmId, deletedAt: null },
+    select: {
+      id: true,
+      farmId: true,
+      flockNumber: true,
+      flockStatus: true,
+      deletedAt: true,
+      placementDate: true,
+      actualCatchDate: true,
+    },
+  });
+  const farmHouses = await prisma.house.findMany({
+    where: { farmId: flock.farmId, deletedAt: null },
+    select: { id: true, houseNumber: true },
+  });
+  const farmHouseFlocks = await prisma.houseFlock.findMany({
+    where: { flock: { farmId: flock.farmId } },
+    select: { flockId: true, houseId: true },
+  });
+  if (
+    !canRestorePastFlock(
+      {
+        farmId: flock.farmId,
+        flocks: farmFlocks.map((row) => ({
+          ...row,
+          placementDate: row.placementDate.toISOString().slice(0, 10),
+          actualCatchDate: row.actualCatchDate
+            ? row.actualCatchDate.toISOString().slice(0, 10)
+            : null,
+        })),
+        houseFlocks: farmHouseFlocks,
+        houses: farmHouses,
       },
-      include: {
-        house: { select: { houseNumber: true } },
-        flock: { select: { flockNumber: true } },
-      },
-    });
-    if (overlap) {
-      return {
-        error: `House ${overlap.house.houseNumber} is already on active flock ${overlap.flock.flockNumber}. Complete that flock first.`,
-      };
-    }
+      flockId,
+    )
+  ) {
+    return {
+      error:
+        "Only the last ended flock for those empty houses can be returned. End the active flock on those houses first, or pick a different house group.",
+    };
   }
 
   await prisma.flock.update({
