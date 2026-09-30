@@ -67,6 +67,7 @@ export function FieldLogReport({
         );
         return {
           type: "table" as const,
+          headerStyle: "plain" as const,
           headers: week.days.map(
             (day) => `${day.weekday} ${formatFieldLogDayHeader(day.dateKey)}`,
           ),

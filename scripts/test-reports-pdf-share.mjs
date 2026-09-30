@@ -64,6 +64,7 @@ const fieldLogBytes = await buildReportPdfBytes({
   blocks: [
     {
       type: "table",
+      headerStyle: "plain",
       headers: ["Monday Sep 21", "Tuesday Sep 22", "Wednesday Sep 23", "Thursday Sep 24", "Friday Sep 25", "Saturday Sep 26", "Sunday Sep 27"],
       rows: [
         ["Oak Poultry\nRoutine Service", "—", "Cedar Grove\nLFO", "", "", "", ""],
@@ -236,6 +237,7 @@ assert.equal(shares[2].files[0].name, "Mortality Weylin Groom.pdf");
 
 const field = read("src/components/FieldLogReport.tsx");
 assert.match(field, /downloadReportPdf/);
+assert.match(field, /headerStyle: "plain"/);
 assert.match(field, /reportShareFilename\("Field Log"\)/);
 assert.match(field, /Share field log PDF/);
 assert.doesNotMatch(field, /Date\.now\(\)/);
