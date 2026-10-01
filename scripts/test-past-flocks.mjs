@@ -232,6 +232,10 @@ assert.match(menus, /Past Flocks/);
 assert.match(menus, /Return last ended/);
 assert.match(menus, /reactivateFlock/);
 assert.match(menus, /completeFlock/);
+assert.doesNotMatch(menus, /completeFlockAction/);
+assert.doesNotMatch(menus, /reactivateFlockAction/);
+assert.doesNotMatch(menus, /useTransition/);
+assert.doesNotMatch(menus, /router\.refresh/);
 
 const expo = read("mobile/app/(tabs)/farms/[id]/index.tsx");
 assert.match(expo, /Add\/End Flock/);

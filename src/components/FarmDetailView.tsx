@@ -3,7 +3,6 @@
 import { useLayoutEffect, useState } from "react";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { resetAppScroll } from "@/lib/app-scroll";
-import { createFlockAction } from "@/app/actions/farms";
 import { FarmHouseFocus } from "@/components/FarmHouseFocus";
 import { HouseCard } from "@/components/HouseCard";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
@@ -42,10 +41,6 @@ export function FarmDetailView({
     if (focusHouseId) return;
     resetAppScroll();
   }, [model.farm.id, focusHouseId]);
-
-  async function submitFlock(formData: FormData) {
-    return createFlockAction(farm.id, formData);
-  }
 
   return (
     <div>
@@ -109,7 +104,6 @@ export function FarmDetailView({
 
       <AddFlockSection
         farmId={farm.id}
-        action={submitFlock}
         hasActiveFlock={model.activeFlocks.length > 0}
         activeFlockCount={model.activeFlocks.length}
         houses={model.addFlockHouses}

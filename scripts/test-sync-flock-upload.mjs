@@ -48,8 +48,10 @@ assert.doesNotMatch(
 );
 
 const flush = read("src/lib/offline/flushWrites.ts");
-assert.match(flush, /isActionTransportError/);
-assert.match(flush, /createFlockAction\(farmId, formData, \{ skipRedirect: true \}\)/);
-assert.match(flush, /Could not upload this flock/);
+assert.match(flush, /isPhoneOwnedFlockWrite/);
+assert.doesNotMatch(flush, /createFlockAction/);
+assert.doesNotMatch(flush, /completeFlockAction/);
+assert.doesNotMatch(flush, /reactivateFlockAction/);
+assert.doesNotMatch(flush, /Could not upload this flock/);
 
 console.log("sync-flock-upload: ok");
