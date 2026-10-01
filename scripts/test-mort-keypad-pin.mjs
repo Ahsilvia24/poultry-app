@@ -16,7 +16,7 @@ assert.doesNotMatch(keypad, /keypadAttr/);
 const mort = read("src/components/MortalityEntryForm.tsx");
 assert.match(mort, /FixedPhoneKeypad/);
 assert.match(mort, /<FixedPhoneKeypad/);
-assert.match(mort, /\nmort\n/);
+assert.match(mort, /<FixedPhoneKeypad[\s\S]*?\bmort\b/);
 assert.doesNotMatch(mort, /className="fixed inset-x-0 bottom-0 z-50"/);
 
 const weight = read("src/components/WeightProjectionManualTile.tsx");
