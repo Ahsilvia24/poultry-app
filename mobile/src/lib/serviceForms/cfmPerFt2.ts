@@ -1,4 +1,4 @@
-/** House CFM ÷ sq ft, trailing zeros dropped (0.450 → 0.45). */
+/** House CFM ÷ sq ft, rounded to 2 decimals (1.3468 → 1.35). Trailing zeros dropped. */
 export function cfmPerFt2FromHouse(
   cfm: number | null | undefined,
   sqft: number | null | undefined,
@@ -6,5 +6,5 @@ export function cfmPerFt2FromHouse(
   if (cfm == null || sqft == null || !Number.isFinite(cfm) || !Number.isFinite(sqft) || sqft <= 0) {
     return "";
   }
-  return String(Number((cfm / sqft).toFixed(4)));
+  return String(Number((cfm / sqft).toFixed(2)));
 }
