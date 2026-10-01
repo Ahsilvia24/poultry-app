@@ -5,8 +5,9 @@ import { fileURLToPath } from "node:url";
 import { emptyPhoneSnapshot } from "../src/lib/offline/emptySnapshot.ts";
 import { phoneReplicaIsBlank, snapshotHasFarmGraph } from "../src/lib/offline/hasFarmGraph.ts";
 import { canReplaceReplicaWithRemote } from "../src/lib/offline/remapIds.ts";
-import { pullWebsiteFarmsMessage, GET_WEBSITE_PHONE_OWNS } from "../src/lib/offline/pullWebsiteFarms.ts";
-import { adoptWebsiteSeed } from "../src/lib/offline/seedEmptyPhone.ts";
+import { addedWebsiteFarmCount, mergeWebsiteSnapshot } from "../src/lib/offline/mergeWebsiteSnapshot.ts";
+import { pullWebsiteFarms, pullWebsiteFarmsMessage, GET_WEBSITE_PHONE_OWNS } from "../src/lib/offline/pullWebsiteFarms.ts";
+import { adoptWebsiteSeed, hydrateSafariFromWebsite, seedEmptyPhoneFromWebsite } from "../src/lib/offline/seedEmptyPhone.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(root, rel), "utf8");
@@ -19,8 +20,8 @@ const empty = emptyPhoneSnapshot({
 assert.equal(snapshotHasFarmGraph(empty), true);
 assert.equal(phoneReplicaIsBlank(empty), true);
 assert.equal(phoneReplicaIsBlank(null), true);
-assert.equal(canReplaceReplicaWithRemote(null, 0), true);
-assert.equal(canReplaceReplicaWithRemote(empty, 0), true);
+assert.equal(canReplaceReplicaWithRemote(null, 0), false);
+assert.equal(canReplaceReplicaWithRemote(empty, 0), false);
 assert.equal(canReplaceReplicaWithRemote(empty, 1), false);
 
 const farm = {
@@ -95,6 +96,12 @@ assert.equal(adoptWebsiteSeed(deletedOnly, 0, remote), null);
 assert.equal(adoptWebsiteSeed(empty, 1, remote), null);
 assert.equal(adoptWebsiteSeed(empty, 0, empty), null);
 assert.equal(adoptWebsiteSeed(empty, 0, null), null);
+assert.equal(await seedEmptyPhoneFromWebsite("tech@poultry.local"), null);
+assert.equal(await hydrateSafariFromWebsite("tech@poultry.local"), null);
+assert.equal(mergeWebsiteSnapshot(withFarm, remote), withFarm);
+assert.equal(addedWebsiteFarmCount(empty, remote), 0);
+assert.equal(addedWebsiteFarmCount(null, remote), 0);
+assert.deepEqual(await pullWebsiteFarms("tech@poultry.local"), { ok: false, reason: "phone-owns" });
 
 assert.equal(
   pullWebsiteFarmsMessage({ ok: false, reason: "phone-owns" }),
@@ -124,6 +131,16 @@ const upload = read("src/lib/offline/uploadLeftoverWrites.ts");
 assert.match(upload, /flushOutbox/);
 assert.doesNotMatch(upload, /pullRemoteSnapshot/);
 assert.doesNotMatch(upload, /replaceSnapshot/);
+
+const flush = read("src/lib/offline/flushOutbox.ts");
+assert.match(flush, /export async function pullRemoteSnapshot/);
+assert.doesNotMatch(flush, /fetch\("\/api\/offline\/snapshot"/);
+assert.doesNotMatch(flush, /SNAPSHOT_TIMEOUT_MS/);
+
+const merge = read("src/lib/offline/mergeWebsiteSnapshot.ts");
+assert.match(merge, /return local/);
+assert.match(merge, /return 0/);
+assert.doesNotMatch(merge, /mergeById/);
 
 const pull = read("src/lib/offline/pullWebsiteFarms.ts");
 assert.match(pull, /phone-owns/);

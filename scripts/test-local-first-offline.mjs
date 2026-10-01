@@ -666,7 +666,7 @@ const remappedOutbox = remapOutboxItem(
 assert.equal(remappedOutbox.payload.farmId, "farm-server-9");
 assert.equal(canReplaceReplicaWithRemote(snapshot, 1), false);
 assert.equal(canReplaceReplicaWithRemote(snapshot, 0), false);
-assert.equal(canReplaceReplicaWithRemote(null, 0), true);
+assert.equal(canReplaceReplicaWithRemote(null, 0), false);
 assert.equal(canReplaceReplicaWithRemote({ ...snapshot, settings: null }, 0), false);
 assert.equal(canReplaceReplicaWithRemote(deletedFarm, 0), false);
 

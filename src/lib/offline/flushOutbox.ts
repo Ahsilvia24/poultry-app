@@ -34,7 +34,6 @@ import {
 import {
   FLUSH_BUDGET_MS,
   FLUSH_OVERALL_MS,
-  SNAPSHOT_TIMEOUT_MS,
   SYNC_WRITE_TIMEOUT,
   WRITE_TIMEOUT_MS,
   isSyncTimeout,
@@ -59,23 +58,9 @@ export async function reportUnsynced(pending: boolean) {
   }
 }
 
+/** Website snapshots never write onto this phone. */
 export async function pullRemoteSnapshot(): Promise<OfflineSnapshot | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), SNAPSHOT_TIMEOUT_MS);
-  try {
-    const res = await fetch("/api/offline/snapshot", {
-      cache: "no-store",
-      credentials: "include",
-      signal: controller.signal,
-    });
-    if (!res.ok) return null;
-    const body = (await res.json()) as { ok?: boolean; snapshot?: OfflineSnapshot };
-    return body.ok && body.snapshot ? body.snapshot : null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
+  return null;
 }
 
 export type FlushOutboxResult = { pending: number; aliases: IdAliases; error?: string };

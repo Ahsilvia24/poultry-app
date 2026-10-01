@@ -1,5 +1,4 @@
 import { localImportFarmId } from "@/lib/offline/formPairs";
-import { phoneReplicaIsBlank } from "@/lib/offline/hasFarmGraph";
 import type { OfflineFormWrite, OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
 
 export type IdAliases = Record<string, string>;
@@ -104,15 +103,12 @@ export function remapOutboxItem(item: OfflineOutboxItem, aliases: IdAliases): Of
   };
 }
 
-/**
- * Website data may fill a phone only once: no leftover writes, and no farm
- * work already on this phone. After a replica exists, never replace it.
- */
+/** Website data never replaces this phone’s farms. */
 export function canReplaceReplicaWithRemote(
-  snapshot: OfflineSnapshot | null | undefined,
-  pendingCount: number,
+  _snapshot?: OfflineSnapshot | null,
+  _pendingCount?: number,
 ) {
-  return pendingCount === 0 && phoneReplicaIsBlank(snapshot);
+  return false;
 }
 
 export function aliasesFromCreateFarm(options: {
