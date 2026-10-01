@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { completeFlockAction, reactivateFlockAction } from "@/app/actions/farms";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import { cn } from "@/lib/utils";
@@ -85,9 +83,8 @@ export function AddEndFlockButton({
   className?: string;
   onAddFlock?: () => void;
 }) {
-  const router = useRouter();
-  const { enabled, queue } = useReplicaWrite();
-  const [pending, start] = useTransition();
+  const { queue } = useReplicaWrite();
+  const [error, setError] = useState<string | null>(null);
 
   function add(close: () => void) {
     close();
@@ -101,14 +98,10 @@ export function AddEndFlockButton({
         : `End flock ${flock.flockNumber}?`;
     if (!confirm(label)) return;
     close();
-    start(async () => {
-      if (enabled) {
-        queue(formWrite("completeFlock", { id: flock.id, farmId }));
-        return;
-      }
-      await completeFlockAction(flock.id);
-      router.refresh();
-    });
+    setError(null);
+    if (!queue(formWrite("completeFlock", { id: flock.id, farmId }))) {
+      setError("This farm is not on the phone yet.");
+    }
   }
 
   if (flocks.length === 0) {
@@ -120,10 +113,11 @@ export function AddEndFlockButton({
   }
 
   return (
-    <FlockMenu align="left" triggerClass={className} label="Add/End Flock" disabled={pending}>
+    <FlockMenu align="left" triggerClass={className} label="Add/End Flock">
       {(close) => (
         <>
           <p className="px-2 py-1 text-xs font-semibold text-stone-500">Add or end</p>
+          {error ? <p className="px-2 py-1 text-xs font-medium text-red-700">{error}</p> : null}
           <button type="button" onClick={() => add(close)} className={itemClass}>
             Add flock
           </button>
@@ -131,7 +125,6 @@ export function AddEndFlockButton({
             <button
               key={flock.id}
               type="button"
-              disabled={pending}
               onClick={() => end(flock, close)}
               className={itemClass}
             >
@@ -159,9 +152,7 @@ export function PastFlocksButton({
   flocks: PastFlockMenuItem[];
   className?: string;
 }) {
-  const router = useRouter();
-  const { enabled, queue } = useReplicaWrite();
-  const [pending, start] = useTransition();
+  const { queue } = useReplicaWrite();
   const [error, setError] = useState<string | null>(null);
 
   function restore(flock: PastFlockMenuItem, close: () => void) {
@@ -170,19 +161,13 @@ export function PastFlocksButton({
     }
     close();
     setError(null);
-    start(async () => {
-      if (enabled) {
-        queue(formWrite("reactivateFlock", { id: flock.id, farmId }));
-        return;
-      }
-      const result = await reactivateFlockAction(flock.id);
-      if (result?.error) setError(result.error);
-      else router.refresh();
-    });
+    if (!queue(formWrite("reactivateFlock", { id: flock.id, farmId }))) {
+      setError("This farm is not on the phone yet.");
+    }
   }
 
   return (
-    <FlockMenu align="right" triggerClass={className} label="Past Flocks" disabled={pending}>
+    <FlockMenu align="right" triggerClass={className} label="Past Flocks">
       {(close) => (
         <>
           <p className="px-2 py-1 text-xs font-semibold text-stone-500">Return last ended</p>
@@ -196,7 +181,6 @@ export function PastFlocksButton({
               <button
                 key={flock.id}
                 type="button"
-                disabled={pending}
                 onClick={() => restore(flock, close)}
                 className={itemClass}
               >

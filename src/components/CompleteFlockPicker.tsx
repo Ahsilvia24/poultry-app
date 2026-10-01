@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { completeFlockAction } from "@/app/actions/farms";
+import { useState } from "react";
 import { Button } from "@/components/ui";
 import { formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
@@ -21,10 +19,8 @@ export function CompleteFlockPicker({
   appearance?: "button" | "quickLink";
   className?: string;
 }) {
-  const router = useRouter();
-  const { enabled, queue } = useReplicaWrite();
+  const { queue } = useReplicaWrite();
   const [open, setOpen] = useState(false);
-  const [pending, start] = useTransition();
 
   if (flocks.length === 0) return null;
 
@@ -35,14 +31,7 @@ export function CompleteFlockPicker({
         : "Mark this flock as completed?";
     if (!confirm(label)) return;
     setOpen(false);
-    start(async () => {
-      if (enabled) {
-        queue(formWrite("completeFlock", { id: flock.id, farmId }));
-        return;
-      }
-      await completeFlockAction(flock.id);
-      router.refresh();
-    });
+    queue(formWrite("completeFlock", { id: flock.id, farmId }));
   }
 
   const triggerClass =
@@ -55,7 +44,6 @@ export function CompleteFlockPicker({
       return (
         <button
           type="button"
-          disabled={pending}
           onClick={() => complete(flocks[0]!)}
           className={triggerClass}
         >
@@ -67,7 +55,6 @@ export function CompleteFlockPicker({
       <Button
         type="button"
         variant="secondary"
-        disabled={pending}
         onClick={() => complete(flocks[0]!)}
       >
         End Flock
@@ -80,7 +67,6 @@ export function CompleteFlockPicker({
       {appearance === "quickLink" ? (
         <button
           type="button"
-          disabled={pending}
           onClick={() => setOpen((v) => !v)}
           className={triggerClass}
         >
@@ -90,7 +76,6 @@ export function CompleteFlockPicker({
         <Button
           type="button"
           variant="secondary"
-          disabled={pending}
           onClick={() => setOpen((v) => !v)}
         >
           End Flock
@@ -103,7 +88,6 @@ export function CompleteFlockPicker({
             <button
               key={flock.id}
               type="button"
-              disabled={pending}
               onClick={() => complete(flock)}
               className="block w-full rounded-md px-2 py-2 text-left text-sm font-medium text-stone-800 hover:bg-stone-100"
             >

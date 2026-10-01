@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { addDays, format, parseISO } from "date-fns";
 import { DateKeyField } from "@/components/DateKeyField";
 import { useOffline } from "@/components/OfflineProvider";
@@ -51,7 +51,6 @@ function clearAddFlockHash() {
 
 export function AddFlockSection({
   farmId,
-  action,
   hasActiveFlock,
   activeFlockCount = 0,
   houses,
@@ -60,7 +59,6 @@ export function AddFlockSection({
   onOpenChange,
 }: {
   farmId: string;
-  action: (formData: FormData) => Promise<{ error?: string } | void>;
   hasActiveFlock: boolean;
   activeFlockCount?: number;
   houses: HouseOption[];
@@ -68,7 +66,7 @@ export function AddFlockSection({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
-  const { enabled, queue } = useReplicaWrite();
+  const { queue } = useReplicaWrite();
   const { snapshot } = useOffline();
   const settingsAge = snapshot ? settingsFormValues(snapshot).defaultMarketAgeDays : DEFAULT_MARKET_AGE;
   const marketAge = settingsAge > 0 ? settingsAge : DEFAULT_MARKET_AGE;
@@ -77,7 +75,6 @@ export function AddFlockSection({
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = openProp ?? uncontrolledOpen;
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
   const [formKey, setFormKey] = useState(0);
   const openHouses = useMemo(
     () => houses.filter((house) => !house.occupiedByFlock),
@@ -148,25 +145,19 @@ export function AddFlockSection({
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     setError(null);
-    if (enabled) {
-      queue(
+    if (
+      !queue(
         formWrite("createFlock", {
           id: localRecordId(),
           farmId,
           ...formDataToParts(formData),
         }),
-      );
-      closeForm();
+      )
+    ) {
+      setError("This farm is not on the phone yet.");
       return;
     }
-    startTransition(async () => {
-      const result = await action(formData);
-      if (result?.error) {
-        setError(result.error);
-        return;
-      }
-      closeForm();
-    });
+    closeForm();
   }
 
   return (
@@ -283,8 +274,8 @@ export function AddFlockSection({
                   })}
                 </div>
               </div>
-              <Button type="submit" disabled={pending} className="mt-3">
-                {pending && !enabled ? "Creating…" : "Create flock"}
+              <Button type="submit" className="mt-3">
+                Create flock
               </Button>
             </form>
           )}

@@ -13,8 +13,6 @@ import {
   deactivateFarmAction,
   deleteFarmAction,
   reactivateFarmAction,
-  completeFlockAction,
-  reactivateFlockAction,
   deleteFlockAction,
 } from "@/app/actions/farms";
 import { appTodayKey } from "@/lib/app-calendar";
@@ -837,22 +835,14 @@ export function CompleteFlockButton({
   flockId: string;
   label?: string;
 }) {
-  const [pending, start] = useTransition();
-  const { enabled, queue } = useReplicaWrite();
+  const { queue } = useReplicaWrite();
   return (
     <Button
       type="button"
       variant="secondary"
-      disabled={pending}
       onClick={() => {
         if (confirm("Mark this flock as completed?")) {
-          start(async () => {
-            if (enabled) {
-              queue(formWrite("completeFlock", { id: flockId }));
-              return;
-            }
-            await completeFlockAction(flockId);
-          });
+          queue(formWrite("completeFlock", { id: flockId }));
         }
       }}
     >
@@ -868,31 +858,24 @@ export function ReactivateFlockButton({
   flockId: string;
   flockNumber?: string;
 }) {
-  const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const { enabled, queue } = useReplicaWrite();
+  const { queue } = useReplicaWrite();
 
   return (
     <div className="inline-flex flex-col items-start gap-1">
       <Button
         type="button"
         variant="secondary"
-        disabled={pending}
         onClick={() => {
           const label = flockNumber ? `flock ${flockNumber}` : "this flock";
           if (!confirm(`Make ${label} active again?`)) return;
           setError(null);
-          start(async () => {
-            if (enabled) {
-              queue(formWrite("reactivateFlock", { id: flockId }));
-              return;
-            }
-            const result = await reactivateFlockAction(flockId);
-            if (result?.error) setError(result.error);
-          });
+          if (!queue(formWrite("reactivateFlock", { id: flockId }))) {
+            setError("This farm is not on the phone yet.");
+          }
         }}
       >
-        {pending ? "Working…" : "Make active"}
+        Make active
       </Button>
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
     </div>

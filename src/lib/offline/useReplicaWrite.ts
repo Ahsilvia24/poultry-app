@@ -3,6 +3,7 @@
 import { useOffline } from "@/components/OfflineProvider";
 import { applyFormWrite } from "@/lib/offline/applyWrites";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
+import { isPhoneOwnedFlockWrite } from "@/lib/offline/phoneOwnedFlockWrite";
 import type { OfflineFormWrite } from "@/lib/offline/types";
 
 export function useReplicaWrite() {
@@ -12,7 +13,9 @@ export function useReplicaWrite() {
   function queue(write: OfflineFormWrite) {
     if (!enabled) return false;
     patchSnapshot((current) => applyFormWrite(current, write));
-    enqueue({ kind: "formWrite", payload: write });
+    if (!isPhoneOwnedFlockWrite(write.action)) {
+      enqueue({ kind: "formWrite", payload: write });
+    }
     return true;
   }
 

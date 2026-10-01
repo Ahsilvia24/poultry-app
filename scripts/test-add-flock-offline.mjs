@@ -142,7 +142,8 @@ assert.match(section, /formWrite\("createFlock"/);
 assert.match(section, /history\.state/);
 assert.doesNotMatch(section, /replaceState\(null/);
 assert.doesNotMatch(section, /action=\{/);
-assert.doesNotMatch(section, /startTransition\(async \(\) => \{\n\s+if \(enabled\)/);
+assert.doesNotMatch(section, /startTransition/);
+assert.doesNotMatch(section, /createFlockAction/);
 
 const links = read("src/components/FarmQuickLinks.tsx");
 assert.match(links, /onAddFlock/);
@@ -155,5 +156,7 @@ assert.doesNotMatch(links, /End Flock/);
 const farm = read("src/components/FarmDetailView.tsx");
 assert.match(farm, /onAddFlock=\{\(\) => setAddFlockOpen\(true\)\}/);
 assert.match(farm, /open=\{addFlockOpen\}/);
+assert.doesNotMatch(farm, /createFlockAction/);
+assert.doesNotMatch(farm, /action=\{submitFlock\}/);
 
 console.log("add-flock-offline: ok");

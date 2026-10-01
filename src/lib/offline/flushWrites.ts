@@ -1,14 +1,11 @@
 import {
-  completeFlockAction,
   createFarmAction,
-  createFlockAction,
   createHouseAction,
   deactivateFarmAction,
   deleteFarmAction,
   deleteFlockAction,
   deleteHouseAction,
   reactivateFarmAction,
-  reactivateFlockAction,
   updateFarmAction,
   updateFlockNumberAction,
   updateFlockWeightProjectionAction,
@@ -52,11 +49,10 @@ import {
 import { serviceFormIdsFromWrite } from "@/lib/offline/applyWrites";
 import { isLocalRecordId, writeToFormData } from "@/lib/offline/formPairs";
 import { loadLocalSnapshot } from "@/lib/offline/idb";
-import { isActionTransportError } from "@/lib/offline/actionTransportError";
 import { isLocalFarmId } from "@/lib/offline/localFarmId";
+import { isPhoneOwnedFlockWrite } from "@/lib/offline/phoneOwnedFlockWrite";
 import {
   aliasesFromCreateFarm,
-  aliasesFromCreateFlock,
   aliasesFromCreated,
   remapFormWrite,
   resolveAlias,
@@ -96,6 +92,9 @@ export async function flushFormWrite(
   write: OfflineFormWrite,
   aliases: IdAliases = {},
 ): Promise<FlushWriteResult> {
+  if (isPhoneOwnedFlockWrite(write.action)) {
+    return { ok: true, aliases };
+  }
   const original = write;
   const ensured = await ensureLocalFarmsForWrite(write, aliases);
   if (ensured.error) return { ok: false, error: ensured.error, aliases: ensured.aliases };
@@ -213,49 +212,6 @@ export async function flushFormWrite(
         aliases,
       );
     }
-    case "createFlock": {
-      let result: unknown;
-      try {
-        result = await createFlockAction(farmId, formData, { skipRedirect: true });
-      } catch (err) {
-        if (!isActionTransportError(err)) {
-          return {
-            ok: false,
-            error: err instanceof Error ? err.message : "Could not create flock.",
-          };
-        }
-        try {
-          result = await createFlockAction(farmId, formData, { skipRedirect: true });
-        } catch {
-          return {
-            ok: false,
-            error: "Could not upload this flock. Stay on Wi-Fi and try again.",
-          };
-        }
-      }
-      const flockError = actionError(result);
-      if (flockError) return { ok: false, error: flockError };
-      const created = result as {
-        id?: string;
-        houseFlocks?: Array<{ id: string; houseId: string }>;
-      };
-      if (!created.id) return { ok: true };
-      const snapshot = await loadLocalSnapshot();
-      const localFlockId = original.id ?? "";
-      const localHouseFlocks = (snapshot?.houseFlocks ?? []).filter(
-        (row) => row.flockId === localFlockId,
-      );
-      return {
-        ok: true,
-        aliases: aliasesFromCreateFlock({
-          localFlockId,
-          serverFlockId: created.id,
-          localHouseFlocks,
-          serverHouseFlocks: created.houseFlocks ?? [],
-          aliases,
-        }),
-      };
-    }
     case "createFarm": {
       const localFarmId = original.id ?? original.farmId ?? "";
       if (localFarmId && !isLocalFarmId(resolveAlias(aliases, localFarmId))) {
@@ -280,13 +236,6 @@ export async function flushFormWrite(
         }),
       };
     }
-    case "completeFlock":
-      if (isLocalRecordId(id)) return { ok: true, aliases };
-      await completeFlockAction(id);
-      return { ok: true, aliases };
-    case "reactivateFlock":
-      if (isLocalRecordId(id)) return { ok: true, aliases };
-      return fromAction(await reactivateFlockAction(id), aliases);
     case "deleteFlock":
       if (isLocalRecordId(id)) return { ok: true, aliases };
       return fromAction(await deleteFlockAction(id), aliases);
