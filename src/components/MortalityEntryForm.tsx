@@ -24,7 +24,7 @@ import { mortalityGridMaxAge } from "@/lib/weeklyMortalityLayout";
 import { formatNumber } from "@/lib/utils";
 import { Card } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { NumberKeypad } from "@/components/NumberKeypad";
+import { FixedPhoneKeypad, NumberKeypad } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
 import { armKeypadPointerGuard, isKeypadGuardActive } from "@/lib/keypadPointerGuard";
 import { formWrite } from "@/lib/offline/formPairs";
@@ -865,25 +865,13 @@ export function MortalityEntryForm({
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
 
       {activeField ? (
-        <div className="fixed inset-x-0 bottom-0 z-50">
-          <button
-            type="button"
-            aria-label="Dismiss keypad"
-            className="fixed inset-0 z-40 bg-transparent"
-            onTouchEnd={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              flushSave();
-              setMortField(null);
-            }}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              flushSave();
-              setMortField(null);
-            }}
-          />
-          <div className="relative z-50" data-mort-keypad>
+        <FixedPhoneKeypad
+          mort
+          onDismiss={() => {
+            flushSave();
+            setMortField(null);
+          }}
+        >
           <NumberKeypad
             onDigit={onDigit}
             onBackspace={onBackspace}
@@ -905,8 +893,7 @@ export function MortalityEntryForm({
                 : undefined
             }
           />
-          </div>
-        </div>
+        </FixedPhoneKeypad>
       ) : null}
     </div>
   );

@@ -63,7 +63,7 @@ h2,
   transform: translateY(var(--app-bottom-shift, 0px));
 }
 
-/* Hide tabs while a keypad is up so they cannot jump to mid-screen. */
+/* Hide tabs while a keypad is up. The keypad itself uses pin-bottom-chrome. */
 html[data-keypad-open] [data-app-nav] {
   visibility: hidden;
   pointer-events: none;
