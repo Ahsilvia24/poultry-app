@@ -36,7 +36,7 @@ assert.match(mort, /nextRowInColumn/);
 assert.match(mort, /firstUnfilledAfterLastFilled\(built, asOfDateKey\)/);
 assert.doesNotMatch(mort, /built\.find\(\(r\) => r\.mortalityDate === asOfDateKey\)/);
 assert.match(mort, /scrollMortalityCellAboveKeypad/);
-assert.match(mort, /data-mort-keypad/);
+assert.match(mort, /FixedPhoneKeypad/);
 assert.match(mort, /ignoreLeftoverTap/);
 assert.match(mort, /focusHouseId/);
 assert.match(mort, /armKeypadPointerGuard\(\)/);
@@ -47,6 +47,7 @@ assert.doesNotMatch(mort, /behavior: "smooth"/);
 assert.doesNotMatch(mort, /setExpandedWeeks\(new Set\(\[week\]\)\)/);
 
 const keypad = read("src/components/NumberKeypad.tsx");
+assert.match(keypad, /data-mort-keypad/);
 assert.match(keypad, /onTouchEnd=\{press\}/);
 assert.match(keypad, /PRESS_LOCK_MS/);
 assert.match(keypad, /touch-manipulation/);

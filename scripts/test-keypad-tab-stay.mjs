@@ -31,6 +31,9 @@ assert.doesNotMatch(nav, /if \(keypadOpen\) return null/);
 
 const keypad = read("src/components/NumberKeypad.tsx");
 assert.match(keypad, /--app-safe-bottom/);
+assert.match(keypad, /function FixedPhoneKeypad/);
+assert.match(keypad, /pin-bottom-chrome fixed inset-x-0 bottom-0/);
+assert.match(keypad, /data-app-keypad/);
 
 const house = read("src/components/HouseCard.tsx");
 assert.match(house, /setKeypadOpen\(false, \{ guard: false \}\)/);

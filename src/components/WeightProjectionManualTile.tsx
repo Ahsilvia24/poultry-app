@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
+import { FixedPhoneKeypad, NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
 import { catchWeightBandFromLbs } from "@/lib/weight/projections";
 import { useOffline } from "@/components/OfflineProvider";
@@ -221,26 +221,18 @@ export function WeightProjectionManualTile({
       )}
 
       {active && activeMeta ? (
-        <div className="fixed inset-x-0 bottom-0 z-50">
-          <button
-            type="button"
-            aria-label="Dismiss keypad"
-            className="fixed inset-0 z-40 bg-transparent"
-            onClick={() => setActive(null)}
+        <FixedPhoneKeypad onDismiss={() => setActive(null)}>
+          <NumberKeypad
+            onDigit={onDigit}
+            onBackspace={() => {
+              setters[active](backspaceKeypadValue(values[active]));
+              setReplaceOnType(false);
+            }}
+            onEnter={() => setActive(null)}
+            allowDecimal={activeMeta.decimal}
+            allowTripleZero={activeMeta.tripleZero}
           />
-          <div className="relative z-50">
-            <NumberKeypad
-              onDigit={onDigit}
-              onBackspace={() => {
-                setters[active](backspaceKeypadValue(values[active]));
-                setReplaceOnType(false);
-              }}
-              onEnter={() => setActive(null)}
-              allowDecimal={activeMeta.decimal}
-              allowTripleZero={activeMeta.tripleZero}
-            />
-          </div>
-        </div>
+        </FixedPhoneKeypad>
       ) : null}
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 
 const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 const PRESS_LOCK_MS = 320;
@@ -41,6 +41,41 @@ function Key({
     >
       {label}
     </button>
+  );
+}
+
+/** Pin a custom keypad to the physical phone bottom. iOS otherwise lifts `fixed;bottom:0` with the visual viewport into mid-screen. */
+export function FixedPhoneKeypad({
+  children,
+  onDismiss,
+  mort = false,
+}: {
+  children: ReactNode;
+  onDismiss: () => void;
+  mort?: boolean;
+}) {
+  function dismiss(event: { preventDefault(): void; stopPropagation(): void }) {
+    event.preventDefault();
+    event.stopPropagation();
+    onDismiss();
+  }
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Dismiss keypad"
+        className="fixed inset-0 z-40 bg-transparent"
+        onTouchEnd={dismiss}
+        onClick={dismiss}
+      />
+      <div
+        className="pin-bottom-chrome fixed inset-x-0 bottom-0 z-50"
+        data-app-keypad=""
+        data-mort-keypad={mort ? "" : undefined}
+      >
+        {children}
+      </div>
+    </>
   );
 }
 

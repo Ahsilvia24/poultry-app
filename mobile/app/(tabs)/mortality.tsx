@@ -1137,6 +1137,10 @@ export default function MortalityScreen() {
         </View>
 
         {activeField ? (
+          <View
+            pointerEvents="box-none"
+            style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 50 }}
+          >
           <MortalityKeypad
             onDigit={onDigit}
             onBackspace={onBackspace}
@@ -1170,6 +1174,7 @@ export default function MortalityScreen() {
                 : undefined
             }
           />
+          </View>
         ) : null}
       </View>
     </SafeAreaView>

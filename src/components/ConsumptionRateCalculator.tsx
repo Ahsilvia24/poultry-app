@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui";
-import { NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
+import { FixedPhoneKeypad, NumberKeypad, appendKeypadDigit, backspaceKeypadValue } from "@/components/NumberKeypad";
 import { useKeypadNav } from "@/components/KeypadNavContext";
 import { cn } from "@/lib/utils";
 import {
@@ -162,33 +162,25 @@ export function ConsumptionRateCalculator({
         </p>
       )}
       {active ? (
-        <div className="fixed inset-x-0 bottom-0 z-50">
-          <button
-            type="button"
-            aria-label="Dismiss keypad"
-            className="fixed inset-0 z-40 bg-transparent"
-            onClick={() => setActive(null)}
+        <FixedPhoneKeypad onDismiss={() => setActive(null)}>
+          <NumberKeypad
+            allowDecimal={false}
+            onDigit={(d) => {
+              const base = replaceOnType ? "" : activeValue;
+              setReplaceOnType(false);
+              setActiveValue(appendKeypadDigit(base, d, false));
+            }}
+            onBackspace={() => {
+              setReplaceOnType(false);
+              if (!activeValue) {
+                setActive(null);
+                return;
+              }
+              setActiveValue(backspaceKeypadValue(activeValue));
+            }}
+            onEnter={() => setActive(null)}
           />
-          <div className="relative z-50">
-            <NumberKeypad
-              allowDecimal={false}
-              onDigit={(d) => {
-                const base = replaceOnType ? "" : activeValue;
-                setReplaceOnType(false);
-                setActiveValue(appendKeypadDigit(base, d, false));
-              }}
-              onBackspace={() => {
-                setReplaceOnType(false);
-                if (!activeValue) {
-                  setActive(null);
-                  return;
-                }
-                setActiveValue(backspaceKeypadValue(activeValue));
-              }}
-              onEnter={() => setActive(null)}
-            />
-          </div>
-        </div>
+        </FixedPhoneKeypad>
       ) : null}
     </Card>
   );
