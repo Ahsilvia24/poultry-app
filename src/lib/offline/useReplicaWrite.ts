@@ -9,10 +9,12 @@ export function useReplicaWrite() {
   const { snapshot, patchSnapshot, enqueue } = useOffline();
   const enabled = snapshotHasFarmGraph(snapshot);
 
-  function queue(write: OfflineFormWrite) {
+  function queue(write: OfflineFormWrite, opts?: { keepLocal?: boolean }) {
     if (!enabled) return false;
     patchSnapshot((current) => applyFormWrite(current, write));
-    enqueue({ kind: "formWrite", payload: write });
+    if (!opts?.keepLocal) {
+      enqueue({ kind: "formWrite", payload: write });
+    }
     return true;
   }
 

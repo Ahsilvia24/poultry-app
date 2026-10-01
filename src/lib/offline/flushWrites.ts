@@ -66,6 +66,7 @@ import { isServiceFormKind } from "@/lib/serviceForms/stored";
 import type { AnyServiceForm, ServiceFormKind } from "@/lib/serviceForms/types";
 import type { OfflineFormWrite } from "@/lib/offline/types";
 import { ensureLocalFarmsForWrite } from "@/lib/offline/uploadLocalFarm";
+import { VISIT_PLACE_FARM_NUMBER } from "@/lib/visits/visitPlace";
 
 export type FlushWriteResult = { ok: boolean; aliases?: IdAliases; error?: string };
 
@@ -96,6 +97,9 @@ export async function flushFormWrite(
   write: OfflineFormWrite,
   aliases: IdAliases = {},
 ): Promise<FlushWriteResult> {
+  if (write.action === "createFarm" && write.fields?.farmNumber === VISIT_PLACE_FARM_NUMBER) {
+    return { ok: true, aliases };
+  }
   const original = write;
   const ensured = await ensureLocalFarmsForWrite(write, aliases);
   if (ensured.error) return { ok: false, error: ensured.error, aliases: ensured.aliases };

@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import {
   createIssueAction,
   createLitterEventAction,
-  createVisitAction,
   updateIssueAction,
   updateLitterEventAction,
-  updateVisitAction,
 } from "@/app/actions/ops";
 import {
   deactivateFarmAction,
@@ -29,7 +27,6 @@ import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
-import { createFarmAction } from "@/app/actions/farms";
 import {
   findVisitPlaceFarm,
   visitPlaceFarmFields,
@@ -62,7 +59,7 @@ export function FarmVisitForm({
   placeName?: string | null;
 }) {
   const { enabled, queue, snapshot } = useReplicaWrite();
-  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const [visitDate, setVisitDate] = useState(
     initial?.visitDate ?? appTodayKey(undefined, snapshot?.settings?.appTimeZone),
   );
@@ -83,69 +80,77 @@ export function FarmVisitForm({
         ]
       : [...VISIT_TYPE_OPTIONS];
 
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const fd = new FormData(event.currentTarget);
+    setError(null);
+    if (visitType === "OTHER" && !otherReason.trim()) {
+      setError("Enter a reason for this visit");
+      return;
+    }
+    if (!visitDate.trim()) {
+      setError("Visit date is required");
+      return;
+    }
+
+    let resolvedFarmId = farmId;
+    let keepLocal = false;
+    if (!resolvedFarmId && placeName?.trim()) {
+      const existing = snapshot
+        ? findVisitPlaceFarm(snapshot.farms ?? [], placeName)
+        : undefined;
+      if (existing) {
+        resolvedFarmId = existing.id;
+        keepLocal = true;
+      } else if (enabled) {
+        resolvedFarmId = localRecordId();
+        keepLocal = true;
+        queue(
+          formWrite("createFarm", {
+            id: resolvedFarmId,
+            farmId: resolvedFarmId,
+            fields: visitPlaceFarmFields(placeName),
+          }),
+          { keepLocal: true },
+        );
+      }
+    }
+    if (!resolvedFarmId) {
+      setError(
+        placeName?.trim()
+          ? "This location is not on the phone yet."
+          : "Enter a location for this visit.",
+      );
+      return;
+    }
+
+    fd.set("farmId", resolvedFarmId);
+    fd.set("visitDate", visitDate);
+    fd.set("visitType", visitType);
+    if (visitType === "OTHER") fd.set("notes", otherReason.trim());
+    const wrote = queue(
+      formWrite(recordId ? "updateVisit" : "createVisit", {
+        id: recordId ?? localRecordId(),
+        farmId: resolvedFarmId,
+        ...formDataToParts(fd),
+      }),
+      { keepLocal },
+    );
+    if (!wrote) {
+      setError("This visit is not on the phone yet.");
+      return;
+    }
+    onSuccess?.();
+  }
+
   return (
-    <form
-      className="mt-4 space-y-3"
-      action={async (fd) => {
-        let resolvedFarmId = farmId;
-        if (!resolvedFarmId && placeName?.trim()) {
-          const existing = snapshot
-            ? findVisitPlaceFarm(snapshot.farms ?? [], placeName)
-            : undefined;
-          if (existing) {
-            resolvedFarmId = existing.id;
-          } else if (enabled) {
-            resolvedFarmId = localRecordId();
-            queue(
-              formWrite("createFarm", {
-                id: resolvedFarmId,
-                farmId: resolvedFarmId,
-                fields: visitPlaceFarmFields(placeName),
-              }),
-            );
-          } else {
-            const farmData = new FormData();
-            for (const [key, value] of Object.entries(visitPlaceFarmFields(placeName))) {
-              farmData.set(key, value);
-            }
-            const created = await createFarmAction(farmData, { skipRedirect: true });
-            if (!created || !("id" in created) || !created.id) {
-              return;
-            }
-            resolvedFarmId = created.id;
-          }
-        }
-        if (!resolvedFarmId) return;
-        fd.set("farmId", resolvedFarmId);
-        fd.set("visitDate", visitDate);
-        fd.set("visitType", visitType);
-        if (visitType === "OTHER") fd.set("notes", otherReason);
-        if (enabled) {
-          const wrote = queue(
-            formWrite(recordId ? "updateVisit" : "createVisit", {
-              id: recordId ?? localRecordId(),
-              farmId: resolvedFarmId,
-              ...formDataToParts(fd),
-            }),
-          );
-          if (wrote) onSuccess?.();
-          return;
-        }
-        start(async () => {
-          const result = recordId
-            ? await updateVisitAction(recordId, fd)
-            : await createVisitAction(fd);
-          if (!result || !("error" in result) || !result.error) {
-            onSuccess?.();
-          }
-        });
-      }}
-    >
+    <form className="mt-4 space-y-3" onSubmit={onSubmit} noValidate>
       <input type="hidden" name="farmId" value={farmId} />
       {flockId ? <input type="hidden" name="flockId" value={flockId} /> : null}
       {placeName ? (
         <p className="text-sm font-extrabold text-stone-800">{placeName}</p>
       ) : null}
+      {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="min-w-0 overflow-hidden">
           <Label htmlFor={fid("visitDate")}>Visit date</Label>
@@ -216,9 +221,7 @@ export function FarmVisitForm({
           defaultValue={initial?.followUpDate ?? ""}
         />
       </div>
-      <Button type="submit" disabled={pending}>
-        {pending ? "Saving…" : recordId ? "Save changes" : "Save visit"}
-      </Button>
+      <Button type="submit">{recordId ? "Save changes" : "Save visit"}</Button>
     </form>
   );
 }

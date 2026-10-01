@@ -149,7 +149,12 @@ assert.equal(selectVisits(firstVisit, "farm-1")?.visits[0]?.id, "local-visit-emp
 const form = read("src/components/FarmOpsForms.tsx");
 assert.match(form, /fd\.set\("visitDate", visitDate\)/);
 assert.match(form, /fd\.set\("visitType", visitType\)/);
-assert.match(form, /if \(wrote\) onSuccess\?\.\(\)/);
+assert.match(form, /onSubmit=\{onSubmit\}/);
+assert.match(form, /event\.preventDefault\(\)/);
+assert.match(form, /onSuccess\?\.\(\)/);
+assert.doesNotMatch(form, /action=\{async/);
+assert.doesNotMatch(form, /createVisitAction/);
+assert.doesNotMatch(form, /createFarmAction/);
 
 const deleted = applyFormWrite(created, {
   action: "deleteVisit",
