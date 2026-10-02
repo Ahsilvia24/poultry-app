@@ -7,7 +7,7 @@ import { AddEndFlockButton, PastFlocksButton } from "@/components/FarmFlockMenus
 import { cn } from "@/lib/utils";
 
 const linkClass =
-  "flex h-12 w-full items-center justify-center overflow-hidden rounded-lg border border-emerald-800/20 bg-emerald-700 px-2 text-center text-[15px] font-extrabold leading-tight text-white shadow-sm transition active:scale-[0.98] hover:bg-emerald-800";
+  "flex h-12 w-full items-center justify-center overflow-hidden rounded-lg border border-emerald-800/20 bg-emerald-700 px-2 text-center text-[17px] font-extrabold leading-tight text-white shadow-sm transition active:scale-[0.98] hover:bg-emerald-800";
 
 type ActiveFlockOption = {
   id: string;

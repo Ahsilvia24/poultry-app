@@ -428,7 +428,7 @@ export default function EditLfoScreen() {
               alignItems: "center",
               justifyContent: "space-between",
               gap: 10,
-              marginBottom: 16,
+              marginBottom: 12,
             }}
           >
             <Pressable

@@ -16,7 +16,7 @@ export function LfoFarmTabs({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={{ marginBottom: 10 }}
+      style={{ marginBottom: 12 }}
       contentContainerStyle={{ flexDirection: "row", alignItems: "center", paddingRight: 8 }}
     >
       <Chip
