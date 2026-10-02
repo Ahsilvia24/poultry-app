@@ -56,6 +56,7 @@ import { addDaysKey, todayKey } from "../../../../src/lib/ids";
 import { formatGroupedInput, parseGroupedNumber, ungroupNumber } from "../../../../src/lib/grouped-number";
 import { appScrollProps, colors, styles } from "../../../../src/theme";
 import {
+  BackHeader,
   Card,
   Chip,
   Metric,
@@ -1141,56 +1142,12 @@ export default function FarmDetailScreen() {
         keyboardShouldPersistTaps="handled"
         {...appScrollProps}
       >
-        <View
-          style={{
-            marginBottom: 16,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-          }}
-        >
-          <Pressable
-            onPress={goToFarmList}
-            accessibilityRole="button"
-            accessibilityLabel="Back to farms"
-            hitSlop={8}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 2,
-              flexShrink: 0,
-              minHeight: 44,
-            }}
-          >
-            <Ionicons name="chevron-back" size={22} color={colors.accentDark} />
-            <Text
-              style={{
-                color: colors.accentDark,
-                fontWeight: "700",
-                fontSize: 17,
-                fontFamily: styles.title.fontFamily,
-              }}
-            >
-              Farms
-            </Text>
-          </Pressable>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              gap: 6,
-              flex: 1,
-              minWidth: 0,
-            }}
-          >
-            <Text
-              style={[styles.title, { flexShrink: 1, textAlign: "right", fontSize: 24 }]}
-              numberOfLines={1}
-            >
-              {farm.farmName}
-            </Text>
+        <BackHeader
+          backLabel="Farms"
+          title={farm.farmName}
+          onBack={goToFarmList}
+          accessibilityLabel="Back to farms"
+          trailing={
             <Pressable
               accessibilityLabel="Edit farm info"
               onPress={() => openFarmEditor(farm)}
@@ -1206,8 +1163,8 @@ export default function FarmDetailScreen() {
             >
               <Ionicons name="settings-outline" size={22} color={colors.muted} />
             </Pressable>
-          </View>
-        </View>
+          }
+        />
 
         <View style={{ marginBottom: 12 }}>
           <Card>

@@ -54,8 +54,8 @@ export function FarmInfoEditor({
 
   return (
     <div className="contents">
-      <div className="flex min-w-0 items-center justify-end gap-2 justify-self-end">
-        <h1 className="min-w-0 truncate text-right text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
+      <div className="flex min-w-0 w-full items-center justify-end gap-2 overflow-hidden">
+        <h1 className="min-w-0 flex-1 truncate text-right text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">
           {farm.farmName}
         </h1>
         <button

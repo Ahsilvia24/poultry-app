@@ -160,15 +160,15 @@ export function BackHeader({
 }) {
   return (
     <div className="mb-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 overflow-hidden">
         <ReplicaLink
           href={href}
-          className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-1 text-[17px] font-bold text-emerald-800 hover:bg-emerald-50"
+          className="relative z-10 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-1 text-[17px] font-bold text-emerald-800 hover:bg-emerald-50"
         >
           <BackCaret />
           {backLabel}
         </ReplicaLink>
-        <h1 className="min-w-0 flex-1 text-right text-[28px] font-extrabold leading-tight tracking-tight text-stone-900 md:text-3xl">
+        <h1 className="min-w-0 flex-1 overflow-hidden truncate text-right text-[28px] font-extrabold leading-tight tracking-tight text-stone-900 md:text-3xl">
           {title}
         </h1>
       </div>

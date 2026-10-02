@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, styles } from "../theme";
@@ -40,12 +41,14 @@ export function BackHeader({
   subtitle,
   onBack,
   accessibilityLabel,
+  trailing,
 }: {
   backLabel: string;
   title: string;
   subtitle?: string;
   onBack: () => void;
   accessibilityLabel?: string;
+  trailing?: ReactNode;
 }) {
   return (
     <View style={{ marginBottom: 16 }}>
@@ -67,6 +70,7 @@ export function BackHeader({
             alignItems: "center",
             gap: 2,
             flexShrink: 0,
+            zIndex: 1,
             minHeight: 44,
           }}
         >
@@ -82,14 +86,27 @@ export function BackHeader({
             {backLabel}
           </Text>
         </Pressable>
-        <Text
-          style={[styles.title, { flex: 1, minWidth: 0, textAlign: "right", fontSize: 24 }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.7}
+        <View
+          style={{
+            flex: 1,
+            minWidth: 0,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: 6,
+            overflow: "hidden",
+          }}
         >
-          {title}
-        </Text>
+          <Text
+            style={[styles.title, { flexShrink: 1, minWidth: 0, textAlign: "right", fontSize: 24 }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.65}
+          >
+            {title}
+          </Text>
+          {trailing}
+        </View>
       </View>
       {subtitle ? <Text style={[styles.subtitle, { textAlign: "right" }]}>{subtitle}</Text> : null}
     </View>

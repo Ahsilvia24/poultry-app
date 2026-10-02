@@ -50,10 +50,10 @@ export function FarmDetailView({
   return (
     <div>
       <FarmHouseFocus houseId={focusHouseId} />
-      <div className="mb-3 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-3">
+      <div className="mb-3 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3">
         <ReplicaLink
           href="/farms"
-          className="inline-flex min-h-11 items-center gap-1 justify-self-start rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
+          className="relative z-10 inline-flex min-h-11 shrink-0 items-center gap-1 justify-self-start rounded-lg px-1 text-base font-semibold text-emerald-800 hover:bg-emerald-50"
         >
           <BackCaret />
           Farms
