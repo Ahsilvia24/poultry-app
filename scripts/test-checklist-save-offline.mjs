@@ -6,11 +6,19 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => readFileSync(join(root, rel), "utf8");
 
-assert.match(read("src/components/serviceForms/useServiceFormSave.ts"), /sealed\.current = true/);
-assert.match(read("src/components/serviceForms/useServiceFormSave.ts"), /existingVisitId/);
+const saveHook = read("src/components/serviceForms/useServiceFormSave.ts");
+assert.match(saveHook, /sealed\.current = true/);
+assert.match(saveHook, /existingVisitId/);
+assert.match(saveHook, /formWrite\("completeServiceForm"/);
+assert.match(saveHook, /This checklist is not on the phone yet/);
+assert.doesNotMatch(saveHook, /completeServiceFormAction|saveServiceFormDraftAction/);
 assert.match(read("src/components/serviceForms/ServiceReportFormView.tsx"), /useServiceFormSave/);
 assert.match(read("src/components/serviceForms/PlacementFormView.tsx"), /useServiceFormSave/);
 assert.match(read("src/components/serviceForms/PrebroodFormView.tsx"), /useServiceFormSave/);
+assert.match(read("src/components/serviceForms/ServiceReportFormView.tsx"), /useLiveServiceFarmDetail/);
+assert.match(read("src/components/serviceForms/PlacementFormView.tsx"), /useLiveServiceFarmDetail/);
+assert.match(read("src/components/serviceForms/PrebroodFormView.tsx"), /useLiveServiceFarmDetail/);
+assert.match(read("src/components/serviceForms/useLiveServiceFarmDetail.ts"), /selectServiceFarmContext/);
 assert.match(read("src/components/OfflineNav.tsx"), /selectServiceFormPage/);
 assert.match(read("src/components/OfflineNav.tsx"), /formId: params.get\("formId"\)/);
 assert.match(read("src/components/OfflineNav.tsx"), /page\.missingSaved/);
@@ -20,12 +28,20 @@ assert.match(read("src/components/serviceForms/ServiceFarmPicker.tsx"), /formId:
 const pickerSrc = read("src/components/serviceForms/ServiceFarmPicker.tsx");
 assert.match(pickerSrc, /deleteAllServiceForms/);
 assert.match(pickerSrc, /Delete all checklists\?/);
+assert.match(pickerSrc, /deleteServiceDraft/);
+assert.doesNotMatch(pickerSrc, /from "@\/app\/actions\/serviceForms"/);
+assert.doesNotMatch(pickerSrc, /disabled=\{pending\}/);
 assert.ok(
   pickerSrc.indexOf("ExclusiveSwipeGroup") < pickerSrc.indexOf('aria-label="Delete all checklists on this farm"'),
   "Delete all sits below the completed list",
 );
 assert.match(read("src/app/actions/serviceForms.ts"), /deleteAllServiceFormsAction/);
-assert.match(read("src/lib/offline/flushWrites.ts"), /deleteAllServiceFormsAction/);
+const flush = read("src/lib/offline/flushWrites.ts");
+assert.match(flush, /deleteAllServiceFormsAction/);
+assert.match(flush, /if \(isLocalFarmId\(farmId\)\) return \{ ok: true, aliases \}/);
+assert.match(read("src/lib/serviceForms/pdfFill.ts"), /caches\.match\(url\)/);
+assert.match(read("src/lib/serviceForms/pdfFill.ts"), /navigator\.onLine === false/);
+assert.doesNotMatch(read("src/components/serviceForms/AllServiceFormsView.tsx"), /deleteServiceFormAction/);
 assert.match(read("src/lib/offline/applyWrites.ts"), /alreadyCompleted/);
 assert.match(read("src/components/OfflineProvider.tsx"), /seedAndMergeServiceForms/);
 

@@ -2,10 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  completeServiceFormAction,
-  saveServiceFormDraftAction,
-} from "@/app/actions/serviceForms";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { formWrite, localRecordId } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
@@ -38,24 +34,16 @@ export function useServiceFormSave(
     if (!opts.autosave || sealed.current || !farmId) return;
     const t = setTimeout(() => {
       if (sealed.current || !autosaveRef.current) return;
-      if (enabled) {
-        queue(
-          formWrite("saveServiceDraft", {
-            farmId,
-            fields: { formKind: kind },
-            extra: formRef.current,
-          }),
-        );
-        return;
-      }
-      void saveServiceFormDraftAction({
-        farmId,
-        formKind: kind,
-        payload: formRef.current,
-      });
+      queue(
+        formWrite("saveServiceDraft", {
+          farmId,
+          fields: { formKind: kind },
+          extra: formRef.current,
+        }),
+      );
     }, 400);
     return () => clearTimeout(t);
-  }, [opts.autosave, farmId, kind, form, enabled, queue]);
+  }, [opts.autosave, farmId, kind, form, queue]);
 
   async function complete(next: AnyServiceForm) {
     if (saving || sealed.current) return;
@@ -63,30 +51,21 @@ export function useServiceFormSave(
     setSaving(true);
     setError(null);
     try {
-      if (enabled) {
-        queue(
-          formWrite("completeServiceForm", {
-            id: opts.serviceFormId ?? localRecordId(),
-            farmId,
-            fields: {
-              formKind: kind,
-              ...(opts.existingVisitId ? { existingVisitId: opts.existingVisitId } : {}),
-            },
-            extra: next,
-          }),
-        );
-      } else {
-        const result = await completeServiceFormAction({
+      const wrote = queue(
+        formWrite("completeServiceForm", {
+          id: opts.serviceFormId ?? localRecordId(),
           farmId,
-          form: next,
-          serviceFormId: opts.serviceFormId,
-          existingVisitId: opts.existingVisitId,
-        });
-        if ("error" in result && result.error) {
-          sealed.current = false;
-          setError(result.error);
-          return;
-        }
+          fields: {
+            formKind: kind,
+            ...(opts.existingVisitId ? { existingVisitId: opts.existingVisitId } : {}),
+          },
+          extra: next,
+        }),
+      );
+      if (!wrote) {
+        sealed.current = false;
+        setError("This checklist is not on the phone yet.");
+        return;
       }
       try {
         await shareServiceFormPdf(next);
@@ -107,5 +86,5 @@ export function useServiceFormSave(
     }
   }
 
-  return { complete, saving, editing, error };
+  return { complete, saving, editing, error, enabled };
 }

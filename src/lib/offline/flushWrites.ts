@@ -301,6 +301,7 @@ export async function flushFormWrite(
       if (isLocalRecordId(id)) return { ok: true, aliases };
       return fromAction(await updateFlockWeightProjectionAction(id, formData), aliases);
     case "saveServiceDraft": {
+      if (isLocalFarmId(farmId)) return { ok: true, aliases };
       const formKind = write.fields?.formKind ?? "";
       if (!isServiceFormKind(formKind)) return { ok: false, error: "This checklist cannot upload." };
       return fromAction(
@@ -313,6 +314,7 @@ export async function flushFormWrite(
       );
     }
     case "completeServiceForm": {
+      if (isLocalFarmId(farmId)) return { ok: true, aliases };
       const form = write.extra as AnyServiceForm | undefined;
       if (!form) return { ok: false, error: "This checklist cannot upload." };
       const existingVisitId = write.fields?.existingVisitId?.trim();
@@ -334,6 +336,7 @@ export async function flushFormWrite(
       return { ok: true, aliases: next };
     }
     case "deleteServiceDraft": {
+      if (isLocalFarmId(farmId)) return { ok: true, aliases };
       const formKind = write.fields?.formKind as ServiceFormKind | undefined;
       if (!formKind || !isServiceFormKind(formKind)) {
         return { ok: false, error: "This checklist cannot upload." };
@@ -342,7 +345,7 @@ export async function flushFormWrite(
       return { ok: true };
     }
     case "deleteServiceForm":
-      if (isLocalRecordId(write.id)) return { ok: true, aliases };
+      if (isLocalFarmId(farmId) || isLocalRecordId(write.id)) return { ok: true, aliases };
       return fromAction(await deleteServiceFormAction(farmId, id), aliases);
     case "deleteServiceForms": {
       const formIds = [...serviceFormIdsFromWrite(write)].filter((formId) => !isLocalRecordId(formId));
@@ -350,6 +353,7 @@ export async function flushFormWrite(
       return fromAction(await deleteServiceFormsAction(formIds), aliases);
     }
     case "deleteAllServiceForms":
+      if (isLocalFarmId(farmId)) return { ok: true, aliases };
       return fromAction(await deleteAllServiceFormsAction(farmId), aliases);
     default:
       return { ok: false, error: "This farm work cannot upload from the phone." };

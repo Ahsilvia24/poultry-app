@@ -1,12 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import {
-  deleteAllServiceFormsAction,
-  deleteServiceFormAction,
-  deleteServiceFormDraftAction,
-} from "@/app/actions/serviceForms";
+import { useState } from "react";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
@@ -43,24 +37,15 @@ export function ServiceFarmPicker({
   draftKinds: ServiceFormKind[];
   completed: StoredServiceForm[];
 }) {
-  const router = useRouter();
-  const { enabled, queue } = useReplicaWrite();
+  const { queue } = useReplicaWrite();
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<StoredServiceForm | null>(null);
   const [pendingDeleteAll, setPendingDeleteAll] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
 
   function startOver(form: (typeof FORMS)[number]) {
-    start(async () => {
-      if (enabled) {
-        queue(formWrite("deleteServiceDraft", { farmId, fields: { formKind: form.key } }));
-        return;
-      }
-      await deleteServiceFormDraftAction(farmId, form.key);
-      router.refresh();
-    });
+    queue(formWrite("deleteServiceDraft", { farmId, fields: { formKind: form.key } }));
   }
 
   async function shareSaved(row: StoredServiceForm) {
@@ -87,31 +72,14 @@ export function ServiceFarmPicker({
   function runDelete() {
     if (!pendingDelete) return;
     const row = pendingDelete;
-    start(async () => {
-      if (enabled) {
-        queue(formWrite("deleteServiceForm", { id: row.id, farmId }));
-        setPendingDelete(null);
-        return;
-      }
-      const result = await deleteServiceFormAction(farmId, row.id);
-      if (result.error) setDeleteError(result.error);
-      setPendingDelete(null);
-      router.refresh();
-    });
+    queue(formWrite("deleteServiceForm", { id: row.id, farmId }));
+    setPendingDelete(null);
   }
 
   function runDeleteAll() {
     if (completed.length === 0) return;
-    start(async () => {
-      if (enabled) {
-        queue(formWrite("deleteAllServiceForms", { farmId }));
-        setPendingDeleteAll(false);
-        return;
-      }
-      await deleteAllServiceFormsAction(farmId);
-      setPendingDeleteAll(false);
-      router.refresh();
-    });
+    queue(formWrite("deleteAllServiceForms", { farmId }));
+    setPendingDeleteAll(false);
   }
 
   return (
@@ -136,7 +104,6 @@ export function ServiceFarmPicker({
           <p className="font-semibold text-stone-500">{form.title} in progress</p>
           <button
             type="button"
-            disabled={pending}
             onClick={() => startOver(form)}
             className="font-bold text-emerald-800"
             aria-label={`Start over ${form.title}`}
@@ -204,7 +171,6 @@ export function ServiceFarmPicker({
           </ExclusiveSwipeGroup>
           <button
             type="button"
-            disabled={pending}
             onClick={() => setPendingDeleteAll(true)}
             className="mt-3 font-bold text-red-700"
             aria-label="Delete all checklists on this farm"
@@ -230,13 +196,12 @@ export function ServiceFarmPicker({
               This removes every Placement, Prebrood, and Service Report on this farm.
             </p>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <Button type="button" variant="danger" disabled={pending} onClick={runDeleteAll}>
-                {pending ? "Deleting…" : "Delete all"}
+              <Button type="button" variant="danger" onClick={runDeleteAll}>
+                Delete all
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                disabled={pending}
                 onClick={() => setPendingDeleteAll(false)}
               >
                 Cancel
@@ -264,10 +229,10 @@ export function ServiceFarmPicker({
               {formatServiceShortDate(pendingDelete.formDate)} will be removed from this farm.
             </p>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <Button type="button" variant="danger" disabled={pending} onClick={runDelete}>
-                {pending ? "Deleting…" : "Delete"}
+              <Button type="button" variant="danger" onClick={runDelete}>
+                Delete
               </Button>
-              <Button type="button" variant="ghost" disabled={pending} onClick={() => setPendingDelete(null)}>
+              <Button type="button" variant="ghost" onClick={() => setPendingDelete(null)}>
                 Cancel
               </Button>
             </div>

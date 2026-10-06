@@ -318,7 +318,20 @@ async function loadTemplateBytes(name: TemplateName): Promise<Uint8Array> {
     const { join } = await import("node:path");
     return new Uint8Array(readFileSync(join(process.cwd(), "public/service-forms", `${name}.pdf`)));
   }
-  const res = await fetch(`/service-forms/${name}.pdf`);
+  const url = `/service-forms/${name}.pdf`;
+  if (typeof caches !== "undefined") {
+    try {
+      const cached = await caches.match(url);
+      if (cached?.ok) return new Uint8Array(await cached.arrayBuffer());
+    } catch {
+      // Use fetch when the Cache API is locked or missing.
+    }
+  }
+  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+  if (offline) {
+    throw new Error("This PDF is not on the phone yet. Open the app on Wi-Fi once.");
+  }
+  const res = await fetch(url, { cache: "force-cache", credentials: "same-origin" });
   if (!res.ok) throw new Error("Could not load PDF template");
   return new Uint8Array(await res.arrayBuffer());
 }

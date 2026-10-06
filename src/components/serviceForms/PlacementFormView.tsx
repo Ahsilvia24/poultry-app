@@ -15,6 +15,7 @@ import {
   TextField,
   YesNoField,
 } from "@/components/serviceForms/fields";
+import { useLiveServiceFarmDetail } from "@/components/serviceForms/useLiveServiceFarmDetail";
 import { useServiceFormSave } from "@/components/serviceForms/useServiceFormSave";
 import { createPlacementDraft, withSavedServiceTech } from "@/lib/serviceForms/defaults";
 import {
@@ -45,7 +46,7 @@ export function PlacementFormView({
   draft: PlacementForm | null;
   fresh: boolean;
 }) {
-  const detail = context.detail;
+  const detail = useLiveServiceFarmDetail(farmId, context.detail);
 
   const [form, setForm] = useState<PlacementForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {

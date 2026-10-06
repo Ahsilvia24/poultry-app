@@ -15,6 +15,7 @@ import {
   TimeField,
   YesNoField,
 } from "@/components/serviceForms/fields";
+import { useLiveServiceFarmDetail } from "@/components/serviceForms/useLiveServiceFarmDetail";
 import { useServiceFormSave } from "@/components/serviceForms/useServiceFormSave";
 import { createServiceReportDraft, withSavedServiceTech } from "@/lib/serviceForms/defaults";
 import {
@@ -59,7 +60,7 @@ export function ServiceReportFormView({
   draft: ServiceReportForm | null;
   fresh: boolean;
 }) {
-  const detail = context.detail;
+  const detail = useLiveServiceFarmDetail(farmId, context.detail);
 
   const [form, setForm] = useState<ServiceReportForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {

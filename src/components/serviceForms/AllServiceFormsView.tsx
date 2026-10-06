@@ -1,8 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { deleteServiceFormAction, deleteServiceFormsAction } from "@/app/actions/serviceForms";
+import { useMemo, useState } from "react";
 import { DateKeyField } from "@/components/DateKeyField";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { ReplicaLink } from "@/components/ReplicaLink";
@@ -37,8 +35,7 @@ export function AllServiceFormsView({
   timeZone?: string | null;
   fromFarmId?: string | null;
 }) {
-  const router = useRouter();
-  const { enabled, queue } = useReplicaWrite();
+  const { queue } = useReplicaWrite();
   const defaults = defaultAllFormsRange(appTodayKey(undefined, timeZone));
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
@@ -48,14 +45,13 @@ export function AllServiceFormsView({
   const [pendingDelete, setPendingDelete] = useState<AllServiceFormRow | null>(null);
   const [pendingDeleteAll, setPendingDeleteAll] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
 
   const visible = useMemo(
     () => filterServiceFormsByDateRange(rows, from, to),
     [rows, from, to],
   );
   const backHref = fromFarmId ? `/farms/${fromFarmId}/service` : "/farms";
-  const busy = pending || sharingAll || Boolean(sharingId);
+  const busy = sharingAll || Boolean(sharingId);
 
   function rowForm(row: AllServiceFormRow): AnyServiceForm {
     const payload = row.payload;
@@ -97,32 +93,17 @@ export function AllServiceFormsView({
   function runDelete() {
     if (!pendingDelete) return;
     const row = pendingDelete;
-    start(async () => {
-      if (enabled) {
-        queue(formWrite("deleteServiceForm", { id: row.id, farmId: row.farmId }));
-        setPendingDelete(null);
-        return;
-      }
-      const result = await deleteServiceFormAction(row.farmId, row.id);
-      if (result.error) setDeleteError(result.error);
-      setPendingDelete(null);
-      router.refresh();
-    });
+    const wrote = queue(formWrite("deleteServiceForm", { id: row.id, farmId: row.farmId }));
+    setPendingDelete(null);
+    if (!wrote) setDeleteError("This checklist is not on the phone yet.");
   }
 
   function runDeleteVisible() {
     if (visible.length === 0) return;
     const formIds = visible.map((row) => row.id);
-    start(async () => {
-      if (enabled) {
-        queue(formWrite("deleteServiceForms", { listFields: { formIds } }));
-        setPendingDeleteAll(false);
-        return;
-      }
-      await deleteServiceFormsAction(formIds);
-      setPendingDeleteAll(false);
-      router.refresh();
-    });
+    const wrote = queue(formWrite("deleteServiceForms", { listFields: { formIds } }));
+    setPendingDeleteAll(false);
+    if (!wrote) setDeleteError("These checklists are not on the phone yet.");
   }
 
   return (
@@ -227,13 +208,12 @@ export function AllServiceFormsView({
               date range from every farm. Other weeks stay.
             </p>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <Button type="button" variant="danger" disabled={pending} onClick={runDeleteVisible}>
-                {pending ? "Deleting…" : "Delete All"}
+              <Button type="button" variant="danger" onClick={runDeleteVisible}>
+                Delete All
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                disabled={pending}
                 onClick={() => setPendingDeleteAll(false)}
               >
                 Cancel
@@ -262,10 +242,10 @@ export function AllServiceFormsView({
               removed from that farm.
             </p>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <Button type="button" variant="danger" disabled={pending} onClick={runDelete}>
-                {pending ? "Deleting…" : "Delete"}
+              <Button type="button" variant="danger" onClick={runDelete}>
+                Delete
               </Button>
-              <Button type="button" variant="ghost" disabled={pending} onClick={() => setPendingDelete(null)}>
+              <Button type="button" variant="ghost" onClick={() => setPendingDelete(null)}>
                 Cancel
               </Button>
             </div>

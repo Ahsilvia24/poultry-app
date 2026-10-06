@@ -12,6 +12,7 @@ import {
   TextField,
   YesNoField,
 } from "@/components/serviceForms/fields";
+import { useLiveServiceFarmDetail } from "@/components/serviceForms/useLiveServiceFarmDetail";
 import { useServiceFormSave } from "@/components/serviceForms/useServiceFormSave";
 import {
   createPrebroodDraft,
@@ -38,7 +39,7 @@ export function PrebroodFormView({
   draft: PrebroodForm | null;
   fresh: boolean;
 }) {
-  const detail = context.detail;
+  const detail = useLiveServiceFarmDetail(farmId, context.detail);
 
   const [form, setForm] = useState<PrebroodForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {

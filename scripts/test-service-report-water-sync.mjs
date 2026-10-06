@@ -25,11 +25,18 @@ assert.ok(webMap.fields["Water column"]?.widgets?.[0]);
 const expoMap = JSON.parse(read("mobile/assets/service-forms/service-report-fields.json"));
 assert.ok(expoMap.fields["Water column"]?.widgets?.[0]);
 
+const webPdfSrc = read("src/lib/serviceForms/pdfFill.ts");
+assert.match(webPdfSrc, /caches\.match\(url\)/);
+assert.match(webPdfSrc, /This PDF is not on the phone yet/);
+
 const webReport = read("src/components/serviceForms/ServiceReportFormView.tsx");
 assert.doesNotMatch(webReport, /placeholder="4-6"/);
 assert.match(webReport, /Pull temps/);
 assert.match(webReport, /Pull mortality/);
 assert.match(webReport, /formForComplete\(form, detail, editing\)/);
+assert.match(webReport, /useLiveServiceFarmDetail/);
+assert.match(webReport, /applyLiveHouseTemps\(prev, detail\)/);
+assert.match(webReport, /applyLiveHouseMortality\(prev, detail\)/);
 
 const expoReport = read("mobile/app/(tabs)/farms/[id]/service/report.tsx");
 assert.doesNotMatch(expoReport, /placeholder="4-6"/);
@@ -117,5 +124,71 @@ const mortOnly = applyLiveHouseMortality(
 assert.equal(mortOnly.houses[0]?.currentTemp, "70");
 assert.equal(mortOnly.houses[0]?.mortalityToDate, "40");
 assert.equal(mortOnly.houses[0]?.weeks[0], "18");
+
+const { applyHouseTemp } = await import(join(root, "src/lib/offline/applyLocal.ts"));
+const { selectServiceFarmContext } = await import(join(root, "src/lib/offline/selectServiceFarm.ts"));
+const { appTodayKey } = await import(join(root, "src/lib/app-calendar.ts"));
+const todayKey = appTodayKey(undefined, "America/Chicago");
+const replica = applyHouseTemp(
+  {
+    version: 2,
+    userId: "user-1",
+    userName: "Alex",
+    userEmail: "alex@example.com",
+    pulledAt: "2026-09-15T12:00:00.000Z",
+    settings: { farmOrder: "name_asc", appTimeZone: "America/Chicago" },
+    farms: [
+      {
+        id: "farm-1",
+        farmName: "Oak",
+        growerName: "",
+        farmNumber: "1",
+        phoneNumber: null,
+        isActive: true,
+        deletedAt: null,
+        notes: null,
+        numberOfHouses: 1,
+        numberOfGenerators: null,
+        address: null,
+        city: null,
+        state: null,
+        zipCode: null,
+      },
+    ],
+    houses: [
+      {
+        id: "h1",
+        farmId: "farm-1",
+        houseNumber: 1,
+        squareFootage: 29700,
+        totalFanCFM: null,
+        totalPowerCFM: null,
+        numberOfFans: null,
+        notes: null,
+        loggedTemp: null,
+        loggedTempAt: null,
+        deletedAt: null,
+      },
+    ],
+    flocks: [],
+    houseFlocks: [],
+    mortalities: [],
+    visits: [],
+    issues: [],
+    litterEvents: [],
+    feedDeliveries: [],
+    lfos: [],
+    lfoInventories: [],
+    generatorLogs: [],
+    serviceForms: [],
+    serviceFormDrafts: [],
+    dashboard: null,
+  },
+  { farmId: "farm-1", houseId: "h1", temp: "81", dateKey: todayKey },
+);
+const replicaDetail = selectServiceFarmContext(replica, "farm-1")?.detail;
+assert.equal(replicaDetail?.houses[0]?.loggedTemp, "81");
+const pulledFromReplica = applyLiveHouseTemps(blank, replicaDetail);
+assert.equal(pulledFromReplica.houses[0]?.currentTemp, "81");
 
 console.log("service-report-water-sync: ok");

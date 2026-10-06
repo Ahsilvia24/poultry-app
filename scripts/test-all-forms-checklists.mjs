@@ -21,6 +21,8 @@ assert.match(view, /Delete All/);
 assert.match(view, /filterServiceFormsByDateRange/);
 assert.match(view, /deleteServiceForms/);
 assert.match(view, /listFields: \{ formIds \}/);
+assert.doesNotMatch(view, /deleteServiceFormAction|deleteServiceFormsAction/);
+assert.doesNotMatch(view, /useTransition|useRouter/);
 assert.match(view, /shareServiceFormPdf/);
 assert.match(view, /shareServiceFormsPdf/);
 assert.match(view, /shareServiceFormsPdf\(visible\.map\(rowForm\)\)/);
