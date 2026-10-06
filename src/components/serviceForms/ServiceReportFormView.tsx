@@ -29,8 +29,11 @@ import {
 import type { ServiceFarmContext } from "@/lib/serviceForms/farmContext";
 import {
   applyLiveHouseMetrics,
+  applyLiveHouseMortality,
+  applyLiveHouseTemps,
   currentFlockWeek,
   flockAgeDaysFromHouses,
+  formForComplete,
   house1CfmPerFt2,
   minVentForWeek,
   prefillHouseRows,
@@ -250,7 +253,7 @@ export function ServiceReportFormView({
         <YesNoField label="Lines adjusted for age" value={form.waterLinesOk} onChange={(waterLinesOk) => patch({ waterLinesOk })} />
         <YesNoField label="Sight tubes clean" value={form.sightTubesOk} onChange={(sightTubesOk) => patch({ sightTubesOk })} />
         <YesNoField label="Anything currently added to water" value={form.waterAdditive} onChange={(waterAdditive) => patch({ waterAdditive })} />
-        <TextField label="Inches of water column" value={form.waterColumnInches} onChange={(waterColumnInches) => patch({ waterColumnInches })} placeholder="4-6" />
+        <TextField label="Inches of water column" value={form.waterColumnInches} onChange={(waterColumnInches) => patch({ waterColumnInches })} />
         <PairFields
           left={<TextField label="PSI before brass" value={form.psiBefore} onChange={(psiBefore) => patch({ psiBefore })} inputMode="decimal" />}
           right={<TextField label="PSI after brass" value={form.psiAfter} onChange={(psiAfter) => patch({ psiAfter })} inputMode="decimal" />}
@@ -288,7 +291,31 @@ export function ServiceReportFormView({
       </div>
 
       {error ? <p className="mt-3 font-bold text-red-700">{error}</p> : null}
-      <Button className="mt-4 w-full" disabled={saving} onClick={() => void complete(form)}>
+      {editing ? (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={saving}
+            onClick={() => setForm((prev) => applyLiveHouseTemps(prev, detail))}
+          >
+            Pull temps
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={saving}
+            onClick={() => setForm((prev) => applyLiveHouseMortality(prev, detail))}
+          >
+            Pull mortality
+          </Button>
+        </div>
+      ) : null}
+      <Button
+        className="mt-4 w-full"
+        disabled={saving}
+        onClick={() => void complete(formForComplete(form, detail, editing))}
+      >
         {saving ? "Saving…" : editing ? "Save changes · Share PDF" : "Complete · Log visit · Share PDF"}
       </Button>
     </div>

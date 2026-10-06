@@ -11,7 +11,6 @@ import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { BackHeader, Button, Card } from "@/components/ui";
-import { useOfflineNav } from "@/components/OfflineNavContext";
 import { formWrite } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import { formatServiceShortDate, serviceFormKindTitle } from "@/lib/serviceForms/format";
@@ -45,7 +44,6 @@ export function ServiceFarmPicker({
   completed: StoredServiceForm[];
 }) {
   const router = useRouter();
-  const nav = useOfflineNav();
   const { enabled, queue } = useReplicaWrite();
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -58,15 +56,10 @@ export function ServiceFarmPicker({
     start(async () => {
       if (enabled) {
         queue(formWrite("deleteServiceDraft", { farmId, fields: { formKind: form.key } }));
-      } else {
-        await deleteServiceFormDraftAction(farmId, form.key);
+        return;
       }
-      const href = formHref(farmId, form.href, { fresh: "1" });
-      if (nav) nav.navigate(href);
-      else {
-        router.push(href);
-        router.refresh();
-      }
+      await deleteServiceFormDraftAction(farmId, form.key);
+      router.refresh();
     });
   }
 

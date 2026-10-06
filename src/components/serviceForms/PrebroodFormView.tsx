@@ -20,7 +20,7 @@ import {
 } from "@/lib/serviceForms/defaults";
 import { formatServiceShortDate } from "@/lib/serviceForms/format";
 import type { ServiceFarmContext } from "@/lib/serviceForms/farmContext";
-import { applyLiveHouseMetrics, prefillHouseRows } from "@/lib/serviceForms/prefill";
+import { applyLiveHouseMetrics, formForComplete, prefillHouseRows } from "@/lib/serviceForms/prefill";
 import type { StoredServiceForm } from "@/lib/serviceForms/stored";
 import type { PrebroodForm } from "@/lib/serviceForms/types";
 import { withPrebroodLoggedHours } from "@/lib/generator/format";
@@ -231,7 +231,7 @@ export function PrebroodFormView({
       </div>
 
       {error ? <p className="mt-3 font-bold text-red-700">{error}</p> : null}
-      <Button className="mt-4 w-full" disabled={saving} onClick={() => void complete(form)}>
+      <Button className="mt-4 w-full" disabled={saving} onClick={() => void complete(formForComplete(form, detail, editing))}>
         {saving ? "Saving…" : editing ? "Save changes · Share PDF" : "Complete · Log visit · Share PDF"}
       </Button>
     </div>

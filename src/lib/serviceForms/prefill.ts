@@ -1,7 +1,7 @@
 import { flockWeekFromAge } from "@/lib/mortality/calculations";
 import { recommendedMinVent } from "@/lib/tools/ventilation";
 import { emptyHouseRow } from "./defaults";
-import { mergeLiveHouseRows } from "./liveHouseMetrics";
+import { mergeLiveHouseRows, type LiveHousePull } from "./liveHouseMetrics";
 import type { ServiceHouseRow } from "./types";
 import { cfmPerFt2FromHouse } from "./cfmPerFt2";
 
@@ -88,8 +88,33 @@ export function prefillHouseRows(detail: FarmDetailLike): ServiceHouseRow[] {
 export function applyLiveHouseMetrics<T extends { houses: ServiceHouseRow[] }>(
   form: T,
   detail: FarmDetailLike,
+  pull: LiveHousePull = "all",
 ): T {
-  return { ...form, houses: mergeLiveHouseRows(form.houses, prefillHouseRows(detail)) };
+  return { ...form, houses: mergeLiveHouseRows(form.houses, prefillHouseRows(detail), pull) };
+}
+
+export function applyLiveHouseTemps<T extends { houses: ServiceHouseRow[] }>(
+  form: T,
+  detail: FarmDetailLike,
+): T {
+  return applyLiveHouseMetrics(form, detail, "temps");
+}
+
+export function applyLiveHouseMortality<T extends { houses: ServiceHouseRow[] }>(
+  form: T,
+  detail: FarmDetailLike,
+): T {
+  return applyLiveHouseMetrics(form, detail, "mortality");
+}
+
+/** New checklists pull both; a saved edit keeps the form until a pull button is used. */
+export function formForComplete<T extends { houses: ServiceHouseRow[] }>(
+  form: T,
+  detail: FarmDetailLike | null | undefined,
+  editing: boolean,
+): T {
+  if (editing || !detail) return form;
+  return applyLiveHouseMetrics(form, detail);
 }
 
 export function minVentForWeek(

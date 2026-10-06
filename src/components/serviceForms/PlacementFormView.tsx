@@ -24,7 +24,7 @@ import {
   ventDoorTypesFromPayload,
 } from "@/lib/serviceForms/format";
 import type { ServiceFarmContext } from "@/lib/serviceForms/farmContext";
-import { applyLiveHouseMetrics, minVentForWeek, prefillHouseRows } from "@/lib/serviceForms/prefill";
+import { applyLiveHouseMetrics, formForComplete, minVentForWeek, prefillHouseRows } from "@/lib/serviceForms/prefill";
 import type { StoredServiceForm } from "@/lib/serviceForms/stored";
 import type { PlacementForm } from "@/lib/serviceForms/types";
 
@@ -222,7 +222,7 @@ export function PlacementFormView({
           right={<TextField label="PSI after" value={form.psiAfter} onChange={(psiAfter) => patch({ psiAfter })} inputMode="decimal" />}
         />
         <PairFields
-          left={<TextField label="Water column (in)" value={form.waterColumnInches} onChange={(waterColumnInches) => patch({ waterColumnInches })} placeholder="4-6" />}
+          left={<TextField label="Water column (in)" value={form.waterColumnInches} onChange={(waterColumnInches) => patch({ waterColumnInches })} />}
           right={<TextField label="P.H." value={form.ph} onChange={(ph) => patch({ ph })} inputMode="decimal" />}
         />
 
@@ -252,7 +252,7 @@ export function PlacementFormView({
       </div>
 
       {error ? <p className="mt-3 font-bold text-red-700">{error}</p> : null}
-      <Button className="mt-4 w-full" disabled={saving} onClick={() => void complete(form)}>
+      <Button className="mt-4 w-full" disabled={saving} onClick={() => void complete(formForComplete(form, detail, editing))}>
         {saving ? "Saving…" : editing ? "Save changes · Share PDF" : "Complete · Log visit · Share PDF"}
       </Button>
     </div>

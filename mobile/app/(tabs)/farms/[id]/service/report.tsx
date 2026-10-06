@@ -38,6 +38,8 @@ import {
 } from "../../../../../src/lib/serviceForms/format";
 import {
   applyLiveHouseMetrics,
+  applyLiveHouseMortality,
+  applyLiveHouseTemps,
   currentFlockWeek,
   flockAgeDaysFromHouses,
   house1CfmPerFt2,
@@ -56,6 +58,7 @@ import {
   useServiceFarmContext,
   goToServiceFarm,
 } from "../../../../../src/lib/serviceForms/useServiceFarm";
+import { getFarmDetail } from "../../../../../src/repos/data";
 import { colors, styles } from "../../../../../src/theme";
 
 function paramId(value: string | string[] | undefined) {
@@ -473,7 +476,7 @@ export default function ServiceReportScreen() {
             label="Inches of water column"
             value={form.waterColumnInches}
             onChange={(waterColumnInches) => patch({ waterColumnInches })}
-            placeholder="4-6"
+            placeholder=""
           />
           <PairFields
             left={
@@ -578,6 +581,58 @@ export default function ServiceReportScreen() {
           <Text style={{ color: colors.danger, fontWeight: "700", marginTop: 12 }}>
             {completeError}
           </Text>
+        ) : null}
+        {editing ? (
+          <View style={{ marginTop: 16, flexDirection: "row", gap: 8 }}>
+            <Pressable
+              disabled={saving}
+              onPress={() => {
+                try {
+                  setForm((prev) => applyLiveHouseTemps(prev, getFarmDetail(farmId)));
+                } catch {
+                  // Keep the saved temps if the farm cannot load.
+                }
+              }}
+              style={{
+                flex: 1,
+                backgroundColor: colors.card,
+                borderRadius: 12,
+                paddingVertical: 14,
+                alignItems: "center",
+                borderWidth: 1.5,
+                borderColor: colors.accentDark,
+                opacity: saving ? 0.7 : 1,
+              }}
+            >
+              <Text style={{ color: colors.accentDark, fontWeight: "800", fontSize: 15 }}>
+                Pull temps
+              </Text>
+            </Pressable>
+            <Pressable
+              disabled={saving}
+              onPress={() => {
+                try {
+                  setForm((prev) => applyLiveHouseMortality(prev, getFarmDetail(farmId)));
+                } catch {
+                  // Keep the saved mortality if the farm cannot load.
+                }
+              }}
+              style={{
+                flex: 1,
+                backgroundColor: colors.card,
+                borderRadius: 12,
+                paddingVertical: 14,
+                alignItems: "center",
+                borderWidth: 1.5,
+                borderColor: colors.accentDark,
+                opacity: saving ? 0.7 : 1,
+              }}
+            >
+              <Text style={{ color: colors.accentDark, fontWeight: "800", fontSize: 15 }}>
+                Pull mortality
+              </Text>
+            </Pressable>
+          </View>
         ) : null}
         <Pressable
           disabled={saving}

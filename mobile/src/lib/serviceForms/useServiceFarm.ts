@@ -15,7 +15,7 @@ import {
   type StoredServiceForm,
 } from "../../repos/data";
 import { withPrebroodLoggedHours } from "../generator";
-import { applyLiveHouseMetrics } from "./prefill";
+import { applyLiveHouseMetrics, formForComplete } from "./prefill";
 import type { AnyServiceForm, ServiceFormKind, ServiceHouseRow } from "./types";
 import { shareServiceFormPdf } from "./sharePdf";
 
@@ -144,7 +144,7 @@ export function useCompleteServiceForm(farmId: string, opts?: {
       let form = input.form;
       try {
         const detail = getFarmDetail(farmId);
-        form = applyLiveHouseMetrics(form, detail);
+        form = formForComplete(form, detail, Boolean(serviceFormId));
         if (form.kind === "prebrood") {
           form = withPrebroodLoggedHours(form, getLatestGeneratorHours(farmId));
         }

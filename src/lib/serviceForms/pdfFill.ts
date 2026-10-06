@@ -399,6 +399,9 @@ function buildServiceReportFields(
   markYesNo(ctx, "Check Box22", "Check Box25", data.waterLinesOk);
   markYesNo(ctx, "Check Box23", "Check Box29", data.sightTubesOk);
   markYesNo(ctx, "Check Box24", "Check Box28", data.waterAdditive);
+  // Printed template shows 4-6 in this box. Wipe it, then stamp only a filled value.
+  coverWidget(ctx, "Water column");
+  setText(ctx, "Water column", data.waterColumnInches, 8);
   setText(ctx, "PSI before", data.psiBefore, 8);
   setText(ctx, "PSI after", data.psiAfter, 8);
   setText(ctx, "Text56", data.ph, 8);

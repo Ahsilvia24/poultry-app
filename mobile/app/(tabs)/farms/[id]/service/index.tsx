@@ -207,10 +207,9 @@ export default function ServiceFarmPickerScreen() {
                 try {
                   deleteServiceFormDraft(farmId, form.key);
                 } catch {
-                  // Open a blank form even if delete fails.
+                  // Hide Start over even if delete already cleared it.
                 }
                 setDraftKinds((prev) => prev.filter((k) => k !== form.key));
-                startKind(form, true);
               }}
               hitSlop={8}
               accessibilityRole="button"

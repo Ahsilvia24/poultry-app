@@ -50,6 +50,28 @@ describe("mergeLiveHouseRows", () => {
     assert.equal(next[0]?.currentTemp, "");
   });
 
+  it("pulls temps without changing mortality", () => {
+    const next = mergeLiveHouseRows(
+      [row({ houseNumber: 1, currentTemp: "70", mortalityToDate: "10", weeks: ["4", "", "", "", "", "", "", ""] })],
+      [row({ houseNumber: 1, currentTemp: "78", mortalityToDate: "40", weeks: ["18", "", "", "", "", "", "", ""] })],
+      "temps",
+    );
+    assert.equal(next[0]?.currentTemp, "78");
+    assert.equal(next[0]?.mortalityToDate, "10");
+    assert.equal(next[0]?.weeks[0], "4");
+  });
+
+  it("pulls mortality without changing temps", () => {
+    const next = mergeLiveHouseRows(
+      [row({ houseNumber: 1, currentTemp: "70", mortalityToDate: "10", weeks: ["4", "", "", "", "", "", "", ""] })],
+      [row({ houseNumber: 1, currentTemp: "78", mortalityToDate: "40", weeks: ["18", "", "", "", "", "", "", ""] })],
+      "mortality",
+    );
+    assert.equal(next[0]?.currentTemp, "70");
+    assert.equal(next[0]?.mortalityToDate, "40");
+    assert.equal(next[0]?.weeks[0], "18");
+  });
+
   it("adds a house that was created after the draft started", () => {
     const next = mergeLiveHouseRows(
       [row({ houseNumber: 1 })],

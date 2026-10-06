@@ -7,7 +7,7 @@ import { withPrebroodLoggedHours } from "@/lib/generator/format";
 import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
 import { visitSaveError } from "@/lib/visits/ensureVisitType";
-import { applyLiveHouseMetrics } from "@/lib/serviceForms/prefill";
+import { formForComplete } from "@/lib/serviceForms/prefill";
 import { loadServiceFarmContext } from "@/lib/serviceForms/farmContext";
 import { isServiceFormKind } from "@/lib/serviceForms/stored";
 import type { AnyServiceForm, ServiceFormKind } from "@/lib/serviceForms/types";
@@ -233,7 +233,7 @@ async function completeServiceFormActionInner(input: {
   let form = asForm(input.form);
   if (!form) return { error: "Invalid checklist" };
   if (context) {
-    form = applyLiveHouseMetrics(form, context.detail);
+    form = formForComplete(form, context.detail, Boolean(input.serviceFormId));
     if (form.kind === "prebrood") {
       form = withPrebroodLoggedHours(form, context.generatorHours);
     }
