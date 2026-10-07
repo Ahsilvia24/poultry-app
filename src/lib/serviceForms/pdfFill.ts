@@ -72,15 +72,19 @@ function widgetRect(map: FieldMap, name: string, index = 0): FieldWidget | null 
   return list[Math.min(index, list.length - 1)] ?? null;
 }
 
-/** White-out a mapped widget so printed template ink doesn't show through. */
+/** White-out printed hint ink only — stay inside the cell, off the grid lines. */
 function coverWidget(ctx: Ctx, name: string, index = 0) {
   const r = widgetRect(ctx.map, name, index);
   if (!r) return;
+  const insetLeft = 1.4;
+  const insetRight = 2.2;
+  const insetBottom = 1.05;
+  const insetTop = 1.55;
   ctx.page.drawRectangle({
-    x: r.x,
-    y: r.y,
-    width: r.w,
-    height: r.h,
+    x: r.x + insetLeft,
+    y: r.y + insetBottom,
+    width: Math.max(1, r.w - insetLeft - insetRight),
+    height: Math.max(1, r.h - insetBottom - insetTop),
     color: rgb(1, 1, 1),
     borderWidth: 0,
   });
