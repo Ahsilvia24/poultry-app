@@ -283,12 +283,33 @@ export default function PlacementChecklistScreen() {
             valueLabel={recommendedWeekLabel(form.minVentRecommendedWeek)}
             onPress={() => setOptionPicker("week")}
           />
-          <Text style={[styles.muted, { marginBottom: 8 }]}>
-            Recommended:{" "}
-            {form.minVentRecommendedOn || form.minVentRecommendedOff
-              ? `${form.minVentRecommendedOn} on / ${form.minVentRecommendedOff} off`
-              : "—"}
-          </Text>
+          {form.minVentRecommendedWeek === "" ? (
+            <PairFields
+              left={
+                <TextField
+                  label="ON"
+                  value={form.minVentRecommendedOn}
+                  onChange={(minVentRecommendedOn) => patch({ minVentRecommendedOn })}
+                  keyboardType="number-pad"
+                />
+              }
+              right={
+                <TextField
+                  label="OFF"
+                  value={form.minVentRecommendedOff}
+                  onChange={(minVentRecommendedOff) => patch({ minVentRecommendedOff })}
+                  keyboardType="number-pad"
+                />
+              }
+            />
+          ) : (
+            <Text style={[styles.muted, { marginBottom: 8 }]}>
+              Recommended:{" "}
+              {form.minVentRecommendedOn || form.minVentRecommendedOff
+                ? `${form.minVentRecommendedOn} on / ${form.minVentRecommendedOff} off`
+                : "—"}
+            </Text>
+          )}
         </Card>
 
         <SectionTitle title="Litter Temps" />

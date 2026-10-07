@@ -179,12 +179,33 @@ export function PlacementFormView({
           options={WEEK_OPTIONS}
           onChange={(v) => applyRecommendedWeek(v === "" ? "" : Number(v))}
         />
-        <p className="mb-2 text-sm text-stone-500">
-          Recommended:{" "}
-          {form.minVentRecommendedOn || form.minVentRecommendedOff
-            ? `${form.minVentRecommendedOn} on / ${form.minVentRecommendedOff} off`
-            : "—"}
-        </p>
+        {form.minVentRecommendedWeek === "" ? (
+          <PairFields
+            left={
+              <TextField
+                label="ON"
+                value={form.minVentRecommendedOn}
+                onChange={(minVentRecommendedOn) => patch({ minVentRecommendedOn })}
+                inputMode="numeric"
+              />
+            }
+            right={
+              <TextField
+                label="OFF"
+                value={form.minVentRecommendedOff}
+                onChange={(minVentRecommendedOff) => patch({ minVentRecommendedOff })}
+                inputMode="numeric"
+              />
+            }
+          />
+        ) : (
+          <p className="mb-2 text-sm text-stone-500">
+            Recommended:{" "}
+            {form.minVentRecommendedOn || form.minVentRecommendedOff
+              ? `${form.minVentRecommendedOn} on / ${form.minVentRecommendedOff} off`
+              : "—"}
+          </p>
+        )}
       </Card>
 
       <SectionTitle title="Litter Temps" />
