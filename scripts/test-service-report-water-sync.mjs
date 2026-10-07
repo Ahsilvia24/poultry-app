@@ -15,10 +15,18 @@ const read = (rel) => readFileSync(join(root, rel), "utf8");
 const webPdf = read("src/lib/serviceForms/pdfFill.ts");
 assert.match(webPdf, /coverWidget\(ctx, "Water column"\)/);
 assert.match(webPdf, /setText\(ctx, "Water column", data\.waterColumnInches/);
+assert.match(webPdf, /stay inside the cell, off the grid lines/);
+assert.match(webPdf, /insetLeft = 1\.4/);
+assert.match(webPdf, /insetRight = 2\.2/);
+assert.match(webPdf, /insetTop = 1\.55/);
 
 const expoPdf = read("mobile/src/lib/serviceForms/pdfFill.ts");
 assert.match(expoPdf, /coverWidget\(ctx, "Water column"\)/);
 assert.match(expoPdf, /setText\(ctx, "Water column", data\.waterColumnInches/);
+assert.match(expoPdf, /stay inside the cell, off the grid lines/);
+assert.match(expoPdf, /insetLeft = 1\.4/);
+assert.match(expoPdf, /insetRight = 2\.2/);
+assert.match(expoPdf, /insetTop = 1\.55/);
 
 const webMap = JSON.parse(read("src/lib/serviceForms/maps/service-report-fields.json"));
 assert.ok(webMap.fields["Water column"]?.widgets?.[0]);
@@ -117,5 +125,58 @@ const mortOnly = applyLiveHouseMortality(
 assert.equal(mortOnly.houses[0]?.currentTemp, "70");
 assert.equal(mortOnly.houses[0]?.mortalityToDate, "40");
 assert.equal(mortOnly.houses[0]?.weeks[0], "18");
+
+const { writeFileSync, mkdirSync } = await import("node:fs");
+const { spawnSync } = await import("node:child_process");
+const { tmpdir } = await import("node:os");
+const { buildServiceFormPdf } = await import(join(root, "src/lib/serviceForms/pdfFill.ts"));
+const filled = createServiceReportDraft({ farmName: "Maple" });
+filled.waterColumnInches = "4-5";
+const built = await buildServiceFormPdf(filled);
+const outDir = join(tmpdir(), "water-column-box");
+mkdirSync(outDir, { recursive: true });
+const pdfPath = join(outDir, "water-4-5.pdf");
+writeFileSync(pdfPath, built.bytes);
+const render = spawnSync("pdftoppm", ["-png", "-r", "200", "-f", "1", "-l", "1", pdfPath, join(outDir, "page")], {
+  encoding: "utf8",
+});
+assert.equal(render.status, 0, render.stderr);
+const pngPath = join(outDir, "page-1.png");
+
+const scale = 200 / 72;
+const png = spawnSync(
+  "python3",
+  [
+    "-c",
+    `
+from PIL import Image
+im = Image.open(${JSON.stringify(pngPath)}).convert("RGB")
+s = ${scale}
+page_h = 792
+dark_top = 0
+total_top = 0
+for pdf_x in range(218, 255):
+    img_x = pdf_x * s
+    img_y = (page_h - 329.04) * s
+    r, g, b = im.getpixel((int(round(img_x)), int(round(img_y))))
+    total_top += 1
+    if r < 90:
+        dark_top += 1
+ink = 0
+for pdf_x in range(220, 236):
+    img_x = pdf_x * s
+    img_y = (page_h - 323) * s
+    r, g, b = im.getpixel((int(round(img_x)), int(round(img_y))))
+    if r < 90:
+        ink += 1
+print(dark_top, total_top, ink)
+`,
+  ],
+  { encoding: "utf8" },
+);
+assert.equal(png.status, 0, png.stderr);
+const [darkTop, totalTop, ink] = png.stdout.trim().split(" ").map(Number);
+assert.ok(darkTop / totalTop > 0.85, `top box line wiped: ${darkTop}/${totalTop}`);
+assert.ok(ink >= 2, "4-5 was not stamped in the water column box");
 
 console.log("service-report-water-sync: ok");
