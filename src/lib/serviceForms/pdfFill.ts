@@ -350,7 +350,7 @@ function buildServiceReportFields(
   markYesNo(ctx, "Check Box13", "Check Box15", data.lightIntensityOk);
   markYesNo(ctx, "Check Box14", "Check Box16", data.lightsOperationalOk);
   setText(ctx, "Text44", data.lightsOnAt, 8, { align: "center", yNudge: 2.5 });
-  setText(ctx, "Text45", data.lightsOffAt, 8, { align: "center", xNudge: -14, yNudge: 2.5 });
+  setText(ctx, "Text45", data.lightsOffAt, 8, { align: "center", yNudge: 2.5 });
 
   markYesNo(ctx, "Check Box9", "Check Box10", data.tempTargetsOk);
   setText(ctx, "Text48", data.actualTempTarget, 8, { xPad: 6, yNudge: 1.5 });
@@ -402,8 +402,8 @@ function buildServiceReportFields(
   // Printed template shows 4-6 in this box. Wipe it, then stamp only a filled value.
   coverWidget(ctx, "Water column");
   setText(ctx, "Water column", data.waterColumnInches, 8);
-  setText(ctx, "PSI before", data.psiBefore, 8);
-  setText(ctx, "PSI after", data.psiAfter, 8);
+  setText(ctx, "PSI before", data.psiBefore, 8, { xPad: 6 });
+  setText(ctx, "PSI after", data.psiAfter, 8, { xPad: 6 });
   setText(ctx, "Text56", data.ph, 8);
 
   markYesNo(ctx, "Check Box30", "Check Box32", data.partitionedOk);
