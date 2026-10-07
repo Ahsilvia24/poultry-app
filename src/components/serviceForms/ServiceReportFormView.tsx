@@ -23,7 +23,6 @@ import {
   MAX_CFM_FT2_POWER_LABEL,
   VENT_DOOR_OPTIONS,
   WEEK_OPTIONS,
-  recommendedWeekLabel,
   ventDoorTypesFromPayload,
 } from "@/lib/serviceForms/format";
 import type { ServiceFarmContext } from "@/lib/serviceForms/farmContext";
@@ -231,14 +230,33 @@ export function ServiceReportFormView({
           options={WEEK_OPTIONS}
           onChange={(v) => applyRecommendedWeek(v === "" ? "" : Number(v))}
         />
-        <p className="mb-2 text-sm text-stone-500">
-          Recommended:{" "}
-          {form.minVentRecommendedOn || form.minVentRecommendedOff
-            ? `${form.minVentRecommendedOn} on / ${form.minVentRecommendedOff} off`
-            : recommendedWeekLabel(form.minVentRecommendedWeek) === "Blank"
-              ? "—"
+        {form.minVentRecommendedWeek === "" ? (
+          <PairFields
+            left={
+              <TextField
+                label="ON"
+                value={form.minVentRecommendedOn}
+                onChange={(minVentRecommendedOn) => patch({ minVentRecommendedOn })}
+                inputMode="numeric"
+              />
+            }
+            right={
+              <TextField
+                label="OFF"
+                value={form.minVentRecommendedOff}
+                onChange={(minVentRecommendedOff) => patch({ minVentRecommendedOff })}
+                inputMode="numeric"
+              />
+            }
+          />
+        ) : (
+          <p className="mb-2 text-sm text-stone-500">
+            Recommended:{" "}
+            {form.minVentRecommendedOn || form.minVentRecommendedOff
+              ? `${form.minVentRecommendedOn} on / ${form.minVentRecommendedOff} off`
               : "—"}
-        </p>
+          </p>
+        )}
         <TextField label={MAX_CFM_FT2_POWER_LABEL} value={form.maxCfm} onChange={(maxCfm) => patch({ maxCfm })} inputMode="decimal" />
         <PairFields
           left={<TextField label="Cool cell OFF temp" value={form.coolCellOffTemp} onChange={(coolCellOffTemp) => patch({ coolCellOffTemp })} inputMode="decimal" />}
