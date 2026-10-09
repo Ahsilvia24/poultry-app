@@ -39,22 +39,20 @@ export function GeneratorLogReport({
       title: "Generator Hours",
       subtitle: filterLabel,
       filename: reportShareFilename("Generator Hours", farmName || REPORT_ALL_FARMS),
-      blocks: view.flatMap((farm) => [
-        { type: "heading" as const, text: farm.farmName },
-        {
-          type: "columnGroups" as const,
-          columnsPerRow: GENERATOR_COLUMNS_PER_ROW,
-          groups: farm.generators.map((gen) => ({
-            title: gen.label,
-            headers: ["Date", "Hours", "Exercised"],
-            rows: gen.rows.map((row) => [
-              formatGeneratorReportDateShort(row.logDate),
-              formatGeneratorReportHours(row.hours),
-              formatGeneratorReportHours(row.exercised),
-            ]),
-          })),
-        },
-      ]),
+      blocks: view.map((farm) => ({
+        type: "columnGroups" as const,
+        heading: farm.farmName,
+        columnsPerRow: GENERATOR_COLUMNS_PER_ROW,
+        groups: farm.generators.map((gen) => ({
+          title: gen.label,
+          headers: ["Date", "Hours", "Exercised"],
+          rows: gen.rows.map((row) => [
+            formatGeneratorReportDateShort(row.logDate),
+            formatGeneratorReportHours(row.hours),
+            formatGeneratorReportHours(row.exercised),
+          ]),
+        })),
+      })),
     });
   }
 
