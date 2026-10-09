@@ -1715,6 +1715,21 @@ export function getMortalityCumulativeByAge(
   return series;
 }
 
+/** Oldest saved generator log day for active farms, so the report can start there. */
+export function oldestGeneratorLogDate(): string | null {
+  const row = getDb().getFirstSync<{ d: string | null }>(
+    `SELECT MIN(substr(g.log_date, 1, 10)) AS d
+     FROM generator_logs g
+     JOIN farms f ON f.id = g.farm_id
+     WHERE f.deleted_at IS NULL AND f.is_active = 1
+       AND f.id != ?
+       AND lower(trim(f.farm_name)) != 'manual'`,
+    [MANUAL_LFO_FARM_ID],
+  );
+  const day = row?.d?.slice(0, 10) ?? "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+}
+
 export function getGeneratorLogReport(
   from: string,
   to: string,
@@ -1735,8 +1750,8 @@ export function getGeneratorLogReport(
     }>(
       `SELECT id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours
        FROM generator_logs
-       WHERE farm_id = ? AND log_date >= ? AND log_date <= ?
-       ORDER BY log_date DESC, id DESC`,
+       WHERE farm_id = ? AND substr(log_date, 1, 10) >= ? AND substr(log_date, 1, 10) <= ?
+       ORDER BY substr(log_date, 1, 10) DESC, id DESC`,
       [farm.id, from, to],
     );
     if (logs.length === 0) continue;
@@ -1748,8 +1763,8 @@ export function getGeneratorLogReport(
     }>(
       `SELECT gen1_hours, gen2_hours, gen3_hours, gen4_hours
        FROM generator_logs
-       WHERE farm_id = ? AND log_date < ?
-       ORDER BY log_date DESC, id DESC`,
+       WHERE farm_id = ? AND substr(log_date, 1, 10) < ?
+       ORDER BY substr(log_date, 1, 10) DESC, id DESC`,
       [farm.id, from],
     );
     rows.push({
@@ -1768,7 +1783,7 @@ export function getGeneratorLogReport(
         id: log.id,
         farmId: farm.id,
         farmName: farm.farmName,
-        logDate: log.log_date,
+        logDate: log.log_date.slice(0, 10),
         gen1Hours: log.gen1_hours,
         gen2Hours: log.gen2_hours,
         gen3Hours: log.gen3_hours,
@@ -4751,7 +4766,7 @@ export function createGeneratorLog(input: GeneratorLogInput) {
     throw new Error("Enter hours for at least one generator");
   }
 
-  const logDate = input.logDate.trim();
+  const logDate = input.logDate.trim().slice(0, 10);
   const existing = db.getFirstSync<{
     id: string;
     gen1_hours: number | null;
@@ -4760,7 +4775,7 @@ export function createGeneratorLog(input: GeneratorLogInput) {
     gen4_hours: number | null;
   }>(
     `SELECT * FROM generator_logs
-     WHERE farm_id = ? AND log_date = ?
+     WHERE farm_id = ? AND substr(log_date, 1, 10) = ?
      ORDER BY id DESC LIMIT 1`,
     [input.farmId, logDate],
   );
@@ -4770,9 +4785,10 @@ export function createGeneratorLog(input: GeneratorLogInput) {
     id = existing.id;
     db.runSync(
       `UPDATE generator_logs
-       SET gen1_hours = ?, gen2_hours = ?, gen3_hours = ?, gen4_hours = ?, notes = NULL
+       SET log_date = ?, gen1_hours = ?, gen2_hours = ?, gen3_hours = ?, gen4_hours = ?, notes = NULL
        WHERE id = ? AND farm_id = ?`,
       [
+        logDate,
         hours.gen1Hours ?? existing.gen1_hours,
         hours.gen2Hours ?? existing.gen2_hours,
         hours.gen3Hours ?? existing.gen3_hours,
@@ -4829,8 +4845,8 @@ export function updateGeneratorLog(
       return { success: true as const };
     }
 
-    const newDate = input.logDate.trim();
-    if (existing.log_date === newDate) {
+    const newDate = input.logDate.trim().slice(0, 10);
+    if (existing.log_date.slice(0, 10) === newDate) {
       db.runSync(
         `UPDATE generator_logs
          SET ${GEN_HOUR_COLUMNS[hourKey]} = ?, notes = NULL
@@ -4845,7 +4861,7 @@ export function updateGeneratorLog(
     clearGeneratorHourOnLog(db, farmId, existing, hourKey);
     const target = db.getFirstSync<{ id: string }>(
       `SELECT id FROM generator_logs
-       WHERE farm_id = ? AND log_date = ?
+       WHERE farm_id = ? AND substr(log_date, 1, 10) = ?
        ORDER BY id DESC LIMIT 1`,
       [farmId, newDate],
     );
@@ -4885,7 +4901,7 @@ export function updateGeneratorLog(
      SET log_date = ?, gen1_hours = ?, gen2_hours = ?, gen3_hours = ?, gen4_hours = ?, notes = ?
      WHERE id = ? AND farm_id = ?`,
     [
-      input.logDate.trim(),
+      input.logDate.trim().slice(0, 10),
       hours.gen1Hours,
       hours.gen2Hours,
       hours.gen3Hours,

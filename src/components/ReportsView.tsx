@@ -26,9 +26,9 @@ import {
 import { reportsHref, resolveReportType, type ReportTypeKey } from "@/lib/reports/types";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import {
-  defaultGeneratorRange,
   defaultMortalityRange,
   firstReportFarmId,
+  generatorRangeCoveringLogs,
   mortalityRangeForFarm,
   selectReports,
 } from "@/lib/offline/selectReports";
@@ -132,7 +132,7 @@ export function ReportsView({
     return defaults;
   });
   const [generatorRange, setGeneratorRange] = useState(() => {
-    const defaults = defaultGeneratorRange(new Date(), timeZone);
+    const defaults = generatorRangeCoveringLogs(snapshot, new Date(), timeZone);
     if (resolveReportType(seed.type) === "generator") {
       return { from: seed.from ?? defaults.from, to: seed.to ?? defaults.to };
     }

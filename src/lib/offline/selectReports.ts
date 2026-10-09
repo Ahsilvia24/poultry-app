@@ -90,6 +90,33 @@ export function defaultGeneratorRange(
   return { from: addCalendarDays(key, -28), to: key };
 }
 
+/** Oldest saved generator log day, or null when this snapshot has none. */
+export function oldestGeneratorLogDate(snapshot: OfflineSnapshot, farmId = ""): string | null {
+  let oldest: string | null = null;
+  for (const log of snapshot.generatorLogs ?? []) {
+    if (farmId && log.farmId !== farmId) continue;
+    const day = log.logDate.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+    if (!oldest || day < oldest) oldest = day;
+  }
+  return oldest;
+}
+
+/**
+ * Generator report window. Starts at the oldest saved log so farms that are
+ * logged less often still show every reading, and never shorter than 28 days.
+ */
+export function generatorRangeCoveringLogs(
+  snapshot: OfflineSnapshot,
+  today: Date | string = new Date(),
+  timeZone?: string | null,
+): { from: string; to: string } {
+  const fallback = defaultGeneratorRange(today, timeZone);
+  const oldest = oldestGeneratorLogDate(snapshot);
+  if (oldest && oldest < fallback.from) return { from: oldest, to: fallback.to };
+  return fallback;
+}
+
 export function defaultMortalityRange(
   today: Date | string = new Date(),
   timeZone?: string | null,
@@ -183,7 +210,7 @@ export function selectReports(
   const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
   const todayKey = appTodayKey(undefined, timeZone);
   const fieldDefaults = defaultFieldLogRange(todayKey);
-  const generatorDefaults = defaultGeneratorRange(todayKey, timeZone);
+  const generatorDefaults = generatorRangeCoveringLogs(snapshot, todayKey, timeZone);
   const requestedFarmId = search.farmId ?? "";
   const mortalityDefaults =
     type === "mortality" && requestedFarmId
@@ -241,14 +268,15 @@ export function selectReports(
 
   if (type === "generator") {
     const selected = farmId;
+    const byDay = (logDate: string) => logDate.slice(0, 10);
     const logs = (snapshot.generatorLogs ?? [])
       .filter((log) => (!selected || log.farmId === selected) && inRange(log.logDate, from, to))
       .slice()
-      .sort((a, b) => b.logDate.localeCompare(a.logDate));
+      .sort((a, b) => byDay(b.logDate).localeCompare(byDay(a.logDate)));
     const prior = (snapshot.generatorLogs ?? [])
-      .filter((log) => (!selected || log.farmId === selected) && log.logDate.slice(0, 10) < from)
+      .filter((log) => (!selected || log.farmId === selected) && byDay(log.logDate) < from)
       .slice()
-      .sort((a, b) => b.logDate.localeCompare(a.logDate));
+      .sort((a, b) => byDay(b.logDate).localeCompare(byDay(a.logDate)));
     const priorByFarm = new Map<string, ReturnType<typeof collectPriorHours>>();
     const priorGrouped = new Map<string, typeof prior>();
     for (const log of prior) {
