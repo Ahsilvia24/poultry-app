@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { renderReportJpegPages } from "@/lib/exports/report-canvas";
 import { pdfBytesFromJpegPages } from "@/lib/exports/scan-pdf";
+import { splitColumnGroups } from "@/lib/exports/splitColumnGroups";
 import { sharePdfBytes } from "@/lib/serviceForms/sharePdf";
 
 export type PdfTableSection = {
@@ -261,13 +262,11 @@ export async function buildTextReportPdfBytes(opts: ReportPdfOpts): Promise<Uint
       const gap = 8;
       const colW = (contentW - gap * (perRow - 1)) / perRow;
       const fontSize = 8;
-      for (let i = 0; i < block.groups.length; i += perRow) {
-        const rowGroups = block.groups.slice(i, i + perRow);
-        const heights = rowGroups.map((group) =>
-          measureTable(group, colW, fontSize, group.title),
+      const drawBand = (rowGroups: PdfColumnGroup[]) => {
+        const rowH = Math.max(
+          12,
+          ...rowGroups.map((group) => measureTable(group, colW, fontSize, group.title)),
         );
-        const rowH = Math.max(12, ...heights);
-        need(rowH + 8);
         const startY = y;
         rowGroups.forEach((group, index) => {
           const x = MARGIN + index * (colW + gap);
@@ -289,6 +288,25 @@ export async function buildTextReportPdfBytes(opts: ReportPdfOpts): Promise<Uint
           );
         });
         y -= rowH + 12;
+      };
+      for (let i = 0; i < block.groups.length; i += perRow) {
+        let band = block.groups.slice(i, i + perRow);
+        let guard = 0;
+        while (band.length > 0 && guard < 200) {
+          guard += 1;
+          let budget = y - MARGIN;
+          if (budget < 48) {
+            newPage();
+            budget = y - MARGIN;
+          }
+          const { head, tail } = splitColumnGroups(band, budget, (group) =>
+            measureTable(group, colW, fontSize, group.title),
+          );
+          drawBand(head);
+          if (tail.length === 0) break;
+          newPage();
+          band = tail;
+        }
       }
       continue;
     }

@@ -151,6 +151,61 @@ describe("buildGeneratorReportView", () => {
     );
   });
 
+  it("keeps every generator when the same day was logged on separate rows", () => {
+    const view = buildGeneratorReportView([
+      farm({
+        logs: [
+          {
+            id: "log-2",
+            farmId: "farm_1",
+            farmName: "Maple Grove",
+            logDate: "2026-08-29",
+            gen1Hours: null,
+            gen2Hours: 114.7,
+            gen3Hours: null,
+            gen4Hours: null,
+          },
+          {
+            id: "log-1",
+            farmId: "farm_1",
+            farmName: "Maple Grove",
+            logDate: "2026-08-29T00:00:00.000Z",
+            gen1Hours: 96.6,
+            gen2Hours: 110,
+            gen3Hours: null,
+            gen4Hours: null,
+          },
+          {
+            id: "log-0",
+            farmId: "farm_1",
+            farmName: "Maple Grove",
+            logDate: "2026-08-22",
+            gen1Hours: 95.8,
+            gen2Hours: 113.8,
+            gen3Hours: null,
+            gen4Hours: null,
+          },
+        ],
+      }),
+    ]);
+    const gen1 = view[0]?.generators[0];
+    const gen2 = view[0]?.generators[1];
+    assert.deepEqual(
+      gen1?.rows.map((row) => [row.logDate, row.hours, row.exercised]),
+      [
+        ["2026-08-29", 96.6, 0.8],
+        ["2026-08-22", 95.8, null],
+      ],
+    );
+    assert.deepEqual(
+      gen2?.rows.map((row) => [row.logDate, row.hours, row.exercised]),
+      [
+        ["2026-08-29", 114.7, 0.9],
+        ["2026-08-22", 113.8, null],
+      ],
+    );
+  });
+
   it("omits a farm whose log rows have no hours left", () => {
     const view = buildGeneratorReportView([
       farm({

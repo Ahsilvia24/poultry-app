@@ -122,8 +122,10 @@ assert.match(selectReports, /SHORT_MONTHS/);
 assert.match(selectReports, /sortFarmsByOrder/);
 assert.match(selectReports, /firstReportFarmId/);
 
-const { firstReportFarmId, selectReports: buildReports } = await import("../src/lib/offline/selectReports.ts");
+const { firstReportFarmId, generatorRangeCoveringLogs, selectReports: buildReports } =
+  await import("../src/lib/offline/selectReports.ts");
 const { fieldLogVisitTypeLabel } = await import("../src/lib/reports/field-log.ts");
+const { buildGeneratorReportView } = await import("../src/lib/reports/generator-log.ts");
 
 const snapshot = {
   version: 2,
@@ -368,5 +370,55 @@ assert.equal(fieldLogVisitTypeLabel("OTHER", "Other: Controller alarm"), "Contro
 assert.equal(fieldLogVisitTypeLabel("OTHER"), "Enter Other");
 assert.equal(fieldLogVisitTypeLabel("WEIGHT_PROJECTION"), "Weight Projection");
 assert.equal(fieldLogVisitTypeLabel("ROUTINE_SERVICE", "House 2 fans noisy"), "Routine Service");
+
+const withGeneratorLogs = {
+  ...snapshot,
+  generatorLogs: [
+    {
+      id: "log-1",
+      farmId: "old",
+      logDate: "2026-06-01T00:00:00.000Z",
+      gen1Hours: 10,
+      gen2Hours: null,
+      gen3Hours: null,
+      gen4Hours: null,
+    },
+    {
+      id: "log-2",
+      farmId: "old",
+      logDate: "2026-06-01",
+      gen1Hours: null,
+      gen2Hours: 20,
+      gen3Hours: null,
+      gen4Hours: null,
+    },
+    {
+      id: "log-3",
+      farmId: "new",
+      logDate: "2026-09-01",
+      gen1Hours: 30,
+      gen2Hours: null,
+      gen3Hours: null,
+      gen4Hours: null,
+    },
+  ],
+};
+const covered = generatorRangeCoveringLogs(withGeneratorLogs, "2026-09-12");
+assert.equal(covered.from, "2026-06-01");
+assert.equal(covered.to, "2026-09-12");
+const generatorHistory = buildReports(withGeneratorLogs, { type: "generator" });
+assert.equal(generatorHistory.from, covered.from);
+const oldFarm = generatorHistory.generator.farms.find((farm) => farm.farmId === "old");
+assert.equal(oldFarm.logs.length, 2);
+const oldView = buildGeneratorReportView([oldFarm]);
+assert.deepEqual(
+  oldView[0].generators.map((gen) => [gen.label, gen.rows[0].hours]),
+  [
+    ["Gen 1", 10],
+    ["Gen 2", 20],
+  ],
+);
+const newFarm = generatorHistory.generator.farms.find((farm) => farm.farmId === "new");
+assert.equal(newFarm.logs.length, 1);
 
 console.log("reports-offline-pack: ok");

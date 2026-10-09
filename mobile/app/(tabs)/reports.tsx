@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   getFieldLog,
   getGeneratorLogReport,
+  oldestGeneratorLogDate,
   getMortalityByHouse,
   getMortalityByPercentage,
   getMortalityCumulativeByAge,
@@ -119,7 +120,11 @@ export default function ReportsScreen() {
   const [genFarmId, setGenFarmId] = useState("");
   const [from, setFrom] = useState(initialMortFrom);
   const [to, setTo] = useState(todayKey());
-  const [genFrom, setGenFrom] = useState(addDaysKey(todayKey(), -28));
+  const [genFrom, setGenFrom] = useState(() => {
+    const start = addDaysKey(todayKey(), -28);
+    const oldest = oldestGeneratorLogDate();
+    return oldest && oldest < start ? oldest : start;
+  });
   const [genTo, setGenTo] = useState(todayKey());
   const [fieldFrom, setFieldFrom] = useState(weekDefaults.from);
   const [fieldTo, setFieldTo] = useState(weekDefaults.to);

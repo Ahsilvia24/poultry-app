@@ -1,5 +1,6 @@
 import { jpegBytesFromCanvas } from "@/lib/exports/scan-pdf";
-import type { PdfBlock } from "@/lib/exports/pdf";
+import type { PdfBlock, PdfColumnGroup } from "@/lib/exports/pdf";
+import { splitColumnGroups } from "@/lib/exports/splitColumnGroups";
 
 const PORTRAIT = { w: 612, h: 792 };
 const LANDSCAPE = { w: 792, h: 612 };
@@ -220,13 +221,13 @@ export async function renderReportJpegPages(opts: {
       const gap = 8;
       const colW = (contentW - gap * (perRow - 1)) / perRow;
       const fontSize = 8;
-      for (let i = 0; i < block.groups.length; i += perRow) {
-        const rowGroups = block.groups.slice(i, i + perRow);
-        const heights = rowGroups.map((group) =>
-          measureTable(current().ctx, group, colW, fontSize, group.title),
+      const drawBand = (rowGroups: PdfColumnGroup[]) => {
+        const rowH = Math.max(
+          12,
+          ...rowGroups.map((group) =>
+            measureTable(current().ctx, group, colW, fontSize, group.title),
+          ),
         );
-        const rowH = Math.max(12, ...heights);
-        need(rowH + 8);
         const startY = current().y;
         rowGroups.forEach((group, index) => {
           const x = MARGIN + index * (colW + gap);
@@ -244,6 +245,25 @@ export async function renderReportJpegPages(opts: {
           );
         });
         current().y += rowH + 12;
+      };
+      for (let i = 0; i < block.groups.length; i += perRow) {
+        let band = block.groups.slice(i, i + perRow);
+        let guard = 0;
+        while (band.length > 0 && guard < 200) {
+          guard += 1;
+          let budget = size.h - MARGIN - current().y;
+          if (budget < 48) {
+            newPage();
+            budget = size.h - MARGIN - current().y;
+          }
+          const { head, tail } = splitColumnGroups(band, budget, (group) =>
+            measureTable(current().ctx, group, colW, fontSize, group.title),
+          );
+          drawBand(head);
+          if (tail.length === 0) break;
+          newPage();
+          band = tail;
+        }
       }
       continue;
     }

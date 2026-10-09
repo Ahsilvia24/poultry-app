@@ -151,11 +151,39 @@ function logHasHours(log: GeneratorReportHours): boolean {
   return GENERATOR_REPORT_COLUMNS.some((col) => log[col.key] != null);
 }
 
+function calendarLogDate(logDate: string) {
+  const day = logDate.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : logDate;
+}
+
+/**
+ * One reading per calendar day.
+ * `logs` must be newest first. A later row that only filled Gen 2 keeps Gen 1
+ * from the earlier row that day instead of dropping it.
+ */
+function mergeLogsForReport(logs: GeneratorReportLog[]): GeneratorReportLog[] {
+  const byDate = new Map<string, GeneratorReportLog>();
+  for (const log of logs) {
+    const logDate = calendarLogDate(log.logDate);
+    const existing = byDate.get(logDate);
+    if (!existing) {
+      byDate.set(logDate, { ...log, logDate });
+      continue;
+    }
+    for (const col of GENERATOR_REPORT_COLUMNS) {
+      if (existing[col.key] == null && log[col.key] != null) {
+        existing[col.key] = log[col.key];
+      }
+    }
+  }
+  return [...byDate.values()];
+}
+
 /** Unique log dates that have any hours, newest first. */
 export function generatorReportDates(farm: GeneratorReportFarm): string[] {
   const dates = new Set<string>();
   for (const log of farm.logs) {
-    if (logHasHours(log)) dates.add(log.logDate);
+    if (logHasHours(log)) dates.add(calendarLogDate(log.logDate));
   }
   return [...dates].sort((a, b) => b.localeCompare(a));
 }
@@ -164,13 +192,12 @@ export function buildGeneratorReportView(
   farms: GeneratorReportFarm[],
 ): GeneratorReportViewFarm[] {
   return farms.flatMap((farm) => {
-    const columns = generatorColumnsForFarm(farm);
-    const datesNewestFirst = generatorReportDates(farm);
+    const logs = mergeLogsForReport(farm.logs);
+    const mergedFarm = { ...farm, logs };
+    const columns = generatorColumnsForFarm(mergedFarm);
+    const datesNewestFirst = generatorReportDates(mergedFarm);
     const datesOldestFirst = [...datesNewestFirst].reverse();
-    const logByDate = new Map<string, GeneratorReportLog>();
-    for (const log of farm.logs) {
-      if (!logByDate.has(log.logDate)) logByDate.set(log.logDate, log);
-    }
+    const logByDate = new Map(logs.map((log) => [log.logDate, log]));
 
     const generators = columns.map((col) => {
       let previous = farm.priorHours?.[col.key] ?? null;
