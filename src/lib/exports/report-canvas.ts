@@ -1,6 +1,9 @@
 import { jpegBytesFromCanvas } from "@/lib/exports/scan-pdf";
 import type { PdfBlock, PdfColumnGroup } from "@/lib/exports/pdf";
-import { splitColumnGroups } from "@/lib/exports/splitColumnGroups";
+import {
+  layoutGeneratorFarmColumns,
+  withGeneratorFarmHeadings,
+} from "@/lib/exports/generatorFarmPages";
 
 const PORTRAIT = { w: 612, h: 792 };
 const LANDSCAPE = { w: 792, h: 612 };
@@ -202,7 +205,8 @@ export async function renderReportJpegPages(opts: {
     return cursor;
   };
 
-  for (const block of opts.blocks) {
+  const blocks = withGeneratorFarmHeadings(opts.blocks);
+  for (const block of blocks) {
     if (block.type === "pageStart") {
       if (current().y > MARGIN + 0.5) newPage();
       need(22);
@@ -246,24 +250,22 @@ export async function renderReportJpegPages(opts: {
         });
         current().y += rowH + 12;
       };
-      for (let i = 0; i < block.groups.length; i += perRow) {
-        let band = block.groups.slice(i, i + perRow);
-        let guard = 0;
-        while (band.length > 0 && guard < 200) {
-          guard += 1;
-          let budget = size.h - MARGIN - current().y;
-          if (budget < 48) {
-            newPage();
-            budget = size.h - MARGIN - current().y;
-          }
-          const { head, tail } = splitColumnGroups(band, budget, (group) =>
-            measureTable(current().ctx, group, colW, fontSize, group.title),
-          );
-          drawBand(head);
-          if (tail.length === 0) break;
-          newPage();
-          band = tail;
+      const slices = layoutGeneratorFarmColumns({
+        groups: block.groups,
+        columnsPerRow: perRow,
+        measure: (group) => measureTable(current().ctx, group, colW, fontSize, group.title),
+        headingHeight: block.heading ? 18 : 0,
+        bandGap: 12,
+        remaining: size.h - MARGIN - current().y,
+        pageHeight: size.h - MARGIN * 2,
+      });
+      for (const slice of slices) {
+        if (slice.newPageBefore) newPage();
+        if (slice.showHeading && block.heading) {
+          text(block.heading, MARGIN, 14, "#1c1917", "800");
+          current().y += 18;
         }
+        if (slice.groups.length > 0) drawBand(slice.groups);
       }
       continue;
     }

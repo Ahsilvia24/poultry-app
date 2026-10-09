@@ -1,7 +1,10 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { renderReportJpegPages } from "@/lib/exports/report-canvas";
 import { pdfBytesFromJpegPages } from "@/lib/exports/scan-pdf";
-import { splitColumnGroups } from "@/lib/exports/splitColumnGroups";
+import {
+  layoutGeneratorFarmColumns,
+  withGeneratorFarmHeadings,
+} from "@/lib/exports/generatorFarmPages";
 import { sharePdfBytes } from "@/lib/serviceForms/sharePdf";
 
 export type PdfTableSection = {
@@ -30,7 +33,7 @@ export type PdfBlock =
   | { type: "lines"; title?: string; lines: string[] }
   | { type: "image"; dataUrl: string; width?: number; height?: number }
   | { type: "pageStart"; title: string; subtitle?: string }
-  | { type: "columnGroups"; columnsPerRow?: number; groups: PdfColumnGroup[] };
+  | { type: "columnGroups"; columnsPerRow?: number; groups: PdfColumnGroup[]; heading?: string };
 
 const PORTRAIT = { w: 612, h: 792 };
 const LANDSCAPE = { w: 792, h: 612 };
@@ -243,7 +246,8 @@ export async function buildTextReportPdfBytes(opts: ReportPdfOpts): Promise<Uint
     return h;
   };
 
-  for (const block of opts.blocks) {
+  const blocks = withGeneratorFarmHeadings(opts.blocks);
+  for (const block of blocks) {
     if (block.type === "pageStart") {
       if (y < size.h - MARGIN - 0.5) newPage();
       need(22);
@@ -289,24 +293,22 @@ export async function buildTextReportPdfBytes(opts: ReportPdfOpts): Promise<Uint
         });
         y -= rowH + 12;
       };
-      for (let i = 0; i < block.groups.length; i += perRow) {
-        let band = block.groups.slice(i, i + perRow);
-        let guard = 0;
-        while (band.length > 0 && guard < 200) {
-          guard += 1;
-          let budget = y - MARGIN;
-          if (budget < 48) {
-            newPage();
-            budget = y - MARGIN;
-          }
-          const { head, tail } = splitColumnGroups(band, budget, (group) =>
-            measureTable(group, colW, fontSize, group.title),
-          );
-          drawBand(head);
-          if (tail.length === 0) break;
-          newPage();
-          band = tail;
+      const slices = layoutGeneratorFarmColumns({
+        groups: block.groups,
+        columnsPerRow: perRow,
+        measure: (group) => measureTable(group, colW, fontSize, group.title),
+        headingHeight: block.heading ? 18 : 0,
+        bandGap: 12,
+        remaining: y - MARGIN,
+        pageHeight: size.h - MARGIN * 2,
+      });
+      for (const slice of slices) {
+        if (slice.newPageBefore) newPage();
+        if (slice.showHeading && block.heading) {
+          drawText(block.heading, MARGIN, 14, bold);
+          y -= 18;
         }
+        if (slice.groups.length > 0) drawBand(slice.groups);
       }
       continue;
     }
