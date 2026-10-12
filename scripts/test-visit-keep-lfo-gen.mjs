@@ -196,6 +196,29 @@ assert.equal(gens.logs[0].id, "gen-1");
 assert.equal(gens.logs[0].gen1Hours, 120.5);
 assert.equal(gens.logs[0].gen2Hours, 88);
 
+const sameDay = applyFormWrite(logged, {
+  action: "createGeneratorLog",
+  id: "gen-1b",
+  farmId: "farm-1",
+  fields: { farmId: "farm-1", logDate: "2026-09-14", gen3Hours: "40" },
+});
+const merged = selectGenerators(sameDay, "farm-1");
+assert.equal(merged.logs.length, 1, "same-day generator logs merge on the phone");
+assert.equal(merged.logs[0].id, "gen-1");
+assert.equal(merged.logs[0].gen1Hours, 120.5);
+assert.equal(merged.logs[0].gen3Hours, 40);
+
+const clearedGen = applyFormWrite(sameDay, {
+  action: "deleteGeneratorLog",
+  id: "gen-1",
+  farmId: "farm-1",
+  fields: { hourKey: "gen2Hours" },
+});
+const afterClear = selectGenerators(clearedGen, "farm-1");
+assert.equal(afterClear.logs.length, 1);
+assert.equal(afterClear.logs[0].gen2Hours, null);
+assert.equal(afterClear.logs[0].gen1Hours, 120.5);
+
 const nav = read("src/components/OfflineNav.tsx");
 assert.match(nav, /selectGenerators/);
 assert.match(nav, /FarmGeneratorsView/);

@@ -111,10 +111,6 @@ function emptyGeneratorHours(): GeneratorHours {
   return { gen1Hours: null, gen2Hours: null, gen3Hours: null, gen4Hours: null };
 }
 
-function isHourDecrease(next: number, prev: number) {
-  return Math.round(next * 10) < Math.round(prev * 10);
-}
-
 function permute<T>(items: T[]): T[][] {
   if (items.length <= 1) return [items.slice()];
   const out: T[][] = [];
@@ -139,69 +135,124 @@ export type GeneratorHourSwapSuggestion = {
   message: string;
 };
 
+function roundHour(n: number) {
+  return Math.round(n * 10) / 10;
+}
+
+/** How far a reading sits from this generator's previous and following logs. */
+function placementCost(
+  value: number,
+  key: GenHourKey,
+  previous: GeneratorHours,
+  next: GeneratorHours | null | undefined,
+): number | null {
+  const prev = asLoggedHours(previous[key]);
+  const following = asLoggedHours(next?.[key]);
+  if (prev == null && following == null) return null;
+  return (
+    (prev == null ? 0 : Math.abs(value - prev)) +
+    (following == null ? 0 : Math.abs(value - following))
+  );
+}
+
+function knownAnchors(previous: GeneratorHours, next: GeneratorHours | null | undefined) {
+  const anchors: number[] = [];
+  for (const field of GENERATOR_FIELD_DEFS) {
+    const prev = asLoggedHours(previous[field.hourKey]);
+    const following = asLoggedHours(next?.[field.hourKey]);
+    if (prev != null) anchors.push(prev);
+    if (following != null) anchors.push(following);
+  }
+  return anchors;
+}
+
+/** A replaced meter starts near zero, well below every generator already logged. */
+function isReplacedMeter(value: number, anchors: number[]) {
+  if (anchors.length === 0) return false;
+  const smallest = Math.min(...anchors);
+  return value < smallest && value <= smallest / 2;
+}
+
+/** Ignore a reshuffle that is only a few tenths closer. */
+const MIN_SWAP_IMPROVEMENT = 0.5;
+
+function closerAssignment(
+  keys: GenHourKey[],
+  values: number[],
+  previous: GeneratorHours,
+  next: GeneratorHours | null | undefined,
+): number[] | null {
+  const enteredCost = keys.reduce(
+    (sum, key, i) => sum + (placementCost(values[i]!, key, previous, next) ?? 0),
+    0,
+  );
+  let bestAssign = values;
+  let bestCost = enteredCost;
+  for (const assign of permute(values)) {
+    const cost = keys.reduce(
+      (sum, key, i) => sum + (placementCost(assign[i]!, key, previous, next) ?? 0),
+      0,
+    );
+    if (cost < bestCost - 1e-9 && roundHour(enteredCost - cost) >= MIN_SWAP_IMPROVEMENT) {
+      bestCost = cost;
+      bestAssign = assign;
+    }
+  }
+  if (keys.every((key, i) => bestAssign[i] === values[i])) return null;
+  return bestAssign;
+}
+
 /**
- * If entered hours look like they were typed on the wrong generators
- * (a different assignment has fewer decreases vs last readings), suggest a fix.
+ * If entered hours are closer to a different generator's readings
+ * (the log before this date, and the log after it when one exists), suggest that order.
+ * 217 and 174 stay matched to 216 and 178 even when one meter dipped.
  */
 export function detectGeneratorHourSwap(
   previous: GeneratorHours,
   entered: GeneratorHours,
+  next?: GeneratorHours | null,
 ): GeneratorHourSwapSuggestion | null {
-  const keys = GENERATOR_FIELD_DEFS.map((field) => field.hourKey).filter(
-    (key) => asLoggedHours(entered[key]) != null && asLoggedHours(previous[key]) != null,
-  );
-  if (keys.length === 0) return null;
+  const anchors = knownAnchors(previous, next);
+  if (anchors.length === 0) return null;
 
-  const enteredDecreases = keys.filter((key) =>
-    isHourDecrease(asLoggedHours(entered[key])!, asLoggedHours(previous[key])!),
-  ).length;
-  if (enteredDecreases === 0) return null;
+  const enteredKeys = GENERATOR_FIELD_DEFS.map((field) => field.hourKey).filter(
+    (key) => asLoggedHours(entered[key]) != null,
+  );
+  const pinned = new Set<GenHourKey>(
+    enteredKeys.filter((key) => isReplacedMeter(asLoggedHours(entered[key])!, anchors)),
+  );
+  const scored = enteredKeys.filter(
+    (key) =>
+      !pinned.has(key) && placementCost(asLoggedHours(entered[key])!, key, previous, next) != null,
+  );
+  if (scored.length === 0) return null;
 
   let suggested: GeneratorHours | null = null;
 
-  if (keys.length === 1) {
-    const key = keys[0]!;
-    const next = asLoggedHours(entered[key])!;
-    let bestKey: GenHourKey | null = null;
-    let bestPrev = Number.NEGATIVE_INFINITY;
+  if (scored.length === 1) {
+    const key = scored[0]!;
+    const value = asLoggedHours(entered[key])!;
+    const enteredCost = placementCost(value, key, previous, next)!;
+    let bestKey: GenHourKey = key;
+    let bestCost = enteredCost;
     for (const field of GENERATOR_FIELD_DEFS) {
-      const prev = asLoggedHours(previous[field.hourKey]);
-      if (prev == null || isHourDecrease(next, prev)) continue;
-      if (prev >= bestPrev) {
-        bestPrev = prev;
+      if (pinned.has(field.hourKey)) continue;
+      const cost = placementCost(value, field.hourKey, previous, next);
+      if (cost == null) continue;
+      if (cost < bestCost - 1e-9 && roundHour(enteredCost - cost) >= MIN_SWAP_IMPROVEMENT) {
+        bestCost = cost;
         bestKey = field.hourKey;
       }
     }
-    if (bestKey && bestKey !== key) {
-      suggested = emptyGeneratorHours();
-      for (const field of GENERATOR_FIELD_DEFS) {
-        suggested[field.hourKey] =
-          field.hourKey === key
-            ? null
-            : field.hourKey === bestKey
-              ? next
-              : asLoggedHours(entered[field.hourKey]);
-      }
+    if (bestKey !== key) {
+      suggested = { ...entered, [key]: null, [bestKey]: value };
     }
   } else {
-    const values = keys.map((key) => asLoggedHours(entered[key])!);
-    let bestAssign = values;
-    let bestDecreases = enteredDecreases;
-    for (const assign of permute(values)) {
-      const decreases = keys.filter((key, i) =>
-        isHourDecrease(assign[i]!, asLoggedHours(previous[key])!),
-      ).length;
-      if (decreases < bestDecreases) {
-        bestDecreases = decreases;
-        bestAssign = assign;
-      }
-    }
-    if (
-      bestDecreases < enteredDecreases &&
-      keys.some((key, i) => bestAssign[i] !== asLoggedHours(entered[key]))
-    ) {
+    const values = scored.map((key) => asLoggedHours(entered[key])!);
+    const bestAssign = closerAssignment(scored, values, previous, next);
+    if (bestAssign) {
       suggested = { ...entered };
-      keys.forEach((key, i) => {
+      scored.forEach((key, i) => {
         suggested![key] = bestAssign[i]!;
       });
     }
@@ -212,7 +263,7 @@ export function detectGeneratorHourSwap(
     entered,
     suggested,
     message:
-      `Hour meters usually go up. These look like they were logged on the wrong generators.\n\n` +
+      `These hours look closer to a different generator.\n\n` +
       `You entered: ${formatHourAssignment(entered)}\n` +
       `Suggested: ${formatHourAssignment(suggested)}\n\n` +
       `Fix the order, or save as entered if a meter was replaced.`,
@@ -257,6 +308,45 @@ export function lastLoggedGeneratorHours(
     }
   }
   return last;
+}
+
+function generatorDateKey(value: string) {
+  const day = value.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : "";
+}
+
+/**
+ * Readings on the log before this date, and the log after it.
+ * The date being entered is not part of either side.
+ */
+export function generatorHoursAroundDate(
+  logs: Array<{ id?: string; logDate: string } & Partial<GeneratorHours>>,
+  opts: { date: string; excludeLogId?: string | null },
+): { previous: GeneratorHours; next: GeneratorHours } {
+  const date = generatorDateKey(opts.date);
+  if (!date) {
+    const none = lastLoggedGeneratorHours([]);
+    return { previous: none, next: none };
+  }
+  const rows = logs.filter((log) => log.id !== opts.excludeLogId && generatorDateKey(log.logDate));
+  const previousLogs = rows
+    .filter((log) => generatorDateKey(log.logDate) < date)
+    .sort(
+      (a, b) =>
+        generatorDateKey(b.logDate).localeCompare(generatorDateKey(a.logDate)) ||
+        (b.id ?? "").localeCompare(a.id ?? ""),
+    );
+  const nextLogs = rows
+    .filter((log) => generatorDateKey(log.logDate) > date)
+    .sort(
+      (a, b) =>
+        generatorDateKey(a.logDate).localeCompare(generatorDateKey(b.logDate)) ||
+        (a.id ?? "").localeCompare(b.id ?? ""),
+    );
+  return {
+    previous: lastLoggedGeneratorHours(previousLogs),
+    next: lastLoggedGeneratorHours(nextLogs),
+  };
 }
 
 /** Space-separated hours in gen 1… order. Skip gens with no log. */

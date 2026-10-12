@@ -735,6 +735,32 @@ function loadPastFlockGraph(farmId: string) {
   };
 }
 
+export function listFarmGeneratorLogs(farmId: string) {
+  const db = getDb();
+  return db
+    .getAllSync<{
+      id: string;
+      log_date: string;
+      gen1_hours: number | null;
+      gen2_hours: number | null;
+      gen3_hours: number | null;
+      gen4_hours: number | null;
+    }>(
+      `SELECT id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours
+       FROM generator_logs WHERE farm_id = ?
+       ORDER BY log_date DESC, id DESC`,
+      [farmId],
+    )
+    .map((log) => ({
+      id: log.id,
+      logDate: log.log_date,
+      gen1Hours: log.gen1_hours,
+      gen2Hours: log.gen2_hours,
+      gen3Hours: log.gen3_hours,
+      gen4Hours: log.gen4_hours,
+    }));
+}
+
 export function getFarmDetail(farmId: string) {
   const db = getDb();
   const today = todayKey();
@@ -1086,26 +1112,7 @@ export function getFarmDetail(farmId: string) {
       description: issue.description,
       correctiveAction: issue.corrective_action,
     })),
-    generatorLogs: db.getAllSync<{
-      id: string;
-      log_date: string;
-      gen1_hours: number | null;
-      gen2_hours: number | null;
-      gen3_hours: number | null;
-      gen4_hours: number | null;
-      notes: string | null;
-    }>(
-      `SELECT * FROM generator_logs WHERE farm_id = ?
-       ORDER BY log_date DESC, id DESC LIMIT 20`,
-      [farmId],
-    ).map((log) => ({
-      id: log.id,
-      logDate: log.log_date,
-      gen1Hours: log.gen1_hours,
-      gen2Hours: log.gen2_hours,
-      gen3Hours: log.gen3_hours,
-      gen4Hours: log.gen4_hours,
-    })),
+    generatorLogs: listFarmGeneratorLogs(farmId),
     litterEvents: db.getAllSync<{
       id: string;
       event_date: string;

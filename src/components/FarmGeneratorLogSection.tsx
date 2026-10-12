@@ -25,6 +25,7 @@ import {
   formatGeneratorChartsCopy,
   formatGeneratorHours,
   formatGeneratorLogDate,
+  generatorHoursAroundDate,
   hoursDelta,
   GENERATOR_FIELD_DEFS,
   type GenHourKey,
@@ -204,17 +205,17 @@ function GeneratorHoursChart({
 
 function GeneratorLogForm({
   farmId,
+  logs,
   recordId,
   initial,
-  previousByGen,
   onlyGen,
   onSuccess,
   onCancel,
 }: {
   farmId: string;
+  logs: GeneratorLogRow[];
   recordId?: string;
   initial?: GeneratorLogRow;
-  previousByGen?: Partial<Record<GenHourKey, number | null>>;
   onlyGen?: GenHourKey;
   onSuccess?: () => void;
   onCancel?: () => void;
@@ -240,6 +241,11 @@ function GeneratorLogForm({
     ? GENERATOR_FIELD_DEFS.filter((field) => field.hourKey === onlyGen)
     : GENERATOR_FIELD_DEFS;
 
+  const anchors = useMemo(
+    () => generatorHoursAroundDate(logs, { date: logDate, excludeLogId: recordId }),
+    [logs, logDate, recordId],
+  );
+
   function enteredHours(): GeneratorHours {
     const parse = (raw: string) => {
       const text = raw.trim();
@@ -258,15 +264,6 @@ function GeneratorLogForm({
     };
   }
 
-  function previousHours(): GeneratorHours {
-    return {
-      gen1Hours: previousByGen?.gen1Hours ?? null,
-      gen2Hours: previousByGen?.gen2Hours ?? null,
-      gen3Hours: previousByGen?.gen3Hours ?? null,
-      gen4Hours: previousByGen?.gen4Hours ?? null,
-    };
-  }
-
   function appendHours(fd: FormData, hours: GeneratorHours) {
     fd.set("farmId", farmId);
     fd.set("logDate", logDate);
@@ -282,19 +279,18 @@ function GeneratorLogForm({
     const fd = new FormData();
     appendHours(fd, hours);
     if (remapAll) fd.delete("onlyGen");
+    const write = formWrite(recordId ? "updateGeneratorLog" : "createGeneratorLog", {
+      id: recordId ?? localRecordId(),
+      farmId,
+      ...formDataToParts(fd),
+    });
+    if (enabled) {
+      queue(write);
+      setSwap(null);
+      onSuccess?.();
+      return;
+    }
     start(async () => {
-      if (enabled) {
-        queue(
-          formWrite(recordId ? "updateGeneratorLog" : "createGeneratorLog", {
-            id: recordId ?? localRecordId(),
-            farmId,
-            ...formDataToParts(fd),
-          }),
-        );
-        setSwap(null);
-        onSuccess?.();
-        return;
-      }
       const result = recordId
         ? await updateGeneratorLogAction(recordId, fd)
         : await createGeneratorLogAction(fd);
@@ -323,7 +319,7 @@ function GeneratorLogForm({
                 gen4Hours: onlyGen === "gen4Hours" ? entered.gen4Hours : null,
               }
             : entered;
-          const found = detectGeneratorHourSwap(previousHours(), forDetect);
+          const found = detectGeneratorHourSwap(anchors.previous, forDetect, anchors.next);
           if (found) {
             setSwap(found);
             return;
@@ -352,7 +348,7 @@ function GeneratorLogForm({
           const [value, setValue] = fieldState[field.hourKey];
           const delta = hoursDelta(
             value.trim() === "" ? null : Number(value),
-            previousByGen?.[field.hourKey] ?? null,
+            anchors.previous[field.hourKey],
           );
           return (
             <div key={field.hourKey}>
@@ -422,28 +418,6 @@ function GeneratorLogForm({
       </div>
     </form>
   );
-}
-
-function previousReadingForGen(
-  logsNewestFirst: GeneratorLogRow[],
-  hourKey: GenHourKey,
-  opts?: { beforeLogId?: string; beforeDate?: string },
-): number | null {
-  const beforeDate = opts?.beforeDate;
-  const beforeLogId = opts?.beforeLogId;
-  let passedEdit = beforeLogId == null;
-  for (const log of logsNewestFirst) {
-    if (beforeDate != null && log.logDate > beforeDate) continue;
-    if (beforeDate != null && log.logDate === beforeDate && beforeLogId == null) continue;
-    if (!passedEdit) {
-      if (log.id === beforeLogId) {
-        passedEdit = true;
-      }
-      continue;
-    }
-    if (log[hourKey] != null) return log[hourKey];
-  }
-  return null;
 }
 
 export function FarmGeneratorLogSection({
@@ -553,32 +527,6 @@ export function FarmGeneratorLogSection({
   if (!open) return <div id="generators" className="scroll-mt-24" />;
 
   const editingLog = editingId ? allSorted.find((l) => l.id === editingId) : null;
-  const createPreviousByGen: Partial<Record<GenHourKey, number | null>> = {
-    gen1Hours: previousReadingForGen(allSorted, "gen1Hours"),
-    gen2Hours: previousReadingForGen(allSorted, "gen2Hours"),
-    gen3Hours: previousReadingForGen(allSorted, "gen3Hours"),
-    gen4Hours: previousReadingForGen(allSorted, "gen4Hours"),
-  };
-  const editPreviousByGen = editingLog
-    ? {
-        gen1Hours: previousReadingForGen(allSorted, "gen1Hours", {
-          beforeLogId: editingLog.id,
-          beforeDate: editingLog.logDate,
-        }),
-        gen2Hours: previousReadingForGen(allSorted, "gen2Hours", {
-          beforeLogId: editingLog.id,
-          beforeDate: editingLog.logDate,
-        }),
-        gen3Hours: previousReadingForGen(allSorted, "gen3Hours", {
-          beforeLogId: editingLog.id,
-          beforeDate: editingLog.logDate,
-        }),
-        gen4Hours: previousReadingForGen(allSorted, "gen4Hours", {
-          beforeLogId: editingLog.id,
-          beforeDate: editingLog.logDate,
-        }),
-      }
-    : undefined;
 
   function openCreate() {
     setEditingId(null);
@@ -611,10 +559,10 @@ export function FarmGeneratorLogSection({
         <Card className="mb-3">
           <GeneratorLogForm
             farmId={farmId}
+            logs={allSorted}
             recordId={editingLog.id}
             initial={editingLog}
             onlyGen={editingGen}
-            previousByGen={editPreviousByGen ?? undefined}
             onSuccess={afterSaved}
             onCancel={() => {
               setEditingId(null);
@@ -642,7 +590,13 @@ export function FarmGeneratorLogSection({
               }}
               onDelete={async (id) => {
                 if (enabled) {
-                  queue(formWrite("deleteGeneratorLog", { id, farmId }));
+                  queue(
+                    formWrite("deleteGeneratorLog", {
+                      id,
+                      farmId,
+                      fields: { hourKey: gen.hourKey },
+                    }),
+                  );
                   return;
                 }
                 await deleteGeneratorLogAction(id, gen.hourKey);
@@ -657,7 +611,7 @@ export function FarmGeneratorLogSection({
         <Card className="mt-3">
           <GeneratorLogForm
             farmId={farmId}
-            previousByGen={createPreviousByGen}
+            logs={allSorted}
             onSuccess={afterSaved}
             onCancel={() => setFormOpen(false)}
           />

@@ -22,6 +22,7 @@ import { isServiceFormKind } from "@/lib/serviceForms/stored";
 import type { AnyServiceForm } from "@/lib/serviceForms/types";
 import type {
   OfflineFormWrite,
+  OfflineGenLog,
   OfflineMortality,
   OfflineServiceForm,
   OfflineServiceFormDraft,
@@ -607,6 +608,99 @@ function applyUpdateHouse(snapshot: OfflineSnapshot, write: OfflineFormWrite): O
   return next;
 }
 
+const GENERATOR_HOUR_KEYS = ["gen1Hours", "gen2Hours", "gen3Hours", "gen4Hours"] as const;
+type GeneratorHourField = (typeof GENERATOR_HOUR_KEYS)[number];
+
+function optionalLoggedHours(value: string | undefined): number | null {
+  const text = value?.trim() ?? "";
+  if (!text) return null;
+  const n = Number(text);
+  return Number.isFinite(n) ? n : null;
+}
+
+function isGeneratorHourField(value: string | undefined): value is GeneratorHourField {
+  return (
+    value === "gen1Hours" ||
+    value === "gen2Hours" ||
+    value === "gen3Hours" ||
+    value === "gen4Hours"
+  );
+}
+
+function generatorLogHours(fields: Record<string, string>) {
+  return {
+    gen1Hours: optionalLoggedHours(fields.gen1Hours),
+    gen2Hours: optionalLoggedHours(fields.gen2Hours),
+    gen3Hours: optionalLoggedHours(fields.gen3Hours),
+    gen4Hours: optionalLoggedHours(fields.gen4Hours),
+  };
+}
+
+function generatorLogIsEmpty(hours: {
+  gen1Hours: number | null;
+  gen2Hours: number | null;
+  gen3Hours: number | null;
+  gen4Hours: number | null;
+}) {
+  return GENERATOR_HOUR_KEYS.every((key) => hours[key] == null);
+}
+
+function withGeneratorLogs(snapshot: OfflineSnapshot, generatorLogs: OfflineGenLog[]): OfflineSnapshot {
+  return { ...snapshot, generatorLogs };
+}
+
+/** Same-day logs merge on the phone immediately, matching the server upsert. */
+function mergeGeneratorLogOnDate(
+  logs: OfflineGenLog[],
+  input: {
+    id: string;
+    farmId: string;
+    logDate: string;
+    hours: ReturnType<typeof generatorLogHours>;
+  },
+): OfflineGenLog[] {
+  const logDate = input.logDate.slice(0, 10);
+  const existing = logs.find(
+    (row) => row.farmId === input.farmId && row.logDate.slice(0, 10) === logDate,
+  );
+  if (!existing) {
+    return [
+      {
+        id: input.id,
+        farmId: input.farmId,
+        logDate,
+        gen1Hours: input.hours.gen1Hours,
+        gen2Hours: input.hours.gen2Hours,
+        gen3Hours: input.hours.gen3Hours,
+        gen4Hours: input.hours.gen4Hours,
+      },
+      ...logs,
+    ];
+  }
+  return logs.map((row) =>
+    row.id === existing.id
+      ? {
+          ...row,
+          logDate,
+          gen1Hours: input.hours.gen1Hours ?? row.gen1Hours,
+          gen2Hours: input.hours.gen2Hours ?? row.gen2Hours,
+          gen3Hours: input.hours.gen3Hours ?? row.gen3Hours,
+          gen4Hours: input.hours.gen4Hours ?? row.gen4Hours,
+        }
+      : row,
+  );
+}
+
+function clearGeneratorHour(
+  logs: OfflineGenLog[],
+  row: OfflineGenLog,
+  hourKey: GeneratorHourField,
+): OfflineGenLog[] {
+  const next = { ...row, [hourKey]: null };
+  if (generatorLogIsEmpty(next)) return logs.filter((log) => log.id !== row.id);
+  return logs.map((log) => (log.id === row.id ? next : log));
+}
+
 export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrite): OfflineSnapshot {
   const fields = write.fields ?? {};
   const lists = write.listFields ?? {};
@@ -892,44 +986,80 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
         feedDeliveries: (snapshot.feedDeliveries ?? []).filter((row) => row.id !== write.id),
       };
     case "createGeneratorLog": {
-      const id = write.id ?? `local-gen`;
-      return {
-        ...snapshot,
-        generatorLogs: [
-          {
-            id,
-            farmId: write.farmId ?? fields.farmId ?? "",
-            logDate: fields.logDate ?? now.slice(0, 10),
-            gen1Hours: emptyToNull(fields.gen1Hours) ? num(fields.gen1Hours) : null,
-            gen2Hours: emptyToNull(fields.gen2Hours) ? num(fields.gen2Hours) : null,
-            gen3Hours: emptyToNull(fields.gen3Hours) ? num(fields.gen3Hours) : null,
-            gen4Hours: emptyToNull(fields.gen4Hours) ? num(fields.gen4Hours) : null,
-          },
-          ...snapshot.generatorLogs,
-        ],
-      };
+      const farmId = write.farmId ?? fields.farmId ?? "";
+      const logDate = (fields.logDate ?? now.slice(0, 10)).slice(0, 10);
+      return withGeneratorLogs(
+        snapshot,
+        mergeGeneratorLogOnDate(snapshot.generatorLogs ?? [], {
+          id: write.id ?? `local-gen`,
+          farmId,
+          logDate,
+          hours: generatorLogHours(fields),
+        }),
+      );
     }
-    case "updateGeneratorLog":
-      return {
-        ...snapshot,
-        generatorLogs: snapshot.generatorLogs.map((row) =>
-          row.id === write.id
-            ? {
-                ...row,
-                logDate: fields.logDate ?? row.logDate,
-                gen1Hours: emptyToNull(fields.gen1Hours) ? num(fields.gen1Hours) : row.gen1Hours,
-                gen2Hours: emptyToNull(fields.gen2Hours) ? num(fields.gen2Hours) : row.gen2Hours,
-                gen3Hours: emptyToNull(fields.gen3Hours) ? num(fields.gen3Hours) : row.gen3Hours,
-                gen4Hours: emptyToNull(fields.gen4Hours) ? num(fields.gen4Hours) : row.gen4Hours,
-              }
+    case "updateGeneratorLog": {
+      const logs = snapshot.generatorLogs ?? [];
+      const existing = logs.find((row) => row.id === write.id);
+      if (!existing) return snapshot;
+      const logDate = (fields.logDate ?? existing.logDate).slice(0, 10);
+      const onlyGen = isGeneratorHourField(fields.onlyGen) ? fields.onlyGen : null;
+      if (onlyGen) {
+        const hours = optionalLoggedHours(fields[onlyGen]);
+        if (hours == null) {
+          return withGeneratorLogs(snapshot, clearGeneratorHour(logs, existing, onlyGen));
+        }
+        if (existing.logDate.slice(0, 10) === logDate) {
+          return withGeneratorLogs(
+            snapshot,
+            logs.map((row) => (row.id === existing.id ? { ...row, [onlyGen]: hours } : row)),
+          );
+        }
+        const cleared = clearGeneratorHour(logs, existing, onlyGen);
+        return withGeneratorLogs(
+          snapshot,
+          mergeGeneratorLogOnDate(cleared, {
+            id: write.id ?? existing.id,
+            farmId: existing.farmId,
+            logDate,
+            hours: {
+              gen1Hours: onlyGen === "gen1Hours" ? hours : null,
+              gen2Hours: onlyGen === "gen2Hours" ? hours : null,
+              gen3Hours: onlyGen === "gen3Hours" ? hours : null,
+              gen4Hours: onlyGen === "gen4Hours" ? hours : null,
+            },
+          }),
+        );
+      }
+      const hours = generatorLogHours(fields);
+      if (generatorLogIsEmpty(hours)) {
+        return withGeneratorLogs(
+          snapshot,
+          logs.filter((row) => row.id !== existing.id),
+        );
+      }
+      return withGeneratorLogs(
+        snapshot,
+        logs.map((row) =>
+          row.id === existing.id
+            ? { ...row, logDate, ...hours }
             : row,
         ),
-      };
-    case "deleteGeneratorLog":
-      return {
-        ...snapshot,
-        generatorLogs: snapshot.generatorLogs.filter((row) => row.id !== write.id),
-      };
+      );
+    }
+    case "deleteGeneratorLog": {
+      const logs = snapshot.generatorLogs ?? [];
+      const existing = logs.find((row) => row.id === write.id);
+      if (!existing) return snapshot;
+      const hourKey = isGeneratorHourField(fields.hourKey) ? fields.hourKey : null;
+      if (!hourKey) {
+        return withGeneratorLogs(
+          snapshot,
+          logs.filter((row) => row.id !== existing.id),
+        );
+      }
+      return withGeneratorLogs(snapshot, clearGeneratorHour(logs, existing, hourKey));
+    }
     case "saveFarmLfo": {
       const id = write.id ?? `local-lfo`;
       const farmId = write.farmId ?? fields.farmId ?? "";
