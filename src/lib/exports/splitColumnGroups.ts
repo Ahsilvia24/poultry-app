@@ -13,26 +13,25 @@ export function splitColumnGroups<T extends { rows: ReadonlyArray<unknown> }>(
   const counts = groups.map((group) => group.rows.length);
   const withCount = (index: number, count: number): T =>
     ({ ...groups[index]!, rows: groups[index]!.rows.slice(0, count) }) as T;
-  const heightOf = () => {
-    let max = 0;
-    for (let i = 0; i < groups.length; i++) {
-      max = Math.max(max, measure(withCount(i, counts[i] ?? 0)));
-    }
-    return max;
-  };
-  while (heightOf() > maxHeight && counts.some((count) => count > 1)) {
-    let idx = -1;
-    let tallest = -1;
-    for (let i = 0; i < groups.length; i++) {
-      if ((counts[i] ?? 0) <= 1) continue;
-      const height = measure(withCount(i, counts[i] ?? 0));
-      if (height > tallest) {
-        tallest = height;
-        idx = i;
+  // Each column that is taller than the page keeps the longest prefix that fits.
+  // Binary search does this in a handful of measures instead of dropping one row at a time.
+  for (let i = 0; i < groups.length; i++) {
+    const full = counts[i] ?? 0;
+    if (full <= 1) continue;
+    if (measure(withCount(i, full)) <= maxHeight) continue;
+    let best = 1;
+    let lo = 1;
+    let hi = full;
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (measure(withCount(i, mid)) <= maxHeight) {
+        best = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
       }
     }
-    if (idx < 0) break;
-    counts[idx] = (counts[idx] ?? 1) - 1;
+    counts[i] = best;
   }
 
   const head: T[] = [];

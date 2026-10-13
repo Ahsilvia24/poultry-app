@@ -69,11 +69,34 @@ export function OfflineProvider({
 
   const replicaGen = useRef(0);
   const outboxTail = useRef(Promise.resolve());
+  const pendingPersist = useRef<OfflineSnapshot | null>(null);
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const rememberBackup = useCallback(async (email: string) => {
     const latest = await loadLatestBackup(email);
     setLastBackupAt(latest?.savedAt ?? null);
   }, []);
+
+  const flushPersist = useCallback(() => {
+    if (persistTimer.current != null) {
+      clearTimeout(persistTimer.current);
+      persistTimer.current = null;
+    }
+    const next = pendingPersist.current;
+    pendingPersist.current = null;
+    if (!next) return;
+    void persistOwnerFarms(next, owner);
+  }, [owner]);
+
+  const queuePersist = useCallback(
+    (next: OfflineSnapshot) => {
+      pendingPersist.current = next;
+      if (persistTimer.current != null) clearTimeout(persistTimer.current);
+      // Paint the new hours first. IndexedDB clones the whole farm copy on the main thread.
+      persistTimer.current = setTimeout(flushPersist, 0);
+    },
+    [flushPersist],
+  );
 
   const replaceSnapshot = useCallback((next: OfflineSnapshot) => {
     setSnapshot((current) => {
@@ -81,24 +104,20 @@ export function OfflineProvider({
         seedAndMergeFollowUpCompletions(next, current),
         current,
       );
-      void persistOwnerFarms(merged, owner).then(() => {
-        if (owner) void rememberBackup(owner);
-      });
+      queuePersist(merged);
       return merged;
     });
-  }, [owner, rememberBackup]);
+  }, [queuePersist]);
 
   const patchSnapshot = useCallback((fn: (current: OfflineSnapshot) => OfflineSnapshot) => {
     setSnapshot((current) => {
       if (!current) return current;
       replicaGen.current += 1;
       const next = fn(current);
-      void persistOwnerFarms(next, owner).then(() => {
-        if (owner) void rememberBackup(owner);
-      });
+      queuePersist(next);
       return next;
     });
-  }, [owner, rememberBackup]);
+  }, [queuePersist]);
 
   const enqueue = useCallback((item: Omit<OfflineOutboxItem, "id" | "createdAt">) => {
     const full: OfflineOutboxItem = {
@@ -180,6 +199,19 @@ export function OfflineProvider({
       cancelled = true;
     };
   }, [owner, ownerName, ownerUserId, rememberBackup]);
+
+  useEffect(() => {
+    function onHide() {
+      if (document.visibilityState === "hidden") flushPersist();
+    }
+    window.addEventListener("pagehide", flushPersist);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("pagehide", flushPersist);
+      document.removeEventListener("visibilitychange", onHide);
+      flushPersist();
+    };
+  }, [flushPersist]);
 
   useEffect(() => {
     const onOnline = () => {

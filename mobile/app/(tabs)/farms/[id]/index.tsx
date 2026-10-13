@@ -21,13 +21,12 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   completeFlock,
   reactivateFlock,
-  createGeneratorLog,
   createHouse,
   deleteGeneratorLog,
   deleteHouse,
   getFarmDetail,
+  listFarmGeneratorLogs,
   updateFarm,
-  updateGeneratorLog,
   updateHouse,
   updateHouseLoggedTemp,
 } from "../../../../src/repos/data";
@@ -40,19 +39,20 @@ import {
 import { FARM_HOUSE_BACK_PEEK_PX, farmHouseBackScrollTop } from "../../../../src/lib/farmHouseScroll";
 import { useTabScrollToTop } from "../../../../src/lib/tabScroll";
 import {
-  detectGeneratorHourSwap,
   formatGeneratorChartsCopy,
   formatGeneratorHours,
   formatGeneratorLogDate,
   hoursDelta,
-  previousGeneratorHoursFromLogs,
   GENERATOR_FIELD_DEFS,
   MAX_GENERATOR_HOUR_LOGS,
   type GenHourKey,
-  type GeneratorHourSwapSuggestion,
   type GeneratorHours,
 } from "../../../../src/lib/generator";
-import { addDaysKey, todayKey } from "../../../../src/lib/ids";
+import {
+  GeneratorLogModal,
+  type GeneratorLogDraftRow,
+} from "../../../../src/components/GeneratorLogModal";
+import { addDaysKey } from "../../../../src/lib/ids";
 import { formatGroupedInput, parseGroupedNumber, ungroupNumber } from "../../../../src/lib/grouped-number";
 import { appScrollProps, colors, styles } from "../../../../src/theme";
 import {
@@ -438,11 +438,9 @@ export default function FarmDetailScreen() {
   const [farmEditKeyboardH, setFarmEditKeyboardH] = useState(0);
   const farmEditScrollRef = useRef<ScrollViewType>(null);
   const farmNotesWrapRef = useRef<View>(null);
-  const [generatorModalOpen, setGeneratorModalOpen] = useState(false);
-  const [generatorSaving, setGeneratorSaving] = useState(false);
-  const [generatorError, setGeneratorError] = useState<string | null>(null);
-  const [generatorEditingId, setGeneratorEditingId] = useState<string | null>(null);
-  const [generatorEditingGen, setGeneratorEditingGen] = useState<GenHourKey | null>(null);
+  const [generatorEditor, setGeneratorEditor] = useState<
+    { log: GeneratorLogDraftRow; onlyGen: GenHourKey | null } | "create" | null
+  >(null);
   const [opsConfirm, setOpsConfirm] = useState<{
     kind: "house";
     houseId: string;
@@ -461,17 +459,6 @@ export default function FarmDetailScreen() {
   } | null>(null);
   const [flockMenu, setFlockMenu] = useState<"add-end" | "past" | null>(null);
   const [completeError, setCompleteError] = useState<string | null>(null);
-  const [generatorDraft, setGeneratorDraft] = useState({
-    logDate: todayKey(),
-    gen1Hours: "",
-    gen2Hours: "",
-    gen3Hours: "",
-    gen4Hours: "",
-  });
-  const [generatorSwap, setGeneratorSwap] = useState<GeneratorHourSwapSuggestion | null>(
-    null,
-  );
-  const genHourInputRefs = useRef<Array<TextInput | null>>([]);
   const scrollRef = useRef<ScrollViewType>(null);
   useTabScrollToTop("farms", scrollRef);
   const sectionY = useRef<Record<string, number>>({});
@@ -870,136 +857,18 @@ export default function FarmDetailScreen() {
     }
   }
 
-  function closeGeneratorModal() {
-    if (generatorSaving) return;
-    setGeneratorModalOpen(false);
-    setGeneratorError(null);
-    setGeneratorEditingId(null);
-    setGeneratorEditingGen(null);
-    setGeneratorSwap(null);
-  }
-
-  function parseGeneratorDraftHours() {
-    const parseHours = (raw: string) => {
-      const trimmed = raw.trim();
-      if (trimmed === "") return null;
-      const n = Number(trimmed);
-      if (!Number.isFinite(n) || n < 0) {
-        throw new Error("Generator hours must be 0 or greater");
-      }
-      return n;
-    };
-    return {
-      logDate: generatorDraft.logDate.trim(),
-      gen1Hours: parseHours(generatorDraft.gen1Hours),
-      gen2Hours: parseHours(generatorDraft.gen2Hours),
-      gen3Hours: parseHours(generatorDraft.gen3Hours),
-      gen4Hours: parseHours(generatorDraft.gen4Hours),
-    };
-  }
-
-  function persistGeneratorHours(
-    hours: {
-      logDate: string;
-      gen1Hours: number | null;
-      gen2Hours: number | null;
-      gen3Hours: number | null;
-      gen4Hours: number | null;
-    },
-    remapAll = false,
-  ) {
-    if (generatorEditingId) {
-      updateGeneratorLog(farm.id, generatorEditingId, {
-        ...hours,
-        onlyGen: remapAll ? undefined : generatorEditingGen ?? undefined,
-      });
-    } else {
-      createGeneratorLog({
-        farmId: farm.id,
-        ...hours,
-      });
-    }
-    setGeneratorModalOpen(false);
-    setGeneratorEditingId(null);
-    setGeneratorEditingGen(null);
-    setGeneratorSwap(null);
-    load();
-  }
-
-  function saveGeneratorLog(
-    hours?: {
-      logDate: string;
-      gen1Hours: number | null;
-      gen2Hours: number | null;
-      gen3Hours: number | null;
-      gen4Hours: number | null;
-    },
-    remapAll = false,
-  ) {
-    setGeneratorSaving(true);
-    setGeneratorError(null);
-    try {
-      const payload = hours ?? parseGeneratorDraftHours();
-      if (!hours) {
-        const previous = previousGeneratorHoursFromLogs(data?.generatorLogs ?? [], {
-          onOrBeforeDate: payload.logDate,
-          excludeLogId: generatorEditingId,
-        });
-        const entered = generatorEditingGen
-          ? {
-              gen1Hours: generatorEditingGen === "gen1Hours" ? payload.gen1Hours : null,
-              gen2Hours: generatorEditingGen === "gen2Hours" ? payload.gen2Hours : null,
-              gen3Hours: generatorEditingGen === "gen3Hours" ? payload.gen3Hours : null,
-              gen4Hours: generatorEditingGen === "gen4Hours" ? payload.gen4Hours : null,
-            }
-          : payload;
-        const swap = detectGeneratorHourSwap(previous, entered);
-        if (swap) {
-          setGeneratorSwap(swap);
-          return;
-        }
-      }
-      persistGeneratorHours(payload, remapAll);
-    } catch (e) {
-      setGeneratorError(e instanceof Error ? e.message : "Could not save generator log");
-    } finally {
-      setGeneratorSaving(false);
-    }
+  function refreshGeneratorLogs() {
+    if (!farmId) return;
+    const generatorLogs = listFarmGeneratorLogs(farmId);
+    setData((prev) => (prev ? { ...prev, generatorLogs } : prev));
   }
 
   function openGeneratorEditor(
-    log?: {
-      id: string;
-      logDate: string;
-      gen1Hours: number | null;
-      gen2Hours: number | null;
-      gen3Hours: number | null;
-      gen4Hours: number | null;
-    },
+    log?: GeneratorLogDraftRow,
     onlyGen?: GenHourKey,
   ) {
-    setGeneratorError(null);
-    setGeneratorEditingGen(onlyGen ?? null);
-    if (log) {
-      setGeneratorEditingId(log.id);
-      setGeneratorDraft({
-        logDate: log.logDate,
-        gen1Hours: log.gen1Hours == null ? "" : String(log.gen1Hours),
-        gen2Hours: log.gen2Hours == null ? "" : String(log.gen2Hours),
-        gen3Hours: log.gen3Hours == null ? "" : String(log.gen3Hours),
-        gen4Hours: log.gen4Hours == null ? "" : String(log.gen4Hours),
-      });
-    } else {
-      setGeneratorEditingId(null);
-      setGeneratorDraft({
-        logDate: todayKey(),
-        gen1Hours: "",
-        gen2Hours: "",
-        gen3Hours: "",
-        gen4Hours: "",
-      });
-    }
-    setGeneratorModalOpen(true);
+    if (log) setGeneratorEditor({ log, onlyGen: onlyGen ?? null });
+    else setGeneratorEditor("create");
   }
 
   function confirmDeleteHouse(h: HouseRow) {
@@ -1009,7 +878,7 @@ export default function FarmDetailScreen() {
   function removeGenerator(logId: string, hourKey: GenHourKey) {
     try {
       deleteGeneratorLog(farm.id, logId, hourKey);
-      load();
+      refreshGeneratorLogs();
     } catch (e) {
       setOpsError(e instanceof Error ? e.message : "Could not delete");
     }
@@ -1669,7 +1538,7 @@ export default function FarmDetailScreen() {
                     }}
                   />
                 ) : null}
-                {!generatorModalOpen ? (
+                {generatorEditor == null ? (
                   <RecordLink label="Log Gen." onPress={() => openGeneratorEditor()} />
                 ) : null}
               </>
@@ -2324,143 +2193,13 @@ export default function FarmDetailScreen() {
         </View>
       </Modal>
 
-      <Modal
-        visible={generatorModalOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={closeGeneratorModal}
-      >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.4)",
-              justifyContent: "flex-end",
-            }}
-          >
-            <Pressable style={{ flex: 1 }} onPress={closeGeneratorModal} />
-            <View
-              style={{
-                backgroundColor: "#fff",
-                borderTopLeftRadius: 16,
-                borderTopRightRadius: 16,
-                maxHeight: "92%",
-                overflow: "hidden",
-              }}
-            >
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{
-                  padding: 20,
-                  paddingBottom: Platform.OS === "ios" ? 28 : 24,
-                }}
-              >
-                <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-                  {generatorEditingId
-                    ? generatorEditingGen
-                      ? `Edit ${GENERATOR_FIELD_DEFS.find((f) => f.hourKey === generatorEditingGen)?.label ?? "generator"}`
-                      : "Edit generators"
-                    : "Log generators"}
-                </Text>
-                {generatorError ? (
-                  <Text style={{ color: colors.danger, marginTop: 8, fontWeight: "700" }}>
-                    {generatorError}
-                  </Text>
-                ) : null}
-                <View style={{ marginTop: 14, marginBottom: 4 }}>
-                  <DatePickerField
-                    label="Date logged"
-                    layout="settings"
-                    value={generatorDraft.logDate}
-                    presentation="inline"
-                    onChange={(date) =>
-                      setGeneratorDraft((prev) => ({ ...prev, logDate: date }))
-                    }
-                  />
-                </View>
-                {(generatorEditingGen
-                  ? GENERATOR_FIELD_DEFS.filter((f) => f.hourKey === generatorEditingGen)
-                  : GENERATOR_FIELD_DEFS
-                ).map((f, index, list) => {
-                  const previous = previousGeneratorHoursFromLogs(data?.generatorLogs ?? [], {
-                    onOrBeforeDate: generatorDraft.logDate,
-                    excludeLogId: generatorEditingId,
-                  });
-                  const raw = generatorDraft[f.hourKey];
-                  const delta = hoursDelta(
-                    raw.trim() === "" ? null : Number(raw),
-                    previous[f.hourKey] ?? null,
-                  );
-                  const isLast = index === list.length - 1;
-                  return (
-                    <View key={f.hourKey}>
-                      <SettingsRow label={`${f.label} hours`}>
-                        <SettingsChipInput
-                          inputRef={(el) => {
-                            genHourInputRefs.current[index] = el;
-                          }}
-                          value={raw}
-                          keyboardType="decimal-pad"
-                          accessibilityLabel={`${f.label} hours`}
-                          returnKeyType={isLast ? "done" : "next"}
-                          blurOnSubmit={isLast}
-                          onSubmitEditing={() => {
-                            if (isLast) Keyboard.dismiss();
-                            else genHourInputRefs.current[index + 1]?.focus();
-                          }}
-                          onChangeText={(v) =>
-                            setGeneratorDraft((prev) => ({
-                              ...prev,
-                              [f.hourKey]: v.replace(/[^\d.]/g, ""),
-                            }))
-                          }
-                        />
-                      </SettingsRow>
-                      <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 6 }}>
-                        Time exercised: {formatGeneratorHours(delta)}
-                      </Text>
-                    </View>
-                  );
-                })}
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-                  <PrimaryButton
-                    label={generatorSaving ? "Saving…" : "Save"}
-                    onPress={() => saveGeneratorLog()}
-                    style={{ flex: 1 }}
-                  />
-                  <PrimaryButton
-                    label="Cancel"
-                    secondary
-                    onPress={closeGeneratorModal}
-                    style={{ flex: 1 }}
-                  />
-                </View>
-              </ScrollView>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      <ConfirmDialog
-        visible={generatorSwap != null}
-        title="Hours look swapped"
-        message={generatorSwap?.message ?? ""}
-        confirmLabel="Fix and save"
-        altLabel="Save as entered"
-        cancelLabel="Cancel"
-        onConfirm={() => {
-          if (!generatorSwap) return;
-          const draft = parseGeneratorDraftHours();
-          saveGeneratorLog({ ...draft, ...generatorSwap.suggested }, true);
-        }}
-        onAlt={() => {
-          saveGeneratorLog(parseGeneratorDraftHours(), false);
-        }}
-        onCancel={() => setGeneratorSwap(null)}
+      <GeneratorLogModal
+        visible={generatorEditor != null}
+        farmId={farm.id}
+        logs={data.generatorLogs ?? []}
+        editing={generatorEditor != null && generatorEditor !== "create" ? generatorEditor : null}
+        onClose={() => setGeneratorEditor(null)}
+        onSaved={refreshGeneratorLogs}
       />
       <ConfirmDialog
         visible={opsConfirm != null}
