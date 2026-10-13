@@ -1086,26 +1086,7 @@ export function getFarmDetail(farmId: string) {
       description: issue.description,
       correctiveAction: issue.corrective_action,
     })),
-    generatorLogs: db.getAllSync<{
-      id: string;
-      log_date: string;
-      gen1_hours: number | null;
-      gen2_hours: number | null;
-      gen3_hours: number | null;
-      gen4_hours: number | null;
-      notes: string | null;
-    }>(
-      `SELECT * FROM generator_logs WHERE farm_id = ?
-       ORDER BY log_date DESC, id DESC LIMIT 20`,
-      [farmId],
-    ).map((log) => ({
-      id: log.id,
-      logDate: log.log_date,
-      gen1Hours: log.gen1_hours,
-      gen2Hours: log.gen2_hours,
-      gen3Hours: log.gen3_hours,
-      gen4Hours: log.gen4_hours,
-    })),
+    generatorLogs: listFarmGeneratorLogs(farmId),
     litterEvents: db.getAllSync<{
       id: string;
       event_date: string;
@@ -4700,6 +4681,32 @@ function pruneGeneratorLogs(db: ReturnType<typeof getDb>, farmId: string) {
       [next.gen1Hours, next.gen2Hours, next.gen3Hours, next.gen4Hours, id, farmId],
     );
   }
+}
+
+/** Newest generator readings for the farm page. The report still reads the full history. */
+export function listFarmGeneratorLogs(farmId: string) {
+  return getDb()
+    .getAllSync<{
+      id: string;
+      log_date: string;
+      gen1_hours: number | null;
+      gen2_hours: number | null;
+      gen3_hours: number | null;
+      gen4_hours: number | null;
+    }>(
+      `SELECT id, log_date, gen1_hours, gen2_hours, gen3_hours, gen4_hours
+       FROM generator_logs WHERE farm_id = ?
+       ORDER BY log_date DESC, id DESC LIMIT 20`,
+      [farmId],
+    )
+    .map((log) => ({
+      id: log.id,
+      logDate: log.log_date,
+      gen1Hours: log.gen1_hours,
+      gen2Hours: log.gen2_hours,
+      gen3Hours: log.gen3_hours,
+      gen4Hours: log.gen4_hours,
+    }));
 }
 
 export function createGeneratorLog(input: GeneratorLogInput) {

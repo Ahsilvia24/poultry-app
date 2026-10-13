@@ -282,19 +282,19 @@ function GeneratorLogForm({
     const fd = new FormData();
     appendHours(fd, hours);
     if (remapAll) fd.delete("onlyGen");
+    if (enabled) {
+      queue(
+        formWrite(recordId ? "updateGeneratorLog" : "createGeneratorLog", {
+          id: recordId ?? localRecordId(),
+          farmId,
+          ...formDataToParts(fd),
+        }),
+      );
+      setSwap(null);
+      onSuccess?.();
+      return;
+    }
     start(async () => {
-      if (enabled) {
-        queue(
-          formWrite(recordId ? "updateGeneratorLog" : "createGeneratorLog", {
-            id: recordId ?? localRecordId(),
-            farmId,
-            ...formDataToParts(fd),
-          }),
-        );
-        setSwap(null);
-        onSuccess?.();
-        return;
-      }
       const result = recordId
         ? await updateGeneratorLogAction(recordId, fd)
         : await createGeneratorLogAction(fd);
@@ -491,9 +491,10 @@ export function FarmGeneratorLogSection({
       string,
       { dateLabel: string; logDate: string; hours: GeneratorHours; deltas: GeneratorDeltas }
     >();
+    const logById = new Map(allSorted.map((log) => [log.id, log]));
     for (const gen of chartRowsByGen) {
       for (const row of gen.rows) {
-        const log = allSorted.find((l) => l.id === row.id);
+        const log = logById.get(row.id);
         if (!log) continue;
         let entry = byDate.get(log.id);
         if (!entry) {

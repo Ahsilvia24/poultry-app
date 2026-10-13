@@ -47,19 +47,20 @@ assert.match(expoNew, /growerRef.current\?\.focus/);
 assert.match(expoNew, /Keyboard.dismiss/);
 
 const expoFarm = read("mobile/app/(tabs)/farms/[id]/index.tsx");
-assert.match(expoFarm, /SettingsRow label=\{\`\$\{f.label\} hours\`\}/);
-assert.match(expoFarm, /SettingsChipInput/);
-assert.match(expoFarm, /returnKeyType=\{isLast \? "done" : "next"\}/);
-assert.match(expoFarm, /Time exercised:/);
+const expoGen = read("mobile/src/components/GeneratorLogModal.tsx");
+assert.match(expoGen, /SettingsRow label=\{\`\$\{field\.label\} hours\`\}/);
+assert.match(expoGen, /SettingsChipInput/);
+assert.match(expoGen, /returnKeyType=\{isLast \? "done" : "next"\}/);
+assert.match(expoGen, /Time exercised:/);
 assert.match(expoFarm, /SettingsNumRow/);
 
-const hoursBlock = expoFarm.slice(
-  expoFarm.indexOf("Log generators"),
-  expoFarm.indexOf('label={generatorSaving ? "Saving…" : "Save"}'),
+const hoursBlock = expoGen.slice(
+  expoGen.indexOf("Log generators"),
+  expoGen.indexOf('label={saving ? "Saving…" : "Save"}'),
 );
 assert.match(hoursBlock, /SettingsChipInput/);
 assert.match(hoursBlock, /layout="settings"/);
-assert.match(expoFarm, /logDate: todayKey\(\)/);
+assert.match(expoGen, /logDate: todayKey\(\)/);
 assert.doesNotMatch(hoursBlock, /<NativeNumInput/);
 
 const datePicker = read("mobile/src/components/DatePickerField.tsx");
