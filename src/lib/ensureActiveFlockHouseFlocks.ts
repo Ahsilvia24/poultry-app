@@ -79,18 +79,21 @@ export async function ensureActiveFlockHouseFlocks(
           select: { id: true },
         });
         if (clash) {
-          await db.houseFlock.delete({ where: { id: hf.id } });
-        } else {
-          await db.houseFlock.update({
-            where: { id: hf.id },
-            data: { flockId: merge.keepId },
-          });
+          // Leave the row. Deleting it cascades mortality off the house.
+          continue;
         }
+        await db.houseFlock.update({
+          where: { id: hf.id },
+          data: { flockId: merge.keepId },
+        });
       }
-      await db.flock.update({
-        where: { id: absorbId },
-        data: { flockStatus: "COMPLETED", deletedAt: new Date() },
-      });
+      const remaining = await db.houseFlock.count({ where: { flockId: absorbId } });
+      if (remaining === 0) {
+        await db.flock.update({
+          where: { id: absorbId },
+          data: { flockStatus: "COMPLETED" },
+        });
+      }
     }
   }
 

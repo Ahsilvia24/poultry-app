@@ -76,7 +76,8 @@ assert.match(importUi, /extractCatchRowsOnDevice/);
 assert.match(importUi, /previewPlacementRowsLocal/);
 assert.match(importUi, /applyPlacementToSnapshot/);
 assert.match(importUi, /applyCatchToSnapshot/);
-assert.match(importUi, /graph: result\.graph/);
+assert.match(importUi, /graph: applied\.graph/);
+assert.match(importUi, /applyPlacementToSnapshot\(current/);
 assert.match(importUi, /Need Wi-Fi once to finish downloading the import reader/);
 assert.doesNotMatch(importUi, /settlement/);
 assert.match(read("src/lib/offline/warmOfflineAssets.ts"), /pdf-text-extract-client/);
@@ -873,6 +874,147 @@ assert.equal(
   matchedPlacement.snapshot.houseFlocks.find((hf) => hf.id === "hf-1")?.placedBirdCount,
   21000,
 );
+
+const withGeneratorLog = {
+  ...snapshot,
+  generatorLogs: [
+    {
+      id: "gen-1",
+      farmId: "farm-1",
+      logDate: "2026-09-10",
+      gen1Hours: 1200,
+      gen2Hours: null,
+      gen3Hours: null,
+      gen4Hours: null,
+    },
+  ],
+};
+const keptPlacement = applyPlacementToSnapshot(withGeneratorLog, {
+  selections: [{ key: "12::OAK RIDGE", selected: true }],
+  rows: [
+    {
+      datePlaced: "2026-09-01",
+      farmCode: "12",
+      farmName: "Oak Ridge",
+      flockId: "B2",
+      houseNo: 1,
+      numberSent: 21000,
+    },
+    {
+      datePlaced: "2026-09-01",
+      farmCode: "12",
+      farmName: "Oak Ridge",
+      flockId: "B2",
+      houseNo: 2,
+      numberSent: 20500,
+    },
+  ],
+});
+assert.equal(keptPlacement.ok, true);
+assert.equal(keptPlacement.createdFarms, 0);
+assert.equal(keptPlacement.updatedNames, 0);
+assert.equal(keptPlacement.snapshot.farms.find((farm) => farm.id === "farm-1")?.farmName, "Oak Ridge");
+assert.equal(
+  keptPlacement.snapshot.farms.find((farm) => farm.id === "farm-1")?.numberOfGenerators,
+  2,
+);
+assert.equal(keptPlacement.snapshot.generatorLogs.find((log) => log.id === "gen-1")?.gen1Hours, 1200);
+assert.equal(keptPlacement.snapshot.mortalities.length, 1);
+assert.equal(keptPlacement.snapshot.mortalities[0]?.houseFlockId, "hf-1");
+assert.equal(keptPlacement.snapshot.visits[0]?.id, "visit-1");
+assert.equal(keptPlacement.snapshot.lfos[0]?.id, "lfo-1");
+assert.equal(keptPlacement.snapshot.issues.length, 0);
+const keptHouse = keptPlacement.snapshot.houseFlocks.find((hf) => hf.id === "hf-1");
+assert.equal(keptHouse?.flockId, "flock-1");
+assert.equal(keptHouse?.catchDate, "2026-09-22");
+assert.equal(keptHouse?.catchTime, "22:00");
+assert.equal(keptHouse?.placedBirdCount, 21000);
+assert.equal(keptPlacement.snapshot.flocks.find((flock) => flock.id === "flock-1")?.flockNumber, "B2");
+assert.equal(
+  keptPlacement.snapshot.flocks.find((flock) => flock.id === "flock-1")?.projectedCatchDate,
+  "2026-09-22T00:00:00.000Z",
+);
+
+const renamedPlacement = applyPlacementToSnapshot(withGeneratorLog, {
+  selections: [{ key: "12::OAK RIDGE POULTRY", selected: true, renameToImportedName: true }],
+  rows: [
+    {
+      datePlaced: "2026-09-01",
+      farmCode: "12",
+      farmName: "Oak Ridge Poultry",
+      flockId: "B2",
+      houseNo: 1,
+      numberSent: 21000,
+    },
+  ],
+});
+assert.equal(renamedPlacement.ok, true);
+assert.equal(
+  renamedPlacement.snapshot.farms.find((farm) => farm.id === "farm-1")?.farmName,
+  "Oak Ridge Poultry",
+);
+assert.equal(renamedPlacement.snapshot.generatorLogs.find((log) => log.id === "gen-1")?.gen1Hours, 1200);
+assert.equal(renamedPlacement.snapshot.houseFlocks.find((hf) => hf.id === "hf-1")?.flockId, "flock-1");
+assert.equal(renamedPlacement.snapshot.houseFlocks.find((hf) => hf.id === "hf-2")?.catchTime, "23:00");
+
+const clashPlacement = applyPlacementToSnapshot(
+  {
+    ...withGeneratorLog,
+    flocks: [
+      ...withGeneratorLog.flocks,
+      {
+        id: "flock-2",
+        farmId: "farm-1",
+        flockNumber: "b2",
+        flockStatus: "ACTIVE",
+        placementDate: "2026-07-01T00:00:00.000Z",
+        projectedCatchDate: "2026-08-22T00:00:00.000Z",
+        actualCatchDate: null,
+        targetMarketAge: 52,
+        growthRateLbsPerDay: 0.15,
+        deletedAt: null,
+      },
+    ],
+  },
+  {
+    selections: [{ key: "12::OAK RIDGE", selected: true }],
+    rows: [
+      {
+        datePlaced: "2026-09-01",
+        farmCode: "12",
+        farmName: "Oak Ridge",
+        flockId: "B2",
+        houseNo: 1,
+        numberSent: 21000,
+      },
+    ],
+  },
+);
+assert.equal(clashPlacement.ok, true);
+assert.equal(clashPlacement.snapshot.flocks.find((flock) => flock.id === "flock-1")?.flockNumber, "A1");
+assert.equal(clashPlacement.snapshot.houseFlocks.find((hf) => hf.id === "hf-1")?.flockId, "flock-1");
+assert.equal(clashPlacement.snapshot.generatorLogs.find((log) => log.id === "gen-1")?.gen1Hours, 1200);
+assert.equal(clashPlacement.snapshot.mortalities.length, 1);
+
+const placementAction = read("src/app/actions/placement-import.ts");
+assert.match(placementAction, /renameKeys/);
+assert.doesNotMatch(placementAction, /reclaimId/);
+assert.doesNotMatch(read("src/lib/ensureActiveFlockHouseFlocks.ts"), /houseFlock\.delete/);
+const mobileData = read("mobile/src/repos/data.ts");
+const placementFn = mobileData.slice(
+  mobileData.indexOf("export function importPlacementRows"),
+  mobileData.indexOf("export function importCatchRows"),
+);
+assert.match(placementFn, /renameKeys/);
+assert.doesNotMatch(placementFn, /syncFlockDatesAndPrune/);
+assert.doesNotMatch(placementFn, /SET flock_id/);
+const ensureFn = mobileData.slice(
+  mobileData.indexOf("export function ensureHousesOnActiveFlock"),
+  mobileData.indexOf("function syncFlockDatesAndPrune"),
+);
+assert.doesNotMatch(ensureFn, /DELETE FROM house_flocks/);
+assert.doesNotMatch(ensureFn, /DELETE FROM flocks/);
+assert.match(ensureFn, /COMPLETED/);
 
 const caught = applyCatchToSnapshot(snapshot, {
   selections: [{ key: "12|OAK RIDGE", selected: true }],

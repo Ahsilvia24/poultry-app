@@ -3057,6 +3057,9 @@ export function importPlacementRows(input: {
 } {
   const selectedKeys = new Set(input.selections.filter((s) => s.selected).map((s) => s.key));
   if (selectedKeys.size === 0) throw new Error("Select at least one farm to import.");
+  const renameKeys = new Set(
+    input.selections.filter((s) => s.selected && s.renameToImportedName).map((s) => s.key),
+  );
 
   let createdFarms = 0;
   let updatedNames = 0;
@@ -3096,8 +3099,7 @@ export function importPlacementRows(input: {
 
     if (match.farm) {
       farmId = match.farm.id;
-      // Placement import overwrites farm name + code from the sheet (that's the point).
-      if (match.farm.farmName.trim() !== sample.farmName.trim()) {
+      if (renameKeys.has(key) && match.farm.farmName.trim() !== sample.farmName.trim()) {
         renameFarmOnly(farmId, sample.farmName);
         updatedNames += 1;
       }
@@ -3131,134 +3133,89 @@ export function importPlacementRows(input: {
       houseIds.set(houseNo, id);
     }
 
-    const byFlock = new Map<string, typeof farmRows>();
-    for (const row of farmRows) {
-      const list = byFlock.get(row.flockId) ?? [];
-      list.push(row);
-      byFlock.set(row.flockId, list);
-    }
+    const byHouse = new Map<number, (typeof farmRows)[number]>();
+    for (const row of farmRows) byHouse.set(row.houseNo, row);
+    const touchedFlockIds = new Set<string>();
 
-    for (const [flockId, flockRows] of byFlock) {
-      const byHouse = new Map<number, (typeof flockRows)[number]>();
-      for (const row of flockRows) byHouse.set(row.houseNo, row);
-      const unique = Array.from(byHouse.values());
-      if (unique.length === 0) continue;
-
-      let targetFlock = getDb().getFirstSync<{ id: string }>(
-        `SELECT id FROM flocks
-         WHERE farm_id = ? AND flock_number = ? AND flock_status = 'ACTIVE'
+    for (const row of byHouse.values()) {
+      const houseId = houseIds.get(row.houseNo);
+      if (!houseId) continue;
+      const occupied = getDb().getFirstSync<{
+        flock_id: string;
+        house_flock_id: string;
+      }>(
+        `SELECT f.id as flock_id, hf.id as house_flock_id
+         FROM house_flocks hf
+         JOIN flocks f ON f.id = hf.flock_id
+         WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
          LIMIT 1`,
-        [farmId, flockId],
+        [houseId, farmId],
       );
 
-      if (!targetFlock) {
-        // Reclaim the active flock that already holds the most imported houses
-        // (old numbers like "87" / "810"), then rename it to the sheet farm code.
-        const houseIdList = unique
-          .map((r) => houseIds.get(r.houseNo))
-          .filter((id): id is string => Boolean(id));
-        let reclaim: { id: string } | null = null;
-        if (houseIdList.length) {
-          const placeholders = houseIdList.map(() => "?").join(",");
-          reclaim = getDb().getFirstSync<{ id: string }>(
-            `SELECT f.id as id, COUNT(*) as c
-             FROM house_flocks hf
-             JOIN flocks f ON f.id = hf.flock_id
-             WHERE f.farm_id = ? AND f.flock_status = 'ACTIVE'
-               AND hf.house_id IN (${placeholders})
-             GROUP BY f.id
-             ORDER BY c DESC
-             LIMIT 1`,
-            [farmId, ...houseIdList],
-          );
-        }
-        if (!reclaim) {
-          reclaim = getDb().getFirstSync<{ id: string }>(
-            `SELECT id FROM flocks
-             WHERE farm_id = ? AND flock_status = 'ACTIVE'
-             ORDER BY placement_date ASC
-             LIMIT 1`,
-            [farmId],
-          );
-        }
-        if (reclaim) {
-          getDb().runSync(`UPDATE flocks SET flock_number = ? WHERE id = ?`, [
-            flockId,
-            reclaim.id,
-          ]);
-          targetFlock = reclaim;
-        } else {
-          const minDate = unique.map((r) => r.datePlaced).sort()[0]!;
-          const id = newId("flock");
-          getDb().runSync(
-            `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
-             VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
-            [id, farmId, flockId, minDate, addDaysKey(minDate, 52)],
-          );
-          targetFlock = { id };
-          createdFlocks += 1;
-        }
-      }
-
-      const vacatedFlockIds = new Set<string>();
-
-      for (const row of unique) {
-        const houseId = houseIds.get(row.houseNo);
-        if (!houseId) continue;
-        const catchDate = addDaysKey(row.datePlaced, 52);
-        const occupied = getDb().getFirstSync<{
-          flock_id: string;
-          flock_number: string;
-          house_flock_id: string;
-        }>(
-          `SELECT f.id as flock_id, f.flock_number, hf.id as house_flock_id
-           FROM house_flocks hf
-           JOIN flocks f ON f.id = hf.flock_id
-           WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
-           LIMIT 1`,
-          [houseId, farmId],
-        );
-
-        if (occupied) {
-          if (occupied.flock_id !== targetFlock.id) {
-            vacatedFlockIds.add(occupied.flock_id);
-          }
-          // Overwrite birds/date and move onto the imported flock identity.
-          getDb().runSync(
-            `UPDATE house_flocks
-             SET flock_id = ?, placed_bird_count = ?, placement_date = ?, catch_date = ?
-             WHERE id = ?`,
-            [
-              targetFlock.id,
-              row.numberSent,
-              row.datePlaced,
-              catchDate,
-              occupied.house_flock_id,
-            ],
-          );
-          updatedPlacements += 1;
-          continue;
-        }
-
+      if (occupied) {
         getDb().runSync(
-          `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [
-            newId("hf"),
-            targetFlock.id,
-            houseId,
-            Math.floor(row.numberSent),
-            row.datePlaced,
-            catchDate,
-          ],
+          `UPDATE house_flocks
+           SET placed_bird_count = ?, placement_date = ?
+           WHERE id = ?`,
+          [row.numberSent, row.datePlaced, occupied.house_flock_id],
         );
+        touchedFlockIds.add(occupied.flock_id);
         updatedPlacements += 1;
+        continue;
       }
 
-      syncFlockDatesAndPrune(farmId, targetFlock.id);
-      for (const oldId of vacatedFlockIds) {
-        syncFlockDatesAndPrune(farmId, oldId);
+      let target = getDb().getFirstSync<{ id: string }>(
+        `SELECT id FROM flocks
+         WHERE farm_id = ? AND flock_status = 'ACTIVE'
+         ORDER BY placement_date ASC
+         LIMIT 1`,
+        [farmId],
+      );
+      if (!target) {
+        const id = newId("flock");
+        getDb().runSync(
+          `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
+           VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
+          [id, farmId, row.flockId, row.datePlaced, addDaysKey(row.datePlaced, 52)],
+        );
+        target = { id };
+        createdFlocks += 1;
       }
+      getDb().runSync(
+        `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date)
+         VALUES (?, ?, ?, ?, ?, NULL)`,
+        [newId("hf"), target.id, houseId, Math.floor(row.numberSent), row.datePlaced],
+      );
+      touchedFlockIds.add(target.id);
+      updatedPlacements += 1;
+    }
+
+    const sheetFlockIds = new Set(farmRows.map((row) => row.flockId.trim()).filter(Boolean));
+    if (sheetFlockIds.size === 1 && touchedFlockIds.size === 1) {
+      const nextNumber = [...sheetFlockIds][0]!;
+      const ownerId = [...touchedFlockIds][0]!;
+      const clash = getDb().getFirstSync<{ id: string }>(
+        `SELECT id FROM flocks
+         WHERE farm_id = ? AND id != ? AND flock_status = 'ACTIVE'
+           AND upper(trim(flock_number)) = upper(trim(?))
+         LIMIT 1`,
+        [farmId, ownerId, nextNumber],
+      );
+      if (!clash) {
+        getDb().runSync(`UPDATE flocks SET flock_number = ? WHERE id = ?`, [nextNumber, ownerId]);
+      }
+    }
+
+    for (const flockId of touchedFlockIds) {
+      const hfs = getDb().getAllSync<{
+        placement_date: string | null;
+      }>("SELECT placement_date FROM house_flocks WHERE flock_id = ?", [flockId]);
+      const places = hfs
+        .map((row) => row.placement_date?.trim())
+        .filter((value): value is string => Boolean(value))
+        .sort();
+      if (!places[0]) continue;
+      getDb().runSync(`UPDATE flocks SET placement_date = ? WHERE id = ?`, [places[0], flockId]);
     }
   }
 
@@ -3744,15 +3701,26 @@ export function ensureHousesOnActiveFlock(farmId: string) {
           [merge.keepId, hf.house_id],
         );
         if (clash) {
-          db.runSync("DELETE FROM house_flocks WHERE id = ?", [hf.id]);
-        } else {
-          db.runSync("UPDATE house_flocks SET flock_id = ? WHERE id = ?", [
-            merge.keepId,
-            hf.id,
-          ]);
+          // Leave the row. Deleting it fails when mortality still points at it
+          // and the farm page never reaches the generator log.
+          continue;
         }
+        db.runSync("UPDATE house_flocks SET flock_id = ? WHERE id = ?", [
+          merge.keepId,
+          hf.id,
+        ]);
       }
-      db.runSync("DELETE FROM flocks WHERE id = ? AND flock_status = 'ACTIVE'", [absorbId]);
+      const remaining =
+        db.getFirstSync<{ c: number }>(
+          "SELECT COUNT(*) as c FROM house_flocks WHERE flock_id = ?",
+          [absorbId],
+        )?.c ?? 0;
+      if (remaining === 0) {
+        db.runSync(
+          "UPDATE flocks SET flock_status = 'COMPLETED' WHERE id = ? AND flock_status = 'ACTIVE'",
+          [absorbId],
+        );
+      }
     }
     flocks = db.getAllSync<{
       id: string;

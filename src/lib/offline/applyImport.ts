@@ -330,6 +330,9 @@ export function applyPlacementToSnapshot(
   if (!rows.length) return { ok: false, error: "Parsed placement data missing. Upload and preview again." };
   const keys = selectedKeys(input.selections);
   if (keys.size === 0) return { ok: false, error: "Select at least one farm to import." };
+  const renameKeys = new Set(
+    input.selections.filter((row) => row.selected && row.renameToImportedName).map((row) => row.key),
+  );
 
   const selectedRows = rows.filter((row) => keys.has(placementFarmGroupKey(row.farmCode, row.farmName)));
   const byFarm = groupBy(selectedRows, (row) => placementFarmGroupKey(row.farmCode, row.farmName));
@@ -371,7 +374,7 @@ export function applyPlacementToSnapshot(
       if (idx < 0) continue;
       const current = farms[idx]!;
       let next = current;
-      if (current.farmName.trim() !== sample.farmName.trim()) {
+      if (renameKeys.has(key) && current.farmName.trim() !== sample.farmName.trim()) {
         next = { ...next, farmName: sample.farmName };
         updatedNames += 1;
       }
@@ -410,98 +413,81 @@ export function applyPlacementToSnapshot(
     }
 
     const houseByNumber = new Map(farmHouses.map((house) => [house.houseNumber, house.id]));
-    const byFlock = groupBy(farmRows, (row) => row.flockId);
+    const byHouse = new Map<number, PlacementRow>();
+    for (const row of farmRows) byHouse.set(row.houseNo, row);
+    const touchedFlockIds = new Set<string>();
 
-    for (const [flockNumber, flockRows] of byFlock) {
-      const byHouse = new Map<number, PlacementRow>();
-      for (const row of flockRows) byHouse.set(row.houseNo, row);
-      const uniqueHouseRows = Array.from(byHouse.values());
-      if (uniqueHouseRows.length === 0) continue;
-
-      let target = activeFlockOnFarm(flocks, farmId, flockNumber);
+    for (const row of byHouse.values()) {
+      const houseId = houseByNumber.get(row.houseNo);
+      if (!houseId) continue;
+      const occupied = houseFlocks.find((hf) => {
+        if (hf.houseId !== houseId) return false;
+        const flock = flocks.find((item) => item.id === hf.flockId);
+        return Boolean(
+          flock && flock.farmId === farmId && flock.flockStatus === "ACTIVE" && !flock.deletedAt,
+        );
+      });
+      if (occupied) {
+        // Same house-flock row, so mortality and catch stay with the house.
+        houseFlocks = houseFlocks.map((hf) =>
+          hf.id === occupied.id
+            ? { ...hf, placedBirdCount: row.numberSent, placementDate: row.datePlaced }
+            : hf,
+        );
+        touchedFlockIds.add(occupied.flockId);
+        continue;
+      }
+      let target = activeFlockOnFarm(flocks, farmId);
       if (!target) {
-        const occupiedHouseIds = uniqueHouseRows
-          .map((row) => houseByNumber.get(row.houseNo))
-          .filter((id): id is string => Boolean(id));
-        const counts = new Map<string, number>();
-        for (const hf of houseFlocks) {
-          if (!occupiedHouseIds.includes(hf.houseId)) continue;
-          const flock = flocks.find(
-            (row) =>
-              row.id === hf.flockId &&
-              row.farmId === farmId &&
-              row.flockStatus === "ACTIVE" &&
-              !row.deletedAt,
-          );
-          if (!flock) continue;
-          counts.set(hf.flockId, (counts.get(hf.flockId) ?? 0) + 1);
-        }
-        let reclaimId = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-        if (!reclaimId) {
-          reclaimId = flocks
-            .filter((flock) => flock.farmId === farmId && flock.flockStatus === "ACTIVE" && !flock.deletedAt)
-            .slice()
-            .sort((a, b) => a.placementDate.localeCompare(b.placementDate))[0]?.id;
-        }
-        if (reclaimId) {
-          flocks = flocks.map((flock) =>
-            flock.id === reclaimId ? { ...flock, flockNumber } : flock,
-          );
-          target = flocks.find((flock) => flock.id === reclaimId);
-        } else {
-          const minDate = uniqueHouseRows.map((row) => row.datePlaced).sort()[0]!;
-          target = emptyFlock(farmId, flockNumber, minDate);
-          flocks = [...flocks, target];
-          createdFlocks += 1;
-        }
+        target = emptyFlock(farmId, row.flockId, row.datePlaced);
+        flocks = [...flocks, target];
+        createdFlocks += 1;
       }
-      if (!target) continue;
+      houseFlocks = [
+        ...houseFlocks,
+        {
+          id: localCreatedHouseFlockId(target.id, houseId),
+          flockId: target.id,
+          houseId,
+          placedBirdCount: row.numberSent,
+          placementDate: row.datePlaced,
+          catchDate: null,
+          catchTime: null,
+        },
+      ];
+      touchedFlockIds.add(target.id);
+    }
 
-      for (const row of uniqueHouseRows) {
-        const houseId = houseByNumber.get(row.houseNo);
-        if (!houseId) continue;
-        const occupied = houseFlocks.find((hf) => {
-          if (hf.houseId !== houseId) return false;
-          const flock = flocks.find((row) => row.id === hf.flockId);
-          return Boolean(flock && flock.farmId === farmId && flock.flockStatus === "ACTIVE" && !flock.deletedAt);
-        });
-        if (occupied) {
-          houseFlocks = houseFlocks.map((hf) =>
-            hf.id === occupied.id
-              ? {
-                  ...hf,
-                  flockId: target.id,
-                  placedBirdCount: row.numberSent,
-                  placementDate: row.datePlaced,
-                }
-              : hf,
-          );
-          continue;
-        }
-        houseFlocks = [
-          ...houseFlocks,
-          {
-            id: localCreatedHouseFlockId(target.id, houseId),
-            flockId: target.id,
-            houseId,
-            placedBirdCount: row.numberSent,
-            placementDate: row.datePlaced,
-            catchDate: null,
-            catchTime: null,
-          },
-        ];
-      }
-
-      const hfs = houseFlocks.filter((hf) => hf.flockId === target.id);
-      if (hfs.length) {
-        const dates = hfs.map((hf) => hf.placementDate).filter((value): value is string => Boolean(value));
-        const minDate = dates.slice().sort()[0] ?? asDateKey(target.placementDate);
+    const sheetFlockIds = new Set(farmRows.map((row) => row.flockId.trim()).filter(Boolean));
+    if (sheetFlockIds.size === 1 && touchedFlockIds.size === 1) {
+      const nextNumber = [...sheetFlockIds][0]!;
+      const ownerId = [...touchedFlockIds][0]!;
+      const clash = flocks.some(
+        (flock) =>
+          flock.farmId === farmId &&
+          flock.id !== ownerId &&
+          flock.flockStatus === "ACTIVE" &&
+          !flock.deletedAt &&
+          flock.flockNumber.trim().toUpperCase() === nextNumber.toUpperCase(),
+      );
+      if (!clash) {
         flocks = flocks.map((flock) =>
-          flock.id === target.id
-            ? { ...flock, placementDate: minDate ?? flock.placementDate }
-            : flock,
+          flock.id === ownerId ? { ...flock, flockNumber: nextNumber } : flock,
         );
       }
+    }
+
+    for (const flockId of touchedFlockIds) {
+      const hfs = houseFlocks.filter((hf) => hf.flockId === flockId);
+      const dates = hfs
+        .map((hf) => hf.placementDate)
+        .filter((value): value is string => Boolean(value))
+        .slice()
+        .sort();
+      if (!dates[0]) continue;
+      flocks = flocks.map((flock) =>
+        flock.id === flockId ? { ...flock, placementDate: dates[0]! } : flock,
+      );
     }
 
     touchedFarmIds.push(farmId);

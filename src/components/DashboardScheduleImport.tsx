@@ -365,17 +365,23 @@ export function DashboardScheduleImport({
           enqueue({ kind: "applyCatch", payload: { selections, rows } });
           setApplyResult({ kind: "catch", ...result });
         } else {
-          const result = applyPlacementToSnapshot(snapshot, {
+          const input = {
             selections: selections as PlacementSelection[],
             rows: placementRows ?? [],
+          };
+          let applied: ReturnType<typeof applyPlacementToSnapshot> | null = null;
+          patchSnapshot((current) => {
+            const result = applyPlacementToSnapshot(current, input);
+            applied = result;
+            return result.ok ? result.snapshot : current;
           });
-          if (!result.ok) {
-            setApplyResult(result);
+          if (!applied) applied = applyPlacementToSnapshot(snapshot, input);
+          if (!applied.ok) {
+            setApplyResult(applied);
             return;
           }
-          patchSnapshot(() => result.snapshot);
-          enqueue({ kind: "applyPlacement", payload: { selections, rows, graph: result.graph } });
-          setApplyResult({ kind: "placement", ...result });
+          enqueue({ kind: "applyPlacement", payload: { selections, rows, graph: applied.graph } });
+          setApplyResult({ kind: "placement", ...applied });
         }
         setPreview(null);
         setOnlyMyFarms(false);

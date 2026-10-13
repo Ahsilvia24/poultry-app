@@ -167,6 +167,9 @@ export async function applyPlacementImportAction(input: {
   if (selectedKeys.size === 0) {
     return { ok: false, error: "Select at least one farm to import." };
   }
+  const renameKeys = new Set(
+    input.selections.filter((s) => s.selected && s.renameToImportedName).map((s) => s.key),
+  );
 
   const existing = await prisma.farm.findMany({
     where: { userId: user.id, deletedAt: null },
@@ -216,9 +219,9 @@ export async function applyPlacementImportAction(input: {
     if (match.farm) {
       farmId = match.farm.id;
       const data: { farmName?: string } = {};
-      // Placement import updates the farm name from the sheet. Farm # stays
-      // whatever was entered on Farm Info — never the sheet flock/farm code.
-      if (match.farm.farmName.trim() !== sample.farmName.trim()) {
+      // Farm # stays whatever was entered on Farm Info. The name changes only
+      // when the import checkbox is on.
+      if (renameKeys.has(key) && match.farm.farmName.trim() !== sample.farmName.trim()) {
         data.farmName = sample.farmName;
         updatedNames += 1;
       }
@@ -276,124 +279,98 @@ export async function applyPlacementImportAction(input: {
 
     const houseByNumber = new Map(houses.map((h) => [h.houseNumber, h.id]));
 
-    // Group by flock id
-    const byFlock = new Map<string, PlacementRow[]>();
-    for (const row of farmRows) {
-      const list = byFlock.get(row.flockId) ?? [];
-      list.push(row);
-      byFlock.set(row.flockId, list);
-    }
+    // Last row for a house wins. Update that house in place so mortality,
+    // catch, visits, and the generator log stay on this farm.
+    const byHouse = new Map<number, PlacementRow>();
+    for (const row of farmRows) byHouse.set(row.houseNo, row);
+    const touchedFlockIds = new Set<string>();
 
-    for (const [flockId, flockRows] of byFlock) {
-      // Collapse duplicate house rows (keep last number sent / date)
-      const byHouse = new Map<number, PlacementRow>();
-      for (const row of flockRows) byHouse.set(row.houseNo, row);
-      const uniqueHouseRows = Array.from(byHouse.values());
-      if (uniqueHouseRows.length === 0) continue;
-
-      let targetFlock = await prisma.flock.findFirst({
+    for (const row of byHouse.values()) {
+      const houseId = houseByNumber.get(row.houseNo);
+      if (!houseId) continue;
+      const placementDate = new Date(`${row.datePlaced}T12:00:00.000Z`);
+      const occupied = await prisma.houseFlock.findFirst({
         where: {
-          farmId,
-          flockNumber: flockId,
-          deletedAt: null,
-          flockStatus: "ACTIVE",
+          houseId,
+          flock: { farmId, flockStatus: "ACTIVE", deletedAt: null },
         },
       });
-
-      if (!targetFlock) {
-        const occupiedHouseIds = uniqueHouseRows
-          .map((r) => houseByNumber.get(r.houseNo))
-          .filter((id): id is string => Boolean(id));
-        const reclaim = occupiedHouseIds.length
-          ? await prisma.houseFlock.findMany({
-              where: {
-                houseId: { in: occupiedHouseIds },
-                flock: { farmId, flockStatus: "ACTIVE", deletedAt: null },
-              },
-              select: { flockId: true },
-            })
-          : [];
-        const counts = new Map<string, number>();
-        for (const row of reclaim) {
-          counts.set(row.flockId, (counts.get(row.flockId) ?? 0) + 1);
-        }
-        let reclaimId = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-        if (!reclaimId) {
-          const anyActive = await prisma.flock.findFirst({
-            where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
-            orderBy: { placementDate: "asc" },
-          });
-          if (anyActive) reclaimId = anyActive.id;
-        }
-        if (reclaimId) {
-          targetFlock = await prisma.flock.update({
-            where: { id: reclaimId },
-            data: { flockNumber: flockId },
-          });
-        } else {
-          const minDate = new Date(
-            `${uniqueHouseRows.map((r) => r.datePlaced).sort()[0]!}T12:00:00.000Z`,
-          );
-          const total = uniqueHouseRows.reduce((s, r) => s + r.numberSent, 0);
-          targetFlock = await prisma.flock.create({
-            data: {
-              farmId,
-              flockNumber: flockId,
-              placementDate: minDate,
-              initialBirdCount: total,
-              flockStatus: "ACTIVE",
-            },
-          });
-          createdFlocks += 1;
-        }
-      }
-
-      for (const row of uniqueHouseRows) {
-        const houseId = houseByNumber.get(row.houseNo);
-        if (!houseId) continue;
-        const placementDate = new Date(`${row.datePlaced}T12:00:00.000Z`);
-        const occupied = await prisma.houseFlock.findFirst({
-          where: {
-            houseId,
-            flock: { farmId, flockStatus: "ACTIVE", deletedAt: null },
-          },
-        });
-        if (occupied) {
-          await prisma.houseFlock.update({
-            where: { id: occupied.id },
-            data: {
-              flockId: targetFlock.id,
-              placedBirdCount: row.numberSent,
-              placementDate,
-            },
-          });
-          continue;
-        }
-        await prisma.houseFlock.create({
+      if (occupied) {
+        await prisma.houseFlock.update({
+          where: { id: occupied.id },
           data: {
-            flockId: targetFlock.id,
-            houseId,
             placedBirdCount: row.numberSent,
             placementDate,
           },
         });
+        touchedFlockIds.add(occupied.flockId);
+        continue;
       }
-
-      const hfs = await prisma.houseFlock.findMany({
-        where: { flockId: targetFlock.id },
-        select: { placementDate: true, placedBirdCount: true },
+      let target = await prisma.flock.findFirst({
+        where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+        orderBy: { placementDate: "asc" },
       });
-      if (hfs.length) {
-        const dates = hfs
-          .map((h) => h.placementDate?.getTime())
-          .filter((t): t is number => t != null);
-        const minDate = dates.length ? new Date(Math.min(...dates)) : targetFlock.placementDate;
-        const total = hfs.reduce((s, h) => s + (h.placedBirdCount ?? 0), 0);
+      if (!target) {
+        target = await prisma.flock.create({
+          data: {
+            farmId,
+            flockNumber: row.flockId,
+            placementDate,
+            initialBirdCount: row.numberSent,
+            flockStatus: "ACTIVE",
+          },
+        });
+        createdFlocks += 1;
+      }
+      await prisma.houseFlock.create({
+        data: {
+          flockId: target.id,
+          houseId,
+          placedBirdCount: row.numberSent,
+          placementDate,
+        },
+      });
+      touchedFlockIds.add(target.id);
+    }
+
+    const sheetFlockIds = new Set(farmRows.map((row) => row.flockId.trim()).filter(Boolean));
+    if (sheetFlockIds.size === 1 && touchedFlockIds.size === 1) {
+      const nextNumber = [...sheetFlockIds][0]!;
+      const ownerId = [...touchedFlockIds][0]!;
+      const actives = await prisma.flock.findMany({
+        where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
+        select: { id: true, flockNumber: true },
+      });
+      const clash = actives.some(
+        (flock) =>
+          flock.id !== ownerId &&
+          flock.flockNumber.trim().toUpperCase() === nextNumber.toUpperCase(),
+      );
+      if (!clash) {
         await prisma.flock.update({
-          where: { id: targetFlock.id },
-          data: { placementDate: minDate, initialBirdCount: total },
+          where: { id: ownerId },
+          data: { flockNumber: nextNumber },
         });
       }
+    }
+
+    for (const flockId of touchedFlockIds) {
+      const hfs = await prisma.houseFlock.findMany({
+        where: { flockId },
+        select: { placementDate: true, placedBirdCount: true },
+      });
+      if (!hfs.length) continue;
+      const dates = hfs
+        .map((row) => row.placementDate?.getTime())
+        .filter((value): value is number => value != null);
+      const total = hfs.reduce((sum, row) => sum + (row.placedBirdCount ?? 0), 0);
+      await prisma.flock.update({
+        where: { id: flockId },
+        data: {
+          ...(dates.length ? { placementDate: new Date(Math.min(...dates)) } : {}),
+          initialBirdCount: total,
+        },
+      });
     }
   }
 
