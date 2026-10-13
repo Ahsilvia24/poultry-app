@@ -188,7 +188,7 @@ function patchDashboardAfterPlacement(
       })),
       today,
     );
-    const nextCard = {
+    const placementFields = {
       id: farm.id,
       farmName: farm.farmName,
       growerName: farm.growerName,
@@ -197,22 +197,30 @@ function patchDashboardAfterPlacement(
       flockAgeDays: ages[0] ?? null,
       flockAgesDays: ages,
       totalBirdsPlaced: placed,
-      birdsRemaining: placed,
-      todayMortality: 0,
-      sevenDayMortality: 0,
-      projectedHeadCount: placed,
-      projectedMortality: 0,
-      weeklyMortality: [],
-      cumulativeMortality: 0,
-      cumulativeMortalityPct: 0,
-      openIssues: 0,
-      lastServiceReportDate: null,
-      status: "Normal" as const,
-      missingTodayMortality: farmFlocks.length > 0,
     };
     const idx = farmCards.findIndex((card) => card.id === farmId);
-    if (idx >= 0) farmCards[idx] = { ...farmCards[idx]!, ...nextCard };
-    else farmCards = [...farmCards, nextCard];
+    if (idx >= 0) {
+      farmCards[idx] = { ...farmCards[idx]!, ...placementFields };
+    } else {
+      farmCards = [
+        ...farmCards,
+        {
+          ...placementFields,
+          birdsRemaining: placed,
+          todayMortality: 0,
+          sevenDayMortality: 0,
+          projectedHeadCount: placed,
+          projectedMortality: 0,
+          weeklyMortality: [],
+          cumulativeMortality: 0,
+          cumulativeMortalityPct: 0,
+          openIssues: 0,
+          lastServiceReportDate: null,
+          status: "Normal" as const,
+          missingTodayMortality: farmFlocks.length > 0,
+        },
+      ];
+    }
   }
   return {
     ...snapshot,
@@ -330,9 +338,6 @@ export function applyPlacementToSnapshot(
   if (!rows.length) return { ok: false, error: "Parsed placement data missing. Upload and preview again." };
   const keys = selectedKeys(input.selections);
   if (keys.size === 0) return { ok: false, error: "Select at least one farm to import." };
-  const renameKeys = new Set(
-    input.selections.filter((row) => row.selected && row.renameToImportedName).map((row) => row.key),
-  );
 
   const selectedRows = rows.filter((row) => keys.has(placementFarmGroupKey(row.farmCode, row.farmName)));
   const byFarm = groupBy(selectedRows, (row) => placementFarmGroupKey(row.farmCode, row.farmName));
@@ -374,7 +379,7 @@ export function applyPlacementToSnapshot(
       if (idx < 0) continue;
       const current = farms[idx]!;
       let next = current;
-      if (renameKeys.has(key) && current.farmName.trim() !== sample.farmName.trim()) {
+      if (current.farmName.trim() !== sample.farmName.trim()) {
         next = { ...next, farmName: sample.farmName };
         updatedNames += 1;
       }
@@ -456,25 +461,6 @@ export function applyPlacementToSnapshot(
         },
       ];
       touchedFlockIds.add(target.id);
-    }
-
-    const sheetFlockIds = new Set(farmRows.map((row) => row.flockId.trim()).filter(Boolean));
-    if (sheetFlockIds.size === 1 && touchedFlockIds.size === 1) {
-      const nextNumber = [...sheetFlockIds][0]!;
-      const ownerId = [...touchedFlockIds][0]!;
-      const clash = flocks.some(
-        (flock) =>
-          flock.farmId === farmId &&
-          flock.id !== ownerId &&
-          flock.flockStatus === "ACTIVE" &&
-          !flock.deletedAt &&
-          flock.flockNumber.trim().toUpperCase() === nextNumber.toUpperCase(),
-      );
-      if (!clash) {
-        flocks = flocks.map((flock) =>
-          flock.id === ownerId ? { ...flock, flockNumber: nextNumber } : flock,
-        );
-      }
     }
 
     for (const flockId of touchedFlockIds) {

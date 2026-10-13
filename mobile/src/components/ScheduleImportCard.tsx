@@ -605,7 +605,43 @@ export function ScheduleImportCard() {
                   </View>
                 </Pressable>
 
-                {checked && farm.nameDiffers && farm.matchName ? (
+                {checked && farm.nameDiffers && farm.matchName && importType === "placement" ? (
+                  <View
+                    style={{
+                      marginTop: 8,
+                      paddingTop: 8,
+                      paddingHorizontal: 8,
+                      paddingBottom: 8,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: "#fde68a",
+                      backgroundColor: "#fffbeb",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "800",
+                        color: colors.text,
+                        lineHeight: 16,
+                      }}
+                    >
+                      Updates “{farm.matchName}” to “{farm.farmName}”, plus house dates and birds
+                      placed.
+                    </Text>
+                    <Text
+                      style={{
+                        marginTop: 2,
+                        fontSize: 11,
+                        color: colors.muted,
+                        lineHeight: 14,
+                      }}
+                    >
+                      Logs, checklists, grower, phone, and other saved info stay.
+                    </Text>
+                  </View>
+                ) : null}
+                {checked && farm.nameDiffers && farm.matchName && importType === "catch" ? (
                   <Pressable
                     onPress={() =>
                       setRename((prev) => ({ ...prev, [farm.key]: !prev[farm.key] }))

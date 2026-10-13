@@ -579,7 +579,18 @@ export function DashboardScheduleImport({
                     </span>
                   </label>
 
-                  {checked && farm.match.nameDiffers && farm.match.farm ? (
+                  {checked && farm.match.nameDiffers && farm.match.farm && preview.kind === "placement" ? (
+                    <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-sm text-stone-800">
+                      <span className="font-bold text-stone-900">
+                        Updates “{farm.match.farm.farmName}” to “{farm.farmName}”, plus house
+                        placement dates and birds placed.
+                      </span>
+                      <span className="mt-0.5 block text-xs text-stone-600">
+                        Logs, checklists, grower, phone, and other saved info stay.
+                      </span>
+                    </p>
+                  ) : null}
+                  {checked && farm.match.nameDiffers && farm.match.farm && preview.kind === "catch" ? (
                     <label className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-sm text-stone-800">
                       <input
                         type="checkbox"

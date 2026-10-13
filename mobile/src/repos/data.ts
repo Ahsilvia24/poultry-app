@@ -3057,9 +3057,6 @@ export function importPlacementRows(input: {
 } {
   const selectedKeys = new Set(input.selections.filter((s) => s.selected).map((s) => s.key));
   if (selectedKeys.size === 0) throw new Error("Select at least one farm to import.");
-  const renameKeys = new Set(
-    input.selections.filter((s) => s.selected && s.renameToImportedName).map((s) => s.key),
-  );
 
   let createdFarms = 0;
   let updatedNames = 0;
@@ -3091,7 +3088,7 @@ export function importPlacementRows(input: {
   );
 
   for (let farmIndex = 0; farmIndex < farmEntries.length; farmIndex++) {
-    const [key, farmRows] = farmEntries[farmIndex]!;
+    const [, farmRows] = farmEntries[farmIndex]!;
     const sample = farmRows[0]!;
     const match = farmMatches[farmIndex]!;
     let farmId: string;
@@ -3099,7 +3096,7 @@ export function importPlacementRows(input: {
 
     if (match.farm) {
       farmId = match.farm.id;
-      if (renameKeys.has(key) && match.farm.farmName.trim() !== sample.farmName.trim()) {
+      if (match.farm.farmName.trim() !== sample.farmName.trim()) {
         renameFarmOnly(farmId, sample.farmName);
         updatedNames += 1;
       }
@@ -3188,22 +3185,6 @@ export function importPlacementRows(input: {
       );
       touchedFlockIds.add(target.id);
       updatedPlacements += 1;
-    }
-
-    const sheetFlockIds = new Set(farmRows.map((row) => row.flockId.trim()).filter(Boolean));
-    if (sheetFlockIds.size === 1 && touchedFlockIds.size === 1) {
-      const nextNumber = [...sheetFlockIds][0]!;
-      const ownerId = [...touchedFlockIds][0]!;
-      const clash = getDb().getFirstSync<{ id: string }>(
-        `SELECT id FROM flocks
-         WHERE farm_id = ? AND id != ? AND flock_status = 'ACTIVE'
-           AND upper(trim(flock_number)) = upper(trim(?))
-         LIMIT 1`,
-        [farmId, ownerId, nextNumber],
-      );
-      if (!clash) {
-        getDb().runSync(`UPDATE flocks SET flock_number = ? WHERE id = ?`, [nextNumber, ownerId]);
-      }
     }
 
     for (const flockId of touchedFlockIds) {

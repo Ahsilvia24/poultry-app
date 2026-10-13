@@ -167,9 +167,6 @@ export async function applyPlacementImportAction(input: {
   if (selectedKeys.size === 0) {
     return { ok: false, error: "Select at least one farm to import." };
   }
-  const renameKeys = new Set(
-    input.selections.filter((s) => s.selected && s.renameToImportedName).map((s) => s.key),
-  );
 
   const existing = await prisma.farm.findMany({
     where: { userId: user.id, deletedAt: null },
@@ -219,9 +216,8 @@ export async function applyPlacementImportAction(input: {
     if (match.farm) {
       farmId = match.farm.id;
       const data: { farmName?: string } = {};
-      // Farm # stays whatever was entered on Farm Info. The name changes only
-      // when the import checkbox is on.
-      if (renameKeys.has(key) && match.farm.farmName.trim() !== sample.farmName.trim()) {
+      // Farm #, logs, and checklists stay. Only the farm name comes from the sheet.
+      if (match.farm.farmName.trim() !== sample.farmName.trim()) {
         data.farmName = sample.farmName;
         updatedNames += 1;
       }
@@ -331,27 +327,6 @@ export async function applyPlacementImportAction(input: {
         },
       });
       touchedFlockIds.add(target.id);
-    }
-
-    const sheetFlockIds = new Set(farmRows.map((row) => row.flockId.trim()).filter(Boolean));
-    if (sheetFlockIds.size === 1 && touchedFlockIds.size === 1) {
-      const nextNumber = [...sheetFlockIds][0]!;
-      const ownerId = [...touchedFlockIds][0]!;
-      const actives = await prisma.flock.findMany({
-        where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
-        select: { id: true, flockNumber: true },
-      });
-      const clash = actives.some(
-        (flock) =>
-          flock.id !== ownerId &&
-          flock.flockNumber.trim().toUpperCase() === nextNumber.toUpperCase(),
-      );
-      if (!clash) {
-        await prisma.flock.update({
-          where: { id: ownerId },
-          data: { flockNumber: nextNumber },
-        });
-      }
     }
 
     for (const flockId of touchedFlockIds) {
