@@ -365,17 +365,23 @@ export function DashboardScheduleImport({
           enqueue({ kind: "applyCatch", payload: { selections, rows } });
           setApplyResult({ kind: "catch", ...result });
         } else {
-          const result = applyPlacementToSnapshot(snapshot, {
+          const input = {
             selections: selections as PlacementSelection[],
             rows: placementRows ?? [],
+          };
+          let applied: ReturnType<typeof applyPlacementToSnapshot> | null = null;
+          patchSnapshot((current) => {
+            const result = applyPlacementToSnapshot(current, input);
+            applied = result;
+            return result.ok ? result.snapshot : current;
           });
-          if (!result.ok) {
-            setApplyResult(result);
+          if (!applied) applied = applyPlacementToSnapshot(snapshot, input);
+          if (!applied.ok) {
+            setApplyResult(applied);
             return;
           }
-          patchSnapshot(() => result.snapshot);
-          enqueue({ kind: "applyPlacement", payload: { selections, rows, graph: result.graph } });
-          setApplyResult({ kind: "placement", ...result });
+          enqueue({ kind: "applyPlacement", payload: { selections, rows, graph: applied.graph } });
+          setApplyResult({ kind: "placement", ...applied });
         }
         setPreview(null);
         setOnlyMyFarms(false);
@@ -573,7 +579,18 @@ export function DashboardScheduleImport({
                     </span>
                   </label>
 
-                  {checked && farm.match.nameDiffers && farm.match.farm ? (
+                  {checked && farm.match.nameDiffers && farm.match.farm && preview.kind === "placement" ? (
+                    <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-sm text-stone-800">
+                      <span className="font-bold text-stone-900">
+                        Updates “{farm.match.farm.farmName}” to “{farm.farmName}”, plus house
+                        placement dates and birds placed.
+                      </span>
+                      <span className="mt-0.5 block text-xs text-stone-600">
+                        Logs, checklists, grower, phone, and other saved info stay.
+                      </span>
+                    </p>
+                  ) : null}
+                  {checked && farm.match.nameDiffers && farm.match.farm && preview.kind === "catch" ? (
                     <label className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-sm text-stone-800">
                       <input
                         type="checkbox"
