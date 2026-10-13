@@ -26,6 +26,7 @@ import {
   deleteGeneratorLog,
   deleteHouse,
   getFarmDetail,
+  listFarmGeneratorLogs,
   updateFarm,
   updateGeneratorLog,
   updateHouse,
@@ -44,8 +45,8 @@ import {
   formatGeneratorChartsCopy,
   formatGeneratorHours,
   formatGeneratorLogDate,
+  generatorHoursAroundDate,
   hoursDelta,
-  previousGeneratorHoursFromLogs,
   GENERATOR_FIELD_DEFS,
   MAX_GENERATOR_HOUR_LOGS,
   type GenHourKey,
@@ -923,7 +924,13 @@ export default function FarmDetailScreen() {
     setGeneratorEditingId(null);
     setGeneratorEditingGen(null);
     setGeneratorSwap(null);
-    load();
+    refreshGeneratorLogs();
+  }
+
+  function refreshGeneratorLogs() {
+    setData((current) =>
+      current ? { ...current, generatorLogs: listFarmGeneratorLogs(farm.id) } : current,
+    );
   }
 
   function saveGeneratorLog(
@@ -941,8 +948,8 @@ export default function FarmDetailScreen() {
     try {
       const payload = hours ?? parseGeneratorDraftHours();
       if (!hours) {
-        const previous = previousGeneratorHoursFromLogs(data?.generatorLogs ?? [], {
-          onOrBeforeDate: payload.logDate,
+        const anchors = generatorHoursAroundDate(data?.generatorLogs ?? [], {
+          date: payload.logDate,
           excludeLogId: generatorEditingId,
         });
         const entered = generatorEditingGen
@@ -953,7 +960,7 @@ export default function FarmDetailScreen() {
               gen4Hours: generatorEditingGen === "gen4Hours" ? payload.gen4Hours : null,
             }
           : payload;
-        const swap = detectGeneratorHourSwap(previous, entered);
+        const swap = detectGeneratorHourSwap(anchors.previous, entered, anchors.next);
         if (swap) {
           setGeneratorSwap(swap);
           return;
@@ -1009,7 +1016,7 @@ export default function FarmDetailScreen() {
   function removeGenerator(logId: string, hourKey: GenHourKey) {
     try {
       deleteGeneratorLog(farm.id, logId, hourKey);
-      load();
+      refreshGeneratorLogs();
     } catch (e) {
       setOpsError(e instanceof Error ? e.message : "Could not delete");
     }
@@ -2386,14 +2393,14 @@ export default function FarmDetailScreen() {
                   ? GENERATOR_FIELD_DEFS.filter((f) => f.hourKey === generatorEditingGen)
                   : GENERATOR_FIELD_DEFS
                 ).map((f, index, list) => {
-                  const previous = previousGeneratorHoursFromLogs(data?.generatorLogs ?? [], {
-                    onOrBeforeDate: generatorDraft.logDate,
+                  const anchors = generatorHoursAroundDate(data?.generatorLogs ?? [], {
+                    date: generatorDraft.logDate,
                     excludeLogId: generatorEditingId,
                   });
                   const raw = generatorDraft[f.hourKey];
                   const delta = hoursDelta(
                     raw.trim() === "" ? null : Number(raw),
-                    previous[f.hourKey] ?? null,
+                    anchors.previous[f.hourKey] ?? null,
                   );
                   const isLast = index === list.length - 1;
                   return (

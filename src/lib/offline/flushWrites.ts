@@ -15,6 +15,7 @@ import {
   updateHouseAction,
 } from "@/app/actions/farms";
 import { toggleFollowUpCompletionAction } from "@/app/actions/follow-ups";
+import { isGenHourKey } from "@/lib/generator/format";
 import {
   createFeedDeliveryAction,
   createGeneratorLogAction,
@@ -175,7 +176,10 @@ export async function flushFormWrite(
     case "updateGeneratorLog":
       return fromCreated(await updateGeneratorLogAction(id, formData), original.id, aliases);
     case "deleteGeneratorLog":
-      await deleteGeneratorLogAction(id);
+      await deleteGeneratorLogAction(
+        id,
+        isGenHourKey(write.fields?.hourKey) ? write.fields.hourKey : undefined,
+      );
       return { ok: true };
     case "saveFarmLfo":
       return fromAction(await saveFarmLfoHubAction(farmId, formData), aliases);
