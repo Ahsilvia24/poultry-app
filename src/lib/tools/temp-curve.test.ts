@@ -1,12 +1,25 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { recommendedHouseTempF, tempSeasonForDate } from "./temp-curve.ts";
+import { recommendedHouseTempF, recommendedTempLabel, tempSeasonForDate } from "./temp-curve.ts";
 
 describe("recommendedHouseTempF", () => {
   it("uses the last Temp Curve day the flock has reached", () => {
     assert.equal(recommendedHouseTempF(10, "summer"), 86);
     assert.equal(recommendedHouseTempF(14, "summer"), 81);
     assert.equal(recommendedHouseTempF(35, "summer"), 70);
+  });
+
+  it("uses winter when that source is selected", () => {
+    assert.equal(recommendedHouseTempF(14, "winter"), 84);
+    assert.equal(recommendedHouseTempF(21, "winter"), 80);
+  });
+});
+
+describe("recommendedTempLabel", () => {
+  it("uses the selected curve and stays blank without an age", () => {
+    assert.equal(recommendedTempLabel(14, "summer"), "81");
+    assert.equal(recommendedTempLabel(14, "winter"), "84");
+    assert.equal(recommendedTempLabel(null, "summer"), "");
   });
 });
 

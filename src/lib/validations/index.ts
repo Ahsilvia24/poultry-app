@@ -268,6 +268,7 @@ export const settingsSchema = z.object({
   lfoFeedOffHoursBeforeCatch: z.coerce.number().int().min(1).max(72).optional(),
   defaultConsumptionRate: z.coerce.number().positive().max(10).optional(),
   defaultEfc: z.coerce.number().positive().max(10).optional(),
+  tempCurveSeason: z.enum(["summer", "winter"]).optional(),
 });
 
 export const performanceSchema = z.object({

@@ -100,7 +100,7 @@ function FieldButton({
             color: value ? colors.text : colors.muted,
           }}
         >
-          {value || "0"}
+          {value}
         </Text>
       </Pressable>
     </View>
@@ -128,8 +128,8 @@ export function ManualLfoScreen({
   const [headCount, setHeadCount] = useState("");
   const [calcWaterGal, setCalcWaterGal] = useState(DEFAULT_WATER_GAL);
   const [calcHeadCount, setCalcHeadCount] = useState(DEFAULT_HEAD_COUNT);
-  const [binAPounds, setBinAPounds] = useState("0");
-  const [binBPounds, setBinBPounds] = useState("0");
+  const [binAPounds, setBinAPounds] = useState("");
+  const [binBPounds, setBinBPounds] = useState("");
   const [catchDate, setCatchDate] = useState("");
   const [catchTime, setCatchTime] = useState("");
   const [activeField, setActiveField] = useState<ActiveField | null>(null);

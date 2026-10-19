@@ -92,8 +92,8 @@ function loadDraft(id: string) {
           houseId: h.houseId,
           houseNumber: h.houseNumber,
           headCount: h.headCount,
-          binAPounds: String(h.binAPounds ?? 0),
-          binBPounds: String(h.binBPounds ?? 0),
+          binAPounds: h.binAPounds ? String(h.binAPounds) : "",
+          binBPounds: h.binBPounds ? String(h.binBPounds) : "",
           catchDate: parts.date,
           catchTime: parts.time,
         };
@@ -144,7 +144,7 @@ function FieldButton({
             color: value ? colors.text : colors.muted,
           }}
         >
-          {value || "0"}
+          {value}
         </Text>
       </Pressable>
     </View>

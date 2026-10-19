@@ -81,8 +81,8 @@ function FeedMillDataButton({
 function emptyHouses(houses: FarmLfoHouseInput[]) {
   return houses.map((house) => ({
     ...house,
-    binAPounds: "0",
-    binBPounds: "0",
+    binAPounds: "",
+    binBPounds: "",
   }));
 }
 

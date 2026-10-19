@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { recommendedHouseTempF, tempSeasonForDate } from "./tools.ts";
+import { recommendedHouseTempF, recommendedTempLabel, tempSeasonForDate } from "./tools.ts";
 
 describe("recommendedHouseTempF", () => {
   it("uses the last Temp Curve day the flock has reached", () => {
@@ -12,6 +12,14 @@ describe("recommendedHouseTempF", () => {
   it("uses winter when that source is selected", () => {
     assert.equal(recommendedHouseTempF(14, "winter"), 84);
     assert.equal(recommendedHouseTempF(21, "winter"), 80);
+  });
+});
+
+describe("recommendedTempLabel", () => {
+  it("uses the selected curve and stays blank without an age", () => {
+    assert.equal(recommendedTempLabel(14, "summer"), "81");
+    assert.equal(recommendedTempLabel(14, "winter"), "84");
+    assert.equal(recommendedTempLabel(null, "summer"), "");
   });
 });
 

@@ -192,6 +192,8 @@ export type OfflineSettings = {
   lfoFeedOffHoursBeforeCatch?: number;
   defaultConsumptionRate?: number;
   defaultEfc?: number;
+  /** summer | winter. Missing means the calendar season. */
+  tempCurveSeason?: string | null;
 };
 
 export type OfflineFormWriteAction =

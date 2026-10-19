@@ -181,6 +181,17 @@ export function tempSeasonForDate(date: Date = new Date()): TempSeason {
   return month >= 3 && month <= 8 ? "summer" : "winter";
 }
 
+export function parseTempCurveSeason(value: string | null | undefined): TempSeason | null {
+  if (value === "summer" || value === "winter") return value;
+  return null;
+}
+
+/** Blank when flock age is unknown. */
+export function recommendedTempLabel(ageDays: number | null, season: TempSeason): string {
+  if (ageDays == null || !Number.isFinite(ageDays)) return "";
+  return String(recommendedHouseTempF(ageDays, season));
+}
+
 /** Controller-style step: last Temp Curve day that the flock has reached. */
 export function recommendedHouseTempF(
   ageDays: number,

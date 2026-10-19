@@ -29,6 +29,7 @@ import {
   getLfoFeedOffHoursBeforeCatch,
   getLfoFeedUpHoursBeforeCatch,
   getServiceTech,
+  getTempCurveSeason,
   setAppTimeZone,
   setDefaultConsumptionRate,
   setDefaultEfc,
@@ -37,7 +38,9 @@ import {
   setLfoFeedOffHoursBeforeCatch,
   setLfoFeedUpHoursBeforeCatch,
   setServiceTech,
+  setTempCurveSeason,
 } from "../src/lib/appSettings";
+import type { TempSeason } from "../src/lib/tools";
 import { APP_TIME_ZONES } from "../src/lib/appTimeZones";
 import { pickAndImportMobileBackup, shareMobileBackup } from "../src/lib/dataExport";
 import { FARM_ORDER_OPTIONS, type FarmOrder } from "../src/lib/farmOrder";
@@ -152,6 +155,7 @@ export default function SettingsScreen() {
   const [defaultCr, setDefaultCr] = useState(() => String(getDefaultConsumptionRate()));
   const [defaultEfc, setDefaultEfcValue] = useState(() => String(getDefaultEfc()));
   const [defaultMarketAge, setDefaultMarketAge] = useState(() => String(getDefaultMarketAgeDays()));
+  const [tempCurveSeason, setTempCurveSeasonValue] = useState<TempSeason>(getTempCurveSeason);
   const [exporting, setExporting] = useState(false);
   const [exportNote, setExportNote] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -174,6 +178,11 @@ export default function SettingsScreen() {
   function onChangeTimeZone(value: string) {
     setTimeZoneValue(value);
     setAppTimeZone(value);
+  }
+
+  function onChangeTempCurveSeason(value: TempSeason) {
+    setTempCurveSeasonValue(value);
+    setTempCurveSeason(value);
   }
 
   function onChangeDefaultMarketAge(value: string) {
@@ -304,6 +313,17 @@ export default function SettingsScreen() {
           </SettingsRow>
 
           <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text, marginTop: 12 }}>Preferences</Text>
+          <SettingsRow label="Temp curve:">
+            <SettingsSelect
+              title="Temp curve"
+              value={tempCurveSeason}
+              options={[
+                { value: "summer", label: "Summer" },
+                { value: "winter", label: "Winter" },
+              ]}
+              onChange={onChangeTempCurveSeason}
+            />
+          </SettingsRow>
           <SettingsRow label="Default market age (days):">
             <SettingsChipInput
               value={defaultMarketAge}

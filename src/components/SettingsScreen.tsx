@@ -37,6 +37,7 @@ import {
   settingsWriteFromForm,
 } from "@/lib/offline/applyLocal";
 import { looksLikeEmail } from "@/lib/person-name";
+import { parseTempCurveSeason, tempSeasonForDate } from "@/lib/tools/temp-curve";
 
 export function SettingsScreen() {
   const {
@@ -70,7 +71,10 @@ export function SettingsScreen() {
         lfoFeedOffHoursBeforeCatch: 10,
         defaultConsumptionRate: 0.45,
         defaultEfc: 1.75,
+        tempCurveSeason: null,
       };
+  const tempCurveSeason =
+    parseTempCurveSeason(values.tempCurveSeason) ?? tempSeasonForDate();
   const [saved, setSaved] = useState(false);
   const savedTimer = useRef<number | null>(null);
 
@@ -318,6 +322,20 @@ export function SettingsScreen() {
           <div>
             <h2 className="font-bold leading-tight text-stone-900">Preferences</h2>
             <div className="mt-1">
+              <SettingsRow label="Temp curve:" htmlFor="tempCurveSeason">
+                <ValueChip className="min-w-[9.5rem] max-w-[14rem]">
+                  <select
+                    id="tempCurveSeason"
+                    name="tempCurveSeason"
+                    defaultValue={tempCurveSeason}
+                    className={valueTextClass}
+                    aria-label="Temp curve"
+                  >
+                    <option value="summer">Summer</option>
+                    <option value="winter">Winter</option>
+                  </select>
+                </ValueChip>
+              </SettingsRow>
               <SettingsRow label="Default market age (days):" htmlFor="defaultMarketAgeDays">
                 <ValueChip className="w-[4.75rem]">
                   <SettingsChipInput

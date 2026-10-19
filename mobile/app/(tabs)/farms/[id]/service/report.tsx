@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -9,7 +9,7 @@ import {
   View,
   type ScrollView as ScrollViewType,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DatePickerField } from "../../../../../src/components/DatePickerField";
 import { OptionPicker, SelectField } from "../../../../../src/components/OptionPicker";
@@ -25,7 +25,7 @@ import {
 } from "../../../../../src/components/serviceForms/fields";
 import { TimeScrollPickerField } from "../../../../../src/components/TimeScrollPicker";
 import { BackHeader, Card } from "../../../../../src/components/ui";
-import { withSavedServiceTech } from "../../../../../src/lib/appSettings";
+import { getTempCurveSeason, withSavedServiceTech } from "../../../../../src/lib/appSettings";
 import { createServiceReportDraft } from "../../../../../src/lib/serviceForms/defaults";
 import {
   CFM_FT2_MIN_VENT_LABEL,
@@ -46,7 +46,7 @@ import {
   minVentForWeek,
   prefillHouseRows,
 } from "../../../../../src/lib/serviceForms/prefill";
-import { recommendedHouseTempF } from "../../../../../src/lib/tools";
+import { recommendedTempLabel, type TempSeason } from "../../../../../src/lib/tools";
 import type { ServiceReportForm } from "../../../../../src/lib/serviceForms/types";
 import {
   readInProgressDraft,
@@ -141,12 +141,21 @@ export default function ServiceReportScreen() {
     setForm((prev) => ({ ...prev, ...p }));
   }
 
+  const [tempSeason, setTempSeason] = useState<TempSeason>(() => getTempCurveSeason());
+  useFocusEffect(
+    useCallback(() => {
+      setTempSeason(getTempCurveSeason());
+    }, []),
+  );
+  const flockAge = flockAgeDaysFromHouses(form.houses);
   useEffect(() => {
-    const age = flockAgeDaysFromHouses(form.houses);
-    const next = age == null ? "" : String(recommendedHouseTempF(age));
-    if (next === form.recommendedTempTarget) return;
-    setForm((prev) => ({ ...prev, recommendedTempTarget: next }));
-  }, [form.houses, form.recommendedTempTarget]);
+    const next = recommendedTempLabel(flockAge, tempSeason);
+    setForm((prev) => {
+      if (prev.recommendedTempCustom) return prev;
+      if (prev.recommendedTempTarget === next) return prev;
+      return { ...prev, recommendedTempTarget: next };
+    });
+  }, [flockAge, tempSeason]);
 
   function applyRecommendedWeek(week: number | "") {
     if (week === "" || week < 1) {
@@ -303,8 +312,10 @@ export default function ServiceReportScreen() {
               <TextField
                 label="Recommended"
                 value={form.recommendedTempTarget}
-                onChange={() => {}}
-                editable={false}
+                onChange={(recommendedTempTarget) =>
+                  patch({ recommendedTempTarget, recommendedTempCustom: true })
+                }
+                keyboardType="decimal-pad"
                 placeholder="°F"
               />
             }
@@ -365,7 +376,7 @@ export default function ServiceReportScreen() {
                 label="Vent opening (in)"
                 value={form.ventOpeningInches}
                 onChange={(ventOpeningInches) => patch({ ventOpeningInches })}
-                keyboardType="decimal-pad"
+                placeholder="3-4"
               />
             }
           />

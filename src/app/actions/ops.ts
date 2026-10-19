@@ -14,6 +14,7 @@ import { birdAgeFromPlacement } from "@/lib/mortality/calculations";
 import { prisma } from "@/lib/prisma";
 import { ensureWeightProjectionVisitType, visitSaveError } from "@/lib/visits/ensureVisitType";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
+import { parseTempCurveSeason, tempSeasonForDate } from "@/lib/tools/temp-curve";
 import { DEFAULT_FARM_ORDER } from "@/lib/farm-order";
 import {
   DEFAULT_CONSUMPTION_RATE,
@@ -781,8 +782,18 @@ export async function updateSettingsAction(formData: FormData) {
     lfoFeedOffHoursBeforeCatch: formData.get("lfoFeedOffHoursBeforeCatch") || 10,
     defaultConsumptionRate: formData.get("defaultConsumptionRate") || DEFAULT_CONSUMPTION_RATE,
     defaultEfc: formData.get("defaultEfc") || DEFAULT_EXPECTED_FEED_CONVERSION,
+    tempCurveSeason: parseTempCurveSeason(String(formData.get("tempCurveSeason") ?? "")) ?? undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid settings" };
+
+  const existingSettings = await prisma.userSettings.findUnique({
+    where: { userId: user.id! },
+    select: { tempCurveSeason: true },
+  });
+  const tempCurveSeason =
+    parsed.data.tempCurveSeason ??
+    parseTempCurveSeason(existingSettings?.tempCurveSeason) ??
+    tempSeasonForDate();
 
   if (parsed.data.name) {
     await prisma.user.update({ where: { id: user.id! }, data: { name: parsed.data.name } });
@@ -808,6 +819,7 @@ export async function updateSettingsAction(formData: FormData) {
       lfoFeedOffHoursBeforeCatch: parsed.data.lfoFeedOffHoursBeforeCatch ?? 10,
       defaultConsumptionRate: parsed.data.defaultConsumptionRate ?? DEFAULT_CONSUMPTION_RATE,
       defaultEfc: parsed.data.defaultEfc ?? DEFAULT_EXPECTED_FEED_CONVERSION,
+      tempCurveSeason,
     },
     update: {
       dailyMortalityWarningPct: parsed.data.dailyMortalityWarningPct,
@@ -824,6 +836,7 @@ export async function updateSettingsAction(formData: FormData) {
       lfoFeedOffHoursBeforeCatch: parsed.data.lfoFeedOffHoursBeforeCatch ?? 10,
       defaultConsumptionRate: parsed.data.defaultConsumptionRate ?? DEFAULT_CONSUMPTION_RATE,
       defaultEfc: parsed.data.defaultEfc ?? DEFAULT_EXPECTED_FEED_CONVERSION,
+      tempCurveSeason,
     },
   });
 
