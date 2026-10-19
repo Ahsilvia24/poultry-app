@@ -45,8 +45,8 @@ export function ManualLfoForm() {
   const [consumptionRate, setConsumptionRate] = useState(String(DEFAULT_LFO_CONSUMPTION_RATE));
   const [rateFocused, setRateFocused] = useState(false);
   const [headCount, setHeadCount] = useState("");
-  const [binAPounds, setBinAPounds] = useState("0");
-  const [binBPounds, setBinBPounds] = useState("0");
+  const [binAPounds, setBinAPounds] = useState("");
+  const [binBPounds, setBinBPounds] = useState("");
   const [catchDate, setCatchDate] = useState("");
   const [catchTime, setCatchTime] = useState("");
   const [error, setError] = useState<string | null>(null);

@@ -72,8 +72,8 @@ function draftsFromFarm(farmId: string): HouseDraft[] {
     houseId: house.houseId,
     houseNumber: house.houseNumber,
     headCount: house.headCount,
-    binAPounds: "0",
-    binBPounds: "0",
+    binAPounds: "",
+    binBPounds: "",
     catchDate: house.catchDate,
     catchTime: house.catchTime,
   }));
@@ -119,7 +119,7 @@ function FieldButton({
             color: value ? colors.text : colors.muted,
           }}
         >
-          {value || "0"}
+          {value}
         </Text>
       </Pressable>
     </View>
