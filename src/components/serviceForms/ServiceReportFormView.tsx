@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useOffline } from "@/components/OfflineProvider";
 import { BackHeader, Button, Card } from "@/components/ui";
 import {
   CheckField,
@@ -40,7 +41,11 @@ import {
 } from "@/lib/serviceForms/prefill";
 import type { StoredServiceForm } from "@/lib/serviceForms/stored";
 import type { ServiceReportForm } from "@/lib/serviceForms/types";
-import { recommendedHouseTempF } from "@/lib/tools/temp-curve";
+import {
+  parseTempCurveSeason,
+  recommendedTempLabel,
+  tempSeasonForDate,
+} from "@/lib/tools/temp-curve";
 
 function hydrateReport(payload: ServiceReportForm): ServiceReportForm {
   return { ...payload, ventDoorTypes: ventDoorTypesFromPayload(payload) };
@@ -60,6 +65,9 @@ export function ServiceReportFormView({
   fresh: boolean;
 }) {
   const detail = useLiveServiceFarmDetail(farmId, context.detail);
+  const { snapshot } = useOffline();
+  const tempSeason =
+    parseTempCurveSeason(snapshot?.settings?.tempCurveSeason) ?? tempSeasonForDate();
 
   const [form, setForm] = useState<ServiceReportForm>(() => {
     if (existing?.payload && typeof existing.payload === "object") {
@@ -114,12 +122,15 @@ export function ServiceReportFormView({
     setForm((prev) => ({ ...prev, ...p }));
   }
 
+  const flockAge = flockAgeDaysFromHouses(form.houses);
   useEffect(() => {
-    const age = flockAgeDaysFromHouses(form.houses);
-    const next = age == null ? "" : String(recommendedHouseTempF(age));
-    if (next === form.recommendedTempTarget) return;
-    setForm((prev) => ({ ...prev, recommendedTempTarget: next }));
-  }, [form.houses, form.recommendedTempTarget]);
+    const next = recommendedTempLabel(flockAge, tempSeason);
+    setForm((prev) => {
+      if (prev.recommendedTempCustom) return prev;
+      if (prev.recommendedTempTarget === next) return prev;
+      return { ...prev, recommendedTempTarget: next };
+    });
+  }, [flockAge, tempSeason]);
 
   function applyRecommendedWeek(week: number | "") {
     if (week === "" || week < 1) {
@@ -182,7 +193,17 @@ export function ServiceReportFormView({
         <YesNoField label="Temp targets per recommended program" value={form.tempTargetsOk} onChange={(tempTargetsOk) => patch({ tempTargetsOk })} />
         <PairFields
           left={<TextField label="Set Temp" value={form.actualTempTarget} onChange={(actualTempTarget) => patch({ actualTempTarget })} inputMode="decimal" placeholder="°F" />}
-          right={<TextField label="Recommended" value={form.recommendedTempTarget} onChange={() => {}} readOnly placeholder="°F" />}
+          right={
+            <TextField
+              label="Recommended"
+              value={form.recommendedTempTarget}
+              onChange={(recommendedTempTarget) =>
+                patch({ recommendedTempTarget, recommendedTempCustom: true })
+              }
+              inputMode="decimal"
+              placeholder="°F"
+            />
+          }
         />
         <YesNoField label="Ammonia < 25 PPM in all houses" value={form.ammoniaOk} onChange={(ammoniaOk) => patch({ ammoniaOk })} />
         <SelectField
@@ -217,7 +238,14 @@ export function ServiceReportFormView({
         />
         <PairFields
           left={<TextField label="S.P." value={form.staticPressure} onChange={(staticPressure) => patch({ staticPressure })} inputMode="decimal" placeholder="0.1" />}
-          right={<TextField label="Vent opening (in)" value={form.ventOpeningInches} onChange={(ventOpeningInches) => patch({ ventOpeningInches })} inputMode="decimal" />}
+          right={
+            <TextField
+              label="Vent opening (in)"
+              value={form.ventOpeningInches}
+              onChange={(ventOpeningInches) => patch({ ventOpeningInches })}
+              placeholder="3-4"
+            />
+          }
         />
         <TextField label={CFM_FT2_MIN_VENT_LABEL} value={form.cfmPerFt2MinVent} onChange={(cfmPerFt2MinVent) => patch({ cfmPerFt2MinVent })} inputMode="decimal" />
         <TextField label="Size and number of fans used" value={form.fansSizeAndCount} onChange={(fansSizeAndCount) => patch({ fansSizeAndCount })} />

@@ -2,6 +2,7 @@ import { resolveAppTimeZone } from "@/lib/app-time-zones";
 import { parseFarmOrder } from "@/lib/farm-order";
 import { pickPersonName } from "@/lib/person-name";
 import type { OfflineSettings, OfflineSnapshot } from "@/lib/offline/types";
+import { parseTempCurveSeason, tempSeasonForDate, type TempSeason } from "@/lib/tools/temp-curve";
 import {
   DEFAULT_CONSUMPTION_RATE,
   DEFAULT_EXPECTED_FEED_CONVERSION,
@@ -42,6 +43,7 @@ export type SettingsWrite = {
   lfoFeedOffHoursBeforeCatch?: number;
   defaultConsumptionRate?: number;
   defaultEfc?: number;
+  tempCurveSeason?: TempSeason;
 };
 
 const DEFAULT_SETTINGS: OfflineSettings = {
@@ -104,6 +106,10 @@ export function applySettings(snapshot: OfflineSnapshot, write: SettingsWrite): 
       write.defaultConsumptionRate ?? snapshot.settings?.defaultConsumptionRate,
     ),
     defaultEfc: resolveDefaultEfc(write.defaultEfc ?? snapshot.settings?.defaultEfc),
+    tempCurveSeason:
+      parseTempCurveSeason(write.tempCurveSeason) ??
+      parseTempCurveSeason(snapshot.settings?.tempCurveSeason) ??
+      tempSeasonForDate(),
   };
   const upHours = next.lfoFeedUpHoursBeforeCatch ?? 5;
   const offHours = next.lfoFeedOffHoursBeforeCatch ?? 10;
@@ -134,6 +140,7 @@ export function settingsWriteFromForm(formData: FormData): SettingsWrite {
     lfoFeedOffHoursBeforeCatch: Number(formData.get("lfoFeedOffHoursBeforeCatch") || 10),
     defaultConsumptionRate: Number(formData.get("defaultConsumptionRate") || DEFAULT_CONSUMPTION_RATE),
     defaultEfc: Number(formData.get("defaultEfc") || DEFAULT_EXPECTED_FEED_CONVERSION),
+    tempCurveSeason: parseTempCurveSeason(String(formData.get("tempCurveSeason") ?? "")) ?? undefined,
   };
 }
 
@@ -163,6 +170,8 @@ export function formDataFromSettingsWrite(write: SettingsWrite): FormData {
     String(write.defaultConsumptionRate ?? DEFAULT_CONSUMPTION_RATE),
   );
   formData.set("defaultEfc", String(write.defaultEfc ?? DEFAULT_EXPECTED_FEED_CONVERSION));
+  const season = parseTempCurveSeason(write.tempCurveSeason);
+  if (season) formData.set("tempCurveSeason", season);
   return formData;
 }
 

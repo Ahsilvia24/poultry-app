@@ -38,6 +38,8 @@ export type ServiceReportForm = {
   actualTempTarget: string;
   /** Temp Curve target for flock age (°F). */
   recommendedTempTarget: string;
+  /** True after the tech types over the pulled curve value. */
+  recommendedTempCustom?: boolean;
   ammoniaOk: YesNo;
   humidityPct: string; // "" or "0"…"100"
   /** Multi-select: Min / Power / Tunnel (paper form allows more than one). */

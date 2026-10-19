@@ -2,6 +2,7 @@ import { getMeta, setMeta } from "../db/database";
 import { resolveAppTimeZone } from "./appTimeZones";
 import { parseFarmOrder, type FarmOrder } from "./farmOrder";
 import { resolveLfoFeedTiming, type LfoFeedTiming } from "./lfo/calculate";
+import { parseTempCurveSeason, tempSeasonForDate, type TempSeason } from "./tools";
 import { resolveDefaultConsumptionRate, resolveDefaultEfc } from "./weight/manualProjection";
 
 const SERVICE_TECH_KEY = "service_tech";
@@ -13,6 +14,7 @@ const DEFAULT_CONSUMPTION_RATE_KEY = "default_consumption_rate";
 const DEFAULT_EFC_KEY = "default_efc";
 const DEFAULT_MARKET_AGE_KEY = "default_market_age_days";
 const DEFAULT_MARKET_AGE_DAYS = 52;
+const TEMP_CURVE_SEASON_KEY = "temp_curve_season";
 
 export function getServiceTech(): string {
   return getMeta(SERVICE_TECH_KEY)?.trim() ?? "";
@@ -95,6 +97,15 @@ export function getDefaultMarketAgeDays(): number {
 export function setDefaultMarketAgeDays(days: number) {
   if (!Number.isFinite(days) || days < 1) return;
   setMeta(DEFAULT_MARKET_AGE_KEY, String(Math.round(days)));
+}
+
+/** Saved preference, or the calendar season when none has been chosen. */
+export function getTempCurveSeason(): TempSeason {
+  return parseTempCurveSeason(getMeta(TEMP_CURVE_SEASON_KEY)) ?? tempSeasonForDate();
+}
+
+export function setTempCurveSeason(season: TempSeason) {
+  setMeta(TEMP_CURVE_SEASON_KEY, season);
 }
 
 /** Use the saved Settings name when a checklist field is still empty. */

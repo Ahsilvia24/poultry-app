@@ -58,4 +58,18 @@ describe("settings WP defaults", () => {
     assert.equal(next.settings.defaultConsumptionRate, 0.5);
     assert.equal(next.settings.defaultEfc, 1.7);
   });
+
+  it("keeps an explicit temp curve and falls back to the calendar season", () => {
+    const winter = applySettings(snapshot, { ...baseWrite, tempCurveSeason: "winter" });
+    assert.equal(winter.settings.tempCurveSeason, "winter");
+
+    const kept = applySettings(winter, baseWrite);
+    assert.equal(kept.settings.tempCurveSeason, "winter");
+
+    const form = new FormData();
+    form.set("name", "Alex");
+    form.set("tempCurveSeason", "summer");
+    const fromForm = settingsWriteFromForm(form);
+    assert.equal(fromForm.tempCurveSeason, "summer");
+  });
 });
