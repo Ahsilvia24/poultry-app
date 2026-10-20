@@ -17,7 +17,7 @@ assert.match(globals, /overflow-y: auto/);
 assert.doesNotMatch(globals, /body \{\s*overflow: hidden;/);
 
 const layout = read("src/app/layout.tsx");
-assert.match(layout, /overflow-x-hidden/);
+assert.match(layout, /overflow-x-clip/);
 assert.doesNotMatch(layout, /h-full overflow-hidden/);
 
 const banner = read("src/components/OfflineBanner.tsx");

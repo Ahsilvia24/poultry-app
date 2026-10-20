@@ -87,7 +87,7 @@ export function PrebroodFormView({
   }
 
   return (
-    <div className="pb-20">
+    <div className="pb-20" data-checklist="">
       <BackHeader
         href={`/farms/${farmId}/service`}
         backLabel="Checklists"
