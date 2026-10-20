@@ -13,7 +13,7 @@ assert.match(nav, /pin-bottom-chrome/);
 assert.match(nav, /data-app-nav/);
 assert.match(layout, /viewportFit: "cover"/);
 assert.match(layout, /interactiveWidget: "overlays-content"/);
-assert.match(layout, /overflow-x-hidden/);
+assert.match(layout, /overflow-x-clip/);
 assert.match(layout, /maximumScale: 1/);
 assert.match(layout, /userScalable: false/);
 assert.match(layout, /LockPinchZoom/);

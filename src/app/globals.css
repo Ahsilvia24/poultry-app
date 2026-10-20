@@ -34,13 +34,18 @@ body {
   touch-action: pan-x pan-y;
 }
 
+/*
+ * clip blocks sideways pan without turning the page into a scroll container.
+ * The hidden value forces the other axis to auto, and iOS then flings a
+ * focused checklist input to the end of the page.
+ */
 html {
-  overflow-x: hidden;
+  overflow-x: clip;
   overflow-y: auto;
 }
 
 body {
-  overflow-x: hidden;
+  overflow-x: clip;
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   color-scheme: light;
@@ -50,6 +55,16 @@ input,
 textarea,
 select {
   color-scheme: light;
+}
+
+/*
+ * Tailwind stone-900 is oklch(). iOS Safari paints the text and skips the
+ * caret, so the cursor disappears in every box and in Comments.
+ */
+input,
+textarea,
+[contenteditable="true"] {
+  caret-color: #1c1917 !important;
 }
 
 h1,

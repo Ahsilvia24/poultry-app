@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Source_Sans_3, Source_Serif_4 } from "next/font/google";
+import { HoldFocusedField } from "@/components/HoldFocusedField";
 import { LockPhoneChrome } from "@/components/LockPhoneChrome";
 import { LockPinchZoom } from "@/components/LockPinchZoom";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
@@ -55,7 +56,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       style={{ backgroundColor: "#f3efe6" }}
     >
       <body
-        className="min-h-full overflow-x-hidden bg-[#f3efe6] font-sans text-stone-900 antialiased"
+        className="min-h-full overflow-x-clip bg-[#f3efe6] font-sans text-stone-900 antialiased"
         style={{ backgroundColor: "#f3efe6" }}
       >
         {process.env.NODE_ENV === "production" ? (
@@ -69,6 +70,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <RegisterServiceWorker />
         <LockPinchZoom />
         <LockPhoneChrome />
+        <HoldFocusedField />
         {children}
       </body>
     </html>
