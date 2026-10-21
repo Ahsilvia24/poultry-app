@@ -9,6 +9,7 @@ export const ALLOWED_REGISTER_EMAILS = [
   "lanetyler2004@gmail.com",
   "jeffreywalden@ymail.com",
   "sethhunt2002@gmail.com",
+  "vanleecody@yahoo.com",
 ] as const;
 
 function extraAllowedEmails() {

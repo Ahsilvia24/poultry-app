@@ -12,11 +12,13 @@ assert.ok(ALLOWED_REGISTER_EMAILS.includes("alexsilvia24@yahoo.com"));
 assert.ok(ALLOWED_REGISTER_EMAILS.includes("lanetyler2004@gmail.com"));
 assert.ok(ALLOWED_REGISTER_EMAILS.includes("jeffreywalden@ymail.com"));
 assert.ok(ALLOWED_REGISTER_EMAILS.includes("sethhunt2002@gmail.com"));
+assert.ok(ALLOWED_REGISTER_EMAILS.includes("vanleecody@yahoo.com"));
 assert.equal(isRegisterEmailAllowed("tech@poultry.local"), true);
 assert.equal(isRegisterEmailAllowed("AlexSilvia24@yahoo.com"), true);
 assert.equal(isRegisterEmailAllowed("Lanetyler2004@gmail.com"), true);
 assert.equal(isRegisterEmailAllowed("jeffreywalden@ymail.com"), true);
 assert.equal(isRegisterEmailAllowed("Sethhunt2002@gmail.com"), true);
+assert.equal(isRegisterEmailAllowed("VanLeeCody@yahoo.com"), true);
 assert.equal(isRegisterEmailAllowed("jeffreywalden@gmail.com"), false);
 assert.equal(isRegisterEmailAllowed("stranger@example.com"), false);
 
