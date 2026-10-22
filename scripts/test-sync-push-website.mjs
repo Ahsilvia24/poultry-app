@@ -40,5 +40,7 @@ assert.doesNotMatch(provider, /pullRemoteSnapshot/);
 const route = read("src/app/api/offline/snapshot/route.ts");
 assert.match(route, /saveHostedReplica\(signed\.email/);
 assert.match(route, /loadHostedReplica\(signed\.email/);
+assert.doesNotMatch(route, /buildOfflineSnapshot/);
+assert.doesNotMatch(route, /ensureWeightProjectionVisitType/);
 
 console.log("sync-push-website: ok");

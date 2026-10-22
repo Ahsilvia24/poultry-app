@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { buildOfflineSnapshot, resolveHostedUserId } from "@/lib/offline/buildSnapshot";
 import {
   loadHostedReplica,
   saveHostedReplica,
@@ -9,7 +8,6 @@ import {
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import { normalizeOwnerEmail } from "@/lib/offline/ownerEmail";
 import type { OfflineSnapshot } from "@/lib/offline/types";
-import { ensureWeightProjectionVisitType } from "@/lib/visits/ensureVisitType";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -22,35 +20,23 @@ async function sessionEmail() {
   return { session, email };
 }
 
+/** Hosted replica only. Never build a Prisma snapshot for the phone. */
 export async function GET() {
   const signed = await sessionEmail();
   if (!signed) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
   const hosted = await loadHostedReplica(signed.email);
-  if (hosted) {
-    return NextResponse.json({ ok: true, snapshot: hosted });
+  if (!hosted) {
+    return NextResponse.json(
+      { ok: false, error: "No website farms for this email." },
+      { status: 404 },
+    );
   }
-  try {
-    const userId = await resolveHostedUserId({
-      id: signed.session.user?.id,
-      email: signed.email,
-    });
-    if (!userId) {
-      return NextResponse.json(
-        { ok: false, error: "No website farms for this email." },
-        { status: 404 },
-      );
-    }
-    await ensureWeightProjectionVisitType();
-    const snapshot = await buildOfflineSnapshot(userId);
-    return NextResponse.json({ ok: true, snapshot });
-  } catch {
-    return NextResponse.json({ ok: false, error: "Could not save farms to this phone." }, { status: 500 });
-  }
+  return NextResponse.json({ ok: true, snapshot: hosted });
 }
 
-/** Keep the phone replica on the website so Safari can seed from this email. */
+/** Store this phone’s replica on the website. Never write that copy back onto the phone. */
 export async function POST(req: Request) {
   const signed = await sessionEmail();
   if (!signed) {

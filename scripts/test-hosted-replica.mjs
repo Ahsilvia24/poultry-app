@@ -160,5 +160,8 @@ assert.match(route, /export async function POST/);
 assert.match(route, /saveHostedReplica/);
 assert.match(route, /loadHostedReplica/);
 assert.match(route, /websiteHasPhoneFarms/);
+assert.doesNotMatch(route, /buildOfflineSnapshot/);
+assert.doesNotMatch(route, /ensureWeightProjectionVisitType/);
+assert.doesNotMatch(route, /Could not save farms to this phone/);
 
 console.log("hosted-replica: ok");
