@@ -1,4 +1,3 @@
-import { format, parseISO, subDays } from "date-fns";
 import { addCalendarDays, calendarDaysBetween, dateKeyForAge } from "@/lib/app-calendar";
 import type {
   MortalityRecordLike,
@@ -136,6 +135,15 @@ function toDateKey(value: Date | string): string {
   return Number.isFinite(date.getTime()) ? dateKeyForAge(date) : "";
 }
 
+/** Inclusive calendar-day keys ending on `end`, newest first. UTC date math, not local clock. */
+function windowDateKeys(end: Date | string, days: number): string[] {
+  const endKey = toDateKey(end);
+  if (!endKey) return [];
+  const keys: string[] = [];
+  for (let i = 0; i < days; i++) keys.push(addCalendarDays(endKey, -i));
+  return keys;
+}
+
 /** Keep a saved row on its stored calendar day — never rewrite to placement + age. */
 export function mortalityEntryDateKey(
   placementDateKey: string,
@@ -200,11 +208,9 @@ export function buildMortalitySummaries(
     const loss = calcTotalDailyLoss(record.dailyMortalityCount, record.cullCount);
     cumulative += loss;
 
-    // Rolling 7-day window inclusive of current date
-    const end = parseISO(dateKey);
+    // Last 7 calendar days, including this date. Missing days count as 0.
     let rolling7 = 0;
-    for (let i = 0; i < 7; i++) {
-      const key = format(subDays(end, i), "yyyy-MM-dd");
+    for (const key of windowDateKeys(dateKey, 7)) {
       const day = byDate.get(key);
       if (day) {
         rolling7 += calcTotalDailyLoss(day.dailyMortalityCount, day.cullCount);
@@ -235,7 +241,7 @@ export function getLatestSummary(
   const summaries = buildMortalitySummaries(placedBirdCount, records);
   if (summaries.length === 0) {
     return {
-      date: format(asOfDate ?? new Date(), "yyyy-MM-dd"),
+      date: toDateKey(asOfDate ?? new Date()),
       birdAgeInDays: 0,
       dailyMortalityCount: 0,
       cullCount: 0,
@@ -273,7 +279,7 @@ export function summarizeForDate(
   sevenDayPct: number;
 } {
   const summaries = buildMortalitySummaries(placedBirdCount, records);
-  const key = format(date, "yyyy-MM-dd");
+  const key = toDateKey(date);
   const todayRow = summaries.find((s) => s.date === key);
   const latest = getLatestSummary(placedBirdCount, records, date);
 
@@ -290,7 +296,8 @@ export function summarizeForDate(
 
 /**
  * Total loss over the last 7 calendar days ending on `asOfDate`
- * (missing days count as 0).
+ * (missing days count as 0). Date keys stay on the stored civil day.
+ * Local formatting of a UTC midnight would drop "today" in US timezones.
  */
 export function sumMortalityLast7Days(
   records: MortalityRecordLike[],
@@ -303,8 +310,8 @@ export function sumMortalityLast7Days(
     ]),
   );
   let total = 0;
-  for (let i = 0; i < 7; i++) {
-    total += byDate.get(format(subDays(asOfDate, i), "yyyy-MM-dd")) ?? 0;
+  for (const key of windowDateKeys(asOfDate, 7)) {
+    total += byDate.get(key) ?? 0;
   }
   return total;
 }
@@ -364,15 +371,15 @@ export function resolveMortalityStatus(
 }
 
 export function isRisingThreeDays(records: MortalityRecordLike[], asOf: Date): boolean {
-  const key = format(asOf, "yyyy-MM-dd");
+  const key = toDateKey(asOf);
   const byDate = new Map(
     records.map((r) => [
       toDateKey(r.mortalityDate),
       calcTotalDailyLoss(r.dailyMortalityCount, r.cullCount),
     ]),
   );
-  const d0 = byDate.get(format(subDays(parseISO(key), 2), "yyyy-MM-dd")) ?? 0;
-  const d1 = byDate.get(format(subDays(parseISO(key), 1), "yyyy-MM-dd")) ?? 0;
+  const d0 = byDate.get(addCalendarDays(key, -2)) ?? 0;
+  const d1 = byDate.get(addCalendarDays(key, -1)) ?? 0;
   const d2 = byDate.get(key) ?? 0;
   return d2 > d1 && d1 > d0 && d2 > 0;
 }
