@@ -886,8 +886,10 @@ export function MortalityEntryForm({
                       if (house.houseId) params.set("focusHouseId", house.houseId);
                       armKeypadPointerGuard();
                       flushSave();
-                      openReplica(`/farms/${farmId}?${params.toString()}`);
+                      // Close the keypad before the route swap so the tab bar is
+                      // already visible on the house page.
                       setMortField(null);
+                      openReplica(`/farms/${farmId}?${params.toString()}`);
                     },
                   }
                 : undefined

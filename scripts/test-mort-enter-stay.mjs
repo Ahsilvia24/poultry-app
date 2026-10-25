@@ -19,12 +19,13 @@ assert.doesNotMatch(guard, /position:fixed;inset:0/);
 const ctx = read("src/components/KeypadNavContext.tsx");
 assert.match(ctx, /armKeypadPointerGuard\(\)/);
 assert.match(ctx, /disarmKeypadPointerGuard\(\)/);
-assert.match(ctx, /keypadOpen \|\| tabsBlocked/);
 assert.match(ctx, /if \(!openRef\.current\) return/);
 assert.match(ctx, /openRef\.current = true/);
 assert.match(ctx, /openRef\.current = false/);
 assert.match(ctx, /opts\?\.guard === false/);
-assert.match(ctx, /data-keypad-open/);
+assert.match(ctx, /toggleAttribute\("data-keypad-open", keypadOpen\)/);
+assert.match(ctx, /setTabBarHidden\(false\)/);
+assert.doesNotMatch(ctx, /tabsBlocked/);
 
 const mort = read("src/components/MortalityEntryForm.tsx");
 assert.match(mort, /keydown/);

@@ -325,10 +325,12 @@ export default function MortalityScreen() {
     }
   }
 
-  // Hide bottom tabs while the custom keypad is open
+  // Hide bottom tabs while the custom keypad is open on this screen.
+  // `display: "flex"` (not undefined) so a later merge cannot keep "none".
   useEffect(() => {
+    const hide = Boolean(activeField) && navigation.isFocused();
     navigation.setOptions({
-      tabBarStyle: activeField ? { display: "none" } : undefined,
+      tabBarStyle: hide ? { display: "none" } : { display: "flex" },
     });
   }, [activeField, navigation]);
 
@@ -609,7 +611,7 @@ export default function MortalityScreen() {
         activeFieldRef.current = null;
         setActiveField(null);
         setSelection(undefined);
-        navigation.setOptions({ tabBarStyle: undefined });
+        navigation.setOptions({ tabBarStyle: { display: "flex" } });
       };
     }, [farmIdParam, houseFlockIdParam, jumpParam, loadFarms, navigation]),
   );
@@ -1159,6 +1161,9 @@ export default function MortalityScreen() {
                     const saved = flushSave(selectedHouse.houseFlockId);
                     if (!saved) return;
                     resetKeypad();
+                    // Farms is about to be focused. Show the tab bar before the
+                    // route swap so it is not left hidden with the keypad.
+                    navigation.setOptions({ tabBarStyle: { display: "flex" } });
                     setFarmNavContext({
                       farmId,
                       houseFlockId: selectedHouse.houseFlockId,
