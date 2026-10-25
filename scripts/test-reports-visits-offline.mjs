@@ -105,6 +105,9 @@ assert.match(reports, /persist\(\{ type: "mortality"/);
 const lfoHub = read("src/components/LfoHub.tsx");
 assert.match(lfoHub, /useOfflineNav/);
 assert.match(lfoHub, /writeReplicaUrl\(href, "replace"\)/);
+assert.match(lfoHub, /SettingsValueChip/);
+assert.match(lfoHub, /<select/);
+assert.doesNotMatch(lfoHub, /overflow-x-auto/);
 assert.doesNotMatch(lfoHub, /router\.replace/);
 
 const visits = read("src/components/AllVisitsView.tsx");
