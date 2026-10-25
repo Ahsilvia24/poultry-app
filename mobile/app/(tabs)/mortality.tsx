@@ -95,6 +95,8 @@ function needsEntry(row: DayRow, today: string) {
 /**
  * First past/today day still missing a mortality total after the last day
  * that has one. If none entered yet, the earliest day that needs entry.
+ * When every past/today box is filled, the next empty box after that
+ * (usually tomorrow) so the keypad still opens.
  */
 function firstUnfilledAfterLastFilled(rows: DayRow[], today: string): DayRow | null {
   let lastFilledAge = -1;
@@ -106,7 +108,7 @@ function firstUnfilledAfterLastFilled(rows: DayRow[], today: string): DayRow | n
   if (lastFilledAge < 0) {
     return rows.find((r) => needsEntry(r, today)) ?? null;
   }
-  return null;
+  return rows.find((r) => r.age > lastFilledAge && r.age > 0 && !mortalityEntered(r)) ?? null;
 }
 
 type FieldKind = "culls" | "mort";

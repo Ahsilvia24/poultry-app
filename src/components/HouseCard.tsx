@@ -116,7 +116,9 @@ export function HouseCard({
       : null;
 
   useEffect(() => {
-    setKeypadOpen(tempOpen);
+    // Closing must not arm the tap guard. That guard sat on the tab bar
+    // for about a second after Log Temp.
+    setKeypadOpen(tempOpen, tempOpen ? undefined : { guard: false });
   }, [tempOpen, setKeypadOpen]);
 
   useEffect(() => {
@@ -132,6 +134,9 @@ export function HouseCard({
 
   function closeTemp() {
     if (tempPending) return;
+    // Drop the keypad flag in this tap. Waiting for the effect left the
+    // bottom tabs hidden for a moment after the sheet closed.
+    setKeypadOpen(false, { guard: false });
     setTempOpen(false);
     setTempError(null);
   }
@@ -152,6 +157,7 @@ export function HouseCard({
     if (snapshotHasFarmGraph(snapshot)) {
       patchSnapshot((current) => applyHouseTemp(current, payload));
       enqueue({ kind: "updateHouseTemp", payload });
+      setKeypadOpen(false, { guard: false });
       setTempOpen(false);
       setTempError(null);
       return;
@@ -162,6 +168,7 @@ export function HouseCard({
         setTempError(result.error);
         return;
       }
+      setKeypadOpen(false, { guard: false });
       setTempOpen(false);
       router.refresh();
     });

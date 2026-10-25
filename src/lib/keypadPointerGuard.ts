@@ -1,6 +1,5 @@
 /** Keep leftover iOS taps from hitting a tab after the keypad unmounts. */
 export const KEYPAD_TAB_GUARD_MS = 1200;
-export const KEYPAD_SHIELD_ID = "keypad-pointer-shield";
 
 const EAT_TYPES = [
   "click",
@@ -22,8 +21,6 @@ export function isKeypadGuardActive() {
 
 function isTabChrome(target: EventTarget | null) {
   if (!(target instanceof Node)) return false;
-  const shield = document.getElementById(KEYPAD_SHIELD_ID);
-  if (shield?.contains(target)) return true;
   return Boolean(document.querySelector("[data-app-nav]")?.contains(target));
 }
 
@@ -33,26 +30,6 @@ function eat(event: Event) {
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();
-}
-
-function mountShield() {
-  if (typeof document === "undefined") return;
-  let shield = document.getElementById(KEYPAD_SHIELD_ID);
-  if (!shield) {
-    shield = document.createElement("div");
-    shield.id = KEYPAD_SHIELD_ID;
-    shield.setAttribute("aria-hidden", "true");
-    // Cover only the tab bar so leftover iOS taps cannot change tabs.
-    // A full-screen shield ate mortality / temperature taps.
-    shield.style.cssText =
-      "position:fixed;left:0;right:0;bottom:0;height:calc(4.75rem + var(--app-safe-bottom, env(safe-area-inset-bottom, 0px)));z-index:2147483647;touch-action:none;pointer-events:auto;";
-    document.body.appendChild(shield);
-  }
-}
-
-function unmountShield() {
-  if (typeof document === "undefined") return;
-  document.getElementById(KEYPAD_SHIELD_ID)?.remove();
 }
 
 function listen() {
@@ -76,7 +53,6 @@ export function armKeypadPointerGuard() {
   if (typeof window === "undefined") return;
   armedUntil = Date.now() + KEYPAD_TAB_GUARD_MS;
   listen();
-  mountShield();
   if (clearTimer != null) window.clearTimeout(clearTimer);
   clearTimer = window.setTimeout(() => {
     disarmKeypadPointerGuard();
@@ -89,6 +65,5 @@ export function disarmKeypadPointerGuard() {
     window.clearTimeout(clearTimer);
     clearTimer = null;
   }
-  unmountShield();
   unlisten();
 }

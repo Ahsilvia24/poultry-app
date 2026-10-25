@@ -8,7 +8,8 @@ const read = (rel) => readFileSync(join(root, rel), "utf8");
 
 const guard = read("src/lib/keypadPointerGuard.ts");
 assert.match(guard, /KEYPAD_TAB_GUARD_MS = 1200/);
-assert.match(guard, /KEYPAD_SHIELD_ID = "keypad-pointer-shield"/);
+assert.doesNotMatch(guard, /KEYPAD_SHIELD_ID/);
+assert.doesNotMatch(guard, /position:fixed/);
 assert.match(guard, /armKeypadPointerGuard/);
 assert.match(guard, /stopImmediatePropagation/);
 assert.match(guard, /capture: true, passive: false/);

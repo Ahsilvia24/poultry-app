@@ -42,7 +42,7 @@ const mort = read("src/components/MortalityEntryForm.tsx");
 assert.match(mort, /setKeypadOpen\(false, \{ guard: false \}\)/);
 
 const guard = read("src/lib/keypadPointerGuard.ts");
-assert.match(guard, /height:calc\(4\.75rem/);
+assert.doesNotMatch(guard, /height:calc\(4\.75rem/);
 assert.match(guard, /if \(!isTabChrome\(event\.target\)\) return/);
 
 console.log("keypad-tab-stay: ok");
