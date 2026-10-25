@@ -48,6 +48,30 @@ const caughtUp = [
   row(6, "2026-09-16", "0"),
 ];
 assert.equal(firstUnfilledAfterLastFilled(caughtUp, asOf), null, "do not land on a filled today");
+const caughtUpNext = [
+  row(1, "2026-09-11", "2"),
+  row(2, "2026-09-12", "1"),
+  row(6, "2026-09-16", "0"),
+  row(7, "2026-09-17", ""),
+];
+assert.equal(
+  firstUnfilledAfterLastFilled(caughtUpNext, asOf)?.age,
+  7,
+  "caught up lands on the next empty box",
+);
+assert.equal(
+  firstUnfilledAfterLastFilled(
+    [
+      row(1, "2026-09-11", "2"),
+      row(6, "2026-09-16", "0"),
+      row(7, "2026-09-17", "1"),
+      row(8, "2026-09-18", ""),
+    ],
+    asOf,
+  )?.age,
+  8,
+  "skip a filled future box",
+);
 
 assert.equal(nextRowInColumn(throughTwo, 2)?.age, 3);
 assert.equal(nextRowInColumn(throughTwo, 1)?.age, 2, "Enter steps one box even onto a typed 0");

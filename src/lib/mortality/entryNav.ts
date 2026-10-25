@@ -25,6 +25,8 @@ export function needsEntry(row: MortalityNavRow, asOfDateKey: string) {
  * First past/today day still missing a mortality total after the last day
  * that has one. If none entered yet, the earliest day that needs entry.
  * Does not fall back onto a day that is already filled.
+ * When every past/today box is filled, the next empty box after that
+ * (usually tomorrow) so the keypad still opens.
  */
 export function firstUnfilledAfterLastFilled(
   rows: MortalityNavRow[],
@@ -39,7 +41,7 @@ export function firstUnfilledAfterLastFilled(
   if (lastFilledAge < 0) {
     return rows.find((r) => needsEntry(r, asOfDateKey)) ?? null;
   }
-  return null;
+  return rows.find((r) => r.age > lastFilledAge && r.age > 0 && !mortalityEntered(r)) ?? null;
 }
 
 /** Immediate next age slot in the column — even when that box already has a value. */

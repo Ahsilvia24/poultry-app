@@ -95,6 +95,8 @@ function needsEntry(row: DayRow, today: string) {
 /**
  * First past/today day still missing a mortality total after the last day
  * that has one. If none entered yet, the earliest day that needs entry.
+ * When every past/today box is filled, the next empty box after that
+ * (usually tomorrow) so the keypad still opens.
  */
 function firstUnfilledAfterLastFilled(rows: DayRow[], today: string): DayRow | null {
   let lastFilledAge = -1;
@@ -106,7 +108,7 @@ function firstUnfilledAfterLastFilled(rows: DayRow[], today: string): DayRow | n
   if (lastFilledAge < 0) {
     return rows.find((r) => needsEntry(r, today)) ?? null;
   }
-  return null;
+  return rows.find((r) => r.age > lastFilledAge && r.age > 0 && !mortalityEntered(r)) ?? null;
 }
 
 type FieldKind = "culls" | "mort";
@@ -325,10 +327,12 @@ export default function MortalityScreen() {
     }
   }
 
-  // Hide bottom tabs while the custom keypad is open
+  // Hide bottom tabs while the custom keypad is open on this screen.
+  // `display: "flex"` (not undefined) so a later merge cannot keep "none".
   useEffect(() => {
+    const hide = Boolean(activeField) && navigation.isFocused();
     navigation.setOptions({
-      tabBarStyle: activeField ? { display: "none" } : undefined,
+      tabBarStyle: hide ? { display: "none" } : { display: "flex" },
     });
   }, [activeField, navigation]);
 
@@ -609,7 +613,7 @@ export default function MortalityScreen() {
         activeFieldRef.current = null;
         setActiveField(null);
         setSelection(undefined);
-        navigation.setOptions({ tabBarStyle: undefined });
+        navigation.setOptions({ tabBarStyle: { display: "flex" } });
       };
     }, [farmIdParam, houseFlockIdParam, jumpParam, loadFarms, navigation]),
   );
@@ -1159,6 +1163,9 @@ export default function MortalityScreen() {
                     const saved = flushSave(selectedHouse.houseFlockId);
                     if (!saved) return;
                     resetKeypad();
+                    // Farms is about to be focused. Show the tab bar before the
+                    // route swap so it is not left hidden with the keypad.
+                    navigation.setOptions({ tabBarStyle: { display: "flex" } });
                     setFarmNavContext({
                       farmId,
                       houseFlockId: selectedHouse.houseFlockId,
