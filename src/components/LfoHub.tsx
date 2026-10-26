@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui";
 import { FarmLfoForm, type FarmLfoHouseInput } from "@/components/FarmLfoForm";
 import { ManualLfoForm } from "@/components/ManualLfoForm";
 import { SavedLfoRow } from "@/components/SavedLfoRow";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
+import { SettingsValueChip, settingsValueTextClass } from "@/components/SettingsLayout";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import { lfoTabFromRoute } from "@/lib/lfo/defaultTab";
 import { writeReplicaUrl } from "@/lib/offline/replicaHistory";
@@ -53,36 +53,26 @@ export function LfoHub({
   const isManual = tab === MANUAL_LFO_TAB_ID;
   const selected = farms.find((f) => f.id === tab) ?? null;
 
+  const pickerLabel =
+    tab === MANUAL_LFO_TAB_ID ? "Quick Calc." : (selected?.farmName ?? "Quick Calc.");
+
   return (
     <div>
-      <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
-        <button
-          type="button"
-          onClick={() => selectTab(MANUAL_LFO_TAB_ID)}
-          className={cn(
-            "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
-            isManual ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
-          )}
+      <SettingsValueChip className="mb-3 w-full min-w-0">
+        <select
+          aria-label={`Last feed order, ${pickerLabel}`}
+          value={tab}
+          onChange={(event) => selectTab(event.target.value)}
+          className={`${settingsValueTextClass.replace("text-right", "text-left")} min-w-0 cursor-pointer`}
         >
-          Quick Calc.
-        </button>
-        {farms.map((f) => {
-          const active = tab === f.id;
-          return (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => selectTab(f.id)}
-              className={cn(
-                "shrink-0 rounded-[10px] px-3.5 py-2.5 text-[15px] font-bold",
-                active ? "bg-emerald-800 text-white" : "bg-stone-200 text-stone-800",
-              )}
-            >
+          <option value={MANUAL_LFO_TAB_ID}>Quick Calc.</option>
+          {farms.map((f) => (
+            <option key={f.id} value={f.id}>
               {f.farmName}
-            </button>
-          );
-        })}
-      </div>
+            </option>
+          ))}
+        </select>
+      </SettingsValueChip>
 
       {isManual ? (
         <ManualLfoForm />
@@ -111,7 +101,7 @@ export function LfoHub({
       {savedLfos.length === 0 ? (
         <Card>
           <p className="text-sm text-stone-600">
-            No saved LFOs yet. Save from Quick Calc or a farm tab.
+            No saved LFOs yet. Save from Quick Calc or a farm.
           </p>
         </Card>
       ) : (

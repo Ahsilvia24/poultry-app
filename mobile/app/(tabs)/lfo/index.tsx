@@ -87,7 +87,7 @@ function SavedLfoList({
       </View>
       {lfos.length === 0 ? (
         <Card>
-          <Text style={styles.muted}>None yet — save from Quick Calc or a farm tab.</Text>
+          <Text style={styles.muted}>None yet — save from Quick Calc or a farm.</Text>
         </Card>
       ) : null}
       {lfos.map((l) => (
