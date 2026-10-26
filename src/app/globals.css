@@ -58,13 +58,26 @@ select {
 }
 
 /*
- * Tailwind stone-900 is oklch(). iOS Safari paints the text and skips the
- * caret, so the cursor disappears in every box and in Comments.
+ * Tailwind stone-900 is oklch(), and placeholders are an oklab color-mix.
+ * iOS Safari paints the letters and skips the caret. A hex caret-color is
+ * not enough on a textarea: Comments stays cursorless until the text color
+ * and the placeholder are plain sRGB too.
  */
 input,
 textarea,
 [contenteditable="true"] {
   caret-color: #1c1917 !important;
+}
+
+textarea {
+  color: #1c1917;
+  -webkit-text-fill-color: #1c1917;
+  caret-color: #1c1917;
+}
+
+textarea::placeholder {
+  color: #a8a29e;
+  -webkit-text-fill-color: #a8a29e;
 }
 
 h1,
