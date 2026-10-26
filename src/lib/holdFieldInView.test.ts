@@ -138,6 +138,8 @@ describe("checklist field chrome", () => {
 
   it("paints a hex caret and does not use overflow-x hidden", () => {
     assert.match(globals, /caret-color:\s*#1c1917\s*!important/);
+    assert.match(globals, /textarea \{\s*color:\s*#1c1917;/);
+    assert.match(globals, /textarea::placeholder \{\s*color:\s*#a8a29e;/);
     assert.match(globals, /overflow-x:\s*clip/);
     assert.doesNotMatch(globals, /overflow-x:\s*hidden/);
     assert.match(layout, /HoldFocusedField/);
