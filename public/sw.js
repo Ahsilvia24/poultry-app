@@ -6,7 +6,7 @@
  * slow radio. Only wait on the network when this phone has never saved
  * that page.
  */
-const CACHE = "poultrytech-offline-v19";
+const CACHE = "poultrytech-offline-v20";
 const NETWORK_MS = 1500;
 const OPEN_MS = 8000;
 const SIGNED_OUT_FLAG = "/__poultrytech-signed-out";
@@ -167,6 +167,78 @@ async function serveLeave() {
   );
 }
 
+function stylesheetUrlsFromHtml(html) {
+  const urls = [];
+  const tags = html.match(/<link\b[^>]*>/gi) || [];
+  for (const tag of tags) {
+    if (!/rel=["'][^"']*stylesheet/i.test(tag) && !/as=["']style["']/i.test(tag)) continue;
+    const href = /href=["']([^"']+)["']/i.exec(tag);
+    if (!href) continue;
+    try {
+      const abs = new URL(href[1], self.location.origin);
+      if (sameOrigin(abs)) urls.push(abs.href);
+    } catch {
+      /* skip a bad href */
+    }
+  }
+  return urls;
+}
+
+async function matchAsset(cache, requestOrUrl) {
+  const direct = await cache.match(requestOrUrl, { ignoreVary: true, ignoreSearch: true });
+  if (direct) return direct;
+  if (typeof requestOrUrl === "string") return null;
+  return cache.match(requestOrUrl.url, { ignoreVary: true, ignoreSearch: true });
+}
+
+/** Home Screen was opening a saved page whose CSS file was no longer cached, so Safari drew plain blue links. */
+async function stylesReady(response) {
+  if (!response) return false;
+  const type = response.headers.get("content-type") || "";
+  if (!type.includes("text/html")) return true;
+  let html = "";
+  try {
+    html = await response.clone().text();
+  } catch {
+    return true;
+  }
+  const urls = stylesheetUrlsFromHtml(html);
+  if (urls.length === 0) return true;
+  const cache = await caches.open(CACHE);
+  for (const href of urls) {
+    if (!(await matchAsset(cache, href))) return false;
+  }
+  return true;
+}
+
+async function cacheStylesheets(response) {
+  const type = response.headers.get("content-type") || "";
+  if (!type.includes("text/html")) return true;
+  let html = "";
+  try {
+    html = await response.clone().text();
+  } catch {
+    return false;
+  }
+  const urls = stylesheetUrlsFromHtml(html);
+  if (urls.length === 0) return true;
+  const cache = await caches.open(CACHE);
+  const saved = await Promise.all(
+    urls.map(async (href) => {
+      if (await matchAsset(cache, href)) return true;
+      try {
+        const fresh = await fetchWithTimeout(href, OPEN_MS);
+        if (!fresh || !fresh.ok) return false;
+        await cache.put(href, fresh);
+        return true;
+      } catch {
+        return false;
+      }
+    }),
+  );
+  return saved.every(Boolean);
+}
+
 async function putOk(cache, request, response) {
   if (!response || !response.ok) return withoutRedirect(response);
   if (await isSignedOut()) {
@@ -182,6 +254,10 @@ async function putOk(cache, request, response) {
       }
       return withoutRedirect(response);
     }
+  }
+  if (isNavigation(request)) {
+    const styled = await cacheStylesheets(response);
+    if (!styled) return withoutRedirect(response);
   }
   await cache.put(request, response.clone());
   return withoutRedirect(response);
@@ -242,10 +318,12 @@ async function networkFirst(request) {
 
 async function cacheFirst(request) {
   const cache = await caches.open(CACHE);
-  const cached = await cache.match(request);
+  const cached = await matchAsset(cache, request);
   if (cached) return cached;
+  // A cold Home Screen launch is slow to reach the radio. 1.5s drops the
+  // stylesheet and the saved page paints with no layout.
   try {
-    const fresh = await fetchWithTimeout(request, NETWORK_MS);
+    const fresh = await fetchWithTimeout(request, OPEN_MS);
     return putOk(cache, request, fresh);
   } catch {
     return cachedFallback(request);
@@ -255,6 +333,7 @@ async function cacheFirst(request) {
 async function staleWhileRevalidate(request, event, homeFallback = true) {
   const cache = await caches.open(CACHE);
   const cached = await matchCachedPage(cache, request, homeFallback);
+  const usable = cached && (await stylesReady(cached)) ? cached : null;
   const refresh = (async () => {
     try {
       const fresh = await fetch(request);
@@ -264,7 +343,7 @@ async function staleWhileRevalidate(request, event, homeFallback = true) {
     }
   })();
   event.waitUntil(refresh);
-  if (cached) return cached;
+  if (usable) return usable;
   // Home Screen often reports offline at launch even on Wi-Fi.
   // With no saved Dashboard, try the network before offline.html.
   try {

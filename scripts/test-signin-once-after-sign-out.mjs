@@ -24,7 +24,7 @@ assert.match(login, /tellWorkerSignedIn/);
 assert.doesNotMatch(login, /\/api\/login/);
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v19/, "new worker must drop the cached leave-page login form");
+assert.match(sw, /poultrytech-offline-v20/, "new worker must drop the cached leave-page login form");
 assert.match(sw, /isPublicAuthPath/);
 assert.match(sw, /path === "\/login"/);
 
