@@ -21,7 +21,6 @@ import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
 import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import {
-  detectGeneratorHourSwap,
   formatGeneratorChartsCopy,
   formatGeneratorHours,
   formatGeneratorLogDate,
@@ -29,7 +28,6 @@ import {
   GENERATOR_FIELD_DEFS,
   type GenHourKey,
   type GeneratorDeltas,
-  type GeneratorHourSwapSuggestion,
   type GeneratorHours,
 } from "@/lib/generator/format";
 
@@ -222,7 +220,6 @@ function GeneratorLogForm({
   const { enabled, queue } = useReplicaWrite();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [swap, setSwap] = useState<GeneratorHourSwapSuggestion | null>(null);
   const [logDate, setLogDate] = useState(initial?.logDate ?? localTodayKey());
   const [gen1, setGen1] = useState(hoursOrEmpty(initial?.gen1Hours));
   const [gen2, setGen2] = useState(hoursOrEmpty(initial?.gen2Hours));
@@ -258,15 +255,6 @@ function GeneratorLogForm({
     };
   }
 
-  function previousHours(): GeneratorHours {
-    return {
-      gen1Hours: previousByGen?.gen1Hours ?? null,
-      gen2Hours: previousByGen?.gen2Hours ?? null,
-      gen3Hours: previousByGen?.gen3Hours ?? null,
-      gen4Hours: previousByGen?.gen4Hours ?? null,
-    };
-  }
-
   function appendHours(fd: FormData, hours: GeneratorHours) {
     fd.set("farmId", farmId);
     fd.set("logDate", logDate);
@@ -277,11 +265,10 @@ function GeneratorLogForm({
     }
   }
 
-  function submitHours(hours: GeneratorHours, remapAll = false) {
+  function submitHours(hours: GeneratorHours) {
     setError(null);
     const fd = new FormData();
     appendHours(fd, hours);
-    if (remapAll) fd.delete("onlyGen");
     if (enabled) {
       queue(
         formWrite(recordId ? "updateGeneratorLog" : "createGeneratorLog", {
@@ -290,7 +277,6 @@ function GeneratorLogForm({
           ...formDataToParts(fd),
         }),
       );
-      setSwap(null);
       onSuccess?.();
       return;
     }
@@ -302,7 +288,6 @@ function GeneratorLogForm({
         setError(result.error);
         return;
       }
-      setSwap(null);
       onSuccess?.();
     });
   }
@@ -314,21 +299,7 @@ function GeneratorLogForm({
       onSubmit={(e) => {
         e.preventDefault();
         try {
-          const entered = enteredHours();
-          const forDetect = onlyGen
-            ? {
-                gen1Hours: onlyGen === "gen1Hours" ? entered.gen1Hours : null,
-                gen2Hours: onlyGen === "gen2Hours" ? entered.gen2Hours : null,
-                gen3Hours: onlyGen === "gen3Hours" ? entered.gen3Hours : null,
-                gen4Hours: onlyGen === "gen4Hours" ? entered.gen4Hours : null,
-              }
-            : entered;
-          const found = detectGeneratorHourSwap(previousHours(), forDetect);
-          if (found) {
-            setSwap(found);
-            return;
-          }
-          submitHours(entered);
+          submitHours(enteredHours());
         } catch (err) {
           setError(err instanceof Error ? err.message : "Could not save generator log");
         }
@@ -375,37 +346,6 @@ function GeneratorLogForm({
         })}
       </div>
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
-      {swap ? (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-stone-800">
-          <p className="font-semibold">Hours look swapped</p>
-          <p className="mt-1 whitespace-pre-line">{swap.message}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              disabled={pending}
-              onClick={() => submitHours({ ...enteredHours(), ...swap.suggested }, true)}
-            >
-              Fix and save
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={pending}
-              onClick={() => submitHours(enteredHours())}
-            >
-              Save as entered
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={pending}
-              onClick={() => setSwap(null)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : null}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={pending}>
           {pending

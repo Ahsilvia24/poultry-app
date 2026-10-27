@@ -12,20 +12,17 @@ import {
 } from "react-native";
 import { createGeneratorLog, updateGeneratorLog } from "../repos/data";
 import {
-  detectGeneratorHourSwap,
   formatGeneratorHours,
   hoursDelta,
   previousGeneratorHoursFromLogs,
   GENERATOR_FIELD_DEFS,
   type GenHourKey,
-  type GeneratorHourSwapSuggestion,
 } from "../lib/generator";
 import { todayKey } from "../lib/ids";
 import { colors } from "../theme";
 import { PrimaryButton } from "./ui";
 import { SettingsChipInput, SettingsRow } from "./SettingsLayout";
 import { DatePickerField } from "./DatePickerField";
-import { ConfirmDialog } from "./ConfirmDialog";
 
 export type GeneratorLogDraftRow = {
   id: string;
@@ -82,7 +79,6 @@ export function GeneratorLogModal({
   const [draft, setDraft] = useState<HourDraft>(emptyDraft);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [swap, setSwap] = useState<GeneratorHourSwapSuggestion | null>(null);
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
   const editingId = editing?.log.id ?? null;
@@ -91,7 +87,6 @@ export function GeneratorLogModal({
     if (!visible) return;
     setSaving(false);
     setError(null);
-    setSwap(null);
     setDraft(editing ? draftFromLog(editing.log) : emptyDraft());
     // Reseed only when a different row opens. Parent re-renders must not wipe digits.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -121,20 +116,17 @@ export function GeneratorLogModal({
     };
   }
 
-  function persist(
-    hours: {
-      logDate: string;
-      gen1Hours: number | null;
-      gen2Hours: number | null;
-      gen3Hours: number | null;
-      gen4Hours: number | null;
-    },
-    remapAll = false,
-  ) {
+  function persist(hours: {
+    logDate: string;
+    gen1Hours: number | null;
+    gen2Hours: number | null;
+    gen3Hours: number | null;
+    gen4Hours: number | null;
+  }) {
     if (editing) {
       updateGeneratorLog(farmId, editing.log.id, {
         ...hours,
-        onlyGen: remapAll ? undefined : editing.onlyGen ?? undefined,
+        onlyGen: editing.onlyGen ?? undefined,
       });
     } else {
       createGeneratorLog({ farmId, ...hours });
@@ -143,41 +135,11 @@ export function GeneratorLogModal({
     onClose();
   }
 
-  function save(
-    hours?: {
-      logDate: string;
-      gen1Hours: number | null;
-      gen2Hours: number | null;
-      gen3Hours: number | null;
-      gen4Hours: number | null;
-    },
-    remapAll = false,
-  ) {
+  function save() {
     setSaving(true);
     setError(null);
     try {
-      const payload = hours ?? parseDraftHours();
-      if (!hours) {
-        const previous = previousGeneratorHoursFromLogs(logs, {
-          onOrBeforeDate: payload.logDate,
-          excludeLogId: editing?.log.id,
-        });
-        const onlyGen = editing?.onlyGen;
-        const entered = onlyGen
-          ? {
-              gen1Hours: onlyGen === "gen1Hours" ? payload.gen1Hours : null,
-              gen2Hours: onlyGen === "gen2Hours" ? payload.gen2Hours : null,
-              gen3Hours: onlyGen === "gen3Hours" ? payload.gen3Hours : null,
-              gen4Hours: onlyGen === "gen4Hours" ? payload.gen4Hours : null,
-            }
-          : payload;
-        const found = detectGeneratorHourSwap(previous, entered);
-        if (found) {
-          setSwap(found);
-          return;
-        }
-      }
-      persist(payload, remapAll);
+      persist(parseDraftHours());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save generator log");
     } finally {
@@ -300,23 +262,6 @@ export function GeneratorLogModal({
           </View>
         </KeyboardAvoidingView>
       </Modal>
-      <ConfirmDialog
-        visible={swap != null}
-        title="Hours look swapped"
-        message={swap?.message ?? ""}
-        confirmLabel="Fix and save"
-        altLabel="Save as entered"
-        cancelLabel="Cancel"
-        onConfirm={() => {
-          if (!swap) return;
-          const parsed = parseDraftHours();
-          save({ ...parsed, ...swap.suggested }, true);
-        }}
-        onAlt={() => {
-          save(parseDraftHours(), false);
-        }}
-        onCancel={() => setSwap(null)}
-      />
     </>
   );
 }
