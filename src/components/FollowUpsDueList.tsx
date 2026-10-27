@@ -10,12 +10,14 @@ import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { OneDotName } from "@/components/OneDotName";
 import { ScrollableFarmList } from "@/components/ScrollableFarmList";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
+import { useOffline } from "@/components/OfflineProvider";
 import { useHiddenReplicaDeletes } from "@/lib/offline/useHiddenReplicaDeletes";
 import {
   applyIncomingScheduleChecks,
   rememberScheduleCheckKey,
 } from "@/lib/offline/followUpCompletions";
 import { formWrite } from "@/lib/offline/formPairs";
+import { recordScheduleCheck } from "@/lib/offline/scheduleCheckJournal";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 export type FollowUpDueItem = {
@@ -42,6 +44,8 @@ export function FollowUpsDueList({
 }) {
   const router = useRouter();
   const timeZone = useAppTimeZone();
+  const { snapshot } = useOffline();
+  const ownerEmail = snapshot?.userEmail ?? "";
   const { enabled, queue } = useReplicaWrite();
   const { visible, remove } = useHiddenReplicaDeletes();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
@@ -65,6 +69,19 @@ export function FollowUpsDueList({
     return <p className="mt-2 text-[15px] text-stone-500">None</p>;
   }
 
+  function markSchedule(item: FollowUpDueItem, completed: boolean, dismissed = false) {
+    recordScheduleCheck({
+      email: ownerEmail,
+      farmId: item.farmId,
+      flockId: item.flockId,
+      date: item.date,
+      label: item.label,
+      completed,
+      dismissed,
+      completedAt: new Date().toISOString(),
+    });
+  }
+
   function toggle(item: FollowUpDueItem) {
     const key = itemKey(item);
     const rememberKey = rememberScheduleCheckKey(item);
@@ -73,25 +90,25 @@ export function FollowUpsDueList({
     setError(null);
     if (next) userCleared.current.delete(rememberKey);
     else userCleared.current.add(rememberKey);
+    markSchedule(item, next);
     setChecked((prev) => ({ ...prev, [rememberKey]: next }));
+    if (enabled) {
+      queue(
+        formWrite("toggleFollowUp", {
+          farmId: item.farmId,
+          extra: {
+            farmId: item.farmId,
+            flockId: item.flockId,
+            date: item.date,
+            label: item.label,
+            completed: next,
+          },
+        }),
+      );
+      return;
+    }
     setPendingKey(key);
     startTransition(async () => {
-      if (enabled) {
-        queue(
-          formWrite("toggleFollowUp", {
-            farmId: item.farmId,
-            extra: {
-              farmId: item.farmId,
-              flockId: item.flockId,
-              date: item.date,
-              label: item.label,
-              completed: next,
-            },
-          }),
-        );
-        setPendingKey(null);
-        return;
-      }
       const result = await toggleFollowUpCompletionAction({
         farmId: item.farmId,
         flockId: item.flockId,
@@ -103,6 +120,7 @@ export function FollowUpsDueList({
       if (result.error) {
         if (next) userCleared.current.add(rememberKey);
         else userCleared.current.delete(rememberKey);
+        markSchedule(item, !next);
         setChecked((prev) => ({ ...prev, [rememberKey]: !next }));
         setError(result.error);
         return;
@@ -126,7 +144,8 @@ export function FollowUpsDueList({
                   <SwipeCommitDeleteRow
                     rowId={key}
                     transparent
-                    onDelete={() =>
+                    onDelete={() => {
+                      markSchedule(f, true, true);
                       remove(
                         key,
                         "toggleFollowUp",
@@ -150,8 +169,8 @@ export function FollowUpsDueList({
                             completed: true,
                             dismissed: true,
                           }),
-                      )
-                    }
+                      );
+                    }}
                   >
                     <div
                       className={`flex min-h-[22px] items-center gap-2 ${isDone ? "opacity-50" : ""}`}

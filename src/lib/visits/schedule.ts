@@ -33,6 +33,11 @@ export function completionKey(dateKey: string, label: string) {
   return `${dateKey}::${label}`;
 }
 
+/** Dashboard rows and saved checks share the short weight label. */
+export function completionLabel(label: string) {
+  return label === "Weight Projection" ? "Weight Proj." : label;
+}
+
 /** Calendar key for Prisma `@db.Date` values (always UTC midnight). */
 export function dateKeyFromDb(value: Date): string {
   const y = value.getUTCFullYear();
@@ -180,7 +185,7 @@ export function splitScheduleForDashboard(
     if (v.dateKey > endKey) continue;
     if (v.dateKey < overdueStart) continue;
 
-    const key = completionKey(v.dateKey, v.label);
+    const key = completionKey(v.dateKey, completionLabel(v.label));
     const info = completions.get(key);
     if (info?.dismissed) continue;
     if (info) {

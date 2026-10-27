@@ -13,6 +13,9 @@ const {
   rememberScheduleCheckKey,
   upsertFollowUpCompletion,
 } = await import(join(root, "src/lib/offline/followUpCompletions.ts"));
+const { applyScheduleCheckMarks, mergeScheduleCheckMarks } = await import(
+  join(root, "src/lib/offline/scheduleCheckJournal.ts"),
+);
 const { applyFormWrite } = await import(join(root, "src/lib/offline/applyWrites.ts"));
 const { selectDashboard } = await import(join(root, "src/lib/offline/selectDashboard.ts"));
 const { appTodayKey } = await import(join(root, "src/lib/app-calendar.ts"));
@@ -319,5 +322,97 @@ assert.match(read("src/lib/offline/types.ts"), /followUpCompletions\?:/);
 assert.match(read("src/components/FollowUpsDueList.tsx"), /applyIncomingScheduleChecks/);
 assert.match(read("src/components/OfflineProvider.tsx"), /seedAndMergeFollowUpCompletions/);
 assert.doesNotMatch(read("src/components/FollowUpsDueList.tsx"), /setChecked\(serverChecked\)/);
+
+const savedBeforeClose = {
+  ...base,
+  followUpCompletions: [],
+};
+const tap = {
+  email: "alex@example.com",
+  farmId: "farm-1",
+  flockId: "flock-1",
+  date: todayKey,
+  label: "Placement",
+  completed: true,
+  dismissed: false,
+  completedAt: new Date().toISOString(),
+};
+assert.equal(savedBeforeClose.followUpCompletions.length, 0);
+const reopened = selectDashboard(savedBeforeClose, null, [tap]);
+assert.equal(
+  reopened.todaysSchedule.some((row) => row.label === "Placement" && row.completed),
+  true,
+  "a check saved in the tap still shows after the farm copy was closed without it",
+);
+assert.equal(
+  savedBeforeClose.followUpCompletions.length,
+  0,
+  "applying the tap does not rewrite the copy passed in",
+);
+
+const isoDate = applyScheduleCheckMarks(
+  { ...base, followUpCompletions: [] },
+  [{ ...tap, date: `${todayKey}T00:00:00.000Z` }],
+);
+assert.equal(
+  selectDashboard(isoDate).todaysSchedule.some((row) => row.label === "Placement" && row.completed),
+  true,
+  "a check stored with a time still matches today's visit",
+);
+
+const uncheckedTap = mergeScheduleCheckMarks([tap], {
+  ...tap,
+  completed: false,
+  completedAt: new Date(Date.now() + 1000).toISOString(),
+});
+const afterLeaveUncheck = selectDashboard(
+  applyScheduleCheckMarks(savedBeforeClose, [tap]),
+  null,
+  uncheckedTap,
+);
+assert.equal(
+  afterLeaveUncheck.todaysSchedule.some((row) => row.label === "Placement" && row.completed),
+  false,
+  "uncheck stays off after leaving the page",
+);
+
+const yesterdayTap = {
+  ...tap,
+  completedAt: `${staleDate}T18:00:00.000Z`,
+};
+const broughtBack = selectDashboard(savedBeforeClose, null, [yesterdayTap]);
+assert.equal(
+  broughtBack.todaysSchedule.some((row) => row.label === "Placement"),
+  false,
+  "yesterday's check does not put the visit back on today",
+);
+
+const list = read("src/components/FollowUpsDueList.tsx");
+const toggleBody = list.slice(list.indexOf("function toggle"), list.indexOf("\n  return ("));
+assert.match(toggleBody, /markSchedule\(/);
+assert.ok(toggleBody.indexOf("markSchedule(") < toggleBody.indexOf("startTransition"));
+assert.ok(toggleBody.indexOf("queue(") < toggleBody.indexOf("startTransition"));
+assert.match(read("src/components/DashboardHome.tsx"), /readScheduleCheckMarks/);
+
+const store = new Map();
+globalThis.window = {
+  localStorage: {
+    getItem: (key) => store.get(key) ?? null,
+    setItem: (key, value) => {
+      store.set(key, value);
+    },
+  },
+};
+const { recordScheduleCheck, readScheduleCheckMarks } = await import(
+  join(root, "src/lib/offline/scheduleCheckJournal.ts"),
+);
+recordScheduleCheck(tap);
+assert.equal(store.size, 1);
+const fromDisk = selectDashboard(savedBeforeClose, null, readScheduleCheckMarks());
+assert.equal(
+  fromDisk.todaysSchedule.some((row) => row.label === "Placement" && row.completed),
+  true,
+  "the tap written to storage is checked on the next open",
+);
 
 console.log("schedule-keep-checked: ok");

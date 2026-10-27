@@ -16,6 +16,7 @@ import { ScrollableFarmList } from "@/components/ScrollableFarmList";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOffline } from "@/components/OfflineProvider";
 import type { getDashboardData } from "@/lib/dashboard";
+import { readScheduleCheckMarks } from "@/lib/offline/scheduleCheckJournal";
 import { selectDashboard } from "@/lib/offline/selectDashboard";
 import type { ScheduleImportMeta } from "@/lib/schedule-import-types";
 
@@ -39,7 +40,7 @@ export function DashboardHome({
   scheduleImports: ScheduleImportMeta[];
 }) {
   const { snapshot } = useOffline();
-  const data = selectDashboard(snapshot, initial);
+  const data = selectDashboard(snapshot, initial, readScheduleCheckMarks());
   const timeZone = resolveAppTimeZone(snapshot?.settings?.appTimeZone);
 
   return (

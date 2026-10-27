@@ -24,6 +24,10 @@ import { normalizeOwnerEmail } from "@/lib/offline/ownerEmail";
 import { pickPersonName } from "@/lib/person-name";
 import { unlockPhoneOwner } from "@/lib/offline/phoneUnlock";
 import { seedAndMergeFollowUpCompletions } from "@/lib/offline/followUpCompletions";
+import {
+  applyScheduleCheckMarks,
+  readScheduleCheckMarks,
+} from "@/lib/offline/scheduleCheckJournal";
 import { seedAndMergeServiceForms } from "@/lib/offline/serviceForms";
 import { uploadLeftoverWrites } from "@/lib/offline/uploadLeftoverWrites";
 import { coalesceFormWrite } from "@/lib/offline/applyWrites";
@@ -98,26 +102,30 @@ export function OfflineProvider({
     [flushPersist],
   );
 
+  const withScheduleChecks = useCallback((next: OfflineSnapshot) => {
+    const marks = readScheduleCheckMarks();
+    return marks.length ? applyScheduleCheckMarks(next, marks) : next;
+  }, []);
+
   const replaceSnapshot = useCallback((next: OfflineSnapshot) => {
     setSnapshot((current) => {
-      const merged = seedAndMergeServiceForms(
-        seedAndMergeFollowUpCompletions(next, current),
-        current,
+      const merged = withScheduleChecks(
+        seedAndMergeServiceForms(seedAndMergeFollowUpCompletions(next, current), current),
       );
       queuePersist(merged);
       return merged;
     });
-  }, [queuePersist]);
+  }, [queuePersist, withScheduleChecks]);
 
   const patchSnapshot = useCallback((fn: (current: OfflineSnapshot) => OfflineSnapshot) => {
     setSnapshot((current) => {
       if (!current) return current;
       replicaGen.current += 1;
-      const next = fn(current);
+      const next = withScheduleChecks(fn(current));
       queuePersist(next);
       return next;
     });
-  }, [queuePersist]);
+  }, [queuePersist, withScheduleChecks]);
 
   const enqueue = useCallback((item: Omit<OfflineOutboxItem, "id" | "createdAt">) => {
     const full: OfflineOutboxItem = {
@@ -184,7 +192,11 @@ export function OfflineProvider({
         });
       }
       const storedAliases = await loadIdAliases(owner);
-      if (!cancelled && local) setSnapshot(seedAndMergeFollowUpCompletions(local));
+      if (!cancelled && local) {
+        const next = withScheduleChecks(seedAndMergeFollowUpCompletions(local));
+        setSnapshot(next);
+        if (readScheduleCheckMarks().length > 0) queuePersist(next);
+      }
       if (!cancelled) setAliases(storedAliases);
       if (!cancelled && owner) await rememberBackup(owner);
       if (!cancelled) setReady(true);
@@ -198,7 +210,7 @@ export function OfflineProvider({
     return () => {
       cancelled = true;
     };
-  }, [owner, ownerName, ownerUserId, rememberBackup]);
+  }, [owner, ownerName, ownerUserId, queuePersist, rememberBackup, withScheduleChecks]);
 
   useEffect(() => {
     function onHide() {
