@@ -364,7 +364,11 @@ export function getDashboard() {
   const completedByFarm = new Map<string, Map<string, CompletionInfo>>();
   for (const c of completionRows) {
     const label = c.label === "Weight Projection" ? "Weight Proj." : c.label;
-    const key = completionKey(c.scheduled_date, label);
+    const scheduled = c.scheduled_date.slice(0, 10);
+    const key = completionKey(
+      /^\d{4}-\d{2}-\d{2}$/.test(scheduled) ? scheduled : c.scheduled_date,
+      label,
+    );
     let map = completedByFarm.get(c.farm_id);
     if (!map) {
       map = new Map();

@@ -15,6 +15,10 @@ import {
   bindCompletionsToSchedule,
   gatherFollowUpCompletions,
 } from "@/lib/offline/followUpCompletions";
+import {
+  applyScheduleCheckMarks,
+  type ScheduleCheckMark,
+} from "@/lib/offline/scheduleCheckJournal";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import type { OfflineFlockRef, OfflineSnapshot } from "@/lib/offline/types";
 import { lastServiceReportDateKey } from "@/lib/lastChecklistDate";
@@ -470,11 +474,14 @@ export function resplitDashboardSchedule(
 export function selectDashboard(
   snapshot: OfflineSnapshot | null | undefined,
   fallback?: DashboardData | null,
+  checks?: ScheduleCheckMark[],
 ): DashboardData | null {
-  const source = snapshot?.dashboard ?? fallback ?? null;
-  const timeZone = resolveAppTimeZone(snapshot?.settings?.appTimeZone);
-  if (snapshotHasFarmGraph(snapshot)) {
-    return rebuildDashboardScheduleFromReplica(snapshot, source, fallback);
+  const live =
+    snapshot && checks?.length ? applyScheduleCheckMarks(snapshot, checks) : snapshot;
+  const source = live?.dashboard ?? fallback ?? null;
+  const timeZone = resolveAppTimeZone(live?.settings?.appTimeZone);
+  if (snapshotHasFarmGraph(live)) {
+    return rebuildDashboardScheduleFromReplica(live, source, fallback);
   }
   if (!source) return null;
   return resplitDashboardSchedule(source, appTodayKey(undefined, timeZone));

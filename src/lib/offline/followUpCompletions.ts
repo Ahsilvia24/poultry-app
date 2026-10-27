@@ -9,8 +9,14 @@ export function labelsMatch(a: string, b: string) {
   return normalizeScheduleLabel(a) === normalizeScheduleLabel(b);
 }
 
+/** `yyyy-MM-dd`, even when a saved row still has a time on it. */
+export function scheduleDateKey(value: string) {
+  const key = value.trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : value.trim();
+}
+
 export function completionRowKey(farmId: string, date: string, label: string) {
-  return `${farmId}|${date}|${normalizeScheduleLabel(label)}`;
+  return `${farmId}|${scheduleDateKey(date)}|${normalizeScheduleLabel(label)}`;
 }
 
 /** One checkbox per farm + visit + flock + day. */
@@ -111,9 +117,12 @@ export function upsertFollowUpCompletion(
   },
 ): OfflineFollowUpCompletion[] {
   const label = normalizeScheduleLabel(input.label);
+  const savedDate = scheduleDateKey(input.date);
   const current = stored ?? [];
   const exactDate = (row: OfflineFollowUpCompletion) =>
-    row.farmId === input.farmId && labelsMatch(row.label, label) && row.date === input.date;
+    row.farmId === input.farmId &&
+    labelsMatch(row.label, label) &&
+    scheduleDateKey(row.date) === savedDate;
   const sameFlockLabel = (row: OfflineFollowUpCompletion) =>
     row.farmId === input.farmId &&
     labelsMatch(row.label, label) &&
@@ -134,7 +143,7 @@ export function upsertFollowUpCompletion(
     {
       farmId: input.farmId,
       flockId: input.flockId ?? null,
-      date: input.date,
+      date: savedDate,
       label,
       completedAt: input.completedAt ?? new Date().toISOString(),
       status: input.dismissed ? "DISMISSED" : "COMPLETED",
@@ -168,7 +177,9 @@ export function bindCompletionsToSchedule(
 
   for (const item of items) {
     const exact = farmRows.find(
-      (row) => row.date === item.dateKey && labelsMatch(row.label, item.label),
+      (row) =>
+        scheduleDateKey(row.date) === scheduleDateKey(item.dateKey) &&
+        labelsMatch(row.label, item.label),
     );
     if (exact) take(exact, item.dateKey, item.label);
   }
