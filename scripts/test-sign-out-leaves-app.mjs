@@ -67,7 +67,7 @@ assert.doesNotMatch(leave, /forgot-password/);
 assert.doesNotMatch(leave, /_next/);
 
 const sw = read("public/sw.js");
-assert.match(sw, /poultrytech-offline-v19/);
+assert.match(sw, /poultrytech-offline-v20/);
 assert.match(sw, /responseLooksLikeLogin/);
 assert.doesNotMatch(sw, /PRECACHE\s*=\s*\[[\s\S]*?"\/",/);
 assert.match(sw, /SIGNED_OUT_FLAG/);
