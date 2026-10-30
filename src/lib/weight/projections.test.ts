@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { catchWeightBandFromLbs, catchWeightProjections, weightBandAround } from "./projections.ts";
+import {
+  catchWeightBandFromLbs,
+  catchWeightProjections,
+  firstSavedGrowthRate,
+  projectionWeightsAtRate,
+  weightBandAround,
+} from "./projections.ts";
 
 describe("catchWeightProjections", () => {
   it("puts catch day in the middle with ±0.20 lb low and high", () => {
@@ -30,6 +36,22 @@ describe("catchWeightProjections", () => {
     assert.equal(rows[0]!.weightLbs, 6.1);
     assert.equal(rows[1]!.weightLbs, 6.3);
     assert.equal(rows[2]!.weightLbs, 6.5);
+  });
+
+  it("keeps one saved farm rate and applies it to every house row", () => {
+    assert.equal(firstSavedGrowthRate([null, undefined, 0.18, 0.11]), 0.18);
+    assert.equal(firstSavedGrowthRate([null, undefined]), null);
+    const rows = projectionWeightsAtRate(
+      [
+        { key: "low" as const, ageDays: 42, weightLbs: 1 },
+        { key: "catch" as const, ageDays: 42, weightLbs: 1 },
+        { key: "high" as const, ageDays: 42, weightLbs: 1 },
+      ],
+      0.18,
+    );
+    assert.equal(rows[1]!.weightLbs, 7.56);
+    assert.equal(rows[0]!.weightLbs, 7.36);
+    assert.equal(rows[2]!.weightLbs, 7.76);
   });
 
   it("does not let the low box go below 0", () => {

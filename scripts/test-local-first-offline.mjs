@@ -747,12 +747,28 @@ assert.equal(
   true,
 );
 
-const weighted = applyFormWrite(snapshot, {
-  action: "updateWeightProjection",
-  id: "flock-1",
-  fields: { growthRateLbsPerDay: "0.18" },
-});
-assert.equal(weighted.flocks[0].growthRateLbsPerDay, 0.18);
+const weighted = applyFormWrite(
+  {
+    ...snapshot,
+    flocks: [
+      ...snapshot.flocks,
+      {
+        ...snapshot.flocks[0],
+        id: "flock-2",
+        flockNumber: "A2",
+        growthRateLbsPerDay: 0.11,
+      },
+    ],
+  },
+  {
+    action: "updateWeightProjection",
+    id: "flock-1",
+    fields: { growthRateLbsPerDay: "0.18" },
+  },
+);
+assert.equal(weighted.flocks.find((flock) => flock.id === "flock-1").growthRateLbsPerDay, 0.18);
+assert.equal(weighted.flocks.find((flock) => flock.id === "flock-2").growthRateLbsPerDay, 0.18);
+assert.equal(weighted.farms.find((farm) => farm.id === "farm-1").growthRateLbsPerDay, 0.18);
 
 const inactive = applyFormWrite(
   {

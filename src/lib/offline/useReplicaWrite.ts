@@ -6,7 +6,7 @@ import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import type { OfflineFormWrite } from "@/lib/offline/types";
 
 export function useReplicaWrite() {
-  const { snapshot, patchSnapshot, enqueue } = useOffline();
+  const { snapshot, patchSnapshot, enqueue, commitLocalWrite } = useOffline();
   const enabled = snapshotHasFarmGraph(snapshot);
 
   function queue(write: OfflineFormWrite, opts?: { keepLocal?: boolean }) {
@@ -18,5 +18,5 @@ export function useReplicaWrite() {
     return true;
   }
 
-  return { enabled, queue, snapshot };
+  return { enabled, queue, commitLocal: commitLocalWrite, snapshot };
 }

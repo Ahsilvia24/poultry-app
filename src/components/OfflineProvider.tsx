@@ -16,6 +16,7 @@ import {
   loadLatestBackup,
   loadLocalSnapshot,
   loadOutbox,
+  markLocalFarmWrite,
   persistPhoneStorage,
   saveOutbox,
 } from "@/lib/offline/idb";
@@ -26,12 +27,13 @@ import { unlockPhoneOwner } from "@/lib/offline/phoneUnlock";
 import { seedAndMergeFollowUpCompletions } from "@/lib/offline/followUpCompletions";
 import { seedAndMergeServiceForms } from "@/lib/offline/serviceForms";
 import { uploadLeftoverWrites } from "@/lib/offline/uploadLeftoverWrites";
-import { coalesceFormWrite } from "@/lib/offline/applyWrites";
+import { applyFormWrite, coalesceFormWrite } from "@/lib/offline/applyWrites";
 import { flushOutbox, reportUnsynced } from "@/lib/offline/flushOutbox";
 import { syncPhoneToWebsite, type SyncPhoneResult } from "@/lib/offline/syncPhoneToWebsite";
 import type { IdAliases } from "@/lib/offline/remapIds";
-import type { OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
+import type { OfflineFormWrite, OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
 import { warmOfflineAssets } from "@/lib/offline/warmOfflineAssets";
+import { snapshotWithFarmGraph } from "@/lib/offline/emptySnapshot";
 
 type OfflineContextValue = {
   snapshot: OfflineSnapshot | null;
@@ -41,6 +43,8 @@ type OfflineContextValue = {
   lastBackupAt: string | null;
   aliases: IdAliases;
   enqueue: (item: Omit<OfflineOutboxItem, "id" | "createdAt">) => Promise<void>;
+  /** Save a farm on the phone even when the website snapshot is not here yet. */
+  commitLocalWrite: (write: OfflineFormWrite) => boolean;
   syncNow: () => Promise<SyncPhoneResult>;
   replaceSnapshot: (snapshot: OfflineSnapshot) => void;
   patchSnapshot: (fn: (snapshot: OfflineSnapshot) => OfflineSnapshot) => void;
@@ -147,6 +151,26 @@ export function OfflineProvider({
     return queued;
   }, []);
 
+  const commitLocalWrite = useCallback(
+    (write: OfflineFormWrite) => {
+      markLocalFarmWrite();
+      replicaGen.current += 1;
+      setSnapshot((current) => {
+        const base = snapshotWithFarmGraph(current, {
+          userId: ownerUserId || current?.userId || "local-user",
+          userEmail: owner || current?.userEmail || "",
+          userName: pickPersonName(ownerName, current?.userName),
+        });
+        const next = applyFormWrite(base, write);
+        queuePersist(next);
+        return next;
+      });
+      void enqueue({ kind: "formWrite", payload: write });
+      return true;
+    },
+    [enqueue, owner, ownerName, ownerUserId, queuePersist],
+  );
+
   const syncNow = useCallback(async () => {
     setSyncing(true);
     try {
@@ -172,10 +196,13 @@ export function OfflineProvider({
 
   useEffect(() => {
     let cancelled = false;
+    const gen = replicaGen.current;
     if (owner) unlockPhoneOwner(owner);
     (async () => {
       await persistPhoneStorage();
+      if (cancelled || replicaGen.current !== gen) return;
       let local = await loadLocalSnapshot(owner);
+      if (cancelled || replicaGen.current !== gen) return;
       if (!local && owner && ownerUserId) {
         local = await ensureOwnerSnapshot({
           email: owner,
@@ -183,8 +210,11 @@ export function OfflineProvider({
           userName: pickPersonName(ownerName),
         });
       }
+      if (cancelled || replicaGen.current !== gen) return;
       const storedAliases = await loadIdAliases(owner);
-      if (!cancelled && local) setSnapshot(seedAndMergeFollowUpCompletions(local));
+      if (!cancelled && replicaGen.current === gen && local) {
+        setSnapshot(seedAndMergeFollowUpCompletions(local));
+      }
       if (!cancelled) setAliases(storedAliases);
       if (!cancelled && owner) await rememberBackup(owner);
       if (!cancelled) setReady(true);
@@ -233,6 +263,7 @@ export function OfflineProvider({
       lastBackupAt,
       aliases,
       enqueue,
+      commitLocalWrite,
       syncNow,
       replaceSnapshot,
       patchSnapshot,
@@ -245,6 +276,7 @@ export function OfflineProvider({
       lastBackupAt,
       aliases,
       enqueue,
+      commitLocalWrite,
       syncNow,
       replaceSnapshot,
       patchSnapshot,
@@ -262,6 +294,7 @@ const missingOffline: OfflineContextValue = {
   lastBackupAt: null,
   aliases: {},
   enqueue: async () => undefined,
+  commitLocalWrite: () => false,
   syncNow: async () => ({
     ok: false,
     pending: 0,

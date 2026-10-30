@@ -13,6 +13,8 @@ export type OfflineFarmRef = {
   notes: string | null;
   numberOfHouses: number;
   numberOfGenerators: number | null;
+  /** Farm-wide lb/day used by weight projections. Shared by every house. */
+  growthRateLbsPerDay?: number | null;
   address: string | null;
   city: string | null;
   state: string | null;

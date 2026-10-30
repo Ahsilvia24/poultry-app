@@ -12,7 +12,11 @@ import type { OfflineSnapshot } from "@/lib/offline/types";
 import type { WeightFarmPayload } from "@/components/ToolsWeightProjections";
 import type { VentilationFarmPayload } from "@/components/VentilationLinks";
 import { sumFarmRemainingHeadCount } from "@/lib/weight/farmHeadCount";
-import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
+import {
+  catchWeightProjections,
+  firstSavedGrowthRate,
+  resolveGrowthRate,
+} from "@/lib/weight/projections";
 import { parseDateKey } from "@/lib/visits/schedule";
 import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
@@ -91,11 +95,17 @@ export function selectTools(snapshot: OfflineSnapshot, initialFarmId?: string | 
       }
     }
 
+    const farmGrowthRate = resolveGrowthRate(
+      firstSavedGrowthRate([
+        farm.growthRateLbsPerDay,
+        ...activeFlocks.map((flock) => flock.growthRateLbsPerDay),
+      ]),
+    );
     const houses = farm.houses.map((house) => {
       const matched = hfByHouseId.get(house.id) ?? null;
       const hf = matched?.hf ?? null;
       const flock = matched?.flock ?? primary;
-      const growthRateLbsPerDay = resolveGrowthRate(flock?.growthRateLbsPerDay);
+      const growthRateLbsPerDay = farmGrowthRate;
       const placementKey =
         asDateKey(hf?.placementDate) ?? (flock ? asDateKey(flock.placementDate) : null);
 

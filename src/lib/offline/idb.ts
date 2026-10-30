@@ -173,19 +173,40 @@ export async function saveAutomaticBackup(email: string, backup: PhoneBackup): P
   return stored;
 }
 
+/** A farm was just written on the phone. Do not replace it with an empty copy. */
+let localFarmWritePending = false;
+
+export function markLocalFarmWrite() {
+  localFarmWritePending = true;
+}
+
+function withOwnerIdentity(
+  snapshot: OfflineSnapshot,
+  input: { email: string; userId: string; userName: string },
+): OfflineSnapshot {
+  return {
+    ...snapshot,
+    userId: snapshot.userId || input.userId,
+    userEmail: normalizeOwnerEmail(input.email),
+    userName: pickPersonName(snapshot.userName, input.userName) || snapshot.userName,
+  };
+}
+
 export async function ensureOwnerSnapshot(input: {
   email: string;
   userId: string;
   userName: string;
 }): Promise<OfflineSnapshot> {
   const existing = await loadLocalSnapshot(input.email);
-  if (existing) {
-    return {
-      ...existing,
-      userId: existing.userId || input.userId,
+  if (existing) return withOwnerIdentity(existing, input);
+  if (localFarmWritePending) {
+    const raced = await loadLocalSnapshot(input.email);
+    if (raced) return withOwnerIdentity(raced, input);
+    return emptyPhoneSnapshot({
+      userId: input.userId,
       userEmail: normalizeOwnerEmail(input.email),
-      userName: pickPersonName(existing.userName, input.userName) || existing.userName,
-    };
+      userName: pickPersonName(input.userName),
+    });
   }
   const created = emptyPhoneSnapshot({
     userId: input.userId,
@@ -193,6 +214,8 @@ export async function ensureOwnerSnapshot(input: {
     userName: pickPersonName(input.userName),
   });
   await saveLocalSnapshot(created, input.email);
+  const after = await loadLocalSnapshot(input.email);
+  if (after && after.farms.length > 0) return withOwnerIdentity(after, input);
   return created;
 }
 
