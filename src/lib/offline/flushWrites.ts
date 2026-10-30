@@ -361,6 +361,9 @@ export async function flushFormWrite(
     case "deleteAllServiceForms":
       if (isLocalFarmId(farmId)) return { ok: true, aliases };
       return fromAction(await deleteAllServiceFormsAction(farmId), aliases);
+    case "addScheduleVisit":
+    case "deleteScheduleExtra":
+      return { ok: true, aliases };
     default:
       return { ok: false, error: "This farm work cannot upload from the phone." };
   }

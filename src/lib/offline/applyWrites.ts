@@ -1460,6 +1460,55 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
         visits: snapshot.visits.filter((row) => !visitIds.has(row.id)),
       };
     }
+    case "addScheduleVisit": {
+      const date = emptyToNull(fields.date);
+      const label = emptyToNull(fields.label);
+      const farmId = write.farmId ?? emptyToNull(fields.farmId);
+      if (!farmId || !date || !label) return snapshot;
+      const flockId = emptyToNull(fields.flockId);
+      const replacesDate = emptyToNull(fields.replacesDate);
+      const moveFrom = emptyToNull(fields.moveFrom);
+      const current = snapshot.scheduleExtras ?? [];
+      if (moveFrom && !replacesDate) {
+        const match = current.find(
+          (row) =>
+            row.farmId === farmId &&
+            !row.replacesDate &&
+            row.date === moveFrom &&
+            labelsMatch(row.label, label) &&
+            (row.flockId ?? null) === flockId,
+        );
+        if (match) {
+          return {
+            ...snapshot,
+            scheduleExtras: current.map((row) => (row.id === match.id ? { ...row, date } : row)),
+          };
+        }
+      }
+      const id = write.id ?? localRecordId();
+      const next = { id, farmId, flockId, date, label, replacesDate };
+      const withoutSamePin = replacesDate
+        ? current.filter(
+            (row) =>
+              !(
+                row.id !== id &&
+                row.farmId === farmId &&
+                row.replacesDate === replacesDate &&
+                labelsMatch(row.label, label) &&
+                (row.flockId ?? null) === flockId
+              ),
+          )
+        : current;
+      return {
+        ...snapshot,
+        scheduleExtras: [...withoutSamePin.filter((row) => row.id !== id), next],
+      };
+    }
+    case "deleteScheduleExtra":
+      return {
+        ...snapshot,
+        scheduleExtras: (snapshot.scheduleExtras ?? []).filter((row) => row.id !== write.id),
+      };
     default:
       return snapshot;
   }

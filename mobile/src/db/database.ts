@@ -194,6 +194,16 @@ export async function migrateDb() {
       FOREIGN KEY (farm_id) REFERENCES farms(id)
     );
 
+    CREATE TABLE IF NOT EXISTS schedule_extras (
+      id TEXT PRIMARY KEY NOT NULL,
+      farm_id TEXT NOT NULL,
+      flock_id TEXT,
+      visit_date TEXT NOT NULL,
+      label TEXT NOT NULL,
+      replaces_date TEXT,
+      FOREIGN KEY (farm_id) REFERENCES farms(id)
+    );
+
     CREATE TABLE IF NOT EXISTS farm_issues (
       id TEXT PRIMARY KEY NOT NULL,
       farm_id TEXT NOT NULL,

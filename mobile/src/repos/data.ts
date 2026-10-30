@@ -1,5 +1,5 @@
 import { getDb } from "../db";
-import { newId, todayKey, addDaysKey } from "../lib/ids";
+import { newId, todayKey, addDaysKey, dateKeyInAppZone } from "../lib/ids";
 import { planAttachMissingHousesToActiveFlock } from "../lib/attachHouseToActiveFlock";
 import {
   canRestorePastFlock,
@@ -313,9 +313,92 @@ export function listFarms(status: "active" | "inactive" | "all" = "active") {
   };
 }
 
-export function getDashboard() {
+type ScheduleExtraRow = {
+  id: string;
+  farm_id: string;
+  flock_id: string | null;
+  visit_date: string;
+  label: string;
+  replaces_date: string | null;
+};
+
+function scheduleLabel(label: string) {
+  return label === "Weight Projection" ? "Weight Proj." : label;
+}
+
+function listScheduleExtras(): ScheduleExtraRow[] {
+  return getDb().getAllSync<ScheduleExtraRow>(
+    `SELECT id, farm_id, flock_id, visit_date, label, replaces_date FROM schedule_extras`,
+  );
+}
+
+export function listScheduleFarmChoices() {
+  return getDb().getAllSync<{ id: string; farm_name: string }>(
+    `SELECT id, farm_name FROM farms
+     WHERE is_active = 1 AND deleted_at IS NULL
+       AND COALESCE(farm_number, '') NOT IN ('__visit_place__', '__manual_lfo__')
+       AND LOWER(TRIM(farm_name)) != 'manual'
+     ORDER BY farm_name ASC`,
+  );
+}
+
+/** A hand-typed visit, or a pin that moves a generated visit onto another day. */
+export function addScheduleVisit(input: {
+  farmId: string;
+  flockId?: string | null;
+  date: string;
+  label: string;
+  replacesDate?: string | null;
+  moveFrom?: string | null;
+}) {
+  const db = getDb();
+  const label = scheduleLabel(input.label.trim());
+  const date = input.date.trim();
+  if (!input.farmId || !date || !label) return;
+  const flockId = input.flockId?.trim() || null;
+  if (input.moveFrom && !input.replacesDate) {
+    const match = db.getFirstSync<{ id: string }>(
+      `SELECT id FROM schedule_extras
+       WHERE farm_id = ? AND visit_date = ? AND label = ?
+         AND replaces_date IS NULL AND COALESCE(flock_id, '') = ?
+       LIMIT 1`,
+      [input.farmId, input.moveFrom, label, flockId ?? ""],
+    );
+    if (match) {
+      db.runSync(`UPDATE schedule_extras SET visit_date = ? WHERE id = ?`, [date, match.id]);
+      return;
+    }
+  }
+  if (input.replacesDate) {
+    db.runSync(
+      `DELETE FROM schedule_extras
+       WHERE farm_id = ? AND replaces_date = ? AND label = ? AND COALESCE(flock_id, '') = ?`,
+      [input.farmId, input.replacesDate, label, flockId ?? ""],
+    );
+  }
+  db.runSync(
+    `INSERT INTO schedule_extras (id, farm_id, flock_id, visit_date, label, replaces_date)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [newId("visit"), input.farmId, flockId, date, label, input.replacesDate ?? null],
+  );
+}
+
+export type DashboardBoard = "dashboard" | "today" | "upcoming" | "catches";
+
+export function getDashboard(board: DashboardBoard = "dashboard") {
   const db = getDb();
   const today = todayKey();
+  const outlookDays = board === "upcoming" ? 800 : 10;
+  const scheduleExtras = listScheduleExtras();
+  const usedExtras = new Set<string>();
+  const dismissedExtras = new Set(
+    db
+      .getAllSync<{ farm_id: string; scheduled_date: string; label: string }>(
+        `SELECT farm_id, scheduled_date, label FROM follow_up_completions
+         WHERE status = 'DISMISSED'`,
+      )
+      .map((row) => `${row.farm_id}|${row.scheduled_date}|${scheduleLabel(row.label)}`),
+  );
   const farms = listFarms().farms;
   let activeHouses = 0;
   let totalBirdsPlaced = 0;
@@ -336,6 +419,35 @@ export function getDashboard() {
   };
   const todaysSchedule: ScheduleRow[] = [];
   const upcomingSchedule: ScheduleRow[] = [];
+
+  function pushCustomExtras(
+    farm: { id: string; farmName: string },
+    completions: Map<string, CompletionInfo>,
+  ) {
+    const overdueStart = addDaysKey(today, -outlookDays);
+    const outlookEnd = addDaysKey(today, outlookDays);
+    for (const extra of scheduleExtras) {
+      if (extra.farm_id !== farm.id || extra.replaces_date || usedExtras.has(extra.id)) continue;
+      if (extra.visit_date < overdueStart || extra.visit_date > outlookEnd) continue;
+      const label = scheduleLabel(extra.label);
+      if (dismissedExtras.has(`${farm.id}|${extra.visit_date}|${label}`)) continue;
+      const info = completions.get(completionKey(extra.visit_date, label));
+      if (info && dateKeyInAppZone(info.completedAt) < today) continue;
+      usedExtras.add(extra.id);
+      const row: ScheduleRow = {
+        farmId: farm.id,
+        flockId: extra.flock_id ?? "",
+        farmName: farm.farmName,
+        flockNumber: "",
+        flockAgeDays: null,
+        date: extra.visit_date,
+        label,
+        completed: Boolean(info),
+      };
+      if (extra.visit_date <= today) todaysSchedule.push(row);
+      else upcomingSchedule.push(row);
+    }
+  }
   type CatchRow = {
     farmId: string;
     farmName: string;
@@ -427,6 +539,7 @@ export function getDashboard() {
         projectedCatchDate: null,
         lastServiceReportDate: null as string | null,
       });
+      pushCustomExtras(farm, completedByFarm.get(farm.id) ?? new Map());
       continue;
     }
 
@@ -577,11 +690,24 @@ export function getDashboard() {
       }),
     );
     for (const group of scheduleGroups) {
-      const schedule = buildFlockVisitSchedule(group.placementDate, group.catchDate);
+      const schedule = buildFlockVisitSchedule(group.placementDate, group.catchDate).map((visit) => {
+        const extra = scheduleExtras.find(
+          (row) =>
+            row.replaces_date &&
+            !usedExtras.has(row.id) &&
+            row.farm_id === farm.id &&
+            row.replaces_date === visit.dateKey &&
+            scheduleLabel(row.label) === visit.label &&
+            (!row.flock_id || row.flock_id === group.flockId),
+        );
+        if (!extra) return visit;
+        usedExtras.add(extra.id);
+        return { ...visit, dateKey: extra.visit_date };
+      });
       const { today: dueToday, upcoming } = splitScheduleForDashboard(
         schedule,
         today,
-        10,
+        outlookDays,
         farmCompletions,
       );
       const toRow = (v: ScheduledVisit & { completed: boolean }): ScheduleRow => ({
@@ -598,6 +724,8 @@ export function getDashboard() {
       for (const v of dueToday) todaysSchedule.push(toRow(v));
       for (const v of upcoming) upcomingSchedule.push(toRow(v));
     }
+
+    pushCustomExtras(farm, farmCompletions);
 
     const lastChecklist = db.getFirstSync<{ d: string | null }>(
       `SELECT MAX(d) as d FROM (
@@ -672,9 +800,11 @@ export function getDashboard() {
       a.farmName.localeCompare(b.farmName),
   );
 
-  const catchHorizonEnd = addDaysKey(today, 12);
+  const catchHorizonEnd = board === "catches" ? null : addDaysKey(today, 12);
   const upcomingCatchesSorted = sortUpcomingCatchRows(
-    upcomingCatches.filter((c) => c.date >= today && c.date <= catchHorizonEnd),
+    upcomingCatches.filter(
+      (c) => c.date >= today && (catchHorizonEnd == null || c.date <= catchHorizonEnd),
+    ),
   );
 
   return {

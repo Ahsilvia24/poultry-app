@@ -179,6 +179,17 @@ export type OfflineFollowUpCompletion = {
   status?: "COMPLETED" | "DISMISSED";
 };
 
+/** A visit added by hand, or a generated visit shown on another day. */
+export type OfflineScheduleExtra = {
+  id: string;
+  farmId: string;
+  flockId?: string | null;
+  date: string;
+  label: string;
+  /** Generated visit date this row replaces. Empty for a visit typed in by hand. */
+  replacesDate?: string | null;
+};
+
 export type OfflineSettings = {
   farmOrder: string;
   appTimeZone: string;
@@ -230,6 +241,8 @@ export type OfflineFormWriteAction =
   | "deleteFlock"
   | "saveMortalitySeries"
   | "toggleFollowUp"
+  | "addScheduleVisit"
+  | "deleteScheduleExtra"
   | "createFlock"
   | "createFarm"
   | "completeFlock"
@@ -286,6 +299,8 @@ export type OfflineSnapshot = {
   serviceFormDrafts?: OfflineServiceFormDraft[];
   serviceForms?: OfflineServiceForm[];
   followUpCompletions?: OfflineFollowUpCompletion[];
+  /** Visits added on the schedule pages. Missing on older phone copies. */
+  scheduleExtras?: OfflineScheduleExtra[];
   dashboard: Awaited<ReturnType<typeof getDashboardData>> | null;
 };
 

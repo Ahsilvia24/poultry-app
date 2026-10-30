@@ -38,7 +38,7 @@ const name = readFileSync(join(root, "src/components/OneDotName.tsx"), "utf8");
 assert.match(name, /min-w-0 max-w-full/);
 assert.doesNotMatch(name, /flex-1/);
 
-const home = readFileSync(join(root, "src/components/DashboardHome.tsx"), "utf8");
+const home = readFileSync(join(root, "src/components/UpcomingCatchesList.tsx"), "utf8");
 assert.match(home, /OneDotName text=\{c\.farmName\}/);
 assert.doesNotMatch(home, /OneDotName text=\{c\.farmName\} className="flex-1"/);
 
