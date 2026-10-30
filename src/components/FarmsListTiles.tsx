@@ -1,14 +1,9 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
 import { useReplicaNavigate } from "@/components/ReplicaLink";
 import { formWrite } from "@/lib/offline/formPairs";
-import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
-import {
-  deactivateFarmAction,
-  deleteFarmAction,
-  reactivateFarmAction,
-} from "@/app/actions/farms";
+import { usePhoneFarmWrite } from "@/lib/offline/usePhoneFarmWrite";
 import { Button } from "@/components/ui";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
@@ -30,9 +25,8 @@ const MOVE_CANCEL_PX = 12;
 
 function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
   const openFarm = useReplicaNavigate();
-  const { enabled, queue } = useReplicaWrite();
+  const { busy, error, commit, clear } = usePhoneFarmWrite();
   const [confirm, setConfirm] = useState<ConfirmKind>(null);
-  const [pending, start] = useTransition();
   const longPressTimer = useRef<number | null>(null);
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const didLongPress = useRef(false);
@@ -51,6 +45,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
     clearLongPress();
     longPressTimer.current = window.setTimeout(() => {
       didLongPress.current = true;
+      clear();
       setConfirm(farm.isActive ? "inactive" : "active");
     }, LONG_PRESS_MS);
   }
@@ -101,7 +96,10 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
       <SwipeCommitDeleteRow
         rowId={farm.id}
         className="h-full"
-        onDelete={() => setConfirm("delete")}
+        onDelete={() => {
+          clear();
+          setConfirm("delete");
+        }}
       >
       <div
         className="relative h-full"
@@ -156,6 +154,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  clear();
                   setConfirm("delete");
                 }}
               >
@@ -199,39 +198,26 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
                   ? `${farm.farmName} will move back to Active and show up in your normal farm lists.`
                   : `${farm.farmName} will be deleted permanently and cannot be restored.`}
             </p>
+            {error ? <p className="mt-2 text-sm font-medium text-red-700">{error}</p> : null}
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
                 type="button"
                 variant={confirm === "delete" ? "danger" : "primary"}
-                disabled={pending}
+                disabled={busy}
                 onClick={() => {
-                  start(async () => {
-                    if (enabled) {
-                      queue(
-                        formWrite(
-                          confirm === "inactive"
-                            ? "deactivateFarm"
-                            : confirm === "active"
-                              ? "reactivateFarm"
-                              : "deleteFarm",
-                          { farmId: farm.id },
-                        ),
-                      );
-                      setConfirm(null);
-                      return;
-                    }
-                    if (confirm === "inactive") {
-                      await deactivateFarmAction(farm.id, { skipRedirect: true });
-                    } else if (confirm === "active") {
-                      await reactivateFarmAction(farm.id, { skipRedirect: true });
-                    } else {
-                      await deleteFarmAction(farm.id, { skipRedirect: true });
-                    }
-                    setConfirm(null);
-                  });
+                  const action =
+                    confirm === "inactive"
+                      ? "deactivateFarm"
+                      : confirm === "active"
+                        ? "reactivateFarm"
+                        : "deleteFarm";
+                  void (async () => {
+                    const wrote = await commit(formWrite(action, { farmId: farm.id }));
+                    if (wrote) setConfirm(null);
+                  })();
                 }}
               >
-                {pending
+                {busy
                   ? "Working…"
                   : confirm === "inactive"
                     ? "Make inactive"
@@ -242,7 +228,7 @@ function FarmsListTile({ farm }: { farm: FarmsListTileFarm }) {
               <Button
                 type="button"
                 variant="ghost"
-                disabled={pending}
+                disabled={busy}
                 onClick={() => setConfirm(null)}
               >
                 Cancel
