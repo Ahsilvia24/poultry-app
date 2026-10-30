@@ -24,7 +24,15 @@ assert.match(addHouse, /SettingsFieldRow label="Square footage"/);
 assert.match(addHouse, /Total CFM \(Min Vent\)/);
 assert.match(addHouse, /Total CFM \(Power\)/);
 assert.match(addHouse, /htmlFor="houseNotes"/);
+assert.match(addHouse, /PeekSheet/);
+assert.match(addHouse, /title="Add house"/);
 assert.doesNotMatch(addHouse, /sm:grid-cols-2/);
+
+const peek = read("src/components/PeekSheet.tsx");
+assert.match(peek, /role="dialog"/);
+assert.match(peek, /max-h-\[70vh\]/);
+assert.match(peek, /bg-black\/25/);
+assert.doesNotMatch(peek, /h-screen|min-h-screen/);
 
 const houseEdit = read("src/components/HouseCardActions.tsx");
 assert.match(houseEdit, /SettingsFieldRow label="House number"/);
