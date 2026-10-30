@@ -14,7 +14,8 @@ import {
   SettingsValueChip,
   handleSettingsLayoutEnter,
 } from "@/components/SettingsLayout";
-import { Button, Card } from "@/components/ui";
+import { PeekSheet } from "@/components/PeekSheet";
+import { Button } from "@/components/ui";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
 import { FarmLogSectionHeader, FarmLogSectionTop } from "@/components/FarmLogSectionChrome";
 import { SwipeCommitDeleteRow } from "@/components/SwipeCommitDeleteRow";
@@ -294,7 +295,7 @@ function GeneratorLogForm({
 
   return (
     <form
-      className="mt-4 space-y-3"
+      className="mt-3 space-y-3"
       onKeyDown={handleSettingsLayoutEnter}
       onSubmit={(e) => {
         e.preventDefault();
@@ -549,7 +550,16 @@ export function FarmGeneratorLogSection({
         />
       )}
       {editingLog && editingGen ? (
-        <Card className="mb-3">
+        <PeekSheet
+          title={`Edit ${
+            GENERATOR_FIELD_DEFS.find((field) => field.hourKey === editingGen)?.label ??
+            "generator"
+          }`}
+          onClose={() => {
+            setEditingId(null);
+            setEditingGen(null);
+          }}
+        >
           <GeneratorLogForm
             farmId={farmId}
             recordId={editingLog.id}
@@ -562,7 +572,7 @@ export function FarmGeneratorLogSection({
               setEditingGen(null);
             }}
           />
-        </Card>
+        </PeekSheet>
       ) : null}
 
       {!hasAnyChartRows ? (
@@ -595,14 +605,14 @@ export function FarmGeneratorLogSection({
       )}
 
       {formOpen ? (
-        <Card className="mt-3">
+        <PeekSheet title="Log generators" onClose={() => setFormOpen(false)}>
           <GeneratorLogForm
             farmId={farmId}
             previousByGen={createPreviousByGen}
             onSuccess={afterSaved}
             onCancel={() => setFormOpen(false)}
           />
-        </Card>
+        </PeekSheet>
       ) : null}
       {pageMode ? null : <FarmLogSectionTop />}
     </div>
