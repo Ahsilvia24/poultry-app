@@ -8,9 +8,6 @@ import {
   updateLitterEventAction,
 } from "@/app/actions/ops";
 import {
-  deactivateFarmAction,
-  deleteFarmAction,
-  reactivateFarmAction,
   completeFlockAction,
   reactivateFlockAction,
   deleteFlockAction,
@@ -26,6 +23,7 @@ import { DateKeyField, DateKeyInput } from "@/components/DateKeyField";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
 import { useOfflineNav } from "@/components/OfflineNavContext";
+import { usePhoneFarmWrite } from "@/lib/offline/usePhoneFarmWrite";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import {
   findVisitPlaceFarm,
@@ -500,20 +498,33 @@ export function DeactivateFarmButton({
   farmId: string;
   appearance?: "button" | "icon" | "badge";
 }) {
-  const [pending, start] = useTransition();
+  const { busy, error, commit, clear } = usePhoneFarmWrite();
   const [open, setOpen] = useState(false);
+  const nav = useOfflineNav();
+
+  function openDialog(event?: { preventDefault: () => void; stopPropagation: () => void }) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    clear();
+    setOpen(true);
+  }
+
+  function makeInactive() {
+    void (async () => {
+      const wrote = await commit(formWrite("deactivateFarm", { farmId }));
+      if (!wrote) return;
+      setOpen(false);
+      nav?.navigate("/farms");
+    })();
+  }
 
   return (
     <>
       {appearance === "badge" ? (
         <button
           type="button"
-          disabled={pending}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setOpen(true);
-          }}
+          disabled={busy}
+          onClick={openDialog}
           aria-label="Make farm inactive"
           title="Make inactive"
           className="inline-flex rounded-md bg-emerald-100 px-2.5 py-1 text-sm font-bold text-emerald-900 hover:bg-emerald-200 disabled:opacity-50"
@@ -523,12 +534,8 @@ export function DeactivateFarmButton({
       ) : appearance === "icon" ? (
         <button
           type="button"
-          disabled={pending}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setOpen(true);
-          }}
+          disabled={busy}
+          onClick={openDialog}
           aria-label="Make farm inactive"
           title="Make inactive"
           className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-200 hover:text-stone-800 disabled:opacity-50"
@@ -536,7 +543,7 @@ export function DeactivateFarmButton({
           <PauseIcon className="h-5 w-5" />
         </button>
       ) : (
-        <Button type="button" variant="secondary" disabled={pending} onClick={() => setOpen(true)}>
+        <Button type="button" variant="secondary" disabled={busy} onClick={() => openDialog()}>
           Make inactive
         </Button>
       )}
@@ -562,22 +569,15 @@ export function DeactivateFarmButton({
               It will move to Inactive. You can make it active again later. Historical records stay
               intact.
             </p>
+            {error ? <p className="mt-2 text-sm font-medium text-red-700">{error}</p> : null}
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button
-                type="button"
-                disabled={pending}
-                onClick={() => {
-                  start(async () => {
-                    await deactivateFarmAction(farmId);
-                  });
-                }}
-              >
-                {pending ? "Working…" : "Make inactive"}
+              <Button type="button" disabled={busy} onClick={makeInactive}>
+                {busy ? "Working…" : "Make inactive"}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                disabled={pending}
+                disabled={busy}
                 onClick={() => setOpen(false)}
               >
                 Cancel
@@ -597,18 +597,29 @@ export function ReactivateFarmButton({
   farmId: string;
   appearance?: "button" | "text" | "badge";
 }) {
-  const [pending, start] = useTransition();
+  const { busy, error, commit, clear } = usePhoneFarmWrite();
   const [open, setOpen] = useState(false);
+  const nav = useOfflineNav();
+
+  function makeActive() {
+    void (async () => {
+      const wrote = await commit(formWrite("reactivateFarm", { farmId }));
+      if (!wrote) return;
+      setOpen(false);
+      nav?.navigate("/farms");
+    })();
+  }
 
   if (appearance === "badge") {
     return (
       <>
         <button
           type="button"
-          disabled={pending}
+          disabled={busy}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            clear();
             setOpen(true);
           }}
           aria-label="Make farm active"
@@ -638,22 +649,15 @@ export function ReactivateFarmButton({
               <p className="mt-2 text-sm text-stone-600">
                 It will move back to Active and show up in your normal farm lists.
               </p>
+              {error ? <p className="mt-2 text-sm font-medium text-red-700">{error}</p> : null}
               <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                <Button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => {
-                    start(async () => {
-                      await reactivateFarmAction(farmId);
-                    });
-                  }}
-                >
-                  {pending ? "Working…" : "Make active"}
+                <Button type="button" disabled={busy} onClick={makeActive}>
+                  {busy ? "Working…" : "Make active"}
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
-                  disabled={pending}
+                  disabled={busy}
                   onClick={() => setOpen(false)}
                 >
                   Cancel
@@ -668,35 +672,31 @@ export function ReactivateFarmButton({
 
   if (appearance === "text") {
     return (
-      <button
-        type="button"
-        disabled={pending}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          start(async () => {
-            await reactivateFarmAction(farmId);
-          });
-        }}
-        className="px-2 py-2 text-sm font-semibold text-emerald-800 hover:underline disabled:opacity-50"
-      >
-        {pending ? "Working…" : "Make active"}
-      </button>
+      <span className="inline-flex flex-col items-start">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            makeActive();
+          }}
+          className="px-2 py-2 text-sm font-semibold text-emerald-800 hover:underline disabled:opacity-50"
+        >
+          {busy ? "Working…" : "Make active"}
+        </button>
+        {error ? <p className="px-2 text-sm font-medium text-red-700">{error}</p> : null}
+      </span>
     );
   }
 
   return (
-    <Button
-      type="button"
-      disabled={pending}
-      onClick={() => {
-        start(async () => {
-          await reactivateFarmAction(farmId);
-        });
-      }}
-    >
-      {pending ? "Working…" : "Make active"}
-    </Button>
+    <span className="inline-flex flex-col items-start gap-1">
+      <Button type="button" disabled={busy} onClick={makeActive}>
+        {busy ? "Working…" : "Make active"}
+      </Button>
+      {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+    </span>
   );
 }
 
@@ -707,20 +707,29 @@ export function DeleteFarmButton({
   farmId: string;
   appearance?: "button" | "icon";
 }) {
-  const [pending, start] = useTransition();
+  const { busy, error, commit, clear } = usePhoneFarmWrite();
   const [open, setOpen] = useState(false);
-  const { enabled, queue } = useReplicaWrite();
   const nav = useOfflineNav();
+
+  function removeFarm() {
+    void (async () => {
+      const wrote = await commit(formWrite("deleteFarm", { farmId }));
+      if (!wrote) return;
+      setOpen(false);
+      nav?.navigate("/farms");
+    })();
+  }
 
   return (
     <>
       {appearance === "icon" ? (
         <button
           type="button"
-          disabled={pending}
+          disabled={busy}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            clear();
             setOpen(true);
           }}
           aria-label="Delete farm permanently"
@@ -730,7 +739,15 @@ export function DeleteFarmButton({
           <TrashIcon className="h-5 w-5" />
         </button>
       ) : (
-        <Button type="button" variant="danger" disabled={pending} onClick={() => setOpen(true)}>
+        <Button
+          type="button"
+          variant="danger"
+          disabled={busy}
+          onClick={() => {
+            clear();
+            setOpen(true);
+          }}
+        >
           Delete farm
         </Button>
       )}
@@ -754,29 +771,15 @@ export function DeleteFarmButton({
             <p className="mt-2 text-sm text-stone-600">
               It will disappear from Active and Inactive lists. This cannot be undone from the app.
             </p>
+            {error ? <p className="mt-2 text-sm font-medium text-red-700">{error}</p> : null}
             <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button
-                type="button"
-                variant="danger"
-                disabled={pending}
-                onClick={() => {
-                  start(async () => {
-                    if (enabled) {
-                      queue(formWrite("deleteFarm", { farmId }));
-                      setOpen(false);
-                      nav?.navigate("/farms");
-                      return;
-                    }
-                    await deleteFarmAction(farmId);
-                  });
-                }}
-              >
-                {pending ? "Working…" : "Delete permanently"}
+              <Button type="button" variant="danger" disabled={busy} onClick={removeFarm}>
+                {busy ? "Working…" : "Delete permanently"}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                disabled={pending}
+                disabled={busy}
                 onClick={() => setOpen(false)}
               >
                 Cancel

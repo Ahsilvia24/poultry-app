@@ -1,12 +1,11 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState } from "react";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { formatDateKeyLabel } from "@/lib/app-calendar";
 import { useAppTimeZone } from "@/lib/useAppTimeZone";
-import { deactivateFarmAction } from "@/app/actions/farms";
 import { formWrite } from "@/lib/offline/formPairs";
-import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
+import { usePhoneFarmWrite } from "@/lib/offline/usePhoneFarmWrite";
 import { formatNumber, formatPct } from "@/lib/utils";
 import { Button, Card, StatusBadge } from "@/components/ui";
 import { ExclusiveSwipeGroup } from "@/components/ExclusiveSwipeGroup";
@@ -33,35 +32,25 @@ function farmAges(farm: FarmCardSummary) {
 
 function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pending, start] = useTransition();
-  const deactivatingRef = useRef(false);
-  const { enabled, queue } = useReplicaWrite();
+  const { busy, error, commit, clear } = usePhoneFarmWrite();
   const timeZone = useAppTimeZone();
   const ages = farmAges(farm);
 
-  function makeInactive() {
-    if (pending || deactivatingRef.current) return;
-    deactivatingRef.current = true;
-    start(async () => {
-      try {
-        if (enabled) {
-          queue(formWrite("deactivateFarm", { farmId: farm.id }));
-          return;
-        }
-        await deactivateFarmAction(farm.id, { skipRedirect: true });
-      } finally {
-        deactivatingRef.current = false;
-      }
-    });
+  async function makeInactive() {
+    const wrote = await commit(formWrite("deactivateFarm", { farmId: farm.id }));
+    if (wrote) setConfirmOpen(false);
   }
 
   return (
     <div className="self-start">
       <SwipeCommitDeleteRow
         rowId={farm.id}
-        onDelete={() => setConfirmOpen(true)}
+        onDelete={() => {
+          clear();
+          setConfirmOpen(true);
+        }}
         actionClassName="bg-stone-600"
-        deleteLabel={pending ? "Working…" : "Inactive"}
+        deleteLabel={busy ? "Working…" : "Inactive"}
       >
         <Card className="!p-0 overflow-hidden rounded-xl">
           <div className="w-full px-3 py-2.5 text-left">
@@ -148,7 +137,10 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
       {confirmOpen ? (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
-          onClick={() => setConfirmOpen(false)}
+          onClick={() => {
+            if (busy) return;
+            setConfirmOpen(false);
+          }}
         >
           <div
             role="dialog"
@@ -163,18 +155,17 @@ function DashboardFarmCard({ farm }: { farm: FarmCardSummary }) {
             <p className="mt-2 text-sm text-stone-600">
               {farm.farmName} will move to Inactive. You can make it active again later.
             </p>
+            {error ? <p className="mt-2 text-sm font-medium text-red-700">{error}</p> : null}
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <Button type="button" disabled={busy} onClick={() => void makeInactive()}>
+                {busy ? "Working…" : "Make inactive"}
+              </Button>
               <Button
                 type="button"
-                disabled={pending}
-                onClick={() => {
-                  setConfirmOpen(false);
-                  makeInactive();
-                }}
+                variant="ghost"
+                disabled={busy}
+                onClick={() => setConfirmOpen(false)}
               >
-                {pending ? "Working…" : "Make inactive"}
-              </Button>
-              <Button type="button" variant="ghost" disabled={pending} onClick={() => setConfirmOpen(false)}>
                 Cancel
               </Button>
             </div>

@@ -13,6 +13,8 @@ export type OfflineFarmRef = {
   notes: string | null;
   numberOfHouses: number;
   numberOfGenerators: number | null;
+  /** Daily gain for every house. Missing on older phone copies. */
+  growthRateLbsPerDay?: number | null;
   address: string | null;
   city: string | null;
   state: string | null;

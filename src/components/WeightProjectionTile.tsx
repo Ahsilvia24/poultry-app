@@ -33,12 +33,14 @@ export type WeightProjectionGroup = {
 
 export function WeightProjectionTile({
   flockId,
+  farmId,
   groups,
   growthRateLbsPerDay,
   embedded = false,
   onGrowthRateChange,
 }: {
   flockId?: string | null;
+  farmId?: string | null;
   groups: WeightProjectionGroup[];
   growthRateLbsPerDay: number;
   /** When true, skip the outer card chrome and section title (used inside Tools). */
@@ -71,7 +73,7 @@ export function WeightProjectionTile({
       return;
     }
 
-    if (!flockId) {
+    if (!flockId && !farmId) {
       onGrowthRateChange?.(raw);
       setEditing(false);
       return;
@@ -81,10 +83,16 @@ export function WeightProjectionTile({
       if (enabled) {
         queue(
           formWrite("updateWeightProjection", {
-            id: flockId,
+            id: flockId ?? undefined,
+            farmId: farmId ?? undefined,
             fields: { growthRateLbsPerDay: String(raw) },
           }),
         );
+        onGrowthRateChange?.(raw);
+        setEditing(false);
+        return;
+      }
+      if (!flockId) {
         onGrowthRateChange?.(raw);
         setEditing(false);
         return;

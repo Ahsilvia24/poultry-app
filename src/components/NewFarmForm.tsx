@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { createFarmAction } from "@/app/actions/farms";
+import { useState } from "react";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOfflineNav } from "@/components/OfflineNavContext";
+import { useOffline } from "@/components/OfflineProvider";
 import {
   SettingsChipInput,
   SettingsFieldRow,
@@ -12,32 +12,55 @@ import {
 } from "@/components/SettingsLayout";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPairs";
-import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
+import { createFarmSchema } from "@/lib/validations";
+
+function emptyToNull(value: FormDataEntryValue | null) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
 
 export function NewFarmForm() {
-  const { enabled, queue } = useReplicaWrite();
+  const { commitLocalWrite } = useOffline();
   const nav = useOfflineNav();
   const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
+  const [busy, setBusy] = useState(false);
 
-  function onSave(formData: FormData) {
+  async function onSave(formData: FormData) {
     setError(null);
-    start(async () => {
-      if (enabled) {
-        const id = localRecordId();
-        queue(
-          formWrite("createFarm", {
-            id,
-            farmId: id,
-            ...formDataToParts(formData),
-          }),
-        );
-        nav?.navigate(`/farms/${id}`);
+    const parsed = createFarmSchema.safeParse({
+      farmName: formData.get("farmName"),
+      growerName: emptyToNull(formData.get("growerName")),
+      farmNumber: emptyToNull(formData.get("farmNumber")),
+      notes: emptyToNull(formData.get("notes")),
+      numberOfHouses: formData.get("numberOfHouses") || 0,
+      numberOfGenerators: formData.get("numberOfGenerators") || null,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Invalid farm");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const id = localRecordId();
+      const wrote = await commitLocalWrite(
+        formWrite("createFarm", {
+          id,
+          farmId: id,
+          ...formDataToParts(formData),
+        }),
+      );
+      if (!wrote) {
+        setError("Could not create the farm on this phone. Try again.");
         return;
       }
-      const result = await createFarmAction(formData);
-      if (result && "error" in result && result.error) setError(result.error);
-    });
+      nav?.navigate(`/farms/${id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create the farm.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -87,8 +110,8 @@ export function NewFarmForm() {
             </SettingsValueChip>
           </SettingsFieldRow>
           <div className="flex justify-end pt-3">
-            <Button type="submit" disabled={pending} compact>
-              {pending ? "Creating…" : "Create farm"}
+            <Button type="submit" disabled={busy} compact>
+              {busy ? "Creating…" : "Create farm"}
             </Button>
           </div>
         </form>

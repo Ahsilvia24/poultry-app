@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   WeightProjectionTile,
   type WeightProjectionGroup,
 } from "@/components/WeightProjectionTile";
-import { DEFAULT_GROWTH_RATE_LBS_PER_DAY } from "@/lib/weight/projections";
+import {
+  DEFAULT_GROWTH_RATE_LBS_PER_DAY,
+  projectionGroupsAtRate,
+  resolveGrowthRate,
+} from "@/lib/weight/projections";
 import { cn } from "@/lib/utils";
 
 export type WeightHousePayload = {
@@ -21,6 +25,8 @@ export type WeightHousePayload = {
 export type WeightFarmPayload = {
   id: string;
   farmName: string;
+  /** Saved lb/day for every house. Null until someone sets it. */
+  growthRateLbsPerDay: number | null;
   /** Farm birds remaining (sum of house remaining). */
   currentHeadCount: number | null;
   houses: WeightHousePayload[];
@@ -42,7 +48,7 @@ export function ToolsWeightProjections({
       (initialFarmId ? farms.find((f) => f.id === initialFarmId) : null) ?? farms[0] ?? null;
     return initialFarm?.houses[0]?.id ?? "";
   });
-  const [localGrowthRate, setLocalGrowthRate] = useState<number | null>(null);
+  const [enteredRates, setEnteredRates] = useState<Record<string, number>>({});
 
   const farm = useMemo(
     () => farms.find((f) => f.id === farmId) ?? farms[0] ?? null,
@@ -54,10 +60,6 @@ export function ToolsWeightProjections({
     [houses, houseId],
   );
 
-  useEffect(() => {
-    setLocalGrowthRate(null);
-  }, [house?.id]);
-
   function changeFarm(nextFarmId: string) {
     setFarmId(nextFarmId);
     const next = farms.find((f) => f.id === nextFarmId);
@@ -65,7 +67,16 @@ export function ToolsWeightProjections({
   }
 
   const growthRateLbsPerDay =
-    localGrowthRate ?? house?.growthRateLbsPerDay ?? DEFAULT_GROWTH_RATE_LBS_PER_DAY;
+    farm && enteredRates[farm.id] != null
+      ? enteredRates[farm.id]!
+      : farm?.growthRateLbsPerDay != null
+        ? resolveGrowthRate(farm.growthRateLbsPerDay)
+        : (house?.growthRateLbsPerDay ?? DEFAULT_GROWTH_RATE_LBS_PER_DAY);
+
+  const groups = useMemo(
+    () => projectionGroupsAtRate(house?.groups ?? [], growthRateLbsPerDay),
+    [house?.groups, growthRateLbsPerDay],
+  );
 
   return (
     <div className="space-y-2">
@@ -126,10 +137,14 @@ export function ToolsWeightProjections({
       <WeightProjectionTile
         key={house?.id ?? "empty"}
         flockId={house?.flockId ?? null}
-        groups={house?.groups ?? []}
+        farmId={farm?.id ?? null}
+        groups={groups}
         growthRateLbsPerDay={growthRateLbsPerDay}
         embedded
-        onGrowthRateChange={setLocalGrowthRate}
+        onGrowthRateChange={(rate) => {
+          if (!farm) return;
+          setEnteredRates((prev) => ({ ...prev, [farm.id]: rate }));
+        }}
       />
     </div>
   );

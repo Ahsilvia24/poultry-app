@@ -84,6 +84,7 @@ export async function migrateDb() {
       notes TEXT,
       number_of_houses INTEGER NOT NULL DEFAULT 0,
       number_of_generators INTEGER,
+      growth_rate_lbs_per_day REAL,
       is_active INTEGER NOT NULL DEFAULT 1,
       deleted_at TEXT
     );
@@ -358,6 +359,9 @@ export async function migrateDb() {
   }
   if (!farmCols.some((c) => c.name === "farm_number")) {
     await database.execAsync("ALTER TABLE farms ADD COLUMN farm_number TEXT");
+  }
+  if (!farmCols.some((c) => c.name === "growth_rate_lbs_per_day")) {
+    await database.execAsync("ALTER TABLE farms ADD COLUMN growth_rate_lbs_per_day REAL");
   }
 
   // Existing installs may lack newer flock columns

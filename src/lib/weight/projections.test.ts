@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { catchWeightBandFromLbs, catchWeightProjections, weightBandAround } from "./projections.ts";
+import {
+  catchWeightBandFromLbs,
+  catchWeightProjections,
+  projectionGroupsAtRate,
+  weightBandAround,
+} from "./projections.ts";
 
 describe("catchWeightProjections", () => {
   it("puts catch day in the middle with ±0.20 lb low and high", () => {
@@ -54,5 +59,27 @@ describe("catchWeightProjections", () => {
     assert.equal(rows[0]!.weightLbs, 0);
     assert.equal(rows[1]!.weightLbs, 0);
     assert.equal(rows[2]!.weightLbs, 0);
+  });
+});
+
+describe("projectionGroupsAtRate", () => {
+  it("keeps the age and applies one growth rate to every box", () => {
+    const [group] = projectionGroupsAtRate(
+      [
+        {
+          catchDateKey: "2026-09-12",
+          projections: [
+            { key: "low", ageDays: 42, weightLbs: 1, label: "Low" },
+            { key: "catch", ageDays: 42, weightLbs: 1, label: "Catch Day" },
+            { key: "high", ageDays: 42, weightLbs: 1, label: "High" },
+          ],
+        },
+      ],
+      0.2,
+    );
+    assert.equal(group!.projections[0]!.weightLbs, 8.2);
+    assert.equal(group!.projections[1]!.weightLbs, 8.4);
+    assert.equal(group!.projections[2]!.weightLbs, 8.6);
+    assert.ok(group!.projections.every((row) => row.ageDays === 42));
   });
 });

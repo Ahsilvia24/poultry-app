@@ -974,41 +974,65 @@ export async function updateFlockScheduleAction(flockId: string, formData: FormD
   revalidatePath("/");
 }
 
-export async function updateFlockWeightProjectionAction(flockId: string, formData: FormData) {
-  const user = await requireUser();
-  const flock = await prisma.flock.findFirst({
-    where: { id: flockId, farm: { userId: user.id!, deletedAt: null } },
-  });
-  if (!flock) return { error: "Flock not found" };
-
+function growthRateFromForm(formData: FormData) {
   const growthRateRaw = emptyToNull(formData.get("growthRateLbsPerDay"));
   const growthRateLbsPerDay = growthRateRaw != null ? Number(growthRateRaw) : null;
-
   if (
     growthRateLbsPerDay == null ||
     !Number.isFinite(growthRateLbsPerDay) ||
     growthRateLbsPerDay < 0
   ) {
-    return { error: "Enter a valid growth rate (lb/day)" };
+    return { error: "Enter a valid growth rate (lb/day)" as const };
   }
+  return { growthRateLbsPerDay };
+}
 
+/** One growth rate for the farm, copied onto every active flock. */
+async function saveFarmGrowthRate(farmId: string, userId: string, growthRateLbsPerDay: number) {
+  const farm = await prisma.farm.findFirst({
+    where: { id: farmId, userId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!farm) return { error: "Farm not found" as const };
   try {
     await prisma.flock.updateMany({
       where: {
-        farmId: flock.farmId,
+        farmId,
         flockStatus: "ACTIVE",
         deletedAt: null,
       },
       data: { growthRateLbsPerDay },
     });
+    await prisma.farm.update({
+      where: { id: farmId },
+      data: { growthRateLbsPerDay },
+    });
   } catch (e) {
     console.error(e);
-    return { error: "Could not save growth rate. Try refreshing the page." };
+    return { error: "Could not save growth rate. Try refreshing the page." as const };
   }
-
-  revalidatePath(`/farms/${flock.farmId}`);
+  revalidatePath(`/farms/${farmId}`);
   revalidatePath("/tools");
-  return { success: true };
+  return { success: true as const };
+}
+
+export async function updateFarmGrowthRateAction(farmId: string, formData: FormData) {
+  const user = await requireUser();
+  const parsed = growthRateFromForm(formData);
+  if ("error" in parsed) return parsed;
+  return saveFarmGrowthRate(farmId, requireUserId(user.id), parsed.growthRateLbsPerDay);
+}
+
+export async function updateFlockWeightProjectionAction(flockId: string, formData: FormData) {
+  const user = await requireUser();
+  const flock = await prisma.flock.findFirst({
+    where: { id: flockId, farm: { userId: user.id!, deletedAt: null } },
+    select: { farmId: true },
+  });
+  if (!flock) return { error: "Flock not found" };
+  const parsed = growthRateFromForm(formData);
+  if ("error" in parsed) return parsed;
+  return saveFarmGrowthRate(flock.farmId, requireUserId(user.id), parsed.growthRateLbsPerDay);
 }
 
 export async function updateHouseLoggedTempAction(

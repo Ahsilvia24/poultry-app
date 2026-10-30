@@ -12,7 +12,11 @@ import type { OfflineSnapshot } from "@/lib/offline/types";
 import type { WeightFarmPayload } from "@/components/ToolsWeightProjections";
 import type { VentilationFarmPayload } from "@/components/VentilationLinks";
 import { sumFarmRemainingHeadCount } from "@/lib/weight/farmHeadCount";
-import { catchWeightProjections, resolveGrowthRate } from "@/lib/weight/projections";
+import {
+  catchWeightProjections,
+  resolveGrowthRate,
+  savedGrowthRate,
+} from "@/lib/weight/projections";
 import { parseDateKey } from "@/lib/visits/schedule";
 import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
@@ -91,11 +95,14 @@ export function selectTools(snapshot: OfflineSnapshot, initialFarmId?: string | 
       }
     }
 
+    const farmGrowthRate = savedGrowthRate(farm.growthRateLbsPerDay);
     const houses = farm.houses.map((house) => {
       const matched = hfByHouseId.get(house.id) ?? null;
       const hf = matched?.hf ?? null;
       const flock = matched?.flock ?? primary;
-      const growthRateLbsPerDay = resolveGrowthRate(flock?.growthRateLbsPerDay);
+      const growthRateLbsPerDay = resolveGrowthRate(
+        farmGrowthRate ?? flock?.growthRateLbsPerDay,
+      );
       const placementKey =
         asDateKey(hf?.placementDate) ?? (flock ? asDateKey(flock.placementDate) : null);
 
@@ -156,6 +163,7 @@ export function selectTools(snapshot: OfflineSnapshot, initialFarmId?: string | 
     return {
       id: farm.id,
       farmName: farm.farmName,
+      growthRateLbsPerDay: farmGrowthRate,
       currentHeadCount: sumFarmRemainingHeadCount(houses),
       houses,
     };

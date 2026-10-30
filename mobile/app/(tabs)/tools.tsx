@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   listFarms,
   getFarmDetail,
-  updateFlockGrowthRate,
+  updateFarmGrowthRate,
 } from "../../src/repos/data";
 import {
   CFM_BY_FAN_SIZE,
@@ -89,7 +89,7 @@ export default function ToolsScreen() {
   const [houseId, setHouseId] = useState("");
   const [useAgeOfBird, setUseAgeOfBird] = useState(false);
   const [ageDaysText, setAgeDaysText] = useState("");
-  const [localGrowthRate, setLocalGrowthRate] = useState<number | null>(null);
+  const [enteredRates, setEnteredRates] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (paramFarmId && farms.some((f) => f.id === paramFarmId)) {
@@ -139,9 +139,11 @@ export default function ToolsScreen() {
         })
       : [];
 
-  const activeFlocks = detail?.activeFlocks ?? [];
   const growthRate = (() => {
-    if (localGrowthRate != null) return resolveGrowthRate(localGrowthRate);
+    if (farmId && enteredRates[farmId] != null) return resolveGrowthRate(enteredRates[farmId]);
+    if (detail?.farm.growthRateLbsPerDay != null) {
+      return resolveGrowthRate(detail.farm.growthRateLbsPerDay);
+    }
     if (selectedHouse?.growthRateLbsPerDay != null) {
       return resolveGrowthRate(selectedHouse.growthRateLbsPerDay);
     }
@@ -150,10 +152,6 @@ export default function ToolsScreen() {
     }
     return DEFAULT_GROWTH_RATE_LBS_PER_DAY;
   })();
-
-  useEffect(() => {
-    setLocalGrowthRate(null);
-  }, [selectedHouse?.id]);
 
   /** Selected house → Low / Catch Day / High (±0.20 lb) from that house’s catch (or flock). */
   const weightProjectionGroups = (() => {
@@ -347,18 +345,10 @@ export default function ToolsScreen() {
                 ageDaysText={ageDaysText}
                 onAgeDaysChange={setAgeDaysText}
                 onSaveGrowthRate={(rate) => {
-                  setLocalGrowthRate(rate);
-                  const flockId =
-                    selectedHouse?.flockId ?? detail?.activeFlock?.id ?? null;
-                  if (flockId) {
-                    updateFlockGrowthRate(flockId, rate);
-                    setDetailVersion((v) => v + 1);
-                  } else if (activeFlocks.length > 0) {
-                    for (const fl of activeFlocks) {
-                      updateFlockGrowthRate(fl.id, rate);
-                    }
-                    setDetailVersion((v) => v + 1);
-                  }
+                  if (!farmId) return;
+                  setEnteredRates((prev) => ({ ...prev, [farmId]: rate }));
+                  updateFarmGrowthRate(farmId, rate);
+                  setDetailVersion((v) => v + 1);
                 }}
               />
             </SectionPanel>
