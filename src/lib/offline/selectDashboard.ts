@@ -14,9 +14,10 @@ import { asDateKey, asDateRequired, localNoonFromKey } from "@/lib/offline/dates
 import {
   bindCompletionsToSchedule,
   gatherFollowUpCompletions,
+  labelsMatch,
 } from "@/lib/offline/followUpCompletions";
 import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
-import type { OfflineFlockRef, OfflineSnapshot } from "@/lib/offline/types";
+import type { OfflineFlockRef, OfflineScheduleExtra, OfflineSnapshot } from "@/lib/offline/types";
 import { lastServiceReportDateKey } from "@/lib/lastChecklistDate";
 import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
@@ -47,6 +48,9 @@ type FarmCard = DashboardData["farmCards"][number];
 
 const UPCOMING_OUTLOOK_DAYS = 10;
 const CATCH_HORIZON_DAYS = 12;
+const FULL_OUTLOOK_DAYS = 800;
+
+export type ScheduleBoard = "dashboard" | "today" | "upcoming" | "catches";
 
 function bySchedule(a: ScheduleRow, b: ScheduleRow) {
   return (
@@ -283,17 +287,43 @@ export function rebuildFarmCardsFromReplica(
   };
 }
 
+function shiftVisitForExtra(
+  visit: ReturnType<typeof buildFlockVisitSchedule>[number],
+  extras: OfflineScheduleExtra[],
+  farmId: string,
+  flockId: string,
+  used: Set<string>,
+) {
+  const extra = extras.find(
+    (row) =>
+      row.replacesDate &&
+      !used.has(row.id) &&
+      row.farmId === farmId &&
+      row.replacesDate === visit.dateKey &&
+      labelsMatch(row.label, visit.label) &&
+      (!row.flockId || row.flockId === flockId),
+  );
+  if (!extra) return visit;
+  used.add(extra.id);
+  return { ...visit, date: localNoonFromKey(extra.date), dateKey: extra.date };
+}
+
 /** Build Today / Upcoming / catches from the replica flocks, not the last server list. */
 export function rebuildDashboardScheduleFromReplica(
   snapshot: OfflineSnapshot,
   source: DashboardData | null | undefined,
   _fallback?: DashboardData | null,
+  board: ScheduleBoard = "dashboard",
 ): DashboardData {
+  const outlookDays = board === "upcoming" ? FULL_OUTLOOK_DAYS : UPCOMING_OUTLOOK_DAYS;
   const timeZone = resolveAppTimeZone(snapshot.settings?.appTimeZone);
   const today = appToday(undefined, timeZone);
   const todayKey = appTodayKey(undefined, timeZone);
-  const horizon = parseDateKey(addCalendarDays(todayKey, UPCOMING_OUTLOOK_DAYS));
-  const catchHorizonEnd = addCalendarDays(todayKey, CATCH_HORIZON_DAYS);
+  const horizon = parseDateKey(addCalendarDays(todayKey, outlookDays));
+  const catchHorizonEnd =
+    board === "catches" ? null : addCalendarDays(todayKey, CATCH_HORIZON_DAYS);
+  const extras = snapshot.scheduleExtras ?? [];
+  const usedExtras = new Set<string>();
 
   const todaysSchedule: ScheduleRow[] = [];
   const upcomingSchedule: ScheduleRow[] = [];
@@ -308,8 +338,8 @@ export function rebuildDashboardScheduleFromReplica(
         ]
       : undefined,
   );
-  const overdueStart = addCalendarDays(todayKey, -UPCOMING_OUTLOOK_DAYS);
-  const endKey = addCalendarDays(todayKey, UPCOMING_OUTLOOK_DAYS);
+  const overdueStart = addCalendarDays(todayKey, -outlookDays);
+  const endKey = addCalendarDays(todayKey, outlookDays);
 
   for (const farm of liveFarms(snapshot)) {
     const activeFlocks = activeFlocksForFarm(snapshot, farm.id);
@@ -333,7 +363,9 @@ export function rebuildDashboardScheduleFromReplica(
       return {
         group,
         placement,
-        schedule: buildFlockVisitSchedule(placement, groupCatch),
+        schedule: buildFlockVisitSchedule(placement, groupCatch).map((visit) =>
+          shiftVisitForExtra(visit, extras, farm.id, group.flockId, usedExtras),
+        ),
       };
     });
     const windowItems = groupSchedules.flatMap(({ group, schedule }) =>
@@ -367,6 +399,39 @@ export function rebuildDashboardScheduleFromReplica(
       });
       for (const due of dueToday) todaysSchedule.push(toRow(due));
       for (const due of upcoming) upcomingSchedule.push(toRow(due));
+    }
+
+    for (const extra of extras) {
+      if (extra.farmId !== farm.id || extra.replacesDate || usedExtras.has(extra.id)) continue;
+      if (extra.date < overdueStart || extra.date > endKey) continue;
+      const dismissed = gathered.some(
+        (row) =>
+          row.farmId === farm.id &&
+          row.date === extra.date &&
+          labelsMatch(row.label, extra.label) &&
+          row.status === "DISMISSED",
+      );
+      if (dismissed) continue;
+      usedExtras.add(extra.id);
+      const completed = gathered.some(
+        (row) =>
+          row.farmId === farm.id &&
+          row.date === extra.date &&
+          labelsMatch(row.label, extra.label) &&
+          row.status !== "DISMISSED",
+      );
+      const row: ScheduleRow = {
+        farmId: farm.id,
+        flockId: extra.flockId ?? "",
+        farmName: farm.farmName,
+        date: extra.date,
+        label: extra.label,
+        flockNumber: "",
+        completed,
+        flockAgeDays: 0,
+      };
+      if (extra.date <= todayKey) todaysSchedule.push(row);
+      else upcomingSchedule.push(row);
     }
 
     const houseNumberById = new Map(
@@ -440,10 +505,16 @@ export function rebuildDashboardScheduleFromReplica(
     ...base,
     stats,
     farmCards,
-    todaysSchedule: dedupeScheduleRows(todaysSchedule).sort(bySchedule).slice(0, 30),
-    upcomingSchedule: dedupeScheduleRows(upcomingSchedule).sort(bySchedule).slice(0, 40),
+    todaysSchedule: dedupeScheduleRows(todaysSchedule)
+      .sort(bySchedule)
+      .slice(0, board === "dashboard" ? 30 : undefined),
+    upcomingSchedule: dedupeScheduleRows(upcomingSchedule)
+      .sort(bySchedule)
+      .slice(0, board === "dashboard" ? 40 : undefined),
     upcomingCatches: sortUpcomingCatchRows(
-      upcomingCatches.filter((row) => row.date >= todayKey && row.date <= catchHorizonEnd),
+      upcomingCatches.filter(
+        (row) => row.date >= todayKey && (catchHorizonEnd == null || row.date <= catchHorizonEnd),
+      ),
     ),
   };
 }
@@ -470,11 +541,12 @@ export function resplitDashboardSchedule(
 export function selectDashboard(
   snapshot: OfflineSnapshot | null | undefined,
   fallback?: DashboardData | null,
+  board: ScheduleBoard = "dashboard",
 ): DashboardData | null {
   const source = snapshot?.dashboard ?? fallback ?? null;
   const timeZone = resolveAppTimeZone(snapshot?.settings?.appTimeZone);
   if (snapshotHasFarmGraph(snapshot)) {
-    return rebuildDashboardScheduleFromReplica(snapshot, source, fallback);
+    return rebuildDashboardScheduleFromReplica(snapshot, source, fallback, board);
   }
   if (!source) return null;
   return resplitDashboardSchedule(source, appTodayKey(undefined, timeZone));

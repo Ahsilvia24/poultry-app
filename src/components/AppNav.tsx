@@ -23,6 +23,7 @@ const selectedTabClass =
   "border-emerald-700/35 bg-emerald-50/70 text-stone-700";
 
 function isActive(pathname: string, href: string) {
+  if (href === "/" && (pathname === "/" || pathname.startsWith("/schedule"))) return true;
   return pathname === href || (href !== "/" && pathname.startsWith(href));
 }
 

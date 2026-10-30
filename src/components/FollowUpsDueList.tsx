@@ -36,9 +36,15 @@ function itemKey(f: FollowUpDueItem) {
 export function FollowUpsDueList({
   items,
   showDate = false,
+  capped = true,
+  onMoveToToday,
 }: {
   items: FollowUpDueItem[];
   showDate?: boolean;
+  /** Dashboard tiles scroll inside the card. A schedule page scrolls with the page. */
+  capped?: boolean;
+  /** Pin this visit onto today's schedule. */
+  onMoveToToday?: (item: FollowUpDueItem) => void;
 }) {
   const router = useRouter();
   const timeZone = useAppTimeZone();
@@ -111,12 +117,9 @@ export function FollowUpsDueList({
     });
   }
 
-  return (
-    <div className="mt-2">
-      {error ? <p className="mb-2 text-sm text-red-700">{error}</p> : null}
-      <ScrollableFarmList className="pr-2">
-        <ExclusiveSwipeGroup>
-          <ul className="space-y-2.5 text-[15px]">
+  const rows = (
+    <ExclusiveSwipeGroup>
+      <ul className="space-y-2.5 text-[15px]">
             {shown.map((f) => {
               const key = itemKey(f);
               const isDone = checked[rememberScheduleCheckKey(f)] ?? f.completed;
@@ -183,13 +186,22 @@ export function FollowUpsDueList({
                           }`}
                         >
                           <OneDotName text={f.farmName} className="font-semibold" />
-                          {f.flockAgeDays != null ? (
+                          {f.flockNumber && f.flockAgeDays != null ? (
                             <span className="shrink-0 font-normal text-stone-500">
                               {f.flockAgeDays}d
                             </span>
                           ) : null}
                         </ReplicaLink>
                       </div>
+                      {onMoveToToday ? (
+                        <button
+                          type="button"
+                          onClick={() => onMoveToToday(f)}
+                          className="shrink-0 rounded-md px-1.5 py-0.5 text-[13px] font-bold text-emerald-800 hover:bg-emerald-50"
+                        >
+                          Today
+                        </button>
+                      ) : null}
                       <span className="ml-auto flex shrink-0 items-baseline gap-1.5 text-stone-600">
                         <span className="whitespace-nowrap font-medium text-stone-800">
                           {f.label}
@@ -205,9 +217,14 @@ export function FollowUpsDueList({
                 </li>
               );
             })}
-          </ul>
-        </ExclusiveSwipeGroup>
-      </ScrollableFarmList>
+      </ul>
+    </ExclusiveSwipeGroup>
+  );
+
+  return (
+    <div className="mt-2">
+      {error ? <p className="mb-2 text-sm text-red-700">{error}</p> : null}
+      {capped ? <ScrollableFarmList className="pr-2">{rows}</ScrollableFarmList> : rows}
     </div>
   );
 }

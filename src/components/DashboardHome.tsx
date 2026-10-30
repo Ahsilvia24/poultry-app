@@ -1,33 +1,16 @@
 "use client";
 
-import {
-  catchRowHouseNumber,
-  formatCatchDateLabel,
-  formatCatchHouseLabel,
-} from "@/lib/catchHouses";
 import { resolveAppTimeZone } from "@/lib/app-time-zones";
-import { compactCatchTimeLabel } from "@/lib/time-slots";
 import { Card } from "@/components/ui";
 import { DashboardScheduleImport } from "@/components/DashboardScheduleImport";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
-import { OneDotName } from "@/components/OneDotName";
 import { DashboardFarmCards } from "@/components/DashboardFarmCards";
-import { ScrollableFarmList } from "@/components/ScrollableFarmList";
 import { ReplicaLink } from "@/components/ReplicaLink";
+import { UpcomingCatchesList } from "@/components/UpcomingCatchesList";
 import { useOffline } from "@/components/OfflineProvider";
 import type { getDashboardData } from "@/lib/dashboard";
 import { selectDashboard } from "@/lib/offline/selectDashboard";
 import type { ScheduleImportMeta } from "@/lib/schedule-import-types";
-
-function catchFarmHref(
-  farmId: string | undefined,
-  farmName: string,
-  farms: { id: string; farmName: string }[] | undefined,
-) {
-  if (farmId) return `/farms/${farmId}`;
-  const match = farms?.find((farm) => farm.farmName === farmName);
-  return match ? `/farms/${match.id}` : null;
-}
 
 type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
 
@@ -61,11 +44,21 @@ export function DashboardHome({
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <Card>
-          <p className="text-[15px] font-bold text-stone-500">Today&apos;s Schedule</p>
+          <ReplicaLink
+            href="/schedule/today"
+            className="text-[15px] font-bold text-stone-500 hover:text-stone-800 hover:underline"
+          >
+            Today&apos;s Schedule
+          </ReplicaLink>
           <FollowUpsDueList items={data?.todaysSchedule ?? []} showDate />
         </Card>
         <Card>
-          <p className="text-[15px] font-bold text-stone-500">Upcoming Visits</p>
+          <ReplicaLink
+            href="/schedule/upcoming"
+            className="text-[15px] font-bold text-stone-500 hover:text-stone-800 hover:underline"
+          >
+            Upcoming Visits
+          </ReplicaLink>
           {(data?.upcomingSchedule.length ?? 0) === 0 ? (
             <p className="mt-2 text-[15px] text-stone-500">None in the next 10 days</p>
           ) : (
@@ -73,56 +66,17 @@ export function DashboardHome({
           )}
         </Card>
         <Card>
-          <p className="text-[15px] font-bold text-stone-500">Upcoming Catches</p>
-          {(data?.upcomingCatches.length ?? 0) === 0 ? (
-            <p className="mt-2 text-[15px] text-stone-500">None</p>
-          ) : (
-            <ScrollableFarmList className="mt-2 pr-2">
-              <ul className="space-y-2.5 text-[15px]">
-                {(data?.upcomingCatches ?? []).map((c) => {
-                  const href = catchFarmHref(c.farmId, c.farmName, snapshot?.farms);
-                  const houseNumber = catchRowHouseNumber(c);
-                  const houseLabel = formatCatchHouseLabel(houseNumber);
-                  const name = (
-                    <>
-                      <OneDotName text={c.farmName} />
-                      {houseLabel ? (
-                        <span className="shrink-0 font-normal text-stone-500">
-                          {houseLabel}
-                        </span>
-                      ) : null}
-                    </>
-                  );
-                  return (
-                    <li
-                      key={`${c.farmId || c.farmName}-${houseNumber ?? ""}-${c.date}-${c.flockNumber}`}
-                      className="flex min-h-[22px] items-baseline gap-2"
-                    >
-                      {href ? (
-                        <ReplicaLink
-                          href={href}
-                          prefetch
-                          className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden font-semibold text-stone-900 hover:underline"
-                        >
-                          {name}
-                        </ReplicaLink>
-                      ) : (
-                        <span className="flex min-w-0 flex-1 items-baseline gap-1 overflow-hidden font-semibold text-stone-900">
-                          {name}
-                        </span>
-                      )}
-                      <span className="ml-auto flex shrink-0 items-baseline gap-1.5 whitespace-nowrap text-stone-600">
-                        <span>{formatCatchDateLabel(c.date, timeZone)}</span>
-                        {c.catchTime ? (
-                          <span>{compactCatchTimeLabel(c.catchTime)}</span>
-                        ) : null}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </ScrollableFarmList>
-          )}
+          <ReplicaLink
+            href="/schedule/catches"
+            className="text-[15px] font-bold text-stone-500 hover:text-stone-800 hover:underline"
+          >
+            Upcoming Catches
+          </ReplicaLink>
+          <UpcomingCatchesList
+            items={data?.upcomingCatches ?? []}
+            timeZone={timeZone}
+            farms={snapshot?.farms}
+          />
         </Card>
       </div>
 

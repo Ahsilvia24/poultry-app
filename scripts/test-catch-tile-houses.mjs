@@ -253,7 +253,7 @@ assert.equal(house3?.catchTime, "11:30");
 assert.equal(house2?.catchTime, "06:30");
 assert.equal(afterTime.houseFlocks.find((hf) => hf.houseId === "house-3")?.catchTime, "11:30");
 
-const home = read("src/components/DashboardHome.tsx");
+const home = read("src/components/UpcomingCatchesList.tsx");
 assert.match(home, /formatCatchHouseLabel/);
 assert.match(home, /catchRowHouseNumber/);
 assert.match(home, /formatCatchDateLabel/);

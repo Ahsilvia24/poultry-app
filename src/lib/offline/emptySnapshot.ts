@@ -27,6 +27,7 @@ export function emptyPhoneSnapshot(input: {
     serviceFormDrafts: [],
     serviceForms: [],
     followUpCompletions: [],
+    scheduleExtras: [],
     dashboard: null,
   };
 }

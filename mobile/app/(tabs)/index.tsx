@@ -152,7 +152,7 @@ function ScheduleCheckRow({
               textDecorationLine: checked ? "line-through" : "none",
             }}
           />
-          {item.flockAgeDays != null ? (
+          {item.flockNumber && item.flockAgeDays != null ? (
             <Text
               style={{
                 fontWeight: "400",
@@ -319,9 +319,11 @@ export default function DashboardScreen() {
         {data ? (
           <>
             <Card style={{ marginBottom: 8 }}>
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
-                Today&apos;s Schedule
-              </Text>
+              <Pressable onPress={() => router.push("/schedule/today")}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
+                  Today&apos;s Schedule
+                </Text>
+              </Pressable>
               {data.todaysSchedule.length === 0 ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>Nothing due today</Text>
               ) : (
@@ -350,9 +352,11 @@ export default function DashboardScreen() {
             </Card>
 
             <Card style={{ marginBottom: 8 }}>
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
-                Upcoming Visits
-              </Text>
+              <Pressable onPress={() => router.push("/schedule/upcoming")}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
+                  Upcoming Visits
+                </Text>
+              </Pressable>
               {data.upcomingSchedule.length === 0 ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>None in the next 10 days</Text>
               ) : (
@@ -381,9 +385,11 @@ export default function DashboardScreen() {
             </Card>
 
             <Card style={{ marginBottom: 8 }}>
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
-                Upcoming Catches
-              </Text>
+              <Pressable onPress={() => router.push("/schedule/catches")}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.muted }}>
+                  Upcoming Catches
+                </Text>
+              </Pressable>
               {data.upcomingCatches.length === 0 ? (
                 <Text style={[styles.muted, { marginTop: 8 }]}>None</Text>
               ) : (

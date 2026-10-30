@@ -62,6 +62,7 @@ export function mergeWebsiteSnapshot(
     serviceFormDrafts: mergeDrafts(local.serviceFormDrafts, remote.serviceFormDrafts),
     serviceForms: mergeById(local.serviceForms ?? [], remote.serviceForms ?? []),
     followUpCompletions: mergeCompletions(local.followUpCompletions, remote.followUpCompletions),
+    scheduleExtras: local.scheduleExtras ?? [],
     dashboard: local.dashboard ?? remote.dashboard,
   };
 }

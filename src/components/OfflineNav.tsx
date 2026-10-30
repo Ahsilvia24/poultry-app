@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { DashboardHome } from "@/components/DashboardHome";
+import { ScheduleBoard } from "@/components/ScheduleBoard";
 import { FarmDetailView } from "@/components/FarmDetailView";
 import { FarmsPageClient } from "@/components/FarmsPageClient";
 import { LfoEditView } from "@/components/LfoEditView";
@@ -69,6 +70,11 @@ export function OfflineRoutes({ children }: { children: ReactNode }) {
 
   if (pathname === "/") {
     return <DashboardHome initial={selectDashboard(snapshot)} scheduleImports={[]} />;
+  }
+
+  const scheduleBoard = /^\/schedule\/(today|upcoming|catches)$/.exec(pathname);
+  if (scheduleBoard) {
+    return <ScheduleBoard board={scheduleBoard[1] as "today" | "upcoming" | "catches"} />;
   }
 
   if (pathname === "/farms") {
