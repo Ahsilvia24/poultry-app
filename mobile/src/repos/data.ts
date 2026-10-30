@@ -747,6 +747,7 @@ export function getFarmDetail(farmId: string) {
     farm_number: string | null;
     notes: string | null;
     number_of_generators: number;
+    growth_rate_lbs_per_day: number | null;
   }>("SELECT * FROM farms WHERE id = ?", [farmId]);
   if (!farm) throw new Error("Farm not found");
 
@@ -1009,6 +1010,7 @@ export function getFarmDetail(farmId: string) {
         farm.number_of_generators == null || farm.number_of_generators === 0
           ? null
           : farm.number_of_generators,
+      growthRateLbsPerDay: farm.growth_rate_lbs_per_day,
     },
     activeFlocks,
     pastFlocks,
@@ -3425,22 +3427,34 @@ export function updateFlockNumber(flockId: string, flockNumber: string) {
   return { success: true as const, farmId: flock.farm_id };
 }
 
-export function updateFlockGrowthRate(flockId: string, growthRateLbsPerDay: number) {
+/** One growth rate for the farm. Every active flock and every house uses it. */
+export function updateFarmGrowthRate(farmId: string, growthRateLbsPerDay: number) {
   const db = getDb();
   if (!Number.isFinite(growthRateLbsPerDay) || growthRateLbsPerDay < 0) {
     throw new Error("Growth rate must be 0 or greater");
   }
+  const farm = db.getFirstSync<{ id: string }>("SELECT id FROM farms WHERE id = ?", [farmId]);
+  if (!farm) throw new Error("Farm not found");
+  db.runSync(`UPDATE farms SET growth_rate_lbs_per_day = ? WHERE id = ?`, [
+    growthRateLbsPerDay,
+    farmId,
+  ]);
+  db.runSync(
+    `UPDATE flocks SET growth_rate_lbs_per_day = ?
+     WHERE farm_id = ? AND flock_status = 'ACTIVE'`,
+    [growthRateLbsPerDay, farmId],
+  );
+  return { success: true as const, farmId };
+}
+
+export function updateFlockGrowthRate(flockId: string, growthRateLbsPerDay: number) {
+  const db = getDb();
   const flock = db.getFirstSync<{ id: string; farm_id: string }>(
     "SELECT id, farm_id FROM flocks WHERE id = ?",
     [flockId],
   );
   if (!flock) throw new Error("Flock not found");
-
-  db.runSync(`UPDATE flocks SET growth_rate_lbs_per_day = ? WHERE id = ?`, [
-    growthRateLbsPerDay,
-    flockId,
-  ]);
-  return { success: true as const, farmId: flock.farm_id };
+  return updateFarmGrowthRate(flock.farm_id, growthRateLbsPerDay);
 }
 
 /** Past/current flock summary for the farm History screen. */

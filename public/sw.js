@@ -263,6 +263,34 @@ async function putOk(cache, request, response) {
   return withoutRedirect(response);
 }
 
+/** A hung service must still answer, so the page is not stuck on Creating. */
+function raceDeadline(work, ms, fallback) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      Promise.resolve()
+        .then(fallback)
+        .then(resolve, reject);
+    }, ms);
+    work.then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 function fetchWithTimeout(request, ms) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
@@ -459,14 +487,18 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   event.respondWith(
-    (async () => {
-      if (await isSignedOut()) {
-        return serveLeave();
-      }
-      if (isNavigation(request) || isRsc(request, url)) {
-        return staleWhileRevalidate(request, event);
-      }
-      return networkFirst(request);
-    })().then(withoutRedirect),
+    raceDeadline(
+      (async () => {
+        if (await isSignedOut()) {
+          return serveLeave();
+        }
+        if (isNavigation(request) || isRsc(request, url)) {
+          return staleWhileRevalidate(request, event);
+        }
+        return networkFirst(request);
+      })().then(withoutRedirect),
+      OPEN_MS + 1500,
+      () => cachedFallback(request).then(withoutRedirect),
+    ),
   );
 });

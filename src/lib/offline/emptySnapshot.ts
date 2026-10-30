@@ -30,3 +30,31 @@ export function emptyPhoneSnapshot(input: {
     dashboard: null,
   };
 }
+
+/** A phone copy that can accept a new farm even before the website answers. */
+export function snapshotWithFarmGraph(
+  current: OfflineSnapshot | null | undefined,
+  identity: { userId: string; userEmail: string; userName: string },
+): OfflineSnapshot {
+  const blank = emptyPhoneSnapshot(identity);
+  if (!current) return blank;
+  if (
+    Array.isArray(current.houses) &&
+    Array.isArray(current.flocks) &&
+    Array.isArray(current.houseFlocks)
+  ) {
+    return current;
+  }
+  return {
+    ...blank,
+    ...current,
+    version: OFFLINE_SNAPSHOT_VERSION,
+    userId: current.userId || identity.userId,
+    userEmail: current.userEmail || identity.userEmail,
+    userName: current.userName || identity.userName,
+    farms: Array.isArray(current.farms) ? current.farms : [],
+    houses: [],
+    flocks: [],
+    houseFlocks: [],
+  };
+}

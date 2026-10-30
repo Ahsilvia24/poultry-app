@@ -23,6 +23,37 @@ export function resolveGrowthRate(saved: number | null | undefined): number {
     : DEFAULT_GROWTH_RATE_LBS_PER_DAY;
 }
 
+/** First rate someone saved for this farm. Null means nothing is saved yet. */
+export function firstSavedGrowthRate(rates: Array<number | null | undefined>): number | null {
+  for (const rate of rates) {
+    if (rate != null && Number.isFinite(rate) && rate >= 0) return rate;
+  }
+  return null;
+}
+
+/** Rebuild Low / Catch / High weights for one shared farm growth rate. */
+export function projectionWeightsAtRate<
+  T extends { key?: "low" | "catch" | "high"; ageDays: number },
+>(rows: T[], growthRateLbsPerDay: number): Array<T & { weightLbs: number }> {
+  return rows.map((row) => {
+    const mid = roundLbs(weightFromAgeDays(row.ageDays, growthRateLbsPerDay));
+    const empty = !Number.isFinite(mid) || mid <= 0;
+    const weightLbs =
+      row.key === "low"
+        ? empty
+          ? 0
+          : Math.max(0, roundLbs(mid - CATCH_WEIGHT_BAND_LBS))
+        : row.key === "high"
+          ? empty
+            ? 0
+            : roundLbs(mid + CATCH_WEIGHT_BAND_LBS)
+          : empty
+            ? 0
+            : mid;
+    return { ...row, weightLbs };
+  });
+}
+
 export type WeightBandKey = "low" | "catch" | "high";
 
 export type WeightBandProjection = {

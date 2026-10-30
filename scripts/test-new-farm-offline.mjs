@@ -21,6 +21,9 @@ assert.doesNotMatch(nav, /function ReplicaFarmMissing/);
 const form = read("src/components/NewFarmForm.tsx");
 assert.match(form, /createFarm/);
 assert.match(form, /nav\?\.navigate\(`\/farms\/\$\{id\}`\)/);
+assert.match(form, /commitLocal\(write\)/);
+assert.doesNotMatch(form, /createFarmAction/);
+assert.doesNotMatch(form, /Creating/);
 
 const { resolveReplicaId } = await import(join(root, "src/lib/offline/remapIds.ts"));
 const { applyFormWrite } = await import(join(root, "src/lib/offline/applyWrites.ts"));
@@ -29,6 +32,7 @@ const { ensureOfflineFarm, replayThenEnsureFarm } = await import(
   join(root, "src/lib/offline/ensureOfflineFarm.ts")
 );
 const { OFFLINE_SNAPSHOT_VERSION } = await import(join(root, "src/lib/offline/types.ts"));
+const { snapshotWithFarmGraph } = await import(join(root, "src/lib/offline/emptySnapshot.ts"));
 
 const empty = {
   version: OFFLINE_SNAPSHOT_VERSION,
@@ -73,5 +77,18 @@ const replayed = replayThenEnsureFarm(
 );
 assert.equal(replayed.farms[0]?.farmName, "Replay Place");
 assert.equal(replayed.houses.length, 1);
+
+const fromBlankPhone = applyFormWrite(
+  snapshotWithFarmGraph(null, { userId: "user-1", userEmail: "a@b.com", userName: "Pat" }),
+  {
+    action: "createFarm",
+    id: "local-blank",
+    farmId: "local-blank",
+    fields: { farmName: "Phone Farm", numberOfHouses: "2" },
+  },
+);
+assert.equal(fromBlankPhone.farms[0]?.farmName, "Phone Farm");
+assert.equal(fromBlankPhone.houses.length, 2);
+assert.ok(selectFarmDetail(fromBlankPhone, "local-blank"));
 
 console.log("new-farm-offline: ok");

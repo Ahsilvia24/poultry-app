@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { createFarmAction } from "@/app/actions/farms";
+import { useRef, useState } from "react";
 import { ReplicaLink } from "@/components/ReplicaLink";
 import { useOfflineNav } from "@/components/OfflineNavContext";
 import {
@@ -15,29 +14,35 @@ import { formDataToParts, formWrite, localRecordId } from "@/lib/offline/formPai
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 
 export function NewFarmForm() {
-  const { enabled, queue } = useReplicaWrite();
+  const { queue, commitLocal } = useReplicaWrite();
   const nav = useOfflineNav();
   const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
+  const saving = useRef(false);
 
   function onSave(formData: FormData) {
+    if (saving.current) return;
+    saving.current = true;
     setError(null);
-    start(async () => {
-      if (enabled) {
-        const id = localRecordId();
-        queue(
-          formWrite("createFarm", {
-            id,
-            farmId: id,
-            ...formDataToParts(formData),
-          }),
-        );
-        nav?.navigate(`/farms/${id}`);
-        return;
-      }
-      const result = await createFarmAction(formData);
-      if (result && "error" in result && result.error) setError(result.error);
+    const farmName = String(formData.get("farmName") ?? "").trim();
+    if (!farmName) {
+      saving.current = false;
+      setError("Farm name is required");
+      return;
+    }
+    const id = localRecordId();
+    const write = formWrite("createFarm", {
+      id,
+      farmId: id,
+      ...formDataToParts(formData),
     });
+    // Save on the phone first. Uploading can wait if the website is down.
+    const saved = queue(write) || commitLocal(write);
+    if (!saved) {
+      saving.current = false;
+      setError("Could not save this farm on the phone.");
+      return;
+    }
+    nav?.navigate(`/farms/${id}`);
   }
 
   return (
@@ -87,8 +92,8 @@ export function NewFarmForm() {
             </SettingsValueChip>
           </SettingsFieldRow>
           <div className="flex justify-end pt-3">
-            <Button type="submit" disabled={pending} compact>
-              {pending ? "Creating…" : "Create farm"}
+            <Button type="submit" compact>
+              Create farm
             </Button>
           </div>
         </form>

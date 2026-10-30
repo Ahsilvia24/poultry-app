@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   listFarms,
   getFarmDetail,
-  updateFlockGrowthRate,
+  updateFarmGrowthRate,
 } from "../../src/repos/data";
 import {
   CFM_BY_FAN_SIZE,
@@ -24,11 +24,7 @@ import {
   recommendedMinVent,
 } from "../../src/lib/tools";
 import { flockWeekFromAge, formatMinVentCycle } from "../../src/lib/mortality";
-import {
-  catchWeightProjections,
-  DEFAULT_GROWTH_RATE_LBS_PER_DAY,
-  resolveGrowthRate,
-} from "../../src/lib/weight/projections";
+import { catchWeightProjections, resolveGrowthRate } from "../../src/lib/weight/projections";
 import { appScrollProps, colors, styles } from "../../src/theme";
 import { useTabScrollToTop } from "../../src/lib/tabScroll";
 import { useKeyboardInset } from "../../src/lib/useKeyboardInset";
@@ -89,7 +85,7 @@ export default function ToolsScreen() {
   const [houseId, setHouseId] = useState("");
   const [useAgeOfBird, setUseAgeOfBird] = useState(false);
   const [ageDaysText, setAgeDaysText] = useState("");
-  const [localGrowthRate, setLocalGrowthRate] = useState<number | null>(null);
+  const [farmRates, setFarmRates] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (paramFarmId && farms.some((f) => f.id === paramFarmId)) {
@@ -140,20 +136,15 @@ export default function ToolsScreen() {
       : [];
 
   const activeFlocks = detail?.activeFlocks ?? [];
-  const growthRate = (() => {
-    if (localGrowthRate != null) return resolveGrowthRate(localGrowthRate);
-    if (selectedHouse?.growthRateLbsPerDay != null) {
-      return resolveGrowthRate(selectedHouse.growthRateLbsPerDay);
-    }
-    if (detail?.activeFlock) {
-      return resolveGrowthRate(detail.activeFlock.growthRateLbsPerDay);
-    }
-    return DEFAULT_GROWTH_RATE_LBS_PER_DAY;
-  })();
-
-  useEffect(() => {
-    setLocalGrowthRate(null);
-  }, [selectedHouse?.id]);
+  const savedFarmRate =
+    detail?.farm.growthRateLbsPerDay ??
+    houses.find((h) => h.growthRateLbsPerDay != null)?.growthRateLbsPerDay ??
+    activeFlocks.find((fl) => fl.growthRateLbsPerDay != null)?.growthRateLbsPerDay ??
+    detail?.activeFlock?.growthRateLbsPerDay ??
+    null;
+  const growthRate = resolveGrowthRate(
+    farmRates[farmId] != null ? farmRates[farmId] : savedFarmRate,
+  );
 
   /** Selected house → Low / Catch Day / High (±0.20 lb) from that house’s catch (or flock). */
   const weightProjectionGroups = (() => {
@@ -347,18 +338,10 @@ export default function ToolsScreen() {
                 ageDaysText={ageDaysText}
                 onAgeDaysChange={setAgeDaysText}
                 onSaveGrowthRate={(rate) => {
-                  setLocalGrowthRate(rate);
-                  const flockId =
-                    selectedHouse?.flockId ?? detail?.activeFlock?.id ?? null;
-                  if (flockId) {
-                    updateFlockGrowthRate(flockId, rate);
-                    setDetailVersion((v) => v + 1);
-                  } else if (activeFlocks.length > 0) {
-                    for (const fl of activeFlocks) {
-                      updateFlockGrowthRate(fl.id, rate);
-                    }
-                    setDetailVersion((v) => v + 1);
-                  }
+                  if (!farmId) return;
+                  updateFarmGrowthRate(farmId, rate);
+                  setFarmRates((prev) => ({ ...prev, [farmId]: rate }));
+                  setDetailVersion((v) => v + 1);
                 }}
               />
             </SectionPanel>
