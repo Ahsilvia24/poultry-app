@@ -20,6 +20,8 @@ assert.doesNotMatch(nav, /function ReplicaFarmMissing/);
 
 const form = read("src/components/NewFarmForm.tsx");
 assert.match(form, /createFarm/);
+assert.match(form, /commitLocalWrite/);
+assert.doesNotMatch(form, /createFarmAction/);
 assert.match(form, /nav\?\.navigate\(`\/farms\/\$\{id\}`\)/);
 
 const { resolveReplicaId } = await import(join(root, "src/lib/offline/remapIds.ts"));

@@ -1330,13 +1330,17 @@ export function applyFormWrite(snapshot: OfflineSnapshot, write: OfflineFormWrit
     }
     case "updateWeightProjection": {
       const rate = num(fields.growthRateLbsPerDay, NaN);
-      if (!Number.isFinite(rate) || rate < 0 || !write.id) return snapshot;
-      const flock = snapshot.flocks.find((row) => row.id === write.id);
-      if (!flock) return snapshot;
+      if (!Number.isFinite(rate) || rate < 0) return snapshot;
+      const flock = write.id ? snapshot.flocks.find((row) => row.id === write.id) : undefined;
+      const farmId = write.farmId ?? flock?.farmId;
+      if (!farmId || !snapshot.farms.some((farm) => farm.id === farmId)) return snapshot;
       return {
         ...snapshot,
+        farms: snapshot.farms.map((farm) =>
+          farm.id === farmId ? { ...farm, growthRateLbsPerDay: rate } : farm,
+        ),
         flocks: snapshot.flocks.map((row) =>
-          row.farmId === flock.farmId && row.flockStatus !== "COMPLETED" && !row.deletedAt
+          row.farmId === farmId && row.flockStatus !== "COMPLETED" && !row.deletedAt
             ? { ...row, growthRateLbsPerDay: rate }
             : row,
         ),

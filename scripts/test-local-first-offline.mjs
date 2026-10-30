@@ -747,12 +747,42 @@ assert.equal(
   true,
 );
 
-const weighted = applyFormWrite(snapshot, {
-  action: "updateWeightProjection",
-  id: "flock-1",
-  fields: { growthRateLbsPerDay: "0.18" },
-});
-assert.equal(weighted.flocks[0].growthRateLbsPerDay, 0.18);
+const weighted = applyFormWrite(
+  {
+    ...snapshot,
+    flocks: [
+      ...snapshot.flocks,
+      {
+        ...snapshot.flocks[0],
+        id: "flock-2",
+        flockNumber: "B2",
+        growthRateLbsPerDay: 0.11,
+      },
+      {
+        ...snapshot.flocks[0],
+        id: "flock-done",
+        flockNumber: "OLD",
+        flockStatus: "COMPLETED",
+        growthRateLbsPerDay: 0.09,
+      },
+    ],
+  },
+  {
+    action: "updateWeightProjection",
+    id: "flock-1",
+    farmId: "farm-1",
+    fields: { growthRateLbsPerDay: "0.18" },
+  },
+);
+assert.equal(weighted.flocks.find((flock) => flock.id === "flock-1").growthRateLbsPerDay, 0.18);
+assert.equal(weighted.flocks.find((flock) => flock.id === "flock-2").growthRateLbsPerDay, 0.18);
+assert.equal(weighted.flocks.find((flock) => flock.id === "flock-done").growthRateLbsPerDay, 0.09);
+assert.equal(weighted.farms.find((farm) => farm.id === "farm-1").growthRateLbsPerDay, 0.18);
+const weightedTools = selectTools(weighted, "farm-1");
+assert.equal(weightedTools.weightFarms[0].growthRateLbsPerDay, 0.18);
+assert.ok(
+  weightedTools.weightFarms[0].houses.every((house) => house.growthRateLbsPerDay === 0.18),
+);
 
 const inactive = applyFormWrite(
   {

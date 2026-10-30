@@ -18,9 +18,46 @@ function roundLbs(n: number): number {
 }
 
 export function resolveGrowthRate(saved: number | null | undefined): number {
-  return saved != null && Number.isFinite(saved) && saved >= 0
-    ? saved
-    : DEFAULT_GROWTH_RATE_LBS_PER_DAY;
+  return savedGrowthRate(saved) ?? DEFAULT_GROWTH_RATE_LBS_PER_DAY;
+}
+
+/** A stored lb/day value, or null when the farm has never set one. */
+export function savedGrowthRate(saved: number | null | undefined): number | null {
+  return saved != null && Number.isFinite(saved) && saved >= 0 ? saved : null;
+}
+
+type RatedProjection = {
+  key?: string;
+  ageDays: number;
+  weightLbs: number;
+  label: string;
+};
+
+/** Recompute Low / Catch Day / High from one farm growth rate. Ages stay put. */
+export function projectionGroupsAtRate<T extends { projections: RatedProjection[] }>(
+  groups: T[],
+  growthRateLbsPerDay: number,
+): T[] {
+  return groups.map((group) => {
+    const ageDays =
+      group.projections.find((row) => row.key === "catch")?.ageDays ??
+      group.projections[0]?.ageDays ??
+      0;
+    const band = weightBandAround({
+      date: new Date(0),
+      ageDays,
+      midWeightLbs: weightFromAgeDays(ageDays, growthRateLbsPerDay),
+      midLabel: "Catch Day",
+    });
+    return {
+      ...group,
+      projections: group.projections.map((row) => {
+        const next = band.find((item) => item.key === row.key);
+        if (!next) return row;
+        return { ...row, label: next.label, ageDays: next.ageDays, weightLbs: next.weightLbs };
+      }),
+    };
+  });
 }
 
 export type WeightBandKey = "low" | "catch" | "high";

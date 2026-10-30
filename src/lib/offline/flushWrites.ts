@@ -11,6 +11,7 @@ import {
   reactivateFlockAction,
   updateFarmAction,
   updateFlockNumberAction,
+  updateFarmGrowthRateAction,
   updateFlockWeightProjectionAction,
   updateHouseAction,
 } from "@/app/actions/farms";
@@ -298,8 +299,13 @@ export async function flushFormWrite(
       if (isLocalRecordId(id)) return { ok: true, aliases };
       return fromAction(await updateFlockNumberAction(id, write.fields?.flockNumber ?? ""), aliases);
     case "updateWeightProjection":
-      if (isLocalRecordId(id)) return { ok: true, aliases };
-      return fromAction(await updateFlockWeightProjectionAction(id, formData), aliases);
+      if (farmId && !isLocalFarmId(farmId)) {
+        return fromAction(await updateFarmGrowthRateAction(farmId, formData), aliases);
+      }
+      if (id && !isLocalRecordId(id)) {
+        return fromAction(await updateFlockWeightProjectionAction(id, formData), aliases);
+      }
+      return { ok: true, aliases };
     case "saveServiceDraft": {
       if (isLocalFarmId(farmId)) return { ok: true, aliases };
       const formKind = write.fields?.formKind ?? "";

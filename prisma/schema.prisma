@@ -185,6 +185,8 @@ model Farm {
   email          String?
   numberOfHouses Int       @default(0)
   numberOfGenerators Int?
+  /** Daily gain (lb/day) shared by every house on this farm. */
+  growthRateLbsPerDay Float?
   notes          String?
   isActive       Boolean   @default(true)
   deletedAt      DateTime?

@@ -26,11 +26,12 @@ import { unlockPhoneOwner } from "@/lib/offline/phoneUnlock";
 import { seedAndMergeFollowUpCompletions } from "@/lib/offline/followUpCompletions";
 import { seedAndMergeServiceForms } from "@/lib/offline/serviceForms";
 import { uploadLeftoverWrites } from "@/lib/offline/uploadLeftoverWrites";
-import { coalesceFormWrite } from "@/lib/offline/applyWrites";
+import { applyFormWrite, coalesceFormWrite } from "@/lib/offline/applyWrites";
+import { snapshotHasFarmGraph } from "@/lib/offline/hasFarmGraph";
 import { flushOutbox, reportUnsynced } from "@/lib/offline/flushOutbox";
 import { syncPhoneToWebsite, type SyncPhoneResult } from "@/lib/offline/syncPhoneToWebsite";
 import type { IdAliases } from "@/lib/offline/remapIds";
-import type { OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
+import type { OfflineFormWrite, OfflineOutboxItem, OfflineSnapshot } from "@/lib/offline/types";
 import { warmOfflineAssets } from "@/lib/offline/warmOfflineAssets";
 
 type OfflineContextValue = {
@@ -44,6 +45,8 @@ type OfflineContextValue = {
   syncNow: () => Promise<SyncPhoneResult>;
   replaceSnapshot: (snapshot: OfflineSnapshot) => void;
   patchSnapshot: (fn: (snapshot: OfflineSnapshot) => OfflineSnapshot) => void;
+  /** Apply a write on this phone. Does not wait on the website. */
+  commitLocalWrite: (write: OfflineFormWrite) => Promise<boolean>;
 };
 
 const OfflineContext = createContext<OfflineContextValue | null>(null);
@@ -71,6 +74,10 @@ export function OfflineProvider({
   const outboxTail = useRef(Promise.resolve());
   const pendingPersist = useRef<OfflineSnapshot | null>(null);
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const snapshotRef = useRef<OfflineSnapshot | null>(null);
+  const readyRef = useRef(false);
+  const phoneWrites = useRef(0);
+  const loadWaiters = useRef<Array<(snapshot: OfflineSnapshot | null) => void>>([]);
 
   const rememberBackup = useCallback(async (email: string) => {
     const latest = await loadLatestBackup(email);
@@ -104,6 +111,7 @@ export function OfflineProvider({
         seedAndMergeFollowUpCompletions(next, current),
         current,
       );
+      snapshotRef.current = merged;
       queuePersist(merged);
       return merged;
     });
@@ -114,10 +122,25 @@ export function OfflineProvider({
       if (!current) return current;
       replicaGen.current += 1;
       const next = fn(current);
+      snapshotRef.current = next;
       queuePersist(next);
       return next;
     });
   }, [queuePersist]);
+
+  const finishLoad = useCallback((snapshot: OfflineSnapshot | null) => {
+    readyRef.current = true;
+    const waiters = loadWaiters.current;
+    loadWaiters.current = [];
+    for (const resolve of waiters) resolve(snapshot);
+  }, []);
+
+  const waitForPhoneSnapshot = useCallback(async () => {
+    if (readyRef.current) return snapshotRef.current;
+    return new Promise<OfflineSnapshot | null>((resolve) => {
+      loadWaiters.current.push(resolve);
+    });
+  }, []);
 
   const enqueue = useCallback((item: Omit<OfflineOutboxItem, "id" | "createdAt">) => {
     const full: OfflineOutboxItem = {
@@ -147,6 +170,39 @@ export function OfflineProvider({
     return queued;
   }, []);
 
+  const commitLocalWrite = useCallback(
+    async (write: OfflineFormWrite) => {
+      await waitForPhoneSnapshot();
+      let source = snapshotHasFarmGraph(snapshotRef.current) ? snapshotRef.current : null;
+      if (!source && owner && ownerUserId) {
+        const created = await ensureOwnerSnapshot({
+          email: owner,
+          userId: ownerUserId,
+          userName: pickPersonName(ownerName),
+        });
+        if (!snapshotHasFarmGraph(snapshotRef.current)) {
+          snapshotRef.current = created;
+          source = created;
+        } else {
+          source = snapshotRef.current;
+        }
+      }
+      if (!snapshotHasFarmGraph(source)) return false;
+      const base = source;
+      phoneWrites.current += 1;
+      setSnapshot((current) => {
+        const start = snapshotHasFarmGraph(current) ? current : base;
+        const next = applyFormWrite(start, write);
+        snapshotRef.current = next;
+        queuePersist(next);
+        return next;
+      });
+      void enqueue({ kind: "formWrite", payload: write });
+      return true;
+    },
+    [enqueue, owner, ownerName, ownerUserId, queuePersist, waitForPhoneSnapshot],
+  );
+
   const syncNow = useCallback(async () => {
     setSyncing(true);
     try {
@@ -174,20 +230,37 @@ export function OfflineProvider({
     let cancelled = false;
     if (owner) unlockPhoneOwner(owner);
     (async () => {
-      await persistPhoneStorage();
-      let local = await loadLocalSnapshot(owner);
-      if (!local && owner && ownerUserId) {
-        local = await ensureOwnerSnapshot({
-          email: owner,
-          userId: ownerUserId,
-          userName: pickPersonName(ownerName),
-        });
+      try {
+        await persistPhoneStorage();
+        let local = await loadLocalSnapshot(owner);
+        if (!local && owner && ownerUserId) {
+          local = await ensureOwnerSnapshot({
+            email: owner,
+            userId: ownerUserId,
+            userName: pickPersonName(ownerName),
+          });
+        }
+        const storedAliases = await loadIdAliases(owner);
+        const seeded = local ? seedAndMergeFollowUpCompletions(local) : null;
+        const writesAtLoad = phoneWrites.current;
+        if (!cancelled) {
+          if (seeded && phoneWrites.current === writesAtLoad) snapshotRef.current = seeded;
+          setSnapshot((current) => {
+            if (phoneWrites.current !== writesAtLoad && snapshotHasFarmGraph(current)) return current;
+            if (phoneWrites.current !== writesAtLoad && snapshotHasFarmGraph(snapshotRef.current)) {
+              return snapshotRef.current;
+            }
+            return seeded ?? current;
+          });
+          setAliases(storedAliases);
+          if (owner) await rememberBackup(owner);
+        }
+      } finally {
+        if (!cancelled) {
+          setReady(true);
+          finishLoad(snapshotRef.current);
+        }
       }
-      const storedAliases = await loadIdAliases(owner);
-      if (!cancelled && local) setSnapshot(seedAndMergeFollowUpCompletions(local));
-      if (!cancelled) setAliases(storedAliases);
-      if (!cancelled && owner) await rememberBackup(owner);
-      if (!cancelled) setReady(true);
       if (cancelled) return;
       void warmOfflineAssets();
       const queued = await loadOutbox();
@@ -198,7 +271,7 @@ export function OfflineProvider({
     return () => {
       cancelled = true;
     };
-  }, [owner, ownerName, ownerUserId, rememberBackup]);
+  }, [finishLoad, owner, ownerName, ownerUserId, rememberBackup]);
 
   useEffect(() => {
     function onHide() {
@@ -236,6 +309,7 @@ export function OfflineProvider({
       syncNow,
       replaceSnapshot,
       patchSnapshot,
+      commitLocalWrite,
     }),
     [
       snapshot,
@@ -248,6 +322,7 @@ export function OfflineProvider({
       syncNow,
       replaceSnapshot,
       patchSnapshot,
+      commitLocalWrite,
     ],
   );
 
@@ -270,6 +345,7 @@ const missingOffline: OfflineContextValue = {
   }),
   replaceSnapshot: () => undefined,
   patchSnapshot: () => undefined,
+  commitLocalWrite: async () => false,
 };
 
 export function useOffline() {

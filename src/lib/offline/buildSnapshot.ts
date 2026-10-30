@@ -184,6 +184,7 @@ export async function buildOfflineSnapshot(userId: string): Promise<OfflineSnaps
       notes: farm.notes,
       numberOfHouses: farm.numberOfHouses,
       numberOfGenerators: farm.numberOfGenerators,
+      growthRateLbsPerDay: farm.growthRateLbsPerDay ?? null,
       address: farm.address,
       city: farm.city,
       state: farm.state,
