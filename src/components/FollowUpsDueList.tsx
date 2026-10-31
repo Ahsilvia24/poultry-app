@@ -37,14 +37,11 @@ export function FollowUpsDueList({
   items,
   showDate = false,
   capped = true,
-  onMoveToToday,
 }: {
   items: FollowUpDueItem[];
   showDate?: boolean;
   /** Dashboard tiles scroll inside the card. A schedule page scrolls with the page. */
   capped?: boolean;
-  /** Pin this visit onto today's schedule. */
-  onMoveToToday?: (item: FollowUpDueItem) => void;
 }) {
   const router = useRouter();
   const timeZone = useAppTimeZone();
@@ -193,15 +190,6 @@ export function FollowUpsDueList({
                           ) : null}
                         </ReplicaLink>
                       </div>
-                      {onMoveToToday ? (
-                        <button
-                          type="button"
-                          onClick={() => onMoveToToday(f)}
-                          className="shrink-0 rounded-md px-1.5 py-0.5 text-[13px] font-bold text-emerald-800 hover:bg-emerald-50"
-                        >
-                          Today
-                        </button>
-                      ) : null}
                       <span className="ml-auto flex shrink-0 items-baseline gap-1.5 text-stone-600">
                         <span className="whitespace-nowrap font-medium text-stone-800">
                           {f.label}

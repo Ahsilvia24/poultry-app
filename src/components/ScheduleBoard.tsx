@@ -1,19 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { formatDateKeyLabel, appTodayKey } from "@/lib/app-calendar";
+import { addCalendarDays, appTodayKey, formatDateKeyLabel } from "@/lib/app-calendar";
 import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { useAppTimeZone } from "@/lib/useAppTimeZone";
 import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 import { formWrite, localRecordId } from "@/lib/offline/formPairs";
 import { selectDashboard, type ScheduleBoard as Board } from "@/lib/offline/selectDashboard";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
+import { VISIT_TYPE_LABELS, VISIT_TYPE_OPTIONS } from "@/lib/utils";
 import { DateKeyField } from "@/components/DateKeyField";
-import { FollowUpsDueList, type FollowUpDueItem } from "@/components/FollowUpsDueList";
+import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { PeekSheet } from "@/components/PeekSheet";
 import { UpcomingCatchesList } from "@/components/UpcomingCatchesList";
 import { useOffline } from "@/components/OfflineProvider";
-import { BackHeader, Card } from "@/components/ui";
+import { BackHeader, Card, Select } from "@/components/ui";
 
 const TITLES: Record<Exclude<Board, "dashboard">, string> = {
   today: "Today's Schedule",
@@ -22,7 +23,7 @@ const TITLES: Record<Exclude<Board, "dashboard">, string> = {
 };
 
 type VisitBoard = Exclude<Board, "dashboard">;
-type SheetMode = "visit" | "today";
+type SheetMode = "visit" | "today" | "upcoming";
 
 export function ScheduleBoard({ board }: { board: VisitBoard }) {
   const { snapshot } = useOffline();
@@ -33,7 +34,8 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
   const [sheet, setSheet] = useState<SheetMode | null>(null);
   const [farmId, setFarmId] = useState("");
   const [date, setDate] = useState(todayKey);
-  const [label, setLabel] = useState("");
+  const [visitType, setVisitType] = useState<string>(VISIT_TYPE_OPTIONS[0].value);
+  const [otherReason, setOtherReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const farms = (snapshot?.farms ?? [])
@@ -46,40 +48,26 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
   function openSheet(mode: SheetMode) {
     setError(null);
     setFarmId(farms[0]?.id ?? "");
-    setDate(mode === "today" ? todayKey : todayKey);
-    setLabel("");
+    setDate(mode === "upcoming" ? addCalendarDays(todayKey, 1) : todayKey);
+    setVisitType(VISIT_TYPE_OPTIONS[0].value);
+    setOtherReason("");
     setSheet(mode);
   }
 
-  function moveToToday(item: FollowUpDueItem) {
-    if (item.date <= todayKey) return;
-    const fields: Record<string, string> = {
-      date: todayKey,
-      label: item.label,
-      farmId: item.farmId,
-    };
-    if (item.flockId) {
-      fields.flockId = item.flockId;
-      fields.replacesDate = item.date;
-    } else {
-      fields.moveFrom = item.date;
-    }
-    const queued = queue(
-      formWrite("addScheduleVisit", {
-        id: localRecordId(),
-        farmId: item.farmId,
-        fields,
-      }),
-      { keepLocal: true },
-    );
-    if (!queued) setError("Open the dashboard once so this phone has your farms.");
-  }
-
   function addVisit() {
-    const nextLabel = label.trim();
+    const nextLabel =
+      visitType === "OTHER" ? otherReason.trim() : (VISIT_TYPE_LABELS[visitType] ?? visitType);
     const nextDate = sheet === "today" ? todayKey : date;
-    if (!farmId || !nextDate || !nextLabel) {
-      setError("Choose a farm, a date, and a label.");
+    if (!farmId || !nextDate) {
+      setError("Choose a farm and a date.");
+      return;
+    }
+    if (visitType === "OTHER" && !nextLabel) {
+      setError("Enter a reason for this visit.");
+      return;
+    }
+    if (sheet === "upcoming" && nextDate <= todayKey) {
+      setError("Pick a date after today.");
       return;
     }
     const queued = queue(
@@ -98,7 +86,10 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
     setError(null);
   }
 
-  const visits = board === "today" ? (data?.todaysSchedule ?? []) : (data?.upcomingSchedule ?? []);
+  const visits =
+    board === "today"
+      ? (data?.todaysSchedule ?? [])
+      : (data?.upcomingSchedule ?? []).filter((row) => row.date > todayKey);
 
   return (
     <div>
@@ -129,24 +120,25 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
             </button>
             <button
               type="button"
-              onClick={() => openSheet("today")}
+              onClick={() => openSheet(board === "upcoming" ? "upcoming" : "today")}
               className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-sm font-bold text-stone-800"
             >
-              Add to today&apos;s schedule
+              {board === "upcoming" ? "Add to upcoming" : "Add to today's schedule"}
             </button>
           </div>
-          <FollowUpsDueList
-            items={visits}
-            showDate
-            capped={false}
-            onMoveToToday={board === "upcoming" ? moveToToday : undefined}
-          />
+          <FollowUpsDueList items={visits} showDate capped={false} />
         </Card>
       )}
 
       {sheet ? (
         <PeekSheet
-          title={sheet === "today" ? "Add to today's schedule" : "Add visit"}
+          title={
+            sheet === "today"
+              ? "Add to today's schedule"
+              : sheet === "upcoming"
+                ? "Add to upcoming"
+                : "Add visit"
+          }
           onClose={() => setSheet(null)}
         >
           <div className="mt-3 space-y-3">
@@ -165,6 +157,31 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
                 ))}
               </select>
             </label>
+            <label className="block text-sm font-semibold text-stone-700">
+              Visit type
+              <Select
+                value={visitType}
+                onChange={(event) => setVisitType(event.target.value)}
+                className="mt-1"
+              >
+                {VISIT_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            {visitType === "OTHER" ? (
+              <label className="block text-sm font-semibold text-stone-700">
+                Reason
+                <input
+                  value={otherReason}
+                  onChange={(event) => setOtherReason(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-3 text-base text-stone-900"
+                  placeholder="Reason for this visit"
+                />
+              </label>
+            ) : null}
             {sheet === "today" ? (
               <p className="text-sm text-stone-600">
                 Date <span className="font-semibold text-stone-900">{formatDateKeyLabel(todayKey, timeZone)}</span>
@@ -172,15 +189,6 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
             ) : (
               <DateKeyField id="schedule-visit-date" label="Date" value={date} onChange={setDate} />
             )}
-            <label className="block text-sm font-semibold text-stone-700">
-              Label
-              <input
-                value={label}
-                onChange={(event) => setLabel(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-3 text-base text-stone-900"
-                placeholder="Weight Proj."
-              />
-            </label>
             {error ? <p className="text-sm text-red-700">{error}</p> : null}
             <button
               type="button"

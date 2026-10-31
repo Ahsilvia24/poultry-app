@@ -144,6 +144,11 @@ const before = selectDashboard(snapshot(thursdayKey), null, "upcoming");
 assert.equal(dateOf(before.upcomingSchedule, "Weight Proj."), wpThursday);
 assert.equal(dateOf(before.upcomingSchedule, "LFO"), lfoThursdayKey);
 assert.equal(
+  before.upcomingSchedule.every((row) => row.date > todayKey),
+  true,
+  "upcoming visits are after today",
+);
+assert.equal(
   selectDashboard(snapshot(thursdayKey), null, "catches").upcomingCatches.some(
     (row) => row.date === thursdayKey,
   ),
@@ -256,7 +261,13 @@ assert.match(board, /addScheduleVisit/);
 assert.match(board, /keepLocal: true/);
 assert.match(board, /board === "catches"/);
 assert.match(board, /Add visit/);
-assert.match(board, /Add to today/);
+assert.match(board, /Add to upcoming/);
+assert.match(board, /Add to today's schedule/);
+assert.match(board, /VISIT_TYPE_OPTIONS/);
+assert.match(board, /Visit type/);
+assert.match(board, /visitType === "OTHER"/);
+assert.match(board, /row\.date > todayKey/);
+assert.doesNotMatch(board, /onMoveToToday/);
 assert.doesNotMatch(board, /editCatch|updateHouse/);
 
 const nav = read("src/components/OfflineNav.tsx");
@@ -271,12 +282,19 @@ assert.match(mobileDash, /\/schedule\/catches/);
 const mobileBoard = read("mobile/app/schedule/[board].tsx");
 assert.match(mobileBoard, /addScheduleVisit/);
 assert.match(mobileBoard, /Add visit/);
+assert.match(mobileBoard, /Add to upcoming/);
+assert.match(mobileBoard, /VISIT_TYPE_OPTIONS/);
+assert.match(mobileBoard, /Visit type/);
+assert.match(mobileBoard, /visitType === "OTHER"/);
+assert.match(mobileBoard, /item\.date > todayKey\(\)/);
+assert.doesNotMatch(mobileBoard, />Today</);
 assert.match(mobileBoard, /board === "catches"/);
 assert.doesNotMatch(mobileBoard, /updateHouse|catchDate/);
 const mobileData = read("mobile/src/repos/data.ts");
 assert.match(mobileData, /export function getDashboard\(board: DashboardBoard = "dashboard"\)/);
 assert.match(mobileData, /board === "upcoming" \? 800 : 10/);
 assert.match(mobileData, /board === "catches" \? null/);
+assert.match(mobileData, /upcomingDeduped\.filter\(\(row\) => row\.date > today\)/);
 assert.match(mobileData, /hf\.catch_date/);
 
 console.log("schedule boards ok");
