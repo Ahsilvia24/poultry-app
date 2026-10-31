@@ -13,6 +13,7 @@ import { DatePickerField } from "../../src/components/DatePickerField";
 import { OneDotName } from "../../src/components/OneDotName";
 import {
   addScheduleVisit,
+  ensureSchedulePlace,
   getDashboard,
   listScheduleFarmChoices,
   toggleFollowUpCompletion,
@@ -37,6 +38,8 @@ type Board = "today" | "upcoming" | "catches";
 type Dashboard = ReturnType<typeof getDashboard>;
 type ScheduleItem = Dashboard["todaysSchedule"][number];
 
+const ENTER_OTHER_FARM = "__enter_other__";
+
 const TITLES: Record<Board, string> = {
   today: "Today's Schedule",
   upcoming: "Upcoming Visits",
@@ -60,6 +63,7 @@ export default function ScheduleBoardScreen() {
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [sheet, setSheet] = useState<"visit" | "today" | "upcoming" | null>(null);
   const [farmId, setFarmId] = useState("");
+  const [otherFarmName, setOtherFarmName] = useState("");
   const [date, setDate] = useState(todayKey());
   const [visitType, setVisitType] = useState("ROUTINE_SERVICE");
   const [otherReason, setOtherReason] = useState("");
@@ -119,7 +123,8 @@ export default function ScheduleBoardScreen() {
 
   function openSheet(mode: "visit" | "today" | "upcoming") {
     setError(null);
-    setFarmId(farms[0]?.id ?? "");
+    setFarmId(farms[0]?.id ?? ENTER_OTHER_FARM);
+    setOtherFarmName("");
     setDate(mode === "upcoming" ? addDaysKey(todayKey(), 1) : todayKey());
     setVisitType("ROUTINE_SERVICE");
     setOtherReason("");
@@ -131,7 +136,7 @@ export default function ScheduleBoardScreen() {
     const nextLabel =
       visitType === "OTHER" ? otherReason.trim() : (VISIT_TYPE_LABELS[visitType] ?? visitType);
     const nextDate = sheet === "today" ? todayKey() : date;
-    if (!farmId || !nextDate) {
+    if (!nextDate) {
       setError("Choose a farm and a date.");
       return;
     }
@@ -143,7 +148,18 @@ export default function ScheduleBoardScreen() {
       setError("Pick a date after today.");
       return;
     }
-    addScheduleVisit({ farmId, date: nextDate, label: nextLabel });
+    let resolvedFarmId = farmId;
+    if (farmId === ENTER_OTHER_FARM) {
+      resolvedFarmId = ensureSchedulePlace(otherFarmName) ?? "";
+      if (!resolvedFarmId) {
+        setError("Enter a farm name.");
+        return;
+      }
+    } else if (!farmId) {
+      setError("Choose a farm and a date.");
+      return;
+    }
+    addScheduleVisit({ farmId: resolvedFarmId, date: nextDate, label: nextLabel });
     setSheet(null);
     setError(null);
     load();
@@ -295,7 +311,26 @@ export default function ScheduleBoardScreen() {
                   </Text>
                 </Pressable>
               ))}
+              <Pressable onPress={() => setFarmId(ENTER_OTHER_FARM)} style={{ paddingVertical: 8 }}>
+                <Text
+                  style={{
+                    fontWeight: farmId === ENTER_OTHER_FARM ? "800" : "500",
+                    color: colors.text,
+                  }}
+                >
+                  Enter Other
+                </Text>
+              </Pressable>
             </ScrollView>
+            {farmId === ENTER_OTHER_FARM ? (
+              <TextInput
+                value={otherFarmName}
+                onChangeText={setOtherFarmName}
+                placeholder="Enter farm name"
+                placeholderTextColor={colors.muted}
+                style={[styles.input, { marginTop: 6 }]}
+              />
+            ) : null}
             <Text style={{ marginTop: 8, fontWeight: "700", color: colors.text }}>Visit type</Text>
             <Pressable
               onPress={() => setTypeOpen((open) => !open)}

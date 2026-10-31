@@ -4,7 +4,12 @@ import { useState } from "react";
 import { addCalendarDays, appTodayKey, formatDateKeyLabel } from "@/lib/app-calendar";
 import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { useAppTimeZone } from "@/lib/useAppTimeZone";
-import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
+import {
+  ENTER_OTHER_FARM_VALUE,
+  findVisitPlaceFarm,
+  isVisitPlaceFarm,
+  visitPlaceFarmFields,
+} from "@/lib/visits/visitPlace";
 import { formWrite, localRecordId } from "@/lib/offline/formPairs";
 import { selectDashboard, type ScheduleBoard as Board } from "@/lib/offline/selectDashboard";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
@@ -33,6 +38,7 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
   const todayKey = appTodayKey(undefined, timeZone);
   const [sheet, setSheet] = useState<SheetMode | null>(null);
   const [farmId, setFarmId] = useState("");
+  const [otherFarmName, setOtherFarmName] = useState("");
   const [date, setDate] = useState(todayKey);
   const [visitType, setVisitType] = useState("ROUTINE_SERVICE");
   const [otherReason, setOtherReason] = useState("");
@@ -47,7 +53,8 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
 
   function openSheet(mode: SheetMode) {
     setError(null);
-    setFarmId(farms[0]?.id ?? "");
+    setFarmId(farms[0]?.id ?? ENTER_OTHER_FARM_VALUE);
+    setOtherFarmName("");
     setDate(mode === "upcoming" ? addCalendarDays(todayKey, 1) : todayKey);
     setVisitType("ROUTINE_SERVICE");
     setOtherReason("");
@@ -58,7 +65,7 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
     const nextLabel =
       visitType === "OTHER" ? otherReason.trim() : (VISIT_TYPE_LABELS[visitType] ?? visitType);
     const nextDate = sheet === "today" ? todayKey : date;
-    if (!farmId || !nextDate) {
+    if (!nextDate || (!farmId && farmId !== ENTER_OTHER_FARM_VALUE)) {
       setError("Choose a farm and a date.");
       return;
     }
@@ -70,11 +77,37 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
       setError("Pick a date after today.");
       return;
     }
+    let resolvedFarmId = farmId;
+    if (farmId === ENTER_OTHER_FARM_VALUE) {
+      const place = otherFarmName.trim();
+      if (!place) {
+        setError("Enter a farm name.");
+        return;
+      }
+      const existing = snapshot ? findVisitPlaceFarm(snapshot.farms, place) : undefined;
+      if (existing) {
+        resolvedFarmId = existing.id;
+      } else {
+        resolvedFarmId = localRecordId();
+        const created = queue(
+          formWrite("createFarm", {
+            id: resolvedFarmId,
+            farmId: resolvedFarmId,
+            fields: visitPlaceFarmFields(place),
+          }),
+          { keepLocal: true },
+        );
+        if (!created) {
+          setError("Open the dashboard once so this phone has your farms.");
+          return;
+        }
+      }
+    }
     const queued = queue(
       formWrite("addScheduleVisit", {
         id: localRecordId(),
-        farmId,
-        fields: { date: nextDate, label: nextLabel, farmId },
+        farmId: resolvedFarmId,
+        fields: { date: nextDate, label: nextLabel, farmId: resolvedFarmId },
       }),
       { keepLocal: true },
     );
@@ -155,8 +188,20 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
                     {farm.farmName}
                   </option>
                 ))}
+                <option value={ENTER_OTHER_FARM_VALUE}>Enter Other</option>
               </select>
             </label>
+            {farmId === ENTER_OTHER_FARM_VALUE ? (
+              <label className="block text-sm font-semibold text-stone-700">
+                Farm name
+                <input
+                  value={otherFarmName}
+                  onChange={(event) => setOtherFarmName(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-3 text-base text-stone-900"
+                  placeholder="Enter farm name"
+                />
+              </label>
+            ) : null}
             <label className="block text-sm font-semibold text-stone-700">
               Visit type
               <Select

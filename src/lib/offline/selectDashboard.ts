@@ -341,6 +341,41 @@ export function rebuildDashboardScheduleFromReplica(
   const overdueStart = addCalendarDays(todayKey, -outlookDays);
   const endKey = addCalendarDays(todayKey, outlookDays);
 
+  function pushHandVisits(farm: { id: string; farmName: string }) {
+    for (const extra of extras) {
+      if (extra.farmId !== farm.id || extra.replacesDate || usedExtras.has(extra.id)) continue;
+      if (extra.date < overdueStart || extra.date > endKey) continue;
+      const dismissed = gathered.some(
+        (row) =>
+          row.farmId === farm.id &&
+          row.date === extra.date &&
+          labelsMatch(row.label, extra.label) &&
+          row.status === "DISMISSED",
+      );
+      if (dismissed) continue;
+      usedExtras.add(extra.id);
+      const completed = gathered.some(
+        (row) =>
+          row.farmId === farm.id &&
+          row.date === extra.date &&
+          labelsMatch(row.label, extra.label) &&
+          row.status !== "DISMISSED",
+      );
+      const row: ScheduleRow = {
+        farmId: farm.id,
+        flockId: extra.flockId ?? "",
+        farmName: farm.farmName,
+        date: extra.date,
+        label: extra.label,
+        flockNumber: "",
+        completed,
+        flockAgeDays: 0,
+      };
+      if (extra.date <= todayKey) todaysSchedule.push(row);
+      else upcomingSchedule.push(row);
+    }
+  }
+
   for (const farm of liveFarms(snapshot)) {
     const activeFlocks = activeFlocksForFarm(snapshot, farm.id);
     const scheduleGroups = scheduleGroupsForFarm(
@@ -401,38 +436,7 @@ export function rebuildDashboardScheduleFromReplica(
       for (const due of upcoming) upcomingSchedule.push(toRow(due));
     }
 
-    for (const extra of extras) {
-      if (extra.farmId !== farm.id || extra.replacesDate || usedExtras.has(extra.id)) continue;
-      if (extra.date < overdueStart || extra.date > endKey) continue;
-      const dismissed = gathered.some(
-        (row) =>
-          row.farmId === farm.id &&
-          row.date === extra.date &&
-          labelsMatch(row.label, extra.label) &&
-          row.status === "DISMISSED",
-      );
-      if (dismissed) continue;
-      usedExtras.add(extra.id);
-      const completed = gathered.some(
-        (row) =>
-          row.farmId === farm.id &&
-          row.date === extra.date &&
-          labelsMatch(row.label, extra.label) &&
-          row.status !== "DISMISSED",
-      );
-      const row: ScheduleRow = {
-        farmId: farm.id,
-        flockId: extra.flockId ?? "",
-        farmName: farm.farmName,
-        date: extra.date,
-        label: extra.label,
-        flockNumber: "",
-        completed,
-        flockAgeDays: 0,
-      };
-      if (extra.date <= todayKey) todaysSchedule.push(row);
-      else upcomingSchedule.push(row);
-    }
+    pushHandVisits(farm);
 
     const houseNumberById = new Map(
       (snapshot.houses ?? [])
@@ -496,6 +500,11 @@ export function rebuildDashboardScheduleFromReplica(
         });
       }
     }
+  }
+
+  for (const farm of snapshot.farms) {
+    if (!farm.isActive || farm.deletedAt || !isVisitPlaceFarm(farm)) continue;
+    pushHandVisits(farm);
   }
 
   const base = source ?? emptyDashboard();
