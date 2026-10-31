@@ -11,6 +11,7 @@ describe("fieldLogVisitTypeLabel", () => {
     assert.equal(fieldLogVisitTypeLabel("LAST_FEED_ORDER"), "LFO");
     assert.equal(fieldLogVisitTypeLabel("WEIGHT_PROJECTION"), "Weight Projection");
     assert.equal(fieldLogVisitTypeLabel("CERTIFICATION"), "Certification");
+    assert.equal(fieldLogVisitTypeLabel("WEEKLY_MEETING"), "Weekly Meeting");
     assert.equal(fieldLogVisitTypeLabel("ROUTINE_SERVICE", "House 2 fans noisy"), "Routine Service");
     assert.equal(fieldLogVisitTypeLabel("OTHER"), "Enter Other");
     assert.equal(fieldLogVisitTypeLabel("OTHER", "Controller alarm"), "Controller alarm");

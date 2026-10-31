@@ -34,7 +34,7 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
   const [sheet, setSheet] = useState<SheetMode | null>(null);
   const [farmId, setFarmId] = useState("");
   const [date, setDate] = useState(todayKey);
-  const [visitType, setVisitType] = useState<string>(VISIT_TYPE_OPTIONS[0].value);
+  const [visitType, setVisitType] = useState("ROUTINE_SERVICE");
   const [otherReason, setOtherReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +49,7 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
     setError(null);
     setFarmId(farms[0]?.id ?? "");
     setDate(mode === "upcoming" ? addCalendarDays(todayKey, 1) : todayKey);
-    setVisitType(VISIT_TYPE_OPTIONS[0].value);
+    setVisitType("ROUTINE_SERVICE");
     setOtherReason("");
     setSheet(mode);
   }

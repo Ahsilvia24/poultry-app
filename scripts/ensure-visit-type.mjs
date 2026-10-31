@@ -8,7 +8,10 @@ try {
   await prisma.$executeRawUnsafe(
     `ALTER TYPE "VisitType" ADD VALUE IF NOT EXISTS 'WEIGHT_PROJECTION'`,
   );
-  console.log("ensure-visit-type: WEIGHT_PROJECTION ready");
+  await prisma.$executeRawUnsafe(
+    `ALTER TYPE "VisitType" ADD VALUE IF NOT EXISTS 'WEEKLY_MEETING'`,
+  );
+  console.log("ensure-visit-type: WEIGHT_PROJECTION and WEEKLY_MEETING ready");
 } catch (error) {
   console.warn(
     "ensure-visit-type: could not add WEIGHT_PROJECTION",

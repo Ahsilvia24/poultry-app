@@ -1,18 +1,23 @@
 import { prisma } from "@/lib/prisma";
 
-const ADD_WEIGHT_PROJECTION = `ALTER TYPE "VisitType" ADD VALUE IF NOT EXISTS 'WEIGHT_PROJECTION'`;
+const ADD_VISIT_TYPE_VALUES = [
+  `ALTER TYPE "VisitType" ADD VALUE IF NOT EXISTS 'WEIGHT_PROJECTION'`,
+  `ALTER TYPE "VisitType" ADD VALUE IF NOT EXISTS 'WEEKLY_MEETING'`,
+];
 
 let ensurePromise: Promise<void> | null = null;
 
-/** Make Weight Projection a real Postgres visit type even if migrate deploy skipped it. */
+/** Make newer visit types real Postgres values even if migrate deploy skipped them. */
 export async function ensureWeightProjectionVisitType() {
   if (!ensurePromise) {
     try {
-      ensurePromise = Promise.resolve(prisma.$executeRawUnsafe(ADD_WEIGHT_PROJECTION))
-        .then(() => undefined)
-        .catch(() => {
-          ensurePromise = null;
-        });
+      ensurePromise = (async () => {
+        for (const sql of ADD_VISIT_TYPE_VALUES) {
+          await prisma.$executeRawUnsafe(sql);
+        }
+      })().catch(() => {
+        ensurePromise = null;
+      });
     } catch {
       ensurePromise = Promise.resolve();
     }

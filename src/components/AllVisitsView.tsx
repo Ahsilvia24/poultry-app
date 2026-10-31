@@ -17,12 +17,18 @@ import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import type { AllVisitsFarmOption, AllVisitsPageModel, VisitListRow } from "@/lib/offline/selectVisits";
 import { loggedAtForFieldLogOrder } from "@/lib/reports/field-log";
 import { visitFormHref } from "@/lib/visits/returnTo";
-import { ENTER_OTHER_FARM_VALUE, visitPlaceFormHref } from "@/lib/visits/visitPlace";
+import {
+  CENTRAL_OFFICES_FARM_VALUE,
+  CENTRAL_OFFICES_NAME,
+  ENTER_OTHER_FARM_VALUE,
+  visitPlaceFormHref,
+} from "@/lib/visits/visitPlace";
 
 function AllVisitsAddTile({ farms }: { farms: AllVisitsFarmOption[] }) {
   const navigate = useReplicaNavigate();
-  const [farmId, setFarmId] = useState(farms[0]?.id ?? ENTER_OTHER_FARM_VALUE);
+  const [farmId, setFarmId] = useState(farms[0]?.id ?? CENTRAL_OFFICES_FARM_VALUE);
   const [placeName, setPlaceName] = useState("");
+  const central = farmId === CENTRAL_OFFICES_FARM_VALUE;
   const other = farmId === ENTER_OTHER_FARM_VALUE;
   const canLog = other ? placeName.trim().length > 0 : Boolean(farmId);
 
@@ -36,6 +42,7 @@ function AllVisitsAddTile({ farms }: { farms: AllVisitsFarmOption[] }) {
             onChange={(event) => setFarmId(event.target.value)}
             className={`${settingsValueTextClass} text-left`}
           >
+            <option value={CENTRAL_OFFICES_FARM_VALUE}>{CENTRAL_OFFICES_NAME}</option>
             {farms.map((farm) => (
               <option key={farm.id} value={farm.id}>
                 {farm.farmName}
@@ -49,7 +56,11 @@ function AllVisitsAddTile({ farms }: { farms: AllVisitsFarmOption[] }) {
           disabled={!canLog}
           onClick={() =>
             navigate(
-              other ? visitPlaceFormHref(placeName) : visitFormHref(farmId, undefined, true),
+              central
+                ? visitPlaceFormHref(CENTRAL_OFFICES_NAME)
+                : other
+                  ? visitPlaceFormHref(placeName)
+                  : visitFormHref(farmId, undefined, true),
             )
           }
           className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-emerald-700 px-3 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"

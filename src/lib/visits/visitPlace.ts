@@ -1,5 +1,7 @@
 export const VISIT_PLACE_FARM_NUMBER = "__visit_place__";
 export const ENTER_OTHER_FARM_VALUE = "__enter_other__";
+export const CENTRAL_OFFICES_NAME = "Central Offices";
+export const CENTRAL_OFFICES_FARM_VALUE = "__central_offices__";
 
 export function isVisitPlaceFarm(farm: { farmNumber?: string | null } | null | undefined) {
   return farm?.farmNumber === VISIT_PLACE_FARM_NUMBER;
