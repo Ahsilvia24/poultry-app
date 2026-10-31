@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { addCalendarDays, appTodayKey, formatDateKeyLabel } from "@/lib/app-calendar";
+import { appTodayKey } from "@/lib/app-calendar";
 import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { useAppTimeZone } from "@/lib/useAppTimeZone";
-import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
+import {
+  ENTER_OTHER_FARM_VALUE,
+  findVisitPlaceFarm,
+  isVisitPlaceFarm,
+  visitPlaceFarmFields,
+} from "@/lib/visits/visitPlace";
 import { formWrite, localRecordId } from "@/lib/offline/formPairs";
 import { selectDashboard, type ScheduleBoard as Board } from "@/lib/offline/selectDashboard";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
@@ -23,7 +28,6 @@ const TITLES: Record<Exclude<Board, "dashboard">, string> = {
 };
 
 type VisitBoard = Exclude<Board, "dashboard">;
-type SheetMode = "visit" | "today" | "upcoming";
 
 export function ScheduleBoard({ board }: { board: VisitBoard }) {
   const { snapshot } = useOffline();
@@ -31,8 +35,9 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
   const timeZone = useAppTimeZone();
   const data = selectDashboard(snapshot, null, board);
   const todayKey = appTodayKey(undefined, timeZone);
-  const [sheet, setSheet] = useState<SheetMode | null>(null);
+  const [sheet, setSheet] = useState(false);
   const [farmId, setFarmId] = useState("");
+  const [otherFarmName, setOtherFarmName] = useState("");
   const [date, setDate] = useState(todayKey);
   const [visitType, setVisitType] = useState("ROUTINE_SERVICE");
   const [otherReason, setOtherReason] = useState("");
@@ -45,20 +50,21 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
     .slice()
     .sort((a, b) => a.farmName.localeCompare(b.farmName));
 
-  function openSheet(mode: SheetMode) {
+  function openSheet() {
     setError(null);
-    setFarmId(farms[0]?.id ?? "");
-    setDate(mode === "upcoming" ? addCalendarDays(todayKey, 1) : todayKey);
+    setFarmId(farms[0]?.id ?? ENTER_OTHER_FARM_VALUE);
+    setOtherFarmName("");
+    setDate(todayKey);
     setVisitType("ROUTINE_SERVICE");
     setOtherReason("");
-    setSheet(mode);
+    setSheet(true);
   }
 
   function addVisit() {
     const nextLabel =
       visitType === "OTHER" ? otherReason.trim() : (VISIT_TYPE_LABELS[visitType] ?? visitType);
-    const nextDate = sheet === "today" ? todayKey : date;
-    if (!farmId || !nextDate) {
+    const nextDate = date;
+    if (!nextDate || (!farmId && farmId !== ENTER_OTHER_FARM_VALUE)) {
       setError("Choose a farm and a date.");
       return;
     }
@@ -66,15 +72,37 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
       setError("Enter a reason for this visit.");
       return;
     }
-    if (sheet === "upcoming" && nextDate <= todayKey) {
-      setError("Pick a date after today.");
-      return;
+    let resolvedFarmId = farmId;
+    if (farmId === ENTER_OTHER_FARM_VALUE) {
+      const place = otherFarmName.trim();
+      if (!place) {
+        setError("Enter a farm name.");
+        return;
+      }
+      const existing = snapshot ? findVisitPlaceFarm(snapshot.farms, place) : undefined;
+      if (existing) {
+        resolvedFarmId = existing.id;
+      } else {
+        resolvedFarmId = localRecordId();
+        const created = queue(
+          formWrite("createFarm", {
+            id: resolvedFarmId,
+            farmId: resolvedFarmId,
+            fields: visitPlaceFarmFields(place),
+          }),
+          { keepLocal: true },
+        );
+        if (!created) {
+          setError("Open the dashboard once so this phone has your farms.");
+          return;
+        }
+      }
     }
     const queued = queue(
       formWrite("addScheduleVisit", {
         id: localRecordId(),
-        farmId,
-        fields: { date: nextDate, label: nextLabel, farmId },
+        farmId: resolvedFarmId,
+        fields: { date: nextDate, label: nextLabel, farmId: resolvedFarmId },
       }),
       { keepLocal: true },
     );
@@ -82,7 +110,7 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
       setError("Open the dashboard once so this phone has your farms.");
       return;
     }
-    setSheet(null);
+    setSheet(false);
     setError(null);
   }
 
@@ -113,17 +141,10 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => openSheet("visit")}
+              onClick={openSheet}
               className="rounded-full bg-emerald-800 px-3 py-1.5 text-sm font-bold text-white"
             >
-              Add visit
-            </button>
-            <button
-              type="button"
-              onClick={() => openSheet(board === "upcoming" ? "upcoming" : "today")}
-              className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-sm font-bold text-stone-800"
-            >
-              {board === "upcoming" ? "Add to upcoming" : "Add to today's schedule"}
+              Add Visit
             </button>
           </div>
           <FollowUpsDueList items={visits} showDate capped={false} />
@@ -131,16 +152,7 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
       )}
 
       {sheet ? (
-        <PeekSheet
-          title={
-            sheet === "today"
-              ? "Add to today's schedule"
-              : sheet === "upcoming"
-                ? "Add to upcoming"
-                : "Add visit"
-          }
-          onClose={() => setSheet(null)}
-        >
+        <PeekSheet title="Add Visit" onClose={() => setSheet(false)}>
           <div className="mt-3 space-y-3">
             <label className="block text-sm font-semibold text-stone-700">
               Farm
@@ -155,8 +167,20 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
                     {farm.farmName}
                   </option>
                 ))}
+                <option value={ENTER_OTHER_FARM_VALUE}>Enter Other</option>
               </select>
             </label>
+            {farmId === ENTER_OTHER_FARM_VALUE ? (
+              <label className="block text-sm font-semibold text-stone-700">
+                Farm name
+                <input
+                  value={otherFarmName}
+                  onChange={(event) => setOtherFarmName(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-3 text-base text-stone-900"
+                  placeholder="Enter farm name"
+                />
+              </label>
+            ) : null}
             <label className="block text-sm font-semibold text-stone-700">
               Visit type
               <Select
@@ -182,13 +206,7 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
                 />
               </label>
             ) : null}
-            {sheet === "today" ? (
-              <p className="text-sm text-stone-600">
-                Date <span className="font-semibold text-stone-900">{formatDateKeyLabel(todayKey, timeZone)}</span>
-              </p>
-            ) : (
-              <DateKeyField id="schedule-visit-date" label="Date" value={date} onChange={setDate} />
-            )}
+            <DateKeyField id="schedule-visit-date" label="Date" value={date} onChange={setDate} />
             {error ? <p className="text-sm text-red-700">{error}</p> : null}
             <button
               type="button"

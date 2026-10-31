@@ -13,6 +13,7 @@ import { DatePickerField } from "../../src/components/DatePickerField";
 import { OneDotName } from "../../src/components/OneDotName";
 import {
   addScheduleVisit,
+  ensureSchedulePlace,
   getDashboard,
   listScheduleFarmChoices,
   toggleFollowUpCompletion,
@@ -23,7 +24,7 @@ import {
   formatCatchHouseLabel,
 } from "../../src/lib/catchHouses";
 import { getAppTimeZone } from "../../src/lib/appSettings";
-import { addDaysKey, todayKey } from "../../src/lib/ids";
+import { todayKey } from "../../src/lib/ids";
 import {
   applyIncomingScheduleChecks,
   formatShortScheduleDate,
@@ -36,6 +37,8 @@ import { appScrollProps, colors, styles } from "../../src/theme";
 type Board = "today" | "upcoming" | "catches";
 type Dashboard = ReturnType<typeof getDashboard>;
 type ScheduleItem = Dashboard["todaysSchedule"][number];
+
+const ENTER_OTHER_FARM = "__enter_other__";
 
 const TITLES: Record<Board, string> = {
   today: "Today's Schedule",
@@ -58,8 +61,9 @@ export default function ScheduleBoardScreen() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const userCleared = useRef(new Set<string>());
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<"visit" | "today" | "upcoming" | null>(null);
+  const [sheet, setSheet] = useState(false);
   const [farmId, setFarmId] = useState("");
+  const [otherFarmName, setOtherFarmName] = useState("");
   const [date, setDate] = useState(todayKey());
   const [visitType, setVisitType] = useState("ROUTINE_SERVICE");
   const [otherReason, setOtherReason] = useState("");
@@ -117,21 +121,22 @@ export default function ScheduleBoardScreen() {
     }
   }
 
-  function openSheet(mode: "visit" | "today" | "upcoming") {
+  function openSheet() {
     setError(null);
-    setFarmId(farms[0]?.id ?? "");
-    setDate(mode === "upcoming" ? addDaysKey(todayKey(), 1) : todayKey());
+    setFarmId(farms[0]?.id ?? ENTER_OTHER_FARM);
+    setOtherFarmName("");
+    setDate(todayKey());
     setVisitType("ROUTINE_SERVICE");
     setOtherReason("");
     setTypeOpen(false);
-    setSheet(mode);
+    setSheet(true);
   }
 
   function saveVisit() {
     const nextLabel =
       visitType === "OTHER" ? otherReason.trim() : (VISIT_TYPE_LABELS[visitType] ?? visitType);
-    const nextDate = sheet === "today" ? todayKey() : date;
-    if (!farmId || !nextDate) {
+    const nextDate = date;
+    if (!nextDate) {
       setError("Choose a farm and a date.");
       return;
     }
@@ -139,12 +144,19 @@ export default function ScheduleBoardScreen() {
       setError("Enter a reason for this visit.");
       return;
     }
-    if (sheet === "upcoming" && nextDate <= todayKey()) {
-      setError("Pick a date after today.");
+    let resolvedFarmId = farmId;
+    if (farmId === ENTER_OTHER_FARM) {
+      resolvedFarmId = ensureSchedulePlace(otherFarmName) ?? "";
+      if (!resolvedFarmId) {
+        setError("Enter a farm name.");
+        return;
+      }
+    } else if (!farmId) {
+      setError("Choose a farm and a date.");
       return;
     }
-    addScheduleVisit({ farmId, date: nextDate, label: nextLabel });
-    setSheet(null);
+    addScheduleVisit({ farmId: resolvedFarmId, date: nextDate, label: nextLabel });
+    setSheet(false);
     setError(null);
     load();
   }
@@ -205,16 +217,8 @@ export default function ScheduleBoardScreen() {
         ) : (
           <View style={{ marginTop: 12 }}>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              <Pressable onPress={() => openSheet("visit")} style={[styles.button, { minHeight: 40, paddingHorizontal: 14 }]}>
-                <Text style={styles.buttonText}>Add visit</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => openSheet(board === "upcoming" ? "upcoming" : "today")}
-                style={[styles.button, styles.buttonSecondary, { minHeight: 40, paddingHorizontal: 14 }]}
-              >
-                <Text style={styles.buttonSecondaryText}>
-                  {board === "upcoming" ? "Add to upcoming" : "Add to today's schedule"}
-                </Text>
+              <Pressable onPress={openSheet} style={[styles.button, { minHeight: 40, paddingHorizontal: 14 }]}>
+                <Text style={styles.buttonText}>Add Visit</Text>
               </Pressable>
             </View>
             {visits.length === 0 ? <Text style={[styles.muted, { marginTop: 12 }]}>None</Text> : null}
@@ -270,22 +274,16 @@ export default function ScheduleBoardScreen() {
         )}
       </ScrollView>
 
-      <Modal visible={sheet != null} transparent animationType="fade" onRequestClose={() => setSheet(null)}>
+      <Modal visible={sheet} transparent animationType="fade" onRequestClose={() => setSheet(false)}>
         <Pressable
-          onPress={() => setSheet(null)}
+          onPress={() => setSheet(false)}
           style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.25)", justifyContent: "flex-end", padding: 12 }}
         >
           <Pressable
             onPress={(event) => event.stopPropagation()}
             style={{ maxHeight: "70%", backgroundColor: "#fff", borderRadius: 16, padding: 16 }}
           >
-            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-              {sheet === "today"
-                ? "Add to today's schedule"
-                : sheet === "upcoming"
-                  ? "Add to upcoming"
-                  : "Add visit"}
-            </Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>Add Visit</Text>
             <Text style={{ marginTop: 12, fontWeight: "700", color: colors.text }}>Farm</Text>
             <ScrollView style={{ maxHeight: 140, marginTop: 6 }}>
               {farms.map((farm) => (
@@ -295,7 +293,26 @@ export default function ScheduleBoardScreen() {
                   </Text>
                 </Pressable>
               ))}
+              <Pressable onPress={() => setFarmId(ENTER_OTHER_FARM)} style={{ paddingVertical: 8 }}>
+                <Text
+                  style={{
+                    fontWeight: farmId === ENTER_OTHER_FARM ? "800" : "500",
+                    color: colors.text,
+                  }}
+                >
+                  Enter Other
+                </Text>
+              </Pressable>
             </ScrollView>
+            {farmId === ENTER_OTHER_FARM ? (
+              <TextInput
+                value={otherFarmName}
+                onChangeText={setOtherFarmName}
+                placeholder="Enter farm name"
+                placeholderTextColor={colors.muted}
+                style={[styles.input, { marginTop: 6 }]}
+              />
+            ) : null}
             <Text style={{ marginTop: 8, fontWeight: "700", color: colors.text }}>Visit type</Text>
             <Pressable
               onPress={() => setTypeOpen((open) => !open)}
@@ -349,11 +366,7 @@ export default function ScheduleBoardScreen() {
                 />
               </>
             ) : null}
-            {sheet === "today" ? (
-              <Text style={{ marginTop: 8, color: colors.muted }}>Date {formatShortScheduleDate(todayKey())}</Text>
-            ) : (
-              <DatePickerField label="Date" value={date} onChange={setDate} presentation="inline" />
-            )}
+            <DatePickerField label="Date" value={date} onChange={setDate} presentation="inline" />
             {error ? <Text style={{ color: colors.danger, marginBottom: 8 }}>{error}</Text> : null}
             <Pressable onPress={saveVisit} style={styles.button}>
               <Text style={styles.buttonText}>Add</Text>

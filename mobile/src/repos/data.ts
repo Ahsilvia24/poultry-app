@@ -332,6 +332,27 @@ function listScheduleExtras(): ScheduleExtraRow[] {
   );
 }
 
+/** A typed place that is not one of the regular farms. Reused when the name matches. */
+export function ensureSchedulePlace(name: string) {
+  const place = name.trim().replace(/\s+/g, " ");
+  if (!place) return null;
+  const db = getDb();
+  const existing = db.getFirstSync<{ id: string }>(
+    `SELECT id FROM farms
+     WHERE deleted_at IS NULL AND farm_number = '__visit_place__'
+       AND LOWER(TRIM(farm_name)) = LOWER(?)
+     LIMIT 1`,
+    [place],
+  );
+  if (existing) return existing.id;
+  return createFarm({
+    farmName: place,
+    growerName: "",
+    farmNumber: "__visit_place__",
+    numberOfHouses: 0,
+  }).id;
+}
+
 export function listScheduleFarmChoices() {
   return getDb().getAllSync<{ id: string; farm_name: string }>(
     `SELECT id, farm_name FROM farms
@@ -399,7 +420,14 @@ export function getDashboard(board: DashboardBoard = "dashboard") {
       )
       .map((row) => `${row.farm_id}|${row.scheduled_date}|${scheduleLabel(row.label)}`),
   );
-  const farms = listFarms().farms;
+  const visitPlaceIds = new Set(
+    db
+      .getAllSync<{ id: string }>(
+        `SELECT id FROM farms WHERE deleted_at IS NULL AND farm_number = '__visit_place__'`,
+      )
+      .map((row) => row.id),
+  );
+  const farms = listFarms().farms.filter((farm) => !visitPlaceIds.has(farm.id));
   let activeHouses = 0;
   let totalBirdsPlaced = 0;
   let mortalityEnteredToday = 0;
@@ -783,6 +811,17 @@ export function getDashboard(board: DashboardBoard = "dashboard") {
       projectedCatchDate: earliestCatch,
       lastServiceReportDate: lastChecklist?.d ?? null,
     });
+  }
+
+  const places = db.getAllSync<{ id: string; farm_name: string }>(
+    `SELECT id, farm_name FROM farms
+     WHERE deleted_at IS NULL AND is_active = 1 AND farm_number = '__visit_place__'`,
+  );
+  for (const place of places) {
+    pushCustomExtras(
+      { id: place.id, farmName: place.farm_name },
+      completedByFarm.get(place.id) ?? new Map(),
+    );
   }
 
   const todaysDeduped = dedupeScheduleRows(todaysSchedule);

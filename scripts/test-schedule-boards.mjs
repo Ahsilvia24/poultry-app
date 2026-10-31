@@ -12,6 +12,7 @@ const { selectDashboard } = await import(join(root, "src/lib/offline/selectDashb
 const { appTodayKey } = await import(join(root, "src/lib/app-calendar.ts"));
 const { isReplicaHref } = await import(join(root, "src/lib/offline/hasFarmGraph.ts"));
 const { lfoDate, weightProjectDate } = await import(join(root, "src/lib/visits/schedule.ts"));
+const { visitPlaceFarmFields } = await import(join(root, "src/lib/visits/visitPlace.ts"));
 
 const todayKey = appTodayKey(undefined, "America/Chicago");
 const [ty, tm, td] = todayKey.split("-").map(Number);
@@ -247,6 +248,30 @@ assert.equal(
   false,
 );
 
+let otherPlace = applyFormWrite(snapshot(thursdayKey), {
+  action: "createFarm",
+  id: "place-1",
+  farmId: "place-1",
+  fields: visitPlaceFarmFields("Feed Store"),
+});
+otherPlace = applyFormWrite(otherPlace, {
+  action: "addScheduleVisit",
+  id: "place-visit",
+  farmId: "place-1",
+  fields: { date: todayKey, label: "Delivery", farmId: "place-1" },
+});
+const withPlace = selectDashboard(otherPlace, null, "today");
+assert.equal(
+  withPlace.todaysSchedule.some((row) => row.farmName === "Feed Store" && row.label === "Delivery"),
+  true,
+  "a typed farm name shows on today's schedule",
+);
+assert.equal(
+  withPlace.farmCards.some((card) => card.id === "place-1"),
+  false,
+  "a typed farm name stays off the active farm list",
+);
+
 assert.equal(isReplicaHref("/schedule/today"), true);
 assert.equal(isReplicaHref("/schedule/upcoming"), true);
 assert.equal(isReplicaHref("/schedule/catches"), true);
@@ -260,12 +285,14 @@ const board = read("src/components/ScheduleBoard.tsx");
 assert.match(board, /addScheduleVisit/);
 assert.match(board, /keepLocal: true/);
 assert.match(board, /board === "catches"/);
-assert.match(board, /Add visit/);
-assert.match(board, /Add to upcoming/);
-assert.match(board, /Add to today's schedule/);
+assert.match(board, /Add Visit/);
+assert.doesNotMatch(board, /Add to upcoming/);
+assert.doesNotMatch(board, /Add to today's schedule/);
 assert.match(board, /VISIT_TYPE_OPTIONS/);
 assert.match(board, /Visit type/);
 assert.match(board, /visitType === "OTHER"/);
+assert.match(board, /Enter Other/);
+assert.match(board, /ENTER_OTHER_FARM_VALUE/);
 assert.match(board, /row\.date > todayKey/);
 assert.doesNotMatch(board, /onMoveToToday/);
 assert.doesNotMatch(board, /editCatch|updateHouse/);
@@ -281,11 +308,14 @@ assert.match(mobileDash, /\/schedule\/upcoming/);
 assert.match(mobileDash, /\/schedule\/catches/);
 const mobileBoard = read("mobile/app/schedule/[board].tsx");
 assert.match(mobileBoard, /addScheduleVisit/);
-assert.match(mobileBoard, /Add visit/);
-assert.match(mobileBoard, /Add to upcoming/);
+assert.match(mobileBoard, /Add Visit/);
+assert.doesNotMatch(mobileBoard, /Add to upcoming/);
+assert.doesNotMatch(mobileBoard, /Add to today's schedule/);
 assert.match(mobileBoard, /VISIT_TYPE_OPTIONS/);
 assert.match(mobileBoard, /Visit type/);
 assert.match(mobileBoard, /visitType === "OTHER"/);
+assert.match(mobileBoard, /Enter Other/);
+assert.match(mobileBoard, /ensureSchedulePlace/);
 assert.match(mobileBoard, /item\.date > todayKey\(\)/);
 assert.doesNotMatch(mobileBoard, />Today</);
 assert.match(mobileBoard, /board === "catches"/);
@@ -295,6 +325,7 @@ assert.match(mobileData, /export function getDashboard\(board: DashboardBoard = 
 assert.match(mobileData, /board === "upcoming" \? 800 : 10/);
 assert.match(mobileData, /board === "catches" \? null/);
 assert.match(mobileData, /upcomingDeduped\.filter\(\(row\) => row\.date > today\)/);
+assert.match(mobileData, /export function ensureSchedulePlace/);
 assert.match(mobileData, /hf\.catch_date/);
 
 console.log("schedule boards ok");
