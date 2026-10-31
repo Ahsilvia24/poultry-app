@@ -23,7 +23,7 @@ import {
   formatCatchHouseLabel,
 } from "../../src/lib/catchHouses";
 import { getAppTimeZone } from "../../src/lib/appSettings";
-import { todayKey } from "../../src/lib/ids";
+import { addDaysKey, todayKey } from "../../src/lib/ids";
 import {
   applyIncomingScheduleChecks,
   formatShortScheduleDate,
@@ -57,7 +57,7 @@ export default function ScheduleBoardScreen() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const userCleared = useRef(new Set<string>());
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<"visit" | "today" | null>(null);
+  const [sheet, setSheet] = useState<"visit" | "today" | "upcoming" | null>(null);
   const [farmId, setFarmId] = useState("");
   const [date, setDate] = useState(todayKey());
   const [label, setLabel] = useState("");
@@ -74,7 +74,10 @@ export default function ScheduleBoardScreen() {
     }, [load]),
   );
 
-  const visits = board === "today" ? (data?.todaysSchedule ?? []) : (data?.upcomingSchedule ?? []);
+  const visits =
+    board === "today"
+      ? (data?.todaysSchedule ?? [])
+      : (data?.upcomingSchedule ?? []).filter((item) => item.date > todayKey());
   const serverSignature = useMemo(
     () => visits.map((item) => `${rememberScheduleCheckKey(item)}:${item.completed}`).join("|"),
     [visits],
@@ -111,34 +114,12 @@ export default function ScheduleBoardScreen() {
     }
   }
 
-  function openSheet(mode: "visit" | "today") {
+  function openSheet(mode: "visit" | "today" | "upcoming") {
     setError(null);
     setFarmId(farms[0]?.id ?? "");
-    setDate(todayKey());
+    setDate(mode === "upcoming" ? addDaysKey(todayKey(), 1) : todayKey());
     setLabel("");
     setSheet(mode);
-  }
-
-  function moveToToday(item: ScheduleItem) {
-    const today = todayKey();
-    if (item.date <= today) return;
-    if (item.flockId) {
-      addScheduleVisit({
-        farmId: item.farmId,
-        flockId: item.flockId,
-        date: today,
-        label: item.label,
-        replacesDate: item.date,
-      });
-    } else {
-      addScheduleVisit({
-        farmId: item.farmId,
-        date: today,
-        label: item.label,
-        moveFrom: item.date,
-      });
-    }
-    load();
   }
 
   function saveVisit() {
@@ -146,6 +127,10 @@ export default function ScheduleBoardScreen() {
     const nextDate = sheet === "today" ? todayKey() : date;
     if (!farmId || !nextDate || !nextLabel) {
       setError("Choose a farm, a date, and a label.");
+      return;
+    }
+    if (sheet === "upcoming" && nextDate <= todayKey()) {
+      setError("Pick a date after today.");
       return;
     }
     addScheduleVisit({ farmId, date: nextDate, label: nextLabel });
@@ -214,10 +199,12 @@ export default function ScheduleBoardScreen() {
                 <Text style={styles.buttonText}>Add visit</Text>
               </Pressable>
               <Pressable
-                onPress={() => openSheet("today")}
+                onPress={() => openSheet(board === "upcoming" ? "upcoming" : "today")}
                 style={[styles.button, styles.buttonSecondary, { minHeight: 40, paddingHorizontal: 14 }]}
               >
-                <Text style={styles.buttonSecondaryText}>Add to today&apos;s schedule</Text>
+                <Text style={styles.buttonSecondaryText}>
+                  {board === "upcoming" ? "Add to upcoming" : "Add to today's schedule"}
+                </Text>
               </Pressable>
             </View>
             {visits.length === 0 ? <Text style={[styles.muted, { marginTop: 12 }]}>None</Text> : null}
@@ -263,11 +250,6 @@ export default function ScheduleBoardScreen() {
                       <Text style={{ color: colors.muted, marginLeft: 4 }}>{item.flockAgeDays}d</Text>
                     ) : null}
                   </Pressable>
-                  {board === "upcoming" ? (
-                    <Pressable onPress={() => moveToToday(item)} hitSlop={6}>
-                      <Text style={{ color: colors.accentDark, fontWeight: "800", fontSize: 13 }}>Today</Text>
-                    </Pressable>
-                  ) : null}
                   <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "700" }}>
                     {item.label} {formatShortScheduleDate(item.date)}
                   </Text>
@@ -288,7 +270,11 @@ export default function ScheduleBoardScreen() {
             style={{ maxHeight: "70%", backgroundColor: "#fff", borderRadius: 16, padding: 16 }}
           >
             <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text }}>
-              {sheet === "today" ? "Add to today's schedule" : "Add visit"}
+              {sheet === "today"
+                ? "Add to today's schedule"
+                : sheet === "upcoming"
+                  ? "Add to upcoming"
+                  : "Add visit"}
             </Text>
             <Text style={{ marginTop: 12, fontWeight: "700", color: colors.text }}>Farm</Text>
             <ScrollView style={{ maxHeight: 140, marginTop: 6 }}>

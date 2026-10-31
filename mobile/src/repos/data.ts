@@ -820,7 +820,7 @@ export function getDashboard(board: DashboardBoard = "dashboard") {
     farmCards,
     upcomingCatches: upcomingCatchesSorted,
     todaysSchedule: todaysDeduped,
-    upcomingSchedule: upcomingDeduped,
+    upcomingSchedule: upcomingDeduped.filter((row) => row.date > today),
   };
 }
 

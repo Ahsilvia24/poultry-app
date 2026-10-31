@@ -509,6 +509,7 @@ export function rebuildDashboardScheduleFromReplica(
       .sort(bySchedule)
       .slice(0, board === "dashboard" ? 30 : undefined),
     upcomingSchedule: dedupeScheduleRows(upcomingSchedule)
+      .filter((row) => row.date > todayKey)
       .sort(bySchedule)
       .slice(0, board === "dashboard" ? 40 : undefined),
     upcomingCatches: sortUpcomingCatchRows(

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatDateKeyLabel, appTodayKey } from "@/lib/app-calendar";
+import { addCalendarDays, appTodayKey, formatDateKeyLabel } from "@/lib/app-calendar";
 import { isManualLfoFarm } from "@/lib/lfo/manualFarm";
 import { useAppTimeZone } from "@/lib/useAppTimeZone";
 import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
@@ -9,7 +9,7 @@ import { formWrite, localRecordId } from "@/lib/offline/formPairs";
 import { selectDashboard, type ScheduleBoard as Board } from "@/lib/offline/selectDashboard";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
 import { DateKeyField } from "@/components/DateKeyField";
-import { FollowUpsDueList, type FollowUpDueItem } from "@/components/FollowUpsDueList";
+import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { PeekSheet } from "@/components/PeekSheet";
 import { UpcomingCatchesList } from "@/components/UpcomingCatchesList";
 import { useOffline } from "@/components/OfflineProvider";
@@ -22,7 +22,7 @@ const TITLES: Record<Exclude<Board, "dashboard">, string> = {
 };
 
 type VisitBoard = Exclude<Board, "dashboard">;
-type SheetMode = "visit" | "today";
+type SheetMode = "visit" | "today" | "upcoming";
 
 export function ScheduleBoard({ board }: { board: VisitBoard }) {
   const { snapshot } = useOffline();
@@ -46,33 +46,9 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
   function openSheet(mode: SheetMode) {
     setError(null);
     setFarmId(farms[0]?.id ?? "");
-    setDate(mode === "today" ? todayKey : todayKey);
+    setDate(mode === "upcoming" ? addCalendarDays(todayKey, 1) : todayKey);
     setLabel("");
     setSheet(mode);
-  }
-
-  function moveToToday(item: FollowUpDueItem) {
-    if (item.date <= todayKey) return;
-    const fields: Record<string, string> = {
-      date: todayKey,
-      label: item.label,
-      farmId: item.farmId,
-    };
-    if (item.flockId) {
-      fields.flockId = item.flockId;
-      fields.replacesDate = item.date;
-    } else {
-      fields.moveFrom = item.date;
-    }
-    const queued = queue(
-      formWrite("addScheduleVisit", {
-        id: localRecordId(),
-        farmId: item.farmId,
-        fields,
-      }),
-      { keepLocal: true },
-    );
-    if (!queued) setError("Open the dashboard once so this phone has your farms.");
   }
 
   function addVisit() {
@@ -80,6 +56,10 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
     const nextDate = sheet === "today" ? todayKey : date;
     if (!farmId || !nextDate || !nextLabel) {
       setError("Choose a farm, a date, and a label.");
+      return;
+    }
+    if (sheet === "upcoming" && nextDate <= todayKey) {
+      setError("Pick a date after today.");
       return;
     }
     const queued = queue(
@@ -98,7 +78,10 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
     setError(null);
   }
 
-  const visits = board === "today" ? (data?.todaysSchedule ?? []) : (data?.upcomingSchedule ?? []);
+  const visits =
+    board === "today"
+      ? (data?.todaysSchedule ?? [])
+      : (data?.upcomingSchedule ?? []).filter((row) => row.date > todayKey);
 
   return (
     <div>
@@ -129,24 +112,25 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
             </button>
             <button
               type="button"
-              onClick={() => openSheet("today")}
+              onClick={() => openSheet(board === "upcoming" ? "upcoming" : "today")}
               className="rounded-full border border-stone-300 bg-white px-3 py-1.5 text-sm font-bold text-stone-800"
             >
-              Add to today&apos;s schedule
+              {board === "upcoming" ? "Add to upcoming" : "Add to today's schedule"}
             </button>
           </div>
-          <FollowUpsDueList
-            items={visits}
-            showDate
-            capped={false}
-            onMoveToToday={board === "upcoming" ? moveToToday : undefined}
-          />
+          <FollowUpsDueList items={visits} showDate capped={false} />
         </Card>
       )}
 
       {sheet ? (
         <PeekSheet
-          title={sheet === "today" ? "Add to today's schedule" : "Add visit"}
+          title={
+            sheet === "today"
+              ? "Add to today's schedule"
+              : sheet === "upcoming"
+                ? "Add to upcoming"
+                : "Add visit"
+          }
           onClose={() => setSheet(null)}
         >
           <div className="mt-3 space-y-3">
