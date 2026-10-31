@@ -30,6 +30,7 @@ import {
   rememberScheduleCheckKey,
 } from "../../src/lib/schedule";
 import { compactCatchTimeLabel } from "../../src/lib/time-slots";
+import { VISIT_TYPE_LABELS, VISIT_TYPE_OPTIONS } from "../../src/lib/visits";
 import { appScrollProps, colors, styles } from "../../src/theme";
 
 type Board = "today" | "upcoming" | "catches";
@@ -60,7 +61,9 @@ export default function ScheduleBoardScreen() {
   const [sheet, setSheet] = useState<"visit" | "today" | "upcoming" | null>(null);
   const [farmId, setFarmId] = useState("");
   const [date, setDate] = useState(todayKey());
-  const [label, setLabel] = useState("");
+  const [visitType, setVisitType] = useState<string>(VISIT_TYPE_OPTIONS[0].value);
+  const [otherReason, setOtherReason] = useState("");
+  const [typeOpen, setTypeOpen] = useState(false);
   const [farms, setFarms] = useState<Array<{ id: string; farm_name: string }>>([]);
 
   const load = useCallback(() => {
@@ -118,15 +121,22 @@ export default function ScheduleBoardScreen() {
     setError(null);
     setFarmId(farms[0]?.id ?? "");
     setDate(mode === "upcoming" ? addDaysKey(todayKey(), 1) : todayKey());
-    setLabel("");
+    setVisitType(VISIT_TYPE_OPTIONS[0].value);
+    setOtherReason("");
+    setTypeOpen(false);
     setSheet(mode);
   }
 
   function saveVisit() {
-    const nextLabel = label.trim();
+    const nextLabel =
+      visitType === "OTHER" ? otherReason.trim() : (VISIT_TYPE_LABELS[visitType] ?? visitType);
     const nextDate = sheet === "today" ? todayKey() : date;
-    if (!farmId || !nextDate || !nextLabel) {
-      setError("Choose a farm, a date, and a label.");
+    if (!farmId || !nextDate) {
+      setError("Choose a farm and a date.");
+      return;
+    }
+    if (visitType === "OTHER" && !nextLabel) {
+      setError("Enter a reason for this visit.");
       return;
     }
     if (sheet === "upcoming" && nextDate <= todayKey()) {
@@ -286,18 +296,64 @@ export default function ScheduleBoardScreen() {
                 </Pressable>
               ))}
             </ScrollView>
+            <Text style={{ marginTop: 8, fontWeight: "700", color: colors.text }}>Visit type</Text>
+            <Pressable
+              onPress={() => setTypeOpen((open) => !open)}
+              style={[
+                styles.input,
+                {
+                  marginTop: 6,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                },
+              ]}
+            >
+              <Text style={{ fontWeight: "700", color: colors.text }}>
+                {VISIT_TYPE_LABELS[visitType] ?? visitType}
+              </Text>
+              <Text style={{ color: colors.muted, fontWeight: "800" }}>▾</Text>
+            </Pressable>
+            {typeOpen ? (
+              <ScrollView style={{ maxHeight: 180 }}>
+                {VISIT_TYPE_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => {
+                      setVisitType(opt.value);
+                      setTypeOpen(false);
+                    }}
+                    style={{ paddingVertical: 10 }}
+                  >
+                    <Text
+                      style={{
+                        fontWeight: visitType === opt.value ? "800" : "600",
+                        color: colors.text,
+                      }}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            ) : null}
+            {visitType === "OTHER" ? (
+              <>
+                <Text style={{ marginTop: 8, fontWeight: "700", color: colors.text }}>Reason</Text>
+                <TextInput
+                  value={otherReason}
+                  onChangeText={setOtherReason}
+                  placeholder="Reason for this visit"
+                  placeholderTextColor={colors.muted}
+                  style={[styles.input, { marginTop: 6 }]}
+                />
+              </>
+            ) : null}
             {sheet === "today" ? (
               <Text style={{ marginTop: 8, color: colors.muted }}>Date {formatShortScheduleDate(todayKey())}</Text>
             ) : (
               <DatePickerField label="Date" value={date} onChange={setDate} presentation="inline" />
             )}
-            <Text style={{ marginTop: 8, fontWeight: "700", color: colors.text }}>Label</Text>
-            <TextInput
-              value={label}
-              onChangeText={setLabel}
-              placeholder="Weight Proj."
-              style={[styles.input, { marginTop: 6 }]}
-            />
             {error ? <Text style={{ color: colors.danger, marginBottom: 8 }}>{error}</Text> : null}
             <Pressable onPress={saveVisit} style={styles.button}>
               <Text style={styles.buttonText}>Add</Text>

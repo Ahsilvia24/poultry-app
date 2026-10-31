@@ -8,12 +8,13 @@ import { isVisitPlaceFarm } from "@/lib/visits/visitPlace";
 import { formWrite, localRecordId } from "@/lib/offline/formPairs";
 import { selectDashboard, type ScheduleBoard as Board } from "@/lib/offline/selectDashboard";
 import { useReplicaWrite } from "@/lib/offline/useReplicaWrite";
+import { VISIT_TYPE_LABELS, VISIT_TYPE_OPTIONS } from "@/lib/utils";
 import { DateKeyField } from "@/components/DateKeyField";
 import { FollowUpsDueList } from "@/components/FollowUpsDueList";
 import { PeekSheet } from "@/components/PeekSheet";
 import { UpcomingCatchesList } from "@/components/UpcomingCatchesList";
 import { useOffline } from "@/components/OfflineProvider";
-import { BackHeader, Card } from "@/components/ui";
+import { BackHeader, Card, Select } from "@/components/ui";
 
 const TITLES: Record<Exclude<Board, "dashboard">, string> = {
   today: "Today's Schedule",
@@ -33,7 +34,8 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
   const [sheet, setSheet] = useState<SheetMode | null>(null);
   const [farmId, setFarmId] = useState("");
   const [date, setDate] = useState(todayKey);
-  const [label, setLabel] = useState("");
+  const [visitType, setVisitType] = useState<string>(VISIT_TYPE_OPTIONS[0].value);
+  const [otherReason, setOtherReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const farms = (snapshot?.farms ?? [])
@@ -47,15 +49,21 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
     setError(null);
     setFarmId(farms[0]?.id ?? "");
     setDate(mode === "upcoming" ? addCalendarDays(todayKey, 1) : todayKey);
-    setLabel("");
+    setVisitType(VISIT_TYPE_OPTIONS[0].value);
+    setOtherReason("");
     setSheet(mode);
   }
 
   function addVisit() {
-    const nextLabel = label.trim();
+    const nextLabel =
+      visitType === "OTHER" ? otherReason.trim() : (VISIT_TYPE_LABELS[visitType] ?? visitType);
     const nextDate = sheet === "today" ? todayKey : date;
-    if (!farmId || !nextDate || !nextLabel) {
-      setError("Choose a farm, a date, and a label.");
+    if (!farmId || !nextDate) {
+      setError("Choose a farm and a date.");
+      return;
+    }
+    if (visitType === "OTHER" && !nextLabel) {
+      setError("Enter a reason for this visit.");
       return;
     }
     if (sheet === "upcoming" && nextDate <= todayKey) {
@@ -149,6 +157,31 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
                 ))}
               </select>
             </label>
+            <label className="block text-sm font-semibold text-stone-700">
+              Visit type
+              <Select
+                value={visitType}
+                onChange={(event) => setVisitType(event.target.value)}
+                className="mt-1"
+              >
+                {VISIT_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            {visitType === "OTHER" ? (
+              <label className="block text-sm font-semibold text-stone-700">
+                Reason
+                <input
+                  value={otherReason}
+                  onChange={(event) => setOtherReason(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-3 text-base text-stone-900"
+                  placeholder="Reason for this visit"
+                />
+              </label>
+            ) : null}
             {sheet === "today" ? (
               <p className="text-sm text-stone-600">
                 Date <span className="font-semibold text-stone-900">{formatDateKeyLabel(todayKey, timeZone)}</span>
@@ -156,15 +189,6 @@ export function ScheduleBoard({ board }: { board: VisitBoard }) {
             ) : (
               <DateKeyField id="schedule-visit-date" label="Date" value={date} onChange={setDate} />
             )}
-            <label className="block text-sm font-semibold text-stone-700">
-              Label
-              <input
-                value={label}
-                onChange={(event) => setLabel(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-stone-300 px-3 py-3 text-base text-stone-900"
-                placeholder="Weight Proj."
-              />
-            </label>
             {error ? <p className="text-sm text-red-700">{error}</p> : null}
             <button
               type="button"
