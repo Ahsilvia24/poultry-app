@@ -39,6 +39,7 @@ export const PROCESSING_PLANT_OPTIONS = ["Heavener", "Stigler"] as const;
 
 /** Picker order and labels for a new/edited visit. */
 export const VISIT_TYPE_OPTIONS = [
+  { value: "WEEKLY_MEETING", label: "Weekly Meeting" },
   { value: "ROUTINE_SERVICE", label: "Routine Service" },
   { value: "DELIVERY", label: "Delivery" },
   { value: "PREBROOD", label: "Prebrood" },

@@ -10,6 +10,9 @@ describe("VISIT_TYPE_OPTIONS", () => {
     assert.equal(values[lfo + 2], "CERTIFICATION");
     assert.equal(values.at(-2), "CERTIFICATION");
     assert.equal(values.at(-1), "OTHER");
+    assert.equal(values[0], "WEEKLY_MEETING");
+    assert.equal(VISIT_TYPE_OPTIONS[0]?.label, "Weekly Meeting");
+    assert.equal(VISIT_TYPE_LABELS.WEEKLY_MEETING, "Weekly Meeting");
     assert.equal(VISIT_TYPE_LABELS.WEIGHT_PROJECTION, "Weight Projection");
     assert.equal(VISIT_TYPE_LABELS.CERTIFICATION, "Certification");
     assert.equal(VISIT_TYPE_LABELS.DELIVERY, "Delivery");

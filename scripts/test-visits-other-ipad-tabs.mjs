@@ -107,6 +107,14 @@ assert.equal(findVisitPlaceFarm(afterPlace.farms, "feed store")?.id, placeFarm.i
 const picker = read("src/components/AllVisitsView.tsx");
 assert.match(picker, /ENTER_OTHER_FARM_VALUE/);
 assert.match(picker, />Other</);
+const select = picker.slice(picker.indexOf('id="all-visits-farm"'));
+const centralAt = select.indexOf("CENTRAL_OFFICES_FARM_VALUE");
+const farmsAt = select.indexOf("farms.map");
+const otherAt = select.indexOf(">Other<");
+assert.ok(centralAt >= 0 && centralAt < farmsAt && farmsAt < otherAt);
+assert.match(picker, /\{CENTRAL_OFFICES_NAME\}/);
+assert.match(picker, /visitPlaceFormHref\(CENTRAL_OFFICES_NAME\)/);
+assert.match(read("src/lib/visits/visitPlace.ts"), /export const CENTRAL_OFFICES_NAME = "Central Offices"/);
 assert.doesNotMatch(picker, />Enter Other</);
 assert.doesNotMatch(picker, /Feed store or other place/);
 assert.match(picker, /placeholder="Enter Location"/);

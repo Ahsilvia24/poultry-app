@@ -15,15 +15,19 @@ const { applyFormWrite } = await import(join(root, "src/lib/offline/applyWrites.
 
 const values = VISIT_TYPE_OPTIONS.map((opt) => opt.value);
 const lfo = values.indexOf("LAST_FEED_ORDER");
+assert.equal(values[0], "WEEKLY_MEETING");
+assert.equal(VISIT_TYPE_LABELS.WEEKLY_MEETING, "Weekly Meeting");
 assert.equal(values[lfo + 1], "WEIGHT_PROJECTION");
 assert.equal(values[lfo + 2], "CERTIFICATION");
 assert.equal(VISIT_TYPE_LABELS.WEIGHT_PROJECTION, "Weight Projection");
+assert.equal(farmVisitSchema.shape.visitType.safeParse("WEEKLY_MEETING").success, true);
 assert.equal(
   farmVisitSchema.shape.visitType.safeParse("WEIGHT_PROJECTION").success,
   true,
 );
 
 assert.equal(fieldLogVisitTypeLabel("WEIGHT_PROJECTION"), "Weight Projection");
+assert.equal(fieldLogVisitTypeLabel("WEEKLY_MEETING"), "Weekly Meeting");
 assert.equal(fieldLogVisitTypeLabel("OTHER", "Controller alarm"), "Controller alarm");
 assert.equal(fieldLogVisitTypeLabel("OTHER", "Other: Controller alarm"), "Controller alarm");
 assert.equal(fieldLogVisitTypeLabel("ROUTINE_SERVICE", "Vent doors look good."), "Routine Service");

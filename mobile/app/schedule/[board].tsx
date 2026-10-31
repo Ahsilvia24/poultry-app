@@ -61,7 +61,7 @@ export default function ScheduleBoardScreen() {
   const [sheet, setSheet] = useState<"visit" | "today" | "upcoming" | null>(null);
   const [farmId, setFarmId] = useState("");
   const [date, setDate] = useState(todayKey());
-  const [visitType, setVisitType] = useState<string>(VISIT_TYPE_OPTIONS[0].value);
+  const [visitType, setVisitType] = useState("ROUTINE_SERVICE");
   const [otherReason, setOtherReason] = useState("");
   const [typeOpen, setTypeOpen] = useState(false);
   const [farms, setFarms] = useState<Array<{ id: string; farm_name: string }>>([]);
@@ -121,7 +121,7 @@ export default function ScheduleBoardScreen() {
     setError(null);
     setFarmId(farms[0]?.id ?? "");
     setDate(mode === "upcoming" ? addDaysKey(todayKey(), 1) : todayKey());
-    setVisitType(VISIT_TYPE_OPTIONS[0].value);
+    setVisitType("ROUTINE_SERVICE");
     setOtherReason("");
     setTypeOpen(false);
     setSheet(mode);

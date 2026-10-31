@@ -63,6 +63,7 @@ enum LitterEventType {
 }
 
 enum VisitType {
+  WEEKLY_MEETING
   ROUTINE_SERVICE
   DELIVERY
   PREBROOD

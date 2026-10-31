@@ -52,6 +52,7 @@ export function truncateFarmName(name: string, maxChars: number): string {
 }
 
 const FIELD_LOG_VISIT_TYPE_LABELS: Record<string, string> = {
+  WEEKLY_MEETING: "Weekly Meeting",
   ROUTINE_SERVICE: "Routine Service",
   DELIVERY: "Delivery",
   PREBROOD: "Prebrood",
