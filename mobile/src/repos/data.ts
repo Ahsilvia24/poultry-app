@@ -51,6 +51,14 @@ import {
   type CompletionInfo,
   type ScheduledVisit,
 } from "../lib/schedule";
+import {
+  defaultCatchDateKey,
+  resolveCatchAfterPlacementChange,
+} from "../lib/placementImport/catchDate";
+import {
+  defaultCatchDateKey,
+  resolveCatchAfterPlacementChange,
+} from "../lib/placementImport/catchDate";
 import { matchPlacementFarmGroups } from "../lib/placementImport/match";
 import { farmGroupKey } from "../lib/placementImport/parse";
 import {
@@ -3288,6 +3296,7 @@ export function importPlacementRows(input: {
     const byHouse = new Map<number, (typeof farmRows)[number]>();
     for (const row of farmRows) byHouse.set(row.houseNo, row);
     const touchedFlockIds = new Set<string>();
+    const marketAge = getDefaultMarketAgeDays();
 
     for (const row of byHouse.values()) {
       const houseId = houseIds.get(row.houseNo);
@@ -3295,8 +3304,15 @@ export function importPlacementRows(input: {
       const occupied = getDb().getFirstSync<{
         flock_id: string;
         house_flock_id: string;
+        placement_date: string | null;
+        catch_date: string | null;
+        flock_placement: string;
+        flock_catch: string | null;
       }>(
-        `SELECT f.id as flock_id, hf.id as house_flock_id
+        `SELECT f.id as flock_id, hf.id as house_flock_id,
+                hf.placement_date, hf.catch_date,
+                f.placement_date as flock_placement,
+                f.projected_catch_date as flock_catch
          FROM house_flocks hf
          JOIN flocks f ON f.id = hf.flock_id
          WHERE hf.house_id = ? AND f.farm_id = ? AND f.flock_status = 'ACTIVE'
@@ -3305,38 +3321,60 @@ export function importPlacementRows(input: {
       );
 
       if (occupied) {
+        const previousPlacement =
+          occupied.placement_date?.trim() || occupied.flock_placement;
+        const previousCatch =
+          occupied.catch_date?.trim() || occupied.flock_catch?.trim() || null;
+        const nextCatch = resolveCatchAfterPlacementChange({
+          previousPlacementDate: previousPlacement,
+          nextPlacementDate: row.datePlaced,
+          previousCatchDate: previousCatch,
+          marketAgeDays: marketAge,
+        });
         getDb().runSync(
           `UPDATE house_flocks
-           SET placed_bird_count = ?, placement_date = ?
+           SET placed_bird_count = ?, placement_date = ?, catch_date = ?
            WHERE id = ?`,
-          [row.numberSent, row.datePlaced, occupied.house_flock_id],
+          [row.numberSent, row.datePlaced, nextCatch, occupied.house_flock_id],
         );
         touchedFlockIds.add(occupied.flock_id);
         updatedPlacements += 1;
         continue;
       }
 
-      let target = getDb().getFirstSync<{ id: string }>(
-        `SELECT id FROM flocks
+      let target = getDb().getFirstSync<{
+        id: string;
+        placement_date: string;
+        projected_catch_date: string | null;
+      }>(
+        `SELECT id, placement_date, projected_catch_date FROM flocks
          WHERE farm_id = ? AND flock_status = 'ACTIVE'
          ORDER BY placement_date ASC
          LIMIT 1`,
         [farmId],
       );
+      const nextCatch = target
+        ? resolveCatchAfterPlacementChange({
+            previousPlacementDate: target.placement_date,
+            nextPlacementDate: row.datePlaced,
+            previousCatchDate: target.projected_catch_date,
+            marketAgeDays: marketAge,
+          })
+        : defaultCatchDateKey(row.datePlaced, marketAge);
       if (!target) {
         const id = newId("flock");
         getDb().runSync(
           `INSERT INTO flocks (id, farm_id, flock_number, placement_date, projected_catch_date, flock_status)
            VALUES (?, ?, ?, ?, ?, 'ACTIVE')`,
-          [id, farmId, row.flockId, row.datePlaced, addDaysKey(row.datePlaced, 52)],
+          [id, farmId, row.flockId, row.datePlaced, nextCatch],
         );
-        target = { id };
+        target = { id, placement_date: row.datePlaced, projected_catch_date: nextCatch };
         createdFlocks += 1;
       }
       getDb().runSync(
         `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date)
-         VALUES (?, ?, ?, ?, ?, NULL)`,
-        [newId("hf"), target.id, houseId, Math.floor(row.numberSent), row.datePlaced],
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [newId("hf"), target.id, houseId, Math.floor(row.numberSent), row.datePlaced, nextCatch],
       );
       touchedFlockIds.add(target.id);
       updatedPlacements += 1;
@@ -3345,13 +3383,22 @@ export function importPlacementRows(input: {
     for (const flockId of touchedFlockIds) {
       const hfs = getDb().getAllSync<{
         placement_date: string | null;
-      }>("SELECT placement_date FROM house_flocks WHERE flock_id = ?", [flockId]);
+        catch_date: string | null;
+      }>("SELECT placement_date, catch_date FROM house_flocks WHERE flock_id = ?", [flockId]);
       const places = hfs
         .map((row) => row.placement_date?.trim())
         .filter((value): value is string => Boolean(value))
         .sort();
+      const catches = hfs
+        .map((row) => row.catch_date?.trim())
+        .filter((value): value is string => Boolean(value))
+        .sort();
       if (!places[0]) continue;
-      getDb().runSync(`UPDATE flocks SET placement_date = ? WHERE id = ?`, [places[0], flockId]);
+      const projectedCatch = catches[0] ?? defaultCatchDateKey(places[0], marketAge);
+      getDb().runSync(
+        `UPDATE flocks SET placement_date = ?, projected_catch_date = ? WHERE id = ?`,
+        [places[0], projectedCatch, flockId],
+      );
     }
   }
 

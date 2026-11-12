@@ -15,6 +15,10 @@ import {
 } from "@/lib/offline/formPairs";
 import type { ImportEntityGraph } from "@/lib/offline/remapIds";
 import { asDateKey, localNoonFromKey } from "@/lib/offline/dates";
+import {
+  defaultCatchDateKey,
+  resolveCatchAfterPlacementChange,
+} from "@/lib/placement-import/catchDate";
 import { matchPlacementFarmGroups } from "@/lib/placement-import/match";
 import { farmGroupKey as placementFarmGroupKey } from "@/lib/placement-import/parse";
 import type { PlacementRow } from "@/lib/placement-import/types";
@@ -27,6 +31,11 @@ import type {
 } from "@/lib/offline/types";
 
 const DEFAULT_SQ_FT = 29700;
+
+function marketAgeFromSnapshot(snapshot: OfflineSnapshot) {
+  const age = snapshot.settings?.defaultMarketAgeDays;
+  return age != null && Number.isFinite(age) && age > 0 ? Math.floor(age) : undefined;
+}
 
 export type ImportSelection = {
   key: string;
@@ -110,16 +119,22 @@ function emptyFarm(
   };
 }
 
-function emptyFlock(farmId: string, flockNumber: string, placementDate: string): OfflineFlockRef {
+function emptyFlock(
+  farmId: string,
+  flockNumber: string,
+  placementDate: string,
+  projectedCatchDate: string,
+  targetMarketAge?: number | null,
+): OfflineFlockRef {
   return {
     id: localCreatedFlockId(farmId, flockNumber),
     farmId,
     flockNumber,
     flockStatus: "ACTIVE",
     placementDate,
-    projectedCatchDate: null,
+    projectedCatchDate,
     actualCatchDate: null,
-    targetMarketAge: null,
+    targetMarketAge: targetMarketAge ?? null,
     growthRateLbsPerDay: null,
     deletedAt: null,
   };
@@ -421,6 +436,7 @@ export function applyPlacementToSnapshot(
     const byHouse = new Map<number, PlacementRow>();
     for (const row of farmRows) byHouse.set(row.houseNo, row);
     const touchedFlockIds = new Set<string>();
+    const marketAge = marketAgeFromSnapshot(snapshot);
 
     for (const row of byHouse.values()) {
       const houseId = houseByNumber.get(row.houseNo);
@@ -433,18 +449,53 @@ export function applyPlacementToSnapshot(
         );
       });
       if (occupied) {
-        // Same house-flock row, so mortality and catch stay with the house.
+        const flock = flocks.find((item) => item.id === occupied.flockId);
+        const previousPlacement =
+          asDateKey(occupied.placementDate) ||
+          (flock ? asDateKey(flock.placementDate) : null) ||
+          occupied.placementDate ||
+          null;
+        const previousCatch =
+          asDateKey(occupied.catchDate) ||
+          (flock ? asDateKey(flock.projectedCatchDate) : null) ||
+          null;
+        const nextCatch = resolveCatchAfterPlacementChange({
+          previousPlacementDate: previousPlacement,
+          nextPlacementDate: row.datePlaced,
+          previousCatchDate: previousCatch,
+          marketAgeDays: marketAge,
+        });
+        // Same house-flock row keeps mortality / catch time; refresh catch when place moved.
         houseFlocks = houseFlocks.map((hf) =>
           hf.id === occupied.id
-            ? { ...hf, placedBirdCount: row.numberSent, placementDate: row.datePlaced }
+            ? {
+                ...hf,
+                placedBirdCount: row.numberSent,
+                placementDate: row.datePlaced,
+                catchDate: nextCatch,
+              }
             : hf,
         );
         touchedFlockIds.add(occupied.flockId);
         continue;
       }
       let target = activeFlockOnFarm(flocks, farmId);
+      const nextCatch = target
+        ? resolveCatchAfterPlacementChange({
+            previousPlacementDate: asDateKey(target.placementDate) ?? target.placementDate.slice(0, 10),
+            nextPlacementDate: row.datePlaced,
+            previousCatchDate: asDateKey(target.projectedCatchDate),
+            marketAgeDays: marketAge,
+          })
+        : defaultCatchDateKey(row.datePlaced, marketAge);
       if (!target) {
-        target = emptyFlock(farmId, row.flockId, row.datePlaced);
+        target = emptyFlock(
+          farmId,
+          row.flockId,
+          row.datePlaced,
+          nextCatch,
+          marketAge ?? null,
+        );
         flocks = [...flocks, target];
         createdFlocks += 1;
       }
@@ -456,7 +507,7 @@ export function applyPlacementToSnapshot(
           houseId,
           placedBirdCount: row.numberSent,
           placementDate: row.datePlaced,
-          catchDate: null,
+          catchDate: nextCatch,
           catchTime: null,
         },
       ];
@@ -466,13 +517,21 @@ export function applyPlacementToSnapshot(
     for (const flockId of touchedFlockIds) {
       const hfs = houseFlocks.filter((hf) => hf.flockId === flockId);
       const dates = hfs
-        .map((hf) => hf.placementDate)
+        .map((hf) => asDateKey(hf.placementDate) ?? hf.placementDate)
+        .filter((value): value is string => Boolean(value))
+        .slice()
+        .sort();
+      const catches = hfs
+        .map((hf) => asDateKey(hf.catchDate) ?? hf.catchDate)
         .filter((value): value is string => Boolean(value))
         .slice()
         .sort();
       if (!dates[0]) continue;
+      const projectedCatchDate = catches[0] ?? defaultCatchDateKey(dates[0]!, marketAge);
       flocks = flocks.map((flock) =>
-        flock.id === flockId ? { ...flock, placementDate: dates[0]! } : flock,
+        flock.id === flockId
+          ? { ...flock, placementDate: dates[0]!, projectedCatchDate }
+          : flock,
       );
     }
 
