@@ -55,10 +55,6 @@ import {
   defaultCatchDateKey,
   resolveCatchAfterPlacementChange,
 } from "../lib/placementImport/catchDate";
-import {
-  defaultCatchDateKey,
-  resolveCatchAfterPlacementChange,
-} from "../lib/placementImport/catchDate";
 import { matchPlacementFarmGroups } from "../lib/placementImport/match";
 import { farmGroupKey } from "../lib/placementImport/parse";
 import {
