@@ -289,6 +289,7 @@ export async function applyPlacementImportAction(input: {
     const byHouse = new Map<number, PlacementRow>();
     for (const row of farmRows) byHouse.set(row.houseNo, row);
     const touchedFlockIds = new Set<string>();
+    const placeChangedFlockIds = new Set<string>();
 
     for (const row of byHouse.values()) {
       const houseId = houseByNumber.get(row.houseNo);
@@ -325,6 +326,9 @@ export async function applyPlacementImportAction(input: {
             catchDate: noonFromDateKey(nextCatchKey),
           },
         });
+        if (previousPlacement !== row.datePlaced) {
+          placeChangedFlockIds.add(occupied.flockId);
+        }
         touchedFlockIds.add(occupied.flockId);
         continue;
       }
@@ -332,9 +336,10 @@ export async function applyPlacementImportAction(input: {
         where: { farmId, flockStatus: "ACTIVE", deletedAt: null },
         orderBy: { placementDate: "asc" },
       });
+      const priorTargetPlace = target ? dateKeyFromDb(target.placementDate) : null;
       const nextCatchKey = target
         ? resolveCatchAfterPlacementChange({
-            previousPlacementDate: dateKeyFromDb(target.placementDate),
+            previousPlacementDate: priorTargetPlace,
             nextPlacementDate: row.datePlaced,
             previousCatchDate: target.projectedCatchDate
               ? dateKeyFromDb(target.projectedCatchDate)
@@ -353,6 +358,8 @@ export async function applyPlacementImportAction(input: {
           },
         });
         createdFlocks += 1;
+      } else if (priorTargetPlace && priorTargetPlace !== row.datePlaced) {
+        placeChangedFlockIds.add(target.id);
       }
       await prisma.houseFlock.create({
         data: {
@@ -394,6 +401,12 @@ export async function applyPlacementImportAction(input: {
             : {}),
           initialBirdCount: total,
         },
+      });
+    }
+
+    if (placeChangedFlockIds.size > 0) {
+      await prisma.followUpCompletion.deleteMany({
+        where: { flockId: { in: [...placeChangedFlockIds] } },
       });
     }
   }

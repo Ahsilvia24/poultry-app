@@ -3292,6 +3292,7 @@ export function importPlacementRows(input: {
     const byHouse = new Map<number, (typeof farmRows)[number]>();
     for (const row of farmRows) byHouse.set(row.houseNo, row);
     const touchedFlockIds = new Set<string>();
+    const placeChangedFlockIds = new Set<string>();
     const marketAge = getDefaultMarketAgeDays();
 
     for (const row of byHouse.values()) {
@@ -3333,6 +3334,9 @@ export function importPlacementRows(input: {
            WHERE id = ?`,
           [row.numberSent, row.datePlaced, nextCatch, occupied.house_flock_id],
         );
+        if (previousPlacement && previousPlacement !== row.datePlaced) {
+          placeChangedFlockIds.add(occupied.flock_id);
+        }
         touchedFlockIds.add(occupied.flock_id);
         updatedPlacements += 1;
         continue;
@@ -3349,6 +3353,7 @@ export function importPlacementRows(input: {
          LIMIT 1`,
         [farmId],
       );
+      const priorTargetPlace = target?.placement_date ?? null;
       const nextCatch = target
         ? resolveCatchAfterPlacementChange({
             previousPlacementDate: target.placement_date,
@@ -3366,6 +3371,8 @@ export function importPlacementRows(input: {
         );
         target = { id, placement_date: row.datePlaced, projected_catch_date: nextCatch };
         createdFlocks += 1;
+      } else if (priorTargetPlace && priorTargetPlace !== row.datePlaced) {
+        placeChangedFlockIds.add(target.id);
       }
       getDb().runSync(
         `INSERT INTO house_flocks (id, flock_id, house_id, placed_bird_count, placement_date, catch_date)
@@ -3395,6 +3402,10 @@ export function importPlacementRows(input: {
         `UPDATE flocks SET placement_date = ?, projected_catch_date = ? WHERE id = ?`,
         [places[0], projectedCatch, flockId],
       );
+    }
+
+    for (const flockId of placeChangedFlockIds) {
+      getDb().runSync("DELETE FROM follow_up_completions WHERE flock_id = ?", [flockId]);
     }
   }
 
